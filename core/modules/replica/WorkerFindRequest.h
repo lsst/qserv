@@ -61,20 +61,20 @@ class WorkerFindRequest
 public:
 
     /// Pointer to self
-    typedef std::shared_ptr<WorkerFindRequest> pointer;
+    typedef std::shared_ptr<WorkerFindRequest> Ptr;
 
     /**
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      */
-    static pointer create(ServiceProvider::pointer const& serviceProvider,
-                          std::string const& worker,
-                          std::string const& id,
-                          int                priority,
-                          std::string const& database,
-                          unsigned int       chunk,
-                          bool               computeCheckSum);
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
+                      std::string const& worker,
+                      std::string const& id,
+                      int priority,
+                      std::string const& database,
+                      unsigned int chunk,
+                      bool computeCheckSum);
 
     // Default construction and copy semantics are prohibited
 
@@ -111,13 +111,13 @@ protected:
     /**
      * The normal constructor of the class.
      */
-    WorkerFindRequest(ServiceProvider::pointer const& serviceProvider,
+    WorkerFindRequest(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& worker,
                       std::string const& id,
-                      int                priority,
+                      int priority,
                       std::string const& database,
-                      unsigned int       chunk,
-                      bool               computeCheckSum);
+                      unsigned int chunk,
+                      bool computeCheckSum);
 protected:
 
     // Parameters of the request
@@ -141,20 +141,20 @@ class WorkerFindRequestPOSIX
 public:
 
     /// Pointer to self
-    typedef std::shared_ptr<WorkerFindRequestPOSIX> pointer;
+    typedef std::shared_ptr<WorkerFindRequestPOSIX> Ptr;
 
     /**
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      */
-    static pointer create(ServiceProvider::pointer const& serviceProvider,
-                          std::string const& worker,
-                          std::string const& id,
-                          int                priority,
-                          std::string const& database,
-                          unsigned int       chunk,
-                          bool               computeCheckSum);
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
+                      std::string const& worker,
+                      std::string const& id,
+                      int priority,
+                      std::string const& database,
+                      unsigned int chunk,
+                      bool computeCheckSum);
 
     // Default construction and copy semantics are prohibited
 
@@ -177,13 +177,13 @@ private:
     /**
      * The normal constructor of the class.
      */
-    WorkerFindRequestPOSIX(ServiceProvider::pointer const& serviceProvider,
+    WorkerFindRequestPOSIX(ServiceProvider::Ptr const& serviceProvider,
                            std::string const& worker,
                            std::string const& id,
-                           int                priority,
+                           int priority,
                            std::string const& database,
-                           unsigned int       chunk,
-                           bool               computeCheckSum);
+                           unsigned int chunk,
+                           bool computeCheckSum);
 
 private:
     

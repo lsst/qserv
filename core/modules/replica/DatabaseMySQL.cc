@@ -319,11 +319,11 @@ Function::Function(std::string const& name_)
 //                Connection                 //
 ///////////////////////////////////////////////
 
-Connection::pointer Connection::open(ConnectionParams const& connectionParams,
+Connection::Ptr Connection::open(ConnectionParams const& connectionParams,
                                      bool autoReconnect,
                                      bool autoCommit) {
 
-    Connection::pointer ptr(new Connection(connectionParams,
+    Connection::Ptr ptr(new Connection(connectionParams,
                                            autoReconnect,
                                            autoCommit));
     ptr->connect();
@@ -380,7 +380,7 @@ std::string Connection::escape(std::string const& inStr) const {
     return std::string(outStr.get(), outLen) ;
 }
 
-Connection::pointer Connection::begin() {
+Connection::Ptr Connection::begin() {
     assertTransaction(false);
     execute("BEGIN");
     _inTransaction = true;
@@ -388,21 +388,21 @@ Connection::pointer Connection::begin() {
 }
 
 
-Connection::pointer Connection::commit() {
+Connection::Ptr Connection::commit() {
     assertTransaction(true);
     execute("COMMIT");
     _inTransaction = false;
     return shared_from_this();
 }
 
-Connection::pointer Connection::rollback() {
+Connection::Ptr Connection::rollback() {
     assertTransaction(true);
     execute("ROLLBACK");
     _inTransaction = false;
     return shared_from_this();
 }
 
-Connection::pointer Connection::execute(std::string const& query) {
+Connection::Ptr Connection::execute(std::string const& query) {
 
     static std::string const context = "Connection::execute()  ";
 

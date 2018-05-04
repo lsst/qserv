@@ -64,11 +64,11 @@ std::string SetChunkListQservRequest::status2str(Status status) {
             "SetChunkListQservRequest::status2str  no match for status: " +
             std::to_string(status));
 }
-SetChunkListQservRequest::pointer SetChunkListQservRequest::create(
+SetChunkListQservRequest::Ptr SetChunkListQservRequest::create(
                                 SetChunkListQservRequest::ChunkCollection const& chunks,
                                 bool force,
-                                SetChunkListQservRequest::calback_type onFinish) {
-    return pointer(new SetChunkListQservRequest(
+                                SetChunkListQservRequest::CallbackType onFinish) {
+    return SetChunkListQservRequest::Ptr(new SetChunkListQservRequest(
         chunks,
         force,
         onFinish
@@ -77,7 +77,7 @@ SetChunkListQservRequest::pointer SetChunkListQservRequest::create(
 SetChunkListQservRequest::SetChunkListQservRequest(
                                 SetChunkListQservRequest::ChunkCollection const& chunks,
                                 bool force,
-                                SetChunkListQservRequest::calback_type onFinish)
+                                SetChunkListQservRequest::CallbackType onFinish)
     :   _chunks(chunks),
         _force(force),
         _onFinish(onFinish) {

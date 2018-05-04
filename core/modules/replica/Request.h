@@ -63,7 +63,7 @@ class Request
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<Request> pointer;
+    typedef std::shared_ptr<Request> Ptr;
 
     /// Primary public state of the request
     enum State {
@@ -145,7 +145,7 @@ public:
     virtual ~Request() = default;
 
     /// @return reference to the service provider,
-    ServiceProvider::pointer const& serviceProvider() { return _serviceProvider; }
+    ServiceProvider::Ptr const& serviceProvider() { return _serviceProvider; }
 
     /// @return a string representing a type of a request.
     std::string const& type() const { return _type; }
@@ -250,7 +250,7 @@ protected:
      * @param keepTracking    - keep tracking the request before it finishes or fails
      * @param allowDuplicate  - follow a previously made request if the current one duplicates it
      */
-    Request(ServiceProvider::pointer const& serviceProvider,
+    Request(ServiceProvider::Ptr const& serviceProvider,
             boost::asio::io_service& io_service,
             std::string const& type,
             std::string const& worker,
@@ -334,7 +334,7 @@ protected:
 
     // Parameters of the object
 
-    ServiceProvider::pointer _serviceProvider;
+    ServiceProvider::Ptr _serviceProvider;
 
     std::string _type;
     std::string _id;                    ///< own identifier

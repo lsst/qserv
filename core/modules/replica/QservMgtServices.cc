@@ -69,8 +69,8 @@ struct QservMgtRequestWrapperImpl
         _onFinish(_request);
     }
 
-    QservMgtRequestWrapperImpl(typename T::pointer const& request,
-                               typename T::callback_type onFinish)
+    QservMgtRequestWrapperImpl(typename T::Ptr const& request,
+                               typename T::CallbackType onFinish)
         :   QservMgtRequestWrapper(),
             _request(request),
             _onFinish(onFinish) {
@@ -88,31 +88,31 @@ private:
 
     // The context of the operation
 
-    typename T::pointer       _request;
-    typename T::callback_type _onFinish;
+    typename T::Ptr       _request;
+    typename T::CallbackType _onFinish;
 };
 
 ////////////////////////////////////////////////////////////////////////
 //////////////////////////  QservMgtServices  //////////////////////////
 ////////////////////////////////////////////////////////////////////////
 
-QservMgtServices::pointer QservMgtServices::create(ServiceProvider::pointer const& serviceProvider) {
-    return QservMgtServices::pointer(
+QservMgtServices::Ptr QservMgtServices::create(ServiceProvider::Ptr const& serviceProvider) {
+    return QservMgtServices::Ptr(
         new QservMgtServices(serviceProvider));
 }
 
-QservMgtServices::QservMgtServices(ServiceProvider::pointer const& serviceProvider)
+QservMgtServices::QservMgtServices(ServiceProvider::Ptr const& serviceProvider)
     :   _serviceProvider(serviceProvider),
         _io_service(),
         _work(nullptr),
         _registry() {
 }
 
-AddReplicaQservMgtRequest::pointer QservMgtServices::addReplica(
+AddReplicaQservMgtRequest::Ptr QservMgtServices::addReplica(
                                         unsigned int chunk,
                                         std::vector<std::string> const& databases,
                                         std::string const& worker,
-                                        AddReplicaQservMgtRequest::callback_type onFinish,
+                                        AddReplicaQservMgtRequest::CallbackType onFinish,
                                         std::string const& jobId,
                                         unsigned int requestExpirationIvalSec) {
     LOCK_GUARD;
@@ -121,19 +121,19 @@ AddReplicaQservMgtRequest::pointer QservMgtServices::addReplica(
     // operations on requests
     XrdSsiService* service = xrdSsiService();
     if (not service) {
-        return AddReplicaQservMgtRequest::pointer();
+        return AddReplicaQservMgtRequest::Ptr();
     }
 
-    QservMgtServices::pointer manager = shared_from_this();
+    QservMgtServices::Ptr manager = shared_from_this();
 
-    AddReplicaQservMgtRequest::pointer const request =
+    AddReplicaQservMgtRequest::Ptr const request =
         AddReplicaQservMgtRequest::create(
             _serviceProvider,
             _io_service,
             worker,
             chunk,
             databases,
-            [manager] (QservMgtRequest::pointer const& request) {
+            [manager] (QservMgtRequest::Ptr const& request) {
                 manager->finish(request->id());
             }
         );
@@ -155,12 +155,12 @@ AddReplicaQservMgtRequest::pointer QservMgtServices::addReplica(
 
 
 
-RemoveReplicaQservMgtRequest::pointer QservMgtServices::removeReplica(
+RemoveReplicaQservMgtRequest::Ptr QservMgtServices::removeReplica(
                                         unsigned int chunk,
                                         std::vector<std::string> const& databases,
                                         std::string const& worker,
                                         bool force,
-                                        RemoveReplicaQservMgtRequest::callback_type onFinish,
+                                        RemoveReplicaQservMgtRequest::CallbackType onFinish,
                                         std::string const& jobId,
                                         unsigned int requestExpirationIvalSec) {
     LOCK_GUARD;
@@ -169,12 +169,12 @@ RemoveReplicaQservMgtRequest::pointer QservMgtServices::removeReplica(
     // operations on requests
     XrdSsiService* service = xrdSsiService();
     if (not service) {
-        return RemoveReplicaQservMgtRequest::pointer();
+        return RemoveReplicaQservMgtRequest::Ptr();
     }
 
-    QservMgtServices::pointer manager = shared_from_this();
+    QservMgtServices::Ptr manager = shared_from_this();
 
-    RemoveReplicaQservMgtRequest::pointer const request =
+    RemoveReplicaQservMgtRequest::Ptr const request =
         RemoveReplicaQservMgtRequest::create(
             _serviceProvider,
             _io_service,
@@ -182,7 +182,7 @@ RemoveReplicaQservMgtRequest::pointer QservMgtServices::removeReplica(
             chunk,
             databases,
             force,
-            [manager] (QservMgtRequest::pointer const& request) {
+            [manager] (QservMgtRequest::Ptr const& request) {
                 manager->finish(request->id());
             }
         );
@@ -202,12 +202,12 @@ RemoveReplicaQservMgtRequest::pointer QservMgtServices::removeReplica(
     return request;
 }
 
-GetReplicasQservMgtRequest::pointer QservMgtServices::getReplicas(
+GetReplicasQservMgtRequest::Ptr QservMgtServices::getReplicas(
                                         std::string const& databaseFamily,
                                         std::string const& worker,
                                         bool inUseOnly,
                                         std::string const& jobId,
-                                        GetReplicasQservMgtRequest::callback_type onFinish,
+                                        GetReplicasQservMgtRequest::CallbackType onFinish,
                                         unsigned int requestExpirationIvalSec) {
     LOCK_GUARD;
 
@@ -215,19 +215,19 @@ GetReplicasQservMgtRequest::pointer QservMgtServices::getReplicas(
     // operations on requests
     XrdSsiService* service = xrdSsiService();
     if (not service) {
-        return GetReplicasQservMgtRequest::pointer();
+        return GetReplicasQservMgtRequest::Ptr();
     }
 
-    QservMgtServices::pointer manager = shared_from_this();
+    QservMgtServices::Ptr manager = shared_from_this();
 
-    GetReplicasQservMgtRequest::pointer const request =
+    GetReplicasQservMgtRequest::Ptr const request =
         GetReplicasQservMgtRequest::create(
             _serviceProvider,
             _io_service,
             worker,
             databaseFamily,
             inUseOnly,
-            [manager] (QservMgtRequest::pointer const& request) {
+            [manager] (QservMgtRequest::Ptr const& request) {
                 manager->finish(request->id());
             }
         );
@@ -248,12 +248,12 @@ GetReplicasQservMgtRequest::pointer QservMgtServices::getReplicas(
 }
 
 
-SetReplicasQservMgtRequest::pointer QservMgtServices::setReplicas(
+SetReplicasQservMgtRequest::Ptr QservMgtServices::setReplicas(
                                         std::string const& worker,
                                         QservReplicaCollection const& newReplicas,
                                         bool force,
                                         std::string const& jobId,
-                                        SetReplicasQservMgtRequest::callback_type onFinish,
+                                        SetReplicasQservMgtRequest::CallbackType onFinish,
                                         unsigned int requestExpirationIvalSec) {
     LOCK_GUARD;
 
@@ -261,19 +261,19 @@ SetReplicasQservMgtRequest::pointer QservMgtServices::setReplicas(
     // operations on requests
     XrdSsiService* service = xrdSsiService();
     if (not service) {
-        return SetReplicasQservMgtRequest::pointer();
+        return SetReplicasQservMgtRequest::Ptr();
     }
 
-    QservMgtServices::pointer manager = shared_from_this();
+    QservMgtServices::Ptr manager = shared_from_this();
 
-    SetReplicasQservMgtRequest::pointer const request =
+    SetReplicasQservMgtRequest::Ptr const request =
         SetReplicasQservMgtRequest::create(
             _serviceProvider,
             _io_service,
             worker,
             newReplicas,
             force,
-            [manager] (QservMgtRequest::pointer const& request) {
+            [manager] (QservMgtRequest::Ptr const& request) {
                 manager->finish(request->id());
             }
         );
@@ -307,7 +307,7 @@ void QservMgtServices::finish(std::string const& id) {
     //   - it will reduce the controller API dead-time due to a prolonged
     //     execution time of of the callback function.
 
-    QservMgtRequestWrapper::pointer request;
+    QservMgtRequestWrapper::Ptr request;
     {
         LOCK_GUARD;
         request = _registry[id];

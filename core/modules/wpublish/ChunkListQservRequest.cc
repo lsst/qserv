@@ -63,7 +63,7 @@ std::string ChunkListQservRequest::status2str(Status status) {
 
 ChunkListQservRequest::ChunkListQservRequest(bool rebuild,
                                              bool reload,
-                                             calback_type onFinish)
+                                             CallbackType onFinish)
     :   _rebuild(rebuild),
         _reload(reload),
         _onFinish(onFinish){
@@ -139,30 +139,30 @@ void ChunkListQservRequest::onError(std::string const& error) {
     }
 }
 
-ReloadChunkListQservRequest::pointer ReloadChunkListQservRequest::create(
-                                            ChunkListQservRequest::calback_type onFinish) {
-    return pointer(
+ReloadChunkListQservRequest::Ptr ReloadChunkListQservRequest::create(
+                                            ChunkListQservRequest::CallbackType onFinish) {
+    return ReloadChunkListQservRequest::Ptr(
         new ReloadChunkListQservRequest(onFinish));
 }
 
 ReloadChunkListQservRequest::ReloadChunkListQservRequest(
-                                            ChunkListQservRequest::calback_type onFinish)
+                                            ChunkListQservRequest::CallbackType onFinish)
    :   ChunkListQservRequest(false,
                              true,
                              onFinish) {
 }
 
-RebuildChunkListQservRequest::pointer RebuildChunkListQservRequest::create(
+RebuildChunkListQservRequest::Ptr RebuildChunkListQservRequest::create(
                                             bool reload,
-                                            ChunkListQservRequest::calback_type onFinish) {
-    return pointer(
+                                            ChunkListQservRequest::CallbackType onFinish) {
+    return RebuildChunkListQservRequest::Ptr(
         new RebuildChunkListQservRequest(reload,
                                          onFinish));
 }
 
 RebuildChunkListQservRequest::RebuildChunkListQservRequest(
                                             bool reload,
-                                            ChunkListQservRequest::calback_type onFinish)
+                                            ChunkListQservRequest::CallbackType onFinish)
     :   ChunkListQservRequest(true,
                               reload,
                               onFinish) {

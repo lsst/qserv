@@ -68,7 +68,7 @@ namespace replica {
 struct JobWrapper {
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<JobWrapper> pointer;
+    typedef std::shared_ptr<JobWrapper> Ptr;
 
     /// Destructor
     virtual ~JobWrapper() = default;
@@ -78,7 +78,7 @@ struct JobWrapper {
     virtual void notify()=0;
 
     /// Return a pointer to the stored job object
-    virtual Job::pointer job() const=0;
+    virtual Job::Ptr job() const=0;
 };
 
 /**
@@ -91,14 +91,14 @@ class JobController
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<JobController> pointer;
+    typedef std::shared_ptr<JobController> Ptr;
 
     /// The priority queue for pointers to the new (unprocessed) jobs.
     /// Using inheritance to get access to the protected data members 'c'
     /// representing the internal container.
     struct PriorityQueueType
-        :   std::priority_queue<Job::pointer,
-                                std::vector<Job::pointer>,
+        :   std::priority_queue<Job::Ptr,
+                                std::vector<Job::Ptr>,
                                 JobCompare> {
 
         /// The beginning of the container to allow the iterator protocol
@@ -116,7 +116,7 @@ public:
             auto itr = std::find_if(
                 c.begin(),
                 c.end(),
-                [&id] (Job::pointer const& ptr) {
+                [&id] (Job::Ptr const& ptr) {
                     return ptr->id() == id;
                 }
             );
@@ -131,7 +131,7 @@ public:
 
     /// Ordinary collection of pointers for jobs in other (than new/unprocessed)
     /// states
-    typedef std::list<Job::pointer> CollectionType;
+    typedef std::list<Job::Ptr> CollectionType;
 
     /**
      * Static factory method is needed to prevent issue with the lifespan
@@ -140,7 +140,7 @@ public:
      *
      * @param serviceProvider - for configuration, other services
      */
-    static pointer create(ServiceProvider::pointer const& serviceProvider);
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider);
 
     // Default construction and copy semantics are prohibited
 
@@ -192,8 +192,8 @@ public:
      * @param onFinish       - callback function to be called upon a completion of the job
      * @param options        - job options
      */
-    FindAllJob::pointer findAll(std::string const& databaseFamily,
-                                FindAllJob::callback_type onFinish = nullptr,
+    FindAllJob::Ptr findAll(std::string const& databaseFamily,
+                                FindAllJob::CallbackType onFinish = nullptr,
                                 Job::Options const& options=FindAllJob::defaultOptions());
 
     /**
@@ -203,8 +203,8 @@ public:
      * @param onFinish       - callback function to be called upon a completion of the job
      * @param options        - job options
      */
-    FixUpJob::pointer fixUp(std::string const& databaseFamily,
-                            FixUpJob::callback_type onFinish = nullptr,
+    FixUpJob::Ptr fixUp(std::string const& databaseFamily,
+                            FixUpJob::CallbackType onFinish = nullptr,
                             Job::Options const& options=FixUpJob::defaultOptions());
 
     /**
@@ -219,9 +219,9 @@ public:
      * @param options        - job options
 
      */
-    PurgeJob::pointer purge(std::string const& databaseFamily,
+    PurgeJob::Ptr purge(std::string const& databaseFamily,
                             unsigned int numReplicas = 0,
-                            PurgeJob::callback_type onFinish = nullptr,
+                            PurgeJob::CallbackType onFinish = nullptr,
                             Job::Options const& options=PurgeJob::defaultOptions());
 
     /**
@@ -235,9 +235,9 @@ public:
      * @param onFinish       - callback function to be called upon a completion of the job
      * @param options        - job options
      */
-    ReplicateJob::pointer replicate(std::string const& databaseFamily,
+    ReplicateJob::Ptr replicate(std::string const& databaseFamily,
                                     unsigned int numReplicas = 0,
-                                    ReplicateJob::callback_type onFinish = nullptr,
+                                    ReplicateJob::CallbackType onFinish = nullptr,
                                     Job::Options const& options=ReplicateJob::defaultOptions());
 
     /**
@@ -252,8 +252,8 @@ public:
      * @param computeCheckSum     - tell a worker server to compute check/control sum on each file
      * @param options             - job options
      */
-    VerifyJob::pointer verify(VerifyJob::callback_type onFinish = nullptr,
-                              VerifyJob::callback_type_on_diff onReplicaDifference = nullptr,
+    VerifyJob::Ptr verify(VerifyJob::CallbackType onFinish = nullptr,
+                              VerifyJob::CallbackTypeOnDiff onReplicaDifference = nullptr,
                               size_t maxReplicas = 0,
                               bool computeCheckSum = false,
                               Job::Options const& options=VerifyJob::defaultOptions());
@@ -268,9 +268,9 @@ public:
      * @param onFinish        - callback function to be called upon a completion of the job
      * @param options         - job options
      */
-    DeleteWorkerJob::pointer deleteWorker(std::string const& worker,
+    DeleteWorkerJob::Ptr deleteWorker(std::string const& worker,
                                           bool permanentDelete,
-                                          DeleteWorkerJob::callback_type onFinish = nullptr,
+                                          DeleteWorkerJob::CallbackType onFinish = nullptr,
                                           Job::Options const& options=DeleteWorkerJob::defaultOptions());
 
     // TODO: add job inspection methods
@@ -282,7 +282,7 @@ private:
      *
      * @see JobController::create()
      */
-    JobController(ServiceProvider::pointer const& serviceProvider);
+    JobController(ServiceProvider::Ptr const& serviceProvider);
 
     /**
      * Check is there are any jobs in the input queue which are eligible
@@ -314,15 +314,15 @@ private:
      *
      * @param job - a reference to the job
      */
-    void onFinish(Job::pointer const& job);
+    void onFinish(Job::Ptr const& job);
 
 private:
 
     /// Services used by the processor
-    ServiceProvider::pointer _serviceProvider;
+    ServiceProvider::Ptr _serviceProvider;
 
     /// A dedciated instance of the Controller for executing requests
-    Controller::pointer _controller;
+    Controller::Ptr _controller;
 
     /// This thread will run the asynchronous prosessing of the jobs
     std::unique_ptr<std::thread> _thread;
@@ -337,7 +337,7 @@ private:
     /// Job wrappers registered by their unique identifiers for
     /// to allow an efficient lookup and for type-specific ntifications
     /// upon their completion.
-    std::map<std::string, JobWrapper::pointer> _registry;
+    std::map<std::string, JobWrapper::Ptr> _registry;
 
     /// New unprocessed jobs
     PriorityQueueType _newJobs;

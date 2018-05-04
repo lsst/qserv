@@ -75,7 +75,7 @@ class FileClient
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<FileClient> pointer;
+    typedef std::shared_ptr<FileClient> Ptr;
 
     /**
      * Open a file and return a smart pointer to an object of this class.
@@ -88,10 +88,10 @@ public:
      * @param databaseName    - the name of a atabase the file belongs to
      * @param fileName        - the file to read or examine
      */
-    static pointer open(ServiceProvider::pointer const& serviceProvider,
-                        std::string const& workerName,
-                        std::string const& databaseName,
-                        std::string const& fileName);
+    static Ptr open(ServiceProvider::Ptr const& serviceProvider,
+                    std::string const& workerName,
+                    std::string const& databaseName,
+                    std::string const& fileName);
     /**
      * Open a file and return a smart pointer to an object of this class.
      * If the operation is successfull then a valid pointer will be returned.
@@ -110,10 +110,10 @@ public:
      * @param databaseName    - the name of a atabase the file belongs to
      * @param fileName        - the file to read or examine
      */
-    static pointer stat(ServiceProvider::pointer const& serviceProvider,
-                        std::string const& workerName,
-                        std::string const& databaseName,
-                        std::string const& fileName);
+    static Ptr stat(ServiceProvider::Ptr const& serviceProvider,
+                    std::string const& workerName,
+                    std::string const& databaseName,
+                    std::string const& fileName);
     
     // Default construction and copy semantics are prohibited
 
@@ -165,7 +165,7 @@ private:
      * @param fileName        - the file to read or examine
      * @param readContent     - indicates if a file is open for reading its content   
      */
-    FileClient(ServiceProvider::pointer const& serviceProvider,
+    FileClient(ServiceProvider::Ptr const& serviceProvider,
                std::string const& workerName,
                std::string const& databaseName,
                std::string const& fileName,

@@ -397,7 +397,7 @@ class Connection
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<Connection> pointer;
+    typedef std::shared_ptr<Connection> Ptr;
 
     /**
      * Connect to the MySQL service with the specified parameters and return
@@ -419,9 +419,9 @@ public:
      * @return a valid object if the connection attempt succeeded
      * @throws Error - if the connection failed
      */
-    static pointer open(ConnectionParams const& connectionParams,
-                        bool autoReconnect = true,
-                        bool autoCommit    = false);
+    static Ptr open(ConnectionParams const& connectionParams,
+                    bool autoReconnect = true,
+                    bool autoCommit    = false);
 
     // Default construction and copy semantics are prohibited
 
@@ -708,7 +708,7 @@ public:
      * @return                  - a smart pointer to self to allow chaned calles.
      * @throws std::logic_error - if the transaction was already been started
      */
-    Connection::pointer begin();
+    Connection::Ptr begin();
 
     /**
      * Commit the transaction
@@ -716,7 +716,7 @@ public:
      * @return                  - a smart pointer to self to allow chaned calles.
      * @throws std::logic_error - if the transaction was not started
      */
-    Connection::pointer commit();
+    Connection::Ptr commit();
 
     /**
      * Rollback the transaction
@@ -724,7 +724,7 @@ public:
      * @return                  - a smart pointer to self to allow chaned calles.
      * @throws std::logic_error - if the transaction was not started
      */
-    Connection::pointer rollback();
+    Connection::Ptr rollback();
 
     /**
      * Execute the specified query and initialize object context to allow
@@ -736,7 +736,7 @@ public:
      * @throws DuplicateKeyError     - for attempts to insert rows with duplicate keys
      * @throws Error                 - for any other MySQL specific errors
      */
-    Connection::pointer execute(std::string const& query);
+    Connection::Ptr execute(std::string const& query);
 
     /**
      * Execute an SQL statement for inserting a new row into a table based
@@ -764,7 +764,7 @@ public:
      * @throws Error                 - for any other MySQL specific errors
      */
     template <typename...Targs>
-    Connection::pointer executeInsertQuery(std::string const& tableName,
+    Connection::Ptr executeInsertQuery(std::string const& tableName,
                                            Targs...           Fargs) {
 
         return execute(sqlInsertQuery(tableName,
@@ -796,7 +796,7 @@ public:
      * @throws Error                 - for any MySQL specific errors
      */
     template <typename...Targs>
-    Connection::pointer executeSimpleUpdateQuery(std::string const& tableName,
+    Connection::Ptr executeSimpleUpdateQuery(std::string const& tableName,
                                                  std::string const& condition,
                                                  Targs...           Fargs) {
 
@@ -833,7 +833,7 @@ public:
      * over a result set would be:
      *
      *   @code
-     *     Connection::pointer conn = Connection::connect(...);
+     *     Connection::Ptr conn = Connection::connect(...);
      *     conn->execute ("SELECT ...");
      *
      *     Row row;

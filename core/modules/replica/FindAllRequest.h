@@ -65,10 +65,10 @@ class FindAllRequestM
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<FindAllRequestM> pointer;
+    typedef std::shared_ptr<FindAllRequestM> Ptr;
 
     /// The function type for notifications on the completon of the request
-    typedef std::function<void(pointer)> callback_type;
+    typedef std::function<void(Ptr)> CallbackType;
 
     // Default construction and copy semantics are prohibited
 
@@ -110,27 +110,27 @@ public:
      * @param keepTracking     - keep tracking the request before it finishes or fails
      * @param messenger        - an interface for communicating with workers
      */
-    static pointer create(ServiceProvider::pointer const&   serviceProvider,
-                          boost::asio::io_service&          io_service,
-                          std::string const&                worker,
-                          std::string const&                database,
-                          callback_type                     onFinish,
-                          int                               priority,
-                          bool                              keepTracking,
-                          std::shared_ptr<Messenger> const& messenger);
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
+                      boost::asio::io_service& io_service,
+                      std::string const& worker,
+                      std::string const& database,
+                      CallbackType onFinish,
+                      int  priority,
+                      bool keepTracking,
+                      std::shared_ptr<Messenger> const& messenger);
 
 private:
 
     /**
      * Construct the request with the pointer to the services provider.
      */
-    FindAllRequestM(ServiceProvider::pointer const&   serviceProvider,
-                    boost::asio::io_service&          io_service,
-                    std::string const&                worker,
-                    std::string const&                database,
-                    callback_type                     onFinish,
-                    int                               priority,
-                    bool                              keepTracking,
+    FindAllRequestM(ServiceProvider::Ptr const& serviceProvider,
+                    boost::asio::io_service& io_service,
+                    std::string const& worker,
+                    std::string const& database,
+                    CallbackType onFinish,
+                    int  priority,
+                    bool keepTracking,
                     std::shared_ptr<Messenger> const& messenger);
 
     /**
@@ -169,7 +169,7 @@ private:
     std::string _database;
 
     /// Registered callback to be called when the operation finishes
-    callback_type _onFinish;
+    CallbackType _onFinish;
 
     /// Request-specific parameters of the target request
     FindAllRequestParams _targetRequestParams;

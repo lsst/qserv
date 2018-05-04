@@ -173,15 +173,15 @@ Job::Options const& VerifyJob::defaultOptions() {
     return options;
 }
 
-VerifyJob::pointer VerifyJob::create(
-                        Controller::pointer const& controller,
+VerifyJob::Ptr VerifyJob::create(
+                        Controller::Ptr const& controller,
                         std::string const& parentJobId,
-                        callback_type onFinish,
-                        callback_type_on_diff onReplicaDifference,
+                        CallbackType onFinish,
+                        CallbackTypeOnDiff onReplicaDifference,
                         size_t maxReplicas,
                         bool computeCheckSum,
                         Job::Options const& options) {
-    return VerifyJob::pointer(
+    return VerifyJob::Ptr(
         new VerifyJob(controller,
                       parentJobId,
                       onFinish,
@@ -191,10 +191,10 @@ VerifyJob::pointer VerifyJob::create(
                       options));
 }
 
-VerifyJob::VerifyJob(Controller::pointer const& controller,
+VerifyJob::VerifyJob(Controller::Ptr const& controller,
                      std::string const& parentJobId,
-                     callback_type onFinish,
-                     callback_type_on_diff onReplicaDifference,
+                     CallbackType onFinish,
+                     CallbackTypeOnDiff onReplicaDifference,
                      size_t maxReplicas,
                      bool computeCheckSum,
                      Job::Options const& options)
@@ -223,7 +223,7 @@ void VerifyJob::startImpl() {
                 replica.worker(),
                 replica.database(),
                 replica.chunk(),
-                [self] (FindRequest::pointer request) {
+                [self] (FindRequest::Ptr request) {
                     self->onRequestFinish(request);
                 },
                 options().priority, /* inherited from the one of the current job */
@@ -284,7 +284,7 @@ void VerifyJob::notify() {
     }
 }
 
-void VerifyJob::onRequestFinish(FindRequest::pointer request) {
+void VerifyJob::onRequestFinish(FindRequest::Ptr request) {
 
     LOGS(_log, LOG_LVL_DEBUG, context()
          << "onRequestFinish  database=" << request->database()
@@ -369,7 +369,7 @@ void VerifyJob::onRequestFinish(FindRequest::pointer request) {
                     replica.worker(),
                     replica.database(),
                     replica.chunk(),
-                    [self] (FindRequest::pointer request) {
+                    [self] (FindRequest::Ptr request) {
                         self->onRequestFinish(request);
                     },
                     options().priority, /* inherited from the one of the current job */

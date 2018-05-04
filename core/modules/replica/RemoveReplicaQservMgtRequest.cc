@@ -49,15 +49,15 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-RemoveReplicaQservMgtRequest::pointer RemoveReplicaQservMgtRequest::create(
-                                        ServiceProvider::pointer const& serviceProvider,
+RemoveReplicaQservMgtRequest::Ptr RemoveReplicaQservMgtRequest::create(
+                                        ServiceProvider::Ptr const& serviceProvider,
                                         boost::asio::io_service& io_service,
                                         std::string const& worker,
                                         unsigned int chunk,
                                         std::vector<std::string> const& databases,
                                         bool force,
-                                        RemoveReplicaQservMgtRequest::callback_type onFinish) {
-    return RemoveReplicaQservMgtRequest::pointer(
+                                        RemoveReplicaQservMgtRequest::CallbackType onFinish) {
+    return RemoveReplicaQservMgtRequest::Ptr(
         new RemoveReplicaQservMgtRequest(serviceProvider,
                                          io_service,
                                          worker,
@@ -68,13 +68,13 @@ RemoveReplicaQservMgtRequest::pointer RemoveReplicaQservMgtRequest::create(
 }
 
 RemoveReplicaQservMgtRequest::RemoveReplicaQservMgtRequest(
-                                ServiceProvider::pointer const& serviceProvider,
+                                ServiceProvider::Ptr const& serviceProvider,
                                 boost::asio::io_service& io_service,
                                 std::string const& worker,
                                 unsigned int chunk,
                                 std::vector<std::string> const& databases,
                                 bool force,
-                                RemoveReplicaQservMgtRequest::callback_type onFinish)
+                                RemoveReplicaQservMgtRequest::CallbackType onFinish)
     :   QservMgtRequest(serviceProvider,
                         io_service,
                         "QSERV:REMOVE_REPLICA",
@@ -88,7 +88,7 @@ RemoveReplicaQservMgtRequest::RemoveReplicaQservMgtRequest(
 
 void RemoveReplicaQservMgtRequest::startImpl() {
 
-    RemoveReplicaQservMgtRequest::pointer const& request =
+    RemoveReplicaQservMgtRequest::Ptr const& request =
         shared_from_base<RemoveReplicaQservMgtRequest>();
 
     _qservRequest = wpublish::RemoveChunkGroupQservRequest::create(

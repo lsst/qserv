@@ -60,7 +60,7 @@ class Job
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<Job> pointer;
+    typedef std::shared_ptr<Job> Ptr;
 
     /// Primary public state of the job
     enum State {
@@ -139,7 +139,7 @@ public:
     virtual ~Job() = default;
 
     /// @return a reference to the Controller,
-    Controller::pointer controller() { return _controller; }
+    Controller::Ptr controller() { return _controller; }
 
     /// @return the optional identifier of a parent job
     std::string const& parentJobId() const { return _parentJobId; }
@@ -220,7 +220,7 @@ protected:
      *                      interrupted to give a way to some other job of
      *                      high importancy.
      */
-    Job(Controller::pointer const& controller,
+    Job(Controller::Ptr const& controller,
         std::string const& parentJobId,
         std::string const& type,
         Options const& options);
@@ -271,7 +271,7 @@ protected:
     void qservAddReplica(unsigned int chunk,
                          std::vector<std::string> const& databases,
                          std::string const& worker,
-                         AddReplicaQservMgtRequest::callback_type onFinish=nullptr);
+                         AddReplicaQservMgtRequest::CallbackType onFinish=nullptr);
 
     /**
       * Notify Qserv about a new chunk added to its database.
@@ -288,7 +288,7 @@ protected:
                             std::vector<std::string> const& databases,
                             std::string const& worker,
                             bool force,
-                            RemoveReplicaQservMgtRequest::callback_type onFinish=nullptr);
+                            RemoveReplicaQservMgtRequest::CallbackType onFinish=nullptr);
 
     /**
      * Ensure the object is in the deseride internal state. Throw an
@@ -356,7 +356,7 @@ protected:
     std::string _id;
 
     /// The Controller for performing requests
-    Controller::pointer _controller;
+    Controller::Ptr _controller;
 
     /// The unique identifier of the parent job
     std::string _parentJobId;
@@ -401,8 +401,8 @@ protected:
 struct JobCompare {
 
     /// Order requests by their priorities
-    bool operator()(Job::pointer const& lhs,
-                    Job::pointer const& rhs) const {
+    bool operator()(Job::Ptr const& lhs,
+                    Job::Ptr const& rhs) const {
 
         return lhs->options().priority < rhs->options().priority;
     }

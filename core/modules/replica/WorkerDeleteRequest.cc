@@ -55,14 +55,14 @@ namespace replica {
 ///////////////////// WorkerDeleteRequest ////////////////////
 //////////////////////////////////////////////////////////////
 
-WorkerDeleteRequest::pointer WorkerDeleteRequest::create(
-                                    ServiceProvider::pointer const& serviceProvider,
+WorkerDeleteRequest::Ptr WorkerDeleteRequest::create(
+                                    ServiceProvider::Ptr const& serviceProvider,
                                     std::string const& worker,
                                     std::string const& id,
                                     int                priority,
                                     std::string const& database,
                                     unsigned int       chunk) {
-    return WorkerDeleteRequest::pointer(
+    return WorkerDeleteRequest::Ptr(
         new WorkerDeleteRequest(serviceProvider,
                                 worker,
                                 id,
@@ -71,7 +71,7 @@ WorkerDeleteRequest::pointer WorkerDeleteRequest::create(
                                 chunk));
 }
 
-WorkerDeleteRequest::WorkerDeleteRequest(ServiceProvider::pointer const& serviceProvider,
+WorkerDeleteRequest::WorkerDeleteRequest(ServiceProvider::Ptr const& serviceProvider,
                                          std::string const& worker,
                                          std::string const& id,
                                          int                priority,
@@ -106,15 +106,15 @@ bool WorkerDeleteRequest::execute() {
 ///////////////////// WorkerDeleteRequestPOSIX ////////////////////
 ///////////////////////////////////////////////////////////////////
 
-WorkerDeleteRequestPOSIX::pointer WorkerDeleteRequestPOSIX::create(
-                                        ServiceProvider::pointer const& serviceProvider,
+WorkerDeleteRequestPOSIX::Ptr WorkerDeleteRequestPOSIX::create(
+                                        ServiceProvider::Ptr const& serviceProvider,
                                         std::string const& worker,
                                         std::string const& id,
                                         int                priority,
                                         std::string const& database,
                                         unsigned int       chunk) {
 
-    return WorkerDeleteRequestPOSIX::pointer(
+    return WorkerDeleteRequestPOSIX::Ptr(
         new WorkerDeleteRequestPOSIX(
                 serviceProvider,
                 worker,
@@ -125,7 +125,7 @@ WorkerDeleteRequestPOSIX::pointer WorkerDeleteRequestPOSIX::create(
 }
 
 WorkerDeleteRequestPOSIX::WorkerDeleteRequestPOSIX(
-                                ServiceProvider::pointer const& serviceProvider,
+                                ServiceProvider::Ptr const& serviceProvider,
                                 std::string const& worker,
                                 std::string const& id,
                                 int                priority,

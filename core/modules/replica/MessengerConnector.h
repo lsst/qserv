@@ -76,7 +76,7 @@ class MessengerConnector
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<MessengerConnector> pointer;
+    typedef std::shared_ptr<MessengerConnector> Ptr;
 
     /// The base class for request wrappers
     class WrapperBase {
@@ -109,7 +109,7 @@ public:
          * @param responseBufferCapacityBytes - the initial size of the response buffer
          */
         WrapperBase(std::string const& id_,
-                    std::shared_ptr<replica::ProtocolBuffer> const& requestBufferPtr_,
+                    std::shared_ptr<ProtocolBuffer> const& requestBufferPtr_,
                     size_t responseBufferCapacityBytes)
             :   success(false),
                 id(id_),
@@ -126,10 +126,10 @@ public:
         std::string id;
 
         /// The buffer with a serialized request
-        std::shared_ptr<replica::ProtocolBuffer> requestBufferPtr;
+        std::shared_ptr<ProtocolBuffer> requestBufferPtr;
 
         /// The buffer for receiving responses from a worker server
-        replica::ProtocolBuffer responseBuffer;
+        ProtocolBuffer responseBuffer;
     };
 
     template <class RESPONSE_TYPE>
@@ -140,7 +140,7 @@ public:
 
         typedef std::function<void(std::string const&,
                                    bool,
-                                   RESPONSE_TYPE const&)> callback_type;
+                                   RESPONSE_TYPE const&)> CallbackType;
 
         // Default construction and copy semantics are prohibited
 
@@ -161,9 +161,9 @@ public:
          *                                      a completion or failure of the operation
          */
         Wrapper(std::string const& id,
-                std::shared_ptr<replica::ProtocolBuffer> const& requestBufferPtr,
+                std::shared_ptr<ProtocolBuffer> const& requestBufferPtr,
                 size_t responseBufferCapacityBytes,
-                callback_type onFinish)
+                CallbackType onFinish)
             :   WrapperBase(id,
                             requestBufferPtr,
                             responseBufferCapacityBytes),
@@ -185,7 +185,7 @@ public:
 
         /// The collback fnction to be called upon the completion of
         /// the transaction.
-        callback_type _onFinish;
+        CallbackType _onFinish;
     };
 
     /// The pointer type for the base class of the request wrappers
@@ -212,9 +212,9 @@ public:
      *                           the object must exceed the one of this instanc.
      * @param worker           - the name of a worker
      */
-    static pointer create(ServiceProvider::pointer const& serviceProvider,
-                          boost::asio::io_service& io_service,
-                          std::string const& worker);
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
+                      boost::asio::io_service& io_service,
+                      std::string const& worker);
 
     /**
      * Stop operations
@@ -236,8 +236,8 @@ public:
      */
     template <class RESPONSE_TYPE>
     void send(std::string const& id,
-              std::shared_ptr<replica::ProtocolBuffer> const& requestBufferPtr,
-              typename Wrapper<RESPONSE_TYPE>::callback_type onFinish) {
+              std::shared_ptr<ProtocolBuffer> const& requestBufferPtr,
+              typename Wrapper<RESPONSE_TYPE>::CallbackType onFinish) {
 
         sendImpl(
             id,
@@ -273,7 +273,7 @@ private:
     /**
      * The constructor
      */
-    MessengerConnector(ServiceProvider::pointer const& serviceProvider,
+    MessengerConnector(ServiceProvider::Ptr const& serviceProvider,
                        boost::asio::io_service& io_service,
                        std::string const& worker);
 
@@ -419,7 +419,7 @@ private:
 
     // Parameters of the object
 
-    ServiceProvider::pointer _serviceProvider;
+    ServiceProvider::Ptr _serviceProvider;
 
     WorkerInfo const& _workerInfo;
 
@@ -457,7 +457,7 @@ private:
     std::map<std::string, WrapperBase_pointer> _id2request;
 
     /// The intermediate buffer for messages received from a worker
-    replica::ProtocolBuffer _inBuffer;
+    ProtocolBuffer _inBuffer;
 };
 
 }}} // namespace lsst::qserv::replica

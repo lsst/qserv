@@ -80,10 +80,10 @@ class PurgeJob
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<PurgeJob> pointer;
+    typedef std::shared_ptr<PurgeJob> Ptr;
 
     /// The function type for notifications on the completon of the job
-    typedef std::function<void(pointer)> callback_type;
+    typedef std::function<void(Ptr)> CallbackType;
 
     /// @return default options object for this type of a job
     static Job::Options const& defaultOptions();
@@ -102,12 +102,12 @@ public:
      * @param onFinish       - callback function to be called upon a completion of the job
      * @param options        - job options
      */
-    static pointer create(std::string const& databaseFamily,
-                          unsigned int numReplicas,
-                          Controller::pointer const& controller,
-                          std::string const& parentJobId,
-                          callback_type onFinish,
-                          Job::Options const& options=defaultOptions());
+    static Ptr create(std::string const& databaseFamily,
+                      unsigned int numReplicas,
+                      Controller::Ptr const& controller,
+                      std::string const& parentJobId,
+                      CallbackType onFinish,
+                      Job::Options const& options=defaultOptions());
 
     // Default construction and copy semantics are prohibited
 
@@ -153,9 +153,9 @@ protected:
      */
     PurgeJob(std::string const& databaseFamily,
              unsigned int numReplicas,
-             Controller::pointer const& controller,
+             Controller::Ptr const& controller,
              std::string const& parentJobId,
-             callback_type onFinish,
+             CallbackType onFinish,
              Job::Options const& options);
 
     /**
@@ -190,7 +190,7 @@ protected:
      *
      * @param job - pointer to a job
      */
-    void onDeleteJobFinish(DeleteReplicaJob::pointer const& job);
+    void onDeleteJobFinish(DeleteReplicaJob::Ptr const& job);
 
     /**
      * Restart the job from scratch. This method will reset object context
@@ -215,11 +215,11 @@ protected:
     unsigned int _numReplicas;
 
     /// Client-defined function to be called upon the completion of the job
-    callback_type _onFinish;
+    CallbackType _onFinish;
 
     /// The chained job to be completed first in order to figure out
     /// replica disposition.
-    FindAllJob::pointer _findAllJob;
+    FindAllJob::Ptr _findAllJob;
 
     /// The total number of iterations the job has gone so far
     size_t _numIterations;
@@ -241,10 +241,10 @@ protected:
     //
     std::map<unsigned int,
              std::map<std::string,
-                      DeleteReplicaJob::pointer>> _chunk2jobs;
+                      DeleteReplicaJob::Ptr>> _chunk2jobs;
 
     /// A collection of jobs implementing the operation
-    std::list<DeleteReplicaJob::pointer> _jobs;
+    std::list<DeleteReplicaJob::Ptr> _jobs;
 
     // The counter of jobs which will be updated. They need to be atomic
     // to avoid race condition between the onFinish() callbacks executed within

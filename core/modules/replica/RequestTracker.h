@@ -123,7 +123,7 @@ protected:
      * The method to be implemented by a subclass is supposed to return all
      * requests which are known to the subclass.
      */
-    virtual std::list<Request::pointer> getRequests() const=0;
+    virtual std::list<Request::Ptr> getRequests() const=0;
 
     /**
      * The method to be implemented by a subclass is supposed to clear
@@ -195,7 +195,7 @@ public:
      * The callback function to be registered with each request
      * injected into the tracker.
      */
-    void onFinish(typename T::pointer ptr) {
+    void onFinish(typename T::Ptr ptr) {
         RequestTrackerBase::_numFinished++;
         if (ptr->extendedState() == Request::ExtendedState::SUCCESS) {
             RequestTrackerBase::_numSuccess++;
@@ -206,7 +206,7 @@ public:
      * Add a request to be tracked. Note that in order to be tracked
      * requests needs to be constructed with the above specified function
      */
-    void add(typename T::pointer const& ptr) {
+    void add(typename T::Ptr const& ptr) {
         RequestTrackerBase::_numLaunched++;
         requests.push_back(ptr);
     }
@@ -227,8 +227,8 @@ protected:
      *
      * @see RequestTrackerBase::getRequests
      */
-    std::list<Request::pointer> getRequests() const override {
-        std::list<Request::pointer> result;
+    std::list<Request::Ptr> getRequests() const override {
+        std::list<Request::Ptr> result;
         for (auto&& ptr: requests) { result.push_back(ptr); }
         return result;
     }
@@ -245,7 +245,7 @@ protected:
 public:
 
     /// All requests launched
-    std::list<typename T::pointer> requests;
+    std::list<typename T::Ptr> requests;
 };
 
 
@@ -282,13 +282,13 @@ public:
 
     /// The callback function to be registered with each request
     /// injected into the tracker.
-    void onFinish(Request::pointer const& ptr);
+    void onFinish(Request::Ptr const& ptr);
 
     /**
      * Add a request to be tracked. Note that in order to be tracked
      * requests needs to be constructed with the above specified function
      */
-    void add(Request::pointer const& ptr);
+    void add(Request::Ptr const& ptr);
 
 protected:
 
@@ -304,7 +304,7 @@ protected:
      *
      * @see RequestTrackerBase::getRequests
      */
-    std::list<Request::pointer> getRequests() const override;
+    std::list<Request::Ptr> getRequests() const override;
 
     /**
      * Implement the corresponding method defined in the base class.
@@ -316,7 +316,7 @@ protected:
 public:
 
     /// All requests launched
-    std::list<Request::pointer> requests;
+    std::list<Request::Ptr> requests;
 };
 
 }}} // namespace lsst::qserv::replica

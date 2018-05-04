@@ -98,7 +98,7 @@ WorkerInfo const& ConfigurationMySQL::disableWorker(std::string const& name) {
     WorkerInfo const& info = workerInfo(name);
     if (info.isEnabled) {
 
-        database::mysql::Connection::pointer conn;
+        database::mysql::Connection::Ptr conn;
         try {
 
             // First update the database
@@ -131,7 +131,7 @@ void ConfigurationMySQL::deleteWorker(std::string const& name) {
     // This will also throw an exception if the worker is unknown
     WorkerInfo const& info = workerInfo(name);
 
-    database::mysql::Connection::pointer conn;
+    database::mysql::Connection::Ptr conn;
     try {
 
         // First update the database

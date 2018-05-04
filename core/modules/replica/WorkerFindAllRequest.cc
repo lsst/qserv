@@ -55,13 +55,13 @@ namespace replica {
 ///////////////////// WorkerFindAllRequest ////////////////////
 ///////////////////////////////////////////////////////////////
 
-WorkerFindAllRequest::pointer WorkerFindAllRequest::create(
-                                    ServiceProvider::pointer const& serviceProvider,
+WorkerFindAllRequest::Ptr WorkerFindAllRequest::create(
+                                    ServiceProvider::Ptr const& serviceProvider,
                                     std::string const& worker,
                                     std::string const& id,
                                     int                priority,
                                     std::string const& database) {
-    return WorkerFindAllRequest::pointer(
+    return WorkerFindAllRequest::Ptr(
         new WorkerFindAllRequest(
                 serviceProvider,
                 worker,
@@ -71,7 +71,7 @@ WorkerFindAllRequest::pointer WorkerFindAllRequest::create(
 }
 
 WorkerFindAllRequest::WorkerFindAllRequest(
-                            ServiceProvider::pointer const& serviceProvider,
+                            ServiceProvider::Ptr const& serviceProvider,
                             std::string const& worker,
                             std::string const& id,
                             int                priority,
@@ -119,13 +119,13 @@ bool WorkerFindAllRequest::execute() {
 ///////////////////// WorkerFindAllRequestPOSIX ////////////////////
 ////////////////////////////////////////////////////////////////////
 
-WorkerFindAllRequestPOSIX::pointer WorkerFindAllRequestPOSIX::create(
-                                        ServiceProvider::pointer const& serviceProvider,
+WorkerFindAllRequestPOSIX::Ptr WorkerFindAllRequestPOSIX::create(
+                                        ServiceProvider::Ptr const& serviceProvider,
                                         std::string const& worker,
                                         std::string const& id,
                                         int                priority,
                                         std::string const& database) {
-    return WorkerFindAllRequestPOSIX::pointer(
+    return WorkerFindAllRequestPOSIX::Ptr(
         new WorkerFindAllRequestPOSIX(
                 serviceProvider,
                 worker,
@@ -135,7 +135,7 @@ WorkerFindAllRequestPOSIX::pointer WorkerFindAllRequestPOSIX::create(
 }
 
 WorkerFindAllRequestPOSIX::WorkerFindAllRequestPOSIX(
-                                ServiceProvider::pointer const& serviceProvider,
+                                ServiceProvider::Ptr const& serviceProvider,
                                 std::string const& worker,
                                 std::string const& id,
                                 int                priority,

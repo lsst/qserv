@@ -68,10 +68,10 @@ class ReplicationRequestM
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<ReplicationRequestM> pointer;
+    typedef std::shared_ptr<ReplicationRequestM> Ptr;
 
     /// The function type for notifications on the completon of the request
-    typedef std::function<void(pointer)> callback_type;
+    typedef std::function<void(Ptr)> CallbackType;
 
     // Default construction and copy semantics are prohibited
 
@@ -118,30 +118,30 @@ public:
      * @param allowDuplicate  - follow a previously made request if the current one duplicates it
      * @param messenger       - worker messenging service
      */
-    static pointer create(ServiceProvider::pointer const& serviceProvider,
-                          boost::asio::io_service& io_service,
-                          std::string const& worker,
-                          std::string const& sourceWorker,
-                          std::string const& database,
-                          unsigned int  chunk,
-                          callback_type onFinish,
-                          int  priority,
-                          bool keepTracking,
-                          bool allowDuplicate,
-                          std::shared_ptr<Messenger> const& messenger);
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
+                      boost::asio::io_service& io_service,
+                      std::string const& worker,
+                      std::string const& sourceWorker,
+                      std::string const& database,
+                      unsigned int  chunk,
+                      CallbackType onFinish,
+                      int  priority,
+                      bool keepTracking,
+                      bool allowDuplicate,
+                      std::shared_ptr<Messenger> const& messenger);
 
 private:
 
     /**
      * Construct the request with the pointer to the services provider.
      */
-    ReplicationRequestM(ServiceProvider::pointer const& serviceProvider,
+    ReplicationRequestM(ServiceProvider::Ptr const& serviceProvider,
                         boost::asio::io_service& io_service,
                         std::string const& worker,
                         std::string const& sourceWorker,
                         std::string const& database,
                         unsigned int  chunk,
-                        callback_type onFinish,
+                        CallbackType onFinish,
                         int  priority,
                         bool keepTracking,
                         bool  allowDuplicate,
@@ -185,7 +185,7 @@ private:
     std::string  _sourceWorker;
 
     /// Registered callback to be called when the operation finishes
-    callback_type _onFinish;
+    CallbackType _onFinish;
 
     /// Request-specific parameters of the target request
     ReplicationRequestParams _targetRequestParams;

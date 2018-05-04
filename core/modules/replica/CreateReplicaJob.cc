@@ -81,15 +81,15 @@ Job::Options const& CreateReplicaJob::defaultOptions() {
     return options;
 }
 
-CreateReplicaJob::pointer CreateReplicaJob::create(std::string const& databaseFamily,
+CreateReplicaJob::Ptr CreateReplicaJob::create(std::string const& databaseFamily,
                                                    unsigned int chunk,
                                                    std::string const& sourceWorker,
                                                    std::string const& destinationWorker,
-                                                   Controller::pointer const& controller,
+                                                   Controller::Ptr const& controller,
                                                    std::string const& parentJobId,
-                                                   callback_type onFinish,
+                                                   CallbackType onFinish,
                                                    Job::Options const& options) {
-    return CreateReplicaJob::pointer(
+    return CreateReplicaJob::Ptr(
         new CreateReplicaJob(databaseFamily,
                            chunk,
                            sourceWorker,
@@ -104,9 +104,9 @@ CreateReplicaJob::CreateReplicaJob(std::string const& databaseFamily,
                                    unsigned int chunk,
                                    std::string const& sourceWorker,
                                    std::string const& destinationWorker,
-                                   Controller::pointer const& controller,
+                                   Controller::Ptr const& controller,
                                    std::string const& parentJobId,
-                                   callback_type onFinish,
+                                   CallbackType onFinish,
                                    Job::Options const& options)
     :   Job(controller,
             parentJobId,
@@ -212,13 +212,13 @@ void CreateReplicaJob::startImpl() {
     auto self = shared_from_base<CreateReplicaJob>();
 
     for (auto&& replica: sourceReplicas) {
-        ReplicationRequest::pointer const ptr =
+        ReplicationRequest::Ptr const ptr =
             _controller->replicate(
                 destinationWorker(),
                 sourceWorker(),
                 replica.database(),
                 chunk(),
-                [self] (ReplicationRequest::pointer ptr) {
+                [self] (ReplicationRequest::Ptr ptr) {
                     self->onRequestFinish(ptr);
                 },
                 options().priority,
@@ -272,7 +272,7 @@ void CreateReplicaJob::notify() {
     }
 }
 
-void CreateReplicaJob::onRequestFinish(ReplicationRequest::pointer const& request) {
+void CreateReplicaJob::onRequestFinish(ReplicationRequest::Ptr const& request) {
 
     LOGS(_log, LOG_LVL_DEBUG, context()
          << "onRequestFinish(ReplicationeRequest)"
@@ -321,7 +321,7 @@ void CreateReplicaJob::onRequestFinish(ReplicationRequest::pointer const& reques
                     databases.push_back(databaseEntry.first);
                 }
 
-                ServiceProvider::pointer const serviceProvider = _controller->serviceProvider();
+                ServiceProvider::Ptr const serviceProvider = _controller->serviceProvider();
                 if (serviceProvider->config()->xrootdAutoNotify()) {
                     qservAddReplica(chunk(),
                                     databases,

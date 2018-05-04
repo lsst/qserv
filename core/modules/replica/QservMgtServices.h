@@ -59,7 +59,7 @@ namespace replica {
 struct QservMgtRequestWrapper {
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<QservMgtRequestWrapper> pointer;
+    typedef std::shared_ptr<QservMgtRequestWrapper> Ptr;
 
     /// Destructor
     virtual ~QservMgtRequestWrapper() = default;
@@ -82,7 +82,7 @@ class QservMgtServices
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<QservMgtServices> pointer;
+    typedef std::shared_ptr<QservMgtServices> Ptr;
 
     /**
      * The factory method for instamtiating a proper service object based
@@ -90,7 +90,7 @@ public:
      *
      * @param configuration - the configuration service
      */
-    static pointer create(ServiceProvider::pointer const& serviceProvider);
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider);
 
     // Default construction and copy semantics are prohibited
 
@@ -102,7 +102,7 @@ public:
     ~QservMgtServices() = default;
 
     /// @return reference to the ServiceProvider object
-    ServiceProvider::pointer const& serviceProvider() { return _serviceProvider; }
+    ServiceProvider::Ptr const& serviceProvider() { return _serviceProvider; }
 
     /**
      * Notify Qserv worker on availability of a new replica
@@ -119,11 +119,11 @@ public:
      * @return pointer to the request object if the request was made. Return
      *         nullptr otherwise.
      */
-    AddReplicaQservMgtRequest::pointer addReplica(
+    AddReplicaQservMgtRequest::Ptr addReplica(
                                             unsigned int chunk,
                                             std::vector<std::string> const& databases,
                                             std::string const& worker,
-                                            AddReplicaQservMgtRequest::callback_type onFinish = nullptr,
+                                            AddReplicaQservMgtRequest::CallbackType onFinish = nullptr,
                                             std::string const& jobId="",
                                             unsigned int requestExpirationIvalSec=0);
 
@@ -145,12 +145,12 @@ public:
      * @return pointer to the request object if the request was made. Return
      *         nullptr otherwise.
      */
-    RemoveReplicaQservMgtRequest::pointer removeReplica(
+    RemoveReplicaQservMgtRequest::Ptr removeReplica(
                                             unsigned int chunk,
                                             std::vector<std::string> const& databases,
                                             std::string const& worker,
                                             bool force,
-                                            RemoveReplicaQservMgtRequest::callback_type onFinish = nullptr,
+                                            RemoveReplicaQservMgtRequest::CallbackType onFinish = nullptr,
                                             std::string const& jobId="",
                                             unsigned int requestExpirationIvalSec=0);
     /**
@@ -168,12 +168,12 @@ public:
      * @return pointer to the request object if the request was made. Return
      *         nullptr otherwise.
      */
-    GetReplicasQservMgtRequest::pointer getReplicas(
+    GetReplicasQservMgtRequest::Ptr getReplicas(
                                             std::string const& databaseFamily,
                                             std::string const& worker,
                                             bool inUseOnly = false,
                                             std::string const& jobId="",
-                                            GetReplicasQservMgtRequest::callback_type onFinish = nullptr,
+                                            GetReplicasQservMgtRequest::CallbackType onFinish = nullptr,
                                             unsigned int requestExpirationIvalSec=0);
 
 
@@ -194,12 +194,12 @@ public:
      * @return pointer to the request object if the request was made. Return
      *         nullptr otherwise.
      */
-    SetReplicasQservMgtRequest::pointer setReplicas(
+    SetReplicasQservMgtRequest::Ptr setReplicas(
                                             std::string const& worker,
                                             QservReplicaCollection const& newReplicas,
                                             bool force = false,
                                             std::string const& jobId="",
-                                            SetReplicasQservMgtRequest::callback_type onFinish = nullptr,
+                                            SetReplicasQservMgtRequest::CallbackType onFinish = nullptr,
                                             unsigned int requestExpirationIvalSec=0);
 private:
 
@@ -208,7 +208,7 @@ private:
      *
      * @param configuration - the configuration service
      */
-    explicit QservMgtServices(ServiceProvider::pointer const& serviceProvider);
+    explicit QservMgtServices(ServiceProvider::Ptr const& serviceProvider);
 
     /**
      * Finalize the completion of the request. This method will notify
@@ -225,7 +225,7 @@ private:
 private:
 
     /// Reference to a provider of services
-    ServiceProvider::pointer _serviceProvider;
+    ServiceProvider::Ptr _serviceProvider;
 
     // BOOST ASIO communication services
 

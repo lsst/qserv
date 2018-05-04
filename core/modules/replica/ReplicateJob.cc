@@ -58,14 +58,14 @@ Job::Options const& ReplicateJob::defaultOptions() {
     return options;
 }
 
-ReplicateJob::pointer ReplicateJob::create(
+ReplicateJob::Ptr ReplicateJob::create(
                             std::string const& databaseFamily,
                             unsigned int numReplicas,
-                            Controller::pointer const& controller,
+                            Controller::Ptr const& controller,
                             std::string const& parentJobId,
-                            callback_type onFinish,
+                            CallbackType onFinish,
                             Job::Options const& options) {
-    return ReplicateJob::pointer(
+    return ReplicateJob::Ptr(
         new ReplicateJob(databaseFamily,
                          numReplicas,
                          controller,
@@ -76,9 +76,9 @@ ReplicateJob::pointer ReplicateJob::create(
 
 ReplicateJob::ReplicateJob(std::string const& databaseFamily,
                            unsigned int numReplicas,
-                           Controller::pointer const& controller,
+                           Controller::Ptr const& controller,
                            std::string const& parentJobId,
-                           callback_type onFinish,
+                           CallbackType onFinish,
                            Job::Options const& options)
     :   Job(controller,
             parentJobId,
@@ -126,7 +126,7 @@ void ReplicateJob::startImpl() {
         _databaseFamily,
         _controller,
         _id,
-        [self] (FindAllJob::pointer job) {
+        [self] (FindAllJob::Ptr job) {
             self->onPrecursorJobFinish();
         }
     );
@@ -410,7 +410,7 @@ void ReplicateJob::onPrecursorJobFinish() {
                     destinationWorker,
                     _controller,
                     _id,
-                    [self] (CreateReplicaJob::pointer const& job) {
+                    [self] (CreateReplicaJob::Ptr const& job) {
                         self->onCreateJobFinish(job);
                     },
                     options()   // inherit from the current job
@@ -452,7 +452,7 @@ void ReplicateJob::onPrecursorJobFinish() {
     if (_state == State::FINISHED) { notify(); }
 }
 
-void ReplicateJob::onCreateJobFinish(CreateReplicaJob::pointer const& job) {
+void ReplicateJob::onCreateJobFinish(CreateReplicaJob::Ptr const& job) {
 
     LOGS(_log, LOG_LVL_DEBUG, context()
          << "onCreateJobFinish"

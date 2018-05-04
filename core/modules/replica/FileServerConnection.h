@@ -77,16 +77,16 @@ class FileServerConnection
 public:
 
     /// Shared pointer type for the class
-    typedef std::shared_ptr<FileServerConnection> pointer;
+    typedef std::shared_ptr<FileServerConnection> Ptr;
 
     /**
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      */
-    static pointer create(ServiceProvider::pointer const& serviceProvider,
-                          std::string const& workerName,
-                          boost::asio::io_service& io_service);
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
+                      std::string const& workerName,
+                      boost::asio::io_service& io_service);
 
     // Default construction and copy semantics are prohibited
 
@@ -136,7 +136,7 @@ private:
     /**
      * The constructor of the class.
      */
-    FileServerConnection(ServiceProvider::pointer const& serviceProvider,
+    FileServerConnection(ServiceProvider::Ptr const& serviceProvider,
                          std::string const& workerName,
                          boost::asio::io_service& io_service);
 
@@ -183,7 +183,7 @@ private:
 
     // Parameters of the object
 
-    ServiceProvider::pointer _serviceProvider;
+    ServiceProvider::Ptr _serviceProvider;
     std::string _workerName;
 
     // Cached parameters of the worker

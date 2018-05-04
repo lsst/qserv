@@ -76,10 +76,10 @@ class CreateReplicaJob
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<CreateReplicaJob> pointer;
+    typedef std::shared_ptr<CreateReplicaJob> Ptr;
 
     /// The function type for notifications on the completon of the request
-    typedef std::function<void(pointer)> callback_type;
+    typedef std::function<void(Ptr)> CallbackType;
 
     /// @return default options object for this type of a request
     static Job::Options const& defaultOptions();
@@ -98,14 +98,14 @@ public:
      * @param onFinish          - a callback function to be called upon a completion of the job
      * @param options           - job options
      */
-    static pointer create(std::string const& databaseFamily,
-                          unsigned int chunk,
-                          std::string const& sourceWorker,
-                          std::string const& destinationWorker,
-                          Controller::pointer const& controller,
-                          std::string const& parentJobId,
-                          callback_type onFinish,
-                          Job::Options const& options=defaultOptions());
+    static Ptr create(std::string const& databaseFamily,
+                      unsigned int chunk,
+                      std::string const& sourceWorker,
+                      std::string const& destinationWorker,
+                      Controller::Ptr const& controller,
+                      std::string const& parentJobId,
+                      CallbackType onFinish,
+                      Job::Options const& options=defaultOptions());
 
     // Default construction and copy semantics are prohibited
 
@@ -158,9 +158,9 @@ protected:
                      unsigned int chunk,
                      std::string const& sourceWorker,
                      std::string const& destinationWorker,
-                     Controller::pointer const& controller,
+                     Controller::Ptr const& controller,
                      std::string const& parentJobId,
-                     callback_type onFinish,
+                     CallbackType onFinish,
                      Job::Options const& options);
 
     /**
@@ -190,7 +190,7 @@ protected:
      *
      * @param request - a pointer to a request
      */
-    void onRequestFinish(ReplicationRequest::pointer const& request);
+    void onRequestFinish(ReplicationRequest::Ptr const& request);
 
 protected:
 
@@ -207,10 +207,10 @@ protected:
     std::string _destinationWorker;
 
     /// Client-defined function to be called upon the completion of the job
-    callback_type _onFinish;
+    CallbackType _onFinish;
 
     /// A collection of the replication requests implementing the operation
-    std::vector<ReplicationRequest::pointer> _requests;
+    std::vector<ReplicationRequest::Ptr> _requests;
 
     /// The result of the operation (gets updated as requests are finishing)
     CreateReplicaJobResult _replicaData;

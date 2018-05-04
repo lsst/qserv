@@ -151,15 +151,15 @@ class VerifyJob
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<VerifyJob> pointer;
+    typedef std::shared_ptr<VerifyJob> Ptr;
 
     /// The function type for notifications on the completon of the request
-    typedef std::function<void(pointer)> callback_type;
+    typedef std::function<void(Ptr)> CallbackType;
 
     /// The function type for notifications on the completon of the request
-    typedef std::function<void(pointer,
+    typedef std::function<void(Ptr,
                                ReplicaDiff const&,
-                               std::vector<ReplicaDiff> const&)> callback_type_on_diff;
+                               std::vector<ReplicaDiff> const&)> CallbackTypeOnDiff;
 
    /// @return default options object for this type of a request
    static Job::Options const& defaultOptions();
@@ -180,13 +180,13 @@ public:
      * @param onFinish            - callback function to be called upon a completion of the job
      * @param options             - job options
      */
-    static pointer create (Controller::pointer const& controller,
-                           std::string const& parentJobId,
-                           callback_type onFinish,
-                           callback_type_on_diff onReplicaDifference,
-                           size_t maxReplicas = 0,
-                           bool computeCheckSum = false,
-                           Job::Options const& options=defaultOptions());
+    static Ptr create(Controller::Ptr const& controller,
+                      std::string const& parentJobId,
+                      CallbackType onFinish,
+                      CallbackTypeOnDiff onReplicaDifference,
+                      size_t maxReplicas = 0,
+                      bool computeCheckSum = false,
+                      Job::Options const& options=defaultOptions());
 
     // Default construction and copy semantics are prohibited
 
@@ -210,10 +210,10 @@ protected:
      *
      * @see VerifyJob::create()
      */
-    VerifyJob (Controller::pointer const& controller,
+    VerifyJob (Controller::Ptr const& controller,
                std::string const& parentJobId,
-               callback_type onFinish,
-               callback_type_on_diff onReplicaDifference,
+               CallbackType onFinish,
+               CallbackTypeOnDiff onReplicaDifference,
                size_t maxReplicas,
                bool computeCheckSum,
                Job::Options const& options);
@@ -244,7 +244,7 @@ protected:
      *
      * @param request - a pointer to a request
      */
-    void onRequestFinish(FindRequest::pointer request);
+    void onRequestFinish(FindRequest::Ptr request);
 
     /**
      * Find the next replicas to be inspected and return 'true' if no suitable
@@ -261,10 +261,10 @@ protected:
 protected:
 
     /// Client-defined function to be called upon the completion of the job
-    callback_type _onFinish;
+    CallbackType _onFinish;
 
     /// Client-defined function to be called when two replicas won't match
-    callback_type_on_diff _onReplicaDifference;
+    CallbackTypeOnDiff _onReplicaDifference;
 
     /// The maximum number of replicas to be allowed processed simultaneously
     size_t _maxReplicas;
@@ -277,7 +277,7 @@ protected:
     std::map<std::string, ReplicaInfo> _replicas;
 
     /// The current (last) batch of requests registered by their IDs
-    std::map<std::string, FindRequest::pointer> _requests;
+    std::map<std::string, FindRequest::Ptr> _requests;
 };
 
 }}} // namespace lsst::qserv::replica

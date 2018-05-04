@@ -59,17 +59,17 @@ std::string MessengerConnector::state2string(MessengerConnector::State state) {
             "incomplete implementation of method MessengerConnector::state2string()");
 }
 
-MessengerConnector::pointer MessengerConnector::create(
-                                        ServiceProvider::pointer const& serviceProvider,
+MessengerConnector::Ptr MessengerConnector::create(
+                                        ServiceProvider::Ptr const& serviceProvider,
                                         boost::asio::io_service& io_service,
                                         std::string const& worker) {
-    return MessengerConnector::pointer(
+    return MessengerConnector::Ptr(
         new MessengerConnector(serviceProvider,
                                io_service,
                                worker));
 }
 
-MessengerConnector::MessengerConnector(ServiceProvider::pointer const&serviceProvider,
+MessengerConnector::MessengerConnector(ServiceProvider::Ptr const&serviceProvider,
                                        boost::asio::io_service& io_service,
                                        std::string const& worker)
     :   _serviceProvider(serviceProvider),

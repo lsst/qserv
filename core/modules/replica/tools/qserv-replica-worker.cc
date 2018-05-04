@@ -31,17 +31,17 @@ std::string configUrl;
 void service() {
     
     try {
-        replica::ServiceProvider::pointer const provider = replica::ServiceProvider::create(configUrl);
+        replica::ServiceProvider::Ptr const provider = replica::ServiceProvider::create(configUrl);
         replica::WorkerRequestFactory requestFactory(provider);
 
-        replica::WorkerServer::pointer const reqProcSvr =
+        replica::WorkerServer::Ptr const reqProcSvr =
             replica::WorkerServer::create(provider, requestFactory, workerName);
 
         std::thread reqProcSvrThread([reqProcSvr] () {
             reqProcSvr->run();
         });
 
-        replica::FileServer::pointer const fileSvr =
+        replica::FileServer::Ptr const fileSvr =
             replica::FileServer::create(provider, workerName);
 
         std::thread fileSvrThread([fileSvr]() {

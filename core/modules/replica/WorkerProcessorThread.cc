@@ -41,9 +41,9 @@ namespace lsst {
 namespace qserv {
 namespace replica {
     
-WorkerProcessorThread::pointer WorkerProcessorThread::create(WorkerProcessor &processor) {
+WorkerProcessorThread::Ptr WorkerProcessorThread::create(WorkerProcessor &processor) {
     static unsigned int id = 0;
-    return WorkerProcessorThread::pointer(
+    return WorkerProcessorThread::Ptr(
         new WorkerProcessorThread(processor, id++));
 }
 
@@ -62,7 +62,7 @@ void WorkerProcessorThread::run() {
 
     if (isRunning()) { return; }
 
-    WorkerProcessorThread::pointer self = shared_from_this();
+    WorkerProcessorThread::Ptr self = shared_from_this();
     _thread = std::make_shared<std::thread>( [self] () {
 
         LOGS(_log, LOG_LVL_DEBUG, self->context() << "start");
@@ -74,7 +74,7 @@ void WorkerProcessorThread::run() {
             // or the specified timeout expires. In either case this thread has a chance
             // to re-evaluate the stopping condition.
 
-            WorkerRequest::pointer request = self->_processor.fetchNextForProcessing(self, 1000);
+            WorkerRequest::Ptr request = self->_processor.fetchNextForProcessing(self, 1000);
 
             if (self->_stop) {
                 if (request) { self->_processor.processingRefused(request); }

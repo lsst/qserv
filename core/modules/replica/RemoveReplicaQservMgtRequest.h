@@ -59,10 +59,10 @@ class RemoveReplicaQservMgtRequest
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<RemoveReplicaQservMgtRequest> pointer;
+    typedef std::shared_ptr<RemoveReplicaQservMgtRequest> Ptr;
 
     /// The function type for notifications on the completon of the request
-    typedef std::function<void(pointer)> callback_type;
+    typedef std::function<void(Ptr)> CallbackType;
 
     // Default construction and copy semantics are prohibited
 
@@ -86,13 +86,13 @@ public:
      * @param force           - force the removal even if the chunk is in use
      * @param onFinish        - callback function to be called upon request completion
      */
-    static pointer create(ServiceProvider::pointer const& serviceProvider,
-                          boost::asio::io_service& io_service,
-                          std::string const& worker,
-                          unsigned int chunk,
-                          std::vector<std::string> const& databases,
-                          bool force = false,
-                          callback_type onFinish = nullptr);
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
+                      boost::asio::io_service& io_service,
+                      std::string const& worker,
+                      unsigned int chunk,
+                      std::vector<std::string> const& databases,
+                      bool force = false,
+                      CallbackType onFinish = nullptr);
 
     /// @return number of a chunk
     unsigned int chunk() const { return _chunk; }
@@ -117,13 +117,13 @@ private:
      * @param force           - force the removal even if the chunk is in use
      * @param onFinish        - callback function to be called upon request completion
      */
-    RemoveReplicaQservMgtRequest(ServiceProvider::pointer const& serviceProvider,
+    RemoveReplicaQservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
                                  boost::asio::io_service& io_service,
                                  std::string const& worker,
                                  unsigned int chunk,
                                  std::vector<std::string> const& databases,
                                  bool force,
-                                 callback_type onFinish);
+                                 CallbackType onFinish);
 
     /**
       * Implememnt the corresponding method of the base class
@@ -158,10 +158,10 @@ private:
     bool _force;
 
     /// The callback function for sending a notification upon request completion
-    callback_type _onFinish;
+    CallbackType _onFinish;
 
     /// A request to the remote services
-    wpublish::RemoveChunkGroupQservRequest::pointer _qservRequest;
+    wpublish::RemoveChunkGroupQservRequest::Ptr _qservRequest;
 };
 
 }}} // namespace lsst::qserv::replica

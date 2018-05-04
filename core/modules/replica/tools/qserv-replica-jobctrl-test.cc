@@ -63,8 +63,8 @@ bool test() {
         // Note that omFinish callbak which are activated upon a completion
         // of the job will be run in a thread wich will differ from the current one
 
-        replica::ServiceProvider::pointer const provider  = replica::ServiceProvider::create(configUrl);
-        replica::JobController::pointer   const jobCtrl   = replica::JobController::create(provider);
+        replica::ServiceProvider::Ptr const provider  = replica::ServiceProvider::create(configUrl);
+        replica::JobController::Ptr   const jobCtrl   = replica::JobController::create(provider);
 
         jobCtrl->run();
 
@@ -75,7 +75,7 @@ bool test() {
         auto job = jobCtrl->replicate(
             databaseFamily,
             numReplicas,
-            [&finished] (replica::ReplicateJob::pointer const& job) {
+            [&finished] (replica::ReplicateJob::Ptr const& job) {
                 finished = true;
             }
         );

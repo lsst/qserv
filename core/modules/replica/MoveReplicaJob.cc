@@ -54,16 +54,16 @@ Job::Options const& MoveReplicaJob::defaultOptions() {
     return options;
 }
 
-MoveReplicaJob::pointer MoveReplicaJob::create(std::string const& databaseFamily,
-                                               unsigned int chunk,
-                                               std::string const& sourceWorker,
-                                               std::string const& destinationWorker,
-                                               bool purge,
-                                               Controller::pointer const& controller,
-                                               std::string const& parentJobId,
-                                               callback_type onFinish,
-                                               Job::Options const& options) {
-    return MoveReplicaJob::pointer(
+MoveReplicaJob::Ptr MoveReplicaJob::create(std::string const& databaseFamily,
+                                           unsigned int chunk,
+                                           std::string const& sourceWorker,
+                                           std::string const& destinationWorker,
+                                           bool purge,
+                                           Controller::Ptr const& controller,
+                                           std::string const& parentJobId,
+                                           CallbackType onFinish,
+                                           Job::Options const& options) {
+    return MoveReplicaJob::Ptr(
         new MoveReplicaJob(databaseFamily,
                            chunk,
                            sourceWorker,
@@ -80,9 +80,9 @@ MoveReplicaJob::MoveReplicaJob(std::string const& databaseFamily,
                                std::string const& sourceWorker,
                                std::string const& destinationWorker,
                                bool purge,
-                               Controller::pointer const& controller,
+                               Controller::Ptr const& controller,
                                std::string const& parentJobId,
-                               callback_type onFinish,
+                               CallbackType onFinish,
                                Job::Options const& options)
     :   Job(controller,
             parentJobId,
@@ -130,7 +130,7 @@ void MoveReplicaJob::startImpl() {
         destinationWorker(),
         _controller,
         _id,
-        [self] (CreateReplicaJob::pointer const& job) {
+        [self] (CreateReplicaJob::Ptr const& job) {
             self->onCreateJobFinish();
         },
         options()   // inherit from the current job
@@ -199,7 +199,7 @@ void MoveReplicaJob::onCreateJobFinish() {
                     sourceWorker(),
                     _controller,
                     _id,
-                    [self] (DeleteReplicaJob::pointer const& job) {
+                    [self] (DeleteReplicaJob::Ptr const& job) {
                         self->onDeleteJobFinish();
                     },
                     options()   // inherit from the current job

@@ -106,10 +106,10 @@ class DeleteWorkerJob
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<DeleteWorkerJob> pointer;
+    typedef std::shared_ptr<DeleteWorkerJob> Ptr;
 
     /// The function type for notifications on the completon of the request
-    typedef std::function<void(pointer)> callback_type;
+    typedef std::function<void(Ptr)> CallbackType;
 
     /// @return default options object for this type of a request
     static Job::Options const& defaultOptions();
@@ -127,12 +127,12 @@ public:
      * @param onFinish        - a callback function to be called upon a completion of the job
      * @param options         - job options
      */
-    static pointer create(std::string const& worker,
-                          bool permanentDelete,
-                          Controller::pointer const& controller,
-                          std::string const& parentJobId,
-                          callback_type onFinish,
-                          Job::Options const& options=defaultOptions());
+    static Ptr create(std::string const& worker,
+                      bool permanentDelete,
+                      Controller::Ptr const& controller,
+                      std::string const& parentJobId,
+                      CallbackType onFinish,
+                      Job::Options const& options=defaultOptions());
 
     // Default construction and copy semantics are prohibited
 
@@ -177,9 +177,9 @@ protected:
      */
     DeleteWorkerJob(std::string const& worker,
                     bool permanentDelete,
-                    Controller::pointer const& controller,
+                    Controller::Ptr const& controller,
                     std::string const& parentJobId,
-                    callback_type onFinish,
+                    CallbackType onFinish,
                     Job::Options const& options);
 
     /**
@@ -213,7 +213,7 @@ protected:
      *
      * @param request - a pointer to a request
      */
-    void onRequestFinish(FindAllRequest::pointer const& request);
+    void onRequestFinish(FindAllRequest::Ptr const& request);
 
     /**
      * The calback function to be invoked on a completion of a job
@@ -221,7 +221,7 @@ protected:
      *
      * @param request - a pointer to a job
      */
-    void onJobFinish(FindAllJob::pointer const& job);
+    void onJobFinish(FindAllJob::Ptr const& job);
 
     /**
      * The calback function to be invoked on a completion of a job
@@ -229,7 +229,7 @@ protected:
      *
      * @param request - a pointer to a job
      */
-    void onJobFinish(ReplicateJob::pointer const& job);
+    void onJobFinish(ReplicateJob::Ptr const& job);
 
 protected:
 
@@ -240,7 +240,7 @@ protected:
     bool _permanentDelete;
 
     /// Client-defined function to be called upon the completion of the job
-    callback_type _onFinish;
+    CallbackType _onFinish;
 
     // The counter of requests/jobs which will be updated. They need to be atomic
     // to avoid race condition between the onFinish() callbacks executed within
@@ -253,16 +253,16 @@ protected:
     /// A collection of requests (one per a database) to be launched against
     /// the affected worker in order to get the latest state of the worker's
     /// replicas
-    std::list<FindAllRequest::pointer> _findAllRequests;
+    std::list<FindAllRequest::Ptr> _findAllRequests;
 
     /// The chained jobs (one per database family) needed to refresh replica
     /// disposition accross a replication setup
-    std::list<FindAllJob::pointer> _findAllJobs;
+    std::list<FindAllJob::Ptr> _findAllJobs;
 
     /// The chained jobs (one per each database family which are launched after
     /// disabling the worker in order to ensure the minimum replication level
     /// across the replication setup
-    std::list<ReplicateJob::pointer> _replicateJobs;
+    std::list<ReplicateJob::Ptr> _replicateJobs;
 
     /// The result of the operation (gets updated as requests are finishing)
     DeleteWorkerJobResult _replicaData;

@@ -69,7 +69,7 @@ class WorkerRequest
 public:
 
     /// Pointer to self
-    typedef std::shared_ptr<WorkerRequest> pointer;
+    typedef std::shared_ptr<WorkerRequest> Ptr;
 
     /// Completion status of the request processing operation
     enum CompletionStatus {
@@ -99,7 +99,7 @@ public:
 
     // Trivial accessors
 
-    ServiceProvider::pointer const& serviceProvider() { return _serviceProvider; }
+    ServiceProvider::Ptr const& serviceProvider() { return _serviceProvider; }
 
     std::string const& worker() const { return _worker; }
     std::string const& type() const   { return _type; }
@@ -175,7 +175,7 @@ protected:
     /**
      * The normal constructor of the class.
      */
-    WorkerRequest(ServiceProvider::pointer const& serviceProvider,
+    WorkerRequest(ServiceProvider::Ptr const& serviceProvider,
                   std::string const& worker,
                   std::string const& type,
                   std::string const& id,
@@ -233,7 +233,7 @@ protected:
 
 protected:
 
-    ServiceProvider::pointer _serviceProvider;
+    ServiceProvider::Ptr _serviceProvider;
 
     std::string _worker;
     std::string _type;
@@ -264,8 +264,8 @@ protected:
 struct WorkerRequestCompare {
 
     /// Order requests by their priorities
-    bool operator()(WorkerRequest::pointer const& lhs,
-                    WorkerRequest::pointer const& rhs) const {
+    bool operator()(WorkerRequest::Ptr const& lhs,
+                    WorkerRequest::Ptr const& rhs) const {
 
         return lhs->priority() < rhs->priority();
     }

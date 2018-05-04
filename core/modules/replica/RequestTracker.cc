@@ -145,20 +145,20 @@ void RequestTrackerBase::reset () {
 
 AnyRequestTracker::AnyRequestTracker(std::ostream& os,
                                      bool progressReport,
-                                    bool errorReport)
+                                     bool errorReport)
     :   RequestTrackerBase(os,
                            progressReport,
                            errorReport) {
 }
 
-void AnyRequestTracker::onFinish(Request::pointer const& ptr) {
+void AnyRequestTracker::onFinish(Request::Ptr const& ptr) {
     RequestTrackerBase::_numFinished++;
     if (ptr->extendedState() == Request::ExtendedState::SUCCESS) {
         RequestTrackerBase::_numSuccess++;
     }
 }
 
-void AnyRequestTracker::add(Request::pointer const& ptr) {
+void AnyRequestTracker::add(Request::Ptr const& ptr) {
     RequestTrackerBase::_numLaunched++;
     requests.push_back(ptr);
 }
@@ -167,7 +167,7 @@ void AnyRequestTracker::printErrorReport(std::ostream& os) const {
     replica::reportRequestState(requests, os);
 }
 
-std::list<Request::pointer> AnyRequestTracker::getRequests() const {
+std::list<Request::Ptr> AnyRequestTracker::getRequests() const {
     return requests;
 }
 

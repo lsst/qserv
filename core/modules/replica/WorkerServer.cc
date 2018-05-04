@@ -44,17 +44,17 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-WorkerServer::pointer WorkerServer::create(ServiceProvider::pointer const& serviceProvider,
+WorkerServer::Ptr WorkerServer::create(ServiceProvider::Ptr const& serviceProvider,
                                            WorkerRequestFactory& requestFactory,
                                            std::string const& workerName) {
-    return WorkerServer::pointer(
+    return WorkerServer::Ptr(
         new WorkerServer(
             serviceProvider,
             requestFactory,
             workerName));
 }
 
-WorkerServer::WorkerServer(ServiceProvider::pointer const& serviceProvider,
+WorkerServer::WorkerServer(ServiceProvider::Ptr const& serviceProvider,
                            WorkerRequestFactory& requestFactory,
                            std::string const& workerName)
     :   _serviceProvider(serviceProvider),
@@ -91,7 +91,7 @@ void WorkerServer::run() {
 
 void WorkerServer::beginAccept() {
 
-    WorkerServerConnection::pointer connection =
+    WorkerServerConnection::Ptr connection =
         WorkerServerConnection::create(
             _serviceProvider,
             _processor,
@@ -109,7 +109,7 @@ void WorkerServer::beginAccept() {
     );
 }
 
-void WorkerServer::handleAccept(WorkerServerConnection::pointer const& connection,
+void WorkerServer::handleAccept(WorkerServerConnection::Ptr const& connection,
                                 boost::system::error_code const& ec) {
 
     if (not ec) {

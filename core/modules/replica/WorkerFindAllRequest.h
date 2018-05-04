@@ -58,14 +58,14 @@ class WorkerFindAllRequest
 public:
 
     /// Pointer to self
-    typedef std::shared_ptr<WorkerFindAllRequest> pointer;
+    typedef std::shared_ptr<WorkerFindAllRequest> Ptr;
 
     /**
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      */
-    static pointer create(ServiceProvider::pointer const& serviceProvider,
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                           std::string const& worker,
                           std::string const& id,
                           int                priority,
@@ -104,7 +104,7 @@ protected:
     /**
      * The normal constructor of the class.
      */
-    WorkerFindAllRequest(ServiceProvider::pointer const& serviceProvider,
+    WorkerFindAllRequest(ServiceProvider::Ptr const& serviceProvider,
                          std::string const& worker,
                          std::string const& id,
                          int                priority,
@@ -130,18 +130,18 @@ class WorkerFindAllRequestPOSIX
 public:
 
     /// Pointer to self
-    typedef std::shared_ptr<WorkerFindAllRequestPOSIX> pointer;
+    typedef std::shared_ptr<WorkerFindAllRequestPOSIX> Ptr;
 
     /**
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      */
-    static pointer create(ServiceProvider::pointer const& serviceProvider,
-                          std::string const& worker,
-                          std::string const& id,
-                          int                priority,
-                          std::string const& database);
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
+                      std::string const& worker,
+                      std::string const& id,
+                      int priority,
+                      std::string const& database);
 
     // Default construction and copy semantics are prohibited
 
@@ -164,10 +164,10 @@ private:
     /**
      * The normal constructor of the class.
      */
-    WorkerFindAllRequestPOSIX(ServiceProvider::pointer const& serviceProvider,
+    WorkerFindAllRequestPOSIX(ServiceProvider::Ptr const& serviceProvider,
                               std::string const& worker,
                               std::string const& id,
-                              int                priority,
+                              int priority,
                               std::string const& database);
 };
 

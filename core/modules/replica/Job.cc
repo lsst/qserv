@@ -81,7 +81,7 @@ Job::state2string(ExtendedState state) {
                 "incomplete implementation of method Job::state2string(ExtendedState)");
 }
 
-Job::Job(Controller::pointer const& controller,
+Job::Job(Controller::Ptr const& controller,
          std::string const& parentJobId,
          std::string const& type,
          Options const& options)
@@ -193,7 +193,7 @@ void Job::finish(ExtendedState extendedState) {
 void Job::qservAddReplica(unsigned int chunk,
                           std::vector<std::string> const& databases,
                           std::string const& worker,
-                          AddReplicaQservMgtRequest::callback_type onFinish) {
+                          AddReplicaQservMgtRequest::CallbackType onFinish) {
 
     LOGS(_log, LOG_LVL_DEBUG, context()
          << "** START ** Qserv notification on ADD replica:"
@@ -207,7 +207,7 @@ void Job::qservAddReplica(unsigned int chunk,
         chunk,
         databases,
         worker,
-        [self,onFinish] (AddReplicaQservMgtRequest::pointer const& request) {
+        [self,onFinish] (AddReplicaQservMgtRequest::Ptr const& request) {
 
             LOGS(_log, LOG_LVL_DEBUG, self->context()
                  << "** FINISH ** Qserv notification on ADD replica:"
@@ -231,7 +231,7 @@ void Job::qservRemoveReplica(unsigned int chunk,
                              std::vector<std::string> const& databases,
                              std::string const& worker,
                              bool force,
-                             RemoveReplicaQservMgtRequest::callback_type onFinish) {
+                             RemoveReplicaQservMgtRequest::CallbackType onFinish) {
 
     LOGS(_log, LOG_LVL_DEBUG, context()
          << "** START ** Qserv notification on REMOVE replica:"
@@ -247,7 +247,7 @@ void Job::qservRemoveReplica(unsigned int chunk,
         databases,
         worker,
         force,
-        [self,onFinish] (RemoveReplicaQservMgtRequest::pointer const& request) {
+        [self,onFinish] (RemoveReplicaQservMgtRequest::Ptr const& request) {
 
             LOGS(_log, LOG_LVL_DEBUG, self->context()
                  << "** FINISH ** Qserv notification on REMOVE replica:"

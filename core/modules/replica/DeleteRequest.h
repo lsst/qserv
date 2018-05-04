@@ -65,10 +65,10 @@ class DeleteRequestM
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<DeleteRequestM> pointer;
+    typedef std::shared_ptr<DeleteRequestM> Ptr;
 
     /// The function type for notifications on the completon of the request
-    typedef std::function<void(pointer)> callback_type;
+    typedef std::function<void(Ptr)> CallbackType;
 
     // Default construction and copy semantics are prohibited
 
@@ -109,28 +109,28 @@ public:
      * @param allowDuplicate   - follow a previously made request if the current one duplicates it
      * @param messenger        - an interface for communicating with workers
      */
-    static pointer create(ServiceProvider::pointer const& serviceProvider,
-                          boost::asio::io_service& io_service,
-                          std::string const& worker,
-                          std::string const& database,
-                          unsigned int  chunk,
-                          callback_type onFinish,
-                          int  priority,
-                          bool keepTracking,
-                          bool allowDuplicate,
-                          std::shared_ptr<Messenger> const& messenger);
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
+                      boost::asio::io_service& io_service,
+                      std::string const& worker,
+                      std::string const& database,
+                      unsigned int  chunk,
+                      CallbackType onFinish,
+                      int  priority,
+                      bool keepTracking,
+                      bool allowDuplicate,
+                      std::shared_ptr<Messenger> const& messenger);
 
 private:
 
     /**
      * Construct the request with the pointer to the services provider.
      */
-    DeleteRequestM(ServiceProvider::pointer const& serviceProvider,
+    DeleteRequestM(ServiceProvider::Ptr const& serviceProvider,
                    boost::asio::io_service& io_service,
                    std::string const& worker,
                    std::string const& database,
                    unsigned int  chunk,
-                   callback_type onFinish,
+                   CallbackType onFinish,
                    int  priority,
                    bool keepTracking,
                    bool allowDuplicate,
@@ -178,7 +178,7 @@ private:
     unsigned int _chunk;
 
     /// Registered callback to be called when the operation finishes
-    callback_type _onFinish;
+    CallbackType _onFinish;
 
     /// Request-specific parameters of the target request
     DeleteRequestParams _targetRequestParams;

@@ -110,10 +110,10 @@ bool in(Request::ExtendedState val,
  * and a signature.
  */
 template <class T>
-bool targetRequestDataT(Request::pointer const& request,
+bool targetRequestDataT(Request::Ptr const& request,
                         std::string& id,
                         Performance& performance) {
-    typename T::pointer ptr = std::dynamic_pointer_cast<T>(request);
+    typename T::Ptr ptr = std::dynamic_pointer_cast<T>(request);
     if (ptr) {
         id          = ptr->targetRequestId();
         performance = ptr->targetPerformance();
@@ -131,7 +131,7 @@ bool targetRequestDataT(Request::pointer const& request,
  * @return an identifier of the target request
  * @throw std::logic_error for unsupported requsts
  */
-void targetRequestData(Request::pointer const& ptr,
+void targetRequestData(Request::Ptr const& ptr,
                        std::string& id,
                        Performance& performance) {
 
@@ -153,27 +153,27 @@ void targetRequestData(Request::pointer const& ptr,
 // and to make those methos easier to use and maintain.
 
 template <class T>
-typename T::pointer safeAssign(QservMgtRequest::pointer const& request) {
+typename T::Ptr safeAssign(QservMgtRequest::Ptr const& request) {
     static std::string  const context = "DatabaseServicesMySQL::safeAssign[QservMgtRequest]  ";
-    typename T::pointer const ptr = std::dynamic_pointer_cast<T>(request);
+    typename T::Ptr const ptr = std::dynamic_pointer_cast<T>(request);
     if (ptr) { return ptr; }
     throw std::logic_error(context + "incorrect upcast for request id: " +
                            request->id() + ", type: " + request->type());
 }
 
 template <class T>
-typename T::pointer safeAssign(Request::pointer const& request) {
+typename T::Ptr safeAssign(Request::Ptr const& request) {
     static std::string  const context = "DatabaseServicesMySQL::safeAssign[Request]  ";
-    typename T::pointer const ptr = std::dynamic_pointer_cast<T>(request);
+    typename T::Ptr const ptr = std::dynamic_pointer_cast<T>(request);
     if (ptr) { return ptr; }
     throw std::logic_error(context + "incorrect upcast for request id: " +
                            request->id() + ", type: " + request->type());
 }
 
 template <class T>
-typename T::pointer safeAssign(Job::pointer const& job) {
+typename T::Ptr safeAssign(Job::Ptr const& job) {
     static std::string  const context = "DatabaseServicesMySQL::safeAssign[Job]  ";
-    typename T::pointer const ptr = std::dynamic_pointer_cast<T>(job);
+    typename T::Ptr const ptr = std::dynamic_pointer_cast<T>(job);
     if (ptr) { return ptr; }
     throw std::logic_error (context + "incorrect upcast for job id: " +
                             job->id() + ", type: " + job->type());
@@ -187,7 +187,7 @@ typename T::pointer safeAssign(Job::pointer const& job) {
  *
  * @throw std::logic_error for unsupported requsts
  */
-ReplicaInfo const& replicaInfo(Request::pointer const& request) {
+ReplicaInfo const& replicaInfo(Request::Ptr const& request) {
 
     std::string const& context = "DatabaseServicesMySQL::replicaInfo  ";
 
@@ -213,7 +213,7 @@ ReplicaInfo const& replicaInfo(Request::pointer const& request) {
  *
  * @throw std::logic_error for unsupported requsts
  */
-std::string const& databaseNameOfRequest(Request::pointer const& request) {
+std::string const& databaseNameOfRequest(Request::Ptr const& request) {
 
     static std::string const context = "DatabaseServicesMySQL::databaseNameOfRequest  ";
 
@@ -233,7 +233,7 @@ std::string const& databaseNameOfRequest(Request::pointer const& request) {
  *
  * @throw std::logic_error for unsupported requsts
  */
-ReplicaInfoCollection const& replicaInfoCollection(Request::pointer const& request) {
+ReplicaInfoCollection const& replicaInfoCollection(Request::Ptr const& request) {
 
     static std::string const context = "DatabaseServicesMySQL::replicaInfoCollection  ";
 
@@ -258,7 +258,7 @@ template <>           bool isEmpty<std::string>(std::string const& val) { return
  * @param val       - a new value of the attribute
  */
 template <typename T>
-void updateFileAttr(database::mysql::Connection::pointer const& conn,
+void updateFileAttr(database::mysql::Connection::Ptr const& conn,
                     uint64_t replicaId,
                     std::string const& file,
                     std::string const& col,
@@ -298,7 +298,7 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-DatabaseServicesMySQL::DatabaseServicesMySQL(Configuration::pointer const& configuration)
+DatabaseServicesMySQL::DatabaseServicesMySQL(Configuration::Ptr const& configuration)
     :   DatabaseServices(configuration) {
 
     // Pull database info from the configuration and prepare
@@ -342,7 +342,7 @@ void DatabaseServicesMySQL::saveState(ControllerIdentity const& identity,
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
 }
 
-void DatabaseServicesMySQL::saveState(Job::pointer const& job) {
+void DatabaseServicesMySQL::saveState(Job::Ptr const& job) {
 
     std::string const context = "DatabaseServicesMySQL::saveState[Job::" + job->type() + "]  ";
 
@@ -514,7 +514,7 @@ void DatabaseServicesMySQL::saveState(Job::pointer const& job) {
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
 }
 
-void DatabaseServicesMySQL::updateHeartbeatTime(Job::pointer const& job) {
+void DatabaseServicesMySQL::updateHeartbeatTime(Job::Ptr const& job) {
 
     std::string const context = "DatabaseServicesMySQL::updateHeartbeatTime[Job::" + job->type() + "]  ";
 
@@ -537,7 +537,7 @@ void DatabaseServicesMySQL::updateHeartbeatTime(Job::pointer const& job) {
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
 }
 
-void DatabaseServicesMySQL::saveState(QservMgtRequest::pointer const& request) {
+void DatabaseServicesMySQL::saveState(QservMgtRequest::Ptr const& request) {
 
     std::string const context = "DatabaseServicesMySQL::saveState[QservMgtRequest::" + request->type() + "]  ";
 
@@ -643,7 +643,7 @@ void DatabaseServicesMySQL::saveState(QservMgtRequest::pointer const& request) {
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
 }
 
-void DatabaseServicesMySQL::saveState(Request::pointer const& request) {
+void DatabaseServicesMySQL::saveState(Request::Ptr const& request) {
 
     std::string const context = "DatabaseServicesMySQL::saveState[Request::" + request->type() + "]  ";
 

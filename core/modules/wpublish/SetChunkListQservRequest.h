@@ -72,11 +72,11 @@ public:
     using ChunkCollection = std::list<Chunk>;
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<SetChunkListQservRequest> pointer;
+    typedef std::shared_ptr<SetChunkListQservRequest> Ptr;
 
     /// The callback function type to be used for notifications on
     /// the operation completion.
-    using calback_type =
+    using CallbackType =
         std::function<void(Status,                      // completion status
                            std::string const&,          // error message
                            ChunkCollection const&)>;    // chunks (if success)
@@ -94,9 +94,9 @@ public:
      *                    (successful or not) of the request.
      * @return smart pointer to the object of the class
      */
-   static pointer create(ChunkCollection const& chunks,
-                         bool force = false,
-                         calback_type onFinish = nullptr);
+   static Ptr create(ChunkCollection const& chunks,
+                     bool force = false,
+                     CallbackType onFinish = nullptr);
 
     // Default onstruction and copy semantics are prohibited
     SetChunkListQservRequest() = delete;
@@ -121,7 +121,7 @@ protected:
      */
     SetChunkListQservRequest(ChunkCollection const& chunks,
                              bool force,
-                             calback_type onFinish);
+                             CallbackType onFinish);
 
     /// Implement the corresponding method of the base class
     void onRequest(proto::FrameBuffer& buf) override;
@@ -139,7 +139,7 @@ private:
 
     /// Optional callback function to be called upon the completion
     /// (successfull or not) of the request.
-    calback_type _onFinish;
+    CallbackType _onFinish;
 };
 
 }}} // namespace lsst::qserv::wpublish

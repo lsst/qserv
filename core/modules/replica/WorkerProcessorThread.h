@@ -57,7 +57,7 @@ class WorkerProcessorThread
 public:
 
     /// Smart reference to objects of the class
-    typedef std::shared_ptr<WorkerProcessorThread> pointer;
+    typedef std::shared_ptr<WorkerProcessorThread> Ptr;
 
     /// Forwad declaration for the smart pointer to requests
     typedef std::shared_ptr<WorkerRequest> WorkerRequest_pointer;
@@ -69,7 +69,7 @@ public:
      * 
      * @param processor - a reference to the repository of requests to be processed
      */
-    static pointer create(WorkerProcessor &processor);
+    static Ptr create(WorkerProcessor &processor);
 
     // Default construction and copy semantics are prohibited
 
@@ -103,7 +103,7 @@ public:
     void stop();
 
     /// Return the context string
-    std::string context () const { return "THREAD: " + std::to_string(_id) + "  "; }
+    std::string context() const { return "THREAD: " + std::to_string(_id) + "  "; }
 
 private:
 

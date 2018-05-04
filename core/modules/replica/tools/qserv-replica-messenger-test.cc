@@ -38,15 +38,15 @@ bool test() {
         // Note that omFinish callbak which are activated upon a completion
         // of the requsts will be run in that Controller's thread.
 
-        replica::ServiceProvider::pointer const provider   = replica::ServiceProvider::create(configUrl);
-        replica::Controller::pointer      const controller = replica::Controller::create(provider);
+        replica::ServiceProvider::Ptr const provider   = replica::ServiceProvider::create(configUrl);
+        replica::Controller::Ptr      const controller = replica::Controller::create(provider);
 
         controller->run();
 
         /////////////////////////////////////////////////////////////////////
         // Instantiate the messenger configured in the same way as Controller 
 
-        replica::Messenger::pointer const messenger
+        replica::Messenger::Ptr const messenger
             = replica::Messenger::create(provider,
                                          controller->io_service());
 

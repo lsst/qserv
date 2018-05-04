@@ -56,12 +56,12 @@ Job::Options const& FixUpJob::defaultOptions() {
     return options;
 }
 
-FixUpJob::pointer FixUpJob::create(std::string const& databaseFamily,
-                                   Controller::pointer const& controller,
-                                   std::string const& parentJobId,
-                                   callback_type onFinish,
-                                   Job::Options const& options) {
-    return FixUpJob::pointer(
+FixUpJob::Ptr FixUpJob::create(std::string const& databaseFamily,
+                               Controller::Ptr const& controller,
+                               std::string const& parentJobId,
+                               CallbackType onFinish,
+                               Job::Options const& options) {
+    return FixUpJob::Ptr(
         new FixUpJob(databaseFamily,
                      controller,
                      parentJobId,
@@ -70,9 +70,9 @@ FixUpJob::pointer FixUpJob::create(std::string const& databaseFamily,
 }
 
 FixUpJob::FixUpJob(std::string const& databaseFamily,
-                   Controller::pointer const& controller,
+                   Controller::Ptr const& controller,
                    std::string const& parentJobId,
-                   callback_type onFinish,
+                   CallbackType onFinish,
                    Job::Options const& options)
     :   Job(controller,
             parentJobId,
@@ -116,7 +116,7 @@ void FixUpJob::startImpl() {
         _databaseFamily,
         _controller,
         _id,
-        [self] (FindAllJob::pointer job) {
+        [self] (FindAllJob::Ptr job) {
             self->onPrecursorJobFinish();
         }
     );
@@ -272,13 +272,13 @@ void FixUpJob::onPrecursorJobFinish() {
                         // Finally, launch the replication request and register it for further
                         // tracking (or cancellation, should the one be requested)
 
-                        ReplicationRequest::pointer ptr =
+                        ReplicationRequest::Ptr ptr =
                             _controller->replicate(
                                 destinationWorker,
                                 sourceWorker,
                                 database,
                                 chunk,
-                                [self] (ReplicationRequest::pointer ptr) {
+                                [self] (ReplicationRequest::Ptr ptr) {
                                     self->onRequestFinish(ptr);
                                 },
                                 0,      /* priority */
@@ -317,7 +317,7 @@ void FixUpJob::onPrecursorJobFinish() {
     if (_state == State::FINISHED) { notify(); }
 }
 
-void FixUpJob::onRequestFinish(ReplicationRequest::pointer const& request) {
+void FixUpJob::onRequestFinish(ReplicationRequest::Ptr const& request) {
 
     std::string  const database = request->database();
     std::string  const worker   = request->worker();

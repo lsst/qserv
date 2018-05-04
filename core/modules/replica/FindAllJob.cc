@@ -54,12 +54,12 @@ Job::Options const& FindAllJob::defaultOptions() {
     return options;
 }
 
-FindAllJob::pointer FindAllJob::create(std::string const& databaseFamily,
-                                       Controller::pointer const& controller,
-                                       std::string const& parentJobId,
-                                       callback_type onFinish,
-                                       Job::Options const& options) {
-    return FindAllJob::pointer(
+FindAllJob::Ptr FindAllJob::create(std::string const& databaseFamily,
+                                   Controller::Ptr const& controller,
+                                   std::string const& parentJobId,
+                                   CallbackType onFinish,
+                                   Job::Options const& options) {
+    return FindAllJob::Ptr(
         new FindAllJob(databaseFamily,
                        controller,
                        parentJobId,
@@ -68,9 +68,9 @@ FindAllJob::pointer FindAllJob::create(std::string const& databaseFamily,
 }
 
 FindAllJob::FindAllJob(std::string const& databaseFamily,
-                       Controller::pointer const& controller,
+                       Controller::Ptr const& controller,
                        std::string const& parentJobId,
-                       callback_type onFinish,
+                       CallbackType onFinish,
                        Job::Options const& options)
     :   Job(controller,
             parentJobId,
@@ -106,7 +106,7 @@ void FindAllJob::startImpl() {
                 _controller->findAllReplicas(
                     worker,
                     database,
-                    [self] (FindAllRequest::pointer request) {
+                    [self] (FindAllRequest::Ptr request) {
                         self->onRequestFinish(request);
                     },
                     options().priority,
@@ -168,7 +168,7 @@ void FindAllJob::notify() {
     }
 }
 
-void FindAllJob::onRequestFinish(FindAllRequest::pointer const& request) {
+void FindAllJob::onRequestFinish(FindAllRequest::Ptr const& request) {
 
     LOGS(_log, LOG_LVL_DEBUG, context()
          << "onRequestFinish  database=" << request->database()

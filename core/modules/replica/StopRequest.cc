@@ -48,7 +48,7 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-StopRequestBaseM::StopRequestBaseM(ServiceProvider::pointer const& serviceProvider,
+StopRequestBaseM::StopRequestBaseM(ServiceProvider::Ptr const& serviceProvider,
                                    boost::asio::io_service& io_service,
                                    char const*              requestTypeName,
                                    std::string const&       worker,

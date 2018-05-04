@@ -51,17 +51,17 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-FindRequestM::pointer FindRequestM::create(ServiceProvider::pointer const& serviceProvider,
-                                           boost::asio::io_service& io_service,
-                                           std::string const& worker,
-                                           std::string const& database,
-                                           unsigned int  chunk,
-                                           callback_type onFinish,
-                                           int  priority,
-                                           bool computeCheckSum,
-                                           bool keepTracking,
-                                           std::shared_ptr<Messenger> const& messenger) {
-    return FindRequestM::pointer(
+FindRequestM::Ptr FindRequestM::create(ServiceProvider::Ptr const& serviceProvider,
+                                       boost::asio::io_service& io_service,
+                                       std::string const& worker,
+                                       std::string const& database,
+                                       unsigned int  chunk,
+                                       CallbackType onFinish,
+                                       int  priority,
+                                       bool computeCheckSum,
+                                       bool keepTracking,
+                                       std::shared_ptr<Messenger> const& messenger) {
+    return FindRequestM::Ptr(
         new FindRequestM(serviceProvider,
                          io_service,
                          worker,
@@ -74,12 +74,12 @@ FindRequestM::pointer FindRequestM::create(ServiceProvider::pointer const& servi
                          messenger));
 }
 
-FindRequestM::FindRequestM(ServiceProvider::pointer const& serviceProvider,
+FindRequestM::FindRequestM(ServiceProvider::Ptr const& serviceProvider,
                            boost::asio::io_service& io_service,
                            std::string const& worker,
                            std::string const& database,
                            unsigned int  chunk,
-                           callback_type onFinish,
+                           CallbackType onFinish,
                            int  priority,
                            bool computeCheckSum,
                            bool keepTracking,

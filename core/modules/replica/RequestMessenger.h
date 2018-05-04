@@ -59,7 +59,7 @@ class RequestMessenger
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<RequestMessenger> pointer;
+    typedef std::shared_ptr<RequestMessenger> Ptr;
 
     // Default construction and copy semantics are prohibited
 
@@ -89,7 +89,7 @@ protected:
      * @param allowDuplicate  - follow a previously made request if the current one duplicates it
      * @param messenger       - an interface for communicating with workers
      */
-    RequestMessenger(ServiceProvider::pointer const& serviceProvider,
+    RequestMessenger(ServiceProvider::Ptr const& serviceProvider,
                      boost::asio::io_service& io_service,
                      std::string const& type,
                      std::string const& worker,

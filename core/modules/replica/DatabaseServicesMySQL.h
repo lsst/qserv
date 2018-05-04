@@ -55,7 +55,7 @@ class DatabaseServicesMySQL
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<DatabaseServicesMySQL> pointer;
+    typedef std::shared_ptr<DatabaseServicesMySQL> Ptr;
 
     // Default construction and copy semantics are prohibited
 
@@ -68,7 +68,7 @@ public:
      *
      * @param configuration - the configuration service
      */
-    explicit DatabaseServicesMySQL(Configuration::pointer const& configuration);
+    explicit DatabaseServicesMySQL(Configuration::Ptr const& configuration);
 
     /// Destructor
     ~DatabaseServicesMySQL() override = default;
@@ -210,10 +210,10 @@ private:
 protected:
 
     /// Databse connection
-    database::mysql::Connection::pointer _conn;
+    database::mysql::Connection::Ptr _conn;
 
     /// Databse connection (second instance for nested queries)
-    database::mysql::Connection::pointer _conn2;
+    database::mysql::Connection::Ptr _conn2;
 };
 
 }}} // namespace lsst::qserv::replica

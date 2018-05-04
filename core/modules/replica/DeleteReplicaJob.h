@@ -76,10 +76,10 @@ class DeleteReplicaJob
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<DeleteReplicaJob> pointer;
+    typedef std::shared_ptr<DeleteReplicaJob> Ptr;
 
     /// The function type for notifications on the completon of the request
-    typedef std::function<void(pointer)> callback_type;
+    typedef std::function<void(Ptr)> CallbackType;
 
     /// @return default options object for this type of a request
     static Job::Options const& defaultOptions();
@@ -97,13 +97,13 @@ public:
      * @param onFinish       - a callback function to be called upon a completion of the job
      * @param options        - job options
      */
-    static pointer create(std::string const& databaseFamily,
-                          unsigned int chunk,
-                          std::string const& worker,
-                          Controller::pointer const& controller,
-                          std::string const& parentJobId,
-                          callback_type onFinish,
-                          Job::Options const& options = defaultOptions());
+    static Ptr create(std::string const& databaseFamily,
+                      unsigned int chunk,
+                      std::string const& worker,
+                      Controller::Ptr const& controller,
+                      std::string const& parentJobId,
+                      CallbackType onFinish,
+                      Job::Options const& options = defaultOptions());
 
     // Default construction and copy semantics are prohibited
 
@@ -152,9 +152,9 @@ protected:
     DeleteReplicaJob(std::string const& databaseFamily,
                      unsigned int chunk,
                      std::string const& worker,
-                     Controller::pointer const& controller,
+                     Controller::Ptr const& controller,
                      std::string const& parentJobId,
-                     callback_type onFinish,
+                     CallbackType onFinish,
                      Job::Options const& options);
 
     /**
@@ -189,7 +189,7 @@ protected:
      *
      * @param request - a pointer to a request
      */
-    void onRequestFinish(DeleteRequest::pointer const& request);
+    void onRequestFinish(DeleteRequest::Ptr const& request);
 
 protected:
 
@@ -203,14 +203,14 @@ protected:
     std::string _worker;
 
     /// Client-defined function to be called upon the completion of the job
-    callback_type _onFinish;
+    CallbackType _onFinish;
 
     /// Cached replicas is needed to figure out wich specific databases
     /// have contrinutions into the chunk.
     std::vector<ReplicaInfo> _replicas;
 
     /// A collection of the replica deletion requests implementing the operation
-    std::vector<DeleteRequest::pointer> _requests;
+    std::vector<DeleteRequest::Ptr> _requests;
 
     /// The result of the operation (gets updated as requests are finishing)
     DeleteReplicaJobResult _replicaData;

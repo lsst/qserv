@@ -89,7 +89,7 @@ std::string Request::state2string(State state,
     return state2string(state, extendedState) + "::" + replica::status2string(serverStatus);
 }
 
-Request::Request(ServiceProvider::pointer const& serviceProvider,
+Request::Request(ServiceProvider::Ptr const& serviceProvider,
                  boost::asio::io_service& io_service,
                  std::string const& type,
                  std::string const& worker,

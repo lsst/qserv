@@ -60,10 +60,10 @@ public:
 
     // Pointers to specific request types
 
-    typedef std::shared_ptr<WorkerReplicationRequest> WorkerReplicationRequest_pointer;
-    typedef std::shared_ptr<WorkerDeleteRequest>      WorkerDeleteRequest_pointer;
-    typedef std::shared_ptr<WorkerFindRequest>        WorkerFindRequest_pointer;
-    typedef std::shared_ptr<WorkerFindAllRequest>     WorkerFindAllRequest_pointer;
+    typedef std::shared_ptr<WorkerReplicationRequest> WorkerReplicationRequestPtr;
+    typedef std::shared_ptr<WorkerDeleteRequest>      WorkerDeleteRequestPtr;
+    typedef std::shared_ptr<WorkerFindRequest>        WorkerFindRequestPtr;
+    typedef std::shared_ptr<WorkerFindAllRequest>     WorkerFindAllRequestPtr;
 
     // The default constructor and copy semantics are prohibited
 
@@ -84,12 +84,12 @@ public:
      *
      * @return a pointer to the newely created object
      */
-    virtual WorkerReplicationRequest_pointer createReplicationRequest(
+    virtual WorkerReplicationRequestPtr createReplicationRequest(
             std::string const& worker,
             std::string const& id,
-            int                priority,
+            int priority,
             std::string const& database,
-            unsigned int       chunk,
+            unsigned int chunk,
             std::string const& sourceWorker) = 0;
 
    /**
@@ -99,12 +99,12 @@ public:
      *
      * @return a pointer to the newely created object
      */
-    virtual WorkerDeleteRequest_pointer createDeleteRequest(
+    virtual WorkerDeleteRequestPtr createDeleteRequest(
             std::string const& worker,
             std::string const& id,
-            int                priority,
+            int priority,
             std::string const& database,
-            unsigned int       chunk) = 0;
+            unsigned int chunk) = 0;
 
    /**
      * Create an instance of the replica lookup request
@@ -113,13 +113,13 @@ public:
      *
      * @return a pointer to the newely created object
      */
-    virtual WorkerFindRequest_pointer createFindRequest(
+    virtual WorkerFindRequestPtr createFindRequest(
             std::string const& worker,
             std::string const& id,
-            int                priority,
+            int priority,
             std::string const& database,
-            unsigned int       chunk,
-            bool               computeCheckSum) = 0;
+            unsigned int chunk,
+            bool computeCheckSum) = 0;
 
    /**
      * Create an instance of the replicas lookup request
@@ -128,10 +128,10 @@ public:
      *
      * @return a pointer to the newely created object
      */
-    virtual WorkerFindAllRequest_pointer createFindAllRequest(
+    virtual WorkerFindAllRequestPtr createFindAllRequest(
             std::string const& worker,
             std::string const& id,
-            int                priority,
+            int priority,
             std::string const& database) = 0;
             
 protected:
@@ -141,13 +141,13 @@ protected:
      *
      * @param serviceProvider - a provider of various services
      */
-    explicit WorkerRequestFactoryBase(ServiceProvider::pointer const& serviceProvider);
+    explicit WorkerRequestFactoryBase(ServiceProvider::Ptr const& serviceProvider);
 
 protected:
 
     // Parameters of the object
 
-    ServiceProvider::pointer _serviceProvider;
+    ServiceProvider::Ptr _serviceProvider;
 };
 
 /**
@@ -187,7 +187,7 @@ public:
      * @param serviceProvider - a provider of various serviceses (including configurations)
      * @param technology      - the name of the technology
      */
-    explicit WorkerRequestFactory(ServiceProvider::pointer const& serviceProvider,
+    explicit WorkerRequestFactory(ServiceProvider::Ptr const& serviceProvider,
                                   std::string const& technology=std::string());
 
     /// Destructor
@@ -209,12 +209,12 @@ public:
      *
      * @see WorkerReplicationRequestBase::createReplicationRequest
      */
-    WorkerReplicationRequest_pointer createReplicationRequest(
+    WorkerReplicationRequestPtr createReplicationRequest(
             std::string const& worker,
             std::string const& id,
-            int                priority,
+            int priority,
             std::string const& database,
-            unsigned int       chunk,
+            unsigned int chunk,
             std::string const& sourceWorker) override {
 
         return _ptr->createReplicationRequest(
@@ -231,12 +231,12 @@ public:
      *
      * @see WorkerReplicationRequestBase::createDeleteRequest
      */
-    WorkerDeleteRequest_pointer createDeleteRequest(
+    WorkerDeleteRequestPtr createDeleteRequest(
             std::string const& worker,
             std::string const& id,
-            int                priority,
+            int priority,
             std::string const& database,
-            unsigned int       chunk) override {
+            unsigned int chunk) override {
 
         return _ptr->createDeleteRequest(
             worker,
@@ -251,13 +251,13 @@ public:
      *
      * @see WorkerReplicationRequestBase::createFindRequest
      */
-    WorkerFindRequest_pointer createFindRequest(
+    WorkerFindRequestPtr createFindRequest(
             std::string const& worker,
             std::string const& id,
-            int                priority,
+            int priority,
             std::string const& database,
-            unsigned int       chunk,
-            bool               computeCheckSum) override {
+            unsigned int chunk,
+            bool computeCheckSum) override {
         
         return _ptr->createFindRequest(
             worker,
@@ -273,10 +273,10 @@ public:
      *
      * @see WorkerReplicationRequestBase::createFindAllRequest
      */
-    WorkerFindAllRequest_pointer createFindAllRequest(
+    WorkerFindAllRequestPtr createFindAllRequest(
             std::string const& worker,
             std::string const& id,
-            int                priority,
+            int priority,
             std::string const& database) override {
         
         return _ptr->createFindAllRequest(

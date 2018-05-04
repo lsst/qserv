@@ -61,17 +61,17 @@ std::string TestEchoQservRequest::status2str(Status status) {
             std::to_string(status));
 }
 
-TestEchoQservRequest::pointer TestEchoQservRequest::create(
+TestEchoQservRequest::Ptr TestEchoQservRequest::create(
                                     std::string const& value,
-                                    TestEchoQservRequest::calback_type onFinish) {
-    return TestEchoQservRequest::pointer(
+                                    TestEchoQservRequest::CallbackType onFinish) {
+    return TestEchoQservRequest::Ptr(
         new TestEchoQservRequest(value,
                                  onFinish));
 }
 
 TestEchoQservRequest::TestEchoQservRequest(
                                     std::string const& value,
-                                    TestEchoQservRequest::calback_type onFinish)
+                                    TestEchoQservRequest::CallbackType onFinish)
     :   _value(value),
         _onFinish(onFinish) {
 

@@ -70,8 +70,8 @@ public:
     /// Using inheritance to get access to the protected data members 'c'
     /// representing the internal container.
     struct PriorityQueueType
-        :   std::priority_queue<WorkerRequest::pointer,
-                                std::vector<WorkerRequest::pointer>,
+        :   std::priority_queue<WorkerRequest::Ptr,
+                                std::vector<WorkerRequest::Ptr>,
                                 WorkerRequestCompare> {
 
         /// The beginning of the container to allow the iterator protocol
@@ -89,7 +89,7 @@ public:
             auto itr = std::find_if (
                 c.begin(),
                 c.end(),
-                [&id] (WorkerRequest::pointer const& ptr) {
+                [&id] (WorkerRequest::Ptr const& ptr) {
                     return ptr->id() == id;
                 }
             );
@@ -103,7 +103,7 @@ public:
     };
 
     /// Ordinary collection of pointers for requests in other (than new/unprocessed) state
-    typedef std::list<WorkerRequest::pointer> CollectionType;
+    typedef std::list<WorkerRequest::Ptr> CollectionType;
 
     /// Current state of the request processing engine
     enum State {
@@ -124,7 +124,7 @@ public:
     /**
      * The constructor of the class.
      */
-    WorkerProcessor(ServiceProvider::pointer const& serviceProvider,
+    WorkerProcessor(ServiceProvider::Ptr const& serviceProvider,
                     WorkerRequestFactory& requestFactory,
                     std::string const& worker);
 
@@ -153,9 +153,9 @@ public:
      * @param response - the protobuf object to be initialized and ready
      *                   to be sent back to the client
      */
-    void enqueueForReplication(std::string const&                        id,
+    void enqueueForReplication(std::string const& id,
                                proto::ReplicationRequestReplicate const& request,
-                               proto::ReplicationResponseReplicate&      response);
+                               proto::ReplicationResponseReplicate& response);
 
     /**
      * Enqueue the replica deletion request for processing
@@ -165,9 +165,9 @@ public:
      * @param response - the protobuf object to be initialized and ready
      *                   to be sent back to the client
      */
-    void enqueueForDeletion(std::string const&                     id,
+    void enqueueForDeletion(std::string const& id,
                             proto::ReplicationRequestDelete const& request,
-                            proto::ReplicationResponseDelete&      response);
+                            proto::ReplicationResponseDelete& response);
 
     /**
      * Enqueue the replica lookup request for processing
@@ -177,9 +177,9 @@ public:
      * @param response - the protobuf object to be initialized and ready
      *                   to be sent back to the client
      */
-    void enqueueForFind(std::string const&                   id,
+    void enqueueForFind(std::string const& id,
                         proto::ReplicationRequestFind const& request,
-                        proto::ReplicationResponseFind&      response);
+                        proto::ReplicationResponseFind& response);
 
     /**
      * Enqueue the multi-replica lookup request for processing
@@ -189,9 +189,9 @@ public:
      * @param response - the protobuf object to be initialized and ready
      *                   to be sent back to the client
      */
-    void enqueueForFindAll(std::string const&                      id,
+    void enqueueForFindAll(std::string const& id,
                            proto::ReplicationRequestFindAll const& request,
-                           proto::ReplicationResponseFindAll&      response);
+                           proto::ReplicationResponseFindAll& response);
 
     /**
      * Set default values to protocol response which has 3 mandatory fields:
@@ -201,9 +201,9 @@ public:
      *   performance
      */
     template <class PROTOCOL_RESPONSE_TYPE>
-    static void setDefaultResponse(PROTOCOL_RESPONSE_TYPE&      response,
-                                   proto::ReplicationStatus     status,
-                                   proto::ReplicationStatusExt  extendedStatus) {
+    static void setDefaultResponse(PROTOCOL_RESPONSE_TYPE& response,
+                                   proto::ReplicationStatus status,
+                                   proto::ReplicationStatusExt extendedStatus) {
     
         WorkerPerformance performance;
         performance.setUpdateStart();
@@ -228,9 +228,9 @@ public:
      *                   to be sent back to the client
      */
     template <typename RESPONSE_MSG_TYPE>
-    void dequeueOrCancel(std::string const&                   id,
+    void dequeueOrCancel(std::string const& id,
                          proto::ReplicationRequestStop const& request,
-                         RESPONSE_MSG_TYPE&                   response) {
+                         RESPONSE_MSG_TYPE& response) {
 
         // Set this response unless an exact request (same type and identifier)
         // will be found.
@@ -241,7 +241,7 @@ public:
         // Try to locate a request with specified identifier and make sure
         // its actual type matches expecations
 
-        if (WorkerRequest::pointer ptr = dequeueOrCancelImpl(request.id())) {
+        if (WorkerRequest::Ptr ptr = dequeueOrCancelImpl(request.id())) {
             try {
 
                 // Set request-specific fields. Note exception handling for scenarios
@@ -267,9 +267,9 @@ public:
      *                   to be sent back to the client
      */
     template <typename RESPONSE_MSG_TYPE>
-    void checkStatus(std::string const&                     id,
+    void checkStatus(std::string const& id,
                      proto::ReplicationRequestStatus const& request,
-                     RESPONSE_MSG_TYPE&                     response) {
+                     RESPONSE_MSG_TYPE& response) {
 
         // Set this response unless an exact request (same type and identifier)
         // will be found.
@@ -280,7 +280,7 @@ public:
         // Try to locate a request with specified identifier and make sure
         // its actual type matches expecations
 
-        if (WorkerRequest::pointer ptr = checkStatusImpl(request.id())) {
+        if (WorkerRequest::Ptr ptr = checkStatusImpl(request.id())) {
             try {
 
                 // Set request-specific fields. Note exception handling for scenarios
@@ -352,8 +352,8 @@ private:
      *            the client-specified timeout unless it's set to 0. In the later
      *            case the method will block indefinitevely.
      */
-    WorkerRequest::pointer fetchNextForProcessing(
-                                WorkerProcessorThread::pointer const& processorThread,
+    WorkerRequest::Ptr fetchNextForProcessing(
+                                WorkerProcessorThread::Ptr const& processorThread,
                                 unsigned int timeoutMilliseconds=0);
 
     /**
@@ -364,14 +364,14 @@ private:
      * @return - a valid reference to the request object (if found)
      *           or a reference to nullptr otherwise. 
      */
-    WorkerRequest::pointer dequeueOrCancelImpl(std::string const& id);
+    WorkerRequest::Ptr dequeueOrCancelImpl(std::string const& id);
 
     /** Find and return a reference to the request object.
      * 
      * @return - a valid reference to the request object (if found)
      *           or a reference to nullptr otherwise. 
      */
-    WorkerRequest::pointer checkStatusImpl(std::string const& id);
+    WorkerRequest::Ptr checkStatusImpl(std::string const& id);
 
     /**
      * Extract the extra data from the request and put
@@ -380,7 +380,7 @@ private:
      * NOTE: This method expects a correct dynamic type of the request
      *       object. Otherwise it will throw the std::logic_error exception.
      */
-    void setInfo(WorkerRequest::pointer const&        request,
+    void setInfo(WorkerRequest::Ptr const& request,
                  proto::ReplicationResponseReplicate& response);
 
     /**
@@ -390,7 +390,7 @@ private:
      * NOTE: This method expects a correct dynamic type of the request
      *       object. Otherwise it will throw the std::logic_error exception.
      */
-    void setInfo(WorkerRequest::pointer const&     request,
+    void setInfo(WorkerRequest::Ptr const& request,
                  proto::ReplicationResponseDelete& response);
 
     /**
@@ -400,7 +400,7 @@ private:
      * NOTE: This method expects a correct dynamic type of the request
      *       object. Otherwise it will throw the std::logic_error exception.
      */
-    void setInfo(WorkerRequest::pointer const&   request,
+    void setInfo(WorkerRequest::Ptr const& request,
                  proto::ReplicationResponseFind& response);
  
     /**
@@ -410,7 +410,7 @@ private:
      * NOTE: This method expects a correct dynamic type of the request
      *       object. Otherwise it will throw the std::logic_error exception.
      */
-    void setInfo(WorkerRequest::pointer const&      request,
+    void setInfo(WorkerRequest::Ptr const& request,
                  proto::ReplicationResponseFindAll& response);
 
     /**
@@ -422,7 +422,7 @@ private:
      * @param request - a reference to the request
      * @param info    - a pointer to the protobuf object to be filled
      */
-    void setServiceResponseInfo(WorkerRequest::pointer const&          request,
+    void setServiceResponseInfo(WorkerRequest::Ptr const& request,
                                 proto::ReplicationServiceResponseInfo* info) const;
 
     /**
@@ -435,7 +435,7 @@ private:
      * back into the ready-to-be processed request and be picked up later
      * by some other thread.
      */
-    void processingRefused(WorkerRequest::pointer const& request);
+    void processingRefused(WorkerRequest::Ptr const& request);
 
     /**
      * Report a request which has been processed or cancelled.
@@ -444,7 +444,7 @@ private:
      * The request will be moved into the corresponding queue. A proper
      * completion status is expected be stored witin the request.
      */
-    void processingFinished(WorkerRequest::pointer const& request);
+    void processingFinished(WorkerRequest::Ptr const& request);
 
     /**
      * For threads reporting their completion
@@ -454,7 +454,7 @@ private:
      * of this processor from the combined State::STATE_IS_STOPPING to
      * State::STATE_IS_STOPPED. The later is achieved when all threads are stopped.
      */
-    void processorThreadStopped(WorkerProcessorThread::pointer const& processorThread);
+    void processorThreadStopped(WorkerProcessorThread::Ptr const& processorThread);
 
     /// Return the context string
     std::string context() const { return "PROCESSOR  "; }
@@ -462,7 +462,7 @@ private:
 private:
 
     /// Services used by the processor
-    ServiceProvider::pointer _serviceProvider;
+    ServiceProvider::Ptr _serviceProvider;
 
     /// A factory of request objects
     WorkerRequestFactory &_requestFactory;
@@ -477,7 +477,7 @@ private:
     uint64_t _startTime;
 
     /// A pool of threads for processing requests
-    std::vector<WorkerProcessorThread::pointer> _threads;
+    std::vector<WorkerProcessorThread::Ptr> _threads;
     
     /// Mutex guarding the queues
     mutable std::mutex _mtx;

@@ -58,7 +58,7 @@ class Messenger
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<Messenger> pointer;
+    typedef std::shared_ptr<Messenger> Ptr;
 
     // Default construction and copy semantics are prohibited
 
@@ -81,8 +81,8 @@ public:
      *                           the object must exceed the one of this instance
      *                           of the Messenger.
      */
-    static pointer create(ServiceProvider::pointer const& serviceProvider,
-                          boost::asio::io_service& io_service);
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
+                      boost::asio::io_service& io_service);
 
     /**
      * Stop operations
@@ -149,7 +149,7 @@ private:
     /**
      * The constructor
      */
-    Messenger(ServiceProvider::pointer const& serviceProvider,
+    Messenger(ServiceProvider::Ptr const& serviceProvider,
               boost::asio::io_service& io_service);
 
     /**
@@ -160,12 +160,12 @@ private:
      *
      * @return a pointer to the connector
      */
-    MessengerConnector::pointer const& connector(std::string const& worker) const;
+    MessengerConnector::Ptr const& connector(std::string const& worker) const;
 
 private:
 
     /// Connection providers for individual workers
-    std::map<std::string, MessengerConnector::pointer> _connector;
+    std::map<std::string, MessengerConnector::Ptr> _connector;
 };
 
 }}} // namespace lsst::qserv::replica

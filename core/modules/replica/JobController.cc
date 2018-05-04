@@ -62,8 +62,8 @@ struct JobWrapperImpl
         _onFinish(_job);
     }
 
-    JobWrapperImpl(typename T::pointer const& job,
-                   typename T::callback_type  onFinish)
+    JobWrapperImpl(typename T::Ptr const& job,
+                   typename T::CallbackType  onFinish)
         :   JobWrapper(),
             _job(job),
             _onFinish(onFinish) {
@@ -72,26 +72,26 @@ struct JobWrapperImpl
     /// Destructor
     ~JobWrapperImpl() override = default;
 
-    Job::pointer job() const override { return _job; }
+    Job::Ptr job() const override { return _job; }
 
 private:
 
     // The context of the operation
 
-    typename T::pointer       _job;
-    typename T::callback_type _onFinish;
+    typename T::Ptr       _job;
+    typename T::CallbackType _onFinish;
 };
 
 ////////////////////////////////////////////////////////////////////
 //////////////////////////  JobController  //////////////////////////
 ////////////////////////////////////////////////////////////////////
 
-JobController::pointer JobController::create(ServiceProvider::pointer const& serviceProvider) {
-    return JobController::pointer(
+JobController::Ptr JobController::create(ServiceProvider::Ptr const& serviceProvider) {
+    return JobController::Ptr(
         new JobController(serviceProvider));
 }
 
-JobController::JobController(ServiceProvider::pointer const& serviceProvider)
+JobController::JobController(ServiceProvider::Ptr const& serviceProvider)
     :   _serviceProvider(serviceProvider),
         _controller(Controller::create (serviceProvider)),
         _stop(false) {
@@ -109,7 +109,7 @@ void JobController::run() {
 
         _controller->run();
 
-        JobController::pointer self = shared_from_this();
+        JobController::Ptr self = shared_from_this();
 
         _thread.reset(
             new std::thread(
@@ -184,22 +184,22 @@ void JobController::join() {
     if (_thread) { _thread->join(); }
 }
 
-FindAllJob::pointer JobController::findAll(std::string const& databaseFamily,
-                                           FindAllJob::callback_type onFinish,
-                                           Job::Options const& options) {
+FindAllJob::Ptr JobController::findAll(std::string const& databaseFamily,
+                                       FindAllJob::CallbackType onFinish,
+                                       Job::Options const& options) {
 
     LOGS(_log, LOG_LVL_DEBUG, "JobController  findAll");
 
     LOCK_GUARD;
 
-    JobController::pointer self = shared_from_this();
+    JobController::Ptr self = shared_from_this();
 
-    FindAllJob::pointer job =
+    FindAllJob::Ptr job =
         FindAllJob::create(
             databaseFamily,
             _controller,
             std::string(),
-            [self] (FindAllJob::pointer job) {
+            [self] (FindAllJob::Ptr job) {
                 self->onFinish (job);
             },
             options
@@ -223,22 +223,22 @@ FindAllJob::pointer JobController::findAll(std::string const& databaseFamily,
     return job;
 }
 
-FixUpJob::pointer JobController::fixUp(std::string const& databaseFamily,
-                                       FixUpJob::callback_type onFinish,
-                                       Job::Options const& options) {
+FixUpJob::Ptr JobController::fixUp(std::string const& databaseFamily,
+                                   FixUpJob::CallbackType onFinish,
+                                   Job::Options const& options) {
 
     LOGS(_log, LOG_LVL_DEBUG, "JobController  fixUp");
 
     LOCK_GUARD;
 
-    JobController::pointer self = shared_from_this();
+    JobController::Ptr self = shared_from_this();
 
-    FixUpJob::pointer job =
+    FixUpJob::Ptr job =
         FixUpJob::create(
             databaseFamily,
             _controller,
             std::string(),
-            [self] (FixUpJob::pointer job) {
+            [self] (FixUpJob::Ptr job) {
                 self->onFinish (job);
             },
             options
@@ -262,22 +262,22 @@ FixUpJob::pointer JobController::fixUp(std::string const& databaseFamily,
     return job;
 }
 
-PurgeJob::pointer JobController::purge(std::string const& databaseFamily,
-                                       unsigned int numReplicas,
-                                       PurgeJob::callback_type onFinish,
-                                       Job::Options const& options) {
+PurgeJob::Ptr JobController::purge(std::string const& databaseFamily,
+                                   unsigned int numReplicas,
+                                   PurgeJob::CallbackType onFinish,
+                                   Job::Options const& options) {
 
     LOGS(_log, LOG_LVL_DEBUG, "JobController  purge");
 
-    JobController::pointer self = shared_from_this();
+    JobController::Ptr self = shared_from_this();
 
-    PurgeJob::pointer job =
+    PurgeJob::Ptr job =
         PurgeJob::create(
             databaseFamily,
             numReplicas,
             _controller,
             std::string(),
-            [self] (PurgeJob::pointer job) {
+            [self] (PurgeJob::Ptr job) {
                 self->onFinish (job);
             },
             options
@@ -301,24 +301,24 @@ PurgeJob::pointer JobController::purge(std::string const& databaseFamily,
     return job;
 }
 
-ReplicateJob::pointer JobController::replicate(std::string const& databaseFamily,
-                                               unsigned int numReplicas,
-                                               ReplicateJob::callback_type onFinish,
-                                               Job::Options const& options) {
+ReplicateJob::Ptr JobController::replicate(std::string const& databaseFamily,
+                                           unsigned int numReplicas,
+                                           ReplicateJob::CallbackType onFinish,
+                                           Job::Options const& options) {
 
     LOGS(_log, LOG_LVL_DEBUG, "JobController  replicate");
 
     LOCK_GUARD;
 
-    JobController::pointer self = shared_from_this();
+    JobController::Ptr self = shared_from_this();
 
-    ReplicateJob::pointer job =
+    ReplicateJob::Ptr job =
         ReplicateJob::create(
             databaseFamily,
             numReplicas,
             _controller,
             std::string(),
-            [self] (ReplicateJob::pointer job) {
+            [self] (ReplicateJob::Ptr job) {
                 self->onFinish (job);
             },
             options
@@ -342,23 +342,23 @@ ReplicateJob::pointer JobController::replicate(std::string const& databaseFamily
     return job;
 }
 
-VerifyJob::pointer JobController::verify(VerifyJob::callback_type onFinish,
-                                         VerifyJob::callback_type_on_diff onReplicaDifference,
-                                         size_t maxReplicas,
-                                         bool computeCheckSum,
-                                         Job::Options const& options) {
+VerifyJob::Ptr JobController::verify(VerifyJob::CallbackType onFinish,
+                                     VerifyJob::CallbackTypeOnDiff onReplicaDifference,
+                                     size_t maxReplicas,
+                                     bool computeCheckSum,
+                                     Job::Options const& options) {
 
     LOGS(_log, LOG_LVL_DEBUG, "JobController  verify");
 
     LOCK_GUARD;
 
-    JobController::pointer self = shared_from_this();
+    JobController::Ptr self = shared_from_this();
 
-    VerifyJob::pointer job =
+    VerifyJob::Ptr job =
         VerifyJob::create(
             _controller,
             std::string(),
-            [self] (VerifyJob::pointer job) {
+            [self] (VerifyJob::Ptr job) {
                 self->onFinish (job);
             },
             onReplicaDifference,
@@ -385,25 +385,25 @@ VerifyJob::pointer JobController::verify(VerifyJob::callback_type onFinish,
     return job;
 }
 
-DeleteWorkerJob::pointer JobController::deleteWorker(
+DeleteWorkerJob::Ptr JobController::deleteWorker(
                                             std::string const& worker,
                                             bool permanentDelete,
-                                            DeleteWorkerJob::callback_type onFinish,
+                                            DeleteWorkerJob::CallbackType onFinish,
                                             Job::Options const& options) {
 
     LOGS(_log, LOG_LVL_DEBUG, "JobController  deleteWorker");
 
     LOCK_GUARD;
 
-    JobController::pointer self = shared_from_this();
+    JobController::Ptr self = shared_from_this();
 
-    DeleteWorkerJob::pointer job =
+    DeleteWorkerJob::Ptr job =
         DeleteWorkerJob::create(
             worker,
             permanentDelete,
             _controller,
             std::string(),
-            [self] (DeleteWorkerJob::pointer job) {
+            [self] (DeleteWorkerJob::Ptr job) {
                 self->onFinish (job);
             },
             options
@@ -472,11 +472,11 @@ void JobController::cancelAll() {
     LOCK_GUARD;
 }
 
-void JobController::onFinish(Job::pointer const& job) {
+void JobController::onFinish(Job::Ptr const& job) {
 
     LOGS(_log, LOG_LVL_DEBUG, "JobController  onFinish  jobId=" << job->id());
 
-    JobWrapper::pointer wrapper;
+    JobWrapper::Ptr wrapper;
     {
         LOCK_GUARD;
         wrapper = _registry[job->id()];

@@ -34,7 +34,7 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-ReplicaFinder::ReplicaFinder(Controller::pointer const& controller,
+ReplicaFinder::ReplicaFinder(Controller::Ptr const& controller,
                              std::string const& database,
                              std::ostream& os,
                              bool progressReport,
@@ -49,7 +49,7 @@ ReplicaFinder::ReplicaFinder(Controller::pointer const& controller,
         add(controller->findAllReplicas(
                             worker,
                             database,
-                            [this] (FindAllRequest::pointer ptr) {
+                            [this] (FindAllRequest::Ptr ptr) {
                                 this->onFinish(ptr);
                             }));
     }

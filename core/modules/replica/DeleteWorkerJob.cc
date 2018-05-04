@@ -57,7 +57,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.DeleteWorkerJob");
  * @return - a tuple of three elements
  */
 template <class T>
-std::tuple<size_t,size_t,size_t> counters(std::list<typename T::pointer> const& collection) {
+std::tuple<size_t,size_t,size_t> counters(std::list<typename T::Ptr> const& collection) {
     size_t total    = 0;
     size_t finished = 0;
     size_t success  = 0;
@@ -88,13 +88,13 @@ Job::Options const& DeleteWorkerJob::defaultOptions() {
     return options;
 }
 
-DeleteWorkerJob::pointer DeleteWorkerJob::create(std::string const& worker,
+DeleteWorkerJob::Ptr DeleteWorkerJob::create(std::string const& worker,
                                                  bool permanentDelete,
-                                                 Controller::pointer const& controller,
+                                                 Controller::Ptr const& controller,
                                                  std::string const& parentJobId,
-                                                 callback_type onFinish,
+                                                 CallbackType onFinish,
                                                  Job::Options const& options) {
-    return DeleteWorkerJob::pointer(
+    return DeleteWorkerJob::Ptr(
         new DeleteWorkerJob(worker,
                             permanentDelete,
                             controller,
@@ -105,9 +105,9 @@ DeleteWorkerJob::pointer DeleteWorkerJob::create(std::string const& worker,
 
 DeleteWorkerJob::DeleteWorkerJob(std::string const& worker,
                                  bool permanentDelete,
-                                 Controller::pointer const& controller,
+                                 Controller::Ptr const& controller,
                                  std::string const& parentJobId,
-                                 callback_type onFinish,
+                                 CallbackType onFinish,
                                  Job::Options const& options)
     :   Job(controller,
             parentJobId,
@@ -146,7 +146,7 @@ void DeleteWorkerJob::startImpl() {
 
     auto const statusRequest = _controller->statusOfWorkerService(
         _worker,
-        [&statusRequestFinished](ServiceStatusRequest::pointer const& request) {
+        [&statusRequestFinished](ServiceStatusRequest::Ptr const& request) {
             statusRequestFinished = true;
         },
         _id,    /* jobId */
@@ -166,7 +166,7 @@ void DeleteWorkerJob::startImpl() {
 
             auto const drainRequest = _controller->drainWorkerService(
                 _worker,
-                [&drainRequestFinished](ServiceDrainRequest::pointer const& request) {
+                [&drainRequestFinished](ServiceDrainRequest::Ptr const& request) {
                     drainRequestFinished = true;
                 },
                 _id,    /* jobId */
@@ -186,7 +186,7 @@ void DeleteWorkerJob::startImpl() {
                         auto const request = _controller->findAllReplicas(
                             _worker,
                             database,
-                            [self] (FindAllRequest::pointer const& request) {
+                            [self] (FindAllRequest::Ptr const& request) {
                                 self->onRequestFinish(request);
                             }
                         );
@@ -256,7 +256,7 @@ void DeleteWorkerJob::notify() {
     }
 }
 
-void DeleteWorkerJob::onRequestFinish(FindAllRequest::pointer const& request) {
+void DeleteWorkerJob::onRequestFinish(FindAllRequest::Ptr const& request) {
 
     LOGS(_log, LOG_LVL_DEBUG, context()
          << "onRequestFinish"
@@ -311,11 +311,11 @@ DeleteWorkerJob::disableWorker() {
     auto self = shared_from_base<DeleteWorkerJob>();
 
     for (auto&& databaseFamily: _controller->serviceProvider()->config()->databaseFamilies()) {
-        FindAllJob::pointer job = FindAllJob::create(
+        FindAllJob::Ptr job = FindAllJob::create(
             databaseFamily,
             _controller,
             _id,
-            [self] (FindAllJob::pointer job) {
+            [self] (FindAllJob::Ptr job) {
                 self->onJobFinish(job);
             }
         );
@@ -325,7 +325,7 @@ DeleteWorkerJob::disableWorker() {
     }
 }
 
-void DeleteWorkerJob::onJobFinish(FindAllJob::pointer const& job) {
+void DeleteWorkerJob::onJobFinish(FindAllJob::Ptr const& job) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "onJobFinish(FindAllJob) "
          << " databaseFamily: " << job->databaseFamily());
@@ -357,12 +357,12 @@ void DeleteWorkerJob::onJobFinish(FindAllJob::pointer const& job) {
                 auto self = shared_from_base<DeleteWorkerJob>();
 
                 for (auto&& databaseFamily: _controller->serviceProvider()->config()->databaseFamilies()) {
-                    ReplicateJob::pointer const job = ReplicateJob::create(
+                    ReplicateJob::Ptr const job = ReplicateJob::create(
                         databaseFamily,
                         0,  /* numReplicas -- pull from Configuration */
                         _controller,
                         _id,
-                        [self] (ReplicateJob::pointer job) {
+                        [self] (ReplicateJob::Ptr job) {
                             self->onJobFinish(job);
                         }
                     );
@@ -385,7 +385,7 @@ void DeleteWorkerJob::onJobFinish(FindAllJob::pointer const& job) {
     if (_state == State::FINISHED) { notify (); }
 }
 
-void DeleteWorkerJob::onJobFinish(ReplicateJob::pointer const& job) {
+void DeleteWorkerJob::onJobFinish(ReplicateJob::Ptr const& job) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "onJobFinish(ReplicateJob) "
          << " databaseFamily: " << job->databaseFamily()

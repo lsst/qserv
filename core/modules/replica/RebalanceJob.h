@@ -144,10 +144,10 @@ class RebalanceJob
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<RebalanceJob> pointer;
+    typedef std::shared_ptr<RebalanceJob> Ptr;
 
     /// The function type for notifications on the completon of the request
-    typedef std::function<void(pointer)> callback_type;
+    typedef std::function<void(Ptr)> CallbackType;
 
     /// @return default options object for this type of a request
     static Job::Options const& defaultOptions();
@@ -165,12 +165,12 @@ public:
      * @param onFinish       - callback function to be called upon a completion of the job
      * @param options        - job options
      */
-    static pointer create(std::string const& databaseFamily,
-                          bool estimateOnly,
-                          Controller::pointer const& controller,
-                          std::string const& parentJobId,
-                          callback_type onFinish,
-                          Job::Options const& options=defaultOptions());
+    static Ptr create(std::string const& databaseFamily,
+                      bool estimateOnly,
+                      Controller::Ptr const& controller,
+                      std::string const& parentJobId,
+                      CallbackType onFinish,
+                      Job::Options const& options=defaultOptions());
 
     // Default construction and copy semantics are prohibited
 
@@ -212,9 +212,9 @@ protected:
      */
     RebalanceJob(std::string const& databaseFamily,
                  bool estimateOnly,
-                 Controller::pointer const& controller,
+                 Controller::Ptr const& controller,
                  std::string const& parentJobId,
-                 callback_type onFinish,
+                 CallbackType onFinish,
                  Job::Options const& options);
 
     /**
@@ -250,7 +250,7 @@ protected:
      *
      * @param request - a pointer to a request
      */
-    void onJobFinish(MoveReplicaJob::pointer const& job);
+    void onJobFinish(MoveReplicaJob::Ptr const& job);
 
     /**
      * Restart the job from scratch. This method will reset object context
@@ -275,11 +275,11 @@ protected:
     bool _estimateOnly;
 
     /// Client-defined function to be called upon the completion of the job
-    callback_type _onFinish;
+    CallbackType _onFinish;
 
     /// The chained job to be completed first in order to figure out
     /// replica disposition.
-    FindAllJob::pointer _findAllJob;
+    FindAllJob::Ptr _findAllJob;
 
     /// The number of chunks which required to be moved but couldn't be locked
     /// in the exclusive mode. The counter will be analyzed upon a completion
@@ -288,14 +288,14 @@ protected:
     size_t _numFailedLocks;
 
     /// A collection of requests implementing the operation
-    std::vector<MoveReplicaJob::pointer> _moveReplicaJobs;
+    std::vector<MoveReplicaJob::Ptr> _moveReplicaJobs;
 
     /// The cache of locked chunks. It's meant to be used for keeping track
     /// of all jobs associated with each locked chunks. Chuns will get unlocked
     /// when all relevant jobs will get finished.
     std::map<unsigned int,          // chunk
              std::map<std::string,  // sourceWorker
-                      MoveReplicaJob::pointer>> _chunk2jobs;
+                      MoveReplicaJob::Ptr>> _chunk2jobs;
 
     /// The result of the operation (gets updated as requests are finishing)
     RebalanceJobResult _replicaData;

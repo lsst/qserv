@@ -62,7 +62,7 @@ class WorkerServer
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<WorkerServer> pointer;
+    typedef std::shared_ptr<WorkerServer> Ptr;
 
     /**
      * Static factory method is needed to prevent issue with the lifespan
@@ -73,9 +73,9 @@ public:
      * @param requestFactory  - the factory of requests
      * @workerName            - the name of a worker this instance represents
      */
-    static pointer create(ServiceProvider::pointer const& serviceProvider,
-                          WorkerRequestFactory& requestFactory,
-                          std::string const& workerName);
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
+                      WorkerRequestFactory& requestFactory,
+                      std::string const& workerName);
 
     // Default construction and copy semantics are prohibited
 
@@ -107,7 +107,7 @@ private:
      * @param requestFactory  - the factory of requests
      * @workerName            - the name of a worker this instance represents
      */
-    WorkerServer(ServiceProvider::pointer const& serviceProvider,
+    WorkerServer(ServiceProvider::Ptr const& serviceProvider,
                  WorkerRequestFactory& requestFactory,
                  std::string const& workerName);
 
@@ -121,7 +121,7 @@ private:
      * the comunication will be forewarded to the connection object
      * specified as a parameter of the method.
      */
-    void handleAccept(WorkerServerConnection::pointer const& connection,
+    void handleAccept(WorkerServerConnection::Ptr const& connection,
                       boost::system::error_code const& ec);
 
     /// Return the context string
@@ -131,7 +131,7 @@ private:
 
     // Parameters of the object
 
-    ServiceProvider::pointer _serviceProvider;
+    ServiceProvider::Ptr _serviceProvider;
     std::string _workerName;
 
     // Cached parameters of the worker

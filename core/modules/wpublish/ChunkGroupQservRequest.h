@@ -62,7 +62,7 @@ public:
 
     /// The callback function type to be used for notifications on
     /// the operation completion.
-    using calback_type =
+    using CallbackType =
             std::function<void(Status,                  // completion status
                                std::string const&)>;    // error message (depends on a status)
 
@@ -90,7 +90,7 @@ protected:
                            unsigned int chunk,
                            std::vector<std::string> const& databases,
                            bool force,
-                           calback_type onFinish);
+                           CallbackType onFinish);
 
     /// Implement the corresponding method of the base class
     void onRequest(proto::FrameBuffer& buf) override;
@@ -109,7 +109,7 @@ private:
     unsigned int _chunk;
     std::vector<std::string> _databases;
     bool _force;
-    calback_type _onFinish;
+    CallbackType _onFinish;
 };
 
 /**
@@ -122,7 +122,7 @@ class AddChunkGroupQservRequest
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<AddChunkGroupQservRequest> pointer;
+    typedef std::shared_ptr<AddChunkGroupQservRequest> Ptr;
 
     // Default construction and copy semantics is prohibited
     AddChunkGroupQservRequest() = delete;
@@ -141,9 +141,9 @@ public:
      * @param databases - names of databases in the group
      * @param onFinish  - callback function to be called upon request completion
      */
-    static pointer create(unsigned int chunk,
+    static Ptr create(unsigned int chunk,
                           std::vector<std::string> const& databases,
-                          calback_type onFinish = nullptr);
+                          CallbackType onFinish = nullptr);
 
 private:
 
@@ -157,7 +157,7 @@ private:
      */
     AddChunkGroupQservRequest(unsigned int chunk,
                               std::vector<std::string> const& databases,
-                              calback_type onFinish);
+                              CallbackType onFinish);
 };
 
 /**
@@ -170,7 +170,7 @@ class RemoveChunkGroupQservRequest
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<RemoveChunkGroupQservRequest> pointer;
+    typedef std::shared_ptr<RemoveChunkGroupQservRequest> Ptr;
 
     // Default construction and copy semantics is prohibited
     RemoveChunkGroupQservRequest() = delete;
@@ -190,10 +190,10 @@ public:
      * @param force     - force the proposed change even if the chunk is in use
      * @param onFinish  - callback function to be called upon request completion
      */
-    static pointer create(unsigned int chunk,
-                          std::vector<std::string> const& databases,
-                          bool force,
-                          calback_type onFinish = nullptr);
+    static Ptr create(unsigned int chunk,
+                      std::vector<std::string> const& databases,
+                      bool force,
+                      CallbackType onFinish = nullptr);
 
 private:
 
@@ -209,7 +209,7 @@ private:
     RemoveChunkGroupQservRequest(unsigned int chunk,
                                  std::vector<std::string> const& databases,
                                  bool force,
-                                 calback_type onFinish);
+                                 CallbackType onFinish);
 };
 
 }}} // namespace lsst::qserv::wpublish
