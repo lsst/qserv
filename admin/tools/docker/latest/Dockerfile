@@ -51,6 +51,8 @@ COPY scripts/*.sh /qserv/scripts/
 
 WORKDIR /home/qserv
 
+RUN mkdir src
+
 ENV QSERV_RUN_DIR /qserv/run
 
 # Generate /qserv/run/sysconfig/qserv and /qserv/run/etc/init.d/qserv-functions

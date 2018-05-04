@@ -26,11 +26,11 @@ Available options:
 
 Create Docker image containing Qserv binaries.
 
-Qserv is build using a local source repository whose path is provided as argument
-Other source directories supporting eups build can be provided as argument and
-will also be build.
+Qserv is built using a local git repository whose path is provided as argument
+Other local git directories supporting eups build can be provided as arguments and
+will also be built.
 
-WARNING: Build is performed in Docker image with user with uid=1000 and
+WARNING: Build is performed in Docker image by user with uid=1000 and
 gid=1000. It is better to have same uid/gid on host machine in order for Docker
 to write compilation product on host filesystem. Here's and example describing
 how to start such a machine: https://github.com/fjammes/os-qserv-build-node
@@ -67,7 +67,7 @@ SRC_DIRS=""
 for HOST_SRC_DIR in $HOST_SRC_DIRS
 do
     PRODUCT=$(basename $HOST_SRC_DIR)
-    SRC_DIR="/home/qserv/$PRODUCT"
+    SRC_DIR="/home/qserv/src/$PRODUCT"
     SRC_DIRS="$SRC_DIRS $SRC_DIR"
     OPT_MOUNT="$OPT_MOUNT -v $HOST_SRC_DIR:$SRC_DIR"
 done
