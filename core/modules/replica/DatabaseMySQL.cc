@@ -24,6 +24,7 @@
 #include "replica/DatabaseMySQL.h"
 
 // System headers
+#include <regex>
 #include <sstream>
 #include <stdexcept>
 
@@ -37,15 +38,6 @@
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.DatabaseMySQL");
-
-/**
- * The function is used to comply with the MySQL convention for
- * the default values of the connection parameters.
- */
-char const* stringOrNull(std::string const& str) {
-    if (str.empty()) { return 0; }
-    return str.c_str();
-}
 
 using Row              = lsst::qserv::replica::database::mysql::Row;
 using InvalidTypeError = lsst::qserv::replica::database::mysql::InvalidTypeError;
@@ -71,7 +63,7 @@ bool getAsNumber(Row const& row,
     try {
         Row::Cell const& cell = row.getDataCell(key);
         if (cell.first) {
-            value = boost::lexical_cast<uint64_t>(cell.first, cell.second);
+            value = boost::lexical_cast<T>(cell.first, cell.second);
             return true;
         }
         return false;
@@ -92,7 +84,7 @@ namespace mysql {
 /////////////////////////////////////////////////////
 //                ConnectionParams                 //
 /////////////////////////////////////////////////////
-
+#if 0
 ConnectionParams ConnectionParams::parse(std::string const& params,
                                          std::string const& defaultHost,
                                          uint16_t           defaultPort,
@@ -117,8 +109,7 @@ ConnectionParams ConnectionParams::parse(std::string const& params,
             (pos == 0) or                   /* no parameter name before '=' */
             (pos + 1 >= token.size())) {    /* no value after '=' */
             throw std::invalid_argument(
-                    context + "incorrect syntax of the encoded parameters string: '" +
-                    params + "'");
+                    context + "incorrect syntax of the encoded connection parameters string");
         }
         std::string const param = token.substr(0, pos);     /* what's before '=' */
         std::string const val   = token.substr(pos + 1);    /* whats after '=' */
@@ -130,28 +121,71 @@ ConnectionParams ConnectionParams::parse(std::string const& params,
         else if ("database" == param) { connectionParams.database = val; }
         else                          {
             throw std::invalid_argument(
-                        context + "unknown parameter '" + param + "' found in the encoded parameters string: '" +
-                        params + "'");
+                    context + "unknown parameter found in the encoded parameters string");
         }
     }
     if (connectionParams.database.empty()) {
         throw std::invalid_argument(
-                context + "database name not found in the encoded parameters string: '" +
-                params + "'");
+                context + "database name not found in the encoded parameters string");
     }
     LOGS(_log, LOG_LVL_DEBUG, context << connectionParams);
 
     return connectionParams;
 }
+#else
+ConnectionParams ConnectionParams::parse(std::string const& params,
+                                         std::string const& defaultHost,
+                                         uint16_t           defaultPort,
+                                         std::string const& defaultUser,
+                                         std::string const& defaultPassword) {
 
+    static std::string const context = "ConnectionParams::parse  ";
+
+
+    std::regex re("database=([^,]*),host=([^,]*),port=([0-9]*),user=([^,]*),password=(.*)",
+                  std::regex::extended);
+    std::smatch match;
+    if (not std::regex_search(params, match, re)) {
+        throw std::invalid_argument(context + "incorrect syntax of the encoded connection parameters string");
+    }
+    if (match.size() != 6) {
+        throw std::runtime_error(context + "problem with the regular expression");
+    }
+
+    ConnectionParams connectionParams;
+
+    // no default option for the database
+    connectionParams.database = match[1].str();
+    if (connectionParams.database.empty()) {
+        throw std::invalid_argument(
+                context + "database name not found in the encoded parameters string");
+    }
+
+    std::string const host = match[2].str();
+    connectionParams.host  = host.empty() ? defaultHost : host;
+
+    std::string const port = match[3].str();
+    connectionParams.port  = port.empty() ?  defaultPort : (uint16_t)std::stoul(port);
+
+    std::string const user = match[4].str();
+    connectionParams.user  = user.empty() ? defaultUser : user;
+
+    std::string const password = match[5].str();
+    connectionParams.password = password.empty() ?  defaultPassword : password;
+
+    LOGS(_log, LOG_LVL_DEBUG, context << connectionParams);
+
+
+    return connectionParams;
+}
+#endif
 std::string ConnectionParams::toString() const {
-    std::ostringstream ss;
-    if (not database.empty()) { ss << (ss.str().empty() ? "" : ",") << "database=" << database; }
-    if (not host.empty())     { ss << (ss.str().empty() ? "" : ",") << "host="     << host; }
-    if (port)                 { ss << (ss.str().empty() ? "" : ",") << "port="     << port; }
-    if (not user.empty())     { ss << (ss.str().empty() ? "" : ",") << "user="     << user; }
-    if (not password.empty()) { ss << (ss.str().empty() ? "" : ",") << "password=" << "*"; }
-    return ss.str();
+    return
+        std::string("database=") + database +
+        std::string(",host=")    + host +
+        std::string(",port=")    + std::to_string(port) +
+        std::string(",user=")    + user +
+        std::string(",password=*");
 }
 
 std::ostream& operator<<(std::ostream& os, ConnectionParams const& params) {
@@ -164,13 +198,12 @@ std::ostream& operator<<(std::ostream& os, ConnectionParams const& params) {
 ///////////////////////////////////////
 
 Row::Row()
-    :   _isValid (false) {
+    :   _name2indexPtr(nullptr) {
 }
 
 size_t Row::numColumns() const {
-    static std::string const context = "Row::numColumns()  ";
-    if (not _isValid) {
-        throw std::logic_error(context + "the object is not valid");
+    if (not isValid()) {
+        throw std::logic_error("Row::numColumns()  the object is not valid");
     }
     return  _index2cell.size();
 }
@@ -229,7 +262,7 @@ Row::Cell const& Row::getDataCell(size_t columnIdx) const {
 
     static std::string const context = "Row::getDataCell()  ";
 
-    if (not _isValid) {
+    if (not isValid()) {
         throw std::logic_error(context + "the object is not valid");
     }
     if (columnIdx >= _index2cell.size()) {
@@ -244,14 +277,14 @@ Row::Cell const& Row::getDataCell(std::string const& columnName) const {
 
     static std::string const context = "Row::getDataCell()  ";
 
-    if (not _isValid) {
+    if (not isValid()) {
         throw std::logic_error(context + "the object is not valid");
     }
-    if (not _name2index.count(columnName)) {
+    if (not _name2indexPtr->count(columnName)) {
         throw std::invalid_argument(
                 context + "the column '" + columnName + "'is not in the result set");
     }
-    return _index2cell.at(_name2index.at(columnName));
+    return _index2cell.at(_name2indexPtr->at(columnName));
 }
 
 //////////////////////////////////////////////////
@@ -312,7 +345,10 @@ Connection::Connection(ConnectionParams const& connectionParams,
 
 
 Connection::~Connection() {
-    if (_res) { mysql_free_result (_res); }
+    if (_res) {
+        mysql_free_result(_res);
+        mysql_close(_mysql);
+    }
 }
 
 std::string Connection::escape(std::string const& inStr) const {
@@ -333,7 +369,7 @@ std::string Connection::escape(std::string const& inStr) const {
     // The temporary storage will get automatically deconstructed in the end
     // of this block.
 
-    std::unique_ptr<char> outStr(new char[outLenMax]);
+    std::unique_ptr<char[]> outStr(new char[outLenMax]);
     size_t const outLen =
         mysql_real_escape_string(
             _mysql,
@@ -388,6 +424,7 @@ Connection::pointer Connection::execute(std::string const& query) {
     _numFields = 0;
 
     _columnNames.clear();
+    _name2index.clear();
 
     if (mysql_real_query(_mysql,
                          _lastQuery.c_str(),
@@ -418,6 +455,7 @@ Connection::pointer Connection::execute(std::string const& query) {
 
         for (size_t i = 0; i < _numFields; i++) {
             _columnNames.push_back(std::string(_fields[i].name));
+            _name2index[_fields[i].name] = i;
         }
     }
     return shared_from_this();
@@ -453,15 +491,12 @@ bool Connection::next(Row& row) {
     // Transfer the data pointers for each field and their lengths into
     // the provided Row object.
 
-    row._isValid = true;
-
-    row._name2index.clear();
+    row._name2indexPtr = &_name2index;
     row._index2cell.clear();
 
     row._index2cell.reserve(_numFields);
     for (size_t i = 0; i < _numFields; ++i) {
-        row._name2index[_fields[i].name] = i;
-        row._index2cell.emplace_back(Row::Cell {_row[i], lengths[i]});
+        row._index2cell.emplace_back(Row::Cell{_row[i], lengths[i]});
     }
     return true;
 }
@@ -477,17 +512,17 @@ void Connection::connect() {
 
     // Allow automatic reconnect if requested
     if (_autoReconnect) {
-        my_bool reconnect = 0;
+        my_bool reconnect = 1;
         mysql_options(_mysql, MYSQL_OPT_RECONNECT, &reconnect);
     }
 
     // Connect now
     if (not mysql_real_connect(
         _mysql,
-        ::stringOrNull(_connectionParams.host),
-        ::stringOrNull(_connectionParams.user),
-        ::stringOrNull(_connectionParams.password),
-        ::stringOrNull(_connectionParams.database),
+        _connectionParams.host.empty()     ? nullptr : _connectionParams.host.c_str(),
+        _connectionParams.user.empty()     ? nullptr : _connectionParams.user.c_str(),
+        _connectionParams.password.empty() ? nullptr : _connectionParams.password.c_str(),
+        _connectionParams.database.empty() ? nullptr : _connectionParams.database.c_str(),
         _connectionParams.port,
         0,  /* no default UNIX socket */
         0)) /* no default client flag */

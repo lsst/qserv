@@ -117,7 +117,7 @@ WorkerInfo const& ConfigurationMySQL::disableWorker(std::string const& name) {
         } catch (database::mysql::Error const& ex) {
             LOGS(_log, LOG_LVL_ERROR, context() << "MySQL error: " << ex.what());
             if (conn and conn->inTransaction()) {
-                conn->commit();
+                conn->rollback();
             }
         }
     }
