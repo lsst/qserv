@@ -126,8 +126,8 @@ bool test() {
         // Note that omFinish callbak which are activated upon a completion
         // of the requsts will be run in that Controller's thread.
 
-        replica::ServiceProvider::pointer const provider   = replica::ServiceProvider::create(configUrl);
-        replica::Controller::pointer      const controller = replica::Controller::create(provider);
+        replica::ServiceProvider::Ptr const provider   = replica::ServiceProvider::create(configUrl);
+        replica::Controller::Ptr      const controller = replica::Controller::create(provider);
 
         controller->run();
 
@@ -143,13 +143,13 @@ bool test() {
             databaseFamily,
             controller,
             std::string(),
-            [&replicaJobFinished] (replica::FindAllJob::pointer const& job) {
+            [&replicaJobFinished] (replica::FindAllJob::Ptr const& job) {
                 replicaJobFinished = true;
             }
         );
         findAllJob->start();
 
-        replica::QservGetReplicasJob::pointer qservGetReplicasJob;
+        replica::QservGetReplicasJob::Ptr qservGetReplicasJob;
         if (pullQservReplicas) {
             std::atomic<bool> qservJobFinished{false};
             bool const inUseOnly = false;
@@ -158,7 +158,7 @@ bool test() {
                 controller,
                 std::string(),
                 inUseOnly,
-                [&qservJobFinished] (replica::QservGetReplicasJob::pointer const& job) {
+                [&qservJobFinished] (replica::QservGetReplicasJob::Ptr const& job) {
                     qservJobFinished = true;
                 }
             );

@@ -175,7 +175,7 @@ ServiceState const& ServiceManagementRequestBaseM::getServiceState() const {
 }
 
 ServiceManagementRequestBaseM::ServiceManagementRequestBaseM(
-                                    ServiceProvider::pointer const&      serviceProvider,
+                                    ServiceProvider::Ptr const&      serviceProvider,
                                     boost::asio::io_service&             io_service,
                                     char const*                          requestTypeName,
                                     std::string const&                   worker,

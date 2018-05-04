@@ -56,10 +56,10 @@ class SetReplicasQservMgtRequest
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<SetReplicasQservMgtRequest> pointer;
+    typedef std::shared_ptr<SetReplicasQservMgtRequest> Ptr;
 
     /// The function type for notifications on the completon of the request
-    typedef std::function<void(pointer)> callback_type;
+    typedef std::function<void(Ptr)> CallbackType;
 
     // Default construction and copy semantics are prohibited
 
@@ -83,12 +83,12 @@ public:
      *                          the operation are in use.
      * @param onFinish        - callback function to be called upon request completion
      */
-    static pointer create(ServiceProvider::pointer const& serviceProvider,
-                          boost::asio::io_service& io_service,
-                          std::string const& worker,
-                          QservReplicaCollection const& newReplicas,
-                          bool force = false,
-                          callback_type onFinish = nullptr);
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
+                      boost::asio::io_service& io_service,
+                      std::string const& worker,
+                      QservReplicaCollection const& newReplicas,
+                      bool force = false,
+                      CallbackType onFinish = nullptr);
 
     /// @return collection of new replicas to be set at the Qserv worker
     QservReplicaCollection const& newReplicas() const { return _newReplicas; }
@@ -119,12 +119,12 @@ private:
      *                          the operation are in use.
      * @param onFinish        - callback function to be called upon request completion
      */
-    SetReplicasQservMgtRequest(ServiceProvider::pointer const& serviceProvider,
+    SetReplicasQservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
                                boost::asio::io_service& io_service,
                                std::string const& worker,
                                QservReplicaCollection const& newReplicas,
                                bool force,
-                               callback_type onFinish);
+                               CallbackType onFinish);
 
     /**
      * Carry over results of the request into a local collection.
@@ -162,10 +162,10 @@ private:
     bool _force;
 
     /// The callback function for sending a notification upon request completion
-    callback_type _onFinish;
+    CallbackType _onFinish;
 
     /// A request to the remote services
-    wpublish::SetChunkListQservRequest::pointer _qservRequest;
+    wpublish::SetChunkListQservRequest::Ptr _qservRequest;
 
     /// A collection of replicas reported by the Qservr worker
     QservReplicaCollection _replicas;

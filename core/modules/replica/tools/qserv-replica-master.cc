@@ -66,14 +66,14 @@ bool         chunkLocksReport;
  * jobs. The method will ensure a new job will be launched immediatelly upon
  * a completion of the previous one unless the later was was explicitly canceled.
  */
-void submitVerifyJob(replica::JobController::pointer const& jobCtrl) {
+void submitVerifyJob(replica::JobController::Ptr const& jobCtrl) {
     jobCtrl->verify (
-        [jobCtrl] (replica::VerifyJob::pointer const& job) {
+        [jobCtrl] (replica::VerifyJob::Ptr const& job) {
             if (job->extendedState() != replica::Job::ExtendedState::CANCELLED) {
                 submitVerifyJob (jobCtrl);
             }
         },
-        [] (replica::VerifyJob::pointer const& job,
+        [] (replica::VerifyJob::Ptr const& job,
             replica::ReplicaDiff const& selfReplicaDiff,
             std::vector<replica::ReplicaDiff> const& otherReplicaDiff) {
 
@@ -111,8 +111,8 @@ bool run() {
         // Note that omFinish callbak which are activated upon a completion
         // of the job will be run in a thread wich will differ from the current one
 
-        replica::ServiceProvider::pointer const provider  = replica::ServiceProvider::create(configUrl);
-        replica::JobController::pointer   const jobCtrl   = replica::JobController::create(provider);
+        replica::ServiceProvider::Ptr const provider  = replica::ServiceProvider::create(configUrl);
+        replica::JobController::Ptr   const jobCtrl   = replica::JobController::create(provider);
 
         jobCtrl->run();
 
@@ -121,9 +121,9 @@ bool run() {
 
         for (auto const& databaseFamily: provider->config()->databaseFamilies()) {
             std::atomic<bool> finished{false};
-            replica::FindAllJob::pointer const job = jobCtrl->findAll(
+            replica::FindAllJob::Ptr const job = jobCtrl->findAll(
                 databaseFamily,
-                [&finished] (replica::FindAllJob::pointer const& job) {
+                [&finished] (replica::FindAllJob::Ptr const& job) {
                     finished = true;
                 }
             );
@@ -149,9 +149,9 @@ bool run() {
 
             for (auto const& databaseFamily: provider->config()->databaseFamilies()) {
                 std::atomic<bool> finished{false};
-                replica::FixUpJob::pointer const job = jobCtrl->fixUp(
+                replica::FixUpJob::Ptr const job = jobCtrl->fixUp(
                     databaseFamily,
-                    [&finished] (replica::FixUpJob::pointer const& job) {
+                    [&finished] (replica::FixUpJob::Ptr const& job) {
                         finished = true;
                     }
                 );
@@ -166,10 +166,10 @@ bool run() {
 
             for (auto const& databaseFamily: provider->config()->databaseFamilies()) {
                 std::atomic<bool> finished{false};
-                replica::ReplicateJob::pointer const job = jobCtrl->replicate(
+                replica::ReplicateJob::Ptr const job = jobCtrl->replicate(
                     databaseFamily,
                     numReplicas,
-                    [&finished] (replica::ReplicateJob::pointer const& job) {
+                    [&finished] (replica::ReplicateJob::Ptr const& job) {
                         finished = true;
                     }
                 );
@@ -184,10 +184,10 @@ bool run() {
 
             for (auto const& databaseFamily: provider->config()->databaseFamilies()) {
                 std::atomic<bool> finished{false};
-                replica::PurgeJob::pointer const job = jobCtrl->purge(
+                replica::PurgeJob::Ptr const job = jobCtrl->purge(
                     databaseFamily,
                     numReplicas,
-                    [&finished] (replica::PurgeJob::pointer const& job) {
+                    [&finished] (replica::PurgeJob::Ptr const& job) {
                         finished = true;
                     }
                 );

@@ -73,7 +73,7 @@ std::string WorkerRequest::status2string(CompletionStatus status,
     return status2string(status) + "::" + replica::status2string(extendedStatus);
 }
 
-WorkerRequest::WorkerRequest(ServiceProvider::pointer const& serviceProvider,
+WorkerRequest::WorkerRequest(ServiceProvider::Ptr const& serviceProvider,
                              std::string const& worker,
                              std::string const& type,
                              std::string const& id,

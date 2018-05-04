@@ -56,10 +56,10 @@ class GetReplicasQservMgtRequest
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<GetReplicasQservMgtRequest> pointer;
+    typedef std::shared_ptr<GetReplicasQservMgtRequest> Ptr;
 
     /// The function type for notifications on the completon of the request
-    typedef std::function<void(pointer)> callback_type;
+    typedef std::function<void(Ptr)> CallbackType;
 
     // Default construction and copy semantics are prohibited
 
@@ -82,12 +82,12 @@ public:
      * @param inUseOnly       - return replicas which're presently in use
      * @param onFinish        - callback function to be called upon request completion
      */
-    static pointer create(ServiceProvider::pointer const& serviceProvider,
-                          boost::asio::io_service& io_service,
-                          std::string const& worker,
-                          std::string const& databaseFamily,
-                          bool inUseOnly = false,
-                          callback_type onFinish = nullptr);
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
+                      boost::asio::io_service& io_service,
+                      std::string const& worker,
+                      std::string const& databaseFamily,
+                      bool inUseOnly = false,
+                      CallbackType onFinish = nullptr);
 
     /// @return name of a database family
     std::string const& databaseFamily() const { return _databaseFamily; }
@@ -115,12 +115,12 @@ private:
      * @param databaseFamily  - the name of a database family
      * @param onFinish        - callback function to be called upon request completion
      */
-    GetReplicasQservMgtRequest(ServiceProvider::pointer const& serviceProvider,
+    GetReplicasQservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
                                boost::asio::io_service& io_service,
                                std::string const& worker,
                                std::string const& databaseFamily,
                                bool inUseOnly,
-                               callback_type onFinish);
+                               CallbackType onFinish);
 
     /**
      * Carry over results of the request into a local collection. Filter results
@@ -159,10 +159,10 @@ private:
     bool _inUseOnly;
 
     /// The callback function for sending a notification upon request completion
-    callback_type _onFinish;
+    CallbackType _onFinish;
 
     /// A request to the remote services
-    wpublish::GetChunkListQservRequest::pointer _qservRequest;
+    wpublish::GetChunkListQservRequest::Ptr _qservRequest;
 
     /// A collection of replicas reported by the Qservr worker
     QservReplicaCollection _replicas;

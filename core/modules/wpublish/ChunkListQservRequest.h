@@ -70,7 +70,7 @@ public:
 
     /// The callback function type to be used for notifications on
     /// the operation completion.
-    using calback_type =
+    using CallbackType =
         std::function<void(Status,                      // completion status
                            std::string const&,          // error message
                            ChunkCollection const&,      // chunks added   (if success)
@@ -96,7 +96,7 @@ protected:
      */
      ChunkListQservRequest(bool rebuild,
                            bool reload,
-                           calback_type onFinish = nullptr);
+                           CallbackType onFinish = nullptr);
 
     /// Implement the corresponding method of the base class
     void onRequest(proto::FrameBuffer& buf) override;
@@ -117,7 +117,7 @@ private:
 
     /// Optional callback function to be called upon the completion
     /// (successfull or not) of the request.
-    calback_type _onFinish;
+    CallbackType _onFinish;
 };
 
 
@@ -131,7 +131,7 @@ class ReloadChunkListQservRequest
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<ReloadChunkListQservRequest> pointer;
+    typedef std::shared_ptr<ReloadChunkListQservRequest> Ptr;
 
     /**
      * Static factory method is needed to prevent issues with the lifespan
@@ -141,7 +141,7 @@ public:
      * @param onFinish - optional callback function to be called upon the completion
      *                   (successful or not) of the request.
      */
-    static pointer create(calback_type onFinish = nullptr);
+    static Ptr create(CallbackType onFinish = nullptr);
 
     // Default construction and copy semantics are prohibited
     ReloadChunkListQservRequest() = delete;
@@ -159,7 +159,7 @@ protected:
      * @param onFinish - optional callback function to be called upon the completion
      *                   (successful or not) of the request.
      */
-     ReloadChunkListQservRequest(calback_type onFinish);
+     ReloadChunkListQservRequest(CallbackType onFinish);
 };
 
 /**
@@ -172,7 +172,7 @@ class RebuildChunkListQservRequest
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<RebuildChunkListQservRequest> pointer;
+    typedef std::shared_ptr<RebuildChunkListQservRequest> Ptr;
 
     /*
      * Static factory method is needed to prevent issues with the lifespan
@@ -183,8 +183,8 @@ public:
      * @param onFinish - optional callback function to be called upon the completion
      *                   (successful or not) of the request.
      */
-    static pointer create(bool reload,
-                          calback_type onFinish = nullptr);
+    static Ptr create(bool reload,
+                      CallbackType onFinish = nullptr);
 
     // Default construction and copy semantics are prohibited
     RebuildChunkListQservRequest() = delete;
@@ -204,7 +204,7 @@ protected:
      *                   (successful or not) of the request.
      */
     RebuildChunkListQservRequest(bool reload,
-                                 calback_type onFinish);
+                                 CallbackType onFinish);
 };
 
 }}} // namespace lsst::qserv::wpublish

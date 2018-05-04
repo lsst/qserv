@@ -60,7 +60,7 @@ class FileServer
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<FileServer> pointer;
+    typedef std::shared_ptr<FileServer> Ptr;
 
     /**
      * Static factory method is needed to prevent issue with the lifespan
@@ -70,8 +70,8 @@ public:
      * @param serviceProvider - for configuration, etc. services
      * @workerName            - the name of a worker this instance represents
      */
-    static pointer create(ServiceProvider::pointer const& serviceProvider,
-                          std::string const& workerName);
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
+                      std::string const& workerName);
 
     // Default construction and copy semantics are prohibited
 
@@ -101,7 +101,7 @@ private:
      * @param serviceProvider - for configuration, etc. services
      * @workerName            - the name of a worker this instance represents
      */
-    FileServer(ServiceProvider::pointer const& serviceProvider,
+    FileServer(ServiceProvider::Ptr const& serviceProvider,
                std::string const& workerName);
 
     /**
@@ -114,7 +114,7 @@ private:
      * the comunication will be forewarded to the connection object
      * specified as a parameter of the method.
      */
-    void handleAccept(FileServerConnection::pointer const& connection,
+    void handleAccept(FileServerConnection::Ptr const& connection,
                       boost::system::error_code const& ec);
 
     /// Return the context string
@@ -124,7 +124,7 @@ private:
 
     // Parameters of the object
 
-    ServiceProvider::pointer _serviceProvider;
+    ServiceProvider::Ptr _serviceProvider;
     std::string _workerName;
 
     // Cached parameters of the worker

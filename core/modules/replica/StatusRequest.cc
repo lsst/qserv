@@ -48,7 +48,7 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-StatusRequestBaseM::StatusRequestBaseM(ServiceProvider::pointer const& serviceProvider,
+StatusRequestBaseM::StatusRequestBaseM(ServiceProvider::Ptr const& serviceProvider,
                                        boost::asio::io_service& io_service,
                                        char const*              requestTypeName,
                                        std::string const&       worker,

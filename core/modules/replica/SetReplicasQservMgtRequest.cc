@@ -51,14 +51,14 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-SetReplicasQservMgtRequest::pointer SetReplicasQservMgtRequest::create(
-                                        ServiceProvider::pointer const& serviceProvider,
+SetReplicasQservMgtRequest::Ptr SetReplicasQservMgtRequest::create(
+                                        ServiceProvider::Ptr const& serviceProvider,
                                         boost::asio::io_service& io_service,
                                         std::string const& worker,
                                         QservReplicaCollection const& newReplicas,
                                         bool force,
-                                        SetReplicasQservMgtRequest::callback_type onFinish) {
-    return SetReplicasQservMgtRequest::pointer(
+                                        SetReplicasQservMgtRequest::CallbackType onFinish) {
+    return SetReplicasQservMgtRequest::Ptr(
         new SetReplicasQservMgtRequest(serviceProvider,
                                        io_service,
                                        worker,
@@ -68,12 +68,12 @@ SetReplicasQservMgtRequest::pointer SetReplicasQservMgtRequest::create(
  }
 
 SetReplicasQservMgtRequest::SetReplicasQservMgtRequest(
-                                ServiceProvider::pointer const& serviceProvider,
+                                ServiceProvider::Ptr const& serviceProvider,
                                 boost::asio::io_service& io_service,
                                 std::string const& worker,
                                 QservReplicaCollection const& newReplicas,
                                 bool force,
-                                SetReplicasQservMgtRequest::callback_type onFinish)
+                                SetReplicasQservMgtRequest::CallbackType onFinish)
     :   QservMgtRequest(serviceProvider,
                         io_service,
                         "QSERV:SET_REPLICAS",
@@ -120,7 +120,7 @@ void SetReplicasQservMgtRequest::startImpl() {
             }
         );
     }
-    SetReplicasQservMgtRequest::pointer const& request =
+    SetReplicasQservMgtRequest::Ptr const& request =
         shared_from_base<SetReplicasQservMgtRequest>();
 
     _qservRequest = wpublish::SetChunkListQservRequest::create(

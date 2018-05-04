@@ -88,10 +88,10 @@ class MoveReplicaJob
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<MoveReplicaJob> pointer;
+    typedef std::shared_ptr<MoveReplicaJob> Ptr;
 
     /// The function type for notifications on the completon of the request
-    typedef std::function<void(pointer)> callback_type;
+    typedef std::function<void(Ptr)> CallbackType;
 
     /// @return default options object for this type of a request
     static Job::Options const& defaultOptions();
@@ -111,15 +111,15 @@ public:
      * @param onFinish          - callback function to be called upon a completion of the job
      * @param options           - job options
      */
-    static pointer create(std::string const& databaseFamily,
-                          unsigned int chunk,
-                          std::string const& sourceWorker,
-                          std::string const& destinationWorker,
-                          bool purge,
-                          Controller::pointer const& controller,
-                          std::string const& parentJobId,
-                          callback_type onFinish,
-                          Job::Options const& options=defaultOptions());
+    static Ptr create(std::string const& databaseFamily,
+                      unsigned int chunk,
+                      std::string const& sourceWorker,
+                      std::string const& destinationWorker,
+                      bool purge,
+                      Controller::Ptr const& controller,
+                      std::string const& parentJobId,
+                      CallbackType onFinish,
+                      Job::Options const& options=defaultOptions());
 
     // Default construction and copy semantics are prohibited
 
@@ -176,9 +176,9 @@ protected:
                    std::string const& sourceWorker,
                    std::string const& destinationWorker,
                    bool purge,
-                   Controller::pointer const& controller,
+                   Controller::Ptr const& controller,
                    std::string const& parentJobId,
-                   callback_type onFinish,
+                   CallbackType onFinish,
                    Job::Options const& options);
 
     /**
@@ -232,13 +232,13 @@ protected:
     bool _purge;
 
     /// Client-defined function to be called upon the completion of the job
-    callback_type _onFinish;
+    CallbackType _onFinish;
 
     /// The chained job implementing the first stage of the move
-    CreateReplicaJob::pointer _createReplicaJob;
+    CreateReplicaJob::Ptr _createReplicaJob;
 
     /// The chained job implementing the second stage of the move
-    DeleteReplicaJob::pointer _deleteReplicaJob;
+    DeleteReplicaJob::Ptr _deleteReplicaJob;
 
     /// The result of the operation (gets updated as requests are finishing)
     MoveReplicaJobResult _replicaData;

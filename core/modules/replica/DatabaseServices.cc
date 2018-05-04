@@ -44,14 +44,14 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-DatabaseServices::pointer DatabaseServices::create(Configuration::pointer const& configuration) {
+DatabaseServices::Ptr DatabaseServices::create(Configuration::Ptr const& configuration) {
 
     // If the configuration is pulled from a database then *try*
     // using the corresponding technology.
 
     if ("mysql" == configuration->databaseTechnology()) {
         try {
-            return DatabaseServices::pointer(new DatabaseServicesMySQL(configuration));
+            return DatabaseServices::Ptr(new DatabaseServicesMySQL(configuration));
         } catch (database::mysql::Error const& ex) {
             LOGS(_log, LOG_LVL_ERROR,
                  "DatabaseServices::  failed to instantiate MySQL-based database services"
@@ -64,7 +64,7 @@ DatabaseServices::pointer DatabaseServices::create(Configuration::pointer const&
         configuration->databaseTechnology());
 }
 
-DatabaseServices::DatabaseServices(Configuration::pointer const& configuration)
+DatabaseServices::DatabaseServices(Configuration::Ptr const& configuration)
     :   _configuration(configuration) {
 }
 

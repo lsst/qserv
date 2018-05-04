@@ -63,8 +63,8 @@ bool run() {
         // Note that omFinish callbak which are activated upon a completion
         // of the requsts will be run in that Controller's thread.
 
-        replica::ServiceProvider::pointer const provider   = replica::ServiceProvider::create(configUrl);
-        replica::Controller::pointer      const controller = replica::Controller::create(provider);
+        replica::ServiceProvider::Ptr const provider   = replica::ServiceProvider::create(configUrl);
+        replica::Controller::Ptr      const controller = replica::Controller::create(provider);
 
         controller->run();
 
@@ -75,10 +75,10 @@ bool run() {
         auto job = replica::VerifyJob::create (
             controller,
             std::string(),
-            [&finished] (replica::VerifyJob::pointer const& job) {
+            [&finished] (replica::VerifyJob::Ptr const& job) {
                 finished = true;
             },
-            [] (replica::VerifyJob::pointer const& job,
+            [] (replica::VerifyJob::Ptr const& job,
                 replica::ReplicaDiff const& selfReplicaDiff,
                 std::vector<replica::ReplicaDiff> const& otherReplicaDiff) {
 

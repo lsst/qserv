@@ -112,17 +112,17 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-FileServerConnection::pointer FileServerConnection::create(ServiceProvider::pointer const& serviceProvider,
-                                                           std::string const& workerName,
-                                                           boost::asio::io_service& io_service) {
-    return FileServerConnection::pointer(
+FileServerConnection::Ptr FileServerConnection::create(ServiceProvider::Ptr const& serviceProvider,
+                                                       std::string const& workerName,
+                                                       boost::asio::io_service& io_service) {
+    return FileServerConnection::Ptr(
         new FileServerConnection(
             serviceProvider,
             workerName,
             io_service));
 }
 
-FileServerConnection::FileServerConnection(ServiceProvider::pointer const& serviceProvider,
+FileServerConnection::FileServerConnection(ServiceProvider::Ptr const& serviceProvider,
                                            std::string const& workerName,
                                            boost::asio::io_service& io_service)
     :   _serviceProvider(serviceProvider),

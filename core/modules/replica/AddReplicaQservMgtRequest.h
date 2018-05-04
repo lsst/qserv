@@ -59,10 +59,10 @@ class AddReplicaQservMgtRequest
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<AddReplicaQservMgtRequest> pointer;
+    typedef std::shared_ptr<AddReplicaQservMgtRequest> Ptr;
 
     /// The function type for notifications on the completon of the request
-    typedef std::function<void(pointer)> callback_type;
+    typedef std::function<void(Ptr)> CallbackType;
 
     // Default construction and copy semantics are prohibited
 
@@ -85,12 +85,12 @@ public:
      * @param databases       - the names of databases
      * @param onFinish        - callback function to be called upon request completion
      */
-    static pointer create(ServiceProvider::pointer const& serviceProvider,
-                          boost::asio::io_service& io_service,
-                          std::string const& worker,
-                          unsigned int chunk,
-                          std::vector<std::string> const& databases,
-                          callback_type onFinish = nullptr);
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
+                      boost::asio::io_service& io_service,
+                      std::string const& worker,
+                      unsigned int chunk,
+                      std::vector<std::string> const& databases,
+                          CallbackType onFinish = nullptr);
 
     /// @return number of a chunk
     unsigned int chunk() const { return _chunk; }
@@ -110,12 +110,12 @@ private:
      * @param databases       - the names of databases
      * @param onFinish        - callback function to be called upon request completion
      */
-    AddReplicaQservMgtRequest(ServiceProvider::pointer const& serviceProvider,
+    AddReplicaQservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
                               boost::asio::io_service& io_service,
                               std::string const& worker,
                               unsigned int chunk,
                               std::vector<std::string> const& databases,
-                              callback_type onFinish);
+                              CallbackType onFinish);
 
     /**
       * Implememnt the corresponding method of the base class
@@ -147,10 +147,10 @@ private:
     std::vector<std::string> _databases;
 
     /// The callback function for sending a notification upon request completion
-    callback_type _onFinish;
+    CallbackType _onFinish;
 
     /// A request to the remote services
-    wpublish::AddChunkGroupQservRequest::pointer _qservRequest;
+    wpublish::AddChunkGroupQservRequest::Ptr _qservRequest;
 };
 
 }}} // namespace lsst::qserv::replica

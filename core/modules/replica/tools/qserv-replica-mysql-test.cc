@@ -57,9 +57,9 @@ std::string fileName;
 
 
 // Run various test on transactions
-void runTransactionTest(database::Connection::pointer const& conn,
+void runTransactionTest(database::Connection::Ptr const& conn,
                         std::string const& testName,
-                        std::function<void(database::Connection::pointer const& conn)> func) {
+                        std::function<void(database::Connection::Ptr const& conn)> func) {
     try {
         std::cout << "transaction is " << (conn->inTransaction() ? "" : "NOT ") << "active" << std::endl;
         func(conn);
@@ -68,32 +68,32 @@ void runTransactionTest(database::Connection::pointer const& conn,
         std::cout << "transaction test [FAILED]: '" << testName << "' " << ex.what() << std::endl; 
     }
 }
-void testTransactions(database::Connection::pointer const& conn) {
+void testTransactions(database::Connection::Ptr const& conn) {
 
-    runTransactionTest(conn, "begin,commit", [] (database::Connection::pointer const& conn) {
+    runTransactionTest(conn, "begin,commit", [] (database::Connection::Ptr const& conn) {
         conn->begin();
         conn->commit();
     });
-    runTransactionTest(conn, "begin,rollback", [] (database::Connection::pointer const& conn) {
+    runTransactionTest(conn, "begin,rollback", [] (database::Connection::Ptr const& conn) {
         conn->begin();
         conn->rollback();
     });
-    runTransactionTest(conn, "begin,begin", [] (database::Connection::pointer const& conn) {
+    runTransactionTest(conn, "begin,begin", [] (database::Connection::Ptr const& conn) {
         conn->begin();
         conn->begin();
     });
-    runTransactionTest(conn, "commit", [] (database::Connection::pointer const& conn) {
+    runTransactionTest(conn, "commit", [] (database::Connection::Ptr const& conn) {
         conn->commit();
     });
-    runTransactionTest(conn, "rollback", [] (database::Connection::pointer const& conn) {
+    runTransactionTest(conn, "rollback", [] (database::Connection::Ptr const& conn) {
         conn->rollback();
     });
-    runTransactionTest(conn, "begin,commit,rollback", [] (database::Connection::pointer const& conn) {
+    runTransactionTest(conn, "begin,commit,rollback", [] (database::Connection::Ptr const& conn) {
         conn->begin();
         conn->commit();
         conn->rollback();
     });
-    runTransactionTest(conn, "begin,rollback,commit", [] (database::Connection::pointer const& conn) {
+    runTransactionTest(conn, "begin,rollback,commit", [] (database::Connection::Ptr const& conn) {
         conn->begin();
         conn->rollback();
         conn->commit();
@@ -101,7 +101,7 @@ void testTransactions(database::Connection::pointer const& conn) {
 }
 
 /// Create a new database
-void createDatabase(database::Connection::pointer const& conn) {
+void createDatabase(database::Connection::Ptr const& conn) {
     try {
         conn->execute("CREATE DATABASE " + databaseName);
     } catch (std::logic_error const& ex) {
@@ -110,7 +110,7 @@ void createDatabase(database::Connection::pointer const& conn) {
 }
 
 /// Drop an existing database
-void dropDatabase(database::Connection::pointer const& conn) {
+void dropDatabase(database::Connection::Ptr const& conn) {
     try {
         conn->execute ("DROP DATABASE " + databaseName);
     } catch (std::logic_error const& ex) {
@@ -120,7 +120,7 @@ void dropDatabase(database::Connection::pointer const& conn) {
 
 /// Read a query from a file, execute it and (if requested)
 /// explore ita results
-void query(database::Connection::pointer const& conn) {
+void query(database::Connection::Ptr const& conn) {
 
     // Read q query from the standard input or from a file into a string.
 
@@ -190,7 +190,7 @@ void query(database::Connection::pointer const& conn) {
 bool test() {
 
     try {
-        database::Connection::pointer const conn =
+        database::Connection::Ptr const conn =
             database::Connection::open(connectionParams, !noAutoReconnect);
         
         if      ("TEST_TRANSACTIONS" == operation) { testTransactions(conn); }

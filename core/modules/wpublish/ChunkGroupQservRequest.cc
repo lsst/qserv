@@ -70,7 +70,7 @@ ChunkGroupQservRequest::ChunkGroupQservRequest(bool add,
                                                unsigned int  chunk,
                                                std::vector<std::string> const& databases,
                                                bool force,
-                                               calback_type onFinish)
+                                               CallbackType onFinish)
     :   _add(add),
         _chunk(chunk),
         _databases(databases),
@@ -128,11 +128,11 @@ void ChunkGroupQservRequest::onError(std::string const& error) {
     }
 }
 
-AddChunkGroupQservRequest::pointer AddChunkGroupQservRequest::create(
+AddChunkGroupQservRequest::Ptr AddChunkGroupQservRequest::create(
                                         unsigned int chunk,
                                         std::vector<std::string> const& databases,
-                                        calback_type onFinish) {
-    return AddChunkGroupQservRequest::pointer(
+                                        CallbackType onFinish) {
+    return AddChunkGroupQservRequest::Ptr(
         new AddChunkGroupQservRequest(chunk,
                                       databases,
                                       onFinish));
@@ -141,7 +141,7 @@ AddChunkGroupQservRequest::pointer AddChunkGroupQservRequest::create(
 AddChunkGroupQservRequest::AddChunkGroupQservRequest(
                                     unsigned int chunk,
                                     std::vector<std::string> const& databases,
-                                    calback_type onFinish)
+                                    CallbackType onFinish)
     :   ChunkGroupQservRequest(true,
                                chunk,
                                databases,
@@ -149,12 +149,12 @@ AddChunkGroupQservRequest::AddChunkGroupQservRequest(
                                onFinish) {
 }
 
-RemoveChunkGroupQservRequest::pointer RemoveChunkGroupQservRequest::create(
+RemoveChunkGroupQservRequest::Ptr RemoveChunkGroupQservRequest::create(
                                             unsigned int chunk,
                                             std::vector<std::string> const& databases,
                                             bool force,
-                                            calback_type onFinish) {
-    return RemoveChunkGroupQservRequest::pointer(
+                                            CallbackType onFinish) {
+    return RemoveChunkGroupQservRequest::Ptr(
         new RemoveChunkGroupQservRequest(chunk,
                                          databases,
                                          force,
@@ -165,7 +165,7 @@ RemoveChunkGroupQservRequest::RemoveChunkGroupQservRequest(
                                     unsigned int chunk,
                                     std::vector<std::string> const& databases,
                                     bool force,
-                                    calback_type onFinish)
+                                    CallbackType onFinish)
     :   ChunkGroupQservRequest(false,
                                chunk,
                                databases,

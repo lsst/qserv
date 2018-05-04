@@ -41,14 +41,14 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-Messenger::pointer Messenger::create(ServiceProvider::pointer const& serviceProvider,
-                                     boost::asio::io_service& io_service) {
-    return Messenger::pointer(
+Messenger::Ptr Messenger::create(ServiceProvider::Ptr const& serviceProvider,
+                                 boost::asio::io_service& io_service) {
+    return Messenger::Ptr(
         new Messenger(serviceProvider,
                       io_service));
 }
 
-Messenger::Messenger(ServiceProvider::pointer const& serviceProvider,
+Messenger::Messenger(ServiceProvider::Ptr const& serviceProvider,
                      boost::asio::io_service& io_service) {
 
     for (auto&& worker: serviceProvider->config()->workers()){
@@ -78,7 +78,7 @@ bool Messenger::exists(std::string const& worker,
     return connector(worker)->exists(id);
 }
 
-MessengerConnector::pointer const& Messenger::connector(std::string const& worker)  const {
+MessengerConnector::Ptr const& Messenger::connector(std::string const& worker)  const {
 
     if (!_connector.count(worker))
         throw std::invalid_argument(

@@ -45,13 +45,13 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-FileClient::pointer FileClient::open(ServiceProvider::pointer const& serviceProvider,
+FileClient::Ptr FileClient::open(ServiceProvider::Ptr const& serviceProvider,
                                      std::string const& workerName,
                                      std::string const& databaseName,
                                      std::string const& fileName) {
     try {
         const bool readContent = true;
-        FileClient::pointer ptr(
+        FileClient::Ptr ptr(
             new FileClient(serviceProvider,
                            workerName,
                            databaseName,
@@ -71,13 +71,13 @@ FileClient::pointer FileClient::open(ServiceProvider::pointer const& serviceProv
 }
 
 
-FileClient::pointer FileClient::stat(ServiceProvider::pointer const& serviceProvider,
+FileClient::Ptr FileClient::stat(ServiceProvider::Ptr const& serviceProvider,
                                      std::string const& workerName,
                                      std::string const& databaseName,
                                      std::string const& fileName) {
     try {
         bool const readContent = false;
-        FileClient::pointer ptr(
+        FileClient::Ptr ptr(
             new FileClient(serviceProvider,
                            workerName,
                            databaseName,
@@ -96,7 +96,7 @@ FileClient::pointer FileClient::stat(ServiceProvider::pointer const& serviceProv
     return nullptr;
 }
 
-FileClient::FileClient(ServiceProvider::pointer const& serviceProvider,
+FileClient::FileClient(ServiceProvider::Ptr const& serviceProvider,
                        std::string const& workerName,
                        std::string const& databaseName,
                        std::string const& fileName,

@@ -60,7 +60,7 @@ class QservMgtRequest
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<QservMgtRequest> pointer;
+    typedef std::shared_ptr<QservMgtRequest> Ptr;
 
     /// Primary public state of the request
     enum State {
@@ -132,7 +132,7 @@ public:
     virtual ~QservMgtRequest() = default;
 
     /// @return reference to a provider of services
-    ServiceProvider::pointer const& serviceProvider() { return _serviceProvider; }
+    ServiceProvider::Ptr const& serviceProvider() { return _serviceProvider; }
 
     /// @return string representing of the request type.
     std::string const& type() const { return _type; }
@@ -221,7 +221,7 @@ protected:
      * @param worker          - the name of a worker
      * @io_service            - BOOST ASIO service
      */
-    QservMgtRequest(ServiceProvider::pointer const& serviceProvider,
+    QservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
                     boost::asio::io_service& io_service,
                     std::string const& type,
                     std::string const& worker);
@@ -289,7 +289,7 @@ protected:
 
     // Parameters of the object
 
-    ServiceProvider::pointer _serviceProvider;
+    ServiceProvider::Ptr _serviceProvider;
 
     std::string _type;
     std::string _id;

@@ -49,7 +49,7 @@ namespace replica {
 ///////////////////// WorkerRequestFactoryBase ////////////////////
 ///////////////////////////////////////////////////////////////////
 
-WorkerRequestFactoryBase::WorkerRequestFactoryBase(ServiceProvider::pointer const& serviceProvider)
+WorkerRequestFactoryBase::WorkerRequestFactoryBase(ServiceProvider::Ptr const& serviceProvider)
     :   _serviceProvider(serviceProvider) {
 }
 
@@ -73,7 +73,7 @@ public:
     WorkerRequestFactoryTest& operator=(WorkerRequestFactoryTest const&) = delete;
 
     /// Normal constructor
-    WorkerRequestFactoryTest(ServiceProvider::pointer const& serviceProvider)
+    WorkerRequestFactoryTest(ServiceProvider::Ptr const& serviceProvider)
         :   WorkerRequestFactoryBase(serviceProvider) {
     }
     
@@ -92,7 +92,7 @@ public:
      *
      * @see WorkerReplicationRequestBase::createReplicationRequest
      */
-    WorkerReplicationRequest_pointer createReplicationRequest(
+    WorkerReplicationRequestPtr createReplicationRequest(
                                             std::string const& worker,
                                             std::string const& id,
                                             int                priority,
@@ -114,7 +114,7 @@ public:
      *
      * @see WorkerReplicationRequestBase::createDeleteRequest
      */
-    WorkerDeleteRequest_pointer createDeleteRequest(
+    WorkerDeleteRequestPtr createDeleteRequest(
                                     std::string const& worker,
                                     std::string const& id,
                                     int                priority,
@@ -134,7 +134,7 @@ public:
      *
      * @see WorkerReplicationRequestBase::createFindRequest
      */
-    WorkerFindRequest_pointer createFindRequest(
+    WorkerFindRequestPtr createFindRequest(
                                     std::string const& worker,
                                     std::string const& id,
                                     int                priority,
@@ -156,7 +156,7 @@ public:
      *
      * @see WorkerReplicationRequestBase::createFindAllRequest
      */
-    WorkerFindAllRequest_pointer createFindAllRequest(
+    WorkerFindAllRequestPtr createFindAllRequest(
                                         std::string const& worker,
                                         std::string const& id,
                                         int                priority,
@@ -190,7 +190,7 @@ public:
     WorkerRequestFactoryPOSIX& operator=(WorkerRequestFactoryPOSIX const&) = delete;
 
     /// Normal constructor
-    WorkerRequestFactoryPOSIX(ServiceProvider::pointer const& serviceProvider)
+    WorkerRequestFactoryPOSIX(ServiceProvider::Ptr const& serviceProvider)
         :   WorkerRequestFactoryBase(serviceProvider) {
     }
     
@@ -209,7 +209,7 @@ public:
      *
      * @see WorkerReplicationRequestBase::createReplicationRequest
      */
-    WorkerReplicationRequest_pointer createReplicationRequest(
+    WorkerReplicationRequestPtr createReplicationRequest(
                                             std::string const& worker,
                                             std::string const& id,
                                             int                priority,
@@ -231,7 +231,7 @@ public:
      *
      * @see WorkerReplicationRequestBase::createDeleteRequest
      */
-    WorkerDeleteRequest_pointer createDeleteRequest(
+    WorkerDeleteRequestPtr createDeleteRequest(
                                         std::string const& worker,
                                         std::string const& id,
                                         int                priority,
@@ -251,7 +251,7 @@ public:
      *
      * @see WorkerReplicationRequestBase::createFindRequest
      */
-    WorkerFindRequest_pointer createFindRequest(
+    WorkerFindRequestPtr createFindRequest(
                                     std::string const& worker,
                                     std::string const& id,
                                     int                priority,
@@ -273,7 +273,7 @@ public:
      *
      * @see WorkerReplicationRequestBase::createFindAllRequest
      */
-    WorkerFindAllRequest_pointer createFindAllRequest(
+    WorkerFindAllRequestPtr createFindAllRequest(
                                         std::string const& worker,
                                         std::string const& id,
                                         int                priority,
@@ -308,7 +308,7 @@ public:
     WorkerRequestFactoryFS& operator=(WorkerRequestFactoryFS const&) = delete;
 
     /// Normal constructor
-    WorkerRequestFactoryFS(ServiceProvider::pointer const& serviceProvider)
+    WorkerRequestFactoryFS(ServiceProvider::Ptr const& serviceProvider)
         :   WorkerRequestFactoryBase(serviceProvider) {
     }
     
@@ -327,7 +327,7 @@ public:
      *
      * @see WorkerReplicationRequestBase::createReplicationRequest
      */
-    WorkerReplicationRequest_pointer createReplicationRequest(
+    WorkerReplicationRequestPtr createReplicationRequest(
                                             std::string const& worker,
                                             std::string const& id,
                                             int                priority,
@@ -349,7 +349,7 @@ public:
      *
      * @see WorkerReplicationRequestBase::createDeleteRequest
      */
-    WorkerDeleteRequest_pointer createDeleteRequest(
+    WorkerDeleteRequestPtr createDeleteRequest(
                                         std::string const& worker,
                                         std::string const& id,
                                         int                priority,
@@ -369,7 +369,7 @@ public:
      *
      * @see WorkerReplicationRequestBase::createFindRequest
      */
-    WorkerFindRequest_pointer createFindRequest(
+    WorkerFindRequestPtr createFindRequest(
                                     std::string const& worker,
                                     std::string const& id,
                                     int                priority,
@@ -391,7 +391,7 @@ public:
      *
      * @see WorkerReplicationRequestBase::createFindAllRequest
      */
-    WorkerFindAllRequest_pointer createFindAllRequest(
+    WorkerFindAllRequestPtr createFindAllRequest(
                                         std::string const& worker,
                                         std::string const& id,
                                         int                priority,
@@ -409,7 +409,7 @@ public:
 ///////////////////// WorkerRequestFactory ////////////////////
 ///////////////////////////////////////////////////////////////
 
-WorkerRequestFactory::WorkerRequestFactory(ServiceProvider::pointer const&   serviceProvider,
+WorkerRequestFactory::WorkerRequestFactory(ServiceProvider::Ptr const&   serviceProvider,
                                            std::string const& technology)
     :   WorkerRequestFactoryBase(serviceProvider) {
         

@@ -35,8 +35,8 @@ bool test() {
         // Note that omFinish callbak which are activated upon a completion
         // of the requsts will be run in that Controller's thread.
 
-        replica::ServiceProvider::pointer const provider   = replica::ServiceProvider::create(configUrl);
-        replica::Controller::pointer      const controller = replica::Controller::create(provider);
+        replica::ServiceProvider::Ptr const provider   = replica::ServiceProvider::create(configUrl);
+        replica::Controller::Ptr      const controller = replica::Controller::create(provider);
 
         controller->run();
 
@@ -58,35 +58,35 @@ bool test() {
                 tracker.add (
                     controller->statusOfWorkerService(
                         worker,
-                        [&tracker] (replica::ServiceStatusRequest::pointer const& ptr) {
+                        [&tracker] (replica::ServiceStatusRequest::Ptr const& ptr) {
                             tracker.onFinish(ptr);
                         }));
             } else if (operation == "SUSPEND") {
                 tracker.add (
                     controller->suspendWorkerService(
                         worker,
-                        [&tracker] (replica::ServiceSuspendRequest::pointer const& ptr) {
+                        [&tracker] (replica::ServiceSuspendRequest::Ptr const& ptr) {
                             tracker.onFinish(ptr);
                         }));
             } else if (operation == "RESUME") {
                 tracker.add (
                     controller->resumeWorkerService(
                         worker,
-                        [&tracker] (replica::ServiceResumeRequest::pointer const& ptr) {
+                        [&tracker] (replica::ServiceResumeRequest::Ptr const& ptr) {
                             tracker.onFinish(ptr);
                         }));
             } else if (operation == "REQUESTS") {
                 tracker.add (
                     controller->requestsOfWorkerService(
                         worker,
-                        [&tracker] (replica::ServiceRequestsRequest::pointer const& ptr) {
+                        [&tracker] (replica::ServiceRequestsRequest::Ptr const& ptr) {
                             tracker.onFinish(ptr);
                         }));
             } else if (operation == "DRAIN") {
                 tracker.add (
                     controller->drainWorkerService(
                         worker,
-                        [&tracker] (replica::ServiceDrainRequest::pointer const& ptr) {
+                        [&tracker] (replica::ServiceDrainRequest::Ptr const& ptr) {
                             tracker.onFinish(ptr);
                         }));
             }

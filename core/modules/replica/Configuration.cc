@@ -66,7 +66,7 @@ std::ostream& operator <<(std::ostream& os, DatabaseInfo const& info) {
     return os;
 }
 
-Configuration::pointer Configuration::load(std::string const& configUrl) {
+Configuration::Ptr Configuration::load(std::string const& configUrl) {
 
     std::string::size_type const pos = configUrl.find(':');
     if (pos != std::string::npos) {

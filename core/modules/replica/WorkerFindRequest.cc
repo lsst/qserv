@@ -54,15 +54,15 @@ namespace replica {
 ///////////////////// WorkerFindRequest ////////////////////
 ////////////////////////////////////////////////////////////
 
-WorkerFindRequest::pointer WorkerFindRequest::create(
-                                ServiceProvider::pointer const& serviceProvider,
+WorkerFindRequest::Ptr WorkerFindRequest::create(
+                                ServiceProvider::Ptr const& serviceProvider,
                                 std::string const& worker,
                                 std::string const& id,
                                 int                priority,
                                 std::string const& database,
                                 unsigned int       chunk,
                                 bool               computeCheckSum) {
-    return WorkerFindRequest::pointer(
+    return WorkerFindRequest::Ptr(
         new WorkerFindRequest(
                 serviceProvider,
                 worker,
@@ -74,7 +74,7 @@ WorkerFindRequest::pointer WorkerFindRequest::create(
 }
 
 WorkerFindRequest::WorkerFindRequest(
-                        ServiceProvider::pointer const& serviceProvider,
+                        ServiceProvider::Ptr const& serviceProvider,
                         std::string const& worker,
                         std::string const& id,
                         int                priority,
@@ -119,15 +119,15 @@ bool WorkerFindRequest::execute() {
 ///////////////////// WorkerFindRequestPOSIX ////////////////////
 /////////////////////////////////////////////////////////////////
 
-WorkerFindRequestPOSIX::pointer WorkerFindRequestPOSIX::create(
-                                    ServiceProvider::pointer const& serviceProvider,
+WorkerFindRequestPOSIX::Ptr WorkerFindRequestPOSIX::create(
+                                    ServiceProvider::Ptr const& serviceProvider,
                                     std::string const& worker,
                                     std::string const& id,
                                     int                priority,
                                     std::string const& database,
                                     unsigned int       chunk,
                                     bool               computeCheckSum) {
-    return WorkerFindRequestPOSIX::pointer(
+    return WorkerFindRequestPOSIX::Ptr(
         new WorkerFindRequestPOSIX(
                 serviceProvider,
                 worker,
@@ -139,7 +139,7 @@ WorkerFindRequestPOSIX::pointer WorkerFindRequestPOSIX::create(
 }
 
 WorkerFindRequestPOSIX::WorkerFindRequestPOSIX(
-                            ServiceProvider::pointer const& serviceProvider,
+                            ServiceProvider::Ptr const& serviceProvider,
                             std::string const& worker,
                             std::string const& id,
                             int                priority,

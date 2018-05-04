@@ -69,20 +69,20 @@ class WorkerReplicationRequest
 public:
 
     /// Pointer to self
-    typedef std::shared_ptr<WorkerReplicationRequest> pointer;
+    typedef std::shared_ptr<WorkerReplicationRequest> Ptr;
 
     /**
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      */
-    static pointer create(ServiceProvider::pointer const& serviceProvider,
-                          std::string const& worker,
-                          std::string const& id,
-                          int                priority,
-                          std::string const& database,
-                          unsigned int       chunk,
-                          std::string const& sourceWorker);
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
+                      std::string const& worker,
+                      std::string const& id,
+                      int priority,
+                      std::string const& database,
+                      unsigned int chunk,
+                      std::string const& sourceWorker);
 
     // Default construction and copy semantics are prohibited
 
@@ -116,12 +116,12 @@ protected:
     /**
      * The normal constructor of the class.
      */
-    WorkerReplicationRequest(ServiceProvider::pointer const& serviceProvider,
+    WorkerReplicationRequest(ServiceProvider::Ptr const& serviceProvider,
                              std::string const& worker,
                              std::string const& id,
-                             int                priority,
+                             int priority,
                              std::string const& database,
-                             unsigned int       chunk,
+                             unsigned int chunk,
                              std::string const& sourceWorker);
 
 protected:
@@ -147,20 +147,20 @@ class WorkerReplicationRequestPOSIX
 public:
 
     /// Pointer to self
-    typedef std::shared_ptr<WorkerReplicationRequestPOSIX> pointer;
+    typedef std::shared_ptr<WorkerReplicationRequestPOSIX> Ptr;
 
     /**
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      */
-    static pointer create(ServiceProvider::pointer const& serviceProvider,
-                          std::string const& worker,
-                          std::string const& id,
-                          int                priority,
-                          std::string const& database,
-                          unsigned int       chunk,
-                          std::string const& sourceWorker);
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
+                      std::string const& worker,
+                      std::string const& id,
+                      int priority,
+                      std::string const& database,
+                      unsigned int chunk,
+                      std::string const& sourceWorker);
 
     // Default construction and copy semantics are prohibited
 
@@ -183,12 +183,12 @@ protected:
     /**
      * The normal constructor of the class.
      */
-    WorkerReplicationRequestPOSIX(ServiceProvider::pointer const& serviceProvider,
+    WorkerReplicationRequestPOSIX(ServiceProvider::Ptr const& serviceProvider,
                                   std::string const& worker,
                                   std::string const& id,
-                                  int                priority,
+                                  int priority,
                                   std::string const& database,
-                                  unsigned int       chunk,
+                                  unsigned int chunk,
                                   std::string const& sourceWorker);
 };
 
@@ -204,20 +204,20 @@ class WorkerReplicationRequestFS
 public:
 
     /// Pointer to self
-    typedef std::shared_ptr<WorkerReplicationRequestFS> pointer;
+    typedef std::shared_ptr<WorkerReplicationRequestFS> Ptr;
 
     /**
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      */
-    static pointer create(ServiceProvider::pointer const& serviceProvider,
-                          std::string const& worker,
-                          std::string const& id,
-                          int                priority,
-                          std::string const& database,
-                          unsigned int       chunk,
-                          std::string const& sourceWorker);
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
+                      std::string const& worker,
+                      std::string const& id,
+                      int priority,
+                      std::string const& database,
+                      unsigned int chunk,
+                      std::string const& sourceWorker);
 
     // Default construction and copy semantics are prohibited
 
@@ -240,12 +240,12 @@ protected:
     /**
      * The normal constructor of the class.
      */
-    WorkerReplicationRequestFS(ServiceProvider::pointer const& serviceProvider,
+    WorkerReplicationRequestFS(ServiceProvider::Ptr const& serviceProvider,
                                std::string const& worker,
                                std::string const& id,
-                               int                priority,
+                               int priority,
                                std::string const& database,
-                               unsigned int       chunk,
+                               unsigned int chunk,
                                std::string const& sourceWorker);
 
 private:

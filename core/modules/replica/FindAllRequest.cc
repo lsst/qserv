@@ -50,15 +50,15 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-FindAllRequestM::pointer FindAllRequestM::create(ServiceProvider::pointer const&   serviceProvider,
-                                                 boost::asio::io_service&          io_service,
-                                                 std::string const&                worker,
-                                                 std::string const&                database,
-                                                 callback_type                     onFinish,
-                                                 int                               priority,
-                                                 bool                              keepTracking,
-                                                 std::shared_ptr<Messenger> const& messenger) {
-    return FindAllRequestM::pointer(
+FindAllRequestM::Ptr FindAllRequestM::create(ServiceProvider::Ptr const& serviceProvider,
+                                             boost::asio::io_service& io_service,
+                                             std::string const& worker,
+                                             std::string const& database,
+                                             CallbackType onFinish,
+                                             int  priority,
+                                             bool keepTracking,
+                                             std::shared_ptr<Messenger> const& messenger) {
+    return FindAllRequestM::Ptr(
         new FindAllRequestM(serviceProvider,
                             io_service,
                             worker,
@@ -69,13 +69,13 @@ FindAllRequestM::pointer FindAllRequestM::create(ServiceProvider::pointer const&
                             messenger));
 }
 
-FindAllRequestM::FindAllRequestM(ServiceProvider::pointer const&   serviceProvider,
-                                 boost::asio::io_service&          io_service,
-                                 std::string const&                worker,
-                                 std::string const&                database,
-                                 callback_type                     onFinish,
-                                 int                               priority,
-                                 bool                              keepTracking,
+FindAllRequestM::FindAllRequestM(ServiceProvider::Ptr const& serviceProvider,
+                                 boost::asio::io_service& io_service,
+                                 std::string const& worker,
+                                 std::string const& database,
+                                 CallbackType onFinish,
+                                 int  priority,
+                                 bool keepTracking,
                                  std::shared_ptr<Messenger> const& messenger)
     :   RequestMessenger(serviceProvider,
                          io_service,

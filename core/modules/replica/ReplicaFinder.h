@@ -77,7 +77,7 @@ public:
      * @param errorReport    - trigger detailed error reporting after the completion
      *                         of the operation
      */
-    ReplicaFinder(Controller::pointer const& controller,
+    ReplicaFinder(Controller::Ptr const& controller,
                   std::string const& database,
                   std::ostream& os,
                   bool progressReport=true,

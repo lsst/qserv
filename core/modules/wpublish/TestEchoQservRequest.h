@@ -59,11 +59,11 @@ public:
     static std::string status2str (Status status);
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<TestEchoQservRequest> pointer;
+    typedef std::shared_ptr<TestEchoQservRequest> Ptr;
 
     /// The callback function type to be used for notifications on
     /// the operation completion.
-    using calback_type =
+    using CallbackType =
         std::function<void(Status,                  // completion status
                            std::string const&,      // error message
                            std::string const&,      // value sent
@@ -79,8 +79,8 @@ public:
      *                    (successful or not) of the request.
      * @return smart pointer to the object of the class
      */
-    static pointer create(std::string const& value,
-                          calback_type onFinish = nullptr);
+    static Ptr create(std::string const& value,
+                      CallbackType onFinish = nullptr);
 
     // Default construction and copy semantics is prohibited
     TestEchoQservRequest() = delete;
@@ -99,7 +99,7 @@ protected:
      * @param onFinish - function to be called upon the completion of a request
      */
     TestEchoQservRequest(std::string const& value,
-                         calback_type onFinish);
+                         CallbackType onFinish);
 
     /// Implement the corresponding method of the base class
     void onRequest(proto::FrameBuffer& buf) override;
@@ -117,7 +117,7 @@ private:
 
     /// Optional callback function to be called upon the completion
     /// (successfull or not) of the request.
-    calback_type _onFinish;
+    CallbackType _onFinish;
 };
 
 }}} // namespace lsst::qserv::wpublish

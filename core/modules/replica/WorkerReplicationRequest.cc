@@ -57,15 +57,15 @@ namespace replica {
 ///////////////////// WorkerReplicationRequest ////////////////////
 ///////////////////////////////////////////////////////////////////
 
-WorkerReplicationRequest::pointer WorkerReplicationRequest::create(
-                                        ServiceProvider::pointer const& serviceProvider,
+WorkerReplicationRequest::Ptr WorkerReplicationRequest::create(
+                                        ServiceProvider::Ptr const& serviceProvider,
                                         std::string const& worker,
                                         std::string const& id,
                                         int                priority,
                                         std::string const& database,
                                         unsigned int       chunk,
                                         std::string const& sourceWorker) {
-    return WorkerReplicationRequest::pointer(
+    return WorkerReplicationRequest::Ptr(
         new WorkerReplicationRequest(
                 serviceProvider,
                 worker,
@@ -77,7 +77,7 @@ WorkerReplicationRequest::pointer WorkerReplicationRequest::create(
 }
 
 WorkerReplicationRequest::WorkerReplicationRequest(
-                                ServiceProvider::pointer const& serviceProvider,
+                                ServiceProvider::Ptr const& serviceProvider,
                                 std::string const& worker,
                                 std::string const& id,
                                 int                priority,
@@ -137,15 +137,15 @@ bool WorkerReplicationRequest::execute() {
 ///////////////////// WorkerReplicationRequestPOSIX ////////////////////
 ////////////////////////////////////////////////////////////////////////
 
-WorkerReplicationRequestPOSIX::pointer WorkerReplicationRequestPOSIX::create (
-                                    ServiceProvider::pointer const& serviceProvider,
+WorkerReplicationRequestPOSIX::Ptr WorkerReplicationRequestPOSIX::create (
+                                    ServiceProvider::Ptr const& serviceProvider,
                                     std::string const& worker,
                                     std::string const& id,
                                     int                priority,
                                     std::string const& database,
                                     unsigned int       chunk,
                                     std::string const& sourceWorker) {
-    return WorkerReplicationRequestPOSIX::pointer(
+    return WorkerReplicationRequestPOSIX::Ptr(
         new WorkerReplicationRequestPOSIX(
                 serviceProvider,
                 worker,
@@ -157,7 +157,7 @@ WorkerReplicationRequestPOSIX::pointer WorkerReplicationRequestPOSIX::create (
 }
 
 WorkerReplicationRequestPOSIX::WorkerReplicationRequestPOSIX(
-                                    ServiceProvider::pointer const& serviceProvider,
+                                    ServiceProvider::Ptr const& serviceProvider,
                                     std::string const& worker,
                                     std::string const& id,
                                     int                priority,
@@ -411,15 +411,15 @@ bool WorkerReplicationRequestPOSIX::execute () {
 ///////////////////// WorkerReplicationRequestFS ////////////////////
 /////////////////////////////////////////////////////////////////////
 
-WorkerReplicationRequestFS::pointer WorkerReplicationRequestFS::create (
-                                            ServiceProvider::pointer const& serviceProvider,
+WorkerReplicationRequestFS::Ptr WorkerReplicationRequestFS::create (
+                                            ServiceProvider::Ptr const& serviceProvider,
                                             std::string const& worker,
                                             std::string const& id,
                                             int                priority,
                                             std::string const& database,
                                             unsigned int       chunk,
                                             std::string const& sourceWorker) {
-    return WorkerReplicationRequestFS::pointer(
+    return WorkerReplicationRequestFS::Ptr(
         new WorkerReplicationRequestFS(
                 serviceProvider,
                 worker,
@@ -431,7 +431,7 @@ WorkerReplicationRequestFS::pointer WorkerReplicationRequestFS::create (
 }
 
 WorkerReplicationRequestFS::WorkerReplicationRequestFS(
-                                    ServiceProvider::pointer const& serviceProvider,
+                                    ServiceProvider::Ptr const& serviceProvider,
                                     std::string const& worker,
                                     std::string const& id,
                                     int                priority,
@@ -537,7 +537,7 @@ bool WorkerReplicationRequestFS::execute () {
             for (auto&& file: _files) {
 
                 // Open the file on the remote server in the no-content-read mode
-                FileClient::pointer inFilePtr = FileClient::stat(_serviceProvider,
+                FileClient::Ptr inFilePtr = FileClient::stat(_serviceProvider,
                                                                  _inWorkerInfo.name,
                                                                  _databaseInfo.name,
                                                                  file);

@@ -57,7 +57,7 @@ class ServiceProvider
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<ServiceProvider> pointer;
+    typedef std::shared_ptr<ServiceProvider> Ptr;
 
     // Forward definition for pointer types of the owned services
  
@@ -77,7 +77,7 @@ public:
      * @param configUrl - a source of the application configuration parameters
      * @return pointer to the instance
      */
-    static ServiceProvider::pointer create(std::string const& configUrl);
+    static ServiceProvider::Ptr create(std::string const& configUrl);
 
     /// Detructor
     ~ServiceProvider() = default;

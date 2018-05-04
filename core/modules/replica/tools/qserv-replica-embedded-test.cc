@@ -27,7 +27,7 @@ std::string configUrl;
  * Launch all worker servers in dedicated detached threads. Also run
  * one extra thread per each worked for the 'hearbeat' monitoring.
  */
-void runAllWorkers(replica::ServiceProvider::pointer const& provider,
+void runAllWorkers(replica::ServiceProvider::Ptr const& provider,
                    replica::WorkerRequestFactory& requestFactory) {
 
     for (std::string const& workerName : provider->config()->workers()) {
@@ -35,7 +35,7 @@ void runAllWorkers(replica::ServiceProvider::pointer const& provider,
         // Create the request pocessing server and run it within a dedicated thread
         // because it's the blocking operation fr the launching thread.
 
-        replica::WorkerServer::pointer const reqProcSrv =
+        replica::WorkerServer::Ptr const reqProcSrv =
             replica::WorkerServer::create(provider, requestFactory, workerName);
 
         std::thread reqProcSrvThread([reqProcSrv] () {
@@ -63,7 +63,7 @@ void runAllWorkers(replica::ServiceProvider::pointer const& provider,
         // operation fr the launching thread.
 
         if (enableFileServer) {
-            replica::FileServer::pointer const fileSrv =
+            replica::FileServer::Ptr const fileSrv =
                 replica::FileServer::create(provider, workerName);
     
             std::thread fileSrvThread([fileSrv] () {
@@ -81,7 +81,7 @@ void runAllWorkers(replica::ServiceProvider::pointer const& provider,
 void run() {
     
     try {
-        replica::ServiceProvider::pointer const provider = replica::ServiceProvider::create(configUrl);
+        replica::ServiceProvider::Ptr const provider = replica::ServiceProvider::create(configUrl);
         replica::WorkerRequestFactory requestFactory(provider);
 
         // Run the worker servers

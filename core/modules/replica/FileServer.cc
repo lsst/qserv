@@ -44,15 +44,15 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-FileServer::pointer FileServer::create(ServiceProvider::pointer const& serviceProvider,
+FileServer::Ptr FileServer::create(ServiceProvider::Ptr const& serviceProvider,
                                        std::string const& workerName) {
-    return FileServer::pointer(
+    return FileServer::Ptr(
         new FileServer(
             serviceProvider,
             workerName));
 }
 
-FileServer::FileServer(ServiceProvider::pointer const& serviceProvider,
+FileServer::FileServer(ServiceProvider::Ptr const& serviceProvider,
                        std::string const& workerName)
     :   _serviceProvider(serviceProvider),
         _workerName(workerName),
@@ -96,7 +96,7 @@ void FileServer::run() {
 
 void FileServer::beginAccept() {
 
-    FileServerConnection::pointer connection =
+    FileServerConnection::Ptr connection =
         FileServerConnection::create(
             _serviceProvider,
             _workerName,
@@ -111,8 +111,8 @@ void FileServer::beginAccept() {
             boost::asio::placeholders::error));
 }
 
-void FileServer::handleAccept(FileServerConnection::pointer const& connection,
-                              boost::system::error_code     const& ec) {
+void FileServer::handleAccept(FileServerConnection::Ptr const& connection,
+                              boost::system::error_code const& ec) {
     if (not ec) {
         connection->beginProtocol();
     } else {

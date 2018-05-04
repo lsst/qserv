@@ -69,7 +69,7 @@ class WorkerServerConnection
 public:
 
     /// Shared pointer type for the class
-    typedef std::shared_ptr<WorkerServerConnection> pointer;
+    typedef std::shared_ptr<WorkerServerConnection> Ptr;
 
     /**
      * Static factory method is needed to prevent issue with the lifespan
@@ -80,9 +80,9 @@ public:
      * @param processor       - processor of long requests
      * @param io_service      - enpoint for network I/O
      */
-    static pointer create(ServiceProvider::pointer const& serviceProvider,
-                          WorkerProcessor& processor,
-                          boost::asio::io_service& io_service);
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
+                      WorkerProcessor& processor,
+                      boost::asio::io_service& io_service);
 
     // Default construction and copy semantics are prohibited
 
@@ -130,7 +130,7 @@ private:
     /**
      * The constructor of the class.
      */
-    WorkerServerConnection(ServiceProvider::pointer const& serviceProvider,
+    WorkerServerConnection(ServiceProvider::Ptr const& serviceProvider,
                            WorkerProcessor& processor,
                            boost::asio::io_service& io_service);
 
@@ -195,7 +195,7 @@ private:
 
     // Parameters of the object
 
-    ServiceProvider::pointer _serviceProvider;
+    ServiceProvider::Ptr _serviceProvider;
     WorkerProcessor& _processor;
 
     boost::asio::ip::tcp::socket _socket;

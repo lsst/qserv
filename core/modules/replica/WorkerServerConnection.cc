@@ -115,18 +115,18 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-WorkerServerConnection::pointer WorkerServerConnection::create(
-                                    ServiceProvider::pointer const& serviceProvider,
+WorkerServerConnection::Ptr WorkerServerConnection::create(
+                                    ServiceProvider::Ptr const& serviceProvider,
                                     WorkerProcessor& processor,
                                     boost::asio::io_service& io_service) {
-    return WorkerServerConnection::pointer(
+    return WorkerServerConnection::Ptr(
         new WorkerServerConnection(
             serviceProvider,
             processor,
             io_service));
 }
 
-WorkerServerConnection::WorkerServerConnection(ServiceProvider::pointer const& serviceProvider,
+WorkerServerConnection::WorkerServerConnection(ServiceProvider::Ptr const& serviceProvider,
                                                WorkerProcessor& processor,
                                                boost::asio::io_service& io_service)
     :   _serviceProvider(serviceProvider),

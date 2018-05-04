@@ -68,21 +68,21 @@ class Messenger;
 struct ControllerRequestWrapper {
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<ControllerRequestWrapper> pointer;
+    typedef std::shared_ptr<ControllerRequestWrapper> Ptr;
 
     /// Destructor
     virtual ~ControllerRequestWrapper() = default;
 
     /// This method will be called upon a completion of a request
     /// to notify a subscriber on the event.
-    virtual void notify ()=0;
+    virtual void notify()=0;
 
     /// Return a pointer to the stored request object
-    virtual std::shared_ptr<Request> request () const=0;
+    virtual std::shared_ptr<Request> request() const=0;
 };
 
 /**
- * The data structure encapsulating various attributes which identity
+ * The data structure encapsulating various attributes which identify
  * each instance of the Controller class. This information is meant to
  * be used in the multi-Controller setups to coordinate operations
  * between multiple instances and to avoid/resolve conflicts.
@@ -110,12 +110,12 @@ std::ostream& operator <<(std::ostream& os, ControllerIdentity const& identity);
   * NOTES:
   *
   * - all methods launching, stopping or checking status of requests
-  *   require that the server was runinng. Otherwise it will throw
+  *   require that the server to be runinng. Otherwise it will throw
   *   std::runtime_error. The current implementation of the server
-  *   doesn't support (yet?) amn operation queuing mechanism.
+  *   doesn't support (yet?) an operation queuing mechanism.
   *
   * - methods which take worker names as parameters will throw exception
-  *   std::invalid_argument if the specified worker names were not found
+  *   std::invalid_argument if the specified worker names are not found
   *   in the configuration.
   */
 class Controller
@@ -128,7 +128,7 @@ public:
     friend class ControllerImpl;
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<Controller> pointer;
+    typedef std::shared_ptr<Controller> Ptr;
 
     /**
      * Static factory method is needed to prevent issue with the lifespan
@@ -137,7 +137,7 @@ public:
      *
      * @param serviceProvider - for configuration, other services
      */
-    static pointer create(ServiceProvider::pointer const& serviceProvider);
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider);
 
     // Default construction and copy semantics are prohibited
 
@@ -155,7 +155,7 @@ public:
     uint64_t startTime() const { return _startTime; }
 
     /// Return the Service Provider used by the server
-    ServiceProvider::pointer const& serviceProvider() { return _serviceProvider; }
+    ServiceProvider::Ptr const& serviceProvider() { return _serviceProvider; }
 
     /// @return reference to the I/O service for ASYNC requests
     boost::asio::io_service& io_service() { return _io_service; }
@@ -215,16 +215,16 @@ public:
      *
      * @return a pointer to the replication request
      */
-    ReplicationRequest_pointer replicate(std::string const& workerName,
-                                         std::string const& sourceWorkerName,
-                                         std::string const& database,
-                                         unsigned int chunk,
-                                         ReplicationRequest_callback_type onFinish=nullptr,
-                                         int  priority=0,
-                                         bool keepTracking=true,
-                                         bool allowDuplicate=true,
-                                         std::string const& jobId="",
-                                         unsigned int requestExpirationIvalSec=0);
+    ReplicationRequestPtr replicate(std::string const& workerName,
+                                    std::string const& sourceWorkerName,
+                                    std::string const& database,
+                                    unsigned int chunk,
+                                    ReplicationRequestCallbackType onFinish=nullptr,
+                                    int  priority=0,
+                                    bool keepTracking=true,
+                                    bool allowDuplicate=true,
+                                    std::string const& jobId="",
+                                    unsigned int requestExpirationIvalSec=0);
 
     /**
      * Initiate a new replica deletion request.
@@ -244,15 +244,15 @@ public:
      *
      * @return a pointer to the replication request
      */
-    DeleteRequest_pointer deleteReplica(std::string const& workerName,
-                                        std::string const& database,
-                                        unsigned int chunk,
-                                        DeleteRequest_callback_type onFinish=nullptr,
-                                        int  priority=0,
-                                        bool keepTracking=true,
-                                        bool allowDuplicate=true,
-                                        std::string const& jobId="",
-                                        unsigned int requestExpirationIvalSec=0);
+    DeleteRequestPtr deleteReplica(std::string const& workerName,
+                                   std::string const& database,
+                                   unsigned int chunk,
+                                   DeleteRequestCallbackType onFinish=nullptr,
+                                   int  priority=0,
+                                   bool keepTracking=true,
+                                   bool allowDuplicate=true,
+                                   std::string const& jobId="",
+                                   unsigned int requestExpirationIvalSec=0);
 
     /**
      * Initiate a new replica lookup request.
@@ -277,15 +277,15 @@ public:
      *
      * @return a pointer to the replication request
      */
-    FindRequest_pointer findReplica(std::string const& workerName,
-                                    std::string const& database,
-                                    unsigned int chunk,
-                                    FindRequest_callback_type onFinish=nullptr,
-                                    int  priority=0,
-                                    bool computeCheckSum=false,
-                                    bool keepTracking=true,
-                                    std::string const& jobId="",
-                                    unsigned int requestExpirationIvalSec=0);
+    FindRequestPtr findReplica(std::string const& workerName,
+                               std::string const& database,
+                               unsigned int chunk,
+                               FindRequestCallbackType onFinish=nullptr,
+                               int  priority=0,
+                               bool computeCheckSum=false,
+                               bool keepTracking=true,
+                               std::string const& jobId="",
+                               unsigned int requestExpirationIvalSec=0);
 
     /**
      * Initiate a new replicas lookup request.
@@ -303,10 +303,10 @@ public:
      *
      * @return a pointer to the replication request
      */
-    FindAllRequest_pointer findAllReplicas(
+    FindAllRequestPtr findAllReplicas(
                                 std::string const& workerName,
                                 std::string const& database,
-                                FindAllRequest_callback_type onFinish=nullptr,
+                                FindAllRequestCallbackType onFinish=nullptr,
                                 int  priority=0,
                                 bool keepTracking=true,
                                 std::string const& jobId="",
@@ -327,10 +327,10 @@ public:
      *
      * @return a pointer to the stop request
      */
-    StopReplicationRequest_pointer stopReplication(
+    StopReplicationRequestPtr stopReplication(
                                         std::string const& workerName,
                                         std::string const& targetRequestId,
-                                        StopReplicationRequest_callback_type onFinish=nullptr,
+                                        StopReplicationRequestCallbackType onFinish=nullptr,
                                         bool keepTracking=true,
                                         std::string const& jobId="",
                                         unsigned int requestExpirationIvalSec=0);
@@ -350,10 +350,10 @@ public:
      *
      * @return a pointer to the stop request
      */
-    StopDeleteRequest_pointer stopReplicaDelete(
+    StopDeleteRequestPtr stopReplicaDelete(
                                     std::string const& workerName,
                                     std::string const& targetRequestId,
-                                    StopDeleteRequest_callback_type onFinish=nullptr,
+                                    StopDeleteRequestCallbackType onFinish=nullptr,
                                     bool keepTracking=true,
                                     std::string const& jobId="",
                                     unsigned int requestExpirationIvalSec=0);
@@ -373,10 +373,10 @@ public:
      *
      * @return a pointer to the stop request
      */
-    StopFindRequest_pointer stopReplicaFind(
+    StopFindRequestPtr stopReplicaFind(
                                 std::string const& workerName,
                                 std::string const& targetRequestId,
-                                StopFindRequest_callback_type onFinish=nullptr,
+                                StopFindRequestCallbackType onFinish=nullptr,
                                 bool keepTracking=true,
                                 std::string const& jobId="",
                                 unsigned int requestExpirationIvalSec=0);
@@ -396,10 +396,10 @@ public:
      *
      * @return a pointer to the stop request
      */
-    StopFindAllRequest_pointer stopReplicaFindAll(
+    StopFindAllRequestPtr stopReplicaFindAll(
                                     std::string const& workerName,
                                     std::string const& targetRequestId,
-                                    StopFindAllRequest_callback_type onFinish=nullptr,
+                                    StopFindAllRequestCallbackType onFinish=nullptr,
                                     bool keepTracking=true,
                                     std::string const& jobId="",
                                     unsigned int requestExpirationIvalSec=0);
@@ -419,10 +419,10 @@ public:
      *
      * @return a pointer to the status inquery request
      */
-    StatusReplicationRequest_pointer statusOfReplication(
+    StatusReplicationRequestPtr statusOfReplication(
                                         std::string const& workerName,
                                         std::string const& targetRequestId,
-                                        StatusReplicationRequest_callback_type onFinish=nullptr,
+                                        StatusReplicationRequestCallbackType onFinish=nullptr,
                                         bool keepTracking=false,
                                         std::string const& jobId="",
                                         unsigned int requestExpirationIvalSec=0);
@@ -442,10 +442,10 @@ public:
      *
      * @return a pointer to the status inquery request
      */
-    StatusDeleteRequest_pointer statusOfDelete(
+    StatusDeleteRequestPtr statusOfDelete(
                                     std::string const& workerName,
                                     std::string const& targetRequestId,
-                                    StatusDeleteRequest_callback_type onFinish=nullptr,
+                                    StatusDeleteRequestCallbackType onFinish=nullptr,
                                     bool keepTracking=false,
                                     std::string const& jobId="",
                                     unsigned int requestExpirationIvalSec=0);
@@ -465,10 +465,10 @@ public:
      *
      * @return a pointer to the status inquery request
      */
-    StatusFindRequest_pointer statusOfFind(
+    StatusFindRequestPtr statusOfFind(
                                     std::string const& workerName,
                                     std::string const& targetRequestId,
-                                    StatusFindRequest_callback_type onFinish=nullptr,
+                                    StatusFindRequestCallbackType onFinish=nullptr,
                                     bool keepTracking=false,
                                     std::string const& jobId="",
                                     unsigned int requestExpirationIvalSec=0);
@@ -488,10 +488,10 @@ public:
      *
      * @return a pointer to the status inquery request
      */
-    StatusFindAllRequest_pointer statusOfFindAll(
+    StatusFindAllRequestPtr statusOfFindAll(
                                         std::string const& workerName,
                                         std::string const& targetRequestId,
-                                        StatusFindAllRequest_callback_type onFinish=nullptr,
+                                        StatusFindAllRequestCallbackType onFinish=nullptr,
                                         bool keepTracking=false,
                                         std::string const& jobId="",
                                         unsigned int requestExpirationIvalSec=0);
@@ -509,9 +509,9 @@ public:
      *
      * @return a pointer to the request
      */
-    ServiceSuspendRequest_pointer suspendWorkerService(
+    ServiceSuspendRequestPtr suspendWorkerService(
                                         std::string const& workerName,
-                                        ServiceSuspendRequest_callback_type onFinish=nullptr,
+                                        ServiceSuspendRequestCallbackType onFinish=nullptr,
                                         std::string const& jobId="",
                                         unsigned int requestExpirationIvalSec=0);
 
@@ -528,9 +528,9 @@ public:
      *
      * @return a pointer to the request
      */
-    ServiceResumeRequest_pointer resumeWorkerService(
+    ServiceResumeRequestPtr resumeWorkerService(
                                         std::string const& workerName,
-                                        ServiceResumeRequest_callback_type onFinish=nullptr,
+                                        ServiceResumeRequestCallbackType onFinish=nullptr,
                                         std::string const& jobId="",
                                         unsigned int requestExpirationIvalSec=0);
     /**
@@ -546,9 +546,9 @@ public:
      *
      * @return a pointer to the request
      */
-    ServiceStatusRequest_pointer statusOfWorkerService(
+    ServiceStatusRequestPtr statusOfWorkerService(
                                         std::string const& workerName,
-                                        ServiceStatusRequest_callback_type onFinish=nullptr,
+                                        ServiceStatusRequestCallbackType onFinish=nullptr,
                                         std::string const& jobId="",
                                         unsigned int requestExpirationIvalSec=0);
 
@@ -566,9 +566,9 @@ public:
      *
      * @return a pointer to the request
      */
-    ServiceRequestsRequest_pointer requestsOfWorkerService(
+    ServiceRequestsRequestPtr requestsOfWorkerService(
                                         std::string const& workerName,
-                                        ServiceRequestsRequest_callback_type onFinish=nullptr,
+                                        ServiceRequestsRequestCallbackType onFinish=nullptr,
                                         std::string const& jobId="",
                                         unsigned int requestExpirationIvalSec=0);
 
@@ -586,9 +586,9 @@ public:
      *
      * @return a pointer to the request
      */
-    ServiceDrainRequest_pointer drainWorkerService(
+    ServiceDrainRequestPtr drainWorkerService(
                                         std::string const& workerName,
-                                        ServiceDrainRequest_callback_type onFinish=nullptr,
+                                        ServiceDrainRequestCallbackType onFinish=nullptr,
                                         std::string const& jobId="",
                                         unsigned int requestExpirationIvalSec=0);
 
@@ -598,11 +598,11 @@ public:
      * @param requests - a collection to be populated with requests
      */
     template <class REQUEST_TYPE>
-    void requestsOfType(std::vector<typename REQUEST_TYPE::pointer>& requests) const {
+    void requestsOfType(std::vector<typename REQUEST_TYPE::Ptr>& requests) const {
         std::lock_guard<std::mutex> lock(_mtx);
         requests.clear();
         for (auto&& itr: _registry)
-            if (typename REQUEST_TYPE::pointer ptr =
+            if (typename REQUEST_TYPE::Ptr ptr =
                 std::dynamic_pointer_cast<REQUEST_TYPE>(itr.second->request())) {
                 requests.push_back(ptr);
             }
@@ -616,7 +616,7 @@ public:
         std::lock_guard<std::mutex> lock(_mtx);
         size_t result {0};
         for (auto&& itr: _registry) {
-            if (typename REQUEST_TYPE::pointer request =
+            if (typename REQUEST_TYPE::Ptr request =
                 std::dynamic_pointer_cast<REQUEST_TYPE>(itr.second->request())) { ++result; }
         }
         return result;
@@ -634,7 +634,7 @@ private:
      *
      * @param serviceProvider - for configuration, other services
      */
-    explicit Controller(ServiceProvider::pointer const& serviceProvider);
+    explicit Controller(ServiceProvider::Ptr const& serviceProvider);
 
     /// @return the context string for debugging and diagnostic printouts
     std::string context() const;
@@ -661,7 +661,7 @@ private:
     uint64_t const _startTime;
 
     /// The provider of variou services
-    ServiceProvider::pointer _serviceProvider;
+    ServiceProvider::Ptr _serviceProvider;
 
     // The BOOST ASIO communication services & threads which run them
 

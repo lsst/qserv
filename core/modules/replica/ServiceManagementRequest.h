@@ -176,7 +176,7 @@ class ServiceManagementRequestBaseM
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<ServiceManagementRequestBaseM> pointer;
+    typedef std::shared_ptr<ServiceManagementRequestBaseM> Ptr;
 
     // Default construction and copy semantics are prohibited
 
@@ -200,7 +200,7 @@ protected:
     /**
      * Construct the request with the pointer to the services provider.
      */
-    ServiceManagementRequestBaseM(ServiceProvider::pointer const& serviceProvider,
+    ServiceManagementRequestBaseM(ServiceProvider::Ptr const& serviceProvider,
                                   boost::asio::io_service& io_service,
                                   char const*              requestTypeName,
                                   std::string const&       worker,
@@ -246,10 +246,10 @@ class ServiceManagementRequestM
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<ServiceManagementRequestM<POLICY>> pointer;
+    typedef std::shared_ptr<ServiceManagementRequestM<POLICY>> Ptr;
 
     /// The function type for notifications on the completon of the request
-    typedef std::function<void(pointer)> callback_type;
+    typedef std::function<void(Ptr)> CallbackType;
 
     // Default construction and copy semantics are prohibited
 
@@ -274,13 +274,13 @@ public:
      *                           the request.
      * @param messenger       - an interface for communicating with workers
      */
-    static pointer create(ServiceProvider::pointer const& serviceProvider,
-                          boost::asio::io_service& io_service,
-                          std::string const& worker,
-                          callback_type onFinish,
-                          std::shared_ptr<Messenger> const& messenger) {
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
+                      boost::asio::io_service& io_service,
+                      std::string const& worker,
+                      CallbackType onFinish,
+                      std::shared_ptr<Messenger> const& messenger) {
 
-        return ServiceManagementRequestM<POLICY>::pointer(
+        return ServiceManagementRequestM<POLICY>::Ptr(
             new ServiceManagementRequestM<POLICY>(
                 serviceProvider,
                 io_service,
@@ -296,12 +296,12 @@ private:
     /**
      * Construct the request
      */
-    ServiceManagementRequestM(ServiceProvider::pointer const& serviceProvider,
+    ServiceManagementRequestM(ServiceProvider::Ptr const& serviceProvider,
                               boost::asio::io_service& io_service,
                               char const* requestTypeName,
                               std::string const& worker,
                               lsst::qserv::proto::ReplicationServiceRequestType requestType,
-                              callback_type onFinish,
+                              CallbackType onFinish,
                               std::shared_ptr<Messenger> const& messenger)
         :   ServiceManagementRequestBaseM(serviceProvider,
                                           io_service,
@@ -324,7 +324,7 @@ private:
         // to avoid blocking the current thread.
 
         if (_onFinish) {
-            ServiceManagementRequestM<POLICY>::pointer self =
+            ServiceManagementRequestM<POLICY>::Ptr self =
                 shared_from_base<ServiceManagementRequestM<POLICY>>();
             std::async(
                 std::launch::async,
@@ -338,7 +338,7 @@ private:
 private:
 
     /// Registered callback to be called when the operation finishes
-    callback_type _onFinish;
+    CallbackType _onFinish;
 };
 
 typedef ServiceManagementRequestBaseM ServiceManagementRequestBase;

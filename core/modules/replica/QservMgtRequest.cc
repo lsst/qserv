@@ -75,7 +75,7 @@ std::string QservMgtRequest::state2string(ExtendedState state) {
                     "incomplete implementation of method QservMgtRequest::state2string(ExtendedState)");
 }
 
-QservMgtRequest::QservMgtRequest(ServiceProvider::pointer const& serviceProvider,
+QservMgtRequest::QservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
                                  boost::asio::io_service& io_service,
                                  std::string const& type,
                                  std::string const& worker)

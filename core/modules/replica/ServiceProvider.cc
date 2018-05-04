@@ -37,8 +37,8 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-ServiceProvider::pointer ServiceProvider::create(std::string const& configUrl) {
-    auto ptr = ServiceProvider::pointer(new ServiceProvider(configUrl));
+ServiceProvider::Ptr ServiceProvider::create(std::string const& configUrl) {
+    auto ptr = ServiceProvider::Ptr(new ServiceProvider(configUrl));
     // This initialization is made a posteriori because the shared pointer
     // onto the object can't be accessed via the usual call to shared_from_this()
     // inside the contsructor.

@@ -42,8 +42,8 @@ bool test() {
         // Note that omFinish callbak which are activated upon a completion
         // of the requsts will be run in that Controller's thread.
 
-        replica::ServiceProvider::pointer const provider   = replica::ServiceProvider::create(configUrl);
-        replica::Controller::pointer      const controller = replica::Controller::create(provider);
+        replica::ServiceProvider::Ptr const provider   = replica::ServiceProvider::create(configUrl);
+        replica::Controller::Ptr      const controller = replica::Controller::create(provider);
 
         controller->run();
 
@@ -170,7 +170,7 @@ bool test() {
                         sourceWorker,
                         databaseName,
                         chunk,
-                        [&tracker] (replica::ReplicationRequest::pointer ptr) {
+                        [&tracker] (replica::ReplicationRequest::Ptr ptr) {
                             tracker.onFinish(ptr);
                         }
                     )

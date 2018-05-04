@@ -85,10 +85,10 @@ class FixUpJob
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<FixUpJob> pointer;
+    typedef std::shared_ptr<FixUpJob> Ptr;
 
     /// The function type for notifications on the completon of the request
-    typedef std::function<void(pointer)> callback_type;
+    typedef std::function<void(Ptr)> CallbackType;
 
     /// @return default options object for this type of a request
     static Job::Options const& defaultOptions();
@@ -104,11 +104,11 @@ public:
      * @param onFinish       - callback function to be called upon a completion of the job
      * @param options        - job options
      */
-    static pointer create(std::string const& databaseFamily,
-                          Controller::pointer const& controller,
-                          std::string const& parentJobId,
-                          callback_type onFinish,
-                          Job::Options const& options=defaultOptions());
+    static Ptr create(std::string const& databaseFamily,
+                      Controller::Ptr const& controller,
+                      std::string const& parentJobId,
+                      CallbackType onFinish,
+                      Job::Options const& options=defaultOptions());
 
     // Default construction and copy semantics are prohibited
 
@@ -149,9 +149,9 @@ protected:
      * @see FixUpJob::create()
      */
     FixUpJob(std::string const& databaseFamily,
-             Controller::pointer const& controller,
+             Controller::Ptr const& controller,
              std::string const& parentJobId,
-             callback_type onFinish,
+             CallbackType onFinish,
              Job::Options const& options);
 
     /**
@@ -186,7 +186,7 @@ protected:
      *
      * @param request - a pointer to a request
      */
-    void onRequestFinish(ReplicationRequest::pointer const& request);
+    void onRequestFinish(ReplicationRequest::Ptr const& request);
 
     /**
      * Restart the job from scratch. This method will reset object context
@@ -208,11 +208,11 @@ protected:
     std::string _databaseFamily;
 
     /// Client-defined function to be called upon the completion of the job
-    callback_type _onFinish;
+    CallbackType _onFinish;
 
     /// The chained job to be completed first in order to figure out
     /// replica disposition.
-    FindAllJob::pointer _findAllJob;
+    FindAllJob::Ptr _findAllJob;
 
     /// The total number of iterations the job has gone so far
     size_t _numIterations;
@@ -235,10 +235,10 @@ protected:
     std::map<unsigned int,
              std::map<std::string,
                       std::map<std::string,
-                               ReplicationRequest::pointer>>> _chunk2requests;
+                               ReplicationRequest::Ptr>>> _chunk2requests;
 
     /// A collection of requests implementing the operation
-    std::list<ReplicationRequest::pointer> _requests;
+    std::list<ReplicationRequest::Ptr> _requests;
 
     // The counter of requests which will be updated. They need to be atomic
     // to avoid race condition between the onFinish() callbacks executed within

@@ -28,9 +28,9 @@ std::string configUrl;
 void service() {
     
     try {
-        replica::ServiceProvider::pointer const provider = replica::ServiceProvider::create(configUrl);
+        replica::ServiceProvider::Ptr const provider = replica::ServiceProvider::create(configUrl);
 
-        replica::FileServer::pointer const server =
+        replica::FileServer::Ptr const server =
             replica::FileServer::create(provider, workerName);
 
         std::thread serverLauncherThread([server] () {

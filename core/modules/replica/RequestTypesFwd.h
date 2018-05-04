@@ -53,11 +53,11 @@ class DeleteRequestM;
 using ReplicationRequest = ReplicationRequestM;
 using DeleteRequest      = DeleteRequestM;
 
-typedef std::shared_ptr<ReplicationRequest> ReplicationRequest_pointer;
-typedef std::shared_ptr<DeleteRequest>      DeleteRequest_pointer;
+typedef std::shared_ptr<ReplicationRequest> ReplicationRequestPtr;
+typedef std::shared_ptr<DeleteRequest>      DeleteRequestPtr;
 
-typedef std::function<void(ReplicationRequest_pointer)> ReplicationRequest_callback_type;
-typedef std::function<void(DeleteRequest_pointer)>      DeleteRequest_callback_type;
+typedef std::function<void(ReplicationRequestPtr)> ReplicationRequestCallbackType;
+typedef std::function<void(DeleteRequestPtr)>      DeleteRequestCallbackType;
 
 /////////////////////////////
 // Replica lookup requests //
@@ -69,11 +69,11 @@ class FindAllRequestM;
 using FindRequest    = FindRequestM;
 using FindAllRequest = FindAllRequestM;
 
-typedef std::shared_ptr<FindRequest>    FindRequest_pointer;
-typedef std::shared_ptr<FindAllRequest> FindAllRequest_pointer;
+typedef std::shared_ptr<FindRequest>    FindRequestPtr;
+typedef std::shared_ptr<FindAllRequest> FindAllRequestPtr;
 
-typedef std::function<void(FindRequest_pointer)>    FindRequest_callback_type;
-typedef std::function<void(FindAllRequest_pointer)> FindAllRequest_callback_type;
+typedef std::function<void(FindRequestPtr)>    FindRequestCallbackType;
+typedef std::function<void(FindAllRequestPtr)> FindAllRequestCallbackType;
 
 ////////////////////////////////////
 // Replication request managememt //
@@ -91,15 +91,15 @@ using StopDeleteRequest      = StopRequestM<StopDeleteRequestPolicy>;
 using StopFindRequest        = StopRequestM<StopFindRequestPolicy>;
 using StopFindAllRequest     = StopRequestM<StopFindAllRequestPolicy>;
 
-typedef std::shared_ptr<StopReplicationRequest> StopReplicationRequest_pointer;
-typedef std::shared_ptr<StopDeleteRequest>      StopDeleteRequest_pointer;
-typedef std::shared_ptr<StopFindRequest>        StopFindRequest_pointer;
-typedef std::shared_ptr<StopFindAllRequest>     StopFindAllRequest_pointer;
+typedef std::shared_ptr<StopReplicationRequest> StopReplicationRequestPtr;
+typedef std::shared_ptr<StopDeleteRequest>      StopDeleteRequestPtr;
+typedef std::shared_ptr<StopFindRequest>        StopFindRequestPtr;
+typedef std::shared_ptr<StopFindAllRequest>     StopFindAllRequestPtr;
 
-typedef std::function<void(StopReplicationRequest_pointer)> StopReplicationRequest_callback_type;
-typedef std::function<void(StopDeleteRequest_pointer)>      StopDeleteRequest_callback_type;
-typedef std::function<void(StopFindRequest_pointer)>        StopFindRequest_callback_type;
-typedef std::function<void(StopFindAllRequest_pointer)>     StopFindAllRequest_callback_type;
+typedef std::function<void(StopReplicationRequestPtr)> StopReplicationRequestCallbackType;
+typedef std::function<void(StopDeleteRequestPtr)>      StopDeleteRequestCallbackType;
+typedef std::function<void(StopFindRequestPtr)>        StopFindRequestCallbackType;
+typedef std::function<void(StopFindAllRequestPtr)>     StopFindAllRequestCallbackType;
 
 ////////////////////////////////////
 
@@ -115,15 +115,15 @@ using StatusDeleteRequest      = StatusRequestM<StatusDeleteRequestPolicy>;
 using StatusFindRequest        = StatusRequestM<StatusFindRequestPolicy>;
 using StatusFindAllRequest     = StatusRequestM<StatusFindAllRequestPolicy>;
 
-typedef std::shared_ptr<StatusReplicationRequest> StatusReplicationRequest_pointer;
-typedef std::shared_ptr<StatusDeleteRequest>      StatusDeleteRequest_pointer;
-typedef std::shared_ptr<StatusFindRequest>        StatusFindRequest_pointer;
-typedef std::shared_ptr <StatusFindAllRequest>     StatusFindAllRequest_pointer;
+typedef std::shared_ptr<StatusReplicationRequest> StatusReplicationRequestPtr;
+typedef std::shared_ptr<StatusDeleteRequest>      StatusDeleteRequestPtr;
+typedef std::shared_ptr<StatusFindRequest>        StatusFindRequestPtr;
+typedef std::shared_ptr <StatusFindAllRequest>     StatusFindAllRequestPtr;
 
-typedef std::function<void(StatusReplicationRequest_pointer)> StatusReplicationRequest_callback_type;
-typedef std::function<void(StatusDeleteRequest_pointer)>      StatusDeleteRequest_callback_type;
-typedef std::function<void(StatusFindRequest_pointer)>        StatusFindRequest_callback_type;
-typedef std::function<void(StatusFindAllRequest_pointer)>     StatusFindAllRequest_callback_type;
+typedef std::function<void(StatusReplicationRequestPtr)> StatusReplicationRequestCallbackType;
+typedef std::function<void(StatusDeleteRequestPtr)>      StatusDeleteRequestCallbackType;
+typedef std::function<void(StatusFindRequestPtr)>        StatusFindRequestCallbackType;
+typedef std::function<void(StatusFindAllRequestPtr)>     StatusFindAllRequestCallbackType;
 
 
 ////////////////////////////////////////
@@ -144,17 +144,17 @@ using ServiceStatusRequest   = ServiceManagementRequestM<ServiceStatusRequestPol
 using ServiceRequestsRequest = ServiceManagementRequestM<ServiceRequestsRequestPolicy>;
 using ServiceDrainRequest    = ServiceManagementRequestM<ServiceDrainRequestPolicy>;
 
-typedef std::shared_ptr<ServiceSuspendRequest>  ServiceSuspendRequest_pointer;
-typedef std::shared_ptr<ServiceResumeRequest>   ServiceResumeRequest_pointer;
-typedef std::shared_ptr<ServiceStatusRequest>   ServiceStatusRequest_pointer;
-typedef std::shared_ptr<ServiceRequestsRequest> ServiceRequestsRequest_pointer;
-typedef std::shared_ptr<ServiceDrainRequest>    ServiceDrainRequest_pointer;
+typedef std::shared_ptr<ServiceSuspendRequest>  ServiceSuspendRequestPtr;
+typedef std::shared_ptr<ServiceResumeRequest>   ServiceResumeRequestPtr;
+typedef std::shared_ptr<ServiceStatusRequest>   ServiceStatusRequestPtr;
+typedef std::shared_ptr<ServiceRequestsRequest> ServiceRequestsRequestPtr;
+typedef std::shared_ptr<ServiceDrainRequest>    ServiceDrainRequestPtr;
 
-typedef std::function<void(ServiceSuspendRequest_pointer)>  ServiceSuspendRequest_callback_type;
-typedef std::function<void(ServiceResumeRequest_pointer)>   ServiceResumeRequest_callback_type;
-typedef std::function<void(ServiceStatusRequest_pointer)>   ServiceStatusRequest_callback_type;
-typedef std::function<void(ServiceRequestsRequest_pointer)> ServiceRequestsRequest_callback_type;
-typedef std::function<void(ServiceDrainRequest_pointer)>    ServiceDrainRequest_callback_type;
+typedef std::function<void(ServiceSuspendRequestPtr)>  ServiceSuspendRequestCallbackType;
+typedef std::function<void(ServiceResumeRequestPtr)>   ServiceResumeRequestCallbackType;
+typedef std::function<void(ServiceStatusRequestPtr)>   ServiceStatusRequestCallbackType;
+typedef std::function<void(ServiceRequestsRequestPtr)> ServiceRequestsRequestCallbackType;
+typedef std::function<void(ServiceDrainRequestPtr)>    ServiceDrainRequestCallbackType;
 
 }}} // namespace lsst::qserv::replica
 

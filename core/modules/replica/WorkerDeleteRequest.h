@@ -57,14 +57,14 @@ class WorkerDeleteRequest
 public:
 
     /// Pointer to self
-    typedef std::shared_ptr<WorkerDeleteRequest> pointer;
+    typedef std::shared_ptr<WorkerDeleteRequest> Ptr;
 
     /**
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      */
-    static pointer create(ServiceProvider::pointer const& serviceProvider,
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                           std::string const& worker,
                           std::string const& id,
                           int                priority,
@@ -100,7 +100,7 @@ protected:
     /**
      * The normal constructor of the class.
      */
-    WorkerDeleteRequest(ServiceProvider::pointer const& serviceProvider,
+    WorkerDeleteRequest(ServiceProvider::Ptr const& serviceProvider,
                         std::string const& worker,
                         std::string const& id,
                         int                priority,
@@ -128,19 +128,19 @@ class WorkerDeleteRequestPOSIX
 public:
 
     /// Pointer to self
-    typedef std::shared_ptr<WorkerDeleteRequestPOSIX> pointer;
+    typedef std::shared_ptr<WorkerDeleteRequestPOSIX> Ptr;
 
     /**
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      */
-    static pointer create(ServiceProvider::pointer const& serviceProvider,
-                          std::string const& worker,
-                          std::string const& id,
-                          int                priority,
-                          std::string const& database,
-                          unsigned int       chunk);
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
+                      std::string const& worker,
+                      std::string const& id,
+                      int priority,
+                      std::string const& database,
+                      unsigned int chunk);
 
     // Default construction and copy semantics are prohibited
 
@@ -163,12 +163,12 @@ private:
     /**
      * The normal constructor of the class.
      */
-    WorkerDeleteRequestPOSIX(ServiceProvider::pointer const& serviceProvider,
+    WorkerDeleteRequestPOSIX(ServiceProvider::Ptr const& serviceProvider,
                              std::string const& worker,
                              std::string const& id,
-                             int                priority,
+                             int priority,
                              std::string const& database,
-                             unsigned int       chunk);
+                             unsigned int chunk);
 };
 
 /**

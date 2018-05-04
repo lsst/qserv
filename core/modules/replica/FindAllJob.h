@@ -124,10 +124,10 @@ class FindAllJob
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<FindAllJob> pointer;
+    typedef std::shared_ptr<FindAllJob> Ptr;
 
     /// The function type for notifications on the completon of the request
-    typedef std::function<void(pointer)> callback_type;
+    typedef std::function<void(Ptr)> CallbackType;
 
     /// @return default options object for this type of a request
     static Job::Options const& defaultOptions();
@@ -143,11 +143,11 @@ public:
      * @param onFinish       - callback function to be called upon a completion of the job
      * @param options        - job options
      */
-    static pointer create(std::string const& databaseFamily,
-                          Controller::pointer const& controller,
-                          std::string const& parentJobId,
-                          callback_type onFinish,
-                          Job::Options const& options=defaultOptions());
+    static Ptr create(std::string const& databaseFamily,
+                      Controller::Ptr const& controller,
+                      std::string const& parentJobId,
+                      CallbackType onFinish,
+                      Job::Options const& options=defaultOptions());
 
     // Default construction and copy semantics are prohibited
 
@@ -188,9 +188,9 @@ protected:
      * @see FindAllJob::create()
      */
     FindAllJob(std::string const& databaseFamily,
-               Controller::pointer const& controller,
+               Controller::Ptr const& controller,
                std::string const& parentJobId,
-               callback_type onFinish,
+               CallbackType onFinish,
                Job::Options const& options);
 
     /**
@@ -219,7 +219,7 @@ protected:
      *
      * @param request - a pointer to a request
      */
-    void onRequestFinish(FindAllRequest::pointer const& request);
+    void onRequestFinish(FindAllRequest::Ptr const& request);
 
 protected:
 
@@ -230,10 +230,10 @@ protected:
     std::vector<std::string> _databases;
 
     /// Client-defined function to be called upon the completion of the job
-    callback_type _onFinish;
+    CallbackType _onFinish;
 
     /// A collection of requests implementing the operation
-    std::list<FindAllRequest::pointer> _requests;
+    std::list<FindAllRequest::Ptr> _requests;
 
     // The counter of requests which will be updated. They need to be atomic
     // to avoid race condition between the onFinish() callbacks executed within

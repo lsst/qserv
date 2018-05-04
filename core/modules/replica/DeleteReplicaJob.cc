@@ -81,14 +81,14 @@ Job::Options const& DeleteReplicaJob::defaultOptions() {
     return options;
 }
 
-DeleteReplicaJob::pointer DeleteReplicaJob::create(std::string const& databaseFamily,
+DeleteReplicaJob::Ptr DeleteReplicaJob::create(std::string const& databaseFamily,
                                                    unsigned int chunk,
                                                    std::string const& worker,
-                                                   Controller::pointer const& controller,
+                                                   Controller::Ptr const& controller,
                                                    std::string const& parentJobId,
-                                                   callback_type onFinish,
+                                                   CallbackType onFinish,
                                                    Job::Options const& options) {
-    return DeleteReplicaJob::pointer(
+    return DeleteReplicaJob::Ptr(
         new DeleteReplicaJob(databaseFamily,
                              chunk,
                              worker,
@@ -101,9 +101,9 @@ DeleteReplicaJob::pointer DeleteReplicaJob::create(std::string const& databaseFa
 DeleteReplicaJob::DeleteReplicaJob(std::string const& databaseFamily,
                                    unsigned int chunk,
                                    std::string const& worker,
-                                   Controller::pointer const& controller,
+                                   Controller::Ptr const& controller,
                                    std::string const& parentJobId,
-                                   callback_type onFinish,
+                                   CallbackType onFinish,
                                    Job::Options const& options)
     :   Job(controller,
             parentJobId,
@@ -174,7 +174,7 @@ void DeleteReplicaJob::startImpl() {
     //
     // ATTENTION: only for ACTUALLY participating databases
 
-    ServiceProvider::pointer const serviceProvider = _controller->serviceProvider();
+    ServiceProvider::Ptr const serviceProvider = _controller->serviceProvider();
     if (serviceProvider->config()->xrootdAutoNotify()) {
 
         std::vector<std::string> databases;
@@ -194,7 +194,7 @@ void DeleteReplicaJob::startImpl() {
             databases,
             worker(),
             force,
-            [self] (RemoveReplicaQservMgtRequest::pointer const& request) {
+            [self] (RemoveReplicaQservMgtRequest::Ptr const& request) {
 
                 switch (request->extendedState()) {
 
@@ -274,12 +274,12 @@ void DeleteReplicaJob::beginDeleteReplica() {
     // only because some catalogs may not have a full coverage
 
     for (auto&& replica: _replicas) {
-        DeleteRequest::pointer ptr =
+        DeleteRequest::Ptr ptr =
             _controller->deleteReplica(
                 worker(),
                 replica.database(),
                 chunk(),
-                [self] (DeleteRequest::pointer ptr) {
+                [self] (DeleteRequest::Ptr ptr) {
                     self->onRequestFinish(ptr);
                 },
                 options().priority,
@@ -291,7 +291,7 @@ void DeleteReplicaJob::beginDeleteReplica() {
     }
 }
 
-void DeleteReplicaJob::onRequestFinish(DeleteRequest::pointer const& request) {
+void DeleteReplicaJob::onRequestFinish(DeleteRequest::Ptr const& request) {
 
     LOGS(_log, LOG_LVL_DEBUG, context()
          << "onRequestFinish(DeleteRequest)"

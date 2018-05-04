@@ -39,7 +39,7 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-RequestMessenger::RequestMessenger(ServiceProvider::pointer const& serviceProvider,
+RequestMessenger::RequestMessenger(ServiceProvider::Ptr const& serviceProvider,
                                    boost::asio::io_service& io_service,
                                    std::string const& type,
                                    std::string const& worker,

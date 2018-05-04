@@ -56,13 +56,13 @@ Job::Options const& QservSyncJob::defaultOptions() {
     return options;
 }
 
-QservSyncJob::pointer QservSyncJob::create(std::string const& databaseFamily,
-                                           Controller::pointer const& controller,
-                                           std::string const& parentJobId,
-                                           bool force,
-                                           callback_type onFinish,
-                                           Job::Options const& options) {
-    return QservSyncJob::pointer(
+QservSyncJob::Ptr QservSyncJob::create(std::string const& databaseFamily,
+                                       Controller::Ptr const& controller,
+                                       std::string const& parentJobId,
+                                       bool force,
+                                       CallbackType onFinish,
+                                       Job::Options const& options) {
+    return QservSyncJob::Ptr(
         new QservSyncJob(databaseFamily,
                        controller,
                        parentJobId,
@@ -72,10 +72,10 @@ QservSyncJob::pointer QservSyncJob::create(std::string const& databaseFamily,
 }
 
 QservSyncJob::QservSyncJob(std::string const& databaseFamily,
-                           Controller::pointer const& controller,
+                           Controller::Ptr const& controller,
                            std::string const& parentJobId,
                            bool force,
-                           callback_type onFinish,
+                           CallbackType onFinish,
                            Job::Options const& options)
     :   Job(controller,
             parentJobId,
@@ -148,7 +148,7 @@ void QservSyncJob::startImpl() {
                 newReplicas,
                 _force,
                 _id,    /* jobId */
-                [self] (SetReplicasQservMgtRequest::pointer const& request) {
+                [self] (SetReplicasQservMgtRequest::Ptr const& request) {
                     self->onRequestFinish(request);
                 }
             )
@@ -194,7 +194,7 @@ void QservSyncJob::notify() {
     }
 }
 
-void QservSyncJob::onRequestFinish(SetReplicasQservMgtRequest::pointer const& request) {
+void QservSyncJob::onRequestFinish(SetReplicasQservMgtRequest::Ptr const& request) {
 
     LOGS(_log, LOG_LVL_DEBUG, context()
          << "onRequestFinish  worker=" << request->worker()

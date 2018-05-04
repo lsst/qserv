@@ -57,14 +57,14 @@ Job::Options const& PurgeJob::defaultOptions() {
     return options;
 }
 
-PurgeJob::pointer PurgeJob::create(
+PurgeJob::Ptr PurgeJob::create(
                         std::string const& databaseFamily,
                         unsigned int numReplicas,
-                        Controller::pointer const& controller,
+                        Controller::Ptr const& controller,
                         std::string const& parentJobId,
-                        callback_type onFinish,
+                        CallbackType onFinish,
                         Job::Options const& options) {
-    return PurgeJob::pointer(
+    return PurgeJob::Ptr(
         new PurgeJob(databaseFamily,
                      numReplicas,
                      controller,
@@ -75,9 +75,9 @@ PurgeJob::pointer PurgeJob::create(
 
 PurgeJob::PurgeJob(std::string const& databaseFamily,
                    unsigned int numReplicas,
-                   Controller::pointer const& controller,
+                   Controller::Ptr const& controller,
                    std::string const& parentJobId,
-                   callback_type onFinish,
+                   CallbackType onFinish,
                    Job::Options const& options)
     :   Job(controller,
             parentJobId,
@@ -129,7 +129,7 @@ void PurgeJob::startImpl() {
         _databaseFamily,
         _controller,
         _id,
-        [self] (FindAllJob::pointer job) {
+        [self] (FindAllJob::Ptr job) {
             self->onPrecursorJobFinish();
         }
     );
@@ -368,7 +368,7 @@ void PurgeJob::onPrecursorJobFinish() {
                     targetWorker,
                     _controller,
                     _id,
-                    [self] (DeleteReplicaJob::pointer const& job) {
+                    [self] (DeleteReplicaJob::Ptr const& job) {
                         self->onDeleteJobFinish(job);
                     },
                     options()   // inherit from the current job
@@ -411,7 +411,7 @@ void PurgeJob::onPrecursorJobFinish() {
     if (_state == State::FINISHED) { notify(); }
 }
 
-void PurgeJob::onDeleteJobFinish(DeleteReplicaJob::pointer const& job) {
+void PurgeJob::onDeleteJobFinish(DeleteReplicaJob::Ptr const& job) {
 
     LOGS(_log, LOG_LVL_DEBUG, context()
          << "onDeleteJobFinish"

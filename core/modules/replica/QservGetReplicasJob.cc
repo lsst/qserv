@@ -55,14 +55,14 @@ Job::Options const& QservGetReplicasJob::defaultOptions() {
     return options;
 }
 
-QservGetReplicasJob::pointer QservGetReplicasJob::create(
+QservGetReplicasJob::Ptr QservGetReplicasJob::create(
                                     std::string const& databaseFamily,
-                                    Controller::pointer const& controller,
+                                    Controller::Ptr const& controller,
                                     std::string const& parentJobId,
                                     bool inUseOnly,
-                                    callback_type onFinish,
+                                    CallbackType onFinish,
                                     Job::Options const& options) {
-    return QservGetReplicasJob::pointer(
+    return QservGetReplicasJob::Ptr(
         new QservGetReplicasJob(databaseFamily,
                                 controller,
                                 parentJobId,
@@ -71,11 +71,12 @@ QservGetReplicasJob::pointer QservGetReplicasJob::create(
                                 options));
 }
 
-QservGetReplicasJob::QservGetReplicasJob(std::string const& databaseFamily,
-                       Controller::pointer const& controller,
+QservGetReplicasJob::QservGetReplicasJob(
+                       std::string const& databaseFamily,
+                       Controller::Ptr const& controller,
                        std::string const& parentJobId,
                        bool inUseOnly,
-                       callback_type onFinish,
+                       CallbackType onFinish,
                        Job::Options const& options)
     :   Job(controller,
             parentJobId,
@@ -111,7 +112,7 @@ void QservGetReplicasJob::startImpl() {
             worker,
             _inUseOnly,
             _id,
-            [self] (GetReplicasQservMgtRequest::pointer const& request) {
+            [self] (GetReplicasQservMgtRequest::Ptr const& request) {
                 self->onRequestFinish(request);
             }
         );
@@ -163,7 +164,7 @@ void QservGetReplicasJob::notify() {
     }
 }
 
-void QservGetReplicasJob::onRequestFinish(GetReplicasQservMgtRequest::pointer const& request) {
+void QservGetReplicasJob::onRequestFinish(GetReplicasQservMgtRequest::Ptr const& request) {
 
     LOGS(_log, LOG_LVL_DEBUG, context()
          << "onRequestFinish  databaseFamily=" << request->databaseFamily()

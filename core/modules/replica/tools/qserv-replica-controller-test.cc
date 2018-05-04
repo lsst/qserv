@@ -40,13 +40,13 @@ class RequestGenerator {
 public:
 
     /// A collection of REPLICATION requsts
-    typedef std::vector<replica::ReplicationRequest::pointer> replication_requests;
+    typedef std::vector<replica::ReplicationRequest::Ptr> replication_requests;
 
     /// A collection of STATUS requsts
-    typedef std::vector<replica::StatusReplicationRequest::pointer> status_requests;
+    typedef std::vector<replica::StatusReplicationRequest::Ptr> status_requests;
 
     /// A collection of STOP requsts
-    typedef std::vector<replica::StopReplicationRequest::pointer> stop_requests;
+    typedef std::vector<replica::StopReplicationRequest::Ptr> stop_requests;
 
     // Default construction and copy semantics are proxibited
 
@@ -62,7 +62,7 @@ public:
      * @param sourceWorker      - the name of a worker node for chunks to be replicated
      * @param database          - the database which is a subject of the replication
      */
-    RequestGenerator(replica::Controller::pointer const& controller,
+    RequestGenerator(replica::Controller::Ptr const& controller,
                      std::string const& worker,
                      std::string const& sourceWorker,
                      std::string const& database)
@@ -100,13 +100,13 @@ public:
 
             if (blockPost) { blockPost->wait(); }
 
-            replica::ReplicationRequest::pointer const request =
+            replica::ReplicationRequest::Ptr const request =
                 _controller->replicate(
                     _worker,
                     _sourceWorker,
                     _database,
                     chunk++,
-                    [] (replica::ReplicationRequest::pointer request) {
+                    [] (replica::ReplicationRequest::Ptr request) {
                         LOGS(_log, LOG_LVL_INFO, request->context()
                             << "** DONE **"
                             << "  chunk: " << request->chunk()
@@ -135,7 +135,7 @@ public:
                 _controller->statusOfReplication(
                     request->worker(),
                     request->id(),
-                    [] (replica::StatusReplicationRequest::pointer request) {
+                    [] (replica::StatusReplicationRequest::Ptr request) {
                         LOGS(_log, LOG_LVL_INFO, request->context()
                             << "** DONE **"
                             << "  targetRequestId: " << request->targetRequestId()
@@ -164,7 +164,7 @@ public:
                 _controller->stopReplication(
                     request->worker(),
                     request->id(),
-                    [] (replica::StopReplicationRequest::pointer request) {
+                    [] (replica::StopReplicationRequest::Ptr request) {
                         LOGS(_log, LOG_LVL_INFO, request->context()
                             << "** DONE **"
                             << "  targetRequestId: " << request->targetRequestId()
@@ -181,7 +181,7 @@ private:
 
     // Parameters of the object
 
-    replica::Controller::pointer _controller;
+    replica::Controller::Ptr _controller;
 
     std::string _worker;
     std::string _sourceWorker;
@@ -191,7 +191,7 @@ private:
 /**
  * Print a status of the controller
  */
-void reportControllerStatus(replica::Controller::pointer const& controller) {
+void reportControllerStatus(replica::Controller::Ptr const& controller) {
     LOGS(_log, LOG_LVL_INFO, "controller is " << (controller->isRunning() ? "" : "NOT ") << "running");
 }
 
@@ -204,8 +204,8 @@ void test() {
 
         util::BlockPost blockPost(0, 100);     // for random delays (milliseconds) between operations
 
-        replica::ServiceProvider::pointer const provider   = replica::ServiceProvider::create(configUrl);
-        replica::Controller::pointer      const controller = replica::Controller::create(provider);
+        replica::ServiceProvider::Ptr const provider   = replica::ServiceProvider::create(configUrl);
+        replica::Controller::Ptr      const controller = replica::Controller::create(provider);
 
 
         // Configure the generator of requests 

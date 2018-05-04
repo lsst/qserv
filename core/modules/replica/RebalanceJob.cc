@@ -78,14 +78,14 @@ Job::Options const& RebalanceJob::defaultOptions() {
     return options;
 }
 
-RebalanceJob::pointer RebalanceJob::create(
+RebalanceJob::Ptr RebalanceJob::create(
                             std::string const& databaseFamily,
                             bool estimateOnly,
-                            Controller::pointer const& controller,
+                            Controller::Ptr const& controller,
                             std::string const& parentJobId,
-                            callback_type onFinish,
+                            CallbackType onFinish,
                             Job::Options const& options) {
-    return RebalanceJob::pointer(
+    return RebalanceJob::Ptr(
         new RebalanceJob(databaseFamily,
                          estimateOnly,
                          controller,
@@ -96,9 +96,9 @@ RebalanceJob::pointer RebalanceJob::create(
 
 RebalanceJob::RebalanceJob(std::string const& databaseFamily,
                            bool estimateOnly,
-                           Controller::pointer const& controller,
+                           Controller::Ptr const& controller,
                            std::string const& parentJobId,
-                           callback_type onFinish,
+                           CallbackType onFinish,
                            Job::Options const& options)
     :   Job(controller,
             parentJobId,
@@ -138,7 +138,7 @@ void RebalanceJob::startImpl() {
         _databaseFamily,
         _controller,
         _id,
-        [self] (FindAllJob::pointer job) {
+        [self] (FindAllJob::Ptr job) {
             self->onPrecursorJobFinish();
         }
     );
@@ -199,7 +199,7 @@ void RebalanceJob::restart() {
         _databaseFamily,
         _controller,
         _id,
-        [self] (FindAllJob::pointer job) {
+        [self] (FindAllJob::Ptr job) {
             self->onPrecursorJobFinish();
         }
     );
@@ -537,7 +537,7 @@ void RebalanceJob::onPrecursorJobFinish() {
                     true,   /* purge */
                     _controller,
                     _id,
-                    [self](MoveReplicaJob::pointer job) {
+                    [self](MoveReplicaJob::Ptr job) {
                         self->onJobFinish(job);
                     }
                 );
@@ -567,7 +567,7 @@ void RebalanceJob::onPrecursorJobFinish() {
     if (_state == State::FINISHED) { notify(); }
 }
 
-void RebalanceJob::onJobFinish(MoveReplicaJob::pointer const& job) {
+void RebalanceJob::onJobFinish(MoveReplicaJob::Ptr const& job) {
 
     LOGS(_log, LOG_LVL_DEBUG, context()
          << "onJobFinish"

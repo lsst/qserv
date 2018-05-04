@@ -44,21 +44,21 @@ bool computeCheckSum = false;
 
 /// Report result of the operation
 template <class T>
-void printRequest(typename T::pointer request) {
+void printRequest(typename T::Ptr request) {
     LOGS(_log, LOG_LVL_INFO, request->context() << "** DONE **");
     LOGS(_log, LOG_LVL_INFO, request->context() << "responseData:\n" << request->responseData());
     LOGS(_log, LOG_LVL_INFO, request->context() << "performance:\n"  << request->performance());
 }
 
 template <>
-void printRequest<replica::ServiceManagementRequestBase>(replica::ServiceManagementRequestBase::pointer request) {
+void printRequest<replica::ServiceManagementRequestBase>(replica::ServiceManagementRequestBase::Ptr request) {
     LOGS(_log, LOG_LVL_INFO, request->context() << "** DONE **");
     LOGS(_log, LOG_LVL_INFO, request->context() << "servicState:\n\n" << request->getServiceState ());
     LOGS(_log, LOG_LVL_INFO, request->context() << "performance:\n"   << request->performance ());
 }
 
 template <class T>
-void printRequestExtra(typename T::pointer request) {
+void printRequestExtra(typename T::Ptr request) {
     LOGS(_log, LOG_LVL_INFO, request->context() << "targetPerformance:\n" << request->targetPerformance());
 }
 
@@ -70,20 +70,20 @@ bool test() {
         ///////////////////////////////////////////////////////////////////////
         // Start the controller in its own thread before injecting any requests
 
-        replica::ServiceProvider::pointer const provider   = replica::ServiceProvider::create(configUrl);
-        replica::Controller::pointer      const controller = replica::Controller::create(provider);
+        replica::ServiceProvider::Ptr const provider   = replica::ServiceProvider::create(configUrl);
+        replica::Controller::Ptr      const controller = replica::Controller::create(provider);
 
         controller->run();
 
         /////////////////////////////////////////
         // Launch a request of the requested type
 
-        replica::Request::pointer request;
+        replica::Request::Ptr request;
 
         if ("REPLICA_CREATE" == operation) {
             request = controller->replicate(
                 worker, sourceWorker, db, chunk,
-                [] (replica::ReplicationRequest::pointer request) {
+                [] (replica::ReplicationRequest::Ptr request) {
                     printRequest<replica::ReplicationRequest>(request);
                 },
                 priority,
@@ -93,7 +93,7 @@ bool test() {
         } else if ("REPLICA_CREATE,CANCEL" == operation) {
             request = controller->replicate(
                 worker, sourceWorker, db, chunk,
-                [] (replica::ReplicationRequest::pointer request) {
+                [] (replica::ReplicationRequest::Ptr request) {
                     printRequest<replica::ReplicationRequest>(request);
                 },
                 priority,
@@ -107,7 +107,7 @@ bool test() {
         } else if ("REPLICA_DELETE" == operation) {
             request = controller->deleteReplica(
                 worker, db, chunk,
-                [] (replica::DeleteRequest::pointer request) {
+                [] (replica::DeleteRequest::Ptr request) {
                     printRequest<replica::DeleteRequest>(request);
                 },
                 priority,
@@ -117,7 +117,7 @@ bool test() {
         } else if ("REPLICA_FIND" == operation) {
             request = controller->findReplica(
                 worker, db, chunk,
-                [] (replica::FindRequest::pointer request) {
+                [] (replica::FindRequest::Ptr request) {
                     printRequest<replica::FindRequest>(request);
                 },
                 priority,
@@ -127,7 +127,7 @@ bool test() {
         } else if ("REPLICA_FIND_ALL" == operation) {
             request = controller->findAllReplicas(
                 worker, db,
-                [] (replica::FindAllRequest::pointer request) {
+                [] (replica::FindAllRequest::Ptr request) {
                     printRequest<replica::FindAllRequest>(request);
                 },
                 priority,
@@ -136,7 +136,7 @@ bool test() {
         } else if ("REQUEST_STATUS:REPLICA_CREATE"  == operation) {
             request = controller->statusOfReplication(
                 worker, id,
-                [] (replica::StatusReplicationRequest::pointer request) {
+                [] (replica::StatusReplicationRequest::Ptr request) {
                     printRequest     <replica::StatusReplicationRequest>(request);
                     printRequestExtra<replica::StatusReplicationRequest>(request);
                 },
@@ -145,7 +145,7 @@ bool test() {
         } else if ("REQUEST_STATUS:REPLICA_DELETE"  == operation) {
             request = controller->statusOfDelete(
                 worker, id,
-                [] (replica::StatusDeleteRequest::pointer request) {
+                [] (replica::StatusDeleteRequest::Ptr request) {
                     printRequest     <replica::StatusDeleteRequest>(request);
                     printRequestExtra<replica::StatusDeleteRequest>(request);
                 },
@@ -154,7 +154,7 @@ bool test() {
         } else if ("REQUEST_STATUS:REPLICA_FIND"  == operation) {
             request = controller->statusOfFind(
                 worker, id,
-                [] (replica::StatusFindRequest::pointer request) {
+                [] (replica::StatusFindRequest::Ptr request) {
                     printRequest     <replica::StatusFindRequest>(request);
                     printRequestExtra<replica::StatusFindRequest>(request);
                 },
@@ -163,7 +163,7 @@ bool test() {
         } else if ("REQUEST_STATUS:REPLICA_FIND_ALL"  == operation) {
             request = controller->statusOfFindAll(
                 worker, id,
-                [] (replica::StatusFindAllRequest::pointer request) {
+                [] (replica::StatusFindAllRequest::Ptr request) {
                     printRequest     <replica::StatusFindAllRequest>(request);
                     printRequestExtra<replica::StatusFindAllRequest>(request);
                 },
@@ -172,7 +172,7 @@ bool test() {
         } else if ("REQUEST_STOP:REPLICA_CREATE"  == operation) {
             request = controller->stopReplication(
                 worker, id,
-                [] (replica::StopReplicationRequest::pointer request) {
+                [] (replica::StopReplicationRequest::Ptr request) {
                     printRequest     <replica::StopReplicationRequest>(request);
                     printRequestExtra<replica::StopReplicationRequest>(request);
                 },
@@ -181,7 +181,7 @@ bool test() {
         } else if ("REQUEST_STOP:REPLICA_DELETE"  == operation) {
             request = controller->stopReplicaDelete(
                 worker, id,
-                [] (replica::StopDeleteRequest::pointer request) {
+                [] (replica::StopDeleteRequest::Ptr request) {
                     printRequest     <replica::StopDeleteRequest>(request);
                     printRequestExtra<replica::StopDeleteRequest>(request);
                 },
@@ -190,7 +190,7 @@ bool test() {
         } else if ("REQUEST_STOP:REPLICA_FIND"  == operation) {
             request = controller->stopReplicaFind(
                 worker, id,
-                [] (replica::StopFindRequest::pointer request) {
+                [] (replica::StopFindRequest::Ptr request) {
                     printRequest     <replica::StopFindRequest>(request);
                     printRequestExtra<replica::StopFindRequest>(request);
                 },
@@ -199,7 +199,7 @@ bool test() {
         } else if ("REQUEST_STOP:REPLICA_FIND_ALL"  == operation) {
             request = controller->stopReplicaFindAll(
                 worker, id,
-                [] (replica::StopFindAllRequest::pointer request) {
+                [] (replica::StopFindAllRequest::Ptr request) {
                     printRequest     <replica::StopFindAllRequest>(request);
                     printRequestExtra<replica::StopFindAllRequest>(request);
                 },
@@ -208,34 +208,34 @@ bool test() {
         } else if ("SERVICE_SUSPEND" == operation) {
             request = controller->suspendWorkerService(
                 worker,
-                [] (replica::ServiceSuspendRequest::pointer request) {
+                [] (replica::ServiceSuspendRequest::Ptr request) {
                     printRequest<replica::ServiceManagementRequestBase>(request);
                 });
 
         } else if ("SERVICE_RESUME"  == operation) {
             request = controller->resumeWorkerService(
                 worker,
-                [] (replica::ServiceResumeRequest::pointer request) {
+                [] (replica::ServiceResumeRequest::Ptr request) {
                     printRequest<replica::ServiceManagementRequestBase>(request);
                 });
 
         } else if ("SERVICE_STATUS"  == operation) {
             request = controller->statusOfWorkerService(
                 worker,
-                [] (replica::ServiceStatusRequest::pointer request) {
+                [] (replica::ServiceStatusRequest::Ptr request) {
                     printRequest<replica::ServiceManagementRequestBase>(request);
                 });
 
         } else if ("SERVICE_REQUESTS"  == operation) {
             request = controller->requestsOfWorkerService(
                 worker,
-                [] (replica::ServiceRequestsRequest::pointer request) {
+                [] (replica::ServiceRequestsRequest::Ptr request) {
                     printRequest<replica::ServiceManagementRequestBase>(request);
                 });
         } else if ("SERVICE_DRAIN"  == operation) {
             request = controller->drainWorkerService(
                 worker,
-                [] (replica::ServiceDrainRequest::pointer request) {
+                [] (replica::ServiceDrainRequest::Ptr request) {
                     printRequest<replica::ServiceManagementRequestBase>(request);
                 });
 

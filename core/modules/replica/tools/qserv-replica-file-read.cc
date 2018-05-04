@@ -38,9 +38,9 @@ int run() {
   
     std::FILE* fp = 0;
     try {
-        replica::ServiceProvider::pointer const provider = replica::ServiceProvider::create(configUrl);
+        replica::ServiceProvider::Ptr const provider = replica::ServiceProvider::create(configUrl);
 
-        if (replica::FileClient::pointer file =
+        if (replica::FileClient::Ptr file =
             replica::FileClient::open(provider, workerName, databaseName, inFileName)) {
 
             size_t const fileSize = file->size();

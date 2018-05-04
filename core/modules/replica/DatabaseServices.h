@@ -65,7 +65,7 @@ class DatabaseServices
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<DatabaseServices> pointer;
+    typedef std::shared_ptr<DatabaseServices> Ptr;
 
     /// Forward declaration for the smart reference to Job objects
     typedef std::shared_ptr<Job> Job_pointer;
@@ -82,7 +82,7 @@ public:
      *
      * @param configuration - the configuration service
      */
-    static pointer create(Configuration::pointer const& configuration);
+    static Ptr create(Configuration::Ptr const& configuration);
 
     // Default construction and copy semantics are prohibited
 
@@ -249,12 +249,12 @@ protected:
      *
      * @param configuration - the configuration service
      */
-    explicit DatabaseServices(Configuration::pointer const& configuration);
+    explicit DatabaseServices(Configuration::Ptr const& configuration);
 
 protected:
 
     /// The configuration service
-    Configuration::pointer _configuration;
+    Configuration::Ptr _configuration;
 
     /// The mutex for enforcing thread safety of the class's public API
     /// and internal operations.

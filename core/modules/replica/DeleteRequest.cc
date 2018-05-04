@@ -51,17 +51,17 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-DeleteRequestM::pointer DeleteRequestM::create(ServiceProvider::pointer const& serviceProvider,
+DeleteRequestM::Ptr DeleteRequestM::create(ServiceProvider::Ptr const& serviceProvider,
                                                boost::asio::io_service& io_service,
                                                std::string const& worker,
                                                std::string const& database,
                                                unsigned int  chunk,
-                                               callback_type onFinish,
+                                               CallbackType onFinish,
                                                int  priority,
                                                bool keepTracking,
                                                bool allowDuplicate,
                                                std::shared_ptr<Messenger> const& messenger) {
-    return DeleteRequestM::pointer(
+    return DeleteRequestM::Ptr(
         new DeleteRequestM(
             serviceProvider,
             io_service,
@@ -75,12 +75,12 @@ DeleteRequestM::pointer DeleteRequestM::create(ServiceProvider::pointer const& s
             messenger));
 }
 
-DeleteRequestM::DeleteRequestM(ServiceProvider::pointer const& serviceProvider,
+DeleteRequestM::DeleteRequestM(ServiceProvider::Ptr const& serviceProvider,
                                boost::asio::io_service& io_service,
                                std::string const& worker,
                                std::string const& database,
                                unsigned int  chunk,
-                               callback_type onFinish,
+                               CallbackType onFinish,
                                int  priority,
                                bool keepTracking,
                                bool allowDuplicate,

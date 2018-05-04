@@ -50,20 +50,20 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-ReplicationRequestM::pointer ReplicationRequestM::create(
-                                    ServiceProvider::pointer const& serviceProvider,
+ReplicationRequestM::Ptr ReplicationRequestM::create(
+                                    ServiceProvider::Ptr const& serviceProvider,
                                     boost::asio::io_service& io_service,
                                     std::string const& worker,
                                     std::string const& sourceWorker,
                                     std::string const& database,
                                     unsigned int  chunk,
-                                    callback_type onFinish,
+                                    CallbackType onFinish,
                                     int  priority,
                                     bool keepTracking,
                                     bool allowDuplicate,
                                     std::shared_ptr<Messenger> const& messenger) {
 
-    return ReplicationRequestM::pointer(
+    return ReplicationRequestM::Ptr(
         new ReplicationRequestM(
             serviceProvider,
             io_service,
@@ -79,13 +79,13 @@ ReplicationRequestM::pointer ReplicationRequestM::create(
 }
 
 ReplicationRequestM::ReplicationRequestM(
-                                    ServiceProvider::pointer const& serviceProvider,
+                                    ServiceProvider::Ptr const& serviceProvider,
                                     boost::asio::io_service& io_service,
                                     std::string const& worker,
                                     std::string const& sourceWorker,
                                     std::string const& database,
                                     unsigned int  chunk,
-                                    callback_type onFinish,
+                                    CallbackType onFinish,
                                     int  priority,
                                     bool keepTracking,
                                     bool allowDuplicate,

@@ -61,10 +61,10 @@ std::string GetChunkListQservRequest::status2str(Status status) {
             std::to_string(status));
 }
 
-GetChunkListQservRequest::pointer GetChunkListQservRequest::create(
+GetChunkListQservRequest::Ptr GetChunkListQservRequest::create(
                                         bool inUseOnly,
-                                        GetChunkListQservRequest::calback_type onFinish) {
-    return pointer(new GetChunkListQservRequest(
+                                        GetChunkListQservRequest::CallbackType onFinish) {
+    return GetChunkListQservRequest::Ptr(new GetChunkListQservRequest(
         inUseOnly,
         onFinish
     ));
@@ -72,7 +72,7 @@ GetChunkListQservRequest::pointer GetChunkListQservRequest::create(
 
 GetChunkListQservRequest::GetChunkListQservRequest(
                                         bool inUseOnly,
-                                        GetChunkListQservRequest::calback_type onFinish)
+                                        GetChunkListQservRequest::CallbackType onFinish)
     :   _inUseOnly(inUseOnly),
         _onFinish(onFinish) {
 

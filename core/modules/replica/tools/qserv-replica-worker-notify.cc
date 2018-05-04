@@ -118,7 +118,7 @@ void test() {
 
         // Initialize the context
 
-        replica::ServiceProvider::pointer const provider = replica::ServiceProvider::create(configUrl);
+        replica::ServiceProvider::Ptr const provider = replica::ServiceProvider::create(configUrl);
 
         // Launch the requst and wait for its completion
         //
@@ -133,7 +133,7 @@ void test() {
                 worker,
                 inUseOnly,
                 std::string(),
-                [&finished] (replica::GetReplicasQservMgtRequest::pointer const& request) {
+                [&finished] (replica::GetReplicasQservMgtRequest::Ptr const& request) {
                     std::cout
                         << "state:         " << request->state2string(request->state()) << "\n"
                         << "extendedState: " << request->state2string(request->extendedState()) << "\n"
@@ -154,7 +154,7 @@ void test() {
                 replicas,
                 force,
                 std::string(),
-                [&finished] (replica::SetReplicasQservMgtRequest::pointer const& request) {
+                [&finished] (replica::SetReplicasQservMgtRequest::Ptr const& request) {
                     std::cout
                         << "state:         " << request->state2string(request->state()) << "\n"
                         << "extendedState: " << request->state2string(request->extendedState()) << "\n"
@@ -175,7 +175,7 @@ void test() {
                 chunk,
                 databases,
                 worker,
-                [&finished] (replica::AddReplicaQservMgtRequest::pointer const& request) {
+                [&finished] (replica::AddReplicaQservMgtRequest::Ptr const& request) {
                     std::cout
                         << "state:         " << request->state2string(request->state()) << "\n"
                         << "extendedState: " << request->state2string(request->extendedState()) << "\n"
@@ -194,7 +194,7 @@ void test() {
                 databases,
                 worker,
                 force,
-                [&finished] (replica::RemoveReplicaQservMgtRequest::pointer const& request) {
+                [&finished] (replica::RemoveReplicaQservMgtRequest::Ptr const& request) {
                     std::cout
                         << "state:         " << request->state2string(request->state()) << "\n"
                         << "extendedState: " << request->state2string(request->extendedState()) << "\n"

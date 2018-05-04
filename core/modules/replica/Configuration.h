@@ -106,7 +106,7 @@ class Configuration {
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<Configuration> pointer;
+    typedef std::shared_ptr<Configuration> Ptr;
 
     /**
      * The static factory method will instantiate an instance of a subclass
@@ -121,7 +121,7 @@ public:
      * @throw std::invalid_argument - if the URL has unsupported prefix or it
      *                                couldn't be parsed
      */
-    static pointer load(std::string const& configUrl);
+    static Ptr load(std::string const& configUrl);
 
     // Copy semantics is prohibited
 
