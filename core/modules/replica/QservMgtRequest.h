@@ -28,6 +28,7 @@
 /// (see individual class documentation for more information)
 
 // System headers
+#include <atomic>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -297,8 +298,8 @@ protected:
 
     // Primary and extended states of the request
 
-    State         _state;
-    ExtendedState _extendedState;
+    std::atomic<State>         _state;
+    std::atomic<ExtendedState> _extendedState;
 
     /// Error message (if any) reported by the remote service
     std::string _serverError;

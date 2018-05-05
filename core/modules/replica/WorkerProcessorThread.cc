@@ -40,7 +40,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerProcessorThread");
 namespace lsst {
 namespace qserv {
 namespace replica {
-    
+
 WorkerProcessorThread::Ptr WorkerProcessorThread::create(WorkerProcessor &processor) {
     static unsigned int id = 0;
     return WorkerProcessorThread::Ptr(
@@ -60,15 +60,15 @@ bool WorkerProcessorThread::isRunning() const {
 
 void WorkerProcessorThread::run() {
 
-    if (isRunning()) { return; }
+    if (isRunning()) return;
 
     WorkerProcessorThread::Ptr self = shared_from_this();
     _thread = std::make_shared<std::thread>( [self] () {
 
         LOGS(_log, LOG_LVL_DEBUG, self->context() << "start");
 
-        while (!self->_stop) {
-            
+        while (not self->_stop) {
+
             // Get the next request to process if any. This operation will block
             // until either the next request is available (returned a valid pointer)
             // or the specified timeout expires. In either case this thread has a chance
@@ -77,11 +77,11 @@ void WorkerProcessorThread::run() {
             WorkerRequest::Ptr request = self->_processor.fetchNextForProcessing(self, 1000);
 
             if (self->_stop) {
-                if (request) { self->_processor.processingRefused(request); }
+                if (request) self->_processor.processingRefused(request);
                 continue;
             }
             if (request) {
-                
+
                 LOGS(_log, LOG_LVL_DEBUG, self->context() << "begin processing"
                     << "  id: " << request->id());
 
@@ -89,16 +89,16 @@ void WorkerProcessorThread::run() {
 
                 try {
 
-                    while (!(finished = request->execute())) {
+                    while (not (finished = request->execute())) {
 
                         if (self->_stop) {
 
                             LOGS(_log, LOG_LVL_DEBUG, self->context() << "rollback processing"
                                 << "  id: " << request->id());
- 
+
                             request->rollback();
                             self->_processor.processingRefused(request);
- 
+
                             break;
                         }
                     }
@@ -107,7 +107,7 @@ void WorkerProcessorThread::run() {
 
                     LOGS(_log, LOG_LVL_DEBUG, self->context() << "cancel processing"
                         << "  id: " << request->id());
- 
+
                     self->_processor.processingFinished(request);
                 }
                 if (finished) {
@@ -115,7 +115,7 @@ void WorkerProcessorThread::run() {
                     LOGS(_log, LOG_LVL_DEBUG, self->context() << "finish processing"
                         << "  id: " << request->id()
                         << "  status: " << WorkerRequest::status2string(request->status()));
-    
+
                     self->_processor.processingFinished(request);
                 }
             }

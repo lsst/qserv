@@ -105,9 +105,8 @@ ReplicateJobResult const& ReplicateJob::getReplicaData() const {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "getReplicaData");
 
-    if (_state == State::FINISHED) {
-        return _replicaData;
-    }
+    if (_state == State::FINISHED) return _replicaData;
+
     throw std::logic_error(
         "ReplicateJob::getReplicaData  the method can't be called while the job hasn't finished");
 }
@@ -198,12 +197,16 @@ void ReplicateJob::onPrecursorJobFinish() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish");
 
+    LOCK_GUARD;
+
     // Ignore the callback if the job was cancelled
-    if (_state == State::FINISHED) { return; }
+    if (_state == State::FINISHED) return;
+
+    // IMPLEMENTATION NOTE: using a single-iteration loop in order to bail
+    // out of it at any moment. When this happens object state will get
+    // re-evaluated and a client will get notified if needed.
 
     do {
-
-        LOCK_GUARD;
 
         //////////////////////////////////////////////////////////////////////
         // Do not proceed with the replication effort if there was any problem
@@ -427,29 +430,34 @@ void ReplicateJob::onPrecursorJobFinish() {
 
                 worker2occupancy[destinationWorker]++;
             }
-            if (state() == State::FINISHED) { break; }
+            if (state() == State::FINISHED) break;
         }
-        if (state() == State::FINISHED) { break; }
 
-        // Finish right away if no problematic chunks found
-        if (not _jobs.size()) {
-            if (not _numFailedLocks) {
-                finish(ExtendedState::SUCCESS);
-                break;
-            } else {
-                // Some of the chuks were locked and yet, no single replica creation
-                // job was lunched. Hence we should start another iteration by requesting
-                // the fresh state of the chunks within the family.
-                restart();
-                return;
+        if (state() != State::FINISHED) {
+
+            // ATTENTION: this condition needs to be evaluated to prevent
+            // getting into the 'zombie' state.
+
+            if (not _jobs.size()) {
+
+                // Finish right away if no problematic chunks found
+                if (not _numFailedLocks) {
+                    finish(ExtendedState::SUCCESS);
+                    break;
+                } else {
+
+                    // Some of the chuks were locked and yet, no single replica creation
+                    // job was lunched. Hence we should start another iteration by requesting
+                    // the fresh state of the chunks within the family.
+                    restart();
+                    return;
+                }
             }
         }
 
     } while (false);
 
-    // Client notification should be made from the lock-free zone
-    // to avoid possible deadlocks
-    if (_state == State::FINISHED) { notify(); }
+    if (_state == State::FINISHED) notify();
 }
 
 void ReplicateJob::onCreateJobFinish(CreateReplicaJob::Ptr const& job) {
@@ -461,76 +469,70 @@ void ReplicateJob::onCreateJobFinish(CreateReplicaJob::Ptr const& job) {
          << "  sourceWorker="      << job->sourceWorker()
          << "  destinationWorker=" << job->destinationWorker());
 
+    LOCK_GUARD;
+
     // Ignore the callback if the job was cancelled
     if (_state == State::FINISHED) {
         release(job->chunk());
         return;
     }
-    do {
-        LOCK_GUARD;
 
-        // Make sure the chunk is released regardless of the completion
-        // status of the replica creation job.
+    // Make sure the chunk is released regardless of the completion
+    // status of the replica creation job.
 
-        _chunk2jobs.at(job->chunk()).erase(job->destinationWorker());
-        if (_chunk2jobs.at(job->chunk()).empty()) {
-            _chunk2jobs.erase(job->chunk());
-            release(job->chunk());
+    _chunk2jobs.at(job->chunk()).erase(job->destinationWorker());
+    if (_chunk2jobs.at(job->chunk()).empty()) {
+        _chunk2jobs.erase(job->chunk());
+        release(job->chunk());
+    }
+
+    // Update counters and object state if needed
+
+    _numFinished++;
+    if (job->extendedState() == Job::ExtendedState::SUCCESS) {
+        _numSuccess++;
+        auto replicaData = job->getReplicaData();
+        for (auto&& replica: replicaData.replicas) {
+            _replicaData.replicas.push_back(replica);
         }
+        for (auto&& chunkEntry: replicaData.chunks) {
+            auto chunk = chunkEntry.first;
 
-        // Update counters and object state if needed
+            for (auto&& databaseEntry: chunkEntry.second) {
+                auto database = databaseEntry.first;
 
-        _numFinished++;
-        if (job->extendedState() == Job::ExtendedState::SUCCESS) {
-            _numSuccess++;
-            auto replicaData = job->getReplicaData();
-            for (auto&& replica: replicaData.replicas) {
-                _replicaData.replicas.push_back(replica);
-            }
-            for (auto&& chunkEntry: replicaData.chunks) {
-                auto chunk = chunkEntry.first;
+                for (auto&& workerEntry: databaseEntry.second) {
+                    auto worker  = workerEntry.first;
+                    auto replica = workerEntry.second;
 
-                for (auto&& databaseEntry: chunkEntry.second) {
-                    auto database = databaseEntry.first;
-
-                    for (auto&& workerEntry: databaseEntry.second) {
-                        auto worker  = workerEntry.first;
-                        auto replica = workerEntry.second;
-
-                        _replicaData.chunks[chunk][database][worker] = replica;
-                    }
+                    _replicaData.chunks[chunk][database][worker] = replica;
                 }
             }
-            _replicaData.workers[job->destinationWorker()] = true;
-        } else {
-            _replicaData.workers[job->destinationWorker()] = false;
         }
+        _replicaData.workers[job->destinationWorker()] = true;
+    } else {
+        _replicaData.workers[job->destinationWorker()] = false;
+    }
 
-        // Evaluate the status of on-going operations to see if the job
-        // has finished.
-        //
-        if (_numFinished == _numLaunched) {
-            if (_numSuccess == _numLaunched) {
-                if (_numFailedLocks) {
-                    // Make another iteration (and another one, etc. as many as needed)
-                    // before it succeeds or fails.
-                    restart();
-                    return;
-                } else {
-                    finish(ExtendedState::SUCCESS);
-                    break;
-                }
+    // Evaluate the status of on-going operations to see if the job
+    // has finished.
+    //
+    if (_numFinished == _numLaunched) {
+        if (_numSuccess == _numLaunched) {
+            if (_numFailedLocks) {
+                // Make another iteration (and another one, etc. as many as needed)
+                // before it succeeds or fails.
+                restart();
+                return;
             } else {
-                finish(ExtendedState::FAILED);
-                break;
+                finish(ExtendedState::SUCCESS);
             }
+        } else {
+            finish(ExtendedState::FAILED);
         }
+    }
 
-    } while (false);
-
-    // Client notification should be made from the lock-free zone
-    // to avoid possible deadlocks
-    if (_state == State::FINISHED) { notify(); }
+    if (_state == State::FINISHED) notify();
 }
 
 void ReplicateJob::release(unsigned int chunk) {

@@ -112,7 +112,7 @@ MoveReplicaJobResult const& MoveReplicaJob::getReplicaData() const {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "getReplicaData");
 
-    if (_state == State::FINISHED) { return _replicaData; }
+    if (_state == State::FINISHED) return _replicaData;
 
     throw std::logic_error(
         "MoveReplicaJob::getReplicaData  the method can't be called while the job hasn't finished");
@@ -174,80 +174,65 @@ void MoveReplicaJob::onCreateJobFinish() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "onCreateJobFinish");
 
+    LOCK_GUARD;
+
     // Ignore the callback if the job was cancelled or expired
-    if (_state == State::FINISHED) { return; }
+    if (_state == State::FINISHED) return;
 
-    do {
-        // This lock will be automatically release beyond this scope
-        // to allow client notifications (see the end of the method)
-        LOCK_GUARD;
+    if (_createReplicaJob->extendedState() == Job::ExtendedState::SUCCESS) {
 
-        if (_createReplicaJob->extendedState() == Job::ExtendedState::SUCCESS) {
+        // Extract stats
+        _replicaData.createdReplicas = _createReplicaJob->getReplicaData().replicas;
+        _replicaData.createdChunks   = _createReplicaJob->getReplicaData().chunks;
 
-            // Extract stats
-            _replicaData.createdReplicas = _createReplicaJob->getReplicaData().replicas;
-            _replicaData.createdChunks   = _createReplicaJob->getReplicaData().chunks;
+        // Initiate the second stage (which is optional) - deleting the replica
+        // at the source
+        if (_purge) {
 
-            // Initiate the second stage (which is optional) - deleting the replica
-            // at the source
-            if (_purge) {
-
-                auto self = shared_from_base<MoveReplicaJob>();
-                _deleteReplicaJob = DeleteReplicaJob::create(
-                    databaseFamily(),
-                    chunk(),
-                    sourceWorker(),
-                    _controller,
-                    _id,
-                    [self] (DeleteReplicaJob::Ptr const& job) {
-                        self->onDeleteJobFinish();
-                    },
-                    options()   // inherit from the current job
-                );
-                _deleteReplicaJob->start();
-            } else {
-                // Otherwise, we're done
-                finish(ExtendedState::SUCCESS);
-            }
-
+            auto self = shared_from_base<MoveReplicaJob>();
+            _deleteReplicaJob = DeleteReplicaJob::create(
+                databaseFamily(),
+                chunk(),
+                sourceWorker(),
+                _controller,
+                _id,
+                [self] (DeleteReplicaJob::Ptr const& job) {
+                    self->onDeleteJobFinish();
+                },
+                options()   // inherit from the current job
+            );
+            _deleteReplicaJob->start();
         } else {
-            // Carry over a state of the child job
-            finish(_createReplicaJob->extendedState());
+            // Otherwise, we're done
+            finish(ExtendedState::SUCCESS);
         }
 
-    } while (false);
-
-    // Client notification should be made from the lock-free zone
-    // to avoid possible deadlocks
-    if (_state == State::FINISHED) { notify(); }
+    } else {
+        // Carry over a state of the child job
+        finish(_createReplicaJob->extendedState());
+    }
+    if (_state == State::FINISHED) notify();
 }
 
 void MoveReplicaJob::onDeleteJobFinish() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "onDeleteJobFinish()");
 
+    LOCK_GUARD;
+
     // Ignore the callback if the job was cancelled or expired
-    if (_state == State::FINISHED) { return; }
+    if (_state == State::FINISHED) return;
 
-    do {
-        // This lock will be automatically release beyond this scope
-        // to allow client notifications (see the end of the method)
-        LOCK_GUARD;
+    // Extract stats
+    if (_deleteReplicaJob->extendedState() == Job::ExtendedState::SUCCESS) {
+        _replicaData.deletedReplicas = _deleteReplicaJob->getReplicaData().replicas;
+        _replicaData.deletedChunks   = _deleteReplicaJob->getReplicaData().chunks;
+    }
 
-        // Extract stats
-        if (_deleteReplicaJob->extendedState() == Job::ExtendedState::SUCCESS) {
-            _replicaData.deletedReplicas = _deleteReplicaJob->getReplicaData().replicas;
-            _replicaData.deletedChunks   = _deleteReplicaJob->getReplicaData().chunks;
-        }
+    // Carry over a state of the child job
+    finish(_deleteReplicaJob->extendedState());
 
-        // Carry over a state of the child job
-        finish(_deleteReplicaJob->extendedState());
-
-    } while (false);
-
-    // Client notification should be made from the lock-free zone
-    // to avoid possible deadlocks
-    if (_state == State::FINISHED) { notify(); }
+    notify();
 }
 
 }}} // namespace lsst::qserv::replica

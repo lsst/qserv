@@ -28,6 +28,7 @@
 /// (see individual class documentation for more information)
 
 // System headers
+#include <atomic>
 #include <memory>
 #include <mutex>
 #include <ostream>
@@ -369,10 +370,10 @@ protected:
     Options _options;
 
     /// Primary state of the job
-    State _state;
+    std::atomic<State> _state;
 
     /// Extended state of the job
-    ExtendedState _extendedState;
+    std::atomic<ExtendedState> _extendedState;
 
     // Start and end times (milliseconds since UNIX Epoch)
 

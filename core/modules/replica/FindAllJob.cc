@@ -88,7 +88,7 @@ FindAllJobResult const& FindAllJob::getReplicaData() const {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "getReplicaData");
 
-    if (_state == State::FINISHED) { return _replicaData; }
+    if (_state == State::FINISHED) return _replicaData;
 
     throw std::logic_error(
         "FindAllJob::getReplicaData  the method can't be called while the job hasn't finished");
@@ -120,8 +120,8 @@ void FindAllJob::startImpl() {
 
     // In case if no workers or database are present in the Configuration
     // at this time.
-    if (not _numLaunched) { setState(State::FINISHED); }
-    else                  { setState(State::IN_PROGRESS); }
+    if (not _numLaunched) setState(State::FINISHED);
+    else                  setState(State::IN_PROGRESS);
 }
 
 void FindAllJob::cancelImpl() {
@@ -176,156 +176,143 @@ void FindAllJob::onRequestFinish(FindAllRequest::Ptr const& request) {
          << " state=" << request->state2string(request->state())
          << " extendedState=" << request->state2string(request->extendedState()));
 
-    // Ignore the callback if the job was cancelled, expired, etc.``
-    if (_state == State::FINISHED) { return; }
+    LOCK_GUARD;
 
-    do {
-        // Note that access to the job's public API should not be locked while
-        // notifying a caller (if the callback function was povided) in order to avoid
-        // the circular deadlocks.
-        LOCK_GUARD;
+    // Ignore the callback if the job was cancelled, expired, etc.
+    if (_state == State::FINISHED) return;
 
-        LOGS(_log, LOG_LVL_DEBUG, context()
-             << "onRequestFinish  database=" << request->database()
-             << " worker=" << request->worker()
-             << " ** LOCK_GUARD **");
+    // Update counters and object state if needed.
+    _numFinished++;
+    if (request->extendedState() == Request::ExtendedState::SUCCESS) {
+        _numSuccess++;
+        ReplicaInfoCollection const& infoCollection = request->responseData();
+        _replicaData.replicas.push_back(infoCollection);
+        for (auto&& info: infoCollection) {
+            _replicaData.chunks.atChunk(info.chunk())
+                               .atDatabase(info.database())
+                               .atWorker(info.worker()) = info;
+        }
+        _replicaData.workers[request->worker()] = true;
+    } else {
+        _replicaData.workers[request->worker()] = false;
+    }
 
-        // Update counters and object state if needed.
-        _numFinished++;
-        if (request->extendedState() == Request::ExtendedState::SUCCESS) {
-            _numSuccess++;
-            ReplicaInfoCollection const& infoCollection = request->responseData();
-            _replicaData.replicas.emplace_back (infoCollection);
-            for (auto&& info: infoCollection) {
-                _replicaData.chunks.atChunk(info.chunk())
-                                   .atDatabase(info.database())
-                                   .atWorker(info.worker()) = info;
+    LOGS(_log, LOG_LVL_DEBUG, context()
+         << "onRequestFinish  database=" << request->database()
+         << " worker=" << request->worker()
+         << " _numLaunched=" << _numLaunched
+         << " _numFinished=" << _numFinished
+         << " _numSuccess=" << _numSuccess);
+
+     // Recompute the final state if this was the last requst
+     // before finalizing the object state and notifying clients.
+
+     if (_numFinished == _numLaunched) {
+
+         // Databases participating in a chunk
+
+         for (auto chunk: _replicaData.chunks.chunkNumbers()) {
+             for (auto&& database: _replicaData.chunks.chunk(chunk).databaseNames()) {
+                 _replicaData.databases[chunk].push_back(database);
+             }
+         }
+
+         // Workers hosting complete chunks
+
+         for (auto chunk: _replicaData.chunks.chunkNumbers()) {
+             auto chunkMap = _replicaData.chunks.chunk(chunk);
+
+             for (auto&& database: chunkMap.databaseNames()) {
+                 auto databaseMap = chunkMap.database(database);
+
+                 for (auto &&worker: databaseMap.workerNames()) {
+                     ReplicaInfo const& replica = databaseMap.worker(worker);
+
+                     if (replica.status() == ReplicaInfo::Status::COMPLETE) {
+                         _replicaData.complete[chunk][database].push_back(worker);
+                     }
+                 }
+             }
+         }
+
+         // Compute the 'co-location' status of chunks on all participating workers
+         //
+         // ATTENTION: this algorithm won't conider the actual status of
+         //            chunk replicas (if they're complete, corrupts, etc.).
+
+         for (auto chunk: _replicaData.chunks.chunkNumbers()) {
+             auto chunkMap = _replicaData.chunks.chunk(chunk);
+
+             // Build a list of participating databases for this chunk,
+             // and build a list of databases for each worker where the chunk
+             // is present.
+             //
+             // NOTE: Single-database chunks are always colocated. Note that
+             //       the loop over databases below has exactly one iteration.
+
+             std::map<std::string, size_t> worker2numDatabases;
+
+             for (auto&& database: chunkMap.databaseNames()) {
+                 auto databaseMap = chunkMap.database(database);
+
+                 for (auto&& worker: databaseMap.workerNames()) {
+                     worker2numDatabases[worker]++;
+                 }
+             }
+
+             // Crosscheck the number of databases present on each worker
+             // against the number of all databases participated within
+             // the chunk and decide for which of those workers the 'colocation'
+             // requirement is met.
+
+             for (auto&& entry: worker2numDatabases) {
+                 std::string const& worker       = entry.first;
+                 size_t      const  numDatabases = entry.second;
+
+                 _replicaData.isColocated[chunk][worker] =
+                    _replicaData.databases[chunk].size() == numDatabases;
             }
-            _replicaData.workers[request->worker()] = true;
-        } else {
-            _replicaData.workers[request->worker()] = false;
         }
 
-        LOGS(_log, LOG_LVL_DEBUG, context()
-             << "onRequestFinish  database=" << request->database()
-             << " worker=" << request->worker()
-             << " _numLaunched=" << _numLaunched
-             << " _numFinished=" << _numFinished
-             << " _numSuccess=" << _numSuccess);
+        // Compute the 'goodness' status of each chunk
 
-        if (_numFinished == _numLaunched) {
-            finish(_numSuccess == _numLaunched ? ExtendedState::SUCCESS :
-                                                 ExtendedState::FAILED);
-        }
+        for (auto&& chunk2workers: _replicaData.isColocated) {
+            unsigned int const chunk = chunk2workers.first;
 
-        // Recompute the final state if this was the last requst
-        if (_state == State::FINISHED) {
+            for (auto&& worker2collocated: chunk2workers.second) {
+                std::string const& worker = worker2collocated.first;
+                bool        const  isColocated = worker2collocated.second;
 
-            // Databases participating in a chunk
-            //
-            for (auto chunk: _replicaData.chunks.chunkNumbers()) {
-                for (auto&& database: _replicaData.chunks.chunk(chunk).databaseNames()) {
-                    _replicaData.databases[chunk].push_back(database);
-                }
-            }
-
-            // Workers hosting complete chunks
-            //
-            for (auto chunk: _replicaData.chunks.chunkNumbers()) {
-                auto chunkMap = _replicaData.chunks.chunk(chunk);
-
-                for (auto&& database: chunkMap.databaseNames()) {
-                    auto databaseMap = chunkMap.database(database);
-
-                    for (auto &&worker: databaseMap.workerNames()) {
-                        ReplicaInfo const& replica = databaseMap.worker(worker);
-
-                        if (replica.status() == ReplicaInfo::Status::COMPLETE) {
-                            _replicaData.complete[chunk][database].push_back(worker);
-                        }
-                    }
-                }
-            }
-
-            // Compute the 'co-location' status of chunks on all participating workers
-            //
-            // ATTENTION: this algorithm won't conider the actual status of
-            //            chunk replicas (if they're complete, corrupts, etc.).
-            //
-            for (auto chunk: _replicaData.chunks.chunkNumbers()) {
-                auto chunkMap = _replicaData.chunks.chunk(chunk);
-
-                // Build a list of participating databases for this chunk,
-                // and build a list of databases for each worker where the chunk
-                // is present.
+                // Start with the "as good as colocated" assumption, then drill down
+                // into chunk participation in all databases on that worker to see
+                // if this will change.
                 //
-                // NOTE: Single-database chunks are always colocated. Note that
-                //       the loop over databases below has exactly one iteration.
+                // NOTE: watch for a little optimization if the replica is not
+                //       colocated.
 
-                std::map<std::string, size_t> worker2numDatabases;
+                bool isGood = isColocated;
+                if (isGood) {
 
-                for (auto&& database: chunkMap.databaseNames()) {
-                    auto databaseMap = chunkMap.database(database);
+                    auto chunkMap = _replicaData.chunks.chunk(chunk);
 
-                    for (auto&& worker: databaseMap.workerNames()) {
-                        worker2numDatabases[worker]++;
-                    }
-                }
+                    for (auto&& database: chunkMap.databaseNames()) {
+                        auto databaseMap = chunkMap.database(database);
 
-                // Crosscheck the number of databases present on each worker
-                // against the number of all databases participated within
-                // the chunk and decide for which of those workers the 'colocation'
-                // requirement is met.
-
-                for (auto&& entry: worker2numDatabases) {
-                    std::string const& worker       = entry.first;
-                    size_t      const  numDatabases = entry.second;
-
-                    _replicaData.isColocated[chunk][worker] =
-                        _replicaData.databases[chunk].size() == numDatabases;
-                }
-            }
-
-            // Compute the 'goodness' status of each chunk
-
-            for (auto&& chunk2workers: _replicaData.isColocated) {
-                unsigned int const chunk = chunk2workers.first;
-
-                for (auto&& worker2collocated: chunk2workers.second) {
-                    std::string const& worker = worker2collocated.first;
-                    bool        const  isColocated = worker2collocated.second;
-
-                    // Start with the "as good as colocated" assumption, then drill down
-                    // into chunk participation in all databases on that worker to see
-                    // if this will change.
-                    //
-                    // NOTE: watch for a little optimization if the replica is not
-                    //       colocated.
-
-                    bool isGood = isColocated;
-                    if (isGood) {
-
-                        auto chunkMap = _replicaData.chunks.chunk(chunk);
-
-                        for (auto&& database: chunkMap.databaseNames()) {
-                            auto databaseMap = chunkMap.database(database);
-
-                            for (auto&& thisWorker: databaseMap.workerNames()) {
-                                if (worker == thisWorker) {
-                                    ReplicaInfo const& replica = databaseMap.worker(thisWorker);
-                                    isGood = isGood and (replica.status() == ReplicaInfo::Status::COMPLETE);
-                                }
+                        for (auto&& thisWorker: databaseMap.workerNames()) {
+                            if (worker == thisWorker) {
+                                ReplicaInfo const& replica = databaseMap.worker(thisWorker);
+                                isGood = isGood and (replica.status() == ReplicaInfo::Status::COMPLETE);
                             }
                         }
                     }
-                    _replicaData.isGood[chunk][worker] = isGood;
                 }
+                _replicaData.isGood[chunk][worker] = isGood;
             }
         }
-    } while (false);
-
-    // Finally, notify a caller in the deadlock-free zone`
-    if (_state == State::FINISHED) { notify(); }
+        finish(_numSuccess == _numLaunched ? ExtendedState::SUCCESS :
+                                             ExtendedState::FAILED);
+        notify();
+    }
 }
 
 }}} // namespace lsst::qserv::replica

@@ -118,7 +118,7 @@ RebalanceJobResult const& RebalanceJob::getReplicaData() const {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "getReplicaData");
 
-    if (_state == State::FINISHED)  { return _replicaData; }
+    if (_state == State::FINISHED)  return _replicaData;
 
     throw std::logic_error(
         "RebalanceJob::getReplicaData  the method can't be called while the job hasn't finished");
@@ -228,13 +228,16 @@ void RebalanceJob::onPrecursorJobFinish() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish");
 
+    LOCK_GUARD;
+
     // Ignore the callback if the job was cancelled
-    if (_state == State::FINISHED) { return; }
+    if (_state == State::FINISHED) return;
+
+    // IMPLEMENTATION NOTE: using a single-iteration loop in order to bail
+    // out of it at any moment. When this happens object state will get
+    // re-evaluated and a client will get notified if needed.
 
     do {
-        // This lock will be automatically release beyon this scope
-        // to allow client notifications (see the end of the method)
-        LOCK_GUARD;
 
         ////////////////////////////////////////////////////////////////////
         // Do not proceed with the replication effort unless running the job
@@ -456,7 +459,7 @@ void RebalanceJob::onPrecursorJobFinish() {
 
             for (unsigned int chunk: chunks) {
 
-                if (not numExtraChunks) { break; }
+                if (not numExtraChunks) break;
 
                 // Always sort the collection in the descending order to make sure
                 // least populated workers are considered first
@@ -479,10 +482,10 @@ void RebalanceJob::onPrecursorJobFinish() {
                     size_t&            numSlots          = destinationWorkerEntry.second;
 
                     // Are there any awailable slots on the worker?
-                    if (not numSlots) { continue; }
+                    if (not numSlots) continue;
 
                     // Skip this worker if it already has this chunk
-                    if (worker2chunks[destinationWorker].count(chunk)) { continue; }
+                    if (worker2chunks[destinationWorker].count(chunk)) continue;
 
                     // Found the one. Update
 
@@ -556,15 +559,14 @@ void RebalanceJob::onPrecursorJobFinish() {
             } else {
                 // Start another iteration by requesting the fresh state of
                 // chunks within the family or until it all fails.
-                restart ();
+                restart();
+                return;
             }
         }
 
     } while (false);
 
-    // Client notification should be made from the lock-free zone
-    // to avoid possible deadlocks
-    if (_state == State::FINISHED) { notify(); }
+    if (_state == State::FINISHED) notify();
 }
 
 void RebalanceJob::onJobFinish(MoveReplicaJob::Ptr const& job) {

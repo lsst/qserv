@@ -84,8 +84,7 @@ AddReplicaQservMgtRequest::AddReplicaQservMgtRequest(
 
 void AddReplicaQservMgtRequest::startImpl() {
 
-    AddReplicaQservMgtRequest::Ptr const& request =
-        shared_from_base<AddReplicaQservMgtRequest>();
+    auto const request = shared_from_base<AddReplicaQservMgtRequest>();
 
     _qservRequest = wpublish::AddChunkGroupQservRequest::create(
         _chunk,

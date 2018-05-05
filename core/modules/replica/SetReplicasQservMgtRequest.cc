@@ -120,8 +120,7 @@ void SetReplicasQservMgtRequest::startImpl() {
             }
         );
     }
-    SetReplicasQservMgtRequest::Ptr const& request =
-        shared_from_base<SetReplicasQservMgtRequest>();
+    auto const request = shared_from_base<SetReplicasQservMgtRequest>();
 
     _qservRequest = wpublish::SetChunkListQservRequest::create(
         chunks,
@@ -154,6 +153,7 @@ void SetReplicasQservMgtRequest::finishImpl() {
     assertState(State::FINISHED);
 
     if (_extendedState == ExtendedState::CANCELLED) {
+
         // And if the SSI request is still around then tell it to stop
         if (_qservRequest) {
             bool const cancel = true;

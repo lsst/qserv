@@ -88,8 +88,7 @@ RemoveReplicaQservMgtRequest::RemoveReplicaQservMgtRequest(
 
 void RemoveReplicaQservMgtRequest::startImpl() {
 
-    RemoveReplicaQservMgtRequest::Ptr const& request =
-        shared_from_base<RemoveReplicaQservMgtRequest>();
+    auto const request = shared_from_base<RemoveReplicaQservMgtRequest>();
 
     _qservRequest = wpublish::RemoveChunkGroupQservRequest::create(
         _chunk,
@@ -113,8 +112,8 @@ void RemoveReplicaQservMgtRequest::startImpl() {
                     break;
                 default:
                     throw std::logic_error(
-                                    "RemoveReplicaQservMgtRequest:  unhandled server status: " +
-                                    wpublish::ChunkGroupQservRequest::status2str(status));
+                                "RemoveReplicaQservMgtRequest:  unhandled server status: " +
+                                wpublish::ChunkGroupQservRequest::status2str(status));
             }
         }
     );

@@ -29,6 +29,7 @@
 /// (see individual class documentation for more information)
 
 // System headers
+#include <atomic>
 #include <exception>
 #include <memory>
 #include <mutex>
@@ -143,7 +144,7 @@ public:
      * The effect of the operation varies depending on the current state of
      * the request. The default (the base class's implementation) assumes
      * the following transitions:
-     * 
+     *
      *   STATUS_NONE or STATUS_CANCELLED             - transition to state STATUS_CANCELLED
      *   STATUS_IN_PROGRESS or STATUS_IS_CANCELLING  - transition to state STATUS_IS_CANCELLING
      *   other                                       - throwing std::logic_error
@@ -158,7 +159,7 @@ public:
      * The effect of the operation varies depending on the current state of
      * the request. The default (the base class's implementation) assumes
      * the following transitions:
-     * 
+     *
      *   STATUS_NONE or STATUS_IN_PROGRESS - transition to STATUS_NONE
      *   STATUS_IS_CANCELLING              - transition to STATUS_CANCELLED and throwing WorkerRequestCancelled
      *   other                             - throwing std::logic_error
@@ -194,10 +195,10 @@ protected:
             :   failed(false),
                 extendedStatus(ExtendedCompletionStatus::EXT_STATUS_NONE) {
         }
-        
+
         /**
          *  Merge the context of another object into the current one.
-         *  
+         *
          *  Note, only the first error code will be stored when a error condition
          *  is detected. An assumption is that the first error would usually cause
          *  a "chain reaction", hence only the first one typically matters.
@@ -240,9 +241,9 @@ protected:
     std::string _id;
 
     int _priority;
-    
-    CompletionStatus         _status;
-    ExtendedCompletionStatus _extendedStatus;
+
+    std::atomic<CompletionStatus>         _status;
+    std::atomic<ExtendedCompletionStatus> _extendedStatus;
 
     /// Performance counters
     WorkerPerformance _performance;

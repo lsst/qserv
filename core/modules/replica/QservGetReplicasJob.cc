@@ -94,7 +94,7 @@ QservGetReplicasJobResult const& QservGetReplicasJob::getReplicaData() const {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "getReplicaData");
 
-    if (_state == State::FINISHED) { return _replicaData; }
+    if (_state == State::FINISHED) return _replicaData;
 
     throw std::logic_error(
         "QservGetReplicasJob::getReplicaData  the method can't be called while the job hasn't finished");
@@ -128,8 +128,8 @@ void QservGetReplicasJob::startImpl() {
 
     // In case if no workers or database are present in the Configuration
     // at this time.
-    if (not _numLaunched) { setState(State::FINISHED); }
-    else                  { setState(State::IN_PROGRESS); }
+    if (not _numLaunched) setState(State::FINISHED);
+    else                  setState(State::IN_PROGRESS);
 }
 
 void QservGetReplicasJob::cancelImpl() {
@@ -172,54 +172,46 @@ void QservGetReplicasJob::onRequestFinish(GetReplicasQservMgtRequest::Ptr const&
          << " state=" << request->state2string(request->state())
          << " extendedState=" << request->state2string(request->extendedState()));
 
+    LOCK_GUARD;
+
     // Ignore the callback if the job was cancelled, expired, etc.``
-    if (_state == State::FINISHED) { return; }
+    if (_state == State::FINISHED) return;
 
-    do {
-        // Note that access to the job's public API should not be locked while
-        // notifying a caller (if the callback function was povided) in order to avoid
-        // the circular deadlocks.
-        LOCK_GUARD;
+    LOGS(_log, LOG_LVL_DEBUG, context()
+         << "onRequestFinish  databaseFamily=" << request->databaseFamily()
+         << " worker=" << request->worker()
+         << " ** LOCK_GUARD **");
 
-        LOGS(_log, LOG_LVL_DEBUG, context()
-             << "onRequestFinish  databaseFamily=" << request->databaseFamily()
-             << " worker=" << request->worker()
-             << " ** LOCK_GUARD **");
+    // Update counters and object state if needed.
+    _numFinished++;
+    if (request->extendedState() == QservMgtRequest::ExtendedState::SUCCESS) {
+        _numSuccess++;
 
-        // Update counters and object state if needed.
-        _numFinished++;
-        if (request->extendedState() == QservMgtRequest::ExtendedState::SUCCESS) {
-            _numSuccess++;
-
-            // Merge results of the request into the summary data collection
-            // of the job.
-            _replicaData.replicas[request->worker()] = request->replicas();
-            for (auto&& replica: request->replicas()) {
-                _replicaData.useCount.atChunk(replica.chunk)
-                                     .atDatabase(replica.database)
-                                     .atWorker(request->worker()) = replica.useCount;
-            }
-            _replicaData.workers[request->worker()] = true;
-        } else {
-            _replicaData.workers[request->worker()] = false;
+        // Merge results of the request into the summary data collection
+        // of the job.
+        _replicaData.replicas[request->worker()] = request->replicas();
+        for (auto&& replica: request->replicas()) {
+            _replicaData.useCount.atChunk(replica.chunk)
+                                 .atDatabase(replica.database)
+                                 .atWorker(request->worker()) = replica.useCount;
         }
+        _replicaData.workers[request->worker()] = true;
+    } else {
+        _replicaData.workers[request->worker()] = false;
+    }
 
-        LOGS(_log, LOG_LVL_DEBUG, context()
-             << "onRequestFinish  databaseFamily=" << request->databaseFamily()
-             << " worker=" << request->worker()
-             << " _numLaunched=" << _numLaunched
-             << " _numFinished=" << _numFinished
-             << " _numSuccess=" << _numSuccess);
+    LOGS(_log, LOG_LVL_DEBUG, context()
+         << "onRequestFinish  databaseFamily=" << request->databaseFamily()
+         << " worker=" << request->worker()
+         << " _numLaunched=" << _numLaunched
+         << " _numFinished=" << _numFinished
+         << " _numSuccess=" << _numSuccess);
 
-        if (_numFinished == _numLaunched) {
-            finish(_numSuccess == _numLaunched ? ExtendedState::SUCCESS :
-                                                 ExtendedState::FAILED);
-        }
-
-    } while (false);
-
-    // Finally, notify a caller in the deadlock-free zone`
-    if (_state == State::FINISHED) { notify(); }
+    if (_numFinished == _numLaunched) {
+        finish(_numSuccess == _numLaunched ? ExtendedState::SUCCESS :
+                                             ExtendedState::FAILED);
+        notify();
+    }
 }
 
 }}} // namespace lsst::qserv::replica

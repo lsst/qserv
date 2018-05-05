@@ -131,7 +131,7 @@ CreateReplicaJobResult const& CreateReplicaJob::getReplicaData() const {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "getReplicaData");
 
-    if (_state == State::FINISHED) { return _replicaData; }
+    if (_state == State::FINISHED) return _replicaData;
 
     throw std::logic_error(
         "CreateReplicaJob::getReplicaData  the method can't be called while the job hasn't finished");
@@ -281,63 +281,56 @@ void CreateReplicaJob::onRequestFinish(ReplicationRequest::Ptr const& request) {
          << "  sourceWorker="      << sourceWorker()
          << "  chunk="             << chunk());
 
+
+    LOCK_GUARD;
+
     // Ignore the callback if the job was cancelled
-    if (_state == State::FINISHED) { return; }
+    if (_state == State::FINISHED) return;
 
-    do {
-        // This lock will be automatically release beyon this scope
-        // to allow client notifications (see the end of the method)
-        LOCK_GUARD;
+    // Update stats
+    if (request->extendedState() == Request::ExtendedState::SUCCESS) {
+        _replicaData.replicas.push_back(request->responseData());
+        _replicaData.chunks[chunk()][request->database()][destinationWorker()] = request->responseData();
+    }
 
-        // Update stats
-        if (request->extendedState() == Request::ExtendedState::SUCCESS) {
-            _replicaData.replicas.emplace_back(request->responseData());
-            _replicaData.chunks[chunk()][request->database()][destinationWorker()] = request->responseData();
-        }
+    // Evaluate the status of on-going operations to see if the replica creation
+    // stage has finished.
 
-        // Evaluate the status of on-going operations to see if the replica creation
-        // stage has finished.
+    size_t numLaunched;
+    size_t numFinished;
+    size_t numSuccess;
 
-        size_t numLaunched;
-        size_t numFinished;
-        size_t numSuccess;
+    ::countRequestStates(numLaunched, numFinished, numSuccess,
+                         _requests);
 
-        ::countRequestStates(numLaunched, numFinished, numSuccess,
-                             _requests);
+    if (numFinished == numLaunched) {
+        if (numSuccess == numLaunched) {
 
-        if (numFinished == numLaunched) {
-            if (numSuccess == numLaunched) {
+            // Notify Qserv about the change in a disposposition of replicas.
+            //
+            // ATTENTION: only for ACTUALLY participating databases
+            //
+            // NOTE: The current implementation will not be affected by a result
+            //       of the operation. Neither any upstream notifications will be
+            //       sent to a requestor of this job.
 
-                // Notify Qserv about the change in a disposposition of replicas.
-                //
-                // ATTENTION: only for ACTUALLY participating databases
-                //
-                // NOTE: The current implementation will not be affected by a result
-                //       of the operation. Neither any upstream notifications will be
-                //       sent to a requestor of this job.
-
-                std::vector<std::string> databases;
-                for (auto&& databaseEntry: _replicaData.chunks[chunk()]) {
-                    databases.push_back(databaseEntry.first);
-                }
-
-                ServiceProvider::Ptr const serviceProvider = _controller->serviceProvider();
-                if (serviceProvider->config()->xrootdAutoNotify()) {
-                    qservAddReplica(chunk(),
-                                    databases,
-                                    destinationWorker());
-                }
-                finish(ExtendedState::SUCCESS);
-            } else {
-                finish(ExtendedState::FAILED);
+            std::vector<std::string> databases;
+            for (auto&& databaseEntry: _replicaData.chunks[chunk()]) {
+                databases.push_back(databaseEntry.first);
             }
+
+            ServiceProvider::Ptr const serviceProvider = _controller->serviceProvider();
+            if (serviceProvider->config()->xrootdAutoNotify()) {
+                qservAddReplica(chunk(),
+                                databases,
+                                destinationWorker());
+            }
+            finish(ExtendedState::SUCCESS);
+        } else {
+            finish(ExtendedState::FAILED);
         }
-
-    } while (false);
-
-    // Client notification should be made from the lock-free zone
-    // to avoid possible deadlocks
-    if (_state == State::FINISHED) { notify(); }
+        notify();
+    }
 }
 
 }}} // namespace lsst::qserv::replica

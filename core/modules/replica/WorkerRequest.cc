@@ -53,7 +53,7 @@ namespace replica {
 
 std::mutex WorkerRequest::_mtxDataFolderOperations;
 std::mutex WorkerRequest::_mtx;
-    
+
 std::string WorkerRequest::status2string(CompletionStatus status) {
     switch (status) {
         case STATUS_NONE:          return "STATUS_NONE";
@@ -137,14 +137,19 @@ void WorkerRequest::setStatus(CompletionStatus status,
         case STATUS_FAILED:
             _performance.setUpdateFinish();
             break;
-        
+
         default:
             throw std::logic_error(
                             "WorkerRequest::setStatus - unhandled status: " +
                             std::to_string(status));
     }
-    _status         = status;
+
+    // ATTENTION: the top-level status is the last to be modified in
+    // the state transition to ensure clients will see a consistent state
+    // of the object.
+
     _extendedStatus = extendedStatus;
+    _status = status;
 }
 
 bool WorkerRequest::execute() {
@@ -168,7 +173,7 @@ bool WorkerRequest::execute() {
             throw std::logic_error("WorkerRequest::execute not allowed while in status: " +
                                     WorkerRequest::status2string(status()));
     }
-    
+
     _durationMillisec += ::incrementIvalMillisec.wait();
 
     if (_durationMillisec < ::maxDurationMillisec) return false;

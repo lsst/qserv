@@ -28,6 +28,7 @@
 /// (see individual class documentation for more information)
 
 // System headers
+#include <atomic>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -347,10 +348,10 @@ protected:
 
     // Primary and extended states of the request
 
-    State         _state;
-    ExtendedState _extendedState;
+    std::atomic<State>         _state;
+    std::atomic<ExtendedState> _extendedState;
 
-    ExtendedCompletionStatus _extendedServerStatus;
+    std::atomic<ExtendedCompletionStatus> _extendedServerStatus;
 
     /// Performance counters
     Performance _performance;

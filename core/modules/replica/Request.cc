@@ -146,8 +146,8 @@ void Request::start(std::shared_ptr<Controller> const& controller,
     // NOTE: this is done only once, the first time a non-trivial value
     // of each parameter is presented to the method.
 
-    if (not _controller    and     controller)    { _controller = controller; }
-    if (    _jobId.empty() and not jobId.empty()) { _jobId      = jobId; }
+    if (not _controller    and     controller)    _controller = controller;
+    if (    _jobId.empty() and not jobId.empty()) _jobId      = jobId;
 
     _performance.setUpdateStart();
 
@@ -182,17 +182,17 @@ void Request::expired(boost::system::error_code const& ec) {
     LOGS(_log, LOG_LVL_DEBUG, context() << "expired"
          << (ec == boost::asio::error::operation_aborted ? "  ** ABORTED **" : ""));
 
+    LOCK_GUARD;
+
     // Ignore this event if the timer was aborted
-    if (ec == boost::asio::error::operation_aborted) { return; }
+    if (ec == boost::asio::error::operation_aborted) return;
 
     // Also ignore this event if the request is over
-    if (_state == State::FINISHED) { return; }
-    {
-        LOCK_GUARD;
-        finish(EXPIRED);
-    }
+    if (_state == State::FINISHED) return;
 
-    // Notifications can only be done in the deadlock-free zone
+    finish(EXPIRED);
+
+    // Invoke a subclass-specific notification
     notify();
 }
 
@@ -200,18 +200,14 @@ void Request::cancel() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancel");
 
-    // Ignore this call if the request is over
-    if (_state == FINISHED) { return; }
-    {
-        LOCK_GUARD;
-        finish(CANCELLED);
-    }
+    LOCK_GUARD;
 
-    // Notifications can only be done in the deadlock-free zone
-    //
-    // TODO: revisit this notification due to a possibility of running
-    //       into a deadlock situation because the notification method may go
-    //       back to the the same client which calls the request cancellation.
+    // Ignore this call if the request is over
+    if (_state == FINISHED) return;
+
+    finish(CANCELLED);
+
+    // Invoke a subclass-specific notification
     notify();
 }
 
@@ -220,7 +216,11 @@ void Request::finish(ExtendedState extendedState) {
     LOGS(_log, LOG_LVL_DEBUG, context() << "finish");
 
     // Check if it's not too late for this operation
-    if (_state == FINISHED) { return; }
+    if (_state == FINISHED) return;
+
+    // We have to update the timestamp before making a state transition
+    // to ensure a client gets a consistent view onto the object's state.
+    _performance.setUpdateFinish();
 
     // Set new state to make sure all event handlers will recognize
     // this scenario and avoid making any modifications to the request's state.
@@ -231,10 +231,6 @@ void Request::finish(ExtendedState extendedState) {
 
     // Let a subclass to run its own finalization if needed
     finishImpl();
-
-    // We have to update the timestamp before invoking a user provided
-    // callback on the completion of the operation.
-    _performance.setUpdateFinish();
 
     _controller->serviceProvider()->databaseServices()->saveState(shared_from_this());
 }
@@ -261,8 +257,12 @@ void Request::setState(State state,
 {
     LOGS(_log, LOG_LVL_DEBUG, context() << "setState  " << state2string(state, extendedState));
 
-    _state         = state;
+    // ATTENTION: ensure the top-level state is the last to change in
+    // in the transient state transition in order to guarantee a consistent
+    // view on to the object's state from the clients' prospective.
+
     _extendedState = extendedState;
+    _state = state;
 
     _controller->serviceProvider()->databaseServices()->saveState(shared_from_this());
 }

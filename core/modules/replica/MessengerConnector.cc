@@ -85,9 +85,9 @@ MessengerConnector::MessengerConnector(ServiceProvider::Ptr const&serviceProvide
 
 void MessengerConnector::stop() {
 
-    LOCK_GUARD;
-
     LOGS(_log, LOG_LVL_DEBUG, context() << "stop");
+
+    LOCK_GUARD;
 
     // Cancel any asynchronous operation(s) if not in the initial state
 
@@ -110,9 +110,9 @@ void MessengerConnector::stop() {
 
 void MessengerConnector::cancel(std::string const& id) {
 
-    LOCK_GUARD;
-
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancel  id=" << id);
+
+    LOCK_GUARD;
 
     if (not _id2request.count(id)) {
         throw std::logic_error(
@@ -123,7 +123,7 @@ void MessengerConnector::cancel(std::string const& id) {
     // of aborting all communications must be taken.
     if (_currentRequest and (_currentRequest->id == id)) {
         _currentRequest = nullptr;
-        if (_state == STATE_COMMUNICATING) { restart(); }
+        if (_state == STATE_COMMUNICATING) restart();
     }
 
     // Also remove from both collections
@@ -137,18 +137,19 @@ void MessengerConnector::cancel(std::string const& id) {
 
 bool MessengerConnector::exists(std::string const& id) const {
 
-    LOCK_GUARD;
-
     LOGS(_log, LOG_LVL_DEBUG, context() << "exists  id=" << id);
+
+    LOCK_GUARD;
 
     return _id2request.count(id);
 }
 
 void MessengerConnector::sendImpl(std::string const& id,
                                   MessengerConnector::WrapperBase_pointer const& ptr) {
-    LOCK_GUARD;
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "sendImpl  id: " + id);
+
+    LOCK_GUARD;
 
     if (_id2request.count(id)) {
         throw std::logic_error(
@@ -207,7 +208,7 @@ void MessengerConnector::resolve() {
     LOGS(_log, LOG_LVL_DEBUG, context() << "resolve"
          << "  _currentRequest->id=" << (_currentRequest ? _currentRequest->id : ""));
 
-    if (_state != STATE_INITIAL) { return; }
+    if (_state != STATE_INITIAL) return;
 
     boost::asio::ip::tcp::resolver::query query(
         _workerInfo.svcHost,
@@ -228,15 +229,15 @@ void MessengerConnector::resolve() {
 void MessengerConnector::resolved(boost::system::error_code const& ec,
                                   boost::asio::ip::tcp::resolver::iterator iter) {
 
-    LOCK_GUARD;
-
     LOGS(_log, LOG_LVL_DEBUG, context() << "resolved"
          << "  _currentRequest->id=" << (_currentRequest ? _currentRequest->id : ""));
 
-    if (isAborted(ec)) { return; }
+    LOCK_GUARD;
 
-    if (ec) { waitBeforeRestart(); }
-    else    { connect(iter); }
+    if (isAborted(ec)) return;
+
+    if (ec) waitBeforeRestart();
+    else    connect(iter);
 }
 
 void MessengerConnector::connect(boost::asio::ip::tcp::resolver::iterator iter) {
@@ -259,12 +260,12 @@ void MessengerConnector::connect(boost::asio::ip::tcp::resolver::iterator iter) 
 void MessengerConnector::connected(boost::system::error_code const& ec,
                                    boost::asio::ip::tcp::resolver::iterator iter) {
 
-    LOCK_GUARD;
-
     LOGS(_log, LOG_LVL_DEBUG, context() << "connected"
          << "  _currentRequest->id=" << (_currentRequest ? _currentRequest->id : ""));
 
-    if (isAborted(ec)) { return; }
+    LOCK_GUARD;
+
+    if (isAborted(ec)) return;
 
     if (ec) {
         waitBeforeRestart();
@@ -293,14 +294,14 @@ void MessengerConnector::waitBeforeRestart() {
 
 void MessengerConnector::awakenForRestart(boost::system::error_code const& ec) {
 
-    LOCK_GUARD;
-
     LOGS(_log, LOG_LVL_DEBUG, context() << "awakenForRestart"
          << "  _currentRequest->id=" << (_currentRequest ? _currentRequest->id : ""));
 
-    if (isAborted(ec)) { return; }
+    LOCK_GUARD;
 
-    if (_state != STATE_CONNECTING) { return; }
+    if (isAborted(ec)) return;
+
+    if (_state != STATE_CONNECTING) return;
 
     restart();
 }
@@ -311,11 +312,11 @@ void MessengerConnector::sendRequest() {
          << "  _currentRequest->id=" << (_currentRequest ? _currentRequest->id : ""));
 
     // Check if there is an outstanding send request
-    if (_currentRequest) { return; }
+    if (_currentRequest) return;
 
     // Pull a request (if any) from the from of the queue
     //
-    if (_requests.empty()) { return; }
+    if (_requests.empty()) return;
     _currentRequest = _requests.front();
 
     // Remove request from the front. But leave it in the map
@@ -342,10 +343,10 @@ void MessengerConnector::sendRequest() {
 void MessengerConnector::requestSent(boost::system::error_code const& ec,
                                      size_t bytes_transferred) {
 
-    LOCK_GUARD;
-
     LOGS(_log, LOG_LVL_DEBUG, context() << "requestSent"
          << "  _currentRequest->id=" << (_currentRequest ? _currentRequest->id : ""));
+
+    LOCK_GUARD;
 
     // Check if the request was cancelled while still in flight.
     // If that happens then _currentRequest should already be nullified
@@ -528,8 +529,8 @@ void MessengerConnector::responseReceived(boost::system::error_code const& ec,
             // before the cancellation attempt was made. So, we just forget about
             // this request and send no notification to a caller.
             //
-            if (ec) { restart(); }
-            else    { sendRequest(); }
+            if (ec) restart();
+            else    sendRequest();
         }
     }
 

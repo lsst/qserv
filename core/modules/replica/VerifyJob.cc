@@ -291,6 +291,8 @@ void VerifyJob::onRequestFinish(FindRequest::Ptr request) {
          << " worker=" << request->worker()
          << " chunk="  << request->chunk());
 
+    LOCK_GUARD;
+
     // Ignore the callback if the job was cancelled
     if (_state == State::FINISHED) return;
 
@@ -301,106 +303,109 @@ void VerifyJob::onRequestFinish(FindRequest::Ptr request) {
 
     auto self = shared_from_base<VerifyJob>();
 
-    do {
-        LOCK_GUARD;
+    if (request->extendedState() == Request::ExtendedState::SUCCESS) {
 
-        if (request->extendedState() == Request::ExtendedState::SUCCESS) {
+        // TODO:
+        // - check if the replica still exists. It's fine if it's gone
+        //   because some jobs may chhose either to purge extra replicas
+        //   or rebalance the cluster. So, no subscriber otification is needed
+        //   here.
 
-            // TODO:
-            // - check if the replica still exists. It's fine if it's gone
-            //   because some jobs may chhose either to purge extra replicas
-            //   or rebalance the cluster. So, no subscriber otification is needed
-            //   here.
+        ;
 
-            ;
+        // Compare new state of the replica against its older one which was
+        // known to the database before this request was launched. Notify
+        // a subscriber of any changes (after releasing LOCK_GUARD).
+        //
+        // @see class ReplicaDiff for further specific details on replica
+        // differece analysis.
+        //
+        // ATTENTIONS: Replica differeces are reported into the log stream only
+        //             when no interest to be notified in the differences
+        //             expressed by a caller (no callback provided).
 
-            // Compare new state of the replica against its older one which was
-            // known to the database before this request was launched. Notify
-            // a subscriber of any changes (after releasing LOCK_GUARD).
-            //
-            // @see class ReplicaDiff for further specific details on replica
-            // differece analysis.
-            //
-            // ATTENTIONS: Replica differeces are reported into the log stream only
-            //             when no interest to be notified in the differences
-            //             expressed by a caller (no callback provided).
-
-            ReplicaInfo const& oldReplica = _replicas[request->id()];
-            selfReplicaDiff = ReplicaDiff(oldReplica, request->responseData());
-            if (selfReplicaDiff() and not _onReplicaDifference) {
-                LOGS(_log, LOG_LVL_INFO, context() << "replica missmatch for self\n"
-                     << selfReplicaDiff);
-            }
-
-            std::vector<ReplicaInfo> otherReplicas;
-            _controller->serviceProvider()->databaseServices()->findReplicas(
-                                                                    otherReplicas,
-                                                                    oldReplica.chunk(),
-                                                                    oldReplica.database());
-            for (auto&& replica: otherReplicas) {
-                ReplicaDiff diff(request->responseData(), replica);
-                if (not diff.isSelf()) {
-                    otherReplicaDiff.emplace_back(diff);
-                    if (diff() and not _onReplicaDifference)
-                        LOGS(_log, LOG_LVL_INFO, context() << "replica missmatch for other\n"
-                             << diff);
-                }
-            }
-
-        } else {
-
-            // Report the error and keep going
-            LOGS(_log, LOG_LVL_ERROR, context() << "failed request " << request->context()
-                 << " worker: "   << request->worker()
-                 << " database: " << request->database()
-                 << " chunk: "    << request->chunk());
+        ReplicaInfo const& oldReplica = _replicas[request->id()];
+        selfReplicaDiff = ReplicaDiff(oldReplica, request->responseData());
+        if (selfReplicaDiff() and not _onReplicaDifference) {
+            LOGS(_log, LOG_LVL_INFO, context() << "replica missmatch for self\n"
+                 << selfReplicaDiff);
         }
 
-        // Remove the processed replica, fetch another one and begin processing it
-
-        _replicas.erase(request->id());
-        _requests.erase(request->id());
-
-        std::vector<ReplicaInfo> replicas;
-        if (nextReplicas(replicas, 1)) {
-
-            for (ReplicaInfo const& replica: replicas) {
-                auto request = _controller->findReplica(
-                    replica.worker(),
-                    replica.database(),
-                    replica.chunk(),
-                    [self] (FindRequest::Ptr request) {
-                        self->onRequestFinish(request);
-                    },
-                    options().priority, /* inherited from the one of the current job */
-                    _computeCheckSum,
-                    true,               /* keepTracking*/
-                    _id                 /* jobId */
-                );
-                _replicas[request->id()] = replica;
-                _requests[request->id()] = request;
+        std::vector<ReplicaInfo> otherReplicas;
+        _controller->serviceProvider()->databaseServices()->findReplicas(
+                                                                otherReplicas,
+                                                                oldReplica.chunk(),
+                                                                oldReplica.database());
+        for (auto&& replica: otherReplicas) {
+            ReplicaDiff diff(request->responseData(), replica);
+            if (not diff.isSelf()) {
+                otherReplicaDiff.emplace_back(diff);
+                if (diff() and not _onReplicaDifference)
+                    LOGS(_log, LOG_LVL_INFO, context() << "replica missmatch for other\n"
+                         << diff);
             }
-
-        } else {
-
-            // In theory this should never happen unless all replicas are gone
-            // from the system or there was a problem to access the database.
-            //
-            // In any case check if no requests are in flight and finish if that's
-            // the case.
-
-            if (not _replicas.size()) { finish(ExtendedState::NONE); }
         }
 
-    } while (false);
+    } else {
 
-    // NOTE: The callbacks are called w/o keeping a lock on the object API
-    // to prevent potential deadlocks.
+        // Report the error and keep going
+        LOGS(_log, LOG_LVL_ERROR, context() << "failed request " << request->context()
+             << " worker: "   << request->worker()
+             << " database: " << request->database()
+             << " chunk: "    << request->chunk());
+    }
+
+    // Remove the processed replica, fetch another one and begin processing it
+
+    _replicas.erase(request->id());
+    _requests.erase(request->id());
+
+    std::vector<ReplicaInfo> replicas;
+    if (nextReplicas(replicas, 1)) {
+
+        for (ReplicaInfo const& replica: replicas) {
+            auto request = _controller->findReplica(
+                replica.worker(),
+                replica.database(),
+                replica.chunk(),
+                [self] (FindRequest::Ptr request) {
+                    self->onRequestFinish(request);
+                },
+                options().priority, /* inherited from the one of the current job */
+                _computeCheckSum,
+                true,               /* keepTracking*/
+                _id                 /* jobId */
+            );
+            _replicas[request->id()] = replica;
+            _requests[request->id()] = request;
+        }
+
+    } else {
+
+        // In theory this should never happen unless all replicas are gone
+        // from the system or there was a problem to access the database.
+        //
+        // In any case check if no requests are in flight and finish if that's
+        // the case.
+
+        if (not _replicas.size()) {
+            finish(ExtendedState::NONE);
+        }
+    }
+
+    // The callback is being made asynchronously in a separate thread
+    // to avoid blocking the current thread.
 
     if (_onReplicaDifference) {
-        _onReplicaDifference(self, selfReplicaDiff, otherReplicaDiff);
+        auto self = shared_from_base<VerifyJob>();
+        std::async(
+            std::launch::async,
+            [self, selfReplicaDiff, otherReplicaDiff]() {
+                self->_onReplicaDifference(self, selfReplicaDiff, otherReplicaDiff);
+            }
+        );
     }
-    if (_state == State::FINISHED) { notify(); }
+    if (_state == State::FINISHED) notify();
 }
 
 bool VerifyJob::nextReplicas(std::vector<ReplicaInfo>& replicas,

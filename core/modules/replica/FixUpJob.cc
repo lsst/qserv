@@ -96,7 +96,7 @@ FixUpJobResult const& FixUpJob::getReplicaData() const {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "getReplicaData");
 
-    if (_state == State::FINISHED)  { return _replicaData; }
+    if (_state == State::FINISHED)  return _replicaData;
 
     throw std::logic_error(
         "FixUpJob::getReplicaData  the method can't be called while the job hasn't finished");
@@ -201,20 +201,16 @@ void FixUpJob::onPrecursorJobFinish() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish");
 
+    LOCK_GUARD;
+
     // Ignore the callback if the job was cancelled
-    if (_state == State::FINISHED) { return; }
+    if (_state == State::FINISHED) return;
 
-    do {
-        LOCK_GUARD;
+    /////////////////////////////////////////////////////////////////
+    // Proceed with the replication effort only if the precursor job
+    // has succeeded.
 
-        ////////////////////////////////////////////////////////////////////
-        // Do not proceed with the replication effort if there is a problem
-        // with the precursor job
-
-        if (_findAllJob->extendedState() != ExtendedState::SUCCESS) {
-            finish(ExtendedState::FAILED);
-            break;
-        }
+    if (_findAllJob->extendedState() == ExtendedState::SUCCESS) {
 
         /////////////////////////////////////////////////////////////////
         // Analyse results and prepare a replication plan to fix chunk
@@ -231,7 +227,7 @@ void FixUpJob::onPrecursorJobFinish() {
                 std::string const& destinationWorker = worker2colocated.first;
                 bool        const  isColocated       = worker2colocated.second;
 
-                if (isColocated) { continue; }
+                if (isColocated) continue;
 
                 // Chunk locking is mandatory. If it's not possible to do this now then
                 // the job will need to make another attempt later.
@@ -292,29 +288,35 @@ void FixUpJob::onPrecursorJobFinish() {
                         _numLaunched++;
                     }
                 }
-                if (_state == State::FINISHED) { break; }
+                if (_state == State::FINISHED) break;
             }
-            if (_state == State::FINISHED) { break; }
+            if (_state == State::FINISHED) break;
         }
-        if (_state == State::FINISHED) { break; }
+        if (_state != State::FINISHED) {
 
-        // Finish right away if no problematic chunks found
-        if (not _requests.size()) {
-            if (not _numFailedLocks) {
-                finish(ExtendedState::SUCCESS);
-            } else {
-                // Some of the chuks were locked and yet, no sigle request was
-                // lunched. Hence we should start another iteration by requesting
-                // the fresh state of the chunks within the family.
-                restart();
+            // ATTENTION: We need to evaluate reasons why no single request was
+            // launched while the job is still in the unfinished state and take
+            // proper actions. Otherwise (if this isn't done here) the object will
+            // get into a "zombie" state.
+            if (not _requests.size()) {
+
+                // Finish right away if no problematic chunks found
+                if (not _numFailedLocks) {
+                    finish(ExtendedState::SUCCESS);
+                } else {
+
+                    // Some of the chuks were locked and yet, no sigle request was
+                    // lunched. Hence we should start another iteration by requesting
+                    // the fresh state of the chunks within the family.
+                    restart();
+                }
             }
         }
 
-    } while (false);
-
-    // Client notification should be made from the lock-free zone
-    // to avoid possible deadlocks
-    if (_state == State::FINISHED) { notify(); }
+    } else {
+        finish(ExtendedState::FAILED);
+    }
+    if (_state == State::FINISHED) notify();
 }
 
 void FixUpJob::onRequestFinish(ReplicationRequest::Ptr const& request) {
@@ -329,63 +331,55 @@ void FixUpJob::onRequestFinish(ReplicationRequest::Ptr const& request) {
          << "  worker="   << worker
          << "  chunk="    << chunk);
 
+    LOCK_GUARD;
+
     // Ignore the callback if the job was cancelled
     if (_state == State::FINISHED) {
         release(chunk);
         return;
     }
 
-    do {
-        LOCK_GUARD;
+    // Update counters and object state if needed.
+    _numFinished++;
+    if (request->extendedState() == Request::ExtendedState::SUCCESS) {
+        _numSuccess++;
+        _replicaData.replicas.push_back(request->responseData());
+        _replicaData.chunks[chunk][database][worker] = request->responseData();
+        _replicaData.workers[worker] = true;
+    } else {
+        _replicaData.workers[worker] = false;
+    }
 
-        // Update counters and object state if needed.
-        _numFinished++;
-        if (request->extendedState() == Request::ExtendedState::SUCCESS) {
-            _numSuccess++;
-            _replicaData.replicas.emplace_back(request->responseData());
-            _replicaData.chunks[chunk][database][worker] = request->responseData();
-            _replicaData.workers[worker] = true;
-        } else {
-            _replicaData.workers[worker] = false;
+    // Make sure the chunk is released if this was the last
+    // request in its scope.
+
+    _chunk2requests.at(chunk).at(worker).erase(database);
+    if (_chunk2requests.at(chunk).at(worker).empty()) {
+        _chunk2requests.at(chunk).erase(worker);
+        if (_chunk2requests.at(chunk).empty()) {
+            _chunk2requests.erase(chunk);
+            release(chunk);
         }
+    }
 
-        // Make sure the chunk is released if this was the last
-        // request in its scope.
-        //
-        _chunk2requests.at(chunk).at(worker).erase(database);
-        if (_chunk2requests.at(chunk).at(worker).empty()) {
-            _chunk2requests.at(chunk).erase(worker);
-            if (_chunk2requests.at(chunk).empty()) {
-                _chunk2requests.erase(chunk);
-                release(chunk);
-            }
-        }
+    // Evaluate the status of on-going operations to see if the job
+    // has finished.
 
-        // Evaluate the status of on-going operations to see if the job
-        // has finished.
-        //
-        if (_numFinished == _numLaunched) {
-            if (_numSuccess == _numLaunched) {
-                if (_numFailedLocks) {
-                    // Make another iteration (and another one, etc. as many as needed)
-                    // before it succeeds or fails.
-                    restart();
-                    return;
-                } else {
-                    finish(ExtendedState::SUCCESS);
-                    break;
-                }
+    if (_numFinished == _numLaunched) {
+        if (_numSuccess == _numLaunched) {
+            if (_numFailedLocks) {
+                // Make another iteration (and another one, etc. as many as needed)
+                // before it succeeds or fails.
+                restart();
+                return;
             } else {
-                finish(ExtendedState::FAILED);
-                break;
+                finish(ExtendedState::SUCCESS);
             }
+        } else {
+            finish(ExtendedState::FAILED);
         }
-
-    } while (false);
-
-    // Client notification should be made from the lock-free zone
-    // to avoid possible deadlocks
-    if (_state == State::FINISHED) { notify(); }
+    }
+    if (_state == State::FINISHED) notify();
 }
 
 void FixUpJob::release(unsigned int chunk) {

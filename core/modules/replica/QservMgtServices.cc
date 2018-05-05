@@ -124,7 +124,7 @@ AddReplicaQservMgtRequest::Ptr QservMgtServices::addReplica(
         return AddReplicaQservMgtRequest::Ptr();
     }
 
-    QservMgtServices::Ptr manager = shared_from_this();
+    auto const manager = shared_from_this();
 
     AddReplicaQservMgtRequest::Ptr const request =
         AddReplicaQservMgtRequest::create(
@@ -172,7 +172,7 @@ RemoveReplicaQservMgtRequest::Ptr QservMgtServices::removeReplica(
         return RemoveReplicaQservMgtRequest::Ptr();
     }
 
-    QservMgtServices::Ptr manager = shared_from_this();
+    auto const manager = shared_from_this();
 
     RemoveReplicaQservMgtRequest::Ptr const request =
         RemoveReplicaQservMgtRequest::create(
@@ -218,7 +218,7 @@ GetReplicasQservMgtRequest::Ptr QservMgtServices::getReplicas(
         return GetReplicasQservMgtRequest::Ptr();
     }
 
-    QservMgtServices::Ptr manager = shared_from_this();
+    auto const manager = shared_from_this();
 
     GetReplicasQservMgtRequest::Ptr const request =
         GetReplicasQservMgtRequest::create(
@@ -264,7 +264,7 @@ SetReplicasQservMgtRequest::Ptr QservMgtServices::setReplicas(
         return SetReplicasQservMgtRequest::Ptr();
     }
 
-    QservMgtServices::Ptr manager = shared_from_this();
+    auto const manager = shared_from_this();
 
     SetReplicasQservMgtRequest::Ptr const request =
         SetReplicasQservMgtRequest::create(

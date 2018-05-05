@@ -58,7 +58,7 @@ struct JobWrapperImpl
 
     /// The implementation of the vurtual method defined in the base class
     virtual void notify() {
-        if (_onFinish == nullptr) { return; }
+        if (_onFinish == nullptr) return;
         _onFinish(_job);
     }
 
@@ -157,8 +157,6 @@ void JobController::stop() {
 
     LOGS(_log, LOG_LVL_DEBUG, "JobController  stop");
 
-    if (not isRunning()) { return; }
-
     // IMPORTANT:
     //
     //   Never attempt running these operations within LOCK_GUARD
@@ -168,6 +166,8 @@ void JobController::stop() {
     //   hang on _thread->join().
 
     // LOCK_GUARD  (disabled)
+
+    if (not isRunning()) return;
 
     // Tell the thread to finish
     _stop = true;
@@ -181,7 +181,7 @@ void JobController::stop() {
 
 void JobController::join() {
     LOGS(_log, LOG_LVL_DEBUG, "JobController  join");
-    if (_thread) { _thread->join(); }
+    if (_thread) _thread->join();
 }
 
 FindAllJob::Ptr JobController::findAll(std::string const& databaseFamily,
@@ -231,7 +231,7 @@ FixUpJob::Ptr JobController::fixUp(std::string const& databaseFamily,
 
     LOCK_GUARD;
 
-    JobController::Ptr self = shared_from_this();
+    auto const self = shared_from_this();
 
     FixUpJob::Ptr job =
         FixUpJob::create(
@@ -269,7 +269,7 @@ PurgeJob::Ptr JobController::purge(std::string const& databaseFamily,
 
     LOGS(_log, LOG_LVL_DEBUG, "JobController  purge");
 
-    JobController::Ptr self = shared_from_this();
+    auto const self = shared_from_this();
 
     PurgeJob::Ptr job =
         PurgeJob::create(
@@ -310,7 +310,7 @@ ReplicateJob::Ptr JobController::replicate(std::string const& databaseFamily,
 
     LOCK_GUARD;
 
-    JobController::Ptr self = shared_from_this();
+    auto const self = shared_from_this();
 
     ReplicateJob::Ptr job =
         ReplicateJob::create(
@@ -352,7 +352,7 @@ VerifyJob::Ptr JobController::verify(VerifyJob::CallbackType onFinish,
 
     LOCK_GUARD;
 
-    JobController::Ptr self = shared_from_this();
+    auto const self = shared_from_this();
 
     VerifyJob::Ptr job =
         VerifyJob::create(
@@ -395,7 +395,7 @@ DeleteWorkerJob::Ptr JobController::deleteWorker(
 
     LOCK_GUARD;
 
-    JobController::Ptr self = shared_from_this();
+    auto const self = shared_from_this();
 
     DeleteWorkerJob::Ptr job =
         DeleteWorkerJob::create(
@@ -429,20 +429,20 @@ DeleteWorkerJob::Ptr JobController::deleteWorker(
 
 void JobController::runQueued() {
 
-    if (not isRunning()) { return; }
-
     LOGS(_log, LOG_LVL_DEBUG, "JobController  runQueued");
 
     LOCK_GUARD;
 
+    if (not isRunning()) return;
+
+    // TODO:
     // Go through the input queue and evaluate which jobs should star
     // now based on their scheduling criteria and on the status of
     // the in-progres jobs (if any).
+    ;
 }
 
 void JobController::runScheduled() {
-
-    if (not isRunning()) { return; }
 
     LOGS(_log, LOG_LVL_DEBUG, "JobController  runScheduled");
 
@@ -453,6 +453,8 @@ void JobController::runScheduled() {
     //       when calling mehods which are called later.
     {
         LOCK_GUARD;
+
+        if (not isRunning()) return;
 
         // TODO:
         ;
@@ -465,11 +467,14 @@ void JobController::runScheduled() {
 
 void JobController::cancelAll() {
 
-    if (not isRunning()) { return; }
-
     LOGS(_log, LOG_LVL_DEBUG, "JobController  cancelAll");
 
     LOCK_GUARD;
+
+    if (not isRunning()) return;
+
+    // TODO:
+    ;
 }
 
 void JobController::onFinish(Job::Ptr const& job) {

@@ -91,12 +91,20 @@ public:
     static Ptr open(ServiceProvider::Ptr const& serviceProvider,
                     std::string const& workerName,
                     std::string const& databaseName,
-                    std::string const& fileName);
+                    std::string const& fileName) {
+
+        return instance(serviceProvider,
+                        workerName,
+                        databaseName,
+                        fileName,
+                        true /* readContent */);
+    }
+
     /**
      * Open a file and return a smart pointer to an object of this class.
      * If the operation is successfull then a valid pointer will be returned.
      * If the operation failes the method will return the null pointer.
-     * 
+     *
      * ATTENTION:
      *   Unlike the previous method FileClient::open() the returned file object
      *   can't be used to read the file content (via FileClient::read()).
@@ -113,8 +121,15 @@ public:
     static Ptr stat(ServiceProvider::Ptr const& serviceProvider,
                     std::string const& workerName,
                     std::string const& databaseName,
-                    std::string const& fileName);
-    
+                    std::string const& fileName) {
+
+        return instance(serviceProvider,
+                        workerName,
+                        databaseName,
+                        fileName,
+                        false /* readContent */);
+    }
+
     // Default construction and copy semantics are prohibited
 
     FileClient() = delete;
@@ -154,16 +169,33 @@ public:
 private:
 
     /**
-     * Construct an object with the specified configuration.
+     * Open a file in the requested mode and return a smart pointer to an object
+     * of this class. If the operation is successfull then a valid pointer will
+     * be returned.
      *
-     * The constructor may throw the std::invalid_argument exception after
-     * validating its arguments.
-     * 
      * @param serviceProvider - for configuration, etc. services
      * @param workerName      - the name of a worker where the file resides
      * @param databaseName    - the name of a atabase the file belongs to
      * @param fileName        - the file to read or examine
-     * @param readContent     - indicates if a file is open for reading its content   
+     * @param readContent     - the mode in which the file will be used
+     */
+    static Ptr instance(ServiceProvider::Ptr const& serviceProvider,
+                        std::string const& workerName,
+                        std::string const& databaseName,
+                        std::string const& fileName,
+                        bool readContent);
+
+    /**
+     * Construct an object with the specified configuration.
+     *
+     * The constructor may throw the std::invalid_argument exception after
+     * validating its arguments.
+     *
+     * @param serviceProvider - for configuration, etc. services
+     * @param workerName      - the name of a worker where the file resides
+     * @param databaseName    - the name of a atabase the file belongs to
+     * @param fileName        - the file to read or examine
+     * @param readContent     - indicates if a file is open for reading its content
      */
     FileClient(ServiceProvider::Ptr const& serviceProvider,
                std::string const& workerName,

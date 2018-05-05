@@ -113,12 +113,13 @@ void StatusRequestBaseM::awaken(boost::system::error_code const& ec) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "awaken");
 
-    if (isAborted(ec)) { return; }
+    LOCK_GUARD;
+
+    if (isAborted(ec)) return;
 
     // Also ignore this event if the request expired
-    if (_state== State::FINISHED) { return; }
+    if (_state== State::FINISHED) return;
 
-    LOCK_GUARD;
 
     // Serialize the Status message header and the request itself into
     // the network buffer.
@@ -145,62 +146,60 @@ void StatusRequestBaseM::analyze(bool success,
                                  proto::ReplicationStatus status) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "analyze  success=" << (success ? "true" : "false"));
-    {
-        // This guard is made on behalf of an asynchronious callback fired
-        // upon a completion of the request within method send() - the only
-        // client of analyze()
-        LOCK_GUARD;
 
-        if (success) {
+    // The lock is acquird on behalf of an asynchronious callback fired
+    // upon a completion of the request within method send() - the only
+    // client of analyze()
 
-            switch (status) {
+    LOCK_GUARD;
 
-                case proto::ReplicationStatus::SUCCESS:
-                    finish(SUCCESS);
-                    break;
+    if (success) {
 
-                case proto::ReplicationStatus::QUEUED:
-                    if (_keepTracking) { wait(); }
-                    else               { finish(SERVER_QUEUED); }
-                    break;
+        switch (status) {
 
-                case proto::ReplicationStatus::IN_PROGRESS:
-                    if (_keepTracking) { wait(); }
-                    else               { finish(SERVER_IN_PROGRESS); }
-                    break;
+            case proto::ReplicationStatus::SUCCESS:
+                finish(SUCCESS);
+                break;
 
-                case proto::ReplicationStatus::IS_CANCELLING:
-                    if (_keepTracking) { wait(); }
-                    else               { finish(SERVER_IS_CANCELLING); }
-                    break;
+            case proto::ReplicationStatus::QUEUED:
+                if (_keepTracking) wait();
+                else               finish(SERVER_QUEUED);
+                break;
 
-                case proto::ReplicationStatus::BAD:
-                    finish(SERVER_BAD);
-                    break;
+            case proto::ReplicationStatus::IN_PROGRESS:
+                if (_keepTracking) wait();
+                else               finish(SERVER_IN_PROGRESS);
+                break;
 
-                case proto::ReplicationStatus::FAILED:
-                    finish(SERVER_ERROR);
-                    break;
+            case proto::ReplicationStatus::IS_CANCELLING:
+                if (_keepTracking) wait();
+                else               finish(SERVER_IS_CANCELLING);
+                break;
 
-                case proto::ReplicationStatus::CANCELLED:
-                    finish(SERVER_CANCELLED);
-                    break;
+            case proto::ReplicationStatus::BAD:
+                finish(SERVER_BAD);
+                break;
 
-                default:
-                    throw std::logic_error(
-                            "StatusRequestBaseM::analyze() unknown status '"
-                            + proto::ReplicationStatus_Name(status) +
-                            "' received from server");
-            }
+            case proto::ReplicationStatus::FAILED:
+                finish(SERVER_ERROR);
+                break;
 
-        } else {
-            finish(CLIENT_ERROR);
+            case proto::ReplicationStatus::CANCELLED:
+                finish(SERVER_CANCELLED);
+                break;
+
+            default:
+                throw std::logic_error(
+                        "StatusRequestBaseM::analyze() unknown status '"
+                        + proto::ReplicationStatus_Name(status) +
+                        "' received from server");
         }
+
+    } else {
+        finish(CLIENT_ERROR);
     }
 
-    // The client callback is made in the lock-free zone to avoid possible
-    // deadlocks
-    if (_state == State::FINISHED) { notify(); }
+    if (_state == State::FINISHED) notify();
 }
 
 }}} // namespace lsst::qserv::replica
