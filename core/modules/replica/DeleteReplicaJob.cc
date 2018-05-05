@@ -126,7 +126,7 @@ DeleteReplicaJobResult const& DeleteReplicaJob::getReplicaData() const {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "getReplicaData");
 
-    if (_state == State::FINISHED) { return _replicaData; }
+    if (_state == State::FINISHED) return _replicaData;
 
     throw std::logic_error(
         "DeleteReplicaJob::getReplicaData  the method can't be called while the job hasn't finished");
@@ -170,7 +170,7 @@ void DeleteReplicaJob::startImpl() {
     }
 
     // Notify Qserv about the change in a disposposition of replicas
-    // if the notification is required vefore actually deleting the replica.
+    // if the notification is required before actually deleting the replica.
     //
     // ATTENTION: only for ACTUALLY participating databases
 
@@ -287,7 +287,7 @@ void DeleteReplicaJob::beginDeleteReplica() {
                 true,   /* allowDuplicate */
                 _id     /* jobId */
             );
-        _requests.emplace_back(ptr);
+        _requests.push_back(ptr);
     }
 }
 
@@ -299,40 +299,32 @@ void DeleteReplicaJob::onRequestFinish(DeleteRequest::Ptr const& request) {
          << "  worker=" << worker()
          << "  chunk=" << chunk());
 
+    LOCK_GUARD;
+
     // Ignore the callback if the job was cancelled
-    if (_state == State::FINISHED) { return; }
+    if (_state == State::FINISHED) return;
 
-    do {
-        // This lock will be automatically release beyon this scope
-        // to allow client notifications (see the end of the method)
-        LOCK_GUARD;
+    // Update stats
+    if (request->extendedState() == Request::ExtendedState::SUCCESS) {
+        _replicaData.replicas.push_back(request->responseData());
+        _replicaData.chunks[chunk()][request->database()][worker()] = request->responseData();
+    }
 
-        // Update stats
-        if (request->extendedState() == Request::ExtendedState::SUCCESS) {
-            _replicaData.replicas.emplace_back(request->responseData());
-            _replicaData.chunks[chunk()][request->database()][worker()] = request->responseData();
-        }
+    // Evaluate the status of on-going operations to see if the job
+    // has finished.
 
-        // Evaluate the status of on-going operations to see if the job
-        // has finished.
+    size_t numLaunched;
+    size_t numFinished;
+    size_t numSuccess;
 
-        size_t numLaunched;
-        size_t numFinished;
-        size_t numSuccess;
+    ::countRequestStates(numLaunched, numFinished, numSuccess,
+                         _requests);
 
-        ::countRequestStates(numLaunched, numFinished, numSuccess,
-                             _requests);
-
-        if (numFinished == numLaunched) {
-            finish(numSuccess == numLaunched ? ExtendedState::SUCCESS :
-                                               ExtendedState::FAILED);
-        }
-
-    } while (false);
-
-    // Client notification should be made from the lock-free zone
-    // to avoid possible deadlocks
-    if (_state == State::FINISHED) { notify (); }
+    if (numFinished == numLaunched) {
+        finish(numSuccess == numLaunched ? ExtendedState::SUCCESS :
+                                           ExtendedState::FAILED);
+        notify ();
+    }
 }
 
 }}} // namespace lsst::qserv::replica

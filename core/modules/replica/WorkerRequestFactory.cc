@@ -76,7 +76,7 @@ public:
     WorkerRequestFactoryTest(ServiceProvider::Ptr const& serviceProvider)
         :   WorkerRequestFactoryBase(serviceProvider) {
     }
-    
+
     /// Destructor
     ~WorkerRequestFactoryTest() override = default;
 
@@ -193,7 +193,7 @@ public:
     WorkerRequestFactoryPOSIX(ServiceProvider::Ptr const& serviceProvider)
         :   WorkerRequestFactoryBase(serviceProvider) {
     }
-    
+
     /// Destructor
     ~WorkerRequestFactoryPOSIX() override = default;
 
@@ -311,7 +311,7 @@ public:
     WorkerRequestFactoryFS(ServiceProvider::Ptr const& serviceProvider)
         :   WorkerRequestFactoryBase(serviceProvider) {
     }
-    
+
     /// Destructor
     ~WorkerRequestFactoryFS() override = default;
 
@@ -412,13 +412,13 @@ public:
 WorkerRequestFactory::WorkerRequestFactory(ServiceProvider::Ptr const&   serviceProvider,
                                            std::string const& technology)
     :   WorkerRequestFactoryBase(serviceProvider) {
-        
+
     std::string const finalTechnology =
         technology.empty() ? serviceProvider->config()->workerTechnology() : technology;
 
-    if      (finalTechnology == "TEST")  { _ptr = new WorkerRequestFactoryTest( serviceProvider); }
-    else if (finalTechnology == "POSIX") { _ptr = new WorkerRequestFactoryPOSIX(serviceProvider); }
-    else if (finalTechnology == "FS")    { _ptr = new WorkerRequestFactoryFS(   serviceProvider); }
+    if      (finalTechnology == "TEST")  _ptr = new WorkerRequestFactoryTest( serviceProvider);
+    else if (finalTechnology == "POSIX") _ptr = new WorkerRequestFactoryPOSIX(serviceProvider);
+    else if (finalTechnology == "FS")    _ptr = new WorkerRequestFactoryFS(   serviceProvider);
     else {
         throw std::invalid_argument(
                         "WorkerRequestFactory::WorkerRequestFactory() unknown technology: '" +

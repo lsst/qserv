@@ -123,9 +123,9 @@ WorkerProcessor::WorkerProcessor(ServiceProvider::Ptr const& serviceProvider,
 
 void WorkerProcessor::run() {
 
-    LOCK_GUARD;
-
     LOGS(_log, LOG_LVL_DEBUG, context() << "run");
+
+    LOCK_GUARD;
 
     if (_state == STATE_IS_STOPPED) {
 
@@ -154,9 +154,9 @@ void WorkerProcessor::run() {
 
 void WorkerProcessor::stop() {
 
-    LOCK_GUARD;
-
     LOGS(_log, LOG_LVL_DEBUG, context() << "stop");
+
+    LOCK_GUARD;
 
     if (_state == STATE_IS_RUNNING) {
 
@@ -189,20 +189,21 @@ void WorkerProcessor::drain() {
 
     // Dequeue requests w/o the guard to avoid a dedlock because
     // the dequeuing method will request the lock.
-    for (auto&& id: ids) { dequeueOrCancelImpl(id); }
+    for (auto&& id: ids) dequeueOrCancelImpl(id);
 }
 
 void WorkerProcessor::enqueueForReplication(
                             std::string const& id,
                             proto::ReplicationRequestReplicate const& request,
                             proto::ReplicationResponseReplicate& response) {
-    LOCK_GUARD;
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "enqueueForReplication"
         << "  id: "     << id
         << "  db: "     << request.database()
         << "  chunk: "  << request.chunk()
         << "  worker: " << request.worker());
+
+    LOCK_GUARD;
 
     // Verify a scope of the request to ensure it won't duplicate or interfere (with)
     // existing requests in the active (non-completed) queues. A reason why we're ignoring
@@ -223,7 +224,7 @@ void WorkerProcessor::enqueueForReplication(
     // won't pass further validation against the present configuration of the request
     // procesisng service.
     try {
-        WorkerRequest::Ptr ptr =
+        auto const ptr =
             _requestFactory.createReplicationRequest(
                 _worker,
                 id,
@@ -252,12 +253,13 @@ void WorkerProcessor::enqueueForReplication(
 void WorkerProcessor::enqueueForDeletion(std::string const& id,
                                          proto::ReplicationRequestDelete const& request,
                                          proto::ReplicationResponseDelete& response) {
-    LOCK_GUARD;
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "enqueueForDeletion"
         << "  id: "    << id
         << "  db: "    << request.database()
         << "  chunk: " << request.chunk());
+
+    LOCK_GUARD;
 
     // Verify a scope of the request to ensure it won't duplicate or interfere (with)
     // existing requests in the active (non-completed) queues. A reason why we're ignoring
@@ -278,7 +280,7 @@ void WorkerProcessor::enqueueForDeletion(std::string const& id,
     // won't pass further validation against the present configuration of the request
     // procesisng service.
     try {
-        WorkerRequest::Ptr ptr =
+        auto const ptr =
             _requestFactory.createDeleteRequest(
                 _worker,
                 id,
@@ -306,7 +308,6 @@ void WorkerProcessor::enqueueForDeletion(std::string const& id,
 void WorkerProcessor::enqueueForFind(std::string const& id,
                                      proto::ReplicationRequestFind const& request,
                                      proto::ReplicationResponseFind& response) {
-    LOCK_GUARD;
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "enqueueForFind"
         << "  id: "    << id
@@ -314,7 +315,9 @@ void WorkerProcessor::enqueueForFind(std::string const& id,
         << "  chunk: " << request.chunk()
         << "  compute_cs: " << (request.compute_cs() ? "true" : "false"));
 
-    WorkerFindRequest::Ptr ptr =
+    LOCK_GUARD;
+
+    auto const ptr =
         _requestFactory.createFindRequest(
             _worker,
             id,
@@ -335,16 +338,17 @@ void WorkerProcessor::enqueueForFind(std::string const& id,
 void WorkerProcessor::enqueueForFindAll(std::string const&                      id,
                                         proto::ReplicationRequestFindAll const& request,
                                         proto::ReplicationResponseFindAll&      response) {
-    LOCK_GUARD;
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "enqueueForFindAll"
         << "  id: " << id
         << "  db: " << request.database());
 
+    LOCK_GUARD;
+
     // TODO: run the sanity check to ensure no such request is found in any
     //       of the queue. Return 'DUPLICATE' error status if teh one is found.
 
-    WorkerFindAllRequest::Ptr ptr =
+    auto const ptr =
         _requestFactory.createFindAllRequest(
             _worker,
             id,
@@ -362,9 +366,9 @@ void WorkerProcessor::enqueueForFindAll(std::string const&                      
 
 WorkerRequest::Ptr WorkerProcessor::dequeueOrCancelImpl(std::string const& id) {
 
-    LOCK_GUARD;
-
     LOGS(_log, LOG_LVL_DEBUG, context() << "dequeueOrCancelImpl" << "  id: " << id);
+
+    LOCK_GUARD;
 
     // Still waiting in the queue?
 
@@ -466,9 +470,9 @@ WorkerRequest::Ptr WorkerProcessor::dequeueOrCancelImpl(std::string const& id) {
 
 WorkerRequest::Ptr WorkerProcessor::checkStatusImpl(std::string const& id) {
 
-    LOCK_GUARD;
-
     LOGS(_log, LOG_LVL_DEBUG, context() << "checkStatusImpl" << "  id: " << id);
+
+    LOCK_GUARD;
 
     // Still waiting in the queue?
 
@@ -552,9 +556,10 @@ void WorkerProcessor::setServiceResponse(
                             std::string const& id,
                             proto::ReplicationServiceResponse::Status status,
                             bool extendedReport) {
-    LOCK_GUARD;
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "setServiceResponse");
+
+    LOCK_GUARD;
 
     response.set_status(    status);
     response.set_technology(_requestFactory.technology());
@@ -599,8 +604,7 @@ void WorkerProcessor::setServiceResponseInfo(
                             proto::ReplicationServiceResponseInfo* info) const {
 
     if (
-        WorkerReplicationRequest::Ptr ptr =
-            std::dynamic_pointer_cast<WorkerReplicationRequest>(request)) {
+        auto const ptr = std::dynamic_pointer_cast<WorkerReplicationRequest>(request)) {
 
         info->set_replica_type(proto::ReplicationReplicaRequestType::REPLICA_CREATE);
         info->set_id(          ptr->id());
@@ -610,8 +614,7 @@ void WorkerProcessor::setServiceResponseInfo(
         info->set_worker(      ptr->sourceWorker());
 
     } else if (
-        WorkerDeleteRequest::Ptr ptr =
-            std::dynamic_pointer_cast<WorkerDeleteRequest>(request)) {
+        auto const ptr = std::dynamic_pointer_cast<WorkerDeleteRequest>(request)) {
 
         info->set_replica_type(proto::ReplicationReplicaRequestType::REPLICA_DELETE);
         info->set_id(          ptr->id());
@@ -620,8 +623,7 @@ void WorkerProcessor::setServiceResponseInfo(
         info->set_chunk(       ptr->chunk());
 
     } else if (
-        WorkerFindRequest::Ptr ptr =
-            std::dynamic_pointer_cast<WorkerFindRequest>(request)) {
+        auto const ptr = std::dynamic_pointer_cast<WorkerFindRequest>(request)) {
 
         info->set_replica_type(proto::ReplicationReplicaRequestType::REPLICA_FIND);
         info->set_id(          ptr->id());
@@ -630,8 +632,7 @@ void WorkerProcessor::setServiceResponseInfo(
         info->set_chunk(       ptr->chunk());
 
     } else if (
-        WorkerFindAllRequest::Ptr ptr =
-            std::dynamic_pointer_cast<WorkerFindAllRequest>(request)) {
+        auto const ptr = std::dynamic_pointer_cast<WorkerFindAllRequest>(request)) {
 
         info->set_replica_type(proto::ReplicationReplicaRequestType::REPLICA_FIND_ALL);
         info->set_id(          ptr->id());
@@ -707,9 +708,9 @@ WorkerRequest::Ptr WorkerProcessor::fetchNextForProcessing(
 void
 WorkerProcessor::processingRefused(WorkerRequest::Ptr const& request) {
 
-    LOCK_GUARD;
-
     LOGS(_log, LOG_LVL_DEBUG, context() << "processingRefused" << "  id: " << request->id());
+
+    LOCK_GUARD;
 
     // Update request's state before moving it back into
     // the input queue.
@@ -725,11 +726,11 @@ WorkerProcessor::processingRefused(WorkerRequest::Ptr const& request) {
 
 void WorkerProcessor::processingFinished(WorkerRequest::Ptr const& request) {
 
-    LOCK_GUARD;
-
     LOGS(_log, LOG_LVL_DEBUG, context() << "processingFinished"
         << "  id: " << request->id()
         << "  status: " << WorkerRequest::status2string(request->status()));
+
+    LOCK_GUARD;
 
     // Then move it forward into the finished queue.
 
@@ -744,10 +745,10 @@ void WorkerProcessor::processingFinished(WorkerRequest::Ptr const& request) {
 void WorkerProcessor::processorThreadStopped(
                             WorkerProcessorThread::Ptr const& processorThread) {
 
-    LOCK_GUARD;
-
     LOGS(_log, LOG_LVL_DEBUG, context() << "processorThreadStopped" << "  thread: "
          << processorThread->id());
+
+    LOCK_GUARD;
 
     if (_state == STATE_IS_STOPPING) {
 
@@ -763,13 +764,14 @@ void WorkerProcessor::processorThreadStopped(
 void WorkerProcessor::setInfo(WorkerRequest::Ptr const& request,
                               proto::ReplicationResponseReplicate& response) {
 
-    if (!request) return;
+    if (not request) return;
 
     auto ptr = std::dynamic_pointer_cast<WorkerReplicationRequest>(request);
-    if (not ptr)
+    if (not ptr) {
         throw std::logic_error(
                 "incorrect dynamic type of request id: " + request->id() +
                 " in WorkerProcessor::setInfo(WorkerReplicationRequest)");
+    }
 
     // Return the performance of the target request
 

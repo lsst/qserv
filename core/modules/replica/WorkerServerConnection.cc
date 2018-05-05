@@ -42,7 +42,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerServerConnection");
 } /// namespace
 
 namespace {
-    
+
 using ProtocolBufferPtr = std::shared_ptr<lsst::qserv::replica::ProtocolBuffer>;
 
 /// The context for diagnostic & debug printouts
@@ -87,7 +87,7 @@ bool readMessage(boost::asio::ip::tcp::socket& socket,
                  ProtocolBufferPtr const& ptr,
                  size_t bytes,
                  T& message) {
-    
+
     if (not readIntoBuffer(socket,
                            ptr,
                            bytes)) return false;
@@ -105,10 +105,10 @@ bool readLength(boost::asio::ip::tcp::socket& socket,
     if (not readIntoBuffer(socket,
                            ptr,
                            sizeof(uint32_t))) return false;
-    
+
     bytes = ptr->parseLength();
     return true;
-} 
+}
 }   // namespace
 
 namespace lsst {
@@ -185,7 +185,7 @@ void WorkerServerConnection::received(boost::system::error_code const& ec,
     if (not ::readMessage(_socket,
                           _bufferPtr,
                           _bufferPtr->parseLength(),
-                          hdr)) { return; }
+                          hdr)) return;
 
     // Analyse the header of the request. Note that the header message categorizes
     // requests in two layers:
@@ -198,7 +198,7 @@ void WorkerServerConnection::received(boost::system::error_code const& ec,
         case proto::ReplicationRequestHeader::REPLICA: processReplicaRequest(   hdr); break;
         case proto::ReplicationRequestHeader::REQUEST: processManagementRequest(hdr); break;
         case proto::ReplicationRequestHeader::SERVICE: processServiceRequest(   hdr); break;
- 
+
         default:
             throw std::logic_error(
                   "WorkerServerConnection::received() unhandled request class: '" +
@@ -212,7 +212,7 @@ void WorkerServerConnection::processReplicaRequest(proto::ReplicationRequestHead
     uint32_t bytes;
     if (not ::readLength (_socket,
                           _bufferPtr,
-                          bytes)) { return; }
+                          bytes)) return;
 
     switch (hdr.replica_type()) {
 
@@ -223,7 +223,7 @@ void WorkerServerConnection::processReplicaRequest(proto::ReplicationRequestHead
             if (not ::readMessage(_socket,
                                   _bufferPtr,
                                   bytes,
-                                  request)) { return; }
+                                  request)) return;
 
             proto::ReplicationResponseReplicate response;
             _processor.enqueueForReplication(hdr.id(),
@@ -241,7 +241,7 @@ void WorkerServerConnection::processReplicaRequest(proto::ReplicationRequestHead
             if (not ::readMessage(_socket,
                                   _bufferPtr,
                                   bytes,
-                                  request)) { return; }
+                                  request)) return;
 
             proto::ReplicationResponseDelete response;
             _processor.enqueueForDeletion(hdr.id(),
@@ -259,7 +259,7 @@ void WorkerServerConnection::processReplicaRequest(proto::ReplicationRequestHead
             if (not ::readMessage(_socket,
                                   _bufferPtr,
                                   bytes,
-                                  request)) { return; }
+                                  request)) return;
 
             proto::ReplicationResponseFind response;
             _processor.enqueueForFind(hdr.id(),
@@ -277,7 +277,7 @@ void WorkerServerConnection::processReplicaRequest(proto::ReplicationRequestHead
             if (not ::readMessage(_socket,
                                   _bufferPtr,
                                   bytes,
-                                  request)) { return; }
+                                  request)) return;
 
             proto::ReplicationResponseFindAll response;
             _processor.enqueueForFindAll(hdr.id(),
@@ -301,7 +301,7 @@ void WorkerServerConnection::processManagementRequest(proto::ReplicationRequestH
     uint32_t bytes;
     if (not ::readLength (_socket,
                           _bufferPtr,
-                          bytes)) { return; }
+                          bytes)) return;
 
     switch (hdr.management_type()) {
 
@@ -312,7 +312,7 @@ void WorkerServerConnection::processManagementRequest(proto::ReplicationRequestH
             if (not ::readMessage(_socket,
                                   _bufferPtr,
                                   bytes,
-                                  request)) { return; }
+                                  request)) return;
 
             switch (request.type()) {
 
@@ -363,7 +363,7 @@ void WorkerServerConnection::processManagementRequest(proto::ReplicationRequestH
             if (not ::readMessage(_socket,
                                   _bufferPtr,
                                   bytes,
-                                  request)) { return; }
+                                  request)) return;
 
             switch (request.type()) {
 
@@ -445,10 +445,10 @@ void WorkerServerConnection::processServiceRequest(proto::ReplicationRequestHead
             break;
         }
         case proto::ReplicationServiceRequestType::SERVICE_RESUME: {
-  
+
             // This is a synchronus operation. The state transition request should happen
             // (or be denied) instantaneously.
-      
+
             _processor.run();
             _processor.setServiceResponse(
                   response,
@@ -533,7 +533,7 @@ void WorkerServerConnection::sent(boost::system::error_code const& ec,
 
     LOGS(_log, LOG_LVL_DEBUG, context << "sent");
 
-    if (::isErrorCode(ec, "sent")) { return; }
+    if (::isErrorCode(ec, "sent")) return;
 
     // Go wait for another request
 

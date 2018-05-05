@@ -389,7 +389,7 @@ bool WorkerFindRequestPOSIX::execute() {
 
     // If done (either way) then get rid of the engine right away because
     // it may still have allocated buffers
-    if (finished) { _csComputeEnginePtr.reset(); }
+    if (finished) _csComputeEnginePtr.reset();
 
     return finished;
 }

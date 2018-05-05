@@ -45,12 +45,12 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-FileClient::Ptr FileClient::open(ServiceProvider::Ptr const& serviceProvider,
+FileClient::Ptr FileClient::instance(ServiceProvider::Ptr const& serviceProvider,
                                      std::string const& workerName,
                                      std::string const& databaseName,
-                                     std::string const& fileName) {
+                                     std::string const& fileName,
+                                     bool readContent) {
     try {
-        const bool readContent = true;
         FileClient::Ptr ptr(
             new FileClient(serviceProvider,
                            workerName,
@@ -58,36 +58,10 @@ FileClient::Ptr FileClient::open(ServiceProvider::Ptr const& serviceProvider,
                            fileName,
                            readContent));
 
-        if (ptr->openImpl()) { return ptr; }
+        if (ptr->openImpl()) return ptr;
 
     } catch (std::exception const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, "FileClient::open  failed to construct an object for "
-             << "worker: " << workerName
-             << "database: " << databaseName
-             << "file: " << fileName
-             << ", error: " << ex.what());
-    }
-    return nullptr;
-}
-
-
-FileClient::Ptr FileClient::stat(ServiceProvider::Ptr const& serviceProvider,
-                                     std::string const& workerName,
-                                     std::string const& databaseName,
-                                     std::string const& fileName) {
-    try {
-        bool const readContent = false;
-        FileClient::Ptr ptr(
-            new FileClient(serviceProvider,
-                           workerName,
-                           databaseName,
-                           fileName,
-                           readContent));
-
-        if (ptr->openImpl()) { return ptr; }
-
-    } catch (std::exception const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, "FileClient::open  failed to construct an object for "
+        LOGS(_log, LOG_LVL_ERROR, "FileClient::instance  failed to construct an object for "
              << "worker: " << workerName
              << "database: " << databaseName
              << "file: " << fileName
@@ -172,18 +146,18 @@ bool FileClient::openImpl() {
     //       with a message posted into the log stream.
 
     try {
-        
+
         // Serialize the file open request and send the one to the server
-    
+
         _bufferPtr->resize();
-    
+
         proto::ReplicationFileRequest request;
         request.set_database(database());
         request.set_file(file());
         request.set_send_content(_readContent);
-    
+
         _bufferPtr->serialize(request);
-    
+
         boost::asio::write(
             _socket,
             boost::asio::buffer(
@@ -200,16 +174,16 @@ bool FileClient::openImpl() {
                  << ", error: " << ec.message());
             return false;
         }
-        
+
         // Read the response and parse it to see if the file is available
-    
+
         // Start with receiving the fixed length frame carrying
         // the size (in bytes) the length of the subsequent message.
-    
+
         const size_t frameLengthBytes = sizeof(uint32_t);
-    
+
         _bufferPtr->resize(frameLengthBytes);
-    
+
         boost::asio::read(
             _socket,
             boost::asio::buffer(
@@ -227,12 +201,12 @@ bool FileClient::openImpl() {
                  << ", error: " << ec.message());
             return false;
         }
-        
+
         // Get the length of the message and try reading the message itself
         // from the socket.
-            
+
         const uint32_t responseLengthBytes = _bufferPtr->parseLength();
-    
+
         _bufferPtr->resize(responseLengthBytes);    // make sure the buffer has enough space to accomodate
                                                     // the data of the message.
         boost::asio::read(
@@ -252,7 +226,7 @@ bool FileClient::openImpl() {
                  << ", error: " << ec.message());
             return false;
         }
-        
+
         // Parse na analyze the response
 
         proto::ReplicationFileResponse response;
@@ -270,7 +244,7 @@ bool FileClient::openImpl() {
              << _workerInfo.svcHost << ":" << _workerInfo.fsPort
              << ", database: " << database() << ", file: " << file()
              << ", error: " << ex.what());
-    }    
+    }
     return false;
 }
 
@@ -290,11 +264,11 @@ size_t FileClient::read(uint8_t* buf, size_t bufSize) {
     }
     if (not buf or not bufSize) {
         throw std::invalid_argument(
-                        context + "  zero buffer pointer or buffer size passed into the method");
+                    context + "  zero buffer pointer or buffer size passed into the method");
     }
 
     // If EOF was detected earlier
-    if (_eof) { return 0; }
+    if (_eof) return 0;
 
     // Read the specified number of bytes
     boost::system::error_code ec;
@@ -325,7 +299,7 @@ size_t FileClient::read(uint8_t* buf, size_t bufSize) {
                         ", error message: " + ec.message());
         }
     } else {
-        if (not num) { _eof = true; }
+        if (not num) _eof = true;
     }
     return num;
 }

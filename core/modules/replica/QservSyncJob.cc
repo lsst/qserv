@@ -93,7 +93,7 @@ QservSyncJobResult const& QservSyncJob::getReplicaData() const {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "getReplicaData");
 
-    if (_state == State::FINISHED) { return _replicaData; }
+    if (_state == State::FINISHED) return _replicaData;
 
     throw std::logic_error(
         "QservSyncJob::getReplicaData  the method can't be called while the job hasn't finished");
@@ -158,8 +158,8 @@ void QservSyncJob::startImpl() {
 
     // In case if no workers or database are present in the Configuration
     // at this time.
-    if (not _numLaunched) { setState(State::FINISHED); }
-    else                  { setState(State::IN_PROGRESS); }
+    if (not _numLaunched) setState(State::FINISHED);
+    else                  setState(State::IN_PROGRESS);
 }
 
 void QservSyncJob::cancelImpl() {
@@ -201,45 +201,33 @@ void QservSyncJob::onRequestFinish(SetReplicasQservMgtRequest::Ptr const& reques
          << " state=" << request->state2string(request->state())
          << " extendedState=" << request->state2string(request->extendedState()));
 
-    // Ignore the callback if the job was cancelled, expired, etc.``
-    if (_state == State::FINISHED) { return; }
+    LOCK_GUARD;
 
-    do {
-        // Note that access to the job's public API should not be locked while
-        // notifying a caller (if the callback function was povided) in order to avoid
-        // the circular deadlocks.
-        LOCK_GUARD;
+    // Ignore the callback if the job was cancelled, expired, etc.
+    if (_state == State::FINISHED) return;
 
-        LOGS(_log, LOG_LVL_DEBUG, context()
-             << "onRequestFinish  worker=" << request->worker()
-             << " ** LOCK_GUARD **");
+    // Update counters and object state if needed.
+    _numFinished++;
+    if (request->extendedState() == QservMgtRequest::ExtendedState::SUCCESS) {
+        _numSuccess++;
+        _replicaData.prevReplicas[request->worker()] = request->replicas();
+        _replicaData.newReplicas [request->worker()] = request->newReplicas();
+        _replicaData.workers     [request->worker()] = true;
+    } else {
+        _replicaData.workers     [request->worker()] = false;
+    }
 
-        // Update counters and object state if needed.
-        _numFinished++;
-        if (request->extendedState() == QservMgtRequest::ExtendedState::SUCCESS) {
-            _numSuccess++;
-            _replicaData.prevReplicas[request->worker()] = request->replicas();
-            _replicaData.newReplicas [request->worker()] = request->newReplicas();
-            _replicaData.workers     [request->worker()] = true;
-        } else {
-            _replicaData.workers     [request->worker()] = false;
-        }
+    LOGS(_log, LOG_LVL_DEBUG, context()
+         << "onRequestFinish  worker=" << request->worker()
+         << " _numLaunched=" << _numLaunched
+         << " _numFinished=" << _numFinished
+         << " _numSuccess=" << _numSuccess);
 
-        LOGS(_log, LOG_LVL_DEBUG, context()
-             << "onRequestFinish  worker=" << request->worker()
-             << " _numLaunched=" << _numLaunched
-             << " _numFinished=" << _numFinished
-             << " _numSuccess=" << _numSuccess);
-
-        if (_numFinished == _numLaunched) {
-            finish(_numSuccess == _numLaunched ? ExtendedState::SUCCESS :
-                                                 ExtendedState::FAILED);
-        }
-
-    } while (false);
-
-    // Finally, notify a caller in the deadlock-free zone`
-    if (_state == State::FINISHED) { notify(); }
+    if (_numFinished == _numLaunched) {
+        finish(_numSuccess == _numLaunched ? ExtendedState::SUCCESS :
+                                             ExtendedState::FAILED);
+        notify();
+    }
 }
 
 }}} // namespace lsst::qserv::replica

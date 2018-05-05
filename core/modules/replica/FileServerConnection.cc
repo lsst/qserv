@@ -45,14 +45,14 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.FileServerConnection");
 
-/// The limit of 16 MB fo rthe maximum record size for file I/O and
+/// The limit of 16 MB for the maximum record size for file I/O and
 /// network operations.
 size_t const maxFileBufSizeBytes = 16 * 1024 * 1024;
 
 } /// namespace
 
 namespace {
-    
+
 typedef std::shared_ptr<lsst::qserv::replica::ProtocolBuffer> ProtocolBufferPtr;
 
 /// The context for diagnostic & debug printouts
@@ -95,7 +95,7 @@ bool readMessage(boost::asio::ip::tcp::socket& socket,
                  ProtocolBufferPtr const& ptr,
                  size_t bytes,
                  T& message) {
-    
+
     if (not readIntoBuffer(socket,
                            ptr,
                            bytes)) return false;
@@ -194,19 +194,19 @@ void FileServerConnection::requestReceived(boost::system::error_code const& ec,
 
     LOGS(_log, LOG_LVL_DEBUG, context << "requestReceived");
 
-    if (::isErrorCode (ec, "requestReceived")) { return; }
+    if (::isErrorCode (ec, "requestReceived")) return;
 
     // Now read the body of the request
 
     proto::ReplicationFileRequest request;
-    if (not ::readMessage(_socket, _bufferPtr, _bufferPtr->parseLength(), request)) { return; }
- 
+    if (not ::readMessage(_socket, _bufferPtr, _bufferPtr->parseLength(), request)) return;
+
     LOGS(_log, LOG_LVL_INFO, context << "requestReceived  <OPEN> database: " << request.database()
          << ", file: " << request.file());
-    
+
     // Find a file requested by a client
-    
-    bool        available = false; 
+
+    bool        available = false;
     uint64_t    size      = 0;
     std::time_t mtime     = 0;
     do {
@@ -255,7 +255,7 @@ void FileServerConnection::requestReceived(boost::system::error_code const& ec,
             }
         }
         available = true;
-        
+
     } while (false);
 
     // Serialize the response into the buffer and send it back to a caller
@@ -295,8 +295,8 @@ void FileServerConnection::responseSent(boost::system::error_code const& ec,
 
     LOGS(_log, LOG_LVL_DEBUG, context << "responseSent");
 
-    if (::isErrorCode (ec, "sent")) { return; }
- 
+    if (::isErrorCode (ec, "sent")) return;
+
     // If the file pointer is not set it means one of two reasons:
     //
     // - there was a problem with locating/accessing/opening the file, or
@@ -304,7 +304,7 @@ void FileServerConnection::responseSent(boost::system::error_code const& ec,
     //
     // In either case just finish the protocol right here.
 
-    if (not _filePtr) { return; }
+    if (not _filePtr) return;
 
     // The file is open. Begin streaming its content.
     sendData();
@@ -313,7 +313,7 @@ void FileServerConnection::responseSent(boost::system::error_code const& ec,
 void FileServerConnection::sendData() {
 
     LOGS(_log, LOG_LVL_DEBUG, context << "sendData  file: " << _fileName);
-    
+
     // Read next record if possible (a failure or EOF)
 
     size_t const bytes =
@@ -358,7 +358,7 @@ void FileServerConnection::dataSent(boost::system::error_code const& ec,
 
     LOGS(_log, LOG_LVL_DEBUG, context << "dataSent");
 
-    if (::isErrorCode (ec, "dataSent")) { return; }
+    if (::isErrorCode (ec, "dataSent")) return;
 
     sendData();
 }

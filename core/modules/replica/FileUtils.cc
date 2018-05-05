@@ -66,8 +66,8 @@ bool isValidPartitionedTable(
             lsst::qserv::replica::DatabaseInfo const& databaseInfo) {
 
     for (auto&& table: databaseInfo.partitionedTables) {
-        if (str == table) { return true; }
-        if (str == table + "FullOverlap") { return true; }
+        if (str == table) return true;
+        if (str == table + "FullOverlap") return true;
     }
     return false;
 }
@@ -123,16 +123,16 @@ bool FileUtils::parsePartitionedFile(std::tuple<std::string, unsigned int, std::
     // Find the extention of the file and evaluate it if found
 
     std::string::size_type const posBeforeExention = fileName.rfind('.');
-    if (posBeforeExention == std::string::npos) { return false; }           // not found
+    if (posBeforeExention == std::string::npos) return false;               // not found
 
     std::string const extention = fileName.substr(posBeforeExention + 1);   // excluding '.'
-    if (!::isValidExtention(extention)) { return false; }                   // unknow file extenton
+    if (!::isValidExtention(extention)) return false;                       // unknow file extenton
 
     // Find and parse the chunk number
 
     std::string::size_type const posBeforeChunk = fileName.rfind('_');
-    if (posBeforeChunk == std::string::npos) { return false; }  // not found
-    if (posBeforeChunk >= posBeforeExention) { return false; }  // no room for chunk
+    if (posBeforeChunk == std::string::npos) return false;  // not found
+    if (posBeforeChunk >= posBeforeExention) return false;  // no room for chunk
 
     unsigned int chunk;
     try {
@@ -144,7 +144,7 @@ bool FileUtils::parsePartitionedFile(std::tuple<std::string, unsigned int, std::
     // Find the table name and check if it's allowed for the specified database
 
     const std::string table = fileName.substr(0, posBeforeChunk);
-    if (!::isValidPartitionedTable(table, databaseInfo)) { return false; }  // unknown table
+    if (!::isValidPartitionedTable(table, databaseInfo)) return false;  // unknown table
 
     // Success
     parsed = std::make_tuple(table, chunk, extention);

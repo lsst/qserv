@@ -109,7 +109,7 @@ PurgeJobResult const& PurgeJob::getReplicaData() const {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "getReplicaData");
 
-    if (_state == State::FINISHED) { return _replicaData; }
+    if (_state == State::FINISHED) return _replicaData;
 
     throw std::logic_error (
         "PurgeJob::getReplicaData  the method can't be called while the job hasn't finished");
@@ -202,22 +202,16 @@ void PurgeJob::onPrecursorJobFinish() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish");
 
+    LOCK_GUARD;
+
     // Ignore the callback if the job was cancelled
-    if (_state == State::FINISHED) { return; }
+    if (_state == State::FINISHED) return;
 
-    do {
-        // This lock will be automatically release beyon this scope
-        // to allow deadlock-free client notifications (see the end of the method)
-        LOCK_GUARD;
+    ////////////////////////////////////////////////////////////////
+    // Only proceed with the replication effort if the precursor job
+    // has succeeded.
 
-        //////////////////////////////////////////////////////////////////////////
-        // Do not proceed with the replication effort in case of any problems with
-        // the precursor job.
-
-        if (_findAllJob->extendedState() != ExtendedState::SUCCESS) {
-            finish(ExtendedState::FAILED);
-            break;
-        }
+    if (_findAllJob->extendedState() == ExtendedState::SUCCESS) {
 
         /////////////////////////////////////////////////////////////////
         // Analyse results and prepare a deletion plan to remove extra
@@ -253,7 +247,7 @@ void PurgeJob::onPrecursorJobFinish() {
             auto         const& replicas = chunk2workers.second;
 
             // skip the special chunk which must be present on all workers
-            if (chunk == 1234567890) { continue; }
+            if (chunk == 1234567890) continue;
 
             size_t const numReplicas = replicas.size();
             if (numReplicas > _numReplicas) {
@@ -386,29 +380,32 @@ void PurgeJob::onPrecursorJobFinish() {
 
                 worker2occupancy[targetWorker] -= replicaData.databases.at(chunk).size();
             }
-            if (_state == State::FINISHED) { break; }
+            if (_state == State::FINISHED) break;
         }
-        if (_state == State::FINISHED) { break; }
+        if (_state != State::FINISHED) {
 
-        // Finish right away if no problematic chunks found
-        if (not _jobs.size()) {
-            if (not _numFailedLocks) {
-                finish(ExtendedState::SUCCESS);
-                break;
-            } else {
-                // Some of the chuks were locked and yet, no sigle job was
-                // lunched. Hence we should start another iteration by requesting
-                // the fresh state of the chunks within the family.
-                restart();
-                return;
+            // ATTENTION: if the job submission algorithm didn't launch any
+            // child jobs while leaving this object in the unfinished state
+            // then we must evaluate reasons and take proper actions. Otherwise
+            // the object will get into a 'zombie' state.
+
+            if (not _jobs.size()) {
+                if (not _numFailedLocks) {
+                    // Finish right away if no problematic chunks found
+                    finish(ExtendedState::SUCCESS);
+                } else {
+                    // Some of the chuks were locked and yet, no sigle job was
+                    // lunched. Hence we should start another iteration by requesting
+                    // the fresh state of the chunks within the family.
+                    restart();
+                    return;
+                }
             }
         }
-
-    } while (false);
-
-    // Client notification should be made from the lock-free zone
-    // to avoid possible deadlocks
-    if (_state == State::FINISHED) { notify(); }
+    } else {
+        finish(ExtendedState::FAILED);
+    }
+    if (_state == State::FINISHED) notify();
 }
 
 void PurgeJob::onDeleteJobFinish(DeleteReplicaJob::Ptr const& job) {
@@ -419,77 +416,70 @@ void PurgeJob::onDeleteJobFinish(DeleteReplicaJob::Ptr const& job) {
          << "  worker="         << job->worker()
          << "  chunk="          << job->chunk());
 
+    LOCK_GUARD;
+
     // Ignore the callback if the job was cancelled
     if (_state == State::FINISHED) {
         release(job->chunk());
         return;
     }
-    do {
-        // This lock will be automatically release beyond this scope
-        // to allow client notifications (see the end of the method)
-        LOCK_GUARD;
 
-        // Update counters and merge results of the finished job into the current
-        // job's stats if the replica deletion has been a success.
+    // Update counters and merge results of the finished job into the current
+    // job's stats if the replica deletion has been a success.
 
-        _numFinished++;
+    _numFinished++;
 
-        if (job->extendedState() == Job::ExtendedState::SUCCESS) {
+    if (job->extendedState() == Job::ExtendedState::SUCCESS) {
 
-            _numSuccess++;
+        _numSuccess++;
 
-            DeleteReplicaJobResult const& jobReplicaData = job->getReplicaData();
+        DeleteReplicaJobResult const& jobReplicaData = job->getReplicaData();
 
-            // Append replicas infos by the end of the list
-            _replicaData.replicas.insert(_replicaData.replicas.end(),
-                                         jobReplicaData.replicas.begin(),
-                                         jobReplicaData.replicas.end());
+        // Append replicas infos by the end of the list
+        _replicaData.replicas.insert(_replicaData.replicas.end(),
+                                     jobReplicaData.replicas.begin(),
+                                     jobReplicaData.replicas.end());
 
-            // Merge the replica infos into the dictionary
-            for (auto&& databaseEntry: jobReplicaData.chunks.at(job->chunk())) {
-                std::string const& database = databaseEntry.first;
-                _replicaData.chunks[job->chunk()][database][job->worker()] =
-                    jobReplicaData.chunks.at(job->chunk()).at(database).at(job->worker());
-            }
-            _replicaData.workers[job->worker()] = true;
-        } else {
-            _replicaData.workers[job->worker()] = false;
+        // Merge the replica infos into the dictionary
+        for (auto&& databaseEntry: jobReplicaData.chunks.at(job->chunk())) {
+            std::string const& database = databaseEntry.first;
+            _replicaData.chunks[job->chunk()][database][job->worker()] =
+                jobReplicaData.chunks.at(job->chunk()).at(database).at(job->worker());
         }
+        _replicaData.workers[job->worker()] = true;
+    } else {
+        _replicaData.workers[job->worker()] = false;
+    }
 
-        // Make sure the chunk is released if this was the last
-        // job in its scope.
-        //
-        _chunk2jobs.at(job->chunk()).erase(job->worker());
-        if (_chunk2jobs.at(job->chunk()).empty()) {
-            _chunk2jobs.erase(job->chunk());
-            release(job->chunk());
-        }
+    // Make sure the chunk is released if this was the last
+    // job in its scope.
+    //
+    _chunk2jobs.at(job->chunk()).erase(job->worker());
+    if (_chunk2jobs.at(job->chunk()).empty()) {
+        _chunk2jobs.erase(job->chunk());
+        release(job->chunk());
+    }
 
-        // Evaluate the status of on-going operations to see if the job
-        // has finished.
-        //
-        if (_numFinished == _numLaunched) {
-            if (_numSuccess == _numLaunched) {
-                if (_numFailedLocks) {
-                    // Make another iteration (and another one, etc. as many as needed)
-                    // before it succeeds or fails.
-                    restart();
-                    return;
-                } else {
-                    finish(ExtendedState::SUCCESS);
-                    break;
-                }
+    // Evaluate the status of on-going operations to see if the job
+    // has finished.
+
+    if (_numFinished == _numLaunched) {
+        if (_numSuccess == _numLaunched) {
+            if (_numFailedLocks) {
+
+                // Make another iteration (and another one, etc. as many as needed)
+                // before it succeeds or fails.
+                restart();
+                return;
+
             } else {
-                finish(ExtendedState::FAILED);
-                break;
+                finish(ExtendedState::SUCCESS);
             }
+        } else {
+            finish(ExtendedState::FAILED);
         }
-
-    } while (false);
-
-    // Client notification should be made from the lock-free zone
-    // to avoid possible deadlocks
-    if (_state == State::FINISHED) { notify(); }
+    }
+    if (_state == State::FINISHED) notify();
 }
 
 void PurgeJob::release(unsigned int chunk) {

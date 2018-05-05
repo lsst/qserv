@@ -117,8 +117,7 @@ void GetReplicasQservMgtRequest::setReplicas(
 
 void GetReplicasQservMgtRequest::startImpl() {
 
-    GetReplicasQservMgtRequest::Ptr const& request =
-        shared_from_base<GetReplicasQservMgtRequest>();
+    auto const request = shared_from_base<GetReplicasQservMgtRequest>();
 
     _qservRequest = wpublish::GetChunkListQservRequest::create(
         _inUseOnly,

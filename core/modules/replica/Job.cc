@@ -115,36 +115,35 @@ void Job::start() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "start");
 
-    do {
-        LOCK_GUARD;
+    LOCK_GUARD;
 
-        assertState(State::CREATED);
+    assertState(State::CREATED);
 
-        // IMPORTANT: update these before proceeding to the implementation
-        // because the later may create children jobs whose performance
-        // counters must be newer, and whose saved state within the database
-        // may depend on this job's state.
-        _beginTime = PerformanceUtils::now();
-        _controller->serviceProvider()->databaseServices()->saveState(shared_from_this());
+    // IMPORTANT: update these before proceeding to the implementation
+    // because the later may create children jobs whose performance
+    // counters must be newer, and whose saved state within the database
+    // may depend on this job's state.
+    _beginTime = PerformanceUtils::now();
+    _controller->serviceProvider()->databaseServices()->saveState(shared_from_this());
 
-        // Start timers if configured
-        startHeartbeatTimer();
-        startExpirationTimer();
+    // Start timers if configured
+    startHeartbeatTimer();
+    startExpirationTimer();
 
-        // Delegate the rest to the specific implementation
-        startImpl();
+    // Delegate the rest to the specific implementation
+    startImpl();
 
-        // Allow the job to be fully accomplished right away
-        if (_state == State::FINISHED) { break; }
+    // Allow the job to be fully accomplished right away
+    if (_state == State::FINISHED) {
 
-        // The only other state which is allowed here
-        assertState(State::IN_PROGRESS);
+        // Subclass specific notification
+        notify();
 
-    } while (false);
+        return;
+    }
 
-    // Client notification should be made from the lock-free zone
-    // to avoid possible deadlocks
-    if (_state == State::FINISHED) { notify(); }
+    // Otherwise, the only other state which is allowed here is this
+    assertState(State::IN_PROGRESS);
 }
 
 void Job::cancel() {
@@ -152,14 +151,13 @@ void Job::cancel() {
          << "  _state="         << state2string(_state)
          << ", _extendedState=" << state2string(_extendedState));
 
-    if (_state == State::FINISHED) { return; }
-    {
-        // Limit the scope of this lock here to allow deadlock-free
-        // callbacks to clients.
-        LOCK_GUARD;
+    LOCK_GUARD;
 
-        finish(ExtendedState::CANCELLED);
-    }
+    if (_state == State::FINISHED) return;
+
+    finish(ExtendedState::CANCELLED);
+
+    // Subclass specific notification
     notify();
 }
 
@@ -171,7 +169,7 @@ void Job::finish(ExtendedState extendedState) {
          << ", (new)extendedState=" << state2string(extendedState));
 
     // Also ignore this event if the request is over
-    if (_state == State::FINISHED) { return; }
+    if (_state == State::FINISHED) return;
 
     // *IMPORTANT*: Set new state *BEFORE* calling subclass-specific cancellation
     // protocol to make sure all event handlers will recognize this scenario and
@@ -186,8 +184,8 @@ void Job::finish(ExtendedState extendedState) {
     _controller->serviceProvider()->databaseServices()->saveState(shared_from_this());
 
     // Stop timers if they're still running
-    if(_heartbeatTimerPtr) { _heartbeatTimerPtr->cancel(); }
-    if(_expirationTimerPtr) { _expirationTimerPtr->cancel(); }
+    if(_heartbeatTimerPtr) _heartbeatTimerPtr->cancel();
+    if(_expirationTimerPtr) _expirationTimerPtr->cancel();
 }
 
 void Job::qservAddReplica(unsigned int chunk,
@@ -280,12 +278,16 @@ void Job::setState(State state,
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "setState  state=" << state2string(state, extendedState));
 
-    _state         = state;
-    _extendedState = extendedState;
+    // ATTENTION: changing the top-level state to FINISHED should be last step
+    // in the transient state transition in order to ensure a consistent view
+    // onto the combined state.
 
     if (_state == State::FINISHED) {
         _endTime = PerformanceUtils::now();
     }
+    _extendedState = extendedState;
+    _state = state;
+
     _controller->serviceProvider()->databaseServices()->saveState(shared_from_this());
 }
 
@@ -317,20 +319,20 @@ void Job::heartbeat(boost::system::error_code const& ec) {
     LOGS(_log, LOG_LVL_DEBUG, context() << "heartbeat: "
          << (ec == boost::asio::error::operation_aborted ? "** ABORTED **" : ""));
 
+    LOCK_GUARD;
+
     // Ignore this event if the timer was aborted
-    if (ec == boost::asio::error::operation_aborted) { return; }
+    if (ec == boost::asio::error::operation_aborted) return;
 
     // Also ignore this event if the job is over
-    if (_state == State::FINISHED) { return; }
-    {
-        LOCK_GUARD;
+    if (_state == State::FINISHED) return;
 
-        // Update the job entry in the database
-        _controller->serviceProvider()->databaseServices()->updateHeartbeatTime(shared_from_this());
+    // Update the job entry in the database
+    _controller->serviceProvider()->databaseServices()->updateHeartbeatTime(shared_from_this());
 
-        // Start another interval
-        startHeartbeatTimer();
-    }
+    // Start another interval
+    startHeartbeatTimer();
+
 }
 
 void Job::startExpirationTimer() {
@@ -361,18 +363,17 @@ void Job::expired(boost::system::error_code const& ec) {
     LOGS(_log, LOG_LVL_DEBUG, context() << "expired: "
          << (ec == boost::asio::error::operation_aborted ? "** ABORTED **" : ""));
 
+    LOCK_GUARD;
+
     // Ignore this event if the timer was aborted
-    if (ec == boost::asio::error::operation_aborted) { return; }
+    if (ec == boost::asio::error::operation_aborted) return;
 
     // Also ignore this event if the job is over
-    if (_state == State::FINISHED) { return; }
-    {
-        // Limit the scope of this lock here to allow deadlock-free
-        // callbacks to clients.
-        LOCK_GUARD;
+    if (_state == State::FINISHED) return;
 
-        finish(ExtendedState::EXPIRED);
-    }
+    finish(ExtendedState::EXPIRED);
+
+    // Subclass specific notification
     notify();
 }
 

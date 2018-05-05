@@ -123,11 +123,11 @@ void QservMgtRequest::start(XrdSsiService* service,
     // NOTE: this is done only once, the first time a non-trivial value
     // of each parameter is presented to the method.
 
-    if (not _service and service) { _service = service; }
+    if (not _service and service) _service = service;
     if (not _service) {
         throw std::invalid_argument("QservMgtRequest::start  null pointer for XrdSsiService");
     }
-    if (_jobId.empty() and not jobId.empty()) { _jobId = jobId; }
+    if (_jobId.empty() and not jobId.empty()) _jobId = jobId;
 
     _performance.setUpdateStart();
 
@@ -162,10 +162,10 @@ void QservMgtRequest::expired(boost::system::error_code const& ec) {
     LOCK_GUARD;
 
     // Ignore this event if the timer was aborted
-    if (ec == boost::asio::error::operation_aborted) { return; }
+    if (ec == boost::asio::error::operation_aborted) return;
 
     // Also ignore this event if the request is over
-    if (_state == State::FINISHED) { return; }
+    if (_state == State::FINISHED) return;
 
     // Pringt this only after those rejections made above
     LOGS(_log, LOG_LVL_DEBUG, context() << "expired");
@@ -188,14 +188,18 @@ void QservMgtRequest::finish(ExtendedState extendedState,
     LOGS(_log, LOG_LVL_DEBUG, context() << "finish");
 
     // Check if it's not too late for this operation
-    if (_state == State::FINISHED) { return; }
+    if (_state == State::FINISHED) return;
+
+    // Set the optional server error state as well
+    //
+    // IMPORTANT: this needs to be done before performing the state
+    // transition to insure clients will get a consistent view onto
+    // the object state.
+    _serverError = serverError;
 
     // Set new state to make sure all event handlers will recognize
     // this scenario and avoid making any modifications to the request's state.
     setState(State::FINISHED, extendedState);
-
-    // Set the optional server error state as well
-    _serverError = serverError;
 
     // Close all operations on BOOST ASIO if needed
     _requestExpirationTimer.cancel();
@@ -225,8 +229,12 @@ void QservMgtRequest::setState(State state,
 {
     LOGS(_log, LOG_LVL_DEBUG, context() << "setState  " << state2string(state, extendedState));
 
-    _state         = state;
+    // IMPORTANT: the top-level state is the last to be set when performing
+    // the state transition to insure clients will get a consistent view onto
+    // the object state.
+
     _extendedState = extendedState;
+    _state = state;
 
     _serviceProvider->databaseServices()->saveState(shared_from_this());
 }

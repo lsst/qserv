@@ -228,40 +228,35 @@ void ServiceManagementRequestBaseM::analyze(bool success,
                                             proto::ReplicationServiceResponse const& message) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "analyze  success=" << (success ? "true" : "false"));
-    {
-        // This guard is made on behalf of an asynchronious callback fired
-        // upon a completion of the request within method send() - the only
-        // client of analyze()
-        LOCK_GUARD;
 
-        if (success) {
-            _performance.update(message.performance());
+    LOCK_GUARD;
 
-            // Capture the general status of the operation
+    if (success) {
+        _performance.update(message.performance());
 
-            switch (message.status()) {
+        // Capture the general status of the operation
 
-                case proto::ReplicationServiceResponse::SUCCESS:
+        switch (message.status()) {
 
-                    // Transfer the state of the remote service into a local data member
-                    // before initiating state transition of the request object.
+            case proto::ReplicationServiceResponse::SUCCESS:
 
-                    _serviceState.set(message);
+                // Transfer the state of the remote service into a local data member
+                // before initiating state transition of the request object.
 
-                    finish(SUCCESS);
-                    break;
+                _serviceState.set(message);
 
-                default:
-                    finish(SERVER_ERROR);
-                    break;
-            }
-        } else {
-            finish(CLIENT_ERROR);
+                finish(SUCCESS);
+                break;
+
+            default:
+                finish(SERVER_ERROR);
+                break;
         }
+    } else {
+        finish(CLIENT_ERROR);
     }
-    // The client callback is made in the lock-free zone to avoid possible
-    // deadlocks
-    if (_state == State::FINISHED) { notify(); }
+
+    if (_state == State::FINISHED) notify();
 }
 
 }}} // namespace lsst::qserv::replica

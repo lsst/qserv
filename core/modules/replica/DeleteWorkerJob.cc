@@ -125,7 +125,7 @@ DeleteWorkerJobResult const& DeleteWorkerJob::getReplicaData() const {
 
     LOGS(_log, LOG_LVL_DEBUG, context());
 
-    if (_state == State::FINISHED) { return _replicaData; }
+    if (_state == State::FINISHED) return _replicaData;
 
     throw std::logic_error(
         "DeleteWorkerJob::getReplicaData()  the method can't be called while the job hasn't finished");
@@ -234,25 +234,11 @@ void DeleteWorkerJob::cancelImpl() {
 
     // Stop chained jobs (if any) as well
 
-    for (auto&& ptr: _findAllJobs)   { ptr->cancel(); }
-    for (auto&& ptr: _replicateJobs) { ptr->cancel(); }
-}
-
-void DeleteWorkerJob::notify() {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
-
-    // The callback is being made asynchronously in a separate thread
-    // to avoid blocking the current thread.
-
-    if (_onFinish) {
-        auto self = shared_from_base<DeleteWorkerJob>();
-        std::async(
-            std::launch::async,
-            [self]() {
-                self->_onFinish(self);
-            }
-        );
+    for (auto&& ptr: _findAllJobs) {
+        ptr->cancel();
+    }
+    for (auto&& ptr: _replicateJobs) {
+        ptr->cancel();
     }
 }
 
@@ -263,31 +249,22 @@ void DeleteWorkerJob::onRequestFinish(FindAllRequest::Ptr const& request) {
          << "  worker="   << request->worker()
          << "  database=" << request->database());
 
+    LOCK_GUARD;
+
     // Ignore the callback if the job was cancelled
-    if (_state == State::FINISHED) { return; }
+    if (_state == State::FINISHED) return;
 
-    do {
-        // This lock will be automatically release beyond this scope
-        // to allow client notifications (see the end of the method)
-        LOCK_GUARD;
-
-        _numFinished++;
-        if (request->extendedState() == Request::ExtendedState::SUCCESS) {
-            _numSuccess++;
-        }
-
-    } while (false);
+    _numFinished++;
+    if (request->extendedState() == Request::ExtendedState::SUCCESS) _numSuccess++;
 
     // Evaluate the status of on-going operations to see if the job
     // has finished. If so then proceed to the next stage of the job.
     //
     // ATTENTION: we don't care about the completion status of the requests
-    // because the're related to a worker which is going t be removed, and
+    // because the're related to a worker which is going to be removed, and
     // this worker may already be experiencing problems.
     //
-    if (_numFinished == _numLaunched) {
-        disableWorker();
-    }
+    if (_numFinished == _numLaunched) disableWorker();
 }
 
 void
@@ -330,59 +307,47 @@ void DeleteWorkerJob::onJobFinish(FindAllJob::Ptr const& job) {
     LOGS(_log, LOG_LVL_DEBUG, context() << "onJobFinish(FindAllJob) "
          << " databaseFamily: " << job->databaseFamily());
 
+    LOCK_GUARD;
+
     // Ignore the callback if the job was cancelled (or otherwise failed)
-    if (_state == State::FINISHED) { return; }
+    if (_state == State::FINISHED) return;
 
-    do {
-        // This lock will be automatically released beyond this scope
-        // to allow client notifications (see the end of the method)
+    _numFinished++;
 
-        LOCK_GUARD;
+    if (job->extendedState() == ExtendedState::SUCCESS) {
 
-        _numFinished++;
+        _numSuccess++;
 
-        if (job->extendedState() == ExtendedState::SUCCESS) {
+        if (_numFinished == _numLaunched) {
 
-            _numSuccess++;
+            // Launch chained jobs to ensure the minimal replication level
+            // which might be affected by the worker removal.
 
-            if (_numFinished == _numLaunched) {
+            _numLaunched = 0;
+            _numFinished = 0;
+            _numSuccess  = 0;
 
-                // Launch chained jobs to ensure the minimal replication level
-                // which might be affected by the worker removal.
+            auto self = shared_from_base<DeleteWorkerJob>();
 
-                _numLaunched = 0;
-                _numFinished = 0;
-                _numSuccess  = 0;
-
-                auto self = shared_from_base<DeleteWorkerJob>();
-
-                for (auto&& databaseFamily: _controller->serviceProvider()->config()->databaseFamilies()) {
-                    ReplicateJob::Ptr const job = ReplicateJob::create(
-                        databaseFamily,
-                        0,  /* numReplicas -- pull from Configuration */
-                        _controller,
-                        _id,
-                        [self] (ReplicateJob::Ptr job) {
-                            self->onJobFinish(job);
-                        }
-                    );
-                    job->start();
-                    _replicateJobs.push_back(job);
-                    _numLaunched++;
-                }
+            for (auto&& databaseFamily: _controller->serviceProvider()->config()->databaseFamilies()) {
+                ReplicateJob::Ptr const job = ReplicateJob::create(
+                    databaseFamily,
+                    0,  /* numReplicas -- pull from Configuration */
+                    _controller,
+                    _id,
+                    [self] (ReplicateJob::Ptr job) {
+                        self->onJobFinish(job);
+                    }
+                );
+                job->start();
+                _replicateJobs.push_back(job);
+                _numLaunched++;
             }
-        } else {
-            finish(ExtendedState::FAILED);
-            break;
         }
-
-    } while (false);
-
-    // Note that access to the job's public API should not be locked while
-    // notifying a caller (if the callback function was povided) in order to avoid
-    // the circular deadlocks.
-
-    if (_state == State::FINISHED) { notify (); }
+    } else {
+        finish(ExtendedState::FAILED);
+    }
+    if (_state == State::FINISHED) notify();
 }
 
 void DeleteWorkerJob::onJobFinish(ReplicateJob::Ptr const& job) {
@@ -392,31 +357,25 @@ void DeleteWorkerJob::onJobFinish(ReplicateJob::Ptr const& job) {
          << " numReplicas: " << job->numReplicas()
          << " state: " << Job::state2string(job->state(), job->extendedState()));
 
+    LOCK_GUARD;
+
     // Ignore the callback if the job was cancelled (or otherwise failed)
-    if (_state == State::FINISHED) { return; }
+    if (_state == State::FINISHED) return;
 
-    do {
-        // This lock will be automatically release beyond this scope
-        // to allow client notifications (see the end of the method)
+    _numFinished++;
 
-        LOCK_GUARD;
+    if (job->extendedState() != ExtendedState::SUCCESS) {
+        finish(ExtendedState::FAILED);
+    } else {
 
-        _numFinished++;
+        _numSuccess++;
 
-        if (job->extendedState() == ExtendedState::SUCCESS) {
+        LOGS(_log, LOG_LVL_DEBUG, context() << "onJobFinish(ReplicateJob)  "
+             << "job->getReplicaData().chunks.size(): " << job->getReplicaData().chunks.size());
 
-            _numSuccess++;
+        // Merge results into the current job's result object
+        _replicaData.chunks[job->databaseFamily()] = job->getReplicaData().chunks;
 
-            LOGS(_log, LOG_LVL_DEBUG, context() << "onJobFinish(ReplicateJob)  "
-                 << "job->getReplicaData().chunks.size(): " << job->getReplicaData().chunks.size());
-
-            // Merge results into the current job's result object
-            _replicaData.chunks[job->databaseFamily()] = job->getReplicaData().chunks;
-
-        } else {
-            finish(ExtendedState::FAILED);
-            break;
-        }
         if (_numFinished == _numLaunched) {
 
             // Construct a collection of orphan replicas if possible
@@ -453,16 +412,27 @@ void DeleteWorkerJob::onJobFinish(ReplicateJob::Ptr const& job) {
                 _controller->serviceProvider()->config()->deleteWorker(_worker);
             }
             finish(ExtendedState::SUCCESS);
-            break;
         }
+    }
+    if (_state == State::FINISHED) notify();
+}
 
-    } while (false);
+void DeleteWorkerJob::notify() {
 
-    // Note that access to the job's public API should not be locked while
-    // notifying a caller (if the callback function was povided) in order to avoid
-    // the circular deadlocks.
+    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
 
-    if (_state == State::FINISHED) { notify (); }
+    // The callback is being made asynchronously in a separate thread
+    // to avoid blocking the current thread.
+
+    if (_onFinish) {
+        auto self = shared_from_base<DeleteWorkerJob>();
+        std::async(
+            std::launch::async,
+            [self]() {
+                self->_onFinish(self);
+            }
+        );
+    }
 }
 
 }}} // namespace lsst::qserv::replica
