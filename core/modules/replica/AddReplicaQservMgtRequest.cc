@@ -118,7 +118,7 @@ void AddReplicaQservMgtRequest::startImpl() {
 
 void AddReplicaQservMgtRequest::finishImpl() {
 
-    assertState(State::FINISHED);
+    assertState(State::FINISHED, "AddReplicaQservMgtRequest::finishImpl");
 
     if (_extendedState == ExtendedState::CANCELLED) {
         // And if the SSI request is still around then tell it to stop

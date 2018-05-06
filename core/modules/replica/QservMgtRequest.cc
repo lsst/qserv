@@ -109,7 +109,7 @@ void QservMgtRequest::start(XrdSsiService* service,
                             unsigned int requestExpirationIvalSec) {
     LOCK_GUARD;
 
-    assertState(State::CREATED);
+    assertState(State::CREATED, "QservMgtRequest::start");
 
     // Change the expiration ival if requested
     if (requestExpirationIvalSec) {
@@ -217,10 +217,11 @@ void QservMgtRequest::finish(ExtendedState extendedState,
     notify();
 }
 
-void QservMgtRequest::assertState(State state) const {
+void QservMgtRequest::assertState(State state,
+                                  std::string const& context) const {
     if (state != _state) {
         throw std::logic_error(
-            "wrong state " + state2string(state) + " instead of " + state2string(_state));
+            context + ": wrong state " + state2string(state) + " instead of " + state2string(_state));
     }
 }
 
