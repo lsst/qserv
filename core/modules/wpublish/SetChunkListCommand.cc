@@ -75,7 +75,7 @@ void SetChunkListCommand::setChunks(proto::WorkerCommandSetChunkListR& reply,
         std::string const& database = entry.first;
 
         for (int chunk: entry.second) {
-            proto::WorkerCommandSetChunkListR::Chunk* ptr = reply.add_chunks();
+            proto::WorkerCommandChunk* ptr = reply.add_chunks();
             ptr->set_db(database);
             ptr->set_chunk(chunk);
             ptr->set_use_count(_resourceMonitor->count(chunk, database));

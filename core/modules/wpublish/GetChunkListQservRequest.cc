@@ -106,7 +106,7 @@ void GetChunkListQservRequest::onResponse(proto::FrameBufferView& view) {
 
         int const num = reply.chunks_size();
         for (int i = 0; i < num; i++) {
-            proto::WorkerCommandGetChunkListR::Chunk const& chunkEntry  = reply.chunks(i);
+            proto::WorkerCommandChunk const& chunkEntry  = reply.chunks(i);
             if (_inUseOnly and not chunkEntry.use_count()) { continue; }
             Chunk chunk {chunkEntry.chunk(), chunkEntry.db(), chunkEntry.use_count()};
             chunks.push_back(chunk);

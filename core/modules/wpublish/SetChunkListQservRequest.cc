@@ -97,7 +97,7 @@ void SetChunkListQservRequest::onRequest(proto::FrameBuffer& buf) {
 
     proto::WorkerCommandSetChunkListM message;
     for(auto const& chunkEntry: _chunks) {
-        proto::WorkerCommandSetChunkListM::Chunk* ptr = message.add_chunks();
+        proto::WorkerCommandChunk* ptr = message.add_chunks();
         ptr->set_db(chunkEntry.database);
         ptr->set_chunk(chunkEntry.chunk);
     }
@@ -120,7 +120,7 @@ void SetChunkListQservRequest::onResponse(proto::FrameBufferView& view) {
     if (reply.status() == proto::WorkerCommandSetChunkListR::SUCCESS) {
         int const num = reply.chunks_size();
         for (int i = 0; i < num; i++) {
-            proto::WorkerCommandSetChunkListR::Chunk const& chunkEntry  = reply.chunks(i);
+            proto::WorkerCommandChunk const& chunkEntry  = reply.chunks(i);
             Chunk chunk {chunkEntry.chunk(), chunkEntry.db(), chunkEntry.use_count()};
             chunks.push_back(chunk);
         }
