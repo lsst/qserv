@@ -82,7 +82,7 @@ void GetChunkListCommand::run() {
         std::string const& db = entry.first;
 
         for (int chunk: entry.second) {
-            proto::WorkerCommandGetChunkListR::Chunk* ptr = reply.add_chunks();
+            proto::WorkerCommandChunk* ptr = reply.add_chunks();
             ptr->set_db(db);
             ptr->set_chunk(chunk);
             ptr->set_use_count(_resourceMonitor->count(chunk, db));

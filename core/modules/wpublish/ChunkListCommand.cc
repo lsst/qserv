@@ -123,28 +123,28 @@ void ChunkListCommand::run() {
         }
         ::dumpInventory(*_chunkInventory,  "ChunkListCommand::run  _chunkInventory: ");
         ::dumpInventory(newChunkInventory, "ChunkListCommand::run  newChunkInventory: ");
-     
+
         // Compare two maps and worker identifiers to see which resources were
         // were added or removed. Then Update the current map and notify XRootD
         // accordingly.
-    
+
         ChunkInventory::ExistMap const removedChunks = *_chunkInventory  - newChunkInventory;
         ChunkInventory::ExistMap const addedChunks   = newChunkInventory - *_chunkInventory;
-    
+
         xrdsvc::SsiProviderServer* providerServer = dynamic_cast<xrdsvc::SsiProviderServer*>(XrdSsiProviderLookup);
         XrdSsiCluster*             clusterManager = providerServer->GetClusterManager();
-    
+
         if (not removedChunks.empty()) {
-    
+
             for (auto const& entry: removedChunks) {
                 std::string const& database = entry.first;
-    
+
                 for (int chunk: entry.second) {
                     std::string const resource = "/chk/" + database + "/" + std::to_string(chunk);
-    
+
                     LOGS(_log, LOG_LVL_DEBUG, "ChunkListCommand::run  removing resource: " << resource <<
                          " in DataContext=" << clusterManager->DataContext());
-    
+
                     try {
                         // Notify XRootD/cmsd and (depending on a mode) modify the provider's copy
                         // of the inventory.
@@ -160,25 +160,25 @@ void ChunkListCommand::run() {
                         reportError("failed to remove the chunk: " + std::string(ex.what()));
                         return;
                     }
-    
+
                     // Notify the caller of this service
-                    proto::WorkerCommandUpdateChunkListR::Chunk* ptr = reply.add_removed();
+                    proto::WorkerCommandChunk* ptr = reply.add_removed();
                     ptr->set_db(database);
                     ptr->set_chunk(chunk);
                 }
             }
         }
         if (not addedChunks.empty()) {
-    
+
             for (auto const& entry: addedChunks) {
                 std::string const& database = entry.first;
-    
+
                 for (int chunk: entry.second) {
                     std::string const resource = "/chk/" + database + "/" + std::to_string(chunk);
-    
+
                     LOGS(_log, LOG_LVL_DEBUG, "ChunkListCommand::run  adding resource: " << resource <<
                          " in DataContext=" << clusterManager->DataContext());
-    
+
                     try {
                         // Notify XRootD/cmsd and (depending on a mode) modify the provider's copy
                         // of the inventory.
@@ -194,9 +194,9 @@ void ChunkListCommand::run() {
                         reportError("failed to add the chunk: " + std::string(ex.what()));
                         return;
                     }
-    
+
                     // Notify the caller of this service
-                    proto::WorkerCommandUpdateChunkListR::Chunk* ptr = reply.add_added();
+                    proto::WorkerCommandChunk* ptr = reply.add_added();
                     ptr->set_db(database);
                     ptr->set_chunk(chunk);
                 }

@@ -104,7 +104,7 @@ void ChunkListQservRequest::onResponse(proto::FrameBufferView& view) {
 
         int const numAdded = reply.added_size();
         for (int i = 0; i < numAdded; i++) {
-            proto::WorkerCommandUpdateChunkListR::Chunk const& chunkEntry  = reply.added(i);
+            proto::WorkerCommandChunk const& chunkEntry  = reply.added(i);
             Chunk chunk {chunkEntry.chunk(), chunkEntry.db()};
             added.push_back(chunk);
         }
@@ -112,7 +112,7 @@ void ChunkListQservRequest::onResponse(proto::FrameBufferView& view) {
 
         int const numRemoved = reply.removed_size();
         for (int i = 0; i < numRemoved; i++) {
-            proto::WorkerCommandUpdateChunkListR::Chunk const& chunkEntry  = reply.removed(i);
+            proto::WorkerCommandChunk const& chunkEntry  = reply.removed(i);
             Chunk chunk {chunkEntry.chunk(), chunkEntry.db()};
             removed.push_back(chunk);
         }

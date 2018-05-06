@@ -315,7 +315,7 @@ message ReplicationResponseReplicate {
     required ReplicationPerformance performance = 4;
 
     // --------------------------------------------------------------
-    // The following optional fields et upon a successfull completion
+    // The following optional fields et upon a successful completion
     // of the request
     // --------------------------------------------------------------
 
@@ -347,7 +347,7 @@ message ReplicationResponseDelete {
     required ReplicationPerformance performance = 4;
 
     // --------------------------------------------------------------
-    // The following optional fields et upon a successfull completion
+    // The following optional fields et upon a successful completion
     // of the request
     // --------------------------------------------------------------
 
@@ -478,9 +478,6 @@ message ReplicationServiceResponse {
     repeated ReplicationServiceResponseInfo finished_requests    = 11;
 }
 
-
-
-
 ////////////////////////////////////////////
 //         The FileServer protocol        //
 ////////////////////////////////////////////
@@ -490,10 +487,10 @@ message ReplicationFileRequest {
     /// The name of a database
     required string database = 1;
 
-    /// The name of a file (including its extention and excluding any path)
+    /// The name of a file (including its extension and excluding any path)
     required string file = 2;
 
-    /// Tell the server to begin sending file content immediatelly
+    /// Tell the server to begin sending file content immediately
     /// after sending the response message. Otherwise the server will just
     /// close a connection.
     required bool send_content = 3;
