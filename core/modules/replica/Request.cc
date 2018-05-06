@@ -132,7 +132,7 @@ void Request::start(std::shared_ptr<Controller> const& controller,
 
     LOCK_GUARD;
 
-    assertState(CREATED);
+    assertState(CREATED, "Request::start");
 
     // Change the expiration ival if requested
     if (requestExpirationIvalSec) {
@@ -245,10 +245,11 @@ bool Request::isAborted(boost::system::error_code const& ec) const {
     return false;
 }
 
-void Request::assertState(State state) const {
+void Request::assertState(State state,
+                          std::string const& context) const {
     if (state != _state) {
         throw std::logic_error(
-            "wrong state " + state2string(state) + " instead of " + state2string(_state));
+            context + ": wrong state " + state2string(state) + " instead of " + state2string(_state));
     }
 }
 

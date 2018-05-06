@@ -150,7 +150,7 @@ void SetReplicasQservMgtRequest::startImpl() {
 
 void SetReplicasQservMgtRequest::finishImpl() {
 
-    assertState(State::FINISHED);
+    assertState(State::FINISHED, "SetReplicasQservMgtRequest::finishImpl");
 
     if (_extendedState == ExtendedState::CANCELLED) {
 

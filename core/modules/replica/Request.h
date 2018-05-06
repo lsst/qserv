@@ -315,9 +315,13 @@ protected:
      *        there is a problem with the application implementation
      *        or the underlying run-time system.
      *
+     * @param desiredState - desired state
+     * @param context      - context from which the state test is requested
+     *
      * @throws std::logic_error
      */
-    void assertState(State desiredState) const;
+    void assertState(State desiredState,
+                     std::string const& context) const;
 
     /**
      * Set the desired primary and extended state.

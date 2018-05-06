@@ -117,7 +117,7 @@ void Job::start() {
 
     LOCK_GUARD;
 
-    assertState(State::CREATED);
+    assertState(State::CREATED, "Job::start");
 
     // IMPORTANT: update these before proceeding to the implementation
     // because the later may create children jobs whose performance
@@ -143,7 +143,7 @@ void Job::start() {
     }
 
     // Otherwise, the only other state which is allowed here is this
-    assertState(State::IN_PROGRESS);
+    assertState(State::IN_PROGRESS, "Job::start");
 }
 
 void Job::cancel() {
@@ -266,10 +266,11 @@ void Job::qservRemoveReplica(unsigned int chunk,
     );
 }
 
-void Job::assertState(State state) const {
+void Job::assertState(State state,
+                      std::string const& context) const {
     if (state != _state) {
         throw std::logic_error(
-            "wrong state " + state2string(state) + " instead of " + state2string(_state));
+            context + ": wrong state " + state2string(state) + " instead of " + state2string(_state));
     }
 }
 
