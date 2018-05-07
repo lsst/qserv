@@ -40,15 +40,13 @@ namespace replica {
 //                Chunk              //
 ///////////////////////////////////////
 
-bool operator==(Chunk const& lhs,
-                Chunk const& rhs) {
-    return  std::tie(lhs.databaseFamily, lhs.number) ==
+bool Chunk::operator==(Chunk const& rhs) const {
+    return  std::tie(databaseFamily, number) ==
             std::tie(rhs.databaseFamily, rhs.number);
 }
 
-bool operator<(Chunk const& lhs,
-               Chunk const& rhs) {
-    return  std::tie(lhs.databaseFamily, lhs.number) <
+bool Chunk::operator<(Chunk const& rhs) const {
+    return  std::tie(databaseFamily, number) <
             std::tie(rhs.databaseFamily, rhs.number);
 }
 

@@ -55,27 +55,27 @@ namespace replica {
 struct Chunk {
     std::string databaseFamily;
     unsigned int number;
+
+    /**
+     * The overloaded operator for comparing objects of struct Chunk.
+     *
+     * The operator is used where the equality of chunks is needed.
+     *
+     * @return 'true' if the chunk is 'equal' to the other one.
+     */
+    bool operator==(Chunk const& rhs) const;
+
+    /**
+     * The overloaded operator for comparing objects of struct Chunk.
+     *
+     * This operator is needed for using objects of the struct
+     * as a key in ordered (map, set, ) or unordered (unordred_map,unordered_set,)
+     * asociative containers.
+     *
+     * @return 'true' if the chunk is 'less' than the other one.
+     */
+    bool operator<(Chunk const& rhs) const;
 };
-
-/**
- * The overloaded operator for comparing objects of struct Chunk.
- *
- * The operator is used where the equality of chunks is needed.
- *
- * @return 'true' if the chunk is 'equal' to the other one.
- */
-bool operator==(Chunk const& lhs, Chunk const& rhs);
-
-/**
- * The overloaded operator for comparing objects of struct Chunk.
- *
- * This operator is needed for using objects of the struct
- * as a key in ordered (map, set, ) or unordered (unordred_map,unordered_set,)
- * asociative containers.
- *
- * @return 'true' if the chunk is 'less' than the other one.
- */
-bool operator<(Chunk const& lhs, Chunk const& rhs);
 
 /// The overloaded operator for dumping objects of type Chunk
 std::ostream& operator<< (std::ostream& os, Chunk const& chunk);
