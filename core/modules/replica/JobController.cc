@@ -33,7 +33,7 @@
 #include "util/BlockPost.h"
 
 // This macro to appear witin each block which requires thread safety
-#define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)
+#define LOCK(MUTEX) std::lock_guard<std::mutex> lock(MUTEX)
 
 namespace {
 
@@ -101,7 +101,7 @@ void JobController::run() {
 
     LOGS(_log, LOG_LVL_DEBUG, "JobController  run");
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     if (not isRunning()) {
 
@@ -159,13 +159,13 @@ void JobController::stop() {
 
     // IMPORTANT:
     //
-    //   Never attempt running these operations within LOCK_GUARD
+    //   Never attempt running these operations within LOCK(_mtx)
     //   due to a possibile deadlock when asynchronous handlers will be
     //   calling the thread-safe methods. A problem is that until they finish
     //   in a clean way the thread will never finish, and the application will
     //   hang on _thread->join().
 
-    // LOCK_GUARD  (disabled)
+    // LOCK(_mtx)  (disabled)
 
     if (not isRunning()) return;
 
@@ -190,7 +190,7 @@ FindAllJob::Ptr JobController::findAll(std::string const& databaseFamily,
 
     LOGS(_log, LOG_LVL_DEBUG, "JobController  findAll");
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     JobController::Ptr self = shared_from_this();
 
@@ -229,7 +229,7 @@ FixUpJob::Ptr JobController::fixUp(std::string const& databaseFamily,
 
     LOGS(_log, LOG_LVL_DEBUG, "JobController  fixUp");
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     auto const self = shared_from_this();
 
@@ -308,7 +308,7 @@ ReplicateJob::Ptr JobController::replicate(std::string const& databaseFamily,
 
     LOGS(_log, LOG_LVL_DEBUG, "JobController  replicate");
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     auto const self = shared_from_this();
 
@@ -350,7 +350,7 @@ VerifyJob::Ptr JobController::verify(VerifyJob::CallbackType onFinish,
 
     LOGS(_log, LOG_LVL_DEBUG, "JobController  verify");
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     auto const self = shared_from_this();
 
@@ -393,7 +393,7 @@ DeleteWorkerJob::Ptr JobController::deleteWorker(
 
     LOGS(_log, LOG_LVL_DEBUG, "JobController  deleteWorker");
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     auto const self = shared_from_this();
 
@@ -431,7 +431,7 @@ void JobController::runQueued() {
 
     LOGS(_log, LOG_LVL_DEBUG, "JobController  runQueued");
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     if (not isRunning()) return;
 
@@ -452,7 +452,7 @@ void JobController::runScheduled() {
     // NOTE: don't prolifirate the lock's scope to avoid an imminent deadlock
     //       when calling mehods which are called later.
     {
-        LOCK_GUARD;
+        LOCK(_mtx);
 
         if (not isRunning()) return;
 
@@ -469,7 +469,7 @@ void JobController::cancelAll() {
 
     LOGS(_log, LOG_LVL_DEBUG, "JobController  cancelAll");
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     if (not isRunning()) return;
 
@@ -483,7 +483,7 @@ void JobController::onFinish(Job::Ptr const& job) {
 
     JobWrapper::Ptr wrapper;
     {
-        LOCK_GUARD;
+        LOCK(_mtx);
         wrapper = _registry[job->id()];
         _registry.erase(job->id());
 

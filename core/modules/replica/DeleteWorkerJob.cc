@@ -39,7 +39,7 @@
 #include "util/BlockPost.h"
 
 // This macro to appear witin each block which requires thread safety
-#define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)
+#define LOCK(MUTEX) std::lock_guard<std::mutex> lock(MUTEX)
 
 namespace {
 
@@ -249,7 +249,7 @@ void DeleteWorkerJob::onRequestFinish(FindAllRequest::Ptr const& request) {
          << "  worker="   << request->worker()
          << "  database=" << request->database());
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     // Ignore the callback if the job was cancelled
     if (_state == State::FINISHED) return;
@@ -307,7 +307,7 @@ void DeleteWorkerJob::onJobFinish(FindAllJob::Ptr const& job) {
     LOGS(_log, LOG_LVL_DEBUG, context() << "onJobFinish(FindAllJob) "
          << " databaseFamily: " << job->databaseFamily());
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     // Ignore the callback if the job was cancelled (or otherwise failed)
     if (_state == State::FINISHED) return;
@@ -357,7 +357,7 @@ void DeleteWorkerJob::onJobFinish(ReplicateJob::Ptr const& job) {
          << " numReplicas: " << job->numReplicas()
          << " state: " << Job::state2string(job->state(), job->extendedState()));
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     // Ignore the callback if the job was cancelled (or otherwise failed)
     if (_state == State::FINISHED) return;

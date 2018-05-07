@@ -129,7 +129,7 @@ public:
      * or by all owners.
      *
      * @param owner - an optional owner. If the owner is not provided then
-     *                a;; chunks will be returned
+     *                all chunks will be returned
      *
      * @return a collection of chunks groupped by owners
      */

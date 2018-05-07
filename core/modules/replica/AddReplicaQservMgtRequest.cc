@@ -36,9 +36,6 @@
 #include "replica/Configuration.h"
 #include "replica/ServiceProvider.h"
 
-// This macro to appear witin each block which requires thread safety
-#define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)
-
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.AddReplicaQservMgtRequest");

@@ -28,7 +28,7 @@
 #include <tuple>        // std::tie
 
 // This macro to appear witin each block which requires thread safety
-#define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)
+#define LOCK(MUTEX) std::lock_guard<std::mutex> lock(MUTEX)
 
 // Qserv headers
 
@@ -60,14 +60,13 @@ std::ostream& operator<<(std::ostream& os, Chunk const& chunk) {
 /////////////////////////////////////////////
 
 bool ChunkLocker::isLocked(Chunk const& chunk) const {
-    LOCK_GUARD;
+    LOCK(_mtx);
     return _chunk2owner.count(chunk);
 }
 
 bool ChunkLocker::isLocked(Chunk const& chunk,
                            std::string& owner) const {
-
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     if (_chunk2owner.count(chunk)) {
         owner = _chunk2owner.at(chunk);
@@ -78,7 +77,9 @@ bool ChunkLocker::isLocked(Chunk const& chunk,
 
 ChunkLocker::ChunksByOwners ChunkLocker::locked(std::string const& owner) const {
 
-    if (owner.empty()) { return _owner2chunks; }
+    LOCK(_mtx);
+
+    if (owner.empty()) return _owner2chunks;
 
     ChunksByOwners owner2chunks;
     if (_owner2chunks.count(owner)) {
@@ -89,7 +90,7 @@ ChunkLocker::ChunksByOwners ChunkLocker::locked(std::string const& owner) const 
 
 bool ChunkLocker::lock(Chunk const&       chunk,
                        std::string const& owner) {
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     if (owner.empty()) {
         throw std::invalid_argument("ChunkLocker::lock  empty owner");
@@ -105,7 +106,7 @@ bool ChunkLocker::lock(Chunk const&       chunk,
 
 bool ChunkLocker::release(Chunk const& chunk) {
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     // An owner (if set) will be ignored by the current method
     std::string owner;
@@ -114,14 +115,14 @@ bool ChunkLocker::release(Chunk const& chunk) {
 
 bool ChunkLocker::release(Chunk const& chunk,
                           std::string& owner) {
-    LOCK_GUARD;
+    LOCK(_mtx);
     return releaseImpl(chunk, owner);
 }
 
 bool ChunkLocker::releaseImpl(Chunk const& chunk,
                               std::string& owner) {
 
-    if (!_chunk2owner.count(chunk)) { return false; }
+    if (!_chunk2owner.count(chunk)) return false;
 
     // Remove the chunk from this map _only_ after getting its owner
     owner = _chunk2owner.at(chunk);
@@ -134,14 +135,14 @@ bool ChunkLocker::releaseImpl(Chunk const& chunk,
 
     // This last step is needed to avoid building up empty lists
     // of non-existing owners
-    if (chunks.empty()) { _owner2chunks.erase(owner); }
+    if (chunks.empty()) _owner2chunks.erase(owner);
 
     return true;
 }
 
 std::vector<Chunk> ChunkLocker::release(std::string const& owner) {
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     if (owner.empty()) {
         throw std::invalid_argument("ChunkLocker::release  empty owner");

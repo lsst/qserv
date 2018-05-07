@@ -38,9 +38,6 @@
 #include "replica/Configuration.h"
 #include "replica/ServiceProvider.h"
 
-// This macro to appear witin each block which requires thread safety
-#define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)
-
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.GetReplicasQservMgtRequest");
@@ -102,7 +99,7 @@ QservReplicaCollection const& GetReplicasQservMgtRequest::replicas() const {
 void GetReplicasQservMgtRequest::setReplicas(
         wpublish::GetChunkListQservRequest::ChunkCollection const& collection) {
 
-    // Filter resuls by atabases participating in the family
+    // Filter resuls by databases participating in the family
     std::set<std::string> databases;
     for (auto&& database: _serviceProvider->config()->databases(_databaseFamily)) {
         databases.insert(database);

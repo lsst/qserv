@@ -38,7 +38,7 @@
 #include "replica/ServiceProvider.h"
 
 // This macro to appear witin each block which requires thread safety
-#define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)
+#define LOCK(MUTEX) std::lock_guard<std::mutex> lock(MUTEX)
 
 namespace {
 
@@ -130,7 +130,7 @@ void Request::start(std::shared_ptr<Controller> const& controller,
                     std::string const& jobId,
                     unsigned int requestExpirationIvalSec) {
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     assertState(CREATED, "Request::start");
 
@@ -182,7 +182,7 @@ void Request::expired(boost::system::error_code const& ec) {
     LOGS(_log, LOG_LVL_DEBUG, context() << "expired"
          << (ec == boost::asio::error::operation_aborted ? "  ** ABORTED **" : ""));
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     // Ignore this event if the timer was aborted
     if (ec == boost::asio::error::operation_aborted) return;
@@ -200,7 +200,7 @@ void Request::cancel() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancel");
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     // Ignore this call if the request is over
     if (_state == FINISHED) return;

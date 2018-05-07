@@ -37,7 +37,7 @@
 
 
 // This macro to appear witin each block which requires thread safety
-#define LOCK_DATA_FOLDER std::lock_guard<std::mutex> lock(_mtxDataFolderOperations)
+#define LOCK(MUTEX) std::lock_guard<std::mutex> lock(MUTEX)
 
 namespace fs = boost::filesystem;
 
@@ -148,7 +148,7 @@ bool WorkerDeleteRequestPOSIX::execute() {
 
     WorkerInfo   const& workerInfo    = _serviceProvider->config()->workerInfo(worker());
     DatabaseInfo const& databaseInfo  = _serviceProvider->config()->databaseInfo(database());
-    
+
     std::vector<std::string> const files =
         FileUtils::partitionedFiles(databaseInfo, chunk());
 
@@ -159,7 +159,7 @@ bool WorkerDeleteRequestPOSIX::execute() {
     WorkerRequest::ErrorContext errorContext;
     boost::system::error_code   ec;
     {
-        LOCK_DATA_FOLDER;
+        LOCK(_mtxDataFolderOperations);
 
         fs::path        const dataDir = fs::path(workerInfo.dataDir) / database();
         fs::file_status const stat    = fs::status(dataDir, ec);
