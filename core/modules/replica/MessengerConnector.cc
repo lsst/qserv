@@ -37,7 +37,7 @@
 #include "replica/ServiceProvider.h"
 
 // This macro to appear witin each block which requires thread safety
-#define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)
+#define LOCK(MUTEX) std::lock_guard<std::mutex> lock(MUTEX)
 
 namespace {
 
@@ -87,7 +87,7 @@ void MessengerConnector::stop() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "stop");
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     // Cancel any asynchronous operation(s) if not in the initial state
 
@@ -112,7 +112,7 @@ void MessengerConnector::cancel(std::string const& id) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancel  id=" << id);
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     if (not _id2request.count(id)) {
         throw std::logic_error(
@@ -139,7 +139,7 @@ bool MessengerConnector::exists(std::string const& id) const {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "exists  id=" << id);
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     return _id2request.count(id);
 }
@@ -149,7 +149,7 @@ void MessengerConnector::sendImpl(std::string const& id,
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "sendImpl  id: " + id);
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     if (_id2request.count(id)) {
         throw std::logic_error(
@@ -232,7 +232,7 @@ void MessengerConnector::resolved(boost::system::error_code const& ec,
     LOGS(_log, LOG_LVL_DEBUG, context() << "resolved"
          << "  _currentRequest->id=" << (_currentRequest ? _currentRequest->id : ""));
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     if (isAborted(ec)) return;
 
@@ -263,7 +263,7 @@ void MessengerConnector::connected(boost::system::error_code const& ec,
     LOGS(_log, LOG_LVL_DEBUG, context() << "connected"
          << "  _currentRequest->id=" << (_currentRequest ? _currentRequest->id : ""));
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     if (isAborted(ec)) return;
 
@@ -297,7 +297,7 @@ void MessengerConnector::awakenForRestart(boost::system::error_code const& ec) {
     LOGS(_log, LOG_LVL_DEBUG, context() << "awakenForRestart"
          << "  _currentRequest->id=" << (_currentRequest ? _currentRequest->id : ""));
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     if (isAborted(ec)) return;
 
@@ -346,7 +346,7 @@ void MessengerConnector::requestSent(boost::system::error_code const& ec,
     LOGS(_log, LOG_LVL_DEBUG, context() << "requestSent"
          << "  _currentRequest->id=" << (_currentRequest ? _currentRequest->id : ""));
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     // Check if the request was cancelled while still in flight.
     // If that happens then _currentRequest should already be nullified
@@ -426,7 +426,7 @@ void MessengerConnector::responseReceived(boost::system::error_code const& ec,
 
     WrapperBase_pointer request2notify;
     {
-        LOCK_GUARD;
+        LOCK(_mtx);
 
         // Check if the request was cancelled while still in flight.
         // If that happens then _currentRequest should already be nullified

@@ -34,7 +34,7 @@
 #include "util/BlockPost.h"
 
 // This macro to appear witin each block which requires thread safety
-#define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)
+#define LOCK(MUTEX) std::lock_guard<std::mutex> lock(MUTEX)
 
 namespace {
 
@@ -291,7 +291,7 @@ void VerifyJob::onRequestFinish(FindRequest::Ptr request) {
          << " worker=" << request->worker()
          << " chunk="  << request->chunk());
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     // Ignore the callback if the job was cancelled
     if (_state == State::FINISHED) return;
@@ -315,7 +315,7 @@ void VerifyJob::onRequestFinish(FindRequest::Ptr request) {
 
         // Compare new state of the replica against its older one which was
         // known to the database before this request was launched. Notify
-        // a subscriber of any changes (after releasing LOCK_GUARD).
+        // a subscriber of any changes (after releasing LOCK(_mtx)).
         //
         // @see class ReplicaDiff for further specific details on replica
         // differece analysis.

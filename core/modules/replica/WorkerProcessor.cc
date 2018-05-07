@@ -41,7 +41,7 @@
 #include "util/BlockPost.h"
 
 // This macro to appear witin each block which requires thread safety
-#define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)
+#define LOCK(MUTEX) std::lock_guard<std::mutex> lock(MUTEX)
 
 namespace {
 
@@ -125,7 +125,7 @@ void WorkerProcessor::run() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "run");
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     if (_state == STATE_IS_STOPPED) {
 
@@ -156,7 +156,7 @@ void WorkerProcessor::stop() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "stop");
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     if (_state == STATE_IS_RUNNING) {
 
@@ -181,7 +181,7 @@ void WorkerProcessor::drain() {
     // Collect identifiers of requests from both queues under the guard
     std::list<std::string> ids;
     {
-        LOCK_GUARD;
+        LOCK(_mtx);
 
         for (auto&& ptr: _newRequests)        { ids.push_back(ptr->id()); }
         for (auto&& ptr: _inProgressRequests) { ids.push_back(ptr->id()); }
@@ -203,7 +203,7 @@ void WorkerProcessor::enqueueForReplication(
         << "  chunk: "  << request.chunk()
         << "  worker: " << request.worker());
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     // Verify a scope of the request to ensure it won't duplicate or interfere (with)
     // existing requests in the active (non-completed) queues. A reason why we're ignoring
@@ -259,7 +259,7 @@ void WorkerProcessor::enqueueForDeletion(std::string const& id,
         << "  db: "    << request.database()
         << "  chunk: " << request.chunk());
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     // Verify a scope of the request to ensure it won't duplicate or interfere (with)
     // existing requests in the active (non-completed) queues. A reason why we're ignoring
@@ -315,7 +315,7 @@ void WorkerProcessor::enqueueForFind(std::string const& id,
         << "  chunk: " << request.chunk()
         << "  compute_cs: " << (request.compute_cs() ? "true" : "false"));
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     auto const ptr =
         _requestFactory.createFindRequest(
@@ -343,7 +343,7 @@ void WorkerProcessor::enqueueForFindAll(std::string const&                      
         << "  id: " << id
         << "  db: " << request.database());
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     // TODO: run the sanity check to ensure no such request is found in any
     //       of the queue. Return 'DUPLICATE' error status if teh one is found.
@@ -368,7 +368,7 @@ WorkerRequest::Ptr WorkerProcessor::dequeueOrCancelImpl(std::string const& id) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "dequeueOrCancelImpl" << "  id: " << id);
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     // Still waiting in the queue?
 
@@ -424,9 +424,9 @@ WorkerRequest::Ptr WorkerProcessor::dequeueOrCancelImpl(std::string const& id) {
                 // states before reporting their new state via method:
                 //    WorkerProcessor::processingFinished()
                 // Sometimes, the request just can't finish this in time due to
-                // LOCK_GUARD held by the current method. We shouldn't worry
+                // LOCK(_mtx) held by the current method. We shouldn't worry
                 // about this situation here. The request will be moved into the next
-                // queue as soon as LOCK_GUAR will be released.
+                // queue as soon as LOCK(_mtx) will be released.
 
                 case WorkerRequest::STATUS_SUCCEEDED:
                 case WorkerRequest::STATUS_FAILED:
@@ -472,7 +472,7 @@ WorkerRequest::Ptr WorkerProcessor::checkStatusImpl(std::string const& id) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "checkStatusImpl" << "  id: " << id);
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     // Still waiting in the queue?
 
@@ -508,9 +508,9 @@ WorkerRequest::Ptr WorkerProcessor::checkStatusImpl(std::string const& id) {
                 // states before reporting their new state via method:
                 //    WorkerProcessor::processingFinished()
                 // Sometimes, the request just can't finish this in time due to
-                // LOCK_GUARD held by the current method. We shouldn't worry
+                // LOCK(_mtx) held by the current method. We shouldn't worry
                 // about this situation here. The request will be moved into the next
-                // queue as soon as LOCK_GUAR will be released.
+                // queue as soon as LOCK(_mtx) will be released.
 
                 case WorkerRequest::STATUS_CANCELLED:
                 case WorkerRequest::STATUS_SUCCEEDED:
@@ -559,7 +559,7 @@ void WorkerProcessor::setServiceResponse(
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "setServiceResponse");
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     response.set_status(    status);
     response.set_technology(_requestFactory.technology());
@@ -647,17 +647,17 @@ void WorkerProcessor::setServiceResponseInfo(
 }
 
 size_t WorkerProcessor::numNewRequests() const {
-    LOCK_GUARD;
+    LOCK(_mtx);
     return _newRequests.size();
 }
 
 size_t WorkerProcessor::numInProgressRequests() const {
-    LOCK_GUARD;
+    LOCK(_mtx);
     return _inProgressRequests.size();
 }
 
 size_t WorkerProcessor::numFinishedRequests() const {
-    LOCK_GUARD;
+    LOCK(_mtx);
     return _finishedRequests.size();
 }
 
@@ -683,7 +683,7 @@ WorkerRequest::Ptr WorkerProcessor::fetchNextForProcessing(
         // the wait.
 
         {
-            LOCK_GUARD;
+            LOCK(_mtx);
 
             if (not _newRequests.empty()) {
 
@@ -710,7 +710,7 @@ WorkerProcessor::processingRefused(WorkerRequest::Ptr const& request) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "processingRefused" << "  id: " << request->id());
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     // Update request's state before moving it back into
     // the input queue.
@@ -730,7 +730,7 @@ void WorkerProcessor::processingFinished(WorkerRequest::Ptr const& request) {
         << "  id: " << request->id()
         << "  status: " << WorkerRequest::status2string(request->status()));
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     // Then move it forward into the finished queue.
 
@@ -748,7 +748,7 @@ void WorkerProcessor::processorThreadStopped(
     LOGS(_log, LOG_LVL_DEBUG, context() << "processorThreadStopped" << "  thread: "
          << processorThread->id());
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     if (_state == STATE_IS_STOPPING) {
 

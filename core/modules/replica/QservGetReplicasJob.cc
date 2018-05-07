@@ -34,7 +34,7 @@
 #include "replica/ServiceProvider.h"
 
 // This macro to appear witin each block which requires thread safety
-#define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)
+#define LOCK(MUTEX) std::lock_guard<std::mutex> lock(MUTEX)
 
 namespace {
 
@@ -172,7 +172,7 @@ void QservGetReplicasJob::onRequestFinish(GetReplicasQservMgtRequest::Ptr const&
          << " state=" << request->state2string(request->state())
          << " extendedState=" << request->state2string(request->extendedState()));
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     // Ignore the callback if the job was cancelled, expired, etc.``
     if (_state == State::FINISHED) return;
@@ -180,7 +180,7 @@ void QservGetReplicasJob::onRequestFinish(GetReplicasQservMgtRequest::Ptr const&
     LOGS(_log, LOG_LVL_DEBUG, context()
          << "onRequestFinish  databaseFamily=" << request->databaseFamily()
          << " worker=" << request->worker()
-         << " ** LOCK_GUARD **");
+         << " ** LOCK(_mtx) **");
 
     // Update counters and object state if needed.
     _numFinished++;

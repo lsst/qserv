@@ -44,7 +44,7 @@
 #include "util/IterableFormatter.h"
 
 // This macro to appear witin each block which requires thread safety
-#define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)
+#define LOCK(MUTEX) std::lock_guard<std::mutex> lock(MUTEX)
 
 namespace {
 
@@ -115,7 +115,7 @@ void Job::start() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "start");
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     assertState(State::CREATED, "Job::start");
 
@@ -151,7 +151,7 @@ void Job::cancel() {
          << "  _state="         << state2string(_state)
          << ", _extendedState=" << state2string(_extendedState));
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     if (_state == State::FINISHED) return;
 
@@ -320,7 +320,7 @@ void Job::heartbeat(boost::system::error_code const& ec) {
     LOGS(_log, LOG_LVL_DEBUG, context() << "heartbeat: "
          << (ec == boost::asio::error::operation_aborted ? "** ABORTED **" : ""));
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     // Ignore this event if the timer was aborted
     if (ec == boost::asio::error::operation_aborted) return;
@@ -364,7 +364,7 @@ void Job::expired(boost::system::error_code const& ec) {
     LOGS(_log, LOG_LVL_DEBUG, context() << "expired: "
          << (ec == boost::asio::error::operation_aborted ? "** ABORTED **" : ""));
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     // Ignore this event if the timer was aborted
     if (ec == boost::asio::error::operation_aborted) return;

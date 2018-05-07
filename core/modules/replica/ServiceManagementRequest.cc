@@ -39,7 +39,7 @@
 
 
 // This macro to appear witin each block which requires thread safety
-#define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)
+#define LOCK(MUTEX) std::lock_guard<std::mutex> lock(MUTEX)
 
 namespace {
 
@@ -229,7 +229,7 @@ void ServiceManagementRequestBaseM::analyze(bool success,
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "analyze  success=" << (success ? "true" : "false"));
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     if (success) {
         _performance.update(message.performance());

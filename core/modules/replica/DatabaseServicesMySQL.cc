@@ -59,7 +59,7 @@
 #include "util/IterableFormatter.h"
 
 // This macro to appear witin each block which requires thread safety
-#define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)
+#define LOCK(MUTEX) std::lock_guard<std::mutex> lock(MUTEX)
 
 namespace {
 
@@ -323,7 +323,7 @@ void DatabaseServicesMySQL::saveState(ControllerIdentity const& identity,
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     try {
         _conn->begin();
@@ -348,7 +348,7 @@ void DatabaseServicesMySQL::saveState(Job::Ptr const& job) {
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     if (not ::in(job->type(), {"FIXUP",
                                "FIND_ALL",
@@ -520,7 +520,7 @@ void DatabaseServicesMySQL::updateHeartbeatTime(Job::Ptr const& job) {
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    LOCK_GUARD;
+    LOCK(_mtx);
     try {
         _conn->begin();
         _conn->executeSimpleUpdateQuery(
@@ -543,7 +543,7 @@ void DatabaseServicesMySQL::saveState(QservMgtRequest::Ptr const& request) {
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     // The implementation of the procedure varies quite significally depending on
     // a family of a request.
@@ -649,7 +649,7 @@ void DatabaseServicesMySQL::saveState(Request::Ptr const& request) {
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     // The implementation of the procedure varies quite significally depending on
     // a family of a request.
@@ -1011,7 +1011,7 @@ bool DatabaseServicesMySQL::findOldestReplicas(std::vector<ReplicaInfo>& replica
 
     static std::string const context = "DatabaseServicesMySQL::findOldestReplicas  ";
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
@@ -1042,7 +1042,7 @@ bool DatabaseServicesMySQL::findReplicas(std::vector<ReplicaInfo>& replicas,
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     if (not _configuration->isKnownDatabase(database)) {
         throw std::invalid_argument(context + "unknow database");
@@ -1064,7 +1064,7 @@ bool DatabaseServicesMySQL::findReplicas(std::vector<ReplicaInfo>& replicas,
 bool DatabaseServicesMySQL::findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
                                                std::string const& worker,
                                                std::string const& database) const {
-    LOCK_GUARD;
+    LOCK(_mtx);
     return findWorkerReplicasNoLock(replicas,
                                     worker,
                                     database);
@@ -1109,7 +1109,7 @@ bool DatabaseServicesMySQL::findWorkerReplicas(std::vector<ReplicaInfo>& replica
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     if (not _configuration->isKnownWorker(worker)) {
         throw std::invalid_argument(context + "unknow worker");

@@ -38,7 +38,7 @@
 #include "util/BlockPost.h"
 
 // This macro to appear witin each block which requires thread safety
-#define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)
+#define LOCK(MUTEX) std::lock_guard<std::mutex> lock(MUTEX)
 
 namespace {
 
@@ -282,7 +282,7 @@ void CreateReplicaJob::onRequestFinish(ReplicationRequest::Ptr const& request) {
          << "  chunk="             << chunk());
 
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     // Ignore the callback if the job was cancelled
     if (_state == State::FINISHED) return;

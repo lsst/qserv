@@ -38,7 +38,7 @@
 #include "replica/ServiceProvider.h"
 
 // This macro to appear witin each block which requires thread safety
-#define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)
+#define LOCK(MUTEX) std::lock_guard<std::mutex> lock(MUTEX)
 
 namespace {
 
@@ -107,7 +107,7 @@ std::string const& QservMgtRequest::serverError() const {
 void QservMgtRequest::start(XrdSsiService* service,
                             std::string const& jobId,
                             unsigned int requestExpirationIvalSec) {
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     assertState(State::CREATED, "QservMgtRequest::start");
 
@@ -159,7 +159,7 @@ std::string const& QservMgtRequest::jobId() const {
 
 void QservMgtRequest::expired(boost::system::error_code const& ec) {
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     // Ignore this event if the timer was aborted
     if (ec == boost::asio::error::operation_aborted) return;
@@ -175,7 +175,7 @@ void QservMgtRequest::expired(boost::system::error_code const& ec) {
 
 void QservMgtRequest::cancel() {
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancel");
 

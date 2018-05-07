@@ -39,7 +39,7 @@
 extern XrdSsiProvider* XrdSsiProviderClient;
 
 // This macro to appear witin each block which requires thread safety
-#define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)
+#define LOCK(MUTEX) std::lock_guard<std::mutex> lock(MUTEX)
 
 namespace {
 
@@ -115,7 +115,7 @@ AddReplicaQservMgtRequest::Ptr QservMgtServices::addReplica(
                                         AddReplicaQservMgtRequest::CallbackType onFinish,
                                         std::string const& jobId,
                                         unsigned int requestExpirationIvalSec) {
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     // Ensure we have the XROOTD/SSI service object before attempting any
     // operations on requests
@@ -163,7 +163,7 @@ RemoveReplicaQservMgtRequest::Ptr QservMgtServices::removeReplica(
                                         RemoveReplicaQservMgtRequest::CallbackType onFinish,
                                         std::string const& jobId,
                                         unsigned int requestExpirationIvalSec) {
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     // Ensure we have the XROOTD/SSI service object before attempting any
     // operations on requests
@@ -209,7 +209,7 @@ GetReplicasQservMgtRequest::Ptr QservMgtServices::getReplicas(
                                         std::string const& jobId,
                                         GetReplicasQservMgtRequest::CallbackType onFinish,
                                         unsigned int requestExpirationIvalSec) {
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     // Ensure we have the XROOTD/SSI service object before attempting any
     // operations on requests
@@ -255,7 +255,7 @@ SetReplicasQservMgtRequest::Ptr QservMgtServices::setReplicas(
                                         std::string const& jobId,
                                         SetReplicasQservMgtRequest::CallbackType onFinish,
                                         unsigned int requestExpirationIvalSec) {
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     // Ensure we have the XROOTD/SSI service object before attempting any
     // operations on requests
@@ -309,7 +309,7 @@ void QservMgtServices::finish(std::string const& id) {
 
     QservMgtRequestWrapper::Ptr request;
     {
-        LOCK_GUARD;
+        LOCK(_mtx);
         request = _registry[id];
         _registry.erase(id);
     }

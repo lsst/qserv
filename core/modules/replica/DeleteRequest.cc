@@ -39,7 +39,7 @@
 #include "replica/ServiceProvider.h"
 
 // This macro to appear witin each block which requires thread safety
-#define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)
+#define LOCK(MUTEX) std::lock_guard<std::mutex> lock(MUTEX)
 
 namespace {
 
@@ -152,7 +152,7 @@ void DeleteRequestM::awaken(boost::system::error_code const& ec) {
     // Also ignore this event if the request expired
     if (_state== State::FINISHED) { return; }
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     // Serialize the Status message header and the request itself into
     // the network buffer.
@@ -199,7 +199,7 @@ void DeleteRequestM::analyze(bool success,
     // This guard is made on behalf of an asynchronious callback fired
     // upon a completion of the request within method send() - the only
     // client of analyze()
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     if (success) {
 

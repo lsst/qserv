@@ -38,7 +38,7 @@
 #include "replica/ServiceProvider.h"
 
 // This macro to appear witin each block which requires thread safety
-#define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)
+#define LOCK(MUTEX) std::lock_guard<std::mutex> lock(MUTEX)
 
 namespace {
 
@@ -156,7 +156,7 @@ void ReplicationRequestM::awaken(boost::system::error_code const& ec) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "awaken");
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     if (isAborted(ec)) return;
 
@@ -209,7 +209,7 @@ void ReplicationRequestM::analyze(bool success,
     // upon a completion of the request within method send() - the only
     // client of analyze()
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     if (success) {
 

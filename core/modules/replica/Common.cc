@@ -139,12 +139,12 @@ proto::ReplicationStatusExt translate(ExtendedCompletionStatus status) {
 ////////////////////////////////////////////
 
 // This macro to appear witin each block which requires thread safety
-#define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)
+#define LOCK(MUTEX) std::lock_guard<std::mutex> lock(MUTEX)
 
 std::mutex Generators::_mtx;
 
 std::string Generators::uniqueId() {
-    LOCK_GUARD;
+    LOCK(_mtx);
     boost::uuids::uuid id = boost::uuids::random_generator()();
     return boost::uuids::to_string(id);
 }

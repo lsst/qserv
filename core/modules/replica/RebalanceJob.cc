@@ -35,7 +35,7 @@
 #include "util/BlockPost.h"
 
 // This macro to appear witin each block which requires thread safety
-#define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)
+#define LOCK(MUTEX) std::lock_guard<std::mutex> lock(MUTEX)
 
 namespace {
 
@@ -228,7 +228,7 @@ void RebalanceJob::onPrecursorJobFinish() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish");
 
-    LOCK_GUARD;
+    LOCK(_mtx);
 
     // Ignore the callback if the job was cancelled
     if (_state == State::FINISHED) return;
@@ -586,7 +586,7 @@ void RebalanceJob::onJobFinish(MoveReplicaJob::Ptr const& job) {
     do {
         // This lock will be automatically release beyond this scope
         // to allow client notifications (see the end of the method)
-        LOCK_GUARD;
+        LOCK(_mtx);
 
         // Make sure the chunk is released if this was the last job in
         // its scope regardless of the completion status of the job.
