@@ -80,7 +80,7 @@ Configuration::Ptr Configuration::load(std::string const& configUrl) {
         } else if ("mysql" == prefix) {
             return std::make_shared<ConfigurationMySQL>(
                 database::mysql::ConnectionParams::parse(
-                    suffix,
+                    configUrl,
                     Configuration::defaultDatabaseHost,
                     Configuration::defaultDatabasePort,
                     Configuration::defaultDatabaseUser,

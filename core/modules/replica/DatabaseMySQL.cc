@@ -142,36 +142,36 @@ ConnectionParams ConnectionParams::parse(std::string const& params,
     static std::string const context = "ConnectionParams::parse  ";
 
 
-    std::regex re("database=([^,]*),host=([^,]*),port=([0-9]*),user=([^,]*),password=(.*)",
+    std::regex re("^mysql://([^:]+)?(:([^:]?.*[^@]?))?@([^:^/]+)?(:([0-9]+))?(/([^/]+))?$",
                   std::regex::extended);
     std::smatch match;
     if (not std::regex_search(params, match, re)) {
         throw std::invalid_argument(context + "incorrect syntax of the encoded connection parameters string");
     }
-    if (match.size() != 6) {
+    if (match.size() != 9) {
         throw std::runtime_error(context + "problem with the regular expression");
     }
 
     ConnectionParams connectionParams;
 
+    std::string const user = match[1].str();
+    connectionParams.user  = user.empty() ? defaultUser : user;
+
+    std::string const password = match[3].str();
+    connectionParams.password = password.empty() ?  defaultPassword : password;
+
+    std::string const host = match[4].str();
+    connectionParams.host  = host.empty() ? defaultHost : host;
+
+    std::string const port = match[6].str();
+    connectionParams.port  = port.empty() ?  defaultPort : (uint16_t)std::stoul(port);
+
     // no default option for the database
-    connectionParams.database = match[1].str();
+    connectionParams.database = match[8].str();
     if (connectionParams.database.empty()) {
         throw std::invalid_argument(
                 context + "database name not found in the encoded parameters string");
     }
-
-    std::string const host = match[2].str();
-    connectionParams.host  = host.empty() ? defaultHost : host;
-
-    std::string const port = match[3].str();
-    connectionParams.port  = port.empty() ?  defaultPort : (uint16_t)std::stoul(port);
-
-    std::string const user = match[4].str();
-    connectionParams.user  = user.empty() ? defaultUser : user;
-
-    std::string const password = match[5].str();
-    connectionParams.password = password.empty() ?  defaultPassword : password;
 
     LOGS(_log, LOG_LVL_DEBUG, context << connectionParams);
 
@@ -181,11 +181,7 @@ ConnectionParams ConnectionParams::parse(std::string const& params,
 #endif
 std::string ConnectionParams::toString() const {
     return
-        std::string("database=") + database +
-        std::string(",host=")    + host +
-        std::string(",port=")    + std::to_string(port) +
-        std::string(",user=")    + user +
-        std::string(",password=*");
+        std::string("mysql://") + user + ":xxxxxx@" + host + ":" + std::to_string(port) + "/" + database;
 }
 
 std::ostream& operator<<(std::ostream& os, ConnectionParams const& params) {
