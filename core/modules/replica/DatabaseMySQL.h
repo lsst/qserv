@@ -134,7 +134,7 @@ struct ConnectionParams {
      * by values of parameters found in the input encoded string. The string is
      * expected to have the following syntax:
      *
-     *   database=<name>,host=[<name-or-ip>],port=[<number>],user=[<username>],password=[<secret>]
+     *   mysql://[user][:password]@[host][:port][/database]
      *
      * NOTES ON THE SYNTAX:
      * 1) all keywords are madatory
@@ -413,8 +413,8 @@ public:
      * @autoCommit             - if set 'true' then no transactions will be required
      *                           whene executing queries modifying the contents of tables.
      *                           ATTENTION: this is a special option which must be used
-     *                           with care. One proposed use case fr it is to use it
-     *                           whith 'LOCK/UNLOCK TABLES' statements.
+     *                           with care. One proposed use case for it is
+     *                           for executing 'LOCK/UNLOCK TABLES' statements.
      *
      * @return a valid object if the connection attempt succeeded
      * @throws Error - if the connection failed
@@ -765,7 +765,7 @@ public:
      */
     template <typename...Targs>
     Connection::Ptr executeInsertQuery(std::string const& tableName,
-                                           Targs...           Fargs) {
+                                       Targs...           Fargs) {
 
         return execute(sqlInsertQuery(tableName,
                                       Fargs...));
@@ -797,8 +797,8 @@ public:
      */
     template <typename...Targs>
     Connection::Ptr executeSimpleUpdateQuery(std::string const& tableName,
-                                                 std::string const& condition,
-                                                 Targs...           Fargs) {
+                                             std::string const& condition,
+                                             Targs...           Fargs) {
 
         return execute(sqlSimpleUpdateQuery(tableName,
                                             condition,
