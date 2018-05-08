@@ -34,11 +34,11 @@ fragment Z:('z'|'Z');
 
 
 // Qserv Function Names:
-QSERV_AREASPEC_BOX:                 'qserv_areaspec_box';
-QSERV_AREASPEC_CIRCLE:              'qserv_areaspec_circle';
-QSERV_AREASPEC_ELLIPSE:             'qserv_areaspec_ellipse'; 
-QSERV_AREASPEC_POLY:                'qserv_areaspec_poly';
-QSERV_AREASPEC_HULL:                'qserv_areaspec_hull'; 
+QSERV_AREASPEC_BOX:                 Q S E R V '_' A R E A S P E C '_' B O X;
+QSERV_AREASPEC_CIRCLE:              Q S E R V '_' A R E A S P E C '_' C I R C L E;
+QSERV_AREASPEC_ELLIPSE:             Q S E R V '_' A R E A S P E C '_' E L L I P S E;
+QSERV_AREASPEC_POLY:                Q S E R V '_' A R E A S P E C '_' P O L Y;
+QSERV_AREASPEC_HULL:                Q S E R V '_' A R E A S P E C '_' H U L L;
 
 
 // Keywords
