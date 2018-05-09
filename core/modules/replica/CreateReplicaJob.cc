@@ -31,6 +31,7 @@
 // Qserv headers
 #include "lsst/log/Log.h"
 #include "replica/Configuration.h"
+#include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
 #include "replica/ErrorReporting.h"
 #include "replica/QservMgtServices.h"
@@ -135,6 +136,14 @@ CreateReplicaJobResult const& CreateReplicaJob::getReplicaData() const {
 
     throw std::logic_error(
         "CreateReplicaJob::getReplicaData  the method can't be called while the job hasn't finished");
+}
+
+std::string CreateReplicaJob::extendedPersistentState(SqlGeneratorPtr const& gen) const {
+    return gen->sqlPackValues(id(),
+                              databaseFamily(),
+                              chunk(),
+                              sourceWorker(),
+                              destinationWorker());
 }
 
 void CreateReplicaJob::startImpl() {

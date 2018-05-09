@@ -203,6 +203,13 @@ public:
     /// @return true if file check/control sums need to be recomputed
     bool computeCheckSum() const { return _computeCheckSum; }
 
+    /**
+     * Implement the corresponding method of the base class.
+     *
+     * @see Job::extendedPersistentState()
+     */
+    std::string extendedPersistentState(SqlGeneratorPtr const& gen) const override;
+
 protected:
 
     /**

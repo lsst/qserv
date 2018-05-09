@@ -24,7 +24,8 @@
 
 /// DatabaseMySQL.h declares:
 ///
-/// class ConfigurationMySQL
+/// class Raw
+/// class Connection
 /// (see individual class documentation for more information)
 
 // System headers
@@ -452,6 +453,8 @@ public:
     std::string sqlValue(DoNotProcess const& val) const { return val.name; }
     std::string sqlValue(Keyword      const& val) const { return val.name; }
     std::string sqlValue(Function     const& val) const { return val.name; }
+
+    std::string sqlValue(std::vector<std::string> const& coll) const;
 
     /**
      * The function replaces the "conditional operator" of C++ in SQL statements

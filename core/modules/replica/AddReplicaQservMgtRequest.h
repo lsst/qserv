@@ -98,6 +98,13 @@ public:
     /// @return names of databases
     std::vector<std::string> const& databases() const { return _databases; }
 
+    /**
+     * Implement the corresponding method of the base class.
+     *
+     * @see QservMgtRequest::extendedPersistentState()
+     */
+     std::string extendedPersistentState(SqlGeneratorPtr const& gen) const override;
+
 private:
 
     /**

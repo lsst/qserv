@@ -32,6 +32,7 @@
 // Qserv headers
 #include "lsst/log/Log.h"
 #include "replica/Configuration.h"
+#include "replica/DatabaseMySQL.h"
 #include "replica/ErrorReporting.h"
 #include "replica/ServiceProvider.h"
 #include "util/BlockPost.h"
@@ -109,6 +110,12 @@ ReplicateJobResult const& ReplicateJob::getReplicaData() const {
 
     throw std::logic_error(
         "ReplicateJob::getReplicaData  the method can't be called while the job hasn't finished");
+}
+
+std::string ReplicateJob::extendedPersistentState(SqlGeneratorPtr const& gen) const {
+    return gen->sqlPackValues(id(),
+                              databaseFamily(),
+                              numReplicas());
 }
 
 void ReplicateJob::startImpl() {

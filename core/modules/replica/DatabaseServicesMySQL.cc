@@ -31,32 +31,16 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
-#include "replica/AddReplicaQservMgtRequest.h"
 #include "replica/Configuration.h"
 #include "replica/Controller.h"
-#include "replica/CreateReplicaJob.h"
-#include "replica/DeleteReplicaJob.h"
 #include "replica/DeleteRequest.h"
-#include "replica/DeleteWorkerJob.h"
-#include "replica/FindAllJob.h"
 #include "replica/FindAllRequest.h"
 #include "replica/FindRequest.h"
-#include "replica/FixUpJob.h"
-#include "replica/MoveReplicaJob.h"
 #include "replica/Performance.h"
-#include "replica/PurgeJob.h"
-#include "replica/QservMgtRequest.h"
-#include "replica/QservSyncJob.h"
-#include "replica/RebalanceJob.h"
-#include "replica/RemoveReplicaQservMgtRequest.h"
 #include "replica/ReplicaInfo.h"
-#include "replica/ReplicateJob.h"
 #include "replica/ReplicationRequest.h"
-#include "replica/SetReplicasQservMgtRequest.h"
 #include "replica/StatusRequest.h"
 #include "replica/StopRequest.h"
-#include "replica/VerifyJob.h"
-#include "util/IterableFormatter.h"
 
 // This macro to appear witin each block which requires thread safety
 #define LOCK(MUTEX) std::lock_guard<std::mutex> lock(MUTEX)
@@ -153,30 +137,12 @@ void targetRequestData(Request::Ptr const& ptr,
 // and to make those methos easier to use and maintain.
 
 template <class T>
-typename T::Ptr safeAssign(QservMgtRequest::Ptr const& request) {
-    static std::string  const context = "DatabaseServicesMySQL::safeAssign[QservMgtRequest]  ";
-    typename T::Ptr const ptr = std::dynamic_pointer_cast<T>(request);
-    if (ptr) { return ptr; }
-    throw std::logic_error(context + "incorrect upcast for request id: " +
-                           request->id() + ", type: " + request->type());
-}
-
-template <class T>
 typename T::Ptr safeAssign(Request::Ptr const& request) {
     static std::string  const context = "DatabaseServicesMySQL::safeAssign[Request]  ";
     typename T::Ptr const ptr = std::dynamic_pointer_cast<T>(request);
     if (ptr) { return ptr; }
     throw std::logic_error(context + "incorrect upcast for request id: " +
                            request->id() + ", type: " + request->type());
-}
-
-template <class T>
-typename T::Ptr safeAssign(Job::Ptr const& job) {
-    static std::string  const context = "DatabaseServicesMySQL::safeAssign[Job]  ";
-    typename T::Ptr const ptr = std::dynamic_pointer_cast<T>(job);
-    if (ptr) { return ptr; }
-    throw std::logic_error (context + "incorrect upcast for job id: " +
-                            job->id() + ", type: " + job->type());
 }
 
 /**
@@ -271,26 +237,6 @@ void updateFileAttr(database::mysql::Connection::Ptr const& conn,
         "    AND " + conn->sqlEqual("name", file));
 }
 
-/**
- * Serialize a collection of replicas into a text string. Replicas will
- * be represented as space-separated pairs of database names and chunk
- * numbers:
- *   <database1>:<chunk1> <database2>:<chunk2> ...
- */
-std::string toString(QservReplicaCollection const& replicas) {
-    std::ostringstream ss;
-    for (auto&& replica: replicas) {
-        ss << replica.database << ":" << replica.chunk << " ";
-    }
-    return ss.str();
-}
-
-std::string vector2str(std::vector<std::string> const& names) {
-    std::ostringstream ss;
-    ss << lsst::qserv::util::printable(names);
-    return ss.str();
-}
-
 } /// namespace
 
 
@@ -350,22 +296,9 @@ void DatabaseServicesMySQL::saveState(Job::Ptr const& job) {
 
     LOCK(_mtx);
 
-    if (not ::in(job->type(), {"FIXUP",
-                               "FIND_ALL",
-                               "REPLICATE",
-                               "PURGE",
-                               "REBALANCE",
-                               "VERIFY",
-                               "DELETE_WORKER",
-                               "ADD_WORKER",
-                               "CREATE_REPLICA",
-                               "DELETE_REPLICA",
-                               "MOVE_REPLICA",
-                               "QSERV:SYNC"})) { return; }
-
-    // The algorithm will first try the INSERT query. If a row with the same
-    // primary key (Job id) already exists in the table then the UPDATE
-    // query will be executed.
+    // The algorithm will first try the INSERT query into the base table.
+    // If a row with the same primary key (Job id) already exists in the table
+    // then the UPDATE query will be executed.
 
     try {
         Job::Options const& options = job->options();
@@ -386,108 +319,23 @@ void DatabaseServicesMySQL::saveState(Job::Ptr const& job) {
             options.preemptable
         );
 
-        if ("FIXUP" == job->type()) {
-            auto ptr = safeAssign<FixUpJob>(job);
-            _conn->executeInsertQuery(
-                "job_fixup",
-                ptr->id(),
-                ptr->databaseFamily()
-            );
+        // Extended state (if any provided by a specific job class) is recorded
+        // in a job-specific table whose name is based on a value of the job's
+        // 'type' parameter.
 
-        } else if ("FIND_ALL" == job->type()) {
-            auto ptr = safeAssign<FindAllJob>(job);
-            _conn->executeInsertQuery(
-                "job_find_all",
-                ptr->id(),
-                ptr->databaseFamily()
-            );
+        std::string extendedTableName = "job_" + job->type();
+        std::transform(extendedTableName.begin(),
+                       extendedTableName.end(),
+                       extendedTableName.begin(),
+                       [] (unsigned char c) {
+                           return std::tolower(c);
+                       });
 
-        } else if ("REPLICATE" == job->type()) {
-            auto ptr = safeAssign<ReplicateJob>(job);
-            _conn->executeInsertQuery(
-                "job_replicate",
-                ptr->id(),
-                ptr->databaseFamily(),
-                ptr->numReplicas()
-            );
-
-        } else if ("PURGE" == job->type()) {
-            auto ptr = safeAssign<PurgeJob>(job);
-            _conn->executeInsertQuery(
-                "job_purge",
-                ptr->id(),
-                ptr->databaseFamily(),
-                ptr->numReplicas());
-
-        } else if ("REBALANCE" == job->type()) {
-            auto ptr = safeAssign<RebalanceJob>(job);
-            _conn->executeInsertQuery(
-                "job_rebalance",
-                ptr->id(),
-                ptr->databaseFamily()
-            );
-
-        } else if ("VERIFY" == job->type()) {
-            auto ptr = safeAssign<VerifyJob>(job);
-            _conn->executeInsertQuery(
-                "job_verify",
-                ptr->id(),
-                ptr->maxReplicas(),
-                ptr->computeCheckSum()
-            );
-
-        } else if ("DELETE_WORKER" == job->type()) {
-            auto ptr = safeAssign<DeleteWorkerJob>(job);
-            _conn->executeInsertQuery(
-                "job_delete_worker",
-                ptr->id(),
-                ptr->worker(),
-                ptr->permanentDelete() ? 1 : 0
-            );
-
-        } else if ("ADD_WORKER" == job->type()) {
-            throw std::invalid_argument(context + "not implemented for job type name:" + job->type());
-
-        } else if ("MOVE_REPLICA" == job->type()) {
-            auto ptr = safeAssign<MoveReplicaJob>(job);
-            _conn->executeInsertQuery(
-                "job_move_replica",
-                ptr->id(),
-                ptr->databaseFamily(),
-                ptr->chunk(),
-                ptr->sourceWorker(),
-                ptr->destinationWorker(),
-                ptr->purge() ? 1 : 0
-            );
-
-        } else if ("CREATE_REPLICA" == job->type()) {
-            auto ptr = safeAssign<CreateReplicaJob>(job);
-            _conn->executeInsertQuery(
-                "job_create_replica",
-                ptr->id(),
-                ptr->databaseFamily(),
-                ptr->chunk(),
-                ptr->sourceWorker(),
-                ptr->destinationWorker()
-            );
-
-        } else if ("DELETE_REPLICA" == job->type()) {
-            auto ptr = safeAssign<DeleteReplicaJob>(job);
-            _conn->executeInsertQuery(
-                "job_delete_replica",
-                ptr->id(),
-                ptr->databaseFamily(),
-                ptr->chunk(),
-                ptr->worker()
-            );
-        } else if ("QSERV:SYNC" == job->type()) {
-            auto ptr = safeAssign<QservSyncJob>(job);
-            _conn->executeInsertQuery(
-                "job_qserv_sync",
-                ptr->id(),
-                ptr->databaseFamily(),
-                ptr->force()
-            );
+        std::string const extendedPersistentState = job->extendedPersistentState(_conn);
+        if (not extendedPersistentState.empty()) {
+            LOGS(_log, LOG_LVL_DEBUG, context << "extendedPersistentState: " << extendedPersistentState);
+            _conn->execute("INSERT INTO " + _conn->sqlId(extendedTableName) +
+                           " VALUES " + extendedPersistentState);
         }
         _conn->commit ();
 
@@ -507,7 +355,7 @@ void DatabaseServicesMySQL::saveState(Job::Ptr const& job) {
             _conn->commit ();
 
         } catch (database::mysql::Error const& ex) {
-            if (_conn->inTransaction()) { _conn->rollback(); }
+            if (_conn->inTransaction()) _conn->rollback();
             throw std::runtime_error(context + "failed to save the state, exception: " + ex.what());
         }
     }
@@ -531,7 +379,7 @@ void DatabaseServicesMySQL::updateHeartbeatTime(Job::Ptr const& job) {
         _conn->commit ();
 
     } catch (database::mysql::Error const& ex) {
-        if (_conn->inTransaction()) { _conn->rollback(); }
+        if (_conn->inTransaction()) _conn->rollback();
         throw std::runtime_error(context + "failed to update the heartbeat, exception: " + ex.what());
     }
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
@@ -550,96 +398,88 @@ void DatabaseServicesMySQL::saveState(QservMgtRequest::Ptr const& request) {
 
     // The original (target) requests are processed normally, via the usual
     // protocol: try-insert-if-duplicate-then-update.
+    //
+    // The extended request-specific persistent state (if available) is extracted
+    // from each request and stored in the corresponding table.
 
-
-    if (::in(request->type(), {"QSERV:ADD_REPLICA",
-                               "QSERV:REMOVE_REPLICA",
-                               "QSERV:SET_REPLICAS"})) {
-
-        // Requests which haven't started yet or the ones which aren't associated
-        // with any job should be ignored.
-        try {
-            if (request->jobId().empty()) {
-                LOGS(_log, LOG_LVL_DEBUG, context << "ignoring the request with no job set, id=" << request->id());
-                return;
-            }
-        } catch (std::logic_error const&) {
-            LOGS(_log, LOG_LVL_DEBUG, context << "ignoring the request which hasn't yet started, id=" << request->id());
+    // Requests which haven't started yet or the ones which aren't associated
+    // with any job should be ignored.
+    try {
+        if (request->jobId().empty()) {
+            LOGS(_log, LOG_LVL_DEBUG, context << "ignoring the request with no job set, id=" << request->id());
             return;
         }
-
-        Performance const& performance = request->performance();
-        try {
-            _conn->begin();
-            _conn->executeInsertQuery(
-                "request",
-                request->id(),
-                request->jobId(),
-                request->type(),
-                request->worker(),
-                0,
-                QservMgtRequest::state2string(request->state()),
-                QservMgtRequest::state2string(request->extendedState()),
-                request->serverError(),
-                performance.c_create_time,
-                performance.c_start_time,
-                performance.w_receive_time,
-                performance.w_start_time,
-                performance.w_finish_time,
-                performance.c_finish_time);
-
-            if (request->type() == "QSERV:ADD_REPLICA") {
-                auto ptr = safeAssign<AddReplicaQservMgtRequest>(request);
-                _conn->executeInsertQuery(
-                    "request_qserv_add_replica",
-                    ptr->id(),
-                    ::vector2str(ptr->databases()),
-                    ptr->chunk());
-            } else if (request->type() == "QSERV:REMOVE_REPLICA") {
-                auto ptr = safeAssign<RemoveReplicaQservMgtRequest>(request);
-                _conn->executeInsertQuery(
-                    "request_qserv_remove_replica",
-                    ptr->id(),
-                    ::vector2str(ptr->databases()),
-                    ptr->chunk(),
-                    ptr->force());
-            } else if (request->type() == "QSERV:SET_REPLICAS") {
-                auto ptr = safeAssign<SetReplicasQservMgtRequest>(request);
-                _conn->executeInsertQuery(
-                    "request_qserv_set_replicas",
-                    ptr->id(),
-                    ::toString(ptr->newReplicas()),
-                    ptr->force());
-            }
-            _conn->commit ();
-
-        } catch (database::mysql::DuplicateKeyError const&) {
-
-            try {
-                _conn->rollback();
-                _conn->begin();
-                _conn->executeSimpleUpdateQuery(
-                    "request",
-                    _conn->sqlEqual("id",                                           request->id()),
-                    std::make_pair( "state",          QservMgtRequest::state2string(request->state())),
-                    std::make_pair( "ext_state",      QservMgtRequest::state2string(request->extendedState())),
-                    std::make_pair( "server_status",                                request->serverError()),
-                    std::make_pair( "c_create_time",  performance.c_create_time),
-                    std::make_pair( "c_start_time",   performance.c_start_time),
-                    std::make_pair( "w_receive_time", performance.w_receive_time),
-                    std::make_pair( "w_start_time",   performance.w_start_time),
-                    std::make_pair( "w_finish_time",  performance.w_finish_time),
-                    std::make_pair( "c_finish_time",  performance.c_finish_time));
-
-                _conn->commit();
-
-            } catch (database::mysql::Error const& ex) {
-                if (_conn->inTransaction()) { _conn->rollback(); }
-                throw std::runtime_error(context + "failed to save the state, exception: " + ex.what());
-            }
-        }
+    } catch (std::logic_error const&) {
+        LOGS(_log, LOG_LVL_DEBUG, context << "ignoring the request which hasn't yet started, id=" << request->id());
         return;
     }
+
+    Performance const& performance = request->performance();
+    try {
+        _conn->begin();
+        _conn->executeInsertQuery(
+            "request",
+            request->id(),
+            request->jobId(),
+            request->type(),
+            request->worker(),
+            0,
+            QservMgtRequest::state2string(request->state()),
+            QservMgtRequest::state2string(request->extendedState()),
+            request->serverError(),
+            performance.c_create_time,
+            performance.c_start_time,
+            performance.w_receive_time,
+            performance.w_start_time,
+            performance.w_finish_time,
+            performance.c_finish_time);
+
+        // Extended state (if any provided by a specific request class) is recorded
+        // in a request-specific table whose name is based on a value of the request's
+        // 'type' parameter.
+
+        std::string extendedTableName = "request_" + request->type();
+        std::transform(extendedTableName.begin(),
+                       extendedTableName.end(),
+                       extendedTableName.begin(),
+                       [] (unsigned char c) {
+                           return std::tolower(c);
+                       });
+
+        std::string const extendedPersistentState = request->extendedPersistentState(_conn);
+        if (not extendedPersistentState.empty()) {
+            LOGS(_log, LOG_LVL_DEBUG, context << "extendedPersistentState: " << extendedPersistentState);
+            _conn->execute("INSERT INTO " + _conn->sqlId(extendedTableName) +
+                           " VALUES " + extendedPersistentState);
+        }
+        _conn->commit ();
+
+    } catch (database::mysql::DuplicateKeyError const&) {
+
+        try {
+            _conn->rollback();
+            _conn->begin();
+            _conn->executeSimpleUpdateQuery(
+                "request",
+                _conn->sqlEqual("id",                                           request->id()),
+                std::make_pair( "state",          QservMgtRequest::state2string(request->state())),
+                std::make_pair( "ext_state",      QservMgtRequest::state2string(request->extendedState())),
+                std::make_pair( "server_status",                                request->serverError()),
+                std::make_pair( "c_create_time",  performance.c_create_time),
+                std::make_pair( "c_start_time",   performance.c_start_time),
+                std::make_pair( "w_receive_time", performance.w_receive_time),
+                std::make_pair( "w_start_time",   performance.w_start_time),
+                std::make_pair( "w_finish_time",  performance.w_finish_time),
+                std::make_pair( "c_finish_time",  performance.c_finish_time));
+
+            _conn->commit();
+
+        } catch (database::mysql::Error const& ex) {
+            if (_conn->inTransaction()) _conn->rollback();
+            throw std::runtime_error(context + "failed to save the state, exception: " + ex.what());
+        }
+    }
+
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
 }
 
@@ -739,7 +579,7 @@ void DatabaseServicesMySQL::saveState(Request::Ptr const& request) {
                 _conn->commit();
 
             } catch (database::mysql::Error const& ex) {
-                if (_conn->inTransaction()) { _conn->rollback(); }
+                if (_conn->inTransaction()) _conn->rollback();
                 throw std::runtime_error(context + "failed to save the state, exception: " + ex.what());
             }
         }
@@ -792,7 +632,7 @@ void DatabaseServicesMySQL::saveState(Request::Ptr const& request) {
                 _conn->commit();
 
             } catch (database::mysql::Error const& ex) {
-                if (_conn->inTransaction()) { _conn->rollback(); }
+                if (_conn->inTransaction()) _conn->rollback();
                 throw std::runtime_error(context + "failed to save the state, exception: " + ex.what());
             }
         }
@@ -812,7 +652,7 @@ void DatabaseServicesMySQL::saveState(Request::Ptr const& request) {
                 saveReplicaInfo(::replicaInfo(request));
                 _conn->commit();
             } catch (database::mysql::Error const& ex) {
-                if (_conn->inTransaction()) { _conn->rollback(); }
+                if (_conn->inTransaction()) _conn->rollback();
                 throw std::runtime_error(context + "failed to save the state, exception: " + ex.what());
             }
         }
@@ -835,7 +675,7 @@ void DatabaseServicesMySQL::saveState(Request::Ptr const& request) {
                     ::replicaInfoCollection(request));
                 _conn->commit();
             } catch (database::mysql::Error const& ex) {
-                if (_conn->inTransaction()) { _conn->rollback(); }
+                if (_conn->inTransaction()) _conn->rollback();
                 throw std::runtime_error(context + "failed to save the state, exception: " + ex.what());
             }
         }
@@ -865,7 +705,6 @@ void DatabaseServicesMySQL::saveReplicaInfo(ReplicaInfo const& info) {
                 _conn->executeInsertQuery(
                     "replica_file",
                     database::mysql::Function::LAST_INSERT_ID,  /* FK -> PK of the above insert row */
-                 // database::mysql::Function("LAST_INSERT_ID()"),
                     f.name,
                     f.size,
                     f.mtime,
@@ -1236,8 +1075,8 @@ bool DatabaseServicesMySQL::findReplicas(std::vector<ReplicaInfo>& replicas,
         LOGS(_log, LOG_LVL_ERROR, context
              << "database operation failed due to: " << ex.what());
     }
-    if (startedTransaction  and _conn ->inTransaction()) { _conn ->rollback(); }
-    if (startedTransaction2 and _conn2->inTransaction()) { _conn2->rollback(); }
+    if (startedTransaction  and _conn ->inTransaction()) _conn ->rollback();
+    if (startedTransaction2 and _conn2->inTransaction()) _conn2->rollback();
 
     return result;
 }

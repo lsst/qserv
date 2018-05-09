@@ -106,6 +106,13 @@ public:
       */
     QservReplicaCollection const& replicas() const;
 
+    /**
+     * Implement the corresponding method of the base class.
+     *
+     * @see QservMgtRequest::extendedPersistentState()
+     */
+     std::string extendedPersistentState(SqlGeneratorPtr const& gen) const override;
+
 private:
 
     /**

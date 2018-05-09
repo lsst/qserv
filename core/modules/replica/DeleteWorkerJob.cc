@@ -32,6 +32,7 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
+#include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
 #include "replica/ErrorReporting.h"
 #include "replica/ServiceManagementRequest.h"
@@ -129,6 +130,12 @@ DeleteWorkerJobResult const& DeleteWorkerJob::getReplicaData() const {
 
     throw std::logic_error(
         "DeleteWorkerJob::getReplicaData()  the method can't be called while the job hasn't finished");
+}
+
+std::string DeleteWorkerJob::extendedPersistentState(SqlGeneratorPtr const& gen) const {
+    return gen->sqlPackValues(id(),
+                              worker(),
+                              permanentDelete() ? 1 : 0);
 }
 
 void DeleteWorkerJob::startImpl() {
