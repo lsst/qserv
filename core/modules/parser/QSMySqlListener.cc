@@ -456,6 +456,7 @@ class MathOperatorCBH : public BaseCBH {
 public:
     enum OperatorType {
         SUBTRACT,
+        ADD,
     };
     virtual void handleMathOperator(OperatorType operatorType) = 0;
 };
@@ -2145,7 +2146,9 @@ private:
 class MathExpressionAtomAdapter :
         public AdapterT<MathExpressionAtomCBH>,
         public MathOperatorCBH,
-        public FunctionCallExpressionAtomCBH {
+        public FunctionCallExpressionAtomCBH,
+        public FullColumnNameExpressionAtomCBH,
+        public ConstantExpressionAtomCBH {
 public:
     MathExpressionAtomAdapter(shared_ptr<MathExpressionAtomCBH> parent,
                               QSMySqlParser::MathExpressionAtomContext* ctx)
@@ -2154,50 +2157,53 @@ public:
     {}
 
     void handleFunctionCallExpressionAtom(shared_ptr<query::FuncExpr> funcExpr) override {
-        _setNextFuncExpr(funcExpr);
+        ValueExprFactory::addFuncExpr(_getValueExpr(), funcExpr);
     }
 
     void handleMathOperator(MathOperatorCBH::OperatorType operatorType) override {
-        // need to make:
-        // FactorOp(MINUS, factor:ValueFactor(type:Function, funcExpr)
-        ASSERT_EXECUTION_CONDITION(MathOperatorCBH::SUBTRACT == operatorType,
-                "Currenty only subtract is supported.", _ctx);
-        _op = query::ValueExpr::MINUS;
-    }
+        switch (operatorType) {
+        default:
+            ASSERT_EXECUTION_CONDITION(false, "Unhandled operatorType.", _ctx);
+            break;
 
-    void onExit() override {
-        ASSERT_EXECUTION_CONDITION(query::ValueExpr::NONE != _op && nullptr != _left && nullptr != _right,
-                "Not all fields are set:" << *this, _ctx);
-        auto valueExpr = ValueExprFactory::newOperationFuncExpr(_left, _op, _right);
-        lockedParent()->handleMathExpressionAtomAdapter(valueExpr);
-    }
+        case MathOperatorCBH::SUBTRACT:
+            bool success = ValueExprFactory::addOp(_getValueExpr(), query::ValueExpr::MINUS);
+            ASSERT_EXECUTION_CONDITION(success,
+                    "Failed to add an operator to valueExpr:" << _getValueExpr(), _ctx);
+            break;
 
-private:
-    friend ostream& operator<<(ostream& os, const MathExpressionAtomAdapter& mathExpressionAtomAdapter);
-
-    void _setNextFuncExpr(shared_ptr<query::FuncExpr> funcExpr) {
-        if (nullptr == _left) {
-            _left = funcExpr;
-        } else if (nullptr == _right) {
-            _right = funcExpr;
-        } else {
-            ASSERT_EXECUTION_CONDITION(false, "left and right are both already set:" << *this, _ctx);
+        case MathOperatorCBH::ADD:
+            bool success = ValueExprFactory::addOp(_getValueExpr(), query::ValueExpr::PLUS);
+            ASSERT_EXECUTION_CONDITION(success,
+                    "Failed to add an operator to valueExpr:" << _getValueExpr(), _ctx);
+            break;
         }
     }
 
-    query::ValueExpr::Op _op {query::ValueExpr::NONE};
-    shared_ptr<query::FuncExpr> _left;
-    shared_ptr<query::FuncExpr> _right;
+    void HandleFullColumnNameExpressionAtom(shared_ptr<query::ValueFactor>& valueFactor) override {
+        ValueExprFactory::addValueFactor(_getValueExpr(), valueFactor);
+    }
+
+    void handleConstantExpressionAtom(shared_ptr<query::ValueFactor> const & valueFactor) override {
+        ValueExprFactory::addValueFactor(_getValueExpr(), valueFactor);
+    }
+
+    void onExit() override {
+        ASSERT_EXECUTION_CONDITION(_valueExpr != nullptr, "valueExpr not populated.", _ctx);
+        lockedParent()->handleMathExpressionAtomAdapter(_valueExpr);
+    }
+
+private:
+    shared_ptr<query::ValueExpr>& _getValueExpr() {
+        if (nullptr == _valueExpr) {
+            _valueExpr = make_shared<query::ValueExpr>();
+        }
+        return _valueExpr;
+    }
+
+    shared_ptr<query::ValueExpr> _valueExpr;
     QSMySqlParser::MathExpressionAtomContext* _ctx;
 };
-
-
-ostream& operator<<(ostream& os, const MathExpressionAtomAdapter& mathExpressionAtomAdapter) {
-os << "MathExpressionAtomAdapter(left:" << mathExpressionAtomAdapter._left
-        << ", right:" << mathExpressionAtomAdapter._right
-        << ")";
-return os;
-}
 
 
 class FunctionCallExpressionAtomAdapter :
@@ -2278,6 +2284,10 @@ public:
     void onExit() override {
         if (_ctx->getText() == "-") {
             lockedParent()->handleMathOperator(MathOperatorCBH::SUBTRACT);
+        } else if (_ctx->getText() == "+") {
+            lockedParent()->handleMathOperator(MathOperatorCBH::ADD);
+        } else {
+            ASSERT_EXECUTION_CONDITION(false, "Unhanlded operator type:" << _ctx->getText(), _ctx);
         }
     }
 
