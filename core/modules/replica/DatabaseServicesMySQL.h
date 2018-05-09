@@ -33,7 +33,10 @@
 // Qserv headers
 #include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
+#include "replica/Job.h"
+#include "replica/QservMgtRequest.h"
 #include "replica/ReplicaInfo.h"
+#include "replica/Request.h"
 
 // Forward declarations
 
@@ -86,28 +89,28 @@ public:
      *
      * @see DatabaseServices::saveState()
      */
-    void saveState(Job_pointer const& job) override;
+    void saveState(Job::Ptr const& job) override;
 
     /**
      * Implement the corresponding method defined in the base class
      *
      * @see DatabaseServices::updateHeartbeatTime()
      */
-     void updateHeartbeatTime(Job_pointer const& job) override;
+     void updateHeartbeatTime(Job::Ptr const& job) override;
 
     /**
      * Implement the corresponding method defined in the base class
      *
      * @see DatabaseServices::saveState()
      */
-    void saveState(QservMgtRequest_pointer const& request) override;
+    void saveState(QservMgtRequest::Ptr const& request) override;
 
     /**
      * Implement the corresponding method defined in the base class
      *
      * @see DatabaseServices::saveState()
      */
-    void saveState(Request_pointer const& request) override;
+    void saveState(Request::Ptr const& request) override;
 
     /**
      * Implement the corresponding method defined in the base class

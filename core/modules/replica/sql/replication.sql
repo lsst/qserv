@@ -199,7 +199,8 @@ CREATE TABLE IF NOT EXISTS `job` (
                'MOVE_REPLICA',
                'CREATE_REPLICA',
                'DELETE_REPLICA',
-               'QSERV:SYNC') NOT NULL ,
+               'QSERV_SYNC',
+               'QSERV_GET_REPLICAS') NOT NULL ,
 
   `state`      VARCHAR(255) NOT NULL ,
   `ext_state`  VARCHAR(255) DEFAULT '' ,
@@ -519,7 +520,7 @@ ENGINE = InnoDB;
 -- Table `job_qserv_sync`
 -- -----------------------------------------------------
 --
--- Extended parameters of the 'QSERV:SYNC' jobs
+-- Extended parameters of the 'QSERV_SYNC' jobs
 --
 DROP TABLE IF EXISTS `job_qserv_sync` ;
 
@@ -541,6 +542,31 @@ CREATE TABLE IF NOT EXISTS `job_qserv_sync` (
 ENGINE = InnoDB;
 
 -- -----------------------------------------------------
+-- Table `job_qserv_get_replicas`
+-- -----------------------------------------------------
+--
+-- Extended parameters of the 'QSERV_GET_REPLICAS' jobs
+--
+DROP TABLE IF EXISTS `job_qserv_get_replicas` ;
+
+CREATE TABLE IF NOT EXISTS `job_qserv_get_replicas` (
+
+  `job_id`  VARCHAR(255) NOT NULL ,
+
+  `database_family` VARCHAR(255) NOT NULL ,
+  `in_use_only`     BOOLEAN      NOT NULL ,
+
+  PRIMARY KEY (`job_id`) ,
+
+  CONSTRAINT `job_qserv_get_replicas_fk_1`
+    FOREIGN KEY (`job_id` )
+    REFERENCES `job` (`id` )
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
+)
+ENGINE = InnoDB;
+
+-- -----------------------------------------------------
 -- Table `request`
 -- -----------------------------------------------------
 DROP TABLE IF EXISTS `request` ;
@@ -552,9 +578,10 @@ CREATE TABLE IF NOT EXISTS `request` (
 
   `name` ENUM ('REPLICA_CREATE',
                'REPLICA_DELETE',
-               'QSERV:ADD_REPLICA',
-               'QSERV:REMOVE_REPLICA',
-               'QSERV:SET_REPLICAS') NOT NULL ,
+               'QSERV_ADD_REPLICA',
+               'QSERV_REMOVE_REPLICA',
+               'QSERV_GET_REPLICAS',
+               'QSERV_SET_REPLICAS') NOT NULL ,
 
   `worker`   VARCHAR(255) NOT NULL ,
   `priority` INT          DEFAULT 0 ,
@@ -639,7 +666,7 @@ ENGINE = InnoDB;
 -- Table `request_qserv_add_replica`
 -- -----------------------------------------------------
 --
--- Extended parameters of the 'QSERV:ADD_REPLICA' requests
+-- Extended parameters of the 'QSERV_ADD_REPLICA' requests
 --
 DROP TABLE IF EXISTS `request_qserv_add_replica` ;
 
@@ -665,7 +692,7 @@ ENGINE = InnoDB;
 -- Table `request_qserv_remove_replica`
 -- -----------------------------------------------------
 --
--- Extended parameters of the 'QSERV:REMOVE_REPLICA' requests
+-- Extended parameters of the 'QSERV_REMOVE_REPLICA' requests
 --
 DROP TABLE IF EXISTS `request_qserv_remove_replica` ;
 
@@ -673,6 +700,11 @@ CREATE TABLE IF NOT EXISTS `request_qserv_remove_replica` (
 
   `request_id`  VARCHAR(255) NOT NULL ,
 
+  --
+  -- comma separated sequence of database names
+  --
+  --   '<database1>,<database2>, ...'
+  --
   `databases`   LONGTEXT     NOT NULL ,
   `chunk`       INT UNSIGNED NOT NULL ,
   `force`       BOOLEAN      NOT NULL ,
@@ -688,10 +720,35 @@ CREATE TABLE IF NOT EXISTS `request_qserv_remove_replica` (
 ENGINE = InnoDB;
 
 -- -----------------------------------------------------
+-- Table `request_qserv_get_replicas`
+-- -----------------------------------------------------
+--
+-- Extended parameters of the 'QSERV_GET_REPLICAS' requests
+--
+DROP TABLE IF EXISTS `request_qserv_get_replicas` ;
+
+CREATE TABLE IF NOT EXISTS `request_qserv_get_replicas` (
+
+  `request_id`   VARCHAR(255) NOT NULL ,
+
+  `database_family`  VARCHAR(255) NOT NULL ,
+  `in_use_only`      BOOLEAN      NOT NULL ,
+
+  PRIMARY KEY (`request_id`) ,
+
+  CONSTRAINT `request_qserv_get_replicas_fk_1`
+    FOREIGN KEY (`request_id` )
+    REFERENCES `request` (`id` )
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
+)
+ENGINE = InnoDB;
+
+-- -----------------------------------------------------
 -- Table `request_qserv_set_replicas`
 -- -----------------------------------------------------
 --
--- Extended parameters of the 'QSERV:SET_REPLICAS' requests
+-- Extended parameters of the 'QSERV_SET_REPLICAS' requests
 --
 DROP TABLE IF EXISTS `request_qserv_set_replicas` ;
 
@@ -700,10 +757,10 @@ CREATE TABLE IF NOT EXISTS `request_qserv_set_replicas` (
   `request_id`  VARCHAR(255) NOT NULL ,
 
   --
-  -- space separated sequence of pairs representing databases
+  -- comma separated sequence of pairs representing databases
   -- and chunks:
   --
-  --   '<database1>:<chunk1> <database2>:<chunk2> ...'
+  --   '<database1>:<chunk1>,<database2>:<chunk2>, ...'
   --
   `replicas` LONGTEXT NOT NULL ,
   `force`    BOOLEAN  NOT NULL ,

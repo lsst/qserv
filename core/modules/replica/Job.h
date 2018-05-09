@@ -51,6 +51,12 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
+// Forward declarations
+namespace database {
+namespace mysql {
+class Connection;
+}}
+
 /**
   * Class Job is a base class for a family of replication jobs within
   * the master server.
@@ -62,6 +68,10 @@ public:
 
     /// The pointer type for instances of the class
     typedef std::shared_ptr<Job> Ptr;
+
+    /// The pointer type for the database connector which provides a database-specific
+    /// SQL generation services.
+    typedef std::shared_ptr<database::mysql::Connection> SqlGeneratorPtr;
 
     /// Primary public state of the job
     enum State {
@@ -196,6 +206,26 @@ public:
 
     /// Return the context string for debugging and diagnostic printouts
     std::string context() const;
+
+    /**
+     * @return a string representation for a subclass's persistent state
+     * ready to be insert into the corresponding table as the values string
+     * of the SQL INSERT statement:
+     *     INSERT INTO <job-specific-table> VALUES <result-of-this-method>
+     *
+     * Note, that the result string must include round brackets as reaquired
+     * by the SQL standard. The string values need to be properly escaped and
+     * santized as required by the corresponiding database service (which
+     * is passed as parameter into the method).
+     *
+     * The table name will be automatically deduced from a job-specific value
+     * returned by method Job::type().
+     *
+     * @param gen - pointer to the SQL statements generation service
+     */
+    virtual std::string extendedPersistentState(SqlGeneratorPtr const& gen) const {
+        return std::string();
+    }
 
 protected:
 

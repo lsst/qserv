@@ -34,6 +34,7 @@
 #include "global/ResourceUnit.h"
 #include "lsst/log/Log.h"
 #include "replica/Configuration.h"
+#include "replica/DatabaseMySQL.h"
 #include "replica/ServiceProvider.h"
 
 namespace {
@@ -71,12 +72,18 @@ AddReplicaQservMgtRequest::AddReplicaQservMgtRequest(
                                 AddReplicaQservMgtRequest::CallbackType onFinish)
     :   QservMgtRequest(serviceProvider,
                         io_service,
-                        "QSERV:ADD_REPLICA",
+                        "QSERV_ADD_REPLICA",
                         worker),
         _chunk(chunk),
         _databases(databases),
         _onFinish(onFinish),
         _qservRequest(nullptr) {
+}
+
+std::string AddReplicaQservMgtRequest::extendedPersistentState(SqlGeneratorPtr const& gen) const {
+    return gen->sqlPackValues(id(),
+                              databases(),
+                              chunk());
 }
 
 void AddReplicaQservMgtRequest::startImpl() {

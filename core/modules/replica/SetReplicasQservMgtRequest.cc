@@ -36,6 +36,7 @@
 #include "global/ResourceUnit.h"
 #include "lsst/log/Log.h"
 #include "replica/Configuration.h"
+#include "replica/DatabaseMySQL.h"
 #include "replica/ServiceProvider.h"
 
 namespace {
@@ -88,6 +89,16 @@ QservReplicaCollection const& SetReplicasQservMgtRequest::replicas() const {
                 state2string(_state, _extendedState));
     }
     return _replicas;
+}
+
+std::string SetReplicasQservMgtRequest::extendedPersistentState(SqlGeneratorPtr const& gen) const {
+    std::ostringstream replicas;
+    for (auto&& replica: newReplicas()) {
+        replicas << replica.database << ":" << replica.chunk << ',';
+    }
+    return gen->sqlPackValues(id(),
+                              replicas.str(),
+                              force() ? 1 : 0);
 }
 
 void SetReplicasQservMgtRequest::setReplicas(

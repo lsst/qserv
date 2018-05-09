@@ -30,6 +30,7 @@
 // Qserv headers
 #include "lsst/log/Log.h"
 #include "replica/Configuration.h"
+#include "replica/DatabaseMySQL.h"
 #include "replica/ServiceProvider.h"
 
 // This macro to appear witin each block which requires thread safety
@@ -92,6 +93,11 @@ FindAllJobResult const& FindAllJob::getReplicaData() const {
 
     throw std::logic_error(
         "FindAllJob::getReplicaData  the method can't be called while the job hasn't finished");
+}
+
+std::string FindAllJob::extendedPersistentState(SqlGeneratorPtr const& gen) const {
+    return gen->sqlPackValues(id(),
+                              databaseFamily());
 }
 
 void FindAllJob::startImpl() {

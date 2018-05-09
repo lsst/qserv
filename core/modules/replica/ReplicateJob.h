@@ -145,6 +145,13 @@ public:
      */
     ReplicateJobResult const& getReplicaData() const;
 
+    /**
+     * Implement the corresponding method of the base class.
+     *
+     * @see Job::extendedPersistentState()
+     */
+    std::string extendedPersistentState(SqlGeneratorPtr const& gen) const override;
+
 protected:
 
     /**

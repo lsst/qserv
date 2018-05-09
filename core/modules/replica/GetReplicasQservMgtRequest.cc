@@ -36,6 +36,7 @@
 #include "global/ResourceUnit.h"
 #include "lsst/log/Log.h"
 #include "replica/Configuration.h"
+#include "replica/DatabaseMySQL.h"
 #include "replica/ServiceProvider.h"
 
 namespace {
@@ -73,7 +74,7 @@ GetReplicasQservMgtRequest::GetReplicasQservMgtRequest(
                                 GetReplicasQservMgtRequest::CallbackType onFinish)
     :   QservMgtRequest(serviceProvider,
                         io_service,
-                        "QSERV:GET_REPLICAS",
+                        "QSERV_GET_REPLICAS",
                         worker),
         _databaseFamily(databaseFamily),
         _inUseOnly(inUseOnly),
@@ -94,6 +95,12 @@ QservReplicaCollection const& GetReplicasQservMgtRequest::replicas() const {
                 state2string(_state, _extendedState));
     }
     return _replicas;
+}
+
+std::string GetReplicasQservMgtRequest::extendedPersistentState(SqlGeneratorPtr const& gen) const {
+    return gen->sqlPackValues(id(),
+                              databaseFamily(),
+                              inUseOnly() ? 1 : 0);
 }
 
 void GetReplicasQservMgtRequest::setReplicas(

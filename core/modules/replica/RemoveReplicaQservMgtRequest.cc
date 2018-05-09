@@ -34,6 +34,7 @@
 #include "global/ResourceUnit.h"
 #include "lsst/log/Log.h"
 #include "replica/Configuration.h"
+#include "replica/DatabaseMySQL.h"
 #include "replica/ServiceProvider.h"
 
 namespace {
@@ -74,13 +75,20 @@ RemoveReplicaQservMgtRequest::RemoveReplicaQservMgtRequest(
                                 RemoveReplicaQservMgtRequest::CallbackType onFinish)
     :   QservMgtRequest(serviceProvider,
                         io_service,
-                        "QSERV:REMOVE_REPLICA",
+                        "QSERV_REMOVE_REPLICA",
                         worker),
         _chunk(chunk),
         _databases(databases),
         _force(force),
         _onFinish(onFinish),
         _qservRequest(nullptr) {
+}
+
+std::string RemoveReplicaQservMgtRequest::extendedPersistentState(SqlGeneratorPtr const& gen) const {
+    return gen->sqlPackValues(id(),
+                              databases(),
+                              chunk(),
+                              force() ? 1 : 0);
 }
 
 void RemoveReplicaQservMgtRequest::startImpl() {

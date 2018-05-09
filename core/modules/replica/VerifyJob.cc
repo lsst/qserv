@@ -29,6 +29,7 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
+#include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
 #include "replica/ServiceProvider.h"
 #include "util/BlockPost.h"
@@ -206,6 +207,12 @@ VerifyJob::VerifyJob(Controller::Ptr const& controller,
         _onReplicaDifference(onReplicaDifference),
         _maxReplicas(maxReplicas),
         _computeCheckSum(computeCheckSum) {
+}
+
+std::string VerifyJob::extendedPersistentState(SqlGeneratorPtr const& gen) const {
+    return gen->sqlPackValues(id(),
+                              maxReplicas(),
+                              computeCheckSum() ? 1 : 0);
 }
 
 void VerifyJob::startImpl() {

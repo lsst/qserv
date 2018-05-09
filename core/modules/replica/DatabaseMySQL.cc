@@ -84,55 +84,7 @@ namespace mysql {
 /////////////////////////////////////////////////////
 //                ConnectionParams                 //
 /////////////////////////////////////////////////////
-#if 0
-ConnectionParams ConnectionParams::parse(std::string const& params,
-                                         std::string const& defaultHost,
-                                         uint16_t           defaultPort,
-                                         std::string const& defaultUser,
-                                         std::string const& defaultPassword) {
 
-    static std::string const context = "ConnectionParams::parse  ";
-
-    ConnectionParams connectionParams;
-    connectionParams.host     = defaultHost;
-    connectionParams.port     = defaultPort;
-    connectionParams.user     = defaultUser;
-    connectionParams.password = defaultPassword;
-    connectionParams.database = "";
-
-    std::stringstream is(params);
-    std::string token;
-
-    while (std::getline(is, token, ',')) {
-        std::string::size_type const pos = token.find('=');
-        if ((pos == std::string::npos) or   /* no '=' */
-            (pos == 0) or                   /* no parameter name before '=' */
-            (pos + 1 >= token.size())) {    /* no value after '=' */
-            throw std::invalid_argument(
-                    context + "incorrect syntax of the encoded connection parameters string");
-        }
-        std::string const param = token.substr(0, pos);     /* what's before '=' */
-        std::string const val   = token.substr(pos + 1);    /* whats after '=' */
-
-        if      ("host"     == param) { connectionParams.host     = val; }
-        else if ("port"     == param) { connectionParams.port     = (uint16_t)std::stoul(val); }
-        else if ("user"     == param) { connectionParams.user     = val; }
-        else if ("password" == param) { connectionParams.password = val; }
-        else if ("database" == param) { connectionParams.database = val; }
-        else                          {
-            throw std::invalid_argument(
-                    context + "unknown parameter found in the encoded parameters string");
-        }
-    }
-    if (connectionParams.database.empty()) {
-        throw std::invalid_argument(
-                context + "database name not found in the encoded parameters string");
-    }
-    LOGS(_log, LOG_LVL_DEBUG, context << connectionParams);
-
-    return connectionParams;
-}
-#else
 ConnectionParams ConnectionParams::parse(std::string const& params,
                                          std::string const& defaultHost,
                                          uint16_t           defaultPort,
@@ -178,7 +130,7 @@ ConnectionParams ConnectionParams::parse(std::string const& params,
 
     return connectionParams;
 }
-#endif
+
 std::string ConnectionParams::toString() const {
     return
         std::string("mysql://") + user + ":xxxxxx@" + host + ":" + std::to_string(port) + "/" + database;
@@ -239,7 +191,7 @@ bool Row::get(std::string const& columnName, double& value) const { return ::get
 bool Row::get(size_t columnIdx, bool& value) const {
     uint8_t number;
     if (::getAsNumber(*this, columnIdx, number)) {
-        value = (bool) number;
+        value = number != '0';
         return true;
     }
     return false;
@@ -248,7 +200,7 @@ bool Row::get(size_t columnIdx, bool& value) const {
 bool Row::get(std::string const& columnName, bool&  value) const {
     uint8_t number;
     if (::getAsNumber(*this, columnName, number)) {
-        value = (bool) number;
+        value = number != '0';
         return true;
     }
     return false;
@@ -376,6 +328,14 @@ std::string Connection::escape(std::string const& inStr) const {
     return std::string(outStr.get(), outLen) ;
 }
 
+std::string Connection::sqlValue(std::vector<std::string> const& coll) const {
+    std::ostringstream values;
+    for (auto&& val: coll) {
+        values << val << ',';
+    }
+    return sqlValue(values.str());
+}
+
 Connection::Ptr Connection::begin() {
     assertTransaction(false);
     execute("BEGIN");
@@ -446,8 +406,8 @@ Connection::Ptr Connection::execute(std::string const& query) {
             throw Error(context + "mysql_use_result failed, error: " +
                         std::string(mysql_error(_mysql)));
         }
-        _fields    = mysql_fetch_fields(_res);
         _numFields = mysql_num_fields(_res);
+        _fields    = mysql_fetch_fields(_res);
 
         for (size_t i = 0; i < _numFields; i++) {
             _columnNames.push_back(std::string(_fields[i].name));

@@ -31,6 +31,7 @@
 // Qserv headers
 #include "lsst/log/Log.h"
 #include "replica/Configuration.h"
+#include "replica/DatabaseMySQL.h"
 #include "replica/ErrorReporting.h"
 #include "replica/ServiceProvider.h"
 #include "util/BlockPost.h"
@@ -113,6 +114,12 @@ PurgeJobResult const& PurgeJob::getReplicaData() const {
 
     throw std::logic_error (
         "PurgeJob::getReplicaData  the method can't be called while the job hasn't finished");
+}
+
+std::string PurgeJob::extendedPersistentState(SqlGeneratorPtr const& gen) const {
+    return gen->sqlPackValues(id(),
+                              databaseFamily(),
+                              numReplicas());
 }
 
 void PurgeJob::startImpl() {

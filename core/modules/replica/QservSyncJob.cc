@@ -30,6 +30,7 @@
 // Qserv headers
 #include "lsst/log/Log.h"
 #include "replica/Configuration.h"
+#include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
 #include "replica/QservMgtServices.h"
 #include "replica/ServiceProvider.h"
@@ -79,7 +80,7 @@ QservSyncJob::QservSyncJob(std::string const& databaseFamily,
                            Job::Options const& options)
     :   Job(controller,
             parentJobId,
-            "QSERV:SYNC",
+            "QSERV_SYNC",
             options),
         _databaseFamily(databaseFamily),
         _force(force),
@@ -97,6 +98,12 @@ QservSyncJobResult const& QservSyncJob::getReplicaData() const {
 
     throw std::logic_error(
         "QservSyncJob::getReplicaData  the method can't be called while the job hasn't finished");
+}
+
+std::string QservSyncJob::extendedPersistentState(SqlGeneratorPtr const& gen) const {
+    return gen->sqlPackValues(id(),
+                              databaseFamily(),
+                              force() ? 1 : 0);
 }
 
 void QservSyncJob::startImpl() {

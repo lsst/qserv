@@ -104,6 +104,13 @@ public:
     // it's is in use
     bool force() const { return _force; }
 
+    /**
+     * Implement the corresponding method of the base class.
+     *
+     * @see QservMgtRequest::extendedPersistentState()
+     */
+     std::string extendedPersistentState(SqlGeneratorPtr const& gen) const override;
+
 private:
 
     /**
