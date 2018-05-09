@@ -35,6 +35,7 @@
 
 // Qserv headers
 #include "replica/Configuration.h"
+#include "replica/ReplicaInfo.h"
 
 // Forward declarations
 
@@ -48,7 +49,6 @@ namespace replica {
 struct ControllerIdentity;
 class Job;
 class QservMgtRequest;
-class ReplicaInfo;
 class Request;
 
 /**
@@ -151,6 +151,32 @@ public:
      * @throw std::invalid_argument - if the actual request type won't match the expected one
      */
     virtual void saveState(Request_pointer const& request) = 0;
+
+    /**
+     * Update the status of replica in the corresponidng tables.
+     *
+     * @param info - a replica to be added/updated or deleted
+     */
+    virtual void saveReplicaInfo(ReplicaInfo const& info) = 0;
+
+    /**
+     * Update the status of multiple replicas using a collection reported
+     * by a request. The method will cross-check replicas reported by the
+     * request in a context of the specific worker and a database and resync
+     * the database state in this context. Specifically, this means
+     * the following:
+     *
+     * - replicas not present in the colleciton will be deleted from the database
+     * - new replicas not present in the database will be registered in there
+     * - existing replicas will be updated in the database
+     *
+     * @param worker         - the name of a worker (as per the request)
+     * @param database       - the name of a database (as per the request)
+     * @param infoCollection - a collection of replicas
+     */
+    virtual void saveReplicaInfoCollection(std::string const& worker,
+                                           std::string const& database,
+                                           ReplicaInfoCollection const& infoCollection) = 0;
 
     /**
      * Locate replicas which have the oldest verification timestamps.

@@ -16,15 +16,15 @@ INSERT INTO `config` VALUES ('common', 'request_retry_interval_sec', '1');
 INSERT INTO `config` VALUES ('controller', 'num_threads',           '1');
 INSERT INTO `config` VALUES ('controller', 'http_server_port',      '80');
 INSERT INTO `config` VALUES ('controller', 'http_server_threads',    '1');
-INSERT INTO `config` VALUES ('controller', 'request_timeout_sec',  '600');
-INSERT INTO `config` VALUES ('controller', 'job_timeout_sec',     '6000');
+INSERT INTO `config` VALUES ('controller', 'request_timeout_sec', '14400');   -- 4 hours
+INSERT INTO `config` VALUES ('controller', 'job_timeout_sec',     '28800');   -- 8 hours
 INSERT INTO `config` VALUES ('controller', 'job_heartbeat_sec',     '60');
 
 -- Connection parameters for the Qserv Management Services
 
 INSERT INTO `config` VALUES ('xrootd', 'auto_notify',         '1');
 INSERT INTO `config` VALUES ('xrootd', 'host',                'localhost');
-INSERT INTO `config` VALUES ('xrootd', 'port',                '201094');
+INSERT INTO `config` VALUES ('xrootd', 'port',                '21094');
 INSERT INTO `config` VALUES ('xrootd', 'request_timeout_sec', '600');
 
 -- Default parameters for all workers unless overwritten in worker-specific
