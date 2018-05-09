@@ -164,7 +164,8 @@ public:
                                           shared_ptr<query::WhereClause>& whereClause,
                                           shared_ptr<query::OrderByClause>& orderByClause,
                                           int limit,
-                                          shared_ptr<query::GroupByClause>& groupByClause) = 0;
+                                          shared_ptr<query::GroupByClause>& groupByClause,
+                                          bool distinct) = 0;
 };
 
 
@@ -268,6 +269,10 @@ public:
     virtual void handleInnerJoin(shared_ptr<query::JoinRef> joinRef) = 0;
 };
 
+class SelectSpecCBH : public BaseCBH {
+public:
+    virtual void handleSelectSpec(bool distinct) = 0;
+};
 
 class SelectFunctionElementCBH: public BaseCBH {
 public:
@@ -567,13 +572,15 @@ public:
                                   shared_ptr<query::WhereClause>& whereClause,
                                   shared_ptr<query::OrderByClause>& orderByClause,
                                   int limit,
-                                  shared_ptr<query::GroupByClause>& groupByClause) override {
+                                  shared_ptr<query::GroupByClause>& groupByClause,
+                                  bool distinct) override {
         _selectList = selectList;
         _fromList = fromList;
         _whereClause = whereClause;
         _orderByClause = orderByClause;
         _limit = limit;
         _groupByClause = groupByClause;
+        _distinct = distinct;
     }
 
     void onExit() override {
@@ -584,6 +591,7 @@ public:
         selectStatement->setLimit(_limit);
         selectStatement->setOrderBy(_orderByClause);
         selectStatement->setGroupBy(_groupByClause);
+        selectStatement->setDistinct(_distinct);
         lockedParent()->handleSelectStatement(selectStatement);
     }
 
@@ -594,6 +602,7 @@ private:
     shared_ptr<query::OrderByClause> _orderByClause;
     shared_ptr<query::GroupByClause> _groupByClause;
     int _limit{lsst::qserv::NOTSET};
+    int _distinct{false};
 };
 
 
@@ -602,7 +611,8 @@ class QuerySpecificationAdapter :
         public SelectElementsCBH,
         public FromClauseCBH,
         public OrderByClauseCBH,
-        public LimitClauseCBH {
+        public LimitClauseCBH,
+        public SelectSpecCBH {
 public:
     QuerySpecificationAdapter(shared_ptr<QuerySpecificationCBH>& parent, antlr4::ParserRuleContext* ctx)
     : AdapterT(parent) {}
@@ -627,9 +637,13 @@ public:
         _limit = limit;
     }
 
+    void handleSelectSpec(bool distinct) override {
+        _distinct = distinct;
+    }
+
     void onExit() override {
         lockedParent()->handleQuerySpecification(_selectList, _fromList, _whereClause, _orderByClause,
-                _limit, _groupByClause);
+                _limit, _groupByClause, _distinct);
     }
 
 private:
@@ -639,6 +653,7 @@ private:
     shared_ptr<query::OrderByClause> _orderByClause;
     shared_ptr<query::GroupByClause> _groupByClause;
     int _limit{lsst::qserv::NOTSET};
+    bool _distinct{false};
 };
 
 
@@ -1315,6 +1330,36 @@ private:
     QSMySqlParser::InnerJoinContext* _ctx;
     shared_ptr<query::ColumnRef> _using;
     shared_ptr<query::TableRef> _tableRef;
+};
+
+
+class SelectSpecAdapter :
+        public AdapterT<SelectSpecCBH> {
+public:
+    SelectSpecAdapter(shared_ptr<SelectSpecCBH>& parent,
+            QSMySqlParser::SelectSpecContext* ctx)
+    : AdapterT(parent)
+    , _ctx(ctx)
+    {
+    }
+
+    void onExit() override {
+        ASSERT_EXECUTION_CONDITION(_ctx->ALL(), "ALL is not supported.", _ctx);
+        ASSERT_EXECUTION_CONDITION(_ctx->DISTINCTROW(), "DISTINCTROW is not supported.", _ctx);
+        ASSERT_EXECUTION_CONDITION(_ctx->HIGH_PRIORITY(), "HIGH_PRIORITY", _ctx);
+        ASSERT_EXECUTION_CONDITION(_ctx->STRAIGHT_JOIN(), "STRAIGHT_JOIN is not supported.", _ctx);
+        ASSERT_EXECUTION_CONDITION(_ctx->SQL_SMALL_RESULT(), "SQL_SMALL_RESULT is not supported.", _ctx);
+        ASSERT_EXECUTION_CONDITION(_ctx->SQL_BIG_RESULT(), "SQL_BIG_RESULT is not supported.", _ctx);
+        ASSERT_EXECUTION_CONDITION(_ctx->SQL_BUFFER_RESULT(), "SQL_BUFFER_RESULT is not supported.", _ctx);
+        ASSERT_EXECUTION_CONDITION(_ctx->SQL_CACHE(), "SQL_CACHE", _ctx);
+        ASSERT_EXECUTION_CONDITION(_ctx->SQL_NO_CACHE(), "SQL_NO_CACHE is not supported.", _ctx);
+        ASSERT_EXECUTION_CONDITION(_ctx->SQL_CALC_FOUND_ROWS(),
+                "SQL_CALC_FOUND_ROWS is not supported.", _ctx);
+        lockedParent()->handleSelectSpec(_ctx->DISTINCT() != nullptr);
+    }
+
+private:
+    QSMySqlParser::SelectSpecContext* _ctx;
 };
 
 
@@ -2166,17 +2211,19 @@ public:
             ASSERT_EXECUTION_CONDITION(false, "Unhandled operatorType.", _ctx);
             break;
 
-        case MathOperatorCBH::SUBTRACT:
+        case MathOperatorCBH::SUBTRACT: {
             bool success = ValueExprFactory::addOp(_getValueExpr(), query::ValueExpr::MINUS);
             ASSERT_EXECUTION_CONDITION(success,
                     "Failed to add an operator to valueExpr:" << _getValueExpr(), _ctx);
             break;
+        }
 
-        case MathOperatorCBH::ADD:
+        case MathOperatorCBH::ADD: {
             bool success = ValueExprFactory::addOp(_getValueExpr(), query::ValueExpr::PLUS);
             ASSERT_EXECUTION_CONDITION(success,
                     "Failed to add an operator to valueExpr:" << _getValueExpr(), _ctx);
             break;
+        }
         }
     }
 
@@ -2618,7 +2665,7 @@ UNHANDLED(QueryExpressionNointo)
 UNHANDLED(QuerySpecificationNointo)
 UNHANDLED(UnionParenthesis)
 UNHANDLED(UnionStatement)
-UNHANDLED(SelectSpec)
+ENTER_EXIT_PARENT(SelectSpec)
 UNHANDLED(SelectStarElement)
 ENTER_EXIT_PARENT(SelectFunctionElement)
 UNHANDLED(SelectExpressionElement)
