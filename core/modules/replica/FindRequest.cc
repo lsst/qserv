@@ -33,6 +33,7 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
+#include "replica/DatabaseServices.h"
 #include "replica/Messenger.h"
 #include "replica/ProtocolBuffer.h"
 #include "replica/ReplicaInfo.h"
@@ -241,6 +242,10 @@ void FindRequestM::analyze(bool success,
         switch (message.status()) {
 
             case proto::ReplicationStatus::SUCCESS:
+
+                // Save the replica state
+                _serviceProvider->databaseServices()->saveReplicaInfo(_replicaInfo);
+
                 finish(SUCCESS);
                 break;
 

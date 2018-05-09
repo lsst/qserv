@@ -171,46 +171,6 @@ ReplicaInfo const& replicaInfo(Request::Ptr const& request) {
                            request->id() + ", type: " + request->type());
 }
 
-/**
- * Return the name of a database from the target parameters of eligible requests
- *
- * @param request - a request to be analyzed
- * @return        - the name of a database
- *
- * @throw std::logic_error for unsupported requsts
- */
-std::string const& databaseNameOfRequest(Request::Ptr const& request) {
-
-    static std::string const context = "DatabaseServicesMySQL::databaseNameOfRequest  ";
-
-    if ("REPLICA_FIND_ALL"                == request->type()) { return safeAssign<FindAllRequest>(      request)->targetRequestParams().database; }
-    if ("REQUEST_STATUS:REPLICA_FIND_ALL" == request->type()) { return safeAssign<StatusFindAllRequest>(request)->targetRequestParams().database; }
-    if ("REQUEST_STOP:REPLICA_FIND_ALL"   == request->type()) { return safeAssign<StopFindAllRequest>(  request)->targetRequestParams().database; }
-
-    throw std::logic_error(context + "operation is not supported for request id: " +
-                           request->id() + ", type: " + request->type());
-}
-
-/**
- * Return a collection of the replica info data from eligible requests
- *
- * @param request - a request to be analyzed
- * @return        - a reference to the replica info collection object
- *
- * @throw std::logic_error for unsupported requsts
- */
-ReplicaInfoCollection const& replicaInfoCollection(Request::Ptr const& request) {
-
-    static std::string const context = "DatabaseServicesMySQL::replicaInfoCollection  ";
-
-    if ("REPLICA_FIND_ALL"                == request->type()) { return safeAssign<FindAllRequest>(      request)->responseData(); }
-    if ("REQUEST_STATUS:REPLICA_FIND_ALL" == request->type()) { return safeAssign<StatusFindAllRequest>(request)->responseData(); }
-    if ("REQUEST_STOP:REPLICA_FIND_ALL"   == request->type()) { return safeAssign<StopFindAllRequest>(  request)->responseData(); }
-
-    throw std::logic_error(context + "operation is not supported for request id: " +
-                           request->id() + ", type: " + request->type());
-}
-
 template <typename T> bool isEmpty(T const& val) { return !val; }
 template <>           bool isEmpty<std::string>(std::string const& val) { return val.empty(); }
 
@@ -626,54 +586,8 @@ void DatabaseServicesMySQL::saveState(Request::Ptr const& request) {
                     std::make_pair( "w_start_time",   targetPerformance.w_start_time),
                     std::make_pair( "w_finish_time",  targetPerformance.w_finish_time));
 
-                if (request->extendedState() == Request::ExtendedState::SUCCESS) {
-                    saveReplicaInfo(::replicaInfo(request));
-                }
                 _conn->commit();
 
-            } catch (database::mysql::Error const& ex) {
-                if (_conn->inTransaction()) _conn->rollback();
-                throw std::runtime_error(context + "failed to save the state, exception: " + ex.what());
-            }
-        }
-    }
-
-    // Save, update or delete replica info according to a report stored within
-    // these requests.
-
-    if (::in(request->type(), {"REPLICA_FIND",
-                               "REQUEST_STATUS:REPLICA_FIND",
-                               "REQUEST_STOP:REPLICA_FIND"})) {
-
-        if ((request->state()         == Request::State::FINISHED) and
-            (request->extendedState() == Request::ExtendedState::SUCCESS)) {
-            try {
-                _conn->begin();
-                saveReplicaInfo(::replicaInfo(request));
-                _conn->commit();
-            } catch (database::mysql::Error const& ex) {
-                if (_conn->inTransaction()) _conn->rollback();
-                throw std::runtime_error(context + "failed to save the state, exception: " + ex.what());
-            }
-        }
-    }
-
-    // Save, update or delete replica info according to a report stored within
-    // these requests.
-
-    if (::in(request->type(), {"REPLICA_FIND_ALL",
-                               "REQUEST_STATUS:REPLICA_FIND_ALL",
-                               "REQUEST_STOP:REPLICA_FIND_ALL"})) {
-
-        if ((request->state()         == Request::State::FINISHED) and
-            (request->extendedState() == Request::ExtendedState::SUCCESS)) {
-            try {
-                _conn->begin();
-                saveReplicaInfoCollection(
-                    request->worker(),
-                    ::databaseNameOfRequest(request),
-                    ::replicaInfoCollection(request));
-                _conn->commit();
             } catch (database::mysql::Error const& ex) {
                 if (_conn->inTransaction()) _conn->rollback();
                 throw std::runtime_error(context + "failed to save the state, exception: " + ex.what());
@@ -686,6 +600,47 @@ void DatabaseServicesMySQL::saveState(Request::Ptr const& request) {
 void DatabaseServicesMySQL::saveReplicaInfo(ReplicaInfo const& info) {
 
     static std::string const context = "DatabaseServicesMySQL::saveReplicaInfo  ";
+
+    LOGS(_log, LOG_LVL_DEBUG, context);
+
+    LOCK(_mtx);
+
+    try {
+        _conn->begin();
+        saveReplicaInfoNoLock(info);
+        _conn->commit();
+    } catch (database::mysql::Error const& ex) {
+        if (_conn->inTransaction()) _conn->rollback();
+        throw std::runtime_error(context + "failed to save the state, exception: " + ex.what());
+    }
+    LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
+}
+
+void DatabaseServicesMySQL::saveReplicaInfoCollection(std::string const& worker,
+                                                      std::string const& database,
+                                                      ReplicaInfoCollection const& infoCollection) {
+
+    static std::string const context = "DatabaseServicesMySQL::saveReplicaInfoCollection  ";
+
+    try {
+        _conn->begin();
+        saveReplicaInfoCollectionNoLock(
+            worker,
+            database,
+            infoCollection);
+        _conn->commit();
+    } catch (database::mysql::Error const& ex) {
+        if (_conn->inTransaction()) _conn->rollback();
+        throw std::runtime_error(context + "failed to save the state, exception: " + ex.what());
+    }
+    LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
+}
+
+
+
+void DatabaseServicesMySQL::saveReplicaInfoNoLock(ReplicaInfo const& info) {
+
+    static std::string const context = "DatabaseServicesMySQL::saveReplicaInfoNoLock  ";
 
     try {
 
@@ -782,11 +737,11 @@ void DatabaseServicesMySQL::saveReplicaInfo(ReplicaInfo const& info) {
     }
 }
 
-void DatabaseServicesMySQL::saveReplicaInfoCollection(std::string const& worker,
-                                                      std::string const& database,
-                                                      ReplicaInfoCollection const& infoCollection) {
+void DatabaseServicesMySQL::saveReplicaInfoCollectionNoLock(std::string const& worker,
+                                                            std::string const& database,
+                                                            ReplicaInfoCollection const& infoCollection) {
 
-    static std::string const context = "DatabaseServicesMySQL::saveReplicaInfoCollection  ";
+    static std::string const context = "DatabaseServicesMySQL::saveReplicaInfoCollectionNoLock  ";
 
     LOGS(_log, LOG_LVL_DEBUG, context << "infoCollection.size(): " << infoCollection.size());
 
@@ -839,7 +794,7 @@ void DatabaseServicesMySQL::saveReplicaInfoCollection(std::string const& worker,
     // Finally push new (or update existing) replicas info into the database
     // (some of those replicas will be brand new, others - will need to be updated)
     for (auto&& info: infoCollection) {
-        saveReplicaInfo(info);
+        saveReplicaInfoNoLock(info);
     }
     LOGS(_log, LOG_LVL_DEBUG, context << "** DONE **");
 }

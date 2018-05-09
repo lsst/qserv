@@ -156,6 +156,10 @@ void StopRequestBaseM::analyze(bool success,
         switch (status) {
 
             case proto::ReplicationStatus::SUCCESS:
+
+                // Save the replica state
+                saveReplicaInfo();
+
                 finish(SUCCESS);
                 break;
 

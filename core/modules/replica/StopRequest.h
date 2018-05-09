@@ -54,10 +54,12 @@
 // Qserv headers
 #include "proto/replication.pb.h"
 #include "replica/Common.h"
+#include "replica/DatabaseServices.h"
 #include "replica/Messenger.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/RequestMessenger.h"
 #include "replica/ProtocolBuffer.h"
+#include "replica/ServiceProvider.h"
 
 // This header declarations
 
@@ -91,6 +93,11 @@ struct StopReplicationRequestPolicy {
             params = targetRequestParamsType(msg.request());
         }
     }
+
+    template <class REQUEST_PTR>
+    static void saveReplicaInfo(REQUEST_PTR const& request) {
+        request->serviceProvider()->databaseServices()->saveReplicaInfo(request->responseData());
+    }
 };
 
 struct StopDeleteRequestPolicy {
@@ -115,6 +122,11 @@ struct StopDeleteRequestPolicy {
             params = targetRequestParamsType(msg.request());
         }
     }
+
+    template <class REQUEST_PTR>
+    static void saveReplicaInfo(REQUEST_PTR const& request) {
+        request->serviceProvider()->databaseServices()->saveReplicaInfo(request->responseData());
+    }
 };
 
 struct StopFindRequestPolicy {
@@ -138,6 +150,11 @@ struct StopFindRequestPolicy {
         if (msg.has_request()) {
             params = targetRequestParamsType(msg.request());
         }
+    }
+
+    template <class REQUEST_PTR>
+    static void saveReplicaInfo(REQUEST_PTR const& request) {
+        request->serviceProvider()->databaseServices()->saveReplicaInfo(request->responseData());
     }
 };
 
@@ -164,6 +181,14 @@ struct StopFindAllRequestPolicy {
         if (msg.has_request()) {
             params = targetRequestParamsType(msg.request());
         }
+    }
+
+    template <class REQUEST_PTR>
+    static void saveReplicaInfo(REQUEST_PTR const& request) {
+        request->serviceProvider()->databaseServices()->saveReplicaInfoCollection(
+            request->worker(),
+            request->targetRequestParams().database,
+            request->responseData());
     }
 };
 
@@ -238,6 +263,14 @@ protected:
      */
     void analyze(bool success,
                  proto::ReplicationStatus status = proto::ReplicationStatus::FAILED);
+
+     /**
+      * Initiate request-specific operation with the persistent state
+      * service to store replica status.
+      *
+      * This method must be implemented by subclasses.
+      */
+     virtual void saveReplicaInfo() = 0;
 
 private:
 
@@ -395,6 +428,18 @@ private:
                 else         { self->analyze(false); }
             }
         );
+    }
+
+    /**
+     * Initiate request-specific operation with the persistent state
+     * service to store replica status.
+     *
+     * This method implements the corresponing virtual method defined
+     * by the base class.
+     */
+    void saveReplicaInfo() final {
+        auto const self = shared_from_base<StopRequestM<POLICY>>();
+        POLICY::saveReplicaInfo(self);
     }
 
     /**

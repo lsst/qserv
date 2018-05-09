@@ -35,7 +35,6 @@
 #include "replica/DatabaseServices.h"
 #include "replica/Job.h"
 #include "replica/QservMgtRequest.h"
-#include "replica/ReplicaInfo.h"
 #include "replica/Request.h"
 
 // Forward declarations
@@ -82,35 +81,51 @@ public:
      * @see DatabaseServices::saveState()
      */
     void saveState(ControllerIdentity const& identity,
-                   uint64_t startTime) override;
+                   uint64_t startTime) final;
 
     /**
      * Implement the corresponding method defined in the base class
      *
      * @see DatabaseServices::saveState()
      */
-    void saveState(Job::Ptr const& job) override;
+    void saveState(Job::Ptr const& job) final;
 
     /**
      * Implement the corresponding method defined in the base class
      *
      * @see DatabaseServices::updateHeartbeatTime()
      */
-     void updateHeartbeatTime(Job::Ptr const& job) override;
+     void updateHeartbeatTime(Job::Ptr const& job) final;
 
     /**
      * Implement the corresponding method defined in the base class
      *
      * @see DatabaseServices::saveState()
      */
-    void saveState(QservMgtRequest::Ptr const& request) override;
+    void saveState(QservMgtRequest::Ptr const& request) final;
 
     /**
      * Implement the corresponding method defined in the base class
      *
      * @see DatabaseServices::saveState()
      */
-    void saveState(Request::Ptr const& request) override;
+    void saveState(Request::Ptr const& request) final;
+
+    /**
+     * Implement the corresponding method defined in the base class
+     *
+     * @see DatabaseServices::saveReplicaInfo()
+     */
+    void saveReplicaInfo(ReplicaInfo const& info) final;
+
+    /**
+     * Implement the corresponding method defined in the base class
+     *
+     * @see DatabaseServices::saveReplicaInfoCollection()
+     */
+    void saveReplicaInfoCollection(std::string const& worker,
+                                   std::string const& database,
+                                   ReplicaInfoCollection const& infoCollection) final;
 
     /**
      * Implement the corresponding method defined in the base class
@@ -119,7 +134,7 @@ public:
      */
     bool findOldestReplicas(std::vector<ReplicaInfo>& replicas,
                             size_t maxReplicas,
-                            bool enabledWorkersOnly) const override;
+                            bool enabledWorkersOnly) const final;
 
     /**
      * Implement the corresponding method defined in the base class
@@ -129,7 +144,7 @@ public:
     bool findReplicas(std::vector<ReplicaInfo>& replicas,
                       unsigned int chunk,
                       std::string const& database,
-                      bool enabledWorkersOnly) const override;
+                      bool enabledWorkersOnly) const final;
 
     /**
      * Implement the corresponding method defined in the base class
@@ -138,7 +153,7 @@ public:
      */
     bool findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
                             std::string const& worker,
-                            std::string const& database) const override;
+                            std::string const& database) const final;
 
     /**
      * Implement the corresponding method defined in the base class
@@ -148,7 +163,7 @@ public:
     bool findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
                             unsigned int chunk,
                             std::string const& worker,
-                            std::string const& databaseFamily) const override;
+                            std::string const& databaseFamily) const final;
 
 private:
 
@@ -164,40 +179,22 @@ private:
                                   std::string const&  database) const;
 
     /**
-     * Update the status of replica in the corresponidng tables. Actual actions
-     * would depend on a type of the request:
-     *
-     * - the replica info (if present) will be removed for the REPLICA_CREATE and
-     *   the coresponding Status* and Stop* requests.
-     *
-     * - the replica info will be either inserted or updated (if already present
-     *   in the database) for he REPLICA_DELETE and the coresponding Status*
-     *   and Stop* requests.
+     * Actual implementation of the replica update algorithm.
      *
      * @param info - a replica to be added/updated or deleted
      */
-    void saveReplicaInfo(ReplicaInfo const& info);
+    void saveReplicaInfoNoLock(ReplicaInfo const& info);
 
     /**
-     * Update the status of multiple replicas using a collection reported
-     * by a request. The method will cross-check replicas reported by the
-     * request in a context of the specific worker and a database and resync
-     * the database state in this context. Specifically, this means
-     * the following:
-     *
-     * - replicas not present in the colleciton will be deleted from the database
-     * - new replicas not present in the database will be registered in there
-     * - existing replicas will be updated in the database
-     *
-     * @see DatabaseServiceseMySQL::saveReplicaInfo()
+     * Actual implementation of the multiple replicas update algorithm.
      *
      * @param worker         - the name of a worker (as per the request)
      * @param database       - the name of a database (as per the request)
      * @param infoCollection - a collection of replicas
      */
-    void saveReplicaInfoCollection(std::string const& worker,
-                                   std::string const& database,
-                                   ReplicaInfoCollection const& infoCollection);
+    void saveReplicaInfoCollectionNoLock(std::string const& worker,
+                                         std::string const& database,
+                                         ReplicaInfoCollection const& infoCollection);
 
     /**
      * Fetch replicas satisfying the specified query
