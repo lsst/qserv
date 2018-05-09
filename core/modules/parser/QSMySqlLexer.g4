@@ -1027,3 +1027,6 @@ REAL_LITERAL:                        (DEC_DIGIT+)? '.' (DEC_DIGIT+)?
                                      | (DEC_DIGIT+)? '.' (DEC_DIGIT+ EXPONENT_NUM_PART)
                                      | DEC_DIGIT+ EXPONENT_NUM_PART;
 
+// Makes the E able to be lower case (or upper case, which is how it is defined in MySqlParser.g4
+fragment EXPONENT_NUM_PART:          E '-'? DEC_DIGIT+;
+
