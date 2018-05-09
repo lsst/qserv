@@ -1723,12 +1723,12 @@ public:
             auto starFactor = query::ValueFactor::newStarFactor(table);
             auto starParExpr = std::make_shared<query::ValueExpr>();
             ValueExprFactory::addValueFactor(starParExpr, starFactor);
-            funcExpr = query::FuncExpr::newArg1("COUNT", starParExpr);
+            funcExpr = query::FuncExpr::newArg1(_ctx->COUNT()->getText(), starParExpr);
         } else if (_ctx->AVG()) {
             auto param = std::make_shared<query::ValueExpr>();
             ASSERT_EXECUTION_CONDITION(nullptr != _valueFactor, "ValueFactor must be populated.", _ctx);
             ValueExprFactory::addValueFactor(param, _valueFactor);
-            funcExpr = query::FuncExpr::newArg1("AVG", param);
+            funcExpr = query::FuncExpr::newArg1(_ctx->AVG()->getText(), param);
         } else {
             ASSERT_EXECUTION_CONDITION(false, "Unhandled exit", _ctx);
         }
