@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
+ * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -21,7 +21,7 @@
  */
 
 // Class header
-#include "replica/ServiceManagementRequest.h"
+#include "replica/ServiceManagementRequestBase.h"
 
 // System headers
 #include <stdexcept>
@@ -154,7 +154,7 @@ std::ostream& operator<<(std::ostream& os, ServiceState const& ss) {
     return os;
 }
 
-ServiceState const& ServiceManagementRequestBaseM::getServiceState() const {
+ServiceState const& ServiceManagementRequestBase::getServiceState() const {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "getServiceState");
 
@@ -174,7 +174,7 @@ ServiceState const& ServiceManagementRequestBaseM::getServiceState() const {
                     "this informationis not available in the current state of the request");
 }
 
-ServiceManagementRequestBaseM::ServiceManagementRequestBaseM(
+ServiceManagementRequestBase::ServiceManagementRequestBase(
                                     ServiceProvider::Ptr const&      serviceProvider,
                                     boost::asio::io_service&             io_service,
                                     char const*                          requestTypeName,
@@ -192,7 +192,7 @@ ServiceManagementRequestBaseM::ServiceManagementRequestBaseM(
         _requestType(requestType) {
 }
 
-void ServiceManagementRequestBaseM::startImpl() {
+void ServiceManagementRequestBase::startImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
 
@@ -210,7 +210,7 @@ void ServiceManagementRequestBaseM::startImpl() {
 
     // Send the message
 
-    auto self = shared_from_base<ServiceManagementRequestBaseM>();
+    auto self = shared_from_base<ServiceManagementRequestBase>();
 
     _messenger->send<proto::ReplicationServiceResponse>(
         worker(),
@@ -224,8 +224,8 @@ void ServiceManagementRequestBaseM::startImpl() {
     );
 }
 
-void ServiceManagementRequestBaseM::analyze(bool success,
-                                            proto::ReplicationServiceResponse const& message) {
+void ServiceManagementRequestBase::analyze(bool success,
+                                           proto::ReplicationServiceResponse const& message) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "analyze  success=" << (success ? "true" : "false"));
 

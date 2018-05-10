@@ -28,9 +28,11 @@
 /// (see individual class documentation for more information)
 
 // System headers
+#include <mutex>
 #include <vector>
 
 // Qserv headers
+#include "replica/Configuration.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
 #include "replica/Job.h"
@@ -207,13 +209,20 @@ private:
     bool findReplicas(std::vector<ReplicaInfo>& replicas,
                       std::string const& query) const;
 
-protected:
+private:
 
-    /// Databse connection
+    /// The configuration service
+    Configuration::Ptr _configuration;
+
+    /// Database connection
     database::mysql::Connection::Ptr _conn;
 
-    /// Databse connection (second instance for nested queries)
+    /// Database connection (second instance for nested queries)
     database::mysql::Connection::Ptr _conn2;
+
+    /// The mutex for enforcing thread safety of the class's public API
+    /// and internal operations.
+    mutable std::mutex _mtx;
 };
 
 }}} // namespace lsst::qserv::replica

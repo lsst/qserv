@@ -36,6 +36,7 @@
 #include "lsst/log/Log.h"
 #include "replica/AddReplicaQservMgtRequest.h"
 #include "replica/Common.h"            // Generators::uniqueId()
+#include "replica/Configuration.h"
 #include "replica/DatabaseServices.h"
 #include "replica/Performance.h"       // PerformanceUtils::now()
 #include "replica/QservMgtServices.h"

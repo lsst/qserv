@@ -114,7 +114,7 @@ public:
      * prefixes are supported:
      *
      *   file:<path>
-     *   mysql:database=<name>[,host=<name>][,port=<number>][,user=<username>][,password=<***>]
+     *   mysql://[user][:password]@[host][:port][/database]
      *
      * @param configUrl - the configuration source
      *

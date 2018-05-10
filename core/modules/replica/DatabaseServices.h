@@ -29,12 +29,10 @@
 
 // System headers
 #include <memory>
-#include <mutex>
 #include <string>
 #include <vector>
 
 // Qserv headers
-#include "replica/Configuration.h"
 #include "replica/ReplicaInfo.h"
 
 // Forward declarations
@@ -46,6 +44,7 @@ namespace qserv {
 namespace replica {
 
 // Forward declarations
+class Configuration;
 struct ControllerIdentity;
 class Job;
 class QservMgtRequest;
@@ -56,8 +55,7 @@ class Request;
   * for replication entities: Controller, Job and Request.
   *
   * This is also a base class for database technology-specific implementations
-  * of the service. This particular class has dummy implementations of the
-  * corresponding methods.
+  * of the service.
   */
 class DatabaseServices
     :   public std::enable_shared_from_this<DatabaseServices> {
@@ -68,25 +66,27 @@ public:
     typedef std::shared_ptr<DatabaseServices> Ptr;
 
     /// Forward declaration for the smart reference to Job objects
-    typedef std::shared_ptr<Job> Job_pointer;
+    typedef std::shared_ptr<Configuration> ConfigurationPtr;
+
+    /// Forward declaration for the smart reference to Job objects
+    typedef std::shared_ptr<Job> JobPtr;
 
     /// Forward declaration for the smart reference to QservMgtRequest objects
-    typedef std::shared_ptr<QservMgtRequest> QservMgtRequest_pointer;
+    typedef std::shared_ptr<QservMgtRequest> QservMgtRequestPtr;
 
     /// Forward declaration for the smart reference to Request objects
-    typedef std::shared_ptr<Request> Request_pointer;
+    typedef std::shared_ptr<Request> RequestPtr;
 
     /**
-     * The factory method for instamtiating a proper service object based
+     * The factory method for instantiating a proper service object based
      * on an application configuration.
      *
      * @param configuration - the configuration service
      */
-    static Ptr create(Configuration::Ptr const& configuration);
+    static Ptr create(ConfigurationPtr const& configuration);
 
-    // Default construction and copy semantics are prohibited
+    // Copy semantics is prohibited
 
-    DatabaseServices() = delete;
     DatabaseServices(DatabaseServices const&) = delete;
     DatabaseServices& operator=(DatabaseServices const&) = delete;
 
@@ -105,52 +105,52 @@ public:
      * @throws std::logic_error - if this Contoller's state is already found in a database
      */
     virtual void saveState(ControllerIdentity const& identity,
-                           uint64_t                  startTime) = 0;
+                           uint64_t startTime) = 0;
 
     /**
      * Save the state of the Job. This operation can be called many times for
      * a particular instance of the Job.
      *
      * NOTE: The method will convert a pointer of the base class Job into
-     * the final type to avoid type prolifiration through this interface.
+     * the final type to avoid type proliferation through this interface.
      *
      * @param job - a pointer to a Job object
      * @throw std::invalid_argument - if the actual job type won't match the expected one
      */
-    virtual void saveState(Job_pointer const& job) = 0;
+    virtual void saveState(JobPtr const& job) = 0;
 
     /**
      * Update the heartbeat timestamp for the job's entry
      *
      * @param job - pointer to a Job object
      */
-     virtual void updateHeartbeatTime(Job_pointer const& job) = 0;
+     virtual void updateHeartbeatTime(JobPtr const& job) = 0;
 
     /**
      * Save the state of the QservMgtRequest. This operation can be called many times for
      * a particular instance of the QservMgtRequest.
      *
      * NOTE: The method will convert a pointer of the base class QservMgtRequest into
-     * the final type to avoid type prolifiration through this interface.
+     * the final type to avoid type proliferation through this interface.
      *
      * @param request - a pointer to a QservMgtRequest object
      *
      * @throw std::invalid_argument - if the actual request type won't match the expected one
      */
-    virtual void saveState(QservMgtRequest_pointer const& request) = 0;
+    virtual void saveState(QservMgtRequestPtr const& request) = 0;
 
     /**
      * Save the state of the Request. This operation can be called many times for
      * a particular instance of the Request.
      *
      * NOTE: The method will convert a pointer of the base class Request into
-     * the final type to avoid type prolifiration through this interface.
+     * the final type to avoid type proliferation through this interface.
      *
      * @param request - a pointer to a Request object
      *
      * @throw std::invalid_argument - if the actual request type won't match the expected one
      */
-    virtual void saveState(Request_pointer const& request) = 0;
+    virtual void saveState(RequestPtr const& request) = 0;
 
     /**
      * Update the status of replica in the corresponidng tables.
@@ -191,6 +191,8 @@ public:
      * @param maxReplicas        - the maximum number of replicas to be returned
      * @param enabledWorkersOnly - if set to 'true' then only consider known
      *                             workers which are enabled in the Configuration
+     *
+     * @return 'true' in case of success (even if no replicas were found)
      */
     virtual bool findOldestReplicas(std::vector<ReplicaInfo>& replicas,
                                     size_t maxReplicas=1,
@@ -272,19 +274,8 @@ protected:
 
     /**
      * Construct the object.
-     *
-     * @param configuration - the configuration service
      */
-    explicit DatabaseServices(Configuration::Ptr const& configuration);
-
-protected:
-
-    /// The configuration service
-    Configuration::Ptr _configuration;
-
-    /// The mutex for enforcing thread safety of the class's public API
-    /// and internal operations.
-    mutable std::mutex _mtx;
+    DatabaseServices() = default;
 };
 
 }}} // namespace lsst::qserv::replica

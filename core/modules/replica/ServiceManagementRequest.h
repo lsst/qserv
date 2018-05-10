@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
+ * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -23,25 +23,12 @@
 #define LSST_QSERV_REPLICA_SERVICE_MANAGEMENT_REQUEST_H
 
 /// ServiceManagementRequest.h declares:
-///
-/// Common classes shared by all implementations:
-///
-///   class ServiceState
+////
 ///   class ServiceSuspendRequestPolicy
-///   class ServiceManagementRequestBase
 ///   class ServiceManagementRequest
 ///   class ServiceSuspendRequest
 ///   class ServiceResumeRequest
 ///   class ServiceStatusRequest
-///
-/// Request implementations based on multiplexed connectors provided by
-/// base class RequestMessenger:
-///
-///   class ServiceManagementRequestBaseM
-///   class ServiceManagementRequestM
-///   class ServiceSuspendRequestM
-///   class ServiceResumeRequestM
-///   class ServiceStatusRequestM
 ///
 /// (see individual class documentation for more information)
 
@@ -56,7 +43,7 @@
 // Qserv headers
 #include "proto/replication.pb.h"
 #include "replica/Common.h"
-#include "replica/RequestMessenger.h"
+#include "replica/ServiceManagementRequestBase.h"
 
 // This header declarations
 
@@ -66,55 +53,6 @@ namespace replica {
 
 // Forward declarations
 class Messenger;
-
-/**
- * This structure encapsulates various parameters representing the state
- * of the remote request processing service. The parameters are available
- * upon the completion of the request.
- */
-struct ServiceState {
-
-    // Its state
-    enum State {
-        SUSPEND_IN_PROGRESS = 0,
-        SUSPENDED           = 1,
-        RUNNING             = 2
-    };
-    State state;
-
-    /// Return string representation of the state
-    std::string state2string() const {
-        switch (state) {
-            case SUSPEND_IN_PROGRESS: return "SUSPEND_IN_PROGRESS";
-            case SUSPENDED:           return "SUSPENDED";
-            case RUNNING:             return "RUNNING";
-        }
-        return "";
-    }
-
-    /// The backend technology
-    std::string technology;
-
-    /// When the service started (milliseconds since UNIX Epoch)
-    uint64_t startTime;
-
-    // Counters for requests known to the service since its last start
-
-    uint32_t numNewRequests;
-    uint32_t numInProgressRequests;
-    uint32_t numFinishedRequests;
-
-    std::vector<proto::ReplicationServiceResponseInfo> newRequests;
-    std::vector<proto::ReplicationServiceResponseInfo> inProgressRequests;
-    std::vector<proto::ReplicationServiceResponseInfo> finishedRequests;
-
-    /// Set parameter values from a protobuf object
-    void set (const proto::ReplicationServiceResponse &message);
-};
-
-/// Overloaded streaming operator for type ServiceState
-std::ostream& operator<< (std::ostream &os, const ServiceState &ss);
-
 
 // ========================================================================
 //   Customizations for specific request types require dedicated policies
@@ -162,103 +100,29 @@ struct ServiceDrainRequestPolicy {
 };
 
 /**
-  * Class ServiceManagementRequestBaseM is the base class for a family of requests
-  * managing worker-side replication service. The only variable parameter of this
-  * class is a specific type of the managemenyt request.
-  *
-  * Note that this class can't be instantiate directly. It serves as an implementation
-  * of the protocol. All final customizations and type-specific operations are
-  * provided via a generic subclass.
-  */
-class ServiceManagementRequestBaseM
-    :   public RequestMessenger {
-
-public:
-
-    /// The pointer type for instances of the class
-    typedef std::shared_ptr<ServiceManagementRequestBaseM> Ptr;
-
-    // Default construction and copy semantics are prohibited
-
-    ServiceManagementRequestBaseM() = delete;
-    ServiceManagementRequestBaseM(ServiceManagementRequestBaseM const&) = delete;
-    ServiceManagementRequestBaseM& operator=(ServiceManagementRequestBaseM const&) = delete;
-
-    /// Destructor
-    ~ServiceManagementRequestBaseM() override = default;
-
-    /**
-     * Get the state of the worker-side service
-     *
-     * This method will throw exception std::logic_error if the request's primary state
-     * is not 'FINISHED' and its extended state is neither 'SUCCESS" or 'SERVER_ERROR'.
-     */
-    ServiceState const& getServiceState() const;
-
-protected:
-
-    /**
-     * Construct the request with the pointer to the services provider.
-     */
-    ServiceManagementRequestBaseM(ServiceProvider::Ptr const& serviceProvider,
-                                  boost::asio::io_service& io_service,
-                                  char const*              requestTypeName,
-                                  std::string const&       worker,
-                                  lsst::qserv::proto::ReplicationServiceRequestType requestType,
-                                  std::shared_ptr<Messenger> const& messenger);
-private:
-
-    /**
-      * Implement the method declared in the base class
-      *
-      * @see Request::startImpl()
-      */
-    void startImpl() final;
-
-    /**
-     * Process the worker response to the requested operation.
-     *
-     * @param success - the flag indicating if the operation was successfull
-     * @param message - a response from the worker service (if success is 'true')
-     */
-    void analyze(bool success,
-                 proto::ReplicationServiceResponse const& message);
-
-private:
-
-    /// Request type
-    proto::ReplicationServiceRequestType _requestType;
-
-    /// Detailed status of the worker-side service obtained upon completion of
-    /// the management request.
-    ServiceState _serviceState;
-};
-
-
-/**
-  * Generic class ServiceManagementRequestM extends its base class
+  * Generic class ServiceManagementRequest extends its base class
   * to allow further policy-based customization of specific requests.
   */
 template <typename POLICY>
-class ServiceManagementRequestM
-    :   public ServiceManagementRequestBaseM {
+class ServiceManagementRequest
+    :   public ServiceManagementRequestBase {
 
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<ServiceManagementRequestM<POLICY>> Ptr;
+    typedef std::shared_ptr<ServiceManagementRequest<POLICY>> Ptr;
 
     /// The function type for notifications on the completon of the request
     typedef std::function<void(Ptr)> CallbackType;
 
     // Default construction and copy semantics are prohibited
 
-    ServiceManagementRequestM() = delete;
-    ServiceManagementRequestM(ServiceManagementRequestM const&) = delete;
-    ServiceManagementRequestM& operator=(ServiceManagementRequestM const&) = delete;
+    ServiceManagementRequest() = delete;
+    ServiceManagementRequest(ServiceManagementRequest const&) = delete;
+    ServiceManagementRequest& operator=(ServiceManagementRequest const&) = delete;
 
     /// Destructor
-    ~ServiceManagementRequestM() final = default;
+    ~ServiceManagementRequest() final = default;
 
     /**
      * Create a new request with specified parameters.
@@ -280,8 +144,8 @@ public:
                       CallbackType onFinish,
                       std::shared_ptr<Messenger> const& messenger) {
 
-        return ServiceManagementRequestM<POLICY>::Ptr(
-            new ServiceManagementRequestM<POLICY>(
+        return ServiceManagementRequest<POLICY>::Ptr(
+            new ServiceManagementRequest<POLICY>(
                 serviceProvider,
                 io_service,
                 POLICY::requestTypeName(),
@@ -296,19 +160,19 @@ private:
     /**
      * Construct the request
      */
-    ServiceManagementRequestM(ServiceProvider::Ptr const& serviceProvider,
-                              boost::asio::io_service& io_service,
-                              char const* requestTypeName,
-                              std::string const& worker,
-                              lsst::qserv::proto::ReplicationServiceRequestType requestType,
-                              CallbackType onFinish,
-                              std::shared_ptr<Messenger> const& messenger)
-        :   ServiceManagementRequestBaseM(serviceProvider,
-                                          io_service,
-                                          requestTypeName,
-                                          worker,
-                                          requestType,
-                                          messenger),
+    ServiceManagementRequest(ServiceProvider::Ptr const& serviceProvider,
+                             boost::asio::io_service& io_service,
+                             char const* requestTypeName,
+                             std::string const& worker,
+                             proto::ReplicationServiceRequestType requestType,
+                             CallbackType onFinish,
+                             std::shared_ptr<Messenger> const& messenger)
+        :   ServiceManagementRequestBase(serviceProvider,
+                                         io_service,
+                                         requestTypeName,
+                                         worker,
+                                         requestType,
+                                         messenger),
             _onFinish(onFinish) {
     }
 
@@ -324,8 +188,8 @@ private:
         // to avoid blocking the current thread.
 
         if (_onFinish) {
-            ServiceManagementRequestM<POLICY>::Ptr self =
-                shared_from_base<ServiceManagementRequestM<POLICY>>();
+            ServiceManagementRequest<POLICY>::Ptr self =
+                shared_from_base<ServiceManagementRequest<POLICY>>();
             std::async(
                 std::launch::async,
                 [self]() {
@@ -341,13 +205,11 @@ private:
     CallbackType _onFinish;
 };
 
-typedef ServiceManagementRequestBaseM ServiceManagementRequestBase;
-
-typedef ServiceManagementRequestM<ServiceSuspendRequestPolicy>  ServiceSuspendRequest;
-typedef ServiceManagementRequestM<ServiceResumeRequestPolicy>   ServiceResumeRequest;
-typedef ServiceManagementRequestM<ServiceStatusRequestPolicy>   ServiceStatusRequest;
-typedef ServiceManagementRequestM<ServiceRequestsRequestPolicy> ServiceRequestsRequest;
-typedef ServiceManagementRequestM<ServiceDrainRequestPolicy>    ServiceDrainRequest;
+typedef ServiceManagementRequest<ServiceSuspendRequestPolicy>  ServiceSuspendRequest;
+typedef ServiceManagementRequest<ServiceResumeRequestPolicy>   ServiceResumeRequest;
+typedef ServiceManagementRequest<ServiceStatusRequestPolicy>   ServiceStatusRequest;
+typedef ServiceManagementRequest<ServiceRequestsRequestPolicy> ServiceRequestsRequest;
+typedef ServiceManagementRequest<ServiceDrainRequestPolicy>    ServiceDrainRequest;
 
 }}} // namespace lsst::qserv::replica
 

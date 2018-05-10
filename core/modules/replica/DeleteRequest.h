@@ -24,14 +24,7 @@
 
 /// DeleteRequest.h declares:
 ///
-/// Common classes shared by any implementations:
-///
 ///   class DeleteRequest
-///
-/// Request implementations based on multiplexed connectors provided by
-/// base class RequestMessenger:
-///
-///   class DeleteRequestM
 ///
 /// (see individual class documentation for more information)
 
@@ -56,28 +49,28 @@ namespace replica {
 class Messenger;
 
 /**
-  * Class DeleteRequestM represents a transient state of the replica deletion
+  * Class DeleteRequest represents a transient state of the replica deletion
   * requests within the master controller for deleting replicas.
   */
-class DeleteRequestM
+class DeleteRequest
     :   public RequestMessenger  {
 
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<DeleteRequestM> Ptr;
+    typedef std::shared_ptr<DeleteRequest> Ptr;
 
     /// The function type for notifications on the completon of the request
     typedef std::function<void(Ptr)> CallbackType;
 
     // Default construction and copy semantics are prohibited
 
-    DeleteRequestM() = delete;
-    DeleteRequestM(DeleteRequestM const&) = delete;
-    DeleteRequestM& operator=(DeleteRequestM const&) = delete;
+    DeleteRequest() = delete;
+    DeleteRequest(DeleteRequest const&) = delete;
+    DeleteRequest& operator=(DeleteRequest const&) = delete;
 
     /// Destructor
-    ~DeleteRequestM() final = default;
+    ~DeleteRequest() final = default;
 
     // Trivial acccessors
 
@@ -125,16 +118,16 @@ private:
     /**
      * Construct the request with the pointer to the services provider.
      */
-    DeleteRequestM(ServiceProvider::Ptr const& serviceProvider,
-                   boost::asio::io_service& io_service,
-                   std::string const& worker,
-                   std::string const& database,
-                   unsigned int  chunk,
-                   CallbackType onFinish,
-                   int  priority,
-                   bool keepTracking,
-                   bool allowDuplicate,
-                   std::shared_ptr<Messenger> const& messenger);
+    DeleteRequest(ServiceProvider::Ptr const& serviceProvider,
+                  boost::asio::io_service& io_service,
+                  std::string const& worker,
+                  std::string const& database,
+                  unsigned int  chunk,
+                  CallbackType onFinish,
+                  int  priority,
+                  bool keepTracking,
+                  bool allowDuplicate,
+                  std::shared_ptr<Messenger> const& messenger);
 
     /**
       * Implement the method declared in the base class
@@ -186,7 +179,6 @@ private:
     /// Extended informationon on a status of the operation
     ReplicaInfo _responseData;
 };
-typedef DeleteRequestM DeleteRequest;
 
 }}} // namespace lsst::qserv::replica
 
