@@ -28,13 +28,13 @@
 /// (see individual class documentation for more information)
 
 // System headers
-#include <mutex>
 #include <vector>
 
 // Qserv headers
 #include "replica/Configuration.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
+#include "util/Mutex.h"
 
 // Forward declarations
 
@@ -228,7 +228,7 @@ private:
 
     /// The mutex for enforcing thread safety of the class's public API
     /// and internal operations.
-    mutable std::mutex _mtx;
+    mutable util::Mutex _mtx;
 };
 
 }}} // namespace lsst::qserv::replica

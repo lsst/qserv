@@ -28,11 +28,11 @@
 /// (see individual class documentation for more information)
 
 // System headers
-#include <mutex>
 #include <string>
 
 // Qserv headers
 #include "proto/replication.pb.h"
+#include "util/Mutex.h"
 
 // Forward declarations
 
@@ -92,7 +92,7 @@ public:
 private:
 
     /// For thread safety where it's required
-    static std::mutex _mtx;
+    static util::Mutex _mtx;
 };
 
 /**

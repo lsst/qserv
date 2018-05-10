@@ -30,7 +30,6 @@
 // System headers
 #include <atomic>
 #include <memory>
-#include <mutex>
 #include <string>
 
 // Third party headers
@@ -41,6 +40,7 @@
 #include "replica/Performance.h"
 #include "replica/ProtocolBuffer.h"
 #include "replica/ServiceProvider.h"
+#include "util/Mutex.h"
 
 // Forward declarations
 
@@ -431,7 +431,7 @@ protected:
     boost::asio::deadline_timer _requestExpirationTimer;
 
     /// Mutex guarding internal state
-    mutable std::mutex _mtx;
+    mutable util::Mutex _mtx;
 
     /// The optional association with the Controller
     std::shared_ptr<Controller> _controller;

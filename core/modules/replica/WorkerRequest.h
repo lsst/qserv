@@ -32,13 +32,13 @@
 #include <atomic>
 #include <exception>
 #include <memory>
-#include <mutex>
 #include <string>
 
 // Qserv headers
 #include "replica/Common.h"        // ExtendedCompletionStatus
 #include "replica/Performance.h"
 #include "replica/ServiceProvider.h"
+#include "util/Mutex.h"
 
 // Forward declarations
 
@@ -254,10 +254,10 @@ protected:
     unsigned int _durationMillisec;
 
     /// Mutex guarding operations with the worker's data folder
-    static std::mutex _mtxDataFolderOperations;
+    static util::Mutex _mtxDataFolderOperations;
 
     /// Mutex guarding API calls where it's needed
-    static std::mutex _mtx;
+    static util::Mutex _mtx;
 };
 
 

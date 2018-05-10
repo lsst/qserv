@@ -24,8 +24,6 @@
 
 /// StatusRequest.h declares:
 ///
-/// Common classes shared by all implementations:
-///
 ///   class StatusRequest
 ///   class StatusRequestReplicate
 ///   class StatusRequestDelete

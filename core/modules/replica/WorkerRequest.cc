@@ -51,8 +51,8 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-std::mutex WorkerRequest::_mtxDataFolderOperations;
-std::mutex WorkerRequest::_mtx;
+util::Mutex WorkerRequest::_mtxDataFolderOperations;
+util::Mutex WorkerRequest::_mtx;
 
 std::string WorkerRequest::status2string(CompletionStatus status) {
     switch (status) {
