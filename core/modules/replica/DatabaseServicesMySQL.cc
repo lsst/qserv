@@ -27,20 +27,17 @@
 #include <algorithm>
 #include <ctime>
 #include <stdexcept>
-#include <sstream>
 
 // Qserv headers
 #include "lsst/log/Log.h"
 #include "replica/Configuration.h"
 #include "replica/Controller.h"
-#include "replica/DeleteRequest.h"
-#include "replica/FindAllRequest.h"
-#include "replica/FindRequest.h"
+#include "replica/Job.h"
 #include "replica/Performance.h"
+#include "replica/QservMgtRequest.h"
 #include "replica/ReplicaInfo.h"
-#include "replica/ReplicationRequest.h"
-#include "replica/StatusRequest.h"
-#include "replica/StopRequest.h"
+#include "replica/Request.h"
+
 
 // This macro to appear witin each block which requires thread safety
 #define LOCK(MUTEX) std::lock_guard<std::mutex> lock(MUTEX)
@@ -50,23 +47,6 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.DatabaseServicesMySQL");
 
 using namespace lsst::qserv::replica;
-
-/**
- * Return 'true' if the specified string is found in a collection.
- *
- * Typical usage:
- * @code
- * bool yesFound = in("what to find", {
- *                    "candidate 1",
- *                    "or candidate 1",
- *                    "what to find",
- *                    "else"});
- * @code
- */
-bool in(std::string const& val,
-        std::vector<std::string> const& col) {
-    return col.end() != std::find(col.begin(), col.end(), val);
-}
 
 /**
  * Return 'true' if the specified state is found in a collection.
@@ -84,94 +64,7 @@ bool in(Request::ExtendedState val,
     return col.end() != std::find(col.begin(), col.end(), val);
 }
 
-/**
- * Try converting to the specified type, then (if successful) extract
- * the target request identifier to be returned via the corresponding function's
- * parameter passed in by a reference. Return false otherwise.
- *
- * ATTENTION: this function will cause the complite time error if the target
- * type won't have the identifier extration method with th eexpected name
- * and a signature.
- */
-template <class T>
-bool targetRequestDataT(Request::Ptr const& request,
-                        std::string& id,
-                        Performance& performance) {
-    typename T::Ptr ptr = std::dynamic_pointer_cast<T>(request);
-    if (ptr) {
-        id          = ptr->targetRequestId();
-        performance = ptr->targetPerformance();
-        return true;
-    }
-    return false;
-}
-
-/**
- * Extract the target request identifier from a request. Note, this is just
- * a wrapper over the above definied function. The metghod accepts requests
- * of the Status* or Stop* types.
- *
- * @param ptr - a request to be tested
- * @return an identifier of the target request
- * @throw std::logic_error for unsupported requsts
- */
-void targetRequestData(Request::Ptr const& ptr,
-                       std::string& id,
-                       Performance& performance) {
-
-    std::string const context = "DatabaseServicesMySQL::targetRequestData  ";
-    std::string const name    = ptr->type();
-
-    if (("REQUEST_STATUS:REPLICA_CREATE" == name) and targetRequestDataT<StatusReplicationRequest>(ptr, id, performance)) { return; }
-    if (("REQUEST_STATUS:REPLICA_DELETE" == name) and targetRequestDataT<StatusDeleteRequest>(     ptr, id, performance)) { return; }
-    if (("REQUEST_STOP:REPLICA_CREATE"   == name) and targetRequestDataT<StopReplicationRequest>(  ptr, id, performance)) { return; }
-    if (("REQUEST_STOP:REPLICA_DELETE"   == name) and targetRequestDataT<StopDeleteRequest>(       ptr, id, performance)) { return; }
-
-    throw std::logic_error(
-                    context + "unsupported request type " + name +
-                    ", or request's actual type and type name mismatch");
-}
-
-// Helper methods whose role is to reduce the amount of the boilerplate
-// code in the implementations of the correspondig save* methods
-// and to make those methos easier to use and maintain.
-
-template <class T>
-typename T::Ptr safeAssign(Request::Ptr const& request) {
-    static std::string  const context = "DatabaseServicesMySQL::safeAssign[Request]  ";
-    typename T::Ptr const ptr = std::dynamic_pointer_cast<T>(request);
-    if (ptr) { return ptr; }
-    throw std::logic_error(context + "incorrect upcast for request id: " +
-                           request->id() + ", type: " + request->type());
-}
-
-/**
- * Return the replica info data from eligible requests
- *
- * @param request - a request to be analyzed
- * @return        - a reference to the replica info object
- *
- * @throw std::logic_error for unsupported requsts
- */
-ReplicaInfo const& replicaInfo(Request::Ptr const& request) {
-
-    std::string const& context = "DatabaseServicesMySQL::replicaInfo  ";
-
-    if ("REPLICA_CREATE"                == request->type()) { return safeAssign<ReplicationRequest>(      request)->responseData(); }
-    if ("REPLICA_DELETE"                == request->type()) { return safeAssign<DeleteRequest>(           request)->responseData(); }
-    if ("REPLICA_FIND"                  == request->type()) { return safeAssign<FindRequest>(             request)->responseData(); }
-    if ("REQUEST_STATUS:REPLICA_CREATE" == request->type()) { return safeAssign<StatusReplicationRequest>(request)->responseData(); }
-    if ("REQUEST_STATUS:REPLICA_DELETE" == request->type()) { return safeAssign<StatusDeleteRequest>(     request)->responseData(); }
-    if ("REQUEST_STATUS:REPLICA_FIND"   == request->type()) { return safeAssign<StatusFindRequest>(       request)->responseData(); }
-    if ("REQUEST_STOP:REPLICA_CREATE"   == request->type()) { return safeAssign<StopReplicationRequest>(  request)->responseData(); }
-    if ("REQUEST_STOP:REPLICA_DELETE"   == request->type()) { return safeAssign<StopDeleteRequest>(       request)->responseData(); }
-    if ("REQUEST_STOP:REPLICA_FIND"     == request->type()) { return safeAssign<StopFindRequest>(         request)->responseData(); }
-
-    throw std::logic_error(context + "operation is not supported for request id: " +
-                           request->id() + ", type: " + request->type());
-}
 } /// namespace
-
 
 namespace lsst {
 namespace qserv {
@@ -222,9 +115,9 @@ void DatabaseServicesMySQL::saveState(ControllerIdentity const& identity,
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
 }
 
-void DatabaseServicesMySQL::saveState(Job::Ptr const& job) {
+void DatabaseServicesMySQL::saveState(Job const& job) {
 
-    std::string const context = "DatabaseServicesMySQL::saveState[Job::" + job->type() + "]  ";
+    std::string const context = "DatabaseServicesMySQL::saveState[Job::" + job.type() + "]  ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
@@ -235,18 +128,18 @@ void DatabaseServicesMySQL::saveState(Job::Ptr const& job) {
     // then the UPDATE query will be executed.
 
     try {
-        Job::Options const& options = job->options();
+        Job::Options const& options = job.options();
         _conn->begin();
         _conn->executeInsertQuery(
             "job",
-            job->id(),
-            job->controller()->identity().id,
-            _conn->nullIfEmpty(job->parentJobId()),
-            job->type(),
-            Job::state2string(job->state()),
-            Job::state2string(job->extendedState()),
-                              job->beginTime(),
-                              job->endTime(),
+            job.id(),
+            job.controller()->identity().id,
+            _conn->nullIfEmpty(job.parentJobId()),
+            job.type(),
+            Job::state2string(job.state()),
+            Job::state2string(job.extendedState()),
+                              job.beginTime(),
+                              job.endTime(),
             PerformanceUtils::now(),    // heartbeat
             options.priority,
             options.exclusive,
@@ -257,7 +150,7 @@ void DatabaseServicesMySQL::saveState(Job::Ptr const& job) {
         // in a job-specific table whose name is based on a value of the job's
         // 'type' parameter.
 
-        std::string extendedTableName = "job_" + job->type();
+        std::string extendedTableName = "job_" + job.type();
         std::transform(extendedTableName.begin(),
                        extendedTableName.end(),
                        extendedTableName.begin(),
@@ -265,7 +158,7 @@ void DatabaseServicesMySQL::saveState(Job::Ptr const& job) {
                            return std::tolower(c);
                        });
 
-        std::string const extendedPersistentState = job->extendedPersistentState(_conn);
+        std::string const extendedPersistentState = job.extendedPersistentState(_conn);
         if (not extendedPersistentState.empty()) {
             LOGS(_log, LOG_LVL_DEBUG, context << "extendedPersistentState: " << extendedPersistentState);
             _conn->execute("INSERT INTO " + _conn->sqlId(extendedTableName) +
@@ -280,11 +173,11 @@ void DatabaseServicesMySQL::saveState(Job::Ptr const& job) {
             _conn->begin();
             _conn->executeSimpleUpdateQuery(
                 "job",
-                _conn->sqlEqual("id",                            job->id()),
-                std::make_pair( "state",      Job::state2string (job->state())),
-                std::make_pair( "ext_state",  Job::state2string (job->extendedState())),
-                std::make_pair( "begin_time",                    job->beginTime()),
-                std::make_pair( "end_time",                      job->endTime())
+                _conn->sqlEqual("id",                            job.id()),
+                std::make_pair( "state",      Job::state2string (job.state())),
+                std::make_pair( "ext_state",  Job::state2string (job.extendedState())),
+                std::make_pair( "begin_time",                    job.beginTime()),
+                std::make_pair( "end_time",                      job.endTime())
             );
             _conn->commit ();
 
@@ -296,9 +189,9 @@ void DatabaseServicesMySQL::saveState(Job::Ptr const& job) {
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
 }
 
-void DatabaseServicesMySQL::updateHeartbeatTime(Job::Ptr const& job) {
+void DatabaseServicesMySQL::updateHeartbeatTime(Job const& job) {
 
-    std::string const context = "DatabaseServicesMySQL::updateHeartbeatTime[Job::" + job->type() + "]  ";
+    std::string const context = "DatabaseServicesMySQL::updateHeartbeatTime[Job::" + job.type() + "]  ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
@@ -307,7 +200,7 @@ void DatabaseServicesMySQL::updateHeartbeatTime(Job::Ptr const& job) {
         _conn->begin();
         _conn->executeSimpleUpdateQuery(
             "job",
-            _conn->sqlEqual("id", job->id()),
+            _conn->sqlEqual("id", job.id()),
             std::make_pair( "heartbeat_time", PerformanceUtils::now())
         );
         _conn->commit ();
@@ -319,48 +212,43 @@ void DatabaseServicesMySQL::updateHeartbeatTime(Job::Ptr const& job) {
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
 }
 
-void DatabaseServicesMySQL::saveState(QservMgtRequest::Ptr const& request) {
+void DatabaseServicesMySQL::saveState(QservMgtRequest const& request) {
 
-    std::string const context = "DatabaseServicesMySQL::saveState[QservMgtRequest::" + request->type() + "]  ";
+    std::string const context = "DatabaseServicesMySQL::saveState[QservMgtRequest::" + request.type() + "]  ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
     LOCK(_mtx);
 
-    // The implementation of the procedure varies quite significally depending on
-    // a family of a request.
-
-    // The original (target) requests are processed normally, via the usual
-    // protocol: try-insert-if-duplicate-then-update.
-    //
-    // The extended request-specific persistent state (if available) is extracted
-    // from each request and stored in the corresponding table.
+    // The algorithm will first try the INSERT query into the base table.
+    // If a row with the same primary key (QservMgtRequest id) already exists in the table
+    // then the UPDATE query will be executed.
 
     // Requests which haven't started yet or the ones which aren't associated
     // with any job should be ignored.
     try {
-        if (request->jobId().empty()) {
-            LOGS(_log, LOG_LVL_DEBUG, context << "ignoring the request with no job set, id=" << request->id());
+        if (request.jobId().empty()) {
+            LOGS(_log, LOG_LVL_DEBUG, context << "ignoring the request with no job set, id=" << request.id());
             return;
         }
     } catch (std::logic_error const&) {
-        LOGS(_log, LOG_LVL_DEBUG, context << "ignoring the request which hasn't yet started, id=" << request->id());
+        LOGS(_log, LOG_LVL_DEBUG, context << "ignoring the request which hasn't yet started, id=" << request.id());
         return;
     }
 
-    Performance const& performance = request->performance();
+    Performance const& performance = request.performance();
     try {
         _conn->begin();
         _conn->executeInsertQuery(
             "request",
-            request->id(),
-            request->jobId(),
-            request->type(),
-            request->worker(),
+            request.id(),
+            request.jobId(),
+            request.type(),
+            request.worker(),
             0,
-            QservMgtRequest::state2string(request->state()),
-            QservMgtRequest::state2string(request->extendedState()),
-            request->serverError(),
+            QservMgtRequest::state2string(request.state()),
+            QservMgtRequest::state2string(request.extendedState()),
+            request.serverError(),
             performance.c_create_time,
             performance.c_start_time,
             performance.w_receive_time,
@@ -372,7 +260,7 @@ void DatabaseServicesMySQL::saveState(QservMgtRequest::Ptr const& request) {
         // in a request-specific table whose name is based on a value of the request's
         // 'type' parameter.
 
-        std::string extendedTableName = "request_" + request->type();
+        std::string extendedTableName = "request_" + request.type();
         std::transform(extendedTableName.begin(),
                        extendedTableName.end(),
                        extendedTableName.begin(),
@@ -380,7 +268,7 @@ void DatabaseServicesMySQL::saveState(QservMgtRequest::Ptr const& request) {
                            return std::tolower(c);
                        });
 
-        std::string const extendedPersistentState = request->extendedPersistentState(_conn);
+        std::string const extendedPersistentState = request.extendedPersistentState(_conn);
         if (not extendedPersistentState.empty()) {
             LOGS(_log, LOG_LVL_DEBUG, context << "extendedPersistentState: " << extendedPersistentState);
             _conn->execute("INSERT INTO " + _conn->sqlId(extendedTableName) +
@@ -395,10 +283,10 @@ void DatabaseServicesMySQL::saveState(QservMgtRequest::Ptr const& request) {
             _conn->begin();
             _conn->executeSimpleUpdateQuery(
                 "request",
-                _conn->sqlEqual("id",                                           request->id()),
-                std::make_pair( "state",          QservMgtRequest::state2string(request->state())),
-                std::make_pair( "ext_state",      QservMgtRequest::state2string(request->extendedState())),
-                std::make_pair( "server_status",                                request->serverError()),
+                _conn->sqlEqual("id",                                           request.id()),
+                std::make_pair( "state",          QservMgtRequest::state2string(request.state())),
+                std::make_pair( "ext_state",      QservMgtRequest::state2string(request.extendedState())),
+                std::make_pair( "server_status",                                request.serverError()),
                 std::make_pair( "c_create_time",  performance.c_create_time),
                 std::make_pair( "c_start_time",   performance.c_start_time),
                 std::make_pair( "w_receive_time", performance.w_receive_time),
@@ -417,155 +305,140 @@ void DatabaseServicesMySQL::saveState(QservMgtRequest::Ptr const& request) {
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
 }
 
-void DatabaseServicesMySQL::saveState(Request::Ptr const& request) {
+void DatabaseServicesMySQL::saveState(Request const& request) {
 
-    std::string const context = "DatabaseServicesMySQL::saveState[Request::" + request->type() + "]  ";
+    std::string const context = "DatabaseServicesMySQL::saveState[Request::" + request.type() + "]  ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
     LOCK(_mtx);
 
-    // The implementation of the procedure varies quite significally depending on
-    // a family of a request.
+    // The algorithm will first try the INSERT query into the base table.
+    // If a row with the same primary key (QservMgtRequest id) already exists in the table
+    // then the UPDATE query will be executed.
 
-    // The original (target) requests are processed normally, via the usual
-    // protocol: try-insert-if-duplicate-then-update.
-
-
-    if (::in(request->type(), {"REPLICA_CREATE",
-                               "REPLICA_DELETE"})) {
-
-        // Requests which haven't started yet or the ones which aren't associated
-        // with any job should be ignored.
-        try {
-            if (request->jobId().empty()) {
-                LOGS(_log, LOG_LVL_DEBUG, context << "ignoring the request with no job set, id=" << request->id());
-                return;
-            }
-        } catch (std::logic_error const&) {
-            LOGS(_log, LOG_LVL_DEBUG, context << "ignoring the request which hasn't yet started, id=" << request->id());
+    // Requests which haven't started yet or the ones which aren't associated
+    // with any job should be ignored.
+    try {
+        if (request.jobId().empty()) {
+            LOGS(_log, LOG_LVL_DEBUG, context << "ignoring the request with no job set, id=" << request.id());
             return;
         }
-
-        Performance const& performance = request->performance();
-        try {
-            _conn->begin();
-            _conn->executeInsertQuery(
-                "request",
-                request->id(),
-                request->jobId(),
-                request->type(),
-                request->worker(),
-                request->priority(),
-                Request::state2string(request->state()),
-                Request::state2string(request->extendedState()),
-                status2string(request->extendedServerStatus()),
-                performance.c_create_time,
-                performance.c_start_time,
-                performance.w_receive_time,
-                performance.w_start_time,
-                performance.w_finish_time,
-                performance.c_finish_time);
-
-            if (request->type() == "REPLICA_CREATE") {
-                auto ptr = safeAssign<ReplicationRequest>(request);
-                _conn->executeInsertQuery(
-                    "request_replica_create",
-                    ptr->id(),
-                    ptr->database(),
-                    ptr->chunk(),
-                    ptr->sourceWorker());
-            }
-            if (request->type() == "REPLICA_DELETE") {
-                auto ptr = safeAssign<DeleteRequest>(request);
-                _conn->executeInsertQuery(
-                    "request_replica_delete",
-                    ptr->id(),
-                    ptr->database(),
-                    ptr->chunk());
-            }
-            if (request->extendedState() == Request::ExtendedState::SUCCESS) {
-                saveReplicaInfoNoLock(::replicaInfo (request));
-            }
-            _conn->commit ();
-
-        } catch (database::mysql::DuplicateKeyError const&) {
-
-            try {
-                _conn->rollback();
-                _conn->begin();
-                _conn->executeSimpleUpdateQuery(
-                    "request",
-                    _conn->sqlEqual("id",                                   request->id()),
-                    std::make_pair( "state",          Request::state2string(request->state())),
-                    std::make_pair( "ext_state",      Request::state2string(request->extendedState())),
-                    std::make_pair( "server_status",          status2string(request->extendedServerStatus())),
-                    std::make_pair( "c_create_time",  performance.c_create_time),
-                    std::make_pair( "c_start_time",   performance.c_start_time),
-                    std::make_pair( "w_receive_time", performance.w_receive_time),
-                    std::make_pair( "w_start_time",   performance.w_start_time),
-                    std::make_pair( "w_finish_time",  performance.w_finish_time),
-                    std::make_pair( "c_finish_time",  performance.c_finish_time));
-
-                if (request->extendedState() == Request::ExtendedState::SUCCESS) {
-                    saveReplicaInfoNoLock(::replicaInfo(request));
-                }
-                _conn->commit();
-
-            } catch (database::mysql::Error const& ex) {
-                if (_conn->inTransaction()) _conn->rollback();
-                throw std::runtime_error(context + "failed to save the state, exception: " + ex.what());
-            }
-        }
+    } catch (std::logic_error const&) {
+        LOGS(_log, LOG_LVL_DEBUG, context << "ignoring the request which hasn't yet started, id=" << request.id());
         return;
     }
 
-    // The Status* or Stop* families of request classes are processed via
-    // the limiter protocol: update-if-exists. Nost importantly, the updates
-    // would refer to the request's 'targetId' (the one which is being tracked or
-    // stopped) rather than the one which is passed into the method as the parameter.
-    // The same aplies to the performance counters of the request
+    Performance const& performance = request.performance();
+    try {
+        _conn->begin();
+        _conn->executeInsertQuery(
+            "request",
+            request.id(),
+            request.jobId(),
+            request.type(),
+            request.worker(),
+            request.priority(),
+            Request::state2string(request.state()),
+            Request::state2string(request.extendedState()),
+            status2string(request.extendedServerStatus()),
+            performance.c_create_time,
+            performance.c_start_time,
+            performance.w_receive_time,
+            performance.w_start_time,
+            performance.w_finish_time,
+            performance.c_finish_time);
 
-    if (::in(request->type(), {"REQUEST_STATUS:REPLICA_CREATE",
-                               "REQUEST_STATUS:REPLICA_DELETE",
-                               "REQUEST_STOP:REPLICA_CREATE",
-                               "REQUEST_STOP:REPLICA_DELETE"})) {
+        // Extended state (if any provided by a specific request class) is recorded
+        // in a request-specific table whose name is based on a value of the request's
+        // 'type' parameter.
 
-        // Note that according to the current implementation of the requests
-        // processing pipeline for both State* and Stop* families of request, these
-        // states refer to the target request
+        std::string extendedTableName = "request_" + request.type();
+        std::transform(extendedTableName.begin(),
+                       extendedTableName.end(),
+                       extendedTableName.begin(),
+                       [] (unsigned char c) {
+                           return std::tolower(c);
+                       });
 
-        if ((request->state() == Request::State::FINISHED) and
-            ::in(request->extendedState(), {Request::ExtendedState::SUCCESS,
-                                            Request::ExtendedState::SERVER_QUEUED,
-                                            Request::ExtendedState::SERVER_IN_PROGRESS,
-                                            Request::ExtendedState::SERVER_IS_CANCELLING,
-                                            Request::ExtendedState::SERVER_ERROR,
-                                            Request::ExtendedState::SERVER_CANCELLED})) {
-            std::string targetRequestId;
-            Performance targetPerformance;
+        std::string const extendedPersistentState = request.extendedPersistentState(_conn);
+        if (not extendedPersistentState.empty()) {
+            LOGS(_log, LOG_LVL_DEBUG, context << "extendedPersistentState: " << extendedPersistentState);
+            _conn->execute("INSERT INTO " + _conn->sqlId(extendedTableName) +
+                           " VALUES " + extendedPersistentState);
+        }
+        _conn->commit ();
 
-            ::targetRequestData(request,
-                                targetRequestId,
-                                targetPerformance);
-            try {
-                _conn->begin();
-                _conn->executeSimpleUpdateQuery(
-                    "request",
-                    _conn->sqlEqual("id",                                   targetRequestId),
-                    std::make_pair( "state",          Request::state2string(request->state())),
-                    std::make_pair( "ext_state",      Request::state2string(request->extendedState())),
-                    std::make_pair( "server_status",          status2string(request->extendedServerStatus())),
-                    std::make_pair( "w_receive_time", targetPerformance.w_receive_time),
-                    std::make_pair( "w_start_time",   targetPerformance.w_start_time),
-                    std::make_pair( "w_finish_time",  targetPerformance.w_finish_time));
+    } catch (database::mysql::DuplicateKeyError const&) {
 
-                _conn->commit();
+        try {
+            _conn->rollback();
+            _conn->begin();
+            _conn->executeSimpleUpdateQuery(
+                "request",
+                _conn->sqlEqual("id",                                   request.id()),
+                std::make_pair( "state",          Request::state2string(request.state())),
+                std::make_pair( "ext_state",      Request::state2string(request.extendedState())),
+                std::make_pair( "server_status",          status2string(request.extendedServerStatus())),
+                std::make_pair( "c_create_time",  performance.c_create_time),
+                std::make_pair( "c_start_time",   performance.c_start_time),
+                std::make_pair( "w_receive_time", performance.w_receive_time),
+                std::make_pair( "w_start_time",   performance.w_start_time),
+                std::make_pair( "w_finish_time",  performance.w_finish_time),
+                std::make_pair( "c_finish_time",  performance.c_finish_time));
 
-            } catch (database::mysql::Error const& ex) {
-                if (_conn->inTransaction()) _conn->rollback();
-                throw std::runtime_error(context + "failed to save the state, exception: " + ex.what());
-            }
+            _conn->commit();
+
+        } catch (database::mysql::Error const& ex) {
+            if (_conn->inTransaction()) _conn->rollback();
+            throw std::runtime_error(context + "failed to save the state, exception: " + ex.what());
+        }
+    }
+    LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
+}
+
+void DatabaseServicesMySQL::updateRequestState(Request const& request,
+                                               std::string const& targetRequestId,
+                                               Performance const& targetRequestPerformance) {
+
+    std::string const context = "DatabaseServicesMySQL::upateRequestState[Request::" + request.type() + "]  ";
+
+    LOGS(_log, LOG_LVL_DEBUG, context);
+
+    LOCK(_mtx);
+
+    // According to the current implementation of the requests processing pipeline
+    // for the request management (including State* and Stop* families of requests),
+    // these states refer to the corresponding target request. Therefore only those
+    // states are allowed to be considered for the updates.
+    //
+    // IMPLEMENTATION NOTE: the request state filter is placed in this method
+    // to avoid code duplication in each monitoring request.
+
+    if ((request.state() == Request::State::FINISHED) and
+        ::in(request.extendedState(), {Request::ExtendedState::SUCCESS,
+                                       Request::ExtendedState::SERVER_QUEUED,
+                                       Request::ExtendedState::SERVER_IN_PROGRESS,
+                                       Request::ExtendedState::SERVER_IS_CANCELLING,
+                                       Request::ExtendedState::SERVER_ERROR,
+                                       Request::ExtendedState::SERVER_CANCELLED})) {
+        try {
+            _conn->begin();
+            _conn->executeSimpleUpdateQuery(
+                "request",
+                _conn->sqlEqual("id",                                   targetRequestId),
+                std::make_pair( "state",          Request::state2string(request.state())),
+                std::make_pair( "ext_state",      Request::state2string(request.extendedState())),
+                std::make_pair( "server_status",          status2string(request.extendedServerStatus())),
+                std::make_pair( "w_receive_time", targetRequestPerformance.w_receive_time),
+                std::make_pair( "w_start_time",   targetRequestPerformance.w_start_time),
+                std::make_pair( "w_finish_time",  targetRequestPerformance.w_finish_time));
+
+            _conn->commit();
+
+        } catch (database::mysql::Error const& ex) {
+            if (_conn->inTransaction()) _conn->rollback();
+            throw std::runtime_error(context + "failed to update the state, exception: " + ex.what());
         }
     }
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");

@@ -33,6 +33,10 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
+#include "replica/Configuration.h"
+#include "replica/Controller.h"
+#include "replica/DatabaseMySQL.h"
+#include "replica/DatabaseServices.h"
 #include "replica/Messenger.h"
 #include "replica/ProtocolBuffer.h"
 #include "replica/ServiceProvider.h"
@@ -236,6 +240,10 @@ void ReplicationRequest::analyze(bool success,
         switch (message.status()) {
 
             case proto::ReplicationStatus::SUCCESS:
+
+                // Save the replica state
+                _serviceProvider->databaseServices()->saveReplicaInfo(_replicaInfo);
+
                 finish(SUCCESS);
                 break;
 
@@ -306,6 +314,17 @@ void ReplicationRequest::notify() {
             }
         );
     }
+}
+
+void ReplicationRequest::savePersistentState() {
+    _controller->serviceProvider()->databaseServices()->saveState(*this);
+}
+
+std::string ReplicationRequest::extendedPersistentState(SqlGeneratorPtr const& gen) const {
+    return gen->sqlPackValues(id(),
+                              database(),
+                              chunk(),
+                              sourceWorker());
 }
 
 }}} // namespace lsst::qserv::replica

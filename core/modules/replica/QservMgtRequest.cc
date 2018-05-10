@@ -146,7 +146,7 @@ void QservMgtRequest::start(XrdSsiService* service,
     // Let a subclass to proceed with its own sequence of actions
     startImpl();
 
-    _serviceProvider->databaseServices()->saveState(shared_from_this());
+    _serviceProvider->databaseServices()->saveState(*this);
 }
 
 std::string const& QservMgtRequest::jobId() const {
@@ -211,7 +211,7 @@ void QservMgtRequest::finish(ExtendedState extendedState,
     // callback on the completion of the operation.
     _performance.setUpdateFinish();
 
-    _serviceProvider->databaseServices()->saveState(shared_from_this());
+    _serviceProvider->databaseServices()->saveState(*this);
 
     // This will invoke user-defined notifiers (if any)
     notify();
@@ -237,7 +237,7 @@ void QservMgtRequest::setState(State state,
     _extendedState = extendedState;
     _state = state;
 
-    _serviceProvider->databaseServices()->saveState(shared_from_this());
+    _serviceProvider->databaseServices()->saveState(*this);
 }
 
 }}} // namespace lsst::qserv::replica

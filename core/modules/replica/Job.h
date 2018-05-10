@@ -150,7 +150,7 @@ public:
     virtual ~Job() = default;
 
     /// @return a reference to the Controller,
-    Controller::Ptr controller() { return _controller; }
+    Controller::Ptr controller() const { return _controller; }
 
     /// @return the optional identifier of a parent job
     std::string const& parentJobId() const { return _parentJobId; }

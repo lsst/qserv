@@ -34,7 +34,6 @@
 #include "lsst/log/Log.h"
 #include "replica/Configuration.h"
 #include "replica/Controller.h"
-#include "replica/DatabaseServices.h"
 #include "replica/ProtocolBuffer.h"
 #include "replica/ServiceProvider.h"
 
@@ -167,7 +166,7 @@ void Request::start(std::shared_ptr<Controller> const& controller,
     // Let a subclass to proceed with its own sequence of actions
     startImpl();
 
-    _controller->serviceProvider()->databaseServices()->saveState(shared_from_this());
+    savePersistentState();
 }
 
 std::string const& Request::jobId() const {
@@ -233,7 +232,7 @@ void Request::finish(ExtendedState extendedState) {
     // Let a subclass to run its own finalization if needed
     finishImpl();
 
-    _controller->serviceProvider()->databaseServices()->saveState(shared_from_this());
+    savePersistentState();
 }
 
 
@@ -266,7 +265,7 @@ void Request::setState(State state,
     _extendedState = extendedState;
     _state = state;
 
-    _controller->serviceProvider()->databaseServices()->saveState(shared_from_this());
+    savePersistentState();
 }
 
 }}} // namespace lsst::qserv::replica

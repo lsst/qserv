@@ -169,6 +169,18 @@ private:
      */
     void notify() final;
 
+    /**
+     * Implement the corresponding method defined in the base class.
+     */
+    void savePersistentState() final;
+
+    /**
+     * Implement the corresponding method of the base class.
+     *
+     * @see Request::extendedPersistentState()
+     */
+    std::string extendedPersistentState(SqlGeneratorPtr const& gen) const final;
+
 private:
 
     // Parameters of the object

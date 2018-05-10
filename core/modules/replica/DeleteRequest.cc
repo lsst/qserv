@@ -34,6 +34,10 @@
 // Qserv headers
 
 #include "lsst/log/Log.h"
+#include "replica/Configuration.h"
+#include "replica/Controller.h"
+#include "replica/DatabaseMySQL.h"
+#include "replica/DatabaseServices.h"
 #include "replica/Messenger.h"
 #include "replica/ProtocolBuffer.h"
 #include "replica/ServiceProvider.h"
@@ -96,7 +100,7 @@ DeleteRequest::DeleteRequest(ServiceProvider::Ptr const& serviceProvider,
         _database(database),
         _chunk(chunk),
         _onFinish(onFinish),
-        _responseData() {
+        _replicaInfo() {
 
     _serviceProvider->assertDatabaseIsValid(database);
 }
@@ -220,7 +224,7 @@ void DeleteRequest::analyze(bool success,
         // Always extract extended data regardless of the completion status
         // reported by the worker service.
 
-        _responseData = ReplicaInfo(&(message.replica_info()));
+        _replicaInfo = ReplicaInfo(&(message.replica_info()));
 
         // Extract target request type-specific parameters from the response
         if (message.has_request()) {
@@ -229,6 +233,10 @@ void DeleteRequest::analyze(bool success,
         switch (message.status()) {
 
             case proto::ReplicationStatus::SUCCESS:
+
+                // Save the replica state
+                _serviceProvider->databaseServices()->saveReplicaInfo(_replicaInfo);
+
                 finish(SUCCESS);
                 break;
 
@@ -299,4 +307,15 @@ void DeleteRequest::notify() {
         );
     }
 }
+
+void DeleteRequest::savePersistentState() {
+    _controller->serviceProvider()->databaseServices()->saveState(*this);
+}
+
+std::string DeleteRequest::extendedPersistentState(SqlGeneratorPtr const& gen) const {
+    return gen->sqlPackValues(id(),
+                              database(),
+                              chunk());
+}
+
 }}} // namespace lsst::qserv::replica
