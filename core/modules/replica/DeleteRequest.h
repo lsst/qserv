@@ -82,7 +82,7 @@ public:
 
     /// Return request-specific extended data reported upon a successfull
     /// completion of the request
-    ReplicaInfo const& responseData() const { return _responseData; }
+    ReplicaInfo const& responseData() const { return _replicaInfo; }
 
     /**
      * Create a new request with specified parameters.
@@ -159,9 +159,21 @@ private:
      * Notifying a party which initiated the request.
      *
      * This method implements the corresponing virtual method defined
-     * bu the base class.
+     * by the base class.
      */
     void notify() final;
+
+    /**
+     * Implement the corresponding method defined in the base class.
+     */
+    void savePersistentState() final;
+
+    /**
+     * Implement the corresponding method of the base class.
+     *
+     * @see Request::extendedPersistentState()
+     */
+    std::string extendedPersistentState(SqlGeneratorPtr const& gen) const final;
 
 private:
 
@@ -176,8 +188,8 @@ private:
     /// Request-specific parameters of the target request
     DeleteRequestParams _targetRequestParams;
 
-    /// Extended informationon on a status of the operation
-    ReplicaInfo _responseData;
+    /// Extended information on a status of the operation
+    ReplicaInfo _replicaInfo;
 };
 
 }}} // namespace lsst::qserv::replica

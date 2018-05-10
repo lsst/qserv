@@ -83,10 +83,12 @@ struct StatusReplicationRequestPolicy {
             params = TargetRequestParamsType(msg.request());
         }
     }
-
     template <class REQUEST_PTR>
     static void saveReplicaInfo(REQUEST_PTR const& request) {
         request->serviceProvider()->databaseServices()->saveReplicaInfo(request->responseData());
+        request->serviceProvider()->databaseServices()->updateRequestState(*request,
+                                                                           request->targetRequestId(),
+                                                                           request->targetPerformance());
     }
 };
 
@@ -116,6 +118,9 @@ struct StatusDeleteRequestPolicy {
     template <class REQUEST_PTR>
     static void saveReplicaInfo(REQUEST_PTR const& request) {
         request->serviceProvider()->databaseServices()->saveReplicaInfo(request->responseData());
+        request->serviceProvider()->databaseServices()->updateRequestState(*request,
+                                                                           request->targetRequestId(),
+                                                                           request->targetPerformance());
     }
 };
 

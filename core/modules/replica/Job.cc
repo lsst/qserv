@@ -125,7 +125,7 @@ void Job::start() {
     // counters must be newer, and whose saved state within the database
     // may depend on this job's state.
     _beginTime = PerformanceUtils::now();
-    _controller->serviceProvider()->databaseServices()->saveState(shared_from_this());
+    _controller->serviceProvider()->databaseServices()->saveState(*this);
 
     // Start timers if configured
     startHeartbeatTimer();
@@ -182,7 +182,7 @@ void Job::finish(ExtendedState extendedState) {
     if (extendedState != ExtendedState::SUCCESS) {
         cancelImpl();
     }
-    _controller->serviceProvider()->databaseServices()->saveState(shared_from_this());
+    _controller->serviceProvider()->databaseServices()->saveState(*this);
 
     // Stop timers if they're still running
     if(_heartbeatTimerPtr) _heartbeatTimerPtr->cancel();
@@ -290,7 +290,7 @@ void Job::setState(State state,
     _extendedState = extendedState;
     _state = state;
 
-    _controller->serviceProvider()->databaseServices()->saveState(shared_from_this());
+    _controller->serviceProvider()->databaseServices()->saveState(*this);
 }
 
 void Job::startHeartbeatTimer() {
@@ -330,7 +330,7 @@ void Job::heartbeat(boost::system::error_code const& ec) {
     if (_state == State::FINISHED) return;
 
     // Update the job entry in the database
-    _controller->serviceProvider()->databaseServices()->updateHeartbeatTime(shared_from_this());
+    _controller->serviceProvider()->databaseServices()->updateHeartbeatTime(*this);
 
     // Start another interval
     startHeartbeatTimer();

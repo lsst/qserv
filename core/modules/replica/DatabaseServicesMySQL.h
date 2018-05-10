@@ -35,9 +35,6 @@
 #include "replica/Configuration.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
-#include "replica/Job.h"
-#include "replica/QservMgtRequest.h"
-#include "replica/Request.h"
 
 // Forward declarations
 
@@ -90,28 +87,37 @@ public:
      *
      * @see DatabaseServices::saveState()
      */
-    void saveState(Job::Ptr const& job) final;
+    void saveState(Job const& job) final;
 
     /**
      * Implement the corresponding method defined in the base class
      *
      * @see DatabaseServices::updateHeartbeatTime()
      */
-     void updateHeartbeatTime(Job::Ptr const& job) final;
+     void updateHeartbeatTime(Job const& job) final;
 
     /**
      * Implement the corresponding method defined in the base class
      *
      * @see DatabaseServices::saveState()
      */
-    void saveState(QservMgtRequest::Ptr const& request) final;
+    void saveState(QservMgtRequest const& request) final;
 
     /**
      * Implement the corresponding method defined in the base class
      *
      * @see DatabaseServices::saveState()
      */
-    void saveState(Request::Ptr const& request) final;
+    void saveState(Request const& request) final;
+
+    /**
+    * Implement the corresponding method defined in the base class
+    *
+    * @see DatabaseServices::updateRequestState()
+     */
+    void updateRequestState(Request const& request,
+                            std::string const& targetRequestId,
+                            Performance const& targetRequestPerformance) final;
 
     /**
      * Implement the corresponding method defined in the base class

@@ -48,6 +48,7 @@ class Configuration;
 struct ControllerIdentity;
 class Job;
 class QservMgtRequest;
+class Performance;
 class Request;
 
 /**
@@ -67,15 +68,6 @@ public:
 
     /// Forward declaration for the smart reference to Job objects
     typedef std::shared_ptr<Configuration> ConfigurationPtr;
-
-    /// Forward declaration for the smart reference to Job objects
-    typedef std::shared_ptr<Job> JobPtr;
-
-    /// Forward declaration for the smart reference to QservMgtRequest objects
-    typedef std::shared_ptr<QservMgtRequest> QservMgtRequestPtr;
-
-    /// Forward declaration for the smart reference to Request objects
-    typedef std::shared_ptr<Request> RequestPtr;
 
     /**
      * The factory method for instantiating a proper service object based
@@ -114,17 +106,16 @@ public:
      * NOTE: The method will convert a pointer of the base class Job into
      * the final type to avoid type proliferation through this interface.
      *
-     * @param job - a pointer to a Job object
-     * @throw std::invalid_argument - if the actual job type won't match the expected one
+     * @param job - reference to a Job object
      */
-    virtual void saveState(JobPtr const& job) = 0;
+    virtual void saveState(Job const& job) = 0;
 
     /**
      * Update the heartbeat timestamp for the job's entry
      *
-     * @param job - pointer to a Job object
+     * @param job - reference to a Job object
      */
-     virtual void updateHeartbeatTime(JobPtr const& job) = 0;
+     virtual void updateHeartbeatTime(Job const& job) = 0;
 
     /**
      * Save the state of the QservMgtRequest. This operation can be called many times for
@@ -133,11 +124,9 @@ public:
      * NOTE: The method will convert a pointer of the base class QservMgtRequest into
      * the final type to avoid type proliferation through this interface.
      *
-     * @param request - a pointer to a QservMgtRequest object
-     *
-     * @throw std::invalid_argument - if the actual request type won't match the expected one
+     * @param request - reference to a QservMgtRequest object
      */
-    virtual void saveState(QservMgtRequestPtr const& request) = 0;
+    virtual void saveState(QservMgtRequest const& request) = 0;
 
     /**
      * Save the state of the Request. This operation can be called many times for
@@ -146,11 +135,24 @@ public:
      * NOTE: The method will convert a pointer of the base class Request into
      * the final type to avoid type proliferation through this interface.
      *
-     * @param request - a pointer to a Request object
-     *
-     * @throw std::invalid_argument - if the actual request type won't match the expected one
+     * @param request - reference to a Request object
      */
-    virtual void saveState(RequestPtr const& request) = 0;
+    virtual void saveState(Request const& request) = 0;
+
+    /**
+     * Update a state of a target request.
+     *
+     * This method is supposed to be called by monitoring requests (State* and Stop*)
+     * to update state of the corresponidng target requests.
+     *
+     * @param request - reference to the monitoring Request object
+     * @param targetRequestId - identifier of a target request
+     * @param targetRequestPerformance - performance counters of a target request
+     *                  obtained from a worker
+     */
+    virtual void updateRequestState(Request const& request,
+                                    std::string const& targetRequestId,
+                                    Performance const& targetRequestPerformance) = 0;
 
     /**
      * Update the status of replica in the corresponidng tables.
