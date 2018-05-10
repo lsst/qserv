@@ -1344,17 +1344,27 @@ public:
     }
 
     void onExit() override {
-        ASSERT_EXECUTION_CONDITION(_ctx->ALL(), "ALL is not supported.", _ctx);
-        ASSERT_EXECUTION_CONDITION(_ctx->DISTINCTROW(), "DISTINCTROW is not supported.", _ctx);
-        ASSERT_EXECUTION_CONDITION(_ctx->HIGH_PRIORITY(), "HIGH_PRIORITY", _ctx);
-        ASSERT_EXECUTION_CONDITION(_ctx->STRAIGHT_JOIN(), "STRAIGHT_JOIN is not supported.", _ctx);
-        ASSERT_EXECUTION_CONDITION(_ctx->SQL_SMALL_RESULT(), "SQL_SMALL_RESULT is not supported.", _ctx);
-        ASSERT_EXECUTION_CONDITION(_ctx->SQL_BIG_RESULT(), "SQL_BIG_RESULT is not supported.", _ctx);
-        ASSERT_EXECUTION_CONDITION(_ctx->SQL_BUFFER_RESULT(), "SQL_BUFFER_RESULT is not supported.", _ctx);
-        ASSERT_EXECUTION_CONDITION(_ctx->SQL_CACHE(), "SQL_CACHE", _ctx);
-        ASSERT_EXECUTION_CONDITION(_ctx->SQL_NO_CACHE(), "SQL_NO_CACHE is not supported.", _ctx);
-        ASSERT_EXECUTION_CONDITION(_ctx->SQL_CALC_FOUND_ROWS(),
+        ASSERT_EXECUTION_CONDITION(_ctx->ALL() == nullptr,
+                "ALL is not supported.", _ctx);
+        ASSERT_EXECUTION_CONDITION(_ctx->DISTINCTROW() == nullptr,
+                "DISTINCTROW is not supported.", _ctx);
+        ASSERT_EXECUTION_CONDITION(_ctx->HIGH_PRIORITY() == nullptr,
+                "HIGH_PRIORITY", _ctx);
+        ASSERT_EXECUTION_CONDITION(_ctx->STRAIGHT_JOIN() == nullptr,
+                "STRAIGHT_JOIN is not supported.", _ctx);
+        ASSERT_EXECUTION_CONDITION(_ctx->SQL_SMALL_RESULT() == nullptr,
+                "SQL_SMALL_RESULT is not supported.", _ctx);
+        ASSERT_EXECUTION_CONDITION(_ctx->SQL_BIG_RESULT() == nullptr,
+                "SQL_BIG_RESULT is not supported.", _ctx);
+        ASSERT_EXECUTION_CONDITION(_ctx->SQL_BUFFER_RESULT() == nullptr,
+                "SQL_BUFFER_RESULT is not supported.", _ctx);
+        ASSERT_EXECUTION_CONDITION(_ctx->SQL_CACHE() == nullptr,
+                "SQL_CACHE", _ctx);
+        ASSERT_EXECUTION_CONDITION(_ctx->SQL_NO_CACHE() == nullptr,
+                "SQL_NO_CACHE is not supported.", _ctx);
+        ASSERT_EXECUTION_CONDITION(_ctx->SQL_CALC_FOUND_ROWS() == nullptr,
                 "SQL_CALC_FOUND_ROWS is not supported.", _ctx);
+
         lockedParent()->handleSelectSpec(_ctx->DISTINCT() != nullptr);
     }
 
