@@ -47,11 +47,8 @@ namespace replica {
 // Replica creation and deletion requests //
 ////////////////////////////////////////////
 
-class ReplicationRequestM;
-class DeleteRequestM;
-
-using ReplicationRequest = ReplicationRequestM;
-using DeleteRequest      = DeleteRequestM;
+class ReplicationRequest;
+class DeleteRequest;
 
 typedef std::shared_ptr<ReplicationRequest> ReplicationRequestPtr;
 typedef std::shared_ptr<DeleteRequest>      DeleteRequestPtr;
@@ -63,11 +60,8 @@ typedef std::function<void(DeleteRequestPtr)>      DeleteRequestCallbackType;
 // Replica lookup requests //
 /////////////////////////////
 
-class FindRequestM;
-class FindAllRequestM;
-
-using FindRequest    = FindRequestM;
-using FindAllRequest = FindAllRequestM;
+class FindRequest;
+class FindAllRequest;
 
 typedef std::shared_ptr<FindRequest>    FindRequestPtr;
 typedef std::shared_ptr<FindAllRequest> FindAllRequestPtr;
@@ -84,12 +78,12 @@ class StopDeleteRequestPolicy;
 class StopFindRequestPolicy;
 class StopFindAllRequestPolicy;
 
-template <typename POLICY> class StopRequestM;
+template <typename POLICY> class StopRequest;
 
-using StopReplicationRequest = StopRequestM<StopReplicationRequestPolicy>;
-using StopDeleteRequest      = StopRequestM<StopDeleteRequestPolicy>;
-using StopFindRequest        = StopRequestM<StopFindRequestPolicy>;
-using StopFindAllRequest     = StopRequestM<StopFindAllRequestPolicy>;
+using StopReplicationRequest = StopRequest<StopReplicationRequestPolicy>;
+using StopDeleteRequest      = StopRequest<StopDeleteRequestPolicy>;
+using StopFindRequest        = StopRequest<StopFindRequestPolicy>;
+using StopFindAllRequest     = StopRequest<StopFindAllRequestPolicy>;
 
 typedef std::shared_ptr<StopReplicationRequest> StopReplicationRequestPtr;
 typedef std::shared_ptr<StopDeleteRequest>      StopDeleteRequestPtr;
@@ -108,17 +102,17 @@ class StatusDeleteRequestPolicy;
 class StatusFindRequestPolicy;
 class StatusFindAllRequestPolicy;
 
-template <typename POLICY> class StatusRequestM;
+template <typename POLICY> class StatusRequest;
 
-using StatusReplicationRequest = StatusRequestM<StatusReplicationRequestPolicy>;
-using StatusDeleteRequest      = StatusRequestM<StatusDeleteRequestPolicy>;
-using StatusFindRequest        = StatusRequestM<StatusFindRequestPolicy>;
-using StatusFindAllRequest     = StatusRequestM<StatusFindAllRequestPolicy>;
+using StatusReplicationRequest = StatusRequest<StatusReplicationRequestPolicy>;
+using StatusDeleteRequest      = StatusRequest<StatusDeleteRequestPolicy>;
+using StatusFindRequest        = StatusRequest<StatusFindRequestPolicy>;
+using StatusFindAllRequest     = StatusRequest<StatusFindAllRequestPolicy>;
 
 typedef std::shared_ptr<StatusReplicationRequest> StatusReplicationRequestPtr;
 typedef std::shared_ptr<StatusDeleteRequest>      StatusDeleteRequestPtr;
 typedef std::shared_ptr<StatusFindRequest>        StatusFindRequestPtr;
-typedef std::shared_ptr <StatusFindAllRequest>     StatusFindAllRequestPtr;
+typedef std::shared_ptr<StatusFindAllRequest>     StatusFindAllRequestPtr;
 
 typedef std::function<void(StatusReplicationRequestPtr)> StatusReplicationRequestCallbackType;
 typedef std::function<void(StatusDeleteRequestPtr)>      StatusDeleteRequestCallbackType;
@@ -136,13 +130,13 @@ class ServiceStatusRequestPolicy;
 class ServiceRequestsRequestPolicy;
 class ServiceDrainRequestPolicy;
 
-template <typename POLICY> class ServiceManagementRequestM;
+template <typename POLICY> class ServiceManagementRequest;
 
-using ServiceSuspendRequest  = ServiceManagementRequestM<ServiceSuspendRequestPolicy>;
-using ServiceResumeRequest   = ServiceManagementRequestM<ServiceResumeRequestPolicy>;
-using ServiceStatusRequest   = ServiceManagementRequestM<ServiceStatusRequestPolicy>;
-using ServiceRequestsRequest = ServiceManagementRequestM<ServiceRequestsRequestPolicy>;
-using ServiceDrainRequest    = ServiceManagementRequestM<ServiceDrainRequestPolicy>;
+using ServiceSuspendRequest  = ServiceManagementRequest<ServiceSuspendRequestPolicy>;
+using ServiceResumeRequest   = ServiceManagementRequest<ServiceResumeRequestPolicy>;
+using ServiceStatusRequest   = ServiceManagementRequest<ServiceStatusRequestPolicy>;
+using ServiceRequestsRequest = ServiceManagementRequest<ServiceRequestsRequestPolicy>;
+using ServiceDrainRequest    = ServiceManagementRequest<ServiceDrainRequestPolicy>;
 
 typedef std::shared_ptr<ServiceSuspendRequest>  ServiceSuspendRequestPtr;
 typedef std::shared_ptr<ServiceResumeRequest>   ServiceResumeRequestPtr;

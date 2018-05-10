@@ -63,9 +63,9 @@ void runTransactionTest(database::Connection::Ptr const& conn,
     try {
         std::cout << "transaction is " << (conn->inTransaction() ? "" : "NOT ") << "active" << std::endl;
         func(conn);
-        std::cout << "transaction test [PASSED]: '" << testName << "'" << std::endl;   
+        std::cout << "transaction test [PASSED]: '" << testName << "'" << std::endl;
     } catch (std::logic_error const& ex) {
-        std::cout << "transaction test [FAILED]: '" << testName << "' " << ex.what() << std::endl; 
+        std::cout << "transaction test [FAILED]: '" << testName << "' " << ex.what() << std::endl;
     }
 }
 void testTransactions(database::Connection::Ptr const& conn) {
@@ -105,7 +105,7 @@ void createDatabase(database::Connection::Ptr const& conn) {
     try {
         conn->execute("CREATE DATABASE " + databaseName);
     } catch (std::logic_error const& ex) {
-        std::cout << ex.what() << std::endl; 
+        std::cout << ex.what() << std::endl;
     }
 }
 
@@ -114,15 +114,15 @@ void dropDatabase(database::Connection::Ptr const& conn) {
     try {
         conn->execute ("DROP DATABASE " + databaseName);
     } catch (std::logic_error const& ex) {
-        std::cout << ex.what() << std::endl; 
+        std::cout << ex.what() << std::endl;
     }
 }
 
 /// Read a query from a file, execute it and (if requested)
-/// explore ita results
+/// explore its results
 void query(database::Connection::Ptr const& conn) {
 
-    // Read q query from the standard input or from a file into a string.
+    // Read a query from the standard input or from a file into a string.
 
     std::string query;
     if (fileName == "-") {
@@ -132,57 +132,57 @@ void query(database::Connection::Ptr const& conn) {
 
         // Note a little optimization in which the algorithm detemines the file
         // size and preallocates the string buffer before
-        // perforмing the actual read.
+        // performing the actual read.
 
         std::ifstream fs(fileName);
         if (not fs) {
             std::cerr << "faild to read the contents of file: " << fileName << std::endl;
             return;
         }
-        fs.seekg(0, std::ios::end);   
+        fs.seekg(0, std::ios::end);
         query.reserve(fs.tellg());
         fs.seekg(0, std::ios::beg);
-        query.assign((std::istreambuf_iterator<char>(fs)),
-                      std::istreambuf_iterator<char>());
-    }    
+        query.assign(std::istreambuf_iterator<char>(fs),
+                     std::istreambuf_iterator<char>());
+    }
     std::cout << "Query: " << query << std::endl;
 
     // Execute the query
 
     try {
-        if (not noTransaction) { conn->begin(); }
-        {
-            conn->execute(query);
-            std::cout << "hasResult: " << (conn->hasResult() ? "true" : "false") << std::endl;
 
-            if (not noResultSet and conn->hasResult()) {
-                std::cout << "Columns:   ";
+        if (not noTransaction) conn->begin();
+
+        conn->execute(query);
+        std::cout << "hasResult: " << (conn->hasResult() ? "true" : "false") << std::endl;
+
+        if (not noResultSet and conn->hasResult()) {
+            std::cout << "Columns:   ";
+            for (std::string const& name: conn->columnNames()) {
+                std::cout << "'" << name << "', ";
+            }
+            std::cout << "\n" << std::endl;
+
+            database::Row row;
+            while (conn->next(row)) {
                 for (std::string const& name: conn->columnNames()) {
-                    std::cout << "'" << name << "', ";
+                    std::string val;
+                    bool const notNull = row.get(name, val);
+                    std::cout << name << ": " << (notNull ? "'" + val + "'" : "NULL") << ", ";
                 }
-                std::cout << "\n" << std::endl;
-
-                database::Row row;
-                while (conn->next(row)) {
-                    for (std::string const& name: conn->columnNames()) {
-                        std::string val;
-                        bool const notNull = row.get(name, val);
-                        std::cout << name << ": " << (notNull ? "'" + val + "'" : "NULL") << ", ";
-                    }
-                    std::cout << "\n";
-                    for (size_t i = 0; i < row.numColumns(); ++i) {
-                        std::string val;
-                        bool const notNull = row.get(i, val);
-                        std::cout << i << ": " << (notNull ? "'" + val + "'" : "NULL") << ", ";   
-                    }
-                    std::cout << "\n";
+                std::cout << "\n";
+                for (size_t i = 0; i < row.numColumns(); ++i) {
+                    std::string val;
+                    bool const notNull = row.get(i, val);
+                    std::cout << i << ": " << (notNull ? "'" + val + "'" : "NULL") << ", ";
                 }
+                std::cout << "\n";
             }
         }
-        if (not noTransaction) { conn->commit(); }
+        if (not noTransaction) conn->commit();
 
     } catch (std::logic_error const& ex) {
-        std::cout << ex.what() << std::endl; 
+        std::cout << ex.what() << std::endl;
     }
 }
 
@@ -191,12 +191,12 @@ bool test() {
 
     try {
         database::Connection::Ptr const conn =
-            database::Connection::open(connectionParams, !noAutoReconnect);
-        
-        if      ("TEST_TRANSACTIONS" == operation) { testTransactions(conn); }
-        else if ("CREATE_DATABASE"   == operation) { createDatabase(conn); }
-        else if ("DROP_DATABASE"     == operation) { dropDatabase(conn); }
-        else if ("QUERY"             == operation) { query(conn); }
+            database::Connection::open(connectionParams, not noAutoReconnect);
+
+        if      ("TEST_TRANSACTIONS" == operation) testTransactions(conn);
+        else if ("CREATE_DATABASE"   == operation) createDatabase(conn);
+        else if ("DROP_DATABASE"     == operation) dropDatabase(conn);
+        else if ("QUERY"             == operation) query(conn);
 
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
@@ -274,7 +274,7 @@ int main(int argc, const char* const argv[]) {
 
     } catch (std::exception const& ex) {
         return 1;
-    }  
+    }
     ::test();
     return 0;
 }

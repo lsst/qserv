@@ -33,6 +33,7 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
+#include "replica/DatabaseServices.h"
 #include "replica/Messenger.h"
 #include "replica/ProtocolBuffer.h"
 #include "replica/ServiceProvider.h"
@@ -50,33 +51,33 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-FindAllRequestM::Ptr FindAllRequestM::create(ServiceProvider::Ptr const& serviceProvider,
-                                             boost::asio::io_service& io_service,
-                                             std::string const& worker,
-                                             std::string const& database,
-                                             CallbackType onFinish,
-                                             int  priority,
-                                             bool keepTracking,
-                                             std::shared_ptr<Messenger> const& messenger) {
-    return FindAllRequestM::Ptr(
-        new FindAllRequestM(serviceProvider,
-                            io_service,
-                            worker,
-                            database,
-                            onFinish,
-                            priority,
-                            keepTracking,
-                            messenger));
+FindAllRequest::Ptr FindAllRequest::create(ServiceProvider::Ptr const& serviceProvider,
+                                           boost::asio::io_service& io_service,
+                                           std::string const& worker,
+                                           std::string const& database,
+                                           CallbackType onFinish,
+                                           int priority,
+                                           bool keepTracking,
+                                           std::shared_ptr<Messenger> const& messenger) {
+    return FindAllRequest::Ptr(
+        new FindAllRequest(serviceProvider,
+                           io_service,
+                           worker,
+                           database,
+                           onFinish,
+                           priority,
+                           keepTracking,
+                           messenger));
 }
 
-FindAllRequestM::FindAllRequestM(ServiceProvider::Ptr const& serviceProvider,
-                                 boost::asio::io_service& io_service,
-                                 std::string const& worker,
-                                 std::string const& database,
-                                 CallbackType onFinish,
-                                 int  priority,
-                                 bool keepTracking,
-                                 std::shared_ptr<Messenger> const& messenger)
+FindAllRequest::FindAllRequest(ServiceProvider::Ptr const& serviceProvider,
+                               boost::asio::io_service& io_service,
+                               std::string const& worker,
+                               std::string const& database,
+                               CallbackType onFinish,
+                               int  priority,
+                               bool keepTracking,
+                               std::shared_ptr<Messenger> const& messenger)
     :   RequestMessenger(serviceProvider,
                          io_service,
                          "REPLICA_FIND_ALL",
@@ -92,11 +93,11 @@ FindAllRequestM::FindAllRequestM(ServiceProvider::Ptr const& serviceProvider,
     _serviceProvider->assertDatabaseIsValid (database);
 }
 
-const ReplicaInfoCollection& FindAllRequestM::responseData() const {
+const ReplicaInfoCollection& FindAllRequest::responseData() const {
     return _replicaInfoCollection;
 }
 
-void FindAllRequestM::startImpl() {
+void FindAllRequest::startImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
 
@@ -121,7 +122,7 @@ void FindAllRequestM::startImpl() {
     send();
 }
 
-void FindAllRequestM::wait() {
+void FindAllRequest::wait() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "wait");
 
@@ -130,14 +131,14 @@ void FindAllRequestM::wait() {
     _timer.expires_from_now(boost::posix_time::seconds(_timerIvalSec));
     _timer.async_wait(
         boost::bind(
-            &FindAllRequestM::awaken,
-            shared_from_base<FindAllRequestM>(),
+            &FindAllRequest::awaken,
+            shared_from_base<FindAllRequest>(),
             boost::asio::placeholders::error
         )
     );
 }
 
-void FindAllRequestM::awaken(boost::system::error_code const& ec) {
+void FindAllRequest::awaken(boost::system::error_code const& ec) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "awaken");
 
@@ -171,9 +172,9 @@ void FindAllRequestM::awaken(boost::system::error_code const& ec) {
     send();
 }
 
-void FindAllRequestM::send() {
+void FindAllRequest::send() {
 
-    auto self = shared_from_base<FindAllRequestM>();
+    auto self = shared_from_base<FindAllRequest>();
 
     _messenger->send<proto::ReplicationResponseFindAll>(
         worker(),
@@ -187,8 +188,8 @@ void FindAllRequestM::send() {
     );
 }
 
-void FindAllRequestM::analyze(bool success,
-                              proto::ReplicationResponseFindAll const& message) {
+void FindAllRequest::analyze(bool success,
+                             proto::ReplicationResponseFindAll const& message) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "analyze  success=" << (success ? "true" : "false"));
 
@@ -227,6 +228,12 @@ void FindAllRequestM::analyze(bool success,
         switch (message.status()) {
 
             case proto::ReplicationStatus::SUCCESS:
+
+                // Save the replica state
+                _serviceProvider->databaseServices()->saveReplicaInfoCollection(worker(),
+                                                                                database(),
+                                                                                _replicaInfoCollection);
+
                 finish(SUCCESS);
                 break;
 
@@ -259,7 +266,7 @@ void FindAllRequestM::analyze(bool success,
 
             default:
                 throw std::logic_error(
-                        "FindAllRequestM::analyze() unknown status '" +
+                        "FindAllRequest::analyze() unknown status '" +
                         proto::ReplicationStatus_Name(message.status()) + "' received from server");
         }
 
@@ -269,7 +276,7 @@ void FindAllRequestM::analyze(bool success,
     if (_state == State::FINISHED) notify();
 }
 
-void FindAllRequestM::notify() {
+void FindAllRequest::notify() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
 
@@ -277,7 +284,7 @@ void FindAllRequestM::notify() {
     // to avoid blocking the current thread.
 
     if (_onFinish != nullptr) {
-        auto self = shared_from_base<FindAllRequestM>();
+        auto self = shared_from_base<FindAllRequest>();
         std::async(
             std::launch::async,
             [self]() {

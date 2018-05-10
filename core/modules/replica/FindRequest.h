@@ -23,15 +23,8 @@
 #define LSST_QSERV_REPLICA_FIND_REQUEST_H
 
 /// FindRequest.h declares:
-///
-/// Common classes shared by all implementations:
-///
+//
 ///   class FindRequest
-///
-/// Request implementations based on multiplexed connectors provided by
-/// base class RequestMessenger:
-///
-///   class FindRequestM
 ///
 /// (see individual class documentation for more information)
 
@@ -56,28 +49,28 @@ namespace replica {
 class Messenger;
 
 /**
-  * Class FindRequestM represents a transient state of the replica lookup
+  * Class FindRequest represents a transient state of the replica lookup
   * requests within the master controller for deleting replicas.
   */
-class FindRequestM
+class FindRequest
     :   public RequestMessenger  {
 
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<FindRequestM> Ptr;
+    typedef std::shared_ptr<FindRequest> Ptr;
 
     /// The function type for notifications on the completon of the request
     typedef std::function<void(Ptr)> CallbackType;
 
     // Default construction and copy semantics are prohibited
 
-    FindRequestM() = delete;
-    FindRequestM(FindRequestM const&) = delete;
-    FindRequestM& operator=(FindRequestM const&) = delete;
+    FindRequest() = delete;
+    FindRequest(FindRequest const&) = delete;
+    FindRequest& operator=(FindRequest const&) = delete;
 
     /// Destructor
-    ~FindRequestM() final = default;
+    ~FindRequest() final = default;
 
     // Trivial acccessors
 
@@ -131,16 +124,16 @@ private:
     /**
      * Construct the request with the pointer to the services provider.
      */
-    FindRequestM(ServiceProvider::Ptr const& serviceProvider,
-                 boost::asio::io_service& io_service,
-                 std::string const& worker,
-                 std::string const& database,
-                 unsigned int  chunk,
-                 CallbackType onFinish,
-                 int  priority,
-                 bool computeCheckSum,
-                 bool keepTracking,
-                 std::shared_ptr<Messenger> const& messenger);
+    FindRequest(ServiceProvider::Ptr const& serviceProvider,
+                boost::asio::io_service& io_service,
+                std::string const& worker,
+                std::string const& database,
+                unsigned int  chunk,
+                CallbackType onFinish,
+                int  priority,
+                bool computeCheckSum,
+                bool keepTracking,
+                std::shared_ptr<Messenger> const& messenger);
 
     /**
       * Implement the method declared in the base class
@@ -188,8 +181,6 @@ private:
     /// The results reported by a worker service
     ReplicaInfo _replicaInfo;
 };
-
-typedef FindRequestM FindRequest;
 
 }}} // namespace lsst::qserv::replica
 

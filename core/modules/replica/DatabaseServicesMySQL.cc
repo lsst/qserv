@@ -170,33 +170,6 @@ ReplicaInfo const& replicaInfo(Request::Ptr const& request) {
     throw std::logic_error(context + "operation is not supported for request id: " +
                            request->id() + ", type: " + request->type());
 }
-
-template <typename T> bool isEmpty(T const& val) { return !val; }
-template <>           bool isEmpty<std::string>(std::string const& val) { return val.empty(); }
-
-/**
- * Update a value of a file attribute in the 'replica_file' table
- * for the corresponding replica.
- *
- * @param conn      - a database connector
- * @param replicaId - a replica of a file
- * @param col       - the column name (teh attribue to be updated)
- * @param val       - a new value of the attribute
- */
-template <typename T>
-void updateFileAttr(database::mysql::Connection::Ptr const& conn,
-                    uint64_t replicaId,
-                    std::string const& file,
-                    std::string const& col,
-                    T const& val) {
-    if (isEmpty(val)) { return; }
-    conn->execute(
-        "UPDATE "  + conn->sqlId("replica_file") +
-        "    SET " + conn->sqlEqual(col, val) +
-        "  WHERE " + conn->sqlEqual("replica_id", replicaId) +
-        "    AND " + conn->sqlEqual("name", file));
-}
-
 } /// namespace
 
 
@@ -205,7 +178,8 @@ namespace qserv {
 namespace replica {
 
 DatabaseServicesMySQL::DatabaseServicesMySQL(Configuration::Ptr const& configuration)
-    :   DatabaseServices(configuration) {
+    :   DatabaseServices(),
+        _configuration(configuration) {
 
     // Pull database info from the configuration and prepare
     // the connection objects.
@@ -511,7 +485,7 @@ void DatabaseServicesMySQL::saveState(Request::Ptr const& request) {
                     ptr->chunk());
             }
             if (request->extendedState() == Request::ExtendedState::SUCCESS) {
-                saveReplicaInfo(::replicaInfo (request));
+                saveReplicaInfoNoLock(::replicaInfo (request));
             }
             _conn->commit ();
 
@@ -534,7 +508,7 @@ void DatabaseServicesMySQL::saveState(Request::Ptr const& request) {
                     std::make_pair( "c_finish_time",  performance.c_finish_time));
 
                 if (request->extendedState() == Request::ExtendedState::SUCCESS) {
-                    saveReplicaInfo(::replicaInfo(request));
+                    saveReplicaInfoNoLock(::replicaInfo(request));
                 }
                 _conn->commit();
 
@@ -710,30 +684,7 @@ void DatabaseServicesMySQL::saveReplicaInfoNoLock(ReplicaInfo const& info) {
             "DELETE FROM " + _conn->sqlId(   "replica") +
             "  WHERE " +     _conn->sqlEqual("id",replicaId));
 
-        saveReplicaInfo(info);
-
-        return;
-
-        // --------------------------------------------------------------------------
-        // ATTENTION: The alternative approach (presented below) would be to update
-        // existing records. In practice this method is approximatelly 2 times slower
-        // then the previous one (deleting replicas and staring them from scratch).
-        // --------------------------------------------------------------------------
-
-        uint64_t const verifyTime = info.verifyTime();
-        if (verifyTime) {
-            _conn->executeSimpleUpdateQuery(
-                "replica",
-                _conn->sqlEqual("id",          replicaId),
-                std::make_pair( "verify_time", verifyTime));
-        }
-        for (auto&& f: info.fileInfo()) {
-            ::updateFileAttr(_conn, replicaId, f.name, "begin_create_time", f.beginTransferTime);
-            ::updateFileAttr(_conn, replicaId, f.name, "end_create_time",   f.endTransferTime);
-            ::updateFileAttr(_conn, replicaId, f.name, "size",              f.size);
-            ::updateFileAttr(_conn, replicaId, f.name, "mtime",             f.mtime);
-            ::updateFileAttr(_conn, replicaId, f.name, "cs",                f.cs);
-        }
+        saveReplicaInfoNoLock(info);
     }
 }
 

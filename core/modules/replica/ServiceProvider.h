@@ -60,11 +60,11 @@ public:
     typedef std::shared_ptr<ServiceProvider> Ptr;
 
     // Forward definition for pointer types of the owned services
- 
-    typedef std::shared_ptr<Configuration>    Configuration_pointer;
-    typedef std::shared_ptr<DatabaseServices> DatabaseServices_pointer;
-    typedef std::shared_ptr<QservMgtServices> QservMgtServices_pointer;
-    
+
+    typedef std::shared_ptr<Configuration>    ConfigurationPtr;
+    typedef std::shared_ptr<DatabaseServices> DatabaseServicesPtr;
+    typedef std::shared_ptr<QservMgtServices> QservMgtServicesPtr;
+
     // Default construction and copy semantics are prohibited
 
     ServiceProvider() = delete;
@@ -85,12 +85,12 @@ public:
     /**
      * @return a reference to the configuration service
      */
-    Configuration_pointer const& config() const { return _configuration; }
+    ConfigurationPtr const& config() const { return _configuration; }
 
     /**
      * @return a reference to the database services
      */
-    DatabaseServices_pointer const& databaseServices() const { return _databaseServices; }
+    DatabaseServicesPtr const& databaseServices() const { return _databaseServices; }
 
     /**
      * @return a reference to the local (process) chunk locking services
@@ -100,12 +100,12 @@ public:
     /**
      * @return a reference to the Qserv notification services
      */
-    QservMgtServices_pointer const& qservMgtServices() const { return _qservMgtServices; }
+    QservMgtServicesPtr const& qservMgtServices() const { return _qservMgtServices; }
 
     /**
      * Make sure this worker is known in the configuration. Throws exception
      * std::invalid_argument otherwise.
-     * 
+     *
      * @param name - the name of a worker
      */
     void assertWorkerIsValid(std::string const& name);
@@ -137,17 +137,17 @@ private:
 private:
 
     /// Configuration manager
-    Configuration_pointer _configuration;
+    ConfigurationPtr _configuration;
 
     /// Database services
-    DatabaseServices_pointer _databaseServices;
+    DatabaseServicesPtr _databaseServices;
 
     /// For claiming exclusive ownership over chunks during replication
     /// operations to ensure consistency of the operations.
     ChunkLocker _chunkLocker;
 
     /// Qserv management services
-    QservMgtServices_pointer _qservMgtServices;
+    QservMgtServicesPtr _qservMgtServices;
 };
 
 }}} // namespace lsst::qserv::replica

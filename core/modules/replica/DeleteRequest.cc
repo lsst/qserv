@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
+ * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -51,18 +51,18 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-DeleteRequestM::Ptr DeleteRequestM::create(ServiceProvider::Ptr const& serviceProvider,
-                                               boost::asio::io_service& io_service,
-                                               std::string const& worker,
-                                               std::string const& database,
-                                               unsigned int  chunk,
-                                               CallbackType onFinish,
-                                               int  priority,
-                                               bool keepTracking,
-                                               bool allowDuplicate,
-                                               std::shared_ptr<Messenger> const& messenger) {
-    return DeleteRequestM::Ptr(
-        new DeleteRequestM(
+DeleteRequest::Ptr DeleteRequest::create(ServiceProvider::Ptr const& serviceProvider,
+                                         boost::asio::io_service& io_service,
+                                         std::string const& worker,
+                                         std::string const& database,
+                                         unsigned int  chunk,
+                                         CallbackType onFinish,
+                                         int  priority,
+                                         bool keepTracking,
+                                         bool allowDuplicate,
+                                         std::shared_ptr<Messenger> const& messenger) {
+    return DeleteRequest::Ptr(
+        new DeleteRequest(
             serviceProvider,
             io_service,
             worker,
@@ -75,16 +75,16 @@ DeleteRequestM::Ptr DeleteRequestM::create(ServiceProvider::Ptr const& servicePr
             messenger));
 }
 
-DeleteRequestM::DeleteRequestM(ServiceProvider::Ptr const& serviceProvider,
-                               boost::asio::io_service& io_service,
-                               std::string const& worker,
-                               std::string const& database,
-                               unsigned int  chunk,
-                               CallbackType onFinish,
-                               int  priority,
-                               bool keepTracking,
-                               bool allowDuplicate,
-                               std::shared_ptr<Messenger> const& messenger)
+DeleteRequest::DeleteRequest(ServiceProvider::Ptr const& serviceProvider,
+                             boost::asio::io_service& io_service,
+                             std::string const& worker,
+                             std::string const& database,
+                             unsigned int  chunk,
+                             CallbackType onFinish,
+                             int  priority,
+                             bool keepTracking,
+                             bool allowDuplicate,
+                             std::shared_ptr<Messenger> const& messenger)
     :   RequestMessenger(serviceProvider,
                          io_service,
                          "REPLICA_DELETE",
@@ -101,7 +101,7 @@ DeleteRequestM::DeleteRequestM(ServiceProvider::Ptr const& serviceProvider,
     _serviceProvider->assertDatabaseIsValid(database);
 }
 
-void DeleteRequestM::startImpl() {
+void DeleteRequest::startImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
 
@@ -127,7 +127,7 @@ void DeleteRequestM::startImpl() {
     send ();
 }
 
-void DeleteRequestM::wait() {
+void DeleteRequest::wait() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "wait");
 
@@ -136,14 +136,14 @@ void DeleteRequestM::wait() {
     _timer.expires_from_now(boost::posix_time::seconds(_timerIvalSec));
     _timer.async_wait(
         boost::bind(
-            &DeleteRequestM::awaken,
-            shared_from_base<DeleteRequestM>(),
+            &DeleteRequest::awaken,
+            shared_from_base<DeleteRequest>(),
             boost::asio::placeholders::error
         )
     );
 }
 
-void DeleteRequestM::awaken(boost::system::error_code const& ec) {
+void DeleteRequest::awaken(boost::system::error_code const& ec) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "awaken");
 
@@ -175,9 +175,9 @@ void DeleteRequestM::awaken(boost::system::error_code const& ec) {
     send ();
 }
 
-void DeleteRequestM::send() {
+void DeleteRequest::send() {
 
-    auto self = shared_from_base<DeleteRequestM>();
+    auto self = shared_from_base<DeleteRequest>();
 
     _messenger->send<proto::ReplicationResponseDelete>(
         worker(),
@@ -191,8 +191,8 @@ void DeleteRequestM::send() {
     );
 }
 
-void DeleteRequestM::analyze(bool success,
-                             proto::ReplicationResponseDelete const& message) {
+void DeleteRequest::analyze(bool success,
+                            proto::ReplicationResponseDelete const& message) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "analyze  success=" << (success ? "true" : "false"));
 
@@ -271,7 +271,7 @@ void DeleteRequestM::analyze(bool success,
 
             default:
                 throw std::logic_error(
-                        "DeleteRequestM::analyze() unknown status '" +
+                        "DeleteRequest::analyze() unknown status '" +
                         proto::ReplicationStatus_Name(message.status()) +
                         "' received from server");
         }
@@ -282,7 +282,7 @@ void DeleteRequestM::analyze(bool success,
     if (_state == State::FINISHED) notify();
 }
 
-void DeleteRequestM::notify() {
+void DeleteRequest::notify() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
 
@@ -290,7 +290,7 @@ void DeleteRequestM::notify() {
     // to avoid blocking the current thread.
 
     if (_onFinish) {
-        auto self = shared_from_base<DeleteRequestM>();
+        auto self = shared_from_base<DeleteRequest>();
         std::async(
             std::launch::async,
             [self]() {

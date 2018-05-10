@@ -32,6 +32,7 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
+#include "replica/Configuration.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
 #include "replica/ErrorReporting.h"

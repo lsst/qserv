@@ -28,10 +28,9 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
-#include "replica/Controller.h"
+#include "replica/Configuration.h"
+#include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServicesMySQL.h"
-#include "replica/Job.h"
-#include "replica/ReplicaInfo.h"
 
 namespace {
 
@@ -57,15 +56,14 @@ DatabaseServices::Ptr DatabaseServices::create(Configuration::Ptr const& configu
                  "DatabaseServices::  failed to instantiate MySQL-based database services"
                  << ", error: " << ex.what()
                  << ", no such service will be available to the application.");
+             throw std::runtime_error(
+                 "DatabaseServices::  failed to instantiate MySQL-based database services, error: " +
+                 std::string(ex.what()));
         }
     }
     throw std::runtime_error(
         "DatabaseServices::  no suitable plugin found for database technology: " +
         configuration->databaseTechnology());
-}
-
-DatabaseServices::DatabaseServices(Configuration::Ptr const& configuration)
-    :   _configuration(configuration) {
 }
 
 }}} // namespace lsst::qserv::replica

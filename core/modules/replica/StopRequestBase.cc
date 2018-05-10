@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
+ * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -21,7 +21,7 @@
  */
 
 // Class header
-#include "replica/StatusRequest.h"
+#include "replica/StopRequestBase.h"
 
 // System headers
 #include <stdexcept>
@@ -40,7 +40,7 @@
 
 namespace {
 
-LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.StatusRequest");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.StopRequest");
 
 } /// namespace
 
@@ -48,14 +48,14 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-StatusRequestBaseM::StatusRequestBaseM(ServiceProvider::Ptr const& serviceProvider,
-                                       boost::asio::io_service& io_service,
-                                       char const*              requestTypeName,
-                                       std::string const&       worker,
-                                       std::string const&       targetRequestId,
-                                       proto::ReplicationReplicaRequestType requestType,
-                                       bool                     keepTracking,
-                                       std::shared_ptr<Messenger> const& messenger)
+StopRequestBase::StopRequestBase(ServiceProvider::Ptr const& serviceProvider,
+                                 boost::asio::io_service& io_service,
+                                 char const*              requestTypeName,
+                                 std::string const&       worker,
+                                 std::string const&       targetRequestId,
+                                 proto::ReplicationReplicaRequestType requestType,
+                                 bool                     keepTracking,
+                                 std::shared_ptr<Messenger> const&  messenger)
     :   RequestMessenger(serviceProvider,
                          io_service,
                          requestTypeName,
@@ -68,7 +68,7 @@ StatusRequestBaseM::StatusRequestBaseM(ServiceProvider::Ptr const& serviceProvid
         _requestType(requestType) {
 }
 
-void StatusRequestBaseM::startImpl() {
+void StopRequestBase::startImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
 
@@ -80,11 +80,11 @@ void StatusRequestBaseM::startImpl() {
     proto::ReplicationRequestHeader hdr;
     hdr.set_id(id());
     hdr.set_type(proto::ReplicationRequestHeader::REQUEST);
-    hdr.set_management_type(proto::ReplicationManagementRequestType::REQUEST_STATUS);
+    hdr.set_management_type(proto::ReplicationManagementRequestType::REQUEST_STOP);
 
     _bufferPtr->serialize(hdr);
 
-    proto::ReplicationRequestStatus message;
+    proto::ReplicationRequestStop message;
     message.set_id(_targetRequestId);
     message.set_type(_requestType);
 
@@ -93,7 +93,7 @@ void StatusRequestBaseM::startImpl() {
     send();
 }
 
-void StatusRequestBaseM::wait() {
+void StopRequestBase::wait() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "wait");
 
@@ -102,14 +102,14 @@ void StatusRequestBaseM::wait() {
     _timer.expires_from_now(boost::posix_time::seconds(_timerIvalSec));
     _timer.async_wait(
         boost::bind(
-            &StatusRequestBaseM::awaken,
-            shared_from_base<StatusRequestBaseM>(),
+            &StopRequestBase::awaken,
+            shared_from_base<StopRequestBase>(),
             boost::asio::placeholders::error
         )
     );
 }
 
-void StatusRequestBaseM::awaken(boost::system::error_code const& ec) {
+void StopRequestBase::awaken(boost::system::error_code const& ec) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "awaken");
 
@@ -119,7 +119,6 @@ void StatusRequestBaseM::awaken(boost::system::error_code const& ec) {
 
     // Also ignore this event if the request expired
     if (_state== State::FINISHED) return;
-
 
     // Serialize the Status message header and the request itself into
     // the network buffer.
@@ -142,15 +141,14 @@ void StatusRequestBaseM::awaken(boost::system::error_code const& ec) {
     send();
 }
 
-void StatusRequestBaseM::analyze(bool success,
-                                 proto::ReplicationStatus status) {
+void StopRequestBase::analyze(bool success,
+                              proto::ReplicationStatus status) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "analyze  success=" << (success ? "true" : "false"));
 
-    // The lock is acquird on behalf of an asynchronious callback fired
+    // This guard is made on behalf of an asynchronious callback fired
     // upon a completion of the request within method send() - the only
     // client of analyze()
-
     LOCK(_mtx);
 
     if (success) {
@@ -194,8 +192,8 @@ void StatusRequestBaseM::analyze(bool success,
 
             default:
                 throw std::logic_error(
-                        "StatusRequestBaseM::analyze() unknown status '"
-                        + proto::ReplicationStatus_Name(status) +
+                        "StopRequestBase::analyze() unknown status '" +
+                        proto::ReplicationStatus_Name(status) +
                         "' received from server");
         }
 

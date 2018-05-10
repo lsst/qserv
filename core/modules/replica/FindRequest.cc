@@ -52,30 +52,30 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-FindRequestM::Ptr FindRequestM::create(ServiceProvider::Ptr const& serviceProvider,
-                                       boost::asio::io_service& io_service,
-                                       std::string const& worker,
-                                       std::string const& database,
-                                       unsigned int  chunk,
-                                       CallbackType onFinish,
-                                       int  priority,
-                                       bool computeCheckSum,
-                                       bool keepTracking,
-                                       std::shared_ptr<Messenger> const& messenger) {
-    return FindRequestM::Ptr(
-        new FindRequestM(serviceProvider,
-                         io_service,
-                         worker,
-                         database,
-                         chunk,
-                         onFinish,
-                         priority,
-                         computeCheckSum,
-                         keepTracking,
-                         messenger));
+FindRequest::Ptr FindRequest::create(ServiceProvider::Ptr const& serviceProvider,
+                                     boost::asio::io_service& io_service,
+                                     std::string const& worker,
+                                     std::string const& database,
+                                     unsigned int chunk,
+                                     CallbackType onFinish,
+                                     int priority,
+                                     bool computeCheckSum,
+                                     bool keepTracking,
+                                     std::shared_ptr<Messenger> const& messenger) {
+    return FindRequest::Ptr(
+        new FindRequest(serviceProvider,
+                        io_service,
+                        worker,
+                        database,
+                        chunk,
+                        onFinish,
+                        priority,
+                        computeCheckSum,
+                        keepTracking,
+                        messenger));
 }
 
-FindRequestM::FindRequestM(ServiceProvider::Ptr const& serviceProvider,
+FindRequest::FindRequest(ServiceProvider::Ptr const& serviceProvider,
                            boost::asio::io_service& io_service,
                            std::string const& worker,
                            std::string const& database,
@@ -102,12 +102,12 @@ FindRequestM::FindRequestM(ServiceProvider::Ptr const& serviceProvider,
     _serviceProvider->assertDatabaseIsValid(database);
 }
 
-ReplicaInfo const& FindRequestM::responseData() const {
+ReplicaInfo const& FindRequest::responseData() const {
     return _replicaInfo;
 }
 
 
-void FindRequestM::startImpl() {
+void FindRequest::startImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl "
          << " worker: "          << worker()
@@ -138,7 +138,7 @@ void FindRequestM::startImpl() {
     send();
 }
 
-void FindRequestM::wait() {
+void FindRequest::wait() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "wait");
 
@@ -147,14 +147,14 @@ void FindRequestM::wait() {
     _timer.expires_from_now(boost::posix_time::seconds(_timerIvalSec));
     _timer.async_wait(
         boost::bind(
-            &FindRequestM::awaken,
-            shared_from_base<FindRequestM>(),
+            &FindRequest::awaken,
+            shared_from_base<FindRequest>(),
             boost::asio::placeholders::error
         )
     );
 }
 
-void FindRequestM::awaken(boost::system::error_code const& ec) {
+void FindRequest::awaken(boost::system::error_code const& ec) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "awaken");
 
@@ -186,11 +186,11 @@ void FindRequestM::awaken(boost::system::error_code const& ec) {
     send();
 }
 
-void FindRequestM::send() {
+void FindRequest::send() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "send");
 
-    auto self = shared_from_base<FindRequestM>();
+    auto self = shared_from_base<FindRequest>();
 
     _messenger->send<proto::ReplicationResponseFind>(
         worker(),
@@ -204,8 +204,8 @@ void FindRequestM::send() {
     );
 }
 
-void FindRequestM::analyze(bool success,
-                           proto::ReplicationResponseFind const& message) {
+void FindRequest::analyze(bool success,
+                          proto::ReplicationResponseFind const& message) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "analyze  success=" << (success ? "true" : "false"));
 
@@ -278,7 +278,7 @@ void FindRequestM::analyze(bool success,
 
             default:
                 throw std::logic_error(
-                        "FindRequestM::analyze() unknown status '" +
+                        "FindRequest::analyze() unknown status '" +
                         proto::ReplicationStatus_Name(message.status()) + "' received from server");
         }
 
@@ -288,7 +288,7 @@ void FindRequestM::analyze(bool success,
     if (_state == State::FINISHED) notify();
 }
 
-void FindRequestM::notify () {
+void FindRequest::notify () {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
 
@@ -296,7 +296,7 @@ void FindRequestM::notify () {
     // to avoid blocking the current thread.
 
     if (_onFinish) {
-        auto self = shared_from_base<FindRequestM>();
+        auto self = shared_from_base<FindRequest>();
         std::async(
             std::launch::async,
             [self]() {

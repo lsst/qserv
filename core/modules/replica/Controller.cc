@@ -32,6 +32,7 @@
 // Qserv headers
 #include "lsst/log/Log.h"
 #include "replica/Common.h"
+#include "replica/Configuration.h"
 #include "replica/DatabaseServices.h"
 #include "replica/DeleteRequest.h"
 #include "replica/FindRequest.h"

@@ -50,7 +50,7 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-ReplicationRequestM::Ptr ReplicationRequestM::create(
+ReplicationRequest::Ptr ReplicationRequest::create(
                                     ServiceProvider::Ptr const& serviceProvider,
                                     boost::asio::io_service& io_service,
                                     std::string const& worker,
@@ -63,8 +63,8 @@ ReplicationRequestM::Ptr ReplicationRequestM::create(
                                     bool allowDuplicate,
                                     std::shared_ptr<Messenger> const& messenger) {
 
-    return ReplicationRequestM::Ptr(
-        new ReplicationRequestM(
+    return ReplicationRequest::Ptr(
+        new ReplicationRequest(
             serviceProvider,
             io_service,
             worker,
@@ -78,7 +78,7 @@ ReplicationRequestM::Ptr ReplicationRequestM::create(
             messenger));
 }
 
-ReplicationRequestM::ReplicationRequestM(
+ReplicationRequest::ReplicationRequest(
                                     ServiceProvider::Ptr const& serviceProvider,
                                     boost::asio::io_service& io_service,
                                     std::string const& worker,
@@ -109,7 +109,7 @@ ReplicationRequestM::ReplicationRequestM(
     _serviceProvider->assertDatabaseIsValid(database);
 }
 
-void ReplicationRequestM::startImpl() {
+void ReplicationRequest::startImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
 
@@ -136,7 +136,7 @@ void ReplicationRequestM::startImpl() {
     send();
 }
 
-void ReplicationRequestM::wait() {
+void ReplicationRequest::wait() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "wait");
 
@@ -145,14 +145,14 @@ void ReplicationRequestM::wait() {
     _timer.expires_from_now(boost::posix_time::seconds(_timerIvalSec));
     _timer.async_wait(
         boost::bind(
-            &ReplicationRequestM::awaken,
-            shared_from_base<ReplicationRequestM>(),
+            &ReplicationRequest::awaken,
+            shared_from_base<ReplicationRequest>(),
             boost::asio::placeholders::error
         )
     );
 }
 
-void ReplicationRequestM::awaken(boost::system::error_code const& ec) {
+void ReplicationRequest::awaken(boost::system::error_code const& ec) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "awaken");
 
@@ -184,9 +184,9 @@ void ReplicationRequestM::awaken(boost::system::error_code const& ec) {
     send();
 }
 
-void ReplicationRequestM::send() {
+void ReplicationRequest::send() {
 
-    auto self = shared_from_base<ReplicationRequestM>();
+    auto self = shared_from_base<ReplicationRequest>();
 
     _messenger->send<proto::ReplicationResponseReplicate>(
         worker(),
@@ -200,8 +200,8 @@ void ReplicationRequestM::send() {
     );
 }
 
-void ReplicationRequestM::analyze(bool success,
-                                  proto::ReplicationResponseReplicate const& message) {
+void ReplicationRequest::analyze(bool success,
+                                 proto::ReplicationResponseReplicate const& message) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "analyze  success=" << (success ? "true" : "false"));
 
@@ -278,7 +278,7 @@ void ReplicationRequestM::analyze(bool success,
 
             default:
                 throw std::logic_error(
-                        "ReplicationRequestM::analyze() unknown status '" +
+                        "ReplicationRequest::analyze() unknown status '" +
                         proto::ReplicationStatus_Name(message.status()) +
                         "' received from server");
         }
@@ -290,7 +290,7 @@ void ReplicationRequestM::analyze(bool success,
     if (_state == State::FINISHED) notify();
 }
 
-void ReplicationRequestM::notify() {
+void ReplicationRequest::notify() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
 
@@ -298,7 +298,7 @@ void ReplicationRequestM::notify() {
     // to avoid blocking the current thread.
 
     if (_onFinish) {
-        auto self = shared_from_base<ReplicationRequestM>();
+        auto self = shared_from_base<ReplicationRequest>();
         std::async(
             std::launch::async,
             [self]() {

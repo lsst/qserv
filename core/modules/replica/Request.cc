@@ -32,6 +32,7 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
+#include "replica/Configuration.h"
 #include "replica/Controller.h"
 #include "replica/DatabaseServices.h"
 #include "replica/ProtocolBuffer.h"

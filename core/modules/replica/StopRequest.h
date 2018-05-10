@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
+ * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -26,22 +26,11 @@
 ///
 /// Common classes shared by all implementations:
 ///
-///   class StopRequestBase
 ///   class StopRequest
 ///   class StopRequestReplicate
 ///   class StopRequestDelete
 ///   class StopRequestFind
 ///   class StopRequestFindAll
-///
-/// Request implementations based on multiplexed connectors provided by
-/// base class RequestMessenger:
-///
-///   class StopRequestBaseM
-///   class StopRequestM
-///   class StopRequestReplicateM
-///   class StopRequestDeleteM
-///   class StopRequestFindM
-///   class StopRequestFindAllM
 ///
 /// (see individual class documentation for more information)
 
@@ -60,6 +49,7 @@
 #include "replica/RequestMessenger.h"
 #include "replica/ProtocolBuffer.h"
 #include "replica/ServiceProvider.h"
+#include "replica/StopRequestBase.h"
 
 // This header declarations
 
@@ -79,18 +69,18 @@ struct StopReplicationRequestPolicy {
         return proto::ReplicationReplicaRequestType::REPLICA_CREATE;
     }
 
-    using responseMessageType     = proto::ReplicationResponseReplicate;
-    using responseDataType        = ReplicaInfo;
-    using targetRequestParamsType = ReplicationRequestParams;
+    using ResponseMessageType     = proto::ReplicationResponseReplicate;
+    using ResponseDataType        = ReplicaInfo;
+    using TargetRequestParamsType = ReplicationRequestParams;
 
-    static void extractResponseData(responseMessageType const& msg,
-                                    responseDataType& data) {
-        data = responseDataType(&(msg.replica_info()));
+    static void extractResponseData(ResponseMessageType const& msg,
+                                    ResponseDataType& data) {
+        data = ResponseDataType(&(msg.replica_info()));
     }
-    static void extractTargetRequestParams(responseMessageType const& msg,
-                                           targetRequestParamsType& params) {
+    static void extractTargetRequestParams(ResponseMessageType const& msg,
+                                           TargetRequestParamsType& params) {
         if (msg.has_request()) {
-            params = targetRequestParamsType(msg.request());
+            params = TargetRequestParamsType(msg.request());
         }
     }
 
@@ -108,18 +98,18 @@ struct StopDeleteRequestPolicy {
         return proto::ReplicationReplicaRequestType::REPLICA_DELETE;
     }
 
-    using responseMessageType     = proto::ReplicationResponseDelete;
-    using responseDataType        = ReplicaInfo;
-    using targetRequestParamsType = DeleteRequestParams;
+    using ResponseMessageType     = proto::ReplicationResponseDelete;
+    using ResponseDataType        = ReplicaInfo;
+    using TargetRequestParamsType = DeleteRequestParams;
 
-    static void extractResponseData(responseMessageType const& msg,
-                                    responseDataType& data) {
-        data = responseDataType(&(msg.replica_info()));
+    static void extractResponseData(ResponseMessageType const& msg,
+                                    ResponseDataType& data) {
+        data = ResponseDataType(&(msg.replica_info()));
     }
-    static void extractTargetRequestParams(responseMessageType const& msg,
-                                           targetRequestParamsType& params) {
+    static void extractTargetRequestParams(ResponseMessageType const& msg,
+                                           TargetRequestParamsType& params) {
         if (msg.has_request()) {
-            params = targetRequestParamsType(msg.request());
+            params = TargetRequestParamsType(msg.request());
         }
     }
 
@@ -137,18 +127,18 @@ struct StopFindRequestPolicy {
         return proto::ReplicationReplicaRequestType::REPLICA_FIND;
     }
 
-    using responseMessageType     = proto::ReplicationResponseFind;
-    using responseDataType        = ReplicaInfo;
-    using targetRequestParamsType = FindRequestParams;
+    using ResponseMessageType     = proto::ReplicationResponseFind;
+    using ResponseDataType        = ReplicaInfo;
+    using TargetRequestParamsType = FindRequestParams;
 
-    static void extractResponseData(responseMessageType const& msg,
-                                    responseDataType& data) {
-        data = responseDataType(&(msg.replica_info()));
+    static void extractResponseData(ResponseMessageType const& msg,
+                                    ResponseDataType& data) {
+        data = ResponseDataType(&(msg.replica_info()));
     }
-    static void extractTargetRequestParams(responseMessageType const& msg,
-                                           targetRequestParamsType& params) {
+    static void extractTargetRequestParams(ResponseMessageType const& msg,
+                                           TargetRequestParamsType& params) {
         if (msg.has_request()) {
-            params = targetRequestParamsType(msg.request());
+            params = TargetRequestParamsType(msg.request());
         }
     }
 
@@ -166,20 +156,20 @@ struct StopFindAllRequestPolicy {
         return proto::ReplicationReplicaRequestType::REPLICA_FIND_ALL;
     }
 
-    using responseMessageType     = proto::ReplicationResponseFindAll;
-    using responseDataType        = ReplicaInfoCollection;
-    using targetRequestParamsType = FindAllRequestParams;
+    using ResponseMessageType     = proto::ReplicationResponseFindAll;
+    using ResponseDataType        = ReplicaInfoCollection;
+    using TargetRequestParamsType = FindAllRequestParams;
 
-    static void extractResponseData(responseMessageType const& msg,
-                                    responseDataType& data) {
+    static void extractResponseData(ResponseMessageType const& msg,
+                                    ResponseDataType& data) {
         for (int num = msg.replica_info_many_size(), idx = 0; idx < num; ++idx) {
             data.emplace_back(&(msg.replica_info_many(idx)));
         }
     }
-    static void extractTargetRequestParams(responseMessageType const& msg,
-                                           targetRequestParamsType& params) {
+    static void extractTargetRequestParams(ResponseMessageType const& msg,
+                                           TargetRequestParamsType& params) {
         if (msg.has_request()) {
-            params = targetRequestParamsType(msg.request());
+            params = TargetRequestParamsType(msg.request());
         }
     }
 
@@ -193,133 +183,38 @@ struct StopFindAllRequestPolicy {
 };
 
 /**
-  * Class StopRequestBaseM represents teh base class for a family of requests
-  * stopping an on-going operationd.
-  */
-class StopRequestBaseM
-    :   public RequestMessenger {
-
-public:
-
-    /// The pointer type for instances of the class
-    typedef std::shared_ptr<StopRequestBaseM> Ptr;
-
-    // Default construction and copy semantics are prohibited
-
-    StopRequestBaseM() = delete;
-    StopRequestBaseM(StopRequestBaseM const&) = delete;
-    StopRequestBaseM& operator=(StopRequestBaseM const&) = delete;
-
-    /// Destructor
-    ~StopRequestBaseM() override = default;
-
-    /// Return an identifier of the target request
-    std::string const& targetRequestId() const { return _targetRequestId; }
-
-    /// Return the performance info of the target operation (if available)
-    Performance const& targetPerformance() const { return _targetPerformance; }
-
-protected:
-
-    /**
-     * Construct the request with the pointer to the services provider.
-     */
-    StopRequestBaseM(ServiceProvider::Ptr const& serviceProvider,
-                     boost::asio::io_service& io_service,
-                     char const*              requestTypeName,
-                     std::string const&       worker,
-                     std::string const&       targetRequestId,
-                     proto::ReplicationReplicaRequestType requestType,
-                     bool                     keepTracking,
-                     std::shared_ptr<Messenger> const& messenger);
-
-    /**
-      * Implement the method declared in the base class
-      *
-      * @see Request::startImpl()
-      */
-    void startImpl() final;
-
-    /// Start the timer before attempting the previously failed
-    /// or successfull (if a status check is needed) step.
-    void wait();
-
-    /// Callback handler for the asynchronious operation
-    void awaken(boost::system::error_code const& ec);
-
-
-    /**
-     * Initiate request-specific send
-     *
-     * This method must be implemented by subclasses.
-     */
-    virtual void send() = 0;
-
-    /**
-     * Process the worker response to the requested operation.
-     *
-     * @param success - the flag indicating if the operation was successfull
-     * @param status  - a response from the worker service (only valid if success is 'true')
-     */
-    void analyze(bool success,
-                 proto::ReplicationStatus status = proto::ReplicationStatus::FAILED);
-
-     /**
-      * Initiate request-specific operation with the persistent state
-      * service to store replica status.
-      *
-      * This method must be implemented by subclasses.
-      */
-     virtual void saveReplicaInfo() = 0;
-
-private:
-
-    /// An identifier of the targer request whose state is to be queried
-    std::string _targetRequestId;
-
-    /// The type of the targer request (must match the identifier)
-    proto::ReplicationReplicaRequestType  _requestType;
-
-protected:
-
-    /// The performance of the target operation
-    Performance _targetPerformance;
-};
-
-
-/**
-  * Generic class StopRequestM extends its base class
+  * Generic class StopRequest extends its base class
   * to allow further policy-based customization of specific requests.
   */
 template <typename POLICY>
-class StopRequestM
-    :   public StopRequestBaseM {
+class StopRequest
+    :   public StopRequestBase {
 
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<StopRequestM<POLICY>> Ptr;
+    typedef std::shared_ptr<StopRequest<POLICY>> Ptr;
 
     /// The function type for notifications on the completon of the request
     typedef std::function<void(Ptr)> CallbackType;
 
     // Default construction and copy semantics are prohibited
 
-    StopRequestM() = delete;
-    StopRequestM(StopRequestM const&) = delete;
-    StopRequestM &operator=(StopRequestM const&) = delete;
+    StopRequest() = delete;
+    StopRequest(StopRequest const&) = delete;
+    StopRequest &operator=(StopRequest const&) = delete;
 
     /// Destructor
-    ~StopRequestM() final = default;
+    ~StopRequest() final = default;
 
     /// Return target request specific parameters
-    typename POLICY::targetRequestParamsType const& targetRequestParams() const {
+    typename POLICY::TargetRequestParamsType const& targetRequestParams() const {
         return _targetRequestParams;
     }
 
     /// Return request-specific extended data reported upon asuccessfull completion
     /// of the request
-    typename POLICY::responseDataType const& responseData() const {
+    typename POLICY::ResponseDataType const& responseData() const {
         return _responseData;
     }
 
@@ -347,8 +242,8 @@ public:
                       CallbackType            onFinish,
                       bool                     keepTracking,
                       std::shared_ptr<Messenger> const& messenger) {
-        return StopRequestM<POLICY>::Ptr(
-            new StopRequestM<POLICY>(
+        return StopRequest<POLICY>::Ptr(
+            new StopRequest<POLICY>(
                 serviceProvider,
                 io_service,
                 POLICY::requestTypeName(),
@@ -365,23 +260,23 @@ private:
     /**
      * Construct the request
      */
-    StopRequestM(ServiceProvider::Ptr const& serviceProvider,
-                 boost::asio::io_service& io_service,
-                 char const*              requestTypeName,
-                 std::string const&       worker,
-                 std::string const&       targetRequestId,
-                 proto::ReplicationReplicaRequestType requestType,
-                 CallbackType            onFinish,
-                 bool                     keepTracking,
-                 std::shared_ptr<Messenger> const& messenger)
-        :   StopRequestBaseM(serviceProvider,
-                             io_service,
-                             requestTypeName,
-                             worker,
-                             targetRequestId,
-                             requestType,
-                             keepTracking,
-                             messenger),
+    StopRequest(ServiceProvider::Ptr const& serviceProvider,
+                boost::asio::io_service& io_service,
+                char const*              requestTypeName,
+                std::string const&       worker,
+                std::string const&       targetRequestId,
+                proto::ReplicationReplicaRequestType requestType,
+                CallbackType            onFinish,
+                bool                     keepTracking,
+                std::shared_ptr<Messenger> const& messenger)
+        :   StopRequestBase(serviceProvider,
+                            io_service,
+                            requestTypeName,
+                            worker,
+                            targetRequestId,
+                            requestType,
+                            keepTracking,
+                            messenger),
             _onFinish(onFinish) {
     }
 
@@ -397,14 +292,15 @@ private:
         // to avoid blocking the current thread.
 
         if (_onFinish) {
-            StopRequestM<POLICY>::Ptr self = shared_from_base<StopRequestM<POLICY>>();
+            StopRequest<POLICY>::Ptr self = shared_from_base<StopRequest<POLICY>>();
             std::async(
                 std::launch::async,
                 [self]() {
                     self->_onFinish(self);
                 }
             );
-        }    }
+        }
+    }
 
     /**
      * Initiate request-specific send
@@ -414,15 +310,15 @@ private:
      */
     void send() final {
 
-        auto self = shared_from_base<StopRequestM<POLICY>>();
+        auto self = shared_from_base<StopRequest<POLICY>>();
 
-        _messenger->send<typename POLICY::responseMessageType>(
+        _messenger->send<typename POLICY::ResponseMessageType>(
             worker(),
             id(),
             _bufferPtr,
             [self] (std::string const& id,
                     bool success,
-                    typename POLICY::responseMessageType const& response) {
+                    typename POLICY::ResponseMessageType const& response) {
 
                 if (success) { self->analyze(true, self->parseResponse(response)); }
                 else         { self->analyze(false); }
@@ -438,7 +334,7 @@ private:
      * by the base class.
      */
     void saveReplicaInfo() final {
-        auto const self = shared_from_base<StopRequestM<POLICY>>();
+        auto const self = shared_from_base<StopRequest<POLICY>>();
         POLICY::saveReplicaInfo(self);
     }
 
@@ -449,7 +345,7 @@ private:
      * @return status of the operation reported by a server
      */
     proto::ReplicationStatus parseResponse(
-            typename POLICY::responseMessageType const& message) {
+            typename POLICY::ResponseMessageType const& message) {
 
         // Extract target request-specific parameters from the response if available
         POLICY::extractTargetRequestParams(message, _targetRequestParams);
@@ -481,18 +377,16 @@ private:
     CallbackType _onFinish;
 
     /// Request-specific parameters of the target request
-    typename POLICY::targetRequestParamsType _targetRequestParams;
+    typename POLICY::TargetRequestParamsType _targetRequestParams;
 
     /// Request-specific data
-    typename POLICY::responseDataType _responseData;
+    typename POLICY::ResponseDataType _responseData;
 };
 
-typedef StopRequestBaseM StopRequestBase;
-
-typedef StopRequestM<StopReplicationRequestPolicy> StopReplicationRequest;
-typedef StopRequestM<StopDeleteRequestPolicy>      StopDeleteRequest;
-typedef StopRequestM<StopFindRequestPolicy>        StopFindRequest;
-typedef StopRequestM<StopFindAllRequestPolicy>     StopFindAllRequest;
+typedef StopRequest<StopReplicationRequestPolicy> StopReplicationRequest;
+typedef StopRequest<StopDeleteRequestPolicy>      StopDeleteRequest;
+typedef StopRequest<StopFindRequestPolicy>        StopFindRequest;
+typedef StopRequest<StopFindAllRequestPolicy>     StopFindAllRequest;
 
 }}} // namespace lsst::qserv::replica
 

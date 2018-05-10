@@ -24,14 +24,7 @@
 
 /// FindAllRequest.h declares:
 ///
-/// Common classes shared by any implementations:
-///
 ///   class FindAllRequest
-///
-/// Request implementations based on multiplexed connectors provided by
-/// base class RequestMessenger:
-///
-///   class FindAllRequestM
 ///
 /// (see individual class documentation for more information)
 
@@ -56,28 +49,28 @@ namespace replica {
 class Messenger;
 
 /**
-  * Class FindAllRequestM represents known replicas lookup requests within
+  * Class FindAllRequest represents known replicas lookup requests within
   * the master controller.
   */
-class FindAllRequestM
+class FindAllRequest
     :   public RequestMessenger  {
 
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<FindAllRequestM> Ptr;
+    typedef std::shared_ptr<FindAllRequest> Ptr;
 
     /// The function type for notifications on the completon of the request
     typedef std::function<void(Ptr)> CallbackType;
 
     // Default construction and copy semantics are prohibited
 
-    FindAllRequestM() = delete;
-    FindAllRequestM(FindAllRequestM const&) = delete;
-    FindAllRequestM& operator=(FindAllRequestM const&) = delete;
+    FindAllRequest() = delete;
+    FindAllRequest(FindAllRequest const&) = delete;
+    FindAllRequest& operator=(FindAllRequest const&) = delete;
 
     /// Destructor
-    ~FindAllRequestM() final = default;
+    ~FindAllRequest() final = default;
 
     // Trivial acccessors
 
@@ -124,14 +117,14 @@ private:
     /**
      * Construct the request with the pointer to the services provider.
      */
-    FindAllRequestM(ServiceProvider::Ptr const& serviceProvider,
-                    boost::asio::io_service& io_service,
-                    std::string const& worker,
-                    std::string const& database,
-                    CallbackType onFinish,
-                    int  priority,
-                    bool keepTracking,
-                    std::shared_ptr<Messenger> const& messenger);
+    FindAllRequest(ServiceProvider::Ptr const& serviceProvider,
+                   boost::asio::io_service& io_service,
+                   std::string const& worker,
+                   std::string const& database,
+                   CallbackType onFinish,
+                   int  priority,
+                   bool keepTracking,
+                   std::shared_ptr<Messenger> const& messenger);
 
     /**
       * Implement the method declared in the base class
@@ -177,8 +170,6 @@ private:
     /// Result of the operation
     ReplicaInfoCollection _replicaInfoCollection;
 };
-
-typedef FindAllRequestM FindAllRequest;
 
 }}} // namespace lsst::qserv::replica
 

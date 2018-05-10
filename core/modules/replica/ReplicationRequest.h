@@ -23,15 +23,8 @@
 #define LSST_QSERV_REPLICA_REPLICATION_REQUEST_H
 
 /// ReplicationRequest.h declares:
-///
-/// Common classes shared by all implementations:
-///
+//
 ///   class ReplicationRequest
-///
-/// Request implementations based on multiplexed connectors provided by
-/// base class RequestMessenger:
-///
-///   class ReplicationRequestM
 ///
 /// (see individual class documentation for more information)
 
@@ -59,28 +52,28 @@ namespace replica {
 class Messenger;
 
 /**
-  * Class ReplicationRequestM represents a transient state of requests
+  * Class ReplicationRequest represents a transient state of requests
   * within the master controller for creating reolicas.
   */
-class ReplicationRequestM
+class ReplicationRequest
     :   public RequestMessenger  {
 
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<ReplicationRequestM> Ptr;
+    typedef std::shared_ptr<ReplicationRequest> Ptr;
 
     /// The function type for notifications on the completon of the request
     typedef std::function<void(Ptr)> CallbackType;
 
     // Default construction and copy semantics are prohibited
 
-    ReplicationRequestM() = delete;
-    ReplicationRequestM(ReplicationRequestM const&) = delete;
-    ReplicationRequestM& operator=(ReplicationRequestM const&) = delete;
+    ReplicationRequest() = delete;
+    ReplicationRequest(ReplicationRequest const&) = delete;
+    ReplicationRequest& operator=(ReplicationRequest const&) = delete;
 
     /// Destructor
-    ~ReplicationRequestM() final = default;
+    ~ReplicationRequest() final = default;
 
     // Trivial acccessors
 
@@ -123,9 +116,9 @@ public:
                       std::string const& worker,
                       std::string const& sourceWorker,
                       std::string const& database,
-                      unsigned int  chunk,
+                      unsigned int chunk,
                       CallbackType onFinish,
-                      int  priority,
+                      int priority,
                       bool keepTracking,
                       bool allowDuplicate,
                       std::shared_ptr<Messenger> const& messenger);
@@ -135,17 +128,17 @@ private:
     /**
      * Construct the request with the pointer to the services provider.
      */
-    ReplicationRequestM(ServiceProvider::Ptr const& serviceProvider,
-                        boost::asio::io_service& io_service,
-                        std::string const& worker,
-                        std::string const& sourceWorker,
-                        std::string const& database,
-                        unsigned int  chunk,
-                        CallbackType onFinish,
-                        int  priority,
-                        bool keepTracking,
-                        bool  allowDuplicate,
-                        std::shared_ptr<Messenger> const& messenger);
+    ReplicationRequest(ServiceProvider::Ptr const& serviceProvider,
+                       boost::asio::io_service& io_service,
+                       std::string const& worker,
+                       std::string const& sourceWorker,
+                       std::string const& database,
+                       unsigned int  chunk,
+                       CallbackType onFinish,
+                       int priority,
+                       bool keepTracking,
+                       bool allowDuplicate,
+                       std::shared_ptr<Messenger> const& messenger);
 
     /**
       * Implement the method declared in the base class
@@ -193,8 +186,6 @@ private:
     /// Detailed info on the replica status
     ReplicaInfo _replicaInfo;
 };
-
-typedef ReplicationRequestM ReplicationRequest;
 
 }}} // namespace lsst::qserv::replica
 
