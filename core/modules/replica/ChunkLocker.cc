@@ -28,7 +28,7 @@
 #include <tuple>        // std::tie
 
 // This macro to appear witin each block which requires thread safety
-#define LOCK(MUTEX) std::lock_guard<std::mutex> lock(MUTEX)
+#define LOCK(MUTEX) std::lock_guard<util::Mutex> lock(MUTEX)
 
 // Qserv headers
 

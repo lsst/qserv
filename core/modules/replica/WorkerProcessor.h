@@ -32,7 +32,6 @@
 #include <algorithm>
 #include <list>
 #include <memory>
-#include <mutex>
 #include <queue>
 #include <stdexcept>
 #include <thread>
@@ -43,6 +42,7 @@
 #include "replica/ServiceProvider.h"
 #include "replica/WorkerProcessorThread.h"
 #include "replica/WorkerRequest.h"
+#include "util/Mutex.h"
 
 // Forward declarations
 
@@ -204,12 +204,12 @@ public:
     static void setDefaultResponse(PROTOCOL_RESPONSE_TYPE& response,
                                    proto::ReplicationStatus status,
                                    proto::ReplicationStatusExt extendedStatus) {
-    
+
         WorkerPerformance performance;
         performance.setUpdateStart();
         performance.setUpdateFinish();
         response.set_allocated_performance(performance.info());
-    
+
         response.set_status(status);
         response.set_status_ext(extendedStatus);
     }
@@ -330,7 +330,7 @@ private:
      * its protobuf counterpart
      *
      * @param status - a completion status of a request processing object
-     * 
+     *
      * @return the matching completion status as per a protobuf definition
      */
     static proto::ReplicationStatus translate(WorkerRequest::CompletionStatus status);
@@ -339,7 +339,7 @@ private:
      * Return the next request which is ready to be pocessed
      * and if then one found assign it to the specified thread. The request
      * will be removed from the ready-to-be-processed queue.
-     * 
+     *
      * If the one is available witin the specified timeout then such request
      * will be moved into the in-progress queue, assigned to the processor thread
      * and returned to a caller. Otherwise an empty pointer (pointing to nullptr)
@@ -347,7 +347,7 @@ private:
      *
      * This method is supposed to be called by one of the processing threads
      * when it becomes available.
-     * 
+     *
      * ATTENTION: this method will block for a duration of time not exceeding
      *            the client-specified timeout unless it's set to 0. In the later
      *            case the method will block indefinitevely.
@@ -362,14 +362,14 @@ private:
      * whose state will be properly updated.
      *
      * @return - a valid reference to the request object (if found)
-     *           or a reference to nullptr otherwise. 
+     *           or a reference to nullptr otherwise.
      */
     WorkerRequest::Ptr dequeueOrCancelImpl(std::string const& id);
 
     /** Find and return a reference to the request object.
-     * 
+     *
      * @return - a valid reference to the request object (if found)
-     *           or a reference to nullptr otherwise. 
+     *           or a reference to nullptr otherwise.
      */
     WorkerRequest::Ptr checkStatusImpl(std::string const& id);
 
@@ -402,7 +402,7 @@ private:
      */
     void setInfo(WorkerRequest::Ptr const& request,
                  proto::ReplicationResponseFind& response);
- 
+
     /**
      * Extract the replica info (for multiple chunks) from the request and put
      * it into the response object.
@@ -478,9 +478,9 @@ private:
 
     /// A pool of threads for processing requests
     std::vector<WorkerProcessorThread::Ptr> _threads;
-    
+
     /// Mutex guarding the queues
-    mutable std::mutex _mtx;
+    mutable util::Mutex _mtx;
 
     /// New unprocessed requests
     PriorityQueueType _newRequests;

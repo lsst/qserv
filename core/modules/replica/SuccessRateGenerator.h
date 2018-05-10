@@ -28,10 +28,10 @@
 /// (see individual class documentation for more information)
 
 // System headers
-#include <mutex>
 #include <random>
 
 // Qserv headers
+#include "util/Mutex.h"
 
 // This header declarations
 
@@ -52,7 +52,7 @@ namespace replica {
 class SuccessRateGenerator {
 
 public:
-    
+
     // Default construction and copy semantics are prohibited
 
     SuccessRateGenerator() = delete;
@@ -89,7 +89,7 @@ private:
     std::mt19937                _gen;   // Standard mersenne_twister_engine seeded with rd()
     std::bernoulli_distribution _distr;
 
-    std::mutex _generatorMtx;   // for thread safety
+    util::Mutex _generatorMtx;   // for thread safety
 };
 
 }}} // namespace lsst::qserv::replica

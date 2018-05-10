@@ -32,12 +32,12 @@
 // System headers
 #include <list>
 #include <map>
-#include <mutex>
 #include <ostream>
 #include <string>
 #include <vector>
 
 // Qserv headers
+#include "util/Mutex.h"
 
 // Forward declarations
 
@@ -207,8 +207,7 @@ private:
     ChunksByOwners _owner2chunks;
 
     /// For thread safety where it's required
-    mutable std::mutex _mtx;
-
+    mutable util::Mutex _mtx;
 };
 
 

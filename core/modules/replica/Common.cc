@@ -139,9 +139,9 @@ proto::ReplicationStatusExt translate(ExtendedCompletionStatus status) {
 ////////////////////////////////////////////
 
 // This macro to appear witin each block which requires thread safety
-#define LOCK(MUTEX) std::lock_guard<std::mutex> lock(MUTEX)
+#define LOCK(MUTEX) std::lock_guard<util::Mutex> lock(MUTEX)
 
-std::mutex Generators::_mtx;
+util::Mutex Generators::_mtx;
 
 std::string Generators::uniqueId() {
     LOCK(_mtx);

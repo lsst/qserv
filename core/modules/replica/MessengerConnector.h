@@ -32,7 +32,6 @@
 #include <list>
 #include <map>
 #include <memory>
-#include <mutex>
 #include <string>
 
 // Third party headers
@@ -42,6 +41,7 @@
 #include "proto/replication.pb.h"
 #include "replica/ProtocolBuffer.h"
 #include "replica/ServiceProvider.h"
+#include "util/Mutex.h"
 
 // This header declarations
 
@@ -444,7 +444,7 @@ private:
     /// This mutex is meant to avoid race conditions to the internal data
     /// structure between a thread which runs the Ntework I/O service
     /// and threads submitting requests.
-    mutable std::mutex _mtx;
+    mutable util::Mutex _mtx;
 
     /// The queue of requests
     std::list<WrapperBase_pointer> _requests;

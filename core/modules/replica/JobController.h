@@ -33,7 +33,6 @@
 #include <atomic>
 #include <list>
 #include <memory>
-#include <mutex>
 #include <queue>
 #include <thread>
 #include <vector>
@@ -48,6 +47,7 @@
 #include "replica/ReplicateJob.h"
 #include "replica/ServiceProvider.h"
 #include "replica/VerifyJob.h"
+#include "util/Mutex.h"
 
 // Forward declarations
 
@@ -328,7 +328,7 @@ private:
     std::unique_ptr<std::thread> _thread;
 
     /// Mutex guarding the queues
-    mutable std::mutex _mtx;
+    mutable util::Mutex _mtx;
 
     /// The flag to be raised to tell the running thread to stop.
     /// The thread will reset this flag when it finishes.

@@ -30,7 +30,6 @@
 // System headers
 #include <atomic>
 #include <memory>
-#include <mutex>
 #include <string>
 
 // THird party headers
@@ -39,6 +38,7 @@
 // Qserv headers
 #include "replica/Performance.h"
 #include "replica/ServiceProvider.h"
+#include "util/Mutex.h"
 
 // Forward declarations
 class XrdSsiService;
@@ -355,7 +355,7 @@ protected:
     boost::asio::deadline_timer _requestExpirationTimer;
 
     /// Mutex guarding internal state
-    mutable std::mutex _mtx;
+    mutable util::Mutex _mtx;
 };
 
 }}} // namespace lsst::qserv::replica

@@ -33,7 +33,6 @@
 // System headers
 #include <map>
 #include <memory>
-#include <mutex>
 #include <thread>
 #include <vector>
 
@@ -44,6 +43,7 @@
 #include "replica/Request.h"
 #include "replica/RequestTypesFwd.h"
 #include "replica/ServiceProvider.h"
+#include "util/Mutex.h"
 
 // Forward declarations
 
@@ -599,7 +599,7 @@ public:
      */
     template <class REQUEST_TYPE>
     void requestsOfType(std::vector<typename REQUEST_TYPE::Ptr>& requests) const {
-        std::lock_guard<std::mutex> lock(_mtx);
+        std::lock_guard<util::Mutex> lock(_mtx);
         requests.clear();
         for (auto&& itr: _registry)
             if (typename REQUEST_TYPE::Ptr ptr =
@@ -613,7 +613,7 @@ public:
      */
     template <class REQUEST_TYPE>
     size_t numRequestsOfType() const {
-        std::lock_guard<std::mutex> lock(_mtx);
+        std::lock_guard<util::Mutex> lock(_mtx);
         size_t result {0};
         for (auto&& itr: _registry) {
             if (typename REQUEST_TYPE::Ptr request =
@@ -673,7 +673,7 @@ private:
 
     /// The mutex for enforcing thread safety of the class's public API
     /// and internal operations.
-    mutable std::mutex _mtx;
+    mutable util::Mutex _mtx;
 
     /// The registry of the on-going requests.
     std::map<std::string,std::shared_ptr<ControllerRequestWrapper>> _registry;

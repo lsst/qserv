@@ -30,7 +30,6 @@
 // System headers
 #include <atomic>
 #include <memory>
-#include <mutex>
 #include <ostream>
 #include <string>
 #include <vector>
@@ -427,7 +426,7 @@ protected:
     std::unique_ptr<boost::asio::deadline_timer> _expirationTimerPtr;
 
     /// Mutex guarding internal state
-    mutable std::mutex _mtx;
+    mutable util::Mutex _mtx;
 };
 
 /// Comparision type for strict weak ordering reaquired by std::priority_queue

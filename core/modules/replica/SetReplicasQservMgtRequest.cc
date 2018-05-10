@@ -74,7 +74,7 @@ SetReplicasQservMgtRequest::SetReplicasQservMgtRequest(
                                 SetReplicasQservMgtRequest::CallbackType onFinish)
     :   QservMgtRequest(serviceProvider,
                         io_service,
-                        "QSERV:SET_REPLICAS",
+                        "QSERV_SET_REPLICAS",
                         worker),
         _newReplicas(newReplicas),
         _force(force),

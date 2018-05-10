@@ -30,7 +30,6 @@
 // System headers
 #include <map>
 #include <memory>
-#include <mutex>
 #include <vector>
 
 // Qserv headers
@@ -39,6 +38,7 @@
 #include "replica/RemoveReplicaQservMgtRequest.h"
 #include "replica/ServiceProvider.h"
 #include "replica/SetReplicasQservMgtRequest.h"
+#include "util/Mutex.h"
 
 // Forward declarations
 class XrdSsiService;
@@ -237,7 +237,7 @@ private:
 
     /// The mutex for enforcing thread safety of the class's public API
     /// and internal operations.
-    mutable std::mutex _mtx;
+    mutable util::Mutex _mtx;
 };
 
 }}} // namespace lsst::qserv::replica

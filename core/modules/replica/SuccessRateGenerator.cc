@@ -38,8 +38,8 @@ SuccessRateGenerator::SuccessRateGenerator(double successRate)
 }
 
 bool SuccessRateGenerator::success() {
-    std::lock_guard<std::mutex> lock(_generatorMtx);
+    std::lock_guard<util::Mutex> lock(_generatorMtx);
     return _distr(_gen);
 }
-    
+
 }}} // namespace lsst::qserv::replica
