@@ -291,6 +291,10 @@ public:
     virtual void handleLimitClause(int limit) = 0;
 };
 
+class SimpleIdCBH: public BaseCBH {
+public:
+    virtual void handleSimpleId(const string & val) = 0;
+};
 
 class DottedIdCBH: public BaseCBH {
 public:
@@ -1477,6 +1481,29 @@ private:
     QSMySqlParser::LimitClauseContext* _ctx;
 };
 
+
+class SimpleIdAdapter :
+        public AdapterT<SimpleIdCBH>,
+        public FunctionNameBaseCBH {
+public:
+    SimpleIdAdapter(shared_ptr<SimpleIdCBH>& parent, QSMySqlParser::SimpleIdContext* ctx)
+    : AdapterT(parent)
+    , _ctx(ctx) {}
+
+    void handleFunctionNameBase(const string& name) override {
+        // for all callbacks to SimpleIdAdapter are dropped and the value is fetched from the text value
+        // of the context on exit.
+    }
+
+    void onExit() override {
+        lockedParent()->handleSimpleId(_ctx->getText());
+    }
+
+private:
+    QSMySqlParser::SimpleIdContext* _ctx;
+};
+
+
 class DottedIdAdapter :
         public AdapterT<DottedIdCBH> {
 public:
@@ -1539,20 +1566,33 @@ private:
 
 
 class UidAdapter :
-        public AdapterT<UidCBH> {
+        public AdapterT<UidCBH>,
+        public SimpleIdCBH {
 public:
     UidAdapter(shared_ptr<UidCBH>& parent, QSMySqlParser::UidContext* ctx)
-    : AdapterT(parent), _uidContext(ctx) {}
+    : AdapterT(parent), _ctx(ctx) {}
+
+    void handleSimpleId(const string & val) {
+        _val = val;
+    }
 
     void onExit() override {
         // Fetching the string from a Uid shortcuts a large part of the syntax tree defined under Uid
         // (see QSMySqlParser.g4). If Adapters for any nodes in the tree below Uid are implemented then
         // it will have to be handled and this shortcut may not be taken.
-        lockedParent()->handleUid(_uidContext->getText());
+        if (_val.empty()) {
+            ASSERT_EXECUTION_CONDITION(_ctx->REVERSE_QUOTE_ID() != nullptr ||
+                    _ctx->CHARSET_REVERSE_QOUTE_STRING() != nullptr,
+                   "If value is not set by callback then one of the terminal nodes should be populated.",
+                    _ctx);
+            _val = _ctx->getText();
+        }
+        lockedParent()->handleUid(_val);
     }
 
 private:
-    QSMySqlParser::UidContext* _uidContext;
+    QSMySqlParser::UidContext* _ctx;
+    string _val;
 };
 
 
@@ -2870,7 +2910,7 @@ UNHANDLED(UuidSet)
 UNHANDLED(Xid)
 UNHANDLED(XuidStringId)
 UNHANDLED(AuthPlugin)
-IGNORED(SimpleId)
+ENTER_EXIT_PARENT(SimpleId)
 ENTER_EXIT_PARENT(DottedId)
 UNHANDLED(FileSizeLiteral)
 UNHANDLED(BooleanLiteral)
