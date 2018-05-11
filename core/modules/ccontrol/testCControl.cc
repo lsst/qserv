@@ -282,7 +282,7 @@ static const std::vector< std::string > QUERIES = {
     "SELECT o1.objectId AS objId1, o2.objectId AS objId2, scisql_angSep(o1.ra_PS, o1.decl_PS, o2.ra_PS, o2.decl_PS) AS distance FROM Object o1, Object o2 WHERE qserv_areaspec_box(0, 0, 0.2, 1) AND scisql_angSep(o1.ra_PS, o1.decl_PS, o2.ra_PS, o2.decl_PS) < 1 AND o1.objectId <> o2.objectId",
 };
 
-
+// These queries are all marked "FIXME" in the integration tests, and we don't test them (yet).
 static const std::vector< std::string > FAIL_QUERIES = {
     "SELECT v.objectId, v.ra, v.decl FROM   Object v, Object o WHERE  o.objectId = :objectId AND spDist(v.ra, v.decl, o.ra, o.decl, :dist) AND v.variability > 0.8 AND o.extendedParameter > 0.8", // case01/queries/0006_transientVarObjNearGalaxy.sql.FIXME
     "SELECT offset, mjdRef, drift FROM LeapSeconds WHERE whenUtc = ( SELECT MAX(whenUtc) FROM LeapSeconds WHERE whenUtc <=  NAME_CONST('nsecs_',39900600000000000000000000) )", // case01/queries/0010_leapSec.sql.FIXME
@@ -405,39 +405,6 @@ BOOST_DATA_TEST_CASE(antlr_compare, QUERIES, query) {
     BOOST_REQUIRE(a2SelectStatement != nullptr);
     BOOST_REQUIRE(a4SelectStatement != nullptr);
     BOOST_REQUIRE_EQUAL(a4QueryStr.str(), a2QueryStr.str());
-}
-
-
-BOOST_DATA_TEST_CASE(antlr_compare_fail, FAIL_QUERIES, query) {
-    std::ostringstream a2QueryStr;
-    std::shared_ptr<query::SelectStmt> a2SelectStatement;
-    try {
-        a2SelectStatement = ccontrol::UserQueryFactory::antlr2NewSelectStmt(query);
-    } catch (...) {}
-    if (a2SelectStatement != nullptr) {
-//        BOOST_TEST_MESSAGE("antlr2 selectStmt structure:" << *a2SelectStatement);
-        a2QueryStr << a2SelectStatement->getQueryTemplate();
-    }
-
-    std::shared_ptr<query::SelectStmt> a4SelectStatement;
-    try {
-        a4SelectStatement = ccontrol::a4NewUserQuery(query);
-    } catch (...) {}
-    std::ostringstream a4QueryStr;
-    if (a4SelectStatement != nullptr) {
-//        BOOST_TEST_MESSAGE("antlr4 selectStmt structure:" << *a4SelectStatement);
-        a4QueryStr << a4SelectStatement->getQueryTemplate();
-    }
-
-    if (a2SelectStatement == nullptr || a4SelectStatement == nullptr || a4QueryStr.str() != a2QueryStr.str()) {
-        BOOST_TEST_MESSAGE("FAILED QUERY:" << query);
-    } else {
-        BOOST_TEST_MESSAGE("PASSED QUERY:" << query);
-    }
-
-    BOOST_REQUIRE(a2SelectStatement == nullptr);
-    BOOST_REQUIRE(a4SelectStatement == nullptr);
-//    BOOST_REQUIRE_EQUAL(a4QueryStr.str(), a2QueryStr.str());
 }
 
 
