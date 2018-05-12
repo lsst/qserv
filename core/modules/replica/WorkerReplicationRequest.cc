@@ -33,12 +33,9 @@
 #include "replica/Configuration.h"
 #include "replica/FileClient.h"
 #include "replica/FileUtils.h"
+#include "replica/LockUtils.h"
 #include "replica/Performance.h"
 #include "replica/ServiceProvider.h"
-
-// These macros to appear witin each block which requires thread safety
-// at the corresponding level
-#define LOCK(MUTEX) std::lock_guard<util::Mutex> lock(MUTEX)
 
 namespace fs = boost::filesystem;
 
@@ -104,7 +101,7 @@ ReplicaInfo WorkerReplicationRequest::replicaInfo() const {
     // the object will be returned to a calling thread while
     // a processing thread may be attempting to update the object.
 
-    LOCK(_mtx);
+    LOCK(_mtx, context() + "replicaInfo");
 
     ReplicaInfo const info = _replicaInfo;
 
@@ -239,7 +236,7 @@ bool WorkerReplicationRequestPOSIX::execute () {
     WorkerRequest::ErrorContext errorContext;
     boost::system::error_code   ec;
     {
-        LOCK(_mtxDataFolderOperations);
+        LOCK(_mtxDataFolderOperations, context() + "execute:1");
 
         // Check for a presence of input files and calculate space requirement
 
@@ -367,7 +364,7 @@ bool WorkerReplicationRequestPOSIX::execute () {
     // acquering the directory lock to guarantee a consistent view onto the folder.
 
     {
-        LOCK(_mtxDataFolderOperations);
+        LOCK(_mtxDataFolderOperations, context() + "execute:2");
 
         // ATTENTION: as per ISO/IEC 9945 thie file rename operation will
         //            remove empty files. Not sure if this should be treated
@@ -526,7 +523,7 @@ bool WorkerReplicationRequestFS::execute () {
 
         boost::system::error_code ec;
         {
-            LOCK(_mtxDataFolderOperations);
+            LOCK(_mtxDataFolderOperations, context() + "execute");
 
             // Check for a presence of input files and calculate space requirement
 
@@ -827,7 +824,7 @@ bool WorkerReplicationRequestFS::finalize () {
     // which may affect other users (like replica lookup operations, etc.). Hence we're
     // acquering the directory lock to guarantee a consistent view onto the folder.
 
-    LOCK(_mtxDataFolderOperations);
+    LOCK(_mtxDataFolderOperations, context() + "finalize");
 
     // ATTENTION: as per ISO/IEC 9945 thie file rename operation will
     //            remove empty files. Not sure if this should be treated
@@ -893,9 +890,10 @@ void WorkerReplicationRequestFS::updateInfo() {
 
     // Fill in the info on the chunk before finishing the operation
 
-    LOCK(_mtx);     // to guarantee a consistent snapshot of that data structure
-                    // if other threads will be requesting its copy while it'll be being
-                    // updated below.
+    // to guarantee a consistent snapshot of that data structure
+    // if other threads will be requesting its copy while it'll be being
+    // updated below.
+    LOCK(_mtx, context() + "updateInfo");
 
     _replicaInfo = ReplicaInfo(
         status,

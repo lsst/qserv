@@ -32,11 +32,9 @@
 #include "lsst/log/Log.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/ErrorReporting.h"
+#include "replica/LockUtils.h"
 #include "replica/ServiceProvider.h"
 #include "util/BlockPost.h"
-
-// This macro to appear witin each block which requires thread safety
-#define LOCK(MUTEX) std::lock_guard<util::Mutex> lock(MUTEX)
 
 namespace {
 
@@ -119,7 +117,7 @@ RebalanceJobResult const& RebalanceJob::getReplicaData() const {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "getReplicaData");
 
-    if (_state == State::FINISHED)  return _replicaData;
+    if (_state == State::FINISHED) return _replicaData;
 
     throw std::logic_error(
         "RebalanceJob::getReplicaData  the method can't be called while the job hasn't finished");
@@ -234,9 +232,16 @@ void RebalanceJob::onPrecursorJobFinish() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish");
 
-    LOCK(_mtx);
+    // IMPORTANT: the final state is required to be tested twice. The first time
+    // it's done in order to avoid deadlock on the "in-flight" requests reporting
+    // their completion while the job termination is in a progress. And the second
+    // test is made after acquering the lock to recheck the state in case if it
+    // has transitioned while acquering the lock.
 
-    // Ignore the callback if the job was cancelled
+    if (_state == State::FINISHED) return;
+
+    LOCK(_mtx, context() + "onPrecursorJobFinish");
+
     if (_state == State::FINISHED) return;
 
     // IMPLEMENTATION NOTE: using a single-iteration loop in order to bail
@@ -584,77 +589,80 @@ void RebalanceJob::onJobFinish(MoveReplicaJob::Ptr const& job) {
          << "  sourceWorker="      << job->sourceWorker()
          << "  destinationWorker=" << job->destinationWorker());
 
-    // Ignore the callback if the job was cancelled
+    // IMPORTANT: the final state is required to be tested twice. The first time
+    // it's done in order to avoid deadlock on the "in-flight" requests reporting
+    // their completion while the job termination is in a progress. And the second
+    // test is made after acquering the lock to recheck the state in case if it
+    // has transitioned while acquering the lock.
+
     if (_state == State::FINISHED) {
         release(job->chunk());
         return;
     }
-    do {
-        // This lock will be automatically release beyond this scope
-        // to allow client notifications (see the end of the method)
-        LOCK(_mtx);
 
-        // Make sure the chunk is released if this was the last job in
-        // its scope regardless of the completion status of the job.
+    LOCK(_mtx, context() + "onJobFinish");
 
-        _chunk2jobs.at(job->chunk()).erase(job->sourceWorker());
-        if (_chunk2jobs.at(job->chunk()).empty()) {
-            _chunk2jobs.erase(job->chunk());
-            release(job->chunk());
+    if (_state == State::FINISHED) {
+        release(job->chunk());
+        return;
+    }
+
+    // Make sure the chunk is released if this was the last job in
+    // its scope regardless of the completion status of the job.
+
+    _chunk2jobs.at(job->chunk()).erase(job->sourceWorker());
+    if (_chunk2jobs.at(job->chunk()).empty()) {
+        _chunk2jobs.erase(job->chunk());
+        release(job->chunk());
+    }
+
+    // Update counters and object state if needed.
+
+    if (job->extendedState() == Job::ExtendedState::SUCCESS) {
+
+        // Copy over data from the job
+
+        MoveReplicaJobResult const& replicaData = job->getReplicaData();
+
+        for (auto&& replica: replicaData.createdReplicas) {
+            _replicaData.createdReplicas.emplace_back(replica);
         }
+        for (auto&& databaseEntry: replicaData.createdChunks.at(job->chunk())) {
+            std::string const& database = databaseEntry.first;
+            ReplicaInfo const& replica  = databaseEntry.second.at(job->destinationWorker());
 
-        // Update counters and object state if needed.
-
-        if (job->extendedState() == Job::ExtendedState::SUCCESS) {
-
-            // Copy over data from the job
-
-            MoveReplicaJobResult const& replicaData = job->getReplicaData();
-
-            for (auto&& replica: replicaData.createdReplicas) {
-                _replicaData.createdReplicas.emplace_back(replica);
-            }
-            for (auto&& databaseEntry: replicaData.createdChunks.at(job->chunk())) {
-                std::string const& database = databaseEntry.first;
-                ReplicaInfo const& replica  = databaseEntry.second.at(job->destinationWorker());
-
-                _replicaData.createdChunks[job->chunk()][database][job->destinationWorker()] = replica;
-            }
-            for (auto&& replica: replicaData.deletedReplicas) {
-                _replicaData.deletedReplicas.emplace_back(replica);
-            }
-            for (auto&& databaseEntry: replicaData.deletedChunks.at(job->chunk())) {
-                std::string const& database = databaseEntry.first;
-                ReplicaInfo const& replica  = databaseEntry.second.at(job->sourceWorker());
-
-                _replicaData.deletedChunks[job->chunk()][database][job->sourceWorker()] = replica;
-            }
+            _replicaData.createdChunks[job->chunk()][database][job->destinationWorker()] = replica;
         }
-
-        // Evaluate the status of on-going operations to see if the job
-        // has finished.
-
-        size_t numLaunched, numFinished, numSuccess;
-        ::countJobStates(numLaunched, numFinished, numSuccess, _moveReplicaJobs);
-
-        if (numFinished == numLaunched) {
-            if (numSuccess == numLaunched) {
-                // Make another iteration (and another one, etc. as many as needed)
-                // before it succeeds or fails.
-                //
-                // NOTE: a condition for this jobs to succeed is evaluated in
-                //       the precursor job completion code.
-                restart();
-            } else {
-                finish(ExtendedState::FAILED);
-            }
+        for (auto&& replica: replicaData.deletedReplicas) {
+            _replicaData.deletedReplicas.emplace_back(replica);
         }
+        for (auto&& databaseEntry: replicaData.deletedChunks.at(job->chunk())) {
+            std::string const& database = databaseEntry.first;
+            ReplicaInfo const& replica  = databaseEntry.second.at(job->sourceWorker());
 
-    } while (false);
+            _replicaData.deletedChunks[job->chunk()][database][job->sourceWorker()] = replica;
+        }
+    }
 
-    // Client notification should be made from the lock-free zone
-    // to avoid possible deadlocks
-    if (_state == State::FINISHED) { notify (); }
+    // Evaluate the status of on-going operations to see if the job
+    // has finished.
+
+    size_t numLaunched, numFinished, numSuccess;
+    ::countJobStates(numLaunched, numFinished, numSuccess, _moveReplicaJobs);
+
+    if (numFinished == numLaunched) {
+        if (numSuccess == numLaunched) {
+            // Make another iteration (and another one, etc. as many as needed)
+            // before it succeeds or fails.
+            //
+            // NOTE: a condition for this jobs to succeed is evaluated in
+            //       the precursor job completion code.
+            restart();
+        } else {
+            finish(ExtendedState::FAILED);
+        }
+    }
+    if (_state == State::FINISHED) notify();
 }
 
 void RebalanceJob::release(unsigned int chunk) {

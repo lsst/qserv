@@ -33,14 +33,11 @@
 #include "replica/Configuration.h"
 #include "replica/Controller.h"
 #include "replica/Job.h"
+#include "replica/LockUtils.h"
 #include "replica/Performance.h"
 #include "replica/QservMgtRequest.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/Request.h"
-
-
-// This macro to appear witin each block which requires thread safety
-#define LOCK(MUTEX) std::lock_guard<util::Mutex> lock(MUTEX)
 
 namespace {
 
@@ -92,11 +89,11 @@ DatabaseServicesMySQL::DatabaseServicesMySQL(Configuration::Ptr const& configura
 void DatabaseServicesMySQL::saveState(ControllerIdentity const& identity,
                                       uint64_t startTime) {
 
-    static std::string const context = "DatabaseServicesMySQL::saveState[Controller]  ";
+    std::string const context = "DatabaseServicesMySQL::saveState[Controller]  ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    LOCK(_mtx);
+    LOCK(_mtx, context);
 
     try {
         _conn->begin();
@@ -121,7 +118,7 @@ void DatabaseServicesMySQL::saveState(Job const& job) {
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    LOCK(_mtx);
+    LOCK(_mtx, context);
 
     // The algorithm will first try the INSERT query into the base table.
     // If a row with the same primary key (Job id) already exists in the table
@@ -195,7 +192,7 @@ void DatabaseServicesMySQL::updateHeartbeatTime(Job const& job) {
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    LOCK(_mtx);
+    LOCK(_mtx, context);
     try {
         _conn->begin();
         _conn->executeSimpleUpdateQuery(
@@ -218,7 +215,7 @@ void DatabaseServicesMySQL::saveState(QservMgtRequest const& request) {
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    LOCK(_mtx);
+    LOCK(_mtx, context);
 
     // The algorithm will first try the INSERT query into the base table.
     // If a row with the same primary key (QservMgtRequest id) already exists in the table
@@ -311,7 +308,7 @@ void DatabaseServicesMySQL::saveState(Request const& request) {
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    LOCK(_mtx);
+    LOCK(_mtx, context);
 
     // The algorithm will first try the INSERT query into the base table.
     // If a row with the same primary key (QservMgtRequest id) already exists in the table
@@ -405,7 +402,7 @@ void DatabaseServicesMySQL::updateRequestState(Request const& request,
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    LOCK(_mtx);
+    LOCK(_mtx, context);
 
     // According to the current implementation of the requests processing pipeline
     // for the request management (including State* and Stop* families of requests),
@@ -446,11 +443,11 @@ void DatabaseServicesMySQL::updateRequestState(Request const& request,
 
 void DatabaseServicesMySQL::saveReplicaInfo(ReplicaInfo const& info) {
 
-    static std::string const context = "DatabaseServicesMySQL::saveReplicaInfo  ";
+    std::string const context = "DatabaseServicesMySQL::saveReplicaInfo  ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    LOCK(_mtx);
+    LOCK(_mtx, context);
 
     try {
         _conn->begin();
@@ -627,9 +624,9 @@ bool DatabaseServicesMySQL::findOldestReplicas(std::vector<ReplicaInfo>& replica
                                                size_t maxReplicas,
                                                bool enabledWorkersOnly) const {
 
-    static std::string const context = "DatabaseServicesMySQL::findOldestReplicas  ";
+    std::string const context = "DatabaseServicesMySQL::findOldestReplicas  ";
 
-    LOCK(_mtx);
+    LOCK(_mtx, context);
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
@@ -660,7 +657,7 @@ bool DatabaseServicesMySQL::findReplicas(std::vector<ReplicaInfo>& replicas,
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    LOCK(_mtx);
+    LOCK(_mtx, context);
 
     if (not _configuration->isKnownDatabase(database)) {
         throw std::invalid_argument(context + "unknow database");
@@ -682,7 +679,11 @@ bool DatabaseServicesMySQL::findReplicas(std::vector<ReplicaInfo>& replicas,
 bool DatabaseServicesMySQL::findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
                                                std::string const& worker,
                                                std::string const& database) const {
-    LOCK(_mtx);
+
+    std::string const context = "DatabaseServicesMySQL::findWorkerReplicas  ";
+
+    LOCK(_mtx, context);
+
     return findWorkerReplicasNoLock(replicas,
                                     worker,
                                     database);
@@ -727,7 +728,7 @@ bool DatabaseServicesMySQL::findWorkerReplicas(std::vector<ReplicaInfo>& replica
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    LOCK(_mtx);
+    LOCK(_mtx, context);
 
     if (not _configuration->isKnownWorker(worker)) {
         throw std::invalid_argument(context + "unknow worker");

@@ -33,11 +33,9 @@
 // Qserv headers
 #include "lsst/log/Log.h"
 #include "replica/Configuration.h"
+#include "replica/LockUtils.h"
 #include "replica/ProtocolBuffer.h"
 #include "replica/ServiceProvider.h"
-
-// This macro to appear witin each block which requires thread safety
-#define LOCK(MUTEX) std::lock_guard<util::Mutex> lock(MUTEX)
 
 namespace {
 
@@ -87,7 +85,7 @@ void MessengerConnector::stop() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "stop");
 
-    LOCK(_mtx);
+    LOCK(_mtx, context() + "stop");
 
     // Cancel any asynchronous operation(s) if not in the initial state
 
@@ -112,7 +110,7 @@ void MessengerConnector::cancel(std::string const& id) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancel  id=" << id);
 
-    LOCK(_mtx);
+    LOCK(_mtx, context() + "cancel");
 
     if (not _id2request.count(id)) {
         throw std::logic_error(
@@ -128,7 +126,7 @@ void MessengerConnector::cancel(std::string const& id) {
 
     // Also remove from both collections
     _requests.remove_if(
-        [&id] (WrapperBase_pointer ptr) {
+        [&id] (WrapperBase::Ptr const& ptr) {
             return ptr->id == id;
         }
     );
@@ -139,17 +137,17 @@ bool MessengerConnector::exists(std::string const& id) const {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "exists  id=" << id);
 
-    LOCK(_mtx);
+    LOCK(_mtx, context() + "exists");
 
     return _id2request.count(id);
 }
 
 void MessengerConnector::sendImpl(std::string const& id,
-                                  MessengerConnector::WrapperBase_pointer const& ptr) {
+                                  MessengerConnector::WrapperBase::Ptr const& ptr) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "sendImpl  id: " + id);
 
-    LOCK(_mtx);
+    LOCK(_mtx, context() + "sendImpl");
 
     if (_id2request.count(id)) {
         throw std::logic_error(
@@ -232,7 +230,7 @@ void MessengerConnector::resolved(boost::system::error_code const& ec,
     LOGS(_log, LOG_LVL_DEBUG, context() << "resolved"
          << "  _currentRequest->id=" << (_currentRequest ? _currentRequest->id : ""));
 
-    LOCK(_mtx);
+    LOCK(_mtx, context() + "resolved");
 
     if (isAborted(ec)) return;
 
@@ -263,7 +261,7 @@ void MessengerConnector::connected(boost::system::error_code const& ec,
     LOGS(_log, LOG_LVL_DEBUG, context() << "connected"
          << "  _currentRequest->id=" << (_currentRequest ? _currentRequest->id : ""));
 
-    LOCK(_mtx);
+    LOCK(_mtx, context() + "connected");
 
     if (isAborted(ec)) return;
 
@@ -297,7 +295,7 @@ void MessengerConnector::awakenForRestart(boost::system::error_code const& ec) {
     LOGS(_log, LOG_LVL_DEBUG, context() << "awakenForRestart"
          << "  _currentRequest->id=" << (_currentRequest ? _currentRequest->id : ""));
 
-    LOCK(_mtx);
+    LOCK(_mtx, context() + "awakenForRestart");
 
     if (isAborted(ec)) return;
 
@@ -346,7 +344,7 @@ void MessengerConnector::requestSent(boost::system::error_code const& ec,
     LOGS(_log, LOG_LVL_DEBUG, context() << "requestSent"
          << "  _currentRequest->id=" << (_currentRequest ? _currentRequest->id : ""));
 
-    LOCK(_mtx);
+    LOCK(_mtx, context() + "requestSent");
 
     // Check if the request was cancelled while still in flight.
     // If that happens then _currentRequest should already be nullified
@@ -423,10 +421,16 @@ void MessengerConnector::responseReceived(boost::system::error_code const& ec,
 
     // The notification if any should be happening outside the lock guard
     // to prevent deadlocks
+    //
+    // FIXME: this may be reconsidered because some requests may take
+    // substantial amount of time to process the notification. This may
+    // result in blocking processing other high-priority requests waiting
+    // in the input queue. The simplest approach would be probably launch
+    // the notification in a separate (new) thread.
 
-    WrapperBase_pointer request2notify;
+    WrapperBase::Ptr request2notify;
     {
-        LOCK(_mtx);
+        LOCK(_mtx, context() + "responseReceived");
 
         // Check if the request was cancelled while still in flight.
         // If that happens then _currentRequest should already be nullified

@@ -37,12 +37,10 @@
 #include "replica/Controller.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
+#include "replica/LockUtils.h"
 #include "replica/Messenger.h"
 #include "replica/ProtocolBuffer.h"
 #include "replica/ServiceProvider.h"
-
-// This macro to appear witin each block which requires thread safety
-#define LOCK(MUTEX) std::lock_guard<util::Mutex> lock(MUTEX)
 
 namespace {
 
@@ -160,7 +158,7 @@ void ReplicationRequest::awaken(boost::system::error_code const& ec) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "awaken");
 
-    LOCK(_mtx);
+    LOCK(_mtx, context() + "awaken");
 
     if (isAborted(ec)) return;
 
@@ -213,7 +211,7 @@ void ReplicationRequest::analyze(bool success,
     // upon a completion of the request within method send() - the only
     // client of analyze()
 
-    LOCK(_mtx);
+    LOCK(_mtx, context() + "analyze");
 
     if (success) {
 

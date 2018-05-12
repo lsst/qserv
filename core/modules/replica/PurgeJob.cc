@@ -33,11 +33,9 @@
 #include "replica/Configuration.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/ErrorReporting.h"
+#include "replica/LockUtils.h"
 #include "replica/ServiceProvider.h"
 #include "util/BlockPost.h"
-
-// This macro to appear witin each block which requires thread safety
-#define LOCK(MUTEX) std::lock_guard<util::Mutex> lock(MUTEX)
 
 namespace {
 
@@ -209,9 +207,16 @@ void PurgeJob::onPrecursorJobFinish() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish");
 
-    LOCK(_mtx);
+    // IMPORTANT: the final state is required to be tested twice. The first time
+    // it's done in order to avoid deadlock on the "in-flight" requests reporting
+    // their completion while the job termination is in a progress. And the second
+    // test is made after acquering the lock to recheck the state in case if it
+    // has transitioned while acquering the lock.
 
-    // Ignore the callback if the job was cancelled
+    if (_state == State::FINISHED) return;
+
+    LOCK(_mtx, context() + "onPrecursorJobFinish");
+
     if (_state == State::FINISHED) return;
 
     ////////////////////////////////////////////////////////////////
@@ -423,9 +428,19 @@ void PurgeJob::onDeleteJobFinish(DeleteReplicaJob::Ptr const& job) {
          << "  worker="         << job->worker()
          << "  chunk="          << job->chunk());
 
-    LOCK(_mtx);
+    // IMPORTANT: the final state is required to be tested twice. The first time
+    // it's done in order to avoid deadlock on the "in-flight" requests reporting
+    // their completion while the job termination is in a progress. And the second
+    // test is made after acquering the lock to recheck the state in case if it
+    // has transitioned while acquering the lock.
 
-    // Ignore the callback if the job was cancelled
+    if (_state == State::FINISHED) {
+        release(job->chunk());
+        return;
+    }
+
+    LOCK(_mtx, context() + "onDeleteJobFinish");
+
     if (_state == State::FINISHED) {
         release(job->chunk());
         return;

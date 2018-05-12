@@ -83,6 +83,9 @@ public:
 
     public:
 
+        /// The pointer type for the base class of the request wrappers
+        typedef std::shared_ptr<WrapperBase> Ptr;
+
         // Default construction and copy semantics are prohibited
 
         WrapperBase() = delete;
@@ -188,9 +191,6 @@ public:
         CallbackType _onFinish;
     };
 
-    /// The pointer type for the base class of the request wrappers
-    typedef std::shared_ptr<WrapperBase> WrapperBase_pointer;
-
     // Default construction and copy semantics are prohibited
 
     MessengerConnector() = delete;
@@ -286,7 +286,7 @@ private:
      * @param ptr - a pointer to the request wrapper object
      */
     void sendImpl(std::string const& id,
-                  WrapperBase_pointer const& ptr);
+                  WrapperBase::Ptr const& ptr);
 
     /// State transitions for the connector object
     enum State {
@@ -447,14 +447,14 @@ private:
     mutable util::Mutex _mtx;
 
     /// The queue of requests
-    std::list<WrapperBase_pointer> _requests;
+    std::list<WrapperBase::Ptr> _requests;
 
     /// The currently processed (being sent) request (if any, otherwise
     /// the pointer is set to nullptr)
-    WrapperBase_pointer _currentRequest;
+    WrapperBase::Ptr _currentRequest;
 
     /// Requests ordered by their unique identifiers
-    std::map<std::string, WrapperBase_pointer> _id2request;
+    std::map<std::string, WrapperBase::Ptr> _id2request;
 
     /// The intermediate buffer for messages received from a worker
     ProtocolBuffer _inBuffer;

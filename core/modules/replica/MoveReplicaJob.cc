@@ -31,10 +31,8 @@
 #include "lsst/log/Log.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/Configuration.h"
+#include "replica/LockUtils.h"
 #include "util/BlockPost.h"
-
-// This macro to appear witin each block which requires thread safety
-#define LOCK(MUTEX) std::lock_guard<util::Mutex> lock(MUTEX)
 
 namespace {
 
@@ -184,9 +182,16 @@ void MoveReplicaJob::onCreateJobFinish() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "onCreateJobFinish");
 
-    LOCK(_mtx);
+    // IMPORTANT: the final state is required to be tested twice. The first time
+    // it's done in order to avoid deadlock on the "in-flight" requests reporting
+    // their completion while the job termination is in a progress. And the second
+    // test is made after acquering the lock to recheck the state in case if it
+    // has transitioned while acquering the lock.
 
-    // Ignore the callback if the job was cancelled or expired
+    if (_state == State::FINISHED) return;
+
+    LOCK(_mtx, context() + "onCreateJobFinish");
+
     if (_state == State::FINISHED) return;
 
     if (_createReplicaJob->extendedState() == Job::ExtendedState::SUCCESS) {
@@ -228,9 +233,16 @@ void MoveReplicaJob::onDeleteJobFinish() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "onDeleteJobFinish()");
 
-    LOCK(_mtx);
+    // IMPORTANT: the final state is required to be tested twice. The first time
+    // it's done in order to avoid deadlock on the "in-flight" requests reporting
+    // their completion while the job termination is in a progress. And the second
+    // test is made after acquering the lock to recheck the state in case if it
+    // has transitioned while acquering the lock.
 
-    // Ignore the callback if the job was cancelled or expired
+    if (_state == State::FINISHED) return;
+
+    LOCK(_mtx, context() + "onDeleteJobFinish");
+
     if (_state == State::FINISHED) return;
 
     // Extract stats

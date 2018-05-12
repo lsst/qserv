@@ -32,11 +32,9 @@
 #include "lsst/log/Log.h"
 #include "replica/Configuration.h"
 #include "replica/FileUtils.h"
+#include "replica/LockUtils.h"
 #include "replica/Performance.h"
 #include "replica/ServiceProvider.h"
-
-// This macro to appear witin each block which requires thread safety
-#define LOCK(MUTEX) std::lock_guard<util::Mutex> lock(MUTEX)
 
 namespace fs = boost::filesystem;
 
@@ -192,7 +190,7 @@ bool WorkerFindRequestPOSIX::execute() {
 
         // Check if the data directory exists and it can be read
 
-        LOCK(_mtxDataFolderOperations);
+        LOCK(_mtxDataFolderOperations, context() + "execute");
 
         fs::path        const dataDir = fs::path(workerInfo.dataDir) / database();
         fs::file_status const stat    = fs::status(dataDir, ec);
