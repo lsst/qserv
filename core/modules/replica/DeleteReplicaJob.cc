@@ -34,12 +34,10 @@
 #include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
 #include "replica/ErrorReporting.h"
+#include "replica/LockUtils.h"
 #include "replica/QservMgtServices.h"
 #include "replica/ServiceProvider.h"
 #include "util/BlockPost.h"
-
-// This macro to appear witin each block which requires thread safety
-#define LOCK(MUTEX) std::lock_guard<util::Mutex> lock(MUTEX)
 
 namespace {
 
@@ -307,9 +305,16 @@ void DeleteReplicaJob::onRequestFinish(DeleteRequest::Ptr const& request) {
          << "  worker=" << worker()
          << "  chunk=" << chunk());
 
-    LOCK(_mtx);
+    // IMPORTANT: the final state is required to be tested twice. The first time
+    // it's done in order to avoid deadlock on the "in-flight" requests reporting
+    // their completion while the job termination is in a progress. And the second
+    // test is made after acquering the lock to recheck the state in case if it
+    // has transitioned while acquering the lock.
+    
+    if (_state == State::FINISHED) return;
 
-    // Ignore the callback if the job was cancelled
+    LOCK(_mtx, context() + "onRequestFinish(DeleteRequest)");
+
     if (_state == State::FINISHED) return;
 
     // Update stats

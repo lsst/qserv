@@ -34,13 +34,11 @@
 // Qserv headers
 #include "lsst/log/Log.h"
 #include "replica/DatabaseServices.h"
+#include "replica/LockUtils.h"
 #include "replica/Messenger.h"
 #include "replica/ProtocolBuffer.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/ServiceProvider.h"
-
-// This macro to appear witin each block which requires thread safety
-#define LOCK(MUTEX) std::lock_guard<util::Mutex> lock(MUTEX)
 
 namespace {
 
@@ -158,7 +156,7 @@ void FindRequest::awaken(boost::system::error_code const& ec) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "awaken");
 
-    LOCK(_mtx);
+    LOCK(_mtx, context() + "awaken");
 
     if (isAborted(ec)) return;
 
@@ -212,7 +210,7 @@ void FindRequest::analyze(bool success,
     // This guard is made on behalf of an asynchronious callback fired
     // upon a completion of the request within method send() - the only
     // client of analyze()
-    LOCK(_mtx);
+    LOCK(_mtx, context() + "analyze");
 
     if (success) {
 

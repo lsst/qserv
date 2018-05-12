@@ -29,11 +29,9 @@
 // Qserv headers
 #include "lsst/log/Log.h"
 #include "replica/Configuration.h"
+#include "replica/LockUtils.h"
 #include "replica/Performance.h"
 #include "util/BlockPost.h"
-
-// This macro to appear witin each block which requires thread safety
-#define LOCK(MUTEX) std::lock_guard<util::Mutex> lock(MUTEX)
 
 namespace {
 
@@ -99,9 +97,9 @@ JobController::JobController(ServiceProvider::Ptr const& serviceProvider)
 
 void JobController::run() {
 
-    LOGS(_log, LOG_LVL_DEBUG, "JobController  run");
+    LOGS(_log, LOG_LVL_DEBUG, "JobController::run");
 
-    LOCK(_mtx);
+    LOCK(_mtx, "JobController::run");
 
     if (not isRunning()) {
 
@@ -155,7 +153,7 @@ bool JobController::isRunning() const {
 
 void JobController::stop() {
 
-    LOGS(_log, LOG_LVL_DEBUG, "JobController  stop");
+    LOGS(_log, LOG_LVL_DEBUG, "JobController::stop");
 
     // IMPORTANT:
     //
@@ -180,7 +178,7 @@ void JobController::stop() {
 }
 
 void JobController::join() {
-    LOGS(_log, LOG_LVL_DEBUG, "JobController  join");
+    LOGS(_log, LOG_LVL_DEBUG, "JobController::join");
     if (_thread) _thread->join();
 }
 
@@ -188,9 +186,9 @@ FindAllJob::Ptr JobController::findAll(std::string const& databaseFamily,
                                        FindAllJob::CallbackType onFinish,
                                        Job::Options const& options) {
 
-    LOGS(_log, LOG_LVL_DEBUG, "JobController  findAll");
+    LOGS(_log, LOG_LVL_DEBUG, "JobController::findAll");
 
-    LOCK(_mtx);
+    LOCK(_mtx, "JobController::findAll");
 
     JobController::Ptr self = shared_from_this();
 
@@ -227,9 +225,9 @@ FixUpJob::Ptr JobController::fixUp(std::string const& databaseFamily,
                                    FixUpJob::CallbackType onFinish,
                                    Job::Options const& options) {
 
-    LOGS(_log, LOG_LVL_DEBUG, "JobController  fixUp");
+    LOGS(_log, LOG_LVL_DEBUG, "JobController::fixUp");
 
-    LOCK(_mtx);
+    LOCK(_mtx, "JobController::fixUp");
 
     auto const self = shared_from_this();
 
@@ -267,7 +265,9 @@ PurgeJob::Ptr JobController::purge(std::string const& databaseFamily,
                                    PurgeJob::CallbackType onFinish,
                                    Job::Options const& options) {
 
-    LOGS(_log, LOG_LVL_DEBUG, "JobController  purge");
+    LOGS(_log, LOG_LVL_DEBUG, "JobController::purge");
+
+    LOCK(_mtx, "JobController::purge");
 
     auto const self = shared_from_this();
 
@@ -306,9 +306,9 @@ ReplicateJob::Ptr JobController::replicate(std::string const& databaseFamily,
                                            ReplicateJob::CallbackType onFinish,
                                            Job::Options const& options) {
 
-    LOGS(_log, LOG_LVL_DEBUG, "JobController  replicate");
+    LOGS(_log, LOG_LVL_DEBUG, "JobController::replicate");
 
-    LOCK(_mtx);
+    LOCK(_mtx, "JobController::replicate");
 
     auto const self = shared_from_this();
 
@@ -348,9 +348,9 @@ VerifyJob::Ptr JobController::verify(VerifyJob::CallbackType onFinish,
                                      bool computeCheckSum,
                                      Job::Options const& options) {
 
-    LOGS(_log, LOG_LVL_DEBUG, "JobController  verify");
+    LOGS(_log, LOG_LVL_DEBUG, "JobController::verify");
 
-    LOCK(_mtx);
+    LOCK(_mtx, "JobController::verify");
 
     auto const self = shared_from_this();
 
@@ -391,9 +391,9 @@ DeleteWorkerJob::Ptr JobController::deleteWorker(
                                             DeleteWorkerJob::CallbackType onFinish,
                                             Job::Options const& options) {
 
-    LOGS(_log, LOG_LVL_DEBUG, "JobController  deleteWorker");
+    LOGS(_log, LOG_LVL_DEBUG, "JobController::deleteWorker");
 
-    LOCK(_mtx);
+    LOCK(_mtx, "JobController::deleteWorker");
 
     auto const self = shared_from_this();
 
@@ -429,9 +429,9 @@ DeleteWorkerJob::Ptr JobController::deleteWorker(
 
 void JobController::runQueued() {
 
-    LOGS(_log, LOG_LVL_DEBUG, "JobController  runQueued");
+    LOGS(_log, LOG_LVL_DEBUG, "JobController::runQueued");
 
-    LOCK(_mtx);
+    LOCK(_mtx, "JobController::runQueued");
 
     if (not isRunning()) return;
 
@@ -444,7 +444,7 @@ void JobController::runQueued() {
 
 void JobController::runScheduled() {
 
-    LOGS(_log, LOG_LVL_DEBUG, "JobController  runScheduled");
+    LOGS(_log, LOG_LVL_DEBUG, "JobController::runScheduled");
 
     // Load the scheduled jobs (if any) from the database to see which ones
     // need to be injected into the input queue.
@@ -452,7 +452,7 @@ void JobController::runScheduled() {
     // NOTE: don't prolifirate the lock's scope to avoid an imminent deadlock
     //       when calling mehods which are called later.
     {
-        LOCK(_mtx);
+        LOCK(_mtx, "JobController::runScheduled");
 
         if (not isRunning()) return;
 
@@ -467,9 +467,9 @@ void JobController::runScheduled() {
 
 void JobController::cancelAll() {
 
-    LOGS(_log, LOG_LVL_DEBUG, "JobController  cancelAll");
+    LOGS(_log, LOG_LVL_DEBUG, "JobController::cancelAll");
 
-    LOCK(_mtx);
+    LOCK(_mtx, "JobController::cancelAll");
 
     if (not isRunning()) return;
 
@@ -479,11 +479,11 @@ void JobController::cancelAll() {
 
 void JobController::onFinish(Job::Ptr const& job) {
 
-    LOGS(_log, LOG_LVL_DEBUG, "JobController  onFinish  jobId=" << job->id());
+    LOGS(_log, LOG_LVL_DEBUG, "JobController::onFinish  jobId=" << job->id());
 
     JobWrapper::Ptr wrapper;
     {
-        LOCK(_mtx);
+        LOCK(_mtx, "JobController::onFinish");
         wrapper = _registry[job->id()];
         _registry.erase(job->id());
 

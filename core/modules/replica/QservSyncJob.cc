@@ -32,11 +32,10 @@
 #include "replica/Configuration.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
+#include "replica/LockUtils.h"
 #include "replica/QservMgtServices.h"
 #include "replica/ServiceProvider.h"
 
-// This macro to appear witin each block which requires thread safety
-#define LOCK(MUTEX) std::lock_guard<util::Mutex> lock(MUTEX)
 
 namespace {
 
@@ -208,9 +207,16 @@ void QservSyncJob::onRequestFinish(SetReplicasQservMgtRequest::Ptr const& reques
          << " state=" << request->state2string(request->state())
          << " extendedState=" << request->state2string(request->extendedState()));
 
-    LOCK(_mtx);
+    // IMPORTANT: the final state is required to be tested twice. The first time
+    // it's done in order to avoid deadlock on the "in-flight" requests reporting
+    // their completion while the job termination is in a progress. And the second
+    // test is made after acquering the lock to recheck the state in case if it
+    // has transitioned while acquering the lock.
 
-    // Ignore the callback if the job was cancelled, expired, etc.
+    if (_state == State::FINISHED) return;
+
+    LOCK(_mtx, context() + "onRequestFinish");
+
     if (_state == State::FINISHED) return;
 
     // Update counters and object state if needed.

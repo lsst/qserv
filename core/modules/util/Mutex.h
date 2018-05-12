@@ -30,6 +30,7 @@
 /// (see individual class documentation for more information)
 
 // System headers
+#include <atomic>
 #include <mutex>
 #include <thread>
 
@@ -50,6 +51,11 @@ class Mutex
 
 public:
 
+    /// Constructor
+    Mutex()
+        :   _id(nextId()) {
+    }
+
     /**
      * Lock the mutext (replaces the corresponidng method of the base class)
      */
@@ -66,6 +72,9 @@ public:
         std::mutex::unlock();
     }
 
+    /// @return unique identifier of a lock
+    unsigned int id() const { return _id; }
+
     /**
      * @return true if the mutex is locked by the caller of this method
      */
@@ -74,6 +83,15 @@ public:
     }
 
 private:
+
+    /// @return next identifier in a global series
+    static unsigned int nextId() {
+        static std::atomic<unsigned int> id{0};
+        return id++;
+    }
+
+private:
+    unsigned int _id;
     std::thread::id _holder;
 };
 

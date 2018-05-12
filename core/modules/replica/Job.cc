@@ -38,14 +38,13 @@
 #include "replica/Common.h"            // Generators::uniqueId()
 #include "replica/Configuration.h"
 #include "replica/DatabaseServices.h"
+#include "replica/LockUtils.h"
 #include "replica/Performance.h"       // PerformanceUtils::now()
 #include "replica/QservMgtServices.h"
 #include "replica/RemoveReplicaQservMgtRequest.h"
 #include "replica/ServiceProvider.h"
 #include "util/IterableFormatter.h"
 
-// This macro to appear witin each block which requires thread safety
-#define LOCK(MUTEX) std::lock_guard<util::Mutex> lock(MUTEX)
 
 namespace {
 
@@ -116,7 +115,7 @@ void Job::start() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "start");
 
-    LOCK(_mtx);
+    LOCK(_mtx, context() + "start");
 
     assertState(State::CREATED, "Job::start");
 
@@ -152,7 +151,15 @@ void Job::cancel() {
          << "  _state="         << state2string(_state)
          << ", _extendedState=" << state2string(_extendedState));
 
-    LOCK(_mtx);
+    // IMPORTANT: the final state is required to be tested twice. The first time
+    // it's done in order to avoid deadlock on the "in-flight" requests reporting
+    // their completion while the job termination is in a progress. And the second
+    // test is made after acquering the lock to recheck the state in case if it
+    // has transitioned while acquering the lock.
+
+    if (_state == State::FINISHED) return;
+
+    LOCK(_mtx, context() + "cancel");
 
     if (_state == State::FINISHED) return;
 
@@ -321,12 +328,19 @@ void Job::heartbeat(boost::system::error_code const& ec) {
     LOGS(_log, LOG_LVL_DEBUG, context() << "heartbeat: "
          << (ec == boost::asio::error::operation_aborted ? "** ABORTED **" : ""));
 
-    LOCK(_mtx);
-
     // Ignore this event if the timer was aborted
     if (ec == boost::asio::error::operation_aborted) return;
 
-    // Also ignore this event if the job is over
+    // IMPORTANT: the final state is required to be tested twice. The first time
+    // it's done in order to avoid deadlock on the "in-flight" requests reporting
+    // their completion while the job termination is in a progress. And the second
+    // test is made after acquering the lock to recheck the state in case if it
+    // has transitioned while acquering the lock.
+
+    if (_state == State::FINISHED) return;
+
+    LOCK(_mtx, context() + "heartbeat");
+
     if (_state == State::FINISHED) return;
 
     // Update the job entry in the database
@@ -365,12 +379,19 @@ void Job::expired(boost::system::error_code const& ec) {
     LOGS(_log, LOG_LVL_DEBUG, context() << "expired: "
          << (ec == boost::asio::error::operation_aborted ? "** ABORTED **" : ""));
 
-    LOCK(_mtx);
-
     // Ignore this event if the timer was aborted
     if (ec == boost::asio::error::operation_aborted) return;
+         
+    // IMPORTANT: the final state is required to be tested twice. The first time
+    // it's done in order to avoid deadlock on the "in-flight" requests reporting
+    // their completion while the job termination is in a progress. And the second
+    // test is made after acquering the lock to recheck the state in case if it
+    // has transitioned while acquering the lock.
 
-    // Also ignore this event if the job is over
+    if (_state == State::FINISHED) return;
+
+    LOCK(_mtx, context() + "expired");
+
     if (_state == State::FINISHED) return;
 
     finish(ExtendedState::EXPIRED);

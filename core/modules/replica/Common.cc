@@ -33,6 +33,7 @@
 
 // Qserv headers
 #include "proto/replication.pb.h"
+#include "replica/LockUtils.h"
 
 namespace lsst {
 namespace qserv {
@@ -138,13 +139,10 @@ proto::ReplicationStatusExt translate(ExtendedCompletionStatus status) {
 //                Generators              //
 ////////////////////////////////////////////
 
-// This macro to appear witin each block which requires thread safety
-#define LOCK(MUTEX) std::lock_guard<util::Mutex> lock(MUTEX)
-
 util::Mutex Generators::_mtx;
 
 std::string Generators::uniqueId() {
-    LOCK(_mtx);
+    LOCK(_mtx, "Generators::uniqueId");
     boost::uuids::uuid id = boost::uuids::random_generator()();
     return boost::uuids::to_string(id);
 }

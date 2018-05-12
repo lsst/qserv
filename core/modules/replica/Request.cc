@@ -34,11 +34,9 @@
 #include "lsst/log/Log.h"
 #include "replica/Configuration.h"
 #include "replica/Controller.h"
+#include "replica/LockUtils.h"
 #include "replica/ProtocolBuffer.h"
 #include "replica/ServiceProvider.h"
-
-// This macro to appear witin each block which requires thread safety
-#define LOCK(MUTEX) std::lock_guard<util::Mutex> lock(MUTEX)
 
 namespace {
 
@@ -130,7 +128,7 @@ void Request::start(std::shared_ptr<Controller> const& controller,
                     std::string const& jobId,
                     unsigned int requestExpirationIvalSec) {
 
-    LOCK(_mtx);
+    LOCK(_mtx, context() + "start");
 
     assertState(CREATED, "Request::start");
 
@@ -182,12 +180,19 @@ void Request::expired(boost::system::error_code const& ec) {
     LOGS(_log, LOG_LVL_DEBUG, context() << "expired"
          << (ec == boost::asio::error::operation_aborted ? "  ** ABORTED **" : ""));
 
-    LOCK(_mtx);
-
     // Ignore this event if the timer was aborted
     if (ec == boost::asio::error::operation_aborted) return;
 
-    // Also ignore this event if the request is over
+    // IMPORTANT: the final state is required to be tested twice. The first time
+    // it's done in order to avoid deadlock on the "in-flight" callbacks reporting
+    // their completion while the request termination is in a progress. And the second
+    // test is made after acquering the lock to recheck the state in case if it
+    // has transitioned while acquering the lock.
+
+    if (_state == State::FINISHED) return;
+
+    LOCK(_mtx, context() + "expired");
+
     if (_state == State::FINISHED) return;
 
     finish(EXPIRED);
@@ -200,7 +205,7 @@ void Request::cancel() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancel");
 
-    LOCK(_mtx);
+    LOCK(_mtx, context() + "cancel");
 
     // Ignore this call if the request is over
     if (_state == FINISHED) return;

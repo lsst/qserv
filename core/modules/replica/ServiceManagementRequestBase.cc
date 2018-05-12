@@ -34,12 +34,9 @@
 #include "lsst/log/Log.h"
 #include "proto/replication.pb.h"
 #include "replica/Messenger.h"
+#include "replica/LockUtils.h"
 #include "replica/Performance.h"
 #include "replica/ProtocolBuffer.h"
-
-
-// This macro to appear witin each block which requires thread safety
-#define LOCK(MUTEX) std::lock_guard<util::Mutex> lock(MUTEX)
 
 namespace {
 
@@ -229,7 +226,7 @@ void ServiceManagementRequestBase::analyze(bool success,
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "analyze  success=" << (success ? "true" : "false"));
 
-    LOCK(_mtx);
+    LOCK(_mtx, context() + "analyze");
 
     if (success) {
         _performance.update(message.performance());
