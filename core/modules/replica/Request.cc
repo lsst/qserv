@@ -205,9 +205,16 @@ void Request::cancel() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancel");
 
+    // IMPORTANT: the final state is required to be tested twice. The first time
+    // it's done in order to avoid deadlock on the "in-flight" callbacks reporting
+    // their completion while the request termination is in a progress. And the second
+    // test is made after acquering the lock to recheck the state in case if it
+    // has transitioned while acquering the lock.
+
+    if (_state == State::FINISHED) return;
+
     LOCK(_mtx, context() + "cancel");
 
-    // Ignore this call if the request is over
     if (_state == FINISHED) return;
 
     finish(CANCELLED);
