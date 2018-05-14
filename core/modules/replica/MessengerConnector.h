@@ -32,6 +32,7 @@
 #include <list>
 #include <map>
 #include <memory>
+#include <stdexcept>
 #include <string>
 
 // Third party headers
@@ -179,7 +180,17 @@ public:
         void parseAndNotify() override {
             RESPONSE_TYPE response;
             if (success) {
-                responseBuffer.parse(response, responseBuffer.size());
+                try {
+                    responseBuffer.parse(response, responseBuffer.size());
+                } catch(std::runtime_error const& ex) {
+
+                    // The message is corrupt. Google Protobuf will report an error
+                    // of the following kind:
+                    //
+                    //   [libprotobuf ERROR google/protobuf/message_lite.cc:123] Can't parse message of type ...
+                    //
+                    success = false;
+                }
             }
             _onFinish(id, success, response);
         }

@@ -34,6 +34,7 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
+#include "util/IterableFormatter.h"
 #include "util/Mutex.h"
 
 // This header declarations
@@ -53,10 +54,12 @@ LOG_LOGGER _lockUtilsLog = LOG_GET("lsst.qserv.replica.LockUtil");
  */
 #ifndef LOCK
 #define LOCK(MUTEX,CONTEXT) \
-LOGS(_lockUtilsLog, LOG_LVL_DEBUG, CONTEXT << "  LOCK[" << MUTEX.id() << "]:1 " << #MUTEX); \
+LOGS(_lockUtilsLog, LOG_LVL_DEBUG, CONTEXT << "  LOCK[" << MUTEX.id() << "]:1 " << #MUTEX \
+     << "  LOCKED: " << util::printable(util::Mutex::lockedId(), "", "", " ")); \
 assert(not MUTEX.lockedByCaller()); \
 std::lock_guard<util::Mutex> lock(MUTEX); \
-LOGS(_lockUtilsLog, LOG_LVL_DEBUG, CONTEXT << "  LOCK[" << MUTEX.id() << "]:2 " << #MUTEX)
+LOGS(_lockUtilsLog, LOG_LVL_DEBUG, CONTEXT << "  LOCK[" << MUTEX.id() << "]:2 " << #MUTEX \
+     << "  LOCKED: " << util::printable(util::Mutex::lockedId(), "", "", " "))
 #endif
 
 /*
@@ -68,7 +71,8 @@ LOGS(_lockUtilsLog, LOG_LVL_DEBUG, CONTEXT << "  LOCK[" << MUTEX.id() << "]:2 " 
  */
 #ifndef ASSERT_LOCK
 #define ASSERT_LOCK(MUTEX,CONTEXT) \
-LOGS(_lockUtilsLog, LOG_LVL_DEBUG, CONTEXT << "  ASSERT LOCK["<< MUTEX.id() << "] " << #MUTEX); \
+LOGS(_lockUtilsLog, LOG_LVL_DEBUG, CONTEXT << "  ASSERT LOCK["<< MUTEX.id() << "] " << #MUTEX \
+     << "  LOCKED: " << util::printable(util::Mutex::lockedId(), "", "", " ")); \
 assert(MUTEX.lockedByCaller());
 #endif
 

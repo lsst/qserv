@@ -32,6 +32,7 @@
 // System headers
 #include <atomic>
 #include <mutex>
+#include <set>
 #include <thread>
 
 // Qserv headers
@@ -43,13 +44,21 @@ namespace qserv {
 namespace util {
 
 /**
- * Class Mutex extends the standard class std::mutex with an extra method
- * allowing to test if a mutex is locked by a calling thread.
+ * Class Mutex extends the standard class std::mutex with extra methods.
  */
 class Mutex
     :   public std::mutex {
 
 public:
+
+    /// @return identifiers of locked mutexes
+    static std::set<unsigned int> lockedId() {
+        // make a consistent snapshot of the collection to be returned
+        std::set<unsigned int> result;
+        std::lock_guard<std::mutex> lg(_lockedIdMtx);
+        result = _lockedId;
+        return result;
+    }
 
     /// Constructor
     Mutex()
@@ -62,12 +71,14 @@ public:
     void lock() {
         std::mutex::lock();
         _holder = std::this_thread::get_id();
+        addCurrentId();
     }
 
     /**
      * Release the mutext (replaces the corresponidng method of the base class)
      */
     void unlock() {
+        removeCurrentId();
         _holder = std::thread::id();
         std::mutex::unlock();
     }
@@ -90,7 +101,22 @@ private:
         return id++;
     }
 
+    /// Register the current identifier in a collection of locked mutexes
+    void addCurrentId() {
+        std::lock_guard<std::mutex> lg(_lockedIdMtx);
+        _lockedId.insert(_id);
+    }
+
+    /// De-register the current identifier from a collection of locked mutexes
+    void removeCurrentId() {
+        std::lock_guard<std::mutex> lg(_lockedIdMtx);
+        _lockedId.erase(_id);
+    }
+
 private:
+    static std::mutex _lockedIdMtx;
+    static std::set<unsigned int> _lockedId;
+
     unsigned int _id;
     std::thread::id _holder;
 };
