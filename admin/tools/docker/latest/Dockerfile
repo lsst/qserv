@@ -74,8 +74,10 @@ ENV QSERV_RUN_DIR /qserv/run
 # required by k8s setup
 RUN bash -c ". /qserv/stack/loadLSST.bash && \
              setup qserv -t qserv-dev && \
+             cp \"\$SCISQL_DIR\"/lib/libscisql-scisql_?.?.so \"\$MARIADB_DIR\"/lib/plugin && \
              qserv-configure.py --init --force --qserv-run-dir \"$QSERV_RUN_DIR\" && \
-             qserv-configure.py --etc --qserv-run-dir \"$QSERV_RUN_DIR\" --force "
+             qserv-configure.py --etc --qserv-run-dir \"$QSERV_RUN_DIR\" --force && \
+             rm $QSERV_RUN_DIR/qserv-meta.conf"
 
 # Allow install of additional packages in pods and ease install scripts
 # execution

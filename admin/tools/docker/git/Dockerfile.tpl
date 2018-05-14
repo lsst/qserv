@@ -35,6 +35,7 @@ RUN bash -c ". /qserv/stack/loadLSST.bash && \
 # TODO make it simpler
 RUN bash -c ". /qserv/stack/loadLSST.bash && \
              setup qserv -t qserv-dev && \
+             cp \"\$SCISQL_DIR\"/lib/libscisql-scisql_?.?.so \"\$MARIADB_DIR\"/lib/plugin && \
              qserv-configure.py --init --force --qserv-run-dir \"$QSERV_RUN_DIR\" && \
              qserv-configure.py --etc --qserv-run-dir \"$QSERV_RUN_DIR\" --force && \
              rm $QSERV_RUN_DIR/qserv-meta.conf"
