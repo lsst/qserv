@@ -91,6 +91,10 @@ void QSMySqlListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) { \
 } \
 
 
+// This macro creates the enterXXX and exitXXX function definitions similar to ENTER_EXIT_PARENT to satisfy
+// the QSMySqlParserListener class API but expects that the grammar element will not be used. The enter
+// function throws an adapter_order_error so that if the grammar element is unexpectedly entered the query
+// parsing will abort.
 #define UNHANDLED(NAME) \
 void QSMySqlListener::enter##NAME(QSMySqlParser::NAME##Context* ctx) { \
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " is UNHANDLED '" << getQueryString(ctx) << "'"); \
@@ -100,6 +104,9 @@ void QSMySqlListener::enter##NAME(QSMySqlParser::NAME##Context* ctx) { \
 void QSMySqlListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) {}\
 
 
+// This macro creates the enterXXX and exitXXX function definitions similar to ENTER_EXIT_PARENT but does not
+// push (or pop) an adapter on the stack. Other adapters are expected to handle the grammar element as may be
+// appropraite.
 #define IGNORED(NAME) \
 void QSMySqlListener::enter##NAME(QSMySqlParser::NAME##Context* ctx) { \
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " is IGNORED"); \
@@ -110,6 +117,8 @@ void QSMySqlListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) {\
 } \
 
 
+// This macro is similar to IGNORED, but allows the enter message to log a specific warning message when it is
+// called.
 #define IGNORED_WARN(NAME, WARNING) \
 void QSMySqlListener::enter##NAME(QSMySqlParser::NAME##Context* ctx) { \
     LOGS(_log, LOG_LVL_WARN, __FUNCTION__ << " " << WARNING << ", near '" << getQueryString(ctx) << "'"); \
@@ -121,6 +130,8 @@ void QSMySqlListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) {\
 } \
 
 
+// A fucntion to assert certain condtions during runtime. In the case of a failure an adapter_exectuion_error
+// is raised with a context specific message.
 #define ASSERT_EXECUTION_CONDITION(CONDITION, MESSAGE, CTX) \
 if (false == (CONDITION)) { \
     { \
