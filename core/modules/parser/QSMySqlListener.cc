@@ -158,80 +158,80 @@ public:
 
 class DmlStatementCBH : public BaseCBH {
 public:
-    virtual void handleDmlStatement(shared_ptr<query::SelectStmt>& selectStatement) = 0;
+    virtual void handleDmlStatement(shared_ptr<query::SelectStmt> const & selectStatement) = 0;
 };
 
 
 class SimpleSelectCBH : public BaseCBH {
 public:
-    virtual void handleSelectStatement(shared_ptr<query::SelectStmt>& selectStatement) = 0;
+    virtual void handleSelectStatement(shared_ptr<query::SelectStmt> const & selectStatement) = 0;
 };
 
 
 class QuerySpecificationCBH : public BaseCBH {
 public:
-    virtual void handleQuerySpecification(shared_ptr<query::SelectList>& selectList,
-                                          shared_ptr<query::FromList>& fromList,
-                                          shared_ptr<query::WhereClause>& whereClause,
-                                          shared_ptr<query::OrderByClause>& orderByClause,
+    virtual void handleQuerySpecification(shared_ptr<query::SelectList> const & selectList,
+                                          shared_ptr<query::FromList> const & fromList,
+                                          shared_ptr<query::WhereClause> const & whereClause,
+                                          shared_ptr<query::OrderByClause> const & orderByClause,
                                           int limit,
-                                          shared_ptr<query::GroupByClause>& groupByClause,
+                                          shared_ptr<query::GroupByClause> const & groupByClause,
                                           bool distinct) = 0;
 };
 
 
 class SelectElementsCBH : public BaseCBH {
 public:
-    virtual void handleSelectList(shared_ptr<query::SelectList>& selectList) = 0;
+    virtual void handleSelectList(shared_ptr<query::SelectList> const & selectList) = 0;
 };
 
 
 class FullColumnNameCBH : public BaseCBH {
 public:
-    virtual void handleFullColumnName(shared_ptr<query::ValueFactor>& valueFactor) = 0;
+    virtual void handleFullColumnName(shared_ptr<query::ValueFactor> const & valueFactor) = 0;
 };
 
 
 class TableNameCBH : public BaseCBH {
 public:
-    virtual void handleTableName(const string& string) = 0;
+    virtual void handleTableName(string const & string) = 0;
 };
 
 
 class FromClauseCBH : public BaseCBH {
 public:
-    virtual void handleFromClause(shared_ptr<query::FromList>& fromList,
-                                  shared_ptr<query::WhereClause>& whereClause,
-                                  const shared_ptr<query::GroupByClause>& groupByClause) = 0;
+    virtual void handleFromClause(shared_ptr<query::FromList> const & fromList,
+                                  shared_ptr<query::WhereClause> const & whereClause,
+                                  shared_ptr<query::GroupByClause> const & groupByClause) = 0;
 };
 
 
 class TableSourcesCBH : public BaseCBH {
 public:
-    virtual void handleTableSources(query::TableRefListPtr tableRefList) = 0;
+    virtual void handleTableSources(query::TableRefListPtr const & tableRefList) = 0;
 };
 
 class TableSourceBaseCBH : public BaseCBH {
 public:
-    virtual void handleTableSource(shared_ptr<query::TableRef>& tableRef) = 0;
+    virtual void handleTableSource(shared_ptr<query::TableRef> const & tableRef) = 0;
 };
 
 
 class AtomTableItemCBH : public BaseCBH {
 public:
-    virtual void handleAtomTableItem(shared_ptr<query::TableRef>& tableRef) = 0;
+    virtual void handleAtomTableItem(shared_ptr<query::TableRef> const & tableRef) = 0;
 };
 
 
 class UidCBH : public BaseCBH {
 public:
-    virtual void handleUid(const string& string) = 0;
+    virtual void handleUid(string const & string) = 0;
 };
 
 
 class FullIdCBH : public BaseCBH {
 public:
-    virtual void handleFullId(const string& string) = 0;
+    virtual void handleFullId(string const & string) = 0;
 };
 
 
@@ -243,41 +243,41 @@ public:
 
 class ExpressionAtomPredicateCBH : public BaseCBH {
 public:
-    virtual void handleExpressionAtomPredicate(shared_ptr<query::ValueExpr>& valueExpr,
+    virtual void handleExpressionAtomPredicate(shared_ptr<query::ValueExpr> const & valueExpr,
             antlr4::ParserRuleContext* childCtx) = 0;
 
-    virtual void handleExpressionAtomPredicate(const shared_ptr<query::BoolFactorTerm>& boolFactorTerm,
+    virtual void handleExpressionAtomPredicate(shared_ptr<query::BoolFactorTerm> const & boolFactorTerm,
             antlr4::ParserRuleContext* childCtx) = 0;
 };
 
 
 class QservFunctionSpecCBH : public BaseCBH {
 public:
-    virtual void handleQservFunctionSpec(const string& functionName,
-            const vector<shared_ptr<query::ValueFactor>>& args) = 0;
+    virtual void handleQservFunctionSpec(string const & functionName,
+            vector<shared_ptr<query::ValueFactor>> const & args) = 0;
 };
 
 
 class ComparisonOperatorCBH : public BaseCBH {
 public:
-    virtual void handleComparisonOperator(const string& text) = 0;
+    virtual void handleComparisonOperator(string const & text) = 0;
 };
 
 
 class OrderByClauseCBH : public BaseCBH {
 public:
-    virtual void handleOrderByClause(const shared_ptr<query::OrderByClause>& orderByClause) = 0;
+    virtual void handleOrderByClause(shared_ptr<query::OrderByClause> const & orderByClause) = 0;
 };
 
 
 class OrderByExpressionCBH : public BaseCBH {
 public:
-    virtual void handleOrderByExpression(const query::OrderByTerm& orderByTerm) = 0;
+    virtual void handleOrderByExpression(query::OrderByTerm const & orderByTerm) = 0;
 };
 
 class InnerJoinCBH : public BaseCBH {
 public:
-    virtual void handleInnerJoin(shared_ptr<query::JoinRef> joinRef) = 0;
+    virtual void handleInnerJoin(shared_ptr<query::JoinRef> const & joinRef) = 0;
 };
 
 class SelectSpecCBH : public BaseCBH {
@@ -287,13 +287,13 @@ public:
 
 class SelectFunctionElementCBH: public BaseCBH {
 public:
-    virtual void handleSelectFunctionElement(shared_ptr<query::ValueExpr> selectFunction) = 0;
+    virtual void handleSelectFunctionElement(shared_ptr<query::ValueExpr> const & selectFunction) = 0;
 };
 
 
 class GroupByItemCBH : public BaseCBH {
 public:
-    virtual void handleGroupByItem(const shared_ptr<query::ValueExpr>& valueExpr) = 0;
+    virtual void handleGroupByItem(shared_ptr<query::ValueExpr> const & valueExpr) = 0;
 };
 
 
@@ -304,38 +304,39 @@ public:
 
 class SimpleIdCBH: public BaseCBH {
 public:
-    virtual void handleSimpleId(const string & val) = 0;
+    virtual void handleSimpleId(string const & val) = 0;
 };
 
 class DottedIdCBH: public BaseCBH {
 public:
-    virtual void handleDottedId(const string& dot_id) = 0;
+    virtual void handleDottedId(string const & dot_id) = 0;
 };
 
 
 class SelectColumnElementCBH : public BaseCBH {
 public:
-    virtual void handleColumnElement(shared_ptr<query::ValueExpr>& columnElement) = 0;
+    virtual void handleColumnElement(shared_ptr<query::ValueExpr> const & columnElement) = 0;
 };
 
 
 class FullColumnNameExpressionAtomCBH : public BaseCBH {
 public:
-    virtual void HandleFullColumnNameExpressionAtom(shared_ptr<query::ValueFactor>& valueFactor) = 0;
+    virtual void HandleFullColumnNameExpressionAtom(shared_ptr<query::ValueFactor> const & valueFactor) = 0;
 };
 
 
 class BinaryComparasionPredicateCBH : public BaseCBH {
 public:
     virtual ~BinaryComparasionPredicateCBH() {}
-    virtual void handleBinaryComparasionPredicate(shared_ptr<query::CompPredicate>& comparisonPredicate) = 0;
+    virtual void handleBinaryComparasionPredicate(
+            shared_ptr<query::CompPredicate> const & comparisonPredicate) = 0;
 };
 
 
 class PredicateExpressionCBH : public BaseCBH {
 public:
-    virtual void handlePredicateExpression(shared_ptr<query::BoolFactor>& boolFactor) = 0;
-    virtual void handlePredicateExpression(shared_ptr<query::ValueExpr>& valueExpr) = 0;
+    virtual void handlePredicateExpression(shared_ptr<query::BoolFactor> const & boolFactor) = 0;
+    virtual void handlePredicateExpression(shared_ptr<query::ValueExpr> const & valueExpr) = 0;
 };
 
 
@@ -347,113 +348,113 @@ public:
 
 class UidListCBH : public BaseCBH {
 public:
-    virtual void handleUidList(const vector<string>& strings) = 0;
+    virtual void handleUidList(vector<string> const & strings) = 0;
 };
 
 class ExpressionsCBH : public BaseCBH {
 public:
-    virtual void handleExpressions(vector<shared_ptr<query::ValueExpr>> const& valueExprs) = 0;
+    virtual void handleExpressions(vector<shared_ptr<query::ValueExpr>> const & valueExprs) = 0;
 };
 
 
 class ConstantsCBH : public BaseCBH {
 public:
-    virtual void handleConstants(const vector<shared_ptr<query::ValueFactor>>& valueFactors) = 0;
+    virtual void handleConstants(vector<shared_ptr<query::ValueFactor>> const & valueFactors) = 0;
 };
 
 
 class AggregateFunctionCallCBH : public BaseCBH {
 public:
-    virtual void handleAggregateFunctionCall(const shared_ptr<query::ValueFactor>& aggValueFactor) = 0;
+    virtual void handleAggregateFunctionCall(shared_ptr<query::ValueFactor> const & aggValueFactor) = 0;
 };
 
 
 class ScalarFunctionCallCBH : public BaseCBH {
 public:
-    virtual void handleScalarFunctionCall(const shared_ptr<query::ValueFactor>& funcValueFactor) = 0;
+    virtual void handleScalarFunctionCall(shared_ptr<query::ValueFactor> const & funcValueFactor) = 0;
 };
 
 
 class UdfFunctionCallCBH : public BaseCBH {
 public:
-    virtual void handleUdfFunctionCall(shared_ptr<query::FuncExpr> valueExpr) = 0;
+    virtual void handleUdfFunctionCall(shared_ptr<query::FuncExpr> const & valueExpr) = 0;
 };
 
 
 class AggregateWindowedFunctionCBH : public BaseCBH {
 public:
-    virtual void handleAggregateWindowedFunction(const shared_ptr<query::ValueFactor>& aggValueFactor) = 0;
+    virtual void handleAggregateWindowedFunction(shared_ptr<query::ValueFactor> const & aggValueFactor) = 0;
 };
 
 
 class ScalarFunctionNameCBH : public BaseCBH {
 public:
-    virtual void handleScalarFunctionName(const string& name) = 0;
+    virtual void handleScalarFunctionName(string const & name) = 0;
 };
 
 
 class FunctionArgsCBH : public BaseCBH {
 public:
-    virtual void handleFunctionArgs(const vector<shared_ptr<query::ValueExpr>>& valueExprs) = 0;
+    virtual void handleFunctionArgs(vector<shared_ptr<query::ValueExpr>> const & valueExprs) = 0;
 };
 
 
 class FunctionArgCBH : public BaseCBH {
 public:
-    virtual void handleFunctionArg(const shared_ptr<query::ValueFactor>& valueFactor) = 0;
+    virtual void handleFunctionArg(shared_ptr<query::ValueFactor> const & valueFactor) = 0;
 };
 
 
 class LogicalExpressionCBH : public BaseCBH {
 public:
     // pass thru to parent for qserv function spec
-    virtual void handleQservFunctionSpec(const string& functionName,
-            const vector<shared_ptr<query::ValueFactor>>& args) = 0;
+    virtual void handleQservFunctionSpec(string const & functionName,
+            vector<shared_ptr<query::ValueFactor>> const & args) = 0;
 
-    virtual void handleLogicalExpression(shared_ptr<query::LogicalTerm>& logicalTerm,
+    virtual void handleLogicalExpression(shared_ptr<query::LogicalTerm> const & logicalTerm,
             antlr4::ParserRuleContext* childCtx) = 0;
 };
 
 
 class InPredicateCBH : public BaseCBH {
 public :
-    virtual void handleInPredicate(shared_ptr<query::InPredicate>& inPredicate) = 0;
+    virtual void handleInPredicate(shared_ptr<query::InPredicate> const & inPredicate) = 0;
 };
 
 
 class BetweenPredicateCBH : public BaseCBH {
 public:
-    virtual void handleBetweenPredicate(shared_ptr<query::BetweenPredicate>& betweenPredicate) = 0;
+    virtual void handleBetweenPredicate(shared_ptr<query::BetweenPredicate> const & betweenPredicate) = 0;
 };
 
 
 class LikePredicateCBH : public BaseCBH {
 public:
-    virtual void handleLikePredicate(const shared_ptr<query::LikePredicate>& likePredicate) = 0;
+    virtual void handleLikePredicate(shared_ptr<query::LikePredicate> const & likePredicate) = 0;
 };
 
 
 class UnaryExpressionAtomCBH : public BaseCBH {
 public:
-    virtual void handleUnaryExpressionAtom(shared_ptr<query::ValueFactor> valueFactor) = 0;
+    virtual void handleUnaryExpressionAtom(shared_ptr<query::ValueFactor> const & valueFactor) = 0;
 };
 
 
 class NestedExpressionAtomCBH : public BaseCBH {
 public:
-    virtual void handleNestedExpressionAtom(const shared_ptr<query::BoolFactorTerm>& boolFactorTerm) = 0;
+    virtual void handleNestedExpressionAtom(shared_ptr<query::BoolFactorTerm> const & boolFactorTerm) = 0;
 };
 
 
 class MathExpressionAtomCBH : public BaseCBH {
 public:
-    virtual void handleMathExpressionAtomAdapter(shared_ptr<query::ValueExpr> valueExpr) = 0;
+    virtual void handleMathExpressionAtomAdapter(shared_ptr<query::ValueExpr> const & valueExpr) = 0;
 };
 
 
 class FunctionCallExpressionAtomCBH : public BaseCBH {
 public:
-    virtual void handleFunctionCallExpressionAtom(shared_ptr<query::FuncExpr> funcExpr) = 0;
+    virtual void handleFunctionCallExpressionAtom(shared_ptr<query::FuncExpr> const & funcExpr) = 0;
 };
 
 
@@ -484,7 +485,7 @@ public:
 
 class FunctionNameBaseCBH : public BaseCBH {
 public:
-    virtual void handleFunctionNameBase(const string& name) = 0;
+    virtual void handleFunctionNameBase(string const & name) = 0;
 };
 
 /// Adapter classes
@@ -510,7 +511,7 @@ public:
 template <typename CBH>
 class AdapterT : public Adapter {
 public:
-    AdapterT(shared_ptr<CBH>& parent) : _parent(parent) {}
+    AdapterT(shared_ptr<CBH> const & parent) : _parent(parent) {}
 
 protected:
     shared_ptr<CBH> lockedParent() {
@@ -535,9 +536,9 @@ public:
     : _ctx(nullptr)
     {}
 
-    shared_ptr<query::SelectStmt>& getSelectStatement() { return _selectStatement; }
+    shared_ptr<query::SelectStmt> const & getSelectStatement() { return _selectStatement; }
 
-    void handleDmlStatement(shared_ptr<query::SelectStmt>& selectStatement) override {
+    void handleDmlStatement(shared_ptr<query::SelectStmt> const & selectStatement) override {
         _selectStatement = selectStatement;
     }
 
@@ -559,10 +560,10 @@ class DmlStatementAdapter :
         public AdapterT<DmlStatementCBH>,
         public SimpleSelectCBH {
 public:
-    DmlStatementAdapter(shared_ptr<DmlStatementCBH>& parent, antlr4::ParserRuleContext* ctx)
+    DmlStatementAdapter(shared_ptr<DmlStatementCBH> const & parent, antlr4::ParserRuleContext* ctx)
     : AdapterT(parent) {}
 
-    void handleSelectStatement(shared_ptr<query::SelectStmt>& selectStatement) override {
+    void handleSelectStatement(shared_ptr<query::SelectStmt> const & selectStatement) override {
         _selectStatement = selectStatement;
     }
 
@@ -579,15 +580,15 @@ class SimpleSelectAdapter :
         public AdapterT<SimpleSelectCBH>,
         public QuerySpecificationCBH {
 public:
-    SimpleSelectAdapter(shared_ptr<SimpleSelectCBH>& parent, antlr4::ParserRuleContext* ctx)
+    SimpleSelectAdapter(shared_ptr<SimpleSelectCBH> const & parent, antlr4::ParserRuleContext* ctx)
     : AdapterT(parent) {}
 
-    void handleQuerySpecification(shared_ptr<query::SelectList>& selectList,
-                                  shared_ptr<query::FromList>& fromList,
-                                  shared_ptr<query::WhereClause>& whereClause,
-                                  shared_ptr<query::OrderByClause>& orderByClause,
+    void handleQuerySpecification(shared_ptr<query::SelectList> const & selectList,
+                                  shared_ptr<query::FromList> const & fromList,
+                                  shared_ptr<query::WhereClause> const & whereClause,
+                                  shared_ptr<query::OrderByClause> const & orderByClause,
                                   int limit,
-                                  shared_ptr<query::GroupByClause>& groupByClause,
+                                  shared_ptr<query::GroupByClause> const & groupByClause,
                                   bool distinct) override {
         _selectList = selectList;
         _fromList = fromList;
@@ -629,22 +630,23 @@ class QuerySpecificationAdapter :
         public LimitClauseCBH,
         public SelectSpecCBH {
 public:
-    QuerySpecificationAdapter(shared_ptr<QuerySpecificationCBH>& parent, antlr4::ParserRuleContext* ctx)
+    QuerySpecificationAdapter(shared_ptr<QuerySpecificationCBH> const & parent,
+            antlr4::ParserRuleContext* ctx)
     : AdapterT(parent) {}
 
-    void handleSelectList(shared_ptr<query::SelectList>& selectList) override {
+    void handleSelectList(shared_ptr<query::SelectList> const & selectList) override {
         _selectList = selectList;
     }
 
-    void handleFromClause(shared_ptr<query::FromList>& fromList,
-                          shared_ptr<query::WhereClause>& whereClause,
-                          const shared_ptr<query::GroupByClause>& groupByClause) override {
+    void handleFromClause(shared_ptr<query::FromList> const & fromList,
+                          shared_ptr<query::WhereClause> const & whereClause,
+                          shared_ptr<query::GroupByClause> const & groupByClause) override {
         _fromList = fromList;
         _whereClause = whereClause;
         _groupByClause = groupByClause;
     }
 
-    void handleOrderByClause(const shared_ptr<query::OrderByClause>& orderByClause) {
+    void handleOrderByClause(shared_ptr<query::OrderByClause> const & orderByClause) {
         _orderByClause = orderByClause;
     }
 
@@ -677,7 +679,8 @@ class SelectElementsAdapter :
         public SelectColumnElementCBH,
         public SelectFunctionElementCBH {
 public:
-    SelectElementsAdapter(shared_ptr<SelectElementsCBH>& parent, QSMySqlParser::SelectElementsContext* ctx)
+    SelectElementsAdapter(shared_ptr<SelectElementsCBH> const & parent,
+            QSMySqlParser::SelectElementsContext* ctx)
     : AdapterT(parent)
     , _ctx(ctx) {
         if (_ctx->star != nullptr) {
@@ -685,11 +688,11 @@ public:
         }
     }
 
-    void handleColumnElement(shared_ptr<query::ValueExpr>& columnElement) override {
+    void handleColumnElement(shared_ptr<query::ValueExpr> const & columnElement) override {
         SelectListFactory::addValueExpr(_selectList, columnElement);
     }
 
-    void handleSelectFunctionElement(shared_ptr<query::ValueExpr> selectFunction) override {
+    void handleSelectFunctionElement(shared_ptr<query::ValueExpr> const & selectFunction) override {
         SelectListFactory::addSelectAggFunction(_selectList, selectFunction);
     }
 
@@ -711,14 +714,14 @@ class FromClauseAdapter :
         public QservFunctionSpecCBH,
         public GroupByItemCBH {
 public:
-    FromClauseAdapter(shared_ptr<FromClauseCBH>& parent, QSMySqlParser::FromClauseContext* ctx)
+    FromClauseAdapter(shared_ptr<FromClauseCBH> const & parent, QSMySqlParser::FromClauseContext* ctx)
     : AdapterT(parent), _ctx(ctx) {}
 
-    void handleTableSources(query::TableRefListPtr tableRefList) override {
+    void handleTableSources(query::TableRefListPtr const & tableRefList) override {
         _tableRefList = tableRefList;
     }
 
-    void handlePredicateExpression(shared_ptr<query::BoolFactor>& boolFactor) override {
+    void handlePredicateExpression(shared_ptr<query::BoolFactor> const & boolFactor) override {
         shared_ptr<query::AndTerm> andTerm = make_shared<query::AndTerm>();
         shared_ptr<query::BoolTerm> boolTerm = boolFactor;
         andTerm->addBoolTerm(boolTerm);
@@ -726,11 +729,11 @@ public:
         _getRootTerm()->addBoolTerm(andBoolTerm);
     }
 
-    void handlePredicateExpression(shared_ptr<query::ValueExpr>& valueExpr) override {
+    void handlePredicateExpression(shared_ptr<query::ValueExpr> const & valueExpr) override {
         ASSERT_EXECUTION_CONDITION(false, "Unhandled valueExpr predicateExpression.", _ctx);
     }
 
-    void handleLogicalExpression(shared_ptr<query::LogicalTerm>& logicalTerm,
+    void handleLogicalExpression(shared_ptr<query::LogicalTerm> const & logicalTerm,
             antlr4::ParserRuleContext* childCtx) override {
         if (_ctx->whereExpr == childCtx) {
             auto boolTerm = shared_ptr<query::BoolTerm>(logicalTerm);
@@ -742,13 +745,13 @@ public:
         ASSERT_EXECUTION_CONDITION(false, "This logical expression is not yet supported.", _ctx);
     }
 
-    void handleQservFunctionSpec(const string& functionName,
-            const vector<shared_ptr<query::ValueFactor>>& args) {
+    void handleQservFunctionSpec(string const & functionName,
+            vector<shared_ptr<query::ValueFactor>> const & args) {
         _initWhereClause();
         WhereFactory::addQservRestrictor(_whereClause, functionName, args);
     }
 
-    void handleGroupByItem(const shared_ptr<query::ValueExpr>& valueExpr) {
+    void handleGroupByItem(shared_ptr<query::ValueExpr> const & valueExpr) {
         if (nullptr == _groupByClause) {
             _groupByClause = make_shared<query::GroupByClause>();
         }
@@ -792,10 +795,10 @@ class TableSourcesAdapter :
         public AdapterT<TableSourcesCBH>,
         public TableSourceBaseCBH {
 public:
-    TableSourcesAdapter(shared_ptr<TableSourcesCBH>& parent, antlr4::ParserRuleContext* ctx)
+    TableSourcesAdapter(shared_ptr<TableSourcesCBH> const & parent, antlr4::ParserRuleContext* ctx)
     : AdapterT(parent) {}
 
-    void handleTableSource(shared_ptr<query::TableRef>& tableRef) override {
+    void handleTableSource(shared_ptr<query::TableRef> const & tableRef) override {
         _tableRefList->push_back(tableRef);
     }
 
@@ -813,18 +816,18 @@ class TableSourceBaseAdapter :
         public AtomTableItemCBH,
         public InnerJoinCBH {
 public:
-    TableSourceBaseAdapter(shared_ptr<TableSourceBaseCBH>& parent,
+    TableSourceBaseAdapter(shared_ptr<TableSourceBaseCBH> const & parent,
             QSMySqlParser::TableSourceBaseContext* ctx)
     : AdapterT(parent)
     , _ctx(ctx)
     {}
 
-    void handleAtomTableItem(shared_ptr<query::TableRef>& tableRef) override {
+    void handleAtomTableItem(shared_ptr<query::TableRef> const & tableRef) override {
         ASSERT_EXECUTION_CONDITION(nullptr == _tableRef, "expeceted one AtomTableItem callback.", _ctx);
         _tableRef = tableRef;
     }
 
-    void handleInnerJoin(shared_ptr<query::JoinRef> joinRef) override {
+    void handleInnerJoin(shared_ptr<query::JoinRef> const & joinRef) override {
         _joinRefs.push_back(joinRef);
     }
 
@@ -846,16 +849,17 @@ class AtomTableItemAdapter :
         public TableNameCBH,
         public UidCBH {
 public:
-    AtomTableItemAdapter(shared_ptr<AtomTableItemCBH>& parent, QSMySqlParser::AtomTableItemContext* ctx)
+    AtomTableItemAdapter(shared_ptr<AtomTableItemCBH> const & parent,
+            QSMySqlParser::AtomTableItemContext* ctx)
     : AdapterT(parent)
     , _ctx(ctx)
     {}
 
-    void handleTableName(const string& string) override {
+    void handleTableName(string const & string) override {
         _table = string;
     }
 
-    void handleUid(const string& string) override {
+    void handleUid(string const & string) override {
         _alias = string;
     }
 
@@ -876,10 +880,10 @@ class TableNameAdapter :
         public AdapterT<TableNameCBH>,
         public FullIdCBH {
 public:
-    TableNameAdapter(shared_ptr<TableNameCBH>& parent, antlr4::ParserRuleContext* ctx)
+    TableNameAdapter(shared_ptr<TableNameCBH> const & parent, antlr4::ParserRuleContext* ctx)
     : AdapterT(parent) {}
 
-    void handleFullId(const string& string) override {
+    void handleFullId(string const & string) override {
         lockedParent()->handleTableName(string);
     }
 
@@ -891,12 +895,12 @@ class FullIdAdapter :
         public AdapterT<FullIdCBH>,
         public UidCBH {
 public:
-    FullIdAdapter(shared_ptr<FullIdCBH>& parent, antlr4::ParserRuleContext* ctx)
+    FullIdAdapter(shared_ptr<FullIdCBH> const & parent, antlr4::ParserRuleContext* ctx)
     : AdapterT(parent) {}
 
     virtual ~FullIdAdapter() {}
 
-    void handleUid(const string& string) override {
+    void handleUid(string const & string) override {
         lockedParent()->handleFullId(string);
     }
 
@@ -909,16 +913,16 @@ class FullColumnNameAdapter :
         public UidCBH,
         public DottedIdCBH {
 public:
-    FullColumnNameAdapter(shared_ptr<FullColumnNameCBH>& parent, antlr4::ParserRuleContext* ctx)
+    FullColumnNameAdapter(shared_ptr<FullColumnNameCBH> const & parent, antlr4::ParserRuleContext* ctx)
     : AdapterT(parent)
     , _ctx(ctx)
     {}
 
-    void handleUid(const string& string) override {
+    void handleUid(string const & string) override {
         _strings.push_back(string);
     }
 
-    void handleDottedId(const string& dot_id) override {
+    void handleDottedId(string const & dot_id) override {
         _strings.push_back(dot_id);
     }
 
@@ -947,7 +951,7 @@ class ConstantExpressionAtomAdapter :
         public AdapterT<ConstantExpressionAtomCBH>,
         public ConstantCBH {
 public:
-    ConstantExpressionAtomAdapter(shared_ptr<ConstantExpressionAtomCBH>& parent,
+    ConstantExpressionAtomAdapter(shared_ptr<ConstantExpressionAtomCBH> const & parent,
                                   antlr4::ParserRuleContext* ctx)
     : AdapterT(parent) {}
 
@@ -963,11 +967,11 @@ class FullColumnNameExpressionAtomAdapter :
         public AdapterT<FullColumnNameExpressionAtomCBH>,
         public FullColumnNameCBH {
 public:
-    FullColumnNameExpressionAtomAdapter(shared_ptr<FullColumnNameExpressionAtomCBH>& parent,
+    FullColumnNameExpressionAtomAdapter(shared_ptr<FullColumnNameExpressionAtomCBH> const & parent,
                                         antlr4::ParserRuleContext* ctx)
     : AdapterT(parent) {}
 
-    void handleFullColumnName(shared_ptr<query::ValueFactor>& valueFactor) override {
+    void handleFullColumnName(shared_ptr<query::ValueFactor> const & valueFactor) override {
         lockedParent()->HandleFullColumnNameExpressionAtom(valueFactor);
     }
 
@@ -984,7 +988,7 @@ class ExpressionAtomPredicateAdapter :
         public MathExpressionAtomCBH,
         public UnaryExpressionAtomCBH {
 public:
-    ExpressionAtomPredicateAdapter(shared_ptr<ExpressionAtomPredicateCBH>& parent,
+    ExpressionAtomPredicateAdapter(shared_ptr<ExpressionAtomPredicateCBH> const & parent,
                                    QSMySqlParser::ExpressionAtomPredicateContext* ctx)
     : AdapterT(parent)
     , _ctx(ctx) {}
@@ -994,28 +998,28 @@ public:
         lockedParent()->handleExpressionAtomPredicate(valueExpr, _ctx);
     }
 
-    void handleFunctionCallExpressionAtom(shared_ptr<query::FuncExpr> funcExpr) override {
+    void handleFunctionCallExpressionAtom(shared_ptr<query::FuncExpr> const & funcExpr) override {
         auto valueFactor = query::ValueFactor::newFuncFactor(funcExpr);
         auto valueExpr = make_shared<query::ValueExpr>();
         ValueExprFactory::addValueFactor(valueExpr, valueFactor);
         lockedParent()->handleExpressionAtomPredicate(valueExpr, _ctx);
     }
 
-    void handleMathExpressionAtomAdapter(shared_ptr<query::ValueExpr> valueExpr) override {
+    void handleMathExpressionAtomAdapter(shared_ptr<query::ValueExpr> const & valueExpr) override {
         lockedParent()->handleExpressionAtomPredicate(valueExpr, _ctx);
     }
 
-    void HandleFullColumnNameExpressionAtom(shared_ptr<query::ValueFactor>& valueFactor) override {
+    void HandleFullColumnNameExpressionAtom(shared_ptr<query::ValueFactor> const & valueFactor) override {
         auto valueExpr = make_shared<query::ValueExpr>();
         ValueExprFactory::addValueFactor(valueExpr, valueFactor);
         lockedParent()->handleExpressionAtomPredicate(valueExpr, _ctx);
     }
 
-    void handleNestedExpressionAtom(const shared_ptr<query::BoolFactorTerm>& boolFactorTerm) override {
+    void handleNestedExpressionAtom(shared_ptr<query::BoolFactorTerm> const & boolFactorTerm) override {
         lockedParent()->handleExpressionAtomPredicate(boolFactorTerm, _ctx);
     }
 
-    void handleUnaryExpressionAtom(shared_ptr<query::ValueFactor> valueFactor) override {
+    void handleUnaryExpressionAtom(shared_ptr<query::ValueFactor> const & valueFactor) override {
         auto valueExpr = query::ValueExpr::newSimple(valueFactor);
         lockedParent()->handleExpressionAtomPredicate(valueExpr, _ctx);
     }
@@ -1041,7 +1045,7 @@ public:
     : AdapterT(parent)
     , _ctx(ctx) {}
 
-    void handleConstants(const vector<shared_ptr<query::ValueFactor>>& valueFactors) override {
+    void handleConstants(vector<shared_ptr<query::ValueFactor>> const & valueFactors) override {
         ASSERT_EXECUTION_CONDITION(_args.empty(), "args should be set exactly once.", _ctx);
         _args = valueFactors;
     }
@@ -1084,39 +1088,40 @@ class PredicateExpressionAdapter :
         public ExpressionAtomPredicateCBH,
         public LikePredicateCBH {
 public:
-    PredicateExpressionAdapter(shared_ptr<PredicateExpressionCBH>& parent,
+    PredicateExpressionAdapter(shared_ptr<PredicateExpressionCBH> const & parent,
             QSMySqlParser::PredicateExpressionContext* ctx)
     : AdapterT(parent), _ctx(ctx) {}
 
     // BinaryComparasionPredicateCBH
-    void handleBinaryComparasionPredicate(shared_ptr<query::CompPredicate>& comparisonPredicate) override {
+    void handleBinaryComparasionPredicate(
+            shared_ptr<query::CompPredicate> const & comparisonPredicate) override {
         _prepBoolFactor();
         _boolFactor->addBoolFactorTerm(comparisonPredicate);
     }
 
-    void handleBetweenPredicate(shared_ptr<query::BetweenPredicate>& betweenPredicate) override {
+    void handleBetweenPredicate(shared_ptr<query::BetweenPredicate> const & betweenPredicate) override {
         _prepBoolFactor();
         _boolFactor->addBoolFactorTerm(betweenPredicate);
     }
 
-    void handleInPredicate(shared_ptr<query::InPredicate>& inPredicate) override {
+    void handleInPredicate(shared_ptr<query::InPredicate> const & inPredicate) override {
         _prepBoolFactor();
         _boolFactor->addBoolFactorTerm(inPredicate);
     }
 
-    void handleExpressionAtomPredicate(shared_ptr<query::ValueExpr>& valueExpr,
+    void handleExpressionAtomPredicate(shared_ptr<query::ValueExpr> const & valueExpr,
             antlr4::ParserRuleContext* childCtx) override {
         _prepValueExpr();
         _valueExpr = valueExpr;
     }
 
-    void handleExpressionAtomPredicate(const shared_ptr<query::BoolFactorTerm>& boolFactorTerm,
+    void handleExpressionAtomPredicate(shared_ptr<query::BoolFactorTerm> const & boolFactorTerm,
             antlr4::ParserRuleContext* childCtx) override {
         _prepBoolFactor();
         _boolFactor->addBoolFactorTerm(boolFactorTerm);
     }
 
-    void handleLikePredicate(const shared_ptr<query::LikePredicate>& likePredicate) override {
+    void handleLikePredicate(shared_ptr<query::LikePredicate> const & likePredicate) override {
         _prepBoolFactor();
         _boolFactor->addBoolFactorTerm(likePredicate);
     }
@@ -1160,18 +1165,18 @@ class BinaryComparasionPredicateAdapter :
         public ExpressionAtomPredicateCBH,
         public ComparisonOperatorCBH {
 public:
-    BinaryComparasionPredicateAdapter(shared_ptr<BinaryComparasionPredicateCBH>& parent,
+    BinaryComparasionPredicateAdapter(shared_ptr<BinaryComparasionPredicateCBH> const & parent,
             QSMySqlParser::BinaryComparasionPredicateContext* ctx)
     : AdapterT(parent)
     , _ctx(ctx)
     {}
 
-    void handleComparisonOperator(const string& text) override {
+    void handleComparisonOperator(string const & text) override {
         ASSERT_EXECUTION_CONDITION(_comparison.empty(), "comparison must be set only once.", _ctx);
         _comparison = text;
     }
 
-    void handleExpressionAtomPredicate(shared_ptr<query::ValueExpr>& valueExpr,
+    void handleExpressionAtomPredicate(shared_ptr<query::ValueExpr> const & valueExpr,
             antlr4::ParserRuleContext* ctx) override {
         if (_left == nullptr) {
             _left = valueExpr;
@@ -1182,7 +1187,7 @@ public:
         }
     }
 
-    void handleExpressionAtomPredicate(const shared_ptr<query::BoolFactorTerm>& boolFactorTerm,
+    void handleExpressionAtomPredicate(shared_ptr<query::BoolFactorTerm> const & boolFactorTerm,
             antlr4::ParserRuleContext* childCtx) override {
         ASSERT_EXECUTION_CONDITION(false, "unhandled ExpressionAtomPredicate BoolFactor callback.", _ctx);
     }
@@ -1226,7 +1231,7 @@ private:
 class ComparisonOperatorAdapter :
         public AdapterT<ComparisonOperatorCBH> {
 public:
-    ComparisonOperatorAdapter(shared_ptr<ComparisonOperatorCBH>& parent,
+    ComparisonOperatorAdapter(shared_ptr<ComparisonOperatorCBH> const & parent,
             QSMySqlParser::ComparisonOperatorContext* ctx)
     : AdapterT(parent)
     ,  _ctx(ctx)
@@ -1245,13 +1250,13 @@ class OrderByClauseAdapter :
         public AdapterT<OrderByClauseCBH>,
         public OrderByExpressionCBH {
 public:
-    OrderByClauseAdapter(shared_ptr<OrderByClauseCBH>& parent,
+    OrderByClauseAdapter(shared_ptr<OrderByClauseCBH> const & parent,
             QSMySqlParser::OrderByClauseContext* ctx)
     : AdapterT(parent)
     ,  _ctx(ctx)
     {}
 
-    void handleOrderByExpression(const query::OrderByTerm& orderByTerm) {
+    void handleOrderByExpression(query::OrderByTerm const & orderByTerm) {
         _orderByClause->addTerm(orderByTerm);
     }
 
@@ -1269,7 +1274,7 @@ class OrderByExpressionAdapter :
         public AdapterT<OrderByExpressionCBH>,
         public PredicateExpressionCBH {
 public:
-    OrderByExpressionAdapter(shared_ptr<OrderByExpressionCBH>& parent,
+    OrderByExpressionAdapter(shared_ptr<OrderByExpressionCBH> const & parent,
             QSMySqlParser::OrderByExpressionContext* ctx)
     : AdapterT(parent)
     ,  _ctx(ctx)
@@ -1285,11 +1290,11 @@ public:
         // note that query::OrderByTerm::DEFAULT is the default value of orderBy
     }
 
-    void handlePredicateExpression(shared_ptr<query::BoolFactor>& boolFactor) override {
+    void handlePredicateExpression(shared_ptr<query::BoolFactor> const & boolFactor) override {
         ASSERT_EXECUTION_CONDITION(false, "unexpected BoolFactor callback", _ctx);
     }
 
-    void handlePredicateExpression(shared_ptr<query::ValueExpr>& valueExpr) override {
+    void handlePredicateExpression(shared_ptr<query::ValueExpr> const & valueExpr) override {
         ASSERT_EXECUTION_CONDITION(nullptr == _valueExpr, "expected exactly one ValueExpr callback", _ctx);
         _valueExpr = valueExpr;
     }
@@ -1311,7 +1316,7 @@ class InnerJoinAdapter :
         public AtomTableItemCBH,
         public UidListCBH {
 public:
-    InnerJoinAdapter(shared_ptr<InnerJoinCBH>& parent,
+    InnerJoinAdapter(shared_ptr<InnerJoinCBH> const & parent,
             QSMySqlParser::InnerJoinContext* ctx)
     : AdapterT(parent)
     , _ctx(ctx)
@@ -1320,12 +1325,12 @@ public:
                 "INNER and CROSS join are not currently supported by the parser.", _ctx);
     }
 
-    void handleAtomTableItem(shared_ptr<query::TableRef>& tableRef) override {
+    void handleAtomTableItem(shared_ptr<query::TableRef> const & tableRef) override {
         ASSERT_EXECUTION_CONDITION(nullptr == _tableRef, "expected only one atomTableItem callback.", _ctx);
         _tableRef = tableRef;
     }
 
-    void handleUidList(const vector<string>& strings) override {
+    void handleUidList(vector<string> const & strings) override {
         ASSERT_EXECUTION_CONDITION(strings.size() == 1,
             "Current intermediate representation can only handle 1 `using` string.", _ctx);
         ASSERT_EXECUTION_CONDITION(nullptr == _using, "_using should be set exactly once.", _ctx);
@@ -1351,7 +1356,7 @@ private:
 class SelectSpecAdapter :
         public AdapterT<SelectSpecCBH> {
 public:
-    SelectSpecAdapter(shared_ptr<SelectSpecCBH>& parent,
+    SelectSpecAdapter(shared_ptr<SelectSpecCBH> const & parent,
             QSMySqlParser::SelectSpecContext* ctx)
     : AdapterT(parent)
     , _ctx(ctx)
@@ -1396,13 +1401,13 @@ class SelectFunctionElementAdapter :
         public UdfFunctionCallCBH,
         public ScalarFunctionCallCBH {
 public:
-    SelectFunctionElementAdapter(shared_ptr<SelectFunctionElementCBH>& parent,
+    SelectFunctionElementAdapter(shared_ptr<SelectFunctionElementCBH> const & parent,
                                  QSMySqlParser::SelectFunctionElementContext* ctx)
     : AdapterT(parent)
     , _ctx(ctx)
     {}
 
-    void handleUid(const string& string) override {
+    void handleUid(string const & string) override {
         // Uid is expected to be the aliasName in `functionCall AS aliasName`
         if (false == _asName.empty()) {
             throw QSMySqlListener::adapter_execution_error("Second call to handleUid.");
@@ -1413,19 +1418,19 @@ public:
         _asName = string;
     }
 
-    void handleAggregateFunctionCall(const shared_ptr<query::ValueFactor>& aggValueFactor) override {
+    void handleAggregateFunctionCall(shared_ptr<query::ValueFactor> const & aggValueFactor) override {
         ASSERT_EXECUTION_CONDITION(nullptr == _functionValueFactor, "should only be called once.",
                 _ctx);
         _functionValueFactor = aggValueFactor;
     }
 
-    void handleUdfFunctionCall(shared_ptr<query::FuncExpr> funcExpr) override {
+    void handleUdfFunctionCall(shared_ptr<query::FuncExpr> const & funcExpr) override {
         ASSERT_EXECUTION_CONDITION(nullptr == _functionValueFactor, "should only be set once.",
                 _ctx);
         _functionValueFactor = query::ValueFactor::newFuncFactor(funcExpr);
     }
 
-    void handleScalarFunctionCall(const shared_ptr<query::ValueFactor>& funcValueFactor) override {
+    void handleScalarFunctionCall(shared_ptr<query::ValueFactor> const & funcValueFactor) override {
         ASSERT_EXECUTION_CONDITION(nullptr == _functionValueFactor, "should only be set once.",
                 _ctx);
         _functionValueFactor = funcValueFactor;
@@ -1451,15 +1456,15 @@ class GroupByItemAdapter :
         public AdapterT<GroupByItemCBH>,
         public PredicateExpressionCBH {
 public:
-    GroupByItemAdapter(shared_ptr<GroupByItemCBH>& parent, QSMySqlParser::GroupByItemContext* ctx)
+    GroupByItemAdapter(shared_ptr<GroupByItemCBH> const & parent, QSMySqlParser::GroupByItemContext* ctx)
     : AdapterT(parent)
     , _ctx(ctx) {}
 
-    void handlePredicateExpression(shared_ptr<query::BoolFactor>& boolFactor) override {
+    void handlePredicateExpression(shared_ptr<query::BoolFactor> const & boolFactor) override {
         ASSERT_EXECUTION_CONDITION(false, "Unexpected GroupByItemAdapter boolFactor callback.", _ctx);
     }
 
-    void handlePredicateExpression(shared_ptr<query::ValueExpr>& valueExpr) override {
+    void handlePredicateExpression(shared_ptr<query::ValueExpr> const & valueExpr) override {
         _valueExpr = valueExpr;
     }
 
@@ -1478,7 +1483,7 @@ private:
 class LimitClauseAdapter :
         public AdapterT<LimitClauseCBH> {
 public:
-    LimitClauseAdapter(shared_ptr<LimitClauseCBH>& parent, QSMySqlParser::LimitClauseContext* ctx)
+    LimitClauseAdapter(shared_ptr<LimitClauseCBH> const & parent, QSMySqlParser::LimitClauseContext* ctx)
     : AdapterT(parent)
     , _ctx(ctx) {}
 
@@ -1497,11 +1502,11 @@ class SimpleIdAdapter :
         public AdapterT<SimpleIdCBH>,
         public FunctionNameBaseCBH {
 public:
-    SimpleIdAdapter(shared_ptr<SimpleIdCBH>& parent, QSMySqlParser::SimpleIdContext* ctx)
+    SimpleIdAdapter(shared_ptr<SimpleIdCBH> const & parent, QSMySqlParser::SimpleIdContext* ctx)
     : AdapterT(parent)
     , _ctx(ctx) {}
 
-    void handleFunctionNameBase(const string& name) override {
+    void handleFunctionNameBase(string const & name) override {
         // for all callbacks to SimpleIdAdapter are dropped and the value is fetched from the text value
         // of the context on exit.
     }
@@ -1518,7 +1523,7 @@ private:
 class DottedIdAdapter :
         public AdapterT<DottedIdCBH> {
 public:
-    DottedIdAdapter(shared_ptr<DottedIdCBH>& parent, QSMySqlParser::DottedIdContext* ctx)
+    DottedIdAdapter(shared_ptr<DottedIdCBH> const & parent, QSMySqlParser::DottedIdContext* ctx)
     : AdapterT(parent)
     , _ctx(ctx) {}
 
@@ -1546,18 +1551,19 @@ class SelectColumnElementAdapter :
         public FullColumnNameCBH,
         public UidCBH {
 public:
-    SelectColumnElementAdapter(shared_ptr<SelectColumnElementCBH>& parent, antlr4::ParserRuleContext* ctx)
+    SelectColumnElementAdapter(shared_ptr<SelectColumnElementCBH> const & parent,
+            antlr4::ParserRuleContext* ctx)
     : AdapterT(parent)
     , _ctx(ctx)
     {}
 
-    void handleFullColumnName(shared_ptr<query::ValueFactor>& valueFactor) override {
+    void handleFullColumnName(shared_ptr<query::ValueFactor> const & valueFactor) override {
         ASSERT_EXECUTION_CONDITION(nullptr == _valueFactor,
                 "handleFullColumnName should be called once.", _ctx);
         _valueFactor = valueFactor;
     }
 
-    void handleUid(const string& string) override {
+    void handleUid(string const & string) override {
         ASSERT_EXECUTION_CONDITION(_alias.empty(), "handleUid should be called once.", _ctx);
         _alias = string;
     }
@@ -1580,10 +1586,10 @@ class UidAdapter :
         public AdapterT<UidCBH>,
         public SimpleIdCBH {
 public:
-    UidAdapter(shared_ptr<UidCBH>& parent, QSMySqlParser::UidContext* ctx)
+    UidAdapter(shared_ptr<UidCBH> const & parent, QSMySqlParser::UidContext* ctx)
     : AdapterT(parent), _ctx(ctx) {}
 
-    void handleSimpleId(const string & val) {
+    void handleSimpleId(string const & val) {
         _val = val;
     }
 
@@ -1610,7 +1616,7 @@ private:
 class ConstantAdapter :
         public AdapterT<ConstantCBH> {
 public:
-    ConstantAdapter(shared_ptr<ConstantCBH>& parent, QSMySqlParser::ConstantContext* ctx)
+    ConstantAdapter(shared_ptr<ConstantCBH> const & parent, QSMySqlParser::ConstantContext* ctx)
     : AdapterT(parent), _ctx(ctx) {}
 
     void onExit() override {
@@ -1650,10 +1656,10 @@ class UidListAdapter :
         public AdapterT<UidListCBH>,
         public UidCBH {
 public:
-    UidListAdapter(shared_ptr<UidListCBH>& parent, QSMySqlParser::UidListContext* ctx)
+    UidListAdapter(shared_ptr<UidListCBH> const & parent, QSMySqlParser::UidListContext* ctx)
     : AdapterT(parent), _ctx(ctx) {}
 
-    void handleUid(const string& string) override {
+    void handleUid(string const & string) override {
         _strings.push_back(string);
     }
 
@@ -1673,16 +1679,16 @@ class ExpressionsAdapter :
         public AdapterT<ExpressionsCBH>,
         public PredicateExpressionCBH {
 public:
-    ExpressionsAdapter(shared_ptr<ExpressionsCBH>& parent, QSMySqlParser::ExpressionsContext* ctx)
+    ExpressionsAdapter(shared_ptr<ExpressionsCBH> const & parent, QSMySqlParser::ExpressionsContext* ctx)
     : AdapterT(parent)
     , _ctx(ctx)
     {}
 
-    void handlePredicateExpression(shared_ptr<query::BoolFactor>& boolFactor) override {
+    void handlePredicateExpression(shared_ptr<query::BoolFactor> const & boolFactor) override {
         ASSERT_EXECUTION_CONDITION(false, "Unhandled PredicateExpression with BoolFactor.", _ctx);
     }
 
-    void handlePredicateExpression(shared_ptr<query::ValueExpr>& valueExpr) override {
+    void handlePredicateExpression(shared_ptr<query::ValueExpr> const & valueExpr) override {
         _expressions.push_back(valueExpr);
     }
 
@@ -1700,7 +1706,7 @@ class ConstantsAdapter :
         public AdapterT<ConstantsCBH>,
         public ConstantCBH {
 public:
-    ConstantsAdapter(shared_ptr<ConstantsCBH>& parent, QSMySqlParser::ConstantsContext* ctx)
+    ConstantsAdapter(shared_ptr<ConstantsCBH> const & parent, QSMySqlParser::ConstantsContext* ctx)
     : AdapterT(parent) {}
 
     void handleConstant(shared_ptr<query::ValueFactor> const & valueFactor) override {
@@ -1720,11 +1726,11 @@ class AggregateFunctionCallAdapter :
         public AdapterT<AggregateFunctionCallCBH>,
         public AggregateWindowedFunctionCBH {
 public:
-    AggregateFunctionCallAdapter(shared_ptr<AggregateFunctionCallCBH>& parent,
+    AggregateFunctionCallAdapter(shared_ptr<AggregateFunctionCallCBH> const & parent,
                                  QSMySqlParser::AggregateFunctionCallContext* ctx)
     : AdapterT(parent) {}
 
-    void handleAggregateWindowedFunction(const shared_ptr<query::ValueFactor>& aggValueFactor) override {
+    void handleAggregateWindowedFunction(shared_ptr<query::ValueFactor> const & aggValueFactor) override {
         lockedParent()->handleAggregateFunctionCall(aggValueFactor);
     }
 
@@ -1737,18 +1743,18 @@ class ScalarFunctionCallAdapter :
         public ScalarFunctionNameCBH,
         public FunctionArgsCBH {
 public:
-    ScalarFunctionCallAdapter(shared_ptr<ScalarFunctionCallCBH>& parent,
+    ScalarFunctionCallAdapter(shared_ptr<ScalarFunctionCallCBH> const & parent,
                               QSMySqlParser::ScalarFunctionCallContext* ctx)
     : AdapterT(parent)
     , _ctx(ctx)
     {}
 
-    void handleScalarFunctionName(const string& name) override {
+    void handleScalarFunctionName(string const & name) override {
         ASSERT_EXECUTION_CONDITION(_name.empty(), "name should be set once.", _ctx);
         _name = name;
     }
 
-    void handleFunctionArgs(const vector<shared_ptr<query::ValueExpr>>& valueExprs) override {
+    void handleFunctionArgs(vector<shared_ptr<query::ValueExpr>> const & valueExprs) override {
         ASSERT_EXECUTION_CONDITION(_valueExprs.empty(), "FunctionArgs should be set once.", _ctx);
         _valueExprs = valueExprs;
     }
@@ -1773,13 +1779,13 @@ class UdfFunctionCallAdapter :
         public FullIdCBH,
         public FunctionArgsCBH {
 public:
-    UdfFunctionCallAdapter(shared_ptr<UdfFunctionCallCBH>& parent,
+    UdfFunctionCallAdapter(shared_ptr<UdfFunctionCallCBH> const & parent,
                            QSMySqlParser::UdfFunctionCallContext* ctx)
     : AdapterT(parent)
     , _ctx(ctx)
     {}
 
-    void handleFunctionArgs(const vector<shared_ptr<query::ValueExpr>>& valueExprs) override {
+    void handleFunctionArgs(vector<shared_ptr<query::ValueExpr>> const & valueExprs) override {
         // This is only expected to be called once.
         // Of course the valueExpr may have more than one valueFactor.
         ASSERT_EXECUTION_CONDITION(_args.empty(), "Args already assigned.", _ctx);
@@ -1787,7 +1793,7 @@ public:
     }
 
     // FullIdCBH
-    void handleFullId(const string& string) override {
+    void handleFullId(string const & string) override {
         if (false == _functionName.empty()) {
             throw QSMySqlListener::adapter_execution_error("Function name already assigned.");
         }
@@ -1813,11 +1819,11 @@ class AggregateWindowedFunctionAdapter :
         public AdapterT<AggregateWindowedFunctionCBH>,
         public FunctionArgCBH {
 public:
-    AggregateWindowedFunctionAdapter(shared_ptr<AggregateWindowedFunctionCBH>& parent,
+    AggregateWindowedFunctionAdapter(shared_ptr<AggregateWindowedFunctionCBH> const & parent,
                                      QSMySqlParser::AggregateWindowedFunctionContext* ctx)
     : AdapterT(parent), _ctx(ctx) {}
 
-    void handleFunctionArg(const shared_ptr<query::ValueFactor>& valueFactor) override {
+    void handleFunctionArg(shared_ptr<query::ValueFactor> const & valueFactor) override {
         ASSERT_EXECUTION_CONDITION(nullptr == _valueFactor,
                 "currently ValueFactor can only be set once.", _ctx);
         _valueFactor = valueFactor;
@@ -1854,12 +1860,12 @@ class ScalarFunctionNameAdapter :
         public AdapterT<ScalarFunctionNameCBH>,
         public FunctionNameBaseCBH {
 public:
-    ScalarFunctionNameAdapter(shared_ptr<ScalarFunctionNameCBH>& parent,
+    ScalarFunctionNameAdapter(shared_ptr<ScalarFunctionNameCBH> const & parent,
                         QSMySqlParser::ScalarFunctionNameContext* ctx)
     : AdapterT(parent)
     , _ctx(ctx) {}
 
-    void handleFunctionNameBase(const string& name) override {
+    void handleFunctionNameBase(string const & name) override {
         _name = name;
     }
 
@@ -1884,7 +1890,7 @@ class FunctionArgsAdapter :
         public ConstantCBH,
         public FullColumnNameCBH {
 public:
-    FunctionArgsAdapter(shared_ptr<FunctionArgsCBH>& parent,
+    FunctionArgsAdapter(shared_ptr<FunctionArgsCBH> const & parent,
                         QSMySqlParser::FunctionArgsContext* ctx)
     : AdapterT(parent) {}
 
@@ -1895,7 +1901,7 @@ public:
         _args.push_back(valueExpr);
     }
 
-    void handleFullColumnName(shared_ptr<query::ValueFactor>& columnName) override {
+    void handleFullColumnName(shared_ptr<query::ValueFactor> const & columnName) override {
         auto valueExpr = make_shared<query::ValueExpr>();
         ValueExprFactory::addValueFactor(valueExpr, columnName);
         _args.push_back(valueExpr);
@@ -1914,12 +1920,12 @@ class FunctionArgAdapter :
         public AdapterT<FunctionArgCBH>,
         public FullColumnNameCBH {
 public:
-    FunctionArgAdapter(shared_ptr<FunctionArgCBH>& parent,
+    FunctionArgAdapter(shared_ptr<FunctionArgCBH> const & parent,
                         QSMySqlParser::FunctionArgContext* ctx)
     : AdapterT(parent)
     , _ctx(ctx) {}
 
-    void handleFullColumnName(shared_ptr<query::ValueFactor>& columnName) override {
+    void handleFullColumnName(shared_ptr<query::ValueFactor> const & columnName) override {
         ASSERT_EXECUTION_CONDITION(nullptr == _valueFactor,
                 "Expected exactly one callback; valueFactor should be NULL.", _ctx);
         _valueFactor = columnName;
@@ -1947,16 +1953,16 @@ public:
     : AdapterT(parent)
     , _ctx(ctx) {}
 
-    void handlePredicateExpression(shared_ptr<query::BoolFactor>& boolFactor) override {
+    void handlePredicateExpression(shared_ptr<query::BoolFactor> const & boolFactor) override {
         _setNextTerm(boolFactor);
     }
 
-    void handlePredicateExpression(shared_ptr<query::ValueExpr>& valueExpr) override {
+    void handlePredicateExpression(shared_ptr<query::ValueExpr> const & valueExpr) override {
         ASSERT_EXECUTION_CONDITION(false, "Unhandled PredicateExpression with ValueExpr.", _ctx);
     }
 
-    void handleQservFunctionSpec(const string& functionName,
-            const vector<shared_ptr<query::ValueFactor>>& args) override {
+    void handleQservFunctionSpec(string const & functionName,
+            vector<shared_ptr<query::ValueFactor>> const & args) override {
         // qserv query IR handles qserv restrictor functions differently than the and/or bool tree that
         // handles the rest of the where clause, pass the function straight up to the parent.
         lockedParent()->handleQservFunctionSpec(functionName, args);
@@ -1976,7 +1982,7 @@ public:
         }
     }
 
-    virtual void handleLogicalExpression(shared_ptr<query::LogicalTerm>& logicalTerm,
+    virtual void handleLogicalExpression(shared_ptr<query::LogicalTerm> const & logicalTerm,
             antlr4::ParserRuleContext* childCtx) {
         if (_logicalOperator != nullptr && _logicalOperator->merge(*logicalTerm)) {
             return;
@@ -1998,7 +2004,7 @@ public:
     }
 
 private:
-    void _setLogicalOperator(shared_ptr<query::LogicalTerm>& logicalTerm) {
+    void _setLogicalOperator(shared_ptr<query::LogicalTerm> const & logicalTerm) {
         ASSERT_EXECUTION_CONDITION(nullptr == _logicalOperator,
                 "logical operator must be set only once. existing:" << *this <<
                 ", new:" << logicalTerm, _ctx);
@@ -2041,14 +2047,14 @@ public:
     : AdapterT(parent)
     , _ctx(ctx) {}
 
-    void handleExpressionAtomPredicate(shared_ptr<query::ValueExpr>& valueExpr,
+    void handleExpressionAtomPredicate(shared_ptr<query::ValueExpr> const & valueExpr,
             antlr4::ParserRuleContext* childCtx) override {
         ASSERT_EXECUTION_CONDITION(_ctx->predicate() == childCtx, "callback from unexpected element.", _ctx);
         ASSERT_EXECUTION_CONDITION(nullptr == _predicate, "Predicate should be set exactly once.", _ctx);
         _predicate = valueExpr;
     }
 
-    void handleExpressionAtomPredicate(const shared_ptr<query::BoolFactorTerm>& boolFactorTerm,
+    void handleExpressionAtomPredicate(shared_ptr<query::BoolFactorTerm> const & boolFactorTerm,
             antlr4::ParserRuleContext* childCtx) override {
         ASSERT_EXECUTION_CONDITION(false, "unhandled ExpressionAtomPredicate BoolFactor callback.", _ctx);
     }
@@ -2090,7 +2096,7 @@ public:
     : AdapterT(parent)
     , _ctx(ctx) {}
 
-    void handleExpressionAtomPredicate(shared_ptr<query::ValueExpr>& valueExpr,
+    void handleExpressionAtomPredicate(shared_ptr<query::ValueExpr> const & valueExpr,
             antlr4::ParserRuleContext* childCtx) override {
         if (childCtx == _ctx->val) {
             ASSERT_EXECUTION_CONDITION(nullptr == _val, "val should be set exactly once.", _ctx);
@@ -2109,7 +2115,7 @@ public:
         }
     }
 
-    void handleExpressionAtomPredicate(const shared_ptr<query::BoolFactorTerm>& boolFactorTerm,
+    void handleExpressionAtomPredicate(shared_ptr<query::BoolFactorTerm> const & boolFactorTerm,
             antlr4::ParserRuleContext* childCtx) override {
         ASSERT_EXECUTION_CONDITION(false, "unhandled ExpressionAtomPredicate BoolFactor callback.", _ctx);
     }
@@ -2139,7 +2145,7 @@ public:
     , _ctx(ctx)
     {}
 
-    void handleExpressionAtomPredicate(shared_ptr<query::ValueExpr>& valueExpr,
+    void handleExpressionAtomPredicate(shared_ptr<query::ValueExpr> const & valueExpr,
             antlr4::ParserRuleContext* childCtx) override {
         if (nullptr == _valueExprA) {
             _valueExprA = valueExpr;
@@ -2150,7 +2156,7 @@ public:
         }
     }
 
-    void handleExpressionAtomPredicate(const shared_ptr<query::BoolFactorTerm>& boolFactorTerm,
+    void handleExpressionAtomPredicate(shared_ptr<query::BoolFactorTerm> const & boolFactorTerm,
             antlr4::ParserRuleContext* childCtx) override {
         ASSERT_EXECUTION_CONDITION(false,
                 "Unhandled BoolFactorTerm callback.", _ctx);
@@ -2222,11 +2228,11 @@ public:
     , _ctx(ctx)
     {}
 
-    void handlePredicateExpression(shared_ptr<query::BoolFactor>& boolFactor) override {
+    void handlePredicateExpression(shared_ptr<query::BoolFactor> const & boolFactor) override {
         _boolFactors.push_back(boolFactor);
     }
 
-    void handlePredicateExpression(shared_ptr<query::ValueExpr>& valueExpr) override {
+    void handlePredicateExpression(shared_ptr<query::ValueExpr> const & valueExpr) override {
         ASSERT_EXECUTION_CONDITION(false, "Unhandled PredicateExpression with ValueExpr.", _ctx);
     }
 
@@ -2262,7 +2268,7 @@ public:
     , _ctx(ctx)
     {}
 
-    void handleFunctionCallExpressionAtom(shared_ptr<query::FuncExpr> funcExpr) override {
+    void handleFunctionCallExpressionAtom(shared_ptr<query::FuncExpr> const & funcExpr) override {
         ValueExprFactory::addFuncExpr(_getValueExpr(), funcExpr);
     }
 
@@ -2288,7 +2294,7 @@ public:
         }
     }
 
-    void HandleFullColumnNameExpressionAtom(shared_ptr<query::ValueFactor>& valueFactor) override {
+    void HandleFullColumnNameExpressionAtom(shared_ptr<query::ValueFactor> const & valueFactor) override {
         ValueExprFactory::addValueFactor(_getValueExpr(), valueFactor);
     }
 
@@ -2302,7 +2308,7 @@ public:
     }
 
 private:
-    shared_ptr<query::ValueExpr>& _getValueExpr() {
+    shared_ptr<query::ValueExpr> const & _getValueExpr() {
         if (nullptr == _valueExpr) {
             _valueExpr = make_shared<query::ValueExpr>();
         }
@@ -2324,7 +2330,7 @@ public:
     , _ctx(ctx)
     {}
 
-    void handleUdfFunctionCall(shared_ptr<query::FuncExpr> funcExpr) override {
+    void handleUdfFunctionCall(shared_ptr<query::FuncExpr> const & funcExpr) override {
         ASSERT_EXECUTION_CONDITION(_funcExpr == nullptr, "the funcExpr must be set only once.", _ctx)
         _funcExpr = funcExpr;
     }
