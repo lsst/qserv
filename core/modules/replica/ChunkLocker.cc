@@ -123,6 +123,8 @@ bool ChunkLocker::release(Chunk const& chunk,
 bool ChunkLocker::releaseImpl(Chunk const& chunk,
                               std::string& owner) {
 
+    ASSERT_LOCK(_mtx, "ChunkLocker::releaseImpl");
+
     if (not _chunk2owner.count(chunk)) return false;
 
     // Remove the chunk from this map _only_ after getting its owner

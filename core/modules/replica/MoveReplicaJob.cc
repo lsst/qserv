@@ -130,6 +130,8 @@ void MoveReplicaJob::startImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
 
+    ASSERT_LOCK(_mtx, context() + "startImpl");
+
     auto self = shared_from_base<MoveReplicaJob>();
     _createReplicaJob = CreateReplicaJob::create(
         databaseFamily(),
@@ -151,6 +153,8 @@ void MoveReplicaJob::startImpl() {
 void MoveReplicaJob::cancelImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
+
+    ASSERT_LOCK(_mtx, context() + "cancelImpl");
 
     if (_createReplicaJob and (_createReplicaJob->state() != Job::State::FINISHED)) {
         _createReplicaJob->cancel();

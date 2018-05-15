@@ -117,7 +117,7 @@ void Job::start() {
 
     LOCK(_mtx, context() + "start");
 
-    assertState(State::CREATED, "Job::start");
+    assertState(State::CREATED, context() + "start");
 
     // IMPORTANT: update these before proceeding to the implementation
     // because the later may create children jobs whose performance
@@ -143,10 +143,11 @@ void Job::start() {
     }
 
     // Otherwise, the only other state which is allowed here is this
-    assertState(State::IN_PROGRESS, "Job::start");
+    assertState(State::IN_PROGRESS, context() + "start");
 }
 
 void Job::cancel() {
+
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancel"
          << "  _state="         << state2string(_state)
          << ", _extendedState=" << state2string(_extendedState));
@@ -175,6 +176,8 @@ void Job::finish(ExtendedState extendedState) {
          << "  _state="         << state2string(_state)
          << ", _extendedState=" << state2string(_extendedState)
          << ", (new)extendedState=" << state2string(extendedState));
+
+    ASSERT_LOCK(_mtx, context() + "finish");
 
     // Also ignore this event if the request is over
     if (_state == State::FINISHED) return;
@@ -206,6 +209,8 @@ void Job::qservAddReplica(unsigned int chunk,
          << ", chunk="     << chunk
          << ", databases=" << util::printable(databases)
          << "  worker="    << worker);
+
+    ASSERT_LOCK(_mtx, context() + "qservAddReplica");
 
     auto self = shared_from_this();
 
@@ -245,6 +250,8 @@ void Job::qservRemoveReplica(unsigned int chunk,
          << ", databases=" << util::printable(databases)
          << ", worker="    << worker
          << ", force="     << (force ? "true" : "false"));
+
+    ASSERT_LOCK(_mtx, context() + "qservRemoveReplica");
 
     auto self = shared_from_this();
 
@@ -287,6 +294,8 @@ void Job::setState(State state,
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "setState  state=" << state2string(state, extendedState));
 
+    ASSERT_LOCK(_mtx, context() + "setState");
+
     // ATTENTION: changing the top-level state to FINISHED should be last step
     // in the transient state transition in order to ensure a consistent view
     // onto the combined state.
@@ -301,6 +310,8 @@ void Job::setState(State state,
 }
 
 void Job::startHeartbeatTimer() {
+
+    ASSERT_LOCK(_mtx, context() + "startHeartbeatTimer");
 
     if (_heartbeatTimerIvalSec) {
 
@@ -352,6 +363,8 @@ void Job::heartbeat(boost::system::error_code const& ec) {
 }
 
 void Job::startExpirationTimer() {
+
+    ASSERT_LOCK(_mtx, context() + "startExpirationTimer");
 
     if (_expirationIvalSec) {
 

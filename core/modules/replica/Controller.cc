@@ -821,14 +821,13 @@ void Controller::finish(std::string const& id) {
 
     // IMPORTANT:
     //
-    //   Make sure the notification is complete before removing
-    //   the request from the registry. This has two reasons:
+    //   Make sure the lock is released before sending notifications:
     //
-    //   - it will avoid a possibility of deadlocking in case if
+    //   - to avoid a possibility of deadlocking in case if
     //     the callback function to be notified will be doing
     //     any API calls of the controller.
     //
-    //   - it will reduce the controller API dead-time due to a prolonged
+    //   - to reduce the controller API dead-time due to a prolonged
     //     execution time of of the callback function.
 
     ControllerRequestWrapper::Ptr request;

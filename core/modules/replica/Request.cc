@@ -130,7 +130,7 @@ void Request::start(std::shared_ptr<Controller> const& controller,
 
     LOCK(_mtx, context() + "start");
 
-    assertState(CREATED, "Request::start");
+    assertState(CREATED, context() + "start");
 
     // Change the expiration ival if requested
     if (requestExpirationIvalSec) {
@@ -227,6 +227,8 @@ void Request::finish(ExtendedState extendedState) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "finish");
 
+    ASSERT_LOCK(_mtx, context() + "finish");
+
     // Check if it's not too late for this operation
     if (_state == FINISHED) return;
 
@@ -259,6 +261,7 @@ bool Request::isAborted(boost::system::error_code const& ec) const {
 
 void Request::assertState(State state,
                           std::string const& context) const {
+
     if (state != _state) {
         throw std::logic_error(
             context + ": wrong state " + state2string(state) + " instead of " + state2string(_state));
@@ -269,6 +272,8 @@ void Request::setState(State state,
                        ExtendedState extendedState)
 {
     LOGS(_log, LOG_LVL_DEBUG, context() << "setState  " << state2string(state, extendedState));
+
+    ASSERT_LOCK(_mtx, context() + "setState");
 
     // ATTENTION: ensure the top-level state is the last to change in
     // in the transient state transition in order to guarantee a consistent

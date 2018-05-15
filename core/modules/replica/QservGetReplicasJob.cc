@@ -110,6 +110,8 @@ void QservGetReplicasJob::startImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
 
+    ASSERT_LOCK(_mtx, context() + "startImpl");
+
     auto self = shared_from_base<QservGetReplicasJob>();
 
     for (auto&& worker: _controller->serviceProvider()->config()->workers()) {
@@ -141,6 +143,8 @@ void QservGetReplicasJob::startImpl() {
 void QservGetReplicasJob::cancelImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
+
+    ASSERT_LOCK(_mtx, context() + "cancelImpl");
 
     for (auto&& ptr: _requests) {
         ptr->cancel();

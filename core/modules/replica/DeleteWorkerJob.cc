@@ -141,6 +141,8 @@ void DeleteWorkerJob::startImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
 
+    ASSERT_LOCK(_mtx, context() + "startImpl");
+
     util::BlockPost blockPost(1000, 2000);
 
     auto self = shared_from_base<DeleteWorkerJob>();
@@ -222,6 +224,8 @@ void DeleteWorkerJob::cancelImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
 
+    ASSERT_LOCK(_mtx, context() + "cancelImpl");
+
     // To ensure no lingering "side effects" will be left after cancelling this
     // job the request cancellation should be also followed (where it makes a sense)
     // by stopping the request at corresponding worker service.
@@ -284,6 +288,8 @@ void
 DeleteWorkerJob::disableWorker() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "disableWorker");
+
+    ASSERT_LOCK(_mtx, context() + "disableWorker");
 
     // Temporary disable this worker from the configuration. If it's requsted
     // to be permanently deleted this will be done only after all other relevamnt

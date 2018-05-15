@@ -35,6 +35,7 @@
 #include "lsst/log/Log.h"
 #include "replica/Configuration.h"
 #include "replica/DatabaseMySQL.h"
+#include "replica/LockUtils.h"
 #include "replica/ServiceProvider.h"
 
 namespace {
@@ -88,6 +89,8 @@ std::string AddReplicaQservMgtRequest::extendedPersistentState(SqlGeneratorPtr c
 
 void AddReplicaQservMgtRequest::startImpl() {
 
+    ASSERT_LOCK(_mtx, context() + "startImpl");
+
     auto const request = shared_from_base<AddReplicaQservMgtRequest>();
 
     _qservRequest = wpublish::AddChunkGroupQservRequest::create(
@@ -121,6 +124,8 @@ void AddReplicaQservMgtRequest::startImpl() {
 }
 
 void AddReplicaQservMgtRequest::finishImpl() {
+
+    ASSERT_LOCK(_mtx, context() + "finishImpl");
 
     assertState(State::FINISHED, "AddReplicaQservMgtRequest::finishImpl");
 

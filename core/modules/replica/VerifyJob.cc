@@ -217,6 +217,8 @@ void VerifyJob::startImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
 
+    ASSERT_LOCK(_mtx, context() + "startImpl");
+
     auto self = shared_from_base<VerifyJob>();
 
     // Launch the first batch of requests
@@ -250,6 +252,8 @@ void VerifyJob::startImpl() {
 void VerifyJob::cancelImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
+
+    ASSERT_LOCK(_mtx, context() + "cancelImpl");
 
     // To ensure no lingering "side effects" will be left after cancelling this
     // job the request cancellation should be also followed (where it makes a sense)
@@ -422,6 +426,8 @@ void VerifyJob::onRequestFinish(FindRequest::Ptr request) {
 
 bool VerifyJob::nextReplicas(std::vector<ReplicaInfo>& replicas,
                              size_t numReplicas) {
+
+    ASSERT_LOCK(_mtx, context() + "nextReplicas");
 
     return _controller->serviceProvider()->databaseServices()->findOldestReplicas(
                                                                     replicas,

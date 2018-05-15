@@ -113,6 +113,8 @@ void FindRequest::startImpl() {
          << " chunk: "           << chunk()
          << " computeCheckSum: " << (computeCheckSum() ? "true" : "false"));
 
+    ASSERT_LOCK(_mtx, context() + "startImpl");
+
     // Serialize the Request message header and the request itself into
     // the network buffer.
 
@@ -140,6 +142,8 @@ void FindRequest::wait() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "wait");
 
+    ASSERT_LOCK(_mtx, context() + "wait");
+
     // Allways need to set the interval before launching the timer.
 
     _timer.expires_from_now(boost::posix_time::seconds(_timerIvalSec));
@@ -156,12 +160,19 @@ void FindRequest::awaken(boost::system::error_code const& ec) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "awaken");
 
-    LOCK(_mtx, context() + "awaken");
-
     if (isAborted(ec)) return;
 
-    // Also ignore this event if the request expired
-    if (_state== State::FINISHED) return;
+    // IMPORTANT: the final state is required to be tested twice. The first time
+    // it's done in order to avoid deadlock on the "in-flight" callbacks reporting
+    // their completion while the request termination is in a progress. And the second
+    // test is made after acquering the lock to recheck the state in case if it
+    // has transitioned while acquering the lock.
+
+    if (_state == State::FINISHED) return;
+
+    LOCK(_mtx, context() + "awaken");
+
+    if (_state == State::FINISHED) return;
 
     // Serialize the Status message header and the request itself into
     // the network buffer.
@@ -188,6 +199,8 @@ void FindRequest::send() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "send");
 
+    ASSERT_LOCK(_mtx, context() + "send");
+
     auto self = shared_from_base<FindRequest>();
 
     _messenger->send<proto::ReplicationResponseFind>(
@@ -207,10 +220,23 @@ void FindRequest::analyze(bool success,
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "analyze  success=" << (success ? "true" : "false"));
 
-    // This guard is made on behalf of an asynchronious callback fired
+    // This method is called on behalf of an asynchronious callback fired
     // upon a completion of the request within method send() - the only
-    // client of analyze()
+    // client of analyze(). So, we should take care of proper locking and watch
+    // for possible state transition which might occure while the async I/O was
+    // still in a progress.
+
+    // IMPORTANT: the final state is required to be tested twice. The first time
+    // it's done in order to avoid deadlock on the "in-flight" callbacks reporting
+    // their completion while the request termination is in a progress. And the second
+    // test is made after acquering the lock to recheck the state in case if it
+    // has transitioned while acquering the lock.
+
+    if (_state == State::FINISHED) return;
+
     LOCK(_mtx, context() + "analyze");
+
+    if (_state == State::FINISHED) return;
 
     if (success) {
 
