@@ -181,6 +181,8 @@ void MessengerConnector::restart() {
     LOGS(_log, LOG_LVL_DEBUG, context() << "restart"
          << "  _currentRequest->id=" << (_currentRequest ? _currentRequest->id : ""));
 
+    ASSERT_LOCK(_mtx, context() + "restart");
+
     // Cancel any asynchronous operation(s) if not in the initial state
 
     switch (_state) {
@@ -206,6 +208,8 @@ void MessengerConnector::resolve() {
     LOGS(_log, LOG_LVL_DEBUG, context() << "resolve"
          << "  _currentRequest->id=" << (_currentRequest ? _currentRequest->id : ""));
 
+    ASSERT_LOCK(_mtx, context() + "resolve");
+
     if (_state != STATE_INITIAL) return;
 
     boost::asio::ip::tcp::resolver::query query(
@@ -230,9 +234,9 @@ void MessengerConnector::resolved(boost::system::error_code const& ec,
     LOGS(_log, LOG_LVL_DEBUG, context() << "resolved"
          << "  _currentRequest->id=" << (_currentRequest ? _currentRequest->id : ""));
 
-    LOCK(_mtx, context() + "resolved");
-
     if (isAborted(ec)) return;
+
+    LOCK(_mtx, context() + "resolved");
 
     if (ec) waitBeforeRestart();
     else    connect(iter);
@@ -242,6 +246,8 @@ void MessengerConnector::connect(boost::asio::ip::tcp::resolver::iterator iter) 
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "connect"
          << "  _currentRequest->id=" << (_currentRequest ? _currentRequest->id : ""));
+
+    ASSERT_LOCK(_mtx, context() + "connect");
 
     boost::asio::async_connect(
         _socket,
@@ -261,9 +267,9 @@ void MessengerConnector::connected(boost::system::error_code const& ec,
     LOGS(_log, LOG_LVL_DEBUG, context() << "connected"
          << "  _currentRequest->id=" << (_currentRequest ? _currentRequest->id : ""));
 
-    LOCK(_mtx, context() + "connected");
-
     if (isAborted(ec)) return;
+
+    LOCK(_mtx, context() + "connected");
 
     if (ec) {
         waitBeforeRestart();
@@ -277,6 +283,8 @@ void MessengerConnector::waitBeforeRestart() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "waitBeforeRestart"
          << "  _currentRequest->id=" << (_currentRequest ? _currentRequest->id : ""));
+
+    ASSERT_LOCK(_mtx, context() + "waitBeforeRestart");
 
     // Allways need to set the interval before launching the timer.
 
@@ -295,9 +303,9 @@ void MessengerConnector::awakenForRestart(boost::system::error_code const& ec) {
     LOGS(_log, LOG_LVL_DEBUG, context() << "awakenForRestart"
          << "  _currentRequest->id=" << (_currentRequest ? _currentRequest->id : ""));
 
-    LOCK(_mtx, context() + "awakenForRestart");
-
     if (isAborted(ec)) return;
+
+    LOCK(_mtx, context() + "awakenForRestart");
 
     if (_state != STATE_CONNECTING) return;
 
@@ -308,6 +316,8 @@ void MessengerConnector::sendRequest() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "sendRequest"
          << "  _currentRequest->id=" << (_currentRequest ? _currentRequest->id : ""));
+
+    ASSERT_LOCK(_mtx, context() + "sendRequest");
 
     // Check if there is an outstanding send request
     if (_currentRequest) return;
@@ -385,6 +395,8 @@ void MessengerConnector::receiveResponse() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "receiveResponse"
          << "  _currentRequest->id=" << (_currentRequest ? _currentRequest->id : ""));
+
+    ASSERT_LOCK(_mtx, context() + "receiveResponse");
 
     // Start with receiving the fixed length frame carrying
     // the size (in bytes) the length of the subsequent message.
@@ -547,6 +559,9 @@ void MessengerConnector::responseReceived(boost::system::error_code const& ec,
 
 boost::system::error_code MessengerConnector::syncReadFrame(replica::ProtocolBuffer& buf,
                                                             size_t& bytes) {
+
+    ASSERT_LOCK(_mtx, context() + "syncReadFrame");
+
     size_t const frameLength = sizeof(uint32_t);
     buf.resize(frameLength);
 
@@ -569,6 +584,9 @@ boost::system::error_code MessengerConnector::syncReadFrame(replica::ProtocolBuf
 boost::system::error_code MessengerConnector::syncReadVerifyHeader(replica::ProtocolBuffer& buf,
                                                                    size_t bytes,
                                                                    std::string const& id) {
+
+    ASSERT_LOCK(_mtx, context() + "syncReadVerifyHeader");
+
     boost::system::error_code ec = syncReadMessageImpl(buf, bytes);
     if (not ec) {
         proto::ReplicationResponseHeader hdr;
@@ -584,6 +602,9 @@ boost::system::error_code MessengerConnector::syncReadVerifyHeader(replica::Prot
 
 boost::system::error_code MessengerConnector::syncReadMessageImpl(replica::ProtocolBuffer& buf,
                                                                   size_t bytes) {
+
+    ASSERT_LOCK(_mtx, context() + "syncReadMessageImpl");
+
     buf.resize(bytes);
 
     boost::system::error_code ec;

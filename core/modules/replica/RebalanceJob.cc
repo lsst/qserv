@@ -132,6 +132,8 @@ void RebalanceJob::startImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl  numIterations=" << _replicaData.numIterations);
 
+    ASSERT_LOCK(_mtx, context() + "startImpl");
+
     _replicaData.numIterations++;
 
     // Launch the chained job to get chunk disposition
@@ -155,6 +157,8 @@ void RebalanceJob::cancelImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
 
+    ASSERT_LOCK(_mtx, context() + "cancelImpl");
+
     // The algorithm will also clear resources taken by various
     // locally created objects.
 
@@ -172,6 +176,8 @@ void RebalanceJob::cancelImpl() {
 void RebalanceJob::restart() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "restart");
+
+    ASSERT_LOCK(_mtx, context() + "restart");
 
     size_t numLaunched;
     size_t numFinished;
@@ -666,7 +672,13 @@ void RebalanceJob::onJobFinish(MoveReplicaJob::Ptr const& job) {
 }
 
 void RebalanceJob::release(unsigned int chunk) {
+
+    // THREAD-SAFETY NOTE: This method is thread-agnostic because it's trading
+    // a static context of the request with an external service which is guaranteed
+    // to be thread-safe.
+
     LOGS(_log, LOG_LVL_DEBUG, context() << "release  chunk=" << chunk);
+
     Chunk chunkObj {databaseFamily(), chunk};
     _controller->serviceProvider()->chunkLocker().release(chunkObj);
 }

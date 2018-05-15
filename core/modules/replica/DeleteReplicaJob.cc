@@ -142,6 +142,8 @@ void DeleteReplicaJob::startImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
 
+    ASSERT_LOCK(_mtx, context() + "startImpl");
+
     // Get all databases for which this chunk is in the COMPLETE state on
     // at the worker.
     //
@@ -234,6 +236,8 @@ void DeleteReplicaJob::cancelImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
 
+    ASSERT_LOCK(_mtx, context() + "cancelImpl");
+
     // The algorithm will also clear resources taken by various
     // locally created objects.
 
@@ -273,6 +277,8 @@ void DeleteReplicaJob::notify() {
 }
 
 void DeleteReplicaJob::beginDeleteReplica() {
+
+    ASSERT_LOCK(_mtx, context() + "beginDeleteReplica");
 
     auto self = shared_from_base<DeleteReplicaJob>();
 

@@ -109,6 +109,8 @@ void QservSyncJob::startImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
 
+    ASSERT_LOCK(_mtx, context() + "startImpl");
+
     auto const databases        = _controller->serviceProvider()->config()->databases(_databaseFamily);
     auto const databaseServices = _controller->serviceProvider()->databaseServices();
     auto const qservMgtServices = _controller->serviceProvider()->qservMgtServices();
@@ -171,6 +173,8 @@ void QservSyncJob::startImpl() {
 void QservSyncJob::cancelImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
+
+    ASSERT_LOCK(_mtx, context() + "cancelImpl");
 
     for (auto&& ptr: _requests) {
         ptr->cancel();

@@ -37,6 +37,7 @@
 #include "lsst/log/Log.h"
 #include "replica/Configuration.h"
 #include "replica/DatabaseMySQL.h"
+#include "replica/LockUtils.h"
 #include "replica/ServiceProvider.h"
 
 namespace {
@@ -104,6 +105,8 @@ std::string SetReplicasQservMgtRequest::extendedPersistentState(SqlGeneratorPtr 
 void SetReplicasQservMgtRequest::setReplicas(
         wpublish::SetChunkListQservRequest::ChunkCollection const& collection) {
 
+    LOCK(_mtx, context() + "setReplicas");
+
     _replicas.clear();
     for (auto&& replica: collection) {
         _replicas.push_back(
@@ -117,6 +120,8 @@ void SetReplicasQservMgtRequest::setReplicas(
 }
 
 void SetReplicasQservMgtRequest::startImpl() {
+
+    ASSERT_LOCK(_mtx, context() + "startImpl");
 
     wpublish::SetChunkListQservRequest::ChunkCollection chunks;
     for (auto&& chunkEntry: _newReplicas) {
@@ -157,6 +162,8 @@ void SetReplicasQservMgtRequest::startImpl() {
 }
 
 void SetReplicasQservMgtRequest::finishImpl() {
+
+    ASSERT_LOCK(_mtx, context() + "finishImpl");
 
     assertState(State::FINISHED, "SetReplicasQservMgtRequest::finishImpl");
 

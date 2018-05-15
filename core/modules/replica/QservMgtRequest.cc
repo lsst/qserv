@@ -194,7 +194,16 @@ void QservMgtRequest::finish(ExtendedState extendedState,
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "finish");
 
-    // Check if it's not too late for this operation
+    // IMPORTANT: the final state is required to be tested twice. The first time
+    // it's done in order to avoid deadlock on the "in-flight" callbacks reporting
+    // their completion while the request termination is in a progress. And the second
+    // test is made after acquering the lock to recheck the state in case if it
+    // has transitioned while acquering the lock.
+
+    if (_state == State::FINISHED) return;
+
+    LOCK(_mtx, "QservMgtRequest::finish");
+
     if (_state == State::FINISHED) return;
 
     // Set the optional server error state as well
@@ -236,6 +245,8 @@ void QservMgtRequest::setState(State state,
                                ExtendedState extendedState)
 {
     LOGS(_log, LOG_LVL_DEBUG, context() << "setState  " << state2string(state, extendedState));
+
+    ASSERT_LOCK(_mtx, context() + "setState");
 
     // IMPORTANT: the top-level state is the last to be set when performing
     // the state transition to insure clients will get a consistent view onto

@@ -124,6 +124,8 @@ void PurgeJob::startImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl  _numIterations=" << _numIterations);
 
+    ASSERT_LOCK(_mtx, context() + "startImpl");
+
     ++_numIterations;
 
     // Launch the chained job to get chunk disposition
@@ -146,6 +148,8 @@ void PurgeJob::startImpl() {
 void PurgeJob::cancelImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
+
+    ASSERT_LOCK(_mtx, context() + "cancelImpl");
 
     // The algorithm will also clear resources taken by various
     // locally created objects.
@@ -173,6 +177,8 @@ void PurgeJob::cancelImpl() {
 void PurgeJob::restart() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "restart");
+
+    ASSERT_LOCK(_mtx, context() + "restart");
 
     if (_findAllJob or (_numLaunched != _numFinished)) {
         throw std::logic_error ("PurgeJob::restart ()  not allowed in this object state");
@@ -505,7 +511,13 @@ void PurgeJob::onDeleteJobFinish(DeleteReplicaJob::Ptr const& job) {
 }
 
 void PurgeJob::release(unsigned int chunk) {
+
+    // THREAD-SAFETY NOTE: This method is thread-agnostic because it's trading
+    // a static context of the request with an external service which is guaranteed
+    // to be thread-safe.
+
     LOGS(_log, LOG_LVL_DEBUG, context() << "release  chunk=" << chunk);
+
     Chunk chunkObj {databaseFamily(), chunk};
     _controller->serviceProvider()->chunkLocker().release(chunkObj);
 }

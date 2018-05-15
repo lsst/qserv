@@ -182,16 +182,16 @@ private:
      *
      * @see DatabaseServices::findWorkerReplicas()
      */
-    bool findWorkerReplicasNoLock(std::vector<ReplicaInfo>& replicas,
-                                  std::string const& worker,
-                                  std::string const&  database) const;
+    bool findWorkerReplicasImpl(std::vector<ReplicaInfo>& replicas,
+                                std::string const& worker,
+                                std::string const& database) const;
 
     /**
      * Actual implementation of the replica update algorithm.
      *
      * @param info - a replica to be added/updated or deleted
      */
-    void saveReplicaInfoNoLock(ReplicaInfo const& info);
+    void saveReplicaInfoImpl(ReplicaInfo const& info);
 
     /**
      * Actual implementation of the multiple replicas update algorithm.
@@ -200,9 +200,9 @@ private:
      * @param database       - the name of a database (as per the request)
      * @param infoCollection - a collection of replicas
      */
-    void saveReplicaInfoCollectionNoLock(std::string const& worker,
-                                         std::string const& database,
-                                         ReplicaInfoCollection const& infoCollection);
+    void saveReplicaInfoCollectionImpl(std::string const& worker,
+                                       std::string const& database,
+                                       ReplicaInfoCollection const& infoCollection);
 
     /**
      * Fetch replicas satisfying the specified query
@@ -212,8 +212,8 @@ private:
      *
      * @return 'true' if the operation has succeeded (even if no replicas were found)
      */
-    bool findReplicas(std::vector<ReplicaInfo>& replicas,
-                      std::string const& query) const;
+    bool findReplicasImpl(std::vector<ReplicaInfo>& replicas,
+                          std::string const& query) const;
 
 private:
 

@@ -103,6 +103,8 @@ void FindAllJob::startImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
 
+    ASSERT_LOCK(_mtx, context() + "startImpl");
+
     auto self = shared_from_base<FindAllJob>();
 
     for (auto&& worker: _controller->serviceProvider()->config()->workers()) {
@@ -132,6 +134,8 @@ void FindAllJob::startImpl() {
 void FindAllJob::cancelImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
+
+    ASSERT_LOCK(_mtx, context() + "cancelImpl");
 
     // To ensure no lingering "side effects" will be left after cancelling this
     // job the request cancellation should be also followed (where it makes a sense)

@@ -27,6 +27,7 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
+#include "replica/LockUtils.h"
 #include "replica/Messenger.h"
 
 namespace {
@@ -60,6 +61,8 @@ RequestMessenger::RequestMessenger(ServiceProvider::Ptr const& serviceProvider,
 void RequestMessenger::finishImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "finishImpl");
+
+    ASSERT_LOCK(_mtx, context() + "finishImpl");
 
     // Make sure the request (if any) has been eliminated from the messenger
     if (_messenger->exists(worker(), id())) {

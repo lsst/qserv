@@ -148,6 +148,8 @@ void CreateReplicaJob::startImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
 
+    ASSERT_LOCK(_mtx, context() + "startImpl");
+
     // Make sure no such replicas exist yet at the destination
 
     std::vector<ReplicaInfo> destinationReplicas;
@@ -240,6 +242,8 @@ void CreateReplicaJob::startImpl() {
 void CreateReplicaJob::cancelImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
+
+    ASSERT_LOCK(_mtx, context() + "cancelImpl");
 
     // The algorithm will also clear resources taken by various
     // locally created objects.
