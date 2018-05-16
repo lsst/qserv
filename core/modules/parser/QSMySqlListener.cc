@@ -600,14 +600,8 @@ public:
     }
 
     void onExit() override {
-        auto selectStatement = make_shared<query::SelectStmt>();
-        selectStatement->setSelectList(_selectList);
-        selectStatement->setFromList(_fromList);
-        selectStatement->setWhereClause(_whereClause);
-        selectStatement->setLimit(_limit);
-        selectStatement->setOrderBy(_orderByClause);
-        selectStatement->setGroupBy(_groupByClause);
-        selectStatement->setDistinct(_distinct);
+        auto selectStatement = make_shared<query::SelectStmt>(_fromList, _selectList, _whereClause,
+                _orderByClause, _groupByClause, nullptr, _distinct, _limit);
         lockedParent()->handleSelectStatement(selectStatement);
     }
 
