@@ -67,6 +67,19 @@ public:
     typedef std::shared_ptr<SelectStmt const> Cptr;
 
     SelectStmt();
+    SelectStmt(std::shared_ptr<FromList> fromList, std::shared_ptr<SelectList> selectList,
+            std::shared_ptr<WhereClause> whereClause, std::shared_ptr<OrderByClause> orderBy,
+            std::shared_ptr<GroupByClause> groupBy, std::shared_ptr<HavingClause> having, bool hasDistinct,
+            int limit)
+    : _fromList(fromList)
+    , _selectList(selectList)
+    , _whereClause(whereClause)
+    , _orderBy(orderBy)
+    , _groupBy(groupBy)
+    , _having(having)
+    , _hasDistinct(hasDistinct)
+    , _limit(limit)
+    {}
 
     std::shared_ptr<WhereClause const> getWhere() const;
     QueryTemplate getQueryTemplate() const;
