@@ -291,9 +291,13 @@ protected:
       */
     virtual void finishImpl(util::Lock const& lock)=0;
 
+    // This will invoke user-defined notifiers (if any).
+
+    void notify();
+
     /**
-     * This method is supposed to be provided by subclasses to handle
-     * request completion steps, such as notifying a party which initiated
+     * This method is supposed to be provided by subclasses to forward
+     * notification on request completion to a client which initiated
      * the request, etc.
      */
     virtual void notifyImpl()=0;
@@ -306,14 +310,12 @@ protected:
      *        there is a problem with the application implementation
      *        or the underlying run-time system.
      *
-     * @param lock         - the lock must be acquired by a caller of the method
      * @param desiredState - desired state
      * @param context      - context from which the state test is requested
      *
      * @throws std::logic_error
      */
-    void assertState(util::Lock const& lock,
-                     State desiredState,
+    void assertState(State desiredState,
                      std::string const& context) const;
 
     /**

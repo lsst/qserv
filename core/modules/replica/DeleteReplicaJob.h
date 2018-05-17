@@ -181,9 +181,9 @@ protected:
     /**
       * Implement the corresponding method of the base class.
       *
-      * @see Job::notify()
+      * @see Job::notifyImpl()
       */
-    void notify() final;
+    void notifyImpl() final;
 
     /**
      * Initiate a process of removing the replica from the source worker

@@ -124,16 +124,9 @@ void RemoveReplicaQservMgtRequest::startImpl(util::Lock const& lock) {
     );
     XrdSsiResource resource(ResourceUnit::makeWorkerPath(_worker));
     _service->ProcessRequest(*_qservRequest, resource);
-
-    setState(lock,
-             State::IN_PROGRESS);
 }
 
 void RemoveReplicaQservMgtRequest::finishImpl(util::Lock const& lock) {
-
-    assertState(lock,
-                State::FINISHED,
-                context() + "finishImpl");
 
     if (_extendedState == ExtendedState::CANCELLED) {
         // And if the SSI request is still around then tell it to stop
@@ -149,17 +142,8 @@ void RemoveReplicaQservMgtRequest::notifyImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "notifyImpl");
 
-    // The callback is being made asynchronously in a separate thread
-    // to avoid blocking the current thread.
-
     if (_onFinish) {
-        auto self = shared_from_base<RemoveReplicaQservMgtRequest>();
-        std::async(
-            std::launch::async,
-            [self]() {
-                self->_onFinish(self);
-            }
-        );
+        _onFinish(shared_from_base<RemoveReplicaQservMgtRequest>());
     }
 }
 

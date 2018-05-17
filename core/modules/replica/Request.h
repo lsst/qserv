@@ -327,11 +327,11 @@ protected:
     virtual void finishImpl(util::Lock const& lock)=0;
 
     /**
-     * This method is supposed to be provided by subclasses to handle
-     * request completion steps, such as notifying a party which initiated
+     * This method is supposed to be provided by subclasses to forward
+     * notification on request completion to a client which initiated
      * the request, etc.
      */
-    virtual void notify()=0;
+    virtual void notifyImpl()=0;
 
     /**
       * This method is supposed to be provided by subclasses to save the request's
@@ -392,6 +392,17 @@ protected:
     void setState(util::Lock const& lock,
                   State state,
                   ExtendedState extendedStat=ExtendedState::NONE);
+
+private:
+
+    /**
+     * This method will begin an optional user protocol upon a completion
+     * of a request (if any user-supplied callback function was provided).
+     * The method will eventually use  subclass-specific method notifyImpl().
+     *
+     * @see Request::notifyImpl
+     */
+    void notify();
 
 protected:
 

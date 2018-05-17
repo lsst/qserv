@@ -210,21 +210,12 @@ void RebalanceJob::restart(util::Lock const& lock) {
     _findAllJob->start();
 }
 
-void RebalanceJob::notify() {
+void RebalanceJob::notifyImpl() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
-
-    // The callback is being made asynchronously in a separate thread
-    // to avoid blocking the current thread.
+    LOGS(_log, LOG_LVL_DEBUG, context() << "notifyImpl");
 
     if (_onFinish) {
-        auto self = shared_from_base<RebalanceJob>();
-        std::async(
-            std::launch::async,
-            [self]() {
-                self->_onFinish(self);
-            }
-        );
+        _onFinish(shared_from_base<RebalanceJob>());
     }
 }
 
@@ -588,8 +579,6 @@ void RebalanceJob::onPrecursorJobFinish() {
         }
 
     } while (false);
-
-    if (_state == State::FINISHED) notify();
 }
 
 void RebalanceJob::onJobFinish(MoveReplicaJob::Ptr const& job) {
@@ -678,7 +667,6 @@ void RebalanceJob::onJobFinish(MoveReplicaJob::Ptr const& job) {
                    ExtendedState::FAILED);
         }
     }
-    if (_state == State::FINISHED) notify();
 }
 
 void RebalanceJob::release(unsigned int chunk) {

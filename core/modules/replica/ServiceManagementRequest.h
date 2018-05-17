@@ -180,22 +180,11 @@ private:
      * Notifying a party which initiated the request.
      *
      * This method implements the corresponing virtual method defined
-     * bu the base class.
+     * by the base class.
      */
-    void notify() final {
-
-        // The callback is being made asynchronously in a separate thread
-        // to avoid blocking the current thread.
-
+    void notifyImpl() final {
         if (_onFinish) {
-            ServiceManagementRequest<POLICY>::Ptr self =
-                shared_from_base<ServiceManagementRequest<POLICY>>();
-            std::async(
-                std::launch::async,
-                [self]() {
-                    self->_onFinish(self);
-                }
-            );
+            _onFinish(shared_from_base<ServiceManagementRequest<POLICY>>());
         }
     }
 

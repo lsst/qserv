@@ -106,13 +106,14 @@ std::string GetReplicasQservMgtRequest::extendedPersistentState(SqlGeneratorPtr 
 void GetReplicasQservMgtRequest::setReplicas(
         wpublish::GetChunkListQservRequest::ChunkCollection const& collection) {
 
+    if (_state == State::FINISHED) return;
+
     util::Lock lock(_mtx, context() + "setReplicas");
 
-    assertState(lock,
-                State::IN_PROGRESS,
-                context() + "setReplicas");
+    if (_state == State::FINISHED) return;
 
     // Filter resuls by databases participating in the family
+
     std::set<std::string> databases;
     for (auto&& database: _serviceProvider->config()->databases(_databaseFamily)) {
         databases.insert(database);
@@ -152,16 +153,9 @@ void GetReplicasQservMgtRequest::startImpl(util::Lock const& lock) {
     );
     XrdSsiResource resource(ResourceUnit::makeWorkerPath(_worker));
     _service->ProcessRequest(*_qservRequest, resource);
-
-    setState(lock,
-             State::IN_PROGRESS);
 }
 
 void GetReplicasQservMgtRequest::finishImpl(util::Lock const& lock) {
-
-    assertState(lock,
-                State::FINISHED,
-                context() + "finishImpl");
 
     if (_extendedState == ExtendedState::CANCELLED) {
         // And if the SSI request is still around then tell it to stop
@@ -177,17 +171,8 @@ void GetReplicasQservMgtRequest::notifyImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "notifyImpl");
 
-    // The callback is being made asynchronously in a separate thread
-    // to avoid blocking the current thread.
-
     if (_onFinish) {
-        auto self = shared_from_base<GetReplicasQservMgtRequest>();
-        std::async(
-            std::launch::async,
-            [self]() {
-                self->_onFinish(self);
-            }
-        );
+        _onFinish(shared_from_base<GetReplicasQservMgtRequest>());
     }
 }
 }}} // namespace lsst::qserv::replica

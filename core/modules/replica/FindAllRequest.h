@@ -161,7 +161,7 @@ private:
      * This method implements the corresponing virtual method defined
      * bu the base class.
      */
-    void notify() final;
+    void notifyImpl() final;
 
     /**
      * Implement the corresponding method defined in the base class.
