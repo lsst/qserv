@@ -68,7 +68,7 @@ public:
     GetReplicasQservMgtRequest& operator=(GetReplicasQservMgtRequest const&) = delete;
 
     /// Destructor
-    ~GetReplicasQservMgtRequest() override = default;
+    ~GetReplicasQservMgtRequest() final = default;
 
     /**
      * Static factory method is needed to prevent issues with the lifespan
@@ -141,21 +141,21 @@ private:
       *
       * @see QservMgtRequest::startImpl
       */
-    void startImpl() override;
+    void startImpl(util::Lock const& lock) final;
 
     /**
       * Implememnt the corresponding method of the base class
       *
       * @see QservMgtRequest::finishImpl
       */
-    void finishImpl() override;
+    void finishImpl(util::Lock const& lock) final;
 
     /**
       * Implememnt the corresponding method of the base class
       *
-      * @see QservMgtRequest::notify
+      * @see QservMgtRequest::notifyImpl
       */
-    void notify() override;
+    void notifyImpl() final;
 
 private:
 

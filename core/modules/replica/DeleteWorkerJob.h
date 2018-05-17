@@ -141,7 +141,7 @@ public:
     DeleteWorkerJob& operator=(DeleteWorkerJob const&) = delete;
 
     /// Destructor
-    ~DeleteWorkerJob() override = default;
+    ~DeleteWorkerJob() final = default;
 
     /// Return the name of a worker to be deleted
     std::string const& worker() const { return _worker; }
@@ -194,26 +194,28 @@ protected:
       *
       * @see Job::startImpl()
       */
-    void startImpl() override;
+    void startImpl(util::Lock const& lock) final;
 
     /**
       * Implement the corresponding method of the base class.
       *
       * @see Job::startImpl()
       */
-    void cancelImpl() override;
+    void cancelImpl(util::Lock const& lock) final;
 
     /**
       * Implement the corresponding method of the base class.
       *
       * @see Job::notify()
       */
-    void notify() override;
+    void notify() final;
 
     /**
      * Beging the actual sequence of actions for removing the worker
+     *
+     * @param lock - the lock must be acquired by a caller of the method
      */
-    void disableWorker();
+    void disableWorker(util::Lock const& lock);
 
     /**
      * The calback function to be invoked on a completion of each request.

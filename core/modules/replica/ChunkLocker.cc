@@ -28,7 +28,6 @@
 #include <tuple>        // std::tie
 
 // Qserv headers
-#include "replica/LockUtils.h"
 
 namespace lsst {
 namespace qserv {
@@ -58,14 +57,14 @@ std::ostream& operator<<(std::ostream& os, Chunk const& chunk) {
 /////////////////////////////////////////////
 
 bool ChunkLocker::isLocked(Chunk const& chunk) const {
-    LOCK(_mtx, "ChunkLocker::isLocked(chunk)");
+    util::Lock mLock(_mtx, "ChunkLocker::isLocked(chunk)");
     return _chunk2owner.count(chunk);
 }
 
 bool ChunkLocker::isLocked(Chunk const& chunk,
                            std::string& owner) const {
 
-    LOCK(_mtx, "ChunkLocker::isLocked(chunk,owner)");
+    util::Lock mLock(_mtx, "ChunkLocker::isLocked(chunk,owner)");
 
     if (_chunk2owner.count(chunk)) {
         owner = _chunk2owner.at(chunk);
@@ -76,7 +75,7 @@ bool ChunkLocker::isLocked(Chunk const& chunk,
 
 ChunkLocker::ChunksByOwners ChunkLocker::locked(std::string const& owner) const {
 
-    LOCK(_mtx, "ChunkLocker::locked");
+    util::Lock mLock(_mtx, "ChunkLocker::locked");
 
     if (owner.empty()) return _owner2chunks;
 
@@ -90,7 +89,7 @@ ChunkLocker::ChunksByOwners ChunkLocker::locked(std::string const& owner) const 
 bool ChunkLocker::lock(Chunk const&       chunk,
                        std::string const& owner) {
 
-    LOCK(_mtx, "ChunkLocker::lock");
+    util::Lock mLock(_mtx, "ChunkLocker::lock");
 
     if (owner.empty()) {
         throw std::invalid_argument("ChunkLocker::lock  empty owner");
@@ -106,24 +105,23 @@ bool ChunkLocker::lock(Chunk const&       chunk,
 
 bool ChunkLocker::release(Chunk const& chunk) {
 
-    LOCK(_mtx, "ChunkLocker::release(chunk)");
+    util::Lock mLock(_mtx, "ChunkLocker::release(chunk)");
 
     // An owner (if set) will be ignored by the current method
     std::string owner;
-    return releaseImpl(chunk, owner);
+    return releaseImpl(mLock, chunk, owner);
 }
 
 bool ChunkLocker::release(Chunk const& chunk,
                           std::string& owner) {
 
-    LOCK(_mtx, "ChunkLocker::release(chunk,owner)");
-    return releaseImpl(chunk, owner);
+    util::Lock mLock(_mtx, "ChunkLocker::release(chunk,owner)");
+    return releaseImpl(mLock, chunk, owner);
 }
 
-bool ChunkLocker::releaseImpl(Chunk const& chunk,
+bool ChunkLocker::releaseImpl(util::Lock const& mLock,
+                              Chunk const& chunk,
                               std::string& owner) {
-
-    ASSERT_LOCK(_mtx, "ChunkLocker::releaseImpl");
 
     if (not _chunk2owner.count(chunk)) return false;
 
@@ -145,7 +143,7 @@ bool ChunkLocker::releaseImpl(Chunk const& chunk,
 
 std::vector<Chunk> ChunkLocker::release(std::string const& owner) {
 
-    LOCK(_mtx, "ChunkLocker::release(owner)");
+    util::Lock mLock(_mtx, "ChunkLocker::release(owner)");
 
     if (owner.empty()) {
         throw std::invalid_argument("ChunkLocker::release  empty owner");

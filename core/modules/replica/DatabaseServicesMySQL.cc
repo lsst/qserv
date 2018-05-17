@@ -33,7 +33,6 @@
 #include "replica/Configuration.h"
 #include "replica/Controller.h"
 #include "replica/Job.h"
-#include "replica/LockUtils.h"
 #include "replica/Performance.h"
 #include "replica/QservMgtRequest.h"
 #include "replica/ReplicaInfo.h"
@@ -93,7 +92,7 @@ void DatabaseServicesMySQL::saveState(ControllerIdentity const& identity,
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    LOCK(_mtx, context);
+    util::Lock lock(_mtx, context);
 
     try {
         _conn->begin();
@@ -118,7 +117,7 @@ void DatabaseServicesMySQL::saveState(Job const& job) {
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    LOCK(_mtx, context);
+    util::Lock lock(_mtx, context);
 
     // The algorithm will first try the INSERT query into the base table.
     // If a row with the same primary key (Job id) already exists in the table
@@ -192,7 +191,7 @@ void DatabaseServicesMySQL::updateHeartbeatTime(Job const& job) {
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    LOCK(_mtx, context);
+    util::Lock lock(_mtx, context);
     try {
         _conn->begin();
         _conn->executeSimpleUpdateQuery(
@@ -215,7 +214,7 @@ void DatabaseServicesMySQL::saveState(QservMgtRequest const& request) {
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    LOCK(_mtx, context);
+    util::Lock lock(_mtx, context);
 
     // The algorithm will first try the INSERT query into the base table.
     // If a row with the same primary key (QservMgtRequest id) already exists in the table
@@ -308,7 +307,7 @@ void DatabaseServicesMySQL::saveState(Request const& request) {
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    LOCK(_mtx, context);
+    util::Lock lock(_mtx, context);
 
     // The algorithm will first try the INSERT query into the base table.
     // If a row with the same primary key (QservMgtRequest id) already exists in the table
@@ -402,7 +401,7 @@ void DatabaseServicesMySQL::updateRequestState(Request const& request,
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    LOCK(_mtx, context);
+    util::Lock lock(_mtx, context);
 
     // According to the current implementation of the requests processing pipeline
     // for the request management (including State* and Stop* families of requests),
@@ -447,11 +446,11 @@ void DatabaseServicesMySQL::saveReplicaInfo(ReplicaInfo const& info) {
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    LOCK(_mtx, context);
+    util::Lock lock(_mtx, context);
 
     try {
         _conn->begin();
-        saveReplicaInfoImpl(info);
+        saveReplicaInfoImpl(lock, info);
         _conn->commit();
     } catch (database::mysql::Error const& ex) {
         if (_conn->inTransaction()) _conn->rollback();
@@ -466,11 +465,12 @@ void DatabaseServicesMySQL::saveReplicaInfoCollection(std::string const& worker,
 
     std::string const context = "DatabaseServicesMySQL::saveReplicaInfoCollection  ";
 
-    LOCK(_mtx, context);
+    util::Lock lock(_mtx, context);
 
     try {
         _conn->begin();
         saveReplicaInfoCollectionImpl(
+            lock,
             worker,
             database,
             infoCollection);
@@ -484,11 +484,10 @@ void DatabaseServicesMySQL::saveReplicaInfoCollection(std::string const& worker,
 
 
 
-void DatabaseServicesMySQL::saveReplicaInfoImpl(ReplicaInfo const& info) {
+void DatabaseServicesMySQL::saveReplicaInfoImpl(util::Lock const& lock,
+                                                ReplicaInfo const& info) {
 
     std::string const context = "DatabaseServicesMySQL::saveReplicaInfoImpl  ";
-
-    ASSERT_LOCK(_mtx, context);
 
     try {
 
@@ -558,19 +557,19 @@ void DatabaseServicesMySQL::saveReplicaInfoImpl(ReplicaInfo const& info) {
             "DELETE FROM " + _conn->sqlId(   "replica") +
             "  WHERE " +     _conn->sqlEqual("id",replicaId));
 
-        saveReplicaInfoImpl(info);
+        saveReplicaInfoImpl(lock,
+                            info);
     }
 }
 
-void DatabaseServicesMySQL::saveReplicaInfoCollectionImpl(std::string const& worker,
+void DatabaseServicesMySQL::saveReplicaInfoCollectionImpl(util::Lock const& lock,
+                                                          std::string const& worker,
                                                           std::string const& database,
                                                           ReplicaInfoCollection const& infoCollection) {
 
     std::string const context = "DatabaseServicesMySQL::saveReplicaInfoCollectionImpl  ";
 
     LOGS(_log, LOG_LVL_DEBUG, context << "infoCollection.size(): " << infoCollection.size());
-
-    ASSERT_LOCK(_mtx, context);
 
     // Group new replicas by categories
     std::map<std::string,                       // worker
@@ -593,7 +592,7 @@ void DatabaseServicesMySQL::saveReplicaInfoCollectionImpl(std::string const& wor
 
         // Check each old replicas to see if it's present in the new collection
         std::vector<ReplicaInfo> oldReplicas;
-        if (findWorkerReplicasImpl(oldReplicas, worker, database)) {
+        if (findWorkerReplicasImpl(lock, oldReplicas, worker, database)) {
 
             for (ReplicaInfo const& replica: oldReplicas) {
                 unsigned int const chunk = replica.chunk();
@@ -621,7 +620,7 @@ void DatabaseServicesMySQL::saveReplicaInfoCollectionImpl(std::string const& wor
     // Finally push new (or update existing) replicas info into the database
     // (some of those replicas will be brand new, others - will need to be updated)
     for (auto&& info: infoCollection) {
-        saveReplicaInfoImpl(info);
+        saveReplicaInfoImpl(lock, info);
     }
     LOGS(_log, LOG_LVL_DEBUG, context << "** DONE **");
 }
@@ -632,7 +631,7 @@ bool DatabaseServicesMySQL::findOldestReplicas(std::vector<ReplicaInfo>& replica
 
     std::string const context = "DatabaseServicesMySQL::findOldestReplicas  ";
 
-    LOCK(_mtx, context);
+    util::Lock lock(_mtx, context);
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
@@ -640,6 +639,7 @@ bool DatabaseServicesMySQL::findOldestReplicas(std::vector<ReplicaInfo>& replica
         throw std::invalid_argument(context + "maxReplicas is not allowed to be 0");
     }
     if (not findReplicasImpl(
+                lock,
                 replicas,
                 "SELECT * FROM " + _conn->sqlId("replica") +
                 (enabledWorkersOnly ?
@@ -663,12 +663,13 @@ bool DatabaseServicesMySQL::findReplicas(std::vector<ReplicaInfo>& replicas,
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    LOCK(_mtx, context);
+    util::Lock lock(_mtx, context);
 
     if (not _configuration->isKnownDatabase(database)) {
         throw std::invalid_argument(context + "unknow database");
     }
     if (not findReplicasImpl(
+                lock,
                 replicas,
                 "SELECT * FROM " +  _conn->sqlId(   "replica") +
                 "  WHERE " +        _conn->sqlEqual("chunk",    chunk) +
@@ -688,14 +689,16 @@ bool DatabaseServicesMySQL::findWorkerReplicas(std::vector<ReplicaInfo>& replica
 
     std::string const context = "DatabaseServicesMySQL::findWorkerReplicas  ";
 
-    LOCK(_mtx, context);
+    util::Lock lock(_mtx, context);
 
-    return findWorkerReplicasImpl(replicas,
+    return findWorkerReplicasImpl(lock,
+                                  replicas,
                                   worker,
                                   database);
 }
 
-bool DatabaseServicesMySQL::findWorkerReplicasImpl(std::vector<ReplicaInfo>& replicas,
+bool DatabaseServicesMySQL::findWorkerReplicasImpl(util::Lock const& lock,
+                                                   std::vector<ReplicaInfo>& replicas,
                                                    std::string const& worker,
                                                    std::string const& database) const {
     std::string const context =
@@ -704,8 +707,6 @@ bool DatabaseServicesMySQL::findWorkerReplicasImpl(std::vector<ReplicaInfo>& rep
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    ASSERT_LOCK(_mtx, context);
-
     if (not _configuration->isKnownWorker(worker)) {
         throw std::invalid_argument(context + "unknow worker");
     }
@@ -713,6 +714,7 @@ bool DatabaseServicesMySQL::findWorkerReplicasImpl(std::vector<ReplicaInfo>& rep
         throw std::invalid_argument(context + "unknow database");
     }
     if (not findReplicasImpl(
+                lock,
                 replicas,
                 "SELECT * FROM " + _conn->sqlId(   "replica") +
                 "  WHERE " +       _conn->sqlEqual("worker",   worker) +
@@ -736,7 +738,7 @@ bool DatabaseServicesMySQL::findWorkerReplicas(std::vector<ReplicaInfo>& replica
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    LOCK(_mtx, context);
+    util::Lock lock(_mtx, context);
 
     if (not _configuration->isKnownWorker(worker)) {
         throw std::invalid_argument(context + "unknow worker");
@@ -745,6 +747,7 @@ bool DatabaseServicesMySQL::findWorkerReplicas(std::vector<ReplicaInfo>& replica
         throw std::invalid_argument(context + "unknow databaseFamily");
     }
     if (not findReplicasImpl(
+                lock,
                 replicas,
                 "SELECT * FROM " + _conn->sqlId(   "replica") +
                 "  WHERE " +       _conn->sqlEqual("worker", worker) +
@@ -759,14 +762,13 @@ bool DatabaseServicesMySQL::findWorkerReplicas(std::vector<ReplicaInfo>& replica
     return true;
 }
 
-bool DatabaseServicesMySQL::findReplicasImpl(std::vector<ReplicaInfo>& replicas,
+bool DatabaseServicesMySQL::findReplicasImpl(util::Lock const& lock,
+                                             std::vector<ReplicaInfo>& replicas,
                                              std::string const& query) const {
 
     std::string const context = "DatabaseServicesMySQL::findReplicasImpl(replicas,query)  ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
-
-    ASSERT_LOCK(_mtx, context);
 
     bool result = false;
 

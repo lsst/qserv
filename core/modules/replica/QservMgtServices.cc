@@ -33,7 +33,6 @@
 // Qserv headers
 #include "lsst/log/Log.h"
 #include "replica/Configuration.h"
-#include "replica/LockUtils.h"
 #include "replica/ServiceProvider.h"
 
 /// This C++ symbol is provided by the SSI shared library
@@ -115,7 +114,7 @@ AddReplicaQservMgtRequest::Ptr QservMgtServices::addReplica(
                                         std::string const& jobId,
                                         unsigned int requestExpirationIvalSec) {
 
-    LOCK(_mtx, "QservMgtServices::addReplica");
+    util::Lock lock(_mtx, "QservMgtServices::addReplica");
 
     // Ensure we have the XROOTD/SSI service object before attempting any
     // operations on requests
@@ -164,7 +163,7 @@ RemoveReplicaQservMgtRequest::Ptr QservMgtServices::removeReplica(
                                         std::string const& jobId,
                                         unsigned int requestExpirationIvalSec) {
 
-    LOCK(_mtx, "QservMgtServices::removeReplica");
+    util::Lock lock(_mtx, "QservMgtServices::removeReplica");
 
     // Ensure we have the XROOTD/SSI service object before attempting any
     // operations on requests
@@ -211,7 +210,7 @@ GetReplicasQservMgtRequest::Ptr QservMgtServices::getReplicas(
                                         GetReplicasQservMgtRequest::CallbackType onFinish,
                                         unsigned int requestExpirationIvalSec) {
 
-    LOCK(_mtx, "QservMgtServices::getReplicas");
+    util::Lock lock(_mtx, "QservMgtServices::getReplicas");
 
     // Ensure we have the XROOTD/SSI service object before attempting any
     // operations on requests
@@ -258,7 +257,7 @@ SetReplicasQservMgtRequest::Ptr QservMgtServices::setReplicas(
                                         SetReplicasQservMgtRequest::CallbackType onFinish,
                                         unsigned int requestExpirationIvalSec) {
 
-    LOCK(_mtx, "QservMgtServices::setReplicas");
+    util::Lock lock(_mtx, "QservMgtServices::setReplicas");
 
     // Ensure we have the XROOTD/SSI service object before attempting any
     // operations on requests
@@ -312,7 +311,7 @@ void QservMgtServices::finish(std::string const& id) {
 
     QservMgtRequestWrapper::Ptr request;
     {
-        LOCK(_mtx, "QservMgtServices::finish");
+        util::Lock lock(_mtx, "QservMgtServices::finish");
         request = _registry[id];
         _registry.erase(id);
     }

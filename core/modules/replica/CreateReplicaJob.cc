@@ -34,7 +34,6 @@
 #include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
 #include "replica/ErrorReporting.h"
-#include "replica/LockUtils.h"
 #include "replica/QservMgtServices.h"
 #include "replica/ServiceProvider.h"
 #include "util/BlockPost.h"
@@ -144,11 +143,9 @@ std::string CreateReplicaJob::extendedPersistentState(SqlGeneratorPtr const& gen
                               destinationWorker());
 }
 
-void CreateReplicaJob::startImpl() {
+void CreateReplicaJob::startImpl(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
-
-    ASSERT_LOCK(_mtx, context() + "startImpl");
 
     // Make sure no such replicas exist yet at the destination
 
@@ -164,7 +161,9 @@ void CreateReplicaJob::startImpl() {
              << " chunk: "  << chunk()
              << " worker: " << destinationWorker());
 
-        setState(State::FINISHED, ExtendedState::FAILED);
+        setState(lock,
+                 State::FINISHED,
+                 ExtendedState::FAILED);
         return;
     }
     if (destinationReplicas.size()) {
@@ -173,7 +172,9 @@ void CreateReplicaJob::startImpl() {
              << " chunk: "  << chunk()
              << " worker: " << destinationWorker());
 
-        setState(State::FINISHED, ExtendedState::FAILED);
+        setState(lock,
+                 State::FINISHED,
+                 ExtendedState::FAILED);
         return;
     }
 
@@ -198,7 +199,9 @@ void CreateReplicaJob::startImpl() {
              << " chunk: "  << chunk()
              << " worker: " << sourceWorker());
 
-        setState(State::FINISHED, ExtendedState::FAILED);
+        setState(lock,
+                 State::FINISHED,
+                 ExtendedState::FAILED);
         return;
     }
     if (not sourceReplicas.size()) {
@@ -207,7 +210,9 @@ void CreateReplicaJob::startImpl() {
              << " chunk: "  << chunk()
              << " worker: " << sourceWorker());
 
-        setState(State::FINISHED, ExtendedState::FAILED);
+        setState(lock,
+                 State::FINISHED,
+                 ExtendedState::FAILED);
         return;
     }
 
@@ -236,14 +241,13 @@ void CreateReplicaJob::startImpl() {
                 _id     /* jobId */);
         _requests.push_back(ptr);
     }
-    setState(State::IN_PROGRESS);
+    setState(lock,
+             State::IN_PROGRESS);
 }
 
-void CreateReplicaJob::cancelImpl() {
+void CreateReplicaJob::cancelImpl(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
-
-    ASSERT_LOCK(_mtx, context() + "cancelImpl");
 
     // The algorithm will also clear resources taken by various
     // locally created objects.
@@ -301,7 +305,7 @@ void CreateReplicaJob::onRequestFinish(ReplicationRequest::Ptr const& request) {
     
     if (_state == State::FINISHED) return;
 
-    LOCK(_mtx, context() + "onRequestFinish(ReplicationeRequest)");
+    util::Lock lock(_mtx, context() + "onRequestFinish(ReplicationeRequest)");
 
     if (_state == State::FINISHED) return;
 
@@ -339,13 +343,16 @@ void CreateReplicaJob::onRequestFinish(ReplicationRequest::Ptr const& request) {
 
             ServiceProvider::Ptr const serviceProvider = _controller->serviceProvider();
             if (serviceProvider->config()->xrootdAutoNotify()) {
-                qservAddReplica(chunk(),
+                qservAddReplica(lock,
+                                chunk(),
                                 databases,
                                 destinationWorker());
             }
-            finish(ExtendedState::SUCCESS);
+            finish(lock,
+                   ExtendedState::SUCCESS);
         } else {
-            finish(ExtendedState::FAILED);
+            finish(lock,
+                   ExtendedState::FAILED);
         }
         notify();
     }

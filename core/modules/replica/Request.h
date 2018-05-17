@@ -295,8 +295,10 @@ protected:
     /**
       * This method is supposed to be provided by subclasses for additional
       * subclass-specific actions to begin processing the request.
+      * 
+      * @param lock - a lock on a mutex must be acquired before calling this method
       */
-    virtual void startImpl()=0;
+    virtual void startImpl(util::Lock const& lock)=0;
 
     /**
      * Request expiration timer's handler. The expiration interval (if any)
@@ -310,14 +312,19 @@ protected:
      *
      * This is supposed to be the last operation to be called by subclasses
      * upon a completion of the request.
+     *
+     * @param lock - a lock on a mutex must be acquired before calling this method
      */
-    void finish(ExtendedState extendedState);
+    void finish(util::Lock const& lock,
+                ExtendedState extendedState);
 
     /**
       * This method is supposed to be provided by subclasses
       * to finalize request processing as required by the subclass.
+      *
+      * @param lock - a lock on a mutex must be acquired before calling this method
       */
-    virtual void finishImpl()=0;
+    virtual void finishImpl(util::Lock const& lock)=0;
 
     /**
      * This method is supposed to be provided by subclasses to handle
@@ -346,6 +353,8 @@ protected:
      *    the caller is supposed to quit right away. It will be up to a code
      *    which initiated the abort to take care of putting the object into
      *    a proper state.
+     *
+     * @return 'true' if the code corresponds to the operation abort
      */
     bool isAborted(boost::system::error_code const& ec) const;
 
@@ -357,12 +366,14 @@ protected:
      *        there is a problem with the application implementation
      *        or the underlying run-time system.
      *
+     * @param lock         - a lock on a mutex must be acquired before calling this method
      * @param desiredState - desired state
      * @param context      - context from which the state test is requested
      *
      * @throws std::logic_error
      */
-    void assertState(State desiredState,
+    void assertState(util::Lock const& lock,
+                     State desiredState,
                      std::string const& context) const;
 
     /**
@@ -373,9 +384,14 @@ protected:
      *
      * - reporting change state in a debug stream
      * - verifying the correctness of the state transition
+     *
+     * @param lock          - a lock on a mutex must be acquired before calling this method
+     * @param state         - new primary state
+     * @param extendedState - new extended state
      */
-    void setState(State state,
-                  ExtendedState extendedStat);
+    void setState(util::Lock const& lock,
+                  State state,
+                  ExtendedState extendedStat=ExtendedState::NONE);
 
 protected:
 

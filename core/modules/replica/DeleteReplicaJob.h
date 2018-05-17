@@ -112,7 +112,7 @@ public:
     DeleteReplicaJob& operator=(DeleteReplicaJob const&) = delete;
 
     /// Destructor
-    ~DeleteReplicaJob() override = default;
+    ~DeleteReplicaJob() final = default;
 
     /// @return the name of a database family
     std::string const& databaseFamily() const { return _databaseFamily; }
@@ -147,7 +147,7 @@ public:
      *
      * @see Job::extendedPersistentState()
      */
-    std::string extendedPersistentState(SqlGeneratorPtr const& gen) const override;
+    std::string extendedPersistentState(SqlGeneratorPtr const& gen) const final;
 
 protected:
 
@@ -169,26 +169,26 @@ protected:
       *
       * @see Job::startImpl()
       */
-    void startImpl() override;
+    void startImpl(util::Lock const& lock) final;
 
     /**
       * Implement the corresponding method of the base class.
       *
       * @see Job::startImpl()
       */
-    void cancelImpl() override;
+    void cancelImpl(util::Lock const& lock) final;
 
     /**
       * Implement the corresponding method of the base class.
       *
       * @see Job::notify()
       */
-    void notify() override;
+    void notify() final;
 
     /**
      * Initiate a process of removing the replica from the source worker
      */
-    void beginDeleteReplica();
+    void beginDeleteReplica(util::Lock const& lock);
 
     /**
      * The calback function to be invoked on a completion of each replica

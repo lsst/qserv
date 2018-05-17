@@ -32,7 +32,6 @@
 #include "replica/Configuration.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
-#include "replica/LockUtils.h"
 #include "replica/QservMgtServices.h"
 #include "replica/ServiceProvider.h"
 
@@ -105,11 +104,9 @@ std::string QservSyncJob::extendedPersistentState(SqlGeneratorPtr const& gen) co
                               force() ? 1 : 0);
 }
 
-void QservSyncJob::startImpl() {
+void QservSyncJob::startImpl(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
-
-    ASSERT_LOCK(_mtx, context() + "startImpl");
 
     auto const databases        = _controller->serviceProvider()->config()->databases(_databaseFamily);
     auto const databaseServices = _controller->serviceProvider()->databaseServices();
@@ -132,8 +129,11 @@ void QservSyncJob::startImpl() {
                      << worker << ", database: " << database);
 
                 // Set this state and cleanup before aborting the job
-                setState(State::FINISHED, ExtendedState::FAILED);
-                cancelImpl();
+
+                setState(lock,
+                         State::FINISHED, ExtendedState::FAILED);
+
+                cancelImpl(lock);
 
                 return;
             }
@@ -166,15 +166,13 @@ void QservSyncJob::startImpl() {
 
     // In case if no workers or database are present in the Configuration
     // at this time.
-    if (not _numLaunched) setState(State::FINISHED);
-    else                  setState(State::IN_PROGRESS);
+    if (not _numLaunched) setState(lock, State::FINISHED);
+    else                  setState(lock, State::IN_PROGRESS);
 }
 
-void QservSyncJob::cancelImpl() {
+void QservSyncJob::cancelImpl(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
-
-    ASSERT_LOCK(_mtx, context() + "cancelImpl");
 
     for (auto&& ptr: _requests) {
         ptr->cancel();
@@ -219,11 +217,12 @@ void QservSyncJob::onRequestFinish(SetReplicasQservMgtRequest::Ptr const& reques
 
     if (_state == State::FINISHED) return;
 
-    LOCK(_mtx, context() + "onRequestFinish");
+    util::Lock lock(_mtx, context() + "onRequestFinish");
 
     if (_state == State::FINISHED) return;
 
     // Update counters and object state if needed.
+
     _numFinished++;
     if (request->extendedState() == QservMgtRequest::ExtendedState::SUCCESS) {
         _numSuccess++;
@@ -241,7 +240,8 @@ void QservSyncJob::onRequestFinish(SetReplicasQservMgtRequest::Ptr const& reques
          << " _numSuccess=" << _numSuccess);
 
     if (_numFinished == _numLaunched) {
-        finish(_numSuccess == _numLaunched ? ExtendedState::SUCCESS :
+        finish(lock,
+               _numSuccess == _numLaunched ? ExtendedState::SUCCESS :
                                              ExtendedState::FAILED);
         notify();
     }

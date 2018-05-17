@@ -195,7 +195,7 @@ public:
     VerifyJob& operator=(VerifyJob const&) = delete;
 
     /// Destructor
-    ~VerifyJob() override = default;
+    ~VerifyJob() final = default;
 
     /// @return maximum number of replicas to be allowed processed simultaneously
     size_t maxReplicas() const { return _maxReplicas; }
@@ -230,21 +230,21 @@ protected:
       *
       * @see Job::startImpl()
       */
-    void startImpl() override;
+    void startImpl(util::Lock const& lock) final;
 
     /**
       * Implement the corresponding method of the base class.
       *
       * @see Job::startImpl()
       */
-    void cancelImpl() override;
+    void cancelImpl(util::Lock const& lock) final;
 
     /**
       * Implement the corresponding method of the base class.
       *
       * @see Job::notify()
       */
-    void notify() override;
+    void notify() final;
 
     /**
      * The calback function to be invoked on a completion of each request.
@@ -259,10 +259,12 @@ protected:
      * no single replica exists in the system or there was a failure to find
      * replicas in the database.
      *
+     * @param lock        - the lock must be acquired by a caller of the method
      * @param replicas    - a collection of replicas returned from the database
      * @param numReplicas - a desired number of replicas to be pulled from the database
      */
-    bool nextReplicas(std::vector<ReplicaInfo>& replicas,
+    bool nextReplicas(util::Lock const& lock,
+                      std::vector<ReplicaInfo>& replicas,
                       size_t numReplicas);
 
 protected:

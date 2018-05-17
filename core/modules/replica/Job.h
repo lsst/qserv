@@ -41,6 +41,7 @@
 #include "replica/AddReplicaQservMgtRequest.h"
 #include "replica/Controller.h"
 #include "replica/RemoveReplicaQservMgtRequest.h"
+#include "util/Mutex.h"
 
 // Forward declarations
 
@@ -258,29 +259,36 @@ protected:
     /**
       * This method is supposed to be provided by subclasses for additional
       * subclass-specific actions to begin processing the request.
+      *
+      * @param lock - the lock must be acquired by a caller of the method
       */
-    virtual void startImpl() = 0;
+    virtual void startImpl(util::Lock const& lock) = 0;
 
     /**
      * The sequence of actions to be executed when the job is transitioning into
      * the finished state (regardless of a specific exended state).
      *
-     * NOTES
-     * 1. normally this is mandatory metghod which is supposd to be called either
-     * internally witin this class on the job expiration (internal timer) or
-     * cancellation (as requested externally by a user).
+     * NOTES:
+     * 1. normally this is mandatory method which is supposrd to be called either
+     *    internally witin this class on the job expiration (internal timer) or
+     *    cancellation (as requested externally by a user).
+     * 
      * 2. the only methods which are allowed to turn objects into the FINISHED
-     * extended state are user-provided methods startImpl().
+     *    extended state are user-provided methods startImpl().
      *
+     * @param lock          - the lock must be acquired by a caller of the method
      * @param extendedState - specific state to be set upon the completion
      */
-    void finish(ExtendedState extendedState);
+    void finish(util::Lock const& lock,
+                ExtendedState extendedState);
 
     /**
       * This method is supposed to be provided by subclasses
       * to finalize request processing as required by the subclass.
+      *
+      * @param lock - the lock must be acquired by a caller of the method
       */
-    virtual void cancelImpl() = 0;
+    virtual void cancelImpl(util::Lock const& lock) = 0;
 
     /**
       * This method is supposed to be provided by subclasses
@@ -292,13 +300,15 @@ protected:
     /**
      * Notify Qserv about a new chunk added to its database.
      *
+     * @param lock      - the lock must be acquired by a caller of the method
      * @param chunk     - chunk number
      * @param databases - the names of databases
      * @param worker    - the name of a worker to be notified
      * @param onFinish  - optional callback funciton to be called upon completion
      *                    of the operation
      */
-    void qservAddReplica(unsigned int chunk,
+    void qservAddReplica(util::Lock const& lock,
+                         unsigned int chunk,
                          std::vector<std::string> const& databases,
                          std::string const& worker,
                          AddReplicaQservMgtRequest::CallbackType onFinish=nullptr);
@@ -306,6 +316,7 @@ protected:
     /**
       * Notify Qserv about a new chunk added to its database.
       *
+      * @param lock      - the lock must be acquired by a caller of the method
       * @param chunk     - chunk number
       * @param databases - the names of databases
       * @param worker    - the name of a worker to be notified
@@ -314,7 +325,8 @@ protected:
       * @param onFinish - optional callback funciton to be called upon completion
       *                   of the operation
       */
-    void qservRemoveReplica(unsigned int chunk,
+    void qservRemoveReplica(util::Lock const& lock,
+                            unsigned int chunk,
                             std::vector<std::string> const& databases,
                             std::string const& worker,
                             bool force,
@@ -328,12 +340,14 @@ protected:
      *        there is a problem with the application implementation
      *        or the underlying run-time system.
      *
+     * @param lock         - the lock must be acquired by a caller of the method
      * @param desiredState - desired state
      * @param context      - context from which the state test is requested
      *
      * @throws std::logic_error
      */
-    void assertState(State desiredState,
+    void assertState(util::Lock const& lock,
+                     State desiredState,
                      std::string const& context) const;
 
     /**
@@ -345,10 +359,12 @@ protected:
      * - reporting change state in a debug stream
      * - verifying the correctness of the state transition
      *
+     * @param lock          - the lock must be acquired by a caller of the method
      * @param state         - the new primary state
      * @param extendedState - the new extended state
      */
-    void setState(State state,
+    void setState(util::Lock const& lock,
+                  State state,
                   ExtendedState extendedState=ExtendedState::NONE);
 
 private:
@@ -357,8 +373,10 @@ private:
      * Start the timer (if the corresponidng Configuration parameter is set`).
      * When the time will expire then the callback method heartbeat() which is
      * defined below will be called.
+     *
+     * @param lock - the lock must be acquired by a caller of the method
      */
-    void startHeartbeatTimer();
+    void startHeartbeatTimer(util::Lock const& lock);
 
     /**
      * Job heartbeat timer's handler. The heartbeat interval (if any)
@@ -372,8 +390,10 @@ private:
      * Start the timer (if the corresponidng Configuration parameter is set`).
      * When the time will expire then the callback method expired() which is
      * defined below will be called.
+     *
+     * @param lock - the lock must be acquired by a caller of the method
      */
-    void startExpirationTimer();
+    void startExpirationTimer(util::Lock const& lock);
 
     /**
      * Job expiration timer's handler. The expiration interval (if any)

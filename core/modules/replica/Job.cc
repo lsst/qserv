@@ -38,7 +38,6 @@
 #include "replica/Common.h"            // Generators::uniqueId()
 #include "replica/Configuration.h"
 #include "replica/DatabaseServices.h"
-#include "replica/LockUtils.h"
 #include "replica/Performance.h"       // PerformanceUtils::now()
 #include "replica/QservMgtServices.h"
 #include "replica/RemoveReplicaQservMgtRequest.h"
@@ -115,25 +114,31 @@ void Job::start() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "start");
 
-    LOCK(_mtx, context() + "start");
+    util::Lock lock(_mtx, context() + "start");
 
-    assertState(State::CREATED, context() + "start");
+    assertState(lock,
+                State::CREATED,
+                context() + "start");
 
     // IMPORTANT: update these before proceeding to the implementation
     // because the later may create children jobs whose performance
     // counters must be newer, and whose saved state within the database
     // may depend on this job's state.
+
     _beginTime = PerformanceUtils::now();
     _controller->serviceProvider()->databaseServices()->saveState(*this);
 
     // Start timers if configured
-    startHeartbeatTimer();
-    startExpirationTimer();
+
+    startHeartbeatTimer(lock);
+    startExpirationTimer(lock);
 
     // Delegate the rest to the specific implementation
-    startImpl();
+
+    startImpl(lock);
 
     // Allow the job to be fully accomplished right away
+
     if (_state == State::FINISHED) {
 
         // Subclass specific notification
@@ -143,7 +148,9 @@ void Job::start() {
     }
 
     // Otherwise, the only other state which is allowed here is this
-    assertState(State::IN_PROGRESS, context() + "start");
+    assertState(lock,
+                State::IN_PROGRESS,
+                context() + "start");
 }
 
 void Job::cancel() {
@@ -160,46 +167,53 @@ void Job::cancel() {
 
     if (_state == State::FINISHED) return;
 
-    LOCK(_mtx, context() + "cancel");
+    util::Lock lock(_mtx, context() + "cancel");
 
     if (_state == State::FINISHED) return;
 
-    finish(ExtendedState::CANCELLED);
+    finish(lock,
+           ExtendedState::CANCELLED);
 
     // Subclass specific notification
+
     notify();
 }
 
-void Job::finish(ExtendedState extendedState) {
+void Job::finish(util::Lock const& lock,
+                 ExtendedState extendedState) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "finish"
          << "  _state="         << state2string(_state)
          << ", _extendedState=" << state2string(_extendedState)
          << ", (new)extendedState=" << state2string(extendedState));
 
-    ASSERT_LOCK(_mtx, context() + "finish");
-
     // Also ignore this event if the request is over
+
     if (_state == State::FINISHED) return;
 
     // *IMPORTANT*: Set new state *BEFORE* calling subclass-specific cancellation
     // protocol to make sure all event handlers will recognize this scenario and
     // avoid making any modifications to the request's state.
-    setState(State::FINISHED, extendedState);
+
+    setState(lock,
+             State::FINISHED,
+             extendedState);
 
     // Invoke a subclass specific cancellation sequence of actions if anything
     // bad has happen.
-    if (extendedState != ExtendedState::SUCCESS) {
-        cancelImpl();
-    }
+
+    if (extendedState != ExtendedState::SUCCESS) cancelImpl(lock);
+
     _controller->serviceProvider()->databaseServices()->saveState(*this);
 
     // Stop timers if they're still running
+
     if(_heartbeatTimerPtr) _heartbeatTimerPtr->cancel();
     if(_expirationTimerPtr) _expirationTimerPtr->cancel();
 }
 
-void Job::qservAddReplica(unsigned int chunk,
+void Job::qservAddReplica(util::Lock const& lock,
+                          unsigned int chunk,
                           std::vector<std::string> const& databases,
                           std::string const& worker,
                           AddReplicaQservMgtRequest::CallbackType onFinish) {
@@ -209,8 +223,6 @@ void Job::qservAddReplica(unsigned int chunk,
          << ", chunk="     << chunk
          << ", databases=" << util::printable(databases)
          << "  worker="    << worker);
-
-    ASSERT_LOCK(_mtx, context() + "qservAddReplica");
 
     auto self = shared_from_this();
 
@@ -229,7 +241,8 @@ void Job::qservAddReplica(unsigned int chunk,
                  << ", extendedState=" << request->state2string(request->extendedState())
                  << ". serverError="   << request->serverError());
 
-            // Pass through the result to a caller
+            // Pass the result to a caller
+
             if (onFinish) {
                 onFinish(request);
             }
@@ -238,7 +251,8 @@ void Job::qservAddReplica(unsigned int chunk,
     );
 }
 
-void Job::qservRemoveReplica(unsigned int chunk,
+void Job::qservRemoveReplica(util::Lock const& lock,
+                             unsigned int chunk,
                              std::vector<std::string> const& databases,
                              std::string const& worker,
                              bool force,
@@ -250,8 +264,6 @@ void Job::qservRemoveReplica(unsigned int chunk,
          << ", databases=" << util::printable(databases)
          << ", worker="    << worker
          << ", force="     << (force ? "true" : "false"));
-
-    ASSERT_LOCK(_mtx, context() + "qservRemoveReplica");
 
     auto self = shared_from_this();
 
@@ -272,7 +284,7 @@ void Job::qservRemoveReplica(unsigned int chunk,
                  << ", extendedState=" << request->state2string(request->extendedState())
                  << ". serverError="   << request->serverError());
 
-            // Pass through the result to the caller if requested
+            // Pass the result to the caller
             if (onFinish) {
                 onFinish(request);
             }
@@ -281,7 +293,8 @@ void Job::qservRemoveReplica(unsigned int chunk,
     );
 }
 
-void Job::assertState(State state,
+void Job::assertState(util::Lock const& lock,
+                      State state,
                       std::string const& context) const {
     if (state != _state) {
         throw std::logic_error(
@@ -289,12 +302,11 @@ void Job::assertState(State state,
     }
 }
 
-void Job::setState(State state,
+void Job::setState(util::Lock const& lock,
+                   State state,
                    ExtendedState extendedState) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "setState  state=" << state2string(state, extendedState));
-
-    ASSERT_LOCK(_mtx, context() + "setState");
 
     // ATTENTION: changing the top-level state to FINISHED should be last step
     // in the transient state transition in order to ensure a consistent view
@@ -309,9 +321,7 @@ void Job::setState(State state,
     _controller->serviceProvider()->databaseServices()->saveState(*this);
 }
 
-void Job::startHeartbeatTimer() {
-
-    ASSERT_LOCK(_mtx, context() + "startHeartbeatTimer");
+void Job::startHeartbeatTimer(util::Lock const& lock) {
 
     if (_heartbeatTimerIvalSec) {
 
@@ -350,21 +360,21 @@ void Job::heartbeat(boost::system::error_code const& ec) {
 
     if (_state == State::FINISHED) return;
 
-    LOCK(_mtx, context() + "heartbeat");
+    util::Lock lock(_mtx, context() + "heartbeat");
 
     if (_state == State::FINISHED) return;
 
     // Update the job entry in the database
+
     _controller->serviceProvider()->databaseServices()->updateHeartbeatTime(*this);
 
     // Start another interval
-    startHeartbeatTimer();
+
+    startHeartbeatTimer(lock);
 
 }
 
-void Job::startExpirationTimer() {
-
-    ASSERT_LOCK(_mtx, context() + "startExpirationTimer");
+void Job::startExpirationTimer(util::Lock const& lock) {
 
     if (_expirationIvalSec) {
 
@@ -403,13 +413,15 @@ void Job::expired(boost::system::error_code const& ec) {
 
     if (_state == State::FINISHED) return;
 
-    LOCK(_mtx, context() + "expired");
+    util::Lock lock(_mtx, context() + "expired");
 
     if (_state == State::FINISHED) return;
 
-    finish(ExtendedState::EXPIRED);
+    finish(lock,
+           ExtendedState::EXPIRED);
 
     // Subclass specific notification
+
     notify();
 }
 

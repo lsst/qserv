@@ -31,7 +31,6 @@
 #include "lsst/log/Log.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/Configuration.h"
-#include "replica/LockUtils.h"
 #include "util/BlockPost.h"
 
 namespace {
@@ -126,11 +125,9 @@ std::string MoveReplicaJob::extendedPersistentState(SqlGeneratorPtr const& gen) 
                               purge() ? 1 : 0);
 }
 
-void MoveReplicaJob::startImpl() {
+void MoveReplicaJob::startImpl(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
-
-    ASSERT_LOCK(_mtx, context() + "startImpl");
 
     auto self = shared_from_base<MoveReplicaJob>();
     _createReplicaJob = CreateReplicaJob::create(
@@ -147,14 +144,13 @@ void MoveReplicaJob::startImpl() {
     );
     _createReplicaJob->start();
 
-    setState(State::IN_PROGRESS);
+    setState(lock,
+             State::IN_PROGRESS);
 }
 
-void MoveReplicaJob::cancelImpl() {
+void MoveReplicaJob::cancelImpl(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
-
-    ASSERT_LOCK(_mtx, context() + "cancelImpl");
 
     if (_createReplicaJob and (_createReplicaJob->state() != Job::State::FINISHED)) {
         _createReplicaJob->cancel();
@@ -194,18 +190,20 @@ void MoveReplicaJob::onCreateJobFinish() {
 
     if (_state == State::FINISHED) return;
 
-    LOCK(_mtx, context() + "onCreateJobFinish");
+    util::Lock lock(_mtx, context() + "onCreateJobFinish");
 
     if (_state == State::FINISHED) return;
 
     if (_createReplicaJob->extendedState() == Job::ExtendedState::SUCCESS) {
 
         // Extract stats
+
         _replicaData.createdReplicas = _createReplicaJob->getReplicaData().replicas;
         _replicaData.createdChunks   = _createReplicaJob->getReplicaData().chunks;
 
         // Initiate the second stage (which is optional) - deleting the replica
         // at the source
+
         if (_purge) {
 
             auto self = shared_from_base<MoveReplicaJob>();
@@ -223,12 +221,16 @@ void MoveReplicaJob::onCreateJobFinish() {
             _deleteReplicaJob->start();
         } else {
             // Otherwise, we're done
-            finish(ExtendedState::SUCCESS);
+            finish(lock,
+                   ExtendedState::SUCCESS);
         }
 
     } else {
+
         // Carry over a state of the child job
-        finish(_createReplicaJob->extendedState());
+
+        finish(lock,
+               _createReplicaJob->extendedState());
     }
     if (_state == State::FINISHED) notify();
 }
@@ -245,7 +247,7 @@ void MoveReplicaJob::onDeleteJobFinish() {
 
     if (_state == State::FINISHED) return;
 
-    LOCK(_mtx, context() + "onDeleteJobFinish");
+    util::Lock lock(_mtx, context() + "onDeleteJobFinish");
 
     if (_state == State::FINISHED) return;
 
@@ -256,7 +258,9 @@ void MoveReplicaJob::onDeleteJobFinish() {
     }
 
     // Carry over a state of the child job
-    finish(_deleteReplicaJob->extendedState());
+
+    finish(lock,
+           _deleteReplicaJob->extendedState());
 
     notify();
 }

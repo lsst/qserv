@@ -116,7 +116,7 @@ public:
     PurgeJob& operator=(PurgeJob const&) = delete;
 
     /// Destructor (non-trivial)
-    ~PurgeJob() override;
+    ~PurgeJob() final;
 
     /// @return maximum number of each chunk's good replicas to be reached when
     /// the job successfully finishes.
@@ -170,21 +170,21 @@ protected:
       *
       * @see Job::startImpl()
       */
-    void startImpl() override;
+    void startImpl(util::Lock const& lock) final;
 
     /**
       * Implement the corresponding method of the base class.
       *
       * @see Job::startImpl()
       */
-    void cancelImpl() override;
+    void cancelImpl(util::Lock const& lock) final;
 
     /**
       * Implement the corresponding method of the base class.
       *
       * @see Job::notify()
       */
-    void notify() override;
+    void notify() final;
 
     /**
      * The calback function to be invoked on a completion of the precursor job
@@ -203,8 +203,10 @@ protected:
      * Restart the job from scratch. This method will reset object context
      * to a state it was before method Job::startImpl() called and then call
      * Job::startImpl() again.
+     *
+     * @param lock - the lock must be acquired by a caller of the method
      */
-    void restart();
+    void restart(util::Lock const& lock);
 
     /**
      * Unconditionally release the specified chunk

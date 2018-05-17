@@ -34,7 +34,6 @@
 #include "replica/Configuration.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/ErrorReporting.h"
-#include "replica/LockUtils.h"
 #include "replica/ServiceProvider.h"
 #include "util/BlockPost.h"
 
@@ -116,11 +115,9 @@ std::string ReplicateJob::extendedPersistentState(SqlGeneratorPtr const& gen) co
                               numReplicas());
 }
 
-void ReplicateJob::startImpl() {
+void ReplicateJob::startImpl(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl  _numIterations=" << _numIterations);
-
-    ASSERT_LOCK(_mtx, context() + "startImpl");
 
     ++_numIterations;
 
@@ -138,14 +135,13 @@ void ReplicateJob::startImpl() {
     );
     _findAllJob->start();
 
-    setState(State::IN_PROGRESS);
+    setState(lock,
+             State::IN_PROGRESS);
 }
 
-void ReplicateJob::cancelImpl() {
+void ReplicateJob::cancelImpl(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
-
-    ASSERT_LOCK(_mtx, context() + "cancelImpl");
 
     // The algorithm will also clear resources taken by various
     // locally created objects.
@@ -168,11 +164,9 @@ void ReplicateJob::cancelImpl() {
     _numSuccess  = 0;
 }
 
-void ReplicateJob::restart() {
+void ReplicateJob::restart(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "restart");
-
-    ASSERT_LOCK(_mtx, context() + "restart");
 
     if (_findAllJob or (_numLaunched != _numFinished)) {
         throw std::logic_error("ReplicateJob::restart()  not allowed in this object state");
@@ -216,7 +210,7 @@ void ReplicateJob::onPrecursorJobFinish() {
 
     if (_state == State::FINISHED) return;
 
-    LOCK(_mtx, context() + "onPrecursorJobFinish");
+    util::Lock lock(_mtx, context() + "onPrecursorJobFinish");
 
     if (_state == State::FINISHED) return;
 
@@ -231,7 +225,8 @@ void ReplicateJob::onPrecursorJobFinish() {
         // with the precursor job.
 
         if (_findAllJob->extendedState() != ExtendedState::SUCCESS) {
-            finish(ExtendedState::FAILED);
+            finish(lock,
+                   ExtendedState::FAILED);
             break;
         }
 
@@ -335,7 +330,8 @@ void ReplicateJob::onPrecursorJobFinish() {
             LOGS(_log, LOG_LVL_ERROR, context()
                  << "onPrecursorJobFinish  not workers are available for new replicas");
 
-            finish(ExtendedState::FAILED);
+            finish(lock,
+                   ExtendedState::FAILED);
             break;
         }
 
@@ -377,7 +373,9 @@ void ReplicateJob::onPrecursorJobFinish() {
                      << chunk);
 
                 release(chunk);
-                finish(ExtendedState::FAILED);
+
+                finish(lock,
+                       ExtendedState::FAILED);
                 break;
             }
 
@@ -417,7 +415,9 @@ void ReplicateJob::onPrecursorJobFinish() {
                          << chunk);
 
                     release(chunk);
-                    finish(ExtendedState::FAILED);
+
+                    finish(lock,
+                           ExtendedState::FAILED);
                     break;
                 }
 
@@ -459,15 +459,18 @@ void ReplicateJob::onPrecursorJobFinish() {
             if (not _jobs.size()) {
 
                 // Finish right away if no problematic chunks found
+
                 if (not _numFailedLocks) {
-                    finish(ExtendedState::SUCCESS);
+                    finish(lock,
+                           ExtendedState::SUCCESS);
                     break;
                 } else {
 
                     // Some of the chuks were locked and yet, no single replica creation
                     // job was lunched. Hence we should start another iteration by requesting
                     // the fresh state of the chunks within the family.
-                    restart();
+
+                    restart(lock);
                     return;
                 }
             }
@@ -498,7 +501,7 @@ void ReplicateJob::onCreateJobFinish(CreateReplicaJob::Ptr const& job) {
         return;
     }
 
-    LOCK(_mtx, context() + "onCreateJobFinish");
+    util::Lock lock(_mtx, context() + "onCreateJobFinish");
 
     if (_state == State::FINISHED) {
         release(job->chunk());
@@ -548,15 +551,20 @@ void ReplicateJob::onCreateJobFinish(CreateReplicaJob::Ptr const& job) {
     if (_numFinished == _numLaunched) {
         if (_numSuccess == _numLaunched) {
             if (_numFailedLocks) {
+
                 // Make another iteration (and another one, etc. as many as needed)
                 // before it succeeds or fails.
-                restart();
+
+                restart(lock);
                 return;
+
             } else {
-                finish(ExtendedState::SUCCESS);
+                finish(lock,
+                       ExtendedState::SUCCESS);
             }
         } else {
-            finish(ExtendedState::FAILED);
+            finish(lock,
+                   ExtendedState::FAILED);
         }
     }
 

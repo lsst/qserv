@@ -101,7 +101,7 @@ protected:
     /**
      * Implement a method defined in the base class.
      */
-    void finishImpl() override;
+    void finishImpl(util::Lock const& lock) override;
     
 protected:
 

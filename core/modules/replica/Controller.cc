@@ -37,7 +37,6 @@
 #include "replica/DeleteRequest.h"
 #include "replica/FindRequest.h"
 #include "replica/FindAllRequest.h"
-#include "replica/LockUtils.h"
 #include "replica/Messenger.h"
 #include "replica/Performance.h"
 #include "replica/ReplicationRequest.h"
@@ -263,7 +262,7 @@ void Controller::run() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "run");
 
-    LOCK(_mtx, context() + "run");
+    util::Lock lock(_mtx, context() + "run");
 
     if (not isRunning()) {
 
@@ -298,13 +297,14 @@ void Controller::stop() {
 
     // IMPORTANT:
     //
-    //   Never attempt running these operations within LOCK(_mtx)
+    //   Never attempt running these operations within Lock(_mtx,...)
     //   due to a possibile deadlock when asynchronous handlers will be
     //   calling the thread-safe methods. A problem is that until they finish
     //   in a clean way (as per the _work.reset()) the thread will never finish,
     //   and the application will hang on _thread->join().
 
-    // LOCK(_mtx)  (disabled)
+    //   (disabled)
+    //   util::Lock lock(_mtx, context() + "run");
 
     // These steps will cancel all oustanding requests
     _messenger->stop();
@@ -353,7 +353,7 @@ ReplicationRequest::Ptr Controller::replicate(
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "replicate");
 
-    LOCK(_mtx, context() + "replicate");
+    util::Lock lock(_mtx, context() + "replicate");
 
     assertIsRunning();
 
@@ -403,7 +403,7 @@ DeleteRequest::Ptr Controller::deleteReplica(
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "deleteReplica");
 
-    LOCK(_mtx, context() + "deleteReplica");
+    util::Lock lock(_mtx, context() + "deleteReplica");
 
     assertIsRunning();
 
@@ -452,7 +452,7 @@ FindRequest::Ptr Controller::findReplica(
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "findReplica");
 
-    LOCK(_mtx, context() + "findReplica");
+    util::Lock lock(_mtx, context() + "findReplica");
 
     assertIsRunning();
 
@@ -499,7 +499,7 @@ FindAllRequest::Ptr Controller::findAllReplicas(
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "findAllReplicas");
 
-    LOCK(_mtx, context() + "findAllReplicas");
+    util::Lock lock(_mtx, context() + "findAllReplicas");
 
     assertIsRunning();
 
@@ -543,7 +543,7 @@ StopReplicationRequest::Ptr Controller::stopReplication(
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "stopReplication  targetRequestId = " << targetRequestId);
 
-    LOCK(_mtx, context() + "stopReplication");
+    util::Lock lock(_mtx, context() + "stopReplication");
 
     return ControllerImpl::requestManagementOperation<StopReplicationRequest>(
         shared_from_this(),
@@ -566,7 +566,7 @@ StopDeleteRequest::Ptr Controller::stopReplicaDelete(
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "stopReplicaDelete  targetRequestId = " << targetRequestId);
 
-    LOCK(_mtx, context() + "stopReplicaDelete");
+    util::Lock lock(_mtx, context() + "stopReplicaDelete");
 
     return ControllerImpl::requestManagementOperation<StopDeleteRequest>(
         shared_from_this(),
@@ -589,7 +589,7 @@ StopFindRequest::Ptr Controller::stopReplicaFind(
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "stopReplicaFind  targetRequestId = " << targetRequestId);
 
-    LOCK(_mtx, context() + "stopReplicaFind");
+    util::Lock lock(_mtx, context() + "stopReplicaFind");
 
     return ControllerImpl::requestManagementOperation<StopFindRequest>(
         shared_from_this(),
@@ -612,7 +612,7 @@ StopFindAllRequest::Ptr Controller::stopReplicaFindAll(
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "stopReplicaFindAll  targetRequestId = " << targetRequestId);
 
-    LOCK(_mtx, context() + "stopReplicaFindAll");
+    util::Lock lock(_mtx, context() + "stopReplicaFindAll");
 
     return ControllerImpl::requestManagementOperation<StopFindAllRequest>(
         shared_from_this(),
@@ -635,7 +635,7 @@ StatusReplicationRequest::Ptr Controller::statusOfReplication(
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "statusOfReplication  targetRequestId = " << targetRequestId);
 
-    LOCK(_mtx, context() + "statusOfReplication");
+    util::Lock lock(_mtx, context() + "statusOfReplication");
 
     return ControllerImpl::requestManagementOperation<StatusReplicationRequest>(
         shared_from_this(),
@@ -658,7 +658,7 @@ StatusDeleteRequest::Ptr Controller::statusOfDelete(
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "statusOfDelete  targetRequestId = " << targetRequestId);
 
-    LOCK(_mtx, context() + "statusOfDelete");
+    util::Lock lock(_mtx, context() + "statusOfDelete");
 
     return ControllerImpl::requestManagementOperation<StatusDeleteRequest>(
         shared_from_this(),
@@ -681,7 +681,7 @@ StatusFindRequest::Ptr Controller::statusOfFind(
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "statusOfFind  targetRequestId = " << targetRequestId);
 
-    LOCK(_mtx, context() + "statusOfFind");
+    util::Lock lock(_mtx, context() + "statusOfFind");
 
     return ControllerImpl::requestManagementOperation<StatusFindRequest>(
         shared_from_this(),
@@ -704,7 +704,7 @@ StatusFindAllRequest::Ptr Controller::statusOfFindAll(
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "statusOfFindAll  targetRequestId = " << targetRequestId);
 
-    LOCK(_mtx, context() + "statusOfFindAll");
+    util::Lock lock(_mtx, context() + "statusOfFindAll");
 
     return ControllerImpl::requestManagementOperation<StatusFindAllRequest>(
         shared_from_this(),
@@ -725,7 +725,7 @@ ServiceSuspendRequest::Ptr Controller::suspendWorkerService(
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "suspendWorkerService  workerName: " << workerName);
 
-    LOCK(_mtx, context() + "suspendWorkerService");
+    util::Lock lock(_mtx, context() + "suspendWorkerService");
 
     return ControllerImpl::serviceManagementOperation<ServiceSuspendRequest>(
         shared_from_this(),
@@ -744,7 +744,7 @@ ServiceResumeRequest::Ptr Controller::resumeWorkerService(
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "resumeWorkerService  workerName: " << workerName);
 
-    LOCK(_mtx, context() + "resumeWorkerService");
+    util::Lock lock(_mtx, context() + "resumeWorkerService");
 
     return ControllerImpl::serviceManagementOperation<ServiceResumeRequest>(
         shared_from_this(),
@@ -763,7 +763,7 @@ ServiceStatusRequest::Ptr Controller::statusOfWorkerService(
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "statusOfWorkerService  workerName: " << workerName);
 
-    LOCK(_mtx, context() + "statusOfWorkerService");
+    util::Lock lock(_mtx, context() + "statusOfWorkerService");
 
     return ControllerImpl::serviceManagementOperation<ServiceStatusRequest>(
         shared_from_this(),
@@ -782,7 +782,7 @@ ServiceRequestsRequest::Ptr Controller::requestsOfWorkerService(
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "requestsOfWorkerService  workerName: " << workerName);
 
-    LOCK(_mtx, context() + "requestsOfWorkerService");
+    util::Lock lock(_mtx, context() + "requestsOfWorkerService");
 
     return ControllerImpl::serviceManagementOperation<ServiceRequestsRequest>(
         shared_from_this(),
@@ -801,7 +801,7 @@ ServiceDrainRequest::Ptr Controller::drainWorkerService(
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "drainWorkerService  workerName: " << workerName);
 
-    LOCK(_mtx, context() + "drainWorkerService");
+    util::Lock lock(_mtx, context() + "drainWorkerService");
 
     return ControllerImpl::serviceManagementOperation<ServiceDrainRequest>(
         shared_from_this(),
@@ -813,7 +813,7 @@ ServiceDrainRequest::Ptr Controller::drainWorkerService(
 }
 
 size_t Controller::numActiveRequests() const {
-    LOCK(_mtx, context() + "numActiveRequests");
+    util::Lock lock(_mtx, context() + "numActiveRequests");
     return _registry.size();
 }
 
@@ -832,7 +832,7 @@ void Controller::finish(std::string const& id) {
 
     ControllerRequestWrapper::Ptr request;
     {
-        LOCK(_mtx, context() + "finish");
+        util::Lock lock(_mtx, context() + "finish");
         request = _registry[id];
         _registry.erase(id);
     }

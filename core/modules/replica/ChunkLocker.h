@@ -123,7 +123,6 @@ public:
     bool isLocked(Chunk const& chunk,
                   std::string& ownerId) const;
 
-
     /**
      * Return chunks which are loacked by a particular owner (if provided),
      * or by all owners.
@@ -188,12 +187,14 @@ private:
      * NOTE: this metod is not thread-safe. It's up to its callers to ensure
      *       proper synchronization context before invoking the method.
      *
+     * @param mLock - a lock on a mutex must be made before calling this method
      * @param chunk - a chunk to be released
      * @param owner - a reference to a string which will be initialized with
      *                an identifier of an owner which had a claim on the chunk
      *                at a time of the method call if the chunk was found locked
      */
-    bool releaseImpl(Chunk const& chunk,
+    bool releaseImpl(util::Lock const& mLock,
+                     Chunk const& chunk,
                      std::string& owner);
 
 private:

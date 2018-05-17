@@ -156,7 +156,7 @@ public:
     FindAllJob& operator=(FindAllJob const&) = delete;
 
     /// Destructor
-    ~FindAllJob() override = default;
+    ~FindAllJob() final = default;
 
     /// Return the name of a database family defining a scope of the operation
     std::string const& databaseFamily() const { return _databaseFamily; }
@@ -205,14 +205,14 @@ protected:
       *
       * @see Job::startImpl()
       */
-    void startImpl() override;
+    void startImpl(util::Lock const& lock) final;
 
     /**
       * Implement the corresponding method of the base class.
       *
       * @see Job::startImpl()
       */
-    void cancelImpl() override;
+    void cancelImpl(util::Lock const& lock) final;
 
     /**
       * Implement the corresponding method of the base class.

@@ -151,7 +151,7 @@ private:
       *
       * @see Request::startImpl()
       */
-    void startImpl() final;
+    void startImpl(util::Lock const& lock) final;
 
     /**
      * Process the worker response to the requested operation.

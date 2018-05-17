@@ -33,7 +33,6 @@
 #include "lsst/log/Log.h"
 #include "replica/Configuration.h"
 #include "replica/FileUtils.h"
-#include "replica/LockUtils.h"
 #include "replica/Performance.h"
 #include "replica/ServiceProvider.h"
 
@@ -161,7 +160,7 @@ bool WorkerFindAllRequestPOSIX::execute() {
 
     std::map<unsigned int, ReplicaInfo::FileInfoCollection> chunk2fileInfoCollection;
     {
-        LOCK(_mtxDataFolderOperations, context() + "execute");
+        util::Lock lock(_mtxDataFolderOperations, context() + "execute");
 
         fs::path        const dataDir = fs::path(workerInfo.dataDir) / database();
         fs::file_status const stat    = fs::status(dataDir, ec);

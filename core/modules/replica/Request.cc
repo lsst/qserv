@@ -34,7 +34,6 @@
 #include "lsst/log/Log.h"
 #include "replica/Configuration.h"
 #include "replica/Controller.h"
-#include "replica/LockUtils.h"
 #include "replica/ProtocolBuffer.h"
 #include "replica/ServiceProvider.h"
 
@@ -128,9 +127,11 @@ void Request::start(std::shared_ptr<Controller> const& controller,
                     std::string const& jobId,
                     unsigned int requestExpirationIvalSec) {
 
-    LOCK(_mtx, context() + "start");
+    util::Lock lock(_mtx, context() + "start");
 
-    assertState(CREATED, context() + "start");
+    assertState(lock,
+                CREATED,
+                context() + "start");
 
     // Change the expiration ival if requested
     if (requestExpirationIvalSec) {
@@ -162,7 +163,13 @@ void Request::start(std::shared_ptr<Controller> const& controller,
     }
 
     // Let a subclass to proceed with its own sequence of actions
-    startImpl();
+
+    startImpl(lock);
+
+    // Finalize state transition before saving the persistent state
+
+    setState(lock,
+             IN_PROGRESS);
 
     savePersistentState();
 }
@@ -181,6 +188,7 @@ void Request::expired(boost::system::error_code const& ec) {
          << (ec == boost::asio::error::operation_aborted ? "  ** ABORTED **" : ""));
 
     // Ignore this event if the timer was aborted
+
     if (ec == boost::asio::error::operation_aborted) return;
 
     // IMPORTANT: the final state is required to be tested twice. The first time
@@ -191,13 +199,15 @@ void Request::expired(boost::system::error_code const& ec) {
 
     if (_state == State::FINISHED) return;
 
-    LOCK(_mtx, context() + "expired");
+    util::Lock lock(_mtx, context() + "expired");
 
     if (_state == State::FINISHED) return;
 
-    finish(EXPIRED);
+    finish(lock,
+           EXPIRED);
 
     // Invoke a subclass-specific notification
+
     notify();
 }
 
@@ -213,38 +223,45 @@ void Request::cancel() {
 
     if (_state == State::FINISHED) return;
 
-    LOCK(_mtx, context() + "cancel");
+    util::Lock lock(_mtx, context() + "cancel");
 
     if (_state == FINISHED) return;
 
-    finish(CANCELLED);
+    finish(lock,
+           CANCELLED);
 
     // Invoke a subclass-specific notification
     notify();
 }
 
-void Request::finish(ExtendedState extendedState) {
+void Request::finish(util::Lock const& lock,
+                     ExtendedState extendedState) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "finish");
 
-    ASSERT_LOCK(_mtx, context() + "finish");
-
     // Check if it's not too late for this operation
+
     if (_state == FINISHED) return;
 
     // We have to update the timestamp before making a state transition
     // to ensure a client gets a consistent view onto the object's state.
+
     _performance.setUpdateFinish();
 
     // Set new state to make sure all event handlers will recognize
     // this scenario and avoid making any modifications to the request's state.
-    setState(FINISHED, extendedState);
+
+    setState(lock,
+             FINISHED,
+             extendedState);
 
     // Stop the timer if the one is still running
+
     _requestExpirationTimer.cancel();
 
     // Let a subclass to run its own finalization if needed
-    finishImpl();
+
+    finishImpl(lock);
 
     savePersistentState();
 }
@@ -259,7 +276,8 @@ bool Request::isAborted(boost::system::error_code const& ec) const {
     return false;
 }
 
-void Request::assertState(State state,
+void Request::assertState(util::Lock const& lock,
+                          State state,
                           std::string const& context) const {
 
     if (state != _state) {
@@ -268,12 +286,11 @@ void Request::assertState(State state,
     }
 }
 
-void Request::setState(State state,
+void Request::setState(util::Lock const& lock,
+                       State state,
                        ExtendedState extendedState)
 {
     LOGS(_log, LOG_LVL_DEBUG, context() << "setState  " << state2string(state, extendedState));
-
-    ASSERT_LOCK(_mtx, context() + "setState");
 
     // ATTENTION: ensure the top-level state is the last to change in
     // in the transient state transition in order to guarantee a consistent
