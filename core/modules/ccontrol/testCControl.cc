@@ -61,6 +61,7 @@ static const std::vector< std::string > QUERIES = {
     "select COUNT(*) AS N FROM Source WHERE objectId IN (386950783579546, 386942193651348)", // case01/queries/0008.3_fetchSourceByObjIdIN.sql
     "select COUNT(*) AS N FROM Source WHERE objectId BETWEEN 386942193651348 AND 386950783579546", // case01/queries/0008.4_fetchSourceByObjIdBETWEEN.sql
     "SELECT sourceId, objectId FROM Source WHERE objectId IN (386942193651348) ORDER BY sourceId;", // case01/queries/0008_fetchSourceByObjIdIN_withRes.sql
+
     "SELECT sce.filterId, sce.filterName FROM   Science_Ccd_Exposure AS sce WHERE  (sce.visit = 887404831) AND (sce.raftName = '3,3') AND (sce.ccdName LIKE '%') ORDER BY filterId", // case01/queries/0012.1_raftAndCcd.sql
     "SELECT sce.filterId, sce.filterName FROM   Science_Ccd_Exposure AS sce WHERE  (sce.visit = 887404831) AND (sce.raftName = '3,3') AND (sce.ccdName LIKE '%') ORDER BY filterId LIMIT 5", // case01/queries/0012.2_raftAndCcd.sql
     "SELECT sce.filterId, sce.filterName FROM   Science_Ccd_Exposure AS sce WHERE  (sce.visit = 887404831) AND (sce.raftName = '3,3') AND (sce.ccdName LIKE '%')", // case01/queries/0012_raftAndCcd.sql
@@ -376,35 +377,35 @@ static const std::vector< std::string > FAIL_QUERIES = {
 };
 
 BOOST_DATA_TEST_CASE(antlr_compare, QUERIES, query) {
-    std::ostringstream a2QueryStr;
     std::shared_ptr<query::SelectStmt> a2SelectStatement;
     try {
         a2SelectStatement = ccontrol::UserQueryFactory::antlr2NewSelectStmt(query);
     } catch (...) {}
-    if (a2SelectStatement != nullptr) {
-//        BOOST_TEST_MESSAGE("antlr2 selectStmt structure:" << *a2SelectStatement);
-        a2QueryStr << a2SelectStatement->getQueryTemplate();
-    }
 
     std::shared_ptr<query::SelectStmt> a4SelectStatement;
     try {
         a4SelectStatement = ccontrol::a4NewUserQuery(query);
     } catch (...) {}
-    std::ostringstream a4QueryStr;
-    if (a4SelectStatement != nullptr) {
-//        BOOST_TEST_MESSAGE("antlr4 selectStmt structure:" << *a4SelectStatement);
-        a4QueryStr << a4SelectStatement->getQueryTemplate();
-    }
 
-    if (a2SelectStatement == nullptr || a4SelectStatement == nullptr || a4QueryStr.str() != a2QueryStr.str()) {
-        BOOST_TEST_MESSAGE("FAILED QUERY:" << query);
-    } else {
-        BOOST_TEST_MESSAGE("PASSED QUERY:" << query);
+#if 1 // enable this block to log details about the generated select statements.
+      // (you also have to set the flag ` --log_level=message` when running the test)
+    if (a2SelectStatement != nullptr) {
+        std::ostringstream str;
+        str << a2SelectStatement->getQueryTemplate();
+        BOOST_TEST_MESSAGE("antlr2 query string:" << str.str());
+        BOOST_TEST_MESSAGE("antlr2 selectStmt structure:" << *a2SelectStatement);
     }
+    if (a4SelectStatement != nullptr) {
+        std::ostringstream str;
+        str << a4SelectStatement->getQueryTemplate();
+        BOOST_TEST_MESSAGE("antlr4 query string:" << str.str());
+        BOOST_TEST_MESSAGE("antlr4 selectStmt structure:" << *a4SelectStatement);
+    }
+#endif
 
     BOOST_REQUIRE(a2SelectStatement != nullptr);
     BOOST_REQUIRE(a4SelectStatement != nullptr);
-    BOOST_REQUIRE_EQUAL(a4QueryStr.str(), a2QueryStr.str());
+    BOOST_REQUIRE(*a2SelectStatement == *a4SelectStatement);
 }
 
 
