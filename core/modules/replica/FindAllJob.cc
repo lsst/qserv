@@ -155,21 +155,12 @@ void FindAllJob::cancelImpl(util::Lock const& lock) {
     _numSuccess  = 0;
 }
 
-void FindAllJob::notify() {
+void FindAllJob::notifyImpl() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
-
-    // The callback is being made asynchronously in a separate thread
-    // to avoid blocking the current thread.
+    LOGS(_log, LOG_LVL_DEBUG, context() << "notifyImpl");
 
     if (_onFinish) {
-        auto self = shared_from_base<FindAllJob>();
-        std::async(
-            std::launch::async,
-            [self]() {
-                self->_onFinish(self);
-            }
-        );
+        _onFinish(shared_from_base<FindAllJob>());
     }
 }
 
@@ -324,7 +315,6 @@ void FindAllJob::onRequestFinish(FindAllRequest::Ptr const& request) {
         finish(lock,
                _numSuccess == _numLaunched ? ExtendedState::SUCCESS :
                                              ExtendedState::FAILED);
-        notify();
     }
 }
 

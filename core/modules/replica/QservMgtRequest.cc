@@ -103,8 +103,7 @@ void QservMgtRequest::start(XrdSsiService* service,
 
     util::Lock lock(_mtx, "QservMgtRequest::start");
 
-    assertState(lock,
-                State::CREATED,
+    assertState(State::CREATED,
                 "QservMgtRequest::start");
 
     // Change the expiration ival if requested
@@ -139,9 +138,13 @@ void QservMgtRequest::start(XrdSsiService* service,
         );
     }
 
-    // Let a subclass to proceed with its own sequence of actions
+    // Let a subclass to proceed with its own sequence of actions before
+    // finalizing state transition and updating the persistent state.
 
     startImpl(lock);
+
+    setState(lock,
+             State::IN_PROGRESS);
 
     _serviceProvider->databaseServices()->saveState(*this);
 }
@@ -217,13 +220,28 @@ void QservMgtRequest::finish(ExtendedState extendedState,
 
     _serviceProvider->databaseServices()->saveState(*this);
 
-    // This will invoke user-defined notifiers (if any)
-
-    notifyImpl();
+    notify();
 }
 
-void QservMgtRequest::assertState(util::Lock const& lock,
-                                  State state,
+void QservMgtRequest::notify() {
+
+    // The callback is being made asynchronously in a separate thread
+    // to avoid blocking the current thread.
+    //
+    // TODO: consider reimplementing this method to send notificatons
+    //       via a thread pool & a queue.
+
+    auto const self = shared_from_this();
+    std::async(
+        std::launch::async,
+        [self]() {
+            self->notifyImpl();
+        }
+    );
+}
+
+
+void QservMgtRequest::assertState(State state,
                                   std::string const& context) const {
     if (state != _state) {
         throw std::logic_error(

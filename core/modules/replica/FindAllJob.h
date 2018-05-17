@@ -217,9 +217,9 @@ protected:
     /**
       * Implement the corresponding method of the base class.
       *
-      * @see Job::notify()
+      * @see Job::notifyImpl()
       */
-    void notify() override;
+    void notifyImpl() final;
 
     /**
      * The calback function to be invoked on a completion of each request.

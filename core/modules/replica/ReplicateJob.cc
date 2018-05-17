@@ -180,21 +180,12 @@ void ReplicateJob::restart(util::Lock const& lock) {
     _numSuccess  = 0;
 }
 
-void ReplicateJob::notify() {
+void ReplicateJob::notifyImpl() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
-
-    // The callback is being made asynchronously in a separate thread
-    // to avoid blocking the current thread.
+    LOGS(_log, LOG_LVL_DEBUG, context() << "notifyImpl");
 
     if (_onFinish) {
-        auto self = shared_from_base<ReplicateJob>();
-        std::async(
-            std::launch::async,
-            [self]() {
-                self->_onFinish(self);
-            }
-        );
+        _onFinish(shared_from_base<ReplicateJob>());
     }
 }
 
@@ -477,8 +468,6 @@ void ReplicateJob::onPrecursorJobFinish() {
         }
 
     } while (false);
-
-    if (_state == State::FINISHED) notify();
 }
 
 void ReplicateJob::onCreateJobFinish(CreateReplicaJob::Ptr const& job) {
@@ -567,8 +556,6 @@ void ReplicateJob::onCreateJobFinish(CreateReplicaJob::Ptr const& job) {
                    ExtendedState::FAILED);
         }
     }
-
-    if (_state == State::FINISHED) notify();
 }
 
 void ReplicateJob::release(unsigned int chunk) {

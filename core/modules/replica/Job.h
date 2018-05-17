@@ -295,7 +295,7 @@ protected:
       * to notify a caller by invoking a subclass-specific callback
       * function registered for the completion of the job.
       */
-    virtual void notify() = 0;
+    virtual void notifyImpl() = 0;
 
     /**
      * Notify Qserv about a new chunk added to its database.
@@ -401,6 +401,15 @@ private:
      * it finishes with completion status FINISHED::EXPIRED.
      */
     void expired(boost::system::error_code const& ec);
+
+    /**
+     * This method will begin an optional user protocol upon a completion
+     * of a job (if any user-supplied callback function was provided).
+     * The method will eventually use subclass-specific method notifyImpl().
+     *
+     * @see Job::notifyImpl
+     */
+    void notify();
 
 protected:
 

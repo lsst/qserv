@@ -160,21 +160,12 @@ void MoveReplicaJob::cancelImpl(util::Lock const& lock) {
     }
 }
 
-void MoveReplicaJob::notify() {
+void MoveReplicaJob::notifyImpl() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
-
-    // The callback is being made asynchronously in a separate thread
-    // to avoid blocking the current thread.
+    LOGS(_log, LOG_LVL_DEBUG, context() << "notifyImpl");
 
     if (_onFinish) {
-        auto self = shared_from_base<MoveReplicaJob>();
-        std::async(
-            std::launch::async,
-            [self]() {
-                self->_onFinish(self);
-            }
-        );
+        _onFinish(shared_from_base<MoveReplicaJob>());
     }
 }
 
@@ -232,7 +223,6 @@ void MoveReplicaJob::onCreateJobFinish() {
         finish(lock,
                _createReplicaJob->extendedState());
     }
-    if (_state == State::FINISHED) notify();
 }
 
 void MoveReplicaJob::onDeleteJobFinish() {
@@ -252,6 +242,7 @@ void MoveReplicaJob::onDeleteJobFinish() {
     if (_state == State::FINISHED) return;
 
     // Extract stats
+
     if (_deleteReplicaJob->extendedState() == Job::ExtendedState::SUCCESS) {
         _replicaData.deletedReplicas = _deleteReplicaJob->getReplicaData().replicas;
         _replicaData.deletedChunks   = _deleteReplicaJob->getReplicaData().chunks;
@@ -261,8 +252,6 @@ void MoveReplicaJob::onDeleteJobFinish() {
 
     finish(lock,
            _deleteReplicaJob->extendedState());
-
-    notify();
 }
 
 }}} // namespace lsst::qserv::replica

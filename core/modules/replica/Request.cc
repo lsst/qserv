@@ -205,10 +205,6 @@ void Request::expired(boost::system::error_code const& ec) {
 
     finish(lock,
            EXPIRED);
-
-    // Invoke a subclass-specific notification
-
-    notify();
 }
 
 void Request::cancel() {
@@ -229,9 +225,6 @@ void Request::cancel() {
 
     finish(lock,
            CANCELLED);
-
-    // Invoke a subclass-specific notification
-    notify();
 }
 
 void Request::finish(util::Lock const& lock,
@@ -264,8 +257,26 @@ void Request::finish(util::Lock const& lock,
     finishImpl(lock);
 
     savePersistentState();
+
+    notify();
 }
 
+void Request::notify() {
+
+    // The callback is being made asynchronously in a separate thread
+    // to avoid blocking the current thread.
+    //
+    // TODO: consider reimplementing this method to send notificatons
+    //       via a thread pool & a queue.
+
+    auto const self = shared_from_this();
+    std::async(
+        std::launch::async,
+        [self]() {
+            self->notifyImpl();
+        }
+    );
+}
 
 bool Request::isAborted(boost::system::error_code const& ec) const {
 

@@ -184,21 +184,12 @@ void QservSyncJob::cancelImpl(util::Lock const& lock) {
     _numSuccess  = 0;
 }
 
-void QservSyncJob::notify() {
+void QservSyncJob::notifyImpl() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
-
-    // The callback is being made asynchronously in a separate thread
-    // to avoid blocking the current thread.
+    LOGS(_log, LOG_LVL_DEBUG, context() << "notifyImpl");
 
     if (_onFinish) {
-        auto self = shared_from_base<QservSyncJob>();
-        std::async(
-            std::launch::async,
-            [self]() {
-                self->_onFinish(self);
-            }
-        );
+        _onFinish(shared_from_base<QservSyncJob>());
     }
 }
 
@@ -243,7 +234,6 @@ void QservSyncJob::onRequestFinish(SetReplicasQservMgtRequest::Ptr const& reques
         finish(lock,
                _numSuccess == _numLaunched ? ExtendedState::SUCCESS :
                                              ExtendedState::FAILED);
-        notify();
     }
 }
 

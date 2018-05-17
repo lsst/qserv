@@ -229,7 +229,6 @@ void DeleteReplicaJob::startImpl(util::Lock const& lock) {
                                      ExtendedState::QSERV_FAILED);
                         break;
                 }
-                self->notify();
             }
         );
     } else {
@@ -263,21 +262,12 @@ void DeleteReplicaJob::cancelImpl(util::Lock const& lock) {
     _requests.clear();
 }
 
-void DeleteReplicaJob::notify() {
+void DeleteReplicaJob::notifyImpl() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
-
-    // The callback is being made asynchronously in a separate thread
-    // to avoid blocking the current thread.
+    LOGS(_log, LOG_LVL_DEBUG, context() << "notifyImpl");
 
     if (_onFinish) {
-        auto self = shared_from_base<DeleteReplicaJob>();
-        std::async(
-            std::launch::async,
-            [self]() {
-                self->_onFinish(self);
-            }
-        );
+        _onFinish(shared_from_base<DeleteReplicaJob>());
     }
 }
 
@@ -346,7 +336,6 @@ void DeleteReplicaJob::onRequestFinish(DeleteRequest::Ptr const& request) {
         finish(lock,
                numSuccess == numLaunched ? ExtendedState::SUCCESS :
                                            ExtendedState::FAILED);
-        notify();
     }
 }
 

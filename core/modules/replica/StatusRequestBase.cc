@@ -224,8 +224,6 @@ void StatusRequestBase::analyze(bool success,
         finish(lock,
                CLIENT_ERROR);
     }
-
-    if (_state == State::FINISHED) notify();
 }
 
 }}} // namespace lsst::qserv::replica

@@ -302,24 +302,14 @@ void FindAllRequest::analyze(bool success,
         finish(lock,
                CLIENT_ERROR);
     }
-    if (_state == State::FINISHED) notify();
 }
 
-void FindAllRequest::notify() {
+void FindAllRequest::notifyImpl() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
-
-    // The callback is being made asynchronously in a separate thread
-    // to avoid blocking the current thread.
+    LOGS(_log, LOG_LVL_DEBUG, context() << "notifyImpl");
 
     if (_onFinish != nullptr) {
-        auto self = shared_from_base<FindAllRequest>();
-        std::async(
-            std::launch::async,
-            [self]() {
-                self->_onFinish(self);
-            }
-        );
+        _onFinish(shared_from_base<FindAllRequest>());
     }
 }
 

@@ -104,11 +104,11 @@ std::string SetReplicasQservMgtRequest::extendedPersistentState(SqlGeneratorPtr 
 void SetReplicasQservMgtRequest::setReplicas(
         wpublish::SetChunkListQservRequest::ChunkCollection const& collection) {
 
+    if (_state == State::FINISHED) return;
+
     util::Lock lock(_mtx, context() + "setReplicas");
 
-    assertState(lock,
-                State::IN_PROGRESS,
-                context() + "setReplicas");
+    if (_state == State::FINISHED) return;
 
     _replicas.clear();
     for (auto&& replica: collection) {
@@ -160,16 +160,9 @@ void SetReplicasQservMgtRequest::startImpl(util::Lock const& lock) {
     );
     XrdSsiResource resource(ResourceUnit::makeWorkerPath(_worker));
     _service->ProcessRequest(*_qservRequest, resource);
-
-    setState(lock,
-             State::IN_PROGRESS);
 }
 
 void SetReplicasQservMgtRequest::finishImpl(util::Lock const& lock) {
-
-    assertState(lock,
-                State::FINISHED,
-                context() + "finishImpl");
 
     if (_extendedState == ExtendedState::CANCELLED) {
 
@@ -186,17 +179,8 @@ void SetReplicasQservMgtRequest::notifyImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "notifyImpl");
 
-    // The callback is being made asynchronously in a separate thread
-    // to avoid blocking the current thread.
-
     if (_onFinish) {
-        auto self = shared_from_base<SetReplicasQservMgtRequest>();
-        std::async(
-            std::launch::async,
-            [self]() {
-                self->_onFinish(self);
-            }
-        );
+        _onFinish(shared_from_base<SetReplicasQservMgtRequest>());
     }
 }
 }}} // namespace lsst::qserv::replica

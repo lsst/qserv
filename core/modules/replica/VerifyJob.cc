@@ -276,21 +276,12 @@ void VerifyJob::cancelImpl(util::Lock const& lock) {
     _requests.clear();
 }
 
-void VerifyJob::notify() {
+void VerifyJob::notifyImpl() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
-
-    // The callback is being made asynchronously in a separate thread
-    // to avoid blocking the current thread.
+    LOGS(_log, LOG_LVL_DEBUG, context() << "notifyImpl");
 
     if (_onFinish) {
-        auto self = shared_from_base<VerifyJob>();
-        std::async(
-            std::launch::async,
-            [self]() {
-                self->_onFinish(self);
-            }
-        );
+        _onFinish(shared_from_base<VerifyJob>());
     }
 }
 
@@ -356,7 +347,7 @@ void VerifyJob::onRequestFinish(FindRequest::Ptr request) {
         for (auto&& replica: otherReplicas) {
             ReplicaDiff diff(request->responseData(), replica);
             if (not diff.isSelf()) {
-                otherReplicaDiff.emplace_back(diff);
+                otherReplicaDiff.push_back(diff);
                 if (diff() and not _onReplicaDifference)
                     LOGS(_log, LOG_LVL_INFO, context() << "replica missmatch for other\n"
                          << diff);
@@ -426,7 +417,6 @@ void VerifyJob::onRequestFinish(FindRequest::Ptr request) {
             }
         );
     }
-    if (_state == State::FINISHED) notify();
 }
 
 bool VerifyJob::nextReplicas(util::Lock const& lock,

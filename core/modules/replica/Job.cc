@@ -140,14 +140,12 @@ void Job::start() {
     // Allow the job to be fully accomplished right away
 
     if (_state == State::FINISHED) {
-
-        // Subclass specific notification
         notify();
-
         return;
     }
 
     // Otherwise, the only other state which is allowed here is this
+
     assertState(lock,
                 State::IN_PROGRESS,
                 context() + "start");
@@ -173,10 +171,6 @@ void Job::cancel() {
 
     finish(lock,
            ExtendedState::CANCELLED);
-
-    // Subclass specific notification
-
-    notify();
 }
 
 void Job::finish(util::Lock const& lock,
@@ -210,6 +204,8 @@ void Job::finish(util::Lock const& lock,
 
     if(_heartbeatTimerPtr) _heartbeatTimerPtr->cancel();
     if(_expirationTimerPtr) _expirationTimerPtr->cancel();
+
+    notify();
 }
 
 void Job::qservAddReplica(util::Lock const& lock,
@@ -419,10 +415,23 @@ void Job::expired(boost::system::error_code const& ec) {
 
     finish(lock,
            ExtendedState::EXPIRED);
+}
 
-    // Subclass specific notification
+void Job::notify() {
 
-    notify();
+    // The callback is being made asynchronously in a separate thread
+    // to avoid blocking the current thread.
+    //
+    // TODO: consider reimplementing this method to send notificatons
+    //       via a thread pool & a queue.
+
+    auto const self = shared_from_this();
+    std::async(
+        std::launch::async,
+        [self]() {
+            self->notifyImpl();
+        }
+    );
 }
 
 }}} // namespace lsst::qserv::replica

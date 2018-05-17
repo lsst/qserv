@@ -292,19 +292,9 @@ private:
      * This method implements the corresponing virtual method defined
      * by the base class.
      */
-    void notify() final {
-
-        // The callback is being made asynchronously in a separate thread
-        // to avoid blocking the current thread.
-
+    void notifyImpl() final {
         if (_onFinish) {
-            StopRequest<POLICY>::Ptr self = shared_from_base<StopRequest<POLICY>>();
-            std::async(
-                std::launch::async,
-                [self]() {
-                    self->_onFinish(self);
-                }
-            );
+            _onFinish(shared_from_base<StopRequest<POLICY>>());
         }
     }
 

@@ -370,7 +370,6 @@ void DeleteWorkerJob::onJobFinish(FindAllJob::Ptr const& job) {
         finish(lock,
                ExtendedState::FAILED);
     }
-    if (_state == State::FINISHED) notify();
 }
 
 void DeleteWorkerJob::onJobFinish(ReplicateJob::Ptr const& job) {
@@ -446,24 +445,14 @@ void DeleteWorkerJob::onJobFinish(ReplicateJob::Ptr const& job) {
                    ExtendedState::SUCCESS);
         }
     }
-    if (_state == State::FINISHED) notify();
 }
 
-void DeleteWorkerJob::notify() {
+void DeleteWorkerJob::notifyImpl() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
-
-    // The callback is being made asynchronously in a separate thread
-    // to avoid blocking the current thread.
+    LOGS(_log, LOG_LVL_DEBUG, context() << "notifyImpl");
 
     if (_onFinish) {
-        auto self = shared_from_base<DeleteWorkerJob>();
-        std::async(
-            std::launch::async,
-            [self]() {
-                self->_onFinish(self);
-            }
-        );
+        _onFinish(shared_from_base<DeleteWorkerJob>());
     }
 }
 
