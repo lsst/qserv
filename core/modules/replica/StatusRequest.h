@@ -310,8 +310,10 @@ private:
      *
      * This method implements the corresponing virtual method defined
      * by the base class.
+     *
+     * @param lock - a lock on a mutex must be acquired before calling this method
      */
-    void send() final {
+    void send(util::Lock const& lock) final {
 
         auto self = shared_from_base<StatusRequest<POLICY>>();
 
@@ -350,20 +352,32 @@ private:
     proto::ReplicationStatus parseResponse(
             typename POLICY::ResponseMessageType const& message) {
 
+        // This lock must be acquired because the method is going to modify
+        // results of the request. Note that the operation doesn't care
+        // about the global state of the request (wether it's already finoshed
+        // or not)
+
+        util::Lock lock(_mtx, context() + "parseResponse");
+
         // Extract target request-specific parameters from the response if available
+
         POLICY::extractTargetRequestParams(message, _targetRequestParams);
 
         // Extract request-specific data from the response regardless of
         // the completion status of the request.
+
         POLICY::extractResponseData(message, _responseData);
 
         // Always get the latest status reported by the remote server
+
         _extendedServerStatus = replica::translate(message.status_ext());
 
         // Always update performance counters obtained from the worker service
+
         _performance.update(message.performance());
 
         // Set the optional performance of the target operation
+
         if (message.has_target_performance()) {
             _targetPerformance.update(message.target_performance());
         }

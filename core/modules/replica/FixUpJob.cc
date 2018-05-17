@@ -32,7 +32,6 @@
 #include "lsst/log/Log.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/ErrorReporting.h"
-#include "replica/LockUtils.h"
 #include "replica/ServiceProvider.h"
 #include "util/BlockPost.h"
 
@@ -106,11 +105,9 @@ std::string FixUpJob::extendedPersistentState(SqlGeneratorPtr const& gen) const 
                               databaseFamily());
 }
 
-void FixUpJob::startImpl() {
+void FixUpJob::startImpl(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl  _numIterations=" << _numIterations);
-
-    ASSERT_LOCK(_mtx, context() + "startImpl");
 
     ++_numIterations;
 
@@ -128,14 +125,13 @@ void FixUpJob::startImpl() {
     );
     _findAllJob->start();
 
-    setState(State::IN_PROGRESS);
+    setState(lock,
+             State::IN_PROGRESS);
 }
 
-void FixUpJob::cancelImpl() {
+void FixUpJob::cancelImpl(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
-
-    ASSERT_LOCK(_mtx, context() + "cancelImpl");
 
     // The algorithm will also clear resources taken by various
     // locally created objects.
@@ -171,11 +167,9 @@ void FixUpJob::cancelImpl() {
 }
 
 
-void FixUpJob::restart() {
+void FixUpJob::restart(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "restart");
-
-    ASSERT_LOCK(_mtx, context() + "restart");
 
     if (_findAllJob or (_numLaunched != _numFinished)) {
         throw std::logic_error("FixUpJob::restart ()  not allowed in this object state");
@@ -219,7 +213,7 @@ void FixUpJob::onPrecursorJobFinish() {
     
     if (_state == State::FINISHED) return;
 
-    LOCK(_mtx, context() + "onPrecursorJobFinish");
+    util::Lock lock(_mtx, context() + "onPrecursorJobFinish");
 
     if (_state == State::FINISHED) return;
 
@@ -278,7 +272,8 @@ void FixUpJob::onPrecursorJobFinish() {
                                  << "onPrecursorJobFinish  failed to find a source worker for chunk: "
                                  << chunk << " and database: " << database);
                             release(chunk);
-                            finish(ExtendedState::FAILED);
+                            finish(lock,
+                                   ExtendedState::FAILED);
                             break;
                         }
 
@@ -315,23 +310,28 @@ void FixUpJob::onPrecursorJobFinish() {
             // launched while the job is still in the unfinished state and take
             // proper actions. Otherwise (if this isn't done here) the object will
             // get into a "zombie" state.
+
             if (not _requests.size()) {
 
                 // Finish right away if no problematic chunks found
+
                 if (not _numFailedLocks) {
-                    finish(ExtendedState::SUCCESS);
+                    finish(lock,
+                           ExtendedState::SUCCESS);
                 } else {
 
                     // Some of the chuks were locked and yet, no sigle request was
                     // lunched. Hence we should start another iteration by requesting
                     // the fresh state of the chunks within the family.
-                    restart();
+
+                    restart(lock);
                 }
             }
         }
 
     } else {
-        finish(ExtendedState::FAILED);
+        finish(lock,
+               ExtendedState::FAILED);
     }
     if (_state == State::FINISHED) notify();
 }
@@ -359,7 +359,7 @@ void FixUpJob::onRequestFinish(ReplicationRequest::Ptr const& request) {
         return;
     }
 
-    LOCK(_mtx, context() + "onRequestFinish");
+    util::Lock lock(_mtx, context() + "onRequestFinish");
 
     if (_state == State::FINISHED) {
         release(chunk);
@@ -395,15 +395,20 @@ void FixUpJob::onRequestFinish(ReplicationRequest::Ptr const& request) {
     if (_numFinished == _numLaunched) {
         if (_numSuccess == _numLaunched) {
             if (_numFailedLocks) {
+                
                 // Make another iteration (and another one, etc. as many as needed)
                 // before it succeeds or fails.
-                restart();
+
+                restart(lock);
                 return;
+
             } else {
-                finish(ExtendedState::SUCCESS);
+                finish(lock,
+                       ExtendedState::SUCCESS);
             }
         } else {
-            finish(ExtendedState::FAILED);
+            finish(lock,
+                   ExtendedState::FAILED);
         }
     }
     if (_state == State::FINISHED) notify();

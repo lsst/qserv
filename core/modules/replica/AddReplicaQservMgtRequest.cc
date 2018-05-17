@@ -35,7 +35,6 @@
 #include "lsst/log/Log.h"
 #include "replica/Configuration.h"
 #include "replica/DatabaseMySQL.h"
-#include "replica/LockUtils.h"
 #include "replica/ServiceProvider.h"
 
 namespace {
@@ -87,9 +86,7 @@ std::string AddReplicaQservMgtRequest::extendedPersistentState(SqlGeneratorPtr c
                               chunk());
 }
 
-void AddReplicaQservMgtRequest::startImpl() {
-
-    ASSERT_LOCK(_mtx, context() + "startImpl");
+void AddReplicaQservMgtRequest::startImpl(util::Lock const& lock) {
 
     auto const request = shared_from_base<AddReplicaQservMgtRequest>();
 
@@ -121,13 +118,16 @@ void AddReplicaQservMgtRequest::startImpl() {
     );
     XrdSsiResource resource(ResourceUnit::makeWorkerPath(_worker));
     _service->ProcessRequest(*_qservRequest, resource);
+
+    setState(lock,
+             State::IN_PROGRESS);
 }
 
-void AddReplicaQservMgtRequest::finishImpl() {
+void AddReplicaQservMgtRequest::finishImpl(util::Lock const& lock) {
 
-    ASSERT_LOCK(_mtx, context() + "finishImpl");
-
-    assertState(State::FINISHED, "AddReplicaQservMgtRequest::finishImpl");
+    assertState(lock,
+                State::FINISHED,
+                context() + "finishImpl");
 
     if (_extendedState == ExtendedState::CANCELLED) {
         // And if the SSI request is still around then tell it to stop
@@ -139,9 +139,9 @@ void AddReplicaQservMgtRequest::finishImpl() {
     _qservRequest = nullptr;
 }
 
-void AddReplicaQservMgtRequest::notify() {
+void AddReplicaQservMgtRequest::notifyImpl() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
+    LOGS(_log, LOG_LVL_DEBUG, context() << "notifyImpl");
 
     // The callback is being made asynchronously in a separate thread
     // to avoid blocking the current thread.

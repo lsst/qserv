@@ -29,7 +29,6 @@
 // Qserv headers
 #include "lsst/log/Log.h"
 #include "replica/Configuration.h"
-#include "replica/LockUtils.h"
 #include "replica/Performance.h"
 #include "util/BlockPost.h"
 
@@ -99,7 +98,7 @@ void JobController::run() {
 
     LOGS(_log, LOG_LVL_DEBUG, "JobController::run");
 
-    LOCK(_mtx, "JobController::run");
+    util::Lock lock(_mtx, "JobController::run");
 
     if (not isRunning()) {
 
@@ -157,13 +156,13 @@ void JobController::stop() {
 
     // IMPORTANT:
     //
-    //   Never attempt running these operations within LOCK(_mtx)
+    //   Never attempt running these operations within util::Lock lock(_mtx)
     //   due to a possibile deadlock when asynchronous handlers will be
     //   calling the thread-safe methods. A problem is that until they finish
     //   in a clean way the thread will never finish, and the application will
     //   hang on _thread->join().
 
-    // LOCK(_mtx)  (disabled)
+    // util::Lock lock(_mtx)  (disabled)
 
     if (not isRunning()) return;
 
@@ -188,7 +187,7 @@ FindAllJob::Ptr JobController::findAll(std::string const& databaseFamily,
 
     LOGS(_log, LOG_LVL_DEBUG, "JobController::findAll");
 
-    LOCK(_mtx, "JobController::findAll");
+    util::Lock lock(_mtx, "JobController::findAll");
 
     JobController::Ptr self = shared_from_this();
 
@@ -227,7 +226,7 @@ FixUpJob::Ptr JobController::fixUp(std::string const& databaseFamily,
 
     LOGS(_log, LOG_LVL_DEBUG, "JobController::fixUp");
 
-    LOCK(_mtx, "JobController::fixUp");
+    util::Lock lock(_mtx, "JobController::fixUp");
 
     auto const self = shared_from_this();
 
@@ -267,7 +266,7 @@ PurgeJob::Ptr JobController::purge(std::string const& databaseFamily,
 
     LOGS(_log, LOG_LVL_DEBUG, "JobController::purge");
 
-    LOCK(_mtx, "JobController::purge");
+    util::Lock lock(_mtx, "JobController::purge");
 
     auto const self = shared_from_this();
 
@@ -308,7 +307,7 @@ ReplicateJob::Ptr JobController::replicate(std::string const& databaseFamily,
 
     LOGS(_log, LOG_LVL_DEBUG, "JobController::replicate");
 
-    LOCK(_mtx, "JobController::replicate");
+    util::Lock lock(_mtx, "JobController::replicate");
 
     auto const self = shared_from_this();
 
@@ -350,7 +349,7 @@ VerifyJob::Ptr JobController::verify(VerifyJob::CallbackType onFinish,
 
     LOGS(_log, LOG_LVL_DEBUG, "JobController::verify");
 
-    LOCK(_mtx, "JobController::verify");
+    util::Lock lock(_mtx, "JobController::verify");
 
     auto const self = shared_from_this();
 
@@ -393,7 +392,7 @@ DeleteWorkerJob::Ptr JobController::deleteWorker(
 
     LOGS(_log, LOG_LVL_DEBUG, "JobController::deleteWorker");
 
-    LOCK(_mtx, "JobController::deleteWorker");
+    util::Lock lock(_mtx, "JobController::deleteWorker");
 
     auto const self = shared_from_this();
 
@@ -431,7 +430,7 @@ void JobController::runQueued() {
 
     LOGS(_log, LOG_LVL_DEBUG, "JobController::runQueued");
 
-    LOCK(_mtx, "JobController::runQueued");
+    util::Lock lock(_mtx, "JobController::runQueued");
 
     if (not isRunning()) return;
 
@@ -452,7 +451,7 @@ void JobController::runScheduled() {
     // NOTE: don't prolifirate the lock's scope to avoid an imminent deadlock
     //       when calling mehods which are called later.
     {
-        LOCK(_mtx, "JobController::runScheduled");
+        util::Lock lock(_mtx, "JobController::runScheduled");
 
         if (not isRunning()) return;
 
@@ -469,7 +468,7 @@ void JobController::cancelAll() {
 
     LOGS(_log, LOG_LVL_DEBUG, "JobController::cancelAll");
 
-    LOCK(_mtx, "JobController::cancelAll");
+    util::Lock lock(_mtx, "JobController::cancelAll");
 
     if (not isRunning()) return;
 
@@ -483,7 +482,7 @@ void JobController::onFinish(Job::Ptr const& job) {
 
     JobWrapper::Ptr wrapper;
     {
-        LOCK(_mtx, "JobController::onFinish");
+        util::Lock lock(_mtx, "JobController::onFinish");
         wrapper = _registry[job->id()];
         _registry.erase(job->id());
 

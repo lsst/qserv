@@ -31,7 +31,6 @@
 #include "lsst/log/Log.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
-#include "replica/LockUtils.h"
 #include "replica/ServiceProvider.h"
 #include "util/BlockPost.h"
 
@@ -213,18 +212,19 @@ std::string VerifyJob::extendedPersistentState(SqlGeneratorPtr const& gen) const
                               computeCheckSum() ? 1 : 0);
 }
 
-void VerifyJob::startImpl() {
+void VerifyJob::startImpl(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
-
-    ASSERT_LOCK(_mtx, context() + "startImpl");
 
     auto self = shared_from_base<VerifyJob>();
 
     // Launch the first batch of requests
 
     std::vector<ReplicaInfo> replicas;
-    if (nextReplicas(replicas, _maxReplicas)) {
+    if (nextReplicas(lock,
+                     replicas,
+                     _maxReplicas)) {
+
         for (ReplicaInfo const& replica: replicas) {
             auto request = _controller->findReplica(
                 replica.worker(),
@@ -241,19 +241,20 @@ void VerifyJob::startImpl() {
             _replicas[request->id()] = replica;
             _requests[request->id()] = request;
         }
-        setState(State::IN_PROGRESS);
-
+        setState(lock,
+                 State::IN_PROGRESS);
     } else {
+
         // In theory this should never happen
-        setState(State::FINISHED);
+
+        setState(lock,
+                 State::FINISHED);
     }
 }
 
-void VerifyJob::cancelImpl() {
+void VerifyJob::cancelImpl(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
-
-    ASSERT_LOCK(_mtx, context() + "cancelImpl");
 
     // To ensure no lingering "side effects" will be left after cancelling this
     // job the request cancellation should be also followed (where it makes a sense)
@@ -308,7 +309,7 @@ void VerifyJob::onRequestFinish(FindRequest::Ptr request) {
 
     if (_state == State::FINISHED) return;
 
-    LOCK(_mtx, context() + "onRequestFinish");
+    util::Lock lock(_mtx, context() + "onRequestFinish");
 
     if (_state == State::FINISHED) return;
 
@@ -331,7 +332,7 @@ void VerifyJob::onRequestFinish(FindRequest::Ptr request) {
 
         // Compare new state of the replica against its older one which was
         // known to the database before this request was launched. Notify
-        // a subscriber of any changes (after releasing LOCK(_mtx)).
+        // a subscriber of any changes (after releasing a lock on the mutex).
         //
         // @see class ReplicaDiff for further specific details on replica
         // differece analysis.
@@ -365,6 +366,7 @@ void VerifyJob::onRequestFinish(FindRequest::Ptr request) {
     } else {
 
         // Report the error and keep going
+
         LOGS(_log, LOG_LVL_ERROR, context() << "failed request " << request->context()
              << " worker: "   << request->worker()
              << " database: " << request->database()
@@ -377,7 +379,9 @@ void VerifyJob::onRequestFinish(FindRequest::Ptr request) {
     _requests.erase(request->id());
 
     std::vector<ReplicaInfo> replicas;
-    if (nextReplicas(replicas, 1)) {
+    if (nextReplicas(lock,
+                     replicas,
+                     1)) {
 
         for (ReplicaInfo const& replica: replicas) {
             auto request = _controller->findReplica(
@@ -405,7 +409,8 @@ void VerifyJob::onRequestFinish(FindRequest::Ptr request) {
         // the case.
 
         if (not _replicas.size()) {
-            finish(ExtendedState::NONE);
+            finish(lock,
+                   ExtendedState::NONE);
         }
     }
 
@@ -424,10 +429,9 @@ void VerifyJob::onRequestFinish(FindRequest::Ptr request) {
     if (_state == State::FINISHED) notify();
 }
 
-bool VerifyJob::nextReplicas(std::vector<ReplicaInfo>& replicas,
+bool VerifyJob::nextReplicas(util::Lock const& lock,
+                             std::vector<ReplicaInfo>& replicas,
                              size_t numReplicas) {
-
-    ASSERT_LOCK(_mtx, context() + "nextReplicas");
 
     return _controller->serviceProvider()->databaseServices()->findOldestReplicas(
                                                                     replicas,

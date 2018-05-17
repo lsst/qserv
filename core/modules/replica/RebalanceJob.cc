@@ -32,7 +32,6 @@
 #include "lsst/log/Log.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/ErrorReporting.h"
-#include "replica/LockUtils.h"
 #include "replica/ServiceProvider.h"
 #include "util/BlockPost.h"
 
@@ -128,11 +127,9 @@ std::string RebalanceJob::extendedPersistentState(SqlGeneratorPtr const& gen) co
                               databaseFamily());
 }
 
-void RebalanceJob::startImpl() {
+void RebalanceJob::startImpl(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl  numIterations=" << _replicaData.numIterations);
-
-    ASSERT_LOCK(_mtx, context() + "startImpl");
 
     _replicaData.numIterations++;
 
@@ -150,14 +147,13 @@ void RebalanceJob::startImpl() {
     );
     _findAllJob->start();
 
-    setState(State::IN_PROGRESS);
+    setState(lock,
+             State::IN_PROGRESS);
 }
 
-void RebalanceJob::cancelImpl() {
+void RebalanceJob::cancelImpl(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
-
-    ASSERT_LOCK(_mtx, context() + "cancelImpl");
 
     // The algorithm will also clear resources taken by various
     // locally created objects.
@@ -173,11 +169,9 @@ void RebalanceJob::cancelImpl() {
     _moveReplicaJobs.clear();
 }
 
-void RebalanceJob::restart() {
+void RebalanceJob::restart(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "restart");
-
-    ASSERT_LOCK(_mtx, context() + "restart");
 
     size_t numLaunched;
     size_t numFinished;
@@ -246,7 +240,7 @@ void RebalanceJob::onPrecursorJobFinish() {
 
     if (_state == State::FINISHED) return;
 
-    LOCK(_mtx, context() + "onPrecursorJobFinish");
+    util::Lock lock(_mtx, context() + "onPrecursorJobFinish");
 
     if (_state == State::FINISHED) return;
 
@@ -265,7 +259,8 @@ void RebalanceJob::onPrecursorJobFinish() {
             LOGS(_log, LOG_LVL_ERROR, context()
                  << "onPrecursorJobFinish  failed due to the precurson job failure");
 
-            finish(ExtendedState::FAILED);
+            finish(lock,
+                   ExtendedState::FAILED);
             break;
         }
 
@@ -299,7 +294,8 @@ void RebalanceJob::onPrecursorJobFinish() {
             LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish:  "
                  << "no eligible 'good' chunks found");
 
-            finish(ExtendedState::SUCCESS);
+            finish(lock,
+                   ExtendedState::SUCCESS);
             break;
         }
 
@@ -310,7 +306,8 @@ void RebalanceJob::onPrecursorJobFinish() {
                  << "the average number of 'good' chunks per worker is 0. "
                  << "This won't trigger the operation");
 
-            finish(ExtendedState::SUCCESS);
+            finish(lock,
+                   ExtendedState::SUCCESS);
             break;
         }
 
@@ -395,7 +392,8 @@ void RebalanceJob::onPrecursorJobFinish() {
             LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish:  "
                  << "no overloaded 'source' workers found");
 
-            finish(ExtendedState::SUCCESS);
+            finish(lock,
+                   ExtendedState::SUCCESS);
             break;
         }
         std::sort(
@@ -431,7 +429,8 @@ void RebalanceJob::onPrecursorJobFinish() {
             LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish:  "
                  << "no underloaded 'destination' workers found");
 
-            finish(ExtendedState::SUCCESS);
+            finish(lock,
+                   ExtendedState::SUCCESS);
             break;
         }
 
@@ -518,13 +517,17 @@ void RebalanceJob::onPrecursorJobFinish() {
 
         // Finish right away if the 'estimate' mode requested.
         if (_estimateOnly) {
-            finish(ExtendedState::SUCCESS);
+            finish(lock,
+                   ExtendedState::SUCCESS);
             break;
         }
 
-        // Finish right away if no badly unbalanced workers found to trigger the operation
+        // Finish right away if no badly unbalanced workers found to trigger
+        // the operation
+
         if (_replicaData.plan.empty()) {
-            finish(ExtendedState::SUCCESS);
+            finish(lock,
+                   ExtendedState::SUCCESS);
             break;
         }
 
@@ -572,11 +575,14 @@ void RebalanceJob::onPrecursorJobFinish() {
 
         if (not _moveReplicaJobs.size()) {
             if (not numFailedLocks) {
-                finish(ExtendedState::SUCCESS);
+                finish(lock,
+                       ExtendedState::SUCCESS);
             } else {
+
                 // Start another iteration by requesting the fresh state of
                 // chunks within the family or until it all fails.
-                restart();
+
+                restart(lock);
                 return;
             }
         }
@@ -606,7 +612,7 @@ void RebalanceJob::onJobFinish(MoveReplicaJob::Ptr const& job) {
         return;
     }
 
-    LOCK(_mtx, context() + "onJobFinish");
+    util::Lock lock(_mtx, context() + "onJobFinish");
 
     if (_state == State::FINISHED) {
         release(job->chunk());
@@ -658,14 +664,18 @@ void RebalanceJob::onJobFinish(MoveReplicaJob::Ptr const& job) {
 
     if (numFinished == numLaunched) {
         if (numSuccess == numLaunched) {
+
             // Make another iteration (and another one, etc. as many as needed)
             // before it succeeds or fails.
             //
             // NOTE: a condition for this jobs to succeed is evaluated in
             //       the precursor job completion code.
-            restart();
+
+            restart(lock);
+
         } else {
-            finish(ExtendedState::FAILED);
+            finish(lock,
+                   ExtendedState::FAILED);
         }
     }
     if (_state == State::FINISHED) notify();

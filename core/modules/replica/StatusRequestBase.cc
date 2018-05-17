@@ -32,7 +32,6 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
-#include "replica/LockUtils.h"
 #include "replica/ProtocolBuffer.h"
 #include "replica/ServiceProvider.h"
 
@@ -66,11 +65,9 @@ StatusRequestBase::StatusRequestBase(ServiceProvider::Ptr const& serviceProvider
         _requestType(requestType) {
 }
 
-void StatusRequestBase::startImpl() {
+void StatusRequestBase::startImpl(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
-
-    ASSERT_LOCK(_mtx, context() + "startImpl");
 
     // Serialize the Request message header and the request itself into
     // the network buffer.
@@ -90,14 +87,12 @@ void StatusRequestBase::startImpl() {
 
     _bufferPtr->serialize(message);
 
-    send();
+    send(lock);
 }
 
-void StatusRequestBase::wait() {
+void StatusRequestBase::wait(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "wait");
-
-    ASSERT_LOCK(_mtx, context() + "wait");
 
     // Allways need to set the interval before launching the timer.
 
@@ -125,7 +120,7 @@ void StatusRequestBase::awaken(boost::system::error_code const& ec) {
 
     if (_state== State::FINISHED) return;
 
-    LOCK(_mtx, context() + "awaken");
+    util::Lock lock(_mtx, context() + "awaken");
 
     if (_state== State::FINISHED) return;
 
@@ -147,7 +142,7 @@ void StatusRequestBase::awaken(boost::system::error_code const& ec) {
 
     _bufferPtr->serialize(message);
 
-    send();
+    send(lock);
 }
 
 void StatusRequestBase::analyze(bool success,
@@ -169,7 +164,7 @@ void StatusRequestBase::analyze(bool success,
 
     if (_state == State::FINISHED) return;
 
-    LOCK(_mtx, context() + "analyze");
+    util::Lock lock(_mtx, context() + "analyze");
 
     if (_state == State::FINISHED) return;
 
@@ -179,37 +174,43 @@ void StatusRequestBase::analyze(bool success,
 
             case proto::ReplicationStatus::SUCCESS:
 
-                // Save the replica state
                 saveReplicaInfo();
 
-                finish(SUCCESS);
+                finish(lock,
+                       SUCCESS);
                 break;
 
             case proto::ReplicationStatus::QUEUED:
-                if (_keepTracking) wait();
-                else               finish(SERVER_QUEUED);
+                if (_keepTracking) wait(lock);
+                else               finish(lock,
+                                          SERVER_QUEUED);
                 break;
 
             case proto::ReplicationStatus::IN_PROGRESS:
-                if (_keepTracking) wait();
-                else               finish(SERVER_IN_PROGRESS);
+                if (_keepTracking) wait(lock);
+                else               finish(lock,
+                                          SERVER_IN_PROGRESS);
                 break;
 
             case proto::ReplicationStatus::IS_CANCELLING:
-                if (_keepTracking) wait();
-                else               finish(SERVER_IS_CANCELLING);
+                if (_keepTracking) wait(lock);
+                else               finish(lock,
+                                          SERVER_IS_CANCELLING);
                 break;
 
             case proto::ReplicationStatus::BAD:
-                finish(SERVER_BAD);
+                finish(lock,
+                       SERVER_BAD);
                 break;
 
             case proto::ReplicationStatus::FAILED:
-                finish(SERVER_ERROR);
+                finish(lock,
+                       SERVER_ERROR);
                 break;
 
             case proto::ReplicationStatus::CANCELLED:
-                finish(SERVER_CANCELLED);
+                finish(lock,
+                       SERVER_CANCELLED);
                 break;
 
             default:
@@ -220,7 +221,8 @@ void StatusRequestBase::analyze(bool success,
         }
 
     } else {
-        finish(CLIENT_ERROR);
+        finish(lock,
+               CLIENT_ERROR);
     }
 
     if (_state == State::FINISHED) notify();

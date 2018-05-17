@@ -33,7 +33,6 @@
 #include "replica/Configuration.h"
 #include "replica/FileClient.h"
 #include "replica/FileUtils.h"
-#include "replica/LockUtils.h"
 #include "replica/Performance.h"
 #include "replica/ServiceProvider.h"
 
@@ -101,7 +100,7 @@ ReplicaInfo WorkerReplicationRequest::replicaInfo() const {
     // the object will be returned to a calling thread while
     // a processing thread may be attempting to update the object.
 
-    LOCK(_mtx, context() + "replicaInfo");
+    util::Lock lock(_mtx, context() + "replicaInfo");
 
     ReplicaInfo const info = _replicaInfo;
 
@@ -192,7 +191,7 @@ bool WorkerReplicationRequestPOSIX::execute () {
     //
     // - All operations with the file system namespace (creating new non-temporary
     //   files, checking for folders and files, renaming files, creating folders, etc.)
-    //   are guarded by acquering LOCK(_mtxDataFolderOperations) where it's needed.
+    //   are guarded by acquering util::Lock lock(_mtxDataFolderOperations) where it's needed.
 
     WorkerInfo   const& inWorkerInfo  = _serviceProvider->config()->workerInfo(sourceWorker());
     WorkerInfo   const& outWorkerInfo = _serviceProvider->config()->workerInfo(worker());
@@ -236,7 +235,7 @@ bool WorkerReplicationRequestPOSIX::execute () {
     WorkerRequest::ErrorContext errorContext;
     boost::system::error_code   ec;
     {
-        LOCK(_mtxDataFolderOperations, context() + "execute:1");
+        util::Lock lock(_mtxDataFolderOperations, context() + "execute:1");
 
         // Check for a presence of input files and calculate space requirement
 
@@ -364,7 +363,7 @@ bool WorkerReplicationRequestPOSIX::execute () {
     // acquering the directory lock to guarantee a consistent view onto the folder.
 
     {
-        LOCK(_mtxDataFolderOperations, context() + "execute:2");
+        util::Lock lock(_mtxDataFolderOperations, context() + "execute:2");
 
         // ATTENTION: as per ISO/IEC 9945 thie file rename operation will
         //            remove empty files. Not sure if this should be treated
@@ -485,7 +484,7 @@ bool WorkerReplicationRequestFS::execute () {
     //
     // - All operations with the file system namespace (creating new non-temporary
     //   files, checking for folders and files, renaming files, creating folders, etc.)
-    //   are guarded by acquering LOCK(_mtxDataFolderOperations) where it's needed.
+    //   are guarded by acquering util::Lock lock(_mtxDataFolderOperations) where it's needed.
 
     WorkerRequest::ErrorContext errorContext;
 
@@ -523,7 +522,7 @@ bool WorkerReplicationRequestFS::execute () {
 
         boost::system::error_code ec;
         {
-            LOCK(_mtxDataFolderOperations, context() + "execute");
+            util::Lock lock(_mtxDataFolderOperations, context() + "execute");
 
             // Check for a presence of input files and calculate space requirement
 
@@ -824,7 +823,7 @@ bool WorkerReplicationRequestFS::finalize () {
     // which may affect other users (like replica lookup operations, etc.). Hence we're
     // acquering the directory lock to guarantee a consistent view onto the folder.
 
-    LOCK(_mtxDataFolderOperations, context() + "finalize");
+    util::Lock lock(_mtxDataFolderOperations, context() + "finalize");
 
     // ATTENTION: as per ISO/IEC 9945 thie file rename operation will
     //            remove empty files. Not sure if this should be treated
@@ -893,7 +892,7 @@ void WorkerReplicationRequestFS::updateInfo() {
     // to guarantee a consistent snapshot of that data structure
     // if other threads will be requesting its copy while it'll be being
     // updated below.
-    LOCK(_mtx, context() + "updateInfo");
+    util::Lock lock(_mtx, context() + "updateInfo");
 
     _replicaInfo = ReplicaInfo(
         status,

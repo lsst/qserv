@@ -32,7 +32,6 @@
 #include "lsst/log/Log.h"
 #include "replica/Configuration.h"
 #include "replica/FileUtils.h"
-#include "replica/LockUtils.h"
 #include "replica/Performance.h"
 #include "replica/ServiceProvider.h"
 
@@ -157,7 +156,7 @@ bool WorkerDeleteRequestPOSIX::execute() {
     WorkerRequest::ErrorContext errorContext;
     boost::system::error_code   ec;
     {
-        LOCK(_mtxDataFolderOperations, context() + "execute");
+        util::Lock lock(_mtxDataFolderOperations, context() + "execute");
 
         fs::path        const dataDir = fs::path(workerInfo.dataDir) / database();
         fs::file_status const stat    = fs::status(dataDir, ec);

@@ -31,7 +31,6 @@
 #include "lsst/log/Log.h"
 #include "replica/Configuration.h"
 #include "replica/DatabaseMySQL.h"
-#include "replica/LockUtils.h"
 #include "replica/ServiceProvider.h"
 
 
@@ -99,11 +98,9 @@ std::string FindAllJob::extendedPersistentState(SqlGeneratorPtr const& gen) cons
                               databaseFamily());
 }
 
-void FindAllJob::startImpl() {
+void FindAllJob::startImpl(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
-
-    ASSERT_LOCK(_mtx, context() + "startImpl");
 
     auto self = shared_from_base<FindAllJob>();
 
@@ -127,15 +124,14 @@ void FindAllJob::startImpl() {
 
     // In case if no workers or database are present in the Configuration
     // at this time.
-    if (not _numLaunched) setState(State::FINISHED);
-    else                  setState(State::IN_PROGRESS);
+
+    if (not _numLaunched) setState(lock, State::FINISHED);
+    else                  setState(lock, State::IN_PROGRESS);
 }
 
-void FindAllJob::cancelImpl() {
+void FindAllJob::cancelImpl(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
-
-    ASSERT_LOCK(_mtx, context() + "cancelImpl");
 
     // To ensure no lingering "side effects" will be left after cancelling this
     // job the request cancellation should be also followed (where it makes a sense)
@@ -193,7 +189,7 @@ void FindAllJob::onRequestFinish(FindAllRequest::Ptr const& request) {
     
     if (_state == State::FINISHED) return;
 
-    LOCK(_mtx, context() + "onRequestFinish[" + request->id() + "]");
+    util::Lock lock(_mtx, context() + "onRequestFinish[" + request->id() + "]");
 
     if (_state == State::FINISHED) return;
 
@@ -325,7 +321,8 @@ void FindAllJob::onRequestFinish(FindAllRequest::Ptr const& request) {
                 _replicaData.isGood[chunk][worker] = isGood;
             }
         }
-        finish(_numSuccess == _numLaunched ? ExtendedState::SUCCESS :
+        finish(lock,
+               _numSuccess == _numLaunched ? ExtendedState::SUCCESS :
                                              ExtendedState::FAILED);
         notify();
     }

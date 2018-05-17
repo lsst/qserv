@@ -180,39 +180,51 @@ private:
      * This operation is supposed to be invoken in a context where proper
      * thread safety synchronization has been taken care of.
      *
-     * @see DatabaseServices::findWorkerReplicas()
+     * @param lock      - a lock on a mutex must be acquired before calling this method
+     * @param replicas  - a collection of replicas found upon a successful completion
+     * @param worker    - the name of a worker (as per the request)
+     * @param database  - the name of a database (as per the request)
+     * 
+     * @return 'true' if the operation has succeeded (even if no replicas were found)
      */
-    bool findWorkerReplicasImpl(std::vector<ReplicaInfo>& replicas,
+    bool findWorkerReplicasImpl(util::Lock const& lock,
+                                std::vector<ReplicaInfo>& replicas,
                                 std::string const& worker,
                                 std::string const& database) const;
 
     /**
      * Actual implementation of the replica update algorithm.
      *
+     * @param lock - a lock on a mutex must be acquired before calling this method
      * @param info - a replica to be added/updated or deleted
      */
-    void saveReplicaInfoImpl(ReplicaInfo const& info);
+    void saveReplicaInfoImpl(util::Lock const& lock,
+                             ReplicaInfo const& info);
 
     /**
      * Actual implementation of the multiple replicas update algorithm.
      *
+     * @param lock           - a lock on a mutex must be acquired before calling this method
      * @param worker         - the name of a worker (as per the request)
      * @param database       - the name of a database (as per the request)
      * @param infoCollection - a collection of replicas
      */
-    void saveReplicaInfoCollectionImpl(std::string const& worker,
+    void saveReplicaInfoCollectionImpl(util::Lock const& lock,
+                                       std::string const& worker,
                                        std::string const& database,
                                        ReplicaInfoCollection const& infoCollection);
 
     /**
      * Fetch replicas satisfying the specified query
      *
+     * @param lock     - a lock on a mutex must be acquired before calling this method
      * @param replicas - a collection of replicas to be returned
      * @param query    - an SQL query against the corresponding table
      *
      * @return 'true' if the operation has succeeded (even if no replicas were found)
      */
-    bool findReplicasImpl(std::vector<ReplicaInfo>& replicas,
+    bool findReplicasImpl(util::Lock const& lock,
+                          std::vector<ReplicaInfo>& replicas,
                           std::string const& query) const;
 
 private:

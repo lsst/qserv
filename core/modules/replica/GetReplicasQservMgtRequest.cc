@@ -37,7 +37,6 @@
 #include "lsst/log/Log.h"
 #include "replica/Configuration.h"
 #include "replica/DatabaseMySQL.h"
-#include "replica/LockUtils.h"
 #include "replica/ServiceProvider.h"
 
 namespace {
@@ -107,7 +106,11 @@ std::string GetReplicasQservMgtRequest::extendedPersistentState(SqlGeneratorPtr 
 void GetReplicasQservMgtRequest::setReplicas(
         wpublish::GetChunkListQservRequest::ChunkCollection const& collection) {
 
-    LOCK(_mtx, context() + "setReplicas");
+    util::Lock lock(_mtx, context() + "setReplicas");
+
+    assertState(lock,
+                State::IN_PROGRESS,
+                context() + "setReplicas");
 
     // Filter resuls by databases participating in the family
     std::set<std::string> databases;
@@ -122,9 +125,7 @@ void GetReplicasQservMgtRequest::setReplicas(
     }
 }
 
-void GetReplicasQservMgtRequest::startImpl() {
-
-    ASSERT_LOCK(_mtx, context() + "startImpl");
+void GetReplicasQservMgtRequest::startImpl(util::Lock const& lock) {
 
     auto const request = shared_from_base<GetReplicasQservMgtRequest>();
 
@@ -151,13 +152,16 @@ void GetReplicasQservMgtRequest::startImpl() {
     );
     XrdSsiResource resource(ResourceUnit::makeWorkerPath(_worker));
     _service->ProcessRequest(*_qservRequest, resource);
+
+    setState(lock,
+             State::IN_PROGRESS);
 }
 
-void GetReplicasQservMgtRequest::finishImpl() {
+void GetReplicasQservMgtRequest::finishImpl(util::Lock const& lock) {
 
-    ASSERT_LOCK(_mtx, context() + "finishImpl");
-
-    assertState(State::FINISHED, "GetReplicasQservMgtRequest::finishImpl");
+    assertState(lock,
+                State::FINISHED,
+                context() + "finishImpl");
 
     if (_extendedState == ExtendedState::CANCELLED) {
         // And if the SSI request is still around then tell it to stop
@@ -169,9 +173,9 @@ void GetReplicasQservMgtRequest::finishImpl() {
     _qservRequest = nullptr;
 }
 
-void GetReplicasQservMgtRequest::notify() {
+void GetReplicasQservMgtRequest::notifyImpl() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
+    LOGS(_log, LOG_LVL_DEBUG, context() << "notifyImpl");
 
     // The callback is being made asynchronously in a separate thread
     // to avoid blocking the current thread.

@@ -30,6 +30,7 @@
 // System headers
 #include <atomic>
 #include <memory>
+#include <mutex>
 #include <string>
 
 // THird party headers
@@ -70,6 +71,9 @@ public:
     /// The pointer type for the database connector which provides a database-specific
     /// SQL generation services.
     typedef std::shared_ptr<database::mysql::Connection> SqlGeneratorPtr;
+
+    /// The lock type used by the implementations
+    typedef std::lock_guard<util::Mutex> LockType;
 
     /// Primary public state of the request
     enum State {
@@ -258,8 +262,10 @@ protected:
     /**
       * This method is supposed to be provided by subclasses for additional
       * subclass-specific actions to begin processing the request.
+      *
+      * @param lock - the lock must be acquired by a caller of the metod
       */
-    virtual void startImpl()=0;
+    virtual void startImpl(util::Lock const& lock)=0;
 
     /**
      * Request expiration timer's handler. The expiration interval (if any)
@@ -280,15 +286,17 @@ protected:
     /**
       * This method is supposed to be provided by subclasses
       * to finalize request processing as required by the subclass.
+      *
+      * @param lock - the lock must be acquired by a caller of the metod
       */
-    virtual void finishImpl()=0;
+    virtual void finishImpl(util::Lock const& lock)=0;
 
     /**
      * This method is supposed to be provided by subclasses to handle
      * request completion steps, such as notifying a party which initiated
      * the request, etc.
      */
-    virtual void notify()=0;
+    virtual void notifyImpl()=0;
 
     /**
      * Ensure the object is in the deseride internal state. Throw an
@@ -298,12 +306,14 @@ protected:
      *        there is a problem with the application implementation
      *        or the underlying run-time system.
      *
+     * @param lock         - the lock must be acquired by a caller of the method
      * @param desiredState - desired state
      * @param context      - context from which the state test is requested
      *
      * @throws std::logic_error
      */
-    void assertState(State desiredState,
+    void assertState(util::Lock const& lock,
+                     State desiredState,
                      std::string const& context) const;
 
     /**
@@ -314,9 +324,14 @@ protected:
      *
      * - reporting change state in a debug stream
      * - verifying the correctness of the state transition
+     *
+     * @param lock          - the lock must be acquired by a caller of the method
+     * @param state         - primary state
+     * @param extendedState - extended state
      */
-    void setState(State state,
-                  ExtendedState extendedStat);
+    void setState(util::Lock const& lock,
+                  State state,
+                  ExtendedState extendedState=ExtendedState::NONE);
 
 protected:
 

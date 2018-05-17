@@ -38,7 +38,6 @@
 #include "replica/Controller.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
-#include "replica/LockUtils.h"
 #include "replica/Messenger.h"
 #include "replica/ProtocolBuffer.h"
 #include "replica/ServiceProvider.h"
@@ -103,11 +102,9 @@ DeleteRequest::DeleteRequest(ServiceProvider::Ptr const& serviceProvider,
     _serviceProvider->assertDatabaseIsValid(database);
 }
 
-void DeleteRequest::startImpl() {
+void DeleteRequest::startImpl(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
-
-    ASSERT_LOCK(_mtx, context() + "startImpl");
 
     // Serialize the Request message header and the request itself into
     // the network buffer.
@@ -128,14 +125,12 @@ void DeleteRequest::startImpl() {
 
     _bufferPtr->serialize(message);
 
-    send ();
+    send(lock);
 }
 
-void DeleteRequest::wait() {
+void DeleteRequest::wait(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "wait");
-
-    ASSERT_LOCK(_mtx, context() + "wait");
 
     // Allways need to set the interval before launching the timer.
 
@@ -163,7 +158,7 @@ void DeleteRequest::awaken(boost::system::error_code const& ec) {
 
     if (_state == State::FINISHED) return;
 
-    LOCK(_mtx, context() + "awaken");
+    util::Lock lock(_mtx, context() + "awaken");
 
     if (_state == State::FINISHED) return;
 
@@ -185,12 +180,10 @@ void DeleteRequest::awaken(boost::system::error_code const& ec) {
 
     _bufferPtr->serialize(message);
 
-    send ();
+    send(lock);
 }
 
-void DeleteRequest::send() {
-
-    ASSERT_LOCK(_mtx, context() + "send");
+void DeleteRequest::send(util::Lock const& lock) {
 
     auto self = shared_from_base<DeleteRequest>();
 
@@ -201,7 +194,9 @@ void DeleteRequest::send() {
         [self] (std::string const& id,
                 bool success,
                 proto::ReplicationResponseDelete const& response) {
-            self->analyze (success, response);
+
+            self->analyze(success,
+                          response);
         }
     );
 }
@@ -225,7 +220,7 @@ void DeleteRequest::analyze(bool success,
 
     if (_state == State::FINISHED) return;
 
-    LOCK(_mtx, context() + "analyze");
+    util::Lock lock(_mtx, context() + "analyze");
 
     if (_state == State::FINISHED) return;
 
@@ -261,22 +256,26 @@ void DeleteRequest::analyze(bool success,
                 // Save the replica state
                 _serviceProvider->databaseServices()->saveReplicaInfo(_replicaInfo);
 
-                finish(SUCCESS);
+                finish(lock,
+                       SUCCESS);
                 break;
 
             case proto::ReplicationStatus::QUEUED:
-                if (_keepTracking) wait();
-                else               finish(SERVER_QUEUED);
+                if (_keepTracking) wait(lock);
+                else               finish(lock,
+                                          SERVER_QUEUED);
                 break;
 
             case proto::ReplicationStatus::IN_PROGRESS:
-                if (_keepTracking) wait();
-                else               finish(SERVER_IN_PROGRESS);
+                if (_keepTracking) wait(lock);
+                else               finish(lock,
+                                          SERVER_IN_PROGRESS);
                 break;
 
             case proto::ReplicationStatus::IS_CANCELLING:
-                if (_keepTracking) wait();
-                else               finish(SERVER_IS_CANCELLING);
+                if (_keepTracking) wait(lock);
+                else               finish(lock,
+                                          SERVER_IS_CANCELLING);
                 break;
 
             case proto::ReplicationStatus::BAD:
@@ -286,19 +285,22 @@ void DeleteRequest::analyze(bool success,
                 if (_extendedServerStatus == ExtendedCompletionStatus::EXT_STATUS_DUPLICATE) {
                     Request::_duplicateRequestId = message.duplicate_request_id();
                     if (_allowDuplicate && _keepTracking) {
-                        wait();
+                        wait(lock);
                         return;
                     }
                 }
-                finish(SERVER_BAD);
+                finish(lock,
+                       SERVER_BAD);
                 break;
 
             case proto::ReplicationStatus::FAILED:
-                finish(SERVER_ERROR);
+                finish(lock,
+                       SERVER_ERROR);
                 break;
 
             case proto::ReplicationStatus::CANCELLED:
-                finish(SERVER_CANCELLED);
+                finish(lock,
+                       SERVER_CANCELLED);
                 break;
 
             default:
@@ -309,7 +311,8 @@ void DeleteRequest::analyze(bool success,
         }
 
     } else {
-        finish(CLIENT_ERROR);
+        finish(lock,
+               CLIENT_ERROR);
     }
     if (_state == State::FINISHED) notify();
 }

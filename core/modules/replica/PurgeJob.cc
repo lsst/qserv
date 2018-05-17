@@ -33,7 +33,6 @@
 #include "replica/Configuration.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/ErrorReporting.h"
-#include "replica/LockUtils.h"
 #include "replica/ServiceProvider.h"
 #include "util/BlockPost.h"
 
@@ -120,11 +119,9 @@ std::string PurgeJob::extendedPersistentState(SqlGeneratorPtr const& gen) const 
                               numReplicas());
 }
 
-void PurgeJob::startImpl() {
+void PurgeJob::startImpl(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl  _numIterations=" << _numIterations);
-
-    ASSERT_LOCK(_mtx, context() + "startImpl");
 
     ++_numIterations;
 
@@ -142,14 +139,13 @@ void PurgeJob::startImpl() {
     );
     _findAllJob->start();
 
-    setState(State::IN_PROGRESS);
+    setState(lock,
+             State::IN_PROGRESS);
 }
 
-void PurgeJob::cancelImpl() {
+void PurgeJob::cancelImpl(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
-
-    ASSERT_LOCK(_mtx, context() + "cancelImpl");
 
     // The algorithm will also clear resources taken by various
     // locally created objects.
@@ -174,11 +170,9 @@ void PurgeJob::cancelImpl() {
     _numSuccess  = 0;
 }
 
-void PurgeJob::restart() {
+void PurgeJob::restart(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "restart");
-
-    ASSERT_LOCK(_mtx, context() + "restart");
 
     if (_findAllJob or (_numLaunched != _numFinished)) {
         throw std::logic_error ("PurgeJob::restart ()  not allowed in this object state");
@@ -221,7 +215,7 @@ void PurgeJob::onPrecursorJobFinish() {
 
     if (_state == State::FINISHED) return;
 
-    LOCK(_mtx, context() + "onPrecursorJobFinish");
+    util::Lock lock(_mtx, context() + "onPrecursorJobFinish");
 
     if (_state == State::FINISHED) return;
 
@@ -284,7 +278,7 @@ void PurgeJob::onPrecursorJobFinish() {
         // be issued.
         //
         // Note, this map includes chunks in any state.
-        //
+
         std::map<std::string, size_t> worker2occupancy;
 
         for (auto chunk: replicaData.chunks.chunkNumbers()) {
@@ -331,6 +325,7 @@ void PurgeJob::onPrecursorJobFinish() {
             }
 
             // This list of workers will be reduced as the replica will get deleted
+
             std::list<std::string> goodWorkersOfThisChunk;
             for (auto&& entry: replicaData.isGood.at(chunk)) {
                 std::string const& worker = entry.first;
@@ -360,9 +355,12 @@ void PurgeJob::onPrecursorJobFinish() {
                     }
                 }
                 if (targetWorker.empty() or not maxNumChunks) {
+
                     LOGS(_log, LOG_LVL_ERROR, context() << "onPrecursorJobFinish  "
                          << "failed to find a target worker for chunk: " << chunk);
-                    finish(ExtendedState::FAILED);
+
+                    finish(lock,
+                           ExtendedState::FAILED);
                     break;
                 }
 
@@ -409,19 +407,26 @@ void PurgeJob::onPrecursorJobFinish() {
 
             if (not _jobs.size()) {
                 if (not _numFailedLocks) {
+
                     // Finish right away if no problematic chunks found
-                    finish(ExtendedState::SUCCESS);
+
+                    finish(lock,
+                           ExtendedState::SUCCESS);
+
                 } else {
+
                     // Some of the chuks were locked and yet, no sigle job was
                     // lunched. Hence we should start another iteration by requesting
                     // the fresh state of the chunks within the family.
-                    restart();
+
+                    restart(lock);
                     return;
                 }
             }
         }
     } else {
-        finish(ExtendedState::FAILED);
+        finish(lock,
+               ExtendedState::FAILED);
     }
     if (_state == State::FINISHED) notify();
 }
@@ -445,7 +450,7 @@ void PurgeJob::onDeleteJobFinish(DeleteReplicaJob::Ptr const& job) {
         return;
     }
 
-    LOCK(_mtx, context() + "onDeleteJobFinish");
+    util::Lock lock(_mtx, context() + "onDeleteJobFinish");
 
     if (_state == State::FINISHED) {
         release(job->chunk());
@@ -464,11 +469,13 @@ void PurgeJob::onDeleteJobFinish(DeleteReplicaJob::Ptr const& job) {
         DeleteReplicaJobResult const& jobReplicaData = job->getReplicaData();
 
         // Append replicas infos by the end of the list
+
         _replicaData.replicas.insert(_replicaData.replicas.end(),
                                      jobReplicaData.replicas.begin(),
                                      jobReplicaData.replicas.end());
 
         // Merge the replica infos into the dictionary
+
         for (auto&& databaseEntry: jobReplicaData.chunks.at(job->chunk())) {
             std::string const& database = databaseEntry.first;
             _replicaData.chunks[job->chunk()][database][job->worker()] =
@@ -481,7 +488,7 @@ void PurgeJob::onDeleteJobFinish(DeleteReplicaJob::Ptr const& job) {
 
     // Make sure the chunk is released if this was the last
     // job in its scope.
-    //
+
     _chunk2jobs.at(job->chunk()).erase(job->worker());
     if (_chunk2jobs.at(job->chunk()).empty()) {
         _chunk2jobs.erase(job->chunk());
@@ -497,14 +504,17 @@ void PurgeJob::onDeleteJobFinish(DeleteReplicaJob::Ptr const& job) {
 
                 // Make another iteration (and another one, etc. as many as needed)
                 // before it succeeds or fails.
-                restart();
+
+                restart(lock);
                 return;
 
             } else {
-                finish(ExtendedState::SUCCESS);
+                finish(lock,
+                       ExtendedState::SUCCESS);
             }
         } else {
-            finish(ExtendedState::FAILED);
+            finish(lock,
+                   ExtendedState::FAILED);
         }
     }
     if (_state == State::FINISHED) notify();

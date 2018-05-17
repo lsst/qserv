@@ -40,7 +40,6 @@
 #include <boost/asio.hpp>
 
 // Qserv headers
-#include "replica/LockUtils.h"
 #include "replica/Request.h"
 #include "replica/RequestTypesFwd.h"
 #include "replica/ServiceProvider.h"
@@ -600,7 +599,7 @@ public:
      */
     template <class REQUEST_TYPE>
     void requestsOfType(std::vector<typename REQUEST_TYPE::Ptr>& requests) const {
-        LOCK(_mtx, context() + "requestsOfType");
+        util::Lock lock(_mtx, context() + "requestsOfType");
         requests.clear();
         for (auto&& itr: _registry)
             if (typename REQUEST_TYPE::Ptr ptr =
@@ -614,7 +613,7 @@ public:
      */
     template <class REQUEST_TYPE>
     size_t numRequestsOfType() const {
-        LOCK(_mtx, context() + "numRequestsOfType");
+        util::Lock lock(_mtx, context() + "numRequestsOfType");
         size_t result(0);
         for (auto&& itr: _registry) {
             if (typename REQUEST_TYPE::Ptr request =

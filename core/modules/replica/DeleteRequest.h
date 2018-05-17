@@ -134,17 +134,25 @@ private:
       *
       * @see Request::startImpl()
       */
-    void startImpl() final;
+    void startImpl(util::Lock const& lock) final;
 
-    /// Start the timer before attempting the previously failed
-    /// or successfull (if a status check is needed) step.
-    void wait();
+    /**
+     * Start the timer before attempting the previously failed
+     * or successfull (if a status check is needed) step.
+     *
+     * @param lock - a lock on a mutex must be acquired before calling this method
+     */
+    void wait(util::Lock const& lock);
 
     /// Callback handler for the asynchronious operation
     void awaken(boost::system::error_code const& ec);
 
-    /// Send the serialized content of the buffer to a worker
-    void send();
+    /**
+     * Send the serialized content of the buffer to a worker
+     *
+     * @param lock - a lock on a mutex must be acquired before calling this method
+     */
+    void send(util::Lock const& lock);
 
     /**
      * Process the worker response to the requested operation.

@@ -117,7 +117,7 @@ public:
     FixUpJob& operator=(FixUpJob const&) = delete;
 
     /// Destructor (non-trivial)
-    ~FixUpJob() override;
+    ~FixUpJob() final;
 
     /// Return the name of a database family defining a scope of the operation
     std::string const& databaseFamily() const { return _databaseFamily; }
@@ -166,21 +166,21 @@ protected:
       *
       * @see Job::startImpl()
       */
-    void startImpl() override;
+    void startImpl(util::Lock const& lock) final;
 
     /**
       * Implement the corresponding method of the base class.
       *
       * @see Job::startImpl()
       */
-    void cancelImpl() override;
+    void cancelImpl(util::Lock const& lock) final;
 
     /**
       * Implement the corresponding method of the base class.
       *
       * @see Job::notify()
       */
-    void notify() override;
+    void notify() final;
 
     /**
      * The calback function to be invoked on a completion of the precursor job
@@ -199,8 +199,10 @@ protected:
      * Restart the job from scratch. This method will reset object context
      * to a state it was before method Job::startImpl() called and then call
      * Job::startImpl() again.
+     * 
+     * @param lock - the lock must be acquired by a caller of the method
      */
-    void restart();
+    void restart(util::Lock const& lock);
 
     /**
      * Unconditionally release the specified chunk

@@ -24,9 +24,15 @@
 #include "util/Mutex.h"
 
 // System headers
-
+#include <cassert>
 
 // Qserv headers
+#include "lsst/log/Log.h"
+#include "util/IterableFormatter.h"
+
+namespace {
+LOG_LOGGER _log = LOG_GET("lsst.qserv.util.Mutex");
+}
 
 namespace lsst {
 namespace qserv {
@@ -34,5 +40,49 @@ namespace util {
 
 std::mutex Mutex::_lockedIdMtx;
 std::set<unsigned int> Mutex::_lockedId;
+/*
+Lock&& lock(Mutex& mutex, std::string const& context) {
 
+    if (not context.empty()) {
+        LOGS(_log, LOG_LVL_DEBUG, context << "  LOCK[" << mutex.id() << "]:1 "
+             << "  LOCKED: " << util::printable(Mutex::lockedId(), "", "", " "));
+    }
+
+    assert(not mutex.lockedByCaller());
+    Lock lock(mutex);
+
+    if (not context.empty()) {
+        LOGS(_log, LOG_LVL_DEBUG, context << "  LOCK[" << mutex.id() << "]:2 "
+             << "  LOCKED: " << util::printable(Mutex::lockedId(), "", "", " "));
+    }
+    return std::move(lock);
+}
+*/
+Lock::Lock(Mutex& mutex, std::string const& context)
+        :   _mutex(mutex),
+            _context(context) {
+
+    if (not _context.empty()) {
+        LOGS(_log, LOG_LVL_DEBUG, _context << "  LOCK[" << _mutex.id() << "]:1 "
+             << "  LOCKED: " << util::printable(Mutex::lockedId(), "", "", " "));
+    }
+
+    assert(not _mutex.lockedByCaller());
+    _mutex.lock();
+
+    if (not _context.empty()) {
+        LOGS(_log, LOG_LVL_DEBUG, _context << "  LOCK[" << _mutex.id() << "]:2 "
+             << "  LOCKED: " << util::printable(Mutex::lockedId(), "", "", " "));
+    }
+
+}
+
+Lock::~Lock() {
+
+    if (not _context.empty()) {
+        LOGS(_log, LOG_LVL_DEBUG, _context << "  LOCK[" << _mutex.id() << "]:3 "
+             << "  LOCKED: " << util::printable(Mutex::lockedId(), "", "", " "));
+    }
+    _mutex.unlock();
+}
 }}} // namespace lsst::qserv::util

@@ -34,7 +34,6 @@
 #include "lsst/log/Log.h"
 #include "proto/replication.pb.h"
 #include "replica/Messenger.h"
-#include "replica/LockUtils.h"
 #include "replica/Performance.h"
 #include "replica/ProtocolBuffer.h"
 
@@ -189,11 +188,9 @@ ServiceManagementRequestBase::ServiceManagementRequestBase(
         _requestType(requestType) {
 }
 
-void ServiceManagementRequestBase::startImpl() {
+void ServiceManagementRequestBase::startImpl(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
-
-    ASSERT_LOCK(_mtx, context() + "startImpl");
 
     // Serialize the Request message header and the request itself into
     // the network buffer.
@@ -218,7 +215,9 @@ void ServiceManagementRequestBase::startImpl() {
         [self] (std::string const& id,
                 bool success,
                 proto::ReplicationServiceResponse const& response) {
-            self->analyze(success, response);
+
+            self->analyze(success,
+                          response);
         }
     );
 }
@@ -242,7 +241,7 @@ void ServiceManagementRequestBase::analyze(bool success,
 
     if (_state == State::FINISHED) return;
 
-    LOCK(_mtx, context() + "analyze");
+    util::Lock lock(_mtx, context() + "analyze");
 
     if (_state == State::FINISHED) return;
 
@@ -260,15 +259,18 @@ void ServiceManagementRequestBase::analyze(bool success,
 
                 _serviceState.set(message);
 
-                finish(SUCCESS);
+                finish(lock,
+                       SUCCESS);
                 break;
 
             default:
-                finish(SERVER_ERROR);
+                finish(lock,
+                       SERVER_ERROR);
                 break;
         }
     } else {
-        finish(CLIENT_ERROR);
+        finish(lock,
+               CLIENT_ERROR);
     }
 
     if (_state == State::FINISHED) notify();

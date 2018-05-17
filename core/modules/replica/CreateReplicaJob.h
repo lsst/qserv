@@ -114,7 +114,7 @@ public:
     CreateReplicaJob& operator=(CreateReplicaJob const&) = delete;
 
     /// Destructor
-    ~CreateReplicaJob() override = default;
+    ~CreateReplicaJob() final = default;
 
     /// The name of a database family
     std::string const& databaseFamily() const { return _databaseFamily; }
@@ -175,14 +175,14 @@ protected:
       *
       * @see Job::startImpl()
       */
-    void startImpl() override;
+    void startImpl(util::Lock const& lock) final;
 
     /**
       * Implement the corresponding method of the base class.
       *
       * @see Job::startImpl()
       */
-    void cancelImpl() override;
+    void cancelImpl(util::Lock const& lock) final;
 
     /**
       * Implement the corresponding method of the base class.

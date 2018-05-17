@@ -36,7 +36,6 @@
 #include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
 #include "replica/ErrorReporting.h"
-#include "replica/LockUtils.h"
 #include "replica/ServiceManagementRequest.h"
 #include "replica/ServiceProvider.h"
 #include "util/BlockPost.h"
@@ -137,11 +136,9 @@ std::string DeleteWorkerJob::extendedPersistentState(SqlGeneratorPtr const& gen)
                               permanentDelete() ? 1 : 0);
 }
 
-void DeleteWorkerJob::startImpl() {
+void DeleteWorkerJob::startImpl(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
-
-    ASSERT_LOCK(_mtx, context() + "startImpl");
 
     util::BlockPost blockPost(1000, 2000);
 
@@ -205,7 +202,8 @@ void DeleteWorkerJob::startImpl() {
                     // The rest will be happening in a method processing the completion
                     // of the above launched requests.
 
-                    setState(State::IN_PROGRESS);
+                    setState(lock,
+                             State::IN_PROGRESS);
                     return;
                 }
             }
@@ -214,17 +212,17 @@ void DeleteWorkerJob::startImpl() {
 
     // Since the worker is not available then go straight to a point
     // at which we'll be changing its state within the replication system
-    disableWorker();
 
-    setState(State::IN_PROGRESS);
+    disableWorker(lock);
+
+    setState(lock,
+             State::IN_PROGRESS);
     return;
 }
 
-void DeleteWorkerJob::cancelImpl() {
+void DeleteWorkerJob::cancelImpl(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
-
-    ASSERT_LOCK(_mtx, context() + "cancelImpl");
 
     // To ensure no lingering "side effects" will be left after cancelling this
     // job the request cancellation should be also followed (where it makes a sense)
@@ -267,7 +265,7 @@ void DeleteWorkerJob::onRequestFinish(FindAllRequest::Ptr const& request) {
     
     if (_state == State::FINISHED) return;
 
-    LOCK(_mtx, context() + "onRequestFinish");
+    util::Lock lock(_mtx, context() + "onRequestFinish");
 
     if (_state == State::FINISHED) return;
 
@@ -281,15 +279,13 @@ void DeleteWorkerJob::onRequestFinish(FindAllRequest::Ptr const& request) {
     // because the're related to a worker which is going to be removed, and
     // this worker may already be experiencing problems.
     //
-    if (_numFinished == _numLaunched) disableWorker();
+    if (_numFinished == _numLaunched) disableWorker(lock);
 }
 
 void
-DeleteWorkerJob::disableWorker() {
+DeleteWorkerJob::disableWorker(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "disableWorker");
-
-    ASSERT_LOCK(_mtx, context() + "disableWorker");
 
     // Temporary disable this worker from the configuration. If it's requsted
     // to be permanently deleted this will be done only after all other relevamnt
@@ -334,7 +330,7 @@ void DeleteWorkerJob::onJobFinish(FindAllJob::Ptr const& job) {
     
     if (_state == State::FINISHED) return;
 
-    LOCK(_mtx, context() + "onJobFinish(FindAllJob)");
+    util::Lock lock(_mtx, context() + "onJobFinish(FindAllJob)");
 
     if (_state == State::FINISHED) return;
 
@@ -371,7 +367,8 @@ void DeleteWorkerJob::onJobFinish(FindAllJob::Ptr const& job) {
             }
         }
     } else {
-        finish(ExtendedState::FAILED);
+        finish(lock,
+               ExtendedState::FAILED);
     }
     if (_state == State::FINISHED) notify();
 }
@@ -391,14 +388,15 @@ void DeleteWorkerJob::onJobFinish(ReplicateJob::Ptr const& job) {
     
     if (_state == State::FINISHED) return;
 
-    LOCK(_mtx, context() + "onJobFinish(ReplicateJob)");
+    util::Lock lock(_mtx, context() + "onJobFinish(ReplicateJob)");
 
     if (_state == State::FINISHED) return;
 
     _numFinished++;
 
     if (job->extendedState() != ExtendedState::SUCCESS) {
-        finish(ExtendedState::FAILED);
+        finish(lock,
+               ExtendedState::FAILED);
     } else {
 
         _numSuccess++;
@@ -444,7 +442,8 @@ void DeleteWorkerJob::onJobFinish(ReplicateJob::Ptr const& job) {
             if (_permanentDelete) {
                 _controller->serviceProvider()->config()->deleteWorker(_worker);
             }
-            finish(ExtendedState::SUCCESS);
+            finish(lock,
+                   ExtendedState::SUCCESS);
         }
     }
     if (_state == State::FINISHED) notify();

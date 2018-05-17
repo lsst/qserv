@@ -293,8 +293,8 @@ private:
      *
      * The method may throw the same exceptions as method 'sent'
      *
-     * @param id  - a unique identifier of a request
-     * @param ptr - a pointer to the request wrapper object
+     * @param id   - a unique identifier of a request
+     * @param ptr  - a pointer to the request wrapper object
      */
     void sendImpl(std::string const& id,
                   WrapperBase::Ptr const& ptr);
@@ -316,19 +316,30 @@ private:
      * w/o notifying a subscriber.
      *
      * NOTE: This method is called internally when there is a doubt that
-     * it's possible to do a clean recovery from a failure.
+     *       it's possible to do a clean recovery from a failure.
+     *
+     * @param lock - a lock on a mutex must be acquired before calling this method
      */
-    void restart();
+    void restart(util::Lock const& lock);
 
-    /// Start resolving the destination worker host & port
-    void resolve();
+    /**
+     * Start resolving the destination worker host & port
+     *
+     * @param lock - a lock on a mutex must be acquired before calling this method
+     * */
+    void resolve(util::Lock const& lock);
 
     /// Callback handler for the asynchronious operation
     void resolved(boost::system::error_code const& ec,
                   boost::asio::ip::tcp::resolver::iterator iter);
 
-    /// Start resolving the destination worker host & port
-    void connect(boost::asio::ip::tcp::resolver::iterator iter);
+    /**
+     * Start resolving the destination worker host & port
+     *
+     * @param lock - a lock on a mutex must be acquired before calling this method
+     */
+    void connect(util::Lock const& lock,
+                 boost::asio::ip::tcp::resolver::iterator iter);
 
     /**
      * Callback handler for the asynchronious operation upon its
@@ -338,8 +349,12 @@ private:
     void connected(boost::system::error_code const& ec,
                    boost::asio::ip::tcp::resolver::iterator iter);
 
-    /// Start a timeout before attempting to restart the connection
-    void waitBeforeRestart();
+    /**
+     * Start a timeout before attempting to restart the connection
+     * 
+     * @param lock - a lock on a mutex must be acquired before calling this method
+     */
+    void waitBeforeRestart(util::Lock const& lock);
 
     /// Callback handler fired for restarting the connection
     void awakenForRestart(boost::system::error_code const& ec);
@@ -347,15 +362,21 @@ private:
     /**
      * Lookup for the next available request and begin sending it
      * unless there is another ongoing request at a time of the call.
+     * 
+     * @param lock - a lock on a mutex must be acquired before calling this method
      */
-    void sendRequest();
+    void sendRequest(util::Lock const& lock);
 
     /// Callback handler fired upon a completion of the request sending
     void requestSent(boost::system::error_code const& ec,
                      size_t bytes_transferred);
 
-    /// Begin receiving a response
-    void receiveResponse();
+    /**
+     * Begin receiving a response
+     * 
+     * @param lock - a lock on a mutex must be acquired before calling this method
+     */
+    void receiveResponse(util::Lock const& lock);
 
     /// Callback handler fired upon a completion of the response receiving
     void responseReceived(boost::system::error_code const& ec,
@@ -366,12 +387,14 @@ private:
      * of a subsequent message and return that length along with the completion
      * status of the operation.
      *
+     * @param lock  - a lock on a mutex must be acquired before calling this method
      * @param buf   - the buffer to use
      * @param bytes - the length in bytes extracted from the frame
      *
      * @return the completion code of the operation
      */
-    boost::system::error_code syncReadFrame(ProtocolBuffer& buf,
+    boost::system::error_code syncReadFrame(util::Lock const& lock,
+                                            ProtocolBuffer& buf,
                                             size_t& bytes);
 
    /**
@@ -382,14 +405,16 @@ private:
      * The method will throw exception std::logic_error if the header's
      * content won't match expectations.
      *
-     * @param buf     - the buffer to use
-     * @param bytes   - a expected length of the message (obtained from a preceeding frame)
-     *                  to be received into the network buffer from the network.
-     * @param id      - a unique identifier of a request to match teh 'id' in a response header
+     * @param lock  - a lock on a mutex must be acquired before calling this method
+     * @param buf   - the buffer to use
+     * @param bytes - a expected length of the message (obtained from a preceeding frame)
+     *                to be received into the network buffer from the network.
+     * @param id    - a unique identifier of a request to match teh 'id' in a response header
      *
      * @return the completion code of the operation
      */
-    boost::system::error_code syncReadVerifyHeader(ProtocolBuffer& buf,
+    boost::system::error_code syncReadVerifyHeader(util::Lock const& lock,
+                                                   ProtocolBuffer& buf,
                                                    size_t bytes,
                                                    std::string const& id);
 
@@ -398,13 +423,15 @@ private:
      * Return the completion status of the operation. Afyer the successfull
      * completion of the operation the content of the network buffer can be parsed.
      *
+     * @param lock  - a lock on a mutex must be acquired before calling this method
      * @param buf   - the buffer to use
      * @param bytes - a expected length of the message (obtained from a preceeding frame)
      *                to be received into the network buffer from the network.
      *
      * @return the completion code of the operation
      */
-    boost::system::error_code syncReadMessageImpl(ProtocolBuffer& buf,
+    boost::system::error_code syncReadMessageImpl(util::Lock const& lock,
+                                                  ProtocolBuffer& buf,
                                                   size_t bytes);
 
     /**

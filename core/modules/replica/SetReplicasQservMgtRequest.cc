@@ -37,7 +37,6 @@
 #include "lsst/log/Log.h"
 #include "replica/Configuration.h"
 #include "replica/DatabaseMySQL.h"
-#include "replica/LockUtils.h"
 #include "replica/ServiceProvider.h"
 
 namespace {
@@ -105,7 +104,11 @@ std::string SetReplicasQservMgtRequest::extendedPersistentState(SqlGeneratorPtr 
 void SetReplicasQservMgtRequest::setReplicas(
         wpublish::SetChunkListQservRequest::ChunkCollection const& collection) {
 
-    LOCK(_mtx, context() + "setReplicas");
+    util::Lock lock(_mtx, context() + "setReplicas");
+
+    assertState(lock,
+                State::IN_PROGRESS,
+                context() + "setReplicas");
 
     _replicas.clear();
     for (auto&& replica: collection) {
@@ -119,9 +122,7 @@ void SetReplicasQservMgtRequest::setReplicas(
     }
 }
 
-void SetReplicasQservMgtRequest::startImpl() {
-
-    ASSERT_LOCK(_mtx, context() + "startImpl");
+void SetReplicasQservMgtRequest::startImpl(util::Lock const& lock) {
 
     wpublish::SetChunkListQservRequest::ChunkCollection chunks;
     for (auto&& chunkEntry: _newReplicas) {
@@ -159,13 +160,16 @@ void SetReplicasQservMgtRequest::startImpl() {
     );
     XrdSsiResource resource(ResourceUnit::makeWorkerPath(_worker));
     _service->ProcessRequest(*_qservRequest, resource);
+
+    setState(lock,
+             State::IN_PROGRESS);
 }
 
-void SetReplicasQservMgtRequest::finishImpl() {
+void SetReplicasQservMgtRequest::finishImpl(util::Lock const& lock) {
 
-    ASSERT_LOCK(_mtx, context() + "finishImpl");
-
-    assertState(State::FINISHED, "SetReplicasQservMgtRequest::finishImpl");
+    assertState(lock,
+                State::FINISHED,
+                context() + "finishImpl");
 
     if (_extendedState == ExtendedState::CANCELLED) {
 
@@ -178,9 +182,9 @@ void SetReplicasQservMgtRequest::finishImpl() {
     _qservRequest = nullptr;
 }
 
-void SetReplicasQservMgtRequest::notify() {
+void SetReplicasQservMgtRequest::notifyImpl() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
+    LOGS(_log, LOG_LVL_DEBUG, context() << "notifyImpl");
 
     // The callback is being made asynchronously in a separate thread
     // to avoid blocking the current thread.

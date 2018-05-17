@@ -92,4 +92,58 @@ BOOST_AUTO_TEST_CASE(MutexTest) {
     LOGS_DEBUG("Mutex test ends");
 }
 
- BOOST_AUTO_TEST_SUITE_END()
+BOOST_AUTO_TEST_CASE(LockTest) {
+
+    LOGS_DEBUG("Lock1 test begins");
+
+    // The mutex won't be locked by anyone
+    Mutex mtx1;
+    BOOST_CHECK(not mtx1.lockedByCaller());
+
+    // The mutex will be locked by the current thread
+    Mutex mtx2;
+    {
+        // Do this in a nested block to ensure that lock object
+        // gets destructed before the mutex.
+        Lock lock(mtx2, "LockTest: main thread");
+        BOOST_CHECK(mtx2.lockedByCaller());
+    }
+    BOOST_CHECK(not mtx2.lockedByCaller());
+
+    // Lock this mutex within a separate thread. Let the thread to run,
+    // then run the lock ownership test from the current thread.
+    //
+    // Note that the life expectancy of the launched thread once it locks
+    // the mutex will be a random duration of time (milliseconds) within
+    // an interval of passed into the constructor of class BlockPost.
+
+    Mutex mtx3;
+    std::atomic<bool> threadFinished(false);
+    std::thread thr([&mtx3,&threadFinished]() {
+        Lock lock(mtx3, "Lock1Test: detached thread");
+        BlockPost blockPost(1000,2000);
+        blockPost.wait();
+        threadFinished = true;
+    });
+    thr.detach();
+
+    // Recheck the lock status more frequently to allow multiple attempts
+    // while the previously launched thread is still alive.
+    while (not threadFinished) {
+        BOOST_CHECK(not mtx3.lockedByCaller());
+        BlockPost blockPost(100,200);
+        blockPost.wait();
+    }
+    BOOST_CHECK(not mtx3.lockedByCaller());
+    {
+        // Do this in a nested block to ensure that lock object
+        // gets destructed before the mutex.
+        Lock lock(mtx3, "Lock1Test: main thread (again)");
+        BOOST_CHECK(mtx3.lockedByCaller());
+    }
+    BOOST_CHECK(not mtx3.lockedByCaller());
+
+    LOGS_DEBUG("Lock1 test ends");
+}
+
+BOOST_AUTO_TEST_SUITE_END()

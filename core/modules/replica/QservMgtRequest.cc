@@ -35,7 +35,6 @@
 #include "replica/Configuration.h"
 #include "replica/Common.h"
 #include "replica/DatabaseServices.h"
-#include "replica/LockUtils.h"
 #include "replica/ServiceProvider.h"
 
 
@@ -95,11 +94,6 @@ QservMgtRequest::QservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
 }
 
 std::string const& QservMgtRequest::serverError() const {
-    static std::string const context = "QservMgtRequest::serverError()  ";
-    if (_state != State::FINISHED) {
-        throw std::logic_error(
-                        context + "not allowed to call this method while the request hasn't finished");
-    }
     return _serverError;
 }
 
@@ -107,9 +101,11 @@ void QservMgtRequest::start(XrdSsiService* service,
                             std::string const& jobId,
                             unsigned int requestExpirationIvalSec) {
 
-    assertState(State::CREATED, "QservMgtRequest::start");
+    util::Lock lock(_mtx, "QservMgtRequest::start");
 
-    LOCK(_mtx, "QservMgtRequest::start");
+    assertState(lock,
+                State::CREATED,
+                "QservMgtRequest::start");
 
     // Change the expiration ival if requested
     if (requestExpirationIvalSec) {
@@ -130,7 +126,7 @@ void QservMgtRequest::start(XrdSsiService* service,
     if (_jobId.empty() and not jobId.empty()) _jobId = jobId;
 
     _performance.setUpdateStart();
-
+  
     if (_requestExpirationIvalSec) {
         _requestExpirationTimer.cancel();
         _requestExpirationTimer.expires_from_now(boost::posix_time::seconds(_requestExpirationIvalSec));
@@ -144,7 +140,8 @@ void QservMgtRequest::start(XrdSsiService* service,
     }
 
     // Let a subclass to proceed with its own sequence of actions
-    startImpl();
+
+    startImpl(lock);
 
     _serviceProvider->databaseServices()->saveState(*this);
 }
@@ -159,23 +156,9 @@ std::string const& QservMgtRequest::jobId() const {
 
 void QservMgtRequest::expired(boost::system::error_code const& ec) {
 
-    // Ignore this event if the timer was aborted
-    if (ec == boost::asio::error::operation_aborted) return;
-
-    // IMPORTANT: the final state is required to be tested twice. The first time
-    // it's done in order to avoid deadlock on the "in-flight" callbacks reporting
-    // their completion while the request termination is in a progress. And the second
-    // test is made after acquering the lock to recheck the state in case if it
-    // has transitioned while acquering the lock.
-
-    if (_state == State::FINISHED) return;
-
-    LOCK(_mtx, "QservMgtRequest::expired");
-
-    if (_state == State::FINISHED) return;
-
-    // Pringt this only after those rejections made above
     LOGS(_log, LOG_LVL_DEBUG, context() << "expired");
+
+    if (ec == boost::asio::error::operation_aborted) return;
 
     finish(ExtendedState::EXPIRED);
 }
@@ -183,8 +166,6 @@ void QservMgtRequest::expired(boost::system::error_code const& ec) {
 void QservMgtRequest::cancel() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancel");
-
-    LOCK(_mtx, "QservMgtRequest::cancel");
 
     finish(ExtendedState::CANCELLED);
 }
@@ -202,7 +183,7 @@ void QservMgtRequest::finish(ExtendedState extendedState,
 
     if (_state == State::FINISHED) return;
 
-    LOCK(_mtx, "QservMgtRequest::finish");
+    util::Lock lock(_mtx, context() + "finish");
 
     if (_state == State::FINISHED) return;
 
@@ -211,29 +192,38 @@ void QservMgtRequest::finish(ExtendedState extendedState,
     // IMPORTANT: this needs to be done before performing the state
     // transition to insure clients will get a consistent view onto
     // the object state.
+
     _serverError = serverError;
 
     // Set new state to make sure all event handlers will recognize
     // this scenario and avoid making any modifications to the request's state.
-    setState(State::FINISHED, extendedState);
+
+    setState(lock,
+             State::FINISHED,
+             extendedState);
 
     // Close all operations on BOOST ASIO if needed
+
     _requestExpirationTimer.cancel();
 
     // Let a subclass to run its own finalization if needed
-    finishImpl();
+
+    finishImpl(lock);
 
     // We have to update the timestamp before invoking a user provided
     // callback on the completion of the operation.
+
     _performance.setUpdateFinish();
 
     _serviceProvider->databaseServices()->saveState(*this);
 
     // This will invoke user-defined notifiers (if any)
-    notify();
+
+    notifyImpl();
 }
 
-void QservMgtRequest::assertState(State state,
+void QservMgtRequest::assertState(util::Lock const& lock,
+                                  State state,
                                   std::string const& context) const {
     if (state != _state) {
         throw std::logic_error(
@@ -241,12 +231,11 @@ void QservMgtRequest::assertState(State state,
     }
 }
 
-void QservMgtRequest::setState(State state,
+void QservMgtRequest::setState(util::Lock const& lock,
+                               State state,
                                ExtendedState extendedState)
 {
     LOGS(_log, LOG_LVL_DEBUG, context() << "setState  " << state2string(state, extendedState));
-
-    ASSERT_LOCK(_mtx, context() + "setState");
 
     // IMPORTANT: the top-level state is the last to be set when performing
     // the state transition to insure clients will get a consistent view onto

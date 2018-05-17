@@ -34,7 +34,6 @@
 #include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
 #include "replica/ErrorReporting.h"
-#include "replica/LockUtils.h"
 #include "replica/QservMgtServices.h"
 #include "replica/ServiceProvider.h"
 #include "util/BlockPost.h"
@@ -138,11 +137,9 @@ std::string DeleteReplicaJob::extendedPersistentState(SqlGeneratorPtr const& gen
                               worker());
 }
 
-void DeleteReplicaJob::startImpl() {
+void DeleteReplicaJob::startImpl(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
-
-    ASSERT_LOCK(_mtx, context() + "startImpl");
 
     // Get all databases for which this chunk is in the COMPLETE state on
     // at the worker.
@@ -164,7 +161,9 @@ void DeleteReplicaJob::startImpl() {
              << " chunk: "  << chunk()
              << " worker: " << worker());
 
-        setState(State::FINISHED, ExtendedState::FAILED);
+        setState(lock,
+                 State::FINISHED,
+                 ExtendedState::FAILED);
         return;
     }
     if (not _replicas.size()) {
@@ -173,7 +172,9 @@ void DeleteReplicaJob::startImpl() {
              << " chunk: "  << chunk()
              << " worker: " << worker());
 
-        setState(State::FINISHED, ExtendedState::FAILED);
+        setState(lock,
+                 State::FINISHED,
+                 ExtendedState::FAILED);
         return;
     }
 
@@ -198,11 +199,14 @@ void DeleteReplicaJob::startImpl() {
                                     // specific detail on what "remove" means in
                                     // that service's context.
         qservRemoveReplica(
+            lock,
             chunk(),
             databases,
             worker(),
             force,
             [self] (RemoveReplicaQservMgtRequest::Ptr const& request) {
+
+                util::Lock lock(self->_mtx, self->context() + "startImpl:qservRemoveReplica");
 
                 switch (request->extendedState()) {
 
@@ -211,32 +215,33 @@ void DeleteReplicaJob::startImpl() {
                     // the second stage of requests to actually eliminate replica's
                     // files from the source worker.
                     case QservMgtRequest::ExtendedState::SUCCESS:
-                        self->beginDeleteReplica();
+                        self->beginDeleteReplica(lock);
                         return;
 
                     // Otherwise set an appropriate status of the operation, finish them
                     // job and notify the caller.
                     case QservMgtRequest::ExtendedState::SERVER_IN_USE:
-                        self->finish(ExtendedState::QSERV_IN_USE);
+                        self->finish(lock,
+                                     ExtendedState::QSERV_IN_USE);
                         break;
                     default:
-                        self->finish(ExtendedState::QSERV_FAILED);
+                        self->finish(lock,
+                                     ExtendedState::QSERV_FAILED);
                         break;
                 }
                 self->notify();
             }
         );
     } else {
-        beginDeleteReplica();
+        beginDeleteReplica(lock);
     }
-    setState(State::IN_PROGRESS);
+    setState(lock,
+             State::IN_PROGRESS);
 }
 
-void DeleteReplicaJob::cancelImpl() {
+void DeleteReplicaJob::cancelImpl(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
-
-    ASSERT_LOCK(_mtx, context() + "cancelImpl");
 
     // The algorithm will also clear resources taken by various
     // locally created objects.
@@ -276,9 +281,7 @@ void DeleteReplicaJob::notify() {
     }
 }
 
-void DeleteReplicaJob::beginDeleteReplica() {
-
-    ASSERT_LOCK(_mtx, context() + "beginDeleteReplica");
+void DeleteReplicaJob::beginDeleteReplica(util::Lock const& lock) {
 
     auto self = shared_from_base<DeleteReplicaJob>();
 
@@ -319,7 +322,7 @@ void DeleteReplicaJob::onRequestFinish(DeleteRequest::Ptr const& request) {
     
     if (_state == State::FINISHED) return;
 
-    LOCK(_mtx, context() + "onRequestFinish(DeleteRequest)");
+    util::Lock lock(_mtx, context() + "onRequestFinish");
 
     if (_state == State::FINISHED) return;
 
@@ -340,9 +343,10 @@ void DeleteReplicaJob::onRequestFinish(DeleteRequest::Ptr const& request) {
                          _requests);
 
     if (numFinished == numLaunched) {
-        finish(numSuccess == numLaunched ? ExtendedState::SUCCESS :
+        finish(lock,
+               numSuccess == numLaunched ? ExtendedState::SUCCESS :
                                            ExtendedState::FAILED);
-        notify ();
+        notify();
     }
 }
 

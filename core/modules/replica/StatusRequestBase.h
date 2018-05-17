@@ -93,21 +93,26 @@ protected:
       *
       * @see Request::startImpl()
       */
-    void startImpl() final;
+    void startImpl(util::Lock const& lock) final;
 
-    /// Start the timer before attempting the previously failed
-    /// or successfull (if a status check is needed) step.
-    void wait();
+    /**
+     * Start the timer before attempting the previously failed
+     * or successfull (if a status check is needed) step.
+     *
+     * @param lock - a lock on a mutex must be acquired before calling this method
+     */
+    void wait(util::Lock const& lock);
 
     /// Callback handler for the asynchronious operation
     void awaken(boost::system::error_code const& ec);
 
     /**
-     * Initiate request-specific send
+     * Initiate request-specific send. This method must be implemented
+     * by subclasses.
      *
-     * This method must be implemented by subclasses.
+     * @param lock - a lock on a mutex must be acquired before calling this method
      */
-    virtual void send() = 0;
+    virtual void send(util::Lock const& lock) = 0;
 
     /**
      * Process the worker response to the requested operation.
