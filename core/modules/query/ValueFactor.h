@@ -89,6 +89,8 @@ public:
     static ValueFactorPtr newStarFactor(std::string const& table);
     static ValueFactorPtr newAggFactor(std::shared_ptr<FuncExpr> fe);
     static ValueFactorPtr newFuncFactor(std::shared_ptr<FuncExpr> fe);
+    /// Makes a new ValueFactor with type=const and value=alnum
+    /// Any trailing whitespace is removed.
     static ValueFactorPtr newConstFactor(std::string const& alnum);
     static ValueFactorPtr newExprFactor(std::shared_ptr<ValueExpr> ve);
 

@@ -135,7 +135,8 @@ ValueFactorFactory::newFactor(antlr::RefAST a) {
         break;
 
     default:
-        LOGS(_log, LOG_LVL_DEBUG, "Unhandled RefAST type in ValueFactor " << a->getType());
+        LOGS(_log, LOG_LVL_DEBUG, "Unhandled RefAST type in ValueFactor type:" << a->getType() << ", val:'" <<
+                a.get()->getText() << "'");
         vt = newConstFactor(a);
         break;
     }
