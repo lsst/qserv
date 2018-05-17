@@ -578,6 +578,8 @@ CREATE TABLE IF NOT EXISTS `request` (
 
   `name` ENUM ('REPLICA_CREATE',
                'REPLICA_DELETE',
+               'REPLICA_FIND',
+               'REPLICA_FIND_ALL',
                'QSERV_ADD_REPLICA',
                'QSERV_REMOVE_REPLICA',
                'QSERV_GET_REPLICAS',
@@ -654,6 +656,57 @@ CREATE TABLE IF NOT EXISTS `request_replica_delete` (
   PRIMARY KEY (`request_id`) ,
 
   CONSTRAINT `request_replica_delete_fk_1`
+    FOREIGN KEY (`request_id` )
+    REFERENCES `request` (`id` )
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
+)
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `request_replica_find`
+-- -----------------------------------------------------
+--
+-- Extended parameters of the 'REPLICA_FIND' requests
+--
+DROP TABLE IF EXISTS `request_replica_find` ;
+
+CREATE TABLE IF NOT EXISTS `request_replica_find` (
+
+  `request_id`  VARCHAR(255) NOT NULL ,
+
+  `database` VARCHAR(255) NOT NULL ,
+  `chunk`    INT UNSIGNED NOT NULL ,
+
+  PRIMARY KEY (`request_id`) ,
+
+  CONSTRAINT `request_replica_find_fk_1`
+    FOREIGN KEY (`request_id` )
+    REFERENCES `request` (`id` )
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
+)
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `request_replica_find_all`
+-- -----------------------------------------------------
+--
+-- Extended parameters of the 'REPLICA_FIND_ALL' requests
+--
+DROP TABLE IF EXISTS `request_replica_find_all` ;
+
+CREATE TABLE IF NOT EXISTS `request_replica_find_all` (
+
+  `request_id`  VARCHAR(255) NOT NULL ,
+
+  `database` VARCHAR(255) NOT NULL ,
+
+  PRIMARY KEY (`request_id`) ,
+
+  CONSTRAINT `request_replica_find_all_fk_1`
     FOREIGN KEY (`request_id` )
     REFERENCES `request` (`id` )
     ON DELETE CASCADE
