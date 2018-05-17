@@ -342,7 +342,7 @@ public:
 
 class ConstantCBH : public BaseCBH {
 public:
-    virtual void handleConstant(shared_ptr<query::ValueFactor> const & val) = 0;
+    virtual void handleConstant(string const & val) = 0;
 };
 
 
@@ -359,7 +359,7 @@ public:
 
 class ConstantsCBH : public BaseCBH {
 public:
-    virtual void handleConstants(vector<shared_ptr<query::ValueFactor>> const & valueFactors) = 0;
+    virtual void handleConstants(vector<string> const & values) = 0;
 };
 
 
@@ -949,8 +949,8 @@ public:
                                   antlr4::ParserRuleContext* ctx)
     : AdapterT(parent) {}
 
-    void handleConstant(shared_ptr<query::ValueFactor> const & valueFactor) override {
-        lockedParent()->handleConstantExpressionAtom(valueFactor);
+    void handleConstant(string const & val) override {
+        lockedParent()->handleConstantExpressionAtom(query::ValueFactor::newConstFactor(val));
     }
 
     void onExit() override {}
@@ -1039,9 +1039,11 @@ public:
     : AdapterT(parent)
     , _ctx(ctx) {}
 
-    void handleConstants(vector<shared_ptr<query::ValueFactor>> const & valueFactors) override {
+    void handleConstants(vector<string> const & values) override {
         ASSERT_EXECUTION_CONDITION(_args.empty(), "args should be set exactly once.", _ctx);
-        _args = valueFactors;
+        for (auto&& value : values) {
+            _args.push_back(query::ValueFactor::newConstFactor(value));
+        }
     }
 
     void onExit() override {
@@ -1614,31 +1616,7 @@ public:
     : AdapterT(parent), _ctx(ctx) {}
 
     void onExit() override {
-        std::shared_ptr<query::ValueFactor> valueFactor;
-        if (_ctx->decimalLiteral()) {
-            valueFactor = query::ValueFactor::newConstFactor(_ctx->getText());
-        } else if (_ctx->stringLiteral()) {
-            valueFactor = ValueFactorFactory::newColumnColumnFactor("", "", _ctx->getText());
-        } else if (_ctx->hexadecimalLiteral()) {
-            ASSERT_EXECUTION_CONDITION(false, "Unhandled type: hexadecimalLiteral", _ctx);
-        } else if (_ctx->booleanLiteral()) {
-            ASSERT_EXECUTION_CONDITION(false, "Unhandled type: booleanLiteral", _ctx);
-        } else if (_ctx->REAL_LITERAL()) {
-            valueFactor = query::ValueFactor::newConstFactor(_ctx->getText());
-        } else if (_ctx->BIT_STRING()) {
-            ASSERT_EXECUTION_CONDITION(false, "Unhandled type: BIT_STRING", _ctx);
-        } else if (_ctx->NULL_LITERAL()) {
-            ASSERT_EXECUTION_CONDITION(false, "Unhandled type: NULL_LITERAL", _ctx);
-        } else if (_ctx->NULL_SPEC_LITERAL()) {
-            ASSERT_EXECUTION_CONDITION(false, "Unhandled type: NULL_SPEC_LITERAL", _ctx);
-        } else if (_ctx->NOT()) {
-            ASSERT_EXECUTION_CONDITION(false, "Unhandled type: NOT", _ctx);
-        } else if (_ctx->nullLiteral) {
-            ASSERT_EXECUTION_CONDITION(false, "Unhandled type: nullliteral", _ctx);
-        } else {
-            ASSERT_EXECUTION_CONDITION(false, "Unhandled type.", _ctx);
-        }
-        lockedParent()->handleConstant(valueFactor);
+        lockedParent()->handleConstant(_ctx->getText());
     }
 
 private:
@@ -1703,16 +1681,16 @@ public:
     ConstantsAdapter(shared_ptr<ConstantsCBH> const & parent, QSMySqlParser::ConstantsContext* ctx)
     : AdapterT(parent) {}
 
-    void handleConstant(shared_ptr<query::ValueFactor> const & valueFactor) override {
-        valueFactors.push_back(valueFactor);
+    void handleConstant(string const & val) override {
+        _values.push_back(val);
     }
 
     void onExit() override {
-        lockedParent()->handleConstants(valueFactors);
+        lockedParent()->handleConstants(_values);
     }
 
 private:
-    vector<shared_ptr<query::ValueFactor>> valueFactors;
+    vector<string> _values;
 };
 
 
@@ -1889,9 +1867,9 @@ public:
     : AdapterT(parent) {}
 
     // ConstantCBH
-    void handleConstant(shared_ptr<query::ValueFactor> const & valueFactor) override {
+    void handleConstant(string const & val) override {
         auto valueExpr = make_shared<query::ValueExpr>();
-        ValueExprFactory::addValueFactor(valueExpr, valueFactor);
+        ValueExprFactory::addValueFactor(valueExpr, query::ValueFactor::newConstFactor(val));
         _args.push_back(valueExpr);
     }
 
