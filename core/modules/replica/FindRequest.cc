@@ -33,6 +33,8 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
+#include "replica/Controller.h"
+#include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
 #include "replica/Messenger.h"
 #include "replica/ProtocolBuffer.h"
@@ -330,6 +332,16 @@ void FindRequest::notify () {
             }
         );
     }
+}
+
+void FindRequest::savePersistentState() {
+    _controller->serviceProvider()->databaseServices()->saveState(*this);
+}
+
+std::string FindRequest::extendedPersistentState(SqlGeneratorPtr const& gen) const {
+    return gen->sqlPackValues(id(),
+                              database(),
+                              chunk());
 }
 
 }}} // namespace lsst::qserv::replica

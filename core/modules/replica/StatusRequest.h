@@ -148,6 +148,9 @@ struct StatusFindRequestPolicy {
     template <class REQUEST_PTR>
     static void saveReplicaInfo(REQUEST_PTR const& request) {
         request->serviceProvider()->databaseServices()->saveReplicaInfo(request->responseData());
+        request->serviceProvider()->databaseServices()->updateRequestState(*request,
+                                                                           request->targetRequestId(),
+                                                                           request->targetPerformance());
     }
 };
 
@@ -183,6 +186,9 @@ struct StatusFindAllRequestPolicy {
             request->worker(),
             request->targetRequestParams().database,
             request->responseData());
+        request->serviceProvider()->databaseServices()->updateRequestState(*request,
+                                                                           request->targetRequestId(),
+                                                                           request->targetPerformance());
     }
 };
 
