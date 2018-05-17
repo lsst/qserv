@@ -37,6 +37,7 @@
 #include "query/ValueFactor.h"
 
 // System headers
+#include <algorithm>
 #include <iostream>
 #include <iterator>
 #include <sstream>
@@ -85,6 +86,9 @@ ValueFactor::newConstFactor(std::string const& alnum) {
     ValueFactorPtr term = std::make_shared<ValueFactor>();
     term->_type = CONST;
     term->_constVal = alnum;
+    auto&& removeFrom = std::find_if(term->_constVal.rbegin(), term->_constVal.rend(),
+            [](unsigned char c) {return !std::isspace(c);}).base();
+    term->_constVal.erase(removeFrom, term->_constVal.end());
     return term;
 }
 
