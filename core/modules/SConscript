@@ -260,7 +260,7 @@ shlibs["qserv_czar"] = dict(mods="""ccontrol czar parser qana query qdisp qproc 
 # library implementing core functionality of the replication subsystem, tests and
 # binary applications of the replication subsystem
 shlibs["replica"] = dict(mods="""replica""",
-                         libs="""qserv_common XrdCl XrdSsiLib util protobuf
+                         libs="""qserv_common xrdsvc XrdCl XrdSsiLib util protobuf
                               boost_filesystem boost_system log log4cxx""")
 
 # library with Lua bindings for czar C++ code
