@@ -34,7 +34,6 @@
 #include <map>
 #include <ostream>
 #include <string>
-#include <vector>
 
 // Qserv headers
 #include "util/Mutex.h"
@@ -91,7 +90,10 @@ class ChunkLocker {
 public:
 
     /// The type for a collection of locked chunks groupped by owners
-    typedef std::map<std::string, std::list<Chunk>> ChunksByOwners;
+    typedef std::map<std::string, std::list<Chunk>> OwnerToChunks;
+
+    /// A map of chunks to their owners
+    typedef std::map<Chunk, std::string> ChunkToOwner;
 
     /// The default constructor
     ChunkLocker() = default;
@@ -132,7 +134,7 @@ public:
      *
      * @return a collection of chunks groupped by owners
      */
-    ChunksByOwners locked(std::string const& owner=std::string()) const;
+    OwnerToChunks locked(std::string const& owner=std::string()) const;
 
     /**
      * Lock a chunk to a specific owner and return 'true' of the operation
@@ -175,9 +177,24 @@ public:
      *
      * @throw std::invalid_argument - if the owner is an empty string
      */
-    std::vector<Chunk> release(std::string const& owner);
+    std::list<Chunk> release(std::string const& owner);
 
 private:
+
+    /**
+     * Return chunks which are loacked by a particular owner (if provided),
+     * or by all owners.
+     *
+     * @param mLock  - a lock on a mutex must be made before calling this method
+     * @param owner  - an optional owner. If the owner is not provided then
+     *                 all chunks will be returned
+     * @owner2chunks - collection of chunks
+     *
+     * @return a collection of chunks groupped by owners
+     */
+    void lockedImpl(util::Lock const& mLock,
+                    std::string const& owner,
+                    OwnerToChunks& owner2chunks) const;
 
     /**
      * Release a chunk and return 'true' if the operation was successfull.
@@ -200,22 +217,11 @@ private:
 private:
 
     /// Mapping a chunk to its "owner" (the one which holds the lock)
-    std::map<Chunk, std::string> _chunk2owner;
-
-    /// Mapping an owner to a list of chunks "clamed" by that owner
-    /// NOTE: using the list container for the better performance of
-    ///       the insert/erase operations over the lists of chunks
-    ChunksByOwners _owner2chunks;
+    ChunkToOwner _chunk2owner;
 
     /// For thread safety where it's required
     mutable util::Mutex _mtx;
 };
-
-
-/// Overloaded streaming operator for a collection of locked chunks
-/// groupped by owners
-
-std::ostream& operator<<(std::ostream& os, ChunkLocker::ChunksByOwners const& chunks);
 
 }}} // namespace lsst::qserv::replica
 

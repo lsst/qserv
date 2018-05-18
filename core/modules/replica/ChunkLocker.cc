@@ -24,6 +24,7 @@
 #include "replica/ChunkLocker.h"
 
 // System headers
+#include <algorithm>
 #include <stdexcept>
 #include <tuple>        // std::tie
 
@@ -66,24 +67,38 @@ bool ChunkLocker::isLocked(Chunk const& chunk,
 
     util::Lock mLock(_mtx, "ChunkLocker::isLocked(chunk,owner)");
 
-    if (_chunk2owner.count(chunk)) {
-        owner = _chunk2owner.at(chunk);
+    auto itr = _chunk2owner.find(chunk);
+    if (itr != _chunk2owner.end()) {
+        owner = itr->second;
         return true;
     }
     return false;
 }
 
-ChunkLocker::ChunksByOwners ChunkLocker::locked(std::string const& owner) const {
+ChunkLocker::OwnerToChunks ChunkLocker::locked(std::string const& owner) const {
 
     util::Lock mLock(_mtx, "ChunkLocker::locked");
 
-    if (owner.empty()) return _owner2chunks;
+    OwnerToChunks owner2chunks;
+    lockedImpl(mLock,
+               owner,
+               owner2chunks);
 
-    ChunksByOwners owner2chunks;
-    if (_owner2chunks.count(owner)) {
-        owner2chunks[owner] = _owner2chunks.at(owner);
-    }
     return owner2chunks;
+}
+
+void ChunkLocker::lockedImpl(util::Lock const& mLock,
+                             std::string const& owner,
+                             ChunkLocker::OwnerToChunks& owner2chunks) const {
+
+    for (auto&& entry: _chunk2owner) {
+        Chunk       const& chunk      = entry.first;
+        std::string const& chunkOwner = entry.second;
+
+        if (owner.empty() or (owner == chunkOwner)) {
+            owner2chunks[chunkOwner].push_back(chunk);
+        }
+    }
 }
 
 bool ChunkLocker::lock(Chunk const&       chunk,
@@ -94,12 +109,10 @@ bool ChunkLocker::lock(Chunk const&       chunk,
     if (owner.empty()) {
         throw std::invalid_argument("ChunkLocker::lock  empty owner");
     }
-    if (_chunk2owner.count(chunk)) {
-        return owner == _chunk2owner.at(chunk);
-    }
-    _chunk2owner [chunk] = owner;
-    _owner2chunks[owner].push_back(chunk);
+    auto itr = _chunk2owner.find(chunk);
+    if (itr != _chunk2owner.end()) return owner == itr->second;
 
+    _chunk2owner[chunk] = owner;
     return true;
 }
 
@@ -108,6 +121,7 @@ bool ChunkLocker::release(Chunk const& chunk) {
     util::Lock mLock(_mtx, "ChunkLocker::release(chunk)");
 
     // An owner (if set) will be ignored by the current method
+
     std::string owner;
     return releaseImpl(mLock, chunk, owner);
 }
@@ -123,25 +137,19 @@ bool ChunkLocker::releaseImpl(util::Lock const& mLock,
                               Chunk const& chunk,
                               std::string& owner) {
 
-    if (not _chunk2owner.count(chunk)) return false;
+    auto itr = _chunk2owner.find(chunk);
+    if (itr == _chunk2owner.end()) return false;
 
-    // Remove the chunk from this map _only_ after getting its owner
-    owner = _chunk2owner.at(chunk);
-    _chunk2owner.erase(chunk);
+    // ATTENTION: remove the chunk from this map _only_ after
+    //            getting its owner
 
-    // Remove the chunk from the list of all chunks claimed by that particular
-    // owner as well.
-    std::list<Chunk>& chunks = _owner2chunks.at(owner);
-    chunks.remove(chunk);
-
-    // This last step is needed to avoid building up empty lists
-    // of non-existing owners
-    if (chunks.empty()) _owner2chunks.erase(owner);
+    owner = itr->second;
+    _chunk2owner.erase(itr);
 
     return true;
 }
 
-std::vector<Chunk> ChunkLocker::release(std::string const& owner) {
+std::list<Chunk> ChunkLocker::release(std::string const& owner) {
 
     util::Lock mLock(_mtx, "ChunkLocker::release(owner)");
 
@@ -149,35 +157,19 @@ std::vector<Chunk> ChunkLocker::release(std::string const& owner) {
         throw std::invalid_argument("ChunkLocker::release  empty owner");
     }
 
-    // First get all chunks claimed by the specified owner.
-    // This list s also going to be returned o teh cller.
-    std::vector<Chunk> chunks;
-    if (_owner2chunks.count(owner)) {
-        for (auto&& chunk: _owner2chunks.at(owner)) {
-            chunks.push_back(chunk);
-        }
-    }
+    // Get rid of chunks owned by the specified owner, and also collect
+    // those (removed) chunks into a vector to be returned to a caller.
 
-    // Then release the select chunks
+    OwnerToChunks owner2chunks;
+    lockedImpl(mLock,
+               owner,
+               owner2chunks);
+
+    std::list<Chunk> chunks = owner2chunks[owner];
     for (auto&& chunk: chunks) {
-        release(chunk);
+        _chunk2owner.erase(chunk);
     }
     return chunks;
-}
-
-//////////////////////////////////////
-//               misc               //
-//////////////////////////////////////
-
-std::ostream& operator <<(std::ostream& os, ChunkLocker::ChunksByOwners const& chunks) {
-    for (auto&& entry: chunks) {
-        std::string const& owner = entry.first;
-        os  << "Chunk owner: " << owner << "\n";
-        for (Chunk const& chunk: entry.second) {
-            os  << "    " << chunk.databaseFamily << ":" << chunk.number << "\n";
-        }
-    }
-    return os;
 }
 
 }}} // namespace lsst::qserv::replica
