@@ -35,6 +35,7 @@
 #include <vector>
 
 // Qserv headers
+#include "util/Mutex.h"
 
 // Forward declarations
 
@@ -148,7 +149,7 @@ public:
      * @param isEnabled  - select workers which are allowed to participate in the
      *                     replication operations.
      * @param isReadOnly - a subclass of the 'enabled' workers which can only serve as
-     *                     a source of replicas. No replica modification (creaion or
+     *                     a source of replicas. No replica modification (creation or
      *                     deletion) operations would be allowed against those workers.
      *                     NOTE: this filter only matters for the 'enabled' workers.
      */
@@ -414,6 +415,10 @@ protected:
     std::string context() const;
 
 protected:
+
+    /// To be used were thread safety is required
+    
+    mutable util::Mutex _mtx;
 
     // -- Cached values of parameters --
 

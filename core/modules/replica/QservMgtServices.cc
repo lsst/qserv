@@ -61,8 +61,8 @@ template <class  T>
 struct QservMgtRequestWrapperImpl
     :   QservMgtRequestWrapper {
 
-    /// The implementation of the vurtual method defined in the base class
-    virtual void notify() {
+    /// The implementation of the virtual method defined in the base class
+    void notify() const final {
         if (_onFinish == nullptr) { return; }
         _onFinish(_request);
     }
@@ -86,7 +86,7 @@ private:
 
     // The context of the operation
 
-    typename T::Ptr       _request;
+    typename T::Ptr _request;
     typename T::CallbackType _onFinish;
 };
 
@@ -114,19 +114,21 @@ AddReplicaQservMgtRequest::Ptr QservMgtServices::addReplica(
                                         std::string const& jobId,
                                         unsigned int requestExpirationIvalSec) {
 
-    util::Lock lock(_mtx, "QservMgtServices::addReplica");
+    AddReplicaQservMgtRequest::Ptr request;
 
-    // Ensure we have the XROOTD/SSI service object before attempting any
-    // operations on requests
+    // Make sure the XROOTD/SSI service is available before attempting
+    // any operations on requests
+
     XrdSsiService* service = xrdSsiService();
     if (not service) {
-        return AddReplicaQservMgtRequest::Ptr();
-    }
+        return request;
+    } else {
 
-    auto const manager = shared_from_this();
-
-    AddReplicaQservMgtRequest::Ptr const request =
-        AddReplicaQservMgtRequest::create(
+        util::Lock lock(_mtx, "QservMgtServices::addReplica");
+    
+        auto const manager = shared_from_this();
+    
+        request = AddReplicaQservMgtRequest::create(
             _serviceProvider,
             _io_service,
             worker,
@@ -136,15 +138,17 @@ AddReplicaQservMgtRequest::Ptr QservMgtServices::addReplica(
                 manager->finish(request->id());
             }
         );
+    
+        // Register the request (along with its callback) by its unique
+        // identifier in the local registry. Once it's complete it'll
+        // be automatically removed from the Registry.
+        _registry[request->id()] =
+            std::make_shared<QservMgtRequestWrapperImpl<AddReplicaQservMgtRequest>>(
+                request, onFinish);
+    }
 
-    // Register the request (along with its callback) by its unique
-    // identifier in the local registry. Once it's complete it'll
-    // be automatically removed from the Registry.
-    _registry[request->id()] =
-        std::make_shared<QservMgtRequestWrapperImpl<AddReplicaQservMgtRequest>>(
-            request, onFinish);
-
-    // Initiate the request
+    // Initiate the request in the lock-free zone to avoid blocking the service
+    // from initiating other requests which this one is starting.
     request->start(service,
                    jobId,
                    requestExpirationIvalSec);
@@ -163,19 +167,21 @@ RemoveReplicaQservMgtRequest::Ptr QservMgtServices::removeReplica(
                                         std::string const& jobId,
                                         unsigned int requestExpirationIvalSec) {
 
-    util::Lock lock(_mtx, "QservMgtServices::removeReplica");
+    RemoveReplicaQservMgtRequest::Ptr request;
 
-    // Ensure we have the XROOTD/SSI service object before attempting any
-    // operations on requests
+    // Make sure the XROOTD/SSI service is available before attempting
+    // any operations on requests
+
     XrdSsiService* service = xrdSsiService();
     if (not service) {
-        return RemoveReplicaQservMgtRequest::Ptr();
-    }
+        return request;
+    } else {
 
-    auto const manager = shared_from_this();
-
-    RemoveReplicaQservMgtRequest::Ptr const request =
-        RemoveReplicaQservMgtRequest::create(
+        util::Lock lock(_mtx, "QservMgtServices::removeReplica");
+    
+        auto const manager = shared_from_this();
+    
+        request = RemoveReplicaQservMgtRequest::create(
             _serviceProvider,
             _io_service,
             worker,
@@ -186,15 +192,17 @@ RemoveReplicaQservMgtRequest::Ptr QservMgtServices::removeReplica(
                 manager->finish(request->id());
             }
         );
+    
+        // Register the request (along with its callback) by its unique
+        // identifier in the local registry. Once it's complete it'll
+        // be automatically removed from the Registry.
+        _registry[request->id()] =
+            std::make_shared<QservMgtRequestWrapperImpl<RemoveReplicaQservMgtRequest>>(
+                request, onFinish);
+    }
 
-    // Register the request (along with its callback) by its unique
-    // identifier in the local registry. Once it's complete it'll
-    // be automatically removed from the Registry.
-    _registry[request->id()] =
-        std::make_shared<QservMgtRequestWrapperImpl<RemoveReplicaQservMgtRequest>>(
-            request, onFinish);
-
-    // Initiate the request
+    // Initiate the request in the lock-free zone to avoid blocking the service
+    // from initiating other requests which this one is starting.
     request->start(service,
                    jobId,
                    requestExpirationIvalSec);
@@ -210,19 +218,21 @@ GetReplicasQservMgtRequest::Ptr QservMgtServices::getReplicas(
                                         GetReplicasQservMgtRequest::CallbackType onFinish,
                                         unsigned int requestExpirationIvalSec) {
 
-    util::Lock lock(_mtx, "QservMgtServices::getReplicas");
+    GetReplicasQservMgtRequest::Ptr request;
 
-    // Ensure we have the XROOTD/SSI service object before attempting any
-    // operations on requests
+    // Make sure the XROOTD/SSI service is available before attempting
+    // any operations on requests
+
     XrdSsiService* service = xrdSsiService();
     if (not service) {
-        return GetReplicasQservMgtRequest::Ptr();
-    }
+        return request;
+    } else {
 
-    auto const manager = shared_from_this();
-
-    GetReplicasQservMgtRequest::Ptr const request =
-        GetReplicasQservMgtRequest::create(
+        util::Lock lock(_mtx, "QservMgtServices::getReplicas");
+    
+        auto const manager = shared_from_this();
+    
+        request = GetReplicasQservMgtRequest::create(
             _serviceProvider,
             _io_service,
             worker,
@@ -232,15 +242,17 @@ GetReplicasQservMgtRequest::Ptr QservMgtServices::getReplicas(
                 manager->finish(request->id());
             }
         );
+    
+        // Register the request (along with its callback) by its unique
+        // identifier in the local registry. Once it's complete it'll
+        // be automatically removed from the Registry.
+        _registry[request->id()] =
+            std::make_shared<QservMgtRequestWrapperImpl<GetReplicasQservMgtRequest>>(
+                request, onFinish);
+    }
 
-    // Register the request (along with its callback) by its unique
-    // identifier in the local registry. Once it's complete it'll
-    // be automatically removed from the Registry.
-    _registry[request->id()] =
-        std::make_shared<QservMgtRequestWrapperImpl<GetReplicasQservMgtRequest>>(
-            request, onFinish);
-
-    // Initiate the request
+    // Initiate the request in the lock-free zone to avoid blocking the service
+    // from initiating other requests which this one is starting.
     request->start(service,
                    jobId,
                    requestExpirationIvalSec);
@@ -257,19 +269,21 @@ SetReplicasQservMgtRequest::Ptr QservMgtServices::setReplicas(
                                         SetReplicasQservMgtRequest::CallbackType onFinish,
                                         unsigned int requestExpirationIvalSec) {
 
-    util::Lock lock(_mtx, "QservMgtServices::setReplicas");
+    SetReplicasQservMgtRequest::Ptr request;
 
-    // Ensure we have the XROOTD/SSI service object before attempting any
-    // operations on requests
+    // Make sure the XROOTD/SSI service is available before attempting
+    // any operations on requests
+
     XrdSsiService* service = xrdSsiService();
     if (not service) {
-        return SetReplicasQservMgtRequest::Ptr();
-    }
+        return request;
+    } else {
 
-    auto const manager = shared_from_this();
-
-    SetReplicasQservMgtRequest::Ptr const request =
-        SetReplicasQservMgtRequest::create(
+        util::Lock lock(_mtx, "QservMgtServices::setReplicas");
+    
+        auto const manager = shared_from_this();
+    
+        request = SetReplicasQservMgtRequest::create(
             _serviceProvider,
             _io_service,
             worker,
@@ -279,15 +293,17 @@ SetReplicasQservMgtRequest::Ptr QservMgtServices::setReplicas(
                 manager->finish(request->id());
             }
         );
+    
+        // Register the request (along with its callback) by its unique
+        // identifier in the local registry. Once it's complete it'll
+        // be automatically removed from the Registry.
+        _registry[request->id()] =
+            std::make_shared<QservMgtRequestWrapperImpl<SetReplicasQservMgtRequest>>(
+                request, onFinish);
+    }
 
-    // Register the request (along with its callback) by its unique
-    // identifier in the local registry. Once it's complete it'll
-    // be automatically removed from the Registry.
-    _registry[request->id()] =
-        std::make_shared<QservMgtRequestWrapperImpl<SetReplicasQservMgtRequest>>(
-            request, onFinish);
-
-    // Initiate the request
+    // Initiate the request in the lock-free zone to avoid blocking the service
+    // from initiating other requests which this one is starting.
     request->start(service,
                    jobId,
                    requestExpirationIvalSec);
@@ -312,8 +328,14 @@ void QservMgtServices::finish(std::string const& id) {
     QservMgtRequestWrapper::Ptr request;
     {
         util::Lock lock(_mtx, "QservMgtServices::finish");
-        request = _registry[id];
-        _registry.erase(id);
+        auto&& ptr = _registry.find(id);
+        if (ptr == _registry.end()) {
+            throw std::logic_error(
+                        "QservMgtServices::finish: request identifier " + id +
+                        " is no longer valid. Check the loginc of the application.");
+        }
+        request = ptr->second;
+        _registry.erase(ptr);
     }
     request->notify();
 }

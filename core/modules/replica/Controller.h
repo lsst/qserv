@@ -136,6 +136,7 @@ public:
      * low-level pointers).
      *
      * @param serviceProvider - for configuration, other services
+     * @return ponter to an instance of the Class
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider);
 
@@ -194,7 +195,7 @@ public:
     void join();
 
     /**
-     * Initiate a new replication request.
+     * Create and start a new request for creating a replica.
      *
      * The method will throw exception std::invalid_argument if the worker
      * names are equal.
@@ -203,16 +204,14 @@ public:
      * @param sourceWorkerName - the name of a worker node where the replica will be created
      * @param database         - database name
      * @param chunk            - the chunk number
-     * @param onFinish         - an optional callback function to be called upon the completion of the request
-     * @param priority         - a priority level of the request
-     * @param keepTracking     - keep tracking the request before it finishes or fails
-     * @param allowDuplicate   - follow a previously made request if the current one duplicates it
-     * @param jobId            - an optional identifier of a job issed the request
+     * @param onFinish         - (optional) callback function to be called upon the completion of the request
+     * @param priority         - (optional) priority level of the request
+     * @param keepTracking     - (optional) keep tracking the request before it finishes or fails
+     * @param allowDuplicate   - (optional) follow a previously made request if the current one duplicates it
+     * @param jobId            - (optional) identifier of a job issed the request
      * @param requestExpirationIvalSec
-     *                         - an optional parameter (if differs from 0)
-     *                           allowing to override the default value of the corresponding
-     *                           parameter from the Configuration.
-     *
+     *                         - (optional) parameter (if differs from 0) allowing to override the default
+     *                           value of the corresponding parameter from the Configuration.
      * @return a pointer to the replication request
      */
     ReplicationRequestPtr replicate(std::string const& workerName,
@@ -227,21 +226,19 @@ public:
                                     unsigned int requestExpirationIvalSec=0);
 
     /**
-     * Initiate a new replica deletion request.
+     * Create and start a new request for deleting a replica.
      *
      * @param workerName     - the name of a worker node where the replica will be deleted
      * @param database       - database name
      * @param chunk          - the chunk number
-     * @param onFinish       - an optional callback function to be called upon the completion of the request
-     * @param priority       - a priority level of the request
-     * @param keepTracking   - keep tracking the request before it finishes or fails
-     * @param allowDuplicate - follow a previously made request if the current one duplicates it
-     * @param jobId          - an optional identifier of a job issed the request
+     * @param onFinish       - (optional) callback function to be called upon the completion of the request
+     * @param priority       - (optional) priority level of the request
+     * @param keepTracking   - (optional) keep tracking the request before it finishes or fails
+     * @param allowDuplicate - (optional) follow a previously made request if the current one duplicates it
+     * @param jobId          - (optional) identifier of a job issed the request
      * @param requestExpirationIvalSec
-     *                       - an optional parameter (if differs from 0)
-     *                         allowing to override the default value of the corresponding
-     *                         parameter from the Configuration.
-     *
+     *                       - (optional) parameter (if differs from 0) allowing to override the default
+     *                         value of the corresponding parameter from the Configuration.
      * @return a pointer to the replication request
      */
     DeleteRequestPtr deleteReplica(std::string const& workerName,
@@ -255,7 +252,7 @@ public:
                                    unsigned int requestExpirationIvalSec=0);
 
     /**
-     * Initiate a new replica lookup request.
+     * Create and start a new request for finding a replica.
      *
      * PERFORMANCE NOTE: enabling 'computeCheckSum' will require reading each file.
      *                   Hence this will slow down the operation, and it may also
@@ -265,16 +262,14 @@ public:
      * @param workerName      - the name of a worker node where the replica is located
      * @param database        - database name
      * @param chunk           - the chunk number
-     * @param onFinish        - an optional callback function to be called upon the completion of the request
-     * @param priority        - a priority level of the request
-     * @param computeCheckSum - tell a worker server to compute check/control sum on each file
-     * @param keepTracking    - keep tracking the request before it finishes or fails
-     * @param jobId           - an optional identifier of a job issed the request
+     * @param onFinish        - (optional) callback function to be called upon the completion of the request
+     * @param priority        - (optional) priority level of the request
+     * @param computeCheckSum - (optional) tell worker server to compute check/control sum on each file
+     * @param keepTracking    - (optional) keep tracking the request before it finishes or fails
+     * @param jobId           - (optional) identifier of a job issed the request
      * @param requestExpirationIvalSec
-     *                         - an optional parameter (if differs from 0)
-     *                           allowing to override the default value of the corresponding
-     *                           parameter from the Configuration.
-     *
+     *                         - (optional) parameter (if differs from 0) allowing to override the default
+     *                           value of the corresponding parameter from the Configuration.
      * @return a pointer to the replication request
      */
     FindRequestPtr findReplica(std::string const& workerName,
@@ -288,19 +283,17 @@ public:
                                unsigned int requestExpirationIvalSec=0);
 
     /**
-     * Initiate a new replicas lookup request.
+     * Create and start a new request for finding replicas in a scope of a database.
      *
      * @param workerName      - the name of a worker node where the replicas are located
      * @param database        - database name
-     * @param onFinish        - an optional callback function to be called upon the completion of the request
-     * @param priority        - a priority level of the request
-     * @param keepTracking    - keep tracking the request before it finishes or fails
-     * @param jobId           - an optional identifier of a job issed the request
+     * @param onFinish        - (optional) callback function to be called upon the completion of the request
+     * @param priority        - (optional) priority level of the request
+     * @param keepTracking    - (optional) keep tracking the request before it finishes or fails
+     * @param jobId           - (optional) identifier of a job issed the request
      * @param requestExpirationIvalSec
-     *                        - an optional parameter (if differs from 0)
-     *                          allowing to override the default value of the corresponding
-     *                          parameter from the Configuration.
-     *
+     *                        - (optional) parameter (if differs from 0) allowing to override the default
+     *                          value of the corresponding parameter from the Configuration.
      * @return a pointer to the replication request
      */
     FindAllRequestPtr findAllReplicas(
@@ -317,14 +310,12 @@ public:
      *
      * @param workerName      - the name of a worker node where the request was launched
      * @param targetRequestId - an identifier of a request to be stopped
-     * @param onFinish        - a callback function to be called upon completion of the operation
-     * @param keepTracking    - keep tracking the request before it finishes or fails
-     * @param jobId           - an optional identifier of a job issed the request
+     * @param onFinish        - (optional) callback function to be called upon completion of the operation
+     * @param keepTracking    - (optional) keep tracking the request before it finishes or fails
+     * @param jobId           - (optional) identifier of a job issed the request
      * @param requestExpirationIvalSec
-     *                        - an optional parameter (if differs from 0)
-     *                          allowing to override the default value of the corresponding
-     *                          parameter from the Configuration.
-     *
+     *                        - (optional) parameter (if differs from 0) allowing to override the default
+     *                          value of the corresponding parameter from the Configuration.
      * @return a pointer to the stop request
      */
     StopReplicationRequestPtr stopReplication(
@@ -340,14 +331,12 @@ public:
      *
      * @param workerName      - the name of a worker node where the request was launched
      * @param targetRequestId - an identifier of a request to be stopped
-     * @param onFinish        - a callback function to be called upon completion of the operation
-     * @param keepTracking    - keep tracking the request before it finishes or fails
-     * @param jobId           - an optional identifier of a job issed the request
+     * @param onFinish        - (optional) callback function to be called upon completion of the operation
+     * @param keepTracking    - (optional) keep tracking the request before it finishes or fails
+     * @param jobId           - (optional) identifier of a job issed the request
      * @param requestExpirationIvalSec
-     *                        - an optional parameter (if differs from 0)
-     *                          allowing to override the default value of the corresponding
-     *                          parameter from the Configuration.
-     *
+     *                        - (optional) parameter (if differs from 0) allowing to override the default
+     *                          value of the corresponding parameter from the Configuration.
      * @return a pointer to the stop request
      */
     StopDeleteRequestPtr stopReplicaDelete(
@@ -363,14 +352,12 @@ public:
      *
      * @param workerName      - the name of a worker node where the request was launched
      * @param targetRequestId - an identifier of a request to be stopped
-     * @param onFinish        - a callback function to be called upon completion of the operation
-     * @param keepTracking    - keep tracking the request before it finishes or fails
-     * @param jobId           - an optional identifier of a job issed the request
+     * @param onFinish        - (optional) callback function to be called upon completion of the operation
+     * @param keepTracking    - (optional) keep tracking the request before it finishes or fails
+     * @param jobId           - (optional) identifier of a job issed the request
      * @param requestExpirationIvalSec
-     *                        - an optional parameter (if differs from 0)
-     *                          allowing to override the default value of the corresponding
-     *                          parameter from the Configuration.
-     *
+     *                        - (optional) parameter (if differs from 0) allowing to override the default
+     *                          value of the corresponding parameter from the Configuration.
      * @return a pointer to the stop request
      */
     StopFindRequestPtr stopReplicaFind(
@@ -386,14 +373,12 @@ public:
      *
      * @param workerName      - the name of a worker node where the request was launched
      * @param targetRequestId - an identifier of a request to be stopped
-     * @param onFinish        - a callback function to be called upon completion of the operation
-     * @param keepTracking    - keep tracking the request before it finishes or fails
-     * @param jobId           - an optional identifier of a job issed the request
+     * @param onFinish        - (optional) callback function to be called upon completion of the operation
+     * @param keepTracking    - (optional) keep tracking the request before it finishes or fails
+     * @param jobId           - (optional) identifier of a job issed the request
      * @param requestExpirationIvalSec
-     *                        - an optional parameter (if differs from 0)
-     *                          allowing to override the default value of the corresponding
-     *                          parameter from the Configuration.
-     *
+     *                        - (optional) parameter (if differs from 0) allowing to override the default
+     *                          value of the corresponding parameter from the Configuration.
      * @return a pointer to the stop request
      */
     StopFindAllRequestPtr stopReplicaFindAll(
@@ -409,14 +394,12 @@ public:
      *
      * @param workerName      - the name of a worker node where the request was launched
      * @param targetRequestId - an identifier of a request to be inspected
-     * @param onFinish        - a callback function to be called upon completion of the operation
-     * @param keepTracking    - keep tracking the request before it finishes or fails
-     * @param jobId           - an optional identifier of a job issed the request
+     * @param onFinish        - (optional) callback function to be called upon completion of the operation
+     * @param keepTracking    - (optional) keep tracking the request before it finishes or fails
+     * @param jobId           - (optional) identifier of a job issed the request
      * @param requestExpirationIvalSec
-     *                        - an optional parameter (if differs from 0)
-     *                          allowing to override the default value of the corresponding
-     *                          parameter from the Configuration.
-     *
+     *                        - (optional) parameter (if differs from 0) allowing to override the default
+     *                          value of the corresponding parameter from the Configuration.
      * @return a pointer to the status inquery request
      */
     StatusReplicationRequestPtr statusOfReplication(
@@ -432,14 +415,12 @@ public:
      *
      * @param workerName      - the name of a worker node where the request was launched
      * @param targetRequestId - an identifier of a request to be inspected
-     * @param onFinish        - a callback function to be called upon completion of the operation
-     * @param keepTracking    - keep tracking the request before it finishes or fails
-     * @param jobId           - an optional identifier of a job issed the request
+     * @param onFinish        - (optional) callback function to be called upon completion of the operation
+     * @param keepTracking    - (optional) keep tracking the request before it finishes or fails
+     * @param jobId           - (optional) identifier of a job issed the request
      * @param requestExpirationIvalSec
-     *                        - an optional parameter (if differs from 0)
-     *                          allowing to override the default value of the corresponding
-     *                          parameter from the Configuration.
-     *
+     *                        - (optional) parameter (if differs from 0) allowing to override the default
+     *                          value of the corresponding parameter from the Configuration.
      * @return a pointer to the status inquery request
      */
     StatusDeleteRequestPtr statusOfDelete(
@@ -455,14 +436,12 @@ public:
      *
      * @param workerName      - the name of a worker node where the request was launched
      * @param targetRequestId - an identifier of a request to be inspected
-     * @param onFinish        - a callback function to be called upon completion of the operation
-     * @param keepTracking    - keep tracking the request before it finishes or fails
-     * @param jobId           - an optional identifier of a job issed the request
+     * @param onFinish        - (optional) callback function to be called upon completion of the operation
+     * @param keepTracking    - (optional) keep tracking the request before it finishes or fails
+     * @param jobId           - (optional) identifier of a job issed the request
      * @param requestExpirationIvalSec
-     *                        - an optional parameter (if differs from 0)
-     *                          allowing to override the default value of the corresponding
-     *                          parameter from the Configuration.
-     *
+     *                        - (optional) parameter (if differs from 0) allowing to override the default
+     *                          value of the corresponding parameter from the Configuration.
      * @return a pointer to the status inquery request
      */
     StatusFindRequestPtr statusOfFind(
@@ -478,14 +457,12 @@ public:
      *
      * @param workerName      - the name of a worker node where the request was launched
      * @param targetRequestId - an identifier of a request to be inspected
-     * @param onFinish        - a callback function to be called upon completion of the operation
-     * @param keepTracking    - keep tracking the request before it finishes or fails
-     * @param jobId           - an optional identifier of a job issed the request
+     * @param onFinish        - (optional) callback function to be called upon completion of the operation
+     * @param keepTracking    - (optional) keep tracking the request before it finishes or fails
+     * @param jobId           - (optional) identifier of a job issed the request
      * @param requestExpirationIvalSec
-     *                        - an optional parameter (if differs from 0)
-     *                          allowing to override the default value of the corresponding
-     *                          parameter from the Configuration.
-     *
+     *                        - (optional) parameter (if differs from 0) allowing to override the default
+     *                          value of the corresponding parameter from the Configuration.
      * @return a pointer to the status inquery request
      */
     StatusFindAllRequestPtr statusOfFindAll(
@@ -500,13 +477,11 @@ public:
      * Tell the worker-side service to temporarily suspend processing requests
      *
      * @param workerName - the name of a worker node where the service runs
-     * @param onFinish   - a callback function to be called upon completion of the operation
-     * @param jobId      - an optional identifier of a job issed the request
+     * @param onFinish   - (optional) callback function to be called upon completion of the operation
+     * @param jobId      - (optional) identifier of a job issed the request
      * @param requestExpirationIvalSec
-     *                   - an optional parameter (if differs from 0)
-     *                     allowing to override the default value of the corresponding
-     *                     parameter from the Configuration.
-     *
+     *                   - (optional) parameter (if differs from 0) allowing to override the default
+     *                     value of the corresponding parameter from the Configuration.
      * @return a pointer to the request
      */
     ServiceSuspendRequestPtr suspendWorkerService(
@@ -519,13 +494,11 @@ public:
      * Tell the worker-side service to resume processing requests
      *
      * @param workerName - the name of a worker node where the service runs
-     * @param onFinish   - a callback function to be called upon completion of the operation
-     * @param jobId      - an optional identifier of a job issed the request
+     * @param onFinish   - (optional) callback function to be called upon completion of the operation
+     * @param jobId      - (optional) identifier of a job issed the request
      * @param requestExpirationIvalSec
-     *                   - an optional parameter (if differs from 0)
-     *                     allowing to override the default value of the corresponding
-     *                     parameter from the Configuration.
-     *
+     *                   - (optional) parameter (if differs from 0) allowing to override the default
+     *                     value of the corresponding parameter from the Configuration.
      * @return a pointer to the request
      */
     ServiceResumeRequestPtr resumeWorkerService(
@@ -537,13 +510,11 @@ public:
      * Request the current status of the worker-side service
      *
      * @param workerName - the name of a worker node where the service runs
-     * @param onFinish   - a callback function to be called upon completion of the operation
-     * @param jobId      - an optional identifier of a job issed the request
+     * @param onFinish   - (optional) callback function to be called upon completion of the operation
+     * @param jobId      - (optional) identifier of a job issed the request
      * @param requestExpirationIvalSec
-     *                   - an optional parameter (if differs from 0)
-     *                     allowing to override the default value of the corresponding
-     *                     parameter from the Configuration.
-     *
+     *                   - (optional) parameter (if differs from 0) allowing to override the default
+     *                     value of the corresponding parameter from the Configuration.
      * @return a pointer to the request
      */
     ServiceStatusRequestPtr statusOfWorkerService(
@@ -557,13 +528,11 @@ public:
      * to the worker-side service
      *
      * @param workerName - the name of a worker node where the service runs
-     * @param onFinish   - a callback function to be called upon completion of the operation
-     * @param jobId      - an optional identifier of a job issed the request
+     * @param onFinish   - (optional) callback function to be called upon completion of the operation
+     * @param jobId      - (optional) identifier of a job issed the request
      * @param requestExpirationIvalSec
-     *                   - an optional parameter (if differs from 0)
-     *                     allowing to override the default value of the corresponding
-     *                     parameter from the Configuration.
-     *
+     *                   - (optional) parameter (if differs from 0) allowing to override the default
+     *                     value of the corresponding parameter from the Configuration.
      * @return a pointer to the request
      */
     ServiceRequestsRequestPtr requestsOfWorkerService(
@@ -577,13 +546,11 @@ public:
      * to the worker-side service and return detailed info on all known requests.
      *
      * @param workerName - the name of a worker node where the service runs
-     * @param onFinish   - a callback function to be called upon completion of the operation
-     * @param jobId      - an optional identifier of a job issed the request
+     * @param onFinish   - (optional) callback function to be called upon completion of the operation
+     * @param jobId      - (optional) identifier of a job issed the request
      * @param requestExpirationIvalSec
-     *                   - an optional parameter (if differs from 0)
-     *                     allowing to override the default value of the corresponding
-     *                     parameter from the Configuration.
-     *
+     *                   - (optional) parameter (if differs from 0) allowing to override the default
+     *                     value of the corresponding parameter from the Configuration.
      * @return a pointer to the request
      */
     ServiceDrainRequestPtr drainWorkerService(
@@ -660,7 +627,7 @@ private:
     /// the Controller was created.
     uint64_t const _startTime;
 
-    /// The provider of variou services
+    /// The provider of various services
     ServiceProvider::Ptr _serviceProvider;
 
     // The BOOST ASIO communication services & threads which run them

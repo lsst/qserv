@@ -96,6 +96,9 @@ WorkerInfo const& ConfigurationFile::disableWorker(std::string const& name) {
 
         // Then update the transient state (note this change will be also be)
         // seen via the above obtainer reference to the worker description.
+
+        util::Lock lock(_mtx, context() + "disableWorker");
+
         _workerInfo[info.name].isEnabled = false;
     }
     return info;
@@ -108,12 +111,16 @@ void ConfigurationFile::deleteWorker(std::string const& name) {
     // This will also throw an exception if the worker is unknown
     WorkerInfo const& info = workerInfo(name);
 
+    util::Lock lock(_mtx, context() + "deleteWorker");
+
     _workerInfo.erase(info.name);
 }
 
 void ConfigurationFile::loadConfiguration() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "ConfigurationFile::loadConfiguration");
+
+    util::Lock lock(_mtx, context() + "ConfigurationFile::loadConfiguration");
 
     util::ConfigStore configStore(_configFile);
 

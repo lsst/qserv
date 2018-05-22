@@ -155,7 +155,7 @@ public:
     virtual ~Request() = default;
 
     /// @return reference to the service provider,
-    ServiceProvider::Ptr const& serviceProvider() { return _serviceProvider; }
+    ServiceProvider::Ptr const& serviceProvider() const { return _serviceProvider; }
 
     /// @return a string representing a type of a request.
     std::string const& type() const { return _type; }
@@ -292,6 +292,42 @@ protected:
             bool keepTracking,
             bool allowDuplicate);
 
+    /// @return  keep tracking the request before it finishes or fails
+    bool keepTracking() const { return _keepTracking; }
+
+    /// @return follow a previously made request if the current one duplicates it
+    bool allowDuplicate() const { return _allowDuplicate; }
+
+    /// @return pointer to a buffer for data moved over the network
+    std::shared_ptr<ProtocolBuffer> const& buffer() const { return _bufferPtr; }
+
+    /// @return reference onto a timer used for ordering asynchronious delays
+    boost::asio::deadline_timer& timer() { return _timer; }
+
+    /// @return suggested interval (seconds) between retries in communications with workers
+    unsigned int timerIvalSec() const { return _timerIvalSec; }
+
+    /// @return reference to the performance counters object
+    Performance& mutablePerformance() { return _performance; }
+
+    /**
+      * Update a state of the extended status variable
+      * 
+      * @param lock   - lock on a mutex must be acquired before calling this method
+      * @param status - new status to be set
+      */
+    void setExtendedServerStatus(util::Lock const& lock,
+                                 ExtendedCompletionStatus status) { _extendedServerStatus = status; }
+
+    /**
+     * Set an effective identifier of a remote (worker-side) request
+     * 
+     * @param lock - lock on a mutex must be acquired before calling this method
+     * @param id   - identifier to be set
+     */
+    void setDuplicateRequestId(util::Lock const& lock,
+                               std::string const& id) { _duplicateRequestId = id; }
+
     /**
       * This method is supposed to be provided by subclasses for additional
       * subclass-specific actions to begin processing the request.
@@ -362,7 +398,7 @@ protected:
      * Ensure the object is in the deseride internal state. Throw an
      * exception otherwise.
      *
-     * NOTES: normally this condition should never been seen unless
+     * NOTES: normally this condition should never be seen unless
      *        there is a problem with the application implementation
      *        or the underlying run-time system.
      *
@@ -405,6 +441,12 @@ private:
     void notify();
 
 protected:
+
+    /// Mutex guarding internal state. This object is made protected
+    /// to allow subclasses use it.
+    mutable util::Mutex _mtx;
+
+private:
 
     // Parameters of the object
 
@@ -456,9 +498,6 @@ protected:
     /// with status: FINISHED::EXPIRED.
     unsigned int                _requestExpirationIvalSec;
     boost::asio::deadline_timer _requestExpirationTimer;
-
-    /// Mutex guarding internal state
-    mutable util::Mutex _mtx;
 
     /// The optional association with the Controller
     std::shared_ptr<Controller> _controller;

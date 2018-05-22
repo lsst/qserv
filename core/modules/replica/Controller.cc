@@ -66,7 +66,7 @@ template <class  T>
 struct RequestWrapperImpl
     :   ControllerRequestWrapper {
 
-    /// The implementation of the vurtual method defined in the base class
+    /// The implementation of the virtual method defined in the base class
     virtual void notify() {
         if (_onFinish == nullptr) { return; }
         _onFinish(_request);
@@ -82,16 +82,14 @@ struct RequestWrapperImpl
     /// Destructor
     ~RequestWrapperImpl() override = default;
 
-    /// Implement a virtual method of the base class
+    /// @see ControllerRequestWrapper::request()
     std::shared_ptr<Request> request() const override {
         return _request;
     }
 
 private:
 
-    // The context of the operation
-
-    typename T::Ptr       _request;
+    typename T::Ptr          _request;
     typename T::CallbackType _onFinish;
 };
 
@@ -152,8 +150,8 @@ public:
                 [controller] (typename REQUEST_TYPE::Ptr request) {
                     controller->finish(request->id());
                 },
-                keepTracking
-                ,messenger
+                keepTracking,
+                messenger
             );
 
         // Register the request (along with its callback) by its unique
@@ -172,7 +170,7 @@ public:
 
    /**
      * Generic method for launching worker service management requests such as suspending,
-     * resyming or inspecting a status of the worker-side replication service.
+     * resuming or inspecting a status of the worker-side replication service.
      *
      * @param workerName - the name of a worker node where the service is run
      * @param onFinish   - a callback function to be called upon completion of the operation
@@ -196,8 +194,8 @@ public:
                 workerName,
                 [controller] (typename REQUEST_TYPE::Ptr request) {
                     controller->finish(request->id());
-                }
-                ,messenger
+                },
+                messenger
             );
 
         // Register the request (along with its callback) by its unique
@@ -239,12 +237,9 @@ Controller::Controller(ServiceProvider::Ptr const& serviceProvider)
             getpid()}),
         _startTime(PerformanceUtils::now()),
         _serviceProvider(serviceProvider),
-        _numThreads(serviceProvider->config()->controllerThreads()),
-        _io_service(),
-        _work(nullptr),
-        _registry() {
+        _numThreads(serviceProvider->config()->controllerThreads()) {
 
-    if (not _numThreads) {
+    if (0 == _numThreads) {
         throw std::runtime_error(
             "Controller:  configuration problem, the number of threads is set to 0");
     }
@@ -286,7 +281,7 @@ void Controller::run() {
 }
 
 bool Controller::isRunning() const {
-    return _threads.size();
+    return _threads.size() != 0;
 }
 
 void Controller::stop() {
@@ -372,8 +367,8 @@ ReplicationRequest::Ptr Controller::replicate(
             },
             priority,
             keepTracking,
-            allowDuplicate
-            ,_messenger
+            allowDuplicate,
+            _messenger
         );
 
     // Register the request (along with its callback) by its unique
@@ -421,8 +416,8 @@ DeleteRequest::Ptr Controller::deleteReplica(
             },
             priority,
             keepTracking,
-            allowDuplicate
-            ,_messenger
+            allowDuplicate,
+            _messenger
         );
 
     // Register the request (along with its callback) by its unique
@@ -470,8 +465,8 @@ FindRequest::Ptr Controller::findReplica(
             },
             priority,
             computeCheckSum,
-            keepTracking
-            ,_messenger
+            keepTracking,
+            _messenger
         );
 
     // Register the request (along with its callback) by its unique
@@ -515,8 +510,8 @@ FindAllRequest::Ptr Controller::findAllReplicas(
                 controller->finish(request->id());
             },
             priority,
-            keepTracking
-            ,_messenger
+            keepTracking,
+            _messenger
         );
 
     // Register the request (along with its callback) by its unique

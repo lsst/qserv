@@ -105,9 +105,9 @@ ReplicationRequest::ReplicationRequest(
         _onFinish(onFinish),
         _replicaInfo() {
 
-    _serviceProvider->assertWorkerIsValid(sourceWorker);
-    _serviceProvider->assertWorkersAreDifferent(sourceWorker, worker);
-    _serviceProvider->assertDatabaseIsValid(database);
+    Request::serviceProvider()->assertWorkerIsValid(sourceWorker);
+    Request::serviceProvider()->assertWorkersAreDifferent(sourceWorker, worker);
+    Request::serviceProvider()->assertDatabaseIsValid(database);
 }
 
 void ReplicationRequest::startImpl(util::Lock const& lock) {
@@ -117,14 +117,14 @@ void ReplicationRequest::startImpl(util::Lock const& lock) {
     // Serialize the Request message header and the request itself into
     // the network buffer.
 
-    _bufferPtr->resize();
+    buffer()->resize();
 
     proto::ReplicationRequestHeader hdr;
     hdr.set_id(id());
     hdr.set_type(proto::ReplicationRequestHeader::REPLICA);
     hdr.set_replica_type(proto::ReplicationReplicaRequestType::REPLICA_CREATE);
 
-    _bufferPtr->serialize(hdr);
+    buffer()->serialize(hdr);
 
     proto::ReplicationRequestReplicate message;
     message.set_priority(priority());
@@ -132,7 +132,7 @@ void ReplicationRequest::startImpl(util::Lock const& lock) {
     message.set_chunk(chunk());
     message.set_worker(sourceWorker());
 
-    _bufferPtr->serialize(message);
+    buffer()->serialize(message);
 
     send(lock);
 }
@@ -143,8 +143,8 @@ void ReplicationRequest::wait(util::Lock const& lock) {
 
     // Allways need to set the interval before launching the timer.
 
-    _timer.expires_from_now(boost::posix_time::seconds(_timerIvalSec));
-    _timer.async_wait(
+    timer().expires_from_now(boost::posix_time::seconds(timerIvalSec()));
+    timer().async_wait(
         boost::bind(
             &ReplicationRequest::awaken,
             shared_from_base<ReplicationRequest>(),
@@ -165,29 +165,29 @@ void ReplicationRequest::awaken(boost::system::error_code const& ec) {
     // test is made after acquering the lock to recheck the state in case if it
     // has transitioned while acquering the lock.
 
-    if (_state== State::FINISHED) return;
+    if (state() == State::FINISHED) return;
 
     util::Lock lock(_mtx, context() + "awaken");
 
-    if (_state== State::FINISHED) return;
+    if (state() == State::FINISHED) return;
 
     // Serialize the Status message header and the request itself into
     // the network buffer.
 
-    _bufferPtr->resize();
+    buffer()->resize();
 
     proto::ReplicationRequestHeader hdr;
     hdr.set_id(id());
     hdr.set_type(proto::ReplicationRequestHeader::REQUEST);
     hdr.set_management_type(proto::ReplicationManagementRequestType::REQUEST_STATUS);
 
-    _bufferPtr->serialize(hdr);
+    buffer()->serialize(hdr);
 
     proto::ReplicationRequestStatus message;
     message.set_id(remoteId());
     message.set_type(proto::ReplicationReplicaRequestType::REPLICA_CREATE);
 
-    _bufferPtr->serialize(message);
+    buffer()->serialize(message);
 
     send(lock);
 }
@@ -196,10 +196,10 @@ void ReplicationRequest::send(util::Lock const& lock) {
 
     auto self = shared_from_base<ReplicationRequest>();
 
-    _messenger->send<proto::ReplicationResponseReplicate>(
+    messenger()->send<proto::ReplicationResponseReplicate>(
         worker(),
         id(),
-        _bufferPtr,
+        buffer(),
         [self] (std::string const& id,
                 bool success,
                 proto::ReplicationResponseReplicate const& response) {
@@ -227,24 +227,25 @@ void ReplicationRequest::analyze(bool success,
     // test is made after acquering the lock to recheck the state in case if it
     // has transitioned while acquering the lock.
 
-    if (_state == State::FINISHED) return;
+    if (state() == State::FINISHED) return;
 
     util::Lock lock(_mtx, context() + "analyze");
 
-    if (_state == State::FINISHED) return;
+    if (state() == State::FINISHED) return;
 
     if (success) {
 
         // Allways get the latest status reported by the remote server
-        _extendedServerStatus = replica::translate(message.status_ext());
+        setExtendedServerStatus(lock,
+                                replica::translate(message.status_ext()));
 
         // Performance counters are updated from either of two sources,
         // depending on the availability of the 'target' performance counters
         // filled in by the 'STATUS' queries. If the later is not available
         // then fallback to the one of the current request.
 
-        if (message.has_target_performance()) _performance.update(message.target_performance());
-        else                                  _performance.update(message.performance());
+        if (message.has_target_performance()) mutablePerformance().update(message.target_performance());
+        else                                  mutablePerformance().update(message.performance());
 
         // Always extract extended data regardless of the completion status
         // reported by the worker service.
@@ -259,37 +260,40 @@ void ReplicationRequest::analyze(bool success,
 
             case proto::ReplicationStatus::SUCCESS:
 
-                _serviceProvider->databaseServices()->saveReplicaInfo(_replicaInfo);
+                serviceProvider()->databaseServices()->saveReplicaInfo(_replicaInfo);
 
                 finish(lock,
                        SUCCESS);
                 break;
 
             case proto::ReplicationStatus::QUEUED:
-                if (_keepTracking) wait(lock);
-                else               finish(lock,
-                                          SERVER_QUEUED);
+                if (keepTracking()) wait(lock);
+                else                finish(lock,
+                                           SERVER_QUEUED);
                 break;
 
             case proto::ReplicationStatus::IN_PROGRESS:
-                if (_keepTracking) wait(lock);
-                else               finish(lock,
-                                          SERVER_IN_PROGRESS);
+                if (keepTracking()) wait(lock);
+                else                finish(lock,
+                                           SERVER_IN_PROGRESS);
                 break;
 
             case proto::ReplicationStatus::IS_CANCELLING:
-                if (_keepTracking) wait(lock);
-                else               finish(lock,
-                                          SERVER_IS_CANCELLING);
+                if (keepTracking()) wait(lock);
+                else                finish(lock,
+                                           SERVER_IS_CANCELLING);
                 break;
 
             case proto::ReplicationStatus::BAD:
 
                 // Special treatment of the duplicate requests if allowed
 
-                if (_extendedServerStatus == ExtendedCompletionStatus::EXT_STATUS_DUPLICATE) {
-                    Request::_duplicateRequestId = message.duplicate_request_id();
-                    if (_allowDuplicate && _keepTracking) {
+                if (extendedServerStatus() == ExtendedCompletionStatus::EXT_STATUS_DUPLICATE) {
+
+                    setDuplicateRequestId(lock,
+                                          message.duplicate_request_id());
+
+                    if (allowDuplicate() && keepTracking()) {
                         wait(lock);
                         return;
                     }
@@ -332,7 +336,7 @@ void ReplicationRequest::notifyImpl() {
 }
 
 void ReplicationRequest::savePersistentState() {
-    _controller->serviceProvider()->databaseServices()->saveState(*this);
+    controller()->serviceProvider()->databaseServices()->saveState(*this);
 }
 
 std::string ReplicationRequest::extendedPersistentState(SqlGeneratorPtr const& gen) const {
