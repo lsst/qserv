@@ -27,7 +27,6 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
-#include "replica/Messenger.h"
 
 namespace {
 
@@ -46,7 +45,7 @@ RequestMessenger::RequestMessenger(ServiceProvider::Ptr const& serviceProvider,
                                    int  priority,
                                    bool keepTracking,
                                    bool allowDuplicate,
-                                   std::shared_ptr<Messenger> const& messenger)
+                                   Messenger::Ptr const& messenger)
     :   Request(serviceProvider,
                 io_service,
                 type,

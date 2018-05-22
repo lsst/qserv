@@ -43,11 +43,11 @@ bool tryParameter(database::mysql::Row& row,
 
     std::string category;
     row.get("category", category);
-    if (desiredCategory != category) { return false; }
+    if (desiredCategory != category) return false;
 
     std::string param;
     row.get("param", param);
-    if (desiredParam != param) { return false; }
+    if (desiredParam != param) return false;
 
     row.get("value", value);
     return true;
@@ -267,8 +267,8 @@ void ConfigurationMySQL::loadConfiguration() {
         bool isPartitioned;
         ::readMandatoryParameter(row, "is_partitioned", isPartitioned);
 
-        if (isPartitioned) { _databaseInfo[database].partitionedTables.push_back(table); }
-        else               { _databaseInfo[database].regularTables    .push_back(table); }
+        if (isPartitioned) _databaseInfo[database].partitionedTables.push_back(table);
+        else               _databaseInfo[database].regularTables    .push_back(table);
     }
 
     // Values of these parameters are predetermined by the connection

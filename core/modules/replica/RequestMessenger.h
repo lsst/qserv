@@ -35,6 +35,7 @@
 #include <boost/asio.hpp>
 
 // Qserv headers
+#include "replica/Messenger.h"
 #include "replica/Request.h"
 #include "replica/ServiceProvider.h"
 
@@ -45,9 +46,6 @@
 namespace lsst {
 namespace qserv {
 namespace replica {
-
-// Forward declarations
-class Messenger;
 
 /**
   * Class RequestMessenger is a base class for a family of requests within
@@ -96,10 +94,10 @@ protected:
                      int  priority,
                      bool keepTracking,
                      bool allowDuplicate,
-                     std::shared_ptr<Messenger> const& messenger);
+                     Messenger::Ptr const& messenger);
 
     /// @return pointer to the messenging service
-    std::shared_ptr<Messenger> const& messenger() const { return _messenger; }
+    Messenger::Ptr const& messenger() const { return _messenger; }
 
     /**
      * Implement a method defined in the base class.
@@ -109,7 +107,7 @@ protected:
 protected:
 
     /// Worker messenging service
-    std::shared_ptr<Messenger> _messenger;
+    Messenger::Ptr _messenger;
 };
 
 }}} // namespace lsst::qserv::replica
