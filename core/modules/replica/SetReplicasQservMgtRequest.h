@@ -67,7 +67,6 @@ public:
     SetReplicasQservMgtRequest(SetReplicasQservMgtRequest const&) = delete;
     SetReplicasQservMgtRequest& operator=(SetReplicasQservMgtRequest const&) = delete;
 
-    /// Destructor
     ~SetReplicasQservMgtRequest() final = default;
 
     /**

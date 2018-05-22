@@ -151,7 +151,6 @@ public:
     Request(Request const&) = delete;
     Request& operator=(Request const&) = delete;
 
-    /// Destructor
     virtual ~Request() = default;
 
     /// @return reference to the service provider,
@@ -448,8 +447,6 @@ protected:
 
 private:
 
-    // Parameters of the object
-
     ServiceProvider::Ptr _serviceProvider;
 
     std::string _type;
@@ -460,8 +457,6 @@ private:
     int  _priority;
     bool _keepTracking;
     bool _allowDuplicate;
-
-    // Primary and extended states of the request
 
     std::atomic<State>         _state;
     std::atomic<ExtendedState> _extendedState;
@@ -474,10 +469,10 @@ private:
     /// Buffer for data moved over the network
     std::shared_ptr<ProtocolBuffer> _bufferPtr;
 
-    // Parameters of a worker obtained from a configuration
+    /// Cached parameters of a worker obtained from a configuration
     WorkerInfo const& _workerInfo;
 
-    /// This time is used to in the communication protocol for requests
+    /// This timer is used to in the communication protocol for requests
     /// which may require multiple retries or any time spacing between network
     /// operation.
     ///

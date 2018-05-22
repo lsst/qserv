@@ -116,7 +116,7 @@ public:
     FixUpJob(FixUpJob const&) = delete;
     FixUpJob& operator=(FixUpJob const&) = delete;
 
-    /// Destructor (non-trivial)
+    /// Destructor (non-trivial in order to release locks on chunks)
     ~FixUpJob() final;
 
     /// Return the name of a database family defining a scope of the operation

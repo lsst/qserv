@@ -343,7 +343,7 @@ void WorkerProcessor::enqueueForFindAll(std::string const&                      
     util::Lock lock(_mtx, context() + "enqueueForFindAll");
 
     // TODO: run the sanity check to ensure no such request is found in any
-    //       of the queue. Return 'DUPLICATE' error status if teh one is found.
+    //       of the queue. Return 'DUPLICATE' error status if the one is found.
 
     auto const ptr =
         _requestFactory.createFindAllRequest(

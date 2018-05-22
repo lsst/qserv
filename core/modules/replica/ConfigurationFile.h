@@ -72,7 +72,6 @@ public:
      */
     explicit ConfigurationFile(std::string const& configFile);
 
-    /// Destructor
     ~ConfigurationFile() override = default;
 
     /**

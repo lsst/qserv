@@ -94,7 +94,7 @@ void StopRequestBase::wait(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "wait");
 
-    // Allways need to set the interval before launching the timer.
+    // Always need to set the interval before launching the timer.
 
     timer().expires_from_now(boost::posix_time::seconds(timerIvalSec()));
     timer().async_wait(
@@ -168,61 +168,52 @@ void StopRequestBase::analyze(bool success,
 
     if (state() == State::FINISHED) return;
 
-    if (success) {
+    if (not success) {
+        finish(lock, CLIENT_ERROR);
+        return;
+    }
 
-        switch (status) {
+    switch (status) {
 
-            case proto::ReplicationStatus::SUCCESS:
+        case proto::ReplicationStatus::SUCCESS:
 
-                saveReplicaInfo();
+            saveReplicaInfo();
 
-                finish(lock,
-                       SUCCESS);
-                break;
+            finish(lock, SUCCESS);
+            break;
 
-            case proto::ReplicationStatus::QUEUED:
-                if (keepTracking()) wait(lock);
-                else                finish(lock,
-                                           SERVER_QUEUED);
-                break;
+        case proto::ReplicationStatus::QUEUED:
+            if (keepTracking()) wait(lock);
+            else                finish(lock, SERVER_QUEUED);
+            break;
 
-            case proto::ReplicationStatus::IN_PROGRESS:
-                if (keepTracking()) wait(lock);
-                else                finish(lock,
-                                           SERVER_IN_PROGRESS);
-                break;
+        case proto::ReplicationStatus::IN_PROGRESS:
+            if (keepTracking()) wait(lock);
+            else                finish(lock, SERVER_IN_PROGRESS);
+            break;
 
-            case proto::ReplicationStatus::IS_CANCELLING:
-                if (keepTracking()) wait(lock);
-                else                finish(lock,
-                                           SERVER_IS_CANCELLING);
-                break;
+        case proto::ReplicationStatus::IS_CANCELLING:
+            if (keepTracking()) wait(lock);
+            else                finish(lock, SERVER_IS_CANCELLING);
+            break;
 
-            case proto::ReplicationStatus::BAD:
-                finish(lock,
-                       SERVER_BAD);
-                break;
+        case proto::ReplicationStatus::BAD:
+            finish(lock, SERVER_BAD);
+            break;
 
-            case proto::ReplicationStatus::FAILED:
-                finish(lock,
-                       SERVER_ERROR);
-                break;
+        case proto::ReplicationStatus::FAILED:
+            finish(lock, SERVER_ERROR);
+            break;
 
-            case proto::ReplicationStatus::CANCELLED:
-                finish(lock,
-                       SERVER_CANCELLED);
-                break;
+        case proto::ReplicationStatus::CANCELLED:
+            finish(lock, SERVER_CANCELLED);
+            break;
 
-            default:
-                throw std::logic_error(
-                        "StopRequestBase::analyze() unknown status '" +
-                        proto::ReplicationStatus_Name(status) +
-                        "' received from server");
-        }
-
-    } else {
-        finish(lock,
-               CLIENT_ERROR);
+        default:
+            throw std::logic_error(
+                    "StopRequestBase::analyze() unknown status '" +
+                    proto::ReplicationStatus_Name(status) +
+                    "' received from server");
     }
 }
 

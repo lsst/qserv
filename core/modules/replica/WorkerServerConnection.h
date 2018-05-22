@@ -90,7 +90,6 @@ public:
     WorkerServerConnection(WorkerServerConnection const&) = delete;
     WorkerServerConnection& operator=(WorkerServerConnection const&) = delete;
 
-    /// Destructor (can't say 'override' because the base class's one is not virtual)
     ~WorkerServerConnection() = default;
 
     /**
@@ -192,8 +191,6 @@ private:
               size_t bytes_transferred);
 
 private:
-
-    // Parameters of the object
 
     ServiceProvider::Ptr _serviceProvider;
     WorkerProcessor& _processor;

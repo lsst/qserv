@@ -103,7 +103,6 @@ public:
     ChunkLocker(ChunkLocker const&) = delete;
     ChunkLocker& operator=(ChunkLocker const&) = delete;
 
-    /// Destructor
     ~ChunkLocker() = default;
 
     /**

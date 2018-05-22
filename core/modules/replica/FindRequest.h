@@ -69,7 +69,6 @@ public:
     FindRequest(FindRequest const&) = delete;
     FindRequest& operator=(FindRequest const&) = delete;
 
-    /// Destructor
     ~FindRequest() final = default;
 
     // Trivial acccessors
@@ -186,13 +185,10 @@ private:
 
 private:
 
-    // Parameters of the object
-
     std::string  _database;
     unsigned int _chunk;
     bool         _computeCheckSum;
 
-    /// Registered callback to be called when the operation finishes
     CallbackType _onFinish;
 
     /// Request-specific parameters of the target request

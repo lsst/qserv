@@ -136,7 +136,6 @@ public:
     FileClient(FileClient const&) = delete;
     FileClient &operator=(FileClient const&) = delete;
 
-    /// Destructor
     ~FileClient () = default;
 
     // Trivial accessors

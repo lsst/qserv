@@ -77,8 +77,7 @@ public:
     WorkerProcessorThread(WorkerProcessorThread const&) = delete;
     WorkerProcessorThread& operator=(WorkerProcessorThread const&) = delete;
 
-    /// Destructor (can't say 'override' because the base class's one is not virtual)
-    virtual ~WorkerProcessorThread() = default;
+    ~WorkerProcessorThread() = default;
 
     /// Return an ientifier of this thread object
     unsigned int id() const { return _id; }

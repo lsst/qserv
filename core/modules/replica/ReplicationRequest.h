@@ -72,7 +72,6 @@ public:
     ReplicationRequest(ReplicationRequest const&) = delete;
     ReplicationRequest& operator=(ReplicationRequest const&) = delete;
 
-    /// Destructor
     ~ReplicationRequest() final = default;
 
     // Trivial acccessors
@@ -86,8 +85,10 @@ public:
         return _targetRequestParams;
     }
 
-    /// Return request-specific extended data reported upon a successfull completion
-    /// of the request
+    /**
+     * @return request-specific extended data reported upon a successful
+     * completion of the request
+     */
     ReplicaInfo const& responseData() const { return _replicaInfo; }
 
 
@@ -173,7 +174,7 @@ private:
      * Notifying a party which initiated the request.
      *
      * This method implements the corresponing virtual method defined
-     * bu the base class.
+     * by the base class.
      */
     void notifyImpl() final;
 
@@ -191,13 +192,10 @@ private:
 
 private:
 
-    // Parameters of the object
-
     std::string  _database;
     unsigned int _chunk;
     std::string  _sourceWorker;
 
-    /// Registered callback to be called when the operation finishes
     CallbackType _onFinish;
 
     /// Request-specific parameters of the target request

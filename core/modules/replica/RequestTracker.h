@@ -62,7 +62,6 @@ public:
     RequestTrackerBase(RequestTrackerBase const&) = delete;
     RequestTrackerBase& operator=(RequestTrackerBase const&) = delete;
 
-    /// Destructor
     virtual ~RequestTrackerBase() = default;
 
     /**
@@ -146,8 +145,6 @@ protected:
 
 private:
 
-    // Parameters of the object
-
     std::ostream& _os;
 
     bool _progressReport;
@@ -188,7 +185,6 @@ public:
                                errorReport) {
     }
 
-    /// Destructor
     ~CommonRequestTracker() override = default;
 
     /**
@@ -244,7 +240,7 @@ protected:
 
 public:
 
-    /// All requests launched
+    /// All requests that were launched
     std::list<typename T::Ptr> requests;
 };
 
@@ -277,7 +273,6 @@ public:
                                bool progressReport=true,
                                bool errorReport=false);
 
-    /// Destructor
     ~AnyRequestTracker() override = default;
 
     /// The callback function to be registered with each request
@@ -315,7 +310,7 @@ protected:
 
 public:
 
-    /// All requests launched
+    /// All requests that were launched
     std::list<Request::Ptr> requests;
 };
 

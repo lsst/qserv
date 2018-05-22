@@ -229,7 +229,6 @@ public:
     /// The Assignment operator
     Row& operator=(Row const& rhs) = default;
 
-    /// Destructor
     ~Row() = default;
 
     /// @return 'true' of the object has meaningful content
@@ -430,7 +429,6 @@ public:
     Connection(Connection const&) = delete;
     Connection& operator=(Connection const&) = delete;
 
-    /// Destructor
     ~Connection();
 
     /**
@@ -842,7 +840,7 @@ public:
      *     Row row;
      *     while (conn->next(row)) {
      *         // Extract data from 'row' within this block
-     *         // before proceeding to teh next row, etc.
+     *         // before proceeding to the next row, etc.
      *     }
      *   @code
      *
@@ -929,7 +927,7 @@ private:
     void connect();
 
     /**
-     * The method is to ensure that the transaction is in teh desired state.
+     * The method is to ensure that the transaction is in the desired state.
      *
      * @param inTransaction - the desired state of the transaction
      */

@@ -79,7 +79,6 @@ public:
     FileServer(FileServer const&) = delete;
     FileServer& operator=(FileServer const&) = delete;
 
-    /// Destructor
     ~FileServer() = default;
 
     /// Return the name of a worker this server runs for
@@ -122,16 +121,11 @@ private:
 
 private:
 
-    // Parameters of the object
-
     ServiceProvider::Ptr _serviceProvider;
     std::string _workerName;
 
-    // Cached parameters of the worker
-
+    /// Cached parameters of the worker
     WorkerInfo const& _workerInfo;
-
-    // The mutable state of the object
 
     boost::asio::io_service        _io_service;
     boost::asio::ip::tcp::acceptor _acceptor;

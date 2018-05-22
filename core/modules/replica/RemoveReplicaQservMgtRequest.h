@@ -70,7 +70,6 @@ public:
     RemoveReplicaQservMgtRequest(RemoveReplicaQservMgtRequest const&) = delete;
     RemoveReplicaQservMgtRequest& operator=(RemoveReplicaQservMgtRequest const&) = delete;
 
-    /// Destructor
     ~RemoveReplicaQservMgtRequest() final = default;
 
     /**

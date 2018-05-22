@@ -111,7 +111,6 @@ public:
     DeleteReplicaJob(DeleteReplicaJob const&) = delete;
     DeleteReplicaJob& operator=(DeleteReplicaJob const&) = delete;
 
-    /// Destructor
     ~DeleteReplicaJob() final = default;
 
     /// @return the name of a database family

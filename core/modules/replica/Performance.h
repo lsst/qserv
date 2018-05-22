@@ -85,7 +85,6 @@ public:
     /// Assignment operator
     Performance& operator=(Performance const&) = default;
 
-    /// Destructor
     ~Performance() = default;
 
     /**
@@ -147,7 +146,6 @@ public:
     /// Assignment operator
     WorkerPerformance& operator=(WorkerPerformance const&) = default;
 
-    /// Destructor
     ~WorkerPerformance() = default;
 
     /// Update the 'start' time and return the previous state

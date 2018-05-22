@@ -83,7 +83,6 @@ public:
                   bool progressReport=true,
                   bool errorReport=false);
 
-    /// Destructor
     ~ReplicaFinder() override = default;
 };
 

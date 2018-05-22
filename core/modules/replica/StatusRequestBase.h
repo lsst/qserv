@@ -49,7 +49,7 @@ namespace replica {
 
 /**
   * Class StatusRequestBase represents the base class for a family of requests
-  * pulling a status of on-going operationd.
+  * pulling a status of on-going operation.
   */
 class StatusRequestBase
     :   public RequestMessenger {
@@ -65,7 +65,6 @@ public:
     StatusRequestBase(StatusRequestBase const&) = delete;
     StatusRequestBase& operator=(StatusRequestBase const&) = delete;
 
-    /// Destructor
     ~StatusRequestBase() override = default;
 
     /// Return an identifier of the target request
@@ -131,6 +130,11 @@ protected:
       */
      virtual void saveReplicaInfo() = 0;
 
+protected:
+
+    /// The performance of the target operation
+    Performance _targetPerformance;
+
 private:
 
     /// An identifier of the targer request whose state is to be queried
@@ -138,11 +142,6 @@ private:
 
     /// The type of the targer request (must match the identifier)
     proto::ReplicationReplicaRequestType  _requestType;
-
-protected:
-
-    /// The performance of the target operation
-    Performance _targetPerformance;
 };
 
 }}} // namespace lsst::qserv::replica

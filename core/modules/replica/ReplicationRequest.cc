@@ -233,97 +233,86 @@ void ReplicationRequest::analyze(bool success,
 
     if (state() == State::FINISHED) return;
 
-    if (success) {
-
-        // Allways get the latest status reported by the remote server
-        setExtendedServerStatus(lock,
-                                replica::translate(message.status_ext()));
-
-        // Performance counters are updated from either of two sources,
-        // depending on the availability of the 'target' performance counters
-        // filled in by the 'STATUS' queries. If the later is not available
-        // then fallback to the one of the current request.
-
-        if (message.has_target_performance()) mutablePerformance().update(message.target_performance());
-        else                                  mutablePerformance().update(message.performance());
-
-        // Always extract extended data regardless of the completion status
-        // reported by the worker service.
-
-        _replicaInfo = ReplicaInfo(&(message.replica_info()));
-
-        // Extract target request type-specific parameters from the response
-        if (message.has_request()) {
-            _targetRequestParams = ReplicationRequestParams(message.request());
-        }
-        switch (message.status()) {
-
-            case proto::ReplicationStatus::SUCCESS:
-
-                serviceProvider()->databaseServices()->saveReplicaInfo(_replicaInfo);
-
-                finish(lock,
-                       SUCCESS);
-                break;
-
-            case proto::ReplicationStatus::QUEUED:
-                if (keepTracking()) wait(lock);
-                else                finish(lock,
-                                           SERVER_QUEUED);
-                break;
-
-            case proto::ReplicationStatus::IN_PROGRESS:
-                if (keepTracking()) wait(lock);
-                else                finish(lock,
-                                           SERVER_IN_PROGRESS);
-                break;
-
-            case proto::ReplicationStatus::IS_CANCELLING:
-                if (keepTracking()) wait(lock);
-                else                finish(lock,
-                                           SERVER_IS_CANCELLING);
-                break;
-
-            case proto::ReplicationStatus::BAD:
-
-                // Special treatment of the duplicate requests if allowed
-
-                if (extendedServerStatus() == ExtendedCompletionStatus::EXT_STATUS_DUPLICATE) {
-
-                    setDuplicateRequestId(lock,
-                                          message.duplicate_request_id());
-
-                    if (allowDuplicate() && keepTracking()) {
-                        wait(lock);
-                        return;
-                    }
-                }
-                finish(lock,
-                       SERVER_BAD);
-                break;
-
-            case proto::ReplicationStatus::FAILED:
-                finish(lock,
-                       SERVER_ERROR);
-                break;
-
-            case proto::ReplicationStatus::CANCELLED:
-                finish(lock,
-                       SERVER_CANCELLED);
-                break;
-
-            default:
-                throw std::logic_error(
-                        "ReplicationRequest::analyze() unknown status '" +
-                        proto::ReplicationStatus_Name(message.status()) +
-                        "' received from server");
-        }
-
-    } else {
-        finish(lock,
-               CLIENT_ERROR);
+    if (not success) {
+        finish(lock, CLIENT_ERROR);
+        return;
     }
 
+    // Allways get the latest status reported by the remote server
+
+    setExtendedServerStatus(lock, replica::translate(message.status_ext()));
+
+    // Performance counters are updated from either of two sources,
+    // depending on the availability of the 'target' performance counters
+    // filled in by the 'STATUS' queries. If the later is not available
+    // then fallback to the one of the current request.
+
+    if (message.has_target_performance()) mutablePerformance().update(message.target_performance());
+    else                                  mutablePerformance().update(message.performance());
+
+    // Always extract extended data regardless of the completion status
+    // reported by the worker service.
+
+    _replicaInfo = ReplicaInfo(&(message.replica_info()));
+
+    // Extract target request type-specific parameters from the response
+    if (message.has_request()) {
+        _targetRequestParams = ReplicationRequestParams(message.request());
+    }
+    switch (message.status()) {
+
+        case proto::ReplicationStatus::SUCCESS:
+
+            serviceProvider()->databaseServices()->saveReplicaInfo(_replicaInfo);
+
+            finish(lock, SUCCESS);
+            break;
+
+        case proto::ReplicationStatus::QUEUED:
+            if (keepTracking()) wait(lock);
+            else                finish(lock, SERVER_QUEUED);
+            break;
+
+        case proto::ReplicationStatus::IN_PROGRESS:
+            if (keepTracking()) wait(lock);
+            else                finish(lock, SERVER_IN_PROGRESS);
+            break;
+
+        case proto::ReplicationStatus::IS_CANCELLING:
+            if (keepTracking()) wait(lock);
+            else                finish(lock, SERVER_IS_CANCELLING);
+            break;
+
+        case proto::ReplicationStatus::BAD:
+
+            // Special treatment of the duplicate requests if allowed
+
+            if (extendedServerStatus() == ExtendedCompletionStatus::EXT_STATUS_DUPLICATE) {
+
+                setDuplicateRequestId(lock, message.duplicate_request_id());
+
+                if (allowDuplicate() && keepTracking()) {
+                    wait(lock);
+                    return;
+                }
+            }
+            finish(lock, SERVER_BAD);
+            break;
+
+        case proto::ReplicationStatus::FAILED:
+            finish(lock, SERVER_ERROR);
+            break;
+
+        case proto::ReplicationStatus::CANCELLED:
+            finish(lock, SERVER_CANCELLED);
+            break;
+
+        default:
+            throw std::logic_error(
+                    "ReplicationRequest::analyze() unknown status '" +
+                    proto::ReplicationStatus_Name(message.status()) +
+                    "' received from server");
+    }
 }
 
 void ReplicationRequest::notifyImpl() {

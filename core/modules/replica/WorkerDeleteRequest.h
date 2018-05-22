@@ -77,7 +77,6 @@ public:
     WorkerDeleteRequest(WorkerDeleteRequest const&) = delete;
     WorkerDeleteRequest& operator=(WorkerDeleteRequest const&) = delete;
 
-    /// Destructor
     ~WorkerDeleteRequest() override = default;
 
     // Trivial accessors
@@ -107,8 +106,6 @@ protected:
                         std::string const& database,
                         unsigned int       chunk);
 protected:
-
-    // Parameters of the object
 
     std::string  _database;
     unsigned int _chunk;
@@ -148,7 +145,6 @@ public:
     WorkerDeleteRequestPOSIX(WorkerDeleteRequestPOSIX const&) = delete;
     WorkerDeleteRequestPOSIX& operator=(WorkerDeleteRequestPOSIX const&) = delete;
 
-    /// Destructor
     ~WorkerDeleteRequestPOSIX() override = default;
 
     /**

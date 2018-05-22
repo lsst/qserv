@@ -115,7 +115,7 @@ public:
     PurgeJob(PurgeJob const&) = delete;
     PurgeJob& operator=(PurgeJob const&) = delete;
 
-    /// Destructor (non-trivial)
+    /// Destructor (non-trivial in order to release chunks locked by the operation)
     ~PurgeJob() final;
 
     /// @return maximum number of each chunk's good replicas to be reached when

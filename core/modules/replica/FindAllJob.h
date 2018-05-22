@@ -155,7 +155,6 @@ public:
     FindAllJob(FindAllJob const&) = delete;
     FindAllJob& operator=(FindAllJob const&) = delete;
 
-    /// Destructor
     ~FindAllJob() final = default;
 
     /// Return the name of a database family defining a scope of the operation
@@ -219,7 +218,7 @@ protected:
       *
       * @see Job::notifyImpl()
       */
-    void notifyImpl() final;
+    void notifyImpl() final ;
 
     /**
      * The calback function to be invoked on a completion of each request.

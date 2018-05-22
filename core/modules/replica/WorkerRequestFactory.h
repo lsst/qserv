@@ -71,7 +71,6 @@ public:
     WorkerRequestFactoryBase(WorkerRequestFactoryBase const&) = delete;
     WorkerRequestFactoryBase& operator=(WorkerRequestFactoryBase const&) = delete;
 
-    /// Destructor
     virtual ~WorkerRequestFactoryBase() = default;
 
     /// Return the name of a technology the factory is based upon
@@ -145,8 +144,6 @@ protected:
 
 protected:
 
-    // Parameters of the object
-
     ServiceProvider::Ptr _serviceProvider;
 };
 
@@ -190,7 +187,6 @@ public:
     explicit WorkerRequestFactory(ServiceProvider::Ptr const& serviceProvider,
                                   std::string const& technology=std::string());
 
-    /// Destructor
     ~WorkerRequestFactory() override {
         delete _ptr;
     }

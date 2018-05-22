@@ -113,7 +113,6 @@ public:
     CreateReplicaJob(CreateReplicaJob const&) = delete;
     CreateReplicaJob& operator=(CreateReplicaJob const&) = delete;
 
-    /// Destructor
     ~CreateReplicaJob() final = default;
 
     /// The name of a database family

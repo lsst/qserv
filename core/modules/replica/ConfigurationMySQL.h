@@ -71,7 +71,6 @@ public:
      */
     ConfigurationMySQL(database::mysql::ConnectionParams const& connectionParams);
 
-    /// Destructor
     ~ConfigurationMySQL() override = default;
 
     /**

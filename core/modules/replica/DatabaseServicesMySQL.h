@@ -71,7 +71,6 @@ public:
      */
     explicit DatabaseServicesMySQL(Configuration::Ptr const& configuration);
 
-    /// Destructor
     ~DatabaseServicesMySQL() override = default;
 
     /**

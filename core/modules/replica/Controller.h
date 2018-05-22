@@ -70,7 +70,6 @@ struct ControllerRequestWrapper {
     /// The pointer type for instances of the class
     typedef std::shared_ptr<ControllerRequestWrapper> Ptr;
 
-    /// Destructor
     virtual ~ControllerRequestWrapper() = default;
 
     /// This method will be called upon a completion of a request
@@ -146,7 +145,6 @@ public:
     Controller(Controller const&) = delete;
     Controller& operator=(Controller const&) = delete;
 
-    /// Destructor
     ~Controller() = default;
 
     /// Return the unique identity of the instance
