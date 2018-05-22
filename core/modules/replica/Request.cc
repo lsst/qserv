@@ -111,7 +111,7 @@ Request::Request(ServiceProvider::Ptr const& serviceProvider,
         _requestExpirationIvalSec(serviceProvider->config()->controllerRequestTimeoutSec()),
         _requestExpirationTimer(io_service) {
 
-        _serviceProvider->assertWorkerIsValid(worker);
+    _serviceProvider->assertWorkerIsValid(worker);
 }
 std::string Request::context() const {
     return "REQUEST " + id() + "  " + type() +
