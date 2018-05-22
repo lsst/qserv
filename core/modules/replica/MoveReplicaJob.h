@@ -127,7 +127,6 @@ public:
     MoveReplicaJob(MoveReplicaJob const&) = delete;
     MoveReplicaJob& operator=(MoveReplicaJob const&) = delete;
 
-    /// Destructor
     ~MoveReplicaJob() final = default;
 
     /// The name of a database family

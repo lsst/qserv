@@ -121,7 +121,6 @@ public:
     ServiceManagementRequest(ServiceManagementRequest const&) = delete;
     ServiceManagementRequest& operator=(ServiceManagementRequest const&) = delete;
 
-    /// Destructor
     ~ServiceManagementRequest() final = default;
 
     /**

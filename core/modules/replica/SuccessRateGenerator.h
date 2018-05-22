@@ -71,7 +71,6 @@ public:
     */
     explicit SuccessRateGenerator(double successRate=0.5);
 
-    /// Destructor
     ~SuccessRateGenerator() = default;
 
     /**

@@ -178,7 +178,7 @@ public:
     RebalanceJob(RebalanceJob const&) = delete;
     RebalanceJob& operator=(RebalanceJob const&) = delete;
 
-    /// Destructor (non-trivial)
+    /// Destructor (non-trivial in order to release chunks locked by the operation)
     ~RebalanceJob() final;
 
     /// Return the name of a database defining a scope of the operation

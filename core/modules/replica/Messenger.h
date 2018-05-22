@@ -66,7 +66,6 @@ public:
     Messenger(Messenger const&) = delete;
     Messenger& operator=(Messenger const&) = delete;
 
-    /// Destructor
     ~Messenger() = default;
 
     /**

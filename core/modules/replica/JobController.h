@@ -70,7 +70,6 @@ struct JobWrapper {
     /// The pointer type for instances of the class
     typedef std::shared_ptr<JobWrapper> Ptr;
 
-    /// Destructor
     virtual ~JobWrapper() = default;
 
     /// This method will be called upon a completion of a request
@@ -148,7 +147,6 @@ public:
     JobController(JobController const&) = delete;
     JobController& operator=(JobController const&) = delete;
 
-    /// Destructor
     virtual ~JobController() = default;
 
     /**
@@ -260,7 +258,7 @@ public:
 
     /**
      * Submit a job for disabling or permanently deleting (depends on the corresponding
-     * option) a worker from teh replication setup.
+     * option) a worker from the replication setup.
      *
      * @param worker          - name of a worker
      * @param permanentDelete - if set to 'true' the worker record will be completelly wiped out

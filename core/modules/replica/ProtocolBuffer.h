@@ -68,7 +68,7 @@ public:
     ProtocolBuffer(ProtocolBuffer const&) = delete;
     ProtocolBuffer& operator=(ProtocolBuffer const&) = delete;
 
-    /// Destructor (non-trivial)
+    /// Destructor (non-trivial in order to free the memory)
     ~ProtocolBuffer();
 
     /**

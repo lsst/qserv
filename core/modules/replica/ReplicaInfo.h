@@ -134,7 +134,6 @@ public:
     /// Assignment operator
     ReplicaInfo& operator=(ReplicaInfo const& ri) = default;
 
-    /// Destructor
     ~ReplicaInfo() = default;
 
     // Trivial accessors

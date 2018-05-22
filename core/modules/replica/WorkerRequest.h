@@ -95,7 +95,7 @@ public:
     WorkerRequest(WorkerRequest const&) = delete;
     WorkerRequest& operator=(WorkerRequest const&) = delete;
 
-    /// Destructor (can't say 'override' because the base class's one is not virtual)
+    /// Destructor (can't 'override' because the base class's one is not virtual)
     virtual ~WorkerRequest() = default;
 
     // Trivial accessors

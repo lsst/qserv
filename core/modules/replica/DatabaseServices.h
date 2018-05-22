@@ -82,7 +82,6 @@ public:
     DatabaseServices(DatabaseServices const&) = delete;
     DatabaseServices& operator=(DatabaseServices const&) = delete;
 
-    /// Destructor
     virtual ~DatabaseServices() = default;
 
     /**

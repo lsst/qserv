@@ -116,7 +116,7 @@ public:
     ReplicateJob(ReplicateJob const&) = delete;
     ReplicateJob& operator=(ReplicateJob const&) = delete;
 
-    /// Destructor (non-trivial)
+    /// Destructor (non-trivial in order to release chunks locked by the operation)
     ~ReplicateJob() final;
 
     /// Return the minimum number of each chunk's replicas to be reached when

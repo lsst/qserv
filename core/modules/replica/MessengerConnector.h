@@ -93,7 +93,6 @@ public:
         WrapperBase(WrapperBase const&) = delete;
         WrapperBase& operator=(WrapperBase const&) = delete;
 
-        /// Destructor
         virtual ~WrapperBase() = default;
 
         /**
@@ -152,7 +151,6 @@ public:
         Wrapper(Wrapper const&) = delete;
         Wrapper& operator=(Wrapper const&) = delete;
 
-        /// Destructor
         ~Wrapper() override = default;
 
         /**
@@ -208,7 +206,6 @@ public:
     MessengerConnector(MessengerConnector const&) = delete;
     MessengerConnector& operator=(MessengerConnector const&) = delete;
 
-    /// Destructor
     ~MessengerConnector() = default;
 
     /**
@@ -409,7 +406,7 @@ private:
      * @param buf   - the buffer to use
      * @param bytes - a expected length of the message (obtained from a preceeding frame)
      *                to be received into the network buffer from the network.
-     * @param id    - a unique identifier of a request to match teh 'id' in a response header
+     * @param id    - a unique identifier of a request to match the 'id' in a response header
      *
      * @return the completion code of the operation
      */
@@ -455,10 +452,9 @@ private:
 
 private:
 
-    // Parameters of the object
-
     ServiceProvider::Ptr _serviceProvider;
 
+    /// Cached parameters of the worker
     WorkerInfo const& _workerInfo;
 
     /// The cached parameter for the buffer sizes (pulled from
@@ -472,8 +468,6 @@ private:
 
     /// The internal state
     State _state;
-
-    // Mutable state for network communication
 
     boost::asio::ip::tcp::resolver _resolver;
     boost::asio::ip::tcp::socket   _socket;

@@ -217,8 +217,6 @@ public:
 
 private:
 
-    // Parameters of the object
-
     std::string _fileName;          ///< the name of an input file
     size_t      _recordSizeBytes;   ///< desired record size
 
@@ -251,13 +249,13 @@ public:
     MultiFileCsComputeEngine(MultiFileCsComputeEngine const&) = delete;
     MultiFileCsComputeEngine& operator=(MultiFileCsComputeEngine const&) = delete;
 
-    /// Destructor
+    /// Destructor (non-trivial because some resources need to be properly released)
     ~MultiFileCsComputeEngine();
 
     /**
      * The normal constructor
      *
-    *  Exceptions:
+     *  Exceptions:
      *   std::runtime_error    - if there was a problem with opening the first file
      *   std::invalid_argument - if the record size is 0 or too huge (more than FileUtils::MAX_RECORD_SIZE_BYTES)
      *
@@ -316,8 +314,6 @@ public:
     bool execute();
 
 private:
-
-    // Parameters of the object
 
     std::vector<std::string> _fileNames;        ///< The names of files to be processed
     size_t                   _recordSizeBytes;  ///< desired record size

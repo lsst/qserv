@@ -141,7 +141,6 @@ public:
     QservMgtRequest(QservMgtRequest const&) = delete;
     QservMgtRequest& operator=(QservMgtRequest const&) = delete;
 
-    /// Destructor
     virtual ~QservMgtRequest() = default;
 
     /// @return reference to a provider of services
@@ -337,15 +336,11 @@ protected:
 
 protected:
 
-    // Parameters of the object
-
     ServiceProvider::Ptr _serviceProvider;
 
     std::string _type;
     std::string _id;
     std::string _worker;
-
-    // Primary and extended states of the request
 
     std::atomic<State>         _state;
     std::atomic<ExtendedState> _extendedState;

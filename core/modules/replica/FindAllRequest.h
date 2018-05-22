@@ -69,7 +69,6 @@ public:
     FindAllRequest(FindAllRequest const&) = delete;
     FindAllRequest& operator=(FindAllRequest const&) = delete;
 
-    /// Destructor
     ~FindAllRequest() final = default;
 
     // Trivial acccessors
@@ -177,11 +176,8 @@ private:
 
 private:
 
-    // Parameters of the object
-
     std::string _database;
 
-    /// Registered callback to be called when the operation finishes
     CallbackType _onFinish;
 
     /// Request-specific parameters of the target request

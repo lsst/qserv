@@ -140,7 +140,6 @@ public:
     DeleteWorkerJob(DeleteWorkerJob const&) = delete;
     DeleteWorkerJob& operator=(DeleteWorkerJob const&) = delete;
 
-    /// Destructor
     ~DeleteWorkerJob() final = default;
 
     /// Return the name of a worker to be deleted

@@ -70,7 +70,6 @@ public:
     AddReplicaQservMgtRequest(AddReplicaQservMgtRequest const&) = delete;
     AddReplicaQservMgtRequest& operator=(AddReplicaQservMgtRequest const&) = delete;
 
-    /// Destructor
     ~AddReplicaQservMgtRequest() final = default;
 
     /**

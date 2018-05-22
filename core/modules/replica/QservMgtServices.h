@@ -61,7 +61,6 @@ struct QservMgtRequestWrapper {
     /// The pointer type for instances of the class
     typedef std::shared_ptr<QservMgtRequestWrapper> Ptr;
 
-    /// Destructor
     virtual ~QservMgtRequestWrapper() = default;
 
     /// This method will be called upon a completion of a request

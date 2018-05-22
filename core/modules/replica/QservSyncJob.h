@@ -54,7 +54,7 @@ namespace replica {
  */
 struct QservSyncJobResult {
 
-    /// Per-worker flags indicating if the teh synchronization request sent
+    /// Per-worker flags indicating if the the synchronization request sent
     /// to the corresponding worker has succeeded.
     ///
     std::map<std::string, bool> workers;
@@ -120,7 +120,6 @@ public:
     QservSyncJob(QservSyncJob const&) = delete;
     QservSyncJob& operator=(QservSyncJob const&) = delete;
 
-    /// Destructor
     ~QservSyncJob() final = default;
 
     /// @return name of a database family defining a scope of the operation

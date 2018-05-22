@@ -118,7 +118,6 @@ public:
     QservGetReplicasJob(QservGetReplicasJob const&) = delete;
     QservGetReplicasJob& operator=(QservGetReplicasJob const&) = delete;
 
-    /// Destructor
     ~QservGetReplicasJob() final = default;
 
     /// @return the name of a database family defining a scope of the operation

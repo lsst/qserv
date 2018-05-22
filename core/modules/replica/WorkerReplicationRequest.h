@@ -126,8 +126,6 @@ protected:
 
 protected:
 
-    // Parameters of the object
-
     std::string  _database;
     unsigned int _chunk;
     std::string  _sourceWorker;
@@ -168,7 +166,6 @@ public:
     WorkerReplicationRequestPOSIX(WorkerReplicationRequestPOSIX const&) = delete;
     WorkerReplicationRequestPOSIX& operator=(WorkerReplicationRequestPOSIX const&) = delete;
 
-    /// Destructor
     ~WorkerReplicationRequestPOSIX() override = default;
 
     /**
@@ -285,7 +282,7 @@ private:
 
 private:
 
-    // Cached parameters of the operation
+    // Cached parameters of the operation obtained from the Configuration
 
     WorkerInfo   const& _inWorkerInfo;
     WorkerInfo   const& _outWorkerInfo;
@@ -303,7 +300,7 @@ private:
     /// has finished.
     std::vector<std::string>::const_iterator _fileItr;
 
-    /// This object represents teh currently open (if any) input file
+    /// This object represents the currently open (if any) input file
     /// on the source worker node
     std::shared_ptr<FileClient> _inFilePtr;
 

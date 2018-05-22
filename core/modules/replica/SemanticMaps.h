@@ -57,7 +57,6 @@ class Map {
 
 public:
 
-    /// Destructor
     virtual ~Map() = default;
 
     /// @return number of elements in the collection
@@ -173,7 +172,6 @@ public:
     WorkerMap(WorkerMap const&) = default;
     WorkerMap& operator=(WorkerMap const&) = default;
 
-    /// Destructor
     ~WorkerMap() override = default;
 
     /**
@@ -237,7 +235,6 @@ public:
     DatabaseMap(DatabaseMap const&) = default;
     DatabaseMap& operator=(DatabaseMap const&) = default;
 
-    /// Destructor
     ~DatabaseMap() override = default;
 
     /**
@@ -301,7 +298,6 @@ public:
     ChunkMap(ChunkMap const&) = default;
     ChunkMap& operator=(ChunkMap const&) = default;
 
-    /// Destructor
     ~ChunkMap() override = default;
 
     /**

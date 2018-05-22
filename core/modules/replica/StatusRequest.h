@@ -61,7 +61,7 @@ namespace replica {
 
 struct StatusReplicationRequestPolicy {
 
-    static char const* requestTypeName() { return "REQUEST_STATUS:REPLICA_CREATE"; }
+    static char const* requestName() { return "REQUEST_STATUS:REPLICA_CREATE"; }
 
     static proto::ReplicationReplicaRequestType requestType() {
         return proto::ReplicationReplicaRequestType::REPLICA_CREATE;
@@ -92,7 +92,7 @@ struct StatusReplicationRequestPolicy {
 
 struct StatusDeleteRequestPolicy {
 
-    static char const* requestTypeName() { return "REQUEST_STATUS:REPLICA_DELETE"; }
+    static char const* requestName() { return "REQUEST_STATUS:REPLICA_DELETE"; }
 
     static proto::ReplicationReplicaRequestType requestType() {
         return proto::ReplicationReplicaRequestType::REPLICA_DELETE;
@@ -124,7 +124,7 @@ struct StatusDeleteRequestPolicy {
 
 struct StatusFindRequestPolicy {
 
-    static char const* requestTypeName() { return "REQUEST_STATUS:REPLICA_FIND"; }
+    static char const* requestName() { return "REQUEST_STATUS:REPLICA_FIND"; }
 
     static proto::ReplicationReplicaRequestType requestType() {
         return proto::ReplicationReplicaRequestType::REPLICA_FIND;
@@ -156,7 +156,7 @@ struct StatusFindRequestPolicy {
 
 struct StatusFindAllRequestPolicy {
 
-    static char const* requestTypeName() { return "REQUEST_STATUS:REPLICA_FIND_ALL"; }
+    static char const* requestName() { return "REQUEST_STATUS:REPLICA_FIND_ALL"; }
 
     static proto::ReplicationReplicaRequestType requestType() {
         return proto::ReplicationReplicaRequestType::REPLICA_FIND_ALL;
@@ -214,16 +214,17 @@ public:
     StatusRequest(StatusRequest const&) = delete;
     StatusRequest& operator=(StatusRequest const&) = delete;
 
-    /// Destructor
     ~StatusRequest() final = default;
 
-    /// Return target request specific parameters
+    /// @return target request specific parameters
     typename POLICY::TargetRequestParamsType const& targetRequestParams() const {
         return _targetRequestParams;
     }
 
-    /// Return request-specific extended data reported upon asuccessfull completion
-    /// of the request
+    /**
+     * @return request-specific extended data reported upon a successful
+     * completion of the request
+     */
     typename POLICY::ResponseDataType const& responseData() const { return _responseData; }
 
     /**
@@ -255,7 +256,7 @@ public:
             new StatusRequest<POLICY>(
                 serviceProvider,
                 io_service,
-                POLICY::requestTypeName(),
+                POLICY::requestName(),
                 worker,
                 targetRequestId,
                 POLICY::requestType(),
@@ -271,7 +272,7 @@ private:
      */
     StatusRequest(ServiceProvider::Ptr const& serviceProvider,
                   boost::asio::io_service& io_service,
-                  char const* requestTypeName,
+                  char const* requestName,
                   std::string const& worker,
                   std::string const& targetRequestId,
                   proto::ReplicationReplicaRequestType requestType,
@@ -280,7 +281,7 @@ private:
                   std::shared_ptr<Messenger> const& messenger)
         :   StatusRequestBase(serviceProvider,
                               io_service,
-                              requestTypeName,
+                              requestName,
                               worker,
                               targetRequestId,
                               requestType,
@@ -322,8 +323,8 @@ private:
                     bool success,
                     typename POLICY::ResponseMessageType const& response) {
 
-                if (success) { self->analyze(true, self->parseResponse(response)); }
-                else         { self->analyze(false); }
+                if (success) self->analyze(true, self->parseResponse(response));
+                else         self->analyze(false);
             }
         );
     }
@@ -388,7 +389,6 @@ private:
 
 private:
 
-    /// Registered callback to be called when the operation finishes
     CallbackType _onFinish;
 
     /// Request-specific parameters of the target request

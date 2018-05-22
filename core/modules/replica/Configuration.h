@@ -129,7 +129,6 @@ public:
     Configuration(Configuration const&) = delete;
     Configuration& operator=(Configuration const&) = delete;
 
-    /// Destructor
     virtual ~Configuration() = default;
 
     /**

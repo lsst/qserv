@@ -65,7 +65,6 @@ public:
     RequestMessenger(RequestMessenger const&) = delete;
     RequestMessenger& operator=(RequestMessenger const&) = delete;
 
-    /// Destructor
     ~RequestMessenger() override = default;
 
 protected:

@@ -146,7 +146,6 @@ public:
     Job(Job const&) = delete;
     Job& operator=(Job const&) = delete;
 
-    /// Destructor
     virtual ~Job() = default;
 
     /// @return a reference to the Controller,

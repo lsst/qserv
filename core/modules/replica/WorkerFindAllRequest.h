@@ -77,7 +77,6 @@ public:
     WorkerFindAllRequest(WorkerFindAllRequest const&) = delete;
     WorkerFindAllRequest& operator=(WorkerFindAllRequest const&) = delete;
 
-    /// Destructor
     ~WorkerFindAllRequest() override = default;
 
     // Trivial accessors
@@ -149,7 +148,6 @@ public:
     WorkerFindAllRequestPOSIX(WorkerFindAllRequestPOSIX const&) = delete;
     WorkerFindAllRequestPOSIX& operator=(WorkerFindAllRequestPOSIX const&) = delete;
 
-    /// Destructor
     ~WorkerFindAllRequestPOSIX() override = default;
 
     /**

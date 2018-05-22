@@ -102,9 +102,9 @@ std::ostream& operator<< (std::ostream &os, const ServiceState &ss);
 /**
   * Class ServiceManagementRequestBase is the base class for a family of requests
   * managing worker-side replication service. The only variable parameter of this
-  * class is a specific type of the managemenyt request.
+  * class is a specific type of the management request.
   *
-  * Note that this class can't be instantiate directly. It serves as an implementation
+  * Note that this class can't be instantiated directly. It serves as an implementation
   * of the protocol. All final customizations and type-specific operations are
   * provided via a generic subclass.
   */
@@ -122,7 +122,6 @@ public:
     ServiceManagementRequestBase(ServiceManagementRequestBase const&) = delete;
     ServiceManagementRequestBase& operator=(ServiceManagementRequestBase const&) = delete;
 
-    /// Destructor
     ~ServiceManagementRequestBase() override = default;
 
     /**

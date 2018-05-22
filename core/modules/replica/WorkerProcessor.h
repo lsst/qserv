@@ -128,7 +128,6 @@ public:
                     WorkerRequestFactory& requestFactory,
                     std::string const& worker);
 
-    /// Destructor
     ~WorkerProcessor() = default;
 
     /// @return the state of the processor

@@ -245,33 +245,34 @@ void ServiceManagementRequestBase::analyze(bool success,
 
     if (state() == State::FINISHED) return;
 
-    if (success) {
-        mutablePerformance().update(message.performance());
-
-        // Capture the general status of the operation
-
-        switch (message.status()) {
-
-            case proto::ReplicationServiceResponse::SUCCESS:
-
-                // Transfer the state of the remote service into a local data member
-                // before initiating state transition of the request object.
-
-                _serviceState.set(message);
-
-                finish(lock,
-                       SUCCESS);
-                break;
-
-            default:
-                finish(lock,
-                       SERVER_ERROR);
-                break;
-        }
-    } else {
-        finish(lock,
-               CLIENT_ERROR);
+    if (not success) {
+        finish(lock, CLIENT_ERROR);
+        return;
     }
+
+    // Update performance counters
+
+    mutablePerformance().update(message.performance());
+
+    // Capture the general status of the operation
+
+    switch (message.status()) {
+
+        case proto::ReplicationServiceResponse::SUCCESS:
+
+            // Transfer the state of the remote service into a local data member
+            // before initiating state transition of the request object.
+
+            _serviceState.set(message);
+
+            finish(lock, SUCCESS);
+            break;
+
+        default:
+            finish(lock, SERVER_ERROR);
+            break;
+    }
+
 }
 
 }}} // namespace lsst::qserv::replica

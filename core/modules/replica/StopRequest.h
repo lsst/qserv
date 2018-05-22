@@ -63,7 +63,7 @@ namespace replica {
 
 struct StopReplicationRequestPolicy {
 
-    static char const* requestTypeName() { return "REQUEST_STOP:REPLICA_CREATE"; }
+    static char const* requestName() { return "REQUEST_STOP:REPLICA_CREATE"; }
 
     static proto::ReplicationReplicaRequestType requestType() {
         return proto::ReplicationReplicaRequestType::REPLICA_CREATE;
@@ -95,7 +95,7 @@ struct StopReplicationRequestPolicy {
 
 struct StopDeleteRequestPolicy {
 
-    static char const* requestTypeName() { return "REQUEST_STOP:REPLICA_DELETE"; }
+    static char const* requestName() { return "REQUEST_STOP:REPLICA_DELETE"; }
 
     static proto::ReplicationReplicaRequestType requestType() {
         return proto::ReplicationReplicaRequestType::REPLICA_DELETE;
@@ -127,7 +127,7 @@ struct StopDeleteRequestPolicy {
 
 struct StopFindRequestPolicy {
 
-    static char const* requestTypeName() { return "REQUEST_STOP:REPLICA_FIND"; }
+    static char const* requestName() { return "REQUEST_STOP:REPLICA_FIND"; }
 
     static proto::ReplicationReplicaRequestType requestType() {
         return proto::ReplicationReplicaRequestType::REPLICA_FIND;
@@ -156,7 +156,7 @@ struct StopFindRequestPolicy {
 
 struct StopFindAllRequestPolicy {
 
-    static char const* requestTypeName() { return "REQUEST_STOP:REPLICA_FIND_ALL"; }
+    static char const* requestName() { return "REQUEST_STOP:REPLICA_FIND_ALL"; }
 
     static proto::ReplicationReplicaRequestType requestType() {
         return proto::ReplicationReplicaRequestType::REPLICA_FIND_ALL;
@@ -210,16 +210,17 @@ public:
     StopRequest(StopRequest const&) = delete;
     StopRequest &operator=(StopRequest const&) = delete;
 
-    /// Destructor
     ~StopRequest() final = default;
 
-    /// Return target request specific parameters
+    /// @return target request specific parameters
     typename POLICY::TargetRequestParamsType const& targetRequestParams() const {
         return _targetRequestParams;
     }
 
-    /// Return request-specific extended data reported upon asuccessfull completion
-    /// of the request
+    /**
+     * @return request-specific extended data reported upon a successful
+     * completion of the request
+     */
     typename POLICY::ResponseDataType const& responseData() const {
         return _responseData;
     }
@@ -243,16 +244,16 @@ public:
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       boost::asio::io_service& io_service,
-                      std::string const&       worker,
-                      std::string const&       targetRequestId,
-                      CallbackType            onFinish,
-                      bool                     keepTracking,
+                      std::string const& worker,
+                      std::string const& targetRequestId,
+                      CallbackType onFinish,
+                      bool keepTracking,
                       std::shared_ptr<Messenger> const& messenger) {
         return StopRequest<POLICY>::Ptr(
             new StopRequest<POLICY>(
                 serviceProvider,
                 io_service,
-                POLICY::requestTypeName(),
+                POLICY::requestName(),
                 worker,
                 targetRequestId,
                 POLICY::requestType(),
@@ -268,16 +269,16 @@ private:
      */
     StopRequest(ServiceProvider::Ptr const& serviceProvider,
                 boost::asio::io_service& io_service,
-                char const*              requestTypeName,
-                std::string const&       worker,
-                std::string const&       targetRequestId,
+                char const* requestName,
+                std::string const& worker,
+                std::string const& targetRequestId,
                 proto::ReplicationReplicaRequestType requestType,
-                CallbackType            onFinish,
-                bool                     keepTracking,
+                CallbackType onFinish,
+                bool keepTracking,
                 std::shared_ptr<Messenger> const& messenger)
         :   StopRequestBase(serviceProvider,
                             io_service,
-                            requestTypeName,
+                            requestName,
                             worker,
                             targetRequestId,
                             requestType,
@@ -319,8 +320,8 @@ private:
                     bool success,
                     typename POLICY::ResponseMessageType const& response) {
 
-                if (success) { self->analyze(true, self->parseResponse(response)); }
-                else         { self->analyze(false); }
+                if (success) self->analyze(true, self->parseResponse(response));
+                else         self->analyze(false);
             }
         );
     }
@@ -385,7 +386,6 @@ private:
 
 private:
 
-    /// Registered callback to be called when the operation finishes
     CallbackType _onFinish;
 
     /// Request-specific parameters of the target request

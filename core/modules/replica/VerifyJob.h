@@ -78,7 +78,6 @@ public:
     /// Assignment operator
     ReplicaDiff& operator= (ReplicaDiff const&) = default;
 
-    /// Destructor
     ~ReplicaDiff () = default;
 
     /// Return a reference to the the 'older' replica object
@@ -194,7 +193,6 @@ public:
     VerifyJob(VerifyJob const&) = delete;
     VerifyJob& operator=(VerifyJob const&) = delete;
 
-    /// Destructor
     ~VerifyJob() final = default;
 
     /// @return maximum number of replicas to be allowed processed simultaneously

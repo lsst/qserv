@@ -94,7 +94,7 @@ public:
     FileServerConnection(FileServerConnection const&) = delete;
     FileServerConnection& operator=(FileServerConnection const&) = delete;
 
-    /// Destructor (non-trivial)
+    /// Destructor (non-trivial because some resources need to be properly released)
     ~FileServerConnection();
 
     /**
@@ -181,12 +181,10 @@ private:
 
 private:
 
-    // Parameters of the object
-
     ServiceProvider::Ptr _serviceProvider;
     std::string _workerName;
 
-    // Cached parameters of the worker
+    /// Cached parameters of the worker
     WorkerInfo const& _workerInfo;
 
     /// A socket for communication with clients
