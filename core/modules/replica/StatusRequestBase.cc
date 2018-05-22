@@ -72,20 +72,20 @@ void StatusRequestBase::startImpl(util::Lock const& lock) {
     // Serialize the Request message header and the request itself into
     // the network buffer.
 
-    _bufferPtr->resize();
+    buffer()->resize();
 
     proto::ReplicationRequestHeader hdr;
     hdr.set_id(id());
     hdr.set_type(proto::ReplicationRequestHeader::REQUEST);
     hdr.set_management_type(proto::ReplicationManagementRequestType::REQUEST_STATUS);
 
-    _bufferPtr->serialize(hdr);
+    buffer()->serialize(hdr);
 
     proto::ReplicationRequestStatus message;
     message.set_id(_targetRequestId);
     message.set_type(_requestType);
 
-    _bufferPtr->serialize(message);
+    buffer()->serialize(message);
 
     send(lock);
 }
@@ -96,8 +96,8 @@ void StatusRequestBase::wait(util::Lock const& lock) {
 
     // Allways need to set the interval before launching the timer.
 
-    _timer.expires_from_now(boost::posix_time::seconds(_timerIvalSec));
-    _timer.async_wait(
+    timer().expires_from_now(boost::posix_time::seconds(timerIvalSec()));
+    timer().async_wait(
         boost::bind(
             &StatusRequestBase::awaken,
             shared_from_base<StatusRequestBase>(),
@@ -118,29 +118,29 @@ void StatusRequestBase::awaken(boost::system::error_code const& ec) {
     // test is made after acquering the lock to recheck the state in case if it
     // has transitioned while acquering the lock.
 
-    if (_state== State::FINISHED) return;
+    if (state() == State::FINISHED) return;
 
     util::Lock lock(_mtx, context() + "awaken");
 
-    if (_state== State::FINISHED) return;
+    if (state() == State::FINISHED) return;
 
     // Serialize the Status message header and the request itself into
     // the network buffer.
 
-    _bufferPtr->resize();
+    buffer()->resize();
 
     proto::ReplicationRequestHeader hdr;
     hdr.set_id(id());
     hdr.set_type(proto::ReplicationRequestHeader::REQUEST);
     hdr.set_management_type(proto::ReplicationManagementRequestType::REQUEST_STATUS);
 
-    _bufferPtr->serialize(hdr);
+    buffer()->serialize(hdr);
 
     proto::ReplicationRequestStatus message;
     message.set_id(_targetRequestId);
     message.set_type(_requestType);
 
-    _bufferPtr->serialize(message);
+    buffer()->serialize(message);
 
     send(lock);
 }
@@ -162,11 +162,11 @@ void StatusRequestBase::analyze(bool success,
     // test is made after acquering the lock to recheck the state in case if it
     // has transitioned while acquering the lock.
 
-    if (_state == State::FINISHED) return;
+    if (state() == State::FINISHED) return;
 
     util::Lock lock(_mtx, context() + "analyze");
 
-    if (_state == State::FINISHED) return;
+    if (state() == State::FINISHED) return;
 
     if (success) {
 
@@ -181,21 +181,21 @@ void StatusRequestBase::analyze(bool success,
                 break;
 
             case proto::ReplicationStatus::QUEUED:
-                if (_keepTracking) wait(lock);
-                else               finish(lock,
-                                          SERVER_QUEUED);
+                if (keepTracking()) wait(lock);
+                else                finish(lock,
+                                           SERVER_QUEUED);
                 break;
 
             case proto::ReplicationStatus::IN_PROGRESS:
-                if (_keepTracking) wait(lock);
-                else               finish(lock,
-                                          SERVER_IN_PROGRESS);
+                if (keepTracking()) wait(lock);
+                else                finish(lock,
+                                           SERVER_IN_PROGRESS);
                 break;
 
             case proto::ReplicationStatus::IS_CANCELLING:
-                if (_keepTracking) wait(lock);
-                else               finish(lock,
-                                          SERVER_IS_CANCELLING);
+                if (keepTracking()) wait(lock);
+                else                finish(lock,
+                                           SERVER_IS_CANCELLING);
                 break;
 
             case proto::ReplicationStatus::BAD:

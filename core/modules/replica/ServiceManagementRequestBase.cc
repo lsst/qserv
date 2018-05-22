@@ -195,23 +195,23 @@ void ServiceManagementRequestBase::startImpl(util::Lock const& lock) {
     // Serialize the Request message header and the request itself into
     // the network buffer.
 
-    _bufferPtr->resize();
+    buffer()->resize();
 
     proto::ReplicationRequestHeader hdr;
     hdr.set_id(id());
     hdr.set_type(proto::ReplicationRequestHeader::SERVICE);
     hdr.set_service_type(_requestType);
 
-    _bufferPtr->serialize(hdr);
+    buffer()->serialize(hdr);
 
     // Send the message
 
     auto self = shared_from_base<ServiceManagementRequestBase>();
 
-    _messenger->send<proto::ReplicationServiceResponse>(
+    messenger()->send<proto::ReplicationServiceResponse>(
         worker(),
         id(),
-        _bufferPtr,
+        buffer(),
         [self] (std::string const& id,
                 bool success,
                 proto::ReplicationServiceResponse const& response) {
@@ -239,14 +239,14 @@ void ServiceManagementRequestBase::analyze(bool success,
     // test is made after acquering the lock to recheck the state in case if it
     // has transitioned while acquering the lock.
 
-    if (_state == State::FINISHED) return;
+    if (state() == State::FINISHED) return;
 
     util::Lock lock(_mtx, context() + "analyze");
 
-    if (_state == State::FINISHED) return;
+    if (state() == State::FINISHED) return;
 
     if (success) {
-        _performance.update(message.performance());
+        mutablePerformance().update(message.performance());
 
         // Capture the general status of the operation
 

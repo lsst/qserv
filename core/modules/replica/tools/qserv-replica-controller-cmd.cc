@@ -53,8 +53,8 @@ void printRequest(typename T::Ptr request) {
 template <>
 void printRequest<replica::ServiceManagementRequestBase>(replica::ServiceManagementRequestBase::Ptr request) {
     LOGS(_log, LOG_LVL_INFO, request->context() << "** DONE **");
-    LOGS(_log, LOG_LVL_INFO, request->context() << "servicState:\n\n" << request->getServiceState ());
-    LOGS(_log, LOG_LVL_INFO, request->context() << "performance:\n"   << request->performance ());
+    LOGS(_log, LOG_LVL_INFO, request->context() << "servicState:\n\n" << request->getServiceState());
+    LOGS(_log, LOG_LVL_INFO, request->context() << "performance:\n"   << request->performance());
 }
 
 template <class T>

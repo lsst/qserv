@@ -310,10 +310,11 @@ private:
 
         auto self = shared_from_base<StopRequest<POLICY>>();
 
-        _messenger->send<typename POLICY::ResponseMessageType>(
+        std::shared_ptr<Messenger> const m = messenger();
+        m->send<typename POLICY::ResponseMessageType>(
             worker(),
             id(),
-            _bufferPtr,
+            buffer(),
             [self] (std::string const& id,
                     bool success,
                     typename POLICY::ResponseMessageType const& response) {
@@ -363,11 +364,12 @@ private:
 
         // Always get the latest status reported by the remote server
 
-        _extendedServerStatus = replica::translate(message.status_ext());
+        setExtendedServerStatus(lock,
+                                replica::translate(message.status_ext()));
 
         // Always update performance counters obtained from the worker service
 
-        _performance.update(message.performance());
+        mutablePerformance().update(message.performance());
 
         // Set the optional performance of the target operation
 

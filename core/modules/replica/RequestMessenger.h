@@ -98,6 +98,9 @@ protected:
                      bool allowDuplicate,
                      std::shared_ptr<Messenger> const& messenger);
 
+    /// @return pointer to the messenging service
+    std::shared_ptr<Messenger> const& messenger() const { return _messenger; }
+
     /**
      * Implement a method defined in the base class.
      */

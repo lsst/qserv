@@ -111,7 +111,10 @@ WorkerInfo const& ConfigurationMySQL::disableWorker(std::string const& name) {
             conn->commit();
 
             // Then update the transient state (note this change will be also be)
-            // seen via the above obtainer reference to the worker description.
+            // seen via the above obtained reference to the worker description.
+
+            util::Lock lock(_mtx, context() + "disableWorker");
+
             _workerInfo[name].isEnabled = false;
 
         } catch (database::mysql::Error const& ex) {
@@ -129,7 +132,7 @@ void ConfigurationMySQL::deleteWorker(std::string const& name) {
     LOGS(_log, LOG_LVL_DEBUG, context() << "deleteWorker  name=" << name);
 
     // This will also throw an exception if the worker is unknown
-    WorkerInfo const& info = workerInfo(name);
+    workerInfo(name);
 
     database::mysql::Connection::Ptr conn;
     try {
@@ -137,11 +140,14 @@ void ConfigurationMySQL::deleteWorker(std::string const& name) {
         // First update the database
         conn = database::mysql::Connection::open(_connectionParams);
         conn->begin();
-        conn->execute ("DELETE FROM config_worker WHERE " + conn->sqlEqual("name", info.name));
+        conn->execute ("DELETE FROM config_worker WHERE " + conn->sqlEqual("name", name));
         conn->commit();
 
         // Then update the transient state
-        _workerInfo.erase(info.name);
+
+        util::Lock lock(_mtx, context() + "deleteWorker");
+
+        _workerInfo.erase(name);
 
     } catch (database::mysql::Error const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context ()<< ex.what());
@@ -154,6 +160,8 @@ void ConfigurationMySQL::deleteWorker(std::string const& name) {
 void ConfigurationMySQL::loadConfiguration() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "ConfigurationMySQL::loadConfiguration");
+
+    util::Lock lock(_mtx, context() + "ConfigurationMySQL::loadConfiguration");
 
     // The common parameters (if any defined) of the workers will be intialize
     // from table 'config' and be used as defaults when reading worker-specific

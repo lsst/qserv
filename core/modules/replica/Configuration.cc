@@ -178,6 +178,9 @@ std::string Configuration::context() const {
 
 std::vector<std::string> Configuration::workers(bool isEnabled,
                                                 bool isReadOnly) const {
+
+    util::Lock lock(_mtx, context() + "workers");
+
     std::vector<std::string> names;
     for (auto&& entry: _workerInfo) {
         auto const& name = entry.first;
@@ -197,6 +200,8 @@ std::vector<std::string> Configuration::workers(bool isEnabled,
 
 std::vector<std::string> Configuration::databaseFamilies() const {
 
+    util::Lock lock(_mtx, context() + "databaseFamilies");
+
     std::set<std::string> familyNames;
     for (auto&& elem: _databaseInfo) {
         familyNames.insert(elem.second.family);
@@ -209,10 +214,16 @@ std::vector<std::string> Configuration::databaseFamilies() const {
 }
 
 bool Configuration::isKnownDatabaseFamily(std::string const& name) const {
+
+    util::Lock lock(_mtx, context() + "isKnownDatabaseFamily");
+
     return _replicationLevel.count(name);
 }
 
 size_t Configuration::replicationLevel(std::string const& family) const {
+
+    util::Lock lock(_mtx, context() + "databaseFamilies");
+
     auto const itr = _replicationLevel.find(family);
     if (itr == _replicationLevel.end()) {
         throw std::invalid_argument(
@@ -223,6 +234,8 @@ size_t Configuration::replicationLevel(std::string const& family) const {
 }
 
 std::vector<std::string> Configuration::databases(std::string const& family) const {
+
+    util::Lock lock(_mtx, context() + "databases(family)");
 
     if (not family.empty() and not _replicationLevel.count(family)) {
         throw std::invalid_argument(
@@ -240,10 +253,16 @@ std::vector<std::string> Configuration::databases(std::string const& family) con
 }
 
 bool Configuration::isKnownWorker(std::string const& name) const {
+
+    util::Lock lock(_mtx, context() + "isKnownWorker");
+
     return _workerInfo.count(name) > 0;
 }
 
 WorkerInfo const& Configuration::workerInfo(std::string const& name) const {
+
+    util::Lock lock(_mtx, context() + "workerInfo");
+
     auto const itr = _workerInfo.find(name);
     if (itr == _workerInfo.end()) {
         throw std::invalid_argument(
@@ -253,15 +272,22 @@ WorkerInfo const& Configuration::workerInfo(std::string const& name) const {
 }
 
 bool Configuration::isKnownDatabase(std::string const& name) const {
+
+    util::Lock lock(_mtx, context() + "isKnownDatabase");
+
     return _databaseInfo.count(name) > 0;
 }
 
 DatabaseInfo const& Configuration::databaseInfo(std::string const& name) const {
-    if (not isKnownDatabase(name)) {
+
+    util::Lock lock(_mtx, context() + "isKnownDatabase");
+
+    auto&& itr = _databaseInfo.find(name);
+    if (itr == _databaseInfo.end()) {
         throw std::invalid_argument(
                 "Configuration::databaseInfo() uknown database: '" + name + "'");
     }
-    return _databaseInfo.at(name);
+    return itr->second;
 }
 
 void Configuration::dumpIntoLogger() {

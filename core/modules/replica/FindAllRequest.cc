@@ -87,10 +87,9 @@ FindAllRequest::FindAllRequest(ServiceProvider::Ptr const& serviceProvider,
                          false, /* allowDuplicate */
                          messenger),
         _database(database),
-        _onFinish(onFinish),
-        _replicaInfoCollection() {
+        _onFinish(onFinish) {
 
-    _serviceProvider->assertDatabaseIsValid (database);
+    Request::serviceProvider()->assertDatabaseIsValid(database);
 }
 
 const ReplicaInfoCollection& FindAllRequest::responseData() const {
@@ -104,20 +103,20 @@ void FindAllRequest::startImpl(util::Lock const& lock) {
     // Serialize the Request message header and the request itself into
     // the network buffer.
 
-    _bufferPtr->resize();
+    buffer()->resize();
 
     proto::ReplicationRequestHeader hdr;
     hdr.set_id(id());
     hdr.set_type(proto::ReplicationRequestHeader::REPLICA);
     hdr.set_replica_type(proto::ReplicationReplicaRequestType::REPLICA_FIND_ALL);
 
-    _bufferPtr->serialize(hdr);
+    buffer()->serialize(hdr);
 
     proto::ReplicationRequestFindAll message;
     message.set_priority(priority());
     message.set_database(database());
 
-    _bufferPtr->serialize(message);
+    buffer()->serialize(message);
 
     send(lock);
 }
@@ -128,8 +127,8 @@ void FindAllRequest::wait(util::Lock const& lock) {
 
     // Allways need to set the interval before launching the timer.
 
-    _timer.expires_from_now(boost::posix_time::seconds(_timerIvalSec));
-    _timer.async_wait(
+    timer().expires_from_now(boost::posix_time::seconds(timerIvalSec()));
+    timer().async_wait(
         boost::bind(
             &FindAllRequest::awaken,
             shared_from_base<FindAllRequest>(),
@@ -150,29 +149,29 @@ void FindAllRequest::awaken(boost::system::error_code const& ec) {
     // test is made after acquering the lock to recheck the state in case if it
     // has transitioned while acquering the lock.
 
-    if (_state == State::FINISHED) return;
+    if (state() == State::FINISHED) return;
 
     util::Lock lock(_mtx, context() + "awaken");
 
-    if (_state == State::FINISHED) return;
+    if (state() == State::FINISHED) return;
 
     // Serialize the Status message header and the request itself into
     // the network buffer.
 
-    _bufferPtr->resize();
+    buffer()->resize();
 
     proto::ReplicationRequestHeader hdr;
     hdr.set_id(id());
     hdr.set_type(proto::ReplicationRequestHeader::REQUEST);
     hdr.set_management_type(proto::ReplicationManagementRequestType::REQUEST_STATUS);
 
-    _bufferPtr->serialize(hdr);
+    buffer()->serialize(hdr);
 
     proto::ReplicationRequestStatus message;
     message.set_id(id());
     message.set_type(proto::ReplicationReplicaRequestType::REPLICA_FIND_ALL);
 
-    _bufferPtr->serialize(message);
+    buffer()->serialize(message);
 
     // Send the message
 
@@ -183,10 +182,10 @@ void FindAllRequest::send(util::Lock const& lock) {
 
     auto self = shared_from_base<FindAllRequest>();
 
-    _messenger->send<proto::ReplicationResponseFindAll>(
+    messenger()->send<proto::ReplicationResponseFindAll>(
         worker(),
         id(),
-        _bufferPtr,
+        buffer(),
         [self] (std::string const& id,
                 bool success,
                 proto::ReplicationResponseFindAll const& response) {
@@ -214,16 +213,18 @@ void FindAllRequest::analyze(bool success,
     // test is made after acquering the lock to recheck the state in case if it
     // has transitioned while acquering the lock.
 
-    if (_state == State::FINISHED) return;
+    if (state() == State::FINISHED) return;
 
     util::Lock lock(_mtx, context() + "analyze");
 
-    if (_state == State::FINISHED) return;
+    if (state() == State::FINISHED) return;
 
     if (success) {
 
-        // Always get the latest status reported by the remote server
-        _extendedServerStatus = replica::translate(message.status_ext());
+        // Always use the latest status reported by the remote server
+
+        setExtendedServerStatus(lock,
+                                replica::translate(message.status_ext()));
 
         // Performance counters are updated from either of two sources,
         // depending on the availability of the 'target' performance counters
@@ -231,9 +232,9 @@ void FindAllRequest::analyze(bool success,
         // then fallback to the one of the current request.
 
         if (message.has_target_performance()) {
-            _performance.update(message.target_performance());
+            mutablePerformance().update(message.target_performance());
         } else {
-            _performance.update(message.performance());
+            mutablePerformance().update(message.performance());
         }
 
         // Always extract extended data regardless of the completion status
@@ -251,30 +252,29 @@ void FindAllRequest::analyze(bool success,
 
             case proto::ReplicationStatus::SUCCESS:
 
-                // Save the replica state
-                _serviceProvider->databaseServices()->saveReplicaInfoCollection(worker(),
-                                                                                database(),
-                                                                                _replicaInfoCollection);
+                serviceProvider()->databaseServices()->saveReplicaInfoCollection(worker(),
+                                                                                 database(),
+                                                                                 _replicaInfoCollection);
                 finish(lock,
                        SUCCESS);
                 break;
 
             case proto::ReplicationStatus::QUEUED:
-                if (_keepTracking) wait(lock);
-                else               finish(lock,
-                                          SERVER_QUEUED);
+                if (keepTracking()) wait(lock);
+                else                finish(lock,
+                                           SERVER_QUEUED);
                 break;
 
             case proto::ReplicationStatus::IN_PROGRESS:
-                if (_keepTracking) wait(lock);
-                else               finish(lock,
-                                          SERVER_IN_PROGRESS);
+                if (keepTracking()) wait(lock);
+                else                finish(lock,
+                                           SERVER_IN_PROGRESS);
                 break;
 
             case proto::ReplicationStatus::IS_CANCELLING:
-                if (_keepTracking) wait(lock);
-                else               finish(lock,
-                                          SERVER_IS_CANCELLING);
+                if (keepTracking()) wait(lock);
+                else                finish(lock,
+                                           SERVER_IS_CANCELLING);
                 break;
 
             case proto::ReplicationStatus::BAD:
@@ -314,7 +314,7 @@ void FindAllRequest::notifyImpl() {
 }
 
 void FindAllRequest::savePersistentState() {
-    _controller->serviceProvider()->databaseServices()->saveState(*this);
+    controller()->serviceProvider()->databaseServices()->saveState(*this);
 }
 
 std::string FindAllRequest::extendedPersistentState(SqlGeneratorPtr const& gen) const {
