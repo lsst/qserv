@@ -66,6 +66,7 @@ public:
     void action(util::CmdData *data) override {
         // If everything is ok, call GetResponseData to have XrdSsi ask the worker for the data.
         {
+            util::InstanceCount _ic{"1-act-AskForResponseDataCmd"};
             auto jq = _jQuery.lock();
             auto qr = _qRequest.lock();
             if (jq == nullptr || qr == nullptr) {
@@ -89,6 +90,7 @@ public:
         // Wait for XrdSsi to call ProcessResponseData with the data,
         // which will notify this wait with a call to receivedProcessResponseDataParameters.
         {
+            util::InstanceCount _ic{"2-act-AskForResponseDataCmd"};
             std::unique_lock<std::mutex> uLock(_mtx);
             // TODO: make timed wait, check for wedged, if weak pointers dead, log and give up.
             _cv.wait(uLock, [this](){ return _state != State::STARTED0; });
@@ -109,6 +111,7 @@ public:
         // If more data needs to be sent, _processData will make a new AskForResponseDataCmd
         // object and queue it.
         {
+            util::InstanceCount _ic{"3-act-AskForResponseDataCmd"};
             auto jq = _jQuery.lock();
             auto qr = _qRequest.lock();
             if (jq == nullptr || qr == nullptr) {
@@ -125,6 +128,7 @@ public:
 
     void notifyDataSuccess(int blen, bool last) {
         {
+            LOGS(_log, LOG_LVL_DEBUG, _idStr << "notifyDataSuccess &&&");
             std::lock_guard<std::mutex> lg(_mtx);
             _blen = blen;
             _last = last;
@@ -139,7 +143,7 @@ public:
         _cv.notify_all();
     }
 
-    State getState() {
+    State getState() const {
         std::lock_guard<std::mutex> lg(_mtx);
         return _state;
     }
@@ -154,7 +158,7 @@ private:
     std::weak_ptr<QueryRequest> _qRequest;
     std::weak_ptr<JobQuery> _jQuery;
     std::string _idStr;
-    std::mutex _mtx;
+    mutable std::mutex _mtx;
     std::condition_variable _cv;
     State _state = State::STARTED0;
 
