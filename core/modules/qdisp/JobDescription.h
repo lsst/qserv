@@ -80,6 +80,7 @@ public:
     int getAttemptCount() const { return _attemptCount; }
 
     bool getScanInteractive() const;
+    int getScanRating() const;
 
     /// @returns true when _attemptCount is incremented correctly and the payload is built.
     /// If the starting value of _attemptCount was greater than or equal to zero, that

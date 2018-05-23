@@ -50,9 +50,9 @@ std::ostream& operator<<(std::ostream& os, PriorityQueue const& pq) {
 
 
 ///< @Return true if the queue could be added.
-bool PriorityQueue::addPriQueue(int priority, int minRunning) {
+bool PriorityQueue::addPriQueue(int priority, int minRunning, int spareThreads) {
     std::lock_guard<std::mutex> lock(_mtx);
-    auto q = std::make_shared<PriQ>(priority, minRunning);
+    auto q = std::make_shared<PriQ>(priority, minRunning, spareThreads);
     //std::pair<int, PriQ::Ptr> item(priority, q);
     auto item = std::make_pair(priority, q);
     auto ret = _queues.insert(item);
@@ -126,10 +126,12 @@ util::Command::Ptr PriorityQueue::getCmd(bool wait){
         // Since all the minimums are met, just run the first command found.
         for (auto const& elem : _queues) {
             PriQ::Ptr const& que = elem.second;
-            //  TODO: Maybe add a check for max running.
-            ptr = que->getCmd(false); // no wait
-            if (ptr != nullptr) {
-                return ptr;
+            // If this queue has no running threads, or
+            if (que->running < que->getMaxRunning()) {
+                ptr = que->getCmd(false); // no wait
+                if (ptr != nullptr) {
+                    return ptr;
+                }
             }
         }
 
