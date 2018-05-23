@@ -111,7 +111,7 @@ public:
         // If more data needs to be sent, _processData will make a new AskForResponseDataCmd
         // object and queue it.
         {
-            util::InstanceCount _ic{"3-act-AskForResponseDataCmd"};
+            util::InstanceCount _ic{"3-act-AskForResponseDataCmd&&&"};
             auto jq = _jQuery.lock();
             auto qr = _qRequest.lock();
             if (jq == nullptr || qr == nullptr) {
@@ -119,7 +119,9 @@ public:
                 LOGS(_log, LOG_LVL_WARN, _idStr << " AskForResponseData null before processData");
                 return;
             }
+            LOGS(_log, LOG_LVL_DEBUG, _idStr << " &&& AskForResponseData processing start" << _blen);
             qr->_processData(jq, _blen, _last);
+            LOGS(_log, LOG_LVL_DEBUG, _idStr << " &&& AskForResponseData processing end" << _blen);
             // _processData will have created another AskForResponseDataCmd object if needed.
         }
         _setState(State::DONE2);
