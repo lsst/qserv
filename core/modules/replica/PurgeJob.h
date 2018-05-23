@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_PURGE_JOB_H
-#define LSST_QSERV_REPLICA_PURGE_JOB_H
+#ifndef LSST_QSERV_REPLICA_PURGEJOB_H
+#define LSST_QSERV_REPLICA_PURGEJOB_H
 
 /// PurgeJob.h declares:
 ///
@@ -40,8 +40,6 @@
 #include "replica/DeleteReplicaJob.h"
 #include "replica/FindAllJob.h"
 #include "replica/ReplicaInfo.h"
-
-// Forward declarations
 
 // This header declarations
 
@@ -100,7 +98,9 @@ public:
      * @param controller     - for launching jobs
      * @param parentJobId    - optional identifier of a parent job
      * @param onFinish       - callback function to be called upon a completion of the job
-     * @param options        - job options
+     * @param options        - (optional) job options
+     *
+     * @return pointer to the created object
      */
     static Ptr create(std::string const& databaseFamily,
                       unsigned int numReplicas,
@@ -118,8 +118,10 @@ public:
     /// Destructor (non-trivial in order to release chunks locked by the operation)
     ~PurgeJob() final;
 
-    /// @return maximum number of each chunk's good replicas to be reached when
-    /// the job successfully finishes.
+    /**
+     * @return maximum number of each chunk's good replicas to be reached when
+     * the job successfully finishes.
+     */
     unsigned int numReplicas() const { return _numReplicas; }
 
     /// @return name of a database defining a scope of the operation
@@ -145,8 +147,6 @@ public:
     PurgeJobResult const& getReplicaData() const;
 
     /**
-     * Implement the corresponding method of the base class.
-     *
      * @see Job::extendedPersistentState()
      */
     std::string extendedPersistentState(SqlGeneratorPtr const& gen) const override;
@@ -166,22 +166,16 @@ protected:
              Job::Options const& options);
 
     /**
-      * Implement the corresponding method of the base class.
-      *
       * @see Job::startImpl()
       */
     void startImpl(util::Lock const& lock) final;
 
     /**
-      * Implement the corresponding method of the base class.
-      *
       * @see Job::startImpl()
       */
     void cancelImpl(util::Lock const& lock) final;
 
     /**
-      * Implement the corresponding method of the base class.
-      *
       * @see Job::notifyImpl()
       */
     void notifyImpl() final;
@@ -269,4 +263,4 @@ protected:
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_PURGE_JOB_H
+#endif // LSST_QSERV_REPLICA_PURGEJOB_H

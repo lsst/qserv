@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_WORKER_SERVER_H
-#define LSST_QSERV_REPLICA_WORKER_SERVER_H
+#ifndef LSST_QSERV_REPLICA_WORKERSERVER_H
+#define LSST_QSERV_REPLICA_WORKERSERVER_H
 
 /// WorkerServer.h declares:
 ///
@@ -38,8 +38,6 @@
 #include "replica/ServiceProvider.h"
 #include "replica/WorkerProcessor.h"
 #include "replica/WorkerServerConnection.h"
-
-// Forward declarations
 
 // This header declarations
 
@@ -72,6 +70,8 @@ public:
      * @param serviceProvider - for configuration, etc. services
      * @param requestFactory  - the factory of requests
      * @workerName            - the name of a worker this instance represents
+     *
+     * @return pointer to the new object created by the factory
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       WorkerRequestFactory& requestFactory,
@@ -85,7 +85,7 @@ public:
 
     ~WorkerServer() = default;
 
-    /// Return the name of a worker this server runs for
+    /// @return the name of a worker this server runs for
     std::string const& worker() const { return _workerName; }
 
     /// The processor API can be used for detailed monitoring of
@@ -123,7 +123,7 @@ private:
     void handleAccept(WorkerServerConnection::Ptr const& connection,
                       boost::system::error_code const& ec);
 
-    /// Return the context string
+    /// @return the context string
     std::string context() const { return "SERVER  "; }
 
 private:
@@ -142,4 +142,4 @@ private:
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_WORKER_SERVER_H
+#endif // LSST_QSERV_REPLICA_WORKERSERVER_H

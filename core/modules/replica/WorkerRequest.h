@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_WORKER_REQUEST_H
-#define LSST_QSERV_REPLICA_WORKER_REQUEST_H
+#ifndef LSST_QSERV_REPLICA_WORKERREQUEST_H
+#define LSST_QSERV_REPLICA_WORKERREQUEST_H
 
 /// WorkerRequest.h declares:
 ///
@@ -274,4 +274,4 @@ struct WorkerRequestCompare {
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_WORKER_REQUEST_H
+#endif // LSST_QSERV_REPLICA_WORKERREQUEST_H

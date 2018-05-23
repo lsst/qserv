@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_QSERV_GET_REPLICAS_JOB_H
-#define LSST_QSERV_REPLICA_QSERV_GET_REPLICAS_JOB_H
+#ifndef LSST_QSERV_REPLICA_QSERV_GETREPLICASJOB_H
+#define LSST_QSERV_REPLICA_QSERV_GETREPLICASJOB_H
 
 /// QservGetReplicasJob.h declares:
 ///
@@ -42,8 +42,6 @@
 #include "replica/ReplicaInfo.h"
 #include "replica/SemanticMaps.h"
 
-// Forward declarations
-
 // This header declarations
 
 namespace lsst {
@@ -58,7 +56,6 @@ struct QservGetReplicasJobResult {
 
     /// Per-worker flags indicating if the corresponidng replica retreival
     /// request succeeded.
-    ///
     std::map<std::string, bool> workers;
 
     /// Results groupped by:
@@ -71,7 +68,6 @@ struct QservGetReplicasJobResult {
     ///   [chunk][database][worker]
     ///
     /// This structure also reports the use counter for each chunks
-    ///
     ChunkDatabaseWorkerMap<size_t> useCount;
 };
 
@@ -103,7 +99,9 @@ public:
      * @param parentJobId    - optional identifier of a parent job
      * @param inUseOnly      - return replicas which're presently in use
      * @param onFinish       - callback function to be called upon a completion of the job
-     * @param options        - job options
+     * @param options        - (optional) job options
+     *
+     * @return pointer to the created object
      */
     static Ptr create(std::string const& databaseFamily,
                       Controller::Ptr const& controller,
@@ -144,8 +142,6 @@ public:
     QservGetReplicasJobResult const& getReplicaData() const;
 
     /**
-     * Implement the corresponding method of the base class.
-     *
      * @see Job::extendedPersistentState()
      */
     std::string extendedPersistentState(SqlGeneratorPtr const& gen) const override;
@@ -165,22 +161,16 @@ protected:
                         Job::Options const& options);
 
     /**
-      * Implement the corresponding method of the base class.
-      *
       * @see Job::startImpl()
       */
     void startImpl(util::Lock const& lock) final;
 
     /**
-      * Implement the corresponding method of the base class.
-      *
       * @see Job::startImpl()
       */
     void cancelImpl(util::Lock const& lock) final;
 
     /**
-      * Implement the corresponding method of the base class.
-      *
       * @see Job::notifyImpl()
       */
     void notifyImpl() final;
@@ -220,4 +210,4 @@ protected:
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_QSERV_GET_REPLICAS_JOB_H
+#endif // LSST_QSERV_REPLICA_QSERV_GETREPLICASJOB_H

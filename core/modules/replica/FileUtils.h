@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_FILE_UTILS_H
-#define LSST_QSERV_REPLICA_FILE_UTILS_H
+#ifndef LSST_QSERV_REPLICA_FILEUTILS_H
+#define LSST_QSERV_REPLICA_FILEUTILS_H
 
 /// FileUtils.h declares:
 ///
@@ -37,10 +37,6 @@
 #include <string>
 #include <tuple>
 #include <vector>
-
-// Qserv headers
-
-// Forward declarations
 
 // This header declarations
 
@@ -75,23 +71,22 @@ public:
     ~FileUtils() = delete;
 
     /**
-     * Return a list of all file names representing partitioned tables
-     * of a database and a chunk.
-     *
      * @param databaseInfo - the description of the database and tables
      * @param chunk        - the chunk number
+     *
+     * @return list of all file names representing partitioned tables
+     * of a database and a chunk.
      */
     static std::vector<std::string> partitionedFiles(DatabaseInfo const& databaseInfo,
                                                      unsigned int chunk);
 
     /**
-     * Return a list of all file names representing regular tables
-     * of a database.
-     *
      * @param databaseInfo - the description of the database and tables
+     *
+     * @return list of all file names representing regular tables
+     * of a database.
      */
     static std::vector<std::string> regularFiles(DatabaseInfo const& databaseInfo);
-
 
     /**
      * Parse the file name and if successfull fill in a tuple with components of
@@ -135,7 +130,7 @@ public:
     static uint64_t compute_cs(std::string const& fileName,
                                size_t recordSizeBytes=DEFAULT_RECORD_SIZE_BYTES);
 
-    /// Get the user account uner which the current process runs
+    /// @return user account uner which the current process runs
     static std::string getEffectiveUser();
 };
 
@@ -169,7 +164,6 @@ public:
     FileCsComputeEngine(FileCsComputeEngine const&) = delete;
     FileCsComputeEngine& operator=(FileCsComputeEngine const&) = delete;
 
-    /// The destructor
     ~FileCsComputeEngine();
 
     /**
@@ -195,13 +189,13 @@ public:
     explicit FileCsComputeEngine(std::string const& fileName,
                                  size_t recordSizeBytes=FileUtils::DEFAULT_RECORD_SIZE_BYTES);
 
-    /// Return the name of the file
+    /// @return the name of the file
     std::string const& fileName() const { return _fileName; }
     
-    /// Return the number of bytes read so far
+    /// @return the number of bytes read so far
     size_t bytes() const { return _bytes; }
 
-    /// Return the running (and the final one the file is fully read) control sum
+    /// @return the running (and the final one the file is fully read) control sum
     uint64_t cs() const { return _cs; }
 
     /**
@@ -255,48 +249,46 @@ public:
     /**
      * The normal constructor
      *
-     *  Exceptions:
-     *   std::runtime_error    - if there was a problem with opening the first file
-     *   std::invalid_argument - if the record size is 0 or too huge (more than FileUtils::MAX_RECORD_SIZE_BYTES)
+     * @param fileNames       - files to be processed
+     * @param recordSizeBytes - record size (for reading from files)
      *
+     * @throws std::runtime_error if there was a problem with opening the first file
+     * @throws std::invalid_argument if the record size is 0 or too huge (more than FileUtils::MAX_RECORD_SIZE_BYTES)
      */
-    explicit MultiFileCsComputeEngine (
+    explicit MultiFileCsComputeEngine(
                 std::vector<std::string> const& fileNames,
                 size_t recordSizeBytes=FileUtils::DEFAULT_RECORD_SIZE_BYTES);
 
-    /// Return the names of the files
+    /// @return the names of the files
     std::vector<std::string> const& fileNames() const { return _fileNames; }
     
     /**
-     * Return 'true' if the specified file has been or is being proccessed
+     * @return 'true' if the specified file has been or is being proccessed
      * so that its final or running checksime or the number of bytes can be
      * be obtained.
      *
-     * Exceptions:
-     *   std::invalid_argument - unkown file name
+     * @throws std::invalid_argument unkown file name
      *
      * @param fileName - the name of a file
      */
     bool processed(std::string const& fileName) const;
 
     /**
-     * Return the number of bytes read so far for the specified file.
+     * @return the number of bytes read so far for the specified file.
      *
-     * Exceptions:
-     *   std::invalid_argument - unkown file name
-     *   std::logic_error      - the file hasn't been proccessed
+     * @throws std::invalid_argument unkown file name
+     * @throws std::logic_error the file hasn't been proccessed
      *
      * @param fileName - the name of a file
      */
     size_t bytes(std::string const& fileName) const;
 
    /**
-     * Return the running (and the final one the file is fully read) control sum for
-     * the specified file.
+     * @return the running (and the final one the file is fully read) control
+     * sum for the specified file.
      *
-     * Exceptions:
-     *   std::invalid_argument - unkown file name
-     *   std::logic_error      - the file hasn't been proccessed
+     * @throws std::invalid_argument unkown file name
+     * @throws std::logic_error the file hasn't been proccessed
      *
      * @param fileName - the name of a file
      */
@@ -329,4 +321,4 @@ private:
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_FILE_UTILS_H
+#endif // LSST_QSERV_REPLICA_FILEUTILS_H

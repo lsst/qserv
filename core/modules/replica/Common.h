@@ -34,8 +34,6 @@
 #include "proto/replication.pb.h"
 #include "util/Mutex.h"
 
-// Forward declarations
-
 // This header declarations
 
 namespace lsst {
@@ -80,13 +78,15 @@ ExtendedCompletionStatus translate(proto::ReplicationStatusExt status);
 proto::ReplicationStatusExt translate(ExtendedCompletionStatus status);
 
 /**
- * The utility class for generating unique identifiers, etc.
+ * Class Generators is the utility class for generating a set of unique
+ * identifiers, etc. Each call to the class's method 'next()' will produce
+ * a new identifier.
  */
 class Generators {
 
 public:
 
-    /// Generate a unique identifier
+    /// @return next unique identifier
     static std::string uniqueId();
 
 private:
@@ -96,7 +96,8 @@ private:
 };
 
 /**
- * Parameters of the replica creation requests
+ * Struct ReplicationRequestParams encapsulates parameters of the replica
+ * creation requests.
  */
 struct ReplicationRequestParams {
 
@@ -113,7 +114,8 @@ struct ReplicationRequestParams {
 };
 
 /**
- * Parameters of the replica deletion requests
+ * Struct DeleteRequestParams represents parameters of the replica
+ * deletion requests.
  */
 struct DeleteRequestParams {
 
@@ -130,7 +132,8 @@ struct DeleteRequestParams {
 };
 
 /**
- * Parameters of the replica lookup requests
+ * Struct FindRequestParams represents parameters of a single replica
+ * lookup (finding) requests.
  */
 struct FindRequestParams {
 
@@ -146,7 +149,9 @@ struct FindRequestParams {
 };
 
 /**
- * Parameters of the many replica lookup requests
+ * Struct FindAllRequestParams represents parameters of the replica
+ * group (depends on a scope of the corresponding request) lookup (finding)
+ * requests.
  */
 struct FindAllRequestParams {
 

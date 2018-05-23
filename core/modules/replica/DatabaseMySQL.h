@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_DATABASE_MYSQL_H
-#define LSST_QSERV_REPLICA_DATABASE_MYSQL_H
+#ifndef LSST_QSERV_REPLICA_DATABASEMYSQL_H
+#define LSST_QSERV_REPLICA_DATABASEMYSQL_H
 
 /// DatabaseMySQL.h declares:
 ///
@@ -42,10 +42,6 @@
 // Third party headers
 #include <mysql/mysql.h>
 
-// Qserv headers
-
-// Forward declarations
-
 // This header declarations
 
 namespace lsst {
@@ -63,6 +59,11 @@ class Error
 
 public:
 
+    /**
+     * The normal constructor
+     *
+     * @param what - reason for the exceptioon
+     */
     explicit Error(std::string const& what)
         :   std::runtime_error(what) {
     }
@@ -77,6 +78,11 @@ class DuplicateKeyError
 
 public:
 
+    /**
+     * The normal constructor
+     *
+     * @param what - reason for the exceptioon
+     */
     explicit DuplicateKeyError(std::string const& what)
         :   Error(what) {
     }
@@ -91,6 +97,11 @@ class InvalidTypeError
 
 public:
 
+    /**
+     * The normal constructor
+     *
+     * @param what - reason for the exceptioon
+     */
     explicit InvalidTypeError(std::string const& what)
         :   Error(what) {
     }
@@ -105,13 +116,18 @@ class EmptyResultSetError
 
 public:
 
+    /**
+     * The normal constructor
+     *
+     * @param what - reason for the exceptioon
+     */
     explicit EmptyResultSetError(std::string const& what)
         :   Error(what) {
     }
 };
 
 /**
- * This structure encapsulates connection parameters to a MySQL server
+ * Struvct ConnectionParams encapsulates connection parameters to a MySQL server
  */
 struct ConnectionParams {
     /// The DNS name or IP address of a machine where the database
@@ -152,7 +168,7 @@ struct ConnectionParams {
      */
     static ConnectionParams parse(std::string const& params,
                                   std::string const& defaultHost,
-                                  uint16_t           defaultPort,
+                                  uint16_t defaultPort,
                                   std::string const& defaultUser,
                                   std::string const& defaultPassword);
 
@@ -200,8 +216,7 @@ class Row {
 
 public:
 
-    /// Class Connection is allowed to initialize the valid content
-    /// of rows
+    /// Class Connection is allowed to initialize the valid content of rows
     friend class Connection;
 
     /**
@@ -304,11 +319,12 @@ public:
 
 private:
 
-    /// Mapping column names to the indexes
-    ///
-    /// NOTE: if the pointer is set to 'nullptr' then the object is not
-    /// in the valid state. The valid state is set by class Connection
-    /// when iterating over a result set.
+    /** Mapping column names to the indexes
+     *
+     * NOTE: if the pointer is set to 'nullptr' then the object is not
+     * in the valid state. The valid state is set by class Connection
+     * when iterating over a result set.
+     */
     std::map<std::string, size_t> const* _name2indexPtr;
 
     /// Mapping column indexes to the raw data cells
@@ -316,18 +332,23 @@ private:
 };
 
 /**
- * An abstraction for SQL strings which than ordinary values of string types
- * needs to be injected into SQL statements without being processed (excaped
- * and quoted) as regular string values.
+ * Class DoNotProcess is an abstraction for SQL strings which than ordinary
+ * values of string types needs to be injected into SQL statements without
+ * being processed (excaped and quoted) as regular string values.
  */
 class DoNotProcess {
 
 public:
 
-    /// The normal constructor
+    /**
+     * The normal constructor
+     *
+     * @param name_ - the input value
+     */
     explicit DoNotProcess(std::string const& name_);
 
     DoNotProcess() = delete;
+
     DoNotProcess(DoNotProcess const&) = default;
     DoNotProcess& operator=(DoNotProcess const&) = default;
 
@@ -335,15 +356,17 @@ public:
 
 public:
 
-    /// The exact string value as it should appear within queries. It will
-    /// be extracted by the corresponding query generators.
+    /**
+     * The exact string value as it should appear within queries. It will
+     * be extracted by the corresponding query generators.
+     */
     std::string name;
 };
 
 /**
- * An abstraction for SQL keywords which needs to be processed differently
- * than ordinary values of string types. There won't be escape processing or
- * extra quotes of any kind added to the function name strings.
+ * Class Keyword is an abstraction for SQL keywords which needs to be processed
+ * differently than ordinary values of string types. There won't be escape
+ * processing or extra quotes of any kind added to the function name strings.
  */
 class Keyword
     :   public DoNotProcess {
@@ -355,10 +378,15 @@ public:
     /// @return the object representing the corresponding SQL keyword
     static Keyword const SQL_NULL;
 
-    /// The normal constructor
+    /**
+     * The normal constructor
+     *
+     * @param name_ - the input value
+     */
     explicit Keyword(std::string const& name_);
 
     Keyword() = delete;
+
     Keyword(Keyword const&) = default;
     Keyword& operator=(Keyword const&) = default;
 
@@ -366,9 +394,9 @@ public:
 };
 
 /**
- * An abstraction for SQL functions which needs to be processed differently
- * than ordinary values of string types. There won't be escape processing or
- * extra quotes of any kind added to the function name strings.
+ * Class Function is an abstraction for SQL functions which needs to be processed
+ * differently than ordinary values of string types. There won't be escape
+ * processing or extra quotes of any kind added to the function name strings.
  */
 class Function
     :   public DoNotProcess {
@@ -378,10 +406,15 @@ public:
     /// @return the object representing the corresponding SQL function
     static Function const LAST_INSERT_ID;
 
-    /// The normal constructor
+    /**
+     * The normal constructor
+     *
+     * @param name_ - the input value
+     */
     explicit Function(std::string const& name_);
 
     Function() = delete;
+
     Function(Function const&) = default;
     Function& operator=(Function const&) = default;
 
@@ -435,7 +468,6 @@ public:
       * A front-end to mysql_real_escape_string()
       *
       * @param str - a string to be processed
-      *
       * @return the processed string
       */
     std::string escape(std::string const& str) const;
@@ -980,4 +1012,4 @@ private:
 
 }}}}} // namespace lsst::qserv::replica::database::mysql
 
-#endif // LSST_QSERV_REPLICA_DATABASE_MYSQL_H
+#endif // LSST_QSERV_REPLICA_DATABASEMYSQL_H

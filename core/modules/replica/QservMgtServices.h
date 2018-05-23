@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_QSERV_MGT_SERVICES_H
-#define LSST_QSERV_REPLICA_QSERV_MGT_SERVICES_H
+#ifndef LSST_QSERV_REPLICA_QSERVMGTSERVICES_H
+#define LSST_QSERV_REPLICA_QSERVMGTSERVICES_H
 
 /// QservMgtServices.h declares:
 ///
@@ -50,9 +50,9 @@ namespace qserv {
 namespace replica {
 
 /**
- * The base class for implementing requests registry as a polymorphic
- * collection to store active requests. Pure virtual methods of
- * the class will be overriden by request-type-specific implementations
+ * Struct QservMgtRequestWrapper is an abstract base for implementing requests
+ * registry as a polymorphic collection to store active requests. Pure virtual
+ * methods of the class will be overriden by request-type-specific implementations
  * (see struct RequestWrappeImplr<REQUEST_TYPE> in the .cc file) capturing
  * type-dependant pointer and a callback function.
  */
@@ -63,11 +63,13 @@ struct QservMgtRequestWrapper {
 
     virtual ~QservMgtRequestWrapper() = default;
 
-    /// This method will be called upon a completion of a request
-    /// to notify a subscriber on the event.
+    /**
+     * This method (to be inplemented by subclasses) will be called upon
+     * a completion of a request to notify a subscriber on the event.
+     */
     virtual void notify() const=0;
 
-    /// Return a pointer to the stored request object
+    /// @return a pointer to the stored request object
     virtual std::shared_ptr<QservMgtRequest> request() const=0;
 };
 
@@ -88,6 +90,8 @@ public:
      * on an application configuration.
      *
      * @param configuration - the configuration service
+     *
+     * @return pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider);
 
@@ -97,7 +101,6 @@ public:
     QservMgtServices(QservMgtServices const&) = delete;
     QservMgtServices& operator=(QservMgtServices const&) = delete;
 
-    /// Destructor
     ~QservMgtServices() = default;
 
     /// @return reference to the ServiceProvider object
@@ -115,6 +118,7 @@ public:
      * @param requestExpirationIvalSec - an optional parameter (if differs from 0)
      *                    allowing to override the default value of
      *                    the corresponding parameter from the Configuration.
+     *
      * @return pointer to the request object if the request was made. Return
      *         nullptr otherwise.
      */
@@ -141,6 +145,7 @@ public:
      * @param requestExpirationIvalSec - an optional parameter (if differs from 0)
      *                    allowing to override the default value of
      *                    the corresponding parameter from the Configuration.
+     *
      * @return pointer to the request object if the request was made. Return
      *         nullptr otherwise.
      */
@@ -164,6 +169,7 @@ public:
      * @param requestExpirationIvalSec - an optional parameter (if differs from 0)
      *                          allowing to override the default value of
      *                          the corresponding parameter from the Configuration.
+     *
      * @return pointer to the request object if the request was made. Return
      *         nullptr otherwise.
      */
@@ -190,6 +196,7 @@ public:
      * @param requestExpirationIvalSec - an optional parameter (if differs from 0)
      *                          allowing to override the default value of
      *                          the corresponding parameter from the Configuration.
+     *
      * @return pointer to the request object if the request was made. Return
      *         nullptr otherwise.
      */
@@ -213,17 +220,20 @@ private:
      * Finalize the completion of the request. This method will notify
      * a requestor on the completion of the operation and it will also
      * remove the request from the server's registry.
+     *
+     * @param id - a unique identifier of a completed request
      */
     void finish(std::string const& id);
 
-    /// @return XROOTD/SSI API service for launching worker management requests.
-    /// The method is allowed to return the null pointer in case if a connection
-    /// to the service provider could not be established.
+    /**
+     * @return XROOTD/SSI API service for launching worker management requests.
+     * The method is allowed to return the null pointer in case if a connection
+     * to the service provider could not be established.
+     */
     XrdSsiService* xrdSsiService();
 
 private:
 
-    /// Reference to a provider of services
     ServiceProvider::Ptr _serviceProvider;
 
     // BOOST ASIO communication services
@@ -241,4 +251,4 @@ private:
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_QSERV_MGT_SERVICES_H
+#endif // LSST_QSERV_REPLICA_QSERVMGTSERVICES_H

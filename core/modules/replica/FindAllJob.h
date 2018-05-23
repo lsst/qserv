@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_FIND_ALL_JOB_H
-#define LSST_QSERV_REPLICA_FIND_ALL_JOB_H
+#ifndef LSST_QSERV_REPLICA_FINDALLJOB_H
+#define LSST_QSERV_REPLICA_FINDALLJOB_H
 
 /// FindAllJob.h declares:
 ///
@@ -142,6 +142,8 @@ public:
      * @param parentJobId    - optional identifier of a parent job
      * @param onFinish       - callback function to be called upon a completion of the job
      * @param options        - job options
+     *
+     * @return pointer to the created object
      */
     static Ptr create(std::string const& databaseFamily,
                       Controller::Ptr const& controller,
@@ -157,7 +159,7 @@ public:
 
     ~FindAllJob() final = default;
 
-    /// Return the name of a database family defining a scope of the operation
+    /// @return the name of a database family defining a scope of the operation
     std::string const& databaseFamily() const { return _databaseFamily; }
 
     /**
@@ -180,8 +182,6 @@ public:
     FindAllJobResult const& getReplicaData() const;
 
     /**
-     * Implement the corresponding method of the base class.
-     *
      * @see Job::extendedPersistentState()
      */
     std::string extendedPersistentState(SqlGeneratorPtr const& gen) const override;
@@ -200,25 +200,19 @@ protected:
                Job::Options const& options);
 
     /**
-      * Implement the corresponding method of the base class.
-      *
       * @see Job::startImpl()
       */
     void startImpl(util::Lock const& lock) final;
 
     /**
-      * Implement the corresponding method of the base class.
-      *
       * @see Job::startImpl()
       */
     void cancelImpl(util::Lock const& lock) final;
 
     /**
-      * Implement the corresponding method of the base class.
-      *
       * @see Job::notifyImpl()
       */
-    void notifyImpl() final ;
+    void notifyImpl() final;
 
     /**
      * The calback function to be invoked on a completion of each request.
@@ -255,4 +249,4 @@ protected:
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_FIND_ALL_JOB_H
+#endif // LSST_QSERV_REPLICA_FINDALLJOB_H

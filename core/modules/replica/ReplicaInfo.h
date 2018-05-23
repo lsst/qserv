@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_REPLICA_INFO_H
-#define LSST_QSERV_REPLICA_REPLICA_INFO_H
+#ifndef LSST_QSERV_REPLICA_REPLICAINFO_H
+#define LSST_QSERV_REPLICA_REPLICAINFO_H
 
 /// ReplicaInfo.h declares:
 ///
@@ -33,8 +33,6 @@
 #include <ostream>
 #include <string>
 #include <vector>
-
-// Qserv headers
 
 // Forward declarations
 
@@ -65,7 +63,7 @@ class ReplicaInfo {
 
 public:
 
-    /// An information entry for a file
+    /// Struct FileInfo represents an information entry for a file
     struct FileInfo {
 
         /// The short name of the file
@@ -92,7 +90,7 @@ public:
     };
     typedef std::vector<FileInfo> FileInfoCollection;
 
-    /// Possible statuses of a replica
+    /// Type Status defines possible states of a replica
     enum Status {
         NOT_FOUND,
         CORRUPT,
@@ -100,7 +98,7 @@ public:
         COMPLETE
     };
 
-    /// Return the string representation of the status
+    /// @return the string representation of the status
     static std::string status2string(Status status);
 
     /**
@@ -125,13 +123,14 @@ public:
                 uint64_t verifyTime,
                 FileInfoCollection const& fileInfo);
 
-    /// Construct from a protobuf object
+    /**
+     * Construct from a protobuf object
+     *
+     * @param info - Protobuf object
+     */
     explicit ReplicaInfo(proto::ReplicationReplicaInfo const* info);
 
-    /// Copy constructor
     ReplicaInfo(ReplicaInfo const& ri) = default;
-
-    /// Assignment operator
     ReplicaInfo& operator=(ReplicaInfo const& ri) = default;
 
     ~ReplicaInfo() = default;
@@ -145,23 +144,20 @@ public:
 
     unsigned int chunk() const { return _chunk; }
 
-    /**
-     * Return the last time when the replica status was checked
-     */
+    /// @return the last time when the replica status was checked
     uint64_t verifyTime() const { return _verifyTime; }
 
-
-    /// Return a collection of files constituiting the replica
+    /// @return a collection of files constituiting the replica
     FileInfoCollection const& fileInfo() const { return _fileInfo; }
 
     /**
-     * Return a collection of files constituiting the replica as a map,
+     * @return a collection of files constituiting the replica as a map,
      * in which the file name is the key.
      */
     std::map<std::string,FileInfo> fileInfoMap() const;
 
     /**
-     * Return the minimum start time of the file migration operations of any
+     * @return the minimum start time of the file migration operations of any
      * file associated with the replica.
      *
      * NOTE: the method is allowed to return 0 if the ReplicaInfo was not
@@ -170,7 +166,7 @@ public:
     uint64_t beginTransferTime() const;
 
     /**
-     * Return the maximum end time of the file migration operations of any
+     * @return the maximum end time of the file migration operations of any
      * file associated with the replica.
      *
      * NOTE: the method is allowed to return 0 if the ReplicaInfo was not
@@ -179,7 +175,7 @@ public:
     uint64_t endTransferTime() const;
 
     /**
-     * Return a protobuf object
+     * @return a protobuf object
      *
      * OWNERSHIP TRANSFER NOTE: this method allocates a new object and
      * returns a pointer along with its ownership.
@@ -188,6 +184,8 @@ public:
 
     /**
      * Initialize a protobuf object from the object's state
+     *
+     * @param info - Protobuf object
      */
     void setInfo(proto::ReplicationReplicaInfo* info) const;
 
@@ -233,7 +231,6 @@ struct QservReplica {
 /// The type definition for a collection of Qserv replicas
 typedef std::vector<QservReplica> QservReplicaCollection;
 
-
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_REPLICA_INFO_H
+#endif // LSST_QSERV_REPLICA_REPLICAINFO_H

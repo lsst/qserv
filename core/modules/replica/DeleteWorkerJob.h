@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_DELETE_WORKER_JOB_H
-#define LSST_QSERV_REPLICA_DELETE_WORKER_JOB_H
+#ifndef LSST_QSERV_REPLICA_DELETEWORKERJOB_H
+#define LSST_QSERV_REPLICA_DELETEWORKERJOB_H
 
 /// DeleteWorkerJob.h declares:
 ///
@@ -43,8 +43,6 @@
 #include "replica/ReplicaInfo.h"
 #include "replica/ReplicateJob.h"
 
-// Forward declarations
-
 // This header declarations
 
 namespace lsst {
@@ -57,16 +55,14 @@ namespace replica {
  */
 struct DeleteWorkerJobResult {
 
-    /// New replicas created upon the successfull completion
-    /// of the corresponidng requests
+    /// New replicas created upon successfull completion of the request
     std::map<std::string,               // database family
         std::map<unsigned int,          // chunk
             std::map<std::string,       // database
                 std::map<std::string,   // worker
                     ReplicaInfo>>>> chunks;
 
-    /// Replicas which only existed on the deleted worker node and which
-    /// couldn't be redistributed
+    /// Completelly lost replicas which only existed on the deleted worker node
     std::map<unsigned int,              // chunk
         std::map<std::string,           // database
             ReplicaInfo>> orphanChunks;
@@ -125,7 +121,7 @@ public:
      * @param controller      - for launching requests
      * @param parentJobId     - optional identifier of a parent job
      * @param onFinish        - a callback function to be called upon a completion of the job
-     * @param options         - job options
+     * @param options         - (optional) job options
      */
     static Ptr create(std::string const& worker,
                       bool permanentDelete,
@@ -142,10 +138,10 @@ public:
 
     ~DeleteWorkerJob() final = default;
 
-    /// Return the name of a worker to be deleted
+    /// @return the name of a worker to be deleted
     std::string const& worker() const { return _worker; }
 
-    /// Return 'true' if this is the permanent delete
+    /// @return 'true' if this is the permanent delete
     bool permanentDelete() const { return _permanentDelete; }
 
     /**
@@ -168,8 +164,6 @@ public:
     DeleteWorkerJobResult const& getReplicaData() const;
 
     /**
-     * Implement the corresponding method of the base class.
-     *
      * @see Job::extendedPersistentState()
      */
     std::string extendedPersistentState(SqlGeneratorPtr const& gen) const override;
@@ -189,24 +183,18 @@ protected:
                     Job::Options const& options);
 
     /**
-      * Implement the corresponding method of the base class.
-      *
-      * @see Job::startImpl()
-      */
+     * @see Job::startImpl()
+     */
     void startImpl(util::Lock const& lock) final;
 
     /**
-      * Implement the corresponding method of the base class.
-      *
-      * @see Job::startImpl()
-      */
+     * @see Job::startImpl()
+     */
     void cancelImpl(util::Lock const& lock) final;
 
     /**
-      * Implement the corresponding method of the base class.
-      *
-      * @see Job::notifyImpl()
-      */
+     * @see Job::notifyImpl()
+     */
     void notifyImpl() final;
 
     /**
@@ -278,4 +266,4 @@ protected:
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_DELETE_WORKER_JOB_H
+#endif // LSST_QSERV_REPLICA_DELETEWORKERJOB_H

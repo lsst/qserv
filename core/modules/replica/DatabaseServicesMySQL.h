@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_DATABASE_SERVICES_MYSQL_H
-#define LSST_QSERV_REPLICA_DATABASE_SERVICES_MYSQL_H
+#ifndef LSST_QSERV_REPLICA_DATABASESERVICESMYSQL_H
+#define LSST_QSERV_REPLICA_DATABASESERVICESMYSQL_H
 
 /// DatabaseServices.h declares:
 ///
@@ -35,8 +35,6 @@
 #include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
 #include "util/Mutex.h"
-
-// Forward declarations
 
 // This header declarations
 
@@ -74,60 +72,44 @@ public:
     ~DatabaseServicesMySQL() override = default;
 
     /**
-     * Implement the corresponding method defined in the base class
-     *
      * @see DatabaseServices::saveState()
      */
     void saveState(ControllerIdentity const& identity,
                    uint64_t startTime) final;
 
     /**
-     * Implement the corresponding method defined in the base class
-     *
      * @see DatabaseServices::saveState()
      */
     void saveState(Job const& job) final;
 
     /**
-     * Implement the corresponding method defined in the base class
-     *
      * @see DatabaseServices::updateHeartbeatTime()
      */
      void updateHeartbeatTime(Job const& job) final;
 
     /**
-     * Implement the corresponding method defined in the base class
-     *
      * @see DatabaseServices::saveState()
      */
     void saveState(QservMgtRequest const& request) final;
 
     /**
-     * Implement the corresponding method defined in the base class
-     *
      * @see DatabaseServices::saveState()
      */
     void saveState(Request const& request) final;
 
     /**
-    * Implement the corresponding method defined in the base class
-    *
-    * @see DatabaseServices::updateRequestState()
+     * @see DatabaseServices::updateRequestState()
      */
     void updateRequestState(Request const& request,
                             std::string const& targetRequestId,
                             Performance const& targetRequestPerformance) final;
 
     /**
-     * Implement the corresponding method defined in the base class
-     *
      * @see DatabaseServices::saveReplicaInfo()
      */
     void saveReplicaInfo(ReplicaInfo const& info) final;
 
     /**
-     * Implement the corresponding method defined in the base class
-     *
      * @see DatabaseServices::saveReplicaInfoCollection()
      */
     void saveReplicaInfoCollection(std::string const& worker,
@@ -135,8 +117,6 @@ public:
                                    ReplicaInfoCollection const& infoCollection) final;
 
     /**
-     * Implement the corresponding method defined in the base class
-     *
      * @see DatabaseServices::findOldestReplica()
      */
     bool findOldestReplicas(std::vector<ReplicaInfo>& replicas,
@@ -144,8 +124,6 @@ public:
                             bool enabledWorkersOnly) const final;
 
     /**
-     * Implement the corresponding method defined in the base class
-     *
      * @see DatabaseServices::findReplicas()
      */
     bool findReplicas(std::vector<ReplicaInfo>& replicas,
@@ -154,8 +132,6 @@ public:
                       bool enabledWorkersOnly) const final;
 
     /**
-     * Implement the corresponding method defined in the base class
-     *
      * @see DatabaseServices::findWorkerReplicas()
      */
     bool findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
@@ -163,8 +139,6 @@ public:
                             std::string const& database) const final;
 
     /**
-     * Implement the corresponding method defined in the base class
-     *
      * @see DatabaseServices::findWorkerReplicas()
      */
     bool findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
@@ -179,10 +153,10 @@ private:
      * This operation is supposed to be invoken in a context where proper
      * thread safety synchronization has been taken care of.
      *
-     * @param lock      - a lock on a mutex must be acquired before calling this method
-     * @param replicas  - a collection of replicas found upon a successful completion
-     * @param worker    - the name of a worker (as per the request)
-     * @param database  - the name of a database (as per the request)
+     * @param lock      - lock on a mutex must be acquired before calling this method
+     * @param replicas  - collection of replicas found upon a successful completion
+     * @param worker    - worker name (as per the request)
+     * @param database  - database name (as per the request)
      * 
      * @return 'true' if the operation has succeeded (even if no replicas were found)
      */
@@ -194,8 +168,8 @@ private:
     /**
      * Actual implementation of the replica update algorithm.
      *
-     * @param lock - a lock on a mutex must be acquired before calling this method
-     * @param info - a replica to be added/updated or deleted
+     * @param lock - lock on a mutex must be acquired before calling this method
+     * @param info - replica to be added/updated or deleted
      */
     void saveReplicaInfoImpl(util::Lock const& lock,
                              ReplicaInfo const& info);
@@ -203,10 +177,10 @@ private:
     /**
      * Actual implementation of the multiple replicas update algorithm.
      *
-     * @param lock           - a lock on a mutex must be acquired before calling this method
-     * @param worker         - the name of a worker (as per the request)
-     * @param database       - the name of a database (as per the request)
-     * @param infoCollection - a collection of replicas
+     * @param lock           - lock on a mutex must be acquired before calling this method
+     * @param worker         - woker name (as per the request)
+     * @param database       - database name (as per the request)
+     * @param infoCollection - collection of replicas
      */
     void saveReplicaInfoCollectionImpl(util::Lock const& lock,
                                        std::string const& worker,
@@ -216,9 +190,9 @@ private:
     /**
      * Fetch replicas satisfying the specified query
      *
-     * @param lock     - a lock on a mutex must be acquired before calling this method
-     * @param replicas - a collection of replicas to be returned
-     * @param query    - an SQL query against the corresponding table
+     * @param lock     - lock on a mutex must be acquired before calling this method
+     * @param replicas - collection of replicas to be returned
+     * @param query    - SQL query against the corresponding table
      *
      * @return 'true' if the operation has succeeded (even if no replicas were found)
      */
@@ -244,4 +218,4 @@ private:
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_DATABASE_SERVICES_MYSQL_H
+#endif // LSST_QSERV_REPLICA_DATABASESERVICESMYSQL_H

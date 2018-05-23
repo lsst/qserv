@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_SET_REPLICAS_QSERV_MGT_REQUEST_H
-#define LSST_QSERV_REPLICA_SET_REPLICAS_QSERV_MGT_REQUEST_H
+#ifndef LSST_QSERV_REPLICA_SETREPLICASQSERVMGTREQUEST_H
+#define LSST_QSERV_REPLICA_SETREPLICASQSERVMGTREQUEST_H
 
 /// SetReplicasQservMgtRequest.h declares:
 ///
@@ -179,4 +179,4 @@ private:
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_SET_REPLICAS_QSERV_MGT_REQUEST_H
+#endif // LSST_QSERV_REPLICA_SETREPLICASQSERVMGTREQUEST_H

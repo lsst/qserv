@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_REQUEST_TRACKER_H
-#define LSST_QSERV_REPLICA_REQUEST_TRACKER_H
+#ifndef LSST_QSERV_REPLICA_REQUESTTRACKER_H
+#define LSST_QSERV_REPLICA_REQUESTTRACKER_H
 
 /// RequestTracker.h declares:
 ///
@@ -48,9 +48,9 @@ namespace qserv {
 namespace replica {
 
 /**
- * The base class implements a type-independent foundation for the common
- * tracker for a collection of homogenious requests whose type is specified
- * as the template parameter of the class.
+ * Class RequestTrackerBase is a base class implements a type-independent
+ * foundation for the common tracker for a collection of homogenious requests
+ * whose type is specified as the template parameter of the class.
  */
 class RequestTrackerBase {
 
@@ -90,8 +90,8 @@ public:
      * The method will reset the tracket to the initial (empty) state. Please,
      * make sure there are no outstanding requests which may be still executing.
      *
-     * @throws std::logic_error - if there is at least one outstanding
-     *                            requests.
+     * @throws std::logic_error if there is at least one outstanding
+     * requests.
      */
     void reset();
 
@@ -101,9 +101,9 @@ protected:
      * The constructor sets up tracking options.
      *
      * @param os             - an output stream for monitoring and error printouts
-     * @param progressReport - triggers periodic printout onto an output stream
+     * @param progressReport - (optional) triggers periodic printout onto an output stream
      *                         to see the overall progress of the operation
-     * @param errorReport    - trigger detailed error reporting after the completion
+     * @param errorReport    - (optional) trigger detailed error reporting after the completion
      *                         of the operation
      */
     explicit RequestTrackerBase(std::ostream& os,
@@ -121,6 +121,8 @@ protected:
     /**
      * The method to be implemented by a subclass is supposed to return all
      * requests which are known to the subclass.
+     *
+     * @return collecton of requests
      */
     virtual std::list<Request::Ptr> getRequests() const=0;
 
@@ -152,9 +154,9 @@ private:
 };
 
 /**
- * The class implements a type-aware common tracker for a collection of
- * homogenious requests whose type is specified as the template parameter
- * of the class.
+ * Class CommonRequestTracker mplements a type-aware common tracker for
+ * a collection of homogenious requests whose type is specified as
+ * the template parameter of the class.
  */
 template <class T>
 class CommonRequestTracker
@@ -172,9 +174,9 @@ public:
      * The constructor sets up tracking options.
      *
      * @param os             - an output stream for monitoring and error printouts
-     * @param progressReport - triggers periodic printout onto an output stream
+     * @param progressReport - (optional) triggers periodic printout onto an output stream
      *                         to see the overall progress of the operation
-     * @param errorReport    - trigger detailed error reporting after the completion
+     * @param errorReport    - (optional) trigger detailed error reporting after the completion
      *                         of the operation
      */
     explicit CommonRequestTracker(std::ostream& os,
@@ -190,6 +192,8 @@ public:
     /**
      * The callback function to be registered with each request
      * injected into the tracker.
+     *
+     * @param ptr - pointer to a completed request
      */
     void onFinish(typename T::Ptr ptr) {
         RequestTrackerBase::_numFinished++;
@@ -201,6 +205,8 @@ public:
     /**
      * Add a request to be tracked. Note that in order to be tracked
      * requests needs to be constructed with the above specified function
+     *
+     * @param ptr - pointer to a request to be tracked
      */
     void add(typename T::Ptr const& ptr) {
         RequestTrackerBase::_numLaunched++;
@@ -210,8 +216,6 @@ public:
 protected:
 
     /**
-     * Implement the corresponding method defined in the base class.
-     *
      * @see RequestTrackerBase::printErrorReport
      */
     void printErrorReport(std::ostream& os) const override {
@@ -219,8 +223,6 @@ protected:
     }
 
     /**
-     * Implement the corresponding method defined in the base class.
-     *
      * @see RequestTrackerBase::getRequests
      */
     std::list<Request::Ptr> getRequests() const override {
@@ -230,8 +232,6 @@ protected:
     }
 
     /**
-     * Implement the corresponding method defined in the base class.
-     *
      * @see RequestTrackerBase::resetImpl
      */
     void resetImpl() override {
@@ -246,8 +246,8 @@ public:
 
 
 /**
- * The class implements a type-aware request tracker for a collection of
- * heterogenious requests.
+ * Class AnyRequestTracker implements a type-aware request tracker for
+ * a collection of heterogenious requests.
  */
 class AnyRequestTracker
     :   public RequestTrackerBase {
@@ -275,35 +275,35 @@ public:
 
     ~AnyRequestTracker() override = default;
 
-    /// The callback function to be registered with each request
-    /// injected into the tracker.
+    /**
+     * The callback function to be registered with each request
+     * injected into the tracker.
+     *
+     * @param ptr - pointer to a completed request
+     */
     void onFinish(Request::Ptr const& ptr);
 
     /**
      * Add a request to be tracked. Note that in order to be tracked
      * requests needs to be constructed with the above specified function
+     *
+     * @param ptr - pointer to a request to be tracked
      */
     void add(Request::Ptr const& ptr);
 
 protected:
 
     /**
-     * Implement the corresponding method defined in the base class.
-     *
      * @see RequestTrackerBase::printErrorReport
      */
     void printErrorReport(std::ostream& os) const override;
 
     /**
-     * Implement the corresponding method defined in the base class.
-     *
      * @see RequestTrackerBase::getRequests
      */
     std::list<Request::Ptr> getRequests() const override;
 
     /**
-     * Implement the corresponding method defined in the base class.
-     *
      * @see RequestTrackerBase::resetImpl
      */
     void resetImpl() override;
@@ -316,4 +316,4 @@ public:
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_REQUEST_TRACKER_H
+#endif // LSST_QSERV_REPLICA_REQUESTTRACKER_H

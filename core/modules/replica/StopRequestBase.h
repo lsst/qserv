@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_STOP_REQUEST_BASE_H
-#define LSST_QSERV_REPLICA_STOP_REQUEST_BASE_H
+#ifndef LSST_QSERV_REPLICA_STOPREQUESTBASE_H
+#define LSST_QSERV_REPLICA_STOPREQUESTBASE_H
 
 /// StopRequestBase.h declares:
 ///
@@ -147,4 +147,4 @@ private:
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_STOP_REQUEST_BASE_H
+#endif // LSST_QSERV_REPLICA_STOPREQUESTBASE_H

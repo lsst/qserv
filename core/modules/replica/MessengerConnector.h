@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_MESSENGER_CONNECTOR_H
-#define LSST_QSERV_REPLICA_MESSENGER_CONNECTOR_H
+#ifndef LSST_QSERV_REPLICA_MESSENGERCONNECTOR_H
+#define LSST_QSERV_REPLICA_MESSENGERCONNECTOR_H
 
 /// MessengerConnector.h declares:
 ///
@@ -54,9 +54,9 @@ namespace replica {
 class WorkerInfo;
 
 /**
- * This class provides a communication interface for sending/receiving messages
- * to and from worker services. It provides connection multiplexing and automatic
- * reconnects.
+ * Class MessengerConnector provides a communication interface for sending/receiving
+ * messages to and from worker services. It provides connection multiplexing and
+ * automatic reconnects.
  *
  * NOTES ON THREAD SAFETY:
  *
@@ -195,8 +195,7 @@ public:
 
     private:
 
-        /// The collback fnction to be called upon the completion of
-        /// the transaction.
+        /// The collback fnction to be called upon the completion of the transaction
         CallbackType _onFinish;
     };
 
@@ -219,6 +218,8 @@ public:
      * @param io_service       - the I/O service for communication. The lifespan of
      *                           the object must exceed the one of this instanc.
      * @param worker           - the name of a worker
+     *
+     * @return pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       boost::asio::io_service& io_service,
@@ -274,12 +275,14 @@ public:
      *
      * @param id - a unique identifier of a request
      */
-    bool exists (std::string const& id) const;
+    bool exists(std::string const& id) const;
 
 private:
 
     /**
      * The constructor
+     *
+     * @see MessengerConnector::create()
      */
     MessengerConnector(ServiceProvider::Ptr const& serviceProvider,
                        boost::asio::io_service& io_service,
@@ -303,7 +306,7 @@ private:
         STATE_COMMUNICATING // sending or receiving messages
     };
 
-    /// Return the string representation of the connector's state
+    /// @return the string representation of the connector's state
     static std::string state2string(State state);
 
     /**
@@ -323,10 +326,16 @@ private:
      * Start resolving the destination worker host & port
      *
      * @param lock - a lock on a mutex must be acquired before calling this method
-     * */
+     *
+     */
     void resolve(util::Lock const& lock);
 
-    /// Callback handler for the asynchronious operation
+    /**
+     * Callback handler for the asynchronious operation
+     *
+     * @param ec   - error code to be checked
+     * @param iter - the host resolver iterator
+     */
     void resolved(boost::system::error_code const& ec,
                   boost::asio::ip::tcp::resolver::iterator iter);
 
@@ -342,6 +351,9 @@ private:
      * Callback handler for the asynchronious operation upon its
      * successfull completion will trigger a request-specific
      * protocol sequence.
+     *
+     * @param ec   - error code to be checked
+     * @param iter - the host resolver iterator
      */
     void connected(boost::system::error_code const& ec,
                    boost::asio::ip::tcp::resolver::iterator iter);
@@ -353,7 +365,11 @@ private:
      */
     void waitBeforeRestart(util::Lock const& lock);
 
-    /// Callback handler fired for restarting the connection
+    /**
+     * Callback handler fired for restarting the connection
+     *
+     * @param ec - error code to be checked
+     */
     void awakenForRestart(boost::system::error_code const& ec);
 
     /**
@@ -364,7 +380,12 @@ private:
      */
     void sendRequest(util::Lock const& lock);
 
-    /// Callback handler fired upon a completion of the request sending
+    /**
+     * Callback handler fired upon a completion of the request sending
+     *
+     * @param ec                 - error code to be checked
+     * @param bytes_transferred  - the numner of bytes sent
+     */
     void requestSent(boost::system::error_code const& ec,
                      size_t bytes_transferred);
 
@@ -375,7 +396,12 @@ private:
      */
     void receiveResponse(util::Lock const& lock);
 
-    /// Callback handler fired upon a completion of the response receiving
+    /**
+     * Callback handler fired upon a completion of the response receiving
+     *
+     * @param ec                 - error code to be checked
+     * @param bytes_transferred  - the numner of bytes sent
+     */
     void responseReceived(boost::system::error_code const& ec,
                           size_t bytes_transferred);
 
@@ -442,12 +468,12 @@ private:
      *    the caller is supposed to quit right away. It will be up to a code
      *    which initiated the abort to take care of putting the object into
      *    a proper state.
+     * 
+     * @param ec - error code to be checked
      */
     bool isAborted(boost::system::error_code const& ec) const;
 
-    /**
-     * Return the worker-specific context string
-     */
+    /// @return the worker-specific context string
     std::string context() const;
 
 private:
@@ -494,4 +520,4 @@ private:
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_MESSENGER_CONNECTOR_H
+#endif // LSST_QSERV_REPLICA_MESSENGERCONNECTOR_H

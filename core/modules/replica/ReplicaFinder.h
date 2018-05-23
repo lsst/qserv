@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_REPLICA_CORE_FINDER_H
-#define LSST_QSERV_REPLICA_REPLICA_CORE_FINDER_H
+#ifndef LSST_QSERV_REPLICA_REPLICAFINDER_H
+#define LSST_QSERV_REPLICA_REPLICAFINDER_H
 
 /// ReplicaFinder.h declares:
 ///
@@ -45,7 +45,7 @@ namespace qserv {
 namespace replica {
 
 /**
- * The class implements replica lookup requsts in a scope of a database
+ * Class ReplicaFinder implements replica lookup requsts in a scope of a database
  * accross all worker nodes of a replication cluster.
  *
  * TODO: this is a pilot implementation of a special kind of requests
@@ -72,9 +72,9 @@ public:
      * @param controller     - a reference to the Controller for launching requests
      * @param database       - the name of a database
      * @param                - an output stream for monitoring and error printouts
-     * @param progressReport - triggers periodic printout onto an output stream
+     * @param progressReport - (optional) triggers periodic printout onto an output stream
      *                         to see the overall progress of the operation
-     * @param errorReport    - trigger detailed error reporting after the completion
+     * @param errorReport    - (optional) trigger detailed error reporting after the completion
      *                         of the operation
      */
     ReplicaFinder(Controller::Ptr const& controller,
@@ -88,4 +88,4 @@ public:
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_REPLICA_CORE_FINDER_H
+#endif // LSST_QSERV_REPLICA_REPLICAFINDER_H

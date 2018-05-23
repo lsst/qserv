@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_FILE_CLIENT_H
-#define LSST_QSERV_REPLICA_FILE_CLIENT_H
+#ifndef LSST_QSERV_REPLICA_FILECLIENT_H
+#define LSST_QSERV_REPLICA_FILECLIENT_H
 
 /// FileClient.h declares:
 ///
@@ -40,8 +40,6 @@
 // Qserv headers
 #include "replica/ServiceProvider.h"
 
-// Forward declarations
-
 // This header declarations
 
 namespace lsst {
@@ -54,11 +52,17 @@ class ProtocolBuffer;
 class WorkerInfo;
 
 /**
- * The class represents exceptions thrown by FileClient on errors
+ * Class FileClientError represents exceptions thrown by FileClient on errors
  */
 class FileClientError
     :   public std::runtime_error {
 public:
+    
+    /**
+     * Construvct an object
+     *
+     * @param what - reason for the exception
+     */
     FileClientError (std::string const& msg)
         :   std::runtime_error(msg) {
     }
@@ -79,7 +83,7 @@ public:
 
     /**
      * Open a file and return a smart pointer to an object of this class.
-     * If the operation is successfull then a valid pointer will be returned
+     * If the operation is successful then a valid pointer will be returned
      * and the file content could be read via method FileClient::read().
      * Otherwise return the null pointer.
      *
@@ -102,7 +106,7 @@ public:
 
     /**
      * Open a file and return a smart pointer to an object of this class.
-     * If the operation is successfull then a valid pointer will be returned.
+     * If the operation is successful then a valid pointer will be returned.
      * If the operation failes the method will return the null pointer.
      *
      * ATTENTION:
@@ -144,10 +148,10 @@ public:
     std::string const& database() const;
     std::string const& file() const;
 
-    /// The size of a file (as reported by a server)
+    /// @return the size of a file (as reported by a server)
     size_t size() const { return _size; }
 
-    /// The last modification time (mtime) of the file
+    /// @return the last modification time (mtime) of the file
     std::time_t mtime() const { return _mtime; }
 
     /**
@@ -169,7 +173,7 @@ private:
 
     /**
      * Open a file in the requested mode and return a smart pointer to an object
-     * of this class. If the operation is successfull then a valid pointer will
+     * of this class. If the operation is successful then a valid pointer will
      * be returned.
      *
      * @param serviceProvider - for configuration, etc. services
@@ -203,7 +207,9 @@ private:
                bool readContent);
 
     /**
-     * Try opening the file. Return 'true' if successfull.
+     * Try opening the file
+     *
+     * @return 'true' if successful
      */
     bool openImpl();
 
@@ -242,4 +248,4 @@ private:
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_FILE_CLIENT_H
+#endif // LSST_QSERV_REPLICA_FILECLIENT_H

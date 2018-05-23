@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_SEMANTIC_MAPS_H
-#define LSST_QSERV_REPLICA_SEMANTIC_MAPS_H
+#ifndef LSST_QSERV_REPLICA_SEMANTICMAPS_H
+#define LSST_QSERV_REPLICA_SEMANTICMAPS_H
 
 /// SemanticMaps.h declares:
 ///
@@ -32,9 +32,6 @@
 #include <string>
 #include <vector>
 
-// Qserv headers
-
-// Forward declarations
 
 // This header declarations
 
@@ -42,12 +39,14 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-/// The namespace providing core implementations for a family
-/// of the nested map-based structures.
+/**
+ * The namespace providing core implementations for a family
+ * of the nested map-based structures.
+ */
 namespace detail {
 
 /**
-  * The Map class is a base class for type-specif collections.
+  * Class template Map is a base class for type-specif collections.
   * This class template has two parameters:
   *   K - the key type (name or a numeric identifier)
   *   V - the value type
@@ -118,12 +117,16 @@ public:
         }
     }
 
-    /// @return read-only reference to an object for a key
-    /// @param k - object's key
+    /**
+     * @param k - object's key
+     * @return read-only reference to an object for a key
+     */
     V const& get(K const& k) const { return _coll.at(k); }
 
-    /// @return writeable reference to an object for a key
-    /// @param k - object's key
+    /**
+     * @param k - object's key
+     * @return writeable reference to an object for a key
+     */
     V& get(K const& k) { return _coll[k]; }
 
     /// @return collection object keys
@@ -149,7 +152,7 @@ private:
 };
 
 /**
-  * The WorkerMap class template has two parameters:
+  * Class template WorkerMap template has two parameters:
   *
   *   K - the key type (name or a numeric identifier)
   *   V - the value type
@@ -195,16 +198,22 @@ public:
      */
     V& insertWorker(KeyType const& k, V const& v) { return MapType::insert(k, v); }
 
-    /// @return 'true' if  with the specifid key already exists
-    /// @param k - object's key
+    /**
+     * @param k - object's key
+     * @return 'true' if  with the specifid key already exists
+     */
     bool workerExists(KeyType const& k) const { return MapType::exists(k); }
 
-    /// @return read-only reference to a worker object for a key
-    /// @param k - object's key
+    /**
+     * @param k - object's key
+     * @return read-only reference to a worker object for a key
+     */
     V const& worker(KeyType const& k) const { return MapType::get(k); }
 
-    /// @return writeable reference to a worker object for a key
-    /// @param k - object's key
+    /**
+     * @param k - object's key
+     * @return writeable reference to a worker object for a key
+     */
     V& worker(KeyType const& k) { return MapType::get(k); }
 
     /// @return collection of worker names
@@ -212,7 +221,7 @@ public:
 };
 
 /**
-  * The DatabaseMap class template has two parameters:
+  * Class template DatabaseMap has two parameters:
   *
   *   K - the key type (name or a numeric identifier)
   *   V - the value type
@@ -258,16 +267,22 @@ public:
      */
     V& insertDatabase(KeyType const& k, V const& v) { return MapType::insert(k, v); }
 
-    /// @return 'true' if  with the specifid key already exists
-    /// @param k - object's key
+    /**
+     * @param k - object's key
+     * @return 'true' if  with the specifid key already exists
+     */
     bool databaseExists(KeyType const& k) const { return MapType::exists(k); }
 
-    /// @return read-only refeence to a database object for a key
-    /// @param k - object's key
+    /**
+     * @param k - object's key
+     * @return read-only refeence to a database object for a key
+     */
     V const& database(KeyType const& k) const { return MapType::get(k); }
 
-    /// @return writeable refeence to a database object for a key
-    /// @param k - object's key
+    /**
+     * @param k - object's key
+     * @return writeable refeence to a database object for a key
+     */
     V& database(KeyType const& k) { return MapType::get(k); }
 
     /// @return collection of database names
@@ -275,7 +290,7 @@ public:
 };
 
 /**
-  * The ChunkMap class template has two parameters:
+  * Class template ChunkMap has two parameters:
   *
   *   K - the key type (name or a numeric identifier)
   *   V - the value type
@@ -321,16 +336,22 @@ public:
      */
     V& insertChunk(KeyType const& k, V const& v) { return MapType::insert(k, v); }
 
-    /// @return 'true' if  with the specifid key already exists
-    /// @param k - object's key
+    /**
+     * @param k - object's key
+     * @return 'true' if  with the specifid key already exists
+     */
     bool chunkExists(KeyType const& k) const { return MapType::exists(k); }
 
-    /// @return read-only reference to a chunk object for a key
-    /// @param k - object's key
+    /**
+     * @param k - object's key
+     * @return read-only reference to a chunk object for a key
+     */
     V const& chunk(KeyType const& k) const { return MapType::get(k); }
 
-    /// @return writeable reference to a chunk object for a key
-    /// @param k - object's key
+    /**
+     * @param k - object's key
+     * @return writeable reference to a chunk object for a key
+     */
     V& chunk(KeyType const& k) { return MapType::get(k); }
 
     /// @return collection of chunk numbers
@@ -394,4 +415,4 @@ using WorkerChunkDatabaseMap =
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_SEMANTIC_MAPS_H
+#endif // LSST_QSERV_REPLICA_SEMANTICMAPS_H

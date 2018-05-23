@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_FILE_SERVER_CONNECTION_H
-#define LSST_QSERV_REPLICA_FILE_SERVER_CONNECTION_H
+#ifndef LSST_QSERV_REPLICA_FILESERVERCONNECTION_H
+#define LSST_QSERV_REPLICA_FILESERVERCONNECTION_H
 
 /// FileServerConnection.h declares:
 ///
@@ -41,8 +41,6 @@
 #include "replica/ServiceProvider.h"
 
 namespace proto = lsst::qserv::proto;
-
-// Forward declarations
 
 // This header declarations
 
@@ -83,6 +81,10 @@ public:
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
+     *
+     * @param serviceProvider - provider of various services
+     * @param workerName      - worker name
+     * @param io_service      - service object for the network I/O operations
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& workerName,
@@ -97,9 +99,7 @@ public:
     /// Destructor (non-trivial because some resources need to be properly released)
     ~FileServerConnection();
 
-    /**
-     * Return a network socket associated with the connection.
-     */
+    /// @return network socket associated with the connection.
     boost::asio::ip::tcp::socket& socket() { return _socket; }
 
     /**
@@ -152,6 +152,9 @@ private:
      * The calback on finishing (either successfully or not) of aynchronious
      * reads. The request will be parsed, analysed and if everything is right
      * the file transfer will begin.
+     *
+     * @param ec                - error code to be evaluated
+     * @param bytes_transferred - number of bytes received from a client
      */
     void requestReceived(boost::system::error_code const& ec,
                          size_t bytes_transferred);
@@ -163,6 +166,9 @@ private:
 
     /**
      * The calback on finishing (either successfully or not) of aynchronious writes.
+     *
+     * @param ec                - error code to be evaluated
+     * @param bytes_transferred - number of bytes sent to a client in a response
      */
     void responseSent(boost::system::error_code const& ec,
                       size_t bytes_transferred);
@@ -175,6 +181,9 @@ private:
 
     /**
      * The calback on finishing (either successfully or not) of aynchronious writes.
+     *
+     * @param ec                - error code to be evaluated
+     * @param bytes_transferred - number of bytes of the file payload sent to a client 
      */
     void dataSent(boost::system::error_code const& ec,
                   size_t bytes_transferred);
@@ -209,4 +218,4 @@ private:
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_FILE_SERVER_CONNECTION_H
+#endif // LSST_QSERV_REPLICA_FILESERVERCONNECTION_H

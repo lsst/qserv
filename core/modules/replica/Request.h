@@ -42,8 +42,6 @@
 #include "replica/ServiceProvider.h"
 #include "util/Mutex.h"
 
-// Forward declarations
-
 // This header declarations
 
 namespace lsst {
@@ -71,11 +69,15 @@ public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<Request> Ptr;
 
-    /// The pointer type for the database connector which provides a database-specific
-    /// SQL generation services.
+    /**
+     * The pointer type for the database connector which provides a database-specific
+     * SQL generation services.
+     */
     typedef std::shared_ptr<database::mysql::Connection> SqlGeneratorPtr;
 
-    /// Primary public state of the request
+    /**
+     * Type State represents a primary public state of the request
+     */
     enum State {
 
         /// The request has been constructed, and no attempt to execute it has
@@ -93,8 +95,10 @@ public:
     /// @return the string representation of the primary state
     static std::string state2string(State state) ;
 
-    /// Refined public sub-state of the requiest once it's FINISHED as per
-    /// the above defined primary state.
+    /**
+     * Type ExtendedState represents a refined public sub-state of the requiest
+     * once it's FINISHED as per the above defined primary state.
+     */
     enum ExtendedState {
 
         /// No extended state exists at this time
@@ -203,11 +207,11 @@ public:
      * NOTE: only the first call with the non-default pointer to the Controller
      * will be considering for building an associaion with the Controller.
      *
-     * @param controller - an optional pointer to an instance of the Controller
-     * @param jobId      - an optional identifier of a job specifying a context
+     * @param controller - (optional) pointer to an instance of the Controller
+     * @param jobId      - (optional) identifier of a job specifying a context
      *                     in which a request will be executed.
      * @param requestExpirationIvalSec
-     *                   - an optional parameter (if differs from 0)
+     *                   - (optional) parameter (if differs from 0)
      *                     allowing to override the default value of the corresponding
      *                     parameter from the Configuration.
      */
@@ -261,12 +265,6 @@ public:
 
 protected:
 
-    /// Return shared pointer of the desired subclass (no dynamic type checking)
-    template <class T>
-    std::shared_ptr<T> shared_from_base() {
-        return std::static_pointer_cast<T>(shared_from_this());
-    }
-
     /**
      * Construct the request with the pointer to the services provider.
      *
@@ -290,6 +288,12 @@ protected:
             int  priority,
             bool keepTracking,
             bool allowDuplicate);
+
+    /// Return shared pointer of the desired subclass (no dynamic type checking)
+    template <class T>
+    std::shared_ptr<T> shared_from_base() {
+        return std::static_pointer_cast<T>(shared_from_this());
+    }
 
     /// @return  keep tracking the request before it finishes or fails
     bool keepTracking() const { return _keepTracking; }
@@ -339,6 +343,8 @@ protected:
      * Request expiration timer's handler. The expiration interval (if any)
      * is configured via the configuraton service. When the request expires
      * it finishes with completion status FINISHED::EXPIRED.
+     *
+     * @param ec - error code to be checked
      */
     void expired(boost::system::error_code const& ec);
 
@@ -348,7 +354,8 @@ protected:
      * This is supposed to be the last operation to be called by subclasses
      * upon a completion of the request.
      *
-     * @param lock - a lock on a mutex must be acquired before calling this method
+     * @param lock          - a lock on a mutex must be acquired before calling this method
+     * @param extendedState - new extended state
      */
     void finish(util::Lock const& lock,
                 ExtendedState extendedState);
@@ -388,6 +395,8 @@ protected:
      *    the caller is supposed to quit right away. It will be up to a code
      *    which initiated the abort to take care of putting the object into
      *    a proper state.
+     *
+     * @param ec - error code to be checked
      *
      * @return 'true' if the code corresponds to the operation abort
      */

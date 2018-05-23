@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_CHUNK_LOCKER_H
-#define LSST_QSERV_REPLICA_CHUNK_LOCKER_H
+#ifndef LSST_QSERV_REPLICA_CHUNKLOCKER_H
+#define LSST_QSERV_REPLICA_CHUNKLOCKER_H
 
 /// ChunkLocker.h declares:
 ///
@@ -38,8 +38,6 @@
 // Qserv headers
 #include "util/Mutex.h"
 
-// Forward declarations
-
 // This header declarations
 
 namespace lsst {
@@ -52,6 +50,7 @@ namespace replica {
  * require chunk collocation.
  */
 struct Chunk {
+
     std::string databaseFamily;
     unsigned int number;
 
@@ -78,7 +77,6 @@ struct Chunk {
 
 /// The overloaded operator for dumping objects of type Chunk
 std::ostream& operator<< (std::ostream& os, Chunk const& chunk);
-
 
 /**
  * Class ChunkLocker provides a thread-safe mechanism allowing
@@ -113,7 +111,7 @@ public:
     bool isLocked(Chunk const& chunk) const;
 
     /**
-     * Return 'true' if the chunk is locked and set an identifier of
+     * @return 'true' if the chunk is locked and set an identifier of
      * an owner which locked the chunk.
      *
      * @param chunk - a chunk to be tested
@@ -125,7 +123,7 @@ public:
                   std::string& ownerId) const;
 
     /**
-     * Return chunks which are loacked by a particular owner (if provided),
+     * Find chunks which are loacked by a particular owner (if provided),
      * or by all owners.
      *
      * @param owner - an optional owner. If the owner is not provided then
@@ -136,36 +134,39 @@ public:
     OwnerToChunks locked(std::string const& owner=std::string()) const;
 
     /**
-     * Lock a chunk to a specific owner and return 'true' of the operation
-     * was successfull.
-     *
-     * NOTE: if an attempt to claim the chunk by the same owner which already
-     *       owns it is made then the method will return 'true'.
+     * Lock a chunk to a specific owner
      *
      * @param chunk - a chunk to be locked
      * @param owner - an identifier of an owner claiming thr chunk
      *
-     * @throw std::invalid_argument - if the ownerId is an empty string
+     * @return 'true' of the operation was successful or if the specified
+     * owner already owns it, or 'false' if there is outstanding lock on
+     * a chunk made earlier by aother owner.
+     *
+     * @throw std::invalid_argument - if the owner 'id' is an empty string
      */
     bool lock(Chunk const&       chunk,
               std::string const& owner);
 
     /**
-     * Release a chunk and return 'true' if the operation was successfull
+     * Release a chunk regardless of its owner
      *
      * @param chunk - a chunk to be released
+     *
+     * @return 'true' if the operation was successfull
      */
     bool release(Chunk const& chunk);
 
     /**
-     * Release a chunk and return 'true' if the operation was successfull.
-     * In the latter case also set an identifier of an owner which previously
-     * 'claimed' the chunk.
+     * Release a chunk and, if succesful, set an identifier of an owner which
+     * previously 'claimed' the chunk.
      *
-     * @param chunk - a chunk to be released
-     * @param owner - a reference to a string which will be initialized with
+     * @param chunk - chunk to be released
+     * @param owner - reference to a string which will be initialized with
      *                an identifier of an owner which had a claim on the chunk
-     *                at a time of the method call if the chunk was found locked
+     *                at a time of the method call
+     *
+     * @return 'true' if the operation was successful
      */
     bool release(Chunk const& chunk,
                  std::string& owner);
@@ -181,13 +182,13 @@ public:
 private:
 
     /**
-     * Return chunks which are loacked by a particular owner (if provided),
+     * Find chunks which are loacked by a particular owner (if provided),
      * or by all owners.
      *
      * @param mLock  - a lock on a mutex must be made before calling this method
      * @param owner  - an optional owner. If the owner is not provided then
      *                 all chunks will be returned
-     * @owner2chunks - collection of chunks
+     * @owner2chunks - collection of chunks to be initialized
      *
      * @return a collection of chunks groupped by owners
      */
@@ -196,9 +197,9 @@ private:
                     OwnerToChunks& owner2chunks) const;
 
     /**
-     * Release a chunk and return 'true' if the operation was successfull.
-     * In the latter case also set an identifier of an owner which previously
-     * 'claimed' the chunk.
+     * Actual implememntationof the chubk release operation, which will attempt
+     * to release a chunk and, if succesful, set an identifier of an owner which
+     * previously 'claimed' the chunk.
      *
      * NOTE: this metod is not thread-safe. It's up to its callers to ensure
      *       proper synchronization context before invoking the method.
@@ -208,6 +209,8 @@ private:
      * @param owner - a reference to a string which will be initialized with
      *                an identifier of an owner which had a claim on the chunk
      *                at a time of the method call if the chunk was found locked
+     *
+     * @return 'true' if the operation was successful
      */
     bool releaseImpl(util::Lock const& mLock,
                      Chunk const& chunk,
@@ -224,4 +227,4 @@ private:
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_CHUNK_LOCKER_H
+#endif // LSST_QSERV_REPLICA_CHUNKLOCKER_H

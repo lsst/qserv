@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_WORKER_REQUEST_FACTORY_H
-#define LSST_QSERV_REPLICA_WORKER_REQUEST_FACTORY_H
+#ifndef LSST_QSERV_REPLICA_WORKERREQUESTFACTORY_H
+#define LSST_QSERV_REPLICA_WORKERREQUESTFACTORY_H
 
 /// WorkerRequestFactory.h declares:
 ///
@@ -73,7 +73,7 @@ public:
 
     virtual ~WorkerRequestFactoryBase() = default;
 
-    /// Return the name of a technology the factory is based upon
+    /// @return the name of a technology the factory is based upon
     virtual std::string technology() const = 0;
 
     /**
@@ -181,8 +181,8 @@ public:
      *              on a POSIX file system and for reading remote files using
      *              the built-into-worker simple file server.
      *
-     * @param serviceProvider - a provider of various serviceses (including configurations)
-     * @param technology      - the name of the technology
+     * @param serviceProvider - provider of various serviceses (including configurations)
+     * @param technology      - (optional) the name of a technology
      */
     explicit WorkerRequestFactory(ServiceProvider::Ptr const& serviceProvider,
                                   std::string const& technology=std::string());
@@ -284,10 +284,10 @@ public:
 
 protected:
 
-    /// A pointer to the final implementation of the factory
+    /// Pointer to the final implementation of the factory
     WorkerRequestFactoryBase* _ptr;
 };
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_WORKER_REQUEST_FACTORY_H
+#endif // LSST_QSERV_REPLICA_WORKERREQUESTFACTORY_H

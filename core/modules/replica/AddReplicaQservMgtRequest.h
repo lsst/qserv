@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_ADD_REPLICA_QSERV_MGT_REQUEST_H
-#define LSST_QSERV_REPLICA_ADD_REPLICA_QSERV_MGT_REQUEST_H
+#ifndef LSST_QSERV_REPLICA_ADDREPLICAQSERVMGTREQUEST_H
+#define LSST_QSERV_REPLICA_ADDREPLICAQSERVMGTREQUEST_H
 
 /// AddReplicaQservMgtRequest.h declares:
 ///
@@ -32,22 +32,16 @@
 #include <string>
 #include <vector>
 
-// Third party headers
-
 // Qserv headers
 #include "replica/QservMgtRequest.h"
 #include "replica/ServiceProvider.h"
 #include "wpublish/ChunkGroupQservRequest.h"
-
-// Forward declarations
 
 // This header declarations
 
 namespace lsst {
 namespace qserv {
 namespace replica {
-
-// Forward declarations
 
 /**
   * Class AddReplicaQservMgtRequest implements a request notifying Qserv workers
@@ -82,16 +76,18 @@ public:
      * @param worker          - the name of a worker
      * @param chunk           - the chunk number
      * @param databases       - the names of databases
-     * @param onFinish        - callback function to be called upon request completion
+     * @param onFinish        - (optional) callback function to be called upon request completion
+     *
+     * @return pointer to the new object created by the factory
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       boost::asio::io_service& io_service,
                       std::string const& worker,
                       unsigned int chunk,
                       std::vector<std::string> const& databases,
-                          CallbackType onFinish = nullptr);
+                      CallbackType onFinish = nullptr);
 
-    /// @return number of a chunk
+    /// @return the chunk number
     unsigned int chunk() const { return _chunk; }
 
     /// @return names of databases
@@ -146,7 +142,7 @@ private:
 
 private:
 
-    /// The number of a chunk
+    /// The chunk number
     unsigned int _chunk;
 
     /// The names of databases
@@ -161,4 +157,4 @@ private:
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_ADD_REPLICA_QSERV_MGT_REQUEST_H
+#endif // LSST_QSERV_REPLICA_ADDREPLICAQSERVMGTREQUEST_H
