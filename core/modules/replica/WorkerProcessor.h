@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_WORKER_PROCESSOR_H
-#define LSST_QSERV_REPLICA_WORKER_PROCESSOR_H
+#ifndef LSST_QSERV_REPLICA_WORKERPROCESSOR_H
+#define LSST_QSERV_REPLICA_WORKERPROCESSOR_H
 
 /// WorkerProcessor.h declares:
 ///
@@ -493,4 +493,4 @@ private:
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_WORKER_PROCESSOR_H
+#endif // LSST_QSERV_REPLICA_WORKERPROCESSOR_H

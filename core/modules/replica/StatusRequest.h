@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_STATUS_REQUEST_H
-#define LSST_QSERV_REPLICA_STATUS_REQUEST_H
+#ifndef LSST_QSERV_REPLICA_STATUSREQUEST_H
+#define LSST_QSERV_REPLICA_STATUSREQUEST_H
 
 /// StatusRequest.h declares:
 ///
@@ -405,4 +405,4 @@ typedef StatusRequest<StatusFindAllRequestPolicy>     StatusFindAllRequest;
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_STATUS_REQUEST_H
+#endif // LSST_QSERV_REPLICA_STATUSREQUEST_H

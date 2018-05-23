@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_WORKER_PROCESSOR_THREAD_H
-#define LSST_QSERV_REPLICA_WORKER_PROCESSOR_THREAD_H
+#ifndef LSST_QSERV_REPLICA_WORKERPROCESSORTHREAD_H
+#define LSST_QSERV_REPLICA_WORKERPROCESSORTHREAD_H
 
 /// WorkerProcessorThread.h declares:
 ///
@@ -67,7 +67,8 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      * 
-     * @param processor - a reference to the repository of requests to be processed
+     * @param processor - reference to the repository of requests to be processed
+     * @return pointer to the created object 
      */
     static Ptr create(WorkerProcessor &processor);
 
@@ -79,10 +80,10 @@ public:
 
     ~WorkerProcessorThread() = default;
 
-    /// Return an ientifier of this thread object
+    /// @return identifier of this thread object
     unsigned int id() const { return _id; }
 
-    /// Return true if the processing thread is still running
+    /// @return 'true' if the processing thread is still running
     bool isRunning() const;
 
     /**
@@ -101,7 +102,7 @@ public:
      */
     void stop();
 
-    /// Return the context string
+    /// @return context string
     std::string context() const { return "THREAD: " + std::to_string(_id) + "  "; }
 
 private:
@@ -128,7 +129,7 @@ private:
 private:
 
     /// The processor
-    WorkerProcessor &_processor;
+    WorkerProcessor& _processor;
 
     /// The identifier of this thread object   
     unsigned int _id;
@@ -143,4 +144,4 @@ private:
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_WORKER_PROCESSOR_THREAD_H
+#endif // LSST_QSERV_REPLICA_WORKERPROCESSORTHREAD_H

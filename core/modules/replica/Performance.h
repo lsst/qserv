@@ -33,8 +33,6 @@
 // System headers
 #include <iostream>
 
-// Qserv headers
-
 // Forward declarations
 
 namespace lsst {
@@ -53,16 +51,16 @@ namespace qserv {
 namespace replica {
 
 /**
- * Utilities shared by all classes in this scope
+ * Struct PerformanceUtils provides utilities shared by all classes in this scope
  */
 struct PerformanceUtils {
 
-    /// Return the current time in milliseconds since Epoch
+    /// @return the current time in milliseconds since Epoch
     static uint64_t now();    
 };
 
 /**
- * Controller-side class with performance counters of a request.
+ * Class Performance encapculates controller-side performance counters of requests
  * 
  * The counters are meant for tracking requests progression over time.
  * All time counters are expressed in milliseconds since Epoch.
@@ -79,23 +77,30 @@ public:
      */
     Performance();
     
-    /// Copy c-tor
     Performance(Performance const&) = default;
-
-    /// Assignment operator
     Performance& operator=(Performance const&) = default;
 
     ~Performance() = default;
 
     /**
      * Update object state with counters from the protocol buffer object
+     *
+     * @param workerPerformanceInfo - counters to be carried over into an internal state
      */
     void update(proto::ReplicationPerformance const& workerPerformanceInfo);
 
-    /// Update the Controller's 'start' time and return the previous state
+    /**
+     * Update the Controller's 'start' time
+     *
+     * @return the previous state of the counter
+     */
     uint64_t setUpdateStart();
 
-    /// Update the Controller's 'finish' time
+    /**
+     * Update the Controller's 'finish' time
+     *
+     * @return the previous state of the counter
+     */
     uint64_t setUpdateFinish();
 
 public:
@@ -124,7 +129,8 @@ std::ostream& operator<<(std::ostream& os, Performance const& p);
 
 
 /**
- * Worker-side value class with performance counters of a request.
+ * Class WorkerPerformance is worker-side value class with performance counters
+ * of a request.
  *
  * All time counters are expressed in milliseconds since Epoch.
  * Undefined values are set to 0.
@@ -140,22 +146,27 @@ public:
      */
     WorkerPerformance();
     
-    /// Copy c-tor
     WorkerPerformance(WorkerPerformance const&) = default;
-
-    /// Assignment operator
     WorkerPerformance& operator=(WorkerPerformance const&) = default;
 
     ~WorkerPerformance() = default;
 
-    /// Update the 'start' time and return the previous state
+    /**
+     * Update the 'start' time
+     *
+     * @return the previous state of the counter
+     */
     uint64_t setUpdateStart();
 
-    /// Update the 'finish' time
+    /**
+     * Update the 'finish' time
+     *
+     * @return the previous state of the counter
+     */
     uint64_t setUpdateFinish();
 
     /**
-     * Return a protobuf object
+     * @return a protobuf object
      *
      * OWNERSHIP TRANSFER NOTE: this method allocates a new object and
      * returns a pointer along with its ownership.

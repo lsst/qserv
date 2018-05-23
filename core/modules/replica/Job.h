@@ -203,7 +203,7 @@ public:
      */
     void cancel();
 
-    /// Return the context string for debugging and diagnostic printouts
+    /// @return the context string for debugging and diagnostic printouts
     std::string context() const;
 
     /**
@@ -228,12 +228,6 @@ public:
 
 protected:
 
-    /// Return shared pointer of the desired subclass (no dynamic type checking)
-    template <class T>
-    std::shared_ptr<T> shared_from_base() {
-        return std::static_pointer_cast<T>(shared_from_this());
-    }
-
     /**
      * Construct the request with the pointer to the services provider.
      *
@@ -254,6 +248,12 @@ protected:
         std::string const& parentJobId,
         std::string const& type,
         Options const& options);
+
+    /// Return shared pointer of the desired subclass (no dynamic type checking)
+    template <class T>
+    std::shared_ptr<T> shared_from_base() {
+        return std::static_pointer_cast<T>(shared_from_this());
+    }
 
     /**
       * This method is supposed to be provided by subclasses for additional
@@ -303,7 +303,7 @@ protected:
      * @param chunk     - chunk number
      * @param databases - the names of databases
      * @param worker    - the name of a worker to be notified
-     * @param onFinish  - optional callback funciton to be called upon completion
+     * @param onFinish  - (optional) callback funciton to be called upon completion
      *                    of the operation
      */
     void qservAddReplica(util::Lock const& lock,
@@ -321,8 +321,8 @@ protected:
       * @param worker    - the name of a worker to be notified
       * @param force     - the flag indicating of the removal should be done regardless
       *                    of the usage status of the replpica
-      * @param onFinish - optional callback funciton to be called upon completion
-      *                   of the operation
+      * @param onFinish  - (optional) callback funciton to be called upon completion
+      *                    of the operation
       */
     void qservRemoveReplica(util::Lock const& lock,
                             unsigned int chunk,
@@ -360,7 +360,7 @@ protected:
      *
      * @param lock          - the lock must be acquired by a caller of the method
      * @param state         - the new primary state
-     * @param extendedState - the new extended state
+     * @param extendedState - (optional) new extended state
      */
     void setState(util::Lock const& lock,
                   State state,
@@ -382,6 +382,8 @@ private:
      * is configured via the configuraton service. When the timer expires
      * the job would update the corresponding field in a database and restart
      * the time.
+     *
+     * @param ec - error code to be evaluated
      */
     void heartbeat(boost::system::error_code const& ec);
 
@@ -398,6 +400,8 @@ private:
      * Job expiration timer's handler. The expiration interval (if any)
      * is configured via the configuraton service. When the job expires
      * it finishes with completion status FINISHED::EXPIRED.
+     *
+     * @param ec - error code to be evaluated
      */
     void expired(boost::system::error_code const& ec);
 

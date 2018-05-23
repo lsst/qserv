@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_QSERV_MGT_REQUEST_H
-#define LSST_QSERV_REPLICA_QSERV_MGT_REQUEST_H
+#ifndef LSST_QSERV_REPLICA_QSERVMGTREQUEST_H
+#define LSST_QSERV_REPLICA_QSERVMGTREQUEST_H
 
 /// QservMgtRequest.h declares:
 ///
@@ -75,7 +75,7 @@ public:
     /// The lock type used by the implementations
     typedef std::lock_guard<util::Mutex> LockType;
 
-    /// Primary public state of the request
+    /// Tye State represents the primary public state of the request
     enum State {
 
         /// The request has been constructed, and no attempt to execute it has
@@ -93,8 +93,8 @@ public:
     /// @return the string representation of the primary state
     static std::string state2string(State state) ;
 
-    /// Refined public sub-state of the requiest once it's FINISHED as per
-    /// the above defined primary state.
+    /// Type ExtendedState represebts the refined public sub-state of the requiest
+    /// once it's FINISHED as per the above defined primary state.
     enum ExtendedState {
 
         /// No extended state exists at this time
@@ -270,6 +270,8 @@ protected:
      * Request expiration timer's handler. The expiration interval (if any)
      * is configured via the configuraton service. When the request expires
      * it finishes with completion status FINISHED::EXPIRED.
+     *
+     * @param ec - error code to be checked
      */
     void expired(boost::system::error_code const& ec);
 
@@ -278,6 +280,9 @@ protected:
      *
      * This is supposed to be the last operation to be called by subclasses
      * upon a completion of the request.
+     *
+     * @param extendedState - extended state
+     * @param serverError   - (optional) error message from a Qserv worker service
      */
     void finish(ExtendedState extendedState,
                 std::string const& serverError="");
@@ -290,8 +295,12 @@ protected:
       */
     virtual void finishImpl(util::Lock const& lock)=0;
 
-    // This will invoke user-defined notifiers (if any).
-
+    /**
+     * Start user-notification protocol (in case if user-defined notifiers
+     * were provided to a subclass).
+     *
+     * @see QservMgtRequest::notifyImpl()
+     */
     void notify();
 
     /**
@@ -372,4 +381,4 @@ protected:
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_QSERV_MGT_REQUEST_H
+#endif // LSST_QSERV_REPLICA_QSERVMGTREQUEST_H

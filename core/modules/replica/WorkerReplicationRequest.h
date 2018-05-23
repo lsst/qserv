@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_WORKER_REPLICATION_REQUEST_H
-#define LSST_QSERV_REPLICA_WORKER_REPLICATION_REQUEST_H
+#ifndef LSST_QSERV_REPLICA_WORKERREPLICATIONREQUEST_H
+#define LSST_QSERV_REPLICA_WORKERREPLICATIONREQUEST_H
 
 /// WorkerReplicationRequest.h declares:
 ///
@@ -307,9 +307,7 @@ private:
     /// The file pointer for the temporary output file
     std::FILE* _tmpFilePtr;
 
-    // Cached file descriptions mapping from short file names into
-    // the corresponidng parameters
-
+    /// The FileDescr struct encapsulates various parameters of a file
     struct FileDescr {
 
         /// The input file size as reported by a remote server
@@ -338,9 +336,12 @@ private:
         /// When the file transfer ended
         uint64_t endTransferTime;
     };
+
+    /// Cached file descriptions mapping from short file names into
+    /// the corresponidng parameters
     std::map<std::string,FileDescr> _file2descr;
 
-    /// The buffer for records read from the remote service
+    /// The buffer for storying file payload read from a remote file service
     uint8_t* _buf;
 
     /// The size of the buffer
@@ -350,4 +351,4 @@ private:
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_WORKER_REPLICATION_REQUEST_H
+#endif // LSST_QSERV_REPLICA_WORKERREPLICATIONREQUEST_H

@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_DELETE_REPLICA_JOB_H
-#define LSST_QSERV_REPLICA_DELETE_REPLICA_JOB_H
+#ifndef LSST_QSERV_REPLICA_DELETEREPLICAJOB_H
+#define LSST_QSERV_REPLICA_DELETEREPLICAJOB_H
 
 /// DeleteReplicaJob.h declares:
 ///
@@ -41,8 +41,6 @@
 #include "replica/ReplicaInfo.h"
 #include "replica/DeleteRequest.h"
 
-// Forward declarations
-
 // This header declarations
 
 namespace lsst {
@@ -55,8 +53,10 @@ namespace replica {
  */
 struct DeleteReplicaJobResult {
 
-    /// Results reported by workers upon the successfull completion
-    /// of the replica deletion requests
+    /**
+     * Results reported by workers upon the successfull completion
+     * of the replica deletion requests
+     */
     std::list<ReplicaInfo> replicas;
 
     /// Replica deletion results groupped by: chunk number, database, worker
@@ -96,6 +96,8 @@ public:
      * @param parentJobId    - optional identifier of a parent job
      * @param onFinish       - a callback function to be called upon a completion of the job
      * @param options        - job options
+     *
+     * @return pointer to the created object
      */
     static Ptr create(std::string const& databaseFamily,
                       unsigned int chunk,
@@ -119,7 +121,7 @@ public:
     ///@return the chunk number
     unsigned int chunk() const { return _chunk; }
 
-    /// Return the name of a source worker where the affected replica is residing
+    /// @return the name of a source worker where the affected replica is residing
     std::string const& worker() const { return _worker; }
 
     /**
@@ -142,8 +144,6 @@ public:
     DeleteReplicaJobResult const& getReplicaData() const;
 
     /**
-     * Implement the corresponding method of the base class.
-     *
      * @see Job::extendedPersistentState()
      */
     std::string extendedPersistentState(SqlGeneratorPtr const& gen) const final;
@@ -164,28 +164,24 @@ protected:
                      Job::Options const& options);
 
     /**
-      * Implement the corresponding method of the base class.
-      *
       * @see Job::startImpl()
       */
     void startImpl(util::Lock const& lock) final;
 
     /**
-      * Implement the corresponding method of the base class.
-      *
       * @see Job::startImpl()
       */
     void cancelImpl(util::Lock const& lock) final;
 
     /**
-      * Implement the corresponding method of the base class.
-      *
       * @see Job::notifyImpl()
       */
     void notifyImpl() final;
 
     /**
      * Initiate a process of removing the replica from the source worker
+     *
+     * @param lock - lock for thread safety
      */
     void beginDeleteReplica(util::Lock const& lock);
 
@@ -211,8 +207,7 @@ protected:
     /// Client-defined function to be called upon the completion of the job
     CallbackType _onFinish;
 
-    /// Cached replicas is needed to figure out wich specific databases
-    /// have contrinutions into the chunk.
+    /// Cached replicas for determining wich databases have contrinutions in the chunk
     std::vector<ReplicaInfo> _replicas;
 
     /// A collection of the replica deletion requests implementing the operation
@@ -224,4 +219,4 @@ protected:
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_DELETE_REPLICA_JOB_H
+#endif // LSST_QSERV_REPLICA_DELETEREPLICAJOB_H

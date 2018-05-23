@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_SERVICE_MANAGEMENT_REQUEST_BASE_H
-#define LSST_QSERV_REPLICA_SERVICE_MANAGEMENT_REQUEST_BASE_H
+#ifndef LSST_QSERV_REPLICA_SERVICEMANAGEMENTREQUESTBASE_H
+#define LSST_QSERV_REPLICA_SERVICEMANAGEMENTREQUESTBASE_H
 
 /// ServiceManagementRequestBase.h declares:
 ///
@@ -173,4 +173,4 @@ private:
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_SERVICE_MANAGEMENT_REQUEST_BASE_H
+#endif // LSST_QSERV_REPLICA_SERVICEMANAGEMENTREQUESTBASE_H

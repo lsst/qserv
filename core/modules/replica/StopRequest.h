@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_STOP_REQUEST_H
-#define LSST_QSERV_REPLICA_STOP_REQUEST_H
+#ifndef LSST_QSERV_REPLICA_STOPREQUEST_H
+#define LSST_QSERV_REPLICA_STOPREQUEST_H
 
 /// StopRequest.h declares:
 ///
@@ -402,4 +402,4 @@ typedef StopRequest<StopFindAllRequestPolicy>     StopFindAllRequest;
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_STOP_REQUEST_H
+#endif // LSST_QSERV_REPLICA_STOPREQUEST_H

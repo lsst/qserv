@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_SUCCESS_RATE_GENERATOR_H
-#define LSST_QSERV_REPLICA_SUCCESS_RATE_GENERATOR_H
+#ifndef LSST_QSERV_REPLICA_SUCCESSRATEGENERATOR_H
+#define LSST_QSERV_REPLICA_SUCCESSRATEGENERATOR_H
 
 /// SuccessRateGenerator.h declares:
 ///
@@ -93,4 +93,4 @@ private:
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_SUCCESS_RATE_GENERATOR_H
+#endif // LSST_QSERV_REPLICA_SUCCESSRATEGENERATOR_H

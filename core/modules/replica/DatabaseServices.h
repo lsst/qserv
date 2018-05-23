@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_DATABASE_SERVICES_H
-#define LSST_QSERV_REPLICA_DATABASE_SERVICES_H
+#ifndef LSST_QSERV_REPLICA_DATABASESERVICES_H
+#define LSST_QSERV_REPLICA_DATABASESERVICES_H
 
 /// DatabaseServices.h declares:
 ///
@@ -34,8 +34,6 @@
 
 // Qserv headers
 #include "replica/ReplicaInfo.h"
-
-// Forward declarations
 
 // This header declarations
 
@@ -74,6 +72,7 @@ public:
      * on an application configuration.
      *
      * @param configuration - the configuration service
+     * @return pointer to the created object
      */
     static Ptr create(ConfigurationPtr const& configuration);
 
@@ -144,10 +143,10 @@ public:
      * This method is supposed to be called by monitoring requests (State* and Stop*)
      * to update state of the corresponidng target requests.
      *
-     * @param request - reference to the monitoring Request object
-     * @param targetRequestId - identifier of a target request
+     * @param request                  - reference to the monitoring Request object
+     * @param targetRequestId          - identifier of a target request
      * @param targetRequestPerformance - performance counters of a target request
-     *                  obtained from a worker
+     *                                   obtained from a worker
      */
     virtual void updateRequestState(Request const& request,
                                     std::string const& targetRequestId,
@@ -171,9 +170,9 @@ public:
      * - new replicas not present in the database will be registered in there
      * - existing replicas will be updated in the database
      *
-     * @param worker         - the name of a worker (as per the request)
-     * @param database       - the name of a database (as per the request)
-     * @param infoCollection - a collection of replicas
+     * @param worker         - worker name (as per the request)
+     * @param database       - database name (as per the request)
+     * @param infoCollection - collection of replicas
      */
     virtual void saveReplicaInfoCollection(std::string const& worker,
                                            std::string const& database,
@@ -188,9 +187,9 @@ public:
      * passed into the method should be made if the operation fails
      * (returns 'false').
      *
-     * @param replica            - a reference to an object to be initialized
-     * @param maxReplicas        - the maximum number of replicas to be returned
-     * @param enabledWorkersOnly - if set to 'true' then only consider known
+     * @param replica            - reference to an object to be initialized
+     * @param maxReplicas        - maximum number of replicas to be returned
+     * @param enabledWorkersOnly - (optional) if set to 'true' then only consider known
      *                             workers which are enabled in the Configuration
      *
      * @return 'true' in case of success (even if no replicas were found)
@@ -206,10 +205,10 @@ public:
      * passed into the method should be made if the operation fails
      * (returns 'false').
      *
-     * @param replicas - a collection of replicas (if any found)
-     * @param chunk    - the chunk number
-     * @param database - the name of a database
-     * @param enabledWorkersOnly - if set to 'true' then only consider known
+     * @param replicas           - collection of replicas (if any found)
+     * @param chunk              - chunk number
+     * @param database           - database name
+     * @param enabledWorkersOnly - (optional) if set to 'true' then only consider known
      *                             workers which are enabled in the Configuration
      *
      * @return 'true' in case of success (even if no replicas were found)
@@ -229,9 +228,9 @@ public:
      * passed into the method should be made if the operation fails
      * (returns 'false').
      *
-     * @param replicas - a collection of replicas (if any found)
-     * @param worker   - the name of a worker
-     * @param database - the optional name of a database
+     * @param replicas - collection of replicas (if any found)
+     * @param worker   - worker name
+     * @param database - (optional) atabase name
      *
      * @return 'true' in case of success (even if no replicas were found)
      *
@@ -250,10 +249,10 @@ public:
      * passed into the method should be made if the operation fails
      * (returns 'false').
      *
-     * @param replicas - a collection of replicas (if any found)
-     * @param chunk    - the chunk number
-     * @param worker   - the name of a worker
-     * @param databaseFamily - the optional database family
+     * @param replicas       - collection of replicas (if any found)
+     * @param chunk          - chunk number
+     * @param worker         - worker name of a worker
+     * @param databaseFamily - (optional) database family name
      *
      * @return 'true' in case of success (even if no replicas were found)
      *
@@ -267,18 +266,15 @@ public:
 
 protected:
 
-    /// Return shared pointer of the desired subclass (no dynamic type checking)
+    DatabaseServices() = default;
+
+    /// @return shared pointer of the desired subclass (no dynamic type checking)
     template <class T>
     std::shared_ptr<T> shared_from_base() {
         return std::static_pointer_cast<T>(shared_from_this());
     }
-
-    /**
-     * Construct the object.
-     */
-    DatabaseServices() = default;
 };
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_DATABASE_SERVICES_H
+#endif // LSST_QSERV_REPLICA_DATABASESERVICES_H

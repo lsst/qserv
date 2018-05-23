@@ -37,7 +37,6 @@
 // Qserv headers
 #include "util/Mutex.h"
 
-// Forward declarations
 
 // This header declarations
 
@@ -45,7 +44,9 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-/// The descriptor of a worker
+/**
+ * Struct WorkerInfo encapsulates various parameters describing a worker.
+ */
 struct WorkerInfo {
 
     /// The logical name of a worker
@@ -78,7 +79,9 @@ struct WorkerInfo {
 /// Overloaded operator for dumping objects of class WorkerInfo
 std::ostream& operator <<(std::ostream& os, WorkerInfo const& info);
 
-/// The descriptor of a database
+/**
+ * Struct DatabaseInfo encapsulates various parameters describing a database.
+ */
 struct DatabaseInfo {
 
     /// The name of a database
@@ -132,8 +135,10 @@ public:
     virtual ~Configuration() = default;
 
     /**
-     * Return the original (minus security-related info) path to the configuration
-     * source.
+     * Construct the original (minus security-related info) path to
+     * the configuration source.
+     *
+     * @return the constructed path
      */
     virtual std::string configUrl() const=0;
 
@@ -203,29 +208,29 @@ public:
     // -- Configuration parameters related to database services --
     // -----------------------------------------------------------
 
+    /// @return the name of a database technology for worker services
     std::string const& databaseTechnology() const { return _databaseTechnology; }
 
-    /// The DNS name or IP address of a machine where the database
-    /// server runs
+    /// @return the DNS name or IP address of a machine of a database service
     std::string const& databaseHost() const { return _databaseHost; }
 
-    /// The port number of the database service
+    /// @return the port number of the database service
     uint16_t databasePort() const { return _databasePort; }
 
-    /// The name of a database user
+    /// @return the name of a database user
     std::string const& databaseUser() const { return _databaseUser; }
 
-    /// The database password
+    /// @return the database password
     std::string const& databasePassword() const { return _databasePassword; }
 
-    /// The name of a database to be set upon the connection
+    /// @return the name of a database to be set upon the connection
     std::string const& databaseName() const { return _databaseName; }
 
     // ---------------------------------------------------
     // -- Configuration parameters related to databases --
     // ---------------------------------------------------
 
-    /// The names of known database families
+    /// @return names of known database families
     std::vector<std::string> databaseFamilies() const;
 
     /**
@@ -331,25 +336,28 @@ public:
      */
     virtual void deleteWorker(std::string const& name)=0;
 
-    /// Return the name of the default technology for implementing requests
+    /// @return the name of the default technology for implementing requests
     std::string const& workerTechnology() const { return _workerTechnology; }
 
-    /// The number of request processing threads in each worker service
+    /// @return the number of request processing threads in each worker service
     size_t workerNumProcessingThreads() const { return _workerNumProcessingThreads; }
 
-    /// The number of request processing threads in each worker's file service
+    /// @return the number of request processing threads in each worker's file service
     size_t fsNumProcessingThreads() const { return _fsNumProcessingThreads; }
 
-    /// Return the buffer size for the file I/O operations
+    /// @return the buffer size for the file I/O operations
     size_t workerFsBufferSizeBytes() const { return _workerFsBufferSizeBytes; }
 
     // ---------------------------------------------------
     // -- Configuration parameters of the Job Scheduler --
     // ---------------------------------------------------
 
-    /// Return the number of seconds betwean re-evaluations of the Schedule's
-    /// state. At each expiration moment of the interval the Scheduler would
-    /// check if there are new jobs which are requested to be run on the time basis.
+    /**
+     * @return the number of seconds betwean re-evaluations of the Schedule's
+     * state. At each expiration moment of the interval the Scheduler would
+     * check if there are new jobs which are requested to be run on
+     * the periodic basis.
+     */
     unsigned int jobSchedulerIvalSec() const { return _jobSchedulerIvalSec; }
 
     /**
@@ -416,7 +424,6 @@ protected:
 protected:
 
     /// To be used were thread safety is required
-    
     mutable util::Mutex _mtx;
 
     // -- Cached values of parameters --

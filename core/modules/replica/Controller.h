@@ -45,8 +45,6 @@
 #include "replica/ServiceProvider.h"
 #include "util/Mutex.h"
 
-// Forward declarations
-
 // This header declarations
 
 namespace lsst {
@@ -59,9 +57,9 @@ class ControllerImpl;
 class Messenger;
 
 /**
- * The base class for implementing requests registry as a polymorphic
- * collection to store active requests. Pure virtual methods of
- * the class will be overriden by request-type-specific implementations
+ * Class ControllerRequestWrapper is the base class for implementing requests
+ * registry as a polymorphic collection to store active requests. Pure virtual
+ * methods of the class will be overriden by request-type-specific implementations
  * (see struct RequestWrappeImplr<REQUEST_TYPE> in the .cc file) capturing
  * type-dependant pointer and a callback function.
  */
@@ -72,8 +70,7 @@ struct ControllerRequestWrapper {
 
     virtual ~ControllerRequestWrapper() = default;
 
-    /// This method will be called upon a completion of a request
-    /// to notify a subscriber on the event.
+    /// This subscriber notification method will be called upon a completion of a requess
     virtual void notify()=0;
 
     /// Return a pointer to the stored request object
@@ -81,7 +78,7 @@ struct ControllerRequestWrapper {
 };
 
 /**
- * The data structure encapsulating various attributes which identify
+ * Struvcy ControllerIdentity encapsulates various attributes which identify
  * each instance of the Controller class. This information is meant to
  * be used in the multi-Controller setups to coordinate operations
  * between multiple instances and to avoid/resolve conflicts.
@@ -122,8 +119,7 @@ class Controller
 
 public:
 
-    /// Friend class behind this implementation must have access to
-    /// the private methods
+    /// Friend class behind this implementation must have access to the private methods
     friend class ControllerImpl;
 
     /// The pointer type for instances of the class
@@ -147,13 +143,13 @@ public:
 
     ~Controller() = default;
 
-    /// Return the unique identity of the instance
+    /// @return the unique identity of the instance
     ControllerIdentity const& identity() const { return _identity; }
 
-    /// The start time of the instance (milliseconds since UNIX Epoch)
+    /// @return the start time of the instance (milliseconds since UNIX Epoch)
     uint64_t startTime() const { return _startTime; }
 
-    /// Return the Service Provider used by the server
+    /// @return the Service Provider used by the server
     ServiceProvider::Ptr const& serviceProvider() { return _serviceProvider; }
 
     /// @return reference to the I/O service for ASYNC requests
@@ -574,7 +570,7 @@ public:
     }
 
     /**
-     * Return the number of requests of a specific type
+     * @return the number of requests of a specific type
      */
     template <class REQUEST_TYPE>
     size_t numRequestsOfType() const {
@@ -587,9 +583,7 @@ public:
         return result;
     }
 
-    /**
-     * Return the total number of requests of all kinds
-     */
+    /// @return the total number of requests of all kinds
     size_t numActiveRequests() const;
 
 private:
@@ -608,11 +602,15 @@ private:
      * Finalize the completion of the request. This method will notify
      * a requestor on the completion of the operation and it will also
      * remove the request from the server's registry.
+     *
+     * @param id - a unique identifier of a request
      */
     void finish(std::string const& id);
 
     /**
-     * Make sure the server is runnning. Otherwise throw std::runtime_error.
+     * Make sure the server is runnning
+     *
+     * @throws std::runtime_error if the server is not running
      */
     void assertIsRunning() const;
 

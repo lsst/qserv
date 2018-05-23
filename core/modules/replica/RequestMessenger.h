@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_REQUEST_MESSENGER_H
-#define LSST_QSERV_REPLICA_REQUEST_MESSENGER_H
+#ifndef LSST_QSERV_REPLICA_REQUESTMESSENGER_H
+#define LSST_QSERV_REPLICA_REQUESTMESSENGER_H
 
 /// RequestMessenger.h declares:
 ///
@@ -38,8 +38,6 @@
 #include "replica/Messenger.h"
 #include "replica/Request.h"
 #include "replica/ServiceProvider.h"
-
-// Forward declarations
 
 // This header declarations
 
@@ -85,6 +83,8 @@ protected:
      * @param keepTracking    - keep tracking the request before it finishes or fails
      * @param allowDuplicate  - follow a previously made request if the current one duplicates it
      * @param messenger       - an interface for communicating with workers
+     *
+     * @return pointer to the created object
      */
     RequestMessenger(ServiceProvider::Ptr const& serviceProvider,
                      boost::asio::io_service& io_service,
@@ -99,7 +99,7 @@ protected:
     Messenger::Ptr const& messenger() const { return _messenger; }
 
     /**
-     * Implement a method defined in the base class.
+     * @see Request::finishImpl()
      */
     void finishImpl(util::Lock const& lock) override;
     
@@ -111,4 +111,4 @@ protected:
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_REQUEST_MESSENGER_H
+#endif // LSST_QSERV_REPLICA_REQUESTMESSENGER_H

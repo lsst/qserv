@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_WORKER_FIND_ALL_REQUEST_H
-#define LSST_QSERV_REPLICA_WORKER_FIND_ALL_REQUEST_H
+#ifndef LSST_QSERV_REPLICA_WORKERFINDALLREQUEST_H
+#define LSST_QSERV_REPLICA_WORKERFINDALLREQUEST_H
 
 /// WorkerFindAllRequest.h declares:
 ///
@@ -180,4 +180,4 @@ typedef WorkerFindAllRequestPOSIX WorkerFindAllRequestFS;
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_WORKER_FIND_ALL_REQUEST_H
+#endif // LSST_QSERV_REPLICA_WORKERFINDALLREQUEST_H

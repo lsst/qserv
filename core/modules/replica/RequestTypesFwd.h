@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_REQUEST_TYPES_FWD_H
-#define LSST_QSERV_REPLICA_REQUEST_TYPES_FWD_H
+#ifndef LSST_QSERV_REPLICA_REQUESTTYPESFWD_H
+#define LSST_QSERV_REPLICA_REQUESTTYPESFWD_H
 
 /// RequestTypesFwd.h declares:
 ///
@@ -34,8 +34,6 @@
 
 // Qserv headers
 #include "replica/Common.h"
-
-// Forward declarations
 
 // This header declarations
 
@@ -152,4 +150,4 @@ typedef std::function<void(ServiceDrainRequestPtr)>    ServiceDrainRequestCallba
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_REQUEST_TYPES_FWD_H
+#endif // LSST_QSERV_REPLICA_REQUESTTYPESFWD_H

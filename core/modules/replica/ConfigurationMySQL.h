@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_CONFIGURATION_MYSQL_H
-#define LSST_QSERV_REPLICA_CONFIGURATION_MYSQL_H
+#ifndef LSST_QSERV_REPLICA_CONFIGURATIONMYSQL_H
+#define LSST_QSERV_REPLICA_CONFIGURATIONMYSQL_H
 
 /// ConfigurationMySQL.h declares:
 ///
@@ -34,8 +34,6 @@
 // Qserv headers
 #include "replica/Configuration.h"
 #include "replica/DatabaseMySQL.h"
-
-// Forward declarations
 
 // This header declarations
 
@@ -74,23 +72,17 @@ public:
     ~ConfigurationMySQL() override = default;
 
     /**
-     * Implements the method defined in the base class
-     *
-     * @see Configuration::configUrl ()
+     * @see Configuration::configUrl()
      */
     std::string configUrl() const override;
 
     /**
-     * Implements the method defined in the base class
-     *
-     * @see Configuration::disableWorker ()
+     * @see Configuration::disableWorker()
      */
     WorkerInfo const& disableWorker(std::string const& name) override;
 
     /**
-     * Implements the method defined in the base class
-     *
-     * @see Configuration::deleteWorker ()
+     * @see Configuration::deleteWorker()
      */
     void deleteWorker(std::string const& name) override;
 
@@ -114,4 +106,4 @@ private:
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_CONFIGURATION_MYSQL_H
+#endif // LSST_QSERV_REPLICA_CONFIGURATIONMYSQL_H

@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_PROTOCOL_BUFFER_H
-#define LSST_QSERV_REPLICA_PROTOCOL_BUFFER_H
+#ifndef LSST_QSERV_REPLICA_PROTOCOLBUFFER_H
+#define LSST_QSERV_REPLICA_PROTOCOLBUFFER_H
 
 /// ProtocolBuffer.h declares:
 ///
@@ -33,10 +33,6 @@
 #include <cstdint>      // uint32_t
 #include <stdexcept>
 
-// Qserv headers
-
-// Forward declarations
-
 // This header declarations
 
 namespace lsst {
@@ -44,8 +40,8 @@ namespace qserv {
 namespace replica {
 
 /**
- * The helper class encapsulating serialization, deserialization operations
- * with Google protobuf objects.
+ * Class ProtocolBuffer is a helper class encapsulating serialization,
+ * deserialization operations with Google Protobuf objects.
  */
 class ProtocolBuffer {
 
@@ -58,7 +54,10 @@ public:
     static size_t const HARD_LIMIT;
 
     /**
-     * Construct the buffer of the specified initial capacity (bytes).
+     * Construct the buffer of some initial capacity, which will be
+     * extended later if needed to accomodate larger messages.
+     *
+     * @param capacity - initial capacity (bytes) of the buffer
      */
     explicit ProtocolBuffer(size_t capacity);
 
@@ -71,18 +70,14 @@ public:
     /// Destructor (non-trivial in order to free the memory)
     ~ProtocolBuffer();
 
-    /**
-     * Pointer to the data blob
-     */
+    /// @return raw pointer to the data blob
     char* data() { return _data; }
 
-    /**
-     * Maximum capacity (bytes) of the buffer.
-     */
+    /// @return the maximum capacity (bytes) of the buffer
     size_t capacity () const { return _capacity; }
 
     /**
-     * Current meaninful size (bytes) of the buffer.
+     * @return current meaninful size (bytes) of the buffer
      *
      * NOTE: a value return by the method will never exceed the buffer's
      * capacity.
@@ -94,11 +89,10 @@ public:
      * capacity is insufficient to accomodate the requested size the buffer
      * will be extended. In the later case its previous content (if any) will
      * be preserved.
-     * 
-     * The method will throw one of these exceptions:
      *
-     *   std::overflow_error
-     *      if the buffer doesn't have enough space to accomodate the request
+     * @param newSizeBytes - (optional) new size in bytes
+     *
+     * @throws std::overflow_error if the buffer doesn't have enough space to accomodate the request
      */
     void resize(size_t newSizeBytes=0);
 
@@ -106,13 +100,10 @@ public:
      * Add a message into the buffer. The message will be preceeed
      * by a frame header carrying the length of the message.
      *
-     * The method will throw one of these exceptions:
+     * @param message - Protobuf object to be serialized
      *
-     *   std::overflow_error
-     *      if the buffer doesn't have enough space to accomodate the data
-     *
-     *   std::runtime_error
-     *      if the serialization failed
+     * @throws std::overflow_error if the buffer doesn't have enough space to accomodate the data
+     * @throws std::runtime_error if the serialization failed
      */
     template <class T>
     void serialize(T const& message) {
@@ -141,11 +132,10 @@ public:
      * Parse and deserialize the length of a message from the frame header
      * assuming the header is stored at the very begining of the data buffer.
      *
-     * The method will throw one of these exceptions:
+     * @return the length of a message
      *
-     *   std::underflow_error
-     *      if the buffer doesn't have enough data to be interpreted as the
-     *      frame header
+     * @throws std::underflow_error if the buffer doesn't have enough data to be
+     * interpreted as the frame header
      */
     uint32_t parseLength() const;
 
@@ -154,14 +144,13 @@ public:
      * the message as informed by a prior frame header. The message is
      * assumed to be stored at the very begining of the data buffer.
      *
-     * The method will throw one of these exceptions:
+     * @param message - Protobuf object to be initialized
+     * @param bytes   - number of bytes to be consumed during the operation
      *
-     *   std::underflow_error
-     *      if the buffer doesn't have enough data to be interpreted as the
-     *      messag eo fthe required size
+     * @throws std::underflow_error if the buffer doesn't have enough data
+     * to be interpreted as the message of the required size
      *
-     *   std::runtime_error
-     *      if the deserialization failed
+     * @throws std::runtime_error if the deserialization failed
      */
     template <class T>
     void parse(T& message, uint32_t bytes) {
@@ -179,6 +168,8 @@ private:
      * Ensure the buffer capacity is no less than the specified number of bytes.
      * Extend it otherwise. The previous contents (as per its 'size') of the buffer
      * as well as its size will be preserved.
+     *
+     * @param newCapacityBytes - the nuber of bytes to be set
      */
     void extend(size_t newCapacityBytes);
 
@@ -192,4 +183,4 @@ private:
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_PROTOCOL_BUFFER_H
+#endif // LSST_QSERV_REPLICA_PROTOCOLBUFFER_H

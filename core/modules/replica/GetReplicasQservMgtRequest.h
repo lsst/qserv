@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_GET_REPLICAS_QSERV_MGT_REQUEST_H
-#define LSST_QSERV_REPLICA_GET_REPLICAS_QSERV_MGT_REQUEST_H
+#ifndef LSST_QSERV_REPLICA_GET_REPLICAS_QSERVMGTREQUEST_H
+#define LSST_QSERV_REPLICA_GET_REPLICAS_QSERVMGTREQUEST_H
 
 /// GetReplicasQservMgtRequest.h declares:
 ///
@@ -78,8 +78,10 @@ public:
      * @param io_service      - BOOST ASIO service
      * @param worker          - the name of a worker
      * @param databaseFamily  - the name of a database family
-     * @param inUseOnly       - return replicas which're presently in use
-     * @param onFinish        - callback function to be called upon request completion
+     * @param inUseOnly       - (optional) return replicas which're presently in use
+     * @param onFinish        - (optional) callback function to be called upon request completion
+     * 
+     * @return pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       boost::asio::io_service& io_service,
@@ -95,17 +97,15 @@ public:
     bool inUseOnly() const { return _inUseOnly; }
 
     /**
-      * @return collection of replicas repored from the corresponding Qserv worker
-      *
-      * ATTENTION: the method will throw exception std::logic_error if called
-      * before th erequest finishes or if it's finished with any but SUCCESS
-      * status.
-      */
+     * @return collection of replicas repored from the corresponding Qserv worker
+     *
+     * ATTENTION: the method will throw exception std::logic_error if called
+     * before th erequest finishes or if it's finished with any but SUCCESS
+     * status.
+     */
     QservReplicaCollection const& replicas() const;
 
     /**
-     * Implement the corresponding method of the base class.
-     *
      * @see QservMgtRequest::extendedPersistentState()
      */
      std::string extendedPersistentState(SqlGeneratorPtr const& gen) const override;
@@ -113,13 +113,9 @@ public:
 private:
 
     /**
-     * Construct the request with the pointer to the services provider.
+     * Construct the request with the pointer to the services provider
      *
-     * @param serviceProvider - reference to a provider of services
-     * @param io_service      - BOOST ASIO service
-     * @param worker          - the name of a worker
-     * @param databaseFamily  - the name of a database family
-     * @param onFinish        - callback function to be called upon request completion
+     * @see GetReplicasQservMgtRequest::created()
      */
     GetReplicasQservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
                                boost::asio::io_service& io_service,
@@ -131,27 +127,22 @@ private:
     /**
      * Carry over results of the request into a local collection. Filter results
      * by databases participating in the family.
+     * 
      * @param collection - input collection of replicas
      */
      void setReplicas(wpublish::GetChunkListQservRequest::ChunkCollection const& collection);
 
     /**
-      * Implememnt the corresponding method of the base class
-      *
       * @see QservMgtRequest::startImpl
       */
     void startImpl(util::Lock const& lock) final;
 
     /**
-      * Implememnt the corresponding method of the base class
-      *
       * @see QservMgtRequest::finishImpl
       */
     void finishImpl(util::Lock const& lock) final;
 
     /**
-      * Implememnt the corresponding method of the base class
-      *
       * @see QservMgtRequest::notifyImpl
       */
     void notifyImpl() final;
@@ -176,4 +167,4 @@ private:
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_GET_REPLICAS_QSERV_MGT_REQUEST_H
+#endif // LSST_QSERV_REPLICA_GET_REPLICAS_QSERVMGTREQUEST_H

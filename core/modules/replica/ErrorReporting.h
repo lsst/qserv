@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_ERROR_REPORTING_H
-#define LSST_QSERV_REPLICA_ERROR_REPORTING_H
+#ifndef LSST_QSERV_REPLICA_ERRORREPORTING_H
+#define LSST_QSERV_REPLICA_ERRORREPORTING_H
 
 /// ErrorReporting.h declares:
 ///
@@ -55,7 +55,7 @@ void reportRequestState(COLLECTION const& requests,
         << "--------------------------------------+----------------------+--------+-------------+----------------------+--------------------------\n"
         << "                                   id |                 type | worker |       state |            ext.state |          server err.code \n"
         << "--------------------------------------+----------------------+--------+-------------+----------------------+--------------------------\n";   
-    for (const auto &ptr: requests) {
+    for (auto&& ptr: requests) {
         os  << " "   << std::setw(36) <<                                ptr->id()
             << " | " << std::setw(20) <<                                ptr->type()
             << " | " << std::setw( 6) <<                                ptr->worker()
@@ -70,4 +70,4 @@ void reportRequestState(COLLECTION const& requests,
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_ERROR_REPORTING_H
+#endif // LSST_QSERV_REPLICA_ERRORREPORTING_H

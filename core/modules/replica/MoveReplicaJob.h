@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_MOVE_REPLICA_JOB_H
-#define LSST_QSERV_REPLICA_MOVE_REPLICA_JOB_H
+#ifndef LSST_QSERV_REPLICA_MOVEREPLICAJOB_H
+#define LSST_QSERV_REPLICA_MOVEREPLICAJOB_H
 
 /// MoveReplicaJob.h declares:
 ///
@@ -42,8 +42,6 @@
 #include "replica/CreateReplicaJob.h"
 #include "replica/DeleteReplicaJob.h"
 
-// Forward declarations
-
 // This header declarations
 
 namespace lsst {
@@ -51,7 +49,7 @@ namespace qserv {
 namespace replica {
 
 /**
- * The structure MoveReplicaJobResult represents a combined result received
+ * Struct MoveReplicaJobResult represents a combined result received
  * from worker services upon a completion of the job.
  */
 struct MoveReplicaJobResult {
@@ -109,7 +107,9 @@ public:
      * @param controller        - for launching requests
      * @param parentJobId       - optional identifier of a parent job
      * @param onFinish          - callback function to be called upon a completion of the job
-     * @param options           - job options
+     * @param options           - (optional) job options
+     *
+     * @return pointer to the created object
      */
     static Ptr create(std::string const& databaseFamily,
                       unsigned int chunk,
@@ -129,23 +129,23 @@ public:
 
     ~MoveReplicaJob() final = default;
 
-    /// The name of a database family
+    /// @return the name of a database family
     std::string const& databaseFamily() const { return _databaseFamily; }
 
-    /// The chunk number
+    /// @return the chunk number
     unsigned int chunk() const { return _chunk; }
 
-    /// Return the name of a source worker where the input replica is residing
+    /// @return the name of a source worker where the input replica is residing
     std::string const& sourceWorker() const { return _sourceWorker; }
 
-    /// Return the name of a destination worker where the output replica will be placed
+    /// @return the name of a destination worker where the output replica will be placed
     std::string const& destinationWorker() const { return _destinationWorker; }
 
-    /// Return the flag indicating if the input replica should be purged
+    /// @return the flag indicating if the input replica should be purged
     bool purge() const { return _purge; }
 
     /**
-     * Return the result of the operation.
+     * @return the result of the operation
      *
      * IMPORTANT NOTES:
      * - the method should be invoked only after the job has finished (primary
@@ -156,16 +156,12 @@ public:
      *   finished. Please, verify the primary and extended status of the object
      *   to ensure that all requests have finished.
      *
-     * @return the data structure to be filled upon the completin of the job.
-     *
      * @throws std::logic_error - if the job dodn't finished at a time
      *                            when the method was called
      */
     MoveReplicaJobResult const& getReplicaData() const;
 
     /**
-     * Implement the corresponding method of the base class.
-     *
      * @see Job::extendedPersistentState()
      */
     std::string extendedPersistentState(SqlGeneratorPtr const& gen) const override;
@@ -188,22 +184,16 @@ protected:
                    Job::Options const& options);
 
     /**
-      * Implement the corresponding method of the base class.
-      *
       * @see Job::startImpl()
       */
     void startImpl(util::Lock const& lock) final;
 
     /**
-      * Implement the corresponding method of the base class.
-      *
       * @see Job::startImpl()
       */
     void cancelImpl(util::Lock const& lock) final;
 
     /**
-      * Implement the corresponding method of the base class.
-      *
       * @see Job::notifyImpl()
       */
     void notifyImpl() final;
@@ -252,4 +242,4 @@ protected:
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_MOVE_REPLICA_JOB_H
+#endif // LSST_QSERV_REPLICA_MOVEREPLICAJOB_H

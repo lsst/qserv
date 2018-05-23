@@ -48,7 +48,7 @@ namespace replica {
 class ProtocolBuffer;
 
 /**
- * This class provides a communication interface for sending/receiving messages
+ * Class Messenger provides a communication interface for sending/receiving messages
  * to and from worker services. It provides connection multiplexing and automatic
  * reconnects.
  */
@@ -79,6 +79,8 @@ public:
      * @param io_service       - the I/O service for communication. The lifespan of
      *                           the object must exceed the one of this instance
      *                           of the Messenger.
+     *
+     * @return pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       boost::asio::io_service& io_service);
@@ -147,17 +149,22 @@ private:
 
     /**
      * The constructor
+     *
+     * @param serviceProvider  - a host of services for various communications
+     * @param io_service       - the I/O service for communication. The lifespan of
+     *                           the object must exceed the one of this instance
+     *                           of the Messenger.
      */
     Messenger(ServiceProvider::Ptr const& serviceProvider,
               boost::asio::io_service& io_service);
 
     /**
-     * Locate and return a connector for the specified worker. Throw exception
-     * std::invalid_argument if the worker is unknown.
+     * Locate and return a connector for the specified worker
      *
      * @param - the name of a worker
-     *
      * @return a pointer to the connector
+     *
+     * @throws std::invalid_argument if the worker is unknown.
      */
     MessengerConnector::Ptr const& connector(std::string const& worker) const;
 

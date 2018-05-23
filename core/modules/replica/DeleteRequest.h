@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_DELETE_REQUEST_H
-#define LSST_QSERV_REPLICA_DELETE_REQUEST_H
+#ifndef LSST_QSERV_REPLICA_DELETEREQUEST_H
+#define LSST_QSERV_REPLICA_DELETEREQUEST_H
 
 /// DeleteRequest.h declares:
 ///
@@ -76,11 +76,13 @@ public:
     std::string const& database() const { return _database; }
     unsigned int       chunk() const    { return _chunk; }
 
-    /// Return target request specific parameters
+    /// @return parameters of a target request
     DeleteRequestParams const& targetRequestParams() const { return _targetRequestParams; }
 
-    /// Return request-specific extended data reported upon a successfull
-    /// completion of the request
+    /**
+     * @return request-specific extended data reported upon a successfull
+     * completion of the request
+     */
     ReplicaInfo const& responseData() const { return _replicaInfo; }
 
     /**
@@ -100,6 +102,8 @@ public:
      * @param keepTracking     - keep tracking the request before it finishes or fails
      * @param allowDuplicate   - follow a previously made request if the current one duplicates it
      * @param messenger        - an interface for communicating with workers
+     *
+     * @return pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       boost::asio::io_service& io_service,
@@ -116,6 +120,8 @@ private:
 
     /**
      * Construct the request with the pointer to the services provider.
+     *
+     * @see DeleteRequest::create()
      */
     DeleteRequest(ServiceProvider::Ptr const& serviceProvider,
                   boost::asio::io_service& io_service,
@@ -129,8 +135,6 @@ private:
                   std::shared_ptr<Messenger> const& messenger);
 
     /**
-      * Implement the method declared in the base class
-      *
       * @see Request::startImpl()
       */
     void startImpl(util::Lock const& lock) final;
@@ -163,21 +167,16 @@ private:
                  proto::ReplicationResponseDelete const& message);
 
     /**
-     * Notifying a party which initiated the request.
-     *
-     * This method implements the corresponing virtual method defined
-     * by the base class.
+     * @see Request::notifyImpl()
      */
     void notifyImpl() final;
 
     /**
-     * Implement the corresponding method defined in the base class.
+     * @see Request::savePersistentState()
      */
     void savePersistentState() final;
 
     /**
-     * Implement the corresponding method of the base class.
-     *
      * @see Request::extendedPersistentState()
      */
     std::string extendedPersistentState(SqlGeneratorPtr const& gen) const final;
@@ -198,4 +197,4 @@ private:
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_DELETE_REQUEST_H
+#endif // LSST_QSERV_REPLICA_DELETEREQUEST_H

@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_FIND_REQUEST_H
-#define LSST_QSERV_REPLICA_FIND_REQUEST_H
+#ifndef LSST_QSERV_REPLICA_FINDREQUEST_H
+#define LSST_QSERV_REPLICA_FINDREQUEST_H
 
 /// FindRequest.h declares:
 //
@@ -77,11 +77,11 @@ public:
     unsigned int       chunk() const           { return _chunk; }
     bool               computeCheckSum() const { return _computeCheckSum; }
 
-    /// Return target request specific parameters
+    /// @return target request specific parameters
     FindRequestParams const& targetRequestParams() const { return _targetRequestParams; }
 
     /**
-     * Return a refernce to a result obtained from a remote service.
+     * @return a refernce to a result obtained from a remote service.
      *
      * Note that this operation will return a sensible result only if the operation
      * finishes with status FINISHED::SUCCESS
@@ -106,6 +106,8 @@ public:
      * @param computeCheckSum  - tell a worker server to compute check/control sum on each file
      * @param keepTracking     - keep tracking the request before it finishes or fails
      * @param messenger        - an interface for communicating with workers
+     *
+     * @return pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       boost::asio::io_service& io_service,
@@ -135,8 +137,6 @@ private:
                 std::shared_ptr<Messenger> const& messenger);
 
     /**
-      * Implement the method declared in the base class
-      *
       * @see Request::startImpl()
       */
     void startImpl(util::Lock const& lock) final;
@@ -149,7 +149,11 @@ private:
      */
     void wait(util::Lock const& lock);
 
-    /// Callback handler for the asynchronious operation
+    /**
+     * Callback handler for the asynchronious operation
+     *
+     * @param ec - error code to be checked
+     */
     void awaken(boost::system::error_code const& ec);
 
     /**
@@ -159,26 +163,26 @@ private:
      */
     void send(util::Lock const& lock);
 
-    /// Process the completion of the requested operation
+    /**
+     * Process the completion of the requested operation
+     *
+     * @param success - flag indicating if the response succeeded
+     * @param message - response from a worker (if success)
+     */
     void analyze(bool success,
-                lsst::qserv::proto::ReplicationResponseFind const& message);
+                 lsst::qserv::proto::ReplicationResponseFind const& message);
 
     /**
-     * Notifying a party which initiated the request.
-     *
-     * This method implements the corresponing virtual method defined
-     * bu the base class.
+     * @see Request::notifyImpl()
      */
     void notifyImpl() final;
 
     /**
-     * Implement the corresponding method defined in the base class.
+     * @see Request::savePersistentState()
      */
     void savePersistentState() final;
 
     /**
-     * Implement the corresponding method of the base class.
-     *
      * @see Request::extendedPersistentState()
      */
     std::string extendedPersistentState(SqlGeneratorPtr const& gen) const final;
@@ -200,4 +204,4 @@ private:
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_FIND_REQUEST_H
+#endif // LSST_QSERV_REPLICA_FINDREQUEST_H

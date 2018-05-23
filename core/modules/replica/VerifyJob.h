@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_VERIFY_JOB_H
-#define LSST_QSERV_REPLICA_VERIFY_JOB_H
+#ifndef LSST_QSERV_REPLICA_VERIFYJOB_H
+#define LSST_QSERV_REPLICA_VERIFYJOB_H
 
 /// VerifyJob.h declares:
 ///
@@ -289,4 +289,4 @@ protected:
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_VERIFY_JOB_H
+#endif // LSST_QSERV_REPLICA_VERIFYJOB_H

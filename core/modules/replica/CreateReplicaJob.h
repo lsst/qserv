@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_CREATE_REPLICA_JOB_H
-#define LSST_QSERV_REPLICA_CREATE_REPLICA_JOB_H
+#ifndef LSST_QSERV_REPLICA_CREATEREPLICAJOB_H
+#define LSST_QSERV_REPLICA_CREATEREPLICAJOB_H
 
 /// CreateReplicaJob.h declares:
 ///
@@ -41,8 +41,6 @@
 #include "replica/ReplicaInfo.h"
 #include "replica/ReplicationRequest.h"
 
-// Forward declarations
-
 // This header declarations
 
 namespace lsst {
@@ -50,7 +48,7 @@ namespace qserv {
 namespace replica {
 
 /**
- * The structure CreateReplicaJobResult represents a combined result received
+ * The struct CreateReplicaJobResult represents a combined result received
  * from worker services upon a completion of the job.
  */
 struct CreateReplicaJobResult {
@@ -96,7 +94,7 @@ public:
      * @param controller        - for launching requests
      * @param parentJobId       - optional identifier of a parent job
      * @param onFinish          - a callback function to be called upon a completion of the job
-     * @param options           - job options
+     * @param options           - (optional) job options
      */
     static Ptr create(std::string const& databaseFamily,
                       unsigned int chunk,
@@ -115,16 +113,16 @@ public:
 
     ~CreateReplicaJob() final = default;
 
-    /// The name of a database family
+    /// @return the name of a database family
     std::string const& databaseFamily() const { return _databaseFamily; }
 
-    /// The chunk number
+    /// @return the chunk number
     unsigned int chunk() const { return _chunk; }
 
-    /// Return the name of a source worker where the input replica is residing
+    /// @return the name of a source worker where the input replica is residing
     std::string const& sourceWorker() const { return _sourceWorker; }
 
-    /// Return the name of a destination worker where the output replica will be placed
+    /// @return the name of a destination worker where the output replica will be placed
     std::string const& destinationWorker() const { return _destinationWorker; }
 
     /**
@@ -170,22 +168,16 @@ protected:
                      Job::Options const& options);
 
     /**
-      * Implement the corresponding method of the base class.
-      *
       * @see Job::startImpl()
       */
     void startImpl(util::Lock const& lock) final;
 
     /**
-      * Implement the corresponding method of the base class.
-      *
       * @see Job::startImpl()
       */
     void cancelImpl(util::Lock const& lock) final;
 
     /**
-      * Implement the corresponding method of the base class.
-      *
       * @see Job::notifyImpl()
       */
     void notifyImpl() final;
@@ -224,4 +216,4 @@ protected:
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_CREATE_REPLICA_JOB_H
+#endif // LSST_QSERV_REPLICA_CREATEREPLICAJOB_H

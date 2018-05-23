@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_FILE_SERVER_H
-#define LSST_QSERV_REPLICA_FILE_SERVER_H
+#ifndef LSST_QSERV_REPLICA_FILESERVER_H
+#define LSST_QSERV_REPLICA_FILESERVER_H
 
 /// FileServer.h declares:
 ///
@@ -37,8 +37,6 @@
 // Qserv headers
 #include "replica/FileServerConnection.h"
 #include "replica/ServiceProvider.h"
-
-// Forward declarations
 
 // This header declarations
 
@@ -69,6 +67,8 @@ public:
      *
      * @param serviceProvider - for configuration, etc. services
      * @workerName            - the name of a worker this instance represents
+     *
+     * @reurn pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& workerName);
@@ -81,7 +81,7 @@ public:
 
     ~FileServer() = default;
 
-    /// Return the name of a worker this server runs for
+    /// @return the name of a worker this server runs for
     std::string const& worker() const { return _workerName; }
 
     /**
@@ -116,7 +116,7 @@ private:
     void handleAccept(FileServerConnection::Ptr const& connection,
                       boost::system::error_code const& ec);
 
-    /// Return the context string
+    /// @return the context string
     std::string context() const { return "FILE-SERVER  "; }
 
 private:
@@ -133,4 +133,4 @@ private:
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_FILE_SERVER_H
+#endif // LSST_QSERV_REPLICA_FILESERVER_H

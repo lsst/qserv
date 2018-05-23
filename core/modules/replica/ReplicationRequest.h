@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_REPLICATION_REQUEST_H
-#define LSST_QSERV_REPLICA_REPLICATION_REQUEST_H
+#ifndef LSST_QSERV_REPLICA_REPLICATIONREQUEST_H
+#define LSST_QSERV_REPLICA_REPLICATIONREQUEST_H
 
 /// ReplicationRequest.h declares:
 //
@@ -80,7 +80,7 @@ public:
     unsigned int       chunk()        const { return _chunk; }
     std::string const& sourceWorker() const { return _sourceWorker; }
 
-    /// Return target request specific parameters
+    /// @return target request specific parameters
     ReplicationRequestParams const& targetRequestParams() const {
         return _targetRequestParams;
     }
@@ -111,6 +111,8 @@ public:
      * @param keepTracking    - keep tracking the request before it finishes or fails
      * @param allowDuplicate  - follow a previously made request if the current one duplicates it
      * @param messenger       - worker messenging service
+     *
+     * @return pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       boost::asio::io_service& io_service,
@@ -128,6 +130,8 @@ private:
 
     /**
      * Construct the request with the pointer to the services provider.
+     *
+     * @see ReplicationRequest::create()
      */
     ReplicationRequest(ServiceProvider::Ptr const& serviceProvider,
                        boost::asio::io_service& io_service,
@@ -142,8 +146,6 @@ private:
                        std::shared_ptr<Messenger> const& messenger);
 
     /**
-      * Implement the method declared in the base class
-      *
       * @see Request::startImpl()
       */
     void startImpl(util::Lock const& lock) final;
@@ -166,7 +168,12 @@ private:
      */
     void send(util::Lock const& lock);
 
-    /// Process the completion of the requested operation
+    /**
+     * Process the completion of the requested operation
+     *
+     * @param success - completions status of a communication with a worker
+     * @param message - worker response (if success)
+     */
     void analyze(bool success,
                  proto::ReplicationResponseReplicate const& message);
 
@@ -179,13 +186,11 @@ private:
     void notifyImpl() final;
 
     /**
-     * Implement the corresponding method defined in the base class.
+      * @see Request::savePersistentState()
      */
     void savePersistentState() final;
 
     /**
-     * Implement the corresponding method of the base class.
-     *
      * @see Request::extendedPersistentState()
      */
     std::string extendedPersistentState(SqlGeneratorPtr const& gen) const final;
@@ -207,4 +212,4 @@ private:
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_REPLICATION_REQUEST_H
+#endif // LSST_QSERV_REPLICA_REPLICATIONREQUEST_H

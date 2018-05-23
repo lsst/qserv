@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_QSERV_SYNC_JOB_H
-#define LSST_QSERV_REPLICA_QSERV_SYNC_JOB_H
+#ifndef LSST_QSERV_REPLICA_QSERVSYNCJOB_H
+#define LSST_QSERV_REPLICA_QSERVSYNCJOB_H
 
 /// QservSyncJob.h declares:
 ///
@@ -40,8 +40,6 @@
 #include "replica/Job.h"
 #include "replica/SetReplicasQservMgtRequest.h"
 
-// Forward declarations
-
 // This header declarations
 
 namespace lsst {
@@ -56,17 +54,14 @@ struct QservSyncJobResult {
 
     /// Per-worker flags indicating if the the synchronization request sent
     /// to the corresponding worker has succeeded.
-    ///
     std::map<std::string, bool> workers;
 
     /// Previous replica disposition as reported by workers upon the successfull
     /// completion of the corresponidng requests
-    ///
     std::map<std::string, QservReplicaCollection> prevReplicas;
 
     /// New replica disposition pushed to workers upon the successfull completion
     /// of the corresponidng requests
-    ///
     std::map<std::string, QservReplicaCollection> newReplicas;
 };
 
@@ -104,8 +99,10 @@ public:
      * @param parentJobId    - optional identifier of a parent job
      * @param force          - proceed with the operation even if some replicas affceted by
      *                         the operation are in use.
-     * @param onFinish       - callback function to be called upon a completion of the job
-     * @param options        - job options
+     * @param onFinish       - (optional) callback function to be called upon a completion of the job
+     * @param options        - (optional) job options
+     *
+     * @return pointer to the created object
      */
     static Ptr create(std::string const& databaseFamily,
                       Controller::Ptr const& controller,
@@ -148,8 +145,6 @@ public:
     QservSyncJobResult const& getReplicaData() const;
 
     /**
-     * Implement the corresponding method of the base class.
-     *
      * @see Job::extendedPersistentState()
      */
     std::string extendedPersistentState(SqlGeneratorPtr const& gen) const override;
@@ -169,22 +164,16 @@ protected:
                  Job::Options const& options);
 
     /**
-      * Implement the corresponding method of the base class.
-      *
       * @see Job::startImpl()
       */
     void startImpl(util::Lock const& lock) final;
 
     /**
-      * Implement the corresponding method of the base class.
-      *
       * @see Job::startImpl()
       */
     void cancelImpl(util::Lock const& lock) final;
 
     /**
-      * Implement the corresponding method of the base class.
-      *
       * @see Job::notifyImpl()
       */
     void notifyImpl() final;
@@ -224,4 +213,4 @@ protected:
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_QSERV_SYNC_JOB_H
+#endif // LSST_QSERV_REPLICA_QSERVSYNCJOB_H

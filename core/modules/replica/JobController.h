@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_JOB_CONTROLLER_H
-#define LSST_QSERV_REPLICA_JOB_CONTROLLER_H
+#ifndef LSST_QSERV_REPLICA_JOBCONTROLLER_H
+#define LSST_QSERV_REPLICA_JOBCONTROLLER_H
 
 /// JobController.h declares:
 ///
@@ -49,8 +49,6 @@
 #include "replica/VerifyJob.h"
 #include "util/Mutex.h"
 
-// Forward declarations
-
 // This header declarations
 namespace lsst {
 namespace qserv {
@@ -59,7 +57,7 @@ namespace replica {
 // Forward declarations
 
 /**
- * The base class for implementing requests registry as a polymorphic
+ * Class JobWrapper is the base for implementing requests registry as a polymorphic
  * collection to store active jobs. Pure virtual methods of
  * the class will be overriden by request-type-specific implementations
  * (see struct JobWrappeImpl<JOB_TYPE> in the .cc file) capturing
@@ -72,11 +70,10 @@ struct JobWrapper {
 
     virtual ~JobWrapper() = default;
 
-    /// This method will be called upon a completion of a request
-    /// to notify a subscriber on the event.
+    /// For subscriber notification upon a completion of a requeston
     virtual void notify()=0;
 
-    /// Return a pointer to the stored job object
+    /// @return a pointer to the stored job object
     virtual Job::Ptr job() const=0;
 };
 
@@ -100,12 +97,12 @@ public:
                                 std::vector<Job::Ptr>,
                                 JobCompare> {
 
-        /// The beginning of the container to allow the iterator protocol
+        /// @return reference to the beginning of the container to allow the iterator protocol
         decltype(c.begin()) begin() {
             return c.begin();
         }
 
-        /// The end of the container to allow the iterator protocol
+        /// @return reference to the end of the container to allow the iterator protocol
         decltype(c.end()) end() {
             return c.end();
         }
@@ -128,8 +125,7 @@ public:
         }
     };
 
-    /// Ordinary collection of pointers for jobs in other (than new/unprocessed)
-    /// states
+    /// Ordinary collection of pointers for jobs in other (than new/unprocessed) states
     typedef std::list<Job::Ptr> CollectionType;
 
     /**
@@ -138,6 +134,8 @@ public:
      * low-level pointers).
      *
      * @param serviceProvider - for configuration, other services
+     *
+     * @return pointer to the new object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider);
 
@@ -189,6 +187,8 @@ public:
      * @param databaseFamily - name of a database family
      * @param onFinish       - callback function to be called upon a completion of the job
      * @param options        - job options
+     *
+     * @return pointer to the submitted job
      */
     FindAllJob::Ptr findAll(std::string const& databaseFamily,
                                 FindAllJob::CallbackType onFinish = nullptr,
@@ -200,6 +200,8 @@ public:
      * @param databaseFamily - name of a database family
      * @param onFinish       - callback function to be called upon a completion of the job
      * @param options        - job options
+     *
+     * @return pointer to the submitted job
      */
     FixUpJob::Ptr fixUp(std::string const& databaseFamily,
                             FixUpJob::CallbackType onFinish = nullptr,
@@ -215,7 +217,8 @@ public:
      *                         from the Configuration)
      * @param onFinish       - callback function to be called upon a completion of the job
      * @param options        - job options
-
+     * 
+     * @return pointer to the submitted job
      */
     PurgeJob::Ptr purge(std::string const& databaseFamily,
                             unsigned int numReplicas = 0,
@@ -232,6 +235,8 @@ public:
      *                         from the Configuration)
      * @param onFinish       - callback function to be called upon a completion of the job
      * @param options        - job options
+     * 
+     * @return pointer to the submitted job
      */
     ReplicateJob::Ptr replicate(std::string const& databaseFamily,
                                     unsigned int numReplicas = 0,
@@ -249,6 +254,8 @@ public:
      *                              will be assumed.
      * @param computeCheckSum     - tell a worker server to compute check/control sum on each file
      * @param options             - job options
+     *
+     * @return pointer to the submitted job
      */
     VerifyJob::Ptr verify(VerifyJob::CallbackType onFinish = nullptr,
                               VerifyJob::CallbackTypeOnDiff onReplicaDifference = nullptr,
@@ -265,13 +272,13 @@ public:
      *                          from the configuration
      * @param onFinish        - callback function to be called upon a completion of the job
      * @param options         - job options
+     * 
+     * @return pointer to the submitted job
      */
     DeleteWorkerJob::Ptr deleteWorker(std::string const& worker,
                                           bool permanentDelete,
                                           DeleteWorkerJob::CallbackType onFinish = nullptr,
                                           Job::Options const& options=DeleteWorkerJob::defaultOptions());
-
-    // TODO: add job inspection methods
 
 private:
 
@@ -349,4 +356,4 @@ private:
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_JOB_CONTROLLER_H
+#endif // LSST_QSERV_REPLICA_JOBCONTROLLER_H

@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_REMOVE_REPLICA_QSERV_MGT_REQUEST_H
-#define LSST_QSERV_REPLICA_REMOVE_REPLICA_QSERV_MGT_REQUEST_H
+#ifndef LSST_QSERV_REPLICA_REMOVEREPLICAQSERVMGTREQUEST_H
+#define LSST_QSERV_REPLICA_REMOVEREPLICAQSERVMGTREQUEST_H
 
 /// RemoveReplicaQservMgtRequest.h declares:
 ///
@@ -38,8 +38,6 @@
 #include "replica/QservMgtRequest.h"
 #include "replica/ServiceProvider.h"
 #include "wpublish/ChunkGroupQservRequest.h"
-
-// Forward declarations
 
 // This header declarations
 
@@ -84,6 +82,8 @@ public:
      * @param databases       - the names of databases
      * @param force           - force the removal even if the chunk is in use
      * @param onFinish        - callback function to be called upon request completion
+     *
+     * @return pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       boost::asio::io_service& io_service,
@@ -99,13 +99,10 @@ public:
     /// @return names of databases
     std::vector<std::string> const& databases() const { return _databases; }
 
-    /// @return flag indicating of the chunk removal should be forced even if
-    // it's is in use
+    /// @return flag indicating of the chunk removal should be forced even if in use
     bool force() const { return _force; }
 
     /**
-     * Implement the corresponding method of the base class.
-     *
      * @see QservMgtRequest::extendedPersistentState()
      */
      std::string extendedPersistentState(SqlGeneratorPtr const& gen) const override;
@@ -115,13 +112,7 @@ private:
     /**
      * Construct the request with the pointer to the services provider.
      *
-     * @param serviceProvider - reference to a provider of services
-     * @param io_service      - BOOST ASIO service
-     * @param worker          - the name of a worker
-     * @param chunk           - the chunk number
-     * @param databases       - the names of databases
-     * @param force           - force the removal even if the chunk is in use
-     * @param onFinish        - callback function to be called upon request completion
+     * @see RemoveReplicaQservMgtRequest::create()
      */
     RemoveReplicaQservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
                                  boost::asio::io_service& io_service,
@@ -132,22 +123,16 @@ private:
                                  CallbackType onFinish);
 
     /**
-      * Implememnt the corresponding method of the base class
-      *
       * @see QservMgtRequest::startImpl
       */
     void startImpl(util::Lock const& lock) final;
 
     /**
-      * Implememnt the corresponding method of the base class
-      *
       * @see QservMgtRequest::finishImpl
       */
     void finishImpl(util::Lock const& lock) final;
 
     /**
-      * Implememnt the corresponding method of the base class
-      *
       * @see QservMgtRequest::notifyImpl
       */
     void notifyImpl() final;
@@ -172,4 +157,4 @@ private:
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_REMOVE_REPLICA_QSERV_MGT_REQUEST_H
+#endif // LSST_QSERV_REPLICA_REMOVEREPLICAQSERVMGTREQUEST_H

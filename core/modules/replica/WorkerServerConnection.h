@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_WORKER_SERVER_CONNECTION_H
-#define LSST_QSERV_REPLICA_WORKER_SERVER_CONNECTION_H
+#ifndef LSST_QSERV_REPLICA_WORKERSERVERCONNECTION_H
+#define LSST_QSERV_REPLICA_WORKERSERVERCONNECTION_H
 
 /// WorkerServerConnection.h declares:
 ///
@@ -38,8 +38,6 @@
 #include "proto/replication.pb.h"
 #include "replica/ProtocolBuffer.h"
 #include "replica/ServiceProvider.h"
-
-// Forward declarations
 
 // This header declarations
 
@@ -79,6 +77,8 @@ public:
      * @param serviceProvider - provider of various services
      * @param processor       - processor of long requests
      * @param io_service      - enpoint for network I/O
+     *
+     * @return pointer to the new object created by the factory
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       WorkerProcessor& processor,
@@ -92,9 +92,7 @@ public:
 
     ~WorkerServerConnection() = default;
 
-    /**
-     * Return a network socket associated with the connection.
-     */
+    /// @eturn network socket associated with the connection
     boost::asio::ip::tcp::socket& socket() { return _socket; }
 
     /**
@@ -204,4 +202,4 @@ private:
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_WORKER_SERVER_CONNECTION_H
+#endif // LSST_QSERV_REPLICA_WORKERSERVERCONNECTION_H

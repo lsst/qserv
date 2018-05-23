@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_CONFIGURATION_FILE_H
-#define LSST_QSERV_REPLICA_CONFIGURATION_FILE_H
+#ifndef LSST_QSERV_REPLICA_CONFIGURATIONFILE_H
+#define LSST_QSERV_REPLICA_CONFIGURATIONFILE_H
 
 /// ConfigurationFile.h declares:
 ///
@@ -32,8 +32,6 @@
 
 // Qserv headers
 #include "replica/Configuration.h"
-
-// Forward declarations
 
 // This header declarations
 
@@ -75,25 +73,19 @@ public:
     ~ConfigurationFile() override = default;
 
     /**
-     * Implements the method defined in the base class
-     *
-     * @see Configuration::configUrl ()
+     * @see Configuration::configUrl()
      */
     std::string configUrl() const override {
         return "file:" + _configFile;
     }
 
     /**
-     * Implements the method defined in the base class
-     *
-     * @see Configuration::disableWorker ()
+     * @see Configuration::disableWorker()
      */
     WorkerInfo const& disableWorker(std::string const& name) override;
 
     /**
-     * Implements the method defined in the base class
-     *
-     * @see Configuration::deleteWorker ()
+]     * @see Configuration::deleteWorker()
      */
     void deleteWorker(std::string const& name) override;
 
@@ -117,4 +109,4 @@ private:
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_CONFIGURATION_FILE_H
+#endif // LSST_QSERV_REPLICA_CONFIGURATIONFILE_H
