@@ -125,7 +125,9 @@ public:
 private:
 
     /**
-     * The constructor of the class.
+     * The constructor of the class
+     *
+     * @see WorkerServerConnection::create()
      */
     WorkerServerConnection(ServiceProvider::Ptr const& serviceProvider,
                            WorkerProcessor& processor,
@@ -141,17 +143,32 @@ private:
 
     /**
      * The calback on finishing (either successfully or not) of aynchronious reads.
+     *
+     * @param ec                - error condition to be checked for
+     * @param bytes_transferred - the number of bytes receoved (if successful)
      */
     void received(boost::system::error_code const& ec,
                   size_t bytes_transferred);
 
-    /// Process replication requests (REPLICATE, DELETE, FIND, FIND-ALL)
+    /**
+     * Process replication requests (REPLICATE, DELETE, FIND, FIND-ALL)
+     *
+     * @param hdr - request header to be inspected
+     */
     void processReplicaRequest(proto::ReplicationRequestHeader& hdr);
 
-    /// Process requests about replication requests (STOP, STATUS)
+    /**
+     * Process requests about replication requests (STOP, STATUS)
+     *
+     * @param hdr - request header to be inspected
+     */
     void processManagementRequest(proto::ReplicationRequestHeader& hdr);
 
-    /// Process requests affecting the service
+    /**
+     * Process requests affecting the service
+     *
+     * @param hdr - request header to be inspected
+     */
     void processServiceRequest(proto::ReplicationRequestHeader& hdr);
 
     /**
@@ -184,6 +201,9 @@ private:
 
     /**
      * The calback on finishing (either successfully or not) of aynchronious writes.
+     *
+     * @param ec                - error condition to be checked for
+     * @param bytes_transferred - the number of bytes sent (if successful)
      */
     void sent(boost::system::error_code const& ec,
               size_t bytes_transferred);

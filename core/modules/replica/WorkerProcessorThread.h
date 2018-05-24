@@ -33,10 +33,6 @@
 #include <memory>
 #include <thread>
 
-// Qserv headers
-
-// Forward declarations
-
 // This header declarations
 
 namespace lsst {
@@ -68,6 +64,7 @@ public:
      * low-level pointers).
      * 
      * @param processor - reference to the repository of requests to be processed
+     *
      * @return pointer to the created object 
      */
     static Ptr create(WorkerProcessor &processor);

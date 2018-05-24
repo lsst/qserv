@@ -87,6 +87,15 @@ namespace replica {
 //         ServiceState          //
 ///////////////////////////////////
 
+std::string ServiceState::state2string() const {
+    switch (state) {
+        case SUSPEND_IN_PROGRESS: return "SUSPEND_IN_PROGRESS";
+        case SUSPENDED:           return "SUSPENDED";
+        case RUNNING:             return "RUNNING";
+    }
+    return std::string();
+}
+
 void ServiceState::set(proto::ReplicationServiceResponse const& message) {
 
     switch (message.service_state()) {
@@ -173,13 +182,13 @@ ServiceState const& ServiceManagementRequestBase::getServiceState() const {
 ServiceManagementRequestBase::ServiceManagementRequestBase(
                                     ServiceProvider::Ptr const&      serviceProvider,
                                     boost::asio::io_service&             io_service,
-                                    char const*                          requestTypeName,
+                                    char const*                          requestName,
                                     std::string const&                   worker,
                                     proto::ReplicationServiceRequestType requestType,
                                     std::shared_ptr<Messenger> const&    messenger)
     :   RequestMessenger(serviceProvider,
                          io_service,
-                         requestTypeName,
+                         requestName,
                          worker,
                          0,        /* priority */
                          false,    /* keepTracking */

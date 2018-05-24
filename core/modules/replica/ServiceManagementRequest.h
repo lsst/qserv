@@ -59,44 +59,28 @@ class Messenger;
 // ========================================================================
 
 struct ServiceSuspendRequestPolicy {
-    static char const* requestTypeName() {
-        return "SERVICE_SUSPEND";
-    }
-    static proto::ReplicationServiceRequestType requestType () {
-        return proto::ReplicationServiceRequestType::SERVICE_SUSPEND;
-    }
+    static char const*                          requestName();
+    static proto::ReplicationServiceRequestType requestType();
 };
+
 struct ServiceResumeRequestPolicy {
-    static char const* requestTypeName() {
-        return "SERVICE_RESUME";
-    }
-    static proto::ReplicationServiceRequestType requestType() {
-        return proto::ReplicationServiceRequestType::SERVICE_RESUME;
-    }
+    static char const*                          requestName();
+    static proto::ReplicationServiceRequestType requestType();
 };
+
 struct ServiceStatusRequestPolicy {
-    static char const* requestTypeName() {
-        return "SERVICE_STATUS";
-    }
-    static proto::ReplicationServiceRequestType requestType() {
-        return proto::ReplicationServiceRequestType::SERVICE_STATUS;
-    }
+    static char const*                          requestName();
+    static proto::ReplicationServiceRequestType requestType();
 };
+
 struct ServiceRequestsRequestPolicy {
-    static char const* requestTypeName() {
-        return "SERVICE_REQUESTS";
-    }
-    static proto::ReplicationServiceRequestType requestType() {
-        return proto::ReplicationServiceRequestType::SERVICE_REQUESTS;
-    }
+    static char const*                          requestName();
+    static proto::ReplicationServiceRequestType requestType();
 };
+
 struct ServiceDrainRequestPolicy {
-    static char const* requestTypeName() {
-        return "SERVICE_DRAIN";
-    }
-    static proto::ReplicationServiceRequestType requestType() {
-        return proto::ReplicationServiceRequestType::SERVICE_DRAIN;
-    }
+    static char const*                          requestName();
+    static proto::ReplicationServiceRequestType requestType();
 };
 
 /**
@@ -130,12 +114,11 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider  - a host of services for various communications
-     * @param worker           - the identifier of a worker node (the one to be affectd by the request)
-     * @param io_service       - network communication service
-     * @param onFinish         - an optional callback function to be called upon a completion of
-     *                           the request.
-     * @param messenger       - an interface for communicating with workers
+     * @param serviceProvider  - provides various services for the application
+     * @param worker           - identifier of a worker node (the one to be affectd by the request)
+     * @param io_service       - network communication service (BOOST ASIO)
+     * @param onFinish         - callback function to be called upon a completion of the request
+     * @param messenger        - messenging service for workers
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       boost::asio::io_service& io_service,
@@ -147,7 +130,7 @@ public:
             new ServiceManagementRequest<POLICY>(
                 serviceProvider,
                 io_service,
-                POLICY::requestTypeName(),
+                POLICY::requestName(),
                 worker,
                 POLICY::requestType(),
                 onFinish,
@@ -158,17 +141,19 @@ private:
 
     /**
      * Construct the request
+     *
+     * @see ServiceManagementRequest::create()
      */
     ServiceManagementRequest(ServiceProvider::Ptr const& serviceProvider,
                              boost::asio::io_service& io_service,
-                             char const* requestTypeName,
+                             char const* requestName,
                              std::string const& worker,
                              proto::ReplicationServiceRequestType requestType,
                              CallbackType onFinish,
                              std::shared_ptr<Messenger> const& messenger)
         :   ServiceManagementRequestBase(serviceProvider,
                                          io_service,
-                                         requestTypeName,
+                                         requestName,
                                          worker,
                                          requestType,
                                          messenger),
@@ -176,10 +161,7 @@ private:
     }
 
     /**
-     * Notifying a party which initiated the request.
-     *
-     * This method implements the corresponing virtual method defined
-     * by the base class.
+     * @see Request::notifyImpl()
      */
     void notifyImpl() final {
         if (_onFinish) {

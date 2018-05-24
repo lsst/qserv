@@ -75,6 +75,16 @@ public:
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
+     * 
+     * @param serviceProvider  - a host of services for various communications
+     * @param worker           - the name of a worker
+     * @param id               - an identifier of a client request
+     * @param priority         - indicates the importance of the request
+     * @param database         - the name of a database
+     * @param chunk            - the chunk number
+     * @param sourceWorker     - the name of a source worker
+     *
+     * @return pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& worker,
@@ -95,18 +105,16 @@ public:
 
     // Trivial accessors
 
-    std::string const& database() const     { return _database; }
-    unsigned int       chunk() const        { return _chunk; }
+    std::string const& database() const { return _database; }
+
+    unsigned int chunk() const { return _chunk; }
+
     std::string const& sourceWorker() const { return _sourceWorker; }
 
-   /**
-     * Return a refernce to a result of the completed request.
-     */
+    /// @return a refernce to a result of the completed request.
     ReplicaInfo replicaInfo() const;
 
     /**
-     * This method implements the virtual method of the base class
-     *
      * @see WorkerRequest::execute
      */
     bool execute() override;
@@ -114,7 +122,9 @@ public:
 protected:
 
     /**
-     * The normal constructor of the class.
+     * The normal constructor of the class
+     *
+     * @see WorkerReplicationRequest::created()
      */
     WorkerReplicationRequest(ServiceProvider::Ptr const& serviceProvider,
                              std::string const& worker,
@@ -151,6 +161,16 @@ public:
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
+     *
+     * @param serviceProvider  - a host of services for various communications
+     * @param worker           - the name of a worker
+     * @param id               - an identifier of a client request
+     * @param priority         - indicates the importance of the request
+     * @param database         - the name of a database
+     * @param chunk            - the chunk number
+     * @param sourceWorker     - the name of a source worker
+     *
+     * @return pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& worker,
@@ -169,8 +189,6 @@ public:
     ~WorkerReplicationRequestPOSIX() override = default;
 
     /**
-     * This method implements the virtual method of the base class
-     *
      * @see WorkerReplicationRequest::execute
      */
     bool execute() override;
@@ -178,7 +196,9 @@ public:
 protected:
 
     /**
-     * The normal constructor of the class.
+     * The normal constructor of the class
+     *
+     * @see WorkerReplicationRequestPOSIX::created()
      */
     WorkerReplicationRequestPOSIX(ServiceProvider::Ptr const& serviceProvider,
                                   std::string const& worker,
@@ -207,6 +227,16 @@ public:
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
+     *
+     * @param serviceProvider  - a host of services for various communications
+     * @param worker           - the name of a worker
+     * @param id               - an identifier of a client request
+     * @param priority         - indicates the importance of the request
+     * @param database         - the name of a database
+     * @param chunk            - the chunk number
+     * @param sourceWorker     - the name of a source worker
+     *
+     * @return pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& worker,
@@ -226,8 +256,6 @@ public:
     ~WorkerReplicationRequestFS() override;
 
     /**
-     * This method implements the virtual method of the base class
-     *
      * @see WorkerReplicationRequest::execute
      */
     bool execute() override;
@@ -235,7 +263,9 @@ public:
 protected:
 
     /**
-     * The normal constructor of the class.
+     * The normal constructor of the class
+     *
+     * @see WorkerReplicationRequestFS::create()
      */
     WorkerReplicationRequestFS(ServiceProvider::Ptr const& serviceProvider,
                                std::string const& worker,

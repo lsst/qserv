@@ -61,26 +61,20 @@ namespace replica {
 
 struct StatusReplicationRequestPolicy {
 
-    static char const* requestName() { return "REQUEST_STATUS:REPLICA_CREATE"; }
-
-    static proto::ReplicationReplicaRequestType requestType() {
-        return proto::ReplicationReplicaRequestType::REPLICA_CREATE;
-    }
-
     using ResponseMessageType     = proto::ReplicationResponseReplicate;
     using ResponseDataType        = ReplicaInfo;
     using TargetRequestParamsType = ReplicationRequestParams;
 
+    static char const* requestName();
+
+    static proto::ReplicationReplicaRequestType requestType();
+
     static void extractResponseData(ResponseMessageType const& msg,
-                                    ResponseDataType& data) {
-        data = ResponseDataType(&(msg.replica_info()));
-    }
+                                    ResponseDataType& data);
+
     static void extractTargetRequestParams(ResponseMessageType const& msg,
-                                           TargetRequestParamsType& params) {
-        if (msg.has_request()) {
-            params = TargetRequestParamsType(msg.request());
-        }
-    }
+                                           TargetRequestParamsType& params);
+
     template <class REQUEST_PTR>
     static void saveReplicaInfo(REQUEST_PTR const& request) {
         request->serviceProvider()->databaseServices()->saveReplicaInfo(request->responseData());
@@ -92,26 +86,19 @@ struct StatusReplicationRequestPolicy {
 
 struct StatusDeleteRequestPolicy {
 
-    static char const* requestName() { return "REQUEST_STATUS:REPLICA_DELETE"; }
-
-    static proto::ReplicationReplicaRequestType requestType() {
-        return proto::ReplicationReplicaRequestType::REPLICA_DELETE;
-    }
-
     using ResponseMessageType     = proto::ReplicationResponseDelete;
     using ResponseDataType        = ReplicaInfo;
     using TargetRequestParamsType = DeleteRequestParams;
 
+    static char const* requestName();
+
+    static proto::ReplicationReplicaRequestType requestType();
+
     static void extractResponseData(ResponseMessageType const& msg,
-                                    ResponseDataType& data) {
-        data = ResponseDataType(&(msg.replica_info()));
-    }
+                                    ResponseDataType& data);
+
     static void extractTargetRequestParams(ResponseMessageType const& msg,
-                                           TargetRequestParamsType& params) {
-        if (msg.has_request()) {
-            params = TargetRequestParamsType(msg.request());
-        }
-    }
+                                           TargetRequestParamsType& params);
 
     template <class REQUEST_PTR>
     static void saveReplicaInfo(REQUEST_PTR const& request) {
@@ -124,26 +111,19 @@ struct StatusDeleteRequestPolicy {
 
 struct StatusFindRequestPolicy {
 
-    static char const* requestName() { return "REQUEST_STATUS:REPLICA_FIND"; }
-
-    static proto::ReplicationReplicaRequestType requestType() {
-        return proto::ReplicationReplicaRequestType::REPLICA_FIND;
-    }
-
     using ResponseMessageType     = proto::ReplicationResponseFind;
     using ResponseDataType        = ReplicaInfo;
     using TargetRequestParamsType = FindRequestParams;
 
+    static char const* requestName();
+
+    static proto::ReplicationReplicaRequestType requestType();
+
     static void extractResponseData(ResponseMessageType const& msg,
-                                    ResponseDataType& data) {
-        data = ReplicaInfo(&(msg.replica_info()));
-    }
+                                    ResponseDataType& data);
+
     static void extractTargetRequestParams(ResponseMessageType const& msg,
-                                           TargetRequestParamsType& params) {
-        if (msg.has_request()) {
-            params = TargetRequestParamsType(msg.request());
-        }
-    }
+                                           TargetRequestParamsType& params);
 
     template <class REQUEST_PTR>
     static void saveReplicaInfo(REQUEST_PTR const& request) {
@@ -156,29 +136,19 @@ struct StatusFindRequestPolicy {
 
 struct StatusFindAllRequestPolicy {
 
-    static char const* requestName() { return "REQUEST_STATUS:REPLICA_FIND_ALL"; }
-
-    static proto::ReplicationReplicaRequestType requestType() {
-        return proto::ReplicationReplicaRequestType::REPLICA_FIND_ALL;
-    }
-
     using ResponseMessageType     = proto::ReplicationResponseFindAll;
     using ResponseDataType        = ReplicaInfoCollection;
     using TargetRequestParamsType = FindAllRequestParams;
 
-    static void extractResponseData(ResponseMessageType const& msg,
-                                    ResponseDataType& data) {
+    static char const* requestName();
 
-        for (int num = msg.replica_info_many_size(), idx = 0; idx < num; ++idx) {
-            data.emplace_back(&(msg.replica_info_many(idx)));
-        }
-    }
+    static proto::ReplicationReplicaRequestType requestType();
+
+    static void extractResponseData(ResponseMessageType const& msg,
+                                    ResponseDataType& data);
+
     static void extractTargetRequestParams(ResponseMessageType const& msg,
-                                           TargetRequestParamsType& params) {
-        if (msg.has_request()) {
-            params = TargetRequestParamsType(msg.request());
-        }
-    }
+                                           TargetRequestParamsType& params);
 
     template <class REQUEST_PTR>
     static void saveReplicaInfo(REQUEST_PTR const& request) {
@@ -243,6 +213,8 @@ public:
      *                           the request.
      * @param keepTracking     - keep tracking the request before it finishes or fails
      * @param messenger        - an interface for communicating with workers
+     *
+     * @return pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       boost::asio::io_service& io_service,

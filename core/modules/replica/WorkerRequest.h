@@ -40,19 +40,20 @@
 #include "replica/ServiceProvider.h"
 #include "util/Mutex.h"
 
-// Forward declarations
-
 // This header declarations
 
 namespace lsst {
 namespace qserv {
 namespace replica {
 
-/// Exception thrown when a replication request is cancelled
+/**
+ * Struct WorkerRequestCancelled represent an exception thrown when
+ * a replication request is cancelled
+ */
 struct WorkerRequestCancelled
     :   std::exception {
 
-    /// Return the short description of the exception
+    /// @return a short description of the exception
     char const* what () const noexcept override {
         return "cancelled";
     }
@@ -82,10 +83,10 @@ public:
         STATUS_FAILED
     };
 
-    /// Return the string representation of the status
+    /// @return the string representation of the status
     static std::string status2string(CompletionStatus status);
 
-    /// Return the string representation of the full status
+    /// @return the string representation of the full status
     static std::string status2string(CompletionStatus status,
                                      ExtendedCompletionStatus extendedStatus);
 
@@ -103,25 +104,30 @@ public:
     ServiceProvider::Ptr const& serviceProvider() { return _serviceProvider; }
 
     std::string const& worker() const { return _worker; }
-    std::string const& type() const   { return _type; }
-    std::string const& id() const     { return _id; }
+
+    std::string const& type() const { return _type; }
+
+    std::string const& id() const { return _id; }
 
     int priority() const { return _priority; }
 
-    CompletionStatus         status() const         { return _status; }
+    CompletionStatus status() const { return _status; }
+
     ExtendedCompletionStatus extendedStatus() const { return _extendedStatus; }
 
-    /// Return the performance info
+    /// @return the performance info
     const WorkerPerformance& performance() const { return _performance; }
 
     /** Set the status
      *
      * ATTENTION: this method needs to be called witin a thread-safe context
      * when moving requests between different queues.
+     *
+     * @param status         - primary status to be set
+     * @param extendedStatus - secondary status to be set
      */
     void setStatus(CompletionStatus status,
-                   ExtendedCompletionStatus extendedStatus =
-                        ExtendedCompletionStatus::EXT_STATUS_NONE);
+                   ExtendedCompletionStatus extendedStatus = ExtendedCompletionStatus::EXT_STATUS_NONE);
 
     /**
      * This method should be invoked (repeatedly) to execute the request until
@@ -135,6 +141,8 @@ public:
      * The default implementation of the method will do nothing, just simulate
      * processing. This can be serve as a foundation for various tests
      * of this framework.
+     *
+     * @return result of the operation as explained above
      */
     virtual bool execute();
 
@@ -166,7 +174,7 @@ public:
      */
     virtual void rollback();
 
-    /// Return the context string
+    /// @return the context string
     std::string context() const {
         return id() + "  " + type() + "  " + status2string(status()) + "  ";
     }
@@ -174,7 +182,13 @@ public:
 protected:
 
     /**
-     * The normal constructor of the class.
+     * The normal constructor of the class
+     *
+     * @param serviceProvider - provider of various services
+     * @param worker          - the name of a worker
+     * @param type            - the type name of a request
+     * @param id              - an identifier of a client request
+     * @param priority        - indicates the importance of the request
      */
     WorkerRequest(ServiceProvider::Ptr const& serviceProvider,
                   std::string const& worker,
@@ -182,7 +196,8 @@ protected:
                   std::string const& id,
                   int priority);
     /**
-     * This structure is used for tracking errors reported by method 'reportErrorIf
+     * Struct ErrorContext is used for tracking errors reported by
+     * method 'reportErrorIf
      */
     struct ErrorContext {
 
@@ -203,8 +218,10 @@ protected:
          *  is detected. An assumption is that the first error would usually cause
          *  a "chain reaction", hence only the first one typically matters.
          *  Other details could be found in the log files if needed.
+         *
+         *  @param ErrorContext - input context to be merged with the current state
          */
-        ErrorContext& operator|| (const ErrorContext &rhs) {
+        ErrorContext& operator||(const ErrorContext &rhs) {
             if (&rhs != this) {
                 if (rhs.failed and not failed) {
                     failed = true;
@@ -261,10 +278,20 @@ protected:
 };
 
 
-/// Comparision type for strict weak ordering reaquired by std::priority_queue
+/**
+ * Struct WorkerRequestCompare is a functor representing a comparision type
+ * for strict weak ordering reaquired by std::priority_queue
+ */
 struct WorkerRequestCompare {
 
-    /// Order requests by their priorities
+    /**
+     * Sort requests by their priorities
+     *
+     * @param lhs - pointer to a request on the left side of a logical comparision
+     * @param rhs - pointer to a request on the right side of a logical comparision
+     *
+     * @return 'true' if the priority of 'lhs' is strictly less than the one of 'rhs'
+     */
     bool operator()(WorkerRequest::Ptr const& lhs,
                     WorkerRequest::Ptr const& rhs) const {
 

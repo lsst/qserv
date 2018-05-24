@@ -68,29 +68,37 @@ public:
 
     ~StopRequestBase() override = default;
 
-    /// Return an identifier of the target request
+    /// @return an identifier of the target request
     std::string const& targetRequestId() const { return _targetRequestId; }
 
-    /// Return the performance info of the target operation (if available)
+    /// @return the performance info of the target operation (if available)
     Performance const& targetPerformance() const { return _targetPerformance; }
 
 protected:
 
     /**
-     * Construct the request with the pointer to the services provider.
+     * Construct the request
+     *
+     * @param serviceProvider  - a host of services for various communications
+     * @param io_service       - network communication service
+     * @param requestName      - the name of a request
+     * @param worker           - the name of a worker node (the one to be affected by the request)
+     * @param targetRequestId  - an identifier of the target request whose remote status
+     *                           is going to be inspected
+     * @param requestType      - the type of a request
+     * @param keepTracking     - keep tracking the request before it finishes or fails
+     * @param messenger        - an interface for communicating with workers
      */
     StopRequestBase(ServiceProvider::Ptr const& serviceProvider,
                      boost::asio::io_service& io_service,
-                     char const*              requestTypeName,
-                     std::string const&       worker,
-                     std::string const&       targetRequestId,
+                     char const* requestName,
+                     std::string const& worker,
+                     std::string const& targetRequestId,
                      proto::ReplicationReplicaRequestType requestType,
-                     bool                     keepTracking,
+                     bool keepTracking,
                      std::shared_ptr<Messenger> const& messenger);
 
     /**
-      * Implement the method declared in the base class
-      *
       * @see Request::startImpl()
       */
     void startImpl(util::Lock const& lock) final;

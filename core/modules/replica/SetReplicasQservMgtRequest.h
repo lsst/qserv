@@ -106,8 +106,6 @@ public:
     QservReplicaCollection const& replicas() const;
 
     /**
-     * Implement the corresponding method of the base class.
-     *
      * @see QservMgtRequest::extendedPersistentState()
      */
      std::string extendedPersistentState(SqlGeneratorPtr const& gen) const override;
@@ -121,7 +119,7 @@ private:
      * @param io_service      - BOOST ASIO service
      * @param worker          - the name of a worker
      * @param newReplicas     - collection of new replicas (NOTE: useCount field is ignored)
-     * @param bool            - proceed with the operation even if some replicas affceted by
+     * @param force           - proceed with the operation even if some replicas affceted by
      *                          the operation are in use.
      * @param onFinish        - callback function to be called upon request completion
      */
@@ -134,27 +132,22 @@ private:
 
     /**
      * Carry over results of the request into a local collection.
+     *
      * @param collection - input collection of replicas
      */
      void setReplicas(wpublish::SetChunkListQservRequest::ChunkCollection const& collection);
 
     /**
-      * Implement the corresponding method of the base class
-      *
       * @see QservMgtRequest::startImpl
       */
     void startImpl(util::Lock const& lock) final;
 
     /**
-      * Implement the corresponding method of the base class
-      *
       * @see QservMgtRequest::finishImpl
       */
     void finishImpl(util::Lock const& lock) final;
 
     /**
-      * Implement the corresponding method of the base class
-      *
       * @see QservMgtRequest::notifyImpl
       */
     void notifyImpl() final;

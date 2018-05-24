@@ -35,8 +35,6 @@
 // Qserv headers
 #include "replica/ChunkLocker.h"
 
-// Forward declarations
-
 // This header declarations
 
 namespace lsst {
@@ -72,65 +70,63 @@ public:
     ServiceProvider& operator=(ServiceProvider const&) = delete;
 
     /**
-     * Static factory for creating  the object.
+     * Static factory for creating objects of the class
      *
      * @param configUrl - a source of the application configuration parameters
-     * @return pointer to the instance
+     * 
+     * @return pointer to the created object
      */
     static ServiceProvider::Ptr create(std::string const& configUrl);
 
-    /// Detructor
     ~ServiceProvider() = default;
 
-    /**
-     * @return a reference to the configuration service
-     */
+    /// @return a reference to the configuration service
     ConfigurationPtr const& config() const { return _configuration; }
 
-    /**
-     * @return a reference to the database services
-     */
+    /// @return a reference to the database services
     DatabaseServicesPtr const& databaseServices() const { return _databaseServices; }
 
-    /**
-     * @return a reference to the local (process) chunk locking services
-     */
+    /// @return a reference to the local (process) chunk locking services
     ChunkLocker& chunkLocker() { return _chunkLocker; }
 
-    /**
-     * @return a reference to the Qserv notification services
-     */
+    /// @return a reference to the Qserv notification services
     QservMgtServicesPtr const& qservMgtServices() const { return _qservMgtServices; }
 
     /**
-     * Make sure this worker is known in the configuration. Throws exception
-     * std::invalid_argument otherwise.
+     * Make sure this worker is known in the configuration
      *
      * @param name - the name of a worker
+     *
+     * @throws std::invalid_argument if the worker is unknown
      */
     void assertWorkerIsValid(std::string const& name);
 
     /**
-     * Make sure workers are now known in the configuration and they're different.
-     * Throws exception std::invalid_argument otherwise.
+     * Make sure workers are now known in the configuration and they're different
+     *
+     * @param workerOneName - name of the first worker in the comparision
+     * @param workerTwoName - name of the second worker in the comparision
+     *
+     * @throws std::invalid_argument if either worker is unknown
      */
     void assertWorkersAreDifferent(std::string const& workerOneName,
                                    std::string const& workerTwoName);
 
     /**
-     * Make sure this database is known in the configuration. Throws exception
-     * std::invalid_argument otherwise.
+     * Make sure this database is known in the configuration
      *
      * @param name - the name of a database
+     * 
+     * @throws std::invalid_argument if the database is uknown
      */
     void assertDatabaseIsValid(std::string const& name);
 
 private:
 
     /**
-     * Construct the object.
+     * Construct the object
      *
-     * @param configUrl - a source of the application configuration parameters
+     * @see ServiceProvider::create()
      */
     explicit ServiceProvider(std::string const& configUrl);
 
