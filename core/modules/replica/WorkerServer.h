@@ -88,8 +88,12 @@ public:
     /// @return the name of a worker this server runs for
     std::string const& worker() const { return _workerName; }
 
-    /// The processor API can be used for detailed monitoring of
-    /// the on-going activities and statistics collection if needed.
+    /**
+     * The processor object can be used for detailed monitoring of
+     * the on-going activities and statistics collection if needed.
+     *
+     * @return reference to the processor
+     */
     WorkerProcessor const& processor() const { return _processor; }
 
     /**
@@ -119,6 +123,9 @@ private:
      * Handle a connection request once it's detected. The rest of
      * the comunication will be forewarded to the connection object
      * specified as a parameter of the method.
+     *
+     * @param connection - object responsible for communications with a client
+     * @param ec         - error condition to be checked for
      */
     void handleAccept(WorkerServerConnection::Ptr const& connection,
                       boost::system::error_code const& ec);

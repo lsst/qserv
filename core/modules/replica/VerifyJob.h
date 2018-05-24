@@ -59,9 +59,11 @@ class ReplicaDiff {
 
 public:
 
-    /// Default constructor create an object which exhibits "no difference"
-    /// behavior.
-    ReplicaDiff ();
+    /**
+     * Default constructor create an object which exhibits "no difference"
+     * behavior.
+     */
+    ReplicaDiff();
 
     /**
      * The normal constructor
@@ -69,35 +71,33 @@ public:
      * @param replica1 - a reference to the the 'older' replica object
      * @param replica2 - a reference to the the 'newer' replica object
      */
-    ReplicaDiff (ReplicaInfo const& replica1,
-                 ReplicaInfo const& replica2);
+    ReplicaDiff(ReplicaInfo const& replica1,
+                ReplicaInfo const& replica2);
 
-    /// Copy constructor
-    ReplicaDiff (ReplicaDiff const&) = default;
+    ReplicaDiff(ReplicaDiff const&) = default;
+    ReplicaDiff& operator=(ReplicaDiff const&) = default;
 
-    /// Assignment operator
-    ReplicaDiff& operator= (ReplicaDiff const&) = default;
+    ~ReplicaDiff() = default;
 
-    ~ReplicaDiff () = default;
+    /// @return a reference to the the 'older' replica object
+    ReplicaInfo const& replica1() const { return _replica1; }
 
-    /// Return a reference to the the 'older' replica object
-    ReplicaInfo const& replica1 () const { return _replica1; }
-
-    /// Return a reference to the the 'newer' replica object
-    ReplicaInfo const& replica2 () const { return _replica2; }
+    /// @return a reference to the the 'newer' replica object
+    ReplicaInfo const& replica2() const { return _replica2; }
 
     /**
-     * Return 'true' if the object encapculates two snapshots refferring
+     * @return 'true' if the object encapculates two snapshots refferring
      * to the same replica.
      */
-    bool isSelf () const;
+    bool isSelf() const;
 
     /**
-     * The comporision operator returns 'true' in case if there are diffences
-     * between replicas. Specific aspects of the difference can be explored
-     * by comparing the replica objects.
+     * The comporision operator
+     *
+     * @return 'true' in case if there are diffences between replicas. Specific aspects
+     * of the difference can be explored by directly comparing the replica objects.
      */
-    bool operator() () const { return _notEqual; }
+    bool operator()() const { return _notEqual; }
 
     // Specific tests
 
@@ -108,15 +108,13 @@ public:
     bool fileCsMismatch()    const { return _fileCsMismatch; }
     bool fileMtimeMismatch() const { return _fileMtimeMismatch; }
 
-    /**
-     * Return a compact string representation of the failed tests
-     */
-    std::string const& flags2string () const;
+    /// @return a compact string representation of the failed tests
+    std::string const& flags2string() const;
 
 private:
 
-    ReplicaInfo _replica1; // older replia
-    ReplicaInfo _replica2; // newer replica
+    ReplicaInfo _replica1; ///< older replia
+    ReplicaInfo _replica2; ///< newer replica
 
     bool _notEqual;
     bool _statusMismatch;
@@ -126,7 +124,7 @@ private:
     bool _fileCsMismatch;
     bool _fileMtimeMismatch;
 
-    mutable std::string _flags;     // computed firts time requested
+    mutable std::string _flags;     ///< computed and cached first time requested
 };
 
 /// Overloaded streaming operator for type ReplicaDiff
@@ -172,12 +170,14 @@ public:
      * @param parentJobId         - optional identifier of a parent job
      * @param onFinish            - callback function to be called upon a completion of the job
      @ @param onReplicaDifference - callback function to be called when two replicas won't match
-     * @param maxReplicas         - maximum number of replicas to process simultaneously.
+     * @param maxReplicas         - (optional) maximum number of replicas to process simultaneously.
      *                              If the parameter is set to 0 (the default value) then 1 replica
      *                              will be assumed.
-     * @param computeCheckSum     - tell a worker server to compute check/control sum on each file
-     * @param onFinish            - callback function to be called upon a completion of the job
-     * @param options             - job options
+     * @param computeCheckSum     - (optional) tell a worker server to compute check/control sum on each file
+     * @param onFinish            - (optional) callback function to be called upon a completion of the job
+     * @param options             - (optional) job options
+     *
+     * @return poiter to the created object
      */
     static Ptr create(Controller::Ptr const& controller,
                       std::string const& parentJobId,
@@ -202,8 +202,6 @@ public:
     bool computeCheckSum() const { return _computeCheckSum; }
 
     /**
-     * Implement the corresponding method of the base class.
-     *
      * @see Job::extendedPersistentState()
      */
     std::string extendedPersistentState(SqlGeneratorPtr const& gen) const override;
@@ -224,22 +222,16 @@ protected:
                Job::Options const& options);
 
     /**
-      * Implement the corresponding method of the base class.
-      *
       * @see Job::startImpl()
       */
     void startImpl(util::Lock const& lock) final;
 
     /**
-      * Implement the corresponding method of the base class.
-      *
       * @see Job::startImpl()
       */
     void cancelImpl(util::Lock const& lock) final;
 
     /**
-      * Implement the corresponding method of the base class.
-      *
       * @see Job::notifyImpl()
       */
     void notifyImpl() final;
@@ -260,6 +252,8 @@ protected:
      * @param lock        - the lock must be acquired by a caller of the method
      * @param replicas    - a collection of replicas returned from the database
      * @param numReplicas - a desired number of replicas to be pulled from the database
+     *
+     * @return reslt of the search
      */
     bool nextReplicas(util::Lock const& lock,
                       std::vector<ReplicaInfo>& replicas,

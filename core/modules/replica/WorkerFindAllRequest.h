@@ -37,8 +37,6 @@
 #include "replica/ReplicaInfo.h"
 #include "replica/WorkerRequest.h"
 
-// Forward declarations
-
 // This header declarations
 
 namespace lsst {
@@ -64,12 +62,20 @@ public:
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
+     *
+     * @param serviceProvider  - a host of services for various communications
+     * @param worker           - the name of a  worker
+     * @param id               - an identifier of a client request
+     * @param priority         - indicates the importance of the request
+     * @param database         - the name of a database
+     *
+     * @return pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                          std::string const& worker,
-                          std::string const& id,
-                          int                priority,
-                          std::string const& database);
+                      std::string const& worker,
+                      std::string const& id,
+                      int priority,
+                      std::string const& database);
 
     // Default construction and copy semantics are prohibited
 
@@ -84,16 +90,14 @@ public:
     std::string const& database() const { return _database; }
 
    /**
-     * Return a refernce to a result of the completed request.
+     * @return a refernce to a result of the completed request.
      *
-     * Note that this operation returns a meanigful result only when a request
-     * is completed with status STATUS_SUCCEEDED.
+     * Note that this operation returns a meaningful result only when a request
+     * is completed with STATUS_SUCCEEDED.
      */
     ReplicaInfoCollection const& replicaInfoCollection() const;
 
     /**
-     * This method implements the virtual method of the base class
-     *
      * @see WorkerRequest::execute
      */
     bool execute() override;
@@ -101,16 +105,16 @@ public:
 protected:
 
     /**
-     * The normal constructor of the class.
+     * The normal constructor of the class
+     *
+     * @see WorkerFindAllRequest::create()
      */
     WorkerFindAllRequest(ServiceProvider::Ptr const& serviceProvider,
                          std::string const& worker,
                          std::string const& id,
-                         int                priority,
+                         int priority,
                          std::string const& database);
 protected:
-
-    // Parameters of the request
 
     std::string _database;
 
@@ -135,6 +139,14 @@ public:
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
+     *
+     * @param serviceProvider  - a host of services for various communications
+     * @param worker           - the name of a  worker
+     * @param id               - an identifier of a client request
+     * @param priority         - indicates the importance of the request
+     * @param database         - the name of a database
+     *
+     * @return pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& worker,
@@ -151,8 +163,6 @@ public:
     ~WorkerFindAllRequestPOSIX() override = default;
 
     /**
-     * This method implements the virtual method of the base class
-     *
      * @see WorkerRequest::execute
      */
     bool execute() override;
@@ -161,6 +171,8 @@ private:
 
     /**
      * The normal constructor of the class.
+     *
+     * @see WorkerFindAllRequestPOSIX::create()
      */
     WorkerFindAllRequestPOSIX(ServiceProvider::Ptr const& serviceProvider,
                               std::string const& worker,

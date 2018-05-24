@@ -52,7 +52,7 @@ namespace replica {
 class Messenger;
 
 /**
- * This structure encapsulates various parameters representing the state
+ * Struct ServiceState encapsulates various parameters representing the state
  * of the remote request processing service. The parameters are available
  * upon the completion of the request.
  */
@@ -65,16 +65,6 @@ struct ServiceState {
         RUNNING             = 2
     };
     State state;
-
-    /// Return string representation of the state
-    std::string state2string() const {
-        switch (state) {
-            case SUSPEND_IN_PROGRESS: return "SUSPEND_IN_PROGRESS";
-            case SUSPENDED:           return "SUSPENDED";
-            case RUNNING:             return "RUNNING";
-        }
-        return "";
-    }
 
     /// The backend technology
     std::string technology;
@@ -91,6 +81,9 @@ struct ServiceState {
     std::vector<proto::ReplicationServiceResponseInfo> newRequests;
     std::vector<proto::ReplicationServiceResponseInfo> inProgressRequests;
     std::vector<proto::ReplicationServiceResponseInfo> finishedRequests;
+
+    /// @return string representation of the state
+    std::string state2string() const;
 
     /// Set parameter values from a protobuf object
     void set (const proto::ReplicationServiceResponse &message);
@@ -125,10 +118,11 @@ public:
     ~ServiceManagementRequestBase() override = default;
 
     /**
-     * Get the state of the worker-side service
-     *
-     * This method will throw exception std::logic_error if the request's primary state
-     * is not 'FINISHED' and its extended state is neither 'SUCCESS" or 'SERVER_ERROR'.
+     * @return the state of the worker-side service
+     * 
+     * @throw exception std::logic_error if the request's primary state
+     * is not 'FINISHED' and its extended state is neither 'SUCCESS'
+     * or 'SERVER_ERROR'.
      */
     ServiceState const& getServiceState() const;
 
@@ -136,18 +130,24 @@ protected:
 
     /**
      * Construct the request with the pointer to the services provider.
+     *
+     * @param serviceProvider  - provides various services for the application
+     * @param io_service       - network communication service (BOOST ASIO)
+     * @param requestName      - name of a request
+     * @param worker           - name of a worker
+     * @param requestType      - type of a request
+     * @param onFinish         - callback function to be called upon a completion of the request
+     * @param messenger        - messenging service for workers
      */
     ServiceManagementRequestBase(ServiceProvider::Ptr const& serviceProvider,
                                  boost::asio::io_service& io_service,
-                                 char const* requestTypeName,
+                                 char const* requestName,
                                  std::string const& worker,
                                  proto::ReplicationServiceRequestType requestType,
                                  std::shared_ptr<Messenger> const& messenger);
 private:
 
     /**
-      * Implement the method declared in the base class
-      *
       * @see Request::startImpl()
       */
     void startImpl(util::Lock const& lock) final;

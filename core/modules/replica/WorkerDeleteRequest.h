@@ -36,8 +36,6 @@
 #include "replica/ReplicaInfo.h"
 #include "replica/WorkerRequest.h"
 
-// Forward declarations
-
 // This header declarations
 
 namespace lsst {
@@ -63,13 +61,22 @@ public:
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
+     *
+     * @param serviceProvider  - a host of services for various communications
+     * @param worker           - the name of a worker
+     * @param id               - an identifier of a client request
+     * @param priority         - indicates the importance of the request
+     * @param database         - the name of a database
+     * @param chunk            - the chunk number
+     *
+     * @return pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                           std::string const& worker,
                           std::string const& id,
-                          int                priority,
+                          int priority,
                           std::string const& database,
-                          unsigned int       chunk);
+                          unsigned int chunk);
 
     // Default construction and copy semantics are prohibited
 
@@ -82,14 +89,13 @@ public:
     // Trivial accessors
 
     std::string const& database() const { return _database; }
-    unsigned int       chunk()    const { return _chunk; }
 
-    /// Return extended status of the request
+    unsigned int chunk() const { return _chunk; }
+
+    /// @return extended status of the request
     ReplicaInfo const& replicaInfo() const { return _replicaInfo; }
 
     /**
-     * This method implements the virtual method of the base class
-     *
      * @see WorkerRequest::execute
      */
     bool execute() override;
@@ -97,14 +103,16 @@ public:
 protected:
 
     /**
-     * The normal constructor of the class.
+     * The normal constructor of the class
+     *
+     * @see WorkerDeleteRequest::create()
      */
     WorkerDeleteRequest(ServiceProvider::Ptr const& serviceProvider,
                         std::string const& worker,
                         std::string const& id,
-                        int                priority,
+                        int priority,
                         std::string const& database,
-                        unsigned int       chunk);
+                        unsigned int chunk);
 protected:
 
     std::string  _database;
@@ -131,6 +139,15 @@ public:
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
+     *
+     * @param serviceProvider  - a host of services for various communications
+     * @param worker           - the name of a source worker
+     * @param id               - an identifier of a client request
+     * @param priority         - indicates the importance of the request
+     * @param database         - the name of a database
+     * @param chunk            - the chunk number
+     *
+     * @return pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& worker,
@@ -148,16 +165,16 @@ public:
     ~WorkerDeleteRequestPOSIX() override = default;
 
     /**
-     * This method implements the virtual method of the base class
-     *
-     * @see WorkerDeleteRequest::execute
+     * @see WorkerDeleteRequest::execute()
      */
     bool execute() override;
 
 private:
 
     /**
-     * The normal constructor of the class.
+     * The normal constructor of the class
+     *
+     * @see WorkerDeleteRequestPOSIX::create()
      */
     WorkerDeleteRequestPOSIX(ServiceProvider::Ptr const& serviceProvider,
                              std::string const& worker,

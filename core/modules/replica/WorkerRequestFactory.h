@@ -36,8 +36,6 @@
 // Qserv headers
 #include "replica/ServiceProvider.h"
 
-// Forward declarations
-
 // This header declarations
 
 namespace lsst {
@@ -192,18 +190,14 @@ public:
     }
 
     /**
-     * Implements the corresponding method of the base class
-     *
-     * @see WorkerReplicationRequestBase::technology
+     * @see WorkerReplicationRequestBase::technology()
      */
     std::string technology() const override {
         return _ptr->technology();
     }
 
     /**
-     * Implements the corresponding method of the base class
-     *
-     * @see WorkerReplicationRequestBase::createReplicationRequest
+     * @see WorkerReplicationRequestBase::createReplicationRequest()
      */
     WorkerReplicationRequestPtr createReplicationRequest(
             std::string const& worker,
@@ -223,9 +217,7 @@ public:
     }
 
    /**
-     * Implements the corresponding method of the base class
-     *
-     * @see WorkerReplicationRequestBase::createDeleteRequest
+     * @see WorkerReplicationRequestBase::createDeleteRequest()
      */
     WorkerDeleteRequestPtr createDeleteRequest(
             std::string const& worker,
@@ -243,9 +235,7 @@ public:
     }
 
    /**
-     * Implements the corresponding method of the base class
-     *
-     * @see WorkerReplicationRequestBase::createFindRequest
+     * @see WorkerReplicationRequestBase::createFindRequest()
      */
     WorkerFindRequestPtr createFindRequest(
             std::string const& worker,
@@ -265,9 +255,7 @@ public:
     }
 
    /**
-     * Implements the corresponding method of the base class
-     *
-     * @see WorkerReplicationRequestBase::createFindAllRequest
+     * @see WorkerReplicationRequestBase::createFindAllRequest()
      */
     WorkerFindAllRequestPtr createFindAllRequest(
             std::string const& worker,
