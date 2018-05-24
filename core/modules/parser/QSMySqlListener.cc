@@ -194,7 +194,7 @@ public:
 
 class TableNameCBH : public BaseCBH {
 public:
-    virtual void handleTableName(std::vector<string> const & str) = 0;
+    virtual void handleTableName(vector<string> const & str) = 0;
 };
 
 
@@ -231,7 +231,7 @@ public:
 
 class FullIdCBH : public BaseCBH {
 public:
-    virtual void handleFullId(std::vector<string> const & uidlist) = 0;
+    virtual void handleFullId(vector<string> const & uidlist) = 0;
 };
 
 
@@ -849,14 +849,14 @@ public:
     , _ctx(ctx)
     {}
 
-    void handleTableName(std::vector<string> const & uidlist) override {
+    void handleTableName(vector<string> const & uidlist) override {
         if (uidlist.size() == 1) {
             _table = uidlist.at(0);
         } else if (uidlist.size() == 2) {
             _db = uidlist.at(0);
             _table = uidlist.at(1);
         } else {
-            throw QSMySqlListener::adapter_execution_error("More than two UID elements in table reference.");
+            ASSERT_EXECUTION_CONDITION(false, "Illegal number of UIDs in table reference.", _ctx);
         }
     }
 
@@ -884,7 +884,7 @@ public:
     TableNameAdapter(shared_ptr<TableNameCBH> const & parent, antlr4::ParserRuleContext* ctx)
     : AdapterT(parent) {}
 
-    void handleFullId(std::vector<string> const & uidlist) override {
+    void handleFullId(vector<string> const & uidlist) override {
         lockedParent()->handleTableName(uidlist);
     }
 
@@ -902,19 +902,19 @@ public:
     virtual ~FullIdAdapter() {}
 
     void handleUid(string const & str) override {
-        _uidList.push_back(str);
+        _uidlist.push_back(str);
         if (_ctx && _ctx->DOT_ID()) {
             string s = _ctx->DOT_ID()->getText();
-            if (s.front() == '.') _uidList.push_back(s.erase(0,1));
-            else _uidList.push_back(s);
+            if (s.front() == '.') _uidlist.push_back(s.erase(0,1));
+            else _uidlist.push_back(s);
         }
     }
 
     void onExit() override {
-        lockedParent()->handleFullId(_uidList);
+        lockedParent()->handleFullId(_uidlist);
     }
 private:
-    std::vector<string> _uidList;
+    vector<string> _uidlist;
     QSMySqlParser::FullIdContext* _ctx;
 };
 
@@ -1422,12 +1422,8 @@ public:
 
     void handleUid(string const & string) override {
         // Uid is expected to be the aliasName in `functionCall AS aliasName`
-        if (false == _asName.empty()) {
-            throw QSMySqlListener::adapter_execution_error("Second call to handleUid.");
-        }
-        if (_ctx->AS() == nullptr) {
-            throw QSMySqlListener::adapter_execution_error("Call to handleUid but AS is null.");
-        }
+        ASSERT_EXECUTION_CONDITION(_asName.empty(), "Second call to handleUid.", _ctx);
+        ASSERT_EXECUTION_CONDITION(_ctx->AS() != nullptr, "Call to handleUid but AS is null.", _ctx);
         _asName = string;
     }
 
@@ -1782,19 +1778,15 @@ public:
     }
 
     // FullIdCBH
-    void handleFullId(std::vector<string> const & uidlist) override {
-        if (false == _functionName.empty()) {
-            throw QSMySqlListener::adapter_execution_error("Function name already assigned.");
-        } else if (uidlist.size() > 1) {
-            throw QSMySqlListener::adapter_execution_error("Function name invalid.");
-        }
+    void handleFullId(vector<string> const & uidlist) override {
+        ASSERT_EXECUTION_CONDITION(_functionName.empty(), "Function name already assigned.", _ctx);
+        ASSERT_EXECUTION_CONDITION(uidlist.size() == 1, "Function name invalid", _ctx);
         _functionName = uidlist.at(0);
     }
 
     void onExit() override {
-        if (_functionName.empty() || _args.empty()) {
-            throw QSMySqlListener::adapter_execution_error("Function name & args must be populated");
-        }
+        ASSERT_EXECUTION_CONDITION(!_functionName.empty(), "Function name unpopulated", _ctx);
+        ASSERT_EXECUTION_CONDITION(!_args.empty(), "Function arguments unpopulated", _ctx);
         auto funcExpr = query::FuncExpr::newWithArgs(_functionName, _args);
         lockedParent()->handleUdfFunctionCall(funcExpr);
     }
