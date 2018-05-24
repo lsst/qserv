@@ -194,7 +194,7 @@ public:
 
 class TableNameCBH : public BaseCBH {
 public:
-    virtual void handleTableName(string const & string) = 0;
+    virtual void handleTableName(std::vector<string> const & str) = 0;
 };
 
 
@@ -231,7 +231,7 @@ public:
 
 class FullIdCBH : public BaseCBH {
 public:
-    virtual void handleFullId(string const & string) = 0;
+    virtual void handleFullId(std::vector<string> const & uidlist) = 0;
 };
 
 
@@ -849,8 +849,15 @@ public:
     , _ctx(ctx)
     {}
 
-    void handleTableName(string const & string) override {
-        _table = string;
+    void handleTableName(std::vector<string> const & uidlist) override {
+        if (uidlist.size() == 1) {
+            _table = uidlist.at(0);
+        } else if (uidlist.size() == 2) {
+            _db = uidlist.at(0);
+            _table = uidlist.at(1);
+        } else {
+            throw QSMySqlListener::adapter_execution_error("More than two UID elements in table reference.");
+        }
     }
 
     void handleUid(string const & string) override {
@@ -877,8 +884,8 @@ public:
     TableNameAdapter(shared_ptr<TableNameCBH> const & parent, antlr4::ParserRuleContext* ctx)
     : AdapterT(parent) {}
 
-    void handleFullId(string const & string) override {
-        lockedParent()->handleTableName(string);
+    void handleFullId(std::vector<string> const & uidlist) override {
+        lockedParent()->handleTableName(uidlist);
     }
 
     void onExit() override {}
@@ -889,16 +896,26 @@ class FullIdAdapter :
         public AdapterT<FullIdCBH>,
         public UidCBH {
 public:
-    FullIdAdapter(shared_ptr<FullIdCBH> const & parent, antlr4::ParserRuleContext* ctx)
-    : AdapterT(parent) {}
+    FullIdAdapter(shared_ptr<FullIdCBH> const & parent, QSMySqlParser::FullIdContext* ctx)
+    : AdapterT(parent), _ctx(ctx) {}
 
     virtual ~FullIdAdapter() {}
 
-    void handleUid(string const & string) override {
-        lockedParent()->handleFullId(string);
+    void handleUid(string const & str) override {
+        _uidList.push_back(str);
+        if (_ctx && _ctx->DOT_ID()) {
+            string s = _ctx->DOT_ID()->getText();
+            if (s.front() == '.') _uidList.push_back(s.erase(0,1));
+            else _uidList.push_back(s);
+        }
     }
 
-    void onExit() override {}
+    void onExit() override {
+        lockedParent()->handleFullId(_uidList);
+    }
+private:
+    std::vector<string> _uidList;
+    QSMySqlParser::FullIdContext* _ctx;
 };
 
 
@@ -921,7 +938,7 @@ public:
     }
 
     void onExit() override {
-        std::shared_ptr<query::ValueFactor> valueFactor;
+        shared_ptr<query::ValueFactor> valueFactor;
         switch(_strings.size()) {
         case 1:
             valueFactor = ValueFactorFactory::newColumnColumnFactor("", "", _strings[0]);
@@ -1765,11 +1782,13 @@ public:
     }
 
     // FullIdCBH
-    void handleFullId(string const & string) override {
+    void handleFullId(std::vector<string> const & uidlist) override {
         if (false == _functionName.empty()) {
             throw QSMySqlListener::adapter_execution_error("Function name already assigned.");
+        } else if (uidlist.size() > 1) {
+            throw QSMySqlListener::adapter_execution_error("Function name invalid.");
         }
-        _functionName = string;
+        _functionName = uidlist.at(0);
     }
 
     void onExit() override {
