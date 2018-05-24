@@ -59,15 +59,18 @@ public:
     class PriQ : public util::CommandQueue {
     public:
         using Ptr = std::shared_ptr<PriQ>;
-        explicit PriQ(int priority, int minRunning) : _priority(priority), _minRunning(minRunning) {}
+        explicit PriQ(int priority, int minRunning, int maxRunning) :
+            _priority(priority), _minRunning(minRunning), _maxRunning(maxRunning) {}
         ~PriQ() override = default;
-        int getPriority() { return _priority; }
-        int getMinRunning() { return _minRunning; }
+        int getPriority() const { return _priority; }
+        int getMinRunning() const { return _minRunning; }
+        int getMaxRunning() const { return _maxRunning; }
 
         std::atomic<int> running{0}; ///< number of jobs of this priority currently running.
     private:
-        int _priority; ///< priority value of this queue
-        int _minRunning; ///< minimum number of threads
+        int const _priority;   ///< priority value of this queue
+        int const _minRunning; ///< minimum number of threads (unless nothing on this queu to run)
+        int const _maxRunning; ///< maximum number of threads for this PriQ to use.
     };
 
 
@@ -76,12 +79,12 @@ public:
     PriorityQueue& operator=(PriorityQueue const&) = delete;
 
 
-    PriorityQueue(int defaultPriority, int minRunning) : _defaultPriority(defaultPriority) {
-        _queues[_defaultPriority] = std::make_shared<PriQ>(_defaultPriority, minRunning);
+    PriorityQueue(int defaultPriority, int minRunning, int maxRunning) : _defaultPriority(defaultPriority) {
+        _queues[_defaultPriority] = std::make_shared<PriQ>(_defaultPriority, minRunning, maxRunning);
     }
 
     ///< @Return true if the queue could be added.
-    bool addPriQueue(int priority, int minRunning);
+    bool addPriQueue(int priority, int minRunning, int spareThreads);
 
     /// The pool needs to be able to place commands in this queue for shutdown.
     void queCmd(util::Command::Ptr const& cmd) override;
@@ -116,30 +119,43 @@ public:
     typedef std::shared_ptr<QdispPool> Ptr;
 
     QdispPool() {
-        _prQueue->addPriQueue(0,1);  // Highest priority queue
-        _prQueue->addPriQueue(1,1);  // High priority queue
-        _prQueue->addPriQueue(2,9); // Normal priority queue
-        _prQueue->addPriQueue(3,3);  // Low priority queue
+        // Numbers are based on 35 threads in the pool. Large results
+        // tend to be slow to give up their threads, thus can't be allowed
+        // to eat up the pool. Bandwidth also makes running many of the
+        // slow queries at the same time a burden on the system.
+        // TODO Set up thread pool size and queues in configuration.
+        _prQueue->addPriQueue(0, 1, 34);  // Highest priority - interactive queries
+        _prQueue->addPriQueue(1, 3, 25);  // FAST queries (Object table)
+        _prQueue->addPriQueue(2, 3, 25);  // MEDIUM queries (Source table)
+        _prQueue->addPriQueue(3, 3, 25);  // SLOW queries (Object Extra table)
+        _prQueue->addPriQueue(4, 6, 10);  // FAST large results
+        _prQueue->addPriQueue(5, 6, 10);  // MEDIUM large results
+        _prQueue->addPriQueue(6, 6, 10);  // Everything else (slow things)
         // default priority is the lowest priority.
     }
 
 
-    void queCmdVeryHigh(PriorityCommand::Ptr const& cmd) {
+    /* &&&
+    void queCmd0(PriorityCommand::Ptr const& cmd) {
             _prQueue->queCmd(cmd, 0);
         }
 
-    void queCmdHigh(PriorityCommand::Ptr const& cmd) {
+    void queCmd1(PriorityCommand::Ptr const& cmd) {
         _prQueue->queCmd(cmd, 1);
     }
 
-    void queCmdLow(PriorityCommand::Ptr const& cmd) {
-        _prQueue->queCmd(cmd, 3);
-    }
-
-    void queCmdNorm(PriorityCommand::Ptr const& cmd) {
+    void queCmd2(PriorityCommand::Ptr const& cmd) {
         _prQueue->queCmd(cmd, 2);
     }
 
+    void queCmd3(PriorityCommand::Ptr const& cmd) {
+        _prQueue->queCmd(cmd, 2);
+    }
+    */
+
+    /// Lower priority numbers are higher priority.
+    /// Invalid priorities get the lowest priority, which
+    /// is the bottom of the heap.
     void queCmd(PriorityCommand::Ptr const& cmd, int priority) {
         _prQueue->queCmd(cmd, priority);
     }
@@ -152,8 +168,8 @@ public:
 
 private:
     /// The default priority queue is meant for pool control commands.
-    PriorityQueue::Ptr _prQueue = std::make_shared<PriorityQueue>(100,1); // default (lowest) priority.
-    util::ThreadPool::Ptr _pool{util::ThreadPool::newThreadPool(30, _prQueue)};
+    PriorityQueue::Ptr _prQueue = std::make_shared<PriorityQueue>(100, 1, 5); // default (lowest) priority.
+    util::ThreadPool::Ptr _pool{util::ThreadPool::newThreadPool(35, _prQueue)};
 };
 
 

@@ -42,6 +42,7 @@
 
 // Qserv headers
 #include "czar/Czar.h"
+#include "proto/ScanTableInfo.h"
 #include "qdisp/JobStatus.h"
 #include "qdisp/ResponseHandler.h"
 #include "util/common.h"
@@ -70,20 +71,20 @@ public:
             auto jq = _jQuery.lock();
             auto qr = _qRequest.lock();
             if (jq == nullptr || qr == nullptr) {
-                LOGS(_log, LOG_LVL_WARN, _idStr << " AskForResponseData null before GetResponseData");
+                LOGS(_log, LOG_LVL_WARN, _idStr << " AskForResp null before GetResponseData");
                 // No way to call _errorFinish().
                 _setState(State::DONE2);
                 return;
             }
 
             if (qr->isQueryCancelled()) {
-                LOGS(_log, LOG_LVL_DEBUG, _idStr << " AskForResponseData query was cancelled");
+                LOGS(_log, LOG_LVL_DEBUG, _idStr << " AskForResp query was cancelled");
                 qr->_errorFinish(true);
                 _setState(State::DONE2);
                 return;
             }
             std::vector<char>& buffer = jq->getDescription()->respHandler()->nextBuffer();
-            LOGS(_log, LOG_LVL_DEBUG, _idStr << " Asking for GetResponseData size=" << buffer.size());
+            LOGS(_log, LOG_LVL_DEBUG, _idStr << " AskForResp GetResponseData size=" << buffer.size());
             qr->GetResponseData(&buffer[0], buffer.size());
         }
 
@@ -95,14 +96,14 @@ public:
             // TODO: make timed wait, check for wedged, if weak pointers dead, log and give up.
             _cv.wait(uLock, [this](){ return _state != State::STARTED0; });
             // _mtx is locked at this point.
-            LOGS(_log, LOG_LVL_DEBUG, _idStr << " Ask data should be DATAREADY1 " << (int)_state);
+            LOGS(_log, LOG_LVL_DEBUG, _idStr << " AskForResp should be DATAREADY1 " << (int)_state);
             if (_state == State::DONE2) {
                 // There was a problem. End the stream associated
                 auto qr = _qRequest.lock();
                 if (qr != nullptr) {
                     qr->_errorFinish();
                 }
-                LOGS(_log, LOG_LVL_INFO, _idStr << " AskForResponseDataCmd returning early");
+                LOGS(_log, LOG_LVL_INFO, _idStr << " AskForResp returning early");
                 return;
             }
         }
@@ -116,12 +117,12 @@ public:
             auto qr = _qRequest.lock();
             if (jq == nullptr || qr == nullptr) {
                 _setState(State::DONE2);
-                LOGS(_log, LOG_LVL_WARN, _idStr << " AskForResponseData null before processData");
+                LOGS(_log, LOG_LVL_WARN, _idStr << " AskForResp null before processData");
                 return;
             }
-            LOGS(_log, LOG_LVL_DEBUG, _idStr << " &&& AskForResponseData processing start" << _blen);
+            LOGS(_log, LOG_LVL_DEBUG, _idStr << " &&& AskForResp processing start" << _blen);
             qr->_processData(jq, _blen, _last);
-            LOGS(_log, LOG_LVL_DEBUG, _idStr << " &&& AskForResponseData processing end" << _blen);
+            LOGS(_log, LOG_LVL_DEBUG, _idStr << " &&& AskForResp processing end" << _blen);
             // _processData will have created another AskForResponseDataCmd object if needed.
         }
         _setState(State::DONE2);
@@ -284,18 +285,45 @@ bool QueryRequest::_importStream(JobQuery::Ptr const& jq) {
 
 
 void QueryRequest::_queueAskForResponse(AskForResponseDataCmd::Ptr const& cmd, JobQuery::Ptr const& jq) {
+    // ScanInfo::Rating { FASTEST = 0, FAST = 10, MEDIUM = 20, SLOW = 30, SLOWEST = 100 };
+    int rating = jq->getDescription()->getScanRating();
+    if (jq->getDescription()->getScanInteractive()) {
+        _qdispPool->queCmd(cmd, 0);
+    } else if (rating <= proto::ScanInfo::Rating::FAST) {
+        if (_largeResult) {
+            _qdispPool->queCmd(cmd, 4);
+        } else {
+            _qdispPool->queCmd(cmd, 1);
+        }
+    } else if (rating <= proto::ScanInfo::Rating::MEDIUM) {
+        if (_largeResult) {
+            _qdispPool->queCmd(cmd, 5);
+        } else {
+            _qdispPool->queCmd(cmd, 2);
+        }
+    } else if (rating <= proto::ScanInfo::Rating::SLOW) {
+        if (not _largeResult) {
+            _qdispPool->queCmd(cmd, 3);
+        }
+    } else {
+        _qdispPool->queCmd(cmd, 6);
+    }
+
+
+    /* &&&
     if (_largeResult) {
         LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " queueing priority low");
-        _qdispPool->queCmdLow(_askForResponseDataCmd);
+        _qdispPool->queCmdLow(cmd);
     } else {
         if (jq->getDescription()->getScanInteractive()) {
             LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " queueing priority vhigh");
-            _qdispPool->queCmdVeryHigh(_askForResponseDataCmd);
+            _qdispPool->queCmdVeryHigh(cmd);
         } else {
             LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " queueing priority norm");
-            _qdispPool->queCmdNorm(_askForResponseDataCmd);
+            _qdispPool->queCmdNorm(cmd);
         }
     }
+    */
 }
 
 /// Process an incoming error.
