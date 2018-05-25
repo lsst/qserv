@@ -61,21 +61,21 @@ namespace parser {
 
 class FromFactory {
 public:
-    friend class SelectFactory;
     class TableRefListH;
     class TableRefAuxH;
-    friend class TableRefListH;
     class RefGenerator;
 
-    FromFactory(std::shared_ptr<ParseAliasMap> aliases,
-                std::shared_ptr<ValueExprFactory> vf);
+    FromFactory(std::shared_ptr<ValueExprFactory> vf);
 
     std::shared_ptr<query::FromList> getProduct();
-private:
+
+    // attachTo should only be called by the SelectFactory.
     void attachTo(SqlSQL2Parser& p);
+
+private:
     void _import(antlr::RefAST a);
 
-    std::shared_ptr<ParseAliasMap> _aliases;
+    std::shared_ptr<ParseAliasMap> _tableAliases;
     std::shared_ptr<BoolTermFactory> _bFactory;
     std::shared_ptr<query::FromList> _list;
 };

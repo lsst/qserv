@@ -49,6 +49,17 @@ namespace lsst {
 namespace qserv {
 namespace parser {
 
+void SelectListFactory::addValueExpr(std::shared_ptr<query::SelectList> selectList,
+                                     ValueExprPtr valueExpr) {
+    selectList->_valueExprList->push_back(valueExpr);
+}
+
+void SelectListFactory::addStarFactor(std::shared_ptr<query::SelectList> selectList) {
+    selectList->_valueExprList->push_back(
+        query::ValueExpr::newSimple(query::ValueFactor::newStarFactor("")));
+}
+
+
 ////////////////////////////////////////////////////////////////////////
 // SelectListFactory::SelectStarH
 ////////////////////////////////////////////////////////////////////////
@@ -87,9 +98,8 @@ private:
 ////////////////////////////////////////////////////////////////////////
 // class SelectListFactory
 ////////////////////////////////////////////////////////////////////////
-SelectListFactory::SelectListFactory(std::shared_ptr<ParseAliasMap> aliasMap,
-                                     std::shared_ptr<ValueExprFactory> vf)
-    : _aliases(aliasMap),
+SelectListFactory::SelectListFactory(std::shared_ptr<ValueExprFactory> vf)
+    : _columnAliases(std::make_shared<ParseAliasMap>()),
       _vFactory(vf),
       _valueExprList(std::make_shared<ValueExprPtrVector>()) {
 }
@@ -99,7 +109,7 @@ SelectListFactory::SelectListFactory(std::shared_ptr<ParseAliasMap> aliasMap,
 /// in a function to be called at the beginning of the import() call.
 void
 SelectListFactory::attachTo(SqlSQL2Parser& p) {
-    _columnAliasH = std::make_shared<ColumnAliasH>(_aliases);
+    _columnAliasH = std::make_shared<ColumnAliasH>(_columnAliases);
     p._columnAliasHandler = _columnAliasH;
 }
 
@@ -144,6 +154,15 @@ SelectListFactory::importStar(RefAST selectRoot) {
 }
 
 void
+SelectListFactory::addSelectAggFunction(std::shared_ptr<query::SelectList> const& selectList,
+                                        std::shared_ptr<query::ValueExpr> const& func) {
+    if (nullptr == selectList) {
+        throw std::runtime_error("null selectList ptr");
+    }
+    selectList->_valueExprList->push_back(func);
+}
+
+void
 SelectListFactory::_addSelectColumn(RefAST expr) {
     // Figure out what type of value expr, and create it properly.
     // std::cout << "SelectCol Type of:" << expr->getText()
@@ -162,7 +181,7 @@ SelectListFactory::_addSelectColumn(RefAST expr) {
     ValueExprPtr ve = _vFactory->newExpr(child);
 
     // Annotate if alias found.
-    RefAST alias = _aliases->getAlias(expr);
+    RefAST alias = _columnAliases->getAlias(expr);
     if (alias.get()) {
         ve->setAlias(tokenText(alias));
     }

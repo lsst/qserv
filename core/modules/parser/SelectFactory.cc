@@ -63,15 +63,12 @@ namespace qserv {
 namespace parser {
 
 SelectFactory::SelectFactory()
-    : _columnAliases(std::make_shared<ParseAliasMap>()),
-      _tableAliases(std::make_shared<ParseAliasMap>()),
-      _columnRefNodeMap(std::make_shared<ColumnRefNodeMap>()),
+    : _columnRefNodeMap(std::make_shared<ColumnRefNodeMap>()),
       _hasDistinct(false),
       _vFactory(std::make_shared<ValueExprFactory>(_columnRefNodeMap)) {
 
-    _fFactory = std::make_shared<FromFactory>(_tableAliases, _vFactory);
-    _slFactory = std::shared_ptr<SelectListFactory>(
-            new SelectListFactory(_columnAliases, _vFactory));
+    _fFactory = std::make_shared<FromFactory>(_vFactory);
+    _slFactory = std::shared_ptr<SelectListFactory>(new SelectListFactory(_vFactory));
     _mFactory = std::make_shared<ModFactory>(_vFactory);
     _wFactory = std::make_shared<WhereFactory>(_vFactory);
 }

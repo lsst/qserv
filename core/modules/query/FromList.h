@@ -71,8 +71,11 @@ public:
     /// Shallow copy this node, sharing its linked objects.
     std::shared_ptr<FromList> copySyntax();
 
+    bool operator==(const FromList& rhs);
+
 private:
-    friend std::ostream& operator<<(std::ostream& os, FromList const& fl);
+    friend std::ostream& operator<<(std::ostream& os, FromList const& fromList);
+    friend std::ostream& operator<<(std::ostream& os, FromList const* fromList);
     friend class parser::FromFactory;
 
     TableRefListPtr _tableRefs;

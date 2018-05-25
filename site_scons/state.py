@@ -168,6 +168,9 @@ def _setEnvWithDependencies():
         (PathVariable('ANTLR', 'antlr binary path',
                       _getBinPathFromBinList(['antlr', 'runantlr'], 'Looking for antlr parser generator'),
                       PathVariable.PathIsFile)),
+        (PathVariable('ANTLR4', 'antlr4 binary path',
+                      _getBinPathFromBinList(['antlr4'], 'Looking for antlr4 parser generator'),
+                      PathVariable.PathIsFile)),
         (PathVariable('XROOTD_DIR', 'xrootd install dir', _findPrefixFromBin('XROOTD_DIR', "xrootd"),
                       PathVariable.PathIsDir)),
         (PathVariable('MYSQL_DIR', 'mysql install dir', _findPrefixFromBin('MYSQL_DIR', "mysqld"),
@@ -198,14 +201,20 @@ def _setEnvWithDependencies():
                       _findPrefixFromPath('PROTOBUF_DIR', env['PROTOC']), PathVariable.PathIsDir)),
         (PathVariable('ANTLR_DIR', 'antlr install dir',
                       _findPrefixFromPath('ANTLR_DIR', env['ANTLR']), PathVariable.PathIsDir)),
+        (PathVariable('ANTLR4_DIR', 'antlr4 install dir', _findPrefixFromName('ANTLR4'),
+                      PathVariable.PathIsDir)),
     )
     opts.Update(env)
 
     opts.AddVariables(
         (PathVariable('ANTLR_INC', 'antlr include path',
                       os.path.join(env['ANTLR_DIR'], "include"), PathVariable.PathIsDir)),
+        (PathVariable('ANTLR4_INC', 'antlr4 include path',
+                      os.path.join(env['ANTLR4_DIR'], "include/antlr4-runtime"), PathVariable.PathIsDir)),
         (PathVariable('ANTLR_LIB', 'antlr libraries path',
          os.path.join(env['ANTLR_DIR'], "lib"), PathVariable.PathIsDir)),
+        (PathVariable('ANTLR4_LIB', 'antlr4 libraries path',
+         os.path.join(env['ANTLR4_DIR'], "lib"), PathVariable.PathIsDir)),
         (PathVariable('XROOTD_INC', 'xrootd include path', os.path.join(
             env['XROOTD_DIR'], "include", "xrootd/private"), PathVariable.PathIsDir)),
         (PathVariable('XROOTD_LIB', 'xrootd libraries path',
@@ -270,6 +279,7 @@ def _setBuildEnv():
     env.Tool('recinstall')
     env.Tool('protoc')
     env.Tool('antlr')
+    env.Tool('antlr4')
     env.Tool('unittest')
     env.Tool('dirclean')
 

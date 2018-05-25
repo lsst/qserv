@@ -60,8 +60,12 @@ public:
 
     OrderByTerm() : _order(DEFAULT) {}
     OrderByTerm(std::shared_ptr<ValueExpr> val,
-                Order _order,
-                std::string _collate);
+                Order order,
+                std::string collate)
+    : _expr(val)
+    , _order(order)
+    , _collate(collate)
+    {}
 
     ~OrderByTerm() {}
 
@@ -70,6 +74,8 @@ public:
     std::shared_ptr<ValueExpr> const& getExpr() const { return _expr; }
     Order getOrder() const;
     void renderTo(QueryTemplate& qt) const;
+
+    bool operator==(const OrderByTerm& rhs) const;
 
 private:
     friend std::ostream& operator<<(std::ostream& os, OrderByTerm const& ob);
@@ -95,14 +101,19 @@ public:
     std::shared_ptr<OrderByClause> clone() const;
     std::shared_ptr<OrderByClause> copySyntax();
     std::shared_ptr<OrderByTermVector> getTerms() { return _terms; }
+    void addTerm(const OrderByTerm& term) { _terms->push_back(term); }
 
     void findValueExprs(ValueExprPtrVector& list);
+
+    bool operator==(const OrderByClause& rhs) const;
+
 private:
     friend std::ostream& operator<<(std::ostream& os, OrderByClause const& oc);
+    friend std::ostream& operator<<(std::ostream& os, OrderByClause const* oc);
     friend class parser::ModFactory;
 
     void _addTerm(OrderByTerm const& t) {_terms->push_back(t); }
-    std::shared_ptr<OrderByTermVector> _terms;
+    std::shared_ptr<std::vector<OrderByTerm>> _terms;
 };
 
 }}} // namespace lsst::qserv::query

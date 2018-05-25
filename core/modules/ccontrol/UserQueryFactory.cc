@@ -37,6 +37,7 @@
 // Qserv headers
 #include "ccontrol/ConfigError.h"
 #include "ccontrol/ConfigMap.h"
+#include "ccontrol/A4UserQueryFactory.h"
 #include "ccontrol/UserQueryAsyncResult.h"
 #include "ccontrol/UserQueryDrop.h"
 #include "ccontrol/UserQueryFlushChunksCache.h"
@@ -65,6 +66,8 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQueryFactory");
 }
 
+#define USE_ANTLR4_QUERY 1
+
 namespace lsst {
 namespace qserv {
 namespace ccontrol {
@@ -87,6 +90,7 @@ public:
     qmeta::CzarId qMetaCzarId = {0};   ///< Czar ID in QMeta database
 };
 
+
 ////////////////////////////////////////////////////////////////////////
 UserQueryFactory::UserQueryFactory(czar::CzarConfig const& czarConfig,
                                    std::string const& czarName)
@@ -105,6 +109,15 @@ UserQueryFactory::UserQueryFactory(czar::CzarConfig const& czarConfig,
     _impl->queryMetadata->cleanup(_impl->qMetaCzarId);
 }
 
+
+std::shared_ptr<query::SelectStmt>
+UserQueryFactory::antlr2NewSelectStmt(const std::string& query) {
+    auto parser = parser::SelectParser::newInstance(query);
+    parser->setup();
+    return parser->getSelectStmt();
+}
+
+
 UserQuery::Ptr
 UserQueryFactory::newUserQuery(std::string const& aQuery,
                                std::string const& defaultDb,
@@ -118,6 +131,7 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
 
     // First check for SUBMIT and strip it
     std::string query = aQuery;
+
     std::string stripped;
     bool async = false;
     if (UserQueryType::isSubmit(query, stripped)) {
@@ -134,20 +148,56 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
     bool full = false;
     QueryId userJobId = 0;
 
+
+
     if (UserQueryType::isSelect(query)) {
         // Processing regular select query
         bool sessionValid = true;
         std::string errorExtra;
 
         // Parse SELECT
-        std::shared_ptr<query::SelectStmt> stmt;
+
+        // parse using antlr4
+        std::shared_ptr<query::SelectStmt> a4stmt;
         try {
-            auto parser = parser::SelectParser::newInstance(query);
-            parser->setup();
-            stmt = parser->getSelectStmt();
+            a4stmt = a4NewUserQuery(query);
+        } catch (std::exception& e) {
+            LOGS(_log, LOG_LVL_ERROR, "Antlr4 error: " << e.what());
+        }
+        if (a4stmt) {
+            LOGS(_log, LOG_LVL_DEBUG, "Antlr4-style Hierarchy: " << *a4stmt);
+            LOGS(_log, LOG_LVL_DEBUG, "Antlr4 generated select statement: " << a4stmt->getQueryTemplate());
+        } else {
+            LOGS(_log, LOG_LVL_DEBUG, "Antlr4 did not generate a select statement.");
+        }
+
+        // parse using antlr v2
+        std::shared_ptr<query::SelectStmt> a2stmt;
+        try {
+            a2stmt = antlr2NewSelectStmt(query);
         } catch(parser::ParseException const& e) {
             return std::make_shared<UserQueryInvalid>(std::string("ParseException:") + e.what());
         }
+        LOGS(_log, LOG_LVL_DEBUG, "Old-style generated select statement: " << a2stmt->getQueryTemplate());
+        LOGS(_log, LOG_LVL_DEBUG, "Old-style Hierarchy: " << *a2stmt);
+
+        // TEMP while developing the antlr4 parser listener
+        if (a4stmt && a2stmt) {
+            bool theyMatch(*a4stmt == *a2stmt);
+            LOGS(_log, LOG_LVL_DEBUG, "antlr v2 and antlr4 generated queries match:" << theyMatch);
+        }
+
+        // TEMP while developing the antlr4 query generation; decide which generated select statment to use
+        // to process the query:
+#if USE_ANTLR4_QUERY
+        if (nullptr == a4stmt) {
+            return std::make_shared<UserQueryInvalid>(std::string("Antlr4 can't parse that query yet."));
+        }
+        std::shared_ptr<query::SelectStmt> stmt = a4stmt;
+#else
+        std::shared_ptr<query::SelectStmt> stmt = a2stmt;
+#endif
+
 
         // handle special database/table names
         auto&& tblRefList = stmt->getFromList().getTableRefList();

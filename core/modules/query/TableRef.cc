@@ -40,6 +40,8 @@
 // Qserv headers
 #include "query/JoinRef.h"
 #include "query/JoinSpec.h"
+#include "util/IterableFormatter.h"
+#include "util/PointerCompare.h"
 
 namespace {
 lsst::qserv::query::JoinRef::Ptr
@@ -56,10 +58,22 @@ namespace query {
 // TableRef
 ////////////////////////////////////////////////////////////////////////
 std::ostream& operator<<(std::ostream& os, TableRef const& ref) {
-    return ref.putStream(os);
+    os << "TableRef(";
+    os << "alias:" << ref._alias;
+    os << ", db:" << ref._db;
+    os << ", table:" << ref._table;
+    os << ", joinRefs:" << util::printable(ref._joinRefs);
+    os << ")";
+    return os;
 }
+
 std::ostream& operator<<(std::ostream& os, TableRef const* ref) {
-    return ref->putStream(os);
+    if (nullptr == ref) {
+        os << "nullptr";
+    } else {
+        os << *ref;
+    }
+    return os;
 }
 
 void TableRef::render::applyToQT(TableRef const& ref) {
@@ -99,6 +113,10 @@ void TableRef::addJoin(std::shared_ptr<JoinRef> r) {
     _joinRefs.push_back(r);
 }
 
+void TableRef::addJoins(const JoinRefPtrVector& r) {
+    _joinRefs.insert(std::end(_joinRefs), std::begin(r), std::end(r));
+}
+
 void TableRef::apply(TableRef::Func& f) {
     f(*this);
     typedef JoinRefPtrVector::iterator Iter;
@@ -123,5 +141,13 @@ TableRef::Ptr TableRef::clone() const {
                    std::back_inserter(newCopy->_joinRefs), joinRefClone);
     return newCopy;
 }
+
+bool TableRef::operator==(const TableRef& rhs) const {
+    return _alias == rhs._alias &&
+           _db == rhs._db &&
+           _table == rhs._table &&
+           util::vectorPtrCompare<JoinRef>(_joinRefs, rhs._joinRefs);
+}
+
 
 }}} // Namespace lsst::qserv::query

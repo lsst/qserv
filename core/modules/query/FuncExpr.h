@@ -51,7 +51,8 @@ class QueryTemplate;
 class FuncExpr {
 public:
     typedef std::shared_ptr<FuncExpr> Ptr;
-    std::string getName() const;
+
+    const std::string& getName() const;
     ValueExprPtrVector getParams() const;
 
     /// Construct a new FuncExpr like an existing one.
@@ -62,20 +63,28 @@ public:
     /// Construct a new FuncExpr with a name and ValueExpr arg
     static FuncExpr::Ptr newArg1(std::string const& newName,
                                  ValueExprPtr ve);
+    /// Construct a new FuncExpr with a name and a vector of ValueExpr arg
+    static FuncExpr::Ptr newWithArgs(std::string const& newName,
+                                     const ValueExprPtrVector& ve);
+
+
+    void setName(const std::string& val);
 
     void findColumnRefs(ColumnRef::Vector& outputRefs);
     std::shared_ptr<FuncExpr> clone() const;
 
     // Fields
-    std::string name;
     ValueExprPtrVector params;
+    void renderTo(QueryTemplate& qt) const;
+
+    bool operator==(const FuncExpr& rhs) const;
+private:
     friend std::ostream& operator<<(std::ostream& os, FuncExpr const& fe);
     friend std::ostream& operator<<(std::ostream& os, FuncExpr const* fe);
-    void renderTo(QueryTemplate& qt) const;
+
+    std::string _name;
 };
 
-std::ostream& operator<<(std::ostream& os, FuncExpr const& fe);
-std::ostream& operator<<(std::ostream& os, FuncExpr const* fe);
 
 // output helpers
 std::ostream& output(std::ostream& os, ValueExprPtrVector const& vel);

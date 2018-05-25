@@ -77,11 +77,11 @@ public:
 
     std::string const& getAlias() const { return _alias; }
     void setAlias(std::string const& a) { _alias = a; }
-    // TableStar is used for CONST literals as well.
-    std::string const& getTableStar() const { return _tableStar; }
-    void setTableStar(std::string const& a) { _tableStar = a; }
 
-    void findColumnRefs(ColumnRef::Vector& vector);
+    std::string const& getConstVal() const { return _constVal; }
+    void setConstVal(std::string const& a) { _constVal = a; }
+
+    void findColumnRefs(ColumnRef::Vector& vector) const;
 
     ValueFactorPtr clone() const;
 
@@ -89,6 +89,8 @@ public:
     static ValueFactorPtr newStarFactor(std::string const& table);
     static ValueFactorPtr newAggFactor(std::shared_ptr<FuncExpr> fe);
     static ValueFactorPtr newFuncFactor(std::shared_ptr<FuncExpr> fe);
+    /// Makes a new ValueFactor with type=const and value=alnum
+    /// Any trailing whitespace is removed.
     static ValueFactorPtr newConstFactor(std::string const& alnum);
     static ValueFactorPtr newExprFactor(std::shared_ptr<ValueExpr> ve);
 
@@ -97,13 +99,19 @@ public:
 
     class render;
     friend class render;
+
+    bool operator==(const ValueFactor& rhs) const;
+
 private:
     Type _type;
     std::shared_ptr<ColumnRef> _columnRef;
     std::shared_ptr<FuncExpr> _funcExpr;
     std::shared_ptr<ValueExpr> _valueExpr;
     std::string _alias;
-    std::string _tableStar; // Reused as const val (no tablestar)
+    std::string _constVal;  // formerly named "tablestar"
+                            // seems to often contain a string representation of a number. Can also contain
+                            // `*` (presumably as in `SELECT *`. It would probably be good to factor it so
+                            // so that `constVal` is exclusivly a string number and `*` is a different field.
 };
 
 

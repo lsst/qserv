@@ -61,9 +61,17 @@ typedef std::vector<ValueExprPtr> ValueExprPtrVector;
 /// from a ANTLR parse tree nodes. It populates some state for SelectFactory.
 class SelectListFactory {
 public:
+    static void addValueExpr(std::shared_ptr<query::SelectList> selectList, ValueExprPtr valueExpr);
+    static void addStarFactor(std::shared_ptr<query::SelectList> selectList);
+
     std::shared_ptr<query::SelectList> getProduct();
     void import(antlr::RefAST selectRoot);
     void importStar(antlr::RefAST asterisk);
+
+    /// adds func to selectList
+    static void addSelectAggFunction(std::shared_ptr<query::SelectList> const& selectList,
+                                     std::shared_ptr<query::ValueExpr> const& func);
+
 private:
     friend class SelectFactory;
 
@@ -72,8 +80,7 @@ private:
     class ColumnAliasH;
 
     // For "friends"
-    SelectListFactory(std::shared_ptr<ParseAliasMap> aliasMap,
-                      std::shared_ptr<ValueExprFactory> vf);
+    SelectListFactory(std::shared_ptr<ValueExprFactory> vf);
     void attachTo(SqlSQL2Parser& p); ///< For column alias handling
 
     // Really private
@@ -86,7 +93,7 @@ private:
     std::shared_ptr<ColumnAliasH> _columnAliasH;
 
     // data
-    std::shared_ptr<ParseAliasMap> _aliases;
+    std::shared_ptr<ParseAliasMap> _columnAliases;
     std::shared_ptr<ValueExprFactory> _vFactory;
     std::shared_ptr<ValueExprPtrVector> _valueExprList;
 
