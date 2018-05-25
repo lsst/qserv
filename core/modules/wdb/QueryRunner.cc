@@ -62,6 +62,7 @@
 #include "util/IterableFormatter.h"
 #include "util/MultiError.h"
 #include "util/StringHash.h"
+#include "util/Timer.h"
 #include "util/threadSafe.h"
 #include "wbase/Base.h"
 #include "wbase/SendChannel.h"
@@ -106,7 +107,7 @@ bool QueryRunner::_initConnection() {
     _mysqlConn.reset(new mysql::MySqlConnection(localMySqlConfig));
 
     if (not _mysqlConn->connect()) {
-        LOGS(_log, LOG_LVL_ERROR, "Unable to connect to MySQL: " << localMySqlConfig);
+        LOGS(_log, LOG_LVL_ERROR, _task->getIdStr() << " Unable to connect to MySQL: " << localMySqlConfig);
         util::Error error(-1, "Unable to connect to MySQL; " + localMySqlConfig.toString());
         _multiError.push_back(error);
         return false;
@@ -151,7 +152,13 @@ bool QueryRunner::runQuery() {
     _setDb();
     LOGS(_log, LOG_LVL_DEBUG,  _task->getIdStr() << " Exec in flight for Db=" << _dbName);
     bool connOk = _initConnection();
-    if (!connOk) { return false; }
+    if (!connOk) {
+        // Transmit the mysql connection error to the czar, which should trigger a re-try.
+        // _initConnection should have added an error message to _multiError.
+        _initMsgs();
+        _transmit(true, 0, 0); // no rows, no bytes in rows.
+        return false;
+    }
 
     if (_task->msg->has_protocol()) {
         switch(_task->msg->protocol()) {
@@ -200,14 +207,7 @@ void QueryRunner::_fillSchema(MYSQL_RES* result) {
     for(auto i=s.columns.begin(), e=s.columns.end(); i != e; ++i) {
         proto::ColumnSchema* cs = _result->mutable_rowschema()->add_columnschema();
         cs->set_name(i->name);
-        if (i->hasDefault) {
-            cs->set_hasdefault(true);
-            cs->set_defaultvalue(i->defaultValue);
-            LOGS(_log, LOG_LVL_DEBUG, i->name << " has default.");
-        } else {
-            cs->set_hasdefault(false);
-            cs->clear_defaultvalue();
-        }
+        cs->set_deprecated_hasdefault(false); // still need to set deprecated but 'required' protobuf field
         cs->set_sqltype(i->colType.sqlType);
         cs->set_mysqltype(i->colType.mysqlType);
     }
@@ -249,7 +249,7 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, si
                 LOGS_ERROR("Message single row too large to send using protobuffer");
                 return false;
             }
-            LOGS(_log, LOG_LVL_DEBUG, "Large message size=" << tSize
+            LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " Large message size=" << tSize
                  << ", splitting message rowCount=" << rowCount);
             _transmit(false, rowCount, tSize);
             rowCount = 0;
@@ -293,13 +293,29 @@ void QueryRunner::_transmit(bool last, uint rowCount, size_t tSize) {
         LOGS(_log, LOG_LVL_ERROR, msg);
     }
     _result->SerializeToString(&resultString);
+    _result.reset(); // don't need it anymore and a new one will be made when needed..
+
     _transmitHeader(resultString);
     LOGS(_log, LOG_LVL_DEBUG, "_transmit last=" << last << " " << _task->getIdStr()
          << " resultString=" << util::prettyCharList(resultString, 5));
+
     if (!_cancelled) {
-        bool sent = _task->sendChannel->sendStream(resultString.data(), resultString.size(), last);
+        // StreamBuffer::create invalidates resultString by using std::move()
+        xrdsvc::StreamBuffer::Ptr streamBuf(xrdsvc::StreamBuffer::createWithMove(resultString));
+        bool sent = _task->sendChannel->sendStream(streamBuf, last);
         if (!sent) {
             LOGS(_log, LOG_LVL_ERROR, _task->getIdStr() << " Failed to transmit message!");
+        }
+        // Block on the buffer actually being sent if 10GB are already waiting or this is a largeResult.
+        auto totalBytes = xrdsvc::StreamBuffer::getTotalBytes();
+        if (_largeResult || totalBytes > 10000000000) {  // TODO:DM-10273 add to configuration
+            LOGS(_log, LOG_LVL_INFO, _task->getIdStr() << " waiting for buffer largeResult=" << _largeResult
+                                      << " totalBytes=" << totalBytes);
+            util::Timer t;
+            t.start();
+            streamBuf->waitForDoneWithThis(); // block until this buffer has been sent.
+            t.stop();
+            LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " waited for " << t.getElapsed());
         }
     } else {
         LOGS(_log, LOG_LVL_DEBUG, "_transmit cancelled");
@@ -322,12 +338,14 @@ void QueryRunner::_transmitHeader(std::string& msg) {
     // Flush to channel.
     // Make sure protoheader size can be encoded in a byte.
     assert(protoHeaderString.size() < 255);
-    auto msgBuf = proto::ProtoHeaderWrap::wrap(protoHeaderString);
     if (!_cancelled) {
-        bool sent = _task->sendChannel->sendStream(msgBuf.data(), msgBuf.size(), false);
+        auto msgBuf = proto::ProtoHeaderWrap::wrap(protoHeaderString);
+        xrdsvc::StreamBuffer::Ptr streamBuf(xrdsvc::StreamBuffer::createWithMove(msgBuf)); // invalidates msgBuf
+        bool sent = _task->sendChannel->sendStream(streamBuf, false);
         if (!sent) {
             LOGS(_log, LOG_LVL_ERROR, _task->getIdStr() << " Failed to transmit header!");
         }
+        // intentionally not waiting for streamBuf to finish, as this message is tiny.
     } else {
         LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " _transmitHeader cancelled");
     }
@@ -401,7 +419,7 @@ bool QueryRunner::_dispatchChannel() {
             ChunkResource cr(req.getResourceFragment(i));
             // Use query fragment as-is, funnel results.
             for(int qi=0, qe=fragment.query_size(); qi != qe; ++qi) {
-                LOGS(_log, LOG_LVL_DEBUG, "running fragment=" << fragment.query(qi));
+                LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " running fragment=" << fragment.query(qi));
                 MYSQL_RES* res = _primeResult(fragment.query(qi)); // This runs the SQL query.
                 if (!res) {
                     erred = true;

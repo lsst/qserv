@@ -44,33 +44,6 @@ namespace lsst {
 namespace qserv {
 namespace xrdsvc {
 
-/// SimpleBuffer is a really simple buffer for transferring data packets to
-/// XrdSsi
-class SimpleBuffer : public XrdSsiStream::Buffer, boost::noncopyable {
-public:
-    SimpleBuffer(std::string const& input) {
-        data = new char[input.size()];
-        memcpy(data, input.data(), input.size());
-        next = 0;
-    }
-
-    //!> Call to recycle the buffer when finished
-    virtual void Recycle() {
-        delete this; // Self-destruct. FIXME: Not sure this is right.
-    }
-
-    // Inherited from XrdSsiStream:
-    // char  *data; //!> -> Buffer containing the data
-    // Buffer *next; //!> For chaining by buffer receiver
-
-    virtual ~SimpleBuffer() {
-        delete[] data;
-    }
-};
-
-////////////////////////////////////////////////////////////////////////
-// ChannelStream implementation
-////////////////////////////////////////////////////////////////////////
 
 /// Constructor
 ChannelStream::ChannelStream()
@@ -86,26 +59,27 @@ ChannelStream::~ChannelStream() {
 #endif
 }
 
+
 /// Push in a data packet
-void
-ChannelStream::append(char const* buf, int bufLen, bool last) {
+void ChannelStream::append(StreamBuffer::Ptr const& streamBuffer, bool last) {
     if (_closed) {
         throw Bug("ChannelStream::append: Stream closed, append(...,last=true) already received");
     }
-    LOGS(_log, LOG_LVL_DEBUG, "last=" << last << " " << util::prettyCharBuf(buf, bufLen, 10));
+    LOGS(_log, LOG_LVL_DEBUG, "last=" << last
+         << " " << util::prettyCharBuf(streamBuffer->data, streamBuffer->getSize(), 10));
     {
         std::unique_lock<std::mutex> lock(_mutex);
         LOGS(_log, LOG_LVL_DEBUG, "Trying to append message (flowing)");
 
-        _msgs.push_back(std::string(buf, bufLen));
+        _msgs.push_back(streamBuffer);
         _closed = last; // if last is true, then we are closed.
         _hasDataCondition.notify_one();
     }
 }
 
+
 /// Pull out a data packet as a Buffer object (called by XrdSsi code)
-XrdSsiStream::Buffer*
-ChannelStream::GetBuff(XrdSsiErrInfo &eInfo, int &dlen, bool &last) {
+XrdSsiStream::Buffer* ChannelStream::GetBuff(XrdSsiErrInfo &eInfo, int &dlen, bool &last) {
     std::unique_lock<std::mutex> lock(_mutex);
     while(_msgs.empty() && !_closed) { // No msgs, but we aren't done
         // wait.
@@ -119,12 +93,13 @@ ChannelStream::GetBuff(XrdSsiErrInfo &eInfo, int &dlen, bool &last) {
         eInfo.Set("Not an active stream", EOPNOTSUPP);
         return 0;
     }
-    SimpleBuffer* sb = new SimpleBuffer(_msgs.front());
-    dlen = _msgs.front().size();
+
+    StreamBuffer::Ptr sb = _msgs.front();
+    dlen = sb->getSize();
     _msgs.pop_front();
     last = _closed && _msgs.empty();
     LOGS(_log, LOG_LVL_DEBUG, "returning buffer (" << dlen << ", " << (last ? "(last)" : "(more)") << ")");
-    return sb;
+    return sb.get();
 }
 
 }}} // lsst::qserv::xrdsvc

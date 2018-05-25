@@ -171,7 +171,6 @@ void UserQueryProcessList::submit() {
         createTable += " ";
         createTable += col.colType.sqlType;
         if (col.colType.sqlType == "TIMESTAMP") createTable += " NULL";
-        if (col.hasDefault) createTable += " DEFAULT '" + col.defaultValue + "'";
     }
     createTable += ')';
     LOGS(_log, LOG_LVL_DEBUG, "creating result table: " << createTable);
@@ -200,8 +199,13 @@ void UserQueryProcessList::submit() {
 
             if (ptr == nullptr) {
                 values.push_back("NULL");
-            } else if (IS_NUM(schema.columns[i].colType.mysqlType)) {
-                // numeric types do not need quoting (IS_NUM is mysql macro)
+            } else if (IS_NUM(schema.columns[i].colType.mysqlType) &&
+                    schema.columns[i].colType.mysqlType != MYSQL_TYPE_TIMESTAMP) {
+                // Numeric types do not need quoting (IS_NUM is mysql macro).
+                // In mariadb 10.2 IS_NUM returns true for TIMESTAMP even though value is
+                // date-time formatted string, IS_NUM returned false in mariadb 10.1 and prior.
+                // Potentially we can quote all values, but I prefer to have numbers look like
+                // numbers, both solutions (IS_NUM or quotes) are mysql-specific.
                 values.push_back(std::string(ptr, ptr+len));
             } else {
                 // everything else should be quoted

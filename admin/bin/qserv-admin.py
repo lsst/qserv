@@ -718,7 +718,7 @@ to print the list of supported commands.
                         choices=['DEBUG', 'INFO', 'WARN', 'ERROR'],
                         help="Verbosity threshold, def: %(default)s")
     parser.add_argument("-c", dest="connection",
-                        default='mysql://qsmaster@127.0.0.1:13306/qservCssData',
+                        default='mysql://qsmaster@127.0.0.1:3306/qservCssData',
                         help="CSS connection information in form of URL. "
                         "`mysql://user:pass@host:port/database' for mysql, "
                         "`mem:///' for empty in-memory CSS, "

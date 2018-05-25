@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2015-2017 LSST Corporation.
+ * Copyright 2015-2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -69,7 +69,11 @@ namespace lsst {
 namespace qserv {
 
 namespace qdisp {
-class LargeResultMgr;
+class QdispPool;
+}
+
+namespace qproc {
+class TaskMsgFactory;
 }
 
 namespace ccontrol {
@@ -85,7 +89,7 @@ public:
                     std::shared_ptr<qproc::SecondaryIndex> const& secondaryIndex,
                     std::shared_ptr<qmeta::QMeta> const& queryMetadata,
                     qmeta::CzarId czarId,
-                    std::shared_ptr<qdisp::LargeResultMgr> const& largeResultMgr,
+                    std::shared_ptr<qdisp::QdispPool> const& qdispPool,
                     std::string const& errorExtra,
                     bool async);
 
@@ -103,41 +107,41 @@ public:
 
     /// @return a non-empty string describing the current error state
     /// Returns an empty string if no errors have been detected.
-    virtual std::string getError() const override;
+    std::string getError() const override;
 
     /// Begin execution of the query over all ChunkSpecs added so far.
-    virtual void submit() override;
+    void submit() override;
 
     /// Wait until the query has completed execution.
     /// @return the final execution state.
-    virtual QueryState join() override;
+    QueryState join() override;
 
     /// Stop a query in progress (for immediate shutdowns)
-    virtual void kill() override;
+    void kill() override;
 
     /// Release resources related to user query
-    virtual void discard() override;
+    void discard() override;
 
     // Delegate objects
-    virtual std::shared_ptr<qdisp::MessageStore> getMessageStore() override {
+    std::shared_ptr<qdisp::MessageStore> getMessageStore() override {
         return _messageStore; }
 
     /// @return Name of the result table for this query, can be empty
-    virtual std::string getResultTableName() const override { return _resultTable; }
+    std::string getResultTableName() const override { return _resultTable; }
 
     /// @return Result location for this query, can be empty
-    virtual std::string getResultLocation() const override { return _resultLoc; }
+    std::string getResultLocation() const override { return _resultLoc; }
 
     /// @return ORDER BY part of SELECT statement to be executed by proxy
-    virtual std::string getProxyOrderBy() const override;
+    std::string getProxyOrderBy() const override;
 
-    virtual std::string getQueryIdString() const override;
+    std::string getQueryIdString() const override;
 
     /// @return this query's QueryId.
-    virtual QueryId getQueryId() const override { return _qMetaQueryId; }
+    QueryId getQueryId() const override { return _qMetaQueryId; }
 
     /// @return True if query is async query
-    virtual bool isAsync() const override { return _async; }
+    bool isAsync() const override { return _async; }
 
     void setupChunking();
 
@@ -158,7 +162,7 @@ private:
 
     qmeta::CzarId _qMetaCzarId; ///< Czar ID in QMeta database
     QueryId _qMetaQueryId{0};      ///< Query ID in QMeta database
-    std::shared_ptr<qdisp::LargeResultMgr> _largeResultMgr;
+    std::shared_ptr<qdisp::QdispPool> _qdispPool;
     /// QueryId in a standard string form, initially set to unknown.
     std::string _queryIdStr{QueryIdHelper::makeIdStr(0, true)};
     bool _killed{false};

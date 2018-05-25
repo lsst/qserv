@@ -31,6 +31,7 @@
 #include <string>
 #include <vector>
 
+#include "qdisp/QdispPool.h"
 // Third-party headers
 
 // Qserv headers
@@ -40,7 +41,6 @@
 #include "czar/SubmitResult.h"
 #include "global/stringTypes.h"
 #include "mysql/MySqlConfig.h"
-#include "qdisp/LargeResultMgr.h"
 #include "util/ConfigStore.h"
 
 namespace lsst {
@@ -101,9 +101,9 @@ public:
     static Ptr getCzar() { return _czar; }
 
     /**
-     * @return a pointer to the LargeResultMgr.
+     * @return a pointer to the QdispPool.
      */
-    qdisp::LargeResultMgr::Ptr getLargeResultMgr() { return _largeResultMgr; }
+    qdisp::QdispPool::Ptr getQdispPool() { return _qdispPool; }
 
 protected:
 
@@ -143,7 +143,7 @@ private:
     IdToQuery _idToQuery;               ///< maps query ID to query (for currently running queries)
     std::mutex _mutex;                  ///< protects _uqFactory, _clientToQuery, and _idToQuery
 
-    qdisp::LargeResultMgr::Ptr _largeResultMgr; ///< Large result manager for all user queries.
+    qdisp::QdispPool::Ptr _qdispPool; ///< Thread pool for handling Responses from XrdSsi.
 };
 
 }}} // namespace lsst::qserv::czar

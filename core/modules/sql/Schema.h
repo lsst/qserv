@@ -51,8 +51,6 @@ inline std::ostream& operator<<(std::ostream& os, ColType const& ct) {
 /// Schema for a single column
 struct ColSchema {
     std::string name; ///< Column name
-    bool hasDefault; ///< true if column has a default
-    std::string defaultValue; // default value
     ColType colType; ///< Column type
 };
 
@@ -62,9 +60,6 @@ typedef ColSchemaVector::const_iterator ColumnsIter;
 
 inline std::ostream& operator<<(std::ostream& os, ColSchema const& cs) {
     os << "`" << cs.name << "` " << cs.colType;
-    if(cs.hasDefault) {
-        os << " DEFAULT '" << cs.defaultValue << "'";
-    }
     return os;
 }
 
