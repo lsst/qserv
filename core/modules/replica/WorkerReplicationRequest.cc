@@ -87,25 +87,40 @@ WorkerReplicationRequest::WorkerReplicationRequest(
             priority),
         _database(database),
         _chunk(chunk),
-        _sourceWorker(sourceWorker),
-        _replicaInfo() {
+        _sourceWorker(sourceWorker) {
 
-    _serviceProvider->assertWorkerIsValid(sourceWorker);
-    _serviceProvider->assertWorkersAreDifferent(worker, sourceWorker);
+    serviceProvider->assertWorkerIsValid(sourceWorker);
+    serviceProvider->assertWorkersAreDifferent(worker, sourceWorker);
 }
 
-ReplicaInfo WorkerReplicationRequest::replicaInfo() const {
+void WorkerReplicationRequest::setInfo(proto::ReplicationResponseReplicate& response) const {
 
-    // This implementation guarantees that a consistent snapshot of
-    // the object will be returned to a calling thread while
-    // a processing thread may be attempting to update the object.
+    LOGS(_log, LOG_LVL_DEBUG, context() << "setInfo");
 
-    util::Lock lock(_mtx, context() + "replicaInfo");
+    util::Lock lock(_mtx, context() + "setInfo");
 
-    ReplicaInfo const info = _replicaInfo;
+    // Return the performance of the target request
 
-    return info;
+    response.set_allocated_target_performance(performance().info());
+
+    // Note the ownership transfer of an intermediate protobuf object obtained
+    // from  ReplicaInfo object in the call below. The protobuf
+    // runtime will take care of deleting the intermediate objects.
+
+    response.set_allocated_replica_info(_replicaInfo.info());
+
+    // Same comment on the ownership transfer applies here
+
+    auto protoRequestPtr = new proto::ReplicationRequestReplicate();
+
+    protoRequestPtr->set_priority(priority());
+    protoRequestPtr->set_database(database());
+    protoRequestPtr->set_chunk(   chunk());
+    protoRequestPtr->set_worker(  sourceWorker());
+
+    response.set_allocated_request(protoRequestPtr);    
 }
+
 
 bool WorkerReplicationRequest::execute() {
 

@@ -79,12 +79,36 @@ WorkerFindAllRequest::WorkerFindAllRequest(
             "FIND-ALL",
             id,
             priority),
-        _database(database),
-        _replicaInfoCollection() {
+        _database(database) {
 }
 
-ReplicaInfoCollection const& WorkerFindAllRequest::replicaInfoCollection() const {
-    return _replicaInfoCollection;
+void WorkerFindAllRequest::setInfo(proto::ReplicationResponseFindAll& response) const {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << "setInfo");
+
+    util::Lock lock(_mtx, context() + "setInfo");
+
+    // Return the performance of the target request
+
+    response.set_allocated_target_performance(performance().info());
+
+    // Note that a new Info object is allocated and appended to
+    // the 'replica_info_many' series at each step of the iteration below.
+    // The protobuf runtime will take care of deleting those objects.
+
+    for (auto&& replicaInfo: _replicaInfoCollection) {
+        proto::ReplicationReplicaInfo* info = response.add_replica_info_many();
+        replicaInfo.setInfo(info);
+    }
+
+    // Same comment on the ownership transfer applies here
+
+    auto protoRequestPtr = new proto::ReplicationRequestFindAll();
+
+    protoRequestPtr->set_priority(priority());
+    protoRequestPtr->set_database(database());
+
+    response.set_allocated_request(protoRequestPtr);
 }
 
 bool WorkerFindAllRequest::execute() {

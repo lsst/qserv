@@ -246,6 +246,8 @@ public:
                          proto::ReplicationRequestStop const& request,
                          RESPONSE_MSG_TYPE& response) {
 
+        util::Lock lock(_mtx, context() + "dequeueOrCancel");
+
         // Set this response unless an exact request (same type and identifier)
         // will be found.
         setDefaultResponse(response,
@@ -255,7 +257,7 @@ public:
         // Try to locate a request with specified identifier and make sure
         // its actual type matches expecations
 
-        if (WorkerRequest::Ptr ptr = dequeueOrCancelImpl(request.id())) {
+        if (WorkerRequest::Ptr ptr = dequeueOrCancelImpl(lock, request.id())) {
             try {
 
                 // Set request-specific fields. Note exception handling for scenarios
@@ -285,6 +287,8 @@ public:
                      proto::ReplicationRequestStatus const& request,
                      RESPONSE_MSG_TYPE& response) {
 
+        util::Lock lock(_mtx, context() + "checkStatus");
+
         // Set this response unless an exact request (same type and identifier)
         // will be found.
         setDefaultResponse(response,
@@ -294,7 +298,7 @@ public:
         // Try to locate a request with specified identifier and make sure
         // its actual type matches expecations
 
-        if (WorkerRequest::Ptr ptr = checkStatusImpl(request.id())) {
+        if (WorkerRequest::Ptr ptr = checkStatusImpl(lock, request.id())) {
             try {
 
                 // Set request-specific fields. Note exception handling for scenarios
@@ -379,22 +383,26 @@ private:
      * is still known to the Processor. Return a reference to the request object
      * whose state will be properly updated.
      *
-     * @param id - an identifier of a request
+     * @param lock - lock which must be acquired before calling this method 
+     * @param id   - an identifier of a request
      *
      * @return - a valid reference to the request object (if found)
      *           or a reference to nullptr otherwise.
      */
-    WorkerRequest::Ptr dequeueOrCancelImpl(std::string const& id);
+    WorkerRequest::Ptr dequeueOrCancelImpl(util::Lock const& lock,
+                                           std::string const& id);
 
     /**
      * Find and return a reference to the request object.
      *
-     * @param id - an identifier of a request
+     * @param lock - lock which must be acquired before calling this method 
+     * @param id   - an identifier of a request
      *
      * @return - a valid reference to the request object (if found)
      *           or a reference to nullptr otherwise.
      */
-    WorkerRequest::Ptr checkStatusImpl(std::string const& id);
+    WorkerRequest::Ptr checkStatusImpl(util::Lock const& lock,
+                                       std::string const& id);
 
     /**
      * Extract the extra data from the request and put

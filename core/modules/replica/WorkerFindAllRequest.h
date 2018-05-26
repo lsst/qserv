@@ -34,6 +34,7 @@
 #include <string>
 
 // Qserv headers
+#include "proto/replication.pb.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/WorkerRequest.h"
 
@@ -89,13 +90,12 @@ public:
 
     std::string const& database() const { return _database; }
 
-   /**
-     * @return a refernce to a result of the completed request.
+    /**
+     * Extract request status into the Protobuf response object.
      *
-     * Note that this operation returns a meaningful result only when a request
-     * is completed with STATUS_SUCCEEDED.
+     * @param response - Protobuf response to be initialized
      */
-    ReplicaInfoCollection const& replicaInfoCollection() const;
+    void setInfo(proto::ReplicationResponseFindAll& response) const;
 
     /**
      * @see WorkerRequest::execute

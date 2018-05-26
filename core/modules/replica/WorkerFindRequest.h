@@ -101,13 +101,12 @@ public:
 
     bool computeCheckSum() const { return _computeCheckSum; }
 
-   /**
-     * @return a refernce to a result of the completed request.
+    /**
+     * Extract request status into the Protobuf response object.
      *
-     * Note that this operation returns a meanigful result only when a request
-     * is completed with STATUS_SUCCEEDED.
+     * @param response - Protobuf response to be initialized
      */
-    ReplicaInfo const& replicaInfo() const { return _replicaInfo; }
+    void setInfo(proto::ReplicationResponseFind& response) const;
 
     /**
      * @see WorkerRequest::execute

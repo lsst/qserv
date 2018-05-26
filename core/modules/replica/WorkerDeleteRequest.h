@@ -33,6 +33,7 @@
 #include <string>
 
 // Qserv headers
+#include "proto/replication.pb.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/WorkerRequest.h"
 
@@ -91,9 +92,13 @@ public:
     std::string const& database() const { return _database; }
 
     unsigned int chunk() const { return _chunk; }
-
-    /// @return extended status of the request
-    ReplicaInfo const& replicaInfo() const { return _replicaInfo; }
+    
+    /**
+     * Extract request status into the Protobuf response object.
+     *
+     * @param response - Protobuf response to be initialized
+     */
+    void setInfo(proto::ReplicationResponseDelete& response) const;
 
     /**
      * @see WorkerRequest::execute

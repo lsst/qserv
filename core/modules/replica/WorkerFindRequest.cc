@@ -86,10 +86,37 @@ WorkerFindRequest::WorkerFindRequest(
             priority),
         _database(database),
         _chunk(chunk),
-        _computeCheckSum(computeCheckSum),
-        _replicaInfo() {
+        _computeCheckSum(computeCheckSum) {
 
     serviceProvider->assertDatabaseIsValid(database);
+}
+
+void WorkerFindRequest::setInfo(proto::ReplicationResponseFind& response) const {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << "setInfo");
+
+    util::Lock lock(_mtx, context() + "setInfo");
+
+    // Return the performance of the target request
+
+    response.set_allocated_target_performance(performance().info());
+
+    // Note the ownership transfer of an intermediate protobuf object obtained
+    // from ReplicaInfo object in the call below. The protobuf runtime will take
+    // care of deleting the intermediate object.
+
+    response.set_allocated_replica_info(_replicaInfo.info());
+
+    // Same comment on the ownership transfer applies here
+
+    auto protoRequestPtr = new proto::ReplicationRequestFind();
+
+    protoRequestPtr->set_priority(  priority());
+    protoRequestPtr->set_database(  database());
+    protoRequestPtr->set_chunk(     chunk());
+    protoRequestPtr->set_compute_cs(computeCheckSum());
+
+    response.set_allocated_request(protoRequestPtr);
 }
 
 bool WorkerFindRequest::execute() {
@@ -97,6 +124,8 @@ bool WorkerFindRequest::execute() {
     LOGS(_log, LOG_LVL_DEBUG, context() << "execute"
          << "  database: " << database()
          << "  chunk: "    << chunk());
+
+    util::Lock lock(_mtx, context() + "execute");
 
     // Set up the result if the operation is over
 

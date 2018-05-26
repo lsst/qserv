@@ -111,8 +111,12 @@ public:
 
     std::string const& sourceWorker() const { return _sourceWorker; }
 
-    /// @return a refernce to a result of the completed request.
-    ReplicaInfo replicaInfo() const;
+    /**
+     * Extract request status into the Protobuf response object.
+     *
+     * @param response - Protobuf response to be initialized
+     */
+    void setInfo(proto::ReplicationResponseReplicate& response) const;
 
     /**
      * @see WorkerRequest::execute

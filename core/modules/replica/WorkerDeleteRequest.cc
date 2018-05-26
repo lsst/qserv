@@ -90,6 +90,33 @@ WorkerDeleteRequest::WorkerDeleteRequest(ServiceProvider::Ptr const& serviceProv
                      ReplicaInfo::FileInfoCollection{}) {
 }
 
+void WorkerDeleteRequest::setInfo(proto::ReplicationResponseDelete& response) const {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << "setInfo");
+
+    util::Lock lock(_mtx, context() + "setInfo");
+
+    // Return the performance of the target request
+
+    response.set_allocated_target_performance(performance().info());
+
+    // Note the ownership transfer of an intermediate protobuf object obtained
+    // from ReplicaInfo object in the call below. The protobuf runtime will take
+    // care of deleting the intermediate object.
+
+    response.set_allocated_replica_info(_replicaInfo.info());
+
+    // Same comment on the ownership transfer applies here
+
+    auto protoRequestPtr = new proto::ReplicationRequestDelete();
+
+    protoRequestPtr->set_priority(priority());
+    protoRequestPtr->set_database(database());
+    protoRequestPtr->set_chunk(   chunk());
+
+    response.set_allocated_request(protoRequestPtr);
+}
+
 bool WorkerDeleteRequest::execute() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "execute"
