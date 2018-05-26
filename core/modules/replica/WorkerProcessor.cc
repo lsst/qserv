@@ -175,18 +175,15 @@ void WorkerProcessor::drain() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "drain");
 
-    // Collect identifiers of requests from both queues under the guard
+    util::Lock lock(_mtx, context() + "drain");
+
+    // Collect identifiers of requests to be affected by the operation
     std::list<std::string> ids;
-    {
-        util::Lock lock(_mtx, context() + "drain");
 
-        for (auto&& ptr: _newRequests)        { ids.push_back(ptr->id()); }
-        for (auto&& ptr: _inProgressRequests) { ids.push_back(ptr->id()); }
-    }
+    for (auto&& ptr: _newRequests)        ids.push_back(ptr->id());
+    for (auto&& ptr: _inProgressRequests) ids.push_back(ptr->id());
 
-    // Dequeue requests w/o the guard to avoid a dedlock because
-    // the dequeuing method will request the lock.
-    for (auto&& id: ids) dequeueOrCancelImpl(id);
+    for (auto&& id: ids) dequeueOrCancelImpl(lock, id);
 }
 
 void WorkerProcessor::enqueueForReplication(
@@ -209,12 +206,12 @@ void WorkerProcessor::enqueueForReplication(
     for (auto&& ptr: _newRequests) {
         if (::ifDuplicateRequest(response,
                                  ptr,
-                                 request)) { return; }
+                                 request)) return;
     }
     for (auto&& ptr: _inProgressRequests) {
         if (::ifDuplicateRequest(response,
                                  ptr,
-                                 request)) { return; }
+                                 request)) return;
     }
 
     // The code below may catch exceptions if other parameters of the requites
@@ -265,12 +262,12 @@ void WorkerProcessor::enqueueForDeletion(std::string const& id,
     for (auto&& ptr : _newRequests) {
         if (::ifDuplicateRequest(response,
                                  ptr,
-                                 request)) { return; }
+                                 request)) return;
     }
     for (auto&& ptr : _inProgressRequests) {
         if (::ifDuplicateRequest(response,
                                  ptr,
-                                 request)) { return; }
+                                 request)) return;
     }
 
     // The code below may catch exceptions if other parameters of the requites
@@ -361,11 +358,10 @@ void WorkerProcessor::enqueueForFindAll(std::string const&                      
     setInfo(ptr, response);
 }
 
-WorkerRequest::Ptr WorkerProcessor::dequeueOrCancelImpl(std::string const& id) {
+WorkerRequest::Ptr WorkerProcessor::dequeueOrCancelImpl(util::Lock const& lock,
+                                                        std::string const& id) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "dequeueOrCancelImpl" << "  id: " << id);
-
-    util::Lock lock(_mtx, context() + "dequeueOrCancelImpl");
 
     // Still waiting in the queue?
 
@@ -465,11 +461,10 @@ WorkerRequest::Ptr WorkerProcessor::dequeueOrCancelImpl(std::string const& id) {
     return WorkerRequest::Ptr();
 }
 
-WorkerRequest::Ptr WorkerProcessor::checkStatusImpl(std::string const& id) {
+WorkerRequest::Ptr WorkerProcessor::checkStatusImpl(util::Lock const& lock,
+                                                    std::string const& id) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "checkStatusImpl" << "  id: " << id);
-
-    util::Lock lock(_mtx, context() + "checkStatusImpl");
 
     // Still waiting in the queue?
 
@@ -770,27 +765,7 @@ void WorkerProcessor::setInfo(WorkerRequest::Ptr const& request,
                 "incorrect dynamic type of request id: " + request->id() +
                 " in WorkerProcessor::setInfo(WorkerReplicationRequest)");
     }
-
-    // Return the performance of the target request
-
-    response.set_allocated_target_performance(ptr->performance().info());
-
-    // Note the ownership transfer of an intermediate protobuf object obtained
-    // from  ReplicaInfo object in the call below. The protobuf
-    // runtime will take care of deleting the intermediate objects.
-
-    response.set_allocated_replica_info(ptr->replicaInfo().info());
-
-    // Same comment on the ownership transfer applies here
-
-    auto protoRequestPtr = new proto::ReplicationRequestReplicate();
-
-    protoRequestPtr->set_priority(ptr->priority());
-    protoRequestPtr->set_database(ptr->database());
-    protoRequestPtr->set_chunk(   ptr->chunk());
-    protoRequestPtr->set_worker(  ptr->sourceWorker());
-
-    response.set_allocated_request(protoRequestPtr);
+    ptr->setInfo(response);
 }
 
 void WorkerProcessor::setInfo(WorkerRequest::Ptr const& request,
@@ -802,26 +777,7 @@ void WorkerProcessor::setInfo(WorkerRequest::Ptr const& request,
                 "incorrect dynamic type of request id: " + request->id() +
                 " in WorkerProcessor::setInfo(WorkerDeleteRequest)");
     }
-
-    // Return the performance of the target request
-
-    response.set_allocated_target_performance(ptr->performance().info());
-
-    // Note the ownership transfer of an intermediate protobuf object obtained
-    // from ReplicaInfo object in the call below. The protobuf runtime will take
-    // care of deleting the intermediate object.
-
-    response.set_allocated_replica_info(ptr->replicaInfo().info());
-
-    // Same comment on the ownership transfer applies here
-
-    auto protoRequestPtr = new proto::ReplicationRequestDelete();
-
-    protoRequestPtr->set_priority(ptr->priority());
-    protoRequestPtr->set_database(ptr->database());
-    protoRequestPtr->set_chunk(   ptr->chunk());
-
-    response.set_allocated_request(protoRequestPtr);
+    ptr->setInfo(response);
 }
 
 void WorkerProcessor::setInfo(WorkerRequest::Ptr const&   request,
@@ -832,27 +788,7 @@ void WorkerProcessor::setInfo(WorkerRequest::Ptr const&   request,
         throw std::logic_error("incorrect dynamic type of request id: " + request->id() +
                                " in WorkerProcessor::setInfo(WorkerFindRequest)");
     }
-
-    // Return the performance of the target request
-
-    response.set_allocated_target_performance(ptr->performance().info());
-
-    // Note the ownership transfer of an intermediate protobuf object obtained
-    // from ReplicaInfo object in the call below. The protobuf runtime will take
-    // care of deleting the intermediate object.
-
-    response.set_allocated_replica_info(ptr->replicaInfo().info());
-
-    // Same comment on the ownership transfer applies here
-
-    auto protoRequestPtr = new proto::ReplicationRequestFind();
-
-    protoRequestPtr->set_priority(  ptr->priority());
-    protoRequestPtr->set_database(  ptr->database());
-    protoRequestPtr->set_chunk(     ptr->chunk());
-    protoRequestPtr->set_compute_cs(ptr->computeCheckSum());
-
-    response.set_allocated_request(protoRequestPtr);
+    ptr->setInfo(response);
 }
 
 void WorkerProcessor::setInfo(WorkerRequest::Ptr const& request,
@@ -863,28 +799,7 @@ void WorkerProcessor::setInfo(WorkerRequest::Ptr const& request,
         throw std::logic_error("incorrect dynamic type of request id: " + request->id() +
                                " in WorkerProcessor::setInfo(WorkerFindAllRequest)");
     }
-
-    // Return the performance of the target request
-
-    response.set_allocated_target_performance(ptr->performance().info());
-
-    // Note that a new Info object is allocated and appended to
-    // the 'replica_info_many' series at each step of the iteration below.
-    // The protobuf runtime will take care of deleting those objects.
-
-    for (auto&& replicaInfo: ptr->replicaInfoCollection()) {
-        proto::ReplicationReplicaInfo* info = response.add_replica_info_many();
-        replicaInfo.setInfo(info);
-    }
-
-    // Same comment on the ownership transfer applies here
-
-    auto protoRequestPtr = new proto::ReplicationRequestFindAll();
-
-    protoRequestPtr->set_priority(ptr->priority());
-    protoRequestPtr->set_database(ptr->database());
-
-    response.set_allocated_request(protoRequestPtr);
+    ptr->setInfo(response);
 }
 
 }}} // namespace lsst::qserv::replica
