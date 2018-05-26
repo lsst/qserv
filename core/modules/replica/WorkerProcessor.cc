@@ -687,7 +687,7 @@ WorkerRequest::Ptr WorkerProcessor::fetchNextForProcessing(
                 WorkerRequest::Ptr request = _newRequests.top();
                 _newRequests.pop();
 
-                request->setStatus(WorkerRequest::STATUS_IN_PROGRESS);
+                request->start();
                 _inProgressRequests.push_back(request);
 
                 return request;
@@ -712,7 +712,8 @@ WorkerProcessor::processingRefused(WorkerRequest::Ptr const& request) {
     // Update request's state before moving it back into
     // the input queue.
 
-    request->setStatus(WorkerRequest::STATUS_NONE);
+    request->stop();
+
     _inProgressRequests.remove_if(
         [&request] (WorkerRequest::Ptr const& ptr) {
             return ptr->id() == request->id();

@@ -223,10 +223,10 @@ void VerifyJob::startImpl(util::Lock const& lock) {
     std::vector<ReplicaInfo> replicas;
     if (nextReplicas(lock,
                      replicas,
-                     _maxReplicas)) {
+                     maxReplicas())) {
 
         for (ReplicaInfo const& replica: replicas) {
-            auto request = _controller->findReplica(
+            auto request = controller()->findReplica(
                 replica.worker(),
                 replica.database(),
                 replica.chunk(),
@@ -234,21 +234,20 @@ void VerifyJob::startImpl(util::Lock const& lock) {
                     self->onRequestFinish(request);
                 },
                 options().priority, /* inherited from the one of the current job */
-                _computeCheckSum,
+                computeCheckSum(),
                 true,               /* keepTracking*/
-                _id                 /* jobId */
+                id()                /* jobId */
             );
             _replicas[request->id()] = replica;
             _requests[request->id()] = request;
         }
-        setState(lock,
-                 State::IN_PROGRESS);
+
+        setState(lock, State::IN_PROGRESS);
+
     } else {
 
         // In theory this should never happen
-
-        setState(lock,
-                 State::FINISHED);
+        setState(lock, State::FINISHED);
     }
 }
 
@@ -264,12 +263,12 @@ void VerifyJob::cancelImpl(util::Lock const& lock) {
         auto const& request = entry.second;
         request->cancel();
         if (request->state() != Request::State::FINISHED) {
-            _controller->stopReplicaFind(
+            controller()->stopReplicaFind(
                 request->worker(),
                 request->id(),
                 nullptr,    /* onFinish */
                 true,       /* keepTracking */
-                _id         /* jobId */);
+                id()        /* jobId */);
         }
     }
     _replicas.clear();
@@ -298,11 +297,11 @@ void VerifyJob::onRequestFinish(FindRequest::Ptr request) {
     // test is made after acquering the lock to recheck the state in case if it
     // has transitioned while acquering the lock.
 
-    if (_state == State::FINISHED) return;
+    if (state() == State::FINISHED) return;
 
     util::Lock lock(_mtx, context() + "onRequestFinish");
 
-    if (_state == State::FINISHED) return;
+    if (state() == State::FINISHED) return;
 
     // The default version of the object won't have any difference
     // reported
@@ -340,7 +339,7 @@ void VerifyJob::onRequestFinish(FindRequest::Ptr request) {
         }
 
         std::vector<ReplicaInfo> otherReplicas;
-        _controller->serviceProvider()->databaseServices()->findReplicas(
+        controller()->serviceProvider()->databaseServices()->findReplicas(
                                                                 otherReplicas,
                                                                 oldReplica.chunk(),
                                                                 oldReplica.database());
@@ -375,7 +374,7 @@ void VerifyJob::onRequestFinish(FindRequest::Ptr request) {
                      1)) {
 
         for (ReplicaInfo const& replica: replicas) {
-            auto request = _controller->findReplica(
+            auto request = controller()->findReplica(
                 replica.worker(),
                 replica.database(),
                 replica.chunk(),
@@ -383,9 +382,9 @@ void VerifyJob::onRequestFinish(FindRequest::Ptr request) {
                     self->onRequestFinish(request);
                 },
                 options().priority, /* inherited from the one of the current job */
-                _computeCheckSum,
+                computeCheckSum(),
                 true,               /* keepTracking*/
-                _id                 /* jobId */
+                id()                /* jobId */
             );
             _replicas[request->id()] = replica;
             _requests[request->id()] = request;
@@ -400,8 +399,7 @@ void VerifyJob::onRequestFinish(FindRequest::Ptr request) {
         // the case.
 
         if (not _replicas.size()) {
-            finish(lock,
-                   ExtendedState::NONE);
+            finish(lock, ExtendedState::NONE);
         }
     }
 
@@ -423,7 +421,7 @@ bool VerifyJob::nextReplicas(util::Lock const& lock,
                              std::vector<ReplicaInfo>& replicas,
                              size_t numReplicas) {
 
-    return _controller->serviceProvider()->databaseServices()->findOldestReplicas(
+    return controller()->serviceProvider()->databaseServices()->findOldestReplicas(
                                                                     replicas,
                                                                     numReplicas);
 }

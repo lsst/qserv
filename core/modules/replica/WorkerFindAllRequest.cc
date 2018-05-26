@@ -149,6 +149,8 @@ bool WorkerFindAllRequestPOSIX::execute() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "execute" << "  database: " << database());
 
+    util::Lock lock(_mtx, context() + "execute");
+
     WorkerInfo   const& workerInfo    = _serviceProvider->config()->workerInfo(worker());
     DatabaseInfo const& databaseInfo  = _serviceProvider->config()->databaseInfo(database());
 
@@ -160,7 +162,7 @@ bool WorkerFindAllRequestPOSIX::execute() {
 
     std::map<unsigned int, ReplicaInfo::FileInfoCollection> chunk2fileInfoCollection;
     {
-        util::Lock lock(_mtxDataFolderOperations, context() + "execute");
+        util::Lock dataFolderLock(_mtxDataFolderOperations, context() + "execute");
 
         fs::path        const dataDir = fs::path(workerInfo.dataDir) / database();
         fs::file_status const stat    = fs::status(dataDir, ec);
@@ -227,7 +229,7 @@ bool WorkerFindAllRequestPOSIX::execute() {
         }
     }
     if (errorContext.failed) {
-        setStatus(STATUS_FAILED, errorContext.extendedStatus);
+        setStatus(lock, STATUS_FAILED, errorContext.extendedStatus);
         return true;
     }
 
@@ -248,7 +250,8 @@ bool WorkerFindAllRequestPOSIX::execute() {
                 PerformanceUtils::now(),
                 chunk2fileInfoCollection[chunk]);
     }
-    setStatus(STATUS_SUCCEEDED);
+
+    setStatus(lock, STATUS_SUCCEEDED);
     return true;
 }
 

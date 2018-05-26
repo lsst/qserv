@@ -104,7 +104,121 @@ WorkerRequest::ErrorContext WorkerRequest::reportErrorIf(
     return errorContext;
 }
 
-void WorkerRequest::setStatus(CompletionStatus status,
+void WorkerRequest::start() {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << "start");    
+
+    util::Lock lock(_mtx, context() + "start");
+
+    switch (status()) {
+
+        case STATUS_NONE:
+            setStatus(lock, STATUS_IN_PROGRESS);
+            break;
+
+        default:
+            throw std::logic_error(
+                            context() + "start  not allowed while in status: " +
+                            WorkerRequest::status2string(status()));
+    }
+}
+
+bool WorkerRequest::execute() {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << "execute");
+
+    util::Lock lock(_mtx, context() + "execute");
+
+    // Simulate request 'processing' for some maximum duration of time (milliseconds)
+    // while making a progress through increments of random duration of time.
+    // Success/failure modes will be also simulated using the corresponding generator.
+
+   switch (status()) {
+
+        case STATUS_IN_PROGRESS:
+            break;
+
+        case STATUS_IS_CANCELLING:
+            setStatus(lock, STATUS_CANCELLED);
+            throw WorkerRequestCancelled();
+
+        default:
+            throw std::logic_error(
+                            context() + "execute  not allowed while in status: " +
+                            WorkerRequest::status2string(status()));
+    }
+
+    _durationMillisec += ::incrementIvalMillisec.wait();
+
+    if (_durationMillisec < ::maxDurationMillisec) return false;
+
+    setStatus(lock, ::successRateGenerator.success() ?
+                        STATUS_SUCCEEDED :
+                        STATUS_FAILED);
+    return true;
+}
+
+void WorkerRequest::cancel() {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << "cancel");
+
+    util::Lock lock(_mtx, context() + "cancel");
+
+    switch (status()) {
+
+        case STATUS_NONE:
+        case STATUS_CANCELLED:
+            setStatus(lock, STATUS_CANCELLED);
+            break;
+
+        case STATUS_IN_PROGRESS:
+        case STATUS_IS_CANCELLING:
+            setStatus(lock, STATUS_IS_CANCELLING);
+            break;
+
+        /* Nothing to be done to completed requests */
+        case WorkerRequest::STATUS_SUCCEEDED:
+        case WorkerRequest::STATUS_FAILED:
+            break;
+    }
+}
+
+void WorkerRequest::rollback() {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << "rollback");
+
+    util::Lock lock(_mtx, context() + "rollback");
+
+    switch (status()) {
+
+        case STATUS_NONE:
+        case STATUS_IN_PROGRESS:
+            setStatus(lock, STATUS_NONE);
+            break;
+
+        case STATUS_IS_CANCELLING:
+            setStatus(lock, STATUS_CANCELLED);
+            throw WorkerRequestCancelled();
+            break;
+
+        default:
+            throw std::logic_error(
+                            context() + "rollback  not allowed while in status: " +
+                            WorkerRequest::status2string(status()));
+    }
+}
+
+void WorkerRequest::stop() {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << "stop");    
+
+    util::Lock lock(_mtx, context() + "stop");
+
+    setStatus(lock, STATUS_NONE);
+}
+
+void WorkerRequest::setStatus(util::Lock const& lock,
+                              CompletionStatus status,
                               ExtendedCompletionStatus extendedStatus) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "setStatus  "
@@ -131,7 +245,7 @@ void WorkerRequest::setStatus(CompletionStatus status,
             // meaninful value in case if the request was cancelled while it was sitting
             // in the input queue before any attempt to execute the one was undertaken
 
-            if (!_performance.start_time) { _performance.setUpdateStart(); }
+            if (0 == _performance.start_time) _performance.setUpdateStart();
 
         case STATUS_SUCCEEDED:
         case STATUS_FAILED:
@@ -140,7 +254,7 @@ void WorkerRequest::setStatus(CompletionStatus status,
 
         default:
             throw std::logic_error(
-                            "WorkerRequest::setStatus - unhandled status: " +
+                            context() + "setStatus  unhandled status: " +
                             std::to_string(status));
     }
 
@@ -150,84 +264,6 @@ void WorkerRequest::setStatus(CompletionStatus status,
 
     _extendedStatus = extendedStatus;
     _status = status;
-}
-
-bool WorkerRequest::execute() {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << "execute");
-
-    // Simulate request 'processing' for some maximum duration of time (milliseconds)
-    // while making a progress through increments of random duration of time.
-    // Success/failure modes will be also simulated using the corresponding generator.
-
-   switch (status()) {
-
-        case STATUS_IN_PROGRESS:
-            break;
-
-        case STATUS_IS_CANCELLING:
-            setStatus(STATUS_CANCELLED);
-            throw WorkerRequestCancelled();
-
-        default:
-            throw std::logic_error("WorkerRequest::execute not allowed while in status: " +
-                                    WorkerRequest::status2string(status()));
-    }
-
-    _durationMillisec += ::incrementIvalMillisec.wait();
-
-    if (_durationMillisec < ::maxDurationMillisec) return false;
-
-    setStatus(::successRateGenerator.success() ?
-                    STATUS_SUCCEEDED :
-                    STATUS_FAILED);
-    return true;
-}
-
-void WorkerRequest::cancel() {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << "cancel");
-
-    switch (status()) {
-
-        case STATUS_NONE:
-        case STATUS_CANCELLED:
-            setStatus(STATUS_CANCELLED);
-            break;
-
-        case STATUS_IN_PROGRESS:
-        case STATUS_IS_CANCELLING:
-            setStatus(STATUS_IS_CANCELLING);
-            break;
-
-        /* Nothing to be done to completed requests */
-        case WorkerRequest::STATUS_SUCCEEDED:
-        case WorkerRequest::STATUS_FAILED:
-            break;
-    }
-}
-
-void WorkerRequest::rollback() {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << "rollback");
-
-    switch (status()) {
-
-        case STATUS_NONE:
-        case STATUS_IN_PROGRESS:
-            setStatus(STATUS_NONE);
-            break;
-
-        case STATUS_IS_CANCELLING:
-            setStatus(STATUS_CANCELLED);
-            throw WorkerRequestCancelled();
-            break;
-
-        default:
-            throw std::logic_error(
-                            "WorkerRequest::rollback not allowed while in status: " +
-                            WorkerRequest::status2string(status()));
-    }
 }
 
 }}} // namespace lsst::qserv::replica

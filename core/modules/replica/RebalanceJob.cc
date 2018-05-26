@@ -109,14 +109,14 @@ RebalanceJob::RebalanceJob(std::string const& databaseFamily,
 
 RebalanceJob::~RebalanceJob() {
     // Make sure all chuks locked by this job are released
-    _controller->serviceProvider()->chunkLocker().release(_id);
+    controller()->serviceProvider()->chunkLocker().release(id());
 }
 
 RebalanceJobResult const& RebalanceJob::getReplicaData() const {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "getReplicaData");
 
-    if (_state == State::FINISHED) return _replicaData;
+    if (state() == State::FINISHED) return _replicaData;
 
     throw std::logic_error(
         "RebalanceJob::getReplicaData  the method can't be called while the job hasn't finished");
@@ -138,17 +138,16 @@ void RebalanceJob::startImpl(util::Lock const& lock) {
     auto self = shared_from_base<RebalanceJob>();
 
     _findAllJob = FindAllJob::create(
-        _databaseFamily,
-        _controller,
-        _id,
+        databaseFamily(),
+        controller(),
+        id(),
         [self] (FindAllJob::Ptr job) {
             self->onPrecursorJobFinish();
         }
     );
     _findAllJob->start();
 
-    setState(lock,
-             State::IN_PROGRESS);
+    setState(lock, State::IN_PROGRESS);
 }
 
 void RebalanceJob::cancelImpl(util::Lock const& lock) {
@@ -200,9 +199,9 @@ void RebalanceJob::restart(util::Lock const& lock) {
     auto self = shared_from_base<RebalanceJob>();
 
     _findAllJob = FindAllJob::create(
-        _databaseFamily,
-        _controller,
-        _id,
+        databaseFamily(),
+        controller(),
+        id(),
         [self] (FindAllJob::Ptr job) {
             self->onPrecursorJobFinish();
         }
@@ -229,356 +228,339 @@ void RebalanceJob::onPrecursorJobFinish() {
     // test is made after acquering the lock to recheck the state in case if it
     // has transitioned while acquering the lock.
 
-    if (_state == State::FINISHED) return;
+    if (state() == State::FINISHED) return;
 
     util::Lock lock(_mtx, context() + "onPrecursorJobFinish");
 
-    if (_state == State::FINISHED) return;
+    if (state() == State::FINISHED) return;
 
-    // IMPLEMENTATION NOTE: using a single-iteration loop in order to bail
-    // out of it at any moment. When this happens object state will get
-    // re-evaluated and a client will get notified if needed.
+    ////////////////////////////////////////////////////////////////////
+    // Do not proceed with the replication effort unless running the job
+    // under relaxed condition.
 
-    do {
+    if (_findAllJob->extendedState() != ExtendedState::SUCCESS) {
 
-        ////////////////////////////////////////////////////////////////////
-        // Do not proceed with the replication effort unless running the job
-        // under relaxed condition.
+        LOGS(_log, LOG_LVL_ERROR, context()
+             << "onPrecursorJobFinish  failed due to the precurson job failure");
 
-        if (_findAllJob->extendedState() != ExtendedState::SUCCESS) {
+        finish(lock, ExtendedState::FAILED);
+        return;
+    }
 
-            LOGS(_log, LOG_LVL_ERROR, context()
-                 << "onPrecursorJobFinish  failed due to the precurson job failure");
+    ///////////////////////////////////////////////
+    // Analyse results and prepare a rebalance plan
 
-            finish(lock,
-                   ExtendedState::FAILED);
-            break;
+    FindAllJobResult const& replicaData = _findAllJob->getReplicaData();
+
+    // Compute key parameters of the algorithm by counting the number of 'useful'
+    // workers and 'good' chunks.
+
+    _replicaData.totalWorkers    = 0;     // not counting workers which failed to report chunks
+    _replicaData.totalGoodChunks = 0;     // good chunks reported by the precursor job
+
+    for (auto&& entry: replicaData.workers) {
+        bool const  reported = entry.second;
+        if (reported) {
+            _replicaData.totalWorkers++;
         }
-
-        ///////////////////////////////////////////////
-        // Analyse results and prepare a rebalance plan
-
-        FindAllJobResult const& replicaData = _findAllJob->getReplicaData();
-
-        // Compute key parameters of the algorithm by counting the number of 'useful'
-        // workers and 'good' chunks.
-
-        _replicaData.totalWorkers    = 0;     // not counting workers which failed to report chunks
-        _replicaData.totalGoodChunks = 0;     // good chunks reported by the precursor job
-
-        for (auto&& entry: replicaData.workers) {
-            bool const  reported = entry.second;
-            if (reported) {
-                _replicaData.totalWorkers++;
+    }
+    for (auto&& chunkEntry: replicaData.isGood) {
+        for (auto&& workerEntry: chunkEntry.second) {
+            bool const  isGood = workerEntry.second;
+            if (isGood) {
+                _replicaData.totalGoodChunks++;
             }
         }
-        for (auto&& chunkEntry: replicaData.isGood) {
-            for (auto&& workerEntry: chunkEntry.second) {
-                bool const  isGood = workerEntry.second;
-                if (isGood) {
-                    _replicaData.totalGoodChunks++;
+    }
+    if (not _replicaData.totalWorkers or not _replicaData.totalGoodChunks) {
+
+        LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish:  "
+             << "no eligible 'good' chunks found");
+
+        finish(lock, ExtendedState::SUCCESS);
+        return;
+    }
+
+    _replicaData.avgChunks = _replicaData.totalGoodChunks / _replicaData.totalWorkers;
+    if (not _replicaData.avgChunks) {
+
+        LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish:  "
+             << "the average number of 'good' chunks per worker is 0. "
+             << "This won't trigger the operation");
+
+        finish(lock, ExtendedState::SUCCESS);
+        return;
+    }
+
+    // This map is prepopulated with all workers which have responded to the FindAll
+    // requests. It's meant to tell the planner which workers to avoid when looking for
+    // a new home for a chunk to be moved elswhere from an overpopulated
+    // worker.
+    //
+    // IMPORTANT: the map be updated by the planner as it will be deciding
+    // on new destinations for the moved chunks.
+
+    std::map<std::string,                   // worker
+             std::map<unsigned int,         // chunk
+                      bool>> worker2chunks;
+
+    for (auto&& entry: replicaData.workers) {
+        std::string const& worker   = entry.first;
+        bool        const  reported = entry.second;
+        if (reported) {
+            worker2chunks[worker] = std::map<unsigned int,bool>();
+        }
+    }
+    for (auto chunk: replicaData.chunks.chunkNumbers()) {
+        auto chunkMap = replicaData.chunks.chunk(chunk);
+
+        for (auto&& database: chunkMap.databaseNames()) {
+            auto databaseMap = chunkMap.database(database);
+
+            for (auto&& worker: databaseMap.workerNames()) {
+                worker2chunks[worker][chunk] = true;
+            }
+        }
+    }
+
+    // Get a disposition of good chunks accross workers. This map will be used
+    // on the next step as a foundation for two collections: overpopulated ('source')
+    // and underpopulated ('destination') workers.
+    //
+    // NOTE: this algorithm will also create entries for workers which don't
+    // have any good (or any) chunks. We need to included those later into
+    // a collection of the underpopulated workers.
+
+    std::map<std::string,
+             std::vector<unsigned int>> worker2goodChunks;
+
+    for (auto&& entry: replicaData.workers) {
+        std::string const& worker   = entry.first;
+        bool        const  reported = entry.second;
+        if (reported) {
+            worker2goodChunks[worker] = std::vector<unsigned int>();
+        }
+    }
+    for (auto&& chunkEntry: replicaData.isGood) {
+        unsigned int const chunk = chunkEntry.first;
+        for (auto&& workerEntry: chunkEntry.second) {
+            std::string const& worker = workerEntry.first;
+            bool        const  isGood = workerEntry.second;
+            if (isGood) {
+                worker2goodChunks[worker].push_back(chunk);
+            }
+        }
+    }
+
+    // Get a disposition of the source workers along with chunks located
+    // on the workers. The candidate worker must be strictly
+    // above the previously computed average.
+    //
+    // NOTE: this collection will be sorted (descending order) based on
+    // the total number of chunks per each worker entry.
+
+    std::vector<std::pair<std::string,
+                          std::vector<unsigned int>>> sourceWorkers;
+
+    for (auto&& entry: worker2goodChunks) {
+        size_t const numChunks = entry.second.size();
+        if (numChunks > _replicaData.avgChunks) {
+            sourceWorkers.push_back(entry);
+        }
+    }
+    if (not sourceWorkers.size()) {
+
+        LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish:  "
+             << "no overloaded 'source' workers found");
+
+        finish(lock, ExtendedState::SUCCESS);
+        return;
+    }
+    std::sort(
+        sourceWorkers.begin(),
+        sourceWorkers.end(),
+        [] (std::pair<std::string, std::vector<unsigned int>> const& a,
+            std::pair<std::string, std::vector<unsigned int>> const& b) {
+            return b.second.size() < a.second.size();
+        }
+    );
+
+    // Get a disposition of the destination workers along with the number
+    // of available slots for chunks which can be hosted by the workers
+    // before they'll hist the average. The number of good chunks on each
+    // such (candidate) worker must be strictly below the previously computed
+    // average.
+
+    std::vector<std::pair<std::string,
+                          size_t>> destinationWorkers;
+
+    for (auto&& entry: worker2goodChunks) {
+        std::string const worker    = entry.first;
+        size_t      const numChunks = entry.second.size();
+
+        if (numChunks < _replicaData.avgChunks) {
+            destinationWorkers.push_back(
+                std::make_pair(worker,
+                               _replicaData.avgChunks - numChunks));
+        }
+    }
+    if (not destinationWorkers.size()) {
+
+        LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish:  "
+             << "no underloaded 'destination' workers found");
+
+        finish(lock, ExtendedState::SUCCESS);
+        return;
+    }
+
+    // Prepare the rebalance plan based on the following considerations:
+    //
+    // - use the above formed map 'worker2chunks' to avoid chunk collisions
+    //   and to record claimed destination workers
+    //
+    // - use and update the above formed map 'destinationWorkers'
+    //   to find a candidate worker with fewer number of chunks
+    //
+    // - the algorithim will go over all chunks of each eligible (source) worker
+    //   to see if it's possible to find a new home for a chunk until
+    //   the number of extra chunks parameter is exausted. Note. it's okay
+    //   if it won't be possible to solve this problem for any chunk
+    //   of the source worker - this will be just reported into the log
+    //   stream before moving to the next worker. This problem will be
+    //   resolved on the next iteration of the job after taking a fresh
+    //   snapshot of chunk disposition. Possible infinite loops (over job
+    //   iterations) can be resolved by setting some reasonable limit onto
+    //   the total number of iterations before this job will be supposed
+    //   to 'succced' in one way or another. Perhaps a special status
+    //   flag for this job could be introduced to let a caller know about
+    //   this situation.
+    //
+    // ATTENTION: this algorithm may need to be optimized for performance
+
+    _replicaData.plan.clear();
+
+    for (auto&& sourceWorkerEntry: sourceWorkers) {
+
+        std::string               const& sourceWorker   = sourceWorkerEntry.first;
+        std::vector<unsigned int> const& chunks         = sourceWorkerEntry.second;
+
+        // Will get decremented in the chunks loop later when looking for chunks
+        // to be moved elswhere.
+        size_t numExtraChunks = chunks.size() - _replicaData.avgChunks;
+
+        LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish: "
+             << " sourceWorker: " << sourceWorker
+             << " numExtraChunks: " << numExtraChunks);
+
+        for (unsigned int chunk: chunks) {
+
+            if (not numExtraChunks) break;
+
+            // Always sort the collection in the descending order to make sure
+            // least populated workers are considered first
+            std::sort(
+                destinationWorkers.begin(),
+                destinationWorkers.end(),
+                [] (std::pair<std::string, size_t> const& a,
+                    std::pair<std::string, size_t> const& b) {
+                    return b.second < a.second;
                 }
+            );
+
+            // Search for a candidate worker where to move this chunk to
+            //
+            // IMPLEMENTTION NOTES: using non-const references in the loop to allow
+            // updates to the number of slots
+
+            for (auto&& destinationWorkerEntry: destinationWorkers) {
+                std::string const& destinationWorker = destinationWorkerEntry.first;
+                size_t&            numSlots          = destinationWorkerEntry.second;
+
+                // Are there any awailable slots on the worker?
+                if (not numSlots) continue;
+
+                // Skip this worker if it already has this chunk
+                if (worker2chunks[destinationWorker].count(chunk)) continue;
+
+                // Found the one. Update
+
+                _replicaData.plan[chunk][sourceWorker] = destinationWorker;
+                worker2chunks[destinationWorker][chunk] = true;
+                numSlots--;
+
+                --numExtraChunks;
+                break;
             }
         }
-        if (not _replicaData.totalWorkers or not _replicaData.totalGoodChunks) {
+    }
 
-            LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish:  "
-                 << "no eligible 'good' chunks found");
+    // Finish right away if the 'estimate' mode requested.
+    if (estimateOnly()) {
+        finish(lock, ExtendedState::SUCCESS);
+        return;
+    }
 
-            finish(lock,
-                   ExtendedState::SUCCESS);
-            break;
+    // Finish right away if no badly unbalanced workers found to trigger
+    // the operation
+
+    if (_replicaData.plan.empty()) {
+        finish(lock, ExtendedState::SUCCESS);
+        return;
+    }
+
+    // Now submit chunk movement requests for chunks which could be
+    // locked.
+    //
+    // TODO: Limit the number of migrated chunks to avoid overloading
+    // the cluster with too many simultaneous requests. The chunk migration
+    // limit should be specifid via the configuration.
+
+    auto self = shared_from_base<RebalanceJob>();
+
+    size_t numFailedLocks = 0;
+
+    for (auto&& chunkEntry: _replicaData.plan) {
+        unsigned int const chunk = chunkEntry.first;
+        if (not controller()->serviceProvider()->chunkLocker().lock({databaseFamily(), chunk}, id())) {
+            ++_numFailedLocks;
+            continue;
         }
+        for (auto&& sourceWorkerEntry: chunkEntry.second) {
+            std::string const& sourceWorker      = sourceWorkerEntry.first;
+            std::string const& destinationWorker = sourceWorkerEntry.second;
 
-        _replicaData.avgChunks = _replicaData.totalGoodChunks / _replicaData.totalWorkers;
-        if (not _replicaData.avgChunks) {
-
-            LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish:  "
-                 << "the average number of 'good' chunks per worker is 0. "
-                 << "This won't trigger the operation");
-
-            finish(lock,
-                   ExtendedState::SUCCESS);
-            break;
-        }
-
-        // This map is prepopulated with all workers which have responded to the FindAll
-        // requests. It's meant to tell the planner which workers to avoid when looking for
-        // a new home for a chunk to be moved elswhere from an overpopulated
-        // worker.
-        //
-        // IMPORTANT: the map be updated by the planner as it will be deciding
-        // on new destinations for the moved chunks.
-
-        std::map<std::string,                   // worker
-                 std::map<unsigned int,         // chunk
-                          bool>> worker2chunks;
-
-        for (auto&& entry: replicaData.workers) {
-            std::string const& worker   = entry.first;
-            bool        const  reported = entry.second;
-            if (reported) {
-                worker2chunks[worker] = std::map<unsigned int,bool>();
-            }
-        }
-        for (auto chunk: replicaData.chunks.chunkNumbers()) {
-            auto chunkMap = replicaData.chunks.chunk(chunk);
-
-            for (auto&& database: chunkMap.databaseNames()) {
-                auto databaseMap = chunkMap.database(database);
-
-                for (auto&& worker: databaseMap.workerNames()) {
-                    worker2chunks[worker][chunk] = true;
+            auto job = MoveReplicaJob::create(
+                databaseFamily(),
+                chunk,
+                sourceWorker,
+                destinationWorker,
+                true,   /* purge */
+                controller(),
+                id(),
+                [self](MoveReplicaJob::Ptr job) {
+                    self->onJobFinish(job);
                 }
-            }
+            );
+            _moveReplicaJobs.push_back(job);
+            _chunk2jobs[chunk][sourceWorker] = job;
+            job->start();
         }
+    }
 
-        // Get a disposition of good chunks accross workers. This map will be used
-        // on the next step as a foundation for two collections: overpopulated ('source')
-        // and underpopulated ('destination') workers.
-        //
-        // NOTE: this algorithm will also create entries for workers which don't
-        // have any good (or any) chunks. We need to included those later into
-        // a collection of the underpopulated workers.
+    // Finish right away if no jobs were submitted and no failed attempts
+    // to lock chunks were encountered.
 
-        std::map<std::string,
-                 std::vector<unsigned int>> worker2goodChunks;
+    if (not _moveReplicaJobs.size()) {
+        if (not numFailedLocks) {
+            finish(lock, ExtendedState::SUCCESS);
+        } else {
 
-        for (auto&& entry: replicaData.workers) {
-            std::string const& worker   = entry.first;
-            bool        const  reported = entry.second;
-            if (reported) {
-                worker2goodChunks[worker] = std::vector<unsigned int>();
-            }
+            // Start another iteration by requesting the fresh state of
+            // chunks within the family or until it all fails.
+
+            restart(lock);
         }
-        for (auto&& chunkEntry: replicaData.isGood) {
-            unsigned int const chunk = chunkEntry.first;
-            for (auto&& workerEntry: chunkEntry.second) {
-                std::string const& worker = workerEntry.first;
-                bool        const  isGood = workerEntry.second;
-                if (isGood) {
-                    worker2goodChunks[worker].push_back(chunk);
-                }
-            }
-        }
-
-        // Get a disposition of the source workers along with chunks located
-        // on the workers. The candidate worker must be strictly
-        // above the previously computed average.
-        //
-        // NOTE: this collection will be sorted (descending order) based on
-        // the total number of chunks per each worker entry.
-
-        std::vector<std::pair<std::string,
-                              std::vector<unsigned int>>> sourceWorkers;
-
-        for (auto&& entry: worker2goodChunks) {
-            size_t const numChunks = entry.second.size();
-            if (numChunks > _replicaData.avgChunks) {
-                sourceWorkers.push_back(entry);
-            }
-        }
-        if (not sourceWorkers.size()) {
-
-            LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish:  "
-                 << "no overloaded 'source' workers found");
-
-            finish(lock,
-                   ExtendedState::SUCCESS);
-            break;
-        }
-        std::sort(
-            sourceWorkers.begin(),
-            sourceWorkers.end(),
-            [] (std::pair<std::string, std::vector<unsigned int>> const& a,
-                std::pair<std::string, std::vector<unsigned int>> const& b) {
-                return b.second.size() < a.second.size();
-            }
-        );
-
-        // Get a disposition of the destination workers along with the number
-        // of available slots for chunks which can be hosted by the workers
-        // before they'll hist the average. The number of good chunks on each
-        // such (candidate) worker must be strictly below the previously computed
-        // average.
-
-        std::vector<std::pair<std::string,
-                              size_t>> destinationWorkers;
-
-        for (auto&& entry: worker2goodChunks) {
-            std::string const worker    = entry.first;
-            size_t      const numChunks = entry.second.size();
-
-            if (numChunks < _replicaData.avgChunks) {
-                destinationWorkers.push_back(
-                    std::make_pair(worker,
-                                   _replicaData.avgChunks - numChunks));
-            }
-        }
-        if (not destinationWorkers.size()) {
-
-            LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish:  "
-                 << "no underloaded 'destination' workers found");
-
-            finish(lock,
-                   ExtendedState::SUCCESS);
-            break;
-        }
-
-        // Prepare the rebalance plan based on the following considerations:
-        //
-        // - use the above formed map 'worker2chunks' to avoid chunk collisions
-        //   and to record claimed destination workers
-        //
-        // - use and update the above formed map 'destinationWorkers'
-        //   to find a candidate worker with fewer number of chunks
-        //
-        // - the algorithim will go over all chunks of each eligible (source) worker
-        //   to see if it's possible to find a new home for a chunk until
-        //   the number of extra chunks parameter is exausted. Note. it's okay
-        //   if it won't be possible to solve this problem for any chunk
-        //   of the source worker - this will be just reported into the log
-        //   stream before moving to the next worker. This problem will be
-        //   resolved on the next iteration of the job after taking a fresh
-        //   snapshot of chunk disposition. Possible infinite loops (over job
-        //   iterations) can be resolved by setting some reasonable limit onto
-        //   the total number of iterations before this job will be supposed
-        //   to 'succced' in one way or another. Perhaps a special status
-        //   flag for this job could be introduced to let a caller know about
-        //   this situation.
-        //
-        // ATTENTION: this algorithm may need to be optimized for performance
-
-        _replicaData.plan.clear();
-
-        for (auto&& sourceWorkerEntry: sourceWorkers) {
-
-            std::string               const& sourceWorker   = sourceWorkerEntry.first;
-            std::vector<unsigned int> const& chunks         = sourceWorkerEntry.second;
-
-            // Will get decremented in the chunks loop later when looking for chunks
-            // to be moved elswhere.
-            size_t numExtraChunks = chunks.size() - _replicaData.avgChunks;
-
-            LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish: "
-                 << " sourceWorker: " << sourceWorker
-                 << " numExtraChunks: " << numExtraChunks);
-
-            for (unsigned int chunk: chunks) {
-
-                if (not numExtraChunks) break;
-
-                // Always sort the collection in the descending order to make sure
-                // least populated workers are considered first
-                std::sort(
-                    destinationWorkers.begin(),
-                    destinationWorkers.end(),
-                    [] (std::pair<std::string, size_t> const& a,
-                        std::pair<std::string, size_t> const& b) {
-                        return b.second < a.second;
-                    }
-                );
-
-                // Search for a candidate worker where to move this chunk to
-                //
-                // IMPLEMENTTION NOTES: using non-const references in the loop to allow
-                // updates to the number of slots
-
-                for (auto&& destinationWorkerEntry: destinationWorkers) {
-                    std::string const& destinationWorker = destinationWorkerEntry.first;
-                    size_t&            numSlots          = destinationWorkerEntry.second;
-
-                    // Are there any awailable slots on the worker?
-                    if (not numSlots) continue;
-
-                    // Skip this worker if it already has this chunk
-                    if (worker2chunks[destinationWorker].count(chunk)) continue;
-
-                    // Found the one. Update
-
-                    _replicaData.plan[chunk][sourceWorker] = destinationWorker;
-                    worker2chunks[destinationWorker][chunk] = true;
-                    numSlots--;
-
-                    --numExtraChunks;
-                    break;
-                }
-            }
-        }
-
-        // Finish right away if the 'estimate' mode requested.
-        if (_estimateOnly) {
-            finish(lock,
-                   ExtendedState::SUCCESS);
-            break;
-        }
-
-        // Finish right away if no badly unbalanced workers found to trigger
-        // the operation
-
-        if (_replicaData.plan.empty()) {
-            finish(lock,
-                   ExtendedState::SUCCESS);
-            break;
-        }
-
-        // Now submit chunk movement requests for chunks which could be
-        // locked.
-        //
-        // TODO: Limit the number of migrated chunks to avoid overloading
-        // the cluster with too many simultaneous requests. The chunk migration
-        // limit should be specifid via the configuration.
-
-        auto self = shared_from_base<RebalanceJob>();
-
-        size_t numFailedLocks = 0;
-
-        for (auto&& chunkEntry: _replicaData.plan) {
-            unsigned int const chunk = chunkEntry.first;
-            if (not _controller->serviceProvider()->chunkLocker().lock({_databaseFamily, chunk}, _id)) {
-                ++_numFailedLocks;
-                continue;
-            }
-            for (auto&& sourceWorkerEntry: chunkEntry.second) {
-                std::string const& sourceWorker      = sourceWorkerEntry.first;
-                std::string const& destinationWorker = sourceWorkerEntry.second;
-
-                auto job = MoveReplicaJob::create(
-                    _databaseFamily,
-                    chunk,
-                    sourceWorker,
-                    destinationWorker,
-                    true,   /* purge */
-                    _controller,
-                    _id,
-                    [self](MoveReplicaJob::Ptr job) {
-                        self->onJobFinish(job);
-                    }
-                );
-                _moveReplicaJobs.push_back(job);
-                _chunk2jobs[chunk][sourceWorker] = job;
-                job->start();
-            }
-        }
-
-        // Finish right away if no jobs were submitted and no failed attempts
-        // to lock chunks were encountered.
-
-        if (not _moveReplicaJobs.size()) {
-            if (not numFailedLocks) {
-                finish(lock,
-                       ExtendedState::SUCCESS);
-            } else {
-
-                // Start another iteration by requesting the fresh state of
-                // chunks within the family or until it all fails.
-
-                restart(lock);
-                return;
-            }
-        }
-
-    } while (false);
+    }
 }
 
 void RebalanceJob::onJobFinish(MoveReplicaJob::Ptr const& job) {
@@ -596,14 +578,14 @@ void RebalanceJob::onJobFinish(MoveReplicaJob::Ptr const& job) {
     // test is made after acquering the lock to recheck the state in case if it
     // has transitioned while acquering the lock.
 
-    if (_state == State::FINISHED) {
+    if (state() == State::FINISHED) {
         release(job->chunk());
         return;
     }
 
     util::Lock lock(_mtx, context() + "onJobFinish");
 
-    if (_state == State::FINISHED) {
+    if (state() == State::FINISHED) {
         release(job->chunk());
         return;
     }
@@ -663,8 +645,7 @@ void RebalanceJob::onJobFinish(MoveReplicaJob::Ptr const& job) {
             restart(lock);
 
         } else {
-            finish(lock,
-                   ExtendedState::FAILED);
+            finish(lock, ExtendedState::FAILED);
         }
     }
 }
@@ -678,7 +659,7 @@ void RebalanceJob::release(unsigned int chunk) {
     LOGS(_log, LOG_LVL_DEBUG, context() << "release  chunk=" << chunk);
 
     Chunk chunkObj {databaseFamily(), chunk};
-    _controller->serviceProvider()->chunkLocker().release(chunkObj);
+    controller()->serviceProvider()->chunkLocker().release(chunkObj);
 }
 
 }}} // namespace lsst::qserv::replica

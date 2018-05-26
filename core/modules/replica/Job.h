@@ -101,6 +101,9 @@ public:
         /// The job has been fully implemented
         SUCCESS,
 
+        /// Problems with job configuration found
+        CONFIG_ERROR,
+
         /// The job has failed
         FAILED,
 
@@ -416,6 +419,11 @@ private:
 
 protected:
 
+    /// Mutex guarding internal state
+    mutable util::Mutex _mtx;
+
+private:
+
     /// The unique identifier of the job
     std::string _id;
 
@@ -456,9 +464,6 @@ protected:
     /// with status: FINISHED::EXPIRED.
     unsigned int _expirationIvalSec;
     std::unique_ptr<boost::asio::deadline_timer> _expirationTimerPtr;
-
-    /// Mutex guarding internal state
-    mutable util::Mutex _mtx;
 };
 
 /// Comparision type for strict weak ordering reaquired by std::priority_queue

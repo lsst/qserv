@@ -159,10 +159,12 @@ bool WorkerFindRequestPOSIX::execute() {
          << "  database: " << database()
          << "  chunk: "    << chunk());
 
+    util::Lock lock(_mtx, context() + "execute");
+
     // Abort the operation right away if that's the case
 
     if (_status == STATUS_IS_CANCELLING) {
-        setStatus(STATUS_CANCELLED);
+        setStatus(lock, STATUS_CANCELLED);
         throw WorkerRequestCancelled();
     }
 
@@ -189,7 +191,7 @@ bool WorkerFindRequestPOSIX::execute() {
 
         // Check if the data directory exists and it can be read
 
-        util::Lock lock(_mtxDataFolderOperations, context() + "execute");
+        util::Lock dataFolderLock(_mtxDataFolderOperations, context() + "execute");
 
         fs::path        const dataDir = fs::path(workerInfo.dataDir) / database();
         fs::file_status const stat    = fs::status(dataDir, ec);
@@ -205,7 +207,7 @@ bool WorkerFindRequestPOSIX::execute() {
                     "the directory does not exists: " + dataDir.string());
 
         if (errorContext.failed) {
-            setStatus(STATUS_FAILED, errorContext.extendedStatus);
+            setStatus(lock, STATUS_FAILED, errorContext.extendedStatus);
             return true;
         }
 
@@ -274,7 +276,7 @@ bool WorkerFindRequestPOSIX::execute() {
             }
         }
         if (errorContext.failed) {
-            setStatus(STATUS_FAILED, errorContext.extendedStatus);
+            setStatus(lock, STATUS_FAILED, errorContext.extendedStatus);
             return true;
         }
 
@@ -298,7 +300,7 @@ bool WorkerFindRequestPOSIX::execute() {
                 PerformanceUtils::now(),
                 fileInfoCollection);
 
-            setStatus(STATUS_SUCCEEDED);
+            setStatus(lock, STATUS_SUCCEEDED);
 
             return true;
         }
@@ -344,7 +346,7 @@ bool WorkerFindRequestPOSIX::execute() {
                 );
             }
             if (errorContext.failed) {
-                setStatus(STATUS_FAILED, errorContext.extendedStatus);
+                setStatus(lock, STATUS_FAILED, errorContext.extendedStatus);
                 return true;
             }
 
@@ -370,7 +372,7 @@ bool WorkerFindRequestPOSIX::execute() {
                 PerformanceUtils::now(),
                 fileInfoCollection);
 
-            setStatus(STATUS_SUCCEEDED);
+            setStatus(lock, STATUS_SUCCEEDED);
         }
 
     } catch (std::exception const& ex) {
@@ -381,7 +383,7 @@ bool WorkerFindRequestPOSIX::execute() {
                     ExtendedCompletionStatus::EXT_STATUS_FILE_READ,
                     ex.what());
 
-        setStatus(STATUS_FAILED, errorContext.extendedStatus);
+        setStatus(lock, STATUS_FAILED, errorContext.extendedStatus);
     }
 
     // If done (either way) then get rid of the engine right away because

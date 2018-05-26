@@ -420,7 +420,8 @@ void MessengerConnector::responseReceived(boost::system::error_code const& ec,
                                           size_t bytes_transferred) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "responseReceived"
-         << "  _currentRequest->id=" << (_currentRequest ? _currentRequest->id : ""));
+         << "  _currentRequest->id=" << (_currentRequest ? _currentRequest->id : "")
+         << " error_code=" << ec);
 
     // The notification if any should be happening outside the lock guard
     // to prevent deadlocks
@@ -500,6 +501,10 @@ void MessengerConnector::responseReceived(boost::system::error_code const& ec,
 
                     } else {
 
+                        LOGS(_log, LOG_LVL_DEBUG, context() << "responseReceived"
+                             << "  _currentRequest->id=" << _currentRequest->id
+                             << " bytes=" << bytes);
+
                         // Then receive response body into a buffer inside the wrapper
 
                         if (syncReadMessageImpl(lock,
@@ -568,6 +573,10 @@ boost::system::error_code MessengerConnector::syncReadFrame(util::Lock const& lo
         boost::asio::transfer_at_least(frameLength),
         ec
     );
+    LOGS(_log, LOG_LVL_DEBUG, context() << "syncReadFrame"
+         << "  _currentRequest->id=" << (_currentRequest ? _currentRequest->id : "")
+         << " error_code=" << ec);
+
     if (not ec) bytes = buf.parseLength();
     return ec;
 }
@@ -608,6 +617,10 @@ boost::system::error_code MessengerConnector::syncReadMessageImpl(util::Lock con
         boost::asio::transfer_at_least(bytes),
         ec
     );
+    LOGS(_log, LOG_LVL_DEBUG, context() << "syncReadMessageImpl"
+         << "  _currentRequest->id=" << (_currentRequest ? _currentRequest->id : "")
+         << " error_code=" << ec);
+
     return ec;
 }
 

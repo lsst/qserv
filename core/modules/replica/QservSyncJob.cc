@@ -92,7 +92,7 @@ QservSyncJobResult const& QservSyncJob::getReplicaData() const {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "getReplicaData");
 
-    if (_state == State::FINISHED) return _replicaData;
+    if (state() == State::FINISHED) return _replicaData;
 
     throw std::logic_error(
         "QservSyncJob::getReplicaData  the method can't be called while the job hasn't finished");
@@ -108,12 +108,12 @@ void QservSyncJob::startImpl(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
 
-    auto const databases        = _controller->serviceProvider()->config()->databases(_databaseFamily);
-    auto const databaseServices = _controller->serviceProvider()->databaseServices();
-    auto const qservMgtServices = _controller->serviceProvider()->qservMgtServices();
+    auto const databases        = controller()->serviceProvider()->config()->databases(databaseFamily());
+    auto const databaseServices = controller()->serviceProvider()->databaseServices();
+    auto const qservMgtServices = controller()->serviceProvider()->qservMgtServices();
     auto const self             = shared_from_base<QservSyncJob>();
 
-    for (auto&& worker: _controller->serviceProvider()->config()->workers()) {
+    for (auto&& worker: controller()->serviceProvider()->config()->workers()) {
 
         // Pull replicas from the database for the worker
 
@@ -130,8 +130,7 @@ void QservSyncJob::startImpl(util::Lock const& lock) {
 
                 // Set this state and cleanup before aborting the job
 
-                setState(lock,
-                         State::FINISHED, ExtendedState::FAILED);
+                setState(lock, State::FINISHED, ExtendedState::FAILED);
 
                 cancelImpl(lock);
 
@@ -154,8 +153,8 @@ void QservSyncJob::startImpl(util::Lock const& lock) {
             qservMgtServices->setReplicas(
                 worker,
                 newReplicas,
-                _force,
-                _id,    /* jobId */
+                force(),
+                id(),   /* jobId */
                 [self] (SetReplicasQservMgtRequest::Ptr const& request) {
                     self->onRequestFinish(request);
                 }
@@ -206,11 +205,11 @@ void QservSyncJob::onRequestFinish(SetReplicasQservMgtRequest::Ptr const& reques
     // test is made after acquering the lock to recheck the state in case if it
     // has transitioned while acquering the lock.
 
-    if (_state == State::FINISHED) return;
+    if (state() == State::FINISHED) return;
 
     util::Lock lock(_mtx, context() + "onRequestFinish");
 
-    if (_state == State::FINISHED) return;
+    if (state() == State::FINISHED) return;
 
     // Update counters and object state if needed.
 
@@ -231,9 +230,8 @@ void QservSyncJob::onRequestFinish(SetReplicasQservMgtRequest::Ptr const& reques
          << " _numSuccess=" << _numSuccess);
 
     if (_numFinished == _numLaunched) {
-        finish(lock,
-               _numSuccess == _numLaunched ? ExtendedState::SUCCESS :
-                                             ExtendedState::FAILED);
+        finish(lock, _numSuccess == _numLaunched ? ExtendedState::SUCCESS :
+                                                   ExtendedState::FAILED);
     }
 }
 

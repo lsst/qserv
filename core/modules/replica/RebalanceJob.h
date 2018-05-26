@@ -184,6 +184,9 @@ public:
     /// @return the name of a database defining a scope of the operation
     std::string const& databaseFamily() const { return _databaseFamily; }
 
+    /// @return the estimate mode option
+    bool estimateOnly() const { return _estimateOnly; }
+
     /**
      * Return the result of the operation.
      *

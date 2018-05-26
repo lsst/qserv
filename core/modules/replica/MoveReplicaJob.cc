@@ -91,26 +91,14 @@ MoveReplicaJob::MoveReplicaJob(std::string const& databaseFamily,
         _sourceWorker(sourceWorker),
         _destinationWorker(destinationWorker),
         _purge(purge),
-        _onFinish(onFinish),
-        _createReplicaJob(nullptr),
-        _deleteReplicaJob(nullptr) {
-
-    if (not _controller->serviceProvider()->config()->isKnownDatabaseFamily(_databaseFamily)) {
-        throw std::invalid_argument("MoveReplicaJob: the database family is unknown: " +
-                                    _databaseFamily);
-    }
-    _controller->serviceProvider()->assertWorkerIsValid(_sourceWorker);
-    _controller->serviceProvider()->assertWorkerIsValid(_destinationWorker);
-    if (_sourceWorker == _destinationWorker) {
-        throw std::invalid_argument("MoveReplicaJob: source and destination workers are the same");
-    }
+        _onFinish(onFinish) {
 }
 
 MoveReplicaJobResult const& MoveReplicaJob::getReplicaData() const {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "getReplicaData");
 
-    if (_state == State::FINISHED) return _replicaData;
+    if (state() == State::FINISHED) return _replicaData;
 
     throw std::logic_error(
         "MoveReplicaJob::getReplicaData  the method can't be called while the job hasn't finished");
@@ -129,14 +117,39 @@ void MoveReplicaJob::startImpl(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
 
+    // Check if configuration parameters are valid
+
+    auto const& config = controller()->serviceProvider()->config();
+
+    if (not (config->isKnownDatabaseFamily(databaseFamily()) and
+             config->isKnownWorker(sourceWorker()) and
+             config->isKnownWorker(destinationWorker()) and
+             (sourceWorker() != destinationWorker()))) {
+
+        LOGS(_log, LOG_LVL_ERROR, context() << "startImpl  ** MISCONFIGURED ** "
+             << " database family: '" << databaseFamily() << "'"
+             << " source worker: '" << sourceWorker() << "'"
+             << " destination worker: '" << destinationWorker() << "'");
+
+        setState(lock,
+                 State::FINISHED,
+                 ExtendedState::CONFIG_ERROR);
+        return;
+    }
+
+    // As the first step, create a new replica at the destination.
+    // The current one will be (if requested) purged after a successful
+    // completion of the first step.
+
     auto self = shared_from_base<MoveReplicaJob>();
+
     _createReplicaJob = CreateReplicaJob::create(
         databaseFamily(),
         chunk(),
         sourceWorker(),
         destinationWorker(),
-        _controller,
-        _id,
+        controller(),
+        id(),
         [self] (CreateReplicaJob::Ptr const& job) {
             self->onCreateJobFinish();
         },
@@ -144,8 +157,7 @@ void MoveReplicaJob::startImpl(util::Lock const& lock) {
     );
     _createReplicaJob->start();
 
-    setState(lock,
-             State::IN_PROGRESS);
+    setState(lock, State::IN_PROGRESS);
 }
 
 void MoveReplicaJob::cancelImpl(util::Lock const& lock) {
@@ -179,11 +191,11 @@ void MoveReplicaJob::onCreateJobFinish() {
     // test is made after acquering the lock to recheck the state in case if it
     // has transitioned while acquering the lock.
 
-    if (_state == State::FINISHED) return;
+    if (state() == State::FINISHED) return;
 
     util::Lock lock(_mtx, context() + "onCreateJobFinish");
 
-    if (_state == State::FINISHED) return;
+    if (state() == State::FINISHED) return;
 
     if (_createReplicaJob->extendedState() == Job::ExtendedState::SUCCESS) {
 
@@ -202,8 +214,8 @@ void MoveReplicaJob::onCreateJobFinish() {
                 databaseFamily(),
                 chunk(),
                 sourceWorker(),
-                _controller,
-                _id,
+                controller(),
+                id(),
                 [self] (DeleteReplicaJob::Ptr const& job) {
                     self->onDeleteJobFinish();
                 },
@@ -212,16 +224,14 @@ void MoveReplicaJob::onCreateJobFinish() {
             _deleteReplicaJob->start();
         } else {
             // Otherwise, we're done
-            finish(lock,
-                   ExtendedState::SUCCESS);
+            finish(lock, ExtendedState::SUCCESS);
         }
 
     } else {
 
         // Carry over a state of the child job
 
-        finish(lock,
-               _createReplicaJob->extendedState());
+        finish(lock, _createReplicaJob->extendedState());
     }
 }
 
@@ -235,11 +245,11 @@ void MoveReplicaJob::onDeleteJobFinish() {
     // test is made after acquering the lock to recheck the state in case if it
     // has transitioned while acquering the lock.
 
-    if (_state == State::FINISHED) return;
+    if (state() == State::FINISHED) return;
 
     util::Lock lock(_mtx, context() + "onDeleteJobFinish");
 
-    if (_state == State::FINISHED) return;
+    if (state() == State::FINISHED) return;
 
     // Extract stats
 
@@ -249,9 +259,7 @@ void MoveReplicaJob::onDeleteJobFinish() {
     }
 
     // Carry over a state of the child job
-
-    finish(lock,
-           _deleteReplicaJob->extendedState());
+    finish(lock, _deleteReplicaJob->extendedState());
 }
 
 }}} // namespace lsst::qserv::replica

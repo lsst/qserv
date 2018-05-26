@@ -280,9 +280,11 @@ private:
     /**
      * Open files associated with the current state of iterator _fileItr.
      *
-     * @return 'true' in case of any error
+     * @param lock - lock which must be acquired before calling this method
+     *
+     * @return 'false' in case of any error
      */
-    bool openFiles();
+    bool openFiles(util::Lock const& lock);
 
     /**
      * The final stage to be executed just once after copying the content
@@ -291,9 +293,11 @@ private:
      *
      * Resources will also be released.
      *
+     * @param lock - lock which must be acquired before calling this method
+     *
      * @return always 'true'
      */
-    bool finalize();
+    bool finalize(util::Lock const& lock);
 
     /**
      * Close connections, deallocate resources, etc.
@@ -302,13 +306,17 @@ private:
      * released to prevent unneccesary resource utilization. Note that
      * request objects can stay in the server's memory for an extended
      * period of time.
+     *
+     * @param lock - lock which must be acquired before calling this method
      */
-    void releaseResources();
+    void releaseResources(util::Lock const& lock);
 
     /**
      * Update file migration statistics
+     *
+     * @param lock - lock which must be acquired before calling this method
      */
-    void updateInfo();
+    void updateInfo(util::Lock const& lock);
 
 private:
 

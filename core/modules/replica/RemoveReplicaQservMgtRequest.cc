@@ -96,25 +96,41 @@ void RemoveReplicaQservMgtRequest::startImpl(util::Lock const& lock) {
     auto const request = shared_from_base<RemoveReplicaQservMgtRequest>();
 
     _qservRequest = wpublish::RemoveChunkGroupQservRequest::create(
-        _chunk,
-        _databases,
-        _force,
+        chunk(),
+        databases(),
+        force(),
         [request] (wpublish::ChunkGroupQservRequest::Status status,
                    std::string const& error) {
 
+            // IMPORTANT: the final state is required to be tested twice. The first time
+            // it's done in order to avoid deadlock on the "in-flight" callbacks reporting
+            // their completion while the request termination is in a progress. And the second
+            // test is made after acquering the lock to recheck the state in case if it
+            // has transitioned while acquering the lock.
+
+            if (request->state() == State::FINISHED) return;
+        
+            util::Lock lock(request->_mtx, request->context() + "startImpl[callback]");
+        
+            if (request->state() == State::FINISHED) return;
+
             switch (status) {
                 case wpublish::ChunkGroupQservRequest::Status::SUCCESS:
-                    request->finish(QservMgtRequest::ExtendedState::SUCCESS);
+                    request->finish(lock, QservMgtRequest::ExtendedState::SUCCESS);
                     break;
+
                 case wpublish::ChunkGroupQservRequest::Status::INVALID:
-                    request->finish(QservMgtRequest::ExtendedState::SERVER_BAD, error);
+                    request->finish(lock, QservMgtRequest::ExtendedState::SERVER_BAD, error);
                     break;
+
                 case wpublish::ChunkGroupQservRequest::Status::IN_USE:
-                    request->finish(QservMgtRequest::ExtendedState::SERVER_IN_USE, error);
+                    request->finish(lock, QservMgtRequest::ExtendedState::SERVER_IN_USE, error);
                     break;
+
                 case wpublish::ChunkGroupQservRequest::Status::ERROR:
-                    request->finish(QservMgtRequest::ExtendedState::SERVER_ERROR, error);
+                    request->finish(lock, QservMgtRequest::ExtendedState::SERVER_ERROR, error);
                     break;
+
                 default:
                     throw std::logic_error(
                                 "RemoveReplicaQservMgtRequest:  unhandled server status: " +
@@ -122,14 +138,16 @@ void RemoveReplicaQservMgtRequest::startImpl(util::Lock const& lock) {
             }
         }
     );
-    XrdSsiResource resource(ResourceUnit::makeWorkerPath(_worker));
-    _service->ProcessRequest(*_qservRequest, resource);
+    XrdSsiResource resource(ResourceUnit::makeWorkerPath(worker()));
+    service()->ProcessRequest(*_qservRequest, resource);
 }
 
 void RemoveReplicaQservMgtRequest::finishImpl(util::Lock const& lock) {
 
-    if (_extendedState == ExtendedState::CANCELLED) {
+    if (extendedState() == ExtendedState::CANCELLED) {
+
         // And if the SSI request is still around then tell it to stop
+
         if (_qservRequest) {
             bool const cancel = true;
             _qservRequest->Finished(cancel);

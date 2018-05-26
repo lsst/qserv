@@ -111,20 +111,13 @@ DeleteReplicaJob::DeleteReplicaJob(std::string const& databaseFamily,
         _chunk(chunk),
         _worker(worker),
         _onFinish(onFinish) {
-
-    if (not _controller->serviceProvider()->config()->isKnownDatabaseFamily(_databaseFamily)) {
-        throw std::invalid_argument(
-                        "DeleteReplicaJob::DeleteReplicaJob ()  the database family is unknown: " +
-                        _databaseFamily);
-    }
-    _controller->serviceProvider()->assertWorkerIsValid(_worker);
 }
 
 DeleteReplicaJobResult const& DeleteReplicaJob::getReplicaData() const {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "getReplicaData");
 
-    if (_state == State::FINISHED) return _replicaData;
+    if (state() == State::FINISHED) return _replicaData;
 
     throw std::logic_error(
         "DeleteReplicaJob::getReplicaData  the method can't be called while the job hasn't finished");
@@ -141,6 +134,23 @@ void DeleteReplicaJob::startImpl(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
 
+   // Check if configuration parameters are valid
+
+    auto const& config = controller()->serviceProvider()->config();
+
+    if (not (config->isKnownDatabaseFamily(databaseFamily()) and
+             config->isKnownWorker(worker()))) {
+
+        LOGS(_log, LOG_LVL_ERROR, context() << "startImpl  ** MISCONFIGURED ** "
+             << " database family: '" << databaseFamily() << "'"
+             << " worker: '" << worker() << "'");
+
+        setState(lock,
+                 State::FINISHED,
+                 ExtendedState::CONFIG_ERROR);
+        return;
+    }
+
     // Get all databases for which this chunk is in the COMPLETE state on
     // at the worker.
     //
@@ -151,7 +161,7 @@ void DeleteReplicaJob::startImpl(util::Lock const& lock) {
     // 2. launching FindRequest for each member of the database family to
     //    see if the chunk is available on a source node.
 
-    if (not _controller->serviceProvider()->databaseServices()->findWorkerReplicas(
+    if (not controller()->serviceProvider()->databaseServices()->findWorkerReplicas(
                 _replicas,
                 chunk(),
                 worker(),
@@ -183,8 +193,15 @@ void DeleteReplicaJob::startImpl(util::Lock const& lock) {
     //
     // ATTENTION: only for ACTUALLY participating databases
 
-    ServiceProvider::Ptr const serviceProvider = _controller->serviceProvider();
-    if (serviceProvider->config()->xrootdAutoNotify()) {
+    ServiceProvider::Ptr const serviceProvider = controller()->serviceProvider();
+    if (not serviceProvider->config()->xrootdAutoNotify()) {
+
+        // Start rigth away
+        beginDeleteReplica(lock);
+
+    } else {
+
+        // Notify Qserv first. Then start once a confirmation is received
 
         std::vector<std::string> databases;
         for (auto&& replica: _replicas) {
@@ -221,21 +238,16 @@ void DeleteReplicaJob::startImpl(util::Lock const& lock) {
                     // Otherwise set an appropriate status of the operation, finish them
                     // job and notify the caller.
                     case QservMgtRequest::ExtendedState::SERVER_IN_USE:
-                        self->finish(lock,
-                                     ExtendedState::QSERV_IN_USE);
+                        self->finish(lock, ExtendedState::QSERV_IN_USE);
                         break;
                     default:
-                        self->finish(lock,
-                                     ExtendedState::QSERV_FAILED);
+                        self->finish(lock, ExtendedState::QSERV_FAILED);
                         break;
                 }
             }
         );
-    } else {
-        beginDeleteReplica(lock);
     }
-    setState(lock,
-             State::IN_PROGRESS);
+    setState(lock, State::IN_PROGRESS);
 }
 
 void DeleteReplicaJob::cancelImpl(util::Lock const& lock) {
@@ -252,12 +264,12 @@ void DeleteReplicaJob::cancelImpl(util::Lock const& lock) {
     for (auto&& ptr: _requests) {
         ptr->cancel();
         if (ptr->state() != Request::State::FINISHED)
-            _controller->stopReplicaDelete(
+            controller()->stopReplicaDelete(
                 worker(),
                 ptr->id(),
                 nullptr,    /* onFinish */
                 true,       /* keepTracking */
-                _id         /* jobId */);
+                id()        /* jobId */);
     }
     _requests.clear();
 }
@@ -280,7 +292,7 @@ void DeleteReplicaJob::beginDeleteReplica(util::Lock const& lock) {
 
     for (auto&& replica: _replicas) {
         DeleteRequest::Ptr ptr =
-            _controller->deleteReplica(
+            controller()->deleteReplica(
                 worker(),
                 replica.database(),
                 chunk(),
@@ -290,7 +302,7 @@ void DeleteReplicaJob::beginDeleteReplica(util::Lock const& lock) {
                 options().priority,
                 true,   /* keepTracking */
                 true,   /* allowDuplicate */
-                _id     /* jobId */
+                id()    /* jobId */
             );
         _requests.push_back(ptr);
     }
@@ -310,11 +322,11 @@ void DeleteReplicaJob::onRequestFinish(DeleteRequest::Ptr const& request) {
     // test is made after acquering the lock to recheck the state in case if it
     // has transitioned while acquering the lock.
     
-    if (_state == State::FINISHED) return;
+    if (state() == State::FINISHED) return;
 
     util::Lock lock(_mtx, context() + "onRequestFinish");
 
-    if (_state == State::FINISHED) return;
+    if (state() == State::FINISHED) return;
 
     // Update stats
     if (request->extendedState() == Request::ExtendedState::SUCCESS) {
@@ -333,9 +345,8 @@ void DeleteReplicaJob::onRequestFinish(DeleteRequest::Ptr const& request) {
                          _requests);
 
     if (numFinished == numLaunched) {
-        finish(lock,
-               numSuccess == numLaunched ? ExtendedState::SUCCESS :
-                                           ExtendedState::FAILED);
+        finish(lock, numSuccess == numLaunched ? ExtendedState::SUCCESS :
+                                                 ExtendedState::FAILED);
     }
 }
 

@@ -143,6 +143,8 @@ bool WorkerDeleteRequestPOSIX::execute() {
          << "  db: "    << database()
          << "  chunk: " << chunk());
 
+    util::Lock lock(_mtx, context() + "execute");
+
     WorkerInfo   const& workerInfo    = _serviceProvider->config()->workerInfo(worker());
     DatabaseInfo const& databaseInfo  = _serviceProvider->config()->databaseInfo(database());
 
@@ -156,7 +158,7 @@ bool WorkerDeleteRequestPOSIX::execute() {
     WorkerRequest::ErrorContext errorContext;
     boost::system::error_code   ec;
     {
-        util::Lock lock(_mtxDataFolderOperations, context() + "execute");
+        util::Lock dataFolderLock(_mtxDataFolderOperations, context() + "execute");
 
         fs::path        const dataDir = fs::path(workerInfo.dataDir) / database();
         fs::file_status const stat    = fs::status(dataDir, ec);
@@ -181,11 +183,11 @@ bool WorkerDeleteRequestPOSIX::execute() {
         }
     }
     if (errorContext.failed) {
-        setStatus(STATUS_FAILED, errorContext.extendedStatus);
+        setStatus(lock, STATUS_FAILED, errorContext.extendedStatus);
         return true;
     }
 
-    setStatus(STATUS_SUCCEEDED);
+    setStatus(lock, STATUS_SUCCEEDED);
     return true;
 }
 
