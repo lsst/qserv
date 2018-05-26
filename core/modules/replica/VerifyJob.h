@@ -51,7 +51,7 @@ namespace replica {
  * NOTE: a reason why a special class (versus an overloaded version of
  * operator==) is needed to differrenciate between replicas is due to
  * greater flexibily of the special class which not only encapsulates both
- * replicas witin a single object, but it also allows compare ovejcts
+ * replicas within a single object, but it also allows compare ovejcts
  * in a specific context of the replica verification job. Specific aspects
  * of the replica diffences could be also reported.
  */
@@ -140,7 +140,7 @@ std::ostream& operator<<(std::ostream& os, ReplicaDiff const& ri);
   *   - control/check sums of files constituiting the replicas
   *
   * Any differences will get reported to a subscriber via a specific callback
-  * function. The new status of a replica will be also recorded witin the database.
+  * function. The new status of a replica will be also recorded within the database.
   */
 class VerifyJob
     :   public Job  {

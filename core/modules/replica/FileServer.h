@@ -88,7 +88,7 @@ public:
      * Run the server in a thread pool (as per the Configuration)
      *
      * ATTENTION: this is the blovking operation. Please, run it
-     * witin ots own thread if needed.
+     * within its own thread if needed.
      */
     void run();
 

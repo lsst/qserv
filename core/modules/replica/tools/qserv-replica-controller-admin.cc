@@ -32,7 +32,7 @@ bool test() {
 
         ///////////////////////////////////////////////////////////////////////
         // Start the controller in its own thread before injecting any requests
-        // Note that omFinish callbak which are activated upon a completion
+        // Note that onFinish callbak which are activated upon a completion
         // of the requsts will be run in that Controller's thread.
 
         replica::ServiceProvider::Ptr const provider   = replica::ServiceProvider::create(configUrl);

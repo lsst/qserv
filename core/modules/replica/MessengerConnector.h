@@ -463,7 +463,7 @@ private:
      * USAGE NOTES:
      *
      *    Nomally this method is supposed to be called as the first action
-     *    witin asynchronous handlers to figure out if an on-going aynchronous
+     *    within asynchronous handlers to figure out if an on-going aynchronous
      *    operation was cancelled for some reason. Should this be the case
      *    the caller is supposed to quit right away. It will be up to a code
      *    which initiated the abort to take care of putting the object into

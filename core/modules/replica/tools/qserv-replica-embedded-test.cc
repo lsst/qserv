@@ -33,7 +33,7 @@ void runAllWorkers(replica::ServiceProvider::Ptr const& provider,
     for (std::string const& workerName : provider->config()->workers()) {
         
         // Create the request pocessing server and run it within a dedicated thread
-        // because it's the blocking operation fr the launching thread.
+        // because it's the blocking operation for the launching thread.
 
         replica::WorkerServer::Ptr const reqProcSrv =
             replica::WorkerServer::create(provider, requestFactory, workerName);

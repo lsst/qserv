@@ -358,7 +358,7 @@ private:
      * and if then one found assign it to the specified thread. The request
      * will be removed from the ready-to-be-processed queue.
      *
-     * If the one is available witin the specified timeout then such request
+     * If the one is available within the specified timeout then such request
      * will be moved into the in-progress queue, assigned to the processor thread
      * and returned to a caller. Otherwise an empty pointer (pointing to nullptr)
      * will be returned.
@@ -480,7 +480,7 @@ private:
      *
      * The method is called by a thread which was processing the request.
      * The request will be moved into the corresponding queue. A proper
-     * completion status is expected be stored witin the request.
+     * completion status is expected be stored within the request.
      *
      * @param request - a pointer to the request
      */

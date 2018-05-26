@@ -190,7 +190,7 @@ void WorkerServerConnection::received(boost::system::error_code const& ec,
     // Analyse the header of the request. Note that the header message categorizes
     // requests in two layers:
     // - first goes the class of requests as defined by member 'type'
-    // - then  goes a choice of a specific request witin its class. Those specific
+    // - then  goes a choice of a specific request within its class. Those specific
     //   request codes are obtained from the corresponding members
 
     switch (hdr.type()) {

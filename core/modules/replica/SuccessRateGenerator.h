@@ -64,7 +64,7 @@ public:
      *
      * Allowed range for the 'successRate' parameter is [0.0,1.0].
      * Note that both ends of the range are inclusive. Choosing a value
-     * equal to (witin the small epsilon) 0.0 would result in the 100% failure rate.
+     * equal to (within the small epsilon) 0.0 would result in the 100% failure rate.
      * The opposite scenario will be seen when choosing  1.0.
      *
      * @param successRate - probability density for 'success'

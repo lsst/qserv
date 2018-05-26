@@ -338,7 +338,7 @@ void PurgeJob::onPrecursorJobFinish() {
             // Find the most populated worker among the good ones of this chunk,
             // which are still available.
 
-            size_t      maxNumChunks = 0;   // will get updated witin the next loop
+            size_t      maxNumChunks = 0;   // will get updated within the next loop
             std::string targetWorker;       // will be set to the best worker inwhen the loop is over
 
             for (auto&& worker: goodWorkersOfThisChunk) {
