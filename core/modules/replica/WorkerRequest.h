@@ -203,7 +203,7 @@ protected:
 
     /** Set the status
      *
-     * ATTENTION: this method needs to be called witin a thread-safe context
+     * ATTENTION: this method needs to be called within a thread-safe context
      * when moving requests between different queues.
      *
      * @param lock           - lock must be acquired before calling this method

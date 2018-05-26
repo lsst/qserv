@@ -101,7 +101,7 @@ private:
  * The utiliy class implementing operations on behalf of certain
  * methods of class Controller.
  *
- * THREAD SAFETY NOTE: Methods implemented witin the class are NOT thread-safe.
+ * THREAD SAFETY NOTE: Methods implemented within the class are NOT thread-safe.
  *                     They must be called from the thread-safe code only.
  */
 class ControllerImpl {

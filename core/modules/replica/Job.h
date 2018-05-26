@@ -272,7 +272,7 @@ protected:
      *
      * NOTES:
      * 1. normally this is mandatory method which is supposrd to be called either
-     *    internally witin this class on the job expiration (internal timer) or
+     *    internally within this class on the job expiration (internal timer) or
      *    cancellation (as requested externally by a user).
      * 
      * 2. the only methods which are allowed to turn objects into the FINISHED

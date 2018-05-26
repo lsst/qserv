@@ -376,7 +376,7 @@ void ReplicateJob::onPrecursorJobFinish() {
 
             std::string destinationWorker;
 
-            size_t minNumChunks = (size_t) -1;  // this will be decreased witin the loop to find
+            size_t minNumChunks = (size_t) -1;  // this will be decreased within the loop to find
                                                 // the absolute minimum among the eligible workers
             for (const auto& worker: workers) {
 
