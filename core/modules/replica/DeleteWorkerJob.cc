@@ -124,7 +124,7 @@ DeleteWorkerJobResult const& DeleteWorkerJob::getReplicaData() const {
 
     LOGS(_log, LOG_LVL_DEBUG, context());
 
-    if (_state == State::FINISHED) return _replicaData;
+    if (state() == State::FINISHED) return _replicaData;
 
     throw std::logic_error(
         "DeleteWorkerJob::getReplicaData()  the method can't be called while the job hasn't finished");
@@ -149,12 +149,12 @@ void DeleteWorkerJob::startImpl(util::Lock const& lock) {
 
     std::atomic<bool> statusRequestFinished{false};
 
-    auto const statusRequest = _controller->statusOfWorkerService(
-        _worker,
+    auto const statusRequest = controller()->statusOfWorkerService(
+        worker(),
         [&statusRequestFinished](ServiceStatusRequest::Ptr const& request) {
             statusRequestFinished = true;
         },
-        _id,    /* jobId */
+        id(),   /* jobId */
         60      /* requestExpirationIvalSec */
     );
     while (not statusRequestFinished) {
@@ -169,12 +169,12 @@ void DeleteWorkerJob::startImpl(util::Lock const& lock) {
 
             std::atomic<bool> drainRequestFinished{false};
 
-            auto const drainRequest = _controller->drainWorkerService(
-                _worker,
+            auto const drainRequest = controller()->drainWorkerService(
+                worker(),
                 [&drainRequestFinished](ServiceDrainRequest::Ptr const& request) {
                     drainRequestFinished = true;
                 },
-                _id,    /* jobId */
+                id(),   /* jobId */
                 60      /* requestExpirationIvalSec */
             );
             while (not drainRequestFinished) {
@@ -187,9 +187,9 @@ void DeleteWorkerJob::startImpl(util::Lock const& lock) {
                     // Try to get the most recent state the worker's replicas
                     // for all known databases
 
-                    for (auto&& database: _controller->serviceProvider()->config()->databases()) {
-                        auto const request = _controller->findAllReplicas(
-                            _worker,
+                    for (auto&& database: controller()->serviceProvider()->config()->databases()) {
+                        auto const request = controller()->findAllReplicas(
+                            worker(),
                             database,
                             [self] (FindAllRequest::Ptr const& request) {
                                 self->onRequestFinish(request);
@@ -202,8 +202,7 @@ void DeleteWorkerJob::startImpl(util::Lock const& lock) {
                     // The rest will be happening in a method processing the completion
                     // of the above launched requests.
 
-                    setState(lock,
-                             State::IN_PROGRESS);
+                    setState(lock, State::IN_PROGRESS);
                     return;
                 }
             }
@@ -215,8 +214,7 @@ void DeleteWorkerJob::startImpl(util::Lock const& lock) {
 
     disableWorker(lock);
 
-    setState(lock,
-             State::IN_PROGRESS);
+    setState(lock, State::IN_PROGRESS);
     return;
 }
 
@@ -231,23 +229,19 @@ void DeleteWorkerJob::cancelImpl(util::Lock const& lock) {
     for (auto&& ptr: _findAllRequests) {
         ptr->cancel();
         if (ptr->state() != Request::State::FINISHED) {
-            _controller->stopReplicaFindAll(
+            controller()->stopReplicaFindAll(
                 ptr->worker(),
                 ptr->id(),
                 nullptr,    /* onFinish */
                 true,       /* keepTracking */
-                _id         /* jobId */);
+                id()         /* jobId */);
         }
     }
 
     // Stop chained jobs (if any) as well
 
-    for (auto&& ptr: _findAllJobs) {
-        ptr->cancel();
-    }
-    for (auto&& ptr: _replicateJobs) {
-        ptr->cancel();
-    }
+    for (auto&& ptr: _findAllJobs)   ptr->cancel();
+    for (auto&& ptr: _replicateJobs) ptr->cancel();
 }
 
 void DeleteWorkerJob::onRequestFinish(FindAllRequest::Ptr const& request) {
@@ -263,11 +257,11 @@ void DeleteWorkerJob::onRequestFinish(FindAllRequest::Ptr const& request) {
     // test is made after acquering the lock to recheck the state in case if it
     // has transitioned while acquering the lock.
     
-    if (_state == State::FINISHED) return;
+    if (state() == State::FINISHED) return;
 
     util::Lock lock(_mtx, context() + "onRequestFinish");
 
-    if (_state == State::FINISHED) return;
+    if (state() == State::FINISHED) return;
 
     _numFinished++;
     if (request->extendedState() == Request::ExtendedState::SUCCESS) _numSuccess++;
@@ -291,7 +285,7 @@ DeleteWorkerJob::disableWorker(util::Lock const& lock) {
     // to be permanently deleted this will be done only after all other relevamnt
     // operations of this job will be done.
 
-    _controller->serviceProvider()->config()->disableWorker(_worker);
+    controller()->serviceProvider()->config()->disableWorker(worker());
 
     // Launch the chained jobs to get chunk disposition within the rest
     // of the cluster
@@ -302,11 +296,11 @@ DeleteWorkerJob::disableWorker(util::Lock const& lock) {
 
     auto self = shared_from_base<DeleteWorkerJob>();
 
-    for (auto&& databaseFamily: _controller->serviceProvider()->config()->databaseFamilies()) {
+    for (auto&& databaseFamily: controller()->serviceProvider()->config()->databaseFamilies()) {
         FindAllJob::Ptr job = FindAllJob::create(
             databaseFamily,
-            _controller,
-            _id,
+            controller(),
+            id(),
             [self] (FindAllJob::Ptr job) {
                 self->onJobFinish(job);
             }
@@ -328,47 +322,48 @@ void DeleteWorkerJob::onJobFinish(FindAllJob::Ptr const& job) {
     // test is made after acquering the lock to recheck the state in case if it
     // has transitioned while acquering the lock.
     
-    if (_state == State::FINISHED) return;
+    if (state() == State::FINISHED) return;
 
     util::Lock lock(_mtx, context() + "onJobFinish(FindAllJob)");
 
-    if (_state == State::FINISHED) return;
+    if (state() == State::FINISHED) return;
 
     _numFinished++;
 
-    if (job->extendedState() == ExtendedState::SUCCESS) {
+    if (job->extendedState() != ExtendedState::SUCCESS) {
+        finish(lock, ExtendedState::FAILED);
+        return;
+    }
 
-        _numSuccess++;
+    // Process the normal completion of the child job
 
-        if (_numFinished == _numLaunched) {
+    _numSuccess++;
 
-            // Launch chained jobs to ensure the minimal replication level
-            // which might be affected by the worker removal.
+    if (_numFinished == _numLaunched) {
 
-            _numLaunched = 0;
-            _numFinished = 0;
-            _numSuccess  = 0;
+        // Launch chained jobs to ensure the minimal replication level
+        // which might be affected by the worker removal.
 
-            auto self = shared_from_base<DeleteWorkerJob>();
+        _numLaunched = 0;
+        _numFinished = 0;
+        _numSuccess  = 0;
 
-            for (auto&& databaseFamily: _controller->serviceProvider()->config()->databaseFamilies()) {
-                ReplicateJob::Ptr const job = ReplicateJob::create(
-                    databaseFamily,
-                    0,  /* numReplicas -- pull from Configuration */
-                    _controller,
-                    _id,
-                    [self] (ReplicateJob::Ptr job) {
-                        self->onJobFinish(job);
-                    }
-                );
-                job->start();
-                _replicateJobs.push_back(job);
-                _numLaunched++;
-            }
+        auto self = shared_from_base<DeleteWorkerJob>();
+
+        for (auto&& databaseFamily: controller()->serviceProvider()->config()->databaseFamilies()) {
+            ReplicateJob::Ptr const job = ReplicateJob::create(
+                databaseFamily,
+                0,  /* numReplicas -- pull from Configuration */
+                controller(),
+                id(),
+                [self] (ReplicateJob::Ptr job) {
+                    self->onJobFinish(job);
+                }
+            );
+            job->start();
+            _replicateJobs.push_back(job);
+            _numLaunched++;
         }
-    } else {
-        finish(lock,
-               ExtendedState::FAILED);
     }
 }
 
@@ -385,65 +380,65 @@ void DeleteWorkerJob::onJobFinish(ReplicateJob::Ptr const& job) {
     // test is made after acquering the lock to recheck the state in case if it
     // has transitioned while acquering the lock.
     
-    if (_state == State::FINISHED) return;
+    if (state() == State::FINISHED) return;
 
     util::Lock lock(_mtx, context() + "onJobFinish(ReplicateJob)");
 
-    if (_state == State::FINISHED) return;
+    if (state() == State::FINISHED) return;
 
     _numFinished++;
 
     if (job->extendedState() != ExtendedState::SUCCESS) {
-        finish(lock,
-               ExtendedState::FAILED);
-    } else {
+        finish(lock, ExtendedState::FAILED);
+        return;
+    }
 
-        _numSuccess++;
+    // Process the normal completion of the child job
 
-        LOGS(_log, LOG_LVL_DEBUG, context() << "onJobFinish(ReplicateJob)  "
-             << "job->getReplicaData().chunks.size(): " << job->getReplicaData().chunks.size());
+    _numSuccess++;
 
-        // Merge results into the current job's result object
-        _replicaData.chunks[job->databaseFamily()] = job->getReplicaData().chunks;
+    LOGS(_log, LOG_LVL_DEBUG, context() << "onJobFinish(ReplicateJob)  "
+         << "job->getReplicaData().chunks.size(): " << job->getReplicaData().chunks.size());
 
-        if (_numFinished == _numLaunched) {
+    // Merge results into the current job's result object
+    _replicaData.chunks[job->databaseFamily()] = job->getReplicaData().chunks;
 
-            // Construct a collection of orphan replicas if possible
+    if (_numFinished == _numLaunched) {
 
-            ReplicaInfoCollection replicas;
-            if (_controller->serviceProvider()->databaseServices()->findWorkerReplicas(replicas, _worker)) {
-                for (ReplicaInfo const& replica: replicas) {
-                    unsigned int const chunk    = replica.chunk();
-                    std::string const& database = replica.database();
+        // Construct a collection of orphan replicas if possible
 
-                    bool replicated = false;
-                    for (auto&& databaseFamilyEntry: _replicaData.chunks) {
-                        auto const& chunks = databaseFamilyEntry.second;
-                        replicated = replicated or
-                            (chunks.count(chunk) and chunks.at(chunk).count(database));
-                    }
-                    if (not replicated) {
-                        _replicaData.orphanChunks[chunk][database] = replica;
-                    }
+        ReplicaInfoCollection replicas;
+        if (controller()->serviceProvider()->databaseServices()->findWorkerReplicas(replicas, worker())) {
+            for (ReplicaInfo const& replica: replicas) {
+                unsigned int const chunk    = replica.chunk();
+                std::string const& database = replica.database();
+
+                bool replicated = false;
+                for (auto&& databaseFamilyEntry: _replicaData.chunks) {
+                    auto const& chunks = databaseFamilyEntry.second;
+                    replicated = replicated or
+                        (chunks.count(chunk) and chunks.at(chunk).count(database));
+                }
+                if (not replicated) {
+                    _replicaData.orphanChunks[chunk][database] = replica;
                 }
             }
-
-            // TODO: if the list of orphan chunks is not empty then consider bringing
-            // back the disabled worker (if the service still responds) in the read-only
-            // mode and try using it for redistributing those chunks accross the cluster.
-            //
-            // NOTE: this could be a complicated procedure which needs to be thought
-            // through.
-            ;
-
-            // Do this only if requested, and only in case of the successful
-            // completion of the job
-            if (_permanentDelete) {
-                _controller->serviceProvider()->config()->deleteWorker(_worker);
-            }
-            finish(lock,
-                   ExtendedState::SUCCESS);
         }
+
+        // TODO: if the list of orphan chunks is not empty then consider bringing
+        // back the disabled worker (if the service still responds) in the read-only
+        // mode and try using it for redistributing those chunks accross the cluster.
+        //
+        // NOTE: this could be a complicated procedure which needs to be thought
+        // through.
+        ;
+
+        // Do this only if requested, and only in case of the successful
+        // completion of the job
+        if (permanentDelete()) {
+            controller()->serviceProvider()->config()->deleteWorker(worker());
+        }
+        finish(lock, ExtendedState::SUCCESS);
     }
 }
 

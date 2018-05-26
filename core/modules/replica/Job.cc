@@ -70,6 +70,7 @@ Job::state2string(ExtendedState state) {
     switch (state) {
         case NONE:         return "NONE";
         case SUCCESS:      return "SUCCESS";
+        case CONFIG_ERROR: return "CONFIG_ERROR";
         case FAILED:       return "FAILED";
         case QSERV_FAILED: return "QSERV_FAILED";
         case QSERV_IN_USE: return "QSERV_IN_USE";
@@ -93,9 +94,9 @@ Job::Job(Controller::Ptr const& controller,
         _extendedState(ExtendedState::NONE),
         _beginTime(0),
         _endTime(0),
-        _heartbeatTimerIvalSec(_controller->serviceProvider()->config()->jobHeartbeatTimeoutSec()),
+        _heartbeatTimerIvalSec(controller->serviceProvider()->config()->jobHeartbeatTimeoutSec()),
         _heartbeatTimerPtr(nullptr),
-        _expirationIvalSec(_controller->serviceProvider()->config()->jobTimeoutSec()),
+        _expirationIvalSec(controller->serviceProvider()->config()->jobTimeoutSec()),
         _expirationTimerPtr(nullptr) {
 }
 
@@ -106,8 +107,8 @@ Job::Options Job::setOptions(Options const& newOptions) {
 }
 
 std::string Job::context() const {
-    return  "JOB     " + _id + "  " + _type +
-            "  " + state2string(_state, _extendedState) + "  ";
+    return  "JOB     " + id() + "  " + type() +
+            "  " + state2string(state(), extendedState()) + "  ";
 }
 
 void Job::start() {
@@ -126,7 +127,7 @@ void Job::start() {
     // may depend on this job's state.
 
     _beginTime = PerformanceUtils::now();
-    _controller->serviceProvider()->databaseServices()->saveState(*this);
+    controller()->serviceProvider()->databaseServices()->saveState(*this);
 
     // Start timers if configured
 
@@ -139,7 +140,7 @@ void Job::start() {
 
     // Allow the job to be fully accomplished right away
 
-    if (_state == State::FINISHED) {
+    if (state() == State::FINISHED) {
         notify();
         return;
     }
@@ -154,8 +155,8 @@ void Job::start() {
 void Job::cancel() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancel"
-         << "  _state="         << state2string(_state)
-         << ", _extendedState=" << state2string(_extendedState));
+         << "  state="         << state2string(state())
+         << ", extendedState=" << state2string(extendedState()));
 
     // IMPORTANT: the final state is required to be tested twice. The first time
     // it's done in order to avoid deadlock on the "in-flight" requests reporting
@@ -163,27 +164,26 @@ void Job::cancel() {
     // test is made after acquering the lock to recheck the state in case if it
     // has transitioned while acquering the lock.
 
-    if (_state == State::FINISHED) return;
+    if (state() == State::FINISHED) return;
 
     util::Lock lock(_mtx, context() + "cancel");
 
-    if (_state == State::FINISHED) return;
+    if (state() == State::FINISHED) return;
 
-    finish(lock,
-           ExtendedState::CANCELLED);
+    finish(lock, ExtendedState::CANCELLED);
 }
 
 void Job::finish(util::Lock const& lock,
-                 ExtendedState extendedState) {
+                 ExtendedState newExtendedState) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "finish"
-         << "  _state="         << state2string(_state)
-         << ", _extendedState=" << state2string(_extendedState)
-         << ", (new)extendedState=" << state2string(extendedState));
+         << "  state="              << state2string(state())
+         << ", extendedState="      << state2string(extendedState())
+         << ", (new)extendedState=" << state2string(newExtendedState));
 
     // Also ignore this event if the request is over
 
-    if (_state == State::FINISHED) return;
+    if (state() == State::FINISHED) return;
 
     // *IMPORTANT*: Set new state *BEFORE* calling subclass-specific cancellation
     // protocol to make sure all event handlers will recognize this scenario and
@@ -191,18 +191,18 @@ void Job::finish(util::Lock const& lock,
 
     setState(lock,
              State::FINISHED,
-             extendedState);
+             newExtendedState);
 
     // Invoke a subclass specific cancellation sequence of actions if anything
     // bad has happen.
 
-    if (extendedState != ExtendedState::SUCCESS) cancelImpl(lock);
+    if (newExtendedState != ExtendedState::SUCCESS) cancelImpl(lock);
 
-    _controller->serviceProvider()->databaseServices()->saveState(*this);
+    controller()->serviceProvider()->databaseServices()->saveState(*this);
 
     // Stop timers if they're still running
 
-    if(_heartbeatTimerPtr) _heartbeatTimerPtr->cancel();
+    if(_heartbeatTimerPtr)  _heartbeatTimerPtr->cancel();
     if(_expirationTimerPtr) _expirationTimerPtr->cancel();
 
     notify();
@@ -222,7 +222,7 @@ void Job::qservAddReplica(util::Lock const& lock,
 
     auto self = shared_from_this();
 
-    _controller->serviceProvider()->qservMgtServices()->addReplica(
+    controller()->serviceProvider()->qservMgtServices()->addReplica(
         chunk,
         databases,
         worker,
@@ -243,7 +243,7 @@ void Job::qservAddReplica(util::Lock const& lock,
                 onFinish(request);
             }
         },
-        _id
+        id()
     );
 }
 
@@ -263,7 +263,7 @@ void Job::qservRemoveReplica(util::Lock const& lock,
 
     auto self = shared_from_this();
 
-    _controller->serviceProvider()->qservMgtServices()->removeReplica(
+    controller()->serviceProvider()->qservMgtServices()->removeReplica(
         chunk,
         databases,
         worker,
@@ -285,36 +285,36 @@ void Job::qservRemoveReplica(util::Lock const& lock,
                 onFinish(request);
             }
         },
-        _id
+        id()
     );
 }
 
 void Job::assertState(util::Lock const& lock,
-                      State state,
+                      State desiredState,
                       std::string const& context) const {
-    if (state != _state) {
+    if (desiredState != state()) {
         throw std::logic_error(
-            context + ": wrong state " + state2string(state) + " instead of " + state2string(_state));
+            context + ": wrong state " + state2string(state()) + " instead of " + state2string(desiredState));
     }
 }
 
 void Job::setState(util::Lock const& lock,
-                   State state,
-                   ExtendedState extendedState) {
+                   State newState,
+                   ExtendedState newExtendedState) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "setState  state=" << state2string(state, extendedState));
+    LOGS(_log, LOG_LVL_DEBUG, context() << "setState  new state=" << state2string(newState, newExtendedState));
 
     // ATTENTION: changing the top-level state to FINISHED should be last step
     // in the transient state transition in order to ensure a consistent view
     // onto the combined state.
 
-    if (_state == State::FINISHED) {
+    if (state() == State::FINISHED) {
         _endTime = PerformanceUtils::now();
     }
-    _extendedState = extendedState;
-    _state = state;
+    _extendedState = newExtendedState;
+    _state = newState;
 
-    _controller->serviceProvider()->databaseServices()->saveState(*this);
+    controller()->serviceProvider()->databaseServices()->saveState(*this);
 }
 
 void Job::startHeartbeatTimer(util::Lock const& lock) {
@@ -327,7 +327,7 @@ void Job::startHeartbeatTimer(util::Lock const& lock) {
         // is about to begin. Otherwise it will strt firing immediately.
         _heartbeatTimerPtr.reset(
             new boost::asio::deadline_timer(
-                _controller->io_service(),
+                controller()->io_service(),
                 boost::posix_time::seconds(_heartbeatTimerIvalSec)));
 
         _heartbeatTimerPtr->async_wait(
@@ -354,25 +354,24 @@ void Job::heartbeat(boost::system::error_code const& ec) {
     // test is made after acquering the lock to recheck the state in case if it
     // has transitioned while acquering the lock.
 
-    if (_state == State::FINISHED) return;
+    if (state() == State::FINISHED) return;
 
     util::Lock lock(_mtx, context() + "heartbeat");
 
-    if (_state == State::FINISHED) return;
+    if (state() == State::FINISHED) return;
 
     // Update the job entry in the database
 
-    _controller->serviceProvider()->databaseServices()->updateHeartbeatTime(*this);
+    controller()->serviceProvider()->databaseServices()->updateHeartbeatTime(*this);
 
     // Start another interval
 
     startHeartbeatTimer(lock);
-
 }
 
 void Job::startExpirationTimer(util::Lock const& lock) {
 
-    if (_expirationIvalSec) {
+    if (0 != _expirationIvalSec) {
 
         LOGS(_log, LOG_LVL_DEBUG, context() << "startExpirationTimer");
 
@@ -380,7 +379,7 @@ void Job::startExpirationTimer(util::Lock const& lock) {
         // is about to begin. Otherwise it will strt firing immediately.
         _expirationTimerPtr.reset(
             new boost::asio::deadline_timer(
-                _controller->io_service(),
+                controller()->io_service(),
                 boost::posix_time::seconds(_expirationIvalSec)));
 
         _expirationTimerPtr->async_wait(
@@ -407,14 +406,13 @@ void Job::expired(boost::system::error_code const& ec) {
     // test is made after acquering the lock to recheck the state in case if it
     // has transitioned while acquering the lock.
 
-    if (_state == State::FINISHED) return;
+    if (state() == State::FINISHED) return;
 
     util::Lock lock(_mtx, context() + "expired");
 
-    if (_state == State::FINISHED) return;
+    if (state() == State::FINISHED) return;
 
-    finish(lock,
-           ExtendedState::EXPIRED);
+    finish(lock, ExtendedState::EXPIRED);
 }
 
 void Job::notify() {

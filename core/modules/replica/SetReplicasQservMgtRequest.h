@@ -133,9 +133,11 @@ private:
     /**
      * Carry over results of the request into a local collection.
      *
+     * @param lock       - lock must be acquired by a caller of the metod
      * @param collection - input collection of replicas
      */
-     void setReplicas(wpublish::SetChunkListQservRequest::ChunkCollection const& collection);
+     void setReplicas(util::Lock const& lock,
+                      wpublish::SetChunkListQservRequest::ChunkCollection const& collection);
 
     /**
       * @see QservMgtRequest::startImpl

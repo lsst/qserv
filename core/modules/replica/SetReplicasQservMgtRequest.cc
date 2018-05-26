@@ -83,10 +83,10 @@ SetReplicasQservMgtRequest::SetReplicasQservMgtRequest(
 }
 
 QservReplicaCollection const& SetReplicasQservMgtRequest::replicas() const {
-    if (not ((_state == State::FINISHED) and (_extendedState == ExtendedState::SUCCESS))) {
+    if (not ((state() == State::FINISHED) and (extendedState() == ExtendedState::SUCCESS))) {
         throw std::logic_error(
                 "SetReplicasQservMgtRequest::replicas  replicas aren't available in state: " +
-                state2string(_state, _extendedState));
+                state2string(state(), extendedState()));
     }
     return _replicas;
 }
@@ -102,13 +102,8 @@ std::string SetReplicasQservMgtRequest::extendedPersistentState(SqlGeneratorPtr 
 }
 
 void SetReplicasQservMgtRequest::setReplicas(
-        wpublish::SetChunkListQservRequest::ChunkCollection const& collection) {
-
-    if (_state == State::FINISHED) return;
-
-    util::Lock lock(_mtx, context() + "setReplicas");
-
-    if (_state == State::FINISHED) return;
+            util::Lock const& lock,
+            wpublish::SetChunkListQservRequest::ChunkCollection const& collection) {
 
     _replicas.clear();
     for (auto&& replica: collection) {
@@ -125,7 +120,7 @@ void SetReplicasQservMgtRequest::setReplicas(
 void SetReplicasQservMgtRequest::startImpl(util::Lock const& lock) {
 
     wpublish::SetChunkListQservRequest::ChunkCollection chunks;
-    for (auto&& chunkEntry: _newReplicas) {
+    for (auto&& chunkEntry: newReplicas()) {
         chunks.push_back(
             wpublish::SetChunkListQservRequest::Chunk{
                 chunkEntry.chunk,
@@ -138,19 +133,33 @@ void SetReplicasQservMgtRequest::startImpl(util::Lock const& lock) {
 
     _qservRequest = wpublish::SetChunkListQservRequest::create(
         chunks,
-        _force,
+        force(),
         [request] (wpublish::SetChunkListQservRequest::Status status,
                    std::string const& error,
                    wpublish::SetChunkListQservRequest::ChunkCollection const& collection) {
 
+            // IMPORTANT: the final state is required to be tested twice. The first time
+            // it's done in order to avoid deadlock on the "in-flight" callbacks reporting
+            // their completion while the request termination is in a progress. And the second
+            // test is made after acquering the lock to recheck the state in case if it
+            // has transitioned while acquering the lock.
+
+            if (request->state() == State::FINISHED) return;
+        
+            util::Lock lock(request->_mtx, request->context() + "startImpl[callback]");
+        
+            if (request->state() == State::FINISHED) return;
+
             switch (status) {
                 case wpublish::SetChunkListQservRequest::Status::SUCCESS:
-                    request->setReplicas(collection);
-                    request->finish(QservMgtRequest::ExtendedState::SUCCESS);
+                    request->setReplicas(lock, collection);
+                    request->finish(lock, QservMgtRequest::ExtendedState::SUCCESS);
                     break;
+
                 case wpublish::SetChunkListQservRequest::Status::ERROR:
-                    request->finish(QservMgtRequest::ExtendedState::SERVER_ERROR, error);
+                    request->finish(lock, QservMgtRequest::ExtendedState::SERVER_ERROR, error);
                     break;
+
                 default:
                     throw std::logic_error(
                         "SetReplicasQservMgtRequest:  unhandled server status: " +
@@ -158,13 +167,13 @@ void SetReplicasQservMgtRequest::startImpl(util::Lock const& lock) {
             }
         }
     );
-    XrdSsiResource resource(ResourceUnit::makeWorkerPath(_worker));
-    _service->ProcessRequest(*_qservRequest, resource);
+    XrdSsiResource resource(ResourceUnit::makeWorkerPath(worker()));
+    service()->ProcessRequest(*_qservRequest, resource);
 }
 
 void SetReplicasQservMgtRequest::finishImpl(util::Lock const& lock) {
 
-    if (_extendedState == ExtendedState::CANCELLED) {
+    if (extendedState() == ExtendedState::CANCELLED) {
 
         // And if the SSI request is still around then tell it to stop
         if (_qservRequest) {

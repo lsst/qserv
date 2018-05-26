@@ -87,14 +87,14 @@ FixUpJob::FixUpJob(std::string const& databaseFamily,
 
 FixUpJob::~FixUpJob() {
     // Make sure all chuks locked by this job are released
-    _controller->serviceProvider()->chunkLocker().release(_id);
+    controller()->serviceProvider()->chunkLocker().release(id());
 }
 
 FixUpJobResult const& FixUpJob::getReplicaData() const {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "getReplicaData");
 
-    if (_state == State::FINISHED) return _replicaData;
+    if (state() == State::FINISHED) return _replicaData;
 
     throw std::logic_error(
         "FixUpJob::getReplicaData  the method can't be called while the job hasn't finished");
@@ -116,17 +116,16 @@ void FixUpJob::startImpl(util::Lock const& lock) {
     auto self = shared_from_base<FixUpJob>();
 
     _findAllJob = FindAllJob::create(
-        _databaseFamily,
-        _controller,
-        _id,
+        databaseFamily(),
+        controller(),
+        id(),
         [self] (FindAllJob::Ptr job) {
             self->onPrecursorJobFinish();
         }
     );
     _findAllJob->start();
 
-    setState(lock,
-             State::IN_PROGRESS);
+    setState(lock, State::IN_PROGRESS);
 }
 
 void FixUpJob::cancelImpl(util::Lock const& lock) {
@@ -148,12 +147,12 @@ void FixUpJob::cancelImpl(util::Lock const& lock) {
     for (auto&& ptr: _requests) {
         ptr->cancel();
         if (ptr->state() != Request::State::FINISHED)
-            _controller->stopReplication(
+            controller()->stopReplication(
                 ptr->worker(),
                 ptr->id(),
                 nullptr,    /* onFinish */
                 true,       /* keepTracking */
-                _id         /* jobId */);
+                id()        /* jobId */);
     }
 
     _chunk2requests.clear();
@@ -202,127 +201,126 @@ void FixUpJob::onPrecursorJobFinish() {
     // test is made after acquering the lock to recheck the state in case if it
     // has transitioned while acquering the lock.
     
-    if (_state == State::FINISHED) return;
+    if (state() == State::FINISHED) return;
 
     util::Lock lock(_mtx, context() + "onPrecursorJobFinish");
 
-    if (_state == State::FINISHED) return;
+    if (state() == State::FINISHED) return;
 
     /////////////////////////////////////////////////////////////////
     // Proceed with the replication effort only if the precursor job
     // has succeeded.
 
-    if (_findAllJob->extendedState() == ExtendedState::SUCCESS) {
+    if (_findAllJob->extendedState() != ExtendedState::SUCCESS) {
+        finish(lock, ExtendedState::FAILED);
+        return;
+    }
 
-        /////////////////////////////////////////////////////////////////
-        // Analyse results and prepare a replication plan to fix chunk
-        // co-location for under-represented chunks
+    /////////////////////////////////////////////////////////////////
+    // Analyse results and prepare a replication plan to fix chunk
+    // co-location for under-represented chunks
 
-        FindAllJobResult const& replicaData = _findAllJob->getReplicaData();
+    FindAllJobResult const& replicaData = _findAllJob->getReplicaData();
 
-        auto self = shared_from_base<FixUpJob>();
+    auto self = shared_from_base<FixUpJob>();
 
-        for (auto&& chunk2workers: replicaData.isColocated) {
-            unsigned int chunk = chunk2workers.first;
+    for (auto&& chunk2workers: replicaData.isColocated) {
+        unsigned int chunk = chunk2workers.first;
 
-            for (auto&& worker2colocated: chunk2workers.second) {
-                std::string const& destinationWorker = worker2colocated.first;
-                bool        const  isColocated       = worker2colocated.second;
+        for (auto&& worker2colocated: chunk2workers.second) {
+            std::string const& destinationWorker = worker2colocated.first;
+            bool        const  isColocated       = worker2colocated.second;
 
-                if (isColocated) continue;
+            if (isColocated) continue;
 
-                // Chunk locking is mandatory. If it's not possible to do this now then
-                // the job will need to make another attempt later.
+            // Chunk locking is mandatory. If it's not possible to do this now then
+            // the job will need to make another attempt later.
 
-                if (not _controller->serviceProvider()->chunkLocker().lock({_databaseFamily, chunk}, _id)) {
-                    ++_numFailedLocks;
-                    continue;
-                }
+            if (not controller()->serviceProvider()->chunkLocker().lock({databaseFamily(), chunk}, id())) {
+                ++_numFailedLocks;
+                continue;
+            }
 
-                // Iterate over all participating databases, find the ones which aren't
-                // represented on the worker, find a suitable source worker which has
-                // a complete chunk for the database and which (the worker) is not the same
-                // as the current one and submite the replication request.
+            // Iterate over all participating databases, find the ones which aren't
+            // represented on the worker, find a suitable source worker which has
+            // a complete chunk for the database and which (the worker) is not the same
+            // as the current one and submite the replication request.
 
-                for (auto&& database: replicaData.databases.at(chunk)) {
+            for (auto&& database: replicaData.databases.at(chunk)) {
 
-                    if (not replicaData.chunks.chunk(chunk)
-                                              .database(database)
-                                              .workerExists(destinationWorker)) {
+                if (not replicaData.chunks.chunk(chunk)
+                                          .database(database)
+                                          .workerExists(destinationWorker)) {
 
-                        // Finding a source worker first
-                        std::string sourceWorker;
-                        for (auto&& worker: replicaData.complete.at(chunk).at(database)) {
-                            if (worker != destinationWorker) {
-                                sourceWorker = worker;
-                                break;
-                            }
-                        }
-                        if (sourceWorker.empty()) {
-                            LOGS(_log, LOG_LVL_ERROR, context()
-                                 << "onPrecursorJobFinish  failed to find a source worker for chunk: "
-                                 << chunk << " and database: " << database);
-                            release(chunk);
-                            finish(lock,
-                                   ExtendedState::FAILED);
+                    // Finding a source worker first
+                    std::string sourceWorker;
+                    for (auto&& worker: replicaData.complete.at(chunk).at(database)) {
+                        if (worker != destinationWorker) {
+                            sourceWorker = worker;
                             break;
                         }
-
-                        // Finally, launch the replication request and register it for further
-                        // tracking (or cancellation, should the one be requested)
-
-                        ReplicationRequest::Ptr ptr =
-                            _controller->replicate(
-                                destinationWorker,
-                                sourceWorker,
-                                database,
-                                chunk,
-                                [self] (ReplicationRequest::Ptr ptr) {
-                                    self->onRequestFinish(ptr);
-                                },
-                                0,      /* priority */
-                                true,   /* keepTracking */
-                                true,   /* allowDuplicate */
-                                _id     /* jobId */
-                            );
-
-                        _chunk2requests[chunk][destinationWorker][database] = ptr;
-                        _requests.push_back(ptr);
-                        _numLaunched++;
                     }
+                    if (sourceWorker.empty()) {
+
+                        LOGS(_log, LOG_LVL_ERROR, context()
+                             << "onPrecursorJobFinish  failed to find a source worker for chunk: "
+                             << chunk << " and database: " << database);
+
+                        release(chunk);
+                        finish(lock, ExtendedState::FAILED);
+
+                        break;
+                    }
+
+                    // Finally, launch the replication request and register it for further
+                    // tracking (or cancellation, should the one be requested)
+
+                    ReplicationRequest::Ptr ptr =
+                        controller()->replicate(
+                            destinationWorker,
+                            sourceWorker,
+                            database,
+                            chunk,
+                            [self] (ReplicationRequest::Ptr ptr) {
+                                self->onRequestFinish(ptr);
+                            },
+                            0,      /* priority */
+                            true,   /* keepTracking */
+                            true,   /* allowDuplicate */
+                            id()    /* jobId */
+                        );
+
+                    _chunk2requests[chunk][destinationWorker][database] = ptr;
+                    _requests.push_back(ptr);
+                    _numLaunched++;
                 }
-                if (_state == State::FINISHED) break;
             }
-            if (_state == State::FINISHED) break;
+            if (state() == State::FINISHED) break;
         }
-        if (_state != State::FINISHED) {
+        if (state() == State::FINISHED) break;
+    }
+    if (state() != State::FINISHED) {
 
-            // ATTENTION: We need to evaluate reasons why no single request was
-            // launched while the job is still in the unfinished state and take
-            // proper actions. Otherwise (if this isn't done here) the object will
-            // get into a "zombie" state.
+        // ATTENTION: We need to evaluate reasons why no single request was
+        // launched while the job is still in the unfinished state and take
+        // proper actions. Otherwise (if this isn't done here) the object will
+        // get into a "zombie" state.
 
-            if (not _requests.size()) {
+        if (not _requests.size()) {
 
-                // Finish right away if no problematic chunks found
+            // Finish right away if no problematic chunks found
 
-                if (not _numFailedLocks) {
-                    finish(lock,
-                           ExtendedState::SUCCESS);
-                } else {
+            if (not _numFailedLocks) {
+                finish(lock, ExtendedState::SUCCESS);
+            } else {
 
-                    // Some of the chuks were locked and yet, no sigle request was
-                    // lunched. Hence we should start another iteration by requesting
-                    // the fresh state of the chunks within the family.
+                // Some of the chuks were locked and yet, no sigle request was
+                // lunched. Hence we should start another iteration by requesting
+                // the fresh state of the chunks within the family.
 
-                    restart(lock);
-                }
+                restart(lock);
             }
         }
-
-    } else {
-        finish(lock,
-               ExtendedState::FAILED);
     }
 }
 
@@ -344,14 +342,14 @@ void FixUpJob::onRequestFinish(ReplicationRequest::Ptr const& request) {
     // test is made after acquering the lock to recheck the state in case if it
     // has transitioned while acquering the lock.
 
-    if (_state == State::FINISHED)  {
+    if (state() == State::FINISHED)  {
         release(chunk);
         return;
     }
 
     util::Lock lock(_mtx, context() + "onRequestFinish");
 
-    if (_state == State::FINISHED) {
+    if (state() == State::FINISHED) {
         release(chunk);
         return;
     }
@@ -411,8 +409,8 @@ void FixUpJob::release(unsigned int chunk) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "release  chunk=" << chunk);
 
-    Chunk chunkObj {_databaseFamily, chunk};
-    _controller->serviceProvider()->chunkLocker().release(chunkObj);
+    Chunk chunkObj {databaseFamily(), chunk};
+    controller()->serviceProvider()->chunkLocker().release(chunkObj);
 }
 
 }}} // namespace lsst::qserv::replica

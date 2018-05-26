@@ -118,22 +118,21 @@ public:
     /// @return the performance info
     const WorkerPerformance& performance() const { return _performance; }
 
-    /** Set the status
-     *
-     * ATTENTION: this method needs to be called witin a thread-safe context
-     * when moving requests between different queues.
-     *
-     * @param status         - primary status to be set
-     * @param extendedStatus - secondary status to be set
+    /**
+     * This method is called from the initial state STATUS_NONE in order
+     * to prepare the request for processing (to respond to methods 'execute',
+     * 'cancel', 'rollback' or 'reset'. The final state upon the completion
+     * of the method should be STATUS_IN_PROGRESS.
      */
-    void setStatus(CompletionStatus status,
-                   ExtendedCompletionStatus extendedStatus = ExtendedCompletionStatus::EXT_STATUS_NONE);
-
+    void start();
+    
     /**
      * This method should be invoked (repeatedly) to execute the request until
      * it returns 'true' or throws an exception. Note that returning 'true'
      * may mean both success or failure, depeniding on the completion status
      * of the request.
+     *
+     * This method is required to be called wgie th erequest is in STATUS_IN_PROGRESS.
      *
      * The method will throw custom exception WorkerRequestCancelled when
      * it detects a cancellation request.
@@ -174,6 +173,12 @@ public:
      */
     virtual void rollback();
 
+    /**
+     * This method is called from *ANY* initial state in order to turn
+     * the request back into the initial STATUS_NONE.
+     */
+    void stop();
+
     /// @return the context string
     std::string context() const {
         return id() + "  " + type() + "  " + status2string(status()) + "  ";
@@ -195,6 +200,20 @@ protected:
                   std::string const& type,
                   std::string const& id,
                   int priority);
+
+    /** Set the status
+     *
+     * ATTENTION: this method needs to be called witin a thread-safe context
+     * when moving requests between different queues.
+     *
+     * @param lock           - lock must be acquired before calling this method
+     * @param status         - primary status to be set
+     * @param extendedStatus - secondary status to be set
+     */
+    void setStatus(util::Lock const& lock,
+                   CompletionStatus status,
+                   ExtendedCompletionStatus extendedStatus = ExtendedCompletionStatus::EXT_STATUS_NONE);
+
     /**
      * Struct ErrorContext is used for tracking errors reported by
      * method 'reportErrorIf

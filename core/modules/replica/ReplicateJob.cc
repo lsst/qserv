@@ -96,14 +96,14 @@ ReplicateJob::ReplicateJob(std::string const& databaseFamily,
 
 ReplicateJob::~ReplicateJob() {
     // Make sure all chuks locked by this job are released
-    _controller->serviceProvider()->chunkLocker().release(_id);
+    controller()->serviceProvider()->chunkLocker().release(id());
 }
 
 ReplicateJobResult const& ReplicateJob::getReplicaData() const {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "getReplicaData");
 
-    if (_state == State::FINISHED) return _replicaData;
+    if (state() == State::FINISHED) return _replicaData;
 
     throw std::logic_error(
         "ReplicateJob::getReplicaData  the method can't be called while the job hasn't finished");
@@ -126,9 +126,9 @@ void ReplicateJob::startImpl(util::Lock const& lock) {
     auto self = shared_from_base<ReplicateJob>();
 
     _findAllJob = FindAllJob::create(
-        _databaseFamily,
-        _controller,
-        _id,
+        databaseFamily(),
+        controller(),
+        id(),
         [self] (FindAllJob::Ptr job) {
             self->onPrecursorJobFinish();
         }
@@ -199,275 +199,256 @@ void ReplicateJob::onPrecursorJobFinish() {
     // test is made after acquering the lock to recheck the state in case if it
     // has transitioned while acquering the lock.
 
-    if (_state == State::FINISHED) return;
+    if (state() == State::FINISHED) return;
 
     util::Lock lock(_mtx, context() + "onPrecursorJobFinish");
 
-    if (_state == State::FINISHED) return;
+    if (state() == State::FINISHED) return;
 
-    // IMPLEMENTATION NOTE: using a single-iteration loop in order to bail
-    // out of it at any moment. When this happens object state will get
-    // re-evaluated and a client will get notified if needed.
+    //////////////////////////////////////////////////////////////////////
+    // Do not proceed with the replication effort if there was any problem
+    // with the precursor job.
 
-    do {
+    if (_findAllJob->extendedState() != ExtendedState::SUCCESS) {
+        finish(lock, ExtendedState::FAILED);
+        return;
+    }
 
-        //////////////////////////////////////////////////////////////////////
-        // Do not proceed with the replication effort if there was any problem
-        // with the precursor job.
+    /////////////////////////////////////////////////////////////////
+    // Analyse results and prepare a replication plan to create extra
+    // replicas for under-represented chunks
+    //
+    // IMPORTANT:
+    //
+    // - chunks which were found locked by some other job will not be replicated
+    //
+    // - when deciding on a number of extra replicas to be created the algorithm
+    //   will only consider 'good' chunks (the ones which meet the 'colocation'
+    //   requirement and which has good chunks only.
+    //
+    // - the algorithm will create only 'good' chunks
+    //
+    // - when looking for workers on which sources of the replicated chunks
+    //   are found any worker which has a 'complete' chunk will be assumed.
+    //
+    // - when deciding on a destination worker for a new replica of a chunk
+    //   the following rules will apply:
+    //     a) workers which found as 'FAILED' by the precursor job will be excluded
+    //     b) workers which already have the chunk replica in any state ('good',
+    //        'incomplete', etc.) will be excluded
+    //     c) a worker which has a fewer number of chunks will be assumed.
+    //     d) the statistics for the number of chunks on each worker will be
+    //        updated as new replica creation jobs targeting the corresponding
+    //        workers were issued.
 
-        if (_findAllJob->extendedState() != ExtendedState::SUCCESS) {
-            finish(lock,
-                   ExtendedState::FAILED);
-            break;
+    FindAllJobResult const& replicaData = _findAllJob->getReplicaData();
+
+    // The number of replicas to be created for eligible chunks
+    //
+    std::map<unsigned int,int> chunk2numReplicas2create;
+
+    for (auto&& chunk2workers: replicaData.isGood) {
+        unsigned int const  chunk    = chunk2workers.first;
+        auto         const& replicas = chunk2workers.second;
+
+        size_t const numReplicas = replicas.size();
+        if (numReplicas < _numReplicas) {
+            chunk2numReplicas2create[chunk] = _numReplicas - numReplicas;
         }
+    }
 
-        /////////////////////////////////////////////////////////////////
-        // Analyse results and prepare a replication plan to create extra
-        // replicas for under-represented chunks
-        //
-        // IMPORTANT:
-        //
-        // - chunks which were found locked by some other job will not be replicated
-        //
-        // - when deciding on a number of extra replicas to be created the algorithm
-        //   will only consider 'good' chunks (the ones which meet the 'colocation'
-        //   requirement and which has good chunks only.
-        //
-        // - the algorithm will create only 'good' chunks
-        //
-        // - when looking for workers on which sources of the replicated chunks
-        //   are found any worker which has a 'complete' chunk will be assumed.
-        //
-        // - when deciding on a destination worker for a new replica of a chunk
-        //   the following rules will apply:
-        //     a) workers which found as 'FAILED' by the precursor job will be excluded
-        //     b) workers which already have the chunk replica in any state ('good',
-        //        'incomplete', etc.) will be excluded
-        //     c) a worker which has a fewer number of chunks will be assumed.
-        //     d) the statistics for the number of chunks on each worker will be
-        //        updated as new replica creation jobs targeting the corresponding
-        //        workers were issued.
+    // The 'occupancy' map or workers which will be used by the replica
+    // placement algorithm later. The map is initialized below is based on
+    // results reported by the precursor job and it will also be dynamically
+    // updated by the algorithm as new replication requests for workers will
+    // be issued.
+    //
+    // NOTE: this map includes chunks in 'good' standing only
 
-        FindAllJobResult const& replicaData = _findAllJob->getReplicaData();
+    std::map<std::string, size_t> worker2occupancy;
 
-        // The number of replicas to be created for eligible chunks
-        //
-        std::map<unsigned int,int> chunk2numReplicas2create;
-
-        for (auto&& chunk2workers: replicaData.isGood) {
-            unsigned int const  chunk    = chunk2workers.first;
-            auto         const& replicas = chunk2workers.second;
-
-            size_t const numReplicas = replicas.size();
-            if (numReplicas < _numReplicas) {
-                chunk2numReplicas2create[chunk] = _numReplicas - numReplicas;
+    for (auto&& chunkEntry: replicaData.isGood) {
+        for (auto&& workerEntry: chunkEntry.second) {
+            auto worker = workerEntry.first;
+            bool const isGood = workerEntry.second;
+            if (isGood) {
+                if (not worker2occupancy.count(worker)) worker2occupancy[worker] = 0;
+                worker2occupancy[worker]++;
             }
         }
+    }
 
-        // The 'occupancy' map or workers which will be used by the replica
-        // placement algorithm later. The map is initialized below is based on
-        // results reported by the precursor job and it will also be dynamically
-        // updated by the algorithm as new replication requests for workers will
-        // be issued.
-        //
-        // NOTE: this map includes chunks in 'good' standing only
+    // The 'black list' of workers to be avoided as new replica destinations
+    // for specific chunks because they already have a replica (regardless of
+    // its status) of that chunk for any database of the family
+    //
+    // This is done in order to avoid conflicts when attempting to place new chunk
+    // replicas on that node.
+    //
+    std::map<std::string, std::set<unsigned int>> worker2chunks;
 
-        std::map<std::string, size_t> worker2occupancy;
+    for (auto chunk: replicaData.chunks.chunkNumbers()) {
+        auto chunkMap = replicaData.chunks.chunk(chunk);
 
-        for (auto&& chunkEntry: replicaData.isGood) {
-            for (auto&& workerEntry: chunkEntry.second) {
-                auto worker = workerEntry.first;
-                bool const isGood = workerEntry.second;
-                if (isGood) {
-                    if (not worker2occupancy.count(worker)) { worker2occupancy[worker] = 0; }
-                    worker2occupancy[worker]++;
-                }
+        for (auto&& database: chunkMap.databaseNames()) {
+            auto databaseMap = chunkMap.database(database);
+
+            for (auto&& worker: databaseMap.workerNames()) {
+                worker2chunks[worker].insert(chunk);
             }
         }
+    }
 
-        // The 'black list' of workers to be avoided as new replica destinations
-        // for specific chunks because they already have a replica (regardless of
-        // its status) of that chunk for any database of the family
-        //
-        // This is done in order to avoid conflicts when attempting to place new chunk
-        // replicas on that node.
-        //
-        std::map<std::string, std::set<unsigned int>> worker2chunks;
+    // The 'white list of workers which haven't been reported as FAILED
+    // by the precursor job. These workers will be considered as destinations
+    // for the new replicas.
 
-        for (auto chunk: replicaData.chunks.chunkNumbers()) {
-            auto chunkMap = replicaData.chunks.chunk(chunk);
+    std::vector<std::string> workers;
+    for (auto&& worker: controller()->serviceProvider()->config()->workers()) {
+        if (replicaData.workers.at(worker)) {
+            workers.push_back(worker);
+        }
+    }
+    if (not workers.size()) {
 
-            for (auto&& database: chunkMap.databaseNames()) {
-                auto databaseMap = chunkMap.database(database);
+        LOGS(_log, LOG_LVL_ERROR, context()
+             << "onPrecursorJobFinish  not workers are available for new replicas");
 
-                for (auto&& worker: databaseMap.workerNames()) {
-                    worker2chunks[worker].insert(chunk);
-                }
-            }
+        finish(lock, ExtendedState::FAILED);
+        return;
+    }
+
+    /////////////////////////////////////////////////////////////////////
+    // Check which chunks are under-represented. Then find a least loaded
+    // worker and launch a replica creation job.
+
+    auto self = shared_from_base<ReplicateJob>();
+
+    for (auto&& chunk2replicas: chunk2numReplicas2create) {
+
+        unsigned int const chunk              = chunk2replicas.first;
+        int          const numReplicas2create = chunk2replicas.second;
+
+        // Chunk locking is mandatory. If it's not possible to do this now then
+        // the job will need to make another attempt later.
+
+        Chunk const chunkObj{databaseFamily(), chunk};
+        if (not controller()->serviceProvider()->chunkLocker().lock(chunkObj, id())) {
+            ++_numFailedLocks;
+            continue;
         }
 
-        // The 'white list of workers which haven't been reported as FAILED
-        // by the precursor job. These workers will be considered as destinations
-        // for the new replicas.
+        // Find the first available source worker which has a 'good'
+        // chunk
 
-        std::vector<std::string> workers;
-        for (auto&& worker: _controller->serviceProvider()->config()->workers()) {
-            if (replicaData.workers.at(worker)) {
-                workers.push_back(worker);
+        std::string sourceWorker;
+        for (auto&& workerEntry: replicaData.isGood.at(chunk)) {
+            std::string const& worker = workerEntry.first;
+            bool const isGood = workerEntry.second;
+            if (isGood) {
+                sourceWorker = worker;
+                break;
             }
         }
-        if (not workers.size()) {
-
+        if (sourceWorker.empty()) {
             LOGS(_log, LOG_LVL_ERROR, context()
-                 << "onPrecursorJobFinish  not workers are available for new replicas");
+                 << "onPrecursorJobFinish  no suitable soure worker found for chunk: "
+                 << chunk);
 
-            finish(lock,
-                   ExtendedState::FAILED);
-            break;
+            release(chunk);
+
+            finish(lock, ExtendedState::FAILED);
+            return;
         }
 
-        /////////////////////////////////////////////////////////////////////
-        // Check which chunks are under-represented. Then find a least loaded
-        // worker and launch a replica creation job.
+        // Iterate over the number of replicas to be created and create
+        // a new one on each step.
+        //
+        // NOTE: the worker ocupancy map worker2occupancy will get
+        // updated on ech successful iteration of the loop, so that
+        // the corresponidng destination worker will also be accounted
+        // for when deciding on a placement of other replicas.
 
-        auto self = shared_from_base<ReplicateJob>();
+        for (int i=0; i < numReplicas2create; ++i) {
 
-        for (auto&& chunk2replicas: chunk2numReplicas2create) {
+            // Find a suitable destination worker based on the worker load
+            // and chunk-specific exclusions.
 
-            unsigned int const chunk              = chunk2replicas.first;
-            int          const numReplicas2create = chunk2replicas.second;
+            std::string destinationWorker;
 
-            // Chunk locking is mandatory. If it's not possible to do this now then
-            // the job will need to make another attempt later.
+            size_t minNumChunks = (size_t) -1;  // this will be decreased witin the loop to find
+                                                // the absolute minimum among the eligible workers
+            for (const auto& worker: workers) {
 
-            Chunk const chunkObj{_databaseFamily, chunk};
-            if (not _controller->serviceProvider()->chunkLocker().lock(chunkObj, _id)) {
-                ++_numFailedLocks;
-                continue;
-            }
+                // Skip if this worker already has any replica of the chunk
+                if (worker2chunks[worker].count(chunk)) {
+                    continue;
+                }
 
-            // Find the first available source worker which has a 'good'
-            // chunk
-
-            std::string sourceWorker;
-            for (auto&& workerEntry: replicaData.isGood.at(chunk)) {
-                std::string const& worker = workerEntry.first;
-                bool const isGood = workerEntry.second;
-                if (isGood) {
-                    sourceWorker = worker;
-                    break;
+                // Evaluate the occupancy
+                if (destinationWorker.empty() or worker2occupancy[worker] < minNumChunks) {
+                    destinationWorker = worker;
+                    minNumChunks = worker2occupancy[worker];
                 }
             }
-            if (sourceWorker.empty()) {
+            if (destinationWorker.empty()) {
                 LOGS(_log, LOG_LVL_ERROR, context()
-                     << "onPrecursorJobFinish  no suitable soure worker found for chunk: "
+                     << "onPrecursorJobFinish  no suitable destination worker found for chunk: "
                      << chunk);
 
                 release(chunk);
 
-                finish(lock,
-                       ExtendedState::FAILED);
-                break;
+                finish(lock, ExtendedState::FAILED);
+                return;
             }
 
-            // Iterate over the number of replicas to be created and create
-            // a new one on each step.
-            //
-            // NOTE: the worker ocupancy map worker2occupancy will get
-            // updated on ech successful iteration of the loop, so that
-            // the corresponidng destination worker will also be accounted
-            // for when deciding on a placement of other replicas.
+            // Finally, launch and register for further tracking a replica
+            // creation job
 
-            for (int i=0; i < numReplicas2create; ++i) {
+            auto ptr = CreateReplicaJob::create(
+                databaseFamily(),
+                chunk,
+                sourceWorker,
+                destinationWorker,
+                controller(),
+                id(),
+                [self] (CreateReplicaJob::Ptr const& job) {
+                    self->onCreateJobFinish(job);
+                },
+                options()   // inherit from the current job
+            );
+            ptr->start();
 
-                // Find a suitable destination worker based on the worker load
-                // and chunk-specific exclusions.
+            _chunk2jobs[chunk][destinationWorker] = ptr;
+            _jobs.push_back(ptr);
 
-                std::string destinationWorker;
+            _numLaunched++;
 
-                size_t minNumChunks = (size_t) -1;  // this will be decreased witin the loop to find
-                                                    // the absolute minimum among the eligible workers
-                for (const auto& worker: workers) {
+            // Bump the worker occupancy, so that it will be taken into
+            // consideration when deciding on destinations of other replicas.
 
-                    // Skip if this worker already has any replica of the chunk
-                    if (worker2chunks[worker].count(chunk)) {
-                        continue;
-                    }
-
-                    // Evaluate the occupancy
-                    if (destinationWorker.empty() or worker2occupancy[worker] < minNumChunks) {
-                        destinationWorker = worker;
-                        minNumChunks = worker2occupancy[worker];
-                    }
-                }
-                if (destinationWorker.empty()) {
-                    LOGS(_log, LOG_LVL_ERROR, context()
-                         << "onPrecursorJobFinish  no suitable destination worker found for chunk: "
-                         << chunk);
-
-                    release(chunk);
-
-                    finish(lock,
-                           ExtendedState::FAILED);
-                    break;
-                }
-
-                // Finally, launch and register for further tracking a replica
-                // creation job
-
-                auto ptr = CreateReplicaJob::create(
-                    _databaseFamily,
-                    chunk,
-                    sourceWorker,
-                    destinationWorker,
-                    _controller,
-                    _id,
-                    [self] (CreateReplicaJob::Ptr const& job) {
-                        self->onCreateJobFinish(job);
-                    },
-                    options()   // inherit from the current job
-                );
-                ptr->start();
-
-                _chunk2jobs[chunk][destinationWorker] = ptr;
-                _jobs.push_back(ptr);
-
-                _numLaunched++;
-
-                // Bump the worker occupancy, so that it will be taken into
-                // consideration when deciding on destinations of other replicas.
-
-                worker2occupancy[destinationWorker]++;
-            }
-            if (state() == State::FINISHED) break;
+            worker2occupancy[destinationWorker]++;
         }
+    }
 
-        if (state() != State::FINISHED) {
+    // ATTENTION: this condition needs to be evaluated to prevent
+    // getting into the 'zombie' state.
 
-            // ATTENTION: this condition needs to be evaluated to prevent
-            // getting into the 'zombie' state.
+    if (not _jobs.size()) {
 
-            if (not _jobs.size()) {
+        // Finish right away if no problematic chunks found
 
-                // Finish right away if no problematic chunks found
+        if (not _numFailedLocks) {
+            finish(lock, ExtendedState::SUCCESS);
+        } else {
 
-                if (not _numFailedLocks) {
-                    finish(lock,
-                           ExtendedState::SUCCESS);
-                    break;
-                } else {
+            // Some of the chuks were locked and yet, no single replica creation
+            // job was lunched. Hence we should start another iteration by requesting
+            // the fresh state of the chunks within the family.
 
-                    // Some of the chuks were locked and yet, no single replica creation
-                    // job was lunched. Hence we should start another iteration by requesting
-                    // the fresh state of the chunks within the family.
-
-                    restart(lock);
-                    return;
-                }
-            }
+            restart(lock);
         }
-
-    } while (false);
+    }
 }
 
 void ReplicateJob::onCreateJobFinish(CreateReplicaJob::Ptr const& job) {
@@ -485,14 +466,14 @@ void ReplicateJob::onCreateJobFinish(CreateReplicaJob::Ptr const& job) {
     // test is made after acquering the lock to recheck the state in case if it
     // has transitioned while acquering the lock.
 
-    if (_state == State::FINISHED) {
+    if (state() == State::FINISHED) {
         release(job->chunk());
         return;
     }
 
     util::Lock lock(_mtx, context() + "onCreateJobFinish");
 
-    if (_state == State::FINISHED) {
+    if (state() == State::FINISHED) {
         release(job->chunk());
         return;
     }
@@ -548,12 +529,10 @@ void ReplicateJob::onCreateJobFinish(CreateReplicaJob::Ptr const& job) {
                 return;
 
             } else {
-                finish(lock,
-                       ExtendedState::SUCCESS);
+                finish(lock, ExtendedState::SUCCESS);
             }
         } else {
-            finish(lock,
-                   ExtendedState::FAILED);
+            finish(lock, ExtendedState::FAILED);
         }
     }
 }
@@ -566,8 +545,8 @@ void ReplicateJob::release(unsigned int chunk) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "release  chunk=" << chunk);
 
-    Chunk chunkObj {_databaseFamily, chunk};
-    _controller->serviceProvider()->chunkLocker().release(chunkObj);
+    Chunk chunkObj {databaseFamily(), chunk};
+    controller()->serviceProvider()->chunkLocker().release(chunkObj);
 }
 
 }}} // namespace lsst::qserv::replica

@@ -176,6 +176,8 @@ bool WorkerReplicationRequestPOSIX::execute () {
          << "  database: "     << database()
          << "  chunk: "        << chunk());
 
+    util::Lock lock(_mtx, context() + "execute");
+
     // Obtain the list of files to be migrated
     //
     // IMPLEMENTATION NOTES:
@@ -235,7 +237,7 @@ bool WorkerReplicationRequestPOSIX::execute () {
     WorkerRequest::ErrorContext errorContext;
     boost::system::error_code   ec;
     {
-        util::Lock lock(_mtxDataFolderOperations, context() + "execute:1");
+        util::Lock dataFolderLock(_mtxDataFolderOperations, context() + "execute:1");
 
         // Check for a presence of input files and calculate space requirement
 
@@ -333,7 +335,7 @@ bool WorkerReplicationRequestPOSIX::execute () {
                     "not enough free space availble at output folder: " + outDir.string());
     }
     if (errorContext.failed) {
-        setStatus(STATUS_FAILED, errorContext.extendedStatus);
+        setStatus(lock, STATUS_FAILED, errorContext.extendedStatus);
         return true;
     }
 
@@ -353,7 +355,7 @@ bool WorkerReplicationRequestPOSIX::execute () {
                     "failed to copy file: " + inFile.string() + " into: " + tmpFile.string());
     }
     if (errorContext.failed) {
-        setStatus(STATUS_FAILED, errorContext.extendedStatus);
+        setStatus(lock, STATUS_FAILED, errorContext.extendedStatus);
         return true;
     }
 
@@ -363,7 +365,7 @@ bool WorkerReplicationRequestPOSIX::execute () {
     // acquering the directory lock to guarantee a consistent view onto the folder.
 
     {
-        util::Lock lock(_mtxDataFolderOperations, context() + "execute:2");
+        util::Lock dataFolderLock(_mtxDataFolderOperations, context() + "execute:2");
 
         // ATTENTION: as per ISO/IEC 9945 thie file rename operation will
         //            remove empty files. Not sure if this should be treated
@@ -391,14 +393,14 @@ bool WorkerReplicationRequestPOSIX::execute () {
         }
     }
     if (errorContext.failed) {
-        setStatus(STATUS_FAILED, errorContext.extendedStatus);
+        setStatus(lock, STATUS_FAILED, errorContext.extendedStatus);
         return true;
     }
 
     // For now (before finalizing the progress reporting protocol) just return
     // the perentage of the total amount of data moved
 
-    setStatus(STATUS_SUCCEEDED);
+    setStatus(lock, STATUS_SUCCEEDED);
     return true;
 }
 
@@ -452,7 +454,8 @@ WorkerReplicationRequestFS::WorkerReplicationRequestFS(
 }
 
 WorkerReplicationRequestFS::~WorkerReplicationRequestFS() {
-    releaseResources();
+    util::Lock lock(_mtx, context() + "destructor");
+    releaseResources(lock);
 }
 
 bool WorkerReplicationRequestFS::execute () {
@@ -462,10 +465,12 @@ bool WorkerReplicationRequestFS::execute () {
          << "  database: "     << database()
          << "  chunk: "        << chunk());
 
+    util::Lock lock(_mtx, context() + "execute");
+
     // Abort the operation right away if that's the case
 
     if (_status == STATUS_IS_CANCELLING) {
-        setStatus(STATUS_CANCELLED);
+        setStatus(lock, STATUS_CANCELLED);
         throw WorkerRequestCancelled();
     }
 
@@ -522,7 +527,7 @@ bool WorkerReplicationRequestFS::execute () {
 
         boost::system::error_code ec;
         {
-            util::Lock lock(_mtxDataFolderOperations, context() + "execute");
+            util::Lock dataFolderLock(_mtxDataFolderOperations, context() + "execute");
 
             // Check for a presence of input files and calculate space requirement
 
@@ -545,7 +550,7 @@ bool WorkerReplicationRequestFS::execute () {
                         ", file: " + file);
 
                 if (errorContext.failed) {
-                    setStatus(STATUS_FAILED, errorContext.extendedStatus);
+                    setStatus(lock, STATUS_FAILED, errorContext.extendedStatus);
                     return true;
                 }
                 file2size[file] = inFilePtr->size();
@@ -653,7 +658,7 @@ bool WorkerReplicationRequestFS::execute () {
             }
         }
         if (errorContext.failed) {
-            setStatus(STATUS_FAILED, errorContext.extendedStatus);
+            setStatus(lock, STATUS_FAILED, errorContext.extendedStatus);
             return true;
         }
 
@@ -667,7 +672,7 @@ bool WorkerReplicationRequestFS::execute () {
         // Setup the iterator for the name of the very first file to be copied
         _fileItr = _files.begin();
 
-        if (openFiles()) { return true; }
+        if (not openFiles(lock)) return true;
     }
 
     // Copy the next record from the currently open remote file
@@ -695,7 +700,7 @@ bool WorkerReplicationRequestFS::execute () {
 
                     // Keep updating this stats while copying the files
                     _file2descr[*_fileItr].endTransferTime = PerformanceUtils::now();
-                    updateInfo();
+                    updateInfo(lock);
 
                     // Keep copying the same file
                     return false;
@@ -729,8 +734,8 @@ bool WorkerReplicationRequestFS::execute () {
                 ", file: " + *_fileItr);
 
         if (errorContext.failed) {
-            setStatus(STATUS_FAILED, errorContext.extendedStatus);
-            releaseResources();
+            setStatus(lock, STATUS_FAILED, errorContext.extendedStatus);
+            releaseResources(lock);
             return true;
         }
         // Flush and close the current file
@@ -741,23 +746,23 @@ bool WorkerReplicationRequestFS::execute () {
 
         // Keep updating this stats after finishing to copy each file
         _file2descr[*_fileItr].endTransferTime = PerformanceUtils::now();
-        updateInfo ();
+        updateInfo(lock);
 
         // Move the iterator to the name of the next file to be copied
         ++_fileItr;
         if (_files.end() != _fileItr) {
-            if (openFiles()) {
-                releaseResources();
+            if (not openFiles(lock)) {
+                releaseResources(lock);
                 return true;
             }
         }
     }
 
     // Finalize the operation, deallocate resources, etc.
-    return finalize();
+    return finalize(lock);
 }
 
-bool WorkerReplicationRequestFS::openFiles () {
+bool WorkerReplicationRequestFS::openFiles(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "openFiles"
          << "  sourceWorker: " << sourceWorker()
@@ -781,8 +786,8 @@ bool WorkerReplicationRequestFS::openFiles () {
             ", file: " + *_fileItr);
 
     if (errorContext.failed) {
-        setStatus(STATUS_FAILED, errorContext.extendedStatus);
-        return true;
+        setStatus(lock, STATUS_FAILED, errorContext.extendedStatus);
+        return false;
     }
 
     // Reopen a temporary output file locally in the 'append binary mode'
@@ -798,17 +803,17 @@ bool WorkerReplicationRequestFS::openFiles () {
             "failed to open temporary file: " + tmpFile.string() +
             ", error: " + std::strerror(errno));
     if (errorContext.failed) {
-        setStatus(STATUS_FAILED, errorContext.extendedStatus);
-        return true;
+        setStatus(lock, STATUS_FAILED, errorContext.extendedStatus);
+        return false;
     }
     std::rewind(_tmpFilePtr);
 
     _file2descr[*_fileItr].beginTransferTime = PerformanceUtils::now();
 
-    return false;
+    return true;
 }
 
-bool WorkerReplicationRequestFS::finalize () {
+bool WorkerReplicationRequestFS::finalize(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "finalize"
          << "  sourceWorker: " << sourceWorker()
@@ -816,14 +821,14 @@ bool WorkerReplicationRequestFS::finalize () {
          << "  chunk: "        << chunk());
 
     // Unconditionally regardless of the completion of the file ranaming attemp
-    releaseResources();
+    releaseResources(lock);
 
     // Rename temporary files into the canonical ones
     // Note that this operation changes the directory namespace in a way
     // which may affect other users (like replica lookup operations, etc.). Hence we're
     // acquering the directory lock to guarantee a consistent view onto the folder.
 
-    util::Lock lock(_mtxDataFolderOperations, context() + "finalize");
+    util::Lock dataFolderLock(_mtxDataFolderOperations, context() + "finalize");
 
     // ATTENTION: as per ISO/IEC 9945 thie file rename operation will
     //            remove empty files. Not sure if this should be treated
@@ -853,14 +858,14 @@ bool WorkerReplicationRequestFS::finalize () {
     }
 
     if (errorContext.failed) {
-        setStatus(STATUS_FAILED, errorContext.extendedStatus);
+        setStatus(lock, STATUS_FAILED, errorContext.extendedStatus);
         return true;
     }
-    setStatus(STATUS_SUCCEEDED);
+    setStatus(lock, STATUS_SUCCEEDED);
     return true;
 }
 
-void WorkerReplicationRequestFS::updateInfo() {
+void WorkerReplicationRequestFS::updateInfo(util::Lock const& lock) {
 
     size_t totalInSizeBytes  = 0;
     size_t totalOutSizeBytes = 0;
@@ -889,11 +894,6 @@ void WorkerReplicationRequestFS::updateInfo() {
 
     // Fill in the info on the chunk before finishing the operation
 
-    // to guarantee a consistent snapshot of that data structure
-    // if other threads will be requesting its copy while it'll be being
-    // updated below.
-    util::Lock lock(_mtx, context() + "updateInfo");
-
     _replicaInfo = ReplicaInfo(
         status,
         worker(),
@@ -904,7 +904,7 @@ void WorkerReplicationRequestFS::updateInfo() {
 }
 
 void
-WorkerReplicationRequestFS::releaseResources() {
+WorkerReplicationRequestFS::releaseResources(util::Lock const& lock) {
 
     // Drop a connection to the remore server
     _inFilePtr.reset();

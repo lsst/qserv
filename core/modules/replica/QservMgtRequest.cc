@@ -62,6 +62,7 @@ std::string QservMgtRequest::state2string(ExtendedState state) {
     switch (state) {
         case ExtendedState::NONE:                 return "NONE";
         case ExtendedState::SUCCESS:              return "SUCCESS";
+        case ExtendedState::CONFIG_ERROR:         return "CONFIG_ERROR";
         case ExtendedState::CLIENT_ERROR:         return "CLIENT_ERROR";
         case ExtendedState::SERVER_BAD:           return "SERVER_BAD";
         case ExtendedState::SERVER_IN_USE:        return "SERVER_IN_USE";
@@ -87,10 +88,8 @@ QservMgtRequest::QservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
         _performance(),
         _jobId(""),
         _service(nullptr),
-        _requestExpirationIvalSec(_serviceProvider->config()->xrootdTimeoutSec()),
+        _requestExpirationIvalSec(serviceProvider->config()->xrootdTimeoutSec()),
         _requestExpirationTimer(io_service) {
-
-        _serviceProvider->assertWorkerIsValid(_worker);
 }
 
 std::string const& QservMgtRequest::serverError() const {
@@ -101,32 +100,47 @@ void QservMgtRequest::start(XrdSsiService* service,
                             std::string const& jobId,
                             unsigned int requestExpirationIvalSec) {
 
+    LOGS(_log, LOG_LVL_DEBUG, context() << "start");
+
     util::Lock lock(_mtx, "QservMgtRequest::start");
 
-    assertState(State::CREATED,
-                "QservMgtRequest::start");
+    assertState(State::CREATED, "QservMgtRequest::start");
 
-    // Change the expiration ival if requested
-    if (requestExpirationIvalSec) {
-        _requestExpirationIvalSec = requestExpirationIvalSec;
-    }
-    LOGS(_log, LOG_LVL_DEBUG, context() << "start  _requestExpirationIvalSec: "
-         << _requestExpirationIvalSec);
-
-    // Build optional associaitons with the corresponding service and the job
-    //
-    // NOTE: this is done only once, the first time a non-trivial value
-    // of each parameter is presented to the method.
-
-    if (not _service and service) _service = service;
-    if (not _service) {
-        throw std::invalid_argument("QservMgtRequest::start  null pointer for XrdSsiService");
-    }
-    if (_jobId.empty() and not jobId.empty()) _jobId = jobId;
+    // This needs to be updated to override the default value of the counter
+    // which was created upon the object construction.
 
     _performance.setUpdateStart();
+
+    // Check if configuration parameters are valid
+
+    if (not (serviceProvider()->config()->isKnownWorker(worker()) and
+             (service != nullptr))) {
+
+        LOGS(_log, LOG_LVL_ERROR, context() << "start  ** MISCONFIGURED ** "
+             << " worker: '" << worker() << "'"
+             << " XrdSsiService pointer: " << service);
+
+        setState(lock,
+                 State::FINISHED,
+                 ExtendedState::CONFIG_ERROR);
+        
+        notify();
+        return;
+    }
   
-    if (_requestExpirationIvalSec) {
+    // Build associaitons with the corresponding service and
+    // the job (optional)
+
+    _service = service;
+    _jobId = jobId;
+      
+    // Change the default values of the expiration ival if requested
+    // before starting the timer.
+  
+    if (0 != requestExpirationIvalSec) {
+        _requestExpirationIvalSec = requestExpirationIvalSec;
+    }
+    if (0 != _requestExpirationIvalSec) {
         _requestExpirationTimer.cancel();
         _requestExpirationTimer.expires_from_now(boost::posix_time::seconds(_requestExpirationIvalSec));
         _requestExpirationTimer.async_wait(
@@ -143,10 +157,10 @@ void QservMgtRequest::start(XrdSsiService* service,
 
     startImpl(lock);
 
+    if (state() == State::FINISHED) return;
+
     setState(lock,
              State::IN_PROGRESS);
-
-    _serviceProvider->databaseServices()->saveState(*this);
 }
 
 std::string const& QservMgtRequest::jobId() const {
@@ -163,20 +177,24 @@ void QservMgtRequest::expired(boost::system::error_code const& ec) {
 
     if (ec == boost::asio::error::operation_aborted) return;
 
-    finish(ExtendedState::EXPIRED);
+    // IMPORTANT: the final state is required to be tested twice. The first time
+    // it's done in order to avoid deadlock on the "in-flight" callbacks reporting
+    // their completion while the request termination is in a progress. And the second
+    // test is made after acquering the lock to recheck the state in case if it
+    // has transitioned while acquering the lock.
+
+    if (state() == State::FINISHED) return;
+
+    util::Lock lock(_mtx, context() + "expired");
+
+    if (state() == State::FINISHED) return;
+
+    finish(lock, ExtendedState::EXPIRED);
 }
 
 void QservMgtRequest::cancel() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancel");
-
-    finish(ExtendedState::CANCELLED);
-}
-
-void QservMgtRequest::finish(ExtendedState extendedState,
-                             std::string const& serverError) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << "finish");
 
     // IMPORTANT: the final state is required to be tested twice. The first time
     // it's done in order to avoid deadlock on the "in-flight" callbacks reporting
@@ -184,11 +202,20 @@ void QservMgtRequest::finish(ExtendedState extendedState,
     // test is made after acquering the lock to recheck the state in case if it
     // has transitioned while acquering the lock.
 
-    if (_state == State::FINISHED) return;
+    if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + "finish");
+    util::Lock lock(_mtx, context() + "cancel");
 
-    if (_state == State::FINISHED) return;
+    if (state() == State::FINISHED) return;
+
+    finish(lock, ExtendedState::CANCELLED);
+}
+
+void QservMgtRequest::finish(util::Lock const& lock,
+                             ExtendedState extendedState,
+                             std::string const& serverError) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << "finish");
 
     // Set the optional server error state as well
     //
@@ -218,7 +245,7 @@ void QservMgtRequest::finish(ExtendedState extendedState,
 
     _performance.setUpdateFinish();
 
-    _serviceProvider->databaseServices()->saveState(*this);
+    serviceProvider()->databaseServices()->saveState(*this);
 
     notify();
 }
@@ -241,28 +268,28 @@ void QservMgtRequest::notify() {
 }
 
 
-void QservMgtRequest::assertState(State state,
+void QservMgtRequest::assertState(State desiredState,
                                   std::string const& context) const {
-    if (state != _state) {
+    if (desiredState != state()) {
         throw std::logic_error(
-            context + ": wrong state " + state2string(state) + " instead of " + state2string(_state));
+            context + ": wrong state " + state2string(state()) + " instead of " + state2string(desiredState));
     }
 }
 
 void QservMgtRequest::setState(util::Lock const& lock,
-                               State state,
-                               ExtendedState extendedState)
+                               State newState,
+                               ExtendedState newExtendedState)
 {
-    LOGS(_log, LOG_LVL_DEBUG, context() << "setState  " << state2string(state, extendedState));
+    LOGS(_log, LOG_LVL_DEBUG, context() << "setState  " << state2string(newState, newExtendedState));
 
     // IMPORTANT: the top-level state is the last to be set when performing
     // the state transition to insure clients will get a consistent view onto
     // the object state.
 
-    _extendedState = extendedState;
-    _state = state;
+    _extendedState = newExtendedState;
+    _state = newState;
 
-    _serviceProvider->databaseServices()->saveState(*this);
+    serviceProvider()->databaseServices()->saveState(*this);
 }
 
 }}} // namespace lsst::qserv::replica

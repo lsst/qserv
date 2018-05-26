@@ -115,21 +115,13 @@ CreateReplicaJob::CreateReplicaJob(std::string const& databaseFamily,
         _sourceWorker(sourceWorker),
         _destinationWorker(destinationWorker),
         _onFinish(onFinish) {
-
-    if (not _controller->serviceProvider()->config()->isKnownDatabaseFamily(_databaseFamily)) {
-        throw std::invalid_argument(
-                        "CreateReplicaJob::CreateReplicaJob ()  the database family is unknown: " +
-                        _databaseFamily);
-    }
-    _controller->serviceProvider()->assertWorkerIsValid(_sourceWorker);
-    _controller->serviceProvider()->assertWorkerIsValid(_destinationWorker);
 }
 
 CreateReplicaJobResult const& CreateReplicaJob::getReplicaData() const {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "getReplicaData");
 
-    if (_state == State::FINISHED) return _replicaData;
+    if (state() == State::FINISHED) return _replicaData;
 
     throw std::logic_error(
         "CreateReplicaJob::getReplicaData  the method can't be called while the job hasn't finished");
@@ -147,10 +139,30 @@ void CreateReplicaJob::startImpl(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
 
+    // Check if configuration parameters are valid
+
+    auto const& config = controller()->serviceProvider()->config();
+
+    if (not (config->isKnownDatabaseFamily(databaseFamily()) and
+             config->isKnownWorker(sourceWorker()) and
+             config->isKnownWorker(destinationWorker()) and
+             (sourceWorker() != destinationWorker()))) {
+
+        LOGS(_log, LOG_LVL_ERROR, context() << "startImpl  ** MISCONFIGURED ** "
+             << " database family: '" << databaseFamily() << "'"
+             << " source worker: '" << sourceWorker() << "'"
+             << " destination worker: '" << destinationWorker() << "'");
+
+        setState(lock,
+                 State::FINISHED,
+                 ExtendedState::CONFIG_ERROR);
+        return;
+    }
+
     // Make sure no such replicas exist yet at the destination
 
     std::vector<ReplicaInfo> destinationReplicas;
-    if (not _controller->serviceProvider()->databaseServices()->findWorkerReplicas(
+    if (not controller()->serviceProvider()->databaseServices()->findWorkerReplicas(
                 destinationReplicas,
                 chunk(),
                 destinationWorker(),
@@ -189,7 +201,7 @@ void CreateReplicaJob::startImpl(util::Lock const& lock) {
     //    see if the chunk is available on a source node.
 
     std::vector<ReplicaInfo> sourceReplicas;
-    if (not _controller->serviceProvider()->databaseServices()->findWorkerReplicas(
+    if (not controller()->serviceProvider()->databaseServices()->findWorkerReplicas(
                 sourceReplicas,
                 chunk(),
                 sourceWorker(),
@@ -227,7 +239,7 @@ void CreateReplicaJob::startImpl(util::Lock const& lock) {
 
     for (auto&& replica: sourceReplicas) {
         ReplicationRequest::Ptr const ptr =
-            _controller->replicate(
+            controller()->replicate(
                 destinationWorker(),
                 sourceWorker(),
                 replica.database(),
@@ -238,7 +250,7 @@ void CreateReplicaJob::startImpl(util::Lock const& lock) {
                 options().priority,
                 true,   /* keepTracking */
                 true,   /* allowDuplicate */
-                _id     /* jobId */);
+                id()    /* jobId */);
         _requests.push_back(ptr);
     }
     setState(lock,
@@ -259,12 +271,12 @@ void CreateReplicaJob::cancelImpl(util::Lock const& lock) {
     for (auto&& ptr: _requests) {
         ptr->cancel();
         if (ptr->state() != Request::State::FINISHED)
-            _controller->stopReplication(
+            controller()->stopReplication(
                 destinationWorker(),
                 ptr->id(),
                 nullptr,    /* onFinish */
                 true,       /* keepTracking */
-                _id         /* jobId */);
+                id()        /* jobId */);
     }
     _requests.clear();
 }
@@ -294,11 +306,11 @@ void CreateReplicaJob::onRequestFinish(ReplicationRequest::Ptr const& request) {
     // test is made after acquering the lock to recheck the state in case if it
     // has transitioned while acquering the lock.
     
-    if (_state == State::FINISHED) return;
+    if (state() == State::FINISHED) return;
 
     util::Lock lock(_mtx, context() + "onRequestFinish(ReplicationeRequest)");
 
-    if (_state == State::FINISHED) return;
+    if (state() == State::FINISHED) return;
 
     // Update stats
     if (request->extendedState() == Request::ExtendedState::SUCCESS) {
@@ -332,7 +344,7 @@ void CreateReplicaJob::onRequestFinish(ReplicationRequest::Ptr const& request) {
                 databases.push_back(databaseEntry.first);
             }
 
-            ServiceProvider::Ptr const serviceProvider = _controller->serviceProvider();
+            ServiceProvider::Ptr const serviceProvider = controller()->serviceProvider();
             if (serviceProvider->config()->xrootdAutoNotify()) {
                 qservAddReplica(lock,
                                 chunk(),

@@ -103,6 +103,9 @@ public:
         /// The request has been fully implemented
         SUCCESS,
 
+        /// Problems with request configuration found
+        CONFIG_ERROR,
+
         /// The request could not be implemented due to an unrecoverable
         /// cliend-side error.
         CLIENT_ERROR,
@@ -239,12 +242,6 @@ public:
 
 protected:
 
-    /// Return shared pointer of the desired subclass (no dynamic type checking)
-    template <class T>
-    std::shared_ptr<T> shared_from_base() {
-        return std::static_pointer_cast<T>(shared_from_this());
-    }
-
     /**
      * Construct the request with the pointer to the services provider.
      *
@@ -257,6 +254,15 @@ protected:
                     boost::asio::io_service& io_service,
                     std::string const& type,
                     std::string const& worker);
+
+    /// @return shared pointer of the desired subclass (no dynamic type checking)
+    template <class T>
+    std::shared_ptr<T> shared_from_base() {
+        return std::static_pointer_cast<T>(shared_from_this());
+    }
+
+    /// @return API for submitting requests to the remote services
+    XrdSsiService* service() { return _service; }
 
     /**
       * This method is supposed to be provided by subclasses for additional
@@ -281,10 +287,12 @@ protected:
      * This is supposed to be the last operation to be called by subclasses
      * upon a completion of the request.
      *
-     * @param extendedState - extended state
+     * @param lock          - the lock must be acquired by a caller of the metod
+     * @param extendedState - new extended state
      * @param serverError   - (optional) error message from a Qserv worker service
      */
-    void finish(ExtendedState extendedState,
+    void finish(util::Lock const& lock,
+                ExtendedState extendedState,
                 std::string const& serverError="");
 
     /**
@@ -345,6 +353,11 @@ protected:
 
 protected:
 
+    /// Mutex guarding internal state
+    mutable util::Mutex _mtx;
+
+private:
+
     ServiceProvider::Ptr _serviceProvider;
 
     std::string _type;
@@ -374,9 +387,6 @@ protected:
     /// with status: FINISHED::EXPIRED.
     unsigned int                _requestExpirationIvalSec;
     boost::asio::deadline_timer _requestExpirationTimer;
-
-    /// Mutex guarding internal state
-    mutable util::Mutex _mtx;
 };
 
 }}} // namespace lsst::qserv::replica

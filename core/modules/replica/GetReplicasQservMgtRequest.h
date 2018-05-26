@@ -100,8 +100,8 @@ public:
      * @return collection of replicas repored from the corresponding Qserv worker
      *
      * ATTENTION: the method will throw exception std::logic_error if called
-     * before th erequest finishes or if it's finished with any but SUCCESS
-     * status.
+     *            before the request finishes or if it's finished with any
+     *            status but SUCCESS.
      */
     QservReplicaCollection const& replicas() const;
 
@@ -128,9 +128,11 @@ private:
      * Carry over results of the request into a local collection. Filter results
      * by databases participating in the family.
      * 
+     * @param lock       - lock must be acquired by a caller of the metod
      * @param collection - input collection of replicas
      */
-     void setReplicas(wpublish::GetChunkListQservRequest::ChunkCollection const& collection);
+     void setReplicas(util::Lock const& lock,
+                      wpublish::GetChunkListQservRequest::ChunkCollection const& collection);
 
     /**
       * @see QservMgtRequest::startImpl
