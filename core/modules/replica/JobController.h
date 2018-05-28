@@ -184,15 +184,17 @@ public:
      * Submit a job for finding all replicas and updating replica status
      * in the database family.
      *
-     * @param databaseFamily - name of a database family
-     * @param onFinish       - callback function to be called upon a completion of the job
-     * @param options        - job options
+     * @param databaseFamily  - name of a database family
+     * @param saveReplicaInfo - save replica info in a database
+     * @param onFinish        - callback function to be called upon a completion of the job
+     * @param options         - job options
      *
      * @return pointer to the submitted job
      */
     FindAllJob::Ptr findAll(std::string const& databaseFamily,
-                                FindAllJob::CallbackType onFinish = nullptr,
-                                Job::Options const& options=FindAllJob::defaultOptions());
+                            bool saveReplicaInfo,
+                            FindAllJob::CallbackType onFinish = nullptr,
+                            Job::Options const& options=FindAllJob::defaultOptions());
 
     /**
      * Submit a job for fixin up all non-colocateds replicas.
@@ -204,8 +206,8 @@ public:
      * @return pointer to the submitted job
      */
     FixUpJob::Ptr fixUp(std::string const& databaseFamily,
-                            FixUpJob::CallbackType onFinish = nullptr,
-                            Job::Options const& options=FixUpJob::defaultOptions());
+                        FixUpJob::CallbackType onFinish = nullptr,
+                        Job::Options const& options=FixUpJob::defaultOptions());
 
     /**
      * Submit a job for bringing the number of each chunk's replicas down
@@ -221,9 +223,9 @@ public:
      * @return pointer to the submitted job
      */
     PurgeJob::Ptr purge(std::string const& databaseFamily,
-                            unsigned int numReplicas = 0,
-                            PurgeJob::CallbackType onFinish = nullptr,
-                            Job::Options const& options=PurgeJob::defaultOptions());
+                        unsigned int numReplicas = 0,
+                        PurgeJob::CallbackType onFinish = nullptr,
+                        Job::Options const& options=PurgeJob::defaultOptions());
 
     /**
      * Submit a job for bringing the number of each chunk's replicas up
@@ -239,9 +241,9 @@ public:
      * @return pointer to the submitted job
      */
     ReplicateJob::Ptr replicate(std::string const& databaseFamily,
-                                    unsigned int numReplicas = 0,
-                                    ReplicateJob::CallbackType onFinish = nullptr,
-                                    Job::Options const& options=ReplicateJob::defaultOptions());
+                                unsigned int numReplicas = 0,
+                                ReplicateJob::CallbackType onFinish = nullptr,
+                                Job::Options const& options=ReplicateJob::defaultOptions());
 
     /**
      * Submit a job for verifying integrity of known replicas, updating their status
@@ -276,9 +278,9 @@ public:
      * @return pointer to the submitted job
      */
     DeleteWorkerJob::Ptr deleteWorker(std::string const& worker,
-                                          bool permanentDelete,
-                                          DeleteWorkerJob::CallbackType onFinish = nullptr,
-                                          Job::Options const& options=DeleteWorkerJob::defaultOptions());
+                                      bool permanentDelete,
+                                      DeleteWorkerJob::CallbackType onFinish = nullptr,
+                                      Job::Options const& options=DeleteWorkerJob::defaultOptions());
 
 private:
 

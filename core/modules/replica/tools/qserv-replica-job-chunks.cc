@@ -55,6 +55,7 @@ namespace {
 // Command line parameters
 
 std::string databaseFamily;
+bool        saveReplicaInfo;
 std::string configUrl;
 bool        pullQservReplicas;
 bool        progressReport;
@@ -141,6 +142,7 @@ bool test() {
         std::atomic<bool> replicaJobFinished{false};
         auto findAllJob = replica::FindAllJob::create(
             databaseFamily,
+            saveReplicaInfo,
             controller,
             std::string(),
             [&replicaJobFinished] (replica::FindAllJob::Ptr const& job) {
@@ -347,6 +349,8 @@ int main(int argc, const char* const argv[]) {
             "\n"
             "Usage:\n"
             "  <database-family> [--config=<url>]\n"
+            "                    [--do-not-save-replica]\n"
+            "                    [--qserv-replicas]\n"
             "                    [--progress-report]\n"
             "                    [--error-report]\n"
             "                    [--detailed-report]\n"
@@ -355,19 +359,22 @@ int main(int argc, const char* const argv[]) {
             "  <database-family>  - the name of a database family to inspect\n"
             "\n"
             "Flags and options:\n"
-            "  --config           - a configuration URL (a configuration file or a set of the database\n"
-            "                       connection parameters [ DEFAULT: file:replication.cfg ]\n"
-            "  --qserv-replicas   - also pull replicas from Qserv workers for the analysis\n"
-            "  --progress-report  - progress report when executing batches of requests\n"
-            "  --error-report     - detailed report on failed requests\n"
-            "  --detailed-report  - detailed report on results\n");
+            "  --config               - a configuration URL (a configuration file or a set of the database\n"
+            "                           connection parameters [ DEFAULT: file:replication.cfg ]\n"
+            "  --do-not-save-replica  - do not save replica info in a database"
+            "  --qserv-replicas       - also pull replicas from Qserv workers for the analysis\n"
+            "  --progress-report      - progress report when executing batches of requests\n"
+            "  --error-report         - detailed report on failed requests\n"
+            "  --detailed-report      - detailed report on results\n");
 
-        ::databaseFamily    = parser.parameter<std::string>(1);
-        ::configUrl         = parser.option<std::string>("config", "file:replication.cfg");
-        ::pullQservReplicas = parser.flag("qserv-replicas");
-        ::progressReport    = parser.flag("progress-report");
-        ::errorReport       = parser.flag("error-report");
-        ::detailedReport    = parser.flag("detailed-report");
+        ::databaseFamily = parser.parameter<std::string>(1);
+        ::configUrl      = parser.option<std::string>("config", "file:replication.cfg");
+
+        ::saveReplicaInfo   = not parser.flag("do-not-save-replica");
+        ::pullQservReplicas =     parser.flag("qserv-replicas");
+        ::progressReport    =     parser.flag("progress-report");
+        ::errorReport       =     parser.flag("error-report");
+        ::detailedReport    =     parser.flag("detailed-report");
 
     } catch (std::exception const& ex) {
         return 1;

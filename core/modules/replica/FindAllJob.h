@@ -137,15 +137,17 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param databaseFamily - name of a database family
-     * @param controller     - for launching requests
-     * @param parentJobId    - optional identifier of a parent job
-     * @param onFinish       - callback function to be called upon a completion of the job
-     * @param options        - job options
+     * @param databaseFamily  - name of a database family
+     * @param saveReplicaInfo - save replica info in a database
+     * @param controller      - for launching requests
+     * @param parentJobId     - optional identifier of a parent job
+     * @param onFinish        - callback function to be called upon a completion of the job
+     * @param options         - job options
      *
      * @return pointer to the created object
      */
     static Ptr create(std::string const& databaseFamily,
+                      bool saveReplicaInfo,
                       Controller::Ptr const& controller,
                       std::string const& parentJobId,
                       CallbackType onFinish,
@@ -161,6 +163,9 @@ public:
 
     /// @return the name of a database family defining a scope of the operation
     std::string const& databaseFamily() const { return _databaseFamily; }
+
+    /// @return 'true' if replica info has to be saved in a database
+    bool saveReplicaInfo() const { return _saveReplicaInfo; }
 
     /**
      * Return the result of the operation.
@@ -194,6 +199,7 @@ protected:
      * @see FindAllJob::create()
      */
     FindAllJob(std::string const& databaseFamily,
+               bool saveReplicaInfo,
                Controller::Ptr const& controller,
                std::string const& parentJobId,
                CallbackType onFinish,
@@ -223,8 +229,8 @@ protected:
 
 protected:
 
-    /// The name of the database family
     std::string _databaseFamily;
+    bool        _saveReplicaInfo;
 
     /// Members of the family
     std::vector<std::string> _databases;

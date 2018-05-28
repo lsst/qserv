@@ -114,9 +114,11 @@ void FixUpJob::startImpl(util::Lock const& lock) {
     // Launch the chained job to get chunk disposition
 
     auto self = shared_from_base<FixUpJob>();
-
+    bool const saveReplicInfo = true;           // always save the replica info in a database because
+                                                // the algorithm depends on it.
     _findAllJob = FindAllJob::create(
         databaseFamily(),
+        saveReplicInfo,
         controller(),
         id(),
         [self] (FindAllJob::Ptr job) {

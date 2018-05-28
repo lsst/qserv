@@ -486,6 +486,7 @@ FindRequest::Ptr Controller::findReplica(
 FindAllRequest::Ptr Controller::findAllReplicas(
                             std::string const& workerName,
                             std::string const& database,
+                            bool saveReplicaInfo,
                             FindAllRequest::CallbackType onFinish,
                             int  priority,
                             bool keepTracking,
@@ -506,6 +507,7 @@ FindAllRequest::Ptr Controller::findAllReplicas(
             _io_service,
             workerName,
             database,
+            saveReplicaInfo,
             [controller] (FindAllRequest::Ptr request) {
                 controller->finish(request->id());
             },

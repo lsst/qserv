@@ -137,8 +137,11 @@ void RebalanceJob::startImpl(util::Lock const& lock) {
 
     auto self = shared_from_base<RebalanceJob>();
 
+    bool const saveReplicInfo = true;           // always save the replica info in a database because
+                                                // the algorithm depends on it.
     _findAllJob = FindAllJob::create(
         databaseFamily(),
+        saveReplicInfo,
         controller(),
         id(),
         [self] (FindAllJob::Ptr job) {
@@ -198,8 +201,11 @@ void RebalanceJob::restart(util::Lock const& lock) {
 
     auto self = shared_from_base<RebalanceJob>();
 
+    bool const saveReplicInfo = true;           // always save the replica info in a database because
+                                                // the algorithm depends on it.
     _findAllJob = FindAllJob::create(
         databaseFamily(),
+        saveReplicInfo,
         controller(),
         id(),
         [self] (FindAllJob::Ptr job) {

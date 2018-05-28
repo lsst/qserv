@@ -187,10 +187,14 @@ void DeleteWorkerJob::startImpl(util::Lock const& lock) {
                     // Try to get the most recent state the worker's replicas
                     // for all known databases
 
+                    bool const saveReplicInfo = true;   // always save the replica info in a database because
+                                                        // the algorithm depends on it.
+
                     for (auto&& database: controller()->serviceProvider()->config()->databases()) {
                         auto const request = controller()->findAllReplicas(
                             worker(),
                             database,
+                            saveReplicInfo,
                             [self] (FindAllRequest::Ptr const& request) {
                                 self->onRequestFinish(request);
                             }
@@ -296,9 +300,13 @@ DeleteWorkerJob::disableWorker(util::Lock const& lock) {
 
     auto self = shared_from_base<DeleteWorkerJob>();
 
+    bool const saveReplicInfo = true;   // always save the replica info in a database because
+                                        // the algorithm depends on it.
+
     for (auto&& databaseFamily: controller()->serviceProvider()->config()->databaseFamilies()) {
         FindAllJob::Ptr job = FindAllJob::create(
             databaseFamily,
+            saveReplicInfo,
             controller(),
             id(),
             [self] (FindAllJob::Ptr job) {

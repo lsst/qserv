@@ -40,6 +40,7 @@ uint32_t    chunk;
 int  priority        = 0;
 bool keepTracking    = true;
 bool allowDuplicate  = false;
+bool saveReplicaInfo = true;
 bool computeCheckSum = false;
 
 /// Report result of the operation
@@ -126,7 +127,7 @@ bool test() {
 
         } else if ("REPLICA_FIND_ALL" == operation) {
             request = controller->findAllReplicas(
-                worker, db,
+                worker, db, saveReplicaInfo,
                 [] (replica::FindAllRequest::Ptr request) {
                     printRequest<replica::FindAllRequest>(request);
                 },
@@ -288,7 +289,7 @@ int main(int argc, const char* const argv[]) {
             "    REPLICA_CREATE,CANCEL           <worker> <source_worker> <db> <chunk>\n"
             "    REPLICA_DELETE                  <worker> <db> <chunk>\n"
             "    REPLICA_FIND                    <worker> <db> <chunk>\n"
-            "    REPLICA_FIND_ALL                <worker> <db>\n"
+            "    REPLICA_FIND_ALL                <worker> <db> [--do-not-save-replica]\n"
             "\n"
             "    REQUEST_STATUS:REPLICA_CREATE   <worker> <id>\n"
             "    REQUEST_STATUS:REPLICA_DELETE   <worker> <id>\n"
@@ -307,11 +308,12 @@ int main(int argc, const char* const argv[]) {
             "    SERVICE_DRAIN                   <worker>\n"
             "\n"
             "Flags and options:\n"
-            "  --priority=<level>  - assign the specific priority level (default: 0)\n"
-            "  --check-sum         - compute check/control sum of files\n"
-            "  --do-not-track      - do not keep tracking\n"
-            "  --config            - a configuration URL (a configuration file or a set of the database\n"
-            "                        connection parameters [ DEFAULT: file:replication.cfg ]\n");
+            "  --do-not-save-replica  - do not save replica info in a database"
+            "  --priority=<level>     - assign the specific priority level (default: 0)\n"
+            "  --check-sum            - compute check/control sum of files\n"
+            "  --do-not-track         - do not keep tracking\n"
+            "  --config               - a configuration URL (a configuration file or a set of the database\n"
+            "                           connection parameters [ DEFAULT: file:replication.cfg ]\n");
 
         ::operation = parser.parameterRestrictedBy(1, {
 
@@ -372,11 +374,12 @@ int main(int argc, const char* const argv[]) {
 
             ::id = parser.parameter<std::string>(3);
         }
-        ::computeCheckSum =   parser.flag("check-sum");
-        ::keepTracking    = ! parser.flag("do-not-track");
-        ::allowDuplicate  =   parser.flag("allow-duplicate");
-        ::priority        =   parser.option<int>("priority", 1);
-        ::configUrl       =   parser.option<std::string>("config", "file:replication.cfg");
+        ::saveReplicaInfo = not parser.flag("do-not-save-replica");
+        ::computeCheckSum =     parser.flag("check-sum");
+        ::keepTracking    = not parser.flag("do-not-track");
+        ::allowDuplicate  =     parser.flag("allow-duplicate");
+        ::priority        =     parser.option<int>("priority", 1);
+        ::configUrl       =     parser.option<std::string>("config", "file:replication.cfg");
 
     } catch (std::exception const& ex) {
         std::cerr << ex.what() << std::endl;

@@ -182,6 +182,7 @@ void JobController::join() {
 }
 
 FindAllJob::Ptr JobController::findAll(std::string const& databaseFamily,
+                                       bool saveReplicaInfo,
                                        FindAllJob::CallbackType onFinish,
                                        Job::Options const& options) {
 
@@ -189,11 +190,11 @@ FindAllJob::Ptr JobController::findAll(std::string const& databaseFamily,
 
     util::Lock lock(_mtx, "JobController::findAll");
 
-    JobController::Ptr self = shared_from_this();
-
-    FindAllJob::Ptr job =
+    auto const self = shared_from_this();
+    auto const job =
         FindAllJob::create(
             databaseFamily,
+            saveReplicaInfo,
             _controller,
             std::string(),
             [self] (FindAllJob::Ptr job) {
@@ -229,8 +230,7 @@ FixUpJob::Ptr JobController::fixUp(std::string const& databaseFamily,
     util::Lock lock(_mtx, "JobController::fixUp");
 
     auto const self = shared_from_this();
-
-    FixUpJob::Ptr job =
+    auto const job =
         FixUpJob::create(
             databaseFamily,
             _controller,
@@ -269,8 +269,7 @@ PurgeJob::Ptr JobController::purge(std::string const& databaseFamily,
     util::Lock lock(_mtx, "JobController::purge");
 
     auto const self = shared_from_this();
-
-    PurgeJob::Ptr job =
+    auto const job =
         PurgeJob::create(
             databaseFamily,
             numReplicas,
@@ -310,8 +309,7 @@ ReplicateJob::Ptr JobController::replicate(std::string const& databaseFamily,
     util::Lock lock(_mtx, "JobController::replicate");
 
     auto const self = shared_from_this();
-
-    ReplicateJob::Ptr job =
+    auto const job =
         ReplicateJob::create(
             databaseFamily,
             numReplicas,
@@ -352,8 +350,7 @@ VerifyJob::Ptr JobController::verify(VerifyJob::CallbackType onFinish,
     util::Lock lock(_mtx, "JobController::verify");
 
     auto const self = shared_from_this();
-
-    VerifyJob::Ptr job =
+    auto const job =
         VerifyJob::create(
             _controller,
             std::string(),
@@ -395,8 +392,7 @@ DeleteWorkerJob::Ptr JobController::deleteWorker(
     util::Lock lock(_mtx, "JobController::deleteWorker");
 
     auto const self = shared_from_this();
-
-    DeleteWorkerJob::Ptr job =
+    auto const job =
         DeleteWorkerJob::create(
             worker,
             permanentDelete,

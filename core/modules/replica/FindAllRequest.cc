@@ -55,6 +55,7 @@ FindAllRequest::Ptr FindAllRequest::create(ServiceProvider::Ptr const& servicePr
                                            boost::asio::io_service& io_service,
                                            std::string const& worker,
                                            std::string const& database,
+                                           bool saveReplicaInfo,
                                            CallbackType onFinish,
                                            int priority,
                                            bool keepTracking,
@@ -64,6 +65,7 @@ FindAllRequest::Ptr FindAllRequest::create(ServiceProvider::Ptr const& servicePr
                            io_service,
                            worker,
                            database,
+                           saveReplicaInfo,
                            onFinish,
                            priority,
                            keepTracking,
@@ -74,6 +76,7 @@ FindAllRequest::FindAllRequest(ServiceProvider::Ptr const& serviceProvider,
                                boost::asio::io_service& io_service,
                                std::string const& worker,
                                std::string const& database,
+                               bool saveReplicaInfo,
                                CallbackType onFinish,
                                int  priority,
                                bool keepTracking,
@@ -87,6 +90,7 @@ FindAllRequest::FindAllRequest(ServiceProvider::Ptr const& serviceProvider,
                          false, /* allowDuplicate */
                          messenger),
         _database(database),
+        _saveReplicaInfo(saveReplicaInfo),
         _onFinish(onFinish) {
 
     Request::serviceProvider()->assertDatabaseIsValid(database);
@@ -254,9 +258,12 @@ void FindAllRequest::analyze(bool success,
 
         case proto::ReplicationStatus::SUCCESS:
 
-            serviceProvider()->databaseServices()->saveReplicaInfoCollection(worker(),
-                                                                             database(),
-                                                                             _replicaInfoCollection);
+            if (saveReplicaInfo()) {
+                serviceProvider()->databaseServices()->saveReplicaInfoCollection(
+                                                            worker(),
+                                                            database(),
+                                                            _replicaInfoCollection);
+            }
             finish(lock, SUCCESS);
             break;
 

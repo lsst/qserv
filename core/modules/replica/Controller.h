@@ -281,6 +281,7 @@ public:
      *
      * @param workerName      - the name of a worker node where the replicas are located
      * @param database        - database name
+     * @param saveReplicaInfo - (optional) save replica info in a database
      * @param onFinish        - (optional) callback function to be called upon the completion of the request
      * @param priority        - (optional) priority level of the request
      * @param keepTracking    - (optional) keep tracking the request before it finishes or fails
@@ -293,6 +294,7 @@ public:
     FindAllRequestPtr findAllReplicas(
                                 std::string const& workerName,
                                 std::string const& database,
+                                bool saveReplicaInfo=true,
                                 FindAllRequestCallbackType onFinish=nullptr,
                                 int  priority=0,
                                 bool keepTracking=true,
