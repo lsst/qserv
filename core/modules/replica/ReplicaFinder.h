@@ -69,16 +69,18 @@ public:
      * of errors. When the contructor unblocks a list of requests in the base class
      * should be inspected to see what's been found.
      *
-     * @param controller     - a reference to the Controller for launching requests
-     * @param database       - the name of a database
-     * @param                - an output stream for monitoring and error printouts
-     * @param progressReport - (optional) triggers periodic printout onto an output stream
-     *                         to see the overall progress of the operation
-     * @param errorReport    - (optional) trigger detailed error reporting after the completion
-     *                         of the operation
+     * @param controller      - a reference to the Controller for launching requests
+     * @param database        - the name of a database
+     * @param saveReplicaInfo - save replica info in a database
+     * @param                 - an output stream for monitoring and error printouts
+     * @param progressReport  - (optional) triggers periodic printout onto an output stream
+     *                          to see the overall progress of the operation
+     * @param errorReport     - (optional) trigger detailed error reporting after the completion
+     *                          of the operation
      */
     ReplicaFinder(Controller::Ptr const& controller,
                   std::string const& database,
+                  bool saveReplicaInfo,
                   std::ostream& os,
                   bool progressReport=true,
                   bool errorReport=false);

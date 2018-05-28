@@ -36,6 +36,7 @@ namespace replica {
 
 ReplicaFinder::ReplicaFinder(Controller::Ptr const& controller,
                              std::string const& database,
+                             bool saveReplicaInfo,
                              std::ostream& os,
                              bool progressReport,
                              bool errorReport)
@@ -49,6 +50,7 @@ ReplicaFinder::ReplicaFinder(Controller::Ptr const& controller,
         add(controller->findAllReplicas(
                             worker,
                             database,
+                            saveReplicaInfo,
                             [this] (FindAllRequest::Ptr ptr) {
                                 this->onFinish(ptr);
                             }));

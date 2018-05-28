@@ -75,6 +75,8 @@ public:
 
     std::string const& database() const { return _database; }
 
+    bool saveReplicaInfo() const { return _saveReplicaInfo; }
+
     /// Return target request specific parameters
     FindAllRequestParams const& targetRequestParams() const { return _targetRequestParams; }
 
@@ -97,6 +99,7 @@ public:
      * @param worker           - the identifier of a worker node (the one where the chunks
      *                           expected to be located)
      * @param database         - the name of a database
+     * @param saveReplicaInfo  - save replica info in a database
      * @param onFinish         - an optional callback function to be called upon a completion of the request.
      * @param priority         - a priority level of the request
      * @param keepTracking     - keep tracking the request before it finishes or fails
@@ -108,6 +111,7 @@ public:
                       boost::asio::io_service& io_service,
                       std::string const& worker,
                       std::string const& database,
+                      bool saveReplicaInfo,
                       CallbackType onFinish,
                       int  priority,
                       bool keepTracking,
@@ -124,6 +128,7 @@ private:
                    boost::asio::io_service& io_service,
                    std::string const& worker,
                    std::string const& database,
+                   bool saveReplicaInfo,
                    CallbackType onFinish,
                    int  priority,
                    bool keepTracking,
@@ -182,7 +187,8 @@ private:
 
 private:
 
-    std::string _database;
+    std::string  _database;
+    bool         _saveReplicaInfo;
     CallbackType _onFinish;
 
     /// Request-specific parameters of the target request

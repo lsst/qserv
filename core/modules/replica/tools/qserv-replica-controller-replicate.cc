@@ -28,6 +28,7 @@ namespace {
 
 std::string  databaseName;
 unsigned int numReplicas;
+bool         saveReplicaInfo;
 bool         progressReport;
 bool         errorReport;
 std::string  configUrl;
@@ -52,6 +53,7 @@ bool test() {
 
         replica::ReplicaFinder finder(controller,
                                       databaseName,
+                                      saveReplicaInfo,
                                       std::cout,
                                       progressReport,
                                       errorReport);
@@ -210,23 +212,28 @@ int main(int argc, const char* const argv[]) {
             argv,
             "\n"
             "Usage:\n"
-            "  <database> <num-replicas> [--progress-report] [--error-report] [--config=<url>]\n"
+            "  <database> <num-replicas>\n"
+            "             [--progress-report] [--error-report] [--config=<url>]\n"
+            "             [--do-not-save-replica]\n"
             "\n"
             "Parameters:\n"
             "  <database>         - the name of a database to inspect\n"
             "  <num-replicas>     - increase the number of replicas in each chunk to this level\n"
             "\n"
             "Flags and options:\n"
-            "  --progress-report  - the flag triggering progress report when executing batches of requests\n"
-            "  --error-report     - the flag triggering detailed report on failed requests\n"
-            "  --config           - a configuration URL (a configuration file or a set of the database\n"
-            "                       connection parameters [ DEFAULT: file:replication.cfg ]\n");
+            "  --do-not-save-replica - do not save replica info in a database"
+            "  --progress-report     - the flag triggering progress report when executing batches of requests\n"
+            "  --error-report        - the flag triggering detailed report on failed requests\n"
+            "  --config              - a configuration URL (a configuration file or a set of the database\n"
+            "                          connection parameters [ DEFAULT: file:replication.cfg ]\n");
 
         ::databaseName   = parser.parameter<std::string>(1);
         ::numReplicas    = parser.parameter<int>(2);
-        ::progressReport = parser.flag("progress-report");
-        ::errorReport    = parser.flag("error-report");
         ::configUrl      = parser.option<std::string>("config", "file:replication.cfg");
+
+        ::saveReplicaInfo = not parser.flag("do-not-save-replica");
+        ::progressReport  =     parser.flag("progress-report");
+        ::errorReport     =     parser.flag("error-report");
 
     } catch (std::exception &ex) {
         return 1;

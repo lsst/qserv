@@ -54,12 +54,14 @@ Job::Options const& FindAllJob::defaultOptions() {
 }
 
 FindAllJob::Ptr FindAllJob::create(std::string const& databaseFamily,
+                                   bool saveReplicaInfo,
                                    Controller::Ptr const& controller,
                                    std::string const& parentJobId,
                                    CallbackType onFinish,
                                    Job::Options const& options) {
     return FindAllJob::Ptr(
         new FindAllJob(databaseFamily,
+                       saveReplicaInfo,
                        controller,
                        parentJobId,
                        onFinish,
@@ -67,6 +69,7 @@ FindAllJob::Ptr FindAllJob::create(std::string const& databaseFamily,
 }
 
 FindAllJob::FindAllJob(std::string const& databaseFamily,
+                       bool saveReplicaInfo,
                        Controller::Ptr const& controller,
                        std::string const& parentJobId,
                        CallbackType onFinish,
@@ -76,6 +79,7 @@ FindAllJob::FindAllJob(std::string const& databaseFamily,
             "FIND_ALL",
             options),
         _databaseFamily(databaseFamily),
+        _saveReplicaInfo(saveReplicaInfo),
         _databases(controller->serviceProvider()->config()->databases(databaseFamily)),
         _onFinish(onFinish),
         _numLaunched(0),
@@ -110,6 +114,7 @@ void FindAllJob::startImpl(util::Lock const& lock) {
                 controller()->findAllReplicas(
                     worker,
                     database,
+                    saveReplicaInfo(),
                     [self] (FindAllRequest::Ptr request) {
                         self->onRequestFinish(request);
                     },

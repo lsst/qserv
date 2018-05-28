@@ -119,10 +119,14 @@ bool run() {
         // Refresh the current disposition of replicas accross the cluster.
         // This will also update the state of replicas within the database.
 
+        bool const saveReplicaInfo = true;      // Always do this because chained jobs may
+                                                // depend on a persistent state of replicas.
+
         for (auto const& databaseFamily: provider->config()->databaseFamilies()) {
             std::atomic<bool> finished{false};
             replica::FindAllJob::Ptr const job = jobCtrl->findAll(
                 databaseFamily,
+                saveReplicaInfo,
                 [&finished] (replica::FindAllJob::Ptr const& job) {
                     finished = true;
                 }

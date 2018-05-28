@@ -129,8 +129,11 @@ void PurgeJob::startImpl(util::Lock const& lock) {
 
     auto self = shared_from_base<PurgeJob>();
 
+    bool const saveReplicInfo = true;           // always save the replica info in a database because
+                                                // the algorithm depends on it.
     _findAllJob = FindAllJob::create(
         _databaseFamily,
+        saveReplicInfo,
         controller(),
         id(),
         [self] (FindAllJob::Ptr job) {
