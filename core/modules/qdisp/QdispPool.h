@@ -125,9 +125,9 @@ public:
         // slow queries at the same time a burden on the system.
         // TODO Set up thread pool size and queues in configuration.
         _prQueue->addPriQueue(0, 1, 90);  // Highest priority - interactive queries
-        _prQueue->addPriQueue(1, 3, 40);  // FAST queries (Object table)
-        _prQueue->addPriQueue(2, 3, 40);  // MEDIUM queries (Source table)
-        _prQueue->addPriQueue(3, 3, 40);  // SLOW queries (Object Extra table)
+        _prQueue->addPriQueue(1, 3, 80);  // FAST queries (Object table)
+        _prQueue->addPriQueue(2, 3, 80);  // MEDIUM queries (Source table)
+        _prQueue->addPriQueue(3, 3, 80);  // SLOW queries (Object Extra table)
         _prQueue->addPriQueue(4, 6, 15);  // FAST large results
         _prQueue->addPriQueue(5, 6, 15);  // MEDIUM large results
         _prQueue->addPriQueue(6, 6, 15);  // Everything else (slow things)
@@ -169,7 +169,7 @@ public:
 private:
     /// The default priority queue is meant for pool control commands.
     PriorityQueue::Ptr _prQueue = std::make_shared<PriorityQueue>(100, 1, 5); // default (lowest) priority.
-    util::ThreadPool::Ptr _pool{util::ThreadPool::newThreadPool(150, _prQueue)};
+    util::ThreadPool::Ptr _pool{util::ThreadPool::newThreadPool(250, _prQueue)};
 };
 
 
