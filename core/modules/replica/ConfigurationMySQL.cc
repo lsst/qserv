@@ -28,6 +28,7 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
+#include "replica/ChunkNumber.h"
 
 namespace {
 
@@ -228,15 +229,24 @@ void ConfigurationMySQL::loadConfiguration() {
 
         _workerInfo[info.name] = info;
     }
-    // Read database family-specific configurations and construct _replicationLevel
+
+    // Read database family-specific configurations and construct DatabaseFamilyInfo
 
     conn->execute("SELECT * FROM " + conn->sqlId ("config_database_family"));
 
     while (conn->next(row)) {
 
-        std::string family;
-        ::readMandatoryParameter(row, "name", family);
-        ::readMandatoryParameter(row, "min_replication_level", _replicationLevel[family]);
+        std::string name;
+
+        ::readMandatoryParameter(row, "name",                  name);
+        ::readMandatoryParameter(row, "min_replication_level", _databaseFamilyInfo[name].replicationLevel);
+        ::readMandatoryParameter(row, "num_stripes",           _databaseFamilyInfo[name].numStripes);
+        ::readMandatoryParameter(row, "num_sub_stripes",       _databaseFamilyInfo[name].numSubStripes);
+
+        _databaseFamilyInfo[name].chunkNumberValidator =
+            std::make_shared<ChunkNumberQservValidator>(
+                    static_cast<int32_t>(_databaseFamilyInfo[name].numStripes),
+                    static_cast<int32_t>(_databaseFamilyInfo[name].numSubStripes));
     }
 
     // Read database-specific configurations and construct DatabaseInfo.

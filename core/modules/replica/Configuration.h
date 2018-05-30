@@ -37,12 +37,14 @@
 // Qserv headers
 #include "util/Mutex.h"
 
-
 // This header declarations
 
 namespace lsst {
 namespace qserv {
 namespace replica {
+
+/// Forward declarations
+class ChunkNumberValidator;
 
 /**
  * Struct WorkerInfo encapsulates various parameters describing a worker.
@@ -80,7 +82,7 @@ struct WorkerInfo {
 std::ostream& operator <<(std::ostream& os, WorkerInfo const& info);
 
 /**
- * Struct DatabaseInfo encapsulates various parameters describing a database.
+ * Struct DatabaseInfo encapsulates various parameters describing databases.
  */
 struct DatabaseInfo {
 
@@ -99,6 +101,31 @@ struct DatabaseInfo {
 
 /// Overloaded operator for dumping objects of class DatabaseInfo
 std::ostream& operator <<(std::ostream& os, DatabaseInfo const& info);
+
+/**
+ * Struct DatabaseFamilyInfo encapsulates various parameters describing
+ * database families.
+ */
+struct DatabaseFamilyInfo {
+
+    /// The name of a database family
+    std::string name;
+
+    /// The minimum replication level desired (1..N)
+    size_t replicationLevel;
+
+    /// The number of stripes (from the CSS partitioning configuration)
+    unsigned int numStripes;
+
+    /// The number of sub-stripes (from the CSS partitioning configuration)
+    unsigned int numSubStripes;
+
+    /// A validator for chunk numbers
+    std::shared_ptr<ChunkNumberValidator> chunkNumberValidator;
+};
+
+/// Overloaded operator for dumping objects of class DatabaseFamilyInfo
+std::ostream& operator <<(std::ostream& os, DatabaseFamilyInfo const& info);
 
 /**
   * Class Configuration is a base class for a family of concrete classes
@@ -239,6 +266,16 @@ public:
      * @param name - the name of a family
      */
     bool isKnownDatabaseFamily(std::string const& name) const;
+
+    /**
+     * Return parameters of the specified database family
+     *
+     * @param name - the name of a family
+     *
+     * @throw std::invalid_argument - if the specified family was not found in
+     *                                the configuration
+     */
+    DatabaseFamilyInfo const& databaseFamilyInfo(std::string const& name) const;
 
     /**
      * Return the minimum number of chunk replicas for a database family
@@ -400,6 +437,8 @@ protected:
     static std::string  const defaultDatabaseName;
     static unsigned int const defaultJobSchedulerIvalSec;
     static size_t       const defaultReplicationLevel;
+    static unsigned int const defaultNumStripes;
+    static unsigned int const defaultNumSubStripes;
 
     /**
      * In-place translation of the the data directory string by finding an optional
@@ -453,12 +492,9 @@ protected:
     size_t _fsNumProcessingThreads;
     size_t _workerFsBufferSizeBytes;
 
-    /// The minimum number of replicas for members of each database family
-    /// Allowed values: 1..N
-    std::map<std::string, size_t> _replicationLevel;
-
-    std::map<std::string, DatabaseInfo> _databaseInfo;
-    std::map<std::string, WorkerInfo>   _workerInfo;
+    std::map<std::string, DatabaseFamilyInfo> _databaseFamilyInfo;
+    std::map<std::string, DatabaseInfo>       _databaseInfo;
+    std::map<std::string, WorkerInfo>         _workerInfo;
 
     // -- Database-specific parameters --
 

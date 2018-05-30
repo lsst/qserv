@@ -29,6 +29,7 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
+#include "replica/ChunkNumber.h"
 #include "replica/ConfigurationFile.h"
 #include "replica/ConfigurationMySQL.h"
 #include "replica/FileUtils.h"
@@ -63,6 +64,15 @@ std::ostream& operator <<(std::ostream& os, DatabaseInfo const& info) {
         << "family:'" << info.family << "',"
         << "partitionedTables:" << util::printable(info.partitionedTables) << ","
         << "regularTables:" << util::printable(info.regularTables) << ")";
+    return os;
+}
+
+std::ostream& operator <<(std::ostream& os, DatabaseFamilyInfo const& info) {
+    os  << "DatabaseFamilyInfo ("
+        << "name:'" << info.name << "',"
+        << "replicationLevel:'" << info.replicationLevel << "',"
+        << "numStripes:" << info.numStripes << ","
+        << "numSubStripes:" << info.numSubStripes << ")";
     return os;
 }
 
@@ -125,6 +135,8 @@ std::string  const Configuration::defaultDatabasePassword            ("");
 std::string  const Configuration::defaultDatabaseName                ("replica");
 unsigned int const Configuration::defaultJobSchedulerIvalSec         (1);
 size_t       const Configuration::defaultReplicationLevel            (1);
+unsigned int const Configuration::defaultNumStripes                  (340);
+unsigned int const Configuration::defaultNumSubStripes               (12);
 
 void Configuration::translateDataDir(std::string&       dataDir,
                                      std::string const& workerName) {
@@ -217,18 +229,30 @@ bool Configuration::isKnownDatabaseFamily(std::string const& name) const {
 
     util::Lock lock(_mtx, context() + "isKnownDatabaseFamily");
 
-    return _replicationLevel.count(name);
+    return _databaseFamilyInfo.count(name);
 }
 
 size_t Configuration::replicationLevel(std::string const& family) const {
 
     util::Lock lock(_mtx, context() + "databaseFamilies");
 
-    auto const itr = _replicationLevel.find(family);
-    if (itr == _replicationLevel.end()) {
+    auto const itr = _databaseFamilyInfo.find(family);
+    if (itr == _databaseFamilyInfo.end()) {
         throw std::invalid_argument(
                 "Configuration::replicationLevel  unknown database family: '" +
                 family + "'");
+    }
+    return itr->second.replicationLevel;
+}
+
+DatabaseFamilyInfo const& Configuration::databaseFamilyInfo(std::string const& name) const {
+
+    util::Lock lock(_mtx, context() + "databaseFamilyInfo");
+
+    auto&& itr = _databaseFamilyInfo.find(name);
+    if (itr == _databaseFamilyInfo.end()) {
+        throw std::invalid_argument(
+                "Configuration::databaseFamilyInfo() uknown database family: '" + name + "'");
     }
     return itr->second;
 }
@@ -237,7 +261,7 @@ std::vector<std::string> Configuration::databases(std::string const& family) con
 
     util::Lock lock(_mtx, context() + "databases(family)");
 
-    if (not family.empty() and not _replicationLevel.count(family)) {
+    if (not family.empty() and not _databaseFamilyInfo.count(family)) {
         throw std::invalid_argument(
                 "Configuration::databases  unknown database family: '" +
                 family + "'");
@@ -280,7 +304,7 @@ bool Configuration::isKnownDatabase(std::string const& name) const {
 
 DatabaseInfo const& Configuration::databaseInfo(std::string const& name) const {
 
-    util::Lock lock(_mtx, context() + "isKnownDatabase");
+    util::Lock lock(_mtx, context() + "databaseInfo");
 
     auto&& itr = _databaseInfo.find(name);
     if (itr == _databaseInfo.end()) {
@@ -321,6 +345,8 @@ void Configuration::dumpIntoLogger() {
     LOGS(_log, LOG_LVL_DEBUG, context() << "defaultDatabaseName:                 " << defaultDatabaseName);
     LOGS(_log, LOG_LVL_DEBUG, context() << "defaultJobSchedulerIvalSec:          " << defaultJobSchedulerIvalSec);
     LOGS(_log, LOG_LVL_DEBUG, context() << "defaultReplicationLevel:             " << defaultReplicationLevel);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultNumStripes:                   " << defaultNumStripes);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultNumSubStripes:                " << defaultNumSubStripes);
     LOGS(_log, LOG_LVL_DEBUG, context() << "_requestBufferSizeBytes:             " << _requestBufferSizeBytes);
     LOGS(_log, LOG_LVL_DEBUG, context() << "_retryTimeoutSec:                    " << _retryTimeoutSec);
     LOGS(_log, LOG_LVL_DEBUG, context() << "_controllerThreads:                  " << _controllerThreads);
@@ -350,9 +376,9 @@ void Configuration::dumpIntoLogger() {
     for (auto&& elem: _databaseInfo) {
         LOGS(_log, LOG_LVL_DEBUG, context() << elem.second);
     }
-    for (auto&& elem: _replicationLevel) {
+    for (auto&& elem: _databaseFamilyInfo) {
         LOGS(_log, LOG_LVL_DEBUG, context()
-             << "replicationLevel["<< elem.first << "]: " << elem.second);
+             << "databaseFamilyInfo["<< elem.first << "]: " << elem.second);
     }
 }
 

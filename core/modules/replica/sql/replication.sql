@@ -98,6 +98,8 @@ CREATE TABLE IF NOT EXISTS `config_database_family` (
 
   `name`                   VARCHAR(255)  NOT NULL ,
   `min_replication_level`  INT UNSIGNED  NOT NULL ,    -- minimum number of replicas per chunk
+  `num_stripes`            INT UNSIGNED  NOT NULL ,
+  `num_sub_stripes`        INT UNSIGNED  NOT NULL ,
 
   PRIMARY KEY (`name`)
 )
