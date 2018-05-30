@@ -68,7 +68,7 @@ INSERT INTO `config_worker` VALUES ('fb0d729f-0792-11e8-9ff8-fa163ec7fdcd', 1, 0
 
 -- This database lives witin its own family
 
-INSERT INTO `config_database_family` VALUES ('production', 2);
+INSERT INTO `config_database_family` VALUES ('production', 2, 340, 12);
 INSERT INTO `config_database`        VALUES ('wise_00', 'production');
 INSERT INTO `config_database_table`  VALUES ('wise_00', 'Object',       1);
 INSERT INTO `config_database_table`  VALUES ('wise_00', 'ForcedSource', 1);

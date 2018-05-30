@@ -67,7 +67,7 @@ INSERT INTO `config_worker` VALUES ('ccqserv149', 1, 0, 'ccqserv149',  NULL, 'cc
 
 -- This database lives witin its own family
 
-INSERT INTO `config_database_family` VALUES ('production', 2);
+INSERT INTO `config_database_family` VALUES ('production',        2, 340, 12);
 INSERT INTO `config_database`        VALUES ('sdss_stripe82_01', 'production');
 INSERT INTO `config_database_table`  VALUES ('sdss_stripe82_01', 'RunDeepSource',       1);
 INSERT INTO `config_database_table`  VALUES ('sdss_stripe82_01', 'RunDeepForcedSource', 1);

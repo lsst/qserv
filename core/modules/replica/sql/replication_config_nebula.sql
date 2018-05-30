@@ -68,7 +68,7 @@ INSERT INTO `config_worker` VALUES ('worker-10', 1, 0, 'lsst-gapon-qserv-worker-
 
 -- This database lives witin its own family
 
-INSERT INTO `config_database_family` VALUES ('db1', 1);
+INSERT INTO `config_database_family` VALUES ('db1', 1, 340, 12);
 INSERT INTO `config_database`        VALUES ('db1', 'db1');
 INSERT INTO `config_database_table`  VALUES ('db1', 'Object',       1);
 INSERT INTO `config_database_table`  VALUES ('db1', 'Source',       1);
@@ -78,7 +78,7 @@ INSERT INTO `config_database_table`  VALUES ('db1', 'Filter',       0);
 -- This family has two members for which the replication activities need
 -- to be coordinated.
 
-INSERT INTO `config_database_family` VALUES ('production', 3);
+INSERT INTO `config_database_family` VALUES ('production', 3, 340, 12);
 INSERT INTO `config_database`        VALUES ('db2', 'production');
 INSERT INTO `config_database`        VALUES ('db3', 'production');
 

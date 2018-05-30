@@ -33,6 +33,7 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
+#include "replica/ChunkNumber.h"
 #include "util/ConfigStore.h"
 
 namespace {
@@ -215,15 +216,27 @@ void ConfigurationFile::loadConfiguration() {
 
     for (std::string const& name: databaseFamilies) {
         std::string const section = "database_family:" + name;
-        if (_replicationLevel.count(name)) {
+        if (_databaseFamilyInfo.count(name)) {
             throw std::range_error(
                     "ConfigurationFile::loadConfiguration() duplicate database family entry: '" +
                     name + "' in: [common] or ["+section+"], configuration file: " + _configFile);
         }
-        ::parseKeyVal(configStore, section+".min_replication_level", _replicationLevel[name], defaultReplicationLevel);
-        if (not _replicationLevel[name]) {
-            _replicationLevel[name] = defaultReplicationLevel;
+        ::parseKeyVal(configStore, section+".min_replication_level", _databaseFamilyInfo[name].replicationLevel, defaultReplicationLevel);
+        if (not _databaseFamilyInfo[name].replicationLevel) {
+            _databaseFamilyInfo[name].replicationLevel= defaultReplicationLevel;
         }
+        ::parseKeyVal(configStore, section+".num_stripes", _databaseFamilyInfo[name].numStripes, defaultNumStripes);
+        if (not _databaseFamilyInfo[name].numStripes) {
+            _databaseFamilyInfo[name].numStripes= defaultNumStripes;
+        }
+        ::parseKeyVal(configStore, section+".num_sub_stripes", _databaseFamilyInfo[name].numSubStripes, defaultNumSubStripes);
+        if (not _databaseFamilyInfo[name].numSubStripes) {
+            _databaseFamilyInfo[name].numSubStripes= defaultNumSubStripes;
+        }
+        _databaseFamilyInfo[name].chunkNumberValidator =
+            std::make_shared<ChunkNumberQservValidator>(
+                    static_cast<int32_t>(_databaseFamilyInfo[name].numStripes),
+                    static_cast<int32_t>(_databaseFamilyInfo[name].numSubStripes));
     }
 
     // Parse mandatory database-specific configuraton sections
@@ -238,7 +251,7 @@ void ConfigurationFile::loadConfiguration() {
         }
         _databaseInfo[name].name = name;
         _databaseInfo[name].family = configStore.getRequired(section+".family");
-        if (not _replicationLevel.count(_databaseInfo[name].family)) {
+        if (not _databaseFamilyInfo.count(_databaseInfo[name].family)) {
             throw std::range_error(
                     "ConfigurationFile::loadConfiguration() unknown database family: '" +
                     _databaseInfo[name].family + "' in section ["+section+"], configuration file: " + _configFile);
