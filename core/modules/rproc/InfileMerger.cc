@@ -208,6 +208,9 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
         return true;
     }
     ret = _applyMysql(infileStatement);
+    if (not ret) {
+        LOGS(_log, LOG_LVL_ERROR, "InfileMerger::merge mysql applyMysql failure");
+    }
     _invalidJobAttemptMgr.decrConcurrentMergeCount();
     auto end = std::chrono::system_clock::now();
     auto mergeDur = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);

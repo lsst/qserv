@@ -316,7 +316,7 @@ void QueryRunner::_transmit(bool last, uint rowCount, size_t tSize) {
                                       << " totalBytes=" << totalBytes);
             util::Timer t;
             t.start();
-            streamBuf->waitForDoneWithThis(); // block until this buffer has been sent.
+            //streamBuf->waitForDoneWithThis(); // block until this buffer has been sent. &&&
             t.stop();
             LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " waited for " << t.getElapsed());
         }

@@ -41,7 +41,7 @@ namespace qdisp {
 std::ostream& operator<<(std::ostream& os, PriorityQueue const& pq) {
     for (auto const& elem : pq._queues)   {
         PriorityQueue::PriQ::Ptr const& que = elem.second;
-        os << "(pri=" << que->getPriority()
+        os << "(pr=" << que->getPriority()
            << ":sz="  << que->size()
            << ":r="   << que->running << ")";
     }
