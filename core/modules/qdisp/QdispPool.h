@@ -170,7 +170,7 @@ public:
 private:
     /// The default priority queue is meant for pool control commands.
     PriorityQueue::Ptr _prQueue = std::make_shared<PriorityQueue>(100, 1, 5); // default (lowest) priority.
-    util::ThreadPool::Ptr _pool{util::ThreadPool::newThreadPool(200, _prQueue)};
+    util::ThreadPool::Ptr _pool{util::ThreadPool::newThreadPool(30, _prQueue)};
 };
 
 

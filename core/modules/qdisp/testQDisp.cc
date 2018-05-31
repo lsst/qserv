@@ -157,14 +157,16 @@ void timeoutFunc(std::atomic<bool>& flagDone, int millisecs) {
     LOGS_DEBUG("timeoutFunc");
     int total = 0;
     bool done = flagDone;
-    while (!done && total < millisecs*1000) {
+    int maxTime = millisecs*1000;
+    while (!done && total < maxTime) {
         int sleepTime = 1000000;
         total += sleepTime;
         usleep(sleepTime);
         done = flagDone;
         LOGS_DEBUG("timeoutFunc done=" << done << " total=" << total);
     }
-    LOGS_ERROR("timeoutFunc done=" << done << " total=" << total);
+    LOGS_ERROR("timeoutFunc done=" << done << " total=" << total <<
+               " timedOut=" << (total >= maxTime));
     BOOST_REQUIRE(done == true);
 }
 

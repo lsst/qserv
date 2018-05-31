@@ -50,9 +50,9 @@ std::ostream& operator<<(std::ostream& os, PriorityQueue const& pq) {
 
 
 ///< @Return true if the queue could be added.
-bool PriorityQueue::addPriQueue(int priority, int minRunning, int spareThreads) {
+bool PriorityQueue::addPriQueue(int priority, int minRunning, int maxRunning) {
     std::lock_guard<std::mutex> lock(_mtx);
-    auto q = std::make_shared<PriQ>(priority, minRunning, spareThreads);
+    auto q = std::make_shared<PriQ>(priority, minRunning, maxRunning);
     //std::pair<int, PriQ::Ptr> item(priority, q);
     auto item = std::make_pair(priority, q);
     auto ret = _queues.insert(item);
