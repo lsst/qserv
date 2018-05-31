@@ -286,6 +286,31 @@ bool QueryRequest::_importStream(JobQuery::Ptr const& jq) {
 
 void QueryRequest::_queueAskForResponse(AskForResponseDataCmd::Ptr const& cmd, JobQuery::Ptr const& jq) {
     // ScanInfo::Rating { FASTEST = 0, FAST = 10, MEDIUM = 20, SLOW = 30, SLOWEST = 100 };
+
+    int rating = jq->getDescription()->getScanRating();
+    if (jq->getDescription()->getScanInteractive()) {
+        _qdispPool->queCmd(cmd, 0);
+    } else if (rating <= proto::ScanInfo::Rating::FAST) {
+        if (_largeResult) {
+            _qdispPool->queCmd(cmd, 5);
+        } else {
+            _qdispPool->queCmd(cmd, 2);
+        }
+    } else if (rating <= proto::ScanInfo::Rating::MEDIUM) {
+        if (_largeResult) {
+            _qdispPool->queCmd(cmd, 6);
+        } else {
+            _qdispPool->queCmd(cmd, 3);
+        }
+    } else if (rating <= proto::ScanInfo::Rating::SLOW) {
+        if (not _largeResult) {
+            _qdispPool->queCmd(cmd, 4);
+        }
+    } else {
+        _qdispPool->queCmd(cmd, 7);
+    }
+
+    /* &&&
     int rating = jq->getDescription()->getScanRating();
     if (jq->getDescription()->getScanInteractive()) {
         _qdispPool->queCmd(cmd, 0);
@@ -308,7 +333,7 @@ void QueryRequest::_queueAskForResponse(AskForResponseDataCmd::Ptr const& cmd, J
     } else {
         _qdispPool->queCmd(cmd, 6);
     }
-
+    */
 
     /* &&&
     if (_largeResult) {
