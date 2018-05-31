@@ -153,17 +153,18 @@ std::shared_ptr<qdisp::JobQuery> executiveTest(
 /** This function is run in a separate thread to fail the test if it takes too long
  * for the jobs to complete.
  */
-void timeoutFunc(util::Flag<bool>& flagDone, int millisecs) {
+void timeoutFunc(std::atomic<bool>& flagDone, int millisecs) {
     LOGS_DEBUG("timeoutFunc");
     int total = 0;
-    bool done = flagDone.get();
+    bool done = flagDone;
     while (!done && total < millisecs*1000) {
         int sleepTime = 1000000;
         total += sleepTime;
         usleep(sleepTime);
-        done = flagDone.get();
+        done = flagDone;
         LOGS_DEBUG("timeoutFunc done=" << done << " total=" << total);
     }
+    LOGS_ERROR("timeoutFunc done=" << done << " total=" << total);
     BOOST_REQUIRE(done == true);
 }
 
@@ -199,14 +200,15 @@ BOOST_AUTO_TEST_SUITE(Suite)
     // the same chunkID for all tests (see setRName() below).
     //
     int chunkId = 1234;
-    int millisInt = 20000;
+    //int millisInt = 20000; &&&
+    int millisInt = 50000;
 
 BOOST_AUTO_TEST_CASE(Executive) {
     // Variables for all executive sub-tests. Note that all executive tests
     // are full roundtrip tests. So, if these succeed then it's likely all
     // other query tests will succeed. So, much of this is redundant.
     //
-    util::Flag<bool> done(false);
+    std::atomic<bool> done(false);
     int jobs = 0;
     _log.setLevel(LOG_LVL_DEBUG); // Ugly but boost test suite forces this
     std::thread timeoutT(&timeoutFunc, std::ref(done), millisInt);
@@ -261,7 +263,7 @@ BOOST_AUTO_TEST_CASE(Executive) {
         LOGS_DEBUG("ex->join() joined");
         BOOST_CHECK(tEnv.ex->getEmpty() == true);
     }
-    done.exchange(true);
+    done = true;
     timeoutT.join();
     LOGS_DEBUG("Executive test end");
 }

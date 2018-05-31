@@ -291,22 +291,22 @@ void QueryRequest::_queueAskForResponse(AskForResponseDataCmd::Ptr const& cmd, J
         _qdispPool->queCmd(cmd, 0);
     } else if (rating <= proto::ScanInfo::Rating::FAST) {
         if (_largeResult) {
-            _qdispPool->queCmd(cmd, 4);
-        } else {
-            _qdispPool->queCmd(cmd, 1);
-        }
-    } else if (rating <= proto::ScanInfo::Rating::MEDIUM) {
-        if (_largeResult) {
             _qdispPool->queCmd(cmd, 5);
         } else {
             _qdispPool->queCmd(cmd, 2);
         }
-    } else if (rating <= proto::ScanInfo::Rating::SLOW) {
-        if (not _largeResult) {
+    } else if (rating <= proto::ScanInfo::Rating::MEDIUM) {
+        if (_largeResult) {
+            _qdispPool->queCmd(cmd, 6);
+        } else {
             _qdispPool->queCmd(cmd, 3);
         }
+    } else if (rating <= proto::ScanInfo::Rating::SLOW) {
+        if (not _largeResult) {
+            _qdispPool->queCmd(cmd, 4);
+        }
     } else {
-        _qdispPool->queCmd(cmd, 6);
+        _qdispPool->queCmd(cmd, 7);
     }
 
 
