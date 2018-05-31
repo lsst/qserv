@@ -41,6 +41,13 @@ const char SCISQLDB_PREFIX[] = "scisql_";
 const char MEMLOCKDB[] = "q_memoryLockDb";
 const char MEMLOCKTBL[] = "memoryLockTbl";
 
+/// `SUBCHUNK_TAG` is a pattern that is replaced with a subchunk number
+/// when generating concrete query text from a template.
+const char SUBCHUNK_TAG[] = "%S\007S%";
+/// `CHUNK_TAG` is a pattern that is replaced with a chunk number
+/// when generating concrete query text from a template.
+const char CHUNK_TAG[] = "%C\007C%";
+
 /**
  * The absolute maximum number of job attempts. The number
  * of attempts before cancelling a query can (and probably should)

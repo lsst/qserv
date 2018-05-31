@@ -53,6 +53,7 @@
 #include "query/ValueExpr.h"
 #include "query/ValueFactor.h"
 #include "query/WhereClause.h"
+#include "global/constants.h"
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qana.RelationGraph");
@@ -987,7 +988,7 @@ void RelationGraph::rewrite(SelectStmtPtrVector& outputs,
     }
 
     LOGS(_log, LOG_LVL_TRACE, "Inserting chunk entry in QueryMapping");
-    mapping.insertChunkEntry(TableInfo::CHUNK_TAG);
+    mapping.insertChunkEntry(CHUNK_TAG);
     // Find directors for which overlap is required. At the same time, rewrite
     // all table references as their corresponding chunk templates.
     std::vector<Vertex*> overlapRefs;
@@ -1018,8 +1019,7 @@ void RelationGraph::rewrite(SelectStmtPtrVector& outputs,
         throw QueryNotEvaluableError("Query contains too many table "
                                      "references that require overlap");
     }
-    // At least one table requires overlap, so sub-chunking must be turned on.
-    mapping.insertSubChunkEntry(TableInfo::SUBCHUNK_TAG);
+
     // Rewrite director table references not requiring overlap as their
     // corresponding sub-chunk templates, and record the names of all
     // sub-chunked tables.

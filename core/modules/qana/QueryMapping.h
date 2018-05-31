@@ -75,7 +75,6 @@ namespace qana {
 /// moved to the worker.
 class QueryMapping {
 public:
-    typedef std::shared_ptr<QueryMapping> Ptr;
     enum Parameter {INVALID, CHUNK=100, SUBCHUNK, HTM1=200};
     typedef std::map<std::string,Parameter> ParameterMap;
 
@@ -88,14 +87,14 @@ public:
                       query::QueryTemplate const& t) const;
 
     // Modifiers
+    /// Set the DbTable(s) that will be used with the subchunk query.
     void insertSubChunkTable(DbTable const& dbTable) { _subChunkTables.insert(dbTable); }
-    void insertEntry(std::string const& s, Parameter p) { _subs[s] = p; }
+    /// Set the string that should be replaced by the chunk number in the query string.
     void insertChunkEntry(std::string const& tag) { _subs[tag] = CHUNK; }
-    void insertSubChunkEntry(std::string const& tag) { _subs[tag] = SUBCHUNK; }
 
     // Accessors
     bool hasChunks() const { return hasParameter(CHUNK); }
-    bool hasSubChunks() const { return hasParameter(SUBCHUNK); }
+    bool hasSubChunks() const { return false == _subChunkTables.empty(); }
     bool hasParameter(Parameter p) const;
     DbTableSet const& getSubChunkTables() const { return _subChunkTables; }
 

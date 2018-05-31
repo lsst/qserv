@@ -74,9 +74,6 @@ namespace lsst {
 namespace qserv {
 namespace qana {
 
-std::string const TableInfo::CHUNK_TAG("%CC%");
-std::string const TableInfo::SUBCHUNK_TAG("%SS%");
-
 
 void TableInfo::dump(std::ostream& os) const {
     os << "TI(" << database << "." << table << " kind=" << kind << ")";

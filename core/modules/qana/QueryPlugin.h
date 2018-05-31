@@ -39,9 +39,6 @@
 // Forward declarations
 namespace lsst {
 namespace qserv {
-namespace qana {
-    class QueryMapping;
-}
 namespace query {
     class SelectStmt;
     class QueryContext;
@@ -97,7 +94,6 @@ public:
     SelectStmtPtrVector& stmtParallel; //< Group of parallel statements (not a sequence)
     query::SelectStmt& stmtMerge;
     std::string dominantDb;
-    std::shared_ptr<QueryMapping> queryMapping;
     bool const hasMerge;
 };
 

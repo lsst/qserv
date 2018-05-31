@@ -377,22 +377,10 @@ std::vector<std::string> QuerySession::_buildChunkQueries(query::QueryTemplate::
     if (!_context->queryMapping) {
         throw QueryProcessingBug("Missing QueryMapping in _context");
     }
-    qana::QueryMapping const& queryMapping = *_context->queryMapping;
 
-    if (!queryMapping.hasSubChunks()) { // Non-subchunked
-        for(auto tupleIter=queryTemplates.begin(), e=queryTemplates.end(); tupleIter != e; ++tupleIter) {
-            std::string str = _context->queryMapping->apply(chunkSpec, *tupleIter);
-            chunkQueries.push_back(str);
-        }
-    } else { // subchunked:
-        ChunkSpecSingle::Vector sVector = ChunkSpecSingle::makeVector(chunkSpec);
-        for(auto& chunkStr : sVector) {
-            for(auto& qTemplate : queryTemplates) {
-                std::string str = _context->queryMapping->apply(chunkStr, qTemplate);
-                LOGS(_log, LOG_LVL_DEBUG, "adding query " << str);
-                chunkQueries.push_back(str);
-            }
-        }
+    for (auto&& queryTemplate: queryTemplates) {
+        std::string str = _context->queryMapping->apply(chunkSpec, queryTemplate);
+        chunkQueries.push_back(std::move(str));
     }
     return chunkQueries;
 }

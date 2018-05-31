@@ -21,15 +21,6 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-/**
-  * @file
-  *
-  * @brief Implementation of QueryMapping. Local implementations of:
-  * class MapTuple
-  * class Mapping : public QueryTemplate::EntryMapping
-  *
-  * @author Daniel L. Wang, SLAC
-  */
 
 // Class header
 #include "qana/QueryMapping.h"
@@ -61,16 +52,6 @@ namespace lsst {
 namespace qserv {
 namespace qana {
 
-class MapTuple {
-public:
-    MapTuple(std::string const& pattern,
-             std::string const& target,
-             QueryMapping::Parameter p)
-        : pat(pattern), tgt(target), param(p) {}
-    std::string pat;
-    std::string tgt;
-    QueryMapping::Parameter param;
-};
 
 std::string const replace(std::string const& s, std::string const& pat, std::string const& value) {
     std::string result;
@@ -90,8 +71,6 @@ std::string const replace(std::string const& s, std::string const& pat, std::str
 
 class Mapping : public query::QueryTemplate::EntryMapping {
 public:
-    typedef std::deque<int> IntDeque;
-    typedef std::deque<MapTuple> TupleDeque;
 
     Mapping(QueryMapping::ParameterMap const& m, qproc::ChunkSpec const& s)
         : _subChunks(s.subChunks.begin(), s.subChunks.end()) {
@@ -115,14 +94,8 @@ public:
         // FIXME see if this works
         //if (!e.isDynamic()) {return newE; }
 
-        for(auto i=_tupleDeque.begin(); i != _tupleDeque.end(); ++i) {
-            newE->s = replace(newE->s, i->pat, i->tgt);
-            if (i->param == QueryMapping::SUBCHUNK) {
-                // Remember that we mapped a subchunk,
-                    // so we know to iterate over subchunks.
-                    // Or... the plugins could signal that subchunks
-                    // are needed somehow. FIXME.
-            }
+        for(auto i=_replaceItems.begin(); i != _replaceItems.end(); ++i) {
+            newE->s = replace(newE->s, i->pattern, i->target);
         }
         return newE;
     }
@@ -134,7 +107,7 @@ private:
     inline void _initMap(QueryMapping::ParameterMap const& m) {
         QueryMapping::ParameterMap::const_iterator i;
         for(i = m.begin(); i != m.end(); ++i) {
-            _tupleDeque.push_back(MapTuple(i->first, lookup(i->second), i->second));
+            _replaceItems.push_back(MapTuple(i->first, lookup(i->second), i->second));
         }
     }
 
@@ -160,8 +133,19 @@ private:
 
     std::string _chunkString;
     std::string _subChunkString;
-    IntDeque _subChunks;
-    TupleDeque _tupleDeque;
+    std::deque<int> _subChunks;
+
+    struct MapTuple {
+        MapTuple(std::string const& pattern,
+                 std::string const& target,
+                 QueryMapping::Parameter p)
+            : pattern(pattern), target(target), paramType(p) {}
+        std::string pattern;
+        std::string target;
+        QueryMapping::Parameter paramType;
+    };
+
+    std::deque<MapTuple> _replaceItems;
 };
 
 ////////////////////////////////////////////////////////////////////////
