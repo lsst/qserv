@@ -118,15 +118,15 @@ void MessengerConnector::cancel(std::string const& id) {
 
     // If the request is already being processed then a more aggressive approach
     // of aborting all communications must be taken.
-    if (_currentRequest and (_currentRequest->id == id)) {
+    if (_currentRequest and (_currentRequest->id() == id)) {
         _currentRequest = nullptr;
         if (_state == STATE_COMMUNICATING) restart(lock);
     }
 
     // Also remove from both collections
     _requests.remove_if(
-        [&id] (WrapperBase::Ptr const& ptr) {
-            return ptr->id == id;
+        [&id] (MessageWrapperBase::Ptr const& ptr) {
+            return ptr->id() == id;
         }
     );
     _id2request.erase(id);
@@ -142,7 +142,7 @@ bool MessengerConnector::exists(std::string const& id) const {
 }
 
 void MessengerConnector::sendImpl(std::string const& id,
-                                  MessengerConnector::WrapperBase::Ptr const& ptr) {
+                                  MessageWrapperBase::Ptr const& ptr) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "sendImpl  id: " + id);
 
@@ -178,7 +178,7 @@ void MessengerConnector::sendImpl(std::string const& id,
 void MessengerConnector::restart(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "restart"
-         << "  _currentRequest->id=" << (_currentRequest ? _currentRequest->id : ""));
+         << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : ""));
 
     // Cancel any asynchronous operation(s) if not in the initial state
 
@@ -203,7 +203,7 @@ void MessengerConnector::restart(util::Lock const& lock) {
 void MessengerConnector::resolve(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "resolve"
-         << "  _currentRequest->id=" << (_currentRequest ? _currentRequest->id : ""));
+         << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : ""));
 
     if (_state != STATE_INITIAL) return;
 
@@ -227,7 +227,7 @@ void MessengerConnector::resolved(boost::system::error_code const& ec,
                                   boost::asio::ip::tcp::resolver::iterator iter) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "resolved"
-         << "  _currentRequest->id=" << (_currentRequest ? _currentRequest->id : ""));
+         << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : ""));
 
     if (isAborted(ec)) return;
 
@@ -242,7 +242,7 @@ void MessengerConnector::connect(util::Lock const& lock,
                                  boost::asio::ip::tcp::resolver::iterator iter) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "connect"
-         << "  _currentRequest->id=" << (_currentRequest ? _currentRequest->id : ""));
+         << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : ""));
 
     boost::asio::async_connect(
         _socket,
@@ -260,7 +260,7 @@ void MessengerConnector::connected(boost::system::error_code const& ec,
                                    boost::asio::ip::tcp::resolver::iterator iter) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "connected"
-         << "  _currentRequest->id=" << (_currentRequest ? _currentRequest->id : ""));
+         << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : ""));
 
     if (isAborted(ec)) return;
 
@@ -277,7 +277,7 @@ void MessengerConnector::connected(boost::system::error_code const& ec,
 void MessengerConnector::waitBeforeRestart(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "waitBeforeRestart"
-         << "  _currentRequest->id=" << (_currentRequest ? _currentRequest->id : ""));
+         << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : ""));
 
     // Allways need to set the interval before launching the timer.
 
@@ -294,7 +294,7 @@ void MessengerConnector::waitBeforeRestart(util::Lock const& lock) {
 void MessengerConnector::awakenForRestart(boost::system::error_code const& ec) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "awakenForRestart"
-         << "  _currentRequest->id=" << (_currentRequest ? _currentRequest->id : ""));
+         << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : ""));
 
     if (isAborted(ec)) return;
 
@@ -308,7 +308,7 @@ void MessengerConnector::awakenForRestart(boost::system::error_code const& ec) {
 void MessengerConnector::sendRequest(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "sendRequest"
-         << "  _currentRequest->id=" << (_currentRequest ? _currentRequest->id : ""));
+         << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : ""));
 
     // Check if there is an outstanding send request
     if (_currentRequest) return;
@@ -327,8 +327,8 @@ void MessengerConnector::sendRequest(util::Lock const& lock) {
     boost::asio::async_write(
         _socket,
         boost::asio::buffer(
-            _currentRequest->requestBufferPtr->data(),
-            _currentRequest->requestBufferPtr->size()
+            _currentRequest->requestBufferPtr()->data(),
+            _currentRequest->requestBufferPtr()->size()
         ),
         boost::bind(
             &MessengerConnector::requestSent,
@@ -343,7 +343,7 @@ void MessengerConnector::requestSent(boost::system::error_code const& ec,
                                      size_t bytes_transferred) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "requestSent"
-         << "  _currentRequest->id=" << (_currentRequest ? _currentRequest->id : ""));
+         << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : ""));
 
     util::Lock lock(_mtx, context() + "requestSent");
 
@@ -387,7 +387,7 @@ void MessengerConnector::requestSent(boost::system::error_code const& ec,
 void MessengerConnector::receiveResponse(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "receiveResponse"
-         << "  _currentRequest->id=" << (_currentRequest ? _currentRequest->id : ""));
+         << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : ""));
 
     // Start with receiving the fixed length frame carrying
     // the size (in bytes) the length of the subsequent message.
@@ -420,7 +420,7 @@ void MessengerConnector::responseReceived(boost::system::error_code const& ec,
                                           size_t bytes_transferred) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "responseReceived"
-         << "  _currentRequest->id=" << (_currentRequest ? _currentRequest->id : "")
+         << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : "")
          << " error_code=" << ec);
 
     // The notification if any should be happening outside the lock guard
@@ -432,7 +432,7 @@ void MessengerConnector::responseReceived(boost::system::error_code const& ec,
     // in the input queue. The simplest approach would be probably launch
     // the notification in a separate (new) thread.
 
-    WrapperBase::Ptr request2notify;
+    MessageWrapperBase::Ptr request2notify;
     {
         util::Lock lock(_mtx, context() + "responseReceived");
 
@@ -456,7 +456,7 @@ void MessengerConnector::responseReceived(boost::system::error_code const& ec,
 
                 request2notify = _currentRequest;
 
-                _id2request.erase(_currentRequest->id);
+                _id2request.erase(_currentRequest->id());
                 _currentRequest = nullptr;
 
                 restart(lock);
@@ -468,7 +468,7 @@ void MessengerConnector::responseReceived(boost::system::error_code const& ec,
                 if (syncReadVerifyHeader(lock,
                                          _inBuffer,
                                          _inBuffer.parseLength(),
-                                         _currentRequest->id)) {
+                                         _currentRequest->id())) {
 
                     // If something bad happened along the line then we should notify a caller about
                     // a problem with the request, remove the request from all data structures and
@@ -476,7 +476,7 @@ void MessengerConnector::responseReceived(boost::system::error_code const& ec,
 
                     request2notify = _currentRequest;
 
-                    _id2request.erase(_currentRequest->id);
+                    _id2request.erase(_currentRequest->id());
                     _currentRequest = nullptr;
 
                     restart(lock);
@@ -494,7 +494,7 @@ void MessengerConnector::responseReceived(boost::system::error_code const& ec,
 
                         request2notify = _currentRequest;
 
-                        _id2request.erase(_currentRequest->id);
+                        _id2request.erase(_currentRequest->id());
                         _currentRequest = nullptr;
 
                         restart(lock);
@@ -502,13 +502,13 @@ void MessengerConnector::responseReceived(boost::system::error_code const& ec,
                     } else {
 
                         LOGS(_log, LOG_LVL_DEBUG, context() << "responseReceived"
-                             << "  _currentRequest->id=" << _currentRequest->id
+                             << "  _currentRequest=" << _currentRequest->id()
                              << " bytes=" << bytes);
 
                         // Then receive response body into a buffer inside the wrapper
 
                         if (syncReadMessageImpl(lock,
-                                                _currentRequest->responseBuffer,
+                                                _currentRequest->responseBuffer(),
                                                 bytes)) {
 
                             // If something bad happened along the line then we should notify a caller about
@@ -517,7 +517,7 @@ void MessengerConnector::responseReceived(boost::system::error_code const& ec,
 
                             request2notify = _currentRequest;
 
-                            _id2request.erase(_currentRequest->id);
+                            _id2request.erase(_currentRequest->id());
                             _currentRequest = nullptr;
 
                             restart(lock);
@@ -530,9 +530,9 @@ void MessengerConnector::responseReceived(boost::system::error_code const& ec,
                             // remove this request from all data structures and initiate a new request.
 
                             request2notify = _currentRequest;
-                            request2notify->success = true;
+                            request2notify->setSuccess(true);
 
-                            _id2request.erase(_currentRequest->id);
+                            _id2request.erase(_currentRequest->id());
                             _currentRequest = nullptr;
 
                             sendRequest(lock);
@@ -574,7 +574,7 @@ boost::system::error_code MessengerConnector::syncReadFrame(util::Lock const& lo
         ec
     );
     LOGS(_log, LOG_LVL_DEBUG, context() << "syncReadFrame"
-         << "  _currentRequest->id=" << (_currentRequest ? _currentRequest->id : "")
+         << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : "")
          << " error_code=" << ec);
 
     if (not ec) bytes = buf.parseLength();
@@ -585,7 +585,6 @@ boost::system::error_code MessengerConnector::syncReadVerifyHeader(util::Lock co
                                                                    replica::ProtocolBuffer& buf,
                                                                    size_t bytes,
                                                                    std::string const& id) {
-
     boost::system::error_code const ec =
         syncReadMessageImpl(lock,
                             buf,
@@ -618,7 +617,7 @@ boost::system::error_code MessengerConnector::syncReadMessageImpl(util::Lock con
         ec
     );
     LOGS(_log, LOG_LVL_DEBUG, context() << "syncReadMessageImpl"
-         << "  _currentRequest->id=" << (_currentRequest ? _currentRequest->id : "")
+         << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : "")
          << " error_code=" << ec);
 
     return ec;

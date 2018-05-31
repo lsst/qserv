@@ -54,6 +54,155 @@ namespace replica {
 class WorkerInfo;
 
 /**
+ * Class MessageWrapperBase is the base class for request wrappers.
+ */
+class MessageWrapperBase {
+
+public:
+
+    /// The pointer type for the base class of the request wrappers
+    typedef std::shared_ptr<MessageWrapperBase> Ptr;
+
+    // Default construction and copy semantics are prohibited
+
+    MessageWrapperBase() = delete;
+    MessageWrapperBase(MessageWrapperBase const&) = delete;
+    MessageWrapperBase& operator=(MessageWrapperBase const&) = delete;
+
+    virtual ~MessageWrapperBase() = default;
+
+    /// @return the completion status to be returned to a subscriber
+    bool success() const { return _success; }
+
+    /// @return unique identifier of the request
+    std::string const& id() const { return _id; }
+
+    /// @return a pointer onto a buffer with a serialized request
+    std::shared_ptr<ProtocolBuffer> const& requestBufferPtr() const { return _requestBufferPtr; }
+
+    ///  @return a non-const reference to buffer for receiving responses from a worker
+    ProtocolBuffer& responseBuffer() { return _responseBuffer; }
+
+    /**
+     * Update the completion status of a request to 'success'.
+     *
+     * This method is supposed to be called upon a successful comoletion of a request
+     * after a valid response is received from a worker and before notifying
+     * a subscriber.
+     *
+     * @param success - new completion status
+     */
+    void setSuccess(bool status) { _success = status; }
+
+    /**
+     * Parse the content of the buffer and notify a subscriber
+     */
+    virtual void parseAndNotify()=0;
+
+protected:
+
+    /**
+     * Construct the object in the default failed (member 'success') state. Hence, there is no
+     * need to set this state explicitly unless a transaction turnes out to be
+     * a success.
+     *
+     * @param id_                         - a unique identifier of the request
+     * @param requestBufferPtr_           - an input buffer with seriealized request
+     * @param responseBufferCapacityBytes - the initial size of the response buffer
+     */
+    MessageWrapperBase(std::string const& id_,
+                std::shared_ptr<ProtocolBuffer> const& requestBufferPtr,
+                size_t responseBufferCapacityBytes)
+        :   _success(false),
+            _id(id_),
+            _requestBufferPtr(requestBufferPtr),
+            _responseBuffer(responseBufferCapacityBytes) {
+    }
+
+private:
+
+    /// The completion status to be returned to a subscriber
+    bool _success;
+
+    /// A unique identifier of the request
+    std::string _id;
+
+    /// The buffer with a serialized request
+    std::shared_ptr<ProtocolBuffer> _requestBufferPtr;
+
+    /// The buffer for receiving responses from a worker server
+    ProtocolBuffer _responseBuffer;
+};
+
+/**
+ * Class template MessageWrapper extends its based to support type-specific
+ * treatment (including serialization) of responses from workers.
+ */
+template <class RESPONSE_TYPE>
+class MessageWrapper
+    :   public MessageWrapperBase {
+
+public:
+
+    typedef std::function<void(std::string const&,
+                               bool,
+                               RESPONSE_TYPE const&)> CallbackType;
+
+    // Default construction and copy semantics are prohibited
+
+    MessageWrapper() = delete;
+    MessageWrapper(MessageWrapper const&) = delete;
+    MessageWrapper& operator=(MessageWrapper const&) = delete;
+
+    ~MessageWrapper() override = default;
+
+    /**
+     * The constructor
+     *
+     * @param id                          - a unique identifier of the request
+     * @param requestBufferPtr            - a request serielized into a network buffer
+     * @param responseBufferCapacityBytes - the initial size of the response buffer
+     * @param onFinish                    - an asynchronious callback function called upon
+     *                                      a completion or failure of the operation
+     */
+    MessageWrapper(std::string const& id,
+                   std::shared_ptr<ProtocolBuffer> const& requestBufferPtr,
+                   size_t responseBufferCapacityBytes,
+                   CallbackType onFinish)
+        :   MessageWrapperBase(id,
+                        requestBufferPtr,
+                        responseBufferCapacityBytes),
+            _onFinish(onFinish) {
+    }
+
+    /**
+     * @see MessageWrapperBase::parseResponseAndNotify
+     */
+    void parseAndNotify() override {
+        RESPONSE_TYPE response;
+        if (success()) {
+            try {
+                responseBuffer().parse(response, responseBuffer().size());
+            } catch(std::runtime_error const& ex) {
+
+                // The message is corrupt. Google Protobuf will report an error
+                // of the following kind:
+                //
+                //   [libprotobuf ERROR google/protobuf/message_lite.cc:123] Can't parse message of type ...
+                //
+                setSuccess(false);
+            }
+        }
+        _onFinish(id(), success(), response);
+    }
+
+private:
+
+    /// The collback fnction to be called upon the completion of the transaction
+    CallbackType _onFinish;
+};
+
+/**
  * Class MessengerConnector provides a communication interface for sending/receiving
  * messages to and from worker services. It provides connection multiplexing and
  * automatic reconnects.
@@ -65,11 +214,12 @@ class WorkerInfo;
  *
  * - to avoid deadlocks, only externally called methods of the public API (such
  *   as the ones for sending or cancelling requests) and assynchronious callbacks
- *   are locking on the mutex. Those methods are NOT allowed to call each other.
+ *   are locking the mutex. Those methods are NOT allowed to call each other.
  *   Otherwise deadlocks are imminent.
  *
- * - other implementatin-specific methods are supposed to be invoked from either
- *   of the above mentioned methods.
+ * - private methods (where a state transition occures or which are relying
+ *   on specific states) are required to be called with a reference to
+ *   the lock acquired prior to the calls.
  */
 class MessengerConnector
     :   public std::enable_shared_from_this<MessengerConnector> {
@@ -78,126 +228,6 @@ public:
 
     /// The pointer type for instances of the class
     typedef std::shared_ptr<MessengerConnector> Ptr;
-
-    /// The base class for request wrappers
-    class WrapperBase {
-
-    public:
-
-        /// The pointer type for the base class of the request wrappers
-        typedef std::shared_ptr<WrapperBase> Ptr;
-
-        // Default construction and copy semantics are prohibited
-
-        WrapperBase() = delete;
-        WrapperBase(WrapperBase const&) = delete;
-        WrapperBase& operator=(WrapperBase const&) = delete;
-
-        virtual ~WrapperBase() = default;
-
-        /**
-         * Parse the content of the buffer and notify a subscriber
-         */
-        virtual void parseAndNotify()=0;
-
-    protected:
-
-        /**
-         * Construct the object in the default failed (membver 'success') state. Hence, there is no
-         * need ro set this state explicitly unless a transcation turnes to be
-         * a success.
-         *
-         * @param id_                         - a unique identifier of the request
-         * @param requestBufferPtr_           - an input buffer with seriealized request
-         * @param responseBufferCapacityBytes - the initial size of the response buffer
-         */
-        WrapperBase(std::string const& id_,
-                    std::shared_ptr<ProtocolBuffer> const& requestBufferPtr_,
-                    size_t responseBufferCapacityBytes)
-            :   success(false),
-                id(id_),
-                requestBufferPtr(requestBufferPtr_),
-                responseBuffer(responseBufferCapacityBytes) {
-        }
-
-    public:
-
-        /// The completion status to be returned to a subscriber
-        bool success;
-
-        /// A unique identifier of the request
-        std::string id;
-
-        /// The buffer with a serialized request
-        std::shared_ptr<ProtocolBuffer> requestBufferPtr;
-
-        /// The buffer for receiving responses from a worker server
-        ProtocolBuffer responseBuffer;
-    };
-
-    template <class RESPONSE_TYPE>
-    class Wrapper
-        :   public WrapperBase {
-
-    public:
-
-        typedef std::function<void(std::string const&,
-                                   bool,
-                                   RESPONSE_TYPE const&)> CallbackType;
-
-        // Default construction and copy semantics are prohibited
-
-        Wrapper() = delete;
-        Wrapper(Wrapper const&) = delete;
-        Wrapper& operator=(Wrapper const&) = delete;
-
-        ~Wrapper() override = default;
-
-        /**
-         * The constructor
-         *
-         * @param id                          - a unique identifier of the request
-         * @param requestBufferPtr            - a request serielized into a network buffer
-         * @param responseBufferCapacityBytes - the initial size of the response buffer
-         * @param onFinish                    - an asynchronious callback function called upon
-         *                                      a completion or failure of the operation
-         */
-        Wrapper(std::string const& id,
-                std::shared_ptr<ProtocolBuffer> const& requestBufferPtr,
-                size_t responseBufferCapacityBytes,
-                CallbackType onFinish)
-            :   WrapperBase(id,
-                            requestBufferPtr,
-                            responseBufferCapacityBytes),
-                _onFinish(onFinish) {
-        }
-
-        /**
-         * @see WrapperBase::parseResponseAndNotify
-         */
-        void parseAndNotify() override {
-            RESPONSE_TYPE response;
-            if (success) {
-                try {
-                    responseBuffer.parse(response, responseBuffer.size());
-                } catch(std::runtime_error const& ex) {
-
-                    // The message is corrupt. Google Protobuf will report an error
-                    // of the following kind:
-                    //
-                    //   [libprotobuf ERROR google/protobuf/message_lite.cc:123] Can't parse message of type ...
-                    //
-                    success = false;
-                }
-            }
-            _onFinish(id, success, response);
-        }
-
-    private:
-
-        /// The collback fnction to be called upon the completion of the transaction
-        CallbackType _onFinish;
-    };
 
     // Default construction and copy semantics are prohibited
 
@@ -246,11 +276,11 @@ public:
     template <class RESPONSE_TYPE>
     void send(std::string const& id,
               std::shared_ptr<ProtocolBuffer> const& requestBufferPtr,
-              typename Wrapper<RESPONSE_TYPE>::CallbackType onFinish) {
+              typename MessageWrapper<RESPONSE_TYPE>::CallbackType onFinish) {
 
         sendImpl(
             id,
-            std::make_shared<Wrapper<RESPONSE_TYPE>>(
+            std::make_shared<MessageWrapper<RESPONSE_TYPE>>(
                 id,
                 requestBufferPtr,
                 _bufferCapacityBytes,
@@ -297,7 +327,7 @@ private:
      * @param ptr  - a pointer to the request wrapper object
      */
     void sendImpl(std::string const& id,
-                  WrapperBase::Ptr const& ptr);
+                  MessageWrapperBase::Ptr const& ptr);
 
     /// State transitions for the connector object
     enum State {
@@ -505,14 +535,14 @@ private:
     mutable util::Mutex _mtx;
 
     /// The queue of requests
-    std::list<WrapperBase::Ptr> _requests;
+    std::list<MessageWrapperBase::Ptr> _requests;
 
     /// The currently processed (being sent) request (if any, otherwise
     /// the pointer is set to nullptr)
-    WrapperBase::Ptr _currentRequest;
+    MessageWrapperBase::Ptr _currentRequest;
 
     /// Requests ordered by their unique identifiers
-    std::map<std::string, WrapperBase::Ptr> _id2request;
+    std::map<std::string, MessageWrapperBase::Ptr> _id2request;
 
     /// The intermediate buffer for messages received from a worker
     ProtocolBuffer _inBuffer;
