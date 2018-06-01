@@ -90,7 +90,9 @@ bool readMessage(boost::asio::ip::tcp::socket& socket,
 
     if (not readIntoBuffer(socket,
                            ptr,
-                           bytes)) return false;
+                           bytes)) {
+        return false;
+    }
 
     // Parse the response to see what should be done next.
 
@@ -104,8 +106,9 @@ bool readLength(boost::asio::ip::tcp::socket& socket,
 
     if (not readIntoBuffer(socket,
                            ptr,
-                           sizeof(uint32_t))) return false;
-
+                           sizeof(uint32_t))) {
+        return false;
+    }
     bytes = ptr->parseLength();
     return true;
 }
@@ -185,7 +188,9 @@ void WorkerServerConnection::received(boost::system::error_code const& ec,
     if (not ::readMessage(_socket,
                           _bufferPtr,
                           _bufferPtr->parseLength(),
-                          hdr)) return;
+                          hdr)) {
+        return;
+    }
 
     // Analyse the header of the request. Note that the header message categorizes
     // requests in two layers:
@@ -212,8 +217,9 @@ void WorkerServerConnection::processReplicaRequest(proto::ReplicationRequestHead
     uint32_t bytes;
     if (not ::readLength (_socket,
                           _bufferPtr,
-                          bytes)) return;
-
+                          bytes)) {
+        return;
+    }
     switch (hdr.replica_type()) {
 
         case proto::ReplicationReplicaRequestType::REPLICA_CREATE: {
@@ -223,8 +229,9 @@ void WorkerServerConnection::processReplicaRequest(proto::ReplicationRequestHead
             if (not ::readMessage(_socket,
                                   _bufferPtr,
                                   bytes,
-                                  request)) return;
-
+                                  request)) {
+                return;
+            }
             proto::ReplicationResponseReplicate response;
             _processor.enqueueForReplication(hdr.id(),
                                              request,
@@ -241,8 +248,9 @@ void WorkerServerConnection::processReplicaRequest(proto::ReplicationRequestHead
             if (not ::readMessage(_socket,
                                   _bufferPtr,
                                   bytes,
-                                  request)) return;
-
+                                  request)) {
+                return;
+            }
             proto::ReplicationResponseDelete response;
             _processor.enqueueForDeletion(hdr.id(),
                                           request,
@@ -259,8 +267,9 @@ void WorkerServerConnection::processReplicaRequest(proto::ReplicationRequestHead
             if (not ::readMessage(_socket,
                                   _bufferPtr,
                                   bytes,
-                                  request)) return;
-
+                                  request)) {
+                return;
+            }
             proto::ReplicationResponseFind response;
             _processor.enqueueForFind(hdr.id(),
                                       request,
@@ -277,8 +286,9 @@ void WorkerServerConnection::processReplicaRequest(proto::ReplicationRequestHead
             if (not ::readMessage(_socket,
                                   _bufferPtr,
                                   bytes,
-                                  request)) return;
-
+                                  request)) {
+                return;
+            }
             proto::ReplicationResponseFindAll response;
             _processor.enqueueForFindAll(hdr.id(),
                                          request,
@@ -299,10 +309,11 @@ void WorkerServerConnection::processManagementRequest(proto::ReplicationRequestH
 
     // Read the request length
     uint32_t bytes;
-    if (not ::readLength (_socket,
-                          _bufferPtr,
-                          bytes)) return;
-
+    if (not ::readLength(_socket,
+                         _bufferPtr,
+                         bytes)) {
+        return;
+    }
     switch (hdr.management_type()) {
 
         case proto::ReplicationManagementRequestType::REQUEST_STOP: {
@@ -312,8 +323,9 @@ void WorkerServerConnection::processManagementRequest(proto::ReplicationRequestH
             if (not ::readMessage(_socket,
                                   _bufferPtr,
                                   bytes,
-                                  request)) return;
-
+                                  request)) {
+                return;
+            }
             switch (request.type()) {
 
                 case proto::ReplicationReplicaRequestType::REPLICA_CREATE: {
@@ -363,8 +375,9 @@ void WorkerServerConnection::processManagementRequest(proto::ReplicationRequestH
             if (not ::readMessage(_socket,
                                   _bufferPtr,
                                   bytes,
-                                  request)) return;
-
+                                  request)) {
+                return;
+            }
             switch (request.type()) {
 
                 case proto::ReplicationReplicaRequestType::REPLICA_CREATE: {
@@ -438,8 +451,8 @@ void WorkerServerConnection::processServiceRequest(proto::ReplicationRequestHead
                   hdr.id(),
                   _processor.state() == WorkerProcessor::State::STATE_IS_RUNNING ?
                       proto::ReplicationServiceResponse::FAILED :
-                      proto::ReplicationServiceResponse::SUCCESS);
-
+                      proto::ReplicationServiceResponse::SUCCESS
+            );
             reply(hdr.id(),
                   response);
             break;

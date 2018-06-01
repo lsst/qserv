@@ -60,15 +60,14 @@ WorkerServer::WorkerServer(ServiceProvider::Ptr const& serviceProvider,
     :   _serviceProvider(serviceProvider),
         _workerName(workerName),
         _processor(serviceProvider, requestFactory, workerName),
-        _workerInfo(serviceProvider->config()->workerInfo(workerName)),
         _io_service(),
         _acceptor(
             _io_service,
             boost::asio::ip::tcp::endpoint(
                 boost::asio::ip::tcp::v4(),
-                _workerInfo.svcPort)) {
+                serviceProvider->config()->workerInfo(workerName).svcPort)) {
 
-    // Set the socket reuse option to allow recycling ports after catastrifc
+    // Set the socket reuse option to allow recycling ports after catastrophic
     // failures.
 
     _acceptor.set_option(boost::asio::socket_base::reuse_address(true));
@@ -118,7 +117,7 @@ void WorkerServer::handleAccept(WorkerServerConnection::Ptr const& connection,
 
         // TODO: Consider throwing an exception instead. Another option
         //       would be to log the message via the standard log file
-        //       mechanism since its' safe to ignore problems with
+        //       mechanism since it's safe to ignore problems with
         //       incoming connections due a lack of side effects.
 
         LOGS(_log, LOG_LVL_DEBUG, context() << "handleAccept  ec:" << ec);
