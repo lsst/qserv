@@ -30,7 +30,6 @@
 // System headers
 #include <functional>
 #include <list>
-#include <map>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -279,7 +278,6 @@ public:
               typename MessageWrapper<RESPONSE_TYPE>::CallbackType onFinish) {
 
         sendImpl(
-            id,
             std::make_shared<MessageWrapper<RESPONSE_TYPE>>(
                 id,
                 requestBufferPtr,
@@ -323,11 +321,9 @@ private:
      *
      * The method may throw the same exceptions as method 'sent'
      *
-     * @param id   - a unique identifier of a request
      * @param ptr  - a pointer to the request wrapper object
      */
-    void sendImpl(std::string const& id,
-                  MessageWrapperBase::Ptr const& ptr);
+    void sendImpl(MessageWrapperBase::Ptr const& ptr);
 
     /// State transitions for the connector object
     enum State {
@@ -473,7 +469,7 @@ private:
 
     /**
      * Synchriniously read a message of a known size into the specified buffer.
-     * Return the completion status of the operation. Afyer the successfull
+     * Return the completion status of the operation. After the successfull
      * completion of the operation the content of the network buffer can be parsed.
      *
      * @param lock  - a lock on a mutex must be acquired before calling this method
@@ -506,6 +502,17 @@ private:
     /// @return the worker-specific context string
     std::string context() const;
 
+    /**
+     * Find a request matching the specified identifier
+     *
+     * @param lock  - a lock on a mutex must be acquired before calling this method
+     * @param id    - an identifier of the request
+     *
+     * @return pointer to the request if found, or an empty pointer otherwise
+     */
+    MessageWrapperBase::Ptr find(util::Lock const& lock,
+                                 std::string const& id) const;
+
 private:
 
     ServiceProvider::Ptr _serviceProvider;
@@ -534,15 +541,12 @@ private:
     /// and threads submitting requests.
     mutable util::Mutex _mtx;
 
-    /// The queue of requests
+    /// The queue (FIFO) of requests
     std::list<MessageWrapperBase::Ptr> _requests;
 
     /// The currently processed (being sent) request (if any, otherwise
     /// the pointer is set to nullptr)
     MessageWrapperBase::Ptr _currentRequest;
-
-    /// Requests ordered by their unique identifiers
-    std::map<std::string, MessageWrapperBase::Ptr> _id2request;
 
     /// The intermediate buffer for messages received from a worker
     ProtocolBuffer _inBuffer;

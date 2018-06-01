@@ -92,7 +92,7 @@ public:
 
     ~WorkerServerConnection() = default;
 
-    /// @eturn network socket associated with the connection
+    /// @return network socket associated with the connection
     boost::asio::ip::tcp::socket& socket() { return _socket; }
 
     /**
@@ -105,17 +105,16 @@ public:
      *   - ASYNC: write a frame header of a reply to the request
      *            then write the reply itself
      *
-     * NOTES: A reason why the read phase is split into three steps is
+     * NOTES: A reason why the read phase is split into four steps is
      *        that a client is expected to send all components of the request
-     *        (frame header, re uest header and reuest body) at once. This means
+     *        (frame header, re uest header and request body) at once. This means
      *        the whole incomming message will be already available on the server's
-     *        host memory when an asyncronous handler for the freame header will fire.
+     *        host memory when an asyncronous handler for the frame header will fire.
      *        However, due to a variable length of the request we should know its length
-     *        before attempting
-     *        to read the rest of the incomming message as this (the later) will require
-     *        two things: 1) to ensure enough we have enough buffer space
-     *        allocated, and 2) to tell the asynchrnous reader function
-     *        how many bytes exactly are we going to read.
+     *        before attempting to read the rest of the incomming message as this (the later)
+     *        will require two things: 1) to ensure enough we have enough buffer space
+     *        allocated, and 2) to tell the asynchrnous reader function how many bytes
+     *        exactly are we going to read.
      * 
      * The chain ends when a client disconnects or when an error condition
      * is met.

@@ -53,7 +53,7 @@ std::string MessengerConnector::state2string(MessengerConnector::State state) {
         case STATE_COMMUNICATING: return "STATE_COMMUNICATING";
     }
     throw std::logic_error(
-            "incomplete implementation of method MessengerConnector::state2string()");
+            "incomplete implementation of method MessengerConnector::state2string");
 }
 
 MessengerConnector::Ptr MessengerConnector::create(
@@ -66,7 +66,7 @@ MessengerConnector::Ptr MessengerConnector::create(
                                worker));
 }
 
-MessengerConnector::MessengerConnector(ServiceProvider::Ptr const&serviceProvider,
+MessengerConnector::MessengerConnector(ServiceProvider::Ptr const& serviceProvider,
                                        boost::asio::io_service& io_service,
                                        std::string const& worker)
     :   _serviceProvider(serviceProvider),
@@ -102,6 +102,10 @@ void MessengerConnector::stop() {
 
             _state = STATE_INITIAL;
             break;
+
+        default:
+            throw std::logic_error(
+                "incomplete implementation of method MessengerConnector::stop");
     }
 }
 
@@ -111,25 +115,21 @@ void MessengerConnector::cancel(std::string const& id) {
 
     util::Lock lock(_mtx, context() + "cancel");
 
-    if (not _id2request.count(id)) {
-        throw std::logic_error(
-                "MessengerConnector::cancel()  unknow request id: " + id);
-    }
+    // Remove request from the queue (if it's still there)
 
-    // If the request is already being processed then a more aggressive approach
-    // of aborting all communications must be taken.
-    if (_currentRequest and (_currentRequest->id() == id)) {
-        _currentRequest = nullptr;
-        if (_state == STATE_COMMUNICATING) restart(lock);
-    }
-
-    // Also remove from both collections
     _requests.remove_if(
         [&id] (MessageWrapperBase::Ptr const& ptr) {
             return ptr->id() == id;
         }
     );
-    _id2request.erase(id);
+
+    // Also, if the request is already being processed then terminate all
+    // communications with a worker. This will automatically abort the request.
+
+    if (_currentRequest and (_currentRequest->id() == id)) {
+        _currentRequest = nullptr;
+        if (_state == STATE_COMMUNICATING) restart(lock);
+    }
 }
 
 bool MessengerConnector::exists(std::string const& id) const {
@@ -138,24 +138,22 @@ bool MessengerConnector::exists(std::string const& id) const {
 
     util::Lock lock(_mtx, context() + "exists");
 
-    return _id2request.count(id);
+    return find(lock, id) != nullptr;
 }
 
-void MessengerConnector::sendImpl(std::string const& id,
-                                  MessageWrapperBase::Ptr const& ptr) {
+void MessengerConnector::sendImpl(MessageWrapperBase::Ptr const& ptr) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "sendImpl  id: " + id);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "sendImpl  id: " + ptr->id());
 
     util::Lock lock(_mtx, context() + "sendImpl");
 
-    if (_id2request.count(id)) {
+    if (find(lock, ptr->id()) != nullptr) {
         throw std::logic_error(
-                "MessengerConnector::sendImpl()  the request is alrady registered for id:" + id);
+                "MessengerConnector::sendImpl  the request is alrady registered for id:" + ptr->id());
     }
 
     // Register the request
 
-    _id2request[id] = ptr;
     _requests.push_back(ptr);
 
     switch (_state) {
@@ -172,6 +170,10 @@ void MessengerConnector::sendImpl(std::string const& id,
         case STATE_COMMUNICATING:
             sendRequest(lock);
             break;
+
+        default:
+            throw std::logic_error(
+                "incomplete implementation of method MessengerConnector::sendImpl");
     }
 }
 
@@ -196,6 +198,10 @@ void MessengerConnector::restart(util::Lock const& lock) {
 
             _state = STATE_INITIAL;
             break;
+
+        default:
+            throw std::logic_error(
+                "incomplete implementation of method MessengerConnector::restart");
     }
     resolve(lock);
 }
@@ -233,9 +239,11 @@ void MessengerConnector::resolved(boost::system::error_code const& ec,
 
     util::Lock lock(_mtx, context() + "resolved");
 
-    if (ec) waitBeforeRestart(lock);
-    else    connect(lock,
-                    iter);
+    if (ec) {
+        waitBeforeRestart(lock);
+    } else {
+        connect(lock, iter);
+    }
 }
 
 void MessengerConnector::connect(util::Lock const& lock,
@@ -311,19 +319,18 @@ void MessengerConnector::sendRequest(util::Lock const& lock) {
          << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : ""));
 
     // Check if there is an outstanding send request
+
     if (_currentRequest) return;
 
     // Pull a request (if any) from the from of the queue
-    //
-    if (_requests.empty()) return;
-    _currentRequest = _requests.front();
 
-    // Remove request from the front. But leave it in the map
-    // as a safeguard preventing requsts with the same 'id' from being
-    // attempted.
+    if (_requests.empty()) return;
+
+    _currentRequest = _requests.front();
     _requests.pop_front();
 
     // Send the message
+
     boost::asio::async_write(
         _socket,
         boost::asio::buffer(
@@ -394,7 +401,7 @@ void MessengerConnector::receiveResponse(util::Lock const& lock) {
     //
     // The message itself will be read from the handler using
     // the synchronous read method. This is based on an assumption
-    // that the worker server sends the whol emessage (its frame and
+    // that the worker server sends the whole message (its frame and
     // the message itsef) at once.
 
     size_t const bytes = sizeof(uint32_t);
@@ -447,17 +454,16 @@ void MessengerConnector::responseReceived(boost::system::error_code const& ec,
 
         if (_currentRequest) {
 
+            // At this point we're done with the current request, regardless of its completion
+            // status, or any failures to pull or digest the response data. Hence, removing
+            // completelly it and getting ready to notify a caller.
+
+            std::swap(request2notify, _currentRequest);
+
             // The requst is still valid
             if (ec) {
 
-                // If something bad happened along the line then we should notify a caller about
-                // a problem with the request, remove the request from all data structures and
-                // restart the communication.
-
-                request2notify = _currentRequest;
-
-                _id2request.erase(_currentRequest->id());
-                _currentRequest = nullptr;
+                // Failed to get any response from a worker
 
                 restart(lock);
 
@@ -468,57 +474,38 @@ void MessengerConnector::responseReceived(boost::system::error_code const& ec,
                 if (syncReadVerifyHeader(lock,
                                          _inBuffer,
                                          _inBuffer.parseLength(),
-                                         _currentRequest->id())) {
+                                         request2notify->id())) {
 
-                    // If something bad happened along the line then we should notify a caller about
-                    // a problem with the request, remove the request from all data structures and
-                    // restart the communication.
-
-                    request2notify = _currentRequest;
-
-                    _id2request.erase(_currentRequest->id());
-                    _currentRequest = nullptr;
+                    // Failed to receive the header
 
                     restart(lock);
 
                 } else {
+
+                    // Read the response frame
 
                     size_t bytes;
                     if (syncReadFrame(lock,
                                       _inBuffer,
                                       bytes)) {
 
-                        // If something bad happened along the line then we should notify a caller about
-                        // a problem with the request, remove the request from all data structures and
-                        // restart the communication.
-
-                        request2notify = _currentRequest;
-
-                        _id2request.erase(_currentRequest->id());
-                        _currentRequest = nullptr;
+                        // Failed to read the frame
 
                         restart(lock);
 
                     } else {
 
                         LOGS(_log, LOG_LVL_DEBUG, context() << "responseReceived"
-                             << "  _currentRequest=" << _currentRequest->id()
+                             << "  _currentRequest=" << request2notify->id()
                              << " bytes=" << bytes);
 
-                        // Then receive response body into a buffer inside the wrapper
+                        // Receive response body into a buffer inside the wrapper
 
                         if (syncReadMessageImpl(lock,
-                                                _currentRequest->responseBuffer(),
+                                                request2notify->responseBuffer(),
                                                 bytes)) {
 
-                            // If something bad happened along the line then we should notify a caller about
-                            // a problem with the request, remove the request from all data structures and
-                            // restart the communication.
-
-                            request2notify = _currentRequest;
-
-                            _id2request.erase(_currentRequest->id());
-                            _currentRequest = nullptr;
+                            // Failed to read the message body
 
                             restart(lock);
 
@@ -526,14 +513,9 @@ void MessengerConnector::responseReceived(boost::system::error_code const& ec,
 
                             // Finally, success!
 
-                            // Notify a caller about the successfull completion of the operation,
-                            // remove this request from all data structures and initiate a new request.
-
-                            request2notify = _currentRequest;
                             request2notify->setSuccess(true);
 
-                            _id2request.erase(_currentRequest->id());
-                            _currentRequest = nullptr;
+                            // Initiate the next request (if any) processing
 
                             sendRequest(lock);
                         }
@@ -543,16 +525,21 @@ void MessengerConnector::responseReceived(boost::system::error_code const& ec,
 
         } else {
 
+            // We're here because there is no '_currentRequest'.
             // The request submission had a chance to finish (successfully or not)
             // before the cancellation attempt was made. So, we just forget about
             // this request and send no notification to a caller.
-            //
-            if (ec) restart(lock);
-            else    sendRequest(lock);
+
+            if (ec) {
+                restart(lock);
+            } else {
+                sendRequest(lock);
+            }
         }
     }
 
-    // Sending notifications (if requsted) outsize the lock guard
+    // Sending notifications (if requsted) outsize the lock guard to avoid
+    // deadlocks.
 
     if (request2notify) request2notify->parseAndNotify();
 }
@@ -594,7 +581,7 @@ boost::system::error_code MessengerConnector::syncReadVerifyHeader(util::Lock co
         buf.parse(hdr, bytes);
         if (id != hdr.id()) {
             throw std::logic_error(
-                    "MessengerConnector::syncReadVerifyHeader()  got unexpected id: " + hdr.id() +
+                    "MessengerConnector::syncReadVerifyHeader  got unexpected id: " + hdr.id() +
                     " instead of: " + id);
         }
     }
@@ -634,6 +621,17 @@ bool MessengerConnector::isAborted(boost::system::error_code const& ec) const {
 
 std::string MessengerConnector::context() const {
     return "MESSENGER-CONNECTION [worker=" + _workerInfo.name + ", state=" + state2string(_state) + "]  ";
+}
+
+MessageWrapperBase::Ptr MessengerConnector::find(util::Lock const& lock,
+                                                 std::string const& id) const {
+    auto itr = std::find_if(_requests.begin(),
+                            _requests.end(),
+                            [&id] (MessageWrapperBase::Ptr const& ptr) {
+                                return ptr->id() == id;
+                            });
+
+    return _requests.end() == itr ? MessageWrapperBase::Ptr() : *itr;
 }
 
 }}} // namespace lsst::qserv::replica

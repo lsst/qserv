@@ -46,7 +46,6 @@ namespace qserv {
 namespace replica {
 
 // Forward declarations
-class WorkerInfo;
 class WorkerRequestFactory;
 
 /**
@@ -139,9 +138,6 @@ private:
     std::string _workerName;
 
     WorkerProcessor _processor;
-
-    /// Cached parameters of the worker
-    WorkerInfo const& _workerInfo;
 
     boost::asio::io_service        _io_service;
     boost::asio::ip::tcp::acceptor _acceptor;
