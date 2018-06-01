@@ -46,6 +46,7 @@
 #include "qdisp/JobStatus.h"
 #include "qdisp/ResponseHandler.h"
 #include "util/common.h"
+#include "util/Timer.h" // &&&
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.QueryRequest");
@@ -66,8 +67,10 @@ public:
 
     void action(util::CmdData *data) override {
         // If everything is ok, call GetResponseData to have XrdSsi ask the worker for the data.
+        util::Timer tWaiting; // &&&
+        util::Timer tTotal; // &&&
         {
-            util::InstanceCount _ic{"1-act-AskForResponseDataCmd"};
+            tTotal.start();
             auto jq = _jQuery.lock();
             auto qr = _qRequest.lock();
             if (jq == nullptr || qr == nullptr) {
@@ -85,6 +88,7 @@ public:
             }
             std::vector<char>& buffer = jq->getDescription()->respHandler()->nextBuffer();
             LOGS(_log, LOG_LVL_DEBUG, _idStr << " AskForResp GetResponseData size=" << buffer.size());
+            tWaiting.start();
             qr->GetResponseData(&buffer[0], buffer.size());
         }
 
@@ -95,6 +99,7 @@ public:
             std::unique_lock<std::mutex> uLock(_mtx);
             // TODO: make timed wait, check for wedged, if weak pointers dead, log and give up.
             _cv.wait(uLock, [this](){ return _state != State::STARTED0; });
+            tWaiting.stop();
             // _mtx is locked at this point.
             LOGS(_log, LOG_LVL_DEBUG, _idStr << " AskForResp should be DATAREADY1 " << (int)_state);
             if (_state == State::DONE2) {
@@ -112,7 +117,6 @@ public:
         // If more data needs to be sent, _processData will make a new AskForResponseDataCmd
         // object and queue it.
         {
-            util::InstanceCount _ic{"3-act-AskForResponseDataCmd&&&"};
             auto jq = _jQuery.lock();
             auto qr = _qRequest.lock();
             if (jq == nullptr || qr == nullptr) {
@@ -124,9 +128,12 @@ public:
             qr->_processData(jq, _blen, _last);
             LOGS(_log, LOG_LVL_DEBUG, _idStr << " &&& AskForResp processing end" << _blen);
             // _processData will have created another AskForResponseDataCmd object if needed.
+            tTotal.stop();
         }
         _setState(State::DONE2);
         LOGS(_log, LOG_LVL_DEBUG, _idStr << " Ask data is done.");
+        LOGS(_log, LOG_LVL_DEBUG, _idStr << " &&& AskForResp time wait=" << tWaiting.getElapsed() <<
+                " total=" << tTotal.getElapsed());
     }
 
     void notifyDataSuccess(int blen, bool last) {
