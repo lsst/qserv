@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
+ * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,8 +20,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-/// replica_job_delete_worker.cc implements a command-line tool which disables
-/// a worker from a replication setup.
+/// qserv-replica-job-delete-worker.cc is a Controlller application
+/// for testing the corresponding job.
 
 // System headers
 #include <atomic>
@@ -38,8 +38,7 @@
 #include "util/BlockPost.h"
 #include "util/CmdLineParser.h"
 
-namespace replica = lsst::qserv::replica;
-namespace util    = lsst::qserv::util;
+using namespace lsst::qserv;
 
 namespace {
 

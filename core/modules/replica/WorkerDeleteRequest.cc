@@ -201,7 +201,7 @@ bool WorkerDeleteRequestPOSIX::execute() {
 
         for (const auto &name: files) {
             const fs::path file = dataDir / fs::path(name);
-            if (fs::remove(file, ec)) { ++numFilesDeleted; }
+            if (fs::remove(file, ec)) ++numFilesDeleted;
             errorContext = errorContext
                 or reportErrorIf(
                         ec,

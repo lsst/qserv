@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
+ * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,9 +20,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-/// replica_job_fixup.cc implements a command-line tool which analyzes
-/// chunk disposition within the specified database family and tries
-/// to fix chunk co-location problems if found.
+/// qserv-replica-job-fixup.cc is a single job Controller application
+/// which is meant to run the corresponding job.
 
 // System headers
 #include <atomic>
@@ -43,8 +42,7 @@
 #include "util/BlockPost.h"
 #include "util/CmdLineParser.h"
 
-namespace replica = lsst::qserv::replica;
-namespace util    = lsst::qserv::util;
+using namespace lsst::qserv;
 
 namespace {
 

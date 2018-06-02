@@ -92,6 +92,9 @@ std::string ServiceState::state2string() const {
         case SUSPEND_IN_PROGRESS: return "SUSPEND_IN_PROGRESS";
         case SUSPENDED:           return "SUSPENDED";
         case RUNNING:             return "RUNNING";
+    default:
+        throw std::runtime_error(
+            "ServiceState::state2string  unhandled state: " + std::to_string(state));
     }
     return std::string();
 }
@@ -114,7 +117,7 @@ void ServiceState::set(proto::ReplicationServiceResponse const& message) {
 
         default:
             throw std::runtime_error(
-                "ServiceState::set() service state found in protocol is unknown");
+                "ServiceState::set  service state found in protocol is unknown");
     }
     technology = message.technology();
     startTime  = message.start_time();
@@ -176,7 +179,7 @@ ServiceState const& ServiceManagementRequestBase::getServiceState() const {
             break;
     }
     throw std::logic_error(
-                    "this informationis not available in the current state of the request");
+                    "ServiceManagementRequestBase::getServiceState  not allowed in the current state of the request");
 }
 
 ServiceManagementRequestBase::ServiceManagementRequestBase(

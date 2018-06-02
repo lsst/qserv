@@ -1,3 +1,28 @@
+/*
+ * LSST Data Management System
+ * Copyright 2018 LSST Corporation.
+ *
+ * This product includes software developed by the
+ * LSST Project (http://www.lsst.org/).
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the LSST License Statement and
+ * the GNU General Public License along with this program.  If not,
+ * see <http://www.lsstcorp.org/LegalNotices/>.
+ */
+
+/// qserv-replica-worker-notify.cc is a command-line tool for operations
+/// with Qserv workers.
+
 // System headers
 #include <algorithm>
 #include <atomic>
@@ -7,6 +32,7 @@
 #include <stdexcept>
 #include <vector>
 
+// Qserv headers
 #include "proto/replication.pb.h"
 #include "replica/AddReplicaQservMgtRequest.h"
 #include "replica/GetReplicasQservMgtRequest.h"
@@ -18,8 +44,7 @@
 
 #define OUT std::cout
 
-namespace replica = lsst::qserv::replica;
-namespace util    = lsst::qserv::util;
+using namespace lsst::qserv;
 
 namespace {
 
@@ -100,11 +125,11 @@ void dump(replica::QservReplicaCollection const& collection) {
     size_t const chunkWidth = 12;
     size_t const useCountWidth = std::string("use count").size();
     OUT << "\n"
-        << " -" << std::string(databaseWidth, '-')        << "-+-" << std::string(chunkWidth, '-')     << "-+-" << std::string(useCountWidth, '-')         << "-\n"
-        << "  " << std::setw(databaseWidth) << "database" << " | " << std::setw(chunkWidth) << "chunk" << " | " << std::setw(useCountWidth) << "use count" << " \n"
-        << " -" << std::string(databaseWidth, '-')        << "-+-" << std::string(chunkWidth, '-')     << "-+-" << std::string(useCountWidth, '-')         << "-\n";
+        << " -" << std::string(databaseWidth, '-')          << "-+-" << std::string(chunkWidth, '-')       << "-+-" << std::string(useCountWidth, '-')         << "-\n"
+        << "  " << std::setw(  databaseWidth) << "database" << " | " << std::setw(  chunkWidth) << "chunk" << " | " << std::setw(  useCountWidth) << "use count" << " \n"
+        << " -" << std::string(databaseWidth, '-')          << "-+-" << std::string(chunkWidth, '-')       << "-+-" << std::string(useCountWidth, '-')         << "-\n";
     for (auto const& replica: collection) {
-        OUT << "  "   << std::setw(databaseWidth) << replica.database
+        OUT << "  "  << std::setw(databaseWidth) << replica.database
             << " | " << std::setw(chunkWidth)    << replica.chunk
             << " | " << std::setw(useCountWidth) << replica.useCount
             << "\n";
@@ -134,10 +159,7 @@ void test() {
                 inUseOnly,
                 std::string(),
                 [&finished] (replica::GetReplicasQservMgtRequest::Ptr const& request) {
-                    std::cout
-                        << "state:         " << request->state2string(request->state()) << "\n"
-                        << "extendedState: " << request->state2string(request->extendedState()) << "\n"
-                        << "serverError:   " << request->serverError() << std::endl;
+                    std::cout << "state: " << request->state2string() << std::endl;
                     if (request->extendedState() == replica::QservMgtRequest::SUCCESS) {
                         dump(request->replicas());
                     }
@@ -155,10 +177,7 @@ void test() {
                 force,
                 std::string(),
                 [&finished] (replica::SetReplicasQservMgtRequest::Ptr const& request) {
-                    std::cout
-                        << "state:         " << request->state2string(request->state()) << "\n"
-                        << "extendedState: " << request->state2string(request->extendedState()) << "\n"
-                        << "serverError:   " << request->serverError() << std::endl;
+                    std::cout << "state: " << request->state2string() << std::endl;
                     if (request->extendedState() == replica::QservMgtRequest::SUCCESS) {
                         dump(request->replicas());
                     }
@@ -176,10 +195,7 @@ void test() {
                 databases,
                 worker,
                 [&finished] (replica::AddReplicaQservMgtRequest::Ptr const& request) {
-                    std::cout
-                        << "state:         " << request->state2string(request->state()) << "\n"
-                        << "extendedState: " << request->state2string(request->extendedState()) << "\n"
-                        << "serverError:   " << request->serverError() << std::endl;
+                    std::cout << "state: " << request->state2string() << std::endl;
                     finished = true;
                 }
             );
@@ -195,10 +211,7 @@ void test() {
                 worker,
                 force,
                 [&finished] (replica::RemoveReplicaQservMgtRequest::Ptr const& request) {
-                    std::cout
-                        << "state:         " << request->state2string(request->state()) << "\n"
-                        << "extendedState: " << request->state2string(request->extendedState()) << "\n"
-                        << "serverError:   " << request->serverError() << std::endl;
+                    std::cout << "state: " << request->state2string() << std::endl;
                     finished = true;
                 }
             );

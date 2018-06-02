@@ -142,10 +142,10 @@ void Configuration::translateDataDir(std::string&       dataDir,
                                      std::string const& workerName) {
 
     std::string::size_type const leftPos = dataDir.find('{');
-    if (leftPos == std::string::npos) { return; }
+    if (leftPos == std::string::npos) return;
 
     std::string::size_type const rightPos = dataDir.find('}');
-    if (rightPos == std::string::npos) { return; }
+    if (rightPos == std::string::npos) return;
 
     if (rightPos <= leftPos) {
         throw std::invalid_argument(

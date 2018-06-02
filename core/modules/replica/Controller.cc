@@ -68,7 +68,7 @@ struct RequestWrapperImpl
 
     /// The implementation of the virtual method defined in the base class
     virtual void notify() {
-        if (_onFinish == nullptr) { return; }
+        if (_onFinish == nullptr) return;
         _onFinish(_request);
     }
 
@@ -331,7 +331,7 @@ void Controller::stop() {
 }
 
 void Controller::join() {
-    for (auto&& t: _threads) { t->join(); }
+    for (auto&& t: _threads) t->join();
 }
 
 ReplicationRequest::Ptr Controller::replicate(

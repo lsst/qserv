@@ -1,7 +1,38 @@
+/*
+ * LSST Data Management System
+ * Copyright 2018 LSST Corporation.
+ *
+ * This product includes software developed by the
+ * LSST Project (http://www.lsst.org/).
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the LSST License Statement and
+ * the GNU General Public License along with this program.  If not,
+ * see <http://www.lsstcorp.org/LegalNotices/>.
+ */
+
+/// qserv-replica-embedded-test.cc incorporates multiple worker servers
+/// within a single process.
+///
+/// NOTE: a special single-node configuration is required by this test.
+//        Also, each logical worker must get a unique path in a data file
+///       system. The files must be read-write enabled for a user account
+///       under which the test is run.
+
+// System headers
 #include <stdexcept>
 #include <string>
 
-#include "lsst/log/Log.h"
+// Qserv headers
 #include "proto/replication.pb.h"
 #include "replica/Configuration.h"
 #include "replica/FileServer.h"
@@ -11,12 +42,14 @@
 #include "util/BlockPost.h"
 #include "util/CmdLineParser.h"
 
-namespace replica = lsst::qserv::replica;
-namespace util    = lsst::qserv::util;
+// LSST headers
+#include "lsst/log/Log.h"
+
+using namespace lsst::qserv;
 
 namespace {
 
-LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.replica_worker");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.tools.qserv-replica-embedded-test");
 
 // Command line parameters
 
@@ -50,10 +83,10 @@ void runAllWorkers(replica::ServiceProvider::Ptr const& provider,
             while (true) {
                 blockPost.wait();
                 LOGS(_log, LOG_LVL_INFO, "<WORKER:" << reqProcSrv->worker() << " HEARTBEAT> "
-                    << " processor state: " << replica::WorkerProcessor::state2string(reqProcSrv->processor().state())
-                    << " new:"              << reqProcSrv->processor().numNewRequests()
-                    << " in-progress: "     << reqProcSrv->processor().numInProgressRequests()
-                    << " finished: "        << reqProcSrv->processor().numFinishedRequests());
+                    << " processor state: " << reqProcSrv->processor()->state2string()
+                    << " new:"              << reqProcSrv->processor()->numNewRequests()
+                    << " in-progress: "     << reqProcSrv->processor()->numInProgressRequests()
+                    << " finished: "        << reqProcSrv->processor()->numFinishedRequests());
             }
         });
         reqProcMonThread.detach();

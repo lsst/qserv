@@ -26,6 +26,7 @@
 // System headers
 #include <sstream>
 #include <stdexcept>
+#include <thread>
 #include <utility>      // std::swap
 
 // Third party headers
@@ -68,14 +69,14 @@ std::string Job::state2string(State state) {
 std::string
 Job::state2string(ExtendedState state) {
     switch (state) {
-        case NONE:         return "NONE";
-        case SUCCESS:      return "SUCCESS";
-        case CONFIG_ERROR: return "CONFIG_ERROR";
-        case FAILED:       return "FAILED";
-        case QSERV_FAILED: return "QSERV_FAILED";
-        case QSERV_IN_USE: return "QSERV_IN_USE";
-        case EXPIRED:      return "EXPIRED";
-        case CANCELLED:    return "CANCELLED";
+        case NONE:               return "NONE";
+        case SUCCESS:            return "SUCCESS";
+        case CONFIG_ERROR:       return "CONFIG_ERROR";
+        case FAILED:             return "FAILED";
+        case QSERV_FAILED:       return "QSERV_FAILED";
+        case QSERV_CHUNK_IN_USE: return "QSERV_CHUNK_IN_USE";
+        case TIMEOUT_EXPIRED:    return "TIMEOUT_EXPIRED";
+        case CANCELLED:          return "CANCELLED";
     }
     throw std::logic_error(
                 "incomplete implementation of method Job::state2string(ExtendedState)");
@@ -95,14 +96,36 @@ Job::Job(Controller::Ptr const& controller,
         _beginTime(0),
         _endTime(0),
         _heartbeatTimerIvalSec(controller->serviceProvider()->config()->jobHeartbeatTimeoutSec()),
-        _heartbeatTimerPtr(nullptr),
-        _expirationIvalSec(controller->serviceProvider()->config()->jobTimeoutSec()),
-        _expirationTimerPtr(nullptr) {
+        _expirationIvalSec(controller->serviceProvider()->config()->jobTimeoutSec()) {
+}
+
+std::string Job::state2string() const {
+    util::Lock lock(_mtx, context() + "state2string");
+    return state2string(state(), extendedState());
+}
+
+Job::Options Job::options() const {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << "options");
+
+    util::Lock lock(_mtx, context() + "options");
+
+    return options(lock);
+}
+
+Job::Options Job::options(util::Lock const& lock) const {
+    return _options;
 }
 
 Job::Options Job::setOptions(Options const& newOptions) {
-    Options options(newOptions);
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << "setOptions");
+
+    util::Lock lock(_mtx, context() + "setOptions");
+
+    Options options = newOptions;
     std::swap(_options, options);
+
     return options;
 }
 
@@ -127,7 +150,7 @@ void Job::start() {
     // may depend on this job's state.
 
     _beginTime = PerformanceUtils::now();
-    controller()->serviceProvider()->databaseServices()->saveState(*this);
+    controller()->serviceProvider()->databaseServices()->saveState(*this, options(lock));
 
     // Start timers if configured
 
@@ -154,9 +177,7 @@ void Job::start() {
 
 void Job::cancel() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "cancel"
-         << "  state="         << state2string(state())
-         << ", extendedState=" << state2string(extendedState()));
+    LOGS(_log, LOG_LVL_DEBUG, context() << "cancel");
 
     // IMPORTANT: the final state is required to be tested twice. The first time
     // it's done in order to avoid deadlock on the "in-flight" requests reporting
@@ -177,9 +198,7 @@ void Job::finish(util::Lock const& lock,
                  ExtendedState newExtendedState) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "finish"
-         << "  state="              << state2string(state())
-         << ", extendedState="      << state2string(extendedState())
-         << ", (new)extendedState=" << state2string(newExtendedState));
+         << "  newExtendedState=" << state2string(newExtendedState));
 
     // Also ignore this event if the request is over
 
@@ -198,7 +217,7 @@ void Job::finish(util::Lock const& lock,
 
     if (newExtendedState != ExtendedState::SUCCESS) cancelImpl(lock);
 
-    controller()->serviceProvider()->databaseServices()->saveState(*this);
+    controller()->serviceProvider()->databaseServices()->saveState(*this, options(lock));
 
     // Stop timers if they're still running
 
@@ -230,12 +249,10 @@ void Job::qservAddReplica(util::Lock const& lock,
 
             LOGS(_log, LOG_LVL_DEBUG, self->context()
                  << "** FINISH ** Qserv notification on ADD replica:"
-                 << "  chunk="         << request->chunk()
-                 << ", databases="     << util::printable(request->databases())
-                 << ", worker="        << request->worker()
-                 << ", state="         << request->state2string(request->state())
-                 << ", extendedState=" << request->state2string(request->extendedState())
-                 << ". serverError="   << request->serverError());
+                 << "  chunk="     << request->chunk()
+                 << ", databases=" << util::printable(request->databases())
+                 << ", worker="    << request->worker()
+                 << ", state="     << request->state2string());
 
             // Pass the result to a caller
 
@@ -272,13 +289,11 @@ void Job::qservRemoveReplica(util::Lock const& lock,
 
             LOGS(_log, LOG_LVL_DEBUG, self->context()
                  << "** FINISH ** Qserv notification on REMOVE replica:"
-                 << "  chunk="         << request->chunk()
-                 << ", databases="     << util::printable(request->databases())
-                 << ", worker="        << request->worker()
-                 << ", force="         << (request->force() ? "true" : "false")
-                 << ", state="         << request->state2string(request->state())
-                 << ", extendedState=" << request->state2string(request->extendedState())
-                 << ". serverError="   << request->serverError());
+                 << "  chunk="     << request->chunk()
+                 << ", databases=" << util::printable(request->databases())
+                 << ", worker="    << request->worker()
+                 << ", force="     << (request->force() ? "true" : "false")
+                 << ", state="     << request->state2string());
 
             // Pass the result to the caller
             if (onFinish) {
@@ -314,7 +329,7 @@ void Job::setState(util::Lock const& lock,
     _extendedState = newExtendedState;
     _state = newState;
 
-    controller()->serviceProvider()->databaseServices()->saveState(*this);
+    controller()->serviceProvider()->databaseServices()->saveState(*this, options(lock));
 }
 
 void Job::startHeartbeatTimer(util::Lock const& lock) {
@@ -412,7 +427,7 @@ void Job::expired(boost::system::error_code const& ec) {
 
     if (state() == State::FINISHED) return;
 
-    finish(lock, ExtendedState::EXPIRED);
+    finish(lock, ExtendedState::TIMEOUT_EXPIRED);
 }
 
 void Job::notify() {
@@ -424,12 +439,17 @@ void Job::notify() {
     //       via a thread pool & a queue.
 
     auto const self = shared_from_this();
-    std::async(
-        std::launch::async,
-        [self]() {
-            self->notifyImpl();
-        }
-    );
+
+    std::thread notifier([self]() {
+        self->notifyImpl();
+    });
+    notifier.detach();
+}
+
+bool JobCompare::operator()(Job::Ptr const& lhs,
+                            Job::Ptr const& rhs) const {
+    LOGS(_log, LOG_LVL_DEBUG, "JobCompare::operator<(" << lhs->id() << "," << rhs->id() + ")");
+    return lhs->options().priority < rhs->options().priority;
 }
 
 }}} // namespace lsst::qserv::replica

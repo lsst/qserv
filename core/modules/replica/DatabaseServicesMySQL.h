@@ -80,7 +80,8 @@ public:
     /**
      * @see DatabaseServices::saveState()
      */
-    void saveState(Job const& job) final;
+    void saveState(Job const& job,
+                   Job::Options const& options) final;
 
     /**
      * @see DatabaseServices::updateHeartbeatTime()
@@ -90,12 +91,15 @@ public:
     /**
      * @see DatabaseServices::saveState()
      */
-    void saveState(QservMgtRequest const& request) final;
+    void saveState(QservMgtRequest const& request,
+                   Performance const& performance,
+                   std::string const& serverError) final;
 
     /**
      * @see DatabaseServices::saveState()
      */
-    void saveState(Request const& request) final;
+    void saveState(Request const& request,
+                   Performance const& performance) final;
 
     /**
      * @see DatabaseServices::updateRequestState()

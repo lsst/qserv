@@ -63,7 +63,7 @@ public:
      *
      * @param what - reason for the exception
      */
-    FileClientError (std::string const& msg)
+    FileClientError(std::string const& msg)
         :   std::runtime_error(msg) {
     }
 };
@@ -140,7 +140,7 @@ public:
     FileClient(FileClient const&) = delete;
     FileClient &operator=(FileClient const&) = delete;
 
-    ~FileClient () = default;
+    ~FileClient() = default;
 
     // Trivial accessors
 

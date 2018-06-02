@@ -928,13 +928,13 @@ public:
         while (next(row)) {
 
             // Only the very first row matters
-            if (not numRows) { isNotNull = row.get (col, val); }
+            if (not numRows) isNotNull = row.get (col, val);
 
             // have to read the rest of the result set to avoid problems with the MySQL
             // protocol
             ++numRows;
         }
-        if ((1 == numRows) or not noMoreThanOne) { return isNotNull; }
+        if ((1 == numRows) or not noMoreThanOne) return isNotNull;
 
         throw std::logic_error(
                 "DatabaseMySQL::executeSingleValueSelect()  result set has more than 1 row");

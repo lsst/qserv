@@ -226,8 +226,8 @@ FileCsComputeEngine::FileCsComputeEngine(std::string const& fileName,
 
 
 FileCsComputeEngine::~FileCsComputeEngine() {
-    if (_fp)  { std::fclose(_fp); }
-    if (_buf) { delete [] _buf; }
+    if (_fp)  std::fclose(_fp);
+    if (_buf) delete [] _buf;
 }
 
 bool FileCsComputeEngine::execute() {
@@ -326,7 +326,7 @@ uint64_t MultiFileCsComputeEngine::cs(std::string const& fileName) const {
 bool MultiFileCsComputeEngine::execute() {
 
     // All files have been proccessed
-    if (_fileNames.end() == _currentFileItr) { return true; }
+    if (_fileNames.end() == _currentFileItr) return true;
 
     // Process possible EOF of the current or any subsequent files
     // while there is any data or until running out of files.
@@ -334,7 +334,7 @@ bool MultiFileCsComputeEngine::execute() {
 
         // Move to the next file if any. If no more files then finish.
         ++_currentFileItr;
-        if (_fileNames.end() == _currentFileItr) { return true;}
+        if (_fileNames.end() == _currentFileItr) return true;
 
         // Open that file and expect it to be read at the next iteration
         // of this loop

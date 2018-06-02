@@ -91,7 +91,7 @@ public:
     };
 
     /// @return the string representation of the primary state
-    static std::string state2string(State state) ;
+    static std::string state2string(State state);
 
     /// Type ExtendedState represebts the refined public sub-state of the requiest
     /// once it's FINISHED as per the above defined primary state.
@@ -116,21 +116,21 @@ public:
 
         /// Server reports that the request can not be implemented because
         /// some of the required remote resources (chunks, etc.) are in use.
-        SERVER_IN_USE,
+        SERVER_CHUNK_IN_USE,
 
         /// The request could not be implemented due to an unrecoverable
         /// server-side error.
         SERVER_ERROR,
 
         /// Expired due to a timeout (as per the Configuration)
-        EXPIRED,
+        TIMEOUT_EXPIRED,
 
-        /// Explicitly cancelled on the client-side (similar to EXPIRED)
+        /// Explicitly cancelled on the client-side (similar to TIMEOUT_EXPIRED)
         CANCELLED
     };
 
     /// @return the string representation of the extended state
-    static std::string state2string(ExtendedState state) ;
+    static std::string state2string(ExtendedState state);
 
     /// @return the string representation of the compbined state
     static std::string state2string(State state,
@@ -165,16 +165,13 @@ public:
     ExtendedState extendedState() const { return _extendedState; }
 
     /// @return string representation of the combined state of the object
-    std::string state2string() const { return state2string(_state, _extendedState); }
+    std::string state2string() const;
 
     /// @return error message (if any) reported by the remote service.
-    /// Note that the method should only be called after the request
-    /// has finished (state is set to State::FINISHED). Otherwise
-    /// exception std::logic_error will be thrown.
-    std::string const& serverError() const;
+    std::string serverError() const;
 
     /// @return performance info
-    Performance const& performance() const { return _performance; }
+    Performance performance() const;
 
     /**
      * Return an identifier if the owning job (if the request has started)
@@ -212,13 +209,8 @@ public:
      */
     void cancel();
 
-    /// Return the context string for debugging and diagnostic printouts
-    std::string context() const {
-        return id() +
-            "  " + type() +
-            "  " + state2string(state(), extendedState()) +
-            "  ";
-    }
+    /// @return the context string for debugging and diagnostic printouts
+    std::string context() const;
 
     /**
      * @return a string representation for a subclass's persistent state
@@ -268,14 +260,14 @@ protected:
       * This method is supposed to be provided by subclasses for additional
       * subclass-specific actions to begin processing the request.
       *
-      * @param lock - the lock must be acquired by a caller of the metod
+      * @param lock - the lock must be acquired by a caller of the method
       */
     virtual void startImpl(util::Lock const& lock)=0;
 
     /**
      * Request expiration timer's handler. The expiration interval (if any)
      * is configured via the configuraton service. When the request expires
-     * it finishes with completion status FINISHED::EXPIRED.
+     * it finishes with completion status FINISHED::TIMEOUT_EXPIRED.
      *
      * @param ec - error code to be checked
      */
@@ -287,7 +279,7 @@ protected:
      * This is supposed to be the last operation to be called by subclasses
      * upon a completion of the request.
      *
-     * @param lock          - the lock must be acquired by a caller of the metod
+     * @param lock          - the lock must be acquired by a caller of the method
      * @param extendedState - new extended state
      * @param serverError   - (optional) error message from a Qserv worker service
      */
@@ -299,7 +291,7 @@ protected:
       * This method is supposed to be provided by subclasses
       * to finalize request processing as required by the subclass.
       *
-      * @param lock - the lock must be acquired by a caller of the metod
+      * @param lock - the lock must be acquired by a caller of the method
       */
     virtual void finishImpl(util::Lock const& lock)=0;
 
@@ -351,6 +343,18 @@ protected:
                   State state,
                   ExtendedState extendedState=ExtendedState::NONE);
 
+    /**
+      * @return server error string (if any)
+      * @param lock - the lock must be acquired by a caller of the method
+      */
+    std::string serverError(util::Lock const& lock) const;
+
+    /**
+      * @return sperformance info
+      * @param lock - the lock must be acquired by a caller of the method
+      */
+    Performance performance(util::Lock const& lock) const;
+
 protected:
 
     /// Mutex guarding internal state
@@ -384,7 +388,7 @@ private:
     /// explicitly finished when a request finishes (successfully or not).
     ///
     /// If the time has a chance to expire then the request would finish
-    /// with status: FINISHED::EXPIRED.
+    /// with status: FINISHED::TIMEOUT_EXPIRED.
     unsigned int                _requestExpirationIvalSec;
     boost::asio::deadline_timer _requestExpirationTimer;
 };

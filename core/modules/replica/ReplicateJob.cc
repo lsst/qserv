@@ -418,7 +418,7 @@ void ReplicateJob::onPrecursorJobFinish() {
                 [self] (CreateReplicaJob::Ptr const& job) {
                     self->onCreateJobFinish(job);
                 },
-                options()   // inherit from the current job
+                options(lock)   // inherit from the current job
             );
             ptr->start();
 

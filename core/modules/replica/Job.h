@@ -89,7 +89,7 @@ public:
     };
 
     /// Return the string representation of the primary state
-    static std::string state2string(State state) ;
+    static std::string state2string(State state);
 
     /// Refined public sub-state of the job once it's FINISHED as per
     /// the above defined primary state.
@@ -111,21 +111,21 @@ public:
         QSERV_FAILED,
 
         /// Qserv reported that the source chunk is in use and couldn't be removed
-        QSERV_IN_USE,
+        QSERV_CHUNK_IN_USE,
 
         /// Expired due to a timeout (as per the Configuration)
-        EXPIRED,
+        TIMEOUT_EXPIRED,
 
-        /// Explicitly cancelled on the client-side (similar to EXPIRED)
+        /// Explicitly cancelled on the client-side (similar to TIMEOUT_EXPIRED)
         CANCELLED
     };
 
     /// @return string representation of the extended state
-    static std::string state2string(ExtendedState state) ;
+    static std::string state2string(ExtendedState state);
 
     /// @return string representation of the combined state
     static std::string state2string(State state, ExtendedState extendedState) {
-        return state2string(state) + "::" +state2string(extendedState);
+        return state2string(state) + "::" + state2string(extendedState);
     }
 
     /// The job options container
@@ -152,7 +152,7 @@ public:
     virtual ~Job() = default;
 
     /// @return a reference to the Controller,
-    Controller::Ptr controller() const { return _controller; }
+    Controller::Ptr const& controller() const { return _controller; }
 
     /// @return the optional identifier of a parent job
     std::string const& parentJobId() const { return _parentJobId; }
@@ -170,10 +170,10 @@ public:
     ExtendedState extendedState() const { return _extendedState; }
 
     /// @return string representation of the combined state of the object
-    std::string state2string() const { return state2string(_state, _extendedState); }
+    std::string state2string() const;
 
     /// @return job options
-    Options const& options() const { return _options; }
+    Options options() const;
 
     /**
      * Modify job options
@@ -257,6 +257,12 @@ protected:
     std::shared_ptr<T> shared_from_base() {
         return std::static_pointer_cast<T>(shared_from_this());
     }
+
+    /**
+     * @return job options
+     * @param lock - the lock must be acquired by a caller of the method
+     */
+    Options options(util::Lock const& lock) const;
 
     /**
       * This method is supposed to be provided by subclasses for additional
@@ -402,7 +408,7 @@ private:
     /**
      * Job expiration timer's handler. The expiration interval (if any)
      * is configured via the configuraton service. When the job expires
-     * it finishes with completion status FINISHED::EXPIRED.
+     * it finishes with completion status FINISHED::TIMEOUT_EXPIRED.
      *
      * @param ec - error code to be evaluated
      */
@@ -461,7 +467,7 @@ private:
     /// explicitly finished when a job finishes (successfully or not).
     ///
     /// If the time has a chance to expire then the request would finish
-    /// with status: FINISHED::EXPIRED.
+    /// with status: FINISHED::TIMEOUT_EXPIRED.
     unsigned int _expirationIvalSec;
     std::unique_ptr<boost::asio::deadline_timer> _expirationTimerPtr;
 };
@@ -469,12 +475,9 @@ private:
 /// Comparision type for strict weak ordering reaquired by std::priority_queue
 struct JobCompare {
 
-    /// Order requests by their priorities
+    /// Order jobs by their priorities
     bool operator()(Job::Ptr const& lhs,
-                    Job::Ptr const& rhs) const {
-
-        return lhs->options().priority < rhs->options().priority;
-    }
+                    Job::Ptr const& rhs) const;
 };
 
 }}} // namespace lsst::qserv::replica

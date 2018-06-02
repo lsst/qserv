@@ -174,7 +174,7 @@ private:
     /**
      * @see Request::savePersistentState()
      */
-    void savePersistentState() final;
+    void savePersistentState(util::Lock const& lock) final;
 
     /**
      * @see Request::extendedPersistentState()

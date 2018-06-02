@@ -380,7 +380,7 @@ void DeleteWorkerJob::onJobFinish(ReplicateJob::Ptr const& job) {
     LOGS(_log, LOG_LVL_DEBUG, context() << "onJobFinish(ReplicateJob) "
          << " databaseFamily: " << job->databaseFamily()
          << " numReplicas: " << job->numReplicas()
-         << " state: " << Job::state2string(job->state(), job->extendedState()));
+         << " state: " << job->state2string());
 
     // IMPORTANT: the final state is required to be tested twice. The first time
     // it's done in order to avoid deadlock on the "in-flight" requests reporting

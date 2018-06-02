@@ -247,7 +247,7 @@ void CreateReplicaJob::startImpl(util::Lock const& lock) {
                 [self] (ReplicationRequest::Ptr ptr) {
                     self->onRequestFinish(ptr);
                 },
-                options().priority,
+                options(lock).priority,
                 true,   /* keepTracking */
                 true,   /* allowDuplicate */
                 id()    /* jobId */);

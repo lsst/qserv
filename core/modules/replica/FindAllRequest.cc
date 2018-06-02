@@ -312,8 +312,8 @@ void FindAllRequest::notifyImpl() {
     }
 }
 
-void FindAllRequest::savePersistentState() {
-    controller()->serviceProvider()->databaseServices()->saveState(*this);
+void FindAllRequest::savePersistentState(util::Lock const& lock) {
+    controller()->serviceProvider()->databaseServices()->saveState(*this, performance(lock));
 }
 
 std::string FindAllRequest::extendedPersistentState(SqlGeneratorPtr const& gen) const {

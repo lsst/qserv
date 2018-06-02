@@ -41,7 +41,6 @@ namespace replica {
 
 /// Forward declaration for the class
 class WorkerProcessor;
-class WorkerRequest;
 
 /**
   * Class WorkerProcessorThread is a thread-based request processing engine
@@ -55,19 +54,18 @@ public:
     /// Smart reference to objects of the class
     typedef std::shared_ptr<WorkerProcessorThread> Ptr;
 
-    /// Forwad declaration for the smart pointer to requests
-    typedef std::shared_ptr<WorkerRequest> WorkerRequest_pointer;
+    /// Smart reference for the WorkerProcessor's objects
+    typedef std::shared_ptr<WorkerProcessor> WorkerProcessorPtr;
 
     /**
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      * 
-     * @param processor - reference to the repository of requests to be processed
-     *
+     * @param processor - pointer to the processor
      * @return pointer to the created object 
      */
-    static Ptr create(WorkerProcessor &processor);
+    static Ptr create(WorkerProcessorPtr const& processor);
 
     // Default construction and copy semantics are prohibited
 
@@ -107,26 +105,21 @@ private:
     /**
      * The constructor of the class.
      *
-     * @param processor - a reference to the repository of requests to be processed
+     * @param processor - pointer to the processor
      * @param id        - a unique identifier of this object
      */
-    WorkerProcessorThread(WorkerProcessor& processor,
+    WorkerProcessorThread(WorkerProcessorPtr const& processor,
                           unsigned int id);
 
     /**
      * Event handler called by the thread when it's about to stop
      */
     void stopped();
-
-    /**
-     * Event handler called by the thread when a request is cancelled
-     */
-    void cancelled(const WorkerRequest_pointer &request);
  
 private:
 
     /// The processor
-    WorkerProcessor& _processor;
+    WorkerProcessorPtr _processor;
 
     /// The identifier of this thread object   
     unsigned int _id;

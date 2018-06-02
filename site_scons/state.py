@@ -189,7 +189,9 @@ def _setEnvWithDependencies():
                       PathVariable.PathIsDir)),
         (PathVariable('python_relative_prefix',
                       'qserv install directory for python modules, relative to prefix',
-                      os.path.join("lib", "python"), PathVariable.PathAccept))
+                      os.path.join("lib", "python"), PathVariable.PathAccept)),
+        (PathVariable('NLOHMANN_DIR', 'nlohmann library install dir', _findPrefixFromName('JSON_NLOHMANN'),
+                      PathVariable.PathIsDir)),
     )
     opts.Update(env)
 
@@ -238,6 +240,8 @@ def _setEnvWithDependencies():
          os.path.join(env['PYBIND11_DIR'], "include"), PathVariable.PathIsDir)),
         (PathVariable('SPHGEOM_LIB', 'sphgeom libraries path',
          os.path.join(env['SPHGEOM_DIR'], "lib"), PathVariable.PathIsDir)),
+        (PathVariable('NLOHMANN_INC', 'nlohmann include path',
+         os.path.join(env['NLOHMANN_DIR'], "include"), PathVariable.PathIsDir)),
     )
     opts.Update(env)
 

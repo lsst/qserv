@@ -118,7 +118,7 @@ void FindAllJob::startImpl(util::Lock const& lock) {
                     [self] (FindAllRequest::Ptr request) {
                         self->onRequestFinish(request);
                     },
-                    options().priority,
+                    options(lock).priority,
                     true,   /* keepTracking*/
                     id()    /* jobId */
                 )
@@ -174,8 +174,7 @@ void FindAllJob::onRequestFinish(FindAllRequest::Ptr const& request) {
     LOGS(_log, LOG_LVL_DEBUG, context()
          << "onRequestFinish  database=" << request->database()
          << " worker=" << request->worker()
-         << " state=" << request->state2string(request->state())
-         << " extendedState=" << request->state2string(request->extendedState()));
+         << " state=" << request->state2string());
 
     // IMPORTANT: the final state is required to be tested twice. The first time
     // it's done in order to avoid deadlock on the "in-flight" requests reporting

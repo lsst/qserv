@@ -318,8 +318,8 @@ void DeleteRequest::notifyImpl() {
     }
 }
 
-void DeleteRequest::savePersistentState() {
-    controller()->serviceProvider()->databaseServices()->saveState(*this);
+void DeleteRequest::savePersistentState(util::Lock const& lock) {
+    controller()->serviceProvider()->databaseServices()->saveState(*this, performance(lock));
 }
 
 std::string DeleteRequest::extendedPersistentState(SqlGeneratorPtr const& gen) const {

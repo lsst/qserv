@@ -25,6 +25,7 @@
 
 // System headers
 #include <stdexcept>
+#include <thread>
 
 // Third party headers
 #include <boost/bind.hpp>
@@ -60,15 +61,15 @@ std::string QservMgtRequest::state2string(State state) {
 
 std::string QservMgtRequest::state2string(ExtendedState state) {
     switch (state) {
-        case ExtendedState::NONE:                 return "NONE";
-        case ExtendedState::SUCCESS:              return "SUCCESS";
-        case ExtendedState::CONFIG_ERROR:         return "CONFIG_ERROR";
-        case ExtendedState::CLIENT_ERROR:         return "CLIENT_ERROR";
-        case ExtendedState::SERVER_BAD:           return "SERVER_BAD";
-        case ExtendedState::SERVER_IN_USE:        return "SERVER_IN_USE";
-        case ExtendedState::SERVER_ERROR:         return "SERVER_ERROR";
-        case ExtendedState::EXPIRED:              return "EXPIRED";
-        case ExtendedState::CANCELLED:            return "CANCELLED";
+        case ExtendedState::NONE:                return "NONE";
+        case ExtendedState::SUCCESS:             return "SUCCESS";
+        case ExtendedState::CONFIG_ERROR:        return "CONFIG_ERROR";
+        case ExtendedState::CLIENT_ERROR:        return "CLIENT_ERROR";
+        case ExtendedState::SERVER_BAD:          return "SERVER_BAD";
+        case ExtendedState::SERVER_CHUNK_IN_USE: return "SERVER_CHUNK_IN_USE";
+        case ExtendedState::SERVER_ERROR:        return "SERVER_ERROR";
+        case ExtendedState::TIMEOUT_EXPIRED:     return "TIMEOUT_EXPIRED";
+        case ExtendedState::CANCELLED:           return "CANCELLED";
     }
     throw std::logic_error(
                     "incomplete implementation of method QservMgtRequest::state2string(ExtendedState)");
@@ -84,16 +85,38 @@ QservMgtRequest::QservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
         _worker(worker),
         _state(State::CREATED),
         _extendedState(ExtendedState::NONE),
-        _serverError() ,
-        _performance(),
-        _jobId(""),
-        _service(nullptr),
         _requestExpirationIvalSec(serviceProvider->config()->xrootdTimeoutSec()),
         _requestExpirationTimer(io_service) {
 }
 
-std::string const& QservMgtRequest::serverError() const {
+std::string QservMgtRequest::state2string() const {
+    util::Lock lock(_mtx, context() + "state2string");
+    return state2string(state(), extendedState()) + "::" + serverError(lock);
+}
+
+std::string QservMgtRequest::serverError() const {
+    util::Lock lock(_mtx, context() + "serverError");
+    return serverError(lock);
+}
+
+std::string QservMgtRequest::serverError(util::Lock const& lock) const {
     return _serverError;
+}
+
+std::string QservMgtRequest::context() const {
+    return id() +
+        "  " + type() +
+        "  " + state2string(state(), extendedState()) +
+        "  ";
+}
+
+Performance QservMgtRequest::performance() const {
+    util::Lock lock(_mtx, context() + "performance");
+    return performance(lock);
+}
+
+Performance QservMgtRequest::performance(util::Lock const& lock) const {
+    return _performance;
 }
 
 void QservMgtRequest::start(XrdSsiService* service,
@@ -189,7 +212,7 @@ void QservMgtRequest::expired(boost::system::error_code const& ec) {
 
     if (state() == State::FINISHED) return;
 
-    finish(lock, ExtendedState::EXPIRED);
+    finish(lock, ExtendedState::TIMEOUT_EXPIRED);
 }
 
 void QservMgtRequest::cancel() {
@@ -245,7 +268,7 @@ void QservMgtRequest::finish(util::Lock const& lock,
 
     _performance.setUpdateFinish();
 
-    serviceProvider()->databaseServices()->saveState(*this);
+    serviceProvider()->databaseServices()->saveState(*this, _performance, _serverError);
 
     notify();
 }
@@ -259,12 +282,11 @@ void QservMgtRequest::notify() {
     //       via a thread pool & a queue.
 
     auto const self = shared_from_this();
-    std::async(
-        std::launch::async,
-        [self]() {
-            self->notifyImpl();
-        }
-    );
+
+    std::thread notifier([self]() {
+        self->notifyImpl();
+    });
+    notifier.detach();
 }
 
 
@@ -289,7 +311,7 @@ void QservMgtRequest::setState(util::Lock const& lock,
     _extendedState = newExtendedState;
     _state = newState;
 
-    serviceProvider()->databaseServices()->saveState(*this);
+    serviceProvider()->databaseServices()->saveState(*this, _performance, _serverError);
 }
 
 }}} // namespace lsst::qserv::replica

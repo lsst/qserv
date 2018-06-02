@@ -20,9 +20,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-/// qserv-replica-job-sync.cc implements a command-line tool which synchronizes
-/// chunk configurations of Qserv workers with the status of good replicas
-/// known to the Replication System for the specified database family.
+/// qserv-replica-job-sync.cc is a single job Controller application
+/// which is meant to run the corresponding job.
 
 // System headers
 #include <atomic>
@@ -43,8 +42,7 @@
 #include "util/BlockPost.h"
 #include "util/CmdLineParser.h"
 
-namespace replica = lsst::qserv::replica;
-namespace util    = lsst::qserv::util;
+using namespace lsst::qserv;
 
 namespace {
 

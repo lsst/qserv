@@ -93,7 +93,7 @@ public:
      *
      * @return reference to the processor
      */
-    WorkerProcessor const& processor() const { return _processor; }
+    WorkerProcessor::Ptr const& processor() const { return _processor; }
 
     /**
      * Begin listening for and processing incoming connections
@@ -137,7 +137,7 @@ private:
     ServiceProvider::Ptr _serviceProvider;
     std::string _workerName;
 
-    WorkerProcessor _processor;
+    WorkerProcessor::Ptr _processor;
 
     boost::asio::io_service        _io_service;
     boost::asio::ip::tcp::acceptor _acceptor;

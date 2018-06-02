@@ -213,13 +213,13 @@ protected:
      *
      * @see VerifyJob::create()
      */
-    VerifyJob (Controller::Ptr const& controller,
-               std::string const& parentJobId,
-               CallbackType onFinish,
-               CallbackTypeOnDiff onReplicaDifference,
-               size_t maxReplicas,
-               bool computeCheckSum,
-               Job::Options const& options);
+    VerifyJob(Controller::Ptr const& controller,
+              std::string const& parentJobId,
+              CallbackType onFinish,
+              CallbackTypeOnDiff onReplicaDifference,
+              size_t maxReplicas,
+              bool computeCheckSum,
+              Job::Options const& options);
 
     /**
       * @see Job::startImpl()

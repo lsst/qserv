@@ -59,8 +59,7 @@ WorkerServer::WorkerServer(ServiceProvider::Ptr const& serviceProvider,
                            std::string const& workerName)
     :   _serviceProvider(serviceProvider),
         _workerName(workerName),
-        _processor(serviceProvider, requestFactory, workerName),
-        _io_service(),
+        _processor(WorkerProcessor::create(serviceProvider, requestFactory, workerName)),
         _acceptor(
             _io_service,
             boost::asio::ip::tcp::endpoint(
@@ -77,7 +76,7 @@ void WorkerServer::run() {
 
     // Start the processor to allow processing requests.
 
-    _processor.run();
+    _processor->run();
 
     // Begin accepting connections before running the service to allow
     // asynchronous operations. Otherwise the service will finish right
@@ -90,7 +89,7 @@ void WorkerServer::run() {
 
 void WorkerServer::beginAccept() {
 
-    WorkerServerConnection::Ptr connection =
+    auto const connection =
         WorkerServerConnection::create(
             _serviceProvider,
             _processor,

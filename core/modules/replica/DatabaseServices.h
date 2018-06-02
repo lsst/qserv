@@ -33,6 +33,7 @@
 #include <vector>
 
 // Qserv headers
+#include "replica/Job.h"
 #include "replica/ReplicaInfo.h"
 
 // This header declarations
@@ -44,7 +45,6 @@ namespace replica {
 // Forward declarations
 class Configuration;
 struct ControllerIdentity;
-class Job;
 class QservMgtRequest;
 class Performance;
 class Request;
@@ -101,12 +101,15 @@ public:
      * Save the state of the Job. This operation can be called many times for
      * a particular instance of the Job.
      *
-     * NOTE: The method will convert a pointer of the base class Job into
-     * the final type to avoid type proliferation through this interface.
+     * The Job::Option object is explicitly passed as a parameter to avoid
+     * making a call back to the job which may create a deadlock because
+     * method saveState() is meant to be called by the jobs' implementations.
      *
-     * @param job - reference to a Job object
+     * @param job     - reference to a Job object
+     * @param options - reference to a Job options object
      */
-    virtual void saveState(Job const& job) = 0;
+    virtual void saveState(Job const& job,
+                           Job::Options const& options) = 0;
 
     /**
      * Update the heartbeat timestamp for the job's entry
@@ -119,23 +122,31 @@ public:
      * Save the state of the QservMgtRequest. This operation can be called many times for
      * a particular instance of the QservMgtRequest.
      *
-     * NOTE: The method will convert a pointer of the base class QservMgtRequest into
-     * the final type to avoid type proliferation through this interface.
+     * The Performance object is explicitly passed as a parameter to avoid
+     * making a call back to the request which may create a deadlock because
+     * method saveState() is meant to be called by the requests' implementations.
      *
-     * @param request - reference to a QservMgtRequest object
+     * @param request     - reference to a QservMgtRequest object
+     * @param performance - reference to a Performance object
+     * @param serverError - server error message (if any)
      */
-    virtual void saveState(QservMgtRequest const& request) = 0;
+    virtual void saveState(QservMgtRequest const& request,
+                           Performance const& performance,
+                           std::string const& serverError) = 0;
 
     /**
      * Save the state of the Request. This operation can be called many times for
      * a particular instance of the Request.
      *
-     * NOTE: The method will convert a pointer of the base class Request into
-     * the final type to avoid type proliferation through this interface.
+     * The Performance object is explicitly passed as a parameter to avoid
+     * making a call back to the request which may create a deadlock because
+     * method saveState() is meant to be called by the requests' implementations.
      *
-     * @param request - reference to a Request object
+     * @param request     - reference to a Request object
+     * @param performance - reference to a Performance object
      */
-    virtual void saveState(Request const& request) = 0;
+    virtual void saveState(Request const& request,
+                           Performance const& performance) = 0;
 
     /**
      * Update a state of a target request.
