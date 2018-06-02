@@ -20,8 +20,9 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-/// replica_job_chunks.cc implements a command-line tool which analyzes
-/// and reports chunk disposition in the specified database family.
+/// qserv-replica-job-chunks.cc implements a command-line tool which launches
+/// a single job Controller in order to acquire, analyze and reports chunk
+/// disposition within a database family.
 
 // System headers
 #include <atomic>
@@ -45,8 +46,7 @@
 #include "util/BlockPost.h"
 #include "util/CmdLineParser.h"
 
-namespace replica = lsst::qserv::replica;
-namespace util    = lsst::qserv::util;
+using namespace lsst::qserv;
 
 #define OUT std::cout
 

@@ -376,7 +376,7 @@ void PurgeJob::onPrecursorJobFinish() {
                 [self] (DeleteReplicaJob::Ptr const& job) {
                     self->onDeleteJobFinish(job);
                 },
-                options()   // inherit from the current job
+                options(lock)   // inherit from the current job
             );
             ptr->start();
 

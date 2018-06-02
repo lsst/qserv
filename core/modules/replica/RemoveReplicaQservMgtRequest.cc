@@ -124,7 +124,7 @@ void RemoveReplicaQservMgtRequest::startImpl(util::Lock const& lock) {
                     break;
 
                 case wpublish::ChunkGroupQservRequest::Status::IN_USE:
-                    request->finish(lock, QservMgtRequest::ExtendedState::SERVER_IN_USE, error);
+                    request->finish(lock, QservMgtRequest::ExtendedState::SERVER_CHUNK_IN_USE, error);
                     break;
 
                 case wpublish::ChunkGroupQservRequest::Status::ERROR:

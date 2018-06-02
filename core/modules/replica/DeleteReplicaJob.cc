@@ -237,8 +237,8 @@ void DeleteReplicaJob::startImpl(util::Lock const& lock) {
 
                     // Otherwise set an appropriate status of the operation, finish them
                     // job and notify the caller.
-                    case QservMgtRequest::ExtendedState::SERVER_IN_USE:
-                        self->finish(lock, ExtendedState::QSERV_IN_USE);
+                    case QservMgtRequest::ExtendedState::SERVER_CHUNK_IN_USE:
+                        self->finish(lock, ExtendedState::QSERV_CHUNK_IN_USE);
                         break;
                     default:
                         self->finish(lock, ExtendedState::QSERV_FAILED);
@@ -299,7 +299,7 @@ void DeleteReplicaJob::beginDeleteReplica(util::Lock const& lock) {
                 [self] (DeleteRequest::Ptr ptr) {
                     self->onRequestFinish(ptr);
                 },
-                options().priority,
+                options(lock).priority,
                 true,   /* keepTracking */
                 true,   /* allowDuplicate */
                 id()    /* jobId */

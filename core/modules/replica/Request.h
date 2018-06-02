@@ -93,7 +93,7 @@ public:
     };
 
     /// @return the string representation of the primary state
-    static std::string state2string(State state) ;
+    static std::string state2string(State state);
 
     /**
      * Type ExtendedState represents a refined public sub-state of the requiest
@@ -131,14 +131,14 @@ public:
         SERVER_CANCELLED,
 
         /// Expired due to a timeout (as per the Configuration)
-        EXPIRED,
+        TIMEOUT_EXPIRED,
 
-        /// Explicitly cancelled on the client-side (similar to EXPIRED)
+        /// Explicitly cancelled on the client-side (similar to TIMEOUT_EXPIRED)
         CANCELLED
     };
 
     /// @return the string representation of the extended state
-    static std::string state2string(ExtendedState state) ;
+    static std::string state2string(ExtendedState state);
 
     /// @return the string representation of the compbined state
     static std::string state2string(State state,
@@ -191,7 +191,7 @@ public:
     ExtendedCompletionStatus extendedServerStatus() const { return _extendedServerStatus; }
 
     /// @return the performance info
-    Performance const& performance() const { return _performance; }
+    Performance performance() const;
 
     /// @return the Controller (if set)
     std::shared_ptr<Controller> const& controller() const { return _controller; }
@@ -235,6 +235,9 @@ public:
      * of the operation in case if the request was queued.
      */
     void cancel();
+
+    /// @return string representation of the combined state of the object
+    std::string state2string() const;
 
     /// @return the context string for debugging and diagnostic printouts
     std::string context() const;
@@ -310,6 +313,12 @@ protected:
     /// @return suggested interval (seconds) between retries in communications with workers
     unsigned int timerIvalSec() const { return _timerIvalSec; }
 
+    /**
+    * @param lock - lock on a mutex must be acquired before calling this method
+     * @return the performance info
+     */
+    Performance performance(util::Lock const& lock) const;
+
     /// @return reference to the performance counters object
     Performance& mutablePerformance() { return _performance; }
 
@@ -342,7 +351,7 @@ protected:
     /**
      * Request expiration timer's handler. The expiration interval (if any)
      * is configured via the configuraton service. When the request expires
-     * it finishes with completion status FINISHED::EXPIRED.
+     * it finishes with completion status FINISHED::TIMEOUT_EXPIRED.
      *
      * @param ec - error code to be checked
      */
@@ -381,8 +390,10 @@ protected:
       *
       * The default implementation o fth emethod is intentionally left empty
       * to allow requests not to have the persistent state.
+      * 
+      * @param lock - a lock on a mutex must be acquired before calling this method
       */
-    virtual void savePersistentState() {}
+    virtual void savePersistentState(util::Lock const& lock) {}
 
     /**
      * Return 'true' if the operation was aborted.
@@ -499,7 +510,7 @@ private:
     /// explicitly finished when a request finishes (successfully or not).
     ///
     /// If the time has a chance to expire then the request would finish
-    /// with status: FINISHED::EXPIRED.
+    /// with status: FINISHED::TIMEOUT_EXPIRED.
     unsigned int                _requestExpirationIvalSec;
     boost::asio::deadline_timer _requestExpirationTimer;
 

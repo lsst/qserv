@@ -33,7 +33,6 @@
 #include "replica/Configuration.h"
 #include "replica/Performance.h"
 #include "replica/ServiceProvider.h"
-#include "replica/WorkerProcessor.h"
 
 namespace {
 
@@ -120,7 +119,7 @@ namespace replica {
 
 WorkerServerConnection::Ptr WorkerServerConnection::create(
                                     ServiceProvider::Ptr const& serviceProvider,
-                                    WorkerProcessor& processor,
+                                    WorkerProcessor::Ptr const& processor,
                                     boost::asio::io_service& io_service) {
     return WorkerServerConnection::Ptr(
         new WorkerServerConnection(
@@ -130,7 +129,7 @@ WorkerServerConnection::Ptr WorkerServerConnection::create(
 }
 
 WorkerServerConnection::WorkerServerConnection(ServiceProvider::Ptr const& serviceProvider,
-                                               WorkerProcessor& processor,
+                                               WorkerProcessor::Ptr const& processor,
                                                boost::asio::io_service& io_service)
     :   _serviceProvider(serviceProvider),
         _processor(processor),
@@ -180,17 +179,12 @@ void WorkerServerConnection::received(boost::system::error_code const& ec,
 
     LOGS(_log, LOG_LVL_DEBUG, context << "received");
 
-    if (::isErrorCode(ec, "received")) { return; }
+    if (::isErrorCode(ec, "received")) return;
 
     // Now read the request header
-
     proto::ReplicationRequestHeader hdr;
-    if (not ::readMessage(_socket,
-                          _bufferPtr,
-                          _bufferPtr->parseLength(),
-                          hdr)) {
-        return;
-    }
+    if (not ::readMessage(_socket, _bufferPtr, _bufferPtr->parseLength(), hdr)) return;
+
 
     // Analyse the header of the request. Note that the header message categorizes
     // requests in two layers:
@@ -215,87 +209,52 @@ void WorkerServerConnection::processReplicaRequest(proto::ReplicationRequestHead
 
     // Read the request length
     uint32_t bytes;
-    if (not ::readLength (_socket,
-                          _bufferPtr,
-                          bytes)) {
-        return;
-    }
+    if (not ::readLength(_socket, _bufferPtr, bytes)) return;
+
     switch (hdr.replica_type()) {
 
         case proto::ReplicationReplicaRequestType::REPLICA_CREATE: {
 
             // Read the request body
             proto::ReplicationRequestReplicate request;
-            if (not ::readMessage(_socket,
-                                  _bufferPtr,
-                                  bytes,
-                                  request)) {
-                return;
-            }
-            proto::ReplicationResponseReplicate response;
-            _processor.enqueueForReplication(hdr.id(),
-                                             request,
-                                             response);
-            reply(hdr.id(),
-                  response);
+            if (not ::readMessage(_socket, _bufferPtr, bytes, request)) return;
 
+            proto::ReplicationResponseReplicate response;
+            _processor->enqueueForReplication(hdr.id(), request, response);
+            reply(hdr.id(), response);
             break;
         }
         case proto::ReplicationReplicaRequestType::REPLICA_DELETE: {
 
             // Read the request body
             proto::ReplicationRequestDelete request;
-            if (not ::readMessage(_socket,
-                                  _bufferPtr,
-                                  bytes,
-                                  request)) {
-                return;
-            }
-            proto::ReplicationResponseDelete response;
-            _processor.enqueueForDeletion(hdr.id(),
-                                          request,
-                                          response);
-            reply(hdr.id(),
-                  response);
+            if (not ::readMessage(_socket, _bufferPtr, bytes, request)) return;
 
+            proto::ReplicationResponseDelete response;
+            _processor->enqueueForDeletion(hdr.id(), request, response);
+            reply(hdr.id(), response);
             break;
         }
         case proto::ReplicationReplicaRequestType::REPLICA_FIND: {
 
             // Read the request body
             proto::ReplicationRequestFind request;
-            if (not ::readMessage(_socket,
-                                  _bufferPtr,
-                                  bytes,
-                                  request)) {
-                return;
-            }
-            proto::ReplicationResponseFind response;
-            _processor.enqueueForFind(hdr.id(),
-                                      request,
-                                      response);
-            reply(hdr.id(),
-                  response);
+            if (not ::readMessage(_socket, _bufferPtr, bytes, request)) return;
 
+            proto::ReplicationResponseFind response;
+            _processor->enqueueForFind(hdr.id(), request, response);
+            reply(hdr.id(), response);
             break;
         }
         case proto::ReplicationReplicaRequestType::REPLICA_FIND_ALL: {
 
             // Read the request body
             proto::ReplicationRequestFindAll request;
-            if (not ::readMessage(_socket,
-                                  _bufferPtr,
-                                  bytes,
-                                  request)) {
-                return;
-            }
-            proto::ReplicationResponseFindAll response;
-            _processor.enqueueForFindAll(hdr.id(),
-                                         request,
-                                         response);
-            reply(hdr.id(),
-                  response);
+            if (not ::readMessage(_socket, _bufferPtr, bytes, request)) return;
 
+            proto::ReplicationResponseFindAll response;
+            _processor->enqueueForFindAll(hdr.id(), request, response);
+            reply(hdr.id(), response);
             break;
         }
         default:
@@ -320,49 +279,32 @@ void WorkerServerConnection::processManagementRequest(proto::ReplicationRequestH
 
             // Read the request body
             proto::ReplicationRequestStop request;
-            if (not ::readMessage(_socket,
-                                  _bufferPtr,
-                                  bytes,
-                                  request)) {
-                return;
-            }
+            if (not ::readMessage(_socket, _bufferPtr, bytes, request)) return;
+
             switch (request.type()) {
 
                 case proto::ReplicationReplicaRequestType::REPLICA_CREATE: {
                     proto::ReplicationResponseReplicate response;
-                    _processor.dequeueOrCancel(hdr.id(),
-                                               request,
-                                               response);
-                    reply(hdr.id(),
-                          response);
+                    _processor->dequeueOrCancel(hdr.id(), request, response);
+                    reply(hdr.id(), response);
                     break;
                 }
-
                 case proto::ReplicationReplicaRequestType::REPLICA_DELETE: {
                     proto::ReplicationResponseDelete response;
-                    _processor.dequeueOrCancel(hdr.id(),
-                                               request,
-                                               response);
-                    reply(hdr.id(),
-                          response);
+                    _processor->dequeueOrCancel(hdr.id(), request, response);
+                    reply(hdr.id(), response);
                     break;
                 }
                 case proto::ReplicationReplicaRequestType::REPLICA_FIND: {
                     proto::ReplicationResponseFind response;
-                    _processor.dequeueOrCancel(hdr.id(),
-                                               request,
-                                               response);
-                    reply(hdr.id(),
-                          response);
+                    _processor->dequeueOrCancel(hdr.id(), request, response);
+                    reply(hdr.id(), response);
                     break;
                 }
                 case proto::ReplicationReplicaRequestType::REPLICA_FIND_ALL: {
                     proto::ReplicationResponseFindAll response;
-                    _processor.dequeueOrCancel(hdr.id(),
-                                               request,
-                                               response);
-                    reply(hdr.id(),
-                          response);
+                    _processor->dequeueOrCancel(hdr.id(), request, response);
+                    reply(hdr.id(), response);
                     break;
                 }
             }
@@ -372,48 +314,32 @@ void WorkerServerConnection::processManagementRequest(proto::ReplicationRequestH
 
             // Read the request body
             proto::ReplicationRequestStatus request;
-            if (not ::readMessage(_socket,
-                                  _bufferPtr,
-                                  bytes,
-                                  request)) {
-                return;
-            }
+            if (not ::readMessage(_socket, _bufferPtr, bytes, request)) return;
+
             switch (request.type()) {
 
                 case proto::ReplicationReplicaRequestType::REPLICA_CREATE: {
                     proto::ReplicationResponseReplicate response;
-                    _processor.checkStatus(hdr.id(),
-                                           request,
-                                           response);
-                    reply(hdr.id(),
-                          response);
+                    _processor->checkStatus(hdr.id(), request, response);
+                    reply(hdr.id(), response);
                     break;
                 }
                 case proto::ReplicationReplicaRequestType::REPLICA_DELETE: {
                     proto::ReplicationResponseDelete response;
-                    _processor.checkStatus(hdr.id(),
-                                           request,
-                                           response);
-                    reply(hdr.id(),
-                          response);
+                    _processor->checkStatus(hdr.id(), request, response);
+                    reply(hdr.id(), response);
                     break;
                 }
                 case proto::ReplicationReplicaRequestType::REPLICA_FIND: {
                     proto::ReplicationResponseFind response;
-                    _processor.checkStatus(hdr.id(),
-                                           request,
-                                           response);
-                    reply(hdr.id(),
-                          response);
+                    _processor->checkStatus(hdr.id(), request, response);
+                    reply(hdr.id(), response);
                     break;
                 }
                 case proto::ReplicationReplicaRequestType::REPLICA_FIND_ALL: {
                     proto::ReplicationResponseFindAll response;
-                    _processor.checkStatus(hdr.id(),
-                                           request,
-                                           response);
-                    reply(hdr.id(),
-                          response);
+                    _processor->checkStatus(hdr.id(), request, response);
+                    reply(hdr.id(), response);
                     break;
                 }
             }
@@ -445,16 +371,15 @@ void WorkerServerConnection::processServiceRequest(proto::ReplicationRequestHead
             // This operation is allowed to be asynchronious as it may take
             // extra time for the processor's threads to finish on-going processing
 
-            _processor.stop();
-            _processor.setServiceResponse(
+            _processor->stop();
+            _processor->setServiceResponse(
                   response,
                   hdr.id(),
-                  _processor.state() == WorkerProcessor::State::STATE_IS_RUNNING ?
+                  _processor->state() == WorkerProcessor::State::STATE_IS_RUNNING ?
                       proto::ReplicationServiceResponse::FAILED :
                       proto::ReplicationServiceResponse::SUCCESS
             );
-            reply(hdr.id(),
-                  response);
+            reply(hdr.id(), response);
             break;
         }
         case proto::ReplicationServiceRequestType::SERVICE_RESUME: {
@@ -462,57 +387,53 @@ void WorkerServerConnection::processServiceRequest(proto::ReplicationRequestHead
             // This is a synchronus operation. The state transition request should happen
             // (or be denied) instantaneously.
 
-            _processor.run();
-            _processor.setServiceResponse(
+            _processor->run();
+            _processor->setServiceResponse(
                   response,
                   hdr.id(),
-                  _processor.state() == WorkerProcessor::State::STATE_IS_RUNNING ?
+                  _processor->state() == WorkerProcessor::State::STATE_IS_RUNNING ?
                       proto::ReplicationServiceResponse::SUCCESS :
                       proto::ReplicationServiceResponse::FAILED);
 
-            reply(hdr.id(),
-                  response);
+            reply(hdr.id(), response);
             break;
         }
         case proto::ReplicationServiceRequestType::SERVICE_STATUS: {
 
-            _processor.setServiceResponse(
+            _processor->setServiceResponse(
                   response,
                   hdr.id(),
                   proto::ReplicationServiceResponse::SUCCESS);
 
-            reply(hdr.id(),
-                  response);
+            reply(hdr.id(), response);
             break;
         }
         case proto::ReplicationServiceRequestType::SERVICE_REQUESTS: {
 
             const bool extendedReport = true;   // to return detailed info on all known
                                                 // replica-related requests
-            _processor.setServiceResponse(
+            _processor->setServiceResponse(
                   response,
                   hdr.id(),
                   proto::ReplicationServiceResponse::SUCCESS,
                   extendedReport);
 
-            reply(hdr.id(),
-                  response);
+            reply(hdr.id(), response);
             break;
         }
         case proto::ReplicationServiceRequestType::SERVICE_DRAIN: {
 
-            _processor.drain();
+            _processor->drain();
 
             const bool extendedReport = true;   // to return detailed info on all known
                                                 // replica-related requests
-            _processor.setServiceResponse(
+            _processor->setServiceResponse(
                   response,
                   hdr.id(),
                   proto::ReplicationServiceResponse::SUCCESS,
                   extendedReport);
 
-            reply(hdr.id(),
-                  response);
+            reply(hdr.id(), response);
             break;
         }
         default:

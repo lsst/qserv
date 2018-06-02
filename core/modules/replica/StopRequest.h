@@ -69,7 +69,7 @@ struct StopReplicationRequestPolicy {
 
     static char const* requestName();
 
-    static proto::ReplicationReplicaRequestType requestType() ;
+    static proto::ReplicationReplicaRequestType requestType();
 
     static void extractResponseData(ResponseMessageType const& msg,
                                     ResponseDataType& data);
@@ -94,7 +94,7 @@ struct StopDeleteRequestPolicy {
 
     static char const* requestName();
 
-    static proto::ReplicationReplicaRequestType requestType() ;
+    static proto::ReplicationReplicaRequestType requestType();
 
     static void extractResponseData(ResponseMessageType const& msg,
                                     ResponseDataType& data);

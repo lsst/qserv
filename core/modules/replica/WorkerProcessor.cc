@@ -108,6 +108,14 @@ proto::ReplicationStatus WorkerProcessor::translate(WorkerRequest::CompletionSta
     }
 }
 
+WorkerProcessor::Ptr WorkerProcessor::create(ServiceProvider::Ptr const& serviceProvider,
+                                             WorkerRequestFactory& requestFactory,
+                                             std::string const& worker) {
+    return Ptr(new WorkerProcessor(serviceProvider,
+                                   requestFactory,
+                                   worker));
+}
+
 WorkerProcessor::WorkerProcessor(ServiceProvider::Ptr const& serviceProvider,
                                  WorkerRequestFactory& requestFactory,
                                  std::string const& worker)
@@ -135,8 +143,9 @@ void WorkerProcessor::run() {
 
         // Create threads if needed
         if (_threads.empty()) {
+            auto const self = shared_from_this();
             for (size_t i=0; i < numThreads; ++i) {
-                _threads.push_back(WorkerProcessorThread::create(*this));
+                _threads.push_back(WorkerProcessorThread::create(self));
             }
         }
 
@@ -748,7 +757,7 @@ void WorkerProcessor::processorThreadStopped(
         // Complete state transition if all threds are stopped
 
         for (auto&& t: _threads) {
-            if (t->isRunning()) { return; }
+            if (t->isRunning()) return;
         }
         _state = STATE_IS_STOPPED;
     }

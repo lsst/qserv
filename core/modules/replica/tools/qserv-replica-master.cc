@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
+ * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,8 +20,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-/// replica_master.cc is a fixed-logic replication master executing
-/// a sequence of jobs in an infinite loop. The applucation is not
+/// qserv-replica-master.cc is a fixed-logic replication Controller executing
+/// a sequence of jobs in an infinite loop. The application is not
 /// meant to respond to any external communications (commands, etc.)
 
 // System headers
@@ -47,8 +47,7 @@
 #include "util/BlockPost.h"
 #include "util/CmdLineParser.h"
 
-namespace replica = lsst::qserv::replica;
-namespace util    = lsst::qserv::util;
+using namespace lsst::qserv;
 
 namespace {
 

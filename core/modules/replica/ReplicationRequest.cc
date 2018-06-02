@@ -324,8 +324,8 @@ void ReplicationRequest::notifyImpl() {
     }
 }
 
-void ReplicationRequest::savePersistentState() {
-    controller()->serviceProvider()->databaseServices()->saveState(*this);
+void ReplicationRequest::savePersistentState(util::Lock const& lock) {
+    controller()->serviceProvider()->databaseServices()->saveState(*this, performance(lock));
 }
 
 std::string ReplicationRequest::extendedPersistentState(SqlGeneratorPtr const& gen) const {

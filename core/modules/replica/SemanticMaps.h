@@ -89,7 +89,7 @@ public:
      * @return reference to the object within the collection
      */
     V& insertIfNotExists(K const& k, V const& v) {
-        if (not exists(k)) { _coll[k] = v; }
+        if (not exists(k)) _coll[k] = v;
         return _coll[k];
     }
 

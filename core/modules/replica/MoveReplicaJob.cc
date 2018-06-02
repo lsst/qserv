@@ -153,7 +153,7 @@ void MoveReplicaJob::startImpl(util::Lock const& lock) {
         [self] (CreateReplicaJob::Ptr const& job) {
             self->onCreateJobFinish();
         },
-        options()   // inherit from the current job
+        options(lock)   // inherit from the current job
     );
     _createReplicaJob->start();
 
@@ -219,7 +219,7 @@ void MoveReplicaJob::onCreateJobFinish() {
                 [self] (DeleteReplicaJob::Ptr const& job) {
                     self->onDeleteJobFinish();
                 },
-                options()   // inherit from the current job
+                options(lock)   // inherit from the current job
             );
             _deleteReplicaJob->start();
         } else {

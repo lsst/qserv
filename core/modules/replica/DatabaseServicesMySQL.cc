@@ -111,7 +111,8 @@ void DatabaseServicesMySQL::saveState(ControllerIdentity const& identity,
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
 }
 
-void DatabaseServicesMySQL::saveState(Job const& job) {
+void DatabaseServicesMySQL::saveState(Job const& job,
+                                      Job::Options const& options) {
 
     std::string const context = "DatabaseServicesMySQL::saveState[Job::" + job.type() + "]  ";
 
@@ -124,7 +125,6 @@ void DatabaseServicesMySQL::saveState(Job const& job) {
     // then the UPDATE query will be executed.
 
     try {
-        Job::Options const& options = job.options();
         _conn->begin();
         _conn->executeInsertQuery(
             "job",
@@ -208,7 +208,9 @@ void DatabaseServicesMySQL::updateHeartbeatTime(Job const& job) {
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
 }
 
-void DatabaseServicesMySQL::saveState(QservMgtRequest const& request) {
+void DatabaseServicesMySQL::saveState(QservMgtRequest const& request,
+                                      Performance const& performance,
+                                      std::string const& serverError) {
 
     std::string const context = "DatabaseServicesMySQL::saveState[QservMgtRequest::" + request.type() + "]  ";
 
@@ -232,7 +234,6 @@ void DatabaseServicesMySQL::saveState(QservMgtRequest const& request) {
         return;
     }
 
-    Performance const& performance = request.performance();
     try {
         _conn->begin();
         _conn->executeInsertQuery(
@@ -244,7 +245,7 @@ void DatabaseServicesMySQL::saveState(QservMgtRequest const& request) {
             0,
             QservMgtRequest::state2string(request.state()),
             QservMgtRequest::state2string(request.extendedState()),
-            request.serverError(),
+            serverError,
             performance.c_create_time,
             performance.c_start_time,
             performance.w_receive_time,
@@ -282,7 +283,7 @@ void DatabaseServicesMySQL::saveState(QservMgtRequest const& request) {
                 _conn->sqlEqual("id",                                           request.id()),
                 std::make_pair( "state",          QservMgtRequest::state2string(request.state())),
                 std::make_pair( "ext_state",      QservMgtRequest::state2string(request.extendedState())),
-                std::make_pair( "server_status",                                request.serverError()),
+                std::make_pair( "server_status",                                serverError),
                 std::make_pair( "c_create_time",  performance.c_create_time),
                 std::make_pair( "c_start_time",   performance.c_start_time),
                 std::make_pair( "w_receive_time", performance.w_receive_time),
@@ -301,7 +302,8 @@ void DatabaseServicesMySQL::saveState(QservMgtRequest const& request) {
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
 }
 
-void DatabaseServicesMySQL::saveState(Request const& request) {
+void DatabaseServicesMySQL::saveState(Request const& request,
+                                      Performance const& performance) {
 
     std::string const context = "DatabaseServicesMySQL::saveState[Request::" + request.type() + "]  ";
 
@@ -325,7 +327,6 @@ void DatabaseServicesMySQL::saveState(Request const& request) {
         return;
     }
 
-    Performance const& performance = request.performance();
     try {
         _conn->begin();
         _conn->executeInsertQuery(

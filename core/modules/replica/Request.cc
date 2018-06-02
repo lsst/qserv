@@ -25,6 +25,7 @@
 
 // System headers
 #include <stdexcept>
+#include <thread>
 
 // Third party headers
 #include <boost/bind.hpp>
@@ -68,7 +69,7 @@ std::string Request::state2string(ExtendedState state) {
         case SERVER_IN_PROGRESS:   return "SERVER_IN_PROGRESS";
         case SERVER_IS_CANCELLING: return "SERVER_IS_CANCELLING";
         case SERVER_CANCELLED:     return "SERVER_CANCELLED";
-        case EXPIRED:              return "EXPIRED";
+        case TIMEOUT_EXPIRED:      return "TIMEOUT_EXPIRED";
         case CANCELLED:            return "CANCELLED";
     }
     throw std::logic_error(
@@ -103,7 +104,6 @@ Request::Request(ServiceProvider::Ptr const& serviceProvider,
         _state(CREATED),
         _extendedState(NONE),
         _extendedServerStatus(ExtendedCompletionStatus::EXT_STATUS_NONE),
-        _performance(),
         _bufferPtr(new ProtocolBuffer(serviceProvider->config()->requestBufferSizeBytes())),
         _workerInfo(serviceProvider->config()->workerInfo(worker)),
         _timerIvalSec(serviceProvider->config()->retryTimeoutSec()),
@@ -113,6 +113,12 @@ Request::Request(ServiceProvider::Ptr const& serviceProvider,
 
     _serviceProvider->assertWorkerIsValid(worker);
 }
+
+std::string Request::state2string() const {
+    util::Lock lock(_mtx, context() + "state2string");
+    return state2string(state(), extendedState()) + "::" + replica::status2string(extendedServerStatus());
+}
+
 std::string Request::context() const {
     return "REQUEST " + id() + "  " + type() +
            "  " + state2string(state(), extendedState()) +
@@ -121,6 +127,15 @@ std::string Request::context() const {
 
 std::string const& Request::remoteId() const {
     return _duplicateRequestId.empty() ? _id : _duplicateRequestId;
+}
+
+Performance Request::performance() const {
+    util::Lock lock(_mtx, context() + "performance");
+    return performance(lock);
+}
+
+Performance Request::performance(util::Lock const& lock) const {
+    return _performance;
 }
 
 void Request::start(std::shared_ptr<Controller> const& controller,
@@ -168,14 +183,11 @@ void Request::start(std::shared_ptr<Controller> const& controller,
 
     // Finalize state transition before saving the persistent state
 
-    setState(lock,
-             IN_PROGRESS);
-
-    savePersistentState();
+    setState(lock, IN_PROGRESS);
 }
 
 std::string const& Request::jobId() const {
-    if (_state == State::CREATED) {
+    if (state() == State::CREATED) {
         throw std::logic_error(
             "the Job Id is not available because the request has not started yet");
     }
@@ -197,14 +209,13 @@ void Request::expired(boost::system::error_code const& ec) {
     // test is made after acquering the lock to recheck the state in case if it
     // has transitioned while acquering the lock.
 
-    if (_state == State::FINISHED) return;
+    if (state() == State::FINISHED) return;
 
     util::Lock lock(_mtx, context() + "expired");
 
-    if (_state == State::FINISHED) return;
+    if (state() == State::FINISHED) return;
 
-    finish(lock,
-           EXPIRED);
+    finish(lock, TIMEOUT_EXPIRED);
 }
 
 void Request::cancel() {
@@ -217,14 +228,13 @@ void Request::cancel() {
     // test is made after acquering the lock to recheck the state in case if it
     // has transitioned while acquering the lock.
 
-    if (_state == State::FINISHED) return;
+    if (state() == State::FINISHED) return;
 
     util::Lock lock(_mtx, context() + "cancel");
 
-    if (_state == FINISHED) return;
+    if (state() == FINISHED) return;
 
-    finish(lock,
-           CANCELLED);
+    finish(lock, CANCELLED);
 }
 
 void Request::finish(util::Lock const& lock,
@@ -234,7 +244,7 @@ void Request::finish(util::Lock const& lock,
 
     // Check if it's not too late for this operation
 
-    if (_state == FINISHED) return;
+    if (state() == FINISHED) return;
 
     // We have to update the timestamp before making a state transition
     // to ensure a client gets a consistent view onto the object's state.
@@ -256,8 +266,6 @@ void Request::finish(util::Lock const& lock,
 
     finishImpl(lock);
 
-    savePersistentState();
-
     notify();
 }
 
@@ -270,12 +278,11 @@ void Request::notify() {
     //       via a thread pool & a queue.
 
     auto const self = shared_from_this();
-    std::async(
-        std::launch::async,
-        [self]() {
-            self->notifyImpl();
-        }
-    );
+
+    std::thread notifier([self]() {
+        self->notifyImpl();
+    });
+    notifier.detach();
 }
 
 bool Request::isAborted(boost::system::error_code const& ec) const {
@@ -288,29 +295,29 @@ bool Request::isAborted(boost::system::error_code const& ec) const {
 }
 
 void Request::assertState(util::Lock const& lock,
-                          State state,
+                          State desiredState,
                           std::string const& context) const {
 
-    if (state != _state) {
+    if (desiredState != state()) {
         throw std::logic_error(
-            context + ": wrong state " + state2string(state) + " instead of " + state2string(_state));
+            context + ": wrong state " + state2string(state()) + " instead of " + state2string(desiredState));
     }
 }
 
 void Request::setState(util::Lock const& lock,
-                       State state,
-                       ExtendedState extendedState)
+                       State newState,
+                       ExtendedState newExtendedState)
 {
-    LOGS(_log, LOG_LVL_DEBUG, context() << "setState  " << state2string(state, extendedState));
+    LOGS(_log, LOG_LVL_DEBUG, context() << "setState  " << state2string(newState, newExtendedState));
 
     // ATTENTION: ensure the top-level state is the last to change in
     // in the transient state transition in order to guarantee a consistent
     // view on to the object's state from the clients' prospective.
 
-    _extendedState = extendedState;
-    _state = state;
+    _extendedState = newExtendedState;
+    _state = newState;
 
-    savePersistentState();
+    savePersistentState(lock);
 }
 
 }}} // namespace lsst::qserv::replica

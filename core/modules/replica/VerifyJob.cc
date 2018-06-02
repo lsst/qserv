@@ -24,8 +24,8 @@
 #include "replica/VerifyJob.h"
 
 // System headers
-#include <future>
 #include <stdexcept>
+#include <thread>
 
 // Qserv headers
 #include "lsst/log/Log.h"
@@ -233,10 +233,10 @@ void VerifyJob::startImpl(util::Lock const& lock) {
                 [self] (FindRequest::Ptr request) {
                     self->onRequestFinish(request);
                 },
-                options().priority, /* inherited from the one of the current job */
+                options(lock).priority,     /* inherited from the one of the current job */
                 computeCheckSum(),
-                true,               /* keepTracking*/
-                id()                /* jobId */
+                true,                       /* keepTracking*/
+                id()                        /* jobId */
             );
             _replicas[request->id()] = replica;
             _requests[request->id()] = request;
@@ -381,10 +381,10 @@ void VerifyJob::onRequestFinish(FindRequest::Ptr request) {
                 [self] (FindRequest::Ptr request) {
                     self->onRequestFinish(request);
                 },
-                options().priority, /* inherited from the one of the current job */
+                options(lock).priority, /* inherited from the one of the current job */
                 computeCheckSum(),
-                true,               /* keepTracking*/
-                id()                /* jobId */
+                true,                   /* keepTracking*/
+                id()                    /* jobId */
             );
             _replicas[request->id()] = replica;
             _requests[request->id()] = request;
@@ -408,12 +408,10 @@ void VerifyJob::onRequestFinish(FindRequest::Ptr request) {
 
     if (_onReplicaDifference) {
         auto self = shared_from_base<VerifyJob>();
-        std::async(
-            std::launch::async,
-            [self, selfReplicaDiff, otherReplicaDiff]() {
-                self->_onReplicaDifference(self, selfReplicaDiff, otherReplicaDiff);
-            }
-        );
+        std::thread notifier([self, selfReplicaDiff, otherReplicaDiff]() {
+            self->_onReplicaDifference(self, selfReplicaDiff, otherReplicaDiff);
+        });
+        notifier.detach();
     }
 }
 

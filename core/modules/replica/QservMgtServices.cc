@@ -63,7 +63,7 @@ struct QservMgtRequestWrapperImpl
 
     /// The implementation of the virtual method defined in the base class
     void notify() const final {
-        if (_onFinish == nullptr) { return; }
+        if (_onFinish == nullptr) return;
         _onFinish(_request);
     }
 

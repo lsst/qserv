@@ -325,7 +325,7 @@ std::string Connection::escape(std::string const& inStr) const {
             inStr.c_str(),
             inLen);
 
-    return std::string(outStr.get(), outLen) ;
+    return std::string(outStr.get(), outLen);
 }
 
 std::string Connection::sqlValue(std::vector<std::string> const& coll) const {
@@ -374,7 +374,7 @@ Connection::Ptr Connection::execute(std::string const& query) {
 
     _lastQuery = query;
 
-    if (_res) mysql_free_result (_res) ;
+    if (_res) mysql_free_result(_res);
     _res       = nullptr;
     _fields    = nullptr;
     _numFields = 0;
@@ -436,7 +436,7 @@ bool Connection::next(Row& row) {
     if (not _row) {
 
         // Just no more rows is no specific error reported
-        if (not mysql_errno(_mysql)) { return false; }
+        if (not mysql_errno(_mysql)) return false;
 
         throw Error(context + "mysql_fetch_row failed, error: " +
                     std::string(mysql_error(_mysql)) +
@@ -498,8 +498,8 @@ void Connection::assertQueryContext() const {
 
     static std::string const context = "Connection::assertQueryContext()  ";
 
-    if (not _mysql) { throw Error(context + "not connected to the MySQL service"); }
-    if (not _res)   { throw Error(context + "no prior query made"); }
+    if (not _mysql) throw Error(context + "not connected to the MySQL service");
+    if (not _res)   throw Error(context + "no prior query made");
 }
 
 void Connection::assertTransaction(bool inTransaction) const {

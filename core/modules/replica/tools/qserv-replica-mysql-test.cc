@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
+ * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,7 +20,7 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-/// replica_mysql_test.cc is for testing the MySQL API used by
+/// qserv-replica-mysql-test.cc is for testing the MySQL API used by
 /// the Replication system implementation.
 
 // System headers
@@ -36,9 +36,8 @@
 #include "replica/FileUtils.h"
 #include "util/CmdLineParser.h"
 
-namespace replica  = lsst::qserv::replica;
+using namespace lsst::qserv;
 namespace database = lsst::qserv::replica::database::mysql;
-namespace util     = lsst::qserv::util;
 
 namespace {
 

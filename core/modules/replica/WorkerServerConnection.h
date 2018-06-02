@@ -38,15 +38,13 @@
 #include "proto/replication.pb.h"
 #include "replica/ProtocolBuffer.h"
 #include "replica/ServiceProvider.h"
+#include "replica/WorkerProcessor.h"
 
 // This header declarations
 
 namespace lsst {
 namespace qserv {
 namespace replica {
-
-// Forward declarations
-class WorkerProcessor;
 
 /**
   * Class WorkerServerConnection is used for handling connections from
@@ -75,13 +73,13 @@ public:
      * low-level pointers).
      *
      * @param serviceProvider - provider of various services
-     * @param processor       - processor of long requests
+     * @param processor       - processor of long (queued) requests
      * @param io_service      - enpoint for network I/O
      *
      * @return pointer to the new object created by the factory
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      WorkerProcessor& processor,
+                      WorkerProcessor::Ptr const& processor,
                       boost::asio::io_service& io_service);
 
     // Default construction and copy semantics are prohibited
@@ -129,7 +127,7 @@ private:
      * @see WorkerServerConnection::create()
      */
     WorkerServerConnection(ServiceProvider::Ptr const& serviceProvider,
-                           WorkerProcessor& processor,
+                           WorkerProcessor::Ptr const& processor,
                            boost::asio::io_service& io_service);
 
     /**
@@ -210,7 +208,7 @@ private:
 private:
 
     ServiceProvider::Ptr _serviceProvider;
-    WorkerProcessor& _processor;
+    WorkerProcessor::Ptr _processor;
 
     boost::asio::ip::tcp::socket _socket;
 

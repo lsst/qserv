@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
+ * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,10 +20,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-/// replica_job_move.cc implements a command-line tool which copies
-/// one chunk of a database family from one (source) worker to another
-/// (the destination) one nd eliminates (if requested) the chunk at
-/// the source worker.
+/// qserv-replica-job-move.cc is a single job Controller application
+/// which is meant to run the corresponding job.
 
 // System headers
 #include <atomic>
@@ -41,8 +39,7 @@
 #include "util/BlockPost.h"
 #include "util/CmdLineParser.h"
 
-namespace replica = lsst::qserv::replica;
-namespace util    = lsst::qserv::util;
+using namespace lsst::qserv;
 
 namespace {
 
@@ -141,7 +138,7 @@ bool test() {
             std::cout
                 << "qserv-replica-job-move:"
                 << "  Controller::numActiveRequests: " << controller->numActiveRequests()
-                << ", MoveReplicaJob::state: " << job->state2string(job->state())
+                << ", MoveReplicaJob::state: " << job->state2string()
                 << std::endl;
             blockPost.wait();
         }

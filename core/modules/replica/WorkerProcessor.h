@@ -55,11 +55,15 @@ class WorkerRequestFactory;
 
 /**
   * Class WorkerProcessor is a front-end interface for processing
-  * requests fro connected clients.
+  * requests of remote clients.
   */
-class WorkerProcessor {
+class WorkerProcessor
+    :   public std::enable_shared_from_this<WorkerProcessor> {
 
 public:
+
+    /// Pointer type for objects of the class
+    typedef std::shared_ptr<WorkerProcessor> Ptr;
 
     // The thread-based processor class is allowed to access the internal API
     friend class WorkerProcessorThread;
@@ -124,27 +128,30 @@ public:
     /// @return the string representation of the state
     static std::string state2string(State state);
 
+    /**
+     * The factory method for objects of the class
+     *
+     * @param serviceProvider - provider of various services
+     * @param requestFactory  - reference to a factory of requests (for instantiating request objects)
+     * @param worker          - the name of a worker
+     */
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
+                      WorkerRequestFactory& requestFactory,
+                      std::string const& worker);
+
     // Default construction and copy semantics are prohibited
 
     WorkerProcessor() = delete;
     WorkerProcessor(WorkerProcessor const&) = delete;
     WorkerProcessor& operator=(WorkerProcessor const&) = delete;
 
-    /**
-     * The constructor of the class
-     *
-     * @param serviceProvider - provider of various services
-     * @param requestFactory  - reference to a factory of requests (for instantiating request objects)
-     * @param worker          - the name of a worker
-     */
-    WorkerProcessor(ServiceProvider::Ptr const& serviceProvider,
-                    WorkerRequestFactory& requestFactory,
-                    std::string const& worker);
-
     ~WorkerProcessor() = default;
 
     /// @return the state of the processor
     State state() const { return _state; }
+
+    /// @return the string representation of the state
+    std::string state2string() const { return state2string(state()); }
 
     /// Begin processing requests
     void run();
@@ -344,6 +351,15 @@ public:
 private:
 
     /**
+     * The constructor of the class is available to the functory method only
+     *
+     * @see WorkerProcessor::create
+     */
+    WorkerProcessor(ServiceProvider::Ptr const& serviceProvider,
+                    WorkerRequestFactory& requestFactory,
+                    std::string const& worker);
+
+    /**
      * Translate the completion status for replication requests and return
      * its protobuf counterpart
      *
@@ -507,7 +523,7 @@ private:
     ServiceProvider::Ptr _serviceProvider;
 
     /// A factory of request objects
-    WorkerRequestFactory &_requestFactory;
+    WorkerRequestFactory& _requestFactory;
 
     /// The name of the worker
     std::string _worker;
