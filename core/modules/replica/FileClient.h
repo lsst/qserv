@@ -34,6 +34,9 @@
 #include <stdexcept>
 #include <string>
 
+// Qserv headers
+#include "replica/Configuration.h"
+
 // Third party headers
 #include <boost/asio.hpp>
 
@@ -47,9 +50,7 @@ namespace qserv {
 namespace replica {
 
 // Forward declarations
-class DatabaseInfo;
 class ProtocolBuffer;
-class WorkerInfo;
 
 /**
  * Class FileClientError represents exceptions thrown by FileClient on errors
@@ -215,11 +216,11 @@ private:
 
 private:
 
-    /// Cached descriptor of the validated database
-    WorkerInfo const& _workerInfo;
+    // Cached descriptors obtained from the configuration
 
-    /// Cached parameters of the validated worker
-    DatabaseInfo const& _databaseInfo;
+    WorkerInfo _workerInfo;
+
+    DatabaseInfo _databaseInfo;
 
     /// The name of a file to be read
     std::string _fileName;
