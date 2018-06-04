@@ -37,6 +37,7 @@
 
 // Qserv headers
 #include "replica/Common.h"
+#include "replica/Configuration.h"
 #include "replica/Performance.h"
 #include "replica/ProtocolBuffer.h"
 #include "replica/ServiceProvider.h"
@@ -50,7 +51,6 @@ namespace replica {
 
 // Forward declarations
 class Controller;
-class WorkerInfo;
 
 namespace database {
 namespace mysql {
@@ -489,8 +489,8 @@ private:
     /// Buffer for data moved over the network
     std::shared_ptr<ProtocolBuffer> _bufferPtr;
 
-    /// Cached parameters of a worker obtained from a configuration
-    WorkerInfo const& _workerInfo;
+    /// Cached worker descriptor obtained from a configuration
+    WorkerInfo _workerInfo;
 
     /// This timer is used to in the communication protocol for requests
     /// which may require multiple retries or any time spacing between network

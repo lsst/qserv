@@ -39,6 +39,7 @@
 
 // Qserv headers
 #include "proto/replication.pb.h"
+#include "replica/Configuration.h"
 #include "replica/ProtocolBuffer.h"
 #include "replica/ServiceProvider.h"
 #include "util/Mutex.h"
@@ -48,9 +49,6 @@
 namespace lsst {
 namespace qserv {
 namespace replica {
-
-// Forward declarations
-class WorkerInfo;
 
 /**
  * Class MessageWrapperBase is the base class for request wrappers.
@@ -517,8 +515,8 @@ private:
 
     ServiceProvider::Ptr _serviceProvider;
 
-    /// Cached parameters of the worker
-    WorkerInfo const& _workerInfo;
+    /// Cached worker descriptor obtained from the configuration
+    WorkerInfo _workerInfo;
 
     /// The cached parameter for the buffer sizes (pulled from
     /// the Configuration upon the construction of the object).

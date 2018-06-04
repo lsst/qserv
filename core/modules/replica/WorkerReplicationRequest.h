@@ -40,6 +40,7 @@
 #include <boost/filesystem.hpp>
 
 // Qserv headers
+#include "replica/Configuration.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/WorkerRequest.h"
 
@@ -52,9 +53,7 @@ namespace qserv {
 namespace replica {
 
 // Forward declarations
-class DatabaseInfo;
 class FileClient;
-class WorkerInfo;
 
 /**
   * Class WorkerReplicationRequest represents a context and a state of replication
@@ -324,11 +323,12 @@ private:
 
 private:
 
-    // Cached parameters of the operation obtained from the Configuration
+    // Cached descriptors obtained from the Configuration
 
-    WorkerInfo   const& _inWorkerInfo;
-    WorkerInfo   const& _outWorkerInfo;
-    DatabaseInfo const& _databaseInfo;
+    WorkerInfo _inWorkerInfo;
+    WorkerInfo _outWorkerInfo;
+
+    DatabaseInfo _databaseInfo;
 
     /// The flag indicating if the initialization phase of the operation
     /// has alreadty completed

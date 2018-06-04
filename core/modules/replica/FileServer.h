@@ -35,6 +35,7 @@
 #include <boost/asio.hpp>
 
 // Qserv headers
+#include "replica/Configuration.h"
 #include "replica/FileServerConnection.h"
 #include "replica/ServiceProvider.h"
 
@@ -43,9 +44,6 @@
 namespace lsst {
 namespace qserv {
 namespace replica {
-
-// Forward declarations
-class WorkerInfo;
 
 /**
   * Class FileServer is used for handling incomming connections to
@@ -124,8 +122,8 @@ private:
     ServiceProvider::Ptr _serviceProvider;
     std::string _workerName;
 
-    /// Cached parameters of the worker
-    WorkerInfo const& _workerInfo;
+    /// Cached worker descriptor obtained from the configuration
+    WorkerInfo _workerInfo;
 
     boost::asio::io_service        _io_service;
     boost::asio::ip::tcp::acceptor _acceptor;

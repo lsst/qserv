@@ -37,6 +37,7 @@
 
 // Qserv headers
 #include "proto/replication.pb.h"
+#include "replica/Configuration.h"
 #include "replica/ProtocolBuffer.h"
 #include "replica/ServiceProvider.h"
 
@@ -47,9 +48,6 @@ namespace proto = lsst::qserv::proto;
 namespace lsst {
 namespace qserv {
 namespace replica {
-
-// Forward declarations
-class WorkerInfo;
 
 /**
   * Class FileServerConnection is used for handling file read requests from
@@ -193,8 +191,8 @@ private:
     ServiceProvider::Ptr _serviceProvider;
     std::string _workerName;
 
-    /// Cached parameters of the worker
-    WorkerInfo const& _workerInfo;
+    /// Cached worker descriptor obtained from the configuration
+    WorkerInfo _workerInfo;
 
     /// A socket for communication with clients
     boost::asio::ip::tcp::socket _socket;
