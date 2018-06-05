@@ -28,9 +28,6 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
-#include "replica/Configuration.h"
-#include "replica/Performance.h"
-#include "util/BlockPost.h"
 
 namespace {
 
@@ -60,7 +57,7 @@ struct JobWrapperImpl
     }
 
     JobWrapperImpl(typename T::Ptr const& job,
-                   typename T::CallbackType  onFinish)
+                   typename T::CallbackType onFinish)
         :   JobWrapper(),
             _job(job),
             _onFinish(onFinish) {
@@ -75,13 +72,23 @@ private:
 
     // The context of the operation
 
-    typename T::Ptr       _job;
+    typename T::Ptr _job;
     typename T::CallbackType _onFinish;
 };
 
 ////////////////////////////////////////////////////////////////////
 //////////////////////////  JobController  //////////////////////////
 ////////////////////////////////////////////////////////////////////
+
+std::string JobController::state2string(State state) {
+    switch (state) {
+        case State::NOT_RUNNING: return "NOT_RUNNING";
+        case State::IS_RUNNING:  return "IS_RUNNING";
+        case State::IS_STOPPING: return "IS_STOPPING";        
+        default:
+            throw std::logic_error("JobController::state2string  incomplete implementation of the method");
+    }
+}
 
 JobController::Ptr JobController::create(ServiceProvider::Ptr const& serviceProvider) {
     return JobController::Ptr(
@@ -91,117 +98,91 @@ JobController::Ptr JobController::create(ServiceProvider::Ptr const& serviceProv
 JobController::JobController(ServiceProvider::Ptr const& serviceProvider)
     :   _serviceProvider(serviceProvider),
         _controller(Controller::create (serviceProvider)),
-        _stop(false) {
+        _state(State::NOT_RUNNING) {
 }
 
-void JobController::run() {
+bool JobController::run() {
 
     LOGS(_log, LOG_LVL_DEBUG, "JobController::run");
 
     util::Lock lock(_mtx, "JobController::run");
 
-    if (not isRunning()) {
+    switch (_state) {
 
-        // Run the controller in its own thread.
+        case State::NOT_RUNNING:
 
-        _controller->run();
+            _controller->run();
 
-        JobController::Ptr self = shared_from_this();
+            _state = State::IS_RUNNING;
+            return true;
 
-        _thread.reset(
-            new std::thread(
-                [self] () {
-
-                    // This will prevent the scheduler from existing unless
-                    // instructed to do so
-
-                    util::BlockPost blockPost(0, 1000); // values of parameters are meaningless
-                                                        // in this context because the object will
-                                                        // be always used to wait for a specific interval
-
-                    unsigned int const wakeUpIvalMillisec =
-                        1000 * self->_serviceProvider->config()->jobSchedulerIvalSec();
-
-                    while (blockPost.wait(wakeUpIvalMillisec)) {
-
-                        // Initiate the stopping sequence if requested
-                        if (self->_stop) {
-
-                            // Cancel all outstanding jobs
-                            self->cancelAll();
-
-                            // Block here waiting before the controller will stop
-                            self->_controller->stop();
-
-                            // Quit the thread
-                            return;
-                        }
-
-                        // Check if there are jobs scheduled to run on the periodic basis
-                        self->runScheduled();
-                    }
-                }
-            )
-        );
+        case State::IS_RUNNING:  return true;
+        case State::IS_STOPPING: return false;
+        
+        default:
+            throw std::logic_error("JobController::run  incomplete implementation of the method");
     }
-}
-
-bool JobController::isRunning() const {
-    return _thread.get() != nullptr;
 }
 
 void JobController::stop() {
 
     LOGS(_log, LOG_LVL_DEBUG, "JobController::stop");
 
-    // IMPORTANT:
-    //
-    //   Never attempt running these operations within util::Lock lock(_mtx)
-    //   due to a possibile deadlock when asynchronous handlers will be
-    //   calling the thread-safe methods. A problem is that until they finish
-    //   in a clean way the thread will never finish, and the application will
-    //   hang on _thread->join().
+    util::Lock lock(_mtx, "JobController::stop");
 
-    // util::Lock lock(_mtx)  (disabled)
+    switch (_state) {
 
-    if (not isRunning()) return;
+        case State::IS_RUNNING:
 
-    // Tell the thread to finish
-    _stop = true;
+            // This should also cancel all outstanding requests
 
-    // Join with the thread before clearning up the pointer
-    _thread->join();
-    _thread.reset(nullptr);
+            _controller->stop();
 
-    _stop = false;
-}
+            // Cancel all registered jobs (if any). The jobs will report their completion by
+            // calling this Controller's method onFinish.
 
-void JobController::join() {
-    LOGS(_log, LOG_LVL_DEBUG, "JobController::join");
-    if (_thread) _thread->join();
+            for (auto&& entry: _registry) {
+                entry.second->job()->cancel();
+            }
+
+            // If the Registry is empty then we are done. Otherwise the final state
+            // transition will happen when the last job will report to this Controller's
+            // method onFinish.
+
+            _state = _registry.empty() ? State::NOT_RUNNING : State::IS_STOPPING;
+            return;
+
+        case State::IS_STOPPING: return;
+        case State::NOT_RUNNING: return;
+        
+        default:
+            throw std::logic_error("JobController::stop  incomplete implementation of the method");
+    }
 }
 
 FindAllJob::Ptr JobController::findAll(std::string const& databaseFamily,
                                        bool saveReplicaInfo,
                                        FindAllJob::CallbackType onFinish,
+                                       std::string const& parentJobId,
                                        Job::Options const& options) {
 
     LOGS(_log, LOG_LVL_DEBUG, "JobController::findAll");
 
     util::Lock lock(_mtx, "JobController::findAll");
 
+    if (State::IS_RUNNING != _state) return nullptr;
+
     auto const self = shared_from_this();
-    auto const job =
-        FindAllJob::create(
-            databaseFamily,
-            saveReplicaInfo,
-            _controller,
-            std::string(),
-            [self] (FindAllJob::Ptr job) {
-                self->onFinish (job);
-            },
-            options
-        );
+    auto const job = FindAllJob::create(
+        databaseFamily,
+        saveReplicaInfo,
+        _controller,
+        parentJobId,
+        [self] (FindAllJob::Ptr job) {
+            self->onFinish(job);
+        },
+        options
+    );
 
     // Register the job (along with its callback) by its unique
     // identifier in the local registry. Once it's complete it'll
@@ -211,10 +192,6 @@ FindAllJob::Ptr JobController::findAll(std::string const& databaseFamily,
         std::make_shared<JobWrapperImpl<FindAllJob>>(job, onFinish);
 
     // Initiate the job
-    //
-    // FIXME: don't start the job right away. Put the request into the priority queue
-    // and call the scheduler's method to evaluate jobs in the queue to
-    // to see which should be started next (if any).
 
     job->start();
 
@@ -223,23 +200,25 @@ FindAllJob::Ptr JobController::findAll(std::string const& databaseFamily,
 
 FixUpJob::Ptr JobController::fixUp(std::string const& databaseFamily,
                                    FixUpJob::CallbackType onFinish,
+                                   std::string const& parentJobId,
                                    Job::Options const& options) {
 
     LOGS(_log, LOG_LVL_DEBUG, "JobController::fixUp");
 
     util::Lock lock(_mtx, "JobController::fixUp");
 
+    if (State::IS_RUNNING != _state) return nullptr;
+
     auto const self = shared_from_this();
-    auto const job =
-        FixUpJob::create(
-            databaseFamily,
-            _controller,
-            std::string(),
-            [self] (FixUpJob::Ptr job) {
-                self->onFinish (job);
-            },
-            options
-        );
+    auto const job = FixUpJob::create(
+        databaseFamily,
+        _controller,
+        parentJobId,
+        [self] (FixUpJob::Ptr job) {
+            self->onFinish(job);
+        },
+        options
+    );
 
     // Register the job (along with its callback) by its unique
     // identifier in the local registry. Once it's complete it'll
@@ -249,10 +228,6 @@ FixUpJob::Ptr JobController::fixUp(std::string const& databaseFamily,
         std::make_shared<JobWrapperImpl<FixUpJob>>(job, onFinish);
 
     // Initiate the job
-    //
-    // FIXME: don't start the job right away. Put the request into the priority queue
-    // and call the scheduler's method to evaluate jobs in the queue to
-    // to see which should be started next (if any).
 
     job->start();
 
@@ -262,24 +237,26 @@ FixUpJob::Ptr JobController::fixUp(std::string const& databaseFamily,
 PurgeJob::Ptr JobController::purge(std::string const& databaseFamily,
                                    unsigned int numReplicas,
                                    PurgeJob::CallbackType onFinish,
+                                   std::string const& parentJobId,
                                    Job::Options const& options) {
 
     LOGS(_log, LOG_LVL_DEBUG, "JobController::purge");
 
     util::Lock lock(_mtx, "JobController::purge");
 
+    if (State::IS_RUNNING != _state) return nullptr;
+
     auto const self = shared_from_this();
-    auto const job =
-        PurgeJob::create(
-            databaseFamily,
-            numReplicas,
-            _controller,
-            std::string(),
-            [self] (PurgeJob::Ptr job) {
-                self->onFinish (job);
-            },
-            options
-        );
+    auto const job = PurgeJob::create(
+        databaseFamily,
+        numReplicas,
+        _controller,
+        parentJobId,
+        [self] (PurgeJob::Ptr job) {
+            self->onFinish(job);
+        },
+        options
+    );
 
     // Register the job (along with its callback) by its unique
     // identifier in the local registry. Once it's complete it'll
@@ -289,10 +266,6 @@ PurgeJob::Ptr JobController::purge(std::string const& databaseFamily,
         std::make_shared<JobWrapperImpl<PurgeJob>>(job, onFinish);
 
     // Initiate the job
-    //
-    // FIXME: don't start the job right away. Put the request into the priority queue
-    // and call the scheduler's method to evaluate jobs in the queue to
-    // to see which should be started next (if any).
 
     job->start();
 
@@ -302,24 +275,26 @@ PurgeJob::Ptr JobController::purge(std::string const& databaseFamily,
 ReplicateJob::Ptr JobController::replicate(std::string const& databaseFamily,
                                            unsigned int numReplicas,
                                            ReplicateJob::CallbackType onFinish,
+                                           std::string const& parentJobId,
                                            Job::Options const& options) {
 
     LOGS(_log, LOG_LVL_DEBUG, "JobController::replicate");
 
     util::Lock lock(_mtx, "JobController::replicate");
 
+    if (State::IS_RUNNING != _state) return nullptr;
+
     auto const self = shared_from_this();
-    auto const job =
-        ReplicateJob::create(
-            databaseFamily,
-            numReplicas,
-            _controller,
-            std::string(),
-            [self] (ReplicateJob::Ptr job) {
-                self->onFinish (job);
-            },
-            options
-        );
+    auto const job = ReplicateJob::create(
+        databaseFamily,
+        numReplicas,
+        _controller,
+        parentJobId,
+        [self] (ReplicateJob::Ptr job) {
+            self->onFinish(job);
+        },
+        options
+    );
 
     // Register the job (along with its callback) by its unique
     // identifier in the local registry. Once it's complete it'll
@@ -329,10 +304,6 @@ ReplicateJob::Ptr JobController::replicate(std::string const& databaseFamily,
         std::make_shared<JobWrapperImpl<ReplicateJob>>(job, onFinish);
 
     // Initiate the job
-    //
-    // FIXME: don't start the job right away. Put the request into the priority queue
-    // and call the scheduler's method to evaluate jobs in the queue to
-    // to see which should be started next (if any).
 
     job->start();
 
@@ -343,25 +314,27 @@ VerifyJob::Ptr JobController::verify(VerifyJob::CallbackType onFinish,
                                      VerifyJob::CallbackTypeOnDiff onReplicaDifference,
                                      size_t maxReplicas,
                                      bool computeCheckSum,
+                                     std::string const& parentJobId,
                                      Job::Options const& options) {
 
     LOGS(_log, LOG_LVL_DEBUG, "JobController::verify");
 
     util::Lock lock(_mtx, "JobController::verify");
 
+    if (State::IS_RUNNING != _state) return nullptr;
+
     auto const self = shared_from_this();
-    auto const job =
-        VerifyJob::create(
-            _controller,
-            std::string(),
-            [self] (VerifyJob::Ptr job) {
-                self->onFinish (job);
-            },
-            onReplicaDifference,
-            maxReplicas,
-            computeCheckSum,
-            options
-        );
+    auto const job = VerifyJob::create(
+        _controller,
+        parentJobId,
+        [self] (VerifyJob::Ptr job) {
+            self->onFinish(job);
+        },
+        onReplicaDifference,
+        maxReplicas,
+        computeCheckSum,
+        options
+    );
 
     // Register the job (along with its callback) by its unique
     // identifier in the local registry. Once it's complete it'll
@@ -371,38 +344,35 @@ VerifyJob::Ptr JobController::verify(VerifyJob::CallbackType onFinish,
         std::make_shared<JobWrapperImpl<VerifyJob>>(job, onFinish);
 
     // Initiate the job
-    //
-    // FIXME: don't start the job right away. Put the request into the priority queue
-    // and call the scheduler's method to evaluate jobs in the queue to
-    // to see which should be started next (if any).
 
     job->start();
 
     return job;
 }
 
-DeleteWorkerJob::Ptr JobController::deleteWorker(
-                                            std::string const& worker,
-                                            bool permanentDelete,
-                                            DeleteWorkerJob::CallbackType onFinish,
-                                            Job::Options const& options) {
+DeleteWorkerJob::Ptr JobController::deleteWorker(std::string const& worker,
+                                                 bool permanentDelete,
+                                                 DeleteWorkerJob::CallbackType onFinish,
+                                                 std::string const& parentJobId,
+                                                 Job::Options const& options) {
 
     LOGS(_log, LOG_LVL_DEBUG, "JobController::deleteWorker");
 
     util::Lock lock(_mtx, "JobController::deleteWorker");
 
+    if (State::IS_RUNNING != _state) return nullptr;
+
     auto const self = shared_from_this();
-    auto const job =
-        DeleteWorkerJob::create(
-            worker,
-            permanentDelete,
-            _controller,
-            std::string(),
-            [self] (DeleteWorkerJob::Ptr job) {
-                self->onFinish (job);
-            },
-            options
-        );
+    auto const job = DeleteWorkerJob::create(
+        worker,
+        permanentDelete,
+        _controller,
+        parentJobId,
+        [self] (DeleteWorkerJob::Ptr job) {
+            self->onFinish(job);
+        },
+        options
+    );
 
     // Register the job (along with its callback) by its unique
     // identifier in the local registry. Once it's complete it'll
@@ -412,92 +382,55 @@ DeleteWorkerJob::Ptr JobController::deleteWorker(
         std::make_shared<JobWrapperImpl<DeleteWorkerJob>>(job, onFinish);
 
     // Initiate the job
-    //
-    // FIXME: don't start the job right away. Put the request into the priority queue
-    // and call the scheduler's method to evaluate jobs in the queue to
-    // to see which should be started next (if any).
 
     job->start();
 
     return job;
 }
 
-void JobController::runQueued() {
-
-    LOGS(_log, LOG_LVL_DEBUG, "JobController::runQueued");
-
-    util::Lock lock(_mtx, "JobController::runQueued");
-
-    if (not isRunning()) return;
-
-    // TODO:
-    // Go through the input queue and evaluate which jobs should star
-    // now based on their scheduling criteria and on the status of
-    // the in-progres jobs (if any).
-    ;
-}
-
-void JobController::runScheduled() {
-
-    LOGS(_log, LOG_LVL_DEBUG, "JobController::runScheduled");
-
-    // Load the scheduled jobs (if any) from the database to see which ones
-    // need to be injected into the input queue.
-    //
-    // NOTE: don't prolifirate the lock's scope to avoid an imminent deadlock
-    //       when calling mehods which are called later.
-    {
-        util::Lock lock(_mtx, "JobController::runScheduled");
-
-        if (not isRunning()) return;
-
-        // TODO:
-        ;
-    }
-
-    // Check the input (new jobs) queue to see if there are any requests
-    // to be run.
-    runQueued();
-}
-
-void JobController::cancelAll() {
-
-    LOGS(_log, LOG_LVL_DEBUG, "JobController::cancelAll");
-
-    util::Lock lock(_mtx, "JobController::cancelAll");
-
-    if (not isRunning()) return;
-
-    // TODO:
-    ;
-}
-
 void JobController::onFinish(Job::Ptr const& job) {
 
     LOGS(_log, LOG_LVL_DEBUG, "JobController::onFinish  jobId=" << job->id());
 
-    JobWrapper::Ptr wrapper;
-    {
-        util::Lock lock(_mtx, "JobController::onFinish");
-        wrapper = _registry[job->id()];
-        _registry.erase(job->id());
+    // Find the job wrapper in case if the job is still registered
 
-        // Move the job from the in-progress queue into the completed one
-        ;
+    JobWrapper::Ptr ptr;
+    {
+        util::Lock lock(_mtx, "JobController::onFinish:1");
+
+        // Remove this job from the registry (if it's still there)
+
+        auto itr = _registry.find(job->id());
+        if (_registry.end() != itr) {
+            ptr = itr->second;
+            _registry.erase(itr);
+        }
     }
 
-    // Check the input (new jobs) queue to see if there are any requests
-    // to be run.
-    runQueued();
-
-    // IMPORTANT: calling the notification from th elock-free zone to
-    // avoid possible deadlocks in case if a client code will try to call
-    // back the Scheduler from the callback function. Another reason of
+    // IMPORTANT: calling the notification from the lock-free zone to
+    // avoid possible deadlocks in case if a client code will try calling
+    // back the Controller from the callback function. Another reason of
     // doing this is to prevent locking the API in case of a prolonged
     // execution of the callback function (which can run an arbitrary code
     // not controlled from this implementation.).
 
-    wrapper->notify();
+    if (ptr != nullptr) ptr->notify();
+
+    // Finish the state transition in case if the Job Controller was being stopped
+    // and this was the last request
+    //
+    // NOTE: the state transition should be happening after sending notifications
+    //       to outstanding jobs to ensure all clients were notified.
+    //       
+    {
+        util::Lock lock(_mtx, "JobController::onFinish:2");
+
+        if (State::IS_STOPPING == _state) {
+            if (_registry.empty()) {
+                _state = State::NOT_RUNNING;
+            }
+        }
+    }
 }
 
 }}} // namespace lsst::qserv::replica
