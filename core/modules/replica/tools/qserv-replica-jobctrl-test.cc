@@ -33,7 +33,7 @@
 #include "proto/replication.pb.h"
 #include "replica/JobController.h"
 #include "replica/ReplicaInfo.h"
-#include "replica/ReplicateJob.h"
+#include "replica/FindAllJob.h"
 #include "replica/ServiceProvider.h"
 #include "util/BlockPost.h"
 #include "util/CmdLineParser.h"
@@ -44,12 +44,12 @@ namespace {
 
 // Command line parameters
 
-std::string  databaseFamily;
-std::string  configUrl;
-unsigned int numReplicas;
-bool         progressReport;
-bool         errorReport;
-bool         chunkLocksReport;
+std::string configUrl;
+std::string databaseFamily;
+bool        saveReplicaInfo = false;
+bool        progressReport;
+bool        errorReport;
+bool        chunkLocksReport;
 
 /// Run the test
 bool test() {
@@ -70,10 +70,10 @@ bool test() {
         // Start replication
 
         std::atomic<bool> finished{false};
-        auto job = jobCtrl->replicate(
+        auto job = jobCtrl->findAll(
             databaseFamily,
-            numReplicas,
-            [&finished] (replica::ReplicateJob::Ptr const& job) {
+            saveReplicaInfo,
+            [&finished] (replica::FindAllJob::Ptr const& job) {
                 finished = true;
             }
         );
@@ -84,11 +84,10 @@ bool test() {
             }
         }
 
-        ///////////////////////////////////////////////////
-        // Shutdown the Scheduler and join with its thread
+        /////////////////////////////////////////
+        // Gracefully shutdown the Job Controller
 
         jobCtrl->stop();
-        jobCtrl->join();
 
     } catch (std::exception const& ex) {
         std::cerr << ex.what() << std::endl;
@@ -112,7 +111,6 @@ int main(int argc, const char* const argv[]) {
             "\n"
             "Usage:\n"
             "  <database-family> [--config=<url>]\n"
-            "                    [--replicas=<number>]\n"
             "                    [--progress-report]\n"
             "                    [--error-report]\n"
             "                    [--chunk-locks-report]\n"
@@ -123,16 +121,12 @@ int main(int argc, const char* const argv[]) {
             "Flags and options:\n"
             "  --config             - a configuration URL (a configuration file or a set of the database\n"
             "                         connection parameters [ DEFAULT: file:replication.cfg ]\n"
-            "  --replicas           - the minimum number of replicas\n"
-            "                         [ DEFAULT: '0' which will tell the application to pull the corresponding\n"
-            "                         parameter from the Configuration]\n"
             "  --progress-report    - the flag triggering progress report when executing batches of requests\n"
             "  --error-report       - the flag triggering detailed report on failed requests\n"
             "  --chunk-locks-report - report chunks which are locked\n");
 
         ::databaseFamily   = parser.parameter<std::string>(1);
         ::configUrl        = parser.option<std::string>("config", "file:replication.cfg");
-        ::numReplicas      = parser.option<unsigned int>("replicas", 0);
         ::progressReport   = parser.flag("progress-report");
         ::errorReport      = parser.flag("error-report");
         ::chunkLocksReport = parser.flag("chunk-locks-report");

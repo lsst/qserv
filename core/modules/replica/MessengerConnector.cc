@@ -84,29 +84,50 @@ void MessengerConnector::stop() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "stop");
 
-    util::Lock lock(_mtx, context() + "stop");
+    std::list<MessageWrapperBase::Ptr> requests2notify;
+    {
+        util::Lock lock(_mtx, context() + "stop");
+    
+        // Cancel any asynchronous operation(s) if not in the initial state
+    
+        switch (_state) {
+    
+            case STATE_INITIAL:
+                break;
+    
+            case STATE_CONNECTING:
+            case STATE_COMMUNICATING:
+    
+                _state = STATE_INITIAL;
+    
+                _resolver.cancel();
+                _socket.cancel();
+                _socket.close();
+                _timer.cancel();
+    
+                // Make sure the current request's owner gets notified
+    
+                if (_currentRequest != nullptr) {
+                    requests2notify.push_back(_currentRequest);
+                    _currentRequest = nullptr;
+                }
 
-    // Cancel any asynchronous operation(s) if not in the initial state
-
-    switch (_state) {
-
-        case STATE_INITIAL:
-            break;
-
-        case STATE_CONNECTING:
-        case STATE_COMMUNICATING:
-            _resolver.cancel();
-            _socket.cancel();
-            _socket.close();
-            _timer.cancel();
-
-            _state = STATE_INITIAL;
-            break;
-
-        default:
-            throw std::logic_error(
-                "incomplete implementation of method MessengerConnector::stop");
+                // Also cancel the queued requests and notify their owners
+                
+                for (auto&& ptr: _requests) requests2notify.push_back(ptr);
+                _requests.clear();
+    
+                break;
+    
+            default:
+                throw std::logic_error(
+                    "incomplete implementation of method MessengerConnector::stop");
+        }
     }
+
+    // Sending notifications (if requsted) outsize the lock guard to avoid deadlocks.
+
+    for (auto&& ptr: requests2notify) ptr->parseAndNotify();
 }
 
 void MessengerConnector::cancel(std::string const& id) {

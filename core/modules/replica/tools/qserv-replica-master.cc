@@ -201,11 +201,10 @@ bool run() {
             }
         }
 
-        ///////////////////////////////////////////////////
-        // Shutdown the controller and join with its thread
+        /////////////////////////////////////////
+        // Gracefully shutdown the Job Controller
 
         jobCtrl->stop();
-        jobCtrl->join();
 
     } catch (std::exception const& ex) {
         std::cerr << ex.what() << std::endl;

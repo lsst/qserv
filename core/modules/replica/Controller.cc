@@ -304,7 +304,7 @@ void Controller::stop() {
     // These steps will cancel all oustanding requests
     _messenger->stop();
 
-    // Destoring this object will let the I/O service to (eventually) finish
+    // Destroying this object will let the I/O service to (eventually) finish
     // all on-going work and shut down all Controller's threads. In that case there
     // is no need to stop the service explicitly (which is not a good idea anyway
     // because there may be outstanding synchronous requests, in which case the service
