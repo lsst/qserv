@@ -81,25 +81,25 @@ bool run() {
                 replica::ReplicaDiff const& selfReplicaDiff,
                 std::vector<replica::ReplicaDiff> const& otherReplicaDiff) {
 
-                replica::ReplicaInfo const& r1 = selfReplicaDiff.replica1();
-                replica::ReplicaInfo const& r2 = selfReplicaDiff.replica2();
-                std::cout
-                    << "Compared with OWN previous state  "
-                    << " " << std::setw(20) << r1.database() << " " << std::setw(12) << r1.chunk()
-                    << " " << std::setw(20) << r1.worker()   << " " << std::setw(20) << r2.worker() << " "
-                    << " " << selfReplicaDiff.flags2string()
-                    << std::endl;
-
-                for (auto const& diff: otherReplicaDiff) {
-                    replica::ReplicaInfo const& r1 = diff.replica1();
-                    replica::ReplicaInfo const& r2 = diff.replica2();
+                    replica::ReplicaInfo const& r1 = selfReplicaDiff.replica1();
+                    replica::ReplicaInfo const& r2 = selfReplicaDiff.replica2();
                     std::cout
-                        << "Compared with OTHER replica state "
+                        << "Compared with OWN previous state  "
                         << " " << std::setw(20) << r1.database() << " " << std::setw(12) << r1.chunk()
                         << " " << std::setw(20) << r1.worker()   << " " << std::setw(20) << r2.worker() << " "
-                        << " " << diff.flags2string()
+                        << " " << selfReplicaDiff.flags2string()
                         << std::endl;
-                }
+    
+                    for (auto const& diff: otherReplicaDiff) {
+                        replica::ReplicaInfo const& r1 = diff.replica1();
+                        replica::ReplicaInfo const& r2 = diff.replica2();
+                        std::cout
+                            << "Compared with OTHER replica state "
+                            << " " << std::setw(20) << r1.database() << " " << std::setw(12) << r1.chunk()
+                            << " " << std::setw(20) << r1.worker()   << " " << std::setw(20) << r2.worker() << " "
+                            << " " << diff.flags2string()
+                            << std::endl;
+                    }
             },
             maxReplicas,
             computeCheckSum

@@ -90,7 +90,7 @@ void dump(replica::FindAllJobResult const& replicaData) {
  *   '-' - the default character
  *   'R' - the worker is known to the replication system only
  *   'Q' - the worker is known to Qserv only
- *   'B' - th eworker is known to both the Replication system and Qserv
+ *   'B' - the worker is known to both the Replication system and Qserv
  *
  * @param worker2idx - index map for workers (worker name to its 0-basd index)
  * @param workers    - collection of worker names participating in the operation
@@ -122,10 +122,10 @@ bool test() {
 
     try {
 
-        ///////////////////////////////////////////////////////////////////////
-        // Start the controller in its own thread before injecting any requests
-        // Note that omFinish callbak which are activated upon a completion
-        // of the requsts will be run in that Controller's thread.
+        ////////////////////////////////////////////////////////////////////////////
+        // Start the controller in its own thread pool before injecting any requests
+        // Note that onFinish callbacks which are activated upon the completion of
+        // the requsets will be run in one of the threads of the Controller's pool.
 
         replica::ServiceProvider::Ptr const provider   = replica::ServiceProvider::create(configUrl);
         replica::Controller::Ptr      const controller = replica::Controller::create(provider);

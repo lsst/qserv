@@ -359,8 +359,8 @@ void PurgeJob::onPrecursorJobFinish() {
                 break;
             }
 
-            // Remove the selct worker from the list, so that the next iteration (if the one
-            // will happen) will be not considering this worker fro deletion.
+            // Remove the select worker from the list, so that the next iteration (if the one
+            // will happen) will be not considering this worker for deletion.
 
             goodWorkersOfThisChunk.remove(targetWorker);
 

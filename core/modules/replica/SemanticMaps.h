@@ -46,23 +46,58 @@ namespace replica {
 namespace detail {
 
 /**
-  * Class template Map is a base class for type-specif collections.
+  * Class template SemanticMap is a base class for type-specif collections.
   * This class template has two parameters:
   *   K - the key type (name or a numeric identifier)
   *   V - the value type
   */
 template <typename K, typename V>
-class Map {
+class SemanticMap {
 
 public:
 
-    virtual ~Map() = default;
+    virtual ~SemanticMap() = default;
 
     /// @return number of elements in the collection
     size_t size() const { return _coll.size(); }
 
     /// @return 'true' if the collection is empty
     bool empty() const { return _coll.empty(); }
+
+    /// Clear the collection
+    void clear() { _coll.clear(); }
+
+    /**
+     * Merge the content of another collection of the same type
+     *
+     * @param coll - collection whose content is to be merged
+     * @param ignoreDuplicateKeys - ignore duplicate keys if 'true'
+     *
+     * @throws std::invalid_argument - on atempts to merge a collection with itself
+     * @throws std::range_error - on duplicate keys if ignoreDuplicateKeys is 'false'
+     */
+    void merge(SemanticMap<K,V> const& coll, bool ignoreDuplicateKeys = false) {
+
+        if (this == &coll) {
+            throw std::invalid_argument("attempted to merge the collection with itself");
+        }
+        for (auto&& entry: coll._coll) {
+            K const& k = entry.first;
+            V const& v = entry.second;
+            if ((not ignoreDuplicateKeys) and exists(k)) {
+                throw std::range_error("key already exists: " + std::to_string(k));
+            }
+            insert(k, v);
+        }
+    }
+
+protected:
+
+    // The constructors and the copy operator assume copy by value
+
+    SemanticMap() = default;
+    SemanticMap(SemanticMap const&) = default;
+    SemanticMap& operator=(SemanticMap const&) = default;
 
     /// @return 'true' if such exists in the collection
     bool exists(K const& k) const { return _coll.count(k); }
@@ -94,40 +129,10 @@ public:
     }
 
     /**
-     * Merge the content of another collection of the same type
-     *
-     * @param coll - collection whose content is to be merged
-     * @param ignoreDuplicateKeys - ignore duplicate keys if 'true'
-     *
-     * @throws std::invalid_argument - on atempts to merge a collection with itself
-     * @throws std::range_error - on duplicate keys if ignoreDuplicateKeys is 'false'
-     */
-    void merge(Map<K,V> const& coll, bool ignoreDuplicateKeys = false) {
-
-        if (this == &coll) {
-            throw std::invalid_argument("attempted to merge the collection with itself");
-        }
-        for (auto&& entry: coll._coll) {
-            K const& k = entry.first;
-            V const& v = entry.second;
-            if ((not ignoreDuplicateKeys) and exists(k)) {
-                throw std::range_error("key already exists: " + std::to_string(k));
-            }
-            insert(k, v);
-        }
-    }
-
-    /**
      * @param k - object's key
      * @return read-only reference to an object for a key
      */
     V const& get(K const& k) const { return _coll.at(k); }
-
-    /**
-     * @param k - object's key
-     * @return writeable reference to an object for a key
-     */
-    V& get(K const& k) { return _coll[k]; }
 
     /// @return collection object keys
     std::vector<K> keys() const {
@@ -138,14 +143,6 @@ public:
         }
         return result;
     }
-
-protected:
-
-    // The constructors and the copy operator assume copy by value
-
-    Map() = default;
-    Map(Map const&) = default;
-    Map& operator=(Map const&) = default;
 
 private:
     std::map<K, V> _coll;
@@ -159,7 +156,7 @@ private:
   */
 template <typename V>
 class WorkerMap
-    :   public Map<std::string,V> {
+    :   public SemanticMap<std::string,V> {
 
 public:
 
@@ -167,7 +164,7 @@ public:
     using KeyType = std::string;
 
     /// The base map type
-    using MapType = Map<KeyType,V>;
+    using MapType = SemanticMap<KeyType,V>;
 
     // The constructors and the copy operator assume copy by value
 
@@ -207,14 +204,9 @@ public:
     /**
      * @param k - object's key
      * @return read-only reference to a worker object for a key
+     * @throws std::out_of_range if no such key is found in the collection
      */
     V const& worker(KeyType const& k) const { return MapType::get(k); }
-
-    /**
-     * @param k - object's key
-     * @return writeable reference to a worker object for a key
-     */
-    V& worker(KeyType const& k) { return MapType::get(k); }
 
     /// @return collection of worker names
     std::vector<KeyType> workerNames() const { return MapType::keys(); }
@@ -228,7 +220,7 @@ public:
   */
 template <typename V>
 class DatabaseMap
-    :   public Map<std::string,V> {
+    :   public SemanticMap<std::string,V> {
 
 public:
 
@@ -236,7 +228,7 @@ public:
     using KeyType = std::string;
 
     /// The base map type
-    using MapType = Map<KeyType,V>;
+    using MapType = SemanticMap<KeyType,V>;
 
     // The constructors and the copy operator assume copy by value
 
@@ -276,14 +268,9 @@ public:
     /**
      * @param k - object's key
      * @return read-only refeence to a database object for a key
+     * @throws std::out_of_range if no such key is found in the collection
      */
     V const& database(KeyType const& k) const { return MapType::get(k); }
-
-    /**
-     * @param k - object's key
-     * @return writeable refeence to a database object for a key
-     */
-    V& database(KeyType const& k) { return MapType::get(k); }
 
     /// @return collection of database names
     std::vector<KeyType> databaseNames() const { return MapType::keys(); }
@@ -297,7 +284,7 @@ public:
   */
 template <typename V>
 class ChunkMap
-    :   public Map<unsigned int,V> {
+    :   public SemanticMap<unsigned int,V> {
 
 public:
 
@@ -305,7 +292,7 @@ public:
     using KeyType = unsigned int;
 
     /// The base map type
-    using MapType = Map<KeyType,V>;
+    using MapType = SemanticMap<KeyType,V>;
 
     // The constructors and the copy operator assume copy by value
 
@@ -347,12 +334,6 @@ public:
      * @return read-only reference to a chunk object for a key
      */
     V const& chunk(KeyType const& k) const { return MapType::get(k); }
-
-    /**
-     * @param k - object's key
-     * @return writeable reference to a chunk object for a key
-     */
-    V& chunk(KeyType const& k) { return MapType::get(k); }
 
     /// @return collection of chunk numbers
     std::vector<KeyType> chunkNumbers() const { return MapType::keys(); }
