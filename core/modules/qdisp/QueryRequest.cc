@@ -95,7 +95,6 @@ public:
         // Wait for XrdSsi to call ProcessResponseData with the data,
         // which will notify this wait with a call to receivedProcessResponseDataParameters.
         {
-            util::InstanceCount _ic{"2-act-AskForResponseDataCmd"};
             std::unique_lock<std::mutex> uLock(_mtx);
             // TODO: make timed wait, check for wedged, if weak pointers dead, log and give up.
             _cv.wait(uLock, [this](){ return _state != State::STARTED0; });
@@ -174,7 +173,7 @@ private:
 
     int _blen{-1};
     bool _last{true};
-    util::InstanceCount _ic{"AskForResponseDataCmd"};
+    // util::InstanceCount _ic{"AskForResponseDataCmd"}; &&&
 };
 
 
