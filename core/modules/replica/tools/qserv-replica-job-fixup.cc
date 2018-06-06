@@ -97,7 +97,8 @@ bool test() {
             << "\n"
             << "WORKERS:";
         for (auto const& worker: provider->config()->workers()) {
-            std::cout << " " << worker;
+            std::cout
+                << " " << worker;
         }
         std::cout
             << std::endl;
@@ -163,7 +164,8 @@ bool test() {
 
                     std::cout << worker << (info.status() != replica::ReplicaInfo::Status::COMPLETE ? "(!)" : "") << " ";
                 }
-                std::cout << "\n";
+                std::cout
+                    << "\n";
             }
         }
         std::cout

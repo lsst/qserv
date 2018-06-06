@@ -43,13 +43,6 @@
 namespace test = boost::test_tools;
 using namespace lsst::qserv::replica;
 
-namespace {
-    
-/// One more policy for policy equality tests
-
-}
-
-
 BOOST_AUTO_TEST_SUITE(Suite)
 
 BOOST_AUTO_TEST_CASE(ChunkNumberTest) {

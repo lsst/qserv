@@ -181,7 +181,7 @@ public:
      *
      * @return the data structure to be filled upon the completin of the job.
      *
-     * @throws std::logic_error - if the job dodn't finished at a time
+     * @throws std::logic_error - if the job isn't finished at the time
      *                            when the method was called
      */
     FindAllJobResult const& getReplicaData() const;
