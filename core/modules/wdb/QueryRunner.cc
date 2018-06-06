@@ -126,6 +126,18 @@ void QueryRunner::_setDb() {
     }
 }
 
+
+std::mutex totalMemWaitMtx;
+double totalMemWaitTime(0);
+double memWaitCallCount(0);
+std::atomic<uint64_t> lessThan1(0);
+std::atomic<uint64_t> lessThan5(0);
+std::atomic<uint64_t> lessThan10(0);
+std::atomic<uint64_t> lessThan20(0);
+std::atomic<uint64_t> lessThan40(0);
+std::atomic<uint64_t> over40(0);
+
+
 bool QueryRunner::runQuery() {
     LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " QueryRunner::runQuery()");
     // Make certain our Task knows that this object is no longer in use when this function exits.
@@ -145,7 +157,39 @@ bool QueryRunner::runQuery() {
     }
 
     // Wait for memman to finish reserving resources. This can take several seconds.
+    util::Timer memTimer;
+    memTimer.start();
     _task->waitForMemMan();
+    memTimer.stop();
+    double mElapsed = 0;
+    double avgWait = 0;
+    {
+        std::lock_guard<std::mutex> lckt(totalMemWaitMtx);
+        mElapsed = memTimer.getElapsed();
+        totalMemWaitTime += mElapsed;
+        ++memWaitCallCount;
+        avgWait = totalMemWaitTime/memWaitCallCount;
+    }
+    if (mElapsed < 1.0) {
+        ++lessThan1;
+    } else if (mElapsed < 5.0) {
+        ++lessThan5;
+    } else if (mElapsed < 10.0) {
+        ++lessThan10;
+    } else if (mElapsed < 20.0) {
+        ++lessThan20;
+    } else if (mElapsed < 40.0) {
+        ++lessThan40;
+    } else {
+        ++over40;
+    }
+    LOGS(_log, LOG_LVL_INFO, "&&& memWait=" << mElapsed << " avg=" << avgWait <<
+            " <1=" << lessThan1 <<
+            " <5=" << lessThan5 <<
+            " <10=" << lessThan10 <<
+            " <20=" << lessThan20 <<
+            " <40=" << lessThan40 <<
+            " >40=" << over40);
 
     if (_task->getCancelled()) {
         LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " runQuery, task was cancelled after locking tables.");
