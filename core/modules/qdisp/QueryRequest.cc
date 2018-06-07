@@ -52,6 +52,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.QueryRequest");
 }
 
+
 namespace lsst {
 namespace qserv {
 namespace qdisp {
@@ -286,6 +287,32 @@ bool QueryRequest::_importStream(JobQuery::Ptr const& jq) {
     }
     _askForResponseDataCmd = std::make_shared<AskForResponseDataCmd>(shared_from_this(), jq);
     _queueAskForResponse(_askForResponseDataCmd, jq);
+/* &&&
+    util::Timer tWaiting; // &&&
+    util::Timer tTotal; // &&&
+    {
+        tTotal.start();
+        //auto qr = _qRequest.lock();
+        if (jq == nullptr) {
+            LOGS(_log, LOG_LVL_WARN, _idStr << " AskForResp null before GetResponseData");
+            // No way to call _errorFinish().
+            _setState(State::DONE2);
+            return;
+        }
+
+        if (isQueryCancelled()) {
+            LOGS(_log, LOG_LVL_DEBUG, _idStr << " AskForResp query was cancelled");
+            _errorFinish(true);
+            _setState(State::DONE2);
+            return;
+        }
+        std::vector<char>& buffer = jq->getDescription()->respHandler()->nextBuffer();
+        LOGS(_log, LOG_LVL_DEBUG, _idStr << " AskForResp GetResponseData size=" << buffer.size());
+        tWaiting.start();
+        GetResponseData(&buffer[0], buffer.size());
+    }
+*/
+
     return true;
 }
 

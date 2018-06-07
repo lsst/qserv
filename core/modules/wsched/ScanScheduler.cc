@@ -163,7 +163,7 @@ bool ScanScheduler::_ready() {
     bool useFlexibleLock = (_inFlight < 1);
     auto rdy = _taskQueue->ready(useFlexibleLock); // Only returns true if MemMan grants resources.
     bool logMemStats = false;
-    // If ready failed, holding onto this is unlikely to help, otherwise the new Task now has its own handle.
+    // If ready failed, holding on to this is unlikely to help, otherwise the new Task now has its own handle.
     if (_memManHandleToUnlock != memman::MemMan::HandleType::INVALID) {
         LOGS(_log, LOG_LVL_DEBUG, "ScanScheduler::_ready unlocking handle=" << _memManHandleToUnlock);
         _memMan->unlock(_memManHandleToUnlock);
