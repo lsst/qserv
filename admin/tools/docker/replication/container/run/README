@@ -1,0 +1,44 @@
+# file: README
+#
+#   This folder containes instructions and tools for building a runnable container
+#   packed with the Replication System's binaries and their dependant libraries
+#
+#   NOTES: instructions below assume the following name of the container:
+#          'qserv/replica:tools'
+#          This can be changed to any other name as required
+
+# Go into a development folder where you normally build Qserv (by running
+# the scons tool)
+
+cd /home/user/development/qserv
+
+# Use the previously built development container to collect binaries along
+# with their library dependencies at the temporary container build area
+
+docker run \
+    --rm \
+    -u "$(id -u):$(id -g)" \
+    -e "SOURCE=${PWD}" \
+    -v /etc/passwd:/etc/passwd:ro \
+    -v /etc/group:/etc/group:ro \
+    -v $PWD:$PWD \
+    qserv/replica:dev \
+    bash -c '$SOURCE/admin/tools/docker/replication/container/run/collect.bash $SOURCE'
+
+# Build the runnable container from the previously prepared area
+
+docker build -t qserv/replica:tools tmp/replication/container/build
+
+# (optional) run a few tests to inspect if container content is well formed
+# and applications' dependencies are satisfied.
+
+docker run --rm qserv/replica:tools ls -al /qserv/lib
+docker run --rm qserv/replica:tools ls -al /qserv/bin
+docker run --rm qserv/replica:tools ldd /qserv/bin/qserv-replica-job-chunks
+docker run --rm qserv/replica:tools /qserv/bin/qserv-replica-job-chunks
+
+
+# And, finally - publush the container (provided a proper login into DockerHub was
+# made earlier)
+
+docker push qserv/replica:tools
