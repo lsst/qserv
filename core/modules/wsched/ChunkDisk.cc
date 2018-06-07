@@ -166,7 +166,7 @@ bool ChunkDisk::_ready(bool useFlexibleLock) {
         memman::TableInfo::LockType lckOptTbl = memman::TableInfo::LockType::REQUIRED;
         memman::TableInfo::LockType lckOptIdx = memman::TableInfo::LockType::NOLOCK;
         if (useFlexibleLock) lckOptTbl = memman::TableInfo::LockType::FLEXIBLE;
-        auto scanInfo = task-> getScanInfo();
+        auto scanInfo = task->getScanInfo();
         auto chunkId = task->getChunkId();
         std::vector<memman::TableInfo> tblVect;
         for (auto const& tbl : scanInfo.infoTables) {
