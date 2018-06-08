@@ -1,37 +1,44 @@
 # file: README
 #
-#   This folder containes Dockerfile for building a development container for
-#   the Replication system
+#   This folder containes instructions and the Dockerfile for building
+#   a development container for the Replication system
 
 # These are the optional building steps (in case if this container needs to
-# be rebuild from scratch (which is going to take ~2 hours or longer)
+# be rebuilt from scratch (which is going to take ~2 hours or longer)
 
 docker build -t qserv/replica:dev .
 docker push qserv/replica:dev
 
 # Alternatively one can pull an existing container from DockerHub (provided
-# a proper login into the hum has been made)
+# a proper login into the hub was made earlier)
 
 docker pull qserv/replica:dev
 
-# This is an example how to use the container to build qserv from the source code
-# at a user's folder (at a host machine):
+# This is an example of how to use the container to build qserv from the source code.
+# The '-v $PWD:$PWD' mounts the  hosts's folder inside the container. This folder
+# is writeable.
 
 cd /home/user/qserv
 
-docker run -it \
+docker run \
+    --rm \
+    -it \
     -u "$(id -u):$(id -g)" \
     -v /etc/passwd:/etc/passwd:ro \
     -v /etc/group:/etc/group:ro \
-    -v $PWD:$PWD qserv/replica:dev bash
+    -v $PWD:$PWD \
+    -e "SOURCE=${PWD}" \
+    qserv/replica:dev bash
 
 # Once logged into the runing container do:
 #
 # NOTE: you may also check if your account (as mapped above) has required
 #       privileges to your home folder.
 
-cd /home/user/qserv
 source /stack/loadLSST.bash
-setup -t qserv-dev -r .
-scons -j4
+setup -t qserv-dev qserv_distrib
+
+cd $SOURCE
+setup -r .
+scons -j4 install
 

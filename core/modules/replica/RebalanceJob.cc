@@ -30,6 +30,7 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
+#include "replica/Common.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/ErrorReporting.h"
 #include "replica/ServiceProvider.h"
@@ -271,6 +272,12 @@ void RebalanceJob::onPrecursorJobFinish() {
         }
     }
     for (auto&& chunkEntry: replicaData.isGood) {
+
+        unsigned int const chunk = chunkEntry.first;
+
+        // skip the special chunk which must be present on all workers
+        if (chunk == replica::overflowChunkNumber) continue;
+
         for (auto&& workerEntry: chunkEntry.second) {
             bool const  isGood = workerEntry.second;
             if (isGood) {
@@ -318,6 +325,10 @@ void RebalanceJob::onPrecursorJobFinish() {
         }
     }
     for (auto chunk: replicaData.chunks.chunkNumbers()) {
+
+        // skip the special chunk which must be present on all workers
+        if (chunk == replica::overflowChunkNumber) continue;
+
         auto chunkMap = replicaData.chunks.chunk(chunk);
 
         for (auto&& database: chunkMap.databaseNames()) {
@@ -348,7 +359,12 @@ void RebalanceJob::onPrecursorJobFinish() {
         }
     }
     for (auto&& chunkEntry: replicaData.isGood) {
+
         unsigned int const chunk = chunkEntry.first;
+
+        // skip the special chunk which must be present on all workers
+        if (chunk == replica::overflowChunkNumber) continue;
+
         for (auto&& workerEntry: chunkEntry.second) {
             std::string const& worker = workerEntry.first;
             bool        const  isGood = workerEntry.second;
