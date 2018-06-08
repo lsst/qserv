@@ -319,6 +319,16 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, si
     return true;
 }
 
+
+std::atomic<uint64_t> tLessTenth{0};
+std::atomic<uint64_t> tLess1{0};
+std::atomic<uint64_t> tLess5{0};
+std::atomic<uint64_t> tLess10{0};
+std::atomic<uint64_t> tLess20{0};
+std::atomic<uint64_t> tLess40{0};
+std::atomic<uint64_t> tMore40{0};
+
+
 /// Transmit result data with its header.
 /// If 'last' is true, this is the last message in the result set
 /// and flags are set accordingly.
@@ -362,13 +372,39 @@ void QueryRunner::_transmit(bool last, uint rowCount, size_t tSize) {
             t.start();
             streamBuf->waitForDoneWithThis(); // block until this buffer has been sent. &&&
             t.stop();
-            LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " &&& transmit waited for " << t.getElapsed());
+            double elapsed = t.getElapsed();
+            if (elapsed < 0.1) { ++tLessTenth; }
+            else if (elapsed < 1.0) { ++tLess1; }
+            else if (elapsed < 5.0) { ++tLess5; }
+            else if (elapsed < 10.0) { ++tLess10; }
+            else if (elapsed < 20.0) { ++tLess20; }
+            else if (elapsed < 40.0) { ++tLess40; }
+            else { ++tMore40; }
+
+            LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " &&& transmit waited for " << t.getElapsed() <<
+                    " <0.1=" << tLessTenth <<
+                    " <1=" << tLess1 <<
+                    " <5=" << tLess5 <<
+                    " <10=" << tLess10 <<
+                    " <20=" << tLess20 <<
+                    " <40=" << tLess40 <<
+                    " >40=" << tMore40 );
         }
     } else {
         LOGS(_log, LOG_LVL_DEBUG, "_transmit cancelled");
     }
     _largeResult = true; // Transmits after the first are considered large results.
 }
+
+
+std::atomic<uint64_t> thLessTenth{0};
+std::atomic<uint64_t> thLess1{0};
+std::atomic<uint64_t> thLess5{0};
+std::atomic<uint64_t> thLess10{0};
+std::atomic<uint64_t> thLess20{0};
+std::atomic<uint64_t> thLess40{0};
+std::atomic<uint64_t> thMore40{0};
+
 
 /// Transmit the protoHeader
 void QueryRunner::_transmitHeader(std::string& msg) {
@@ -397,7 +433,23 @@ void QueryRunner::_transmitHeader(std::string& msg) {
         t.start();
         streamBuf->waitForDoneWithThis(); // block until this buffer has been sent. &&&
         t.stop();
-        LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " h&&& transmit waited for " << t.getElapsed());
+        double elapsed = t.getElapsed();
+        if (elapsed < 0.1) { ++thLessTenth; }
+        else if (elapsed < 1.0) { ++thLess1; }
+        else if (elapsed < 5.0) { ++thLess5; }
+        else if (elapsed < 10.0) { ++thLess10; }
+        else if (elapsed < 20.0) { ++thLess20; }
+        else if (elapsed < 40.0) { ++thLess40; }
+        else { ++thMore40; }
+
+        LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " h&&& transmit waited for " << t.getElapsed() <<
+                " <0.1=" << thLessTenth <<
+                " <1=" << thLess1 <<
+                " <5=" << thLess5 <<
+                " <10=" << thLess10 <<
+                " <20=" << thLess20 <<
+                " <40=" << thLess40 <<
+                " >40=" << thMore40 );
     } else {
         LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " _transmitHeader cancelled");
     }
