@@ -711,8 +711,10 @@ bool DatabaseServicesMySQL::findWorkerReplicasImpl(util::Lock const& lock,
     if (not _configuration->isKnownWorker(worker)) {
         throw std::invalid_argument(context + "unknow worker");
     }
-    if (not _configuration->isKnownDatabase(database)) {
-        throw std::invalid_argument(context + "unknow database");
+    if (not database.empty()) {
+        if (not _configuration->isKnownDatabase(database)) {
+            throw std::invalid_argument(context + "unknow database");
+        }
     }
     if (not findReplicasImpl(
                 lock,

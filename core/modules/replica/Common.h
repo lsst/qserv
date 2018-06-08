@@ -40,6 +40,11 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
+// Constants
+
+/// The number of the 'overflow' chunks
+unsigned int const overflowChunkNumber = 1234567890;
+
 /// Extended completion status of the worker side file operations
 enum ExtendedCompletionStatus {
     EXT_STATUS_NONE,            // unspecified problem

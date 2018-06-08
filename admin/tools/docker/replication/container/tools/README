@@ -3,9 +3,9 @@
 #   This folder containes instructions and tools for building a runnable container
 #   packed with the Replication System's binaries and their dependant libraries
 #
-#   NOTES: instructions below assume the following name of the container:
-#          'qserv/replica:tools'
-#          This can be changed to any other name as required
+#   NOTES: these instructions assumei you're building a container under
+#          the following name: 'qserv/replica:tools'
+#          This name can be obviously changed to some other name as needed
 
 # Go into a development folder where you normally build Qserv (by running
 # the scons tool)
@@ -23,7 +23,7 @@ docker run \
     -v /etc/group:/etc/group:ro \
     -v $PWD:$PWD \
     qserv/replica:dev \
-    bash -c '$SOURCE/admin/tools/docker/replication/container/run/collect.bash $SOURCE'
+    bash -c '$SOURCE/admin/tools/docker/replication/container/tools/collect.bash $SOURCE'
 
 # Build the runnable container from the previously prepared area
 

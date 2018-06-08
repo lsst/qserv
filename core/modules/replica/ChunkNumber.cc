@@ -29,6 +29,7 @@
 #include <iostream>
 
 // Qserv headers
+#include "replica/Common.h"
 
 namespace lsst {
 namespace qserv {
@@ -52,7 +53,7 @@ bool ChunkNumberValidator::overflow(unsigned int value) const {
 }
 
 unsigned int ChunkNumberValidator::overflowValue() const {
-    return 1234567890UL;
+    return replica::overflowChunkNumber;
 }
 
 // -----------------------------------------------------------------------

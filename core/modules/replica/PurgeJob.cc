@@ -30,6 +30,7 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
+#include "replica/Common.h"
 #include "replica/Configuration.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/ErrorReporting.h"
@@ -255,7 +256,7 @@ void PurgeJob::onPrecursorJobFinish() {
         auto         const& replicas = chunk2workers.second;
 
         // skip the special chunk which must be present on all workers
-        if (chunk == 1234567890) continue;
+        if (chunk == replica::overflowChunkNumber) continue;
 
         size_t const numReplicasFound = replicas.size();
         if (numReplicasFound > numReplicas()) {
