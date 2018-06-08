@@ -355,14 +355,14 @@ void QueryRunner::_transmit(bool last, uint rowCount, size_t tSize) {
         }
         // Block on the buffer actually being sent if 10GB are already waiting or this is a largeResult.
         auto totalBytes = xrdsvc::StreamBuffer::getTotalBytes();
-        if (_largeResult || totalBytes > 10000000000) {  // TODO:DM-10273 add to configuration
+        if (true || _largeResult || totalBytes > 10000000000) {  // TODO:DM-10273 add to configuration &&&
             LOGS(_log, LOG_LVL_INFO, _task->getIdStr() << " waiting for buffer largeResult=" << _largeResult
                                       << " totalBytes=" << totalBytes);
             util::Timer t;
             t.start();
-            //streamBuf->waitForDoneWithThis(); // block until this buffer has been sent. &&&
+            streamBuf->waitForDoneWithThis(); // block until this buffer has been sent. &&&
             t.stop();
-            LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " waited for " << t.getElapsed());
+            LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " &&& transmit waited for " << t.getElapsed());
         }
     } else {
         LOGS(_log, LOG_LVL_DEBUG, "_transmit cancelled");
@@ -392,7 +392,12 @@ void QueryRunner::_transmitHeader(std::string& msg) {
         if (!sent) {
             LOGS(_log, LOG_LVL_ERROR, _task->getIdStr() << " Failed to transmit header!");
         }
-        // intentionally not waiting for streamBuf to finish, as this message is tiny.
+        // intentionally not waiting for streamBuf to finish, as this message is tiny. &&&
+        util::Timer t;
+        t.start();
+        streamBuf->waitForDoneWithThis(); // block until this buffer has been sent. &&&
+        t.stop();
+        LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " h&&& transmit waited for " << t.getElapsed());
     } else {
         LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " _transmitHeader cancelled");
     }
