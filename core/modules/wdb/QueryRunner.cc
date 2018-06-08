@@ -482,9 +482,28 @@ bool QueryRunner::_dispatchChannel() {
             }
             ChunkResource cr(req.getResourceFragment(i));
             // Use query fragment as-is, funnel results.
+/* &&& <<<<<<< 0c9716109cafcde0be31e425c606afb704ab0c90
             for (auto const& query : queries) {
                 LOGS(_log, LOG_LVL_DEBUG, "running fragment=" << query);
                 MYSQL_RES* res = _primeResult(query); // This runs the SQL query.
+=======
+            for(int qi=0, qe=fragment.query_size(); qi != qe; ++qi) {
+                LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " running fragment=" << fragment.query(qi));
+                util::Timer sqlTimer; // &&&
+                sqlTimer.start();
+                MYSQL_RES* res = _primeResult(fragment.query(qi)); // This runs the SQL query.
+                sqlTimer.stop();
+                LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " &&& running fragment timer=" << sqlTimer.getElapsed());
+>>>>>>> Added timer to running sql fragment.
+*/
+            for(iauto const& query : queries) {
+                LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " running fragment=" << query);
+                util::Timer sqlTimer; // &&&
+                sqlTimer.start();
+                MYSQL_RES* res = _primeResult(query); // This runs the SQL query.
+                sqlTimer.stop();
+                LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " &&& running fragment timer=" << sqlTimer.getElapsed());
+
                 if (!res) {
                     erred = true;
                     continue;
