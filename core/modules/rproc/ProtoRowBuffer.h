@@ -75,8 +75,20 @@ public:
               case '\r':   *destI++ = '\\'; *destI++ = 'r'; break;
               case '\t':   *destI++ = '\\'; *destI++ = 't'; break;
               case '\032': *destI++ = '\\'; *destI++ = 'Z'; break;
+              case '\\': {
+                  auto const nextI = i + 1;
+                  if (srcEnd == nextI) {
+                      *destI++ = *i;
+                  } else if (*nextI != 'N') {
+                      *destI++ = '\\'; *destI++ = '\\';
+                  } else {
+                      // in this case don't modify anything, because Null (\N) is not treated by escaping in
+                      // this context.
+                      *destI++ = *i;
+                  }
+                  break;
+              }
               default: *destI++ = *i; break;
-                // Null (\N) is not treated by escaping in this context.
             }
         }
         return destI - destBegin;
