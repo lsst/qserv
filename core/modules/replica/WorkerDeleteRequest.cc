@@ -172,8 +172,8 @@ bool WorkerDeleteRequestPOSIX::execute() {
 
     util::Lock lock(_mtx, context() + "execute");
 
-    WorkerInfo   const& workerInfo    = _serviceProvider->config()->workerInfo(worker());
-    DatabaseInfo const& databaseInfo  = _serviceProvider->config()->databaseInfo(database());
+    WorkerInfo   const workerInfo    = _serviceProvider->config()->workerInfo(worker());
+    DatabaseInfo const databaseInfo  = _serviceProvider->config()->databaseInfo(database());
 
     std::vector<std::string> const files =
         FileUtils::partitionedFiles(databaseInfo, chunk());

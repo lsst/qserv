@@ -175,8 +175,8 @@ bool WorkerFindAllRequestPOSIX::execute() {
 
     util::Lock lock(_mtx, context() + "execute");
 
-    WorkerInfo   const& workerInfo    = _serviceProvider->config()->workerInfo(worker());
-    DatabaseInfo const& databaseInfo  = _serviceProvider->config()->databaseInfo(database());
+    WorkerInfo   const workerInfo    = _serviceProvider->config()->workerInfo(worker());
+    DatabaseInfo const databaseInfo  = _serviceProvider->config()->databaseInfo(database());
 
     // Scan the data directory to find all files which match the expected pattern(s)
     // and group them by their chunk number

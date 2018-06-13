@@ -215,8 +215,8 @@ bool WorkerFindRequestPOSIX::execute() {
 
     if (not _computeCheckSum or not _csComputeEnginePtr) {
 
-        WorkerInfo   const& workerInfo   = _serviceProvider->config()->workerInfo(worker());
-        DatabaseInfo const& databaseInfo = _serviceProvider->config()->databaseInfo(database());
+        WorkerInfo   const workerInfo   = _serviceProvider->config()->workerInfo(worker());
+        DatabaseInfo const databaseInfo = _serviceProvider->config()->databaseInfo(database());
 
         // Check if the data directory exists and it can be read
 
@@ -381,7 +381,7 @@ bool WorkerFindRequestPOSIX::execute() {
 
             // Fnalize the operation
 
-            DatabaseInfo const& databaseInfo =
+            DatabaseInfo const databaseInfo =
                 _serviceProvider->config()->databaseInfo(database());
 
             ReplicaInfo::Status status = ReplicaInfo::Status::NOT_FOUND;

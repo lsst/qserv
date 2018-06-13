@@ -21,7 +21,7 @@
  */
 
 // Class header
-#include "replica/ConfigurationFile.h"
+#include "replica/ConfigurationMap.h"
 
 // Qserv headers
 #include "util/ConfigStore.h"
@@ -30,9 +30,8 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-ConfigurationFile::ConfigurationFile(std::string const& configFile)
-    :   ConfigurationStore(util::ConfigStore(configFile)),
-        _configFile(configFile) {
+ConfigurationMap::ConfigurationMap(std::map<std::string, std::string> const& kvMap)
+    :   ConfigurationStore(util::ConfigStore(kvMap)) {
 }
 
 }}} // namespace lsst::qserv::replica

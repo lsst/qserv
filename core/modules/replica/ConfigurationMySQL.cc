@@ -91,49 +91,45 @@ std::string ConfigurationMySQL::configUrl() const {
     return  _databaseTechnology + ":" + _connectionParams.toString();
 }
 
-WorkerInfo const& ConfigurationMySQL::disableWorker(std::string const& name) {
+WorkerInfo const ConfigurationMySQL::disableWorker(std::string const& name) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "disableWorker  name=" << name);
 
-    // This will also throw an exception if the worker is unknown
-    WorkerInfo const& info = workerInfo(name);
-    if (info.isEnabled) {
+    database::mysql::Connection::Ptr conn;
+    try {
 
-        database::mysql::Connection::Ptr conn;
-        try {
+        // First update the database state
 
-            // First update the database
-            conn = database::mysql::Connection::open(_connectionParams);
-            conn->begin();
-            conn->executeSimpleUpdateQuery(
-                "config_worker",
-                conn->sqlEqual("name", name),
-                std::make_pair("is_enabled",  0));
-            conn->commit();
+        conn = database::mysql::Connection::open(_connectionParams);
+        conn->begin();
+        conn->executeSimpleUpdateQuery(
+            "config_worker",
+            conn->sqlEqual("name", name),
+            std::make_pair("is_enabled",  0));
+        conn->commit();
 
-            // Then update the transient state (note this change will be also be)
-            // seen via the above obtained reference to the worker description.
+        // Then update the transient state
 
-            util::Lock lock(_mtx, context() + "disableWorker");
+        util::Lock lock(_mtx, context() + "disableWorker");
 
-            _workerInfo[name].isEnabled = false;
+        auto&& itr = _workerInfo.find(name);
+        if (_workerInfo.end() == itr) {
+            throw std::invalid_argument("ConfigurationMySQL::disableWorker  no such worker: " + name);
+        }
+        itr->second.isEnabled = false;
 
-        } catch (database::mysql::Error const& ex) {
-            LOGS(_log, LOG_LVL_ERROR, context() << "MySQL error: " << ex.what());
-            if (conn and conn->inTransaction()) {
-                conn->rollback();
-            }
+    } catch (database::mysql::Error const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context() << "MySQL error: " << ex.what());
+        if (conn and conn->inTransaction()) {
+            conn->rollback();
         }
     }
-    return info;
+    return workerInfo(name);
 }
 
 void ConfigurationMySQL::deleteWorker(std::string const& name) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "deleteWorker  name=" << name);
-
-    // This will also throw an exception if the worker is unknown
-    workerInfo(name);
 
     database::mysql::Connection::Ptr conn;
     try {
@@ -148,7 +144,11 @@ void ConfigurationMySQL::deleteWorker(std::string const& name) {
 
         util::Lock lock(_mtx, context() + "deleteWorker");
 
-        _workerInfo.erase(name);
+        auto&& itr = _workerInfo.find(name);
+        if (_workerInfo.end() == itr) {
+            throw std::invalid_argument("ConfigurationMySQL::deleteWorker  no such worker: " + name);
+        }
+        _workerInfo.erase(itr);
 
     } catch (database::mysql::Error const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context ()<< ex.what());
@@ -156,6 +156,77 @@ void ConfigurationMySQL::deleteWorker(std::string const& name) {
             conn->rollback();
         }
     }
+}
+WorkerInfo const ConfigurationMySQL::setWorkerSvcPort(std::string const& name,
+                                                      uint16_t port) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << "setWorkerSvcPort  name=" << name << " port=" << port);
+
+    database::mysql::Connection::Ptr conn;
+    try {
+
+        // First update the database
+        conn = database::mysql::Connection::open(_connectionParams);
+        conn->begin();
+        conn->executeSimpleUpdateQuery(
+            "config_worker",
+            conn->sqlEqual("name", name),
+            std::make_pair("svc_port", port));
+        conn->commit();
+
+        // Then update the transient state 
+
+        util::Lock lock(_mtx, context() + "setWorkerSvcPort");
+
+        auto&& itr = _workerInfo.find(name);
+        if (_workerInfo.end() == itr) {
+            throw std::invalid_argument("ConfigurationMySQL::setWorkerSvcPort  no such worker: " + name);
+        }
+        itr->second.svcPort = port;
+
+    } catch (database::mysql::Error const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context() << "MySQL error: " << ex.what());
+        if (conn and conn->inTransaction()) {
+            conn->rollback();
+        }
+    }
+    return workerInfo(name);
+}
+
+WorkerInfo const ConfigurationMySQL::setWorkerFsPort(std::string const& name,
+                                                     uint16_t port) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << "setWorkerFsPort  name=" << name << " port=" << port);
+
+    database::mysql::Connection::Ptr conn;
+    try {
+
+        // First update the database
+        conn = database::mysql::Connection::open(_connectionParams);
+        conn->begin();
+        conn->executeSimpleUpdateQuery(
+            "config_worker",
+            conn->sqlEqual("name", name),
+            std::make_pair("fs_port", port));
+        conn->commit();
+
+        // Then update the transient state 
+
+        util::Lock lock(_mtx, context() + "setWorkerFsPort");
+    
+        auto&& itr = _workerInfo.find(name);
+        if (_workerInfo.end() == itr) {
+            throw std::invalid_argument("ConfigurationMySQL::setWorkerFsPort  no such worker: " + name);
+        }
+        itr->second.fsPort = port;
+
+    } catch (database::mysql::Error const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context() << "MySQL error: " << ex.what());
+        if (conn and conn->inTransaction()) {
+            conn->rollback();
+        }
+    }
+    return workerInfo(name);
 }
 
 void ConfigurationMySQL::loadConfiguration() {
@@ -238,7 +309,9 @@ void ConfigurationMySQL::loadConfiguration() {
 
         std::string name;
 
-        ::readMandatoryParameter(row, "name",                  name);
+        ::readMandatoryParameter(row, "name", name);
+        _databaseFamilyInfo[name].name = name;
+
         ::readMandatoryParameter(row, "min_replication_level", _databaseFamilyInfo[name].replicationLevel);
         ::readMandatoryParameter(row, "num_stripes",           _databaseFamilyInfo[name].numStripes);
         ::readMandatoryParameter(row, "num_sub_stripes",       _databaseFamilyInfo[name].numSubStripes);
