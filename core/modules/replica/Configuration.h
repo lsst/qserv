@@ -28,9 +28,9 @@
 /// (see individual class documentation for more information)
 
 // System headers
+#include <iosfwd>
 #include <map>
 #include <memory>
-#include <iosfwd>
 #include <string>
 #include <vector>
 
@@ -149,10 +149,27 @@ public:
      *
      * @param configUrl - the configuration source
      *
-     * @throw std::invalid_argument - if the URL has unsupported prefix or it
-     *                                couldn't be parsed
+     * @throw std::invalid_argument if the URL has unsupported prefix or it
+     * couldn't be parsed
+     *                            
+     * @throw std::runtime_error if the input configuration is not consistent
+     * with expectations of the application
      */
     static Ptr load(std::string const& configUrl);
+
+    /**
+     * The static factory method will instantiate an instance of a subclass
+     * loaded from a key-value map. This instance will correspond to the following
+     * special prefix:
+     *
+     *   map:
+     *
+     * @param kvMap - the configuration source
+     *
+     * @throw std::runtime_error if the input configuration is not consistent
+     * with expectations of the application
+     */
+    static Ptr load(std::map<std::string, std::string> const& kvMap);
 
     // Copy semantics is prohibited
 
@@ -268,14 +285,14 @@ public:
     bool isKnownDatabaseFamily(std::string const& name) const;
 
     /**
-     * Return parameters of the specified database family
+     * Return database family description
      *
      * @param name - the name of a family
      *
      * @throw std::invalid_argument - if the specified family was not found in
      *                                the configuration
      */
-    DatabaseFamilyInfo const& databaseFamilyInfo(std::string const& name) const;
+    DatabaseFamilyInfo const databaseFamilyInfo(std::string const& name) const;
 
     /**
      * Return the minimum number of chunk replicas for a database family
@@ -306,14 +323,14 @@ public:
     bool isKnownDatabase(std::string const& name) const;
 
     /**
-     * Return parameters of the specified database
+     * Return database descriptor
      *
      * @param name - the name of a database
      *
      * @throw std::invalid_argument - if the specified database was not found in
      *                                the configuration
      */
-    DatabaseInfo const& databaseInfo(std::string const& name) const;
+    DatabaseInfo const databaseInfo(std::string const& name) const;
 
     // -----------------------------------------------------
     // -- Configuration parameters of the worker services --
@@ -327,14 +344,14 @@ public:
     bool isKnownWorker(std::string const& name) const;
 
     /**
-     * Return parameters of the specified worker
+     * Return worker descriptor
      *
      * @param name - the name of a worker
      *
      * @throw std::invalid_argument - if the specified worker was not found in
      *                                the configuration.
      */
-    WorkerInfo const& workerInfo(std::string const& name) const;
+    WorkerInfo const workerInfo(std::string const& name) const;
 
     /**
      * Change the status of the worker node to 'disabled' thus disallowing
@@ -356,12 +373,12 @@ public:
      *
      * @param name - the name of a worker
      *
-     * @return the updated status of the worker
+     * @return updated worker descriptor
      *
      * @throw std::invalid_argument - if the specified worker was not found in
      *                                the configuration.
      */
-    virtual WorkerInfo const& disableWorker(std::string const& name)=0;
+    virtual WorkerInfo const disableWorker(std::string const& name)=0;
 
     /**
      * Completelly remove the specified worker from the Configuration.
@@ -372,6 +389,34 @@ public:
      *                                the configuration.
      */
     virtual void deleteWorker(std::string const& name)=0;
+
+    /**
+     * Change the port number of the worker's service
+     *
+     * @param name - the name of a worker
+     * @param port - the number of a port
+     *
+     * @return updated worker descriptor
+     *
+     * @throw std::invalid_argument - if the specified worker was not found in
+     *                                the configuration.
+     */
+    virtual WorkerInfo const setWorkerSvcPort(std::string const& name,
+                                              uint16_t port)=0;
+
+    /**
+     * Change the port number of the worker's file service
+     *
+     * @param name - the name of a worker
+     * @param port - the number of a port
+     *
+     * @return updated worker descriptor
+     *
+     * @throw std::invalid_argument - if the specified worker was not found in
+     *                                the configuration.
+     */
+    virtual WorkerInfo const setWorkerFsPort(std::string const& name,
+                                             uint16_t port)=0;
 
     /// @return the name of the default technology for implementing requests
     std::string const& workerTechnology() const { return _workerTechnology; }
@@ -385,17 +430,9 @@ public:
     /// @return the buffer size for the file I/O operations
     size_t workerFsBufferSizeBytes() const { return _workerFsBufferSizeBytes; }
 
-    // ---------------------------------------------------
-    // -- Configuration parameters of the Job Scheduler --
-    // ---------------------------------------------------
-
-    /**
-     * @return the number of seconds betwean re-evaluations of the Schedule's
-     * state. At each expiration moment of the interval the Scheduler would
-     * check if there are new jobs which are requested to be run on
-     * the periodic basis.
-     */
-    unsigned int jobSchedulerIvalSec() const { return _jobSchedulerIvalSec; }
+    // -----------
+    // -- Misc. --
+    // -----------
 
     /**
      * Serialize the configuration parameters into the Logger
@@ -435,7 +472,6 @@ protected:
     static std::string  const defaultDatabaseUser;
     static std::string  const defaultDatabasePassword;
     static std::string  const defaultDatabaseName;
-    static unsigned int const defaultJobSchedulerIvalSec;
     static size_t       const defaultReplicationLevel;
     static unsigned int const defaultNumStripes;
     static unsigned int const defaultNumSubStripes;
@@ -515,10 +551,6 @@ protected:
 
     /// The name of a database to be set upon the connection
     std::string _databaseName;
-
-    // -- Parameters of the Job scheduler --
-
-    unsigned int _jobSchedulerIvalSec;
 };
 
 }}} // namespace lsst::qserv::replica

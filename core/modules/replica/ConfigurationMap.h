@@ -19,15 +19,16 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_CONFIGURATIONFILE_H
-#define LSST_QSERV_REPLICA_CONFIGURATIONFILE_H
+#ifndef LSST_QSERV_REPLICA_CONFIGURATIONMAP_H
+#define LSST_QSERV_REPLICA_CONFIGURATIONMAP_H
 
-/// ConfigurationFile.h declares:
+/// ConfigurationMap.h declares:
 ///
-/// class ConfigurationFile
+/// class ConfigurationMap
 /// (see individual class documentation for more information)
 
 // System headers
+#include <map>
 #include <string>
 
 // Qserv headers
@@ -40,45 +41,38 @@ namespace qserv {
 namespace replica {
 
 /**
-  * Class ConfigurationFile loads configuration parameters from a file.
-  *
-  * The implementation of this class relies upon the basic parser
-  * of the INI-style configuration files.
+  * Class ConfigurationMap loads configuration parameters from a transient
+  * key-value map as defined by class util::ConfigStore.
   */
-class ConfigurationFile
+class ConfigurationMap
     :   public ConfigurationStore {
 
 public:
 
     // Default construction and copy semantics are prohibited
 
-    ConfigurationFile() = delete;
-    ConfigurationFile(ConfigurationFile const&) = delete;
-    ConfigurationFile& operator=(ConfigurationFile const&) = delete;
+    ConfigurationMap() = delete;
+    ConfigurationMap(ConfigurationMap const&) = delete;
+    ConfigurationMap& operator=(ConfigurationMap const&) = delete;
 
     /**
      * Construct the object by reading the configuration
      * from the specified file.
      *
-     * @param configFile - the name of a configuraiton file
+     * @param kvMap - the key-value map with configuraiton parameters
      */
-    explicit ConfigurationFile(std::string const& configFile);
+    explicit ConfigurationMap(std::map<std::string, std::string> const& kvMap);
 
-    ~ConfigurationFile() final = default;
+    ~ConfigurationMap() final = default;
 
     /**
      * @see Configuration::configUrl()
      */
     std::string configUrl() const final {
-        return "file:" + _configFile;
+        return "map:";
     }
-
-private:
-
-    /// The name of the configuration file
-    std::string const _configFile;
 };
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_CONFIGURATIONFILE_H
+#endif // LSST_QSERV_REPLICA_CONFIGURATIONMAP_H

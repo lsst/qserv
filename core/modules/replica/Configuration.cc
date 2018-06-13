@@ -31,6 +31,7 @@
 #include "lsst/log/Log.h"
 #include "replica/ChunkNumber.h"
 #include "replica/ConfigurationFile.h"
+#include "replica/ConfigurationMap.h"
 #include "replica/ConfigurationMySQL.h"
 #include "replica/FileUtils.h"
 #include "util/IterableFormatter.h"
@@ -103,6 +104,9 @@ Configuration::Ptr Configuration::load(std::string const& configUrl) {
             "Configuration::load:  configUrl must start with 'file:' or 'mysql:'");
 }
 
+Configuration::Ptr Configuration::load(std::map<std::string, std::string> const& kvMap) {
+    return std::make_shared<ConfigurationMap>(kvMap);
+}
 
 // Set some reasonable defaults
 
@@ -133,7 +137,6 @@ uint16_t     const Configuration::defaultDatabasePort                (3306);
 std::string  const Configuration::defaultDatabaseUser                (FileUtils::getEffectiveUser());
 std::string  const Configuration::defaultDatabasePassword            ("");
 std::string  const Configuration::defaultDatabaseName                ("replica");
-unsigned int const Configuration::defaultJobSchedulerIvalSec         (1);
 size_t       const Configuration::defaultReplicationLevel            (1);
 unsigned int const Configuration::defaultNumStripes                  (340);
 unsigned int const Configuration::defaultNumSubStripes               (12);
@@ -158,29 +161,28 @@ void Configuration::translateDataDir(std::string&       dataDir,
 }
 
 Configuration::Configuration()
-    :   _requestBufferSizeBytes       (defaultRequestBufferSizeBytes),
-        _retryTimeoutSec              (defaultRetryTimeoutSec),
-        _controllerThreads            (defaultControllerThreads),
-        _controllerHttpPort           (defaultControllerHttpPort),
-        _controllerHttpThreads        (defaultControllerHttpThreads),
-        _controllerRequestTimeoutSec  (defaultControllerRequestTimeoutSec),
-        _jobTimeoutSec                (defaultJobTimeoutSec),
-        _jobHeartbeatTimeoutSec       (defaultJobHeartbeatTimeoutSec),
-        _xrootdAutoNotify             (defaultXrootdAutoNotify),
-        _xrootdHost                   (defaultXrootdHost),
-        _xrootdPort                   (defaultXrootdPort),
-        _xrootdTimeoutSec             (defaultXrootdTimeoutSec),
-        _workerTechnology             (defaultWorkerTechnology),
-        _workerNumProcessingThreads   (defaultWorkerNumProcessingThreads),
-        _fsNumProcessingThreads       (defaultFsNumProcessingThreads),
-        _workerFsBufferSizeBytes      (defaultWorkerFsBufferSizeBytes),
-        _databaseTechnology           (defaultDatabaseTechnology),
-        _databaseHost                 (defaultDatabaseHost),
-        _databasePort                 (defaultDatabasePort),
-        _databaseUser                 (defaultDatabaseUser),
-        _databasePassword             (defaultDatabasePassword),
-        _databaseName                 (defaultDatabaseName),
-        _jobSchedulerIvalSec          (defaultJobSchedulerIvalSec) {
+    :   _requestBufferSizeBytes     (defaultRequestBufferSizeBytes),
+        _retryTimeoutSec            (defaultRetryTimeoutSec),
+        _controllerThreads          (defaultControllerThreads),
+        _controllerHttpPort         (defaultControllerHttpPort),
+        _controllerHttpThreads      (defaultControllerHttpThreads),
+        _controllerRequestTimeoutSec(defaultControllerRequestTimeoutSec),
+        _jobTimeoutSec              (defaultJobTimeoutSec),
+        _jobHeartbeatTimeoutSec     (defaultJobHeartbeatTimeoutSec),
+        _xrootdAutoNotify           (defaultXrootdAutoNotify),
+        _xrootdHost                 (defaultXrootdHost),
+        _xrootdPort                 (defaultXrootdPort),
+        _xrootdTimeoutSec           (defaultXrootdTimeoutSec),
+        _workerTechnology           (defaultWorkerTechnology),
+        _workerNumProcessingThreads (defaultWorkerNumProcessingThreads),
+        _fsNumProcessingThreads     (defaultFsNumProcessingThreads),
+        _workerFsBufferSizeBytes    (defaultWorkerFsBufferSizeBytes),
+        _databaseTechnology         (defaultDatabaseTechnology),
+        _databaseHost               (defaultDatabaseHost),
+        _databasePort               (defaultDatabasePort),
+        _databaseUser               (defaultDatabaseUser),
+        _databasePassword           (defaultDatabasePassword),
+        _databaseName               (defaultDatabaseName) {
 }
 
 std::string Configuration::context() const {
@@ -245,14 +247,14 @@ size_t Configuration::replicationLevel(std::string const& family) const {
     return itr->second.replicationLevel;
 }
 
-DatabaseFamilyInfo const& Configuration::databaseFamilyInfo(std::string const& name) const {
+DatabaseFamilyInfo const Configuration::databaseFamilyInfo(std::string const& name) const {
 
     util::Lock lock(_mtx, context() + "databaseFamilyInfo");
 
     auto&& itr = _databaseFamilyInfo.find(name);
     if (itr == _databaseFamilyInfo.end()) {
         throw std::invalid_argument(
-                "Configuration::databaseFamilyInfo() uknown database family: '" + name + "'");
+                "Configuration::databaseFamilyInfo  uknown database family: '" + name + "'");
     }
     return itr->second;
 }
@@ -283,7 +285,7 @@ bool Configuration::isKnownWorker(std::string const& name) const {
     return _workerInfo.count(name) > 0;
 }
 
-WorkerInfo const& Configuration::workerInfo(std::string const& name) const {
+WorkerInfo const Configuration::workerInfo(std::string const& name) const {
 
     util::Lock lock(_mtx, context() + "workerInfo");
 
@@ -302,7 +304,7 @@ bool Configuration::isKnownDatabase(std::string const& name) const {
     return _databaseInfo.count(name) > 0;
 }
 
-DatabaseInfo const& Configuration::databaseInfo(std::string const& name) const {
+DatabaseInfo const Configuration::databaseInfo(std::string const& name) const {
 
     util::Lock lock(_mtx, context() + "databaseInfo");
 
@@ -343,7 +345,6 @@ void Configuration::dumpIntoLogger() {
     LOGS(_log, LOG_LVL_DEBUG, context() << "defaultDatabaseUser:                 " << defaultDatabaseUser);
     LOGS(_log, LOG_LVL_DEBUG, context() << "defaultDatabasePassword:             " << "*****");
     LOGS(_log, LOG_LVL_DEBUG, context() << "defaultDatabaseName:                 " << defaultDatabaseName);
-    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultJobSchedulerIvalSec:          " << defaultJobSchedulerIvalSec);
     LOGS(_log, LOG_LVL_DEBUG, context() << "defaultReplicationLevel:             " << defaultReplicationLevel);
     LOGS(_log, LOG_LVL_DEBUG, context() << "defaultNumStripes:                   " << defaultNumStripes);
     LOGS(_log, LOG_LVL_DEBUG, context() << "defaultNumSubStripes:                " << defaultNumSubStripes);
@@ -369,7 +370,6 @@ void Configuration::dumpIntoLogger() {
     LOGS(_log, LOG_LVL_DEBUG, context() << "_databaseUser:                       " << _databaseUser);
     LOGS(_log, LOG_LVL_DEBUG, context() << "_databasePassword:                   " << "*****");
     LOGS(_log, LOG_LVL_DEBUG, context() << "_databaseName:                       " << _databaseName);
-    LOGS(_log, LOG_LVL_DEBUG, context() << "_jobSchedulerIvalSec:                " << _jobSchedulerIvalSec);
     for (auto&& elem: _workerInfo) {
         LOGS(_log, LOG_LVL_DEBUG, context() << elem.second);
     }

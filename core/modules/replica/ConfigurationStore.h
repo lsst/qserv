@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
+ * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -19,21 +19,27 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_CONFIGURATIONMYSQL_H
-#define LSST_QSERV_REPLICA_CONFIGURATIONMYSQL_H
+#ifndef LSST_QSERV_REPLICA_CONFIGURATIONSTORE_H
+#define LSST_QSERV_REPLICA_CONFIGURATIONSTORE_H
 
-/// ConfigurationMySQL.h declares:
+/// ConfigurationStore.h declares:
 ///
-/// class ConfigurationMySQL
+/// class ConfigurationStore
 /// (see individual class documentation for more information)
 
 // System headers
-#include <cstddef>
 #include <string>
 
 // Qserv headers
 #include "replica/Configuration.h"
-#include "replica/DatabaseMySQL.h"
+
+// Forward declarations
+
+namespace lsst {
+namespace qserv {
+namespace util {
+class ConfigStore;
+}}} // namespace lsst::qserv::util
 
 // This header declarations
 
@@ -42,49 +48,39 @@ namespace qserv {
 namespace replica {
 
 /**
-  * Class ConfigurationMySQL loads configuration parameters from a database.
+  * Class ConfigurationStore is a base class for a family of configuration
+  * classes which are designed to load configuration parameters from a transient
+  * configuraton store. 
   *
-  * The implementation of this class:
+  * This class also:
   *
-  *   - ensures all required parameters are found in the database
+  *   - enforces a specific schema for key names found in the store
+  *   - ensures all required parameters are found in the input store
   *   - sets default values for the optional parameters
   *   - caches parameters in memory
   */
-class ConfigurationMySQL
+class ConfigurationStore
     :   public Configuration {
 
 public:
 
     // Default construction and copy semantics are prohibited
 
-    ConfigurationMySQL() = delete;
-    ConfigurationMySQL(ConfigurationMySQL const&) = delete;
-    ConfigurationMySQL& operator=(ConfigurationMySQL const&) = delete;
+    ConfigurationStore() = delete;
+    ConfigurationStore(ConfigurationStore const&) = delete;
+    ConfigurationStore& operator=(ConfigurationStore const&) = delete;
 
-    /**
-     * Construct the object by reading the configuration
-     * from the specified file.
-     *
-     * @param connectionParams - connection parameters
-     */
-    ConfigurationMySQL(database::mysql::ConnectionParams const& connectionParams);
-
-    ~ConfigurationMySQL() override = default;
-
-    /**
-     * @see Configuration::configUrl()
-     */
-    std::string configUrl() const override;
+    ~ConfigurationStore() override = default;
 
     /**
      * @see Configuration::disableWorker()
      */
-    WorkerInfo const disableWorker(std::string const& name) override;
+    WorkerInfo const disableWorker(std::string const& name) final;
 
     /**
      * @see Configuration::deleteWorker()
      */
-    void deleteWorker(std::string const& name) override;
+    void deleteWorker(std::string const& name) final;
 
     /**
      * @see Configuration::setWorkerSvcPort()
@@ -97,25 +93,33 @@ public:
      */
     WorkerInfo const setWorkerFsPort(std::string const& name,
                                      uint16_t port) final;
+protected:
+
+    /**
+     * Construct an object by reading the configuration from the input
+     * configuration store.
+     *
+     * @param configStore - reference to a configuraiton store object
+     *
+     * @throw std::runtime_error if the input configuration is not consistent
+     * with expectations of the application
+     */
+    explicit ConfigurationStore(util::ConfigStore const& configStore);
 
 private:
 
     /**
-     * Analyze the configuration and initialize the cache of parameters.
+     * Read and validae input configuration parameters from the specified 
+     * store and initialize the object.
      *
-     * The method will throw one of these exceptions:
+     * @param configStore - reference to a configuraiton store object
      *
-     *   std::runtime_error
-     *      the configuration is not consistent with expectations of the application
+     * @throw std::runtime_error if the input configuration is not consistent
+     * with expectations of the application
      */
-    void loadConfiguration();
-
-private:
-
-    /// Parameters of the connection
-    database::mysql::ConnectionParams const _connectionParams;
+    void loadConfiguration(util::ConfigStore const& configStore);
 };
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_CONFIGURATIONMYSQL_H
+#endif // LSST_QSERV_REPLICA_CONFIGURATIONSTORE_H

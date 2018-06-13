@@ -210,9 +210,9 @@ bool WorkerReplicationRequestPOSIX::execute () {
     //   files, checking for folders and files, renaming files, creating folders, etc.)
     //   are guarded by acquering util::Lock lock(_mtxDataFolderOperations) where it's needed.
 
-    WorkerInfo   const& inWorkerInfo  = _serviceProvider->config()->workerInfo(sourceWorker());
-    WorkerInfo   const& outWorkerInfo = _serviceProvider->config()->workerInfo(worker());
-    DatabaseInfo const& databaseInfo  = _serviceProvider->config()->databaseInfo(database());
+    WorkerInfo   const inWorkerInfo  = _serviceProvider->config()->workerInfo(sourceWorker());
+    WorkerInfo   const outWorkerInfo = _serviceProvider->config()->workerInfo(worker());
+    DatabaseInfo const databaseInfo  = _serviceProvider->config()->databaseInfo(database());
 
     fs::path const inDir  = fs::path(inWorkerInfo.dataDir)  / database();
     fs::path const outDir = fs::path(outWorkerInfo.dataDir) / database();
@@ -553,9 +553,9 @@ bool WorkerReplicationRequestFS::execute () {
 
                 // Open the file on the remote server in the no-content-read mode
                 FileClient::Ptr inFilePtr = FileClient::stat(_serviceProvider,
-                                                                 _inWorkerInfo.name,
-                                                                 _databaseInfo.name,
-                                                                 file);
+                                                             _inWorkerInfo.name,
+                                                             _databaseInfo.name,
+                                                             file);
                 errorContext = errorContext
                     or reportErrorIf(
                         not inFilePtr,
