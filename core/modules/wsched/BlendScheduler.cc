@@ -110,8 +110,8 @@ BlendScheduler::~BlendScheduler() {
 void BlendScheduler::_sortScanSchedulers() {
     auto greaterThan = [](SchedulerBase::Ptr const& a, SchedulerBase::Ptr const& b)->bool {
         // Experiment of sorts, priority depends on number of Tasks in each scheduler.
-        auto aVal = a->getPriority() + a->getUserQueriesInQ();
-        auto bVal = b->getPriority() + b->getUserQueriesInQ();
+        auto aVal = a->getUserQueriesInQ() - a->getPriority();
+        auto bVal = b->getUserQueriesInQ() - b->getPriority();
         return aVal > bVal;
     };
     // The first scheduler should always be _group (for interactive queries).
