@@ -473,7 +473,6 @@ BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
 
     BOOST_CHECK(f.blend->ready() == false);
     BOOST_CHECK(f.blend->calcAvailableTheads() == 5);
-#if 0  // &&&  Changing order of getCmd broke unit tests. Integration tests pass.
     // Put one message on each scheduler except ScanFast, which gets 2.
     LOGS(_log, LOG_LVL_DEBUG, "BlendScheduleTest-1 add Tasks");
     Task::Ptr g1 = makeTask(newTaskMsgSimple(40, f.qIdInc++, 0));
@@ -664,7 +663,6 @@ BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
     BOOST_CHECK(f.blend->calcAvailableTheads() == 5);
     BOOST_CHECK(f.blend->getInFlight() == 0);
     LOGS(_log, LOG_LVL_DEBUG, "BlendScheduleTest-1 done");
-#endif
 }
 
 
