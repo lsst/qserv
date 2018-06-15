@@ -40,4 +40,4 @@ secret = %(qserv_run_dir)s/etc/wmgr.secret
 # This is a workaround for our mono-node integration test which
 # does not update CSS (yet).
 host = 127.0.0.1
-port = 25012
+port = 5012

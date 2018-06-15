@@ -63,7 +63,7 @@ done
 
 for i in $(seq 1 "$NB_WORKERS");
 do
-    CSS_INFO="${CSS_INFO}CREATE NODE worker${i} type=worker port=25012 host=worker${i}.$DNS_DOMAIN;
+    CSS_INFO="${CSS_INFO}CREATE NODE worker${i} type=worker port=5012 host=worker${i}.$DNS_DOMAIN;
 "
 done
 docker exec "$MASTER" bash -c ". /qserv/stack/loadLSST.bash && \

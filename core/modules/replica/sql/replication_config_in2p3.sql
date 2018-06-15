@@ -24,7 +24,7 @@ INSERT INTO `config` VALUES ('controller', 'job_heartbeat_sec',     '60');
 
 INSERT INTO `config` VALUES ('xrootd', 'auto_notify',         '1');
 INSERT INTO `config` VALUES ('xrootd', 'host',                'localhost');
-INSERT INTO `config` VALUES ('xrootd', 'port',                '21094');
+INSERT INTO `config` VALUES ('xrootd', 'port',                '1094');
 INSERT INTO `config` VALUES ('xrootd', 'request_timeout_sec', '600');
 
 -- Default parameters for all workers unless overwritten in worker-specific
