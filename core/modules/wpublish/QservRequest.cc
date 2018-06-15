@@ -40,8 +40,7 @@ namespace qserv {
 namespace wpublish {
 
 // Set this parameter to some reasonable default
-int const
-QservRequest::_bufIncrementSize = 1024;
+int const QservRequest::_bufIncrementSize = 1024;
 
 QservRequest::~QservRequest() {
     delete _buf;
@@ -53,8 +52,7 @@ QservRequest::QservRequest()
          _buf(new char[_bufIncrementSize]) {
 }
 
-char*
-QservRequest::GetRequest (int& dlen) {
+char* QservRequest::GetRequest(int& dlen) {
 
     // Ask a subclass to serialize its request into the frame buffer
     onRequest(_frameBuf);
@@ -64,14 +62,28 @@ QservRequest::GetRequest (int& dlen) {
     return _frameBuf.data();
 }
 
-bool
-QservRequest::ProcessResponse (const XrdSsiErrInfo&  eInfo,
-                               const XrdSsiRespInfo& rInfo) {
+bool QservRequest::ProcessResponse(const XrdSsiErrInfo&  eInfo,
+                                   const XrdSsiRespInfo& rInfo) {
 
     static std::string const context = "QservRequest::ProcessResponse  ";
 
     if (eInfo.hasError()) {
-        LOGS(_log, LOG_LVL_ERROR, context << "** FAILED **, error: " << rInfo.eMsg);
+
+        // Copy the argument before sending the upstream notification
+        // Otherwise the current object may get disposed before we even had
+        // a chance to notify XRootD/SSI by calling Finished().
+        std::string const errorStr = rInfo.eMsg;
+
+        LOGS(_log, LOG_LVL_ERROR, context << "** FAILED **, error: " << errorStr);
+
+        // Tell XrootD to realease all resources associated with this request
+        Finished();
+
+        // Notify a subclass on the ubnormal condition
+        // WARNING: This has to be the last call as the object may get deleted
+        //          downstream.
+        onError(errorStr);
+
         return false;
     }
     LOGS(_log, LOG_LVL_DEBUG, context
@@ -88,22 +100,52 @@ QservRequest::ProcessResponse (const XrdSsiErrInfo&  eInfo,
             return true;
 
         default:
+
+            // Copy the argument before sending the upstream notification
+            // Otherwise the current object may get disposed before we even had
+            // a chance to notify XRootD/SSI by calling Finished().
+            std::string const responseType = std::to_string(rInfo.rType);
+
+            // Tell XrootD to realease all resources associated with this request
+            Finished();
+
+            // Notify a subclass on the ubnormal condition
+            // WARNING: This has to be the last call as the object may get deleted
+            //          downstream.
+            onError("QservRequest::ProcessResponse  ** ERROR ** unexpeted response type: " + responseType);
             return false;
     }
 }
 
-XrdSsiRequest::PRD_Xeq
-QservRequest::ProcessResponseData(const XrdSsiErrInfo& eInfo,
-                                  char*                buff,
-                                  int                  blen,
-                                  bool                 last) {
+XrdSsiRequest::PRD_Xeq QservRequest::ProcessResponseData(const XrdSsiErrInfo& eInfo,
+                                                         char* buff,
+                                                         int   blen,
+                                                         bool  last) {
 
     static std::string const context = "QservRequest::ProcessResponseData  ";
 
     LOGS(_log, LOG_LVL_DEBUG, context << "eInfo.isOK: " << eInfo.isOK());
+
     if (not eInfo.isOK()) {
-        LOGS(_log, LOG_LVL_ERROR, context << "** FAILED **  eInfo.Get(): " << eInfo.Get()
-             << ", eInfo.GetArg(): " << eInfo.GetArg());
+
+        // Copy these arguments before sending the upstream notification.
+        // Otherwise the current object may get disposed before we even had
+        // a chance to notify XRootD/SSI by calling Finished().
+
+        std::string const errorStr = eInfo.Get();
+        int         const errorNum = eInfo.GetArg();
+
+        LOGS(_log, LOG_LVL_ERROR, context << "** FAILED **  eInfo.Get(): " << errorStr
+             << ", eInfo.GetArg(): " << errorNum);
+
+         // Tell XrootD to realease all resources associated with this request
+         Finished();
+
+        // Notify a subclass on the ubnormal condition.
+        // WARNING: This has to be the last call as the object may get deleted
+        //          downstream.
+        onError(errorStr);
+
     } else {
         LOGS(_log, LOG_LVL_DEBUG, context << "blen: " << blen << ", last: " << last);
 
@@ -111,12 +153,16 @@ QservRequest::ProcessResponseData(const XrdSsiErrInfo& eInfo,
         _bufSize += blen;
 
         if (last) {
+
+            // Tell XrootD to realease all resources associated with this request
+            Finished();
+
             // Ask a subclass to process the response
+            // WARNING: This has to be the last call as the object may get deleted
+            //          downstream.
             proto::FrameBufferView view(_buf, _bufSize);
             onResponse(view);
 
-            // Ready to dispose the object
-            Finished();
         } else {
             // Extend the buffer and copy over its previous content into the new location
             int prevBufCapacity = _bufCapacity;
@@ -132,11 +178,6 @@ QservRequest::ProcessResponseData(const XrdSsiErrInfo& eInfo,
         }
     }
     return XrdSsiRequest::PRD_Normal;
-}
-
-void
-QservRequest::Finished () {
-    delete this;
 }
 
 }}} // namespace lsst::qserv::wpublish

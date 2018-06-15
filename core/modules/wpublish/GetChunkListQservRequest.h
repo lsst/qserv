@@ -27,6 +27,7 @@
 // System headers
 #include <functional>
 #include <list>
+#include <memory>
 
 // Third party headers
 
@@ -68,19 +69,38 @@ public:
     /// The ChunkCollection type refresens a collection of chunks
     using ChunkCollection = std::list<Chunk>;
 
+    /// The pointer type for instances of the class
+    typedef std::shared_ptr<GetChunkListQservRequest> Ptr;
+
     /// The callback function type to be used for notifications on
     /// the operation completion.
-    using calback_type =
+    using CallbackType =
         std::function<void(Status,                      // completion status
                            std::string const&,          // error message
                            ChunkCollection const&)>;    // chunks (if success)
 
-    // Copy semantics is prohibited
-    GetChunkListQservRequest (GetChunkListQservRequest const&) = delete;
-    GetChunkListQservRequest& operator= (GetChunkListQservRequest const&) = delete;
+    /**
+     * Static factory method is needed to prevent issues with the lifespan
+     * and memory management of instances created otherwise (as values or via
+     * low-level pointers).
+     *
+     * @param inUseOnly - only report chunks which are in use
+     * @param onFinish  - optional callback function to be called upon the completion
+     *                    (successful or not) of the request.
+     * @return smart pointer to the object of the class
+     */
+    static Ptr create(bool inUseOnly,
+                      CallbackType onFinish = nullptr);
+
+    // Default construction and copy semantics are prohibited
+    GetChunkListQservRequest() = delete;
+    GetChunkListQservRequest(GetChunkListQservRequest const&) = delete;
+    GetChunkListQservRequest& operator=(GetChunkListQservRequest const&) = delete;
 
     /// Destructor
-    ~GetChunkListQservRequest () override;
+    ~GetChunkListQservRequest() override;
+
+protected:
 
     /**
      * Normal constructor
@@ -89,16 +109,17 @@ public:
      * @param onFinish  - optional callback function to be called upon the completion
      *                    (successful or not) of the request.
      */
-    GetChunkListQservRequest (bool inUseOnly,
-                              calback_type onFinish = nullptr);
-
-protected:
+    GetChunkListQservRequest(bool inUseOnly,
+                             CallbackType onFinish);
 
     /// Implement the corresponding method of the base class
-    void onRequest (proto::FrameBuffer& buf) override;
+    void onRequest(proto::FrameBuffer& buf) override;
 
     /// Implement the corresponding method of the base class
-    void onResponse (proto::FrameBufferView& view) override;
+    void onResponse(proto::FrameBufferView& view) override;
+
+    /// Implement the corresponding method of the base class
+    void onError(std::string const& error) override;
 
 private:
 
@@ -106,7 +127,7 @@ private:
 
     /// Optional callback function to be called upon the completion
     /// (successfull or not) of the request.
-    calback_type _onFinish;
+    CallbackType _onFinish;
 };
 
 }}} // namespace lsst::qserv::wpublish

@@ -69,7 +69,7 @@ public:
      * @param sendChannel     - communication channel for reporting results
      * @param chunkInventory  - chunks known to the application
      * @param resourceMonitor - counters of resources which are being used
-     * @param mySqlConfig    - database connection parameters
+     * @param mySqlConfig     - database connection parameters
      * @param chunk           - chunk number
      * @param dbs             - names of databases in the group
      * @param force           - force chunk removal even if this chunk is in use
@@ -83,14 +83,14 @@ public:
                             bool force);
 
     /// The destructor
-    virtual ~RemoveChunkGroupCommand();
+    ~RemoveChunkGroupCommand() override = default;
 
     /**
      * Implement the corresponding method of the base class
      *
      * @see WorkerCommand::run()
      */
-    void run () override;
+    void run() override;
 
 private:
 

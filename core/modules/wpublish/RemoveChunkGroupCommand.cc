@@ -43,7 +43,6 @@
 
 extern XrdSsiProvider* XrdSsiProviderLookup;
 
-
 // Qserv headers
 
 namespace {
@@ -64,38 +63,32 @@ RemoveChunkGroupCommand::RemoveChunkGroupCommand(std::shared_ptr<wbase::SendChan
                                                  std::vector<std::string> const& dbs,
                                                  bool force)
     :   wbase::WorkerCommand(sendChannel),
-
-        _chunkInventory  (chunkInventory),
-        _resourceMonitor (resourceMonitor),
-        _mySqlConfig     (mySqlConfig),
-        _chunk (chunk),
-        _dbs   (dbs),
-        _force (force) {
+        _chunkInventory(chunkInventory),
+        _resourceMonitor(resourceMonitor),
+        _mySqlConfig(mySqlConfig),
+        _chunk(chunk),
+        _dbs(dbs),
+        _force(force) {
 }
 
-RemoveChunkGroupCommand::~RemoveChunkGroupCommand() {
-}
 
-void
-RemoveChunkGroupCommand::reportError(proto::WorkerCommandChunkGroupR::Status status,
-                                     std::string const& message) {
+void RemoveChunkGroupCommand::reportError(proto::WorkerCommandChunkGroupR::Status status,
+                                          std::string const& message) {
 
     LOGS(_log, LOG_LVL_ERROR, "RemoveChunkGroupCommand::reportError  " << message);
 
     proto::WorkerCommandChunkGroupR reply;
 
     reply.set_status(status);
-    reply.set_error (message);
+    reply.set_error(message);
 
     _frameBuf.serialize(reply);
-    // _sendChannel->sendStream(_frameBuf.data(), _frameBuf.size(), true);
     std::string str(_frameBuf.data(), _frameBuf.size());
     auto streamBuffer = xrdsvc::StreamBuffer::createWithMove(str);
     _sendChannel->sendStream(streamBuffer, true);
 }
 
-void
-RemoveChunkGroupCommand::run() {
+void RemoveChunkGroupCommand::run() {
 
     LOGS(_log, LOG_LVL_DEBUG, "RemoveChunkGroupCommand::run");
 
@@ -117,9 +110,6 @@ RemoveChunkGroupCommand::run() {
 
     xrdsvc::SsiProviderServer* providerServer = dynamic_cast<xrdsvc::SsiProviderServer*>(XrdSsiProviderLookup);
     XrdSsiCluster*             clusterManager = providerServer->GetClusterManager();
-
-    proto::WorkerCommandChunkGroupR reply;
-    reply.set_status(proto::WorkerCommandChunkGroupR::SUCCESS);
 
     for (std::string const& db: _dbs) {
 
@@ -151,6 +141,23 @@ RemoveChunkGroupCommand::run() {
             return;
         }
     }
+
+    proto::WorkerCommandChunkGroupR reply;
+    if (_resourceMonitor->count(_chunk, _dbs)) {
+
+        // Tell a caller that some of the associated resources are still
+        // in use by this worker even though they've been blocked from use for any
+        // further requests. It's up to a caller of this service to correctly
+        // interpret the effect of th eoperation based on a presence of the "force"
+        // flag in the request.
+
+        reply.set_status(proto::WorkerCommandChunkGroupR::IN_USE);
+        reply.set_error("some chunks of the group are in use");
+
+    } else{
+        reply.set_status(proto::WorkerCommandChunkGroupR::SUCCESS);
+    }
+
     _frameBuf.serialize(reply);
     std::string str(_frameBuf.data(), _frameBuf.size());
     _sendChannel->sendStream(xrdsvc::StreamBuffer::createWithMove(str), true);

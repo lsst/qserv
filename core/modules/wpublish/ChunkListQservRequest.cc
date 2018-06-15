@@ -36,8 +36,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.ChunkListQservRequest");
 
 using namespace lsst::qserv;
 
-wpublish::ChunkListQservRequest::Status
-translate (proto::WorkerCommandUpdateChunkListR::Status status) {
+wpublish::ChunkListQservRequest::Status translate(proto::WorkerCommandUpdateChunkListR::Status status) {
     switch (status) {
         case proto::WorkerCommandUpdateChunkListR::SUCCESS: return wpublish::ChunkListQservRequest::SUCCESS;
         case proto::WorkerCommandUpdateChunkListR::ERROR:   return wpublish::ChunkListQservRequest::ERROR;
@@ -52,20 +51,19 @@ namespace lsst {
 namespace qserv {
 namespace wpublish {
 
-std::string
-ChunkListQservRequest::status2str (Status status) {
+std::string ChunkListQservRequest::status2str(Status status) {
     switch (status) {
         case SUCCESS: return "SUCCESS";
         case ERROR:   return "ERROR";
     }
-    throw std::domain_error (
+    throw std::domain_error(
             "ChunkListQservRequest::status2str  no match for status: " +
             std::to_string(status));
 }
 
-ChunkListQservRequest::ChunkListQservRequest (bool rebuild,
-                                              bool reload,
-                                              calback_type onFinish)
+ChunkListQservRequest::ChunkListQservRequest(bool rebuild,
+                                             bool reload,
+                                             CallbackType onFinish)
     :   _rebuild(rebuild),
         _reload(reload),
         _onFinish(onFinish){
@@ -73,12 +71,11 @@ ChunkListQservRequest::ChunkListQservRequest (bool rebuild,
     LOGS(_log, LOG_LVL_DEBUG, "ChunkListQservRequest  ** CONSTRUCTED **");
 }
 
-ChunkListQservRequest::~ChunkListQservRequest () {
+ChunkListQservRequest::~ChunkListQservRequest() {
     LOGS(_log, LOG_LVL_DEBUG, "ChunkListQservRequest  ** DELETED **");
 }
 
-void
-ChunkListQservRequest::onRequest (proto::FrameBuffer& buf) {
+void ChunkListQservRequest::onRequest(proto::FrameBuffer& buf) {
 
     proto::WorkerCommandH header;
     header.set_command(proto::WorkerCommandH::UPDATE_CHUNK_LIST);
@@ -90,8 +87,7 @@ ChunkListQservRequest::onRequest (proto::FrameBuffer& buf) {
     buf.serialize(message);
 }
 
-void
-ChunkListQservRequest::onResponse (proto::FrameBufferView& view) {
+void ChunkListQservRequest::onResponse(proto::FrameBufferView& view) {
 
     static std::string const context = "ChunkListQservRequest  ";
 
@@ -108,7 +104,7 @@ ChunkListQservRequest::onResponse (proto::FrameBufferView& view) {
 
         int const numAdded = reply.added_size();
         for (int i = 0; i < numAdded; i++) {
-            proto::WorkerCommandUpdateChunkListR::Chunk const& chunkEntry  = reply.added(i);
+            proto::WorkerCommandChunk const& chunkEntry  = reply.added(i);
             Chunk chunk {chunkEntry.chunk(), chunkEntry.db()};
             added.push_back(chunk);
         }
@@ -116,19 +112,60 @@ ChunkListQservRequest::onResponse (proto::FrameBufferView& view) {
 
         int const numRemoved = reply.removed_size();
         for (int i = 0; i < numRemoved; i++) {
-            proto::WorkerCommandUpdateChunkListR::Chunk const& chunkEntry  = reply.removed(i);
+            proto::WorkerCommandChunk const& chunkEntry  = reply.removed(i);
             Chunk chunk {chunkEntry.chunk(), chunkEntry.db()};
             removed.push_back(chunk);
         }
         LOGS(_log, LOG_LVL_DEBUG, context << "total chunks removed: " << numRemoved);
     }
 
-    if (_onFinish)
-        _onFinish (
+    if (_onFinish) {
+        _onFinish(
             ::translate(reply.status()),
             reply.error(),
             added,
             removed);
+    }
+}
+
+void ChunkListQservRequest::onError(std::string const& error) {
+
+    if (_onFinish) {
+        _onFinish(
+            Status::ERROR,
+            error,
+            ChunkCollection(),
+            ChunkCollection());
+    }
+}
+
+ReloadChunkListQservRequest::Ptr ReloadChunkListQservRequest::create(
+                                            ChunkListQservRequest::CallbackType onFinish) {
+    return ReloadChunkListQservRequest::Ptr(
+        new ReloadChunkListQservRequest(onFinish));
+}
+
+ReloadChunkListQservRequest::ReloadChunkListQservRequest(
+                                            ChunkListQservRequest::CallbackType onFinish)
+   :   ChunkListQservRequest(false,
+                             true,
+                             onFinish) {
+}
+
+RebuildChunkListQservRequest::Ptr RebuildChunkListQservRequest::create(
+                                            bool reload,
+                                            ChunkListQservRequest::CallbackType onFinish) {
+    return RebuildChunkListQservRequest::Ptr(
+        new RebuildChunkListQservRequest(reload,
+                                         onFinish));
+}
+
+RebuildChunkListQservRequest::RebuildChunkListQservRequest(
+                                            bool reload,
+                                            ChunkListQservRequest::CallbackType onFinish)
+    :   ChunkListQservRequest(true,
+                              reload,
+                              onFinish) {
 }
 
 }}} // namespace lsst::qserv::wpublish

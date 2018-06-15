@@ -27,6 +27,7 @@
 // System headers
 #include <functional>
 #include <list>
+#include <memory>
 
 // Third party headers
 
@@ -69,19 +70,19 @@ public:
 
     /// The callback function type to be used for notifications on
     /// the operation completion.
-    using calback_type =
+    using CallbackType =
         std::function<void(Status,                      // completion status
                            std::string const&,          // error message
                            ChunkCollection const&,      // chunks added   (if success)
                            ChunkCollection const&)>;    // chunks removed (if success)
 
     // Default construction and copy semantics are prohibited
-    ChunkListQservRequest () = delete;
-    ChunkListQservRequest (ChunkListQservRequest const&) = delete;
-    ChunkListQservRequest& operator= (ChunkListQservRequest const&) = delete;
+    ChunkListQservRequest() = delete;
+    ChunkListQservRequest(ChunkListQservRequest const&) = delete;
+    ChunkListQservRequest& operator=(ChunkListQservRequest const&) = delete;
 
     /// Destructor
-    ~ChunkListQservRequest () override;
+    ~ChunkListQservRequest() override;
 
 protected:
 
@@ -93,15 +94,18 @@ protected:
      * @param onFinish - optional callback function to be called upon the completion
      *                   (successful or not) of the request.
      */
-     ChunkListQservRequest (bool rebuild,
-                            bool reload,
-                            calback_type onFinish = nullptr);
+     ChunkListQservRequest(bool rebuild,
+                           bool reload,
+                           CallbackType onFinish = nullptr);
 
     /// Implement the corresponding method of the base class
-    void onRequest (proto::FrameBuffer& buf) override;
+    void onRequest(proto::FrameBuffer& buf) override;
 
     /// Implement the corresponding method of the base class
-    void onResponse (proto::FrameBufferView& view) override;
+    void onResponse(proto::FrameBufferView& view) override;
+
+    /// Implement the corresponding method of the base class
+    void onError(std::string const& error) override;
 
 private:
 
@@ -113,7 +117,7 @@ private:
 
     /// Optional callback function to be called upon the completion
     /// (successfull or not) of the request.
-    calback_type _onFinish;
+    CallbackType _onFinish;
 };
 
 
@@ -126,12 +130,28 @@ class ReloadChunkListQservRequest
 
 public:
 
-    // Copy semantics is prohibited
-    ReloadChunkListQservRequest (ReloadChunkListQservRequest const&) = delete;
-    ReloadChunkListQservRequest& operator= (ReloadChunkListQservRequest const&) = delete;
+    /// The pointer type for instances of the class
+    typedef std::shared_ptr<ReloadChunkListQservRequest> Ptr;
+
+    /**
+     * Static factory method is needed to prevent issues with the lifespan
+     * and memory management of instances created otherwise (as values or via
+     * low-level pointers).
+     *
+     * @param onFinish - optional callback function to be called upon the completion
+     *                   (successful or not) of the request.
+     */
+    static Ptr create(CallbackType onFinish = nullptr);
+
+    // Default construction and copy semantics are prohibited
+    ReloadChunkListQservRequest() = delete;
+    ReloadChunkListQservRequest(ReloadChunkListQservRequest const&) = delete;
+    ReloadChunkListQservRequest& operator=(ReloadChunkListQservRequest const&) = delete;
 
     /// Destructor
-    ~ReloadChunkListQservRequest () override {}
+    ~ReloadChunkListQservRequest() override = default;
+
+protected:
 
     /**
      * Normal constructor
@@ -139,11 +159,7 @@ public:
      * @param onFinish - optional callback function to be called upon the completion
      *                   (successful or not) of the request.
      */
-     explicit ReloadChunkListQservRequest (calback_type onFinish = nullptr)
-        :   ChunkListQservRequest(false,
-                                  true,
-                                  onFinish) {
-    }
+     ReloadChunkListQservRequest(CallbackType onFinish);
 };
 
 /**
@@ -155,13 +171,30 @@ class RebuildChunkListQservRequest
 
 public:
 
+    /// The pointer type for instances of the class
+    typedef std::shared_ptr<RebuildChunkListQservRequest> Ptr;
+
+    /*
+     * Static factory method is needed to prevent issues with the lifespan
+     * and memory management of instances created otherwise (as values or via
+     * low-level pointers).
+     *
+     * @param reload   - reload the list in worker's memory
+     * @param onFinish - optional callback function to be called upon the completion
+     *                   (successful or not) of the request.
+     */
+    static Ptr create(bool reload,
+                      CallbackType onFinish = nullptr);
+
     // Default construction and copy semantics are prohibited
-    RebuildChunkListQservRequest () = delete;
-    RebuildChunkListQservRequest (RebuildChunkListQservRequest const&) = delete;
-    RebuildChunkListQservRequest& operator= (RebuildChunkListQservRequest const&) = delete;
+    RebuildChunkListQservRequest() = delete;
+    RebuildChunkListQservRequest(RebuildChunkListQservRequest const&) = delete;
+    RebuildChunkListQservRequest& operator=(RebuildChunkListQservRequest const&) = delete;
 
     /// Destructor
-    ~RebuildChunkListQservRequest () override {}
+    ~RebuildChunkListQservRequest() override = default;
+
+protected:
 
     /**
      * Normal constructor
@@ -170,13 +203,10 @@ public:
      * @param onFinish - optional callback function to be called upon the completion
      *                   (successful or not) of the request.
      */
-    RebuildChunkListQservRequest (bool reload,
-                                  calback_type onFinish = nullptr)
-        :   ChunkListQservRequest(true,
-                                  reload,
-                                  onFinish) {
-    }
+    RebuildChunkListQservRequest(bool reload,
+                                 CallbackType onFinish);
 };
+
 }}} // namespace lsst::qserv::wpublish
 
 #endif // LSST_QSERV_WPUBLISH_CHUNK_LIST_QSERV_REQUEST_H

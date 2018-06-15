@@ -1,4 +1,5 @@
 // System header
+#include <fstream>
 #include <iostream>
 #include <iomanip>
 #include <stdexcept>
@@ -17,6 +18,7 @@
 #include "wpublish/ChunkGroupQservRequest.h"
 #include "wpublish/ChunkListQservRequest.h"
 #include "wpublish/GetChunkListQservRequest.h"
+#include "wpublish/SetChunkListQservRequest.h"
 #include "wpublish/TestEchoQservRequest.h"
 
 /// This C++ symbol is provided by the SSI shared library
@@ -32,6 +34,7 @@ namespace {
 
 std::string operation;
 std::string worker;
+std::string inFileName;
 unsigned int chunk;
 std::vector<std::string> dbs;
 std::string value;
@@ -41,6 +44,53 @@ bool reload;
 bool force;
 bool printReport;
 
+/**
+ * Read and parse a space/newline separated stream of pairs from the input
+ * file and fill replica entries into the collection. Each pair has
+ * the following format:
+ *
+ *   <database>:<chunk>
+ *
+ * For example:
+ *
+ *   LSST:123 LSST:124 LSST:23456
+ *   LSST:0
+ *
+ * @param chunk - collection to be initialize
+ */
+void readInFile(wpublish::SetChunkListQservRequest::ChunkCollection& chunks) {
+
+    chunks.clear();
+
+    std::ifstream infile(inFileName);
+    if (not infile.good()) {
+        std::cerr << "failed to open file: " << inFileName << std::endl;
+        throw std::runtime_error("failed to open file: " + inFileName);
+    }
+
+    std::string databaseAndChunk;
+    while (infile >> databaseAndChunk) {
+
+        if (databaseAndChunk.empty()) { continue; }
+
+        std::string::size_type const pos = databaseAndChunk.rfind(':');
+        if ((pos == std::string::npos) or
+            (pos == 0) or (pos == databaseAndChunk.size() - 1)) {
+            throw std::runtime_error(
+                "failed to parse file: " + inFileName + ", illegal <database>::<chunk> pair: '" +
+                databaseAndChunk + "'");
+        }
+        unsigned long const chunk    = std::stoul(databaseAndChunk.substr(pos + 1));
+        std::string   const database = databaseAndChunk.substr(0, pos);
+        chunks.emplace_back(
+            wpublish::SetChunkListQservRequest::Chunk{
+                (unsigned int)chunk,
+                database,
+                0   /* use_count (UNUSED) */
+            }
+        );
+    }
+}
 
 int test() {
 
@@ -48,10 +98,10 @@ int test() {
 
     std::atomic<bool> finished(false);
 
-    XrdSsiRequest* request = nullptr;
+    std::shared_ptr<wpublish::QservRequest> request = nullptr;
 
     if ("GET_CHUNK_LIST" == operation) {
-        request = new wpublish::GetChunkListQservRequest(
+        request = wpublish::GetChunkListQservRequest::create(
             inUseOnly,
             [&finished] (wpublish::GetChunkListQservRequest::Status status,
                          std::string const& error,
@@ -77,8 +127,40 @@ int test() {
                 finished = true;
             });
 
+        } else if ("SET_CHUNK_LIST" == operation) {
+
+            wpublish::SetChunkListQservRequest::ChunkCollection chunks;
+            readInFile(chunks);
+
+            request = wpublish::SetChunkListQservRequest::create(
+                chunks,
+                force,
+                [&finished] (wpublish::SetChunkListQservRequest::Status status,
+                             std::string const& error,
+                             wpublish::SetChunkListQservRequest::ChunkCollection const& chunks) {
+
+                    if (status != wpublish::SetChunkListQservRequest::Status::SUCCESS) {
+                        std::cout << "status: " << wpublish::SetChunkListQservRequest::status2str(status) << "\n"
+                                  << "error:  " << error << std::endl;
+                    } else {
+                        std::cout << "# total chunks: " << chunks.size() << "\n"
+                                  << std::endl;
+                        if (chunks.size()) {
+                            std::cout << "      chunk |                         database | in use \n"
+                                      << "------------+----------------------------------+--------\n";
+                            for (auto const& entry: chunks) {
+                                std::cout << " " << std::setw(10) << entry.chunk << " |"
+                                          << " " << std::setw(32) << entry.database << " |"
+                                          << " " << std::setw(6)  << entry.use_count << " \n";
+                            }
+                            std::cout << std::endl;
+                        }
+                    }
+                    finished = true;
+                });
+
     } else if ("REBUILD_CHUNK_LIST" == operation) {
-        request = new wpublish::RebuildChunkListQservRequest(
+        request = wpublish::RebuildChunkListQservRequest::create(
             reload,
             [&finished] (wpublish::ChunkListQservRequest::Status status,
                          std::string const& error,
@@ -96,7 +178,7 @@ int test() {
             });
 
     } else if ("RELOAD_CHUNK_LIST" == operation) {
-        request = new wpublish::ReloadChunkListQservRequest(
+        request = wpublish::ReloadChunkListQservRequest::create(
             [&finished] (wpublish::ChunkListQservRequest::Status status,
                          std::string const& error,
                          wpublish::ChunkListQservRequest::ChunkCollection const& added,
@@ -113,7 +195,7 @@ int test() {
             });
 
     } else if ("ADD_CHUNK_GROUP" == operation) {
-        request = new wpublish::AddChunkGroupQservRequest(
+        request = wpublish::AddChunkGroupQservRequest::create(
             chunk,
             dbs,
             [&finished] (wpublish::ChunkGroupQservRequest::Status status,
@@ -127,7 +209,7 @@ int test() {
             });
 
     } else if ("REMOVE_CHUNK_GROUP" == operation) {
-        request = new wpublish::RemoveChunkGroupQservRequest(
+        request = wpublish::RemoveChunkGroupQservRequest::create(
             chunk,
             dbs,
             force,
@@ -142,7 +224,7 @@ int test() {
             });
 
     } else if ("TEST_ECHO" == operation) {
-        request = new wpublish::TestEchoQservRequest(
+        request = wpublish::TestEchoQservRequest::create(
             value,
             [&finished] (wpublish::TestEchoQservRequest::Status status,
                          std::string const& error,
@@ -180,7 +262,7 @@ int test() {
     XrdSsiResource resource(global::ResourceUnit::makeWorkerPath(worker));
     serviceProvider->ProcessRequest(*request, resource);
 
-    // Block while the request is in progress 
+    // Block while the request is in progress
     util::BlockPost blockPost(1000, 2000);
     while (not finished) blockPost.wait(200);
 
@@ -211,6 +293,7 @@ int main(int argc, const char* const argv[]) {
             "\n"
             "Supported operations and mandatory parameters:\n"
             "    GET_CHUNK_LIST     <worker>\n"
+            "    SET_CHUNK_LIST     <worker> <infile>\n"
             "    REBUILD_CHUNK_LIST <worker>\n"
             "    RELOAD_CHUNK_LIST  <worker>\n"
             "    ADD_CHUNK_GROUP    <worker> <chunk> <db> [<db> [<db> ... ]]\n"
@@ -226,13 +309,15 @@ int main(int argc, const char* const argv[]) {
             "  --print-report        - print \n"
             "\n"
             "Parameters:\n"
-            "  <worker> - unique identifier of a worker (example: 'worker-1')\n"
-            "  <chunk>  - chunk number\n"
-            "  <db>     - database name\n"
-            "  <value>  - arbitrary string\n");
+            "  <worker>  - unique identifier of a worker (example: 'worker-1')\n"
+            "  <infile>  - text file with space or newline separated pairs of <database>:<chunk>\n"
+            "  <chunk>   - chunk number\n"
+            "  <db>      - database name\n"
+            "  <value>   - arbitrary string\n");
 
         ::operation = parser.parameterRestrictedBy(1, {
             "GET_CHUNK_LIST",
+            "SET_CHUNK_LIST",
             "REBUILD_CHUNK_LIST",
             "RELOAD_CHUNK_LIST",
             "ADD_CHUNK_GROUP",
@@ -242,6 +327,10 @@ int main(int argc, const char* const argv[]) {
         ::worker = parser.parameter<std::string>(2);
 
         if (parser.in(::operation, {
+            "SET_CHUNK_LIST"})) {
+            ::inFileName = parser.parameter<std::string>(3);
+
+        } else if (parser.in(::operation, {
             "ADD_CHUNK_GROUP",
             "REMOVE_CHUNK_GROUP"})) {
             ::chunk = parser.parameter<unsigned int>(3);
@@ -259,6 +348,6 @@ int main(int argc, const char* const argv[]) {
 
     } catch (std::exception const& ex) {
         return 1;
-    } 
+    }
     return ::test();
 }

@@ -26,6 +26,7 @@
 
 // System headers
 #include <functional>
+#include <memory>
 #include <vector>
 
 // Third party headers
@@ -57,45 +58,48 @@ public:
     };
 
     /// @return string representation of a status
-    static std::string status2str (Status status);
+    static std::string status2str(Status status);
 
     /// The callback function type to be used for notifications on
     /// the operation completion.
-    using calback_type =
+    using CallbackType =
             std::function<void(Status,                  // completion status
                                std::string const&)>;    // error message (depends on a status)
 
     // Default construction and copy semantics is prohibited
-    ChunkGroupQservRequest () = delete;
-    ChunkGroupQservRequest (ChunkGroupQservRequest const&) = delete;
-    ChunkGroupQservRequest& operator= (ChunkGroupQservRequest const&) = delete;
+    ChunkGroupQservRequest() = delete;
+    ChunkGroupQservRequest(ChunkGroupQservRequest const&) = delete;
+    ChunkGroupQservRequest& operator=(ChunkGroupQservRequest const&) = delete;
 
     /// Destructor
-    ~ChunkGroupQservRequest () override;
+    ~ChunkGroupQservRequest() override;
 
 protected:
 
     /**
      * Normal constructor
      *
-     * @param add      - add a group if 'true', remove otherwise
-     * @param chunk    - chunk number
-     * @param dbs      - names of databases in the group
-     * @param          - force the proposed change even if the chunk is in use
-     * @param onFinish - optional callback function to be called upon the completion
+     * @param add       - add a group if 'true', remove otherwise
+     * @param chunk     - chunk number
+     * @param databases - names of databases in the group
+     * @param force     - force the proposed change even if the chunk is in use
+     * @param onFinish  - optional callback function to be called upon the completion
      *                   (successful or not) of the request.
      */
-    ChunkGroupQservRequest (bool add,
-                            unsigned int chunk,
-                            std::vector<std::string> const& dbs,
-                            bool force,
-                            calback_type onFinish);
+    ChunkGroupQservRequest(bool add,
+                           unsigned int chunk,
+                           std::vector<std::string> const& databases,
+                           bool force,
+                           CallbackType onFinish);
 
     /// Implement the corresponding method of the base class
-    void onRequest (proto::FrameBuffer& buf) override;
+    void onRequest(proto::FrameBuffer& buf) override;
 
     /// Implement the corresponding method of the base class
-    void onResponse (proto::FrameBufferView& view) override;
+    void onResponse(proto::FrameBufferView& view) override;
+
+    /// Implement the corresponding method of the base class
+    void onError(std::string const& error) override;
 
 private:
 
@@ -103,9 +107,9 @@ private:
 
     bool _add;
     unsigned int _chunk;
-    std::vector<std::string> _dbs;
+    std::vector<std::string> _databases;
     bool _force;
-    calback_type _onFinish;
+    CallbackType _onFinish;
 };
 
 /**
@@ -117,31 +121,43 @@ class AddChunkGroupQservRequest
 
 public:
 
+    /// The pointer type for instances of the class
+    typedef std::shared_ptr<AddChunkGroupQservRequest> Ptr;
+
+    // Default construction and copy semantics is prohibited
+    AddChunkGroupQservRequest() = delete;
+    AddChunkGroupQservRequest(AddChunkGroupQservRequest const&) = delete;
+    AddChunkGroupQservRequest& operator=(AddChunkGroupQservRequest const&) = delete;
+
+    /// Destructor
+    ~AddChunkGroupQservRequest() override  = default;
+
+    /**
+     * Static factory method is needed to prevent issues with the lifespan
+     * and memory management of instances created otherwise (as values or via
+     * low-level pointers).
+     *
+     * @param chunk     - the chunk number
+     * @param databases - names of databases in the group
+     * @param onFinish  - callback function to be called upon request completion
+     */
+    static Ptr create(unsigned int chunk,
+                          std::vector<std::string> const& databases,
+                          CallbackType onFinish = nullptr);
+
+private:
+
     /**
      * Normal constructor
      *
-     * @param chunk    - chunk number
-     * @param dbs      - names of databases in the group
-     * @param onFinish - optional callback function to be called upon the completion
-     *                   (successful or not) of the request.
+     * @param chunk     - chunk number
+     * @param databases - names of databases in the group
+     * @param onFinish  - optional callback function to be called upon the completion
+     *                    (successful or not) of the request.
      */
-    AddChunkGroupQservRequest (unsigned int chunk,
-                               std::vector<std::string> const& dbs,
-                               calback_type onFinish = nullptr)
-
-        :   ChunkGroupQservRequest (true,
-                                    chunk,
-                                    dbs,
-                                    false,
-                                    onFinish) {}
-
-    // Default construction and copy semantics is prohibited
-    AddChunkGroupQservRequest () = delete;
-    AddChunkGroupQservRequest (AddChunkGroupQservRequest const&) = delete;
-    AddChunkGroupQservRequest& operator= (AddChunkGroupQservRequest const&) = delete;
-
-    /// Destructor
-    ~AddChunkGroupQservRequest () override {}
+    AddChunkGroupQservRequest(unsigned int chunk,
+                              std::vector<std::string> const& databases,
+                              CallbackType onFinish);
 };
 
 /**
@@ -153,33 +169,47 @@ class RemoveChunkGroupQservRequest
 
 public:
 
+    /// The pointer type for instances of the class
+    typedef std::shared_ptr<RemoveChunkGroupQservRequest> Ptr;
+
+    // Default construction and copy semantics is prohibited
+    RemoveChunkGroupQservRequest() = delete;
+    RemoveChunkGroupQservRequest(RemoveChunkGroupQservRequest const&) = delete;
+    RemoveChunkGroupQservRequest& operator=(RemoveChunkGroupQservRequest const&) = delete;
+
+    /// Destructor
+    ~RemoveChunkGroupQservRequest() override = default;
+
+    /**
+     * Static factory method is needed to prevent issues with the lifespan
+     * and memory management of instances created otherwise (as values or via
+     * low-level pointers).
+     *
+     * @param chunk     - the chunk number
+     * @param databases - names of databases in the group
+     * @param force     - force the proposed change even if the chunk is in use
+     * @param onFinish  - callback function to be called upon request completion
+     */
+    static Ptr create(unsigned int chunk,
+                      std::vector<std::string> const& databases,
+                      bool force,
+                      CallbackType onFinish = nullptr);
+
+private:
+
     /**
      * Normal constructor
      *
-     * @param chunk    - chunk number
-     * @param dbs      - names of databases in the group
-     * @param          - force the proposed change even if the chunk is in use
-     * @param onFinish - optional callback function to be called upon the completion
+     * @param chunk     - chunk number
+     * @param databases - names of databases in the group
+     * @param force     - force the proposed change even if the chunk is in use
+     * @param onFinish  - optional callback function to be called upon the completion
      *                   (successful or not) of the request.
      */
-    RemoveChunkGroupQservRequest (unsigned int chunk,
-                                  std::vector<std::string> const& dbs,
-                                  bool force,
-                                  calback_type onFinish = nullptr)
-
-        :   ChunkGroupQservRequest (false,
-                                    chunk,
-                                    dbs,
-                                    force,
-                                    onFinish) {}
-
-    // Default construction and copy semantics is prohibited
-    RemoveChunkGroupQservRequest () = delete;
-    RemoveChunkGroupQservRequest (RemoveChunkGroupQservRequest const&) = delete;
-    RemoveChunkGroupQservRequest& operator= (RemoveChunkGroupQservRequest const&) = delete;
-
-    /// Destructor
-    ~RemoveChunkGroupQservRequest () override {}
+    RemoveChunkGroupQservRequest(unsigned int chunk,
+                                 std::vector<std::string> const& databases,
+                                 bool force,
+                                 CallbackType onFinish);
 };
 
 }}} // namespace lsst::qserv::wpublish

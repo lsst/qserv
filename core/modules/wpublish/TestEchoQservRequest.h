@@ -26,6 +26,7 @@
 
 // System headers
 #include <functional>
+#include <memory>
 #include <string>
 
 // Third party headers
@@ -57,13 +58,39 @@ public:
     /// @return string representation of a status
     static std::string status2str (Status status);
 
+    /// The pointer type for instances of the class
+    typedef std::shared_ptr<TestEchoQservRequest> Ptr;
+
     /// The callback function type to be used for notifications on
     /// the operation completion.
-    using calback_type =
+    using CallbackType =
         std::function<void(Status,                  // completion status
                            std::string const&,      // error message
                            std::string const&,      // value sent
                            std::string const&)>;    // value received (if success)
+
+    /**
+     * Static factory method is needed to prevent issues with the lifespan
+     * and memory management of instances created otherwise (as values or via
+     * low-level pointers).
+     *
+     * @param value    - a value to be sent to the worker service
+     * @param onFinish  - optional callback function to be called upon the completion
+     *                    (successful or not) of the request.
+     * @return smart pointer to the object of the class
+     */
+    static Ptr create(std::string const& value,
+                      CallbackType onFinish = nullptr);
+
+    // Default construction and copy semantics is prohibited
+    TestEchoQservRequest() = delete;
+    TestEchoQservRequest(TestEchoQservRequest const&) = delete;
+    TestEchoQservRequest& operator=(TestEchoQservRequest const&) = delete;
+
+    /// Destructor
+    ~TestEchoQservRequest() override;
+
+protected:
 
     /**
      * Normal constructor
@@ -71,24 +98,17 @@ public:
      * @param value    - a value to be sent to the worker service
      * @param onFinish - function to be called upon the completion of a request
      */
-    explicit TestEchoQservRequest (std::string const& value,
-                                   calback_type       onFinish = nullptr);
-
-    // Default construction and copy semantics is prohibited
-    TestEchoQservRequest () = delete;
-    TestEchoQservRequest (TestEchoQservRequest const&) = delete;
-    TestEchoQservRequest& operator= (TestEchoQservRequest const&) = delete;
-
-    /// Destructor
-    ~TestEchoQservRequest () override;
-
-protected:
+    TestEchoQservRequest(std::string const& value,
+                         CallbackType onFinish);
 
     /// Implement the corresponding method of the base class
-    void onRequest (proto::FrameBuffer& buf) override;
+    void onRequest(proto::FrameBuffer& buf) override;
 
     /// Implement the corresponding method of the base class
-    void onResponse (proto::FrameBufferView& view) override;
+    void onResponse(proto::FrameBufferView& view) override;
+
+    /// Implement the corresponding method of the base class
+    void onError(std::string const& error) override;
 
 private:
 
@@ -97,7 +117,7 @@ private:
 
     /// Optional callback function to be called upon the completion
     /// (successfull or not) of the request.
-    calback_type _onFinish;
+    CallbackType _onFinish;
 };
 
 }}} // namespace lsst::qserv::wpublish

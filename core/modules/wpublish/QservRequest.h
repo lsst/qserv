@@ -49,16 +49,16 @@ class QservRequest
 public:
 
     // Copy semantics is prohibited
-    QservRequest (QservRequest const&) = delete;
-    QservRequest& operator= (QservRequest const&) = delete;
+    QservRequest(QservRequest const&) = delete;
+    QservRequest& operator=(QservRequest const&) = delete;
 
     /// Destructor
-    virtual ~QservRequest ();
+    ~QservRequest() override;
 
 protected:
 
     /// Default construtor
-    QservRequest ();
+    QservRequest();
 
     /**
      * Serialize a request into the provided buffer. The method is required to be
@@ -66,30 +66,38 @@ protected:
      *
      * @param buf - request buffer for serializing a request 
      */
-    virtual void onRequest (proto::FrameBuffer& buf) = 0;
+    virtual void onRequest(proto::FrameBuffer& buf) = 0;
 
     /**
      * Process response from Qserv. The method is required to be rovided by a subclass.
      *
      * @param view - buffer view for parsing results
      */
-    virtual void onResponse (proto::FrameBufferView& view) = 0;
+    virtual void onResponse(proto::FrameBufferView& view) = 0;
+
+    /**
+     * Notify a base class about a failure occured when sending a request data
+     * or receiving a response.
+     *
+     * @param error - message explaining a reson of the failure
+     */
+    virtual void onError(std::string const& msg) = 0;
 
     /// Implements the corresponidng method of the base class
-    char* GetRequest (int& dlen) override;
+    char* GetRequest(int& dlen) override;
 
     /// Implements the corresponidng method of the base class
-    bool ProcessResponse (const XrdSsiErrInfo&  eInfo,
-                          const XrdSsiRespInfo& rInfo) override;
+    bool ProcessResponse(const XrdSsiErrInfo&  eInfo,
+                         const XrdSsiRespInfo& rInfo) override;
 
     /// Implements the corresponidng method of the base class
-    XrdSsiRequest::PRD_Xeq ProcessResponseData (const XrdSsiErrInfo& eInfo,
-                                                char* buff,
-                                                int   blen,
-                                                bool  last) override;
+    XrdSsiRequest::PRD_Xeq ProcessResponseData(const XrdSsiErrInfo& eInfo,
+                                               char* buff,
+                                               int   blen,
+                                               bool  last) override;
 
     /// Request finalizer (cleanup, etc.)
-    void Finished ();
+    //void Finished();
 
 private:
 

@@ -89,16 +89,16 @@ int test() {
 
         for (unsigned int j = 0; j < numWorkers; ++j) {
             std::string const& worker = workers[j];
-    
+
             for (unsigned int i = 0; i < numRequests; ++i) {
-    
-                XrdSsiRequest* request = new wpublish::TestEchoQservRequest(
+
+                auto request = wpublish::TestEchoQservRequest::create(
                     value,
                     [&finished] (wpublish::TestEchoQservRequest::Status status,
                                  std::string const& error,
                                  std::string const& sent,
                                  std::string const& received) {
-        
+
                         if (status != wpublish::TestEchoQservRequest::Status::SUCCESS) {
                             std::cout << "status: " << wpublish::TestEchoQservRequest::status2str(status) << "\n"
                                       << "error:  " << error << std::endl;
@@ -108,7 +108,7 @@ int test() {
                         }
                         finished--;
                     });
-        
+
                 // Submit the request
                 finished++;
                 XrdSsiResource resource(global::ResourceUnit::makeWorkerPath(worker));
@@ -122,15 +122,15 @@ int test() {
 
             for (unsigned int j = 0; j < numWorkers; ++j) {
                 std::string const& worker = workers[j];
-    
-    
-                XrdSsiRequest* request = new wpublish::TestEchoQservRequest(
+
+
+                auto request = wpublish::TestEchoQservRequest::create(
                     value,
                     [&finished] (wpublish::TestEchoQservRequest::Status status,
                                  std::string const& error,
                                  std::string const& sent,
                                  std::string const& received) {
-        
+
                         if (status != wpublish::TestEchoQservRequest::Status::SUCCESS) {
                             std::cout << "status: " << wpublish::TestEchoQservRequest::status2str(status) << "\n"
                                       << "error:  " << error << std::endl;
@@ -140,7 +140,7 @@ int test() {
                         }
                         finished--;
                     });
-        
+
                 // Submit the request
                 finished++;
                 XrdSsiResource resource(global::ResourceUnit::makeWorkerPath(worker));
@@ -149,10 +149,11 @@ int test() {
         }
     }
 
-    // Block while at least one request is in progress 
+    // Block while at least one request is in progress
     util::BlockPost blockPost(1000, 2000);
-    while (finished) blockPost.wait(200);
-
+    while (finished) {
+        blockPost.wait(200);
+    }
     return 0;
 }
 } // namespace
@@ -196,6 +197,6 @@ int main(int argc, const char* const argv[]) {
 
     } catch (std::exception const& ex) {
         return 1;
-    } 
+    }
     return ::test();
 }
