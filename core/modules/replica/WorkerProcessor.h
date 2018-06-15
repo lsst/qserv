@@ -211,6 +211,18 @@ public:
                            proto::ReplicationResponseFindAll& response);
 
     /**
+     * Enqueue the worker-side testing request for processing
+     *
+     * @param id       - an identifier of a request
+     * @param request  - the protobuf object received from a client
+     * @param response - the protobuf object to be initialized and ready
+     *                   to be sent back to the client
+     */
+    void enqueueForEcho(std::string const& id,
+                        proto::ReplicationRequestEcho const& request,
+                        proto::ReplicationResponseEcho& response);
+
+    /**
      * Set default values to protocol response which has 3 mandatory fields:
      *
      *   status
@@ -302,8 +314,7 @@ public:
                            proto::ReplicationStatus::BAD,
                            proto::ReplicationStatusExt::INVALID_ID);
 
-        // Try to locate a request with specified identifier and make sure
-        // its actual type matches expecations
+        // Try to locate a request with specified identifier
 
         if (WorkerRequest::Ptr ptr = checkStatusImpl(lock, request.id())) {
             try {
@@ -464,6 +475,18 @@ private:
      */
     void setInfo(WorkerRequest::Ptr const& request,
                  proto::ReplicationResponseFindAll& response);
+
+    /**
+     * Extract the replica info (for multiple chunks) from the request and put
+     * it into the response object.
+     *
+     * @param request  - finished request
+     * @param response - Google Protobuf object to be initialized
+     *
+     * @throws std::logic_error if the dynamic type of the request won't match expectations
+     */
+    void setInfo(WorkerRequest::Ptr const& request,
+                 proto::ReplicationResponseEcho& response);
 
     /**
      * Fill in the information object for the specified request based on its

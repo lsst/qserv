@@ -34,6 +34,7 @@
 #include "proto/replication.pb.h"
 #include "replica/Controller.h"
 #include "replica/DeleteRequest.h"
+#include "replica/EchoRequest.h"
 #include "replica/FindRequest.h"
 #include "replica/FindAllRequest.h"
 #include "replica/ReplicationRequest.h"
@@ -61,7 +62,9 @@ std::string worker;
 std::string sourceWorker;
 std::string db;
 std::string id;
+std::string data;
 uint32_t    chunk;
+uint64_t    delay;
 
 // Options and flags
 //
@@ -162,6 +165,15 @@ bool test() {
                 priority,
                 keepTracking);
 
+        } else if ("REPLICA_ECHO" == operation) {
+            request = controller->echo(
+                worker, data, delay,
+                [] (replica::EchoRequest::Ptr request) {
+                    printRequest<replica::EchoRequest>(request);
+                },
+                priority,
+                keepTracking);
+
         } else if ("REQUEST_STATUS:REPLICA_CREATE"  == operation) {
             request = controller->statusOfReplication(
                 worker, id,
@@ -198,7 +210,16 @@ bool test() {
                 },
                 keepTracking);
 
-        } else if ("REQUEST_STOP:REPLICA_CREATE"  == operation) {
+        } else if ("REQUEST_STATUS:REPLICA_ECHO" == operation) {
+            request = controller->statusOfEcho(
+                worker, id,
+                [] (replica::StatusEchoRequest::Ptr request) {
+                    printRequest     <replica::StatusEchoRequest>(request);
+                    printRequestExtra<replica::StatusEchoRequest>(request);
+                },
+                keepTracking);
+
+        } else if ("REQUEST_STOP:REPLICA_CREATE" == operation) {
             request = controller->stopReplication(
                 worker, id,
                 [] (replica::StopReplicationRequest::Ptr request) {
@@ -207,7 +228,7 @@ bool test() {
                 },
                 keepTracking);
 
-        } else if ("REQUEST_STOP:REPLICA_DELETE"  == operation) {
+        } else if ("REQUEST_STOP:REPLICA_DELETE" == operation) {
             request = controller->stopReplicaDelete(
                 worker, id,
                 [] (replica::StopDeleteRequest::Ptr request) {
@@ -216,7 +237,7 @@ bool test() {
                 },
                 keepTracking);
 
-        } else if ("REQUEST_STOP:REPLICA_FIND"  == operation) {
+        } else if ("REQUEST_STOP:REPLICA_FIND" == operation) {
             request = controller->stopReplicaFind(
                 worker, id,
                 [] (replica::StopFindRequest::Ptr request) {
@@ -231,6 +252,15 @@ bool test() {
                 [] (replica::StopFindAllRequest::Ptr request) {
                     printRequest     <replica::StopFindAllRequest>(request);
                     printRequestExtra<replica::StopFindAllRequest>(request);
+                },
+                keepTracking);
+
+        } else if ("REQUEST_STOP:REPLICA_ECHO"  == operation) {
+            request = controller->stopEcho(
+                worker, id,
+                [] (replica::StopEchoRequest::Ptr request) {
+                    printRequest     <replica::StopEchoRequest>(request);
+                    printRequestExtra<replica::StopEchoRequest>(request);
                 },
                 keepTracking);
 
@@ -318,16 +348,19 @@ int main(int argc, const char* const argv[]) {
             "    REPLICA_DELETE                  <worker> <db> <chunk>\n"
             "    REPLICA_FIND                    <worker> <db> <chunk>\n"
             "    REPLICA_FIND_ALL                <worker> <db> [--do-not-save-replica]\n"
+            "    REPLICA_ECHO                    <worker> <data> <delay>\n"
             "\n"
             "    REQUEST_STATUS:REPLICA_CREATE   <worker> <id>\n"
             "    REQUEST_STATUS:REPLICA_DELETE   <worker> <id>\n"
             "    REQUEST_STATUS:REPLICA_FIND     <worker> <id>\n"
             "    REQUEST_STATUS:REPLICA_FIND_ALL <worker> <id>\n"
+            "    REQUEST_STATUS:REPLICA_ECHO     <worker> <id>\n"
             "\n"
             "    REQUEST_STOP:REPLICA_CREATE     <worker> <id>\n"
             "    REQUEST_STOP:REPLICA_DELETE     <worker> <id>\n"
             "    REQUEST_STOP:REPLICA_FIND       <worker> <id>\n"
             "    REQUEST_STOP:REPLICA_FIND_ALL   <worker> <id>\n"
+            "    REQUEST_STOP:REPLICA_ECHO       <worker> <id>\n"
             "\n"
             "    SERVICE_SUSPEND                 <worker>\n"
             "    SERVICE_RESUME                  <worker>\n"
@@ -350,14 +383,17 @@ int main(int argc, const char* const argv[]) {
             "REPLICA_DELETE",
             "REPLICA_FIND",
             "REPLICA_FIND_ALL",
+            "REPLICA_ECHO",
             "REQUEST_STATUS:REPLICA_CREATE",
             "REQUEST_STATUS:REPLICA_DELETE",
             "REQUEST_STATUS:REPLICA_FIND",
             "REQUEST_STATUS:REPLICA_FIND_ALL",
+            "REQUEST_STATUS:REPLICA_ECHO",
             "REQUEST_STOP:REPLICA_CREATE",
             "REQUEST_STOP:REPLICA_DELETE",
             "REQUEST_STOP:REPLICA_FIND",
             "REQUEST_STOP:REPLICA_FIND_ALL",
+            "REQUEST_STOP:REPLICA_ECHO",
             "SERVICE_SUSPEND",
             "SERVICE_RESUME",
             "SERVICE_STATUS",
@@ -391,14 +427,23 @@ int main(int argc, const char* const argv[]) {
 
         } else if (parser.in(::operation, {
 
+            "REPLICA_ECHO"})) {
+
+            ::data  = parser.parameter<std::string>(3);
+            ::delay = parser.parameter<uint64_t>(4);
+
+        } else if (parser.in(::operation, {
+
             "REQUEST_STATUS:REPLICA_CREATE",
             "REQUEST_STATUS:REPLICA_DELETE",
             "REQUEST_STATUS:REPLICA_FIND",
             "REQUEST_STATUS:REPLICA_FIND_ALL",
+            "REQUEST_STATUS:REPLICA_ECHO",
             "REQUEST_STOP:REPLICA_CREATE",
             "REQUEST_STOP:REPLICA_DELETE",
             "REQUEST_STOP:REPLICA_FIND",
-            "REQUEST_STOP:REPLICA_FIND_ALL"})) {
+            "REQUEST_STOP:REPLICA_FIND_ALL",
+            "REQUEST_STOP:REPLICA_ECHO"})) {
 
             ::id = parser.parameter<std::string>(3);
         }

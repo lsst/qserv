@@ -13,10 +13,10 @@ INSERT INTO `config` VALUES ('common', 'request_retry_interval_sec', '1');
 
 -- Controller-specific parameters
 
-INSERT INTO `config` VALUES ('controller', 'num_threads',           '1');
+INSERT INTO `config` VALUES ('controller', 'num_threads',           '10');
 INSERT INTO `config` VALUES ('controller', 'http_server_port',      '80');
 INSERT INTO `config` VALUES ('controller', 'http_server_threads',    '1');
-INSERT INTO `config` VALUES ('controller', 'request_timeout_sec', '14400');   -- 4 hours
+INSERT INTO `config` VALUES ('controller', 'request_timeout_sec', '28800');   -- 4 hours
 INSERT INTO `config` VALUES ('controller', 'job_timeout_sec',     '28800');   -- 8 hours
 INSERT INTO `config` VALUES ('controller', 'job_heartbeat_sec',     '60');
 

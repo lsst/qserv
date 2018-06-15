@@ -170,6 +170,22 @@ struct FindAllRequestParams {
     explicit FindAllRequestParams(proto::ReplicationRequestFindAll const& message);
 };
 
+/**
+ * Struct EchoRequestParams represents parameters of the echo requests.
+ */
+struct EchoRequestParams {
+
+    int          priority;
+    std::string  data;
+    uint64_t     delay;
+
+    /// The default constructor
+    EchoRequestParams();
+
+    /// The normal constructor
+    explicit EchoRequestParams(proto::ReplicationRequestEcho const& message);
+};
+
 }}} // namespace lsst::qserv::replica
 
 #endif // LSST_QSERV_REPLICA_COMMON_H

@@ -69,7 +69,7 @@ struct StopReplicationRequestPolicy {
 
     static char const* requestName();
 
-    static proto::ReplicationReplicaRequestType requestType();
+    static proto::ReplicationReplicaRequestType replicaRequestType();
 
     static void extractResponseData(ResponseMessageType const& msg,
                                     ResponseDataType& data);
@@ -94,7 +94,7 @@ struct StopDeleteRequestPolicy {
 
     static char const* requestName();
 
-    static proto::ReplicationReplicaRequestType requestType();
+    static proto::ReplicationReplicaRequestType replicaRequestType();
 
     static void extractResponseData(ResponseMessageType const& msg,
                                     ResponseDataType& data);
@@ -119,7 +119,7 @@ struct StopFindRequestPolicy {
 
     static char const* requestName();
 
-    static proto::ReplicationReplicaRequestType requestType();
+    static proto::ReplicationReplicaRequestType replicaRequestType();
 
     static void extractResponseData(ResponseMessageType const& msg,
                                     ResponseDataType& data);
@@ -130,6 +130,9 @@ struct StopFindRequestPolicy {
     template <class REQUEST_PTR>
     static void saveReplicaInfo(REQUEST_PTR const& request) {
         request->serviceProvider()->databaseServices()->saveReplicaInfo(request->responseData());
+        request->serviceProvider()->databaseServices()->updateRequestState(*request,
+                                                                           request->targetRequestId(),
+                                                                           request->targetPerformance());
     }
 };
 
@@ -141,7 +144,7 @@ struct StopFindAllRequestPolicy {
 
     static char const* requestName();
 
-    static proto::ReplicationReplicaRequestType requestType();
+    static proto::ReplicationReplicaRequestType replicaRequestType();
 
     static void extractResponseData(ResponseMessageType const& msg,
                                     ResponseDataType& data);
@@ -155,6 +158,33 @@ struct StopFindAllRequestPolicy {
             request->worker(),
             request->targetRequestParams().database,
             request->responseData());
+        request->serviceProvider()->databaseServices()->updateRequestState(*request,
+                                                                           request->targetRequestId(),
+                                                                           request->targetPerformance());
+    }
+};
+
+struct StopEchoRequestPolicy {
+
+    using ResponseMessageType     = proto::ReplicationResponseEcho;
+    using ResponseDataType        = std::string;
+    using TargetRequestParamsType = EchoRequestParams;
+
+    static char const* requestName();
+
+    static proto::ReplicationReplicaRequestType replicaRequestType();
+
+    static void extractResponseData(ResponseMessageType const& msg,
+                                    ResponseDataType& data);
+
+    static void extractTargetRequestParams(ResponseMessageType const& msg,
+                                           TargetRequestParamsType& params);
+
+    template <class REQUEST_PTR>
+    static void saveReplicaInfo(REQUEST_PTR const& request) {
+        request->serviceProvider()->databaseServices()->updateRequestState(*request,
+                                                                           request->targetRequestId(),
+                                                                           request->targetPerformance());
     }
 };
 
@@ -228,7 +258,7 @@ public:
                 POLICY::requestName(),
                 worker,
                 targetRequestId,
-                POLICY::requestType(),
+                POLICY::replicaRequestType(),
                 onFinish,
                 keepTracking,
                 messenger));
@@ -246,7 +276,7 @@ private:
                 char const* requestName,
                 std::string const& worker,
                 std::string const& targetRequestId,
-                proto::ReplicationReplicaRequestType requestType,
+                proto::ReplicationReplicaRequestType replicaRequestType,
                 CallbackType onFinish,
                 bool keepTracking,
                 std::shared_ptr<Messenger> const& messenger)
@@ -255,7 +285,7 @@ private:
                             requestName,
                             worker,
                             targetRequestId,
-                            requestType,
+                            replicaRequestType,
                             keepTracking,
                             messenger),
             _onFinish(onFinish) {
@@ -361,6 +391,7 @@ typedef StopRequest<StopReplicationRequestPolicy> StopReplicationRequest;
 typedef StopRequest<StopDeleteRequestPolicy>      StopDeleteRequest;
 typedef StopRequest<StopFindRequestPolicy>        StopFindRequest;
 typedef StopRequest<StopFindAllRequestPolicy>     StopFindAllRequest;
+typedef StopRequest<StopEchoRequestPolicy>        StopEchoRequest;
 
 }}} // namespace lsst::qserv::replica
 

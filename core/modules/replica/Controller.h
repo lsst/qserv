@@ -291,15 +291,38 @@ public:
      *                          value of the corresponding parameter from the Configuration.
      * @return a pointer to the replication request
      */
-    FindAllRequestPtr findAllReplicas(
-                                std::string const& workerName,
-                                std::string const& database,
-                                bool saveReplicaInfo=true,
-                                FindAllRequestCallbackType onFinish=nullptr,
-                                int  priority=0,
-                                bool keepTracking=true,
-                                std::string const& jobId="",
-                                unsigned int requestExpirationIvalSec=0);
+    FindAllRequestPtr findAllReplicas(std::string const& workerName,
+                                      std::string const& database,
+                                      bool saveReplicaInfo=true,
+                                      FindAllRequestCallbackType onFinish=nullptr,
+                                      int  priority=0,
+                                      bool keepTracking=true,
+                                      std::string const& jobId="",
+                                      unsigned int requestExpirationIvalSec=0);
+
+    /**
+     * Create and start a new request for testing the worker-side backend.
+     *
+     * @param workerName      - the name of a worker node where the replicas are located
+     * @param data            - data string to be send to and received from the worker
+     * @param delay           - execution time (milliseconds) of the request at worker
+     * @param onFinish        - (optional) callback function to be called upon the completion of the request
+     * @param priority        - (optional) priority level of the request
+     * @param keepTracking    - (optional) keep tracking the request before it finishes or fails
+     * @param jobId           - (optional) identifier of a job issed the request
+     * @param requestExpirationIvalSec
+     *                        - (optional) parameter (if differs from 0) allowing to override the default
+     *                          value of the corresponding parameter from the Configuration.
+     * @return a pointer to the replication request
+     */
+    EchoRequestPtr echo(std::string const& workerName,
+                        std::string const& data,
+                        uint64_t delay,
+                        EchoRequestCallbackType onFinish=nullptr,
+                        int  priority=0,
+                        bool keepTracking=true,
+                        std::string const& jobId="",
+                        unsigned int requestExpirationIvalSec=0);
 
     /**
      * Stop an outstanding replication request.
@@ -314,13 +337,12 @@ public:
      *                          value of the corresponding parameter from the Configuration.
      * @return a pointer to the stop request
      */
-    StopReplicationRequestPtr stopReplication(
-                                        std::string const& workerName,
-                                        std::string const& targetRequestId,
-                                        StopReplicationRequestCallbackType onFinish=nullptr,
-                                        bool keepTracking=true,
-                                        std::string const& jobId="",
-                                        unsigned int requestExpirationIvalSec=0);
+    StopReplicationRequestPtr stopReplication(std::string const& workerName,
+                                              std::string const& targetRequestId,
+                                              StopReplicationRequestCallbackType onFinish=nullptr,
+                                              bool keepTracking=true,
+                                              std::string const& jobId="",
+                                              unsigned int requestExpirationIvalSec=0);
 
     /**
      * Stop an outstanding replica deletion request.
@@ -335,13 +357,12 @@ public:
      *                          value of the corresponding parameter from the Configuration.
      * @return a pointer to the stop request
      */
-    StopDeleteRequestPtr stopReplicaDelete(
-                                    std::string const& workerName,
-                                    std::string const& targetRequestId,
-                                    StopDeleteRequestCallbackType onFinish=nullptr,
-                                    bool keepTracking=true,
-                                    std::string const& jobId="",
-                                    unsigned int requestExpirationIvalSec=0);
+    StopDeleteRequestPtr stopReplicaDelete(std::string const& workerName,
+                                           std::string const& targetRequestId,
+                                           StopDeleteRequestCallbackType onFinish=nullptr,
+                                           bool keepTracking=true,
+                                           std::string const& jobId="",
+                                           unsigned int requestExpirationIvalSec=0);
 
     /**
      * Stop an outstanding replica lookup request.
@@ -356,13 +377,12 @@ public:
      *                          value of the corresponding parameter from the Configuration.
      * @return a pointer to the stop request
      */
-    StopFindRequestPtr stopReplicaFind(
-                                std::string const& workerName,
-                                std::string const& targetRequestId,
-                                StopFindRequestCallbackType onFinish=nullptr,
-                                bool keepTracking=true,
-                                std::string const& jobId="",
-                                unsigned int requestExpirationIvalSec=0);
+    StopFindRequestPtr stopReplicaFind(std::string const& workerName,
+                                       std::string const& targetRequestId,
+                                       StopFindRequestCallbackType onFinish=nullptr,
+                                       bool keepTracking=true,
+                                       std::string const& jobId="",
+                                       unsigned int requestExpirationIvalSec=0);
 
     /**
      * Stop an outstanding replicas lookup request.
@@ -377,13 +397,32 @@ public:
      *                          value of the corresponding parameter from the Configuration.
      * @return a pointer to the stop request
      */
-    StopFindAllRequestPtr stopReplicaFindAll(
-                                    std::string const& workerName,
-                                    std::string const& targetRequestId,
-                                    StopFindAllRequestCallbackType onFinish=nullptr,
-                                    bool keepTracking=true,
-                                    std::string const& jobId="",
-                                    unsigned int requestExpirationIvalSec=0);
+    StopFindAllRequestPtr stopReplicaFindAll(std::string const& workerName,
+                                             std::string const& targetRequestId,
+                                             StopFindAllRequestCallbackType onFinish=nullptr,
+                                             bool keepTracking=true,
+                                             std::string const& jobId="",
+                                             unsigned int requestExpirationIvalSec=0);
+
+    /**
+     * Stop an outstanding worker framework testing request.
+     *
+     * @param workerName      - the name of a worker node where the request was launched
+     * @param targetRequestId - an identifier of a request to be stopped
+     * @param onFinish        - (optional) callback function to be called upon completion of the operation
+     * @param keepTracking    - (optional) keep tracking the request before it finishes or fails
+     * @param jobId           - (optional) identifier of a job issed the request
+     * @param requestExpirationIvalSec
+     *                        - (optional) parameter (if differs from 0) allowing to override the default
+     *                          value of the corresponding parameter from the Configuration.
+     * @return a pointer to the stop request
+     */
+    StopEchoRequestPtr stopEcho(std::string const& workerName,
+                                std::string const& targetRequestId,
+                                StopEchoRequestCallbackType onFinish=nullptr,
+                                bool keepTracking=true,
+                                std::string const& jobId="",
+                                unsigned int requestExpirationIvalSec=0);
 
     /**
      * Check the on-going status of an outstanding replication request.
@@ -468,6 +507,26 @@ public:
                                         bool keepTracking=false,
                                         std::string const& jobId="",
                                         unsigned int requestExpirationIvalSec=0);
+
+    /**
+     * Check the on-going status of an outstanding worker framework testing request.
+     *
+     * @param workerName      - the name of a worker node where the request was launched
+     * @param targetRequestId - an identifier of a request to be inspected
+     * @param onFinish        - (optional) callback function to be called upon completion of the operation
+     * @param keepTracking    - (optional) keep tracking the request before it finishes or fails
+     * @param jobId           - (optional) identifier of a job issed the request
+     * @param requestExpirationIvalSec
+     *                        - (optional) parameter (if differs from 0) allowing to override the default
+     *                          value of the corresponding parameter from the Configuration.
+     * @return a pointer to the status inquery request
+     */
+    StatusEchoRequestPtr statusOfEcho(std::string const& workerName,
+                                      std::string const& targetRequestId,
+                                      StatusEchoRequestCallbackType onFinish=nullptr,
+                                      bool keepTracking=false,
+                                      std::string const& jobId="",
+                                      unsigned int requestExpirationIvalSec=0);
 
     /**
      * Tell the worker-side service to temporarily suspend processing requests

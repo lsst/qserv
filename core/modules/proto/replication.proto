@@ -26,9 +26,9 @@ package lsst.qserv.proto;
 
 
 
-/////////////////////////////////////////////////////////
-//                  Response messages                  //
-/////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////
+//                  Request messages                  //
+////////////////////////////////////////////////////////
 
 
 //////////////////////////////////////////////////////////////////////
@@ -49,6 +49,7 @@ enum ReplicationReplicaRequestType {
     REPLICA_DELETE   = 1;    // delete an existing replica of a chunk
     REPLICA_FIND     = 2;    // find out if a replica is present, and report its state
     REPLICA_FIND_ALL = 3;    // find all replicas and report their states
+    REPLICA_ECHO     = 4;    // test the worker-side framework
 }
 
 // Request types for managing above defined requests
@@ -145,6 +146,24 @@ message ReplicationRequestFindAll {
     required string database = 2;
 }
 
+// This is a test request which, depending on its mode, would be addressed
+// either instantly or be put into the Processor's queue. The desired mode
+// is specified via the optional parameter 'delay'.
+// This message is sent once after the header.
+//
+message ReplicationRequestEcho {
+
+    required int32 priority = 1;
+
+    /// Data to be echoed back upon the completion of the request (if successful)
+    required string data = 2;
+
+    /// The simulated processing time (milliseconds) of the request.
+    /// If the delay is greater tahn 0 then the request will be queued for
+    /// delayed processing via the Processor's queue.
+    optional uint64 delay = 3 [default = 0];
+}
+
 // This request is sent to stop an on-going replication (if any is still in progress).
 // This message is sent once after the header.
 //
@@ -153,9 +172,11 @@ message ReplicationRequestStop {
     /// an identifier of a request to be stopped
     required string id = 1;
 
-    /// A specific type of the request will affect a choice
-    /// of the status object returned in response
-    required ReplicationReplicaRequestType type = 2;
+    // A specific type of the request will affect a choice of the status
+    // object returned in response. The type needs to match a value set
+    // in the preceeding header at: ReplicationRequestHeader::type
+
+    optional ReplicationReplicaRequestType replica_type = 2;
 }
 
 // This request is sent to request a status of an on-going replication (if any
@@ -166,16 +187,16 @@ message ReplicationRequestStatus {
     /// an identifier of a request to be inspected
     required string id = 1;
 
-    /// A specific type of the request will affect a choice
-    /// of the status object returned in response
-    required ReplicationReplicaRequestType type = 2;
-}
+    // A specific type of the request will affect a choice of the status
+    // object returned in response. The type needs to match a value set
+    // in the preceeding header at: ReplicationRequestHeader::type
 
+    optional ReplicationReplicaRequestType replica_type = 2;
+}
 
 /////////////////////////////////////////////////////////
 //                  Response messages                  //
 /////////////////////////////////////////////////////////
-
 
 
 ////////////////////////////////////////////////////////////////
@@ -278,7 +299,7 @@ message ReplicationFileInfo {
     optional uint64 end_transfer_time = 6 [default = 0];
 
     /// The size of an input file (where applies)
-    optional uint64 in_size = 7 [default = 0] ;
+    optional uint64 in_size = 7 [default = 0];
 }
 
 message ReplicationReplicaInfo {
@@ -314,10 +335,10 @@ message ReplicationResponseReplicate {
     /// The performance of this operation
     required ReplicationPerformance performance = 4;
 
-    // --------------------------------------------------------------
-    // The following optional fields et upon a successful completion
+    // ------------------------------------------------------------------
+    // The following optional fields are set upon a successful completion
     // of the request
-    // --------------------------------------------------------------
+    // ------------------------------------------------------------------
 
     /// The performance of the target operation. This field represents
     /// stats of the replica creation request obtained by the request
@@ -346,10 +367,10 @@ message ReplicationResponseDelete {
     /// The performance of this operation
     required ReplicationPerformance performance = 4;
 
-    // --------------------------------------------------------------
-    // The following optional fields et upon a successful completion
+    // ------------------------------------------------------------------
+    // The following optional fields are set upon a successful completion
     // of the request
-    // --------------------------------------------------------------
+    // ------------------------------------------------------------------
 
     /// The performance of the target operation. This field represents
     /// stats of the replica deletion request obtained by the request
@@ -376,10 +397,10 @@ message ReplicationResponseFind {
     /// The performance of this operation
     required ReplicationPerformance performance = 3;
 
-    // --------------------------------------------------------------
-    // The following optional fields set upon a successful completion
+    // ------------------------------------------------------------------
+    // The following optional fields are set upon a successful completion
     // of the request
-    // --------------------------------------------------------------
+    // ------------------------------------------------------------------
 
     /// The performance of the target operation. This field represents
     /// stats of the replica deletion request obtained by the request
@@ -413,14 +434,44 @@ message ReplicationResponseFindAll {
     /// Extended information on the request
     repeated ReplicationReplicaInfo replica_info_many = 5;
 
-    // --------------------------------------------------------------
-    // The following optional fields set upon a successful completion
+    // ------------------------------------------------------------------
+    // The following optional fields are set upon a successful completion
     // of the request
-    // --------------------------------------------------------------
+    // ------------------------------------------------------------------
 
     /// Parameters of the original request to which this response
     /// is related
     optional ReplicationRequestFindAll request = 6;
+}
+
+///////////////////////////////////////////////////////////////////
+// The message returned in response to the worker testing requests.
+
+message ReplicationResponseEcho {
+
+    /// The completion status of the operation
+    required ReplicationStatus status = 1;
+
+    /// Extended status of this operation
+    optional ReplicationStatusExt status_ext = 2 [default = NONE];
+
+    /// The performance of this operation
+    required ReplicationPerformance performance = 3;
+
+    // -----------------------------------------------------------------
+    // The following optional field are set upon a successful completion
+    // of the request
+    // -----------------------------------------------------------------
+
+    /// The performance of the target operation. This field represents stats
+    /// of the test request obtained by the request management operations.
+    optional ReplicationPerformance target_performance = 4;
+
+    /// Extended information on the request
+    optional string data = 5;
+
+    /// Parameters of the original request to which this response is related
+    optional ReplicationRequestEcho request = 6;
 }
 
 /////////////////////////////////////////////////////////////////////////

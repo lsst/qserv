@@ -35,18 +35,16 @@ char const* StatusReplicationRequestPolicy::requestName() {
     return "REQUEST_STATUS:REPLICA_CREATE";
 }
 
-proto::ReplicationReplicaRequestType StatusReplicationRequestPolicy::requestType() {
+proto::ReplicationReplicaRequestType StatusReplicationRequestPolicy::replicaRequestType() {
     return proto::ReplicationReplicaRequestType::REPLICA_CREATE;
 }
 
-void StatusReplicationRequestPolicy::extractResponseData(
-                                        ResponseMessageType const& msg,
-                                        ResponseDataType& data) {
+void StatusReplicationRequestPolicy::extractResponseData(ResponseMessageType const& msg,
+                                                         ResponseDataType& data) {
     data = ResponseDataType(&(msg.replica_info()));
 }
-void StatusReplicationRequestPolicy::extractTargetRequestParams(
-                                        ResponseMessageType const& msg,
-                                        TargetRequestParamsType& params) {
+void StatusReplicationRequestPolicy::extractTargetRequestParams(ResponseMessageType const& msg,
+                                                                TargetRequestParamsType& params) {
     if (msg.has_request()) {
         params = TargetRequestParamsType(msg.request());
     }
@@ -60,19 +58,17 @@ char const* StatusDeleteRequestPolicy::requestName() {
     return "REQUEST_STATUS:REPLICA_DELETE";
 }
 
-proto::ReplicationReplicaRequestType StatusDeleteRequestPolicy::requestType() {
+proto::ReplicationReplicaRequestType StatusDeleteRequestPolicy::replicaRequestType() {
     return proto::ReplicationReplicaRequestType::REPLICA_DELETE;
 }
 
-void StatusDeleteRequestPolicy::extractResponseData(
-                                        ResponseMessageType const& msg,
-                                        ResponseDataType& data) {
+void StatusDeleteRequestPolicy::extractResponseData(ResponseMessageType const& msg,
+                                                    ResponseDataType& data) {
     data = ResponseDataType(&(msg.replica_info()));
 }
 
-void StatusDeleteRequestPolicy::extractTargetRequestParams(
-                                        ResponseMessageType const& msg,
-                                        TargetRequestParamsType& params) {
+void StatusDeleteRequestPolicy::extractTargetRequestParams(ResponseMessageType const& msg,
+                                                           TargetRequestParamsType& params) {
     if (msg.has_request()) {
         params = TargetRequestParamsType(msg.request());
     }
@@ -86,19 +82,17 @@ char const* StatusFindRequestPolicy::requestName() {
     return "REQUEST_STATUS:REPLICA_FIND";
 }
 
-proto::ReplicationReplicaRequestType StatusFindRequestPolicy::requestType() {
+proto::ReplicationReplicaRequestType StatusFindRequestPolicy::replicaRequestType() {
     return proto::ReplicationReplicaRequestType::REPLICA_FIND;
 }
 
-void StatusFindRequestPolicy::extractResponseData(
-                                        ResponseMessageType const& msg,
-                                        ResponseDataType& data) {
+void StatusFindRequestPolicy::extractResponseData(ResponseMessageType const& msg,
+                                                  ResponseDataType& data) {
     data = ReplicaInfo(&(msg.replica_info()));
 }
 
-void StatusFindRequestPolicy::extractTargetRequestParams(
-                                        ResponseMessageType const& msg,
-                                        TargetRequestParamsType& params) {
+void StatusFindRequestPolicy::extractTargetRequestParams(ResponseMessageType const& msg,
+                                                         TargetRequestParamsType& params) {
     if (msg.has_request()) {
         params = TargetRequestParamsType(msg.request());
     }
@@ -112,22 +106,44 @@ char const* StatusFindAllRequestPolicy::requestName() {
     return "REQUEST_STATUS:REPLICA_FIND_ALL";
 }
 
-proto::ReplicationReplicaRequestType StatusFindAllRequestPolicy::requestType() {
+proto::ReplicationReplicaRequestType StatusFindAllRequestPolicy::replicaRequestType() {
     return proto::ReplicationReplicaRequestType::REPLICA_FIND_ALL;
 }
 
-void StatusFindAllRequestPolicy::extractResponseData(
-                                        ResponseMessageType const& msg,
-                                        ResponseDataType& data) {
+void StatusFindAllRequestPolicy::extractResponseData(ResponseMessageType const& msg,
+                                                     ResponseDataType& data) {
 
     for (int num = msg.replica_info_many_size(), idx = 0; idx < num; ++idx) {
         data.emplace_back(&(msg.replica_info_many(idx)));
     }
 }
 
-void StatusFindAllRequestPolicy::extractTargetRequestParams(
-                                        ResponseMessageType const& msg,
-                                        TargetRequestParamsType& params) {
+void StatusFindAllRequestPolicy::extractTargetRequestParams(ResponseMessageType const& msg,
+                                                            TargetRequestParamsType& params) {
+    if (msg.has_request()) {
+        params = TargetRequestParamsType(msg.request());
+    }
+}
+
+// --------------------------------------------
+// --------- StatusEchoRequestPolicy ----------
+// --------------------------------------------
+
+char const* StatusEchoRequestPolicy::requestName() {
+    return "REQUEST_STATUS:REPLICA_ECHO";
+}
+
+proto::ReplicationReplicaRequestType StatusEchoRequestPolicy::replicaRequestType() {
+    return proto::ReplicationReplicaRequestType::REPLICA_ECHO;
+}
+
+void StatusEchoRequestPolicy::extractResponseData(ResponseMessageType const& msg,
+                                                  ResponseDataType& data) {
+    data = msg.data();
+}
+
+void StatusEchoRequestPolicy::extractTargetRequestParams(ResponseMessageType const& msg,
+                                                         TargetRequestParamsType& params) {
     if (msg.has_request()) {
         params = TargetRequestParamsType(msg.request());
     }

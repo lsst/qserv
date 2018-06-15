@@ -81,9 +81,7 @@ public:
     std::string const& sourceWorker() const { return _sourceWorker; }
 
     /// @return target request specific parameters
-    ReplicationRequestParams const& targetRequestParams() const {
-        return _targetRequestParams;
-    }
+    ReplicationRequestParams const& targetRequestParams() const { return _targetRequestParams; }
 
     /**
      * @return request-specific extended data reported upon a successful

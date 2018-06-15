@@ -185,7 +185,7 @@ void ReplicationRequest::awaken(boost::system::error_code const& ec) {
 
     proto::ReplicationRequestStatus message;
     message.set_id(remoteId());
-    message.set_type(proto::ReplicationReplicaRequestType::REPLICA_CREATE);
+    message.set_replica_type(proto::ReplicationReplicaRequestType::REPLICA_CREATE);
 
     buffer()->serialize(message);
 

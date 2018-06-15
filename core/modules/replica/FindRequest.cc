@@ -184,7 +184,7 @@ void FindRequest::awaken(boost::system::error_code const& ec) {
 
     proto::ReplicationRequestStatus message;
     message.set_id(id());
-    message.set_type(proto::ReplicationReplicaRequestType::REPLICA_FIND);
+    message.set_replica_type(proto::ReplicationReplicaRequestType::REPLICA_FIND);
 
     buffer()->serialize(message);
 

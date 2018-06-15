@@ -177,6 +177,23 @@ CmdLineParser::parameterImpl(unsigned int  pos,
             "): failed to parse a value of argument: " + str);
     }
 }
+
+void
+CmdLineParser::parameterImpl(unsigned int   pos,
+                             unsigned long& val) const {
+    std::string str;
+    parameterImpl(pos, str);
+    
+    try {
+        val = std::stoul(str);
+        return;
+    } catch (std::exception const&) {
+        throw std::invalid_argument(
+            "CmdLineParser::parameterImpl<ulong>(" + std::to_string(pos) +
+            "): failed to parse a value of argument: " + str);
+    }
+}
+
 void
 CmdLineParser::parameterImpl(unsigned int pos,
                              std::string& val) const {

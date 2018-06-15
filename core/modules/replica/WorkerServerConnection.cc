@@ -257,6 +257,17 @@ void WorkerServerConnection::processReplicaRequest(proto::ReplicationRequestHead
             reply(hdr.id(), response);
             break;
         }
+        case proto::ReplicationReplicaRequestType::REPLICA_ECHO: {
+
+            // Read the request body
+            proto::ReplicationRequestEcho request;
+            if (not ::readMessage(_socket, _bufferPtr, bytes, request)) return;
+
+            proto::ReplicationResponseEcho response;
+            _processor->enqueueForEcho(hdr.id(), request, response);
+            reply(hdr.id(), response);
+            break;
+        }
         default:
             throw std::logic_error(
                   "WorkerServerConnection::processReplicaRequest() unhandled request type: '" +
@@ -281,67 +292,109 @@ void WorkerServerConnection::processManagementRequest(proto::ReplicationRequestH
             proto::ReplicationRequestStop request;
             if (not ::readMessage(_socket, _bufferPtr, bytes, request)) return;
 
-            switch (request.type()) {
+            switch (hdr.type()) {
+    
+                case proto::ReplicationRequestHeader::REPLICA: {
 
-                case proto::ReplicationReplicaRequestType::REPLICA_CREATE: {
-                    proto::ReplicationResponseReplicate response;
-                    _processor->dequeueOrCancel(hdr.id(), request, response);
-                    reply(hdr.id(), response);
+                    switch (request.replica_type()) {
+    
+                        case proto::ReplicationReplicaRequestType::REPLICA_CREATE: {
+                            proto::ReplicationResponseReplicate response;
+                            _processor->dequeueOrCancel(hdr.id(), request, response);
+                            reply(hdr.id(), response);
+                            break;
+                        }
+                        case proto::ReplicationReplicaRequestType::REPLICA_DELETE: {
+                            proto::ReplicationResponseDelete response;
+                            _processor->dequeueOrCancel(hdr.id(), request, response);
+                            reply(hdr.id(), response);
+                            break;
+                        }
+                        case proto::ReplicationReplicaRequestType::REPLICA_FIND: {
+                            proto::ReplicationResponseFind response;
+                            _processor->dequeueOrCancel(hdr.id(), request, response);
+                            reply(hdr.id(), response);
+                            break;
+                        }
+                        case proto::ReplicationReplicaRequestType::REPLICA_FIND_ALL: {
+                            proto::ReplicationResponseFindAll response;
+                            _processor->dequeueOrCancel(hdr.id(), request, response);
+                            reply(hdr.id(), response);
+                            break;
+                        }
+                        case proto::ReplicationReplicaRequestType::REPLICA_ECHO: {
+                            proto::ReplicationResponseEcho response;
+                            _processor->dequeueOrCancel(hdr.id(), request, response);
+                            reply(hdr.id(), response);
+                            break;
+                        }
+                        default:
+                            throw std::logic_error(
+                                "WorkerServerConnection::processManagementRequest() unhandled request type: '" +
+                                proto::ReplicationReplicaRequestType_Name(request.replica_type()));
+                    }
                     break;
                 }
-                case proto::ReplicationReplicaRequestType::REPLICA_DELETE: {
-                    proto::ReplicationResponseDelete response;
-                    _processor->dequeueOrCancel(hdr.id(), request, response);
-                    reply(hdr.id(), response);
-                    break;
-                }
-                case proto::ReplicationReplicaRequestType::REPLICA_FIND: {
-                    proto::ReplicationResponseFind response;
-                    _processor->dequeueOrCancel(hdr.id(), request, response);
-                    reply(hdr.id(), response);
-                    break;
-                }
-                case proto::ReplicationReplicaRequestType::REPLICA_FIND_ALL: {
-                    proto::ReplicationResponseFindAll response;
-                    _processor->dequeueOrCancel(hdr.id(), request, response);
-                    reply(hdr.id(), response);
-                    break;
-                }
+                default:
+                    throw std::logic_error(
+                        "WorkerServerConnection::processManagementRequest() unhandled request type: '" +
+                        proto::ReplicationRequestHeader::RequestType_Name(hdr.type()));
             }
             break;
         }
-        case proto::ReplicationManagementRequestType::REQUEST_STATUS : {
+        case proto::ReplicationManagementRequestType::REQUEST_STATUS: {
 
             // Read the request body
             proto::ReplicationRequestStatus request;
             if (not ::readMessage(_socket, _bufferPtr, bytes, request)) return;
 
-            switch (request.type()) {
+            switch (hdr.type()) {
+    
+                case proto::ReplicationRequestHeader::REPLICA: {
 
-                case proto::ReplicationReplicaRequestType::REPLICA_CREATE: {
-                    proto::ReplicationResponseReplicate response;
-                    _processor->checkStatus(hdr.id(), request, response);
-                    reply(hdr.id(), response);
+                    switch (request.replica_type()) {
+        
+                        case proto::ReplicationReplicaRequestType::REPLICA_CREATE: {
+                            proto::ReplicationResponseReplicate response;
+                            _processor->checkStatus(hdr.id(), request, response);
+                            reply(hdr.id(), response);
+                            break;
+                        }
+                        case proto::ReplicationReplicaRequestType::REPLICA_DELETE: {
+                            proto::ReplicationResponseDelete response;
+                            _processor->checkStatus(hdr.id(), request, response);
+                            reply(hdr.id(), response);
+                            break;
+                        }
+                        case proto::ReplicationReplicaRequestType::REPLICA_FIND: {
+                            proto::ReplicationResponseFind response;
+                            _processor->checkStatus(hdr.id(), request, response);
+                            reply(hdr.id(), response);
+                            break;
+                        }
+                        case proto::ReplicationReplicaRequestType::REPLICA_FIND_ALL: {
+                            proto::ReplicationResponseFindAll response;
+                            _processor->checkStatus(hdr.id(), request, response);
+                            reply(hdr.id(), response);
+                            break;
+                        }
+                        case proto::ReplicationReplicaRequestType::REPLICA_ECHO: {
+                            proto::ReplicationResponseEcho response;
+                            _processor->checkStatus(hdr.id(), request, response);
+                            reply(hdr.id(), response);
+                            break;
+                        }
+                        default:
+                            throw std::logic_error(
+                                "WorkerServerConnection::processManagementRequest() unhandled request type: '" +
+                                proto::ReplicationReplicaRequestType_Name(request.replica_type()));
+                    }
                     break;
                 }
-                case proto::ReplicationReplicaRequestType::REPLICA_DELETE: {
-                    proto::ReplicationResponseDelete response;
-                    _processor->checkStatus(hdr.id(), request, response);
-                    reply(hdr.id(), response);
-                    break;
-                }
-                case proto::ReplicationReplicaRequestType::REPLICA_FIND: {
-                    proto::ReplicationResponseFind response;
-                    _processor->checkStatus(hdr.id(), request, response);
-                    reply(hdr.id(), response);
-                    break;
-                }
-                case proto::ReplicationReplicaRequestType::REPLICA_FIND_ALL: {
-                    proto::ReplicationResponseFindAll response;
-                    _processor->checkStatus(hdr.id(), request, response);
-                    reply(hdr.id(), response);
-                    break;
-                }
+                default:
+                    throw std::logic_error(
+                        "WorkerServerConnection::processManagementRequest() unhandled request type: '" +
+                        proto::ReplicationRequestHeader::RequestType_Name(hdr.type()));
             }
             break;
         }

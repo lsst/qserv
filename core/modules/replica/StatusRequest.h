@@ -67,7 +67,7 @@ struct StatusReplicationRequestPolicy {
 
     static char const* requestName();
 
-    static proto::ReplicationReplicaRequestType requestType();
+    static proto::ReplicationReplicaRequestType replicaRequestType();
 
     static void extractResponseData(ResponseMessageType const& msg,
                                     ResponseDataType& data);
@@ -92,7 +92,7 @@ struct StatusDeleteRequestPolicy {
 
     static char const* requestName();
 
-    static proto::ReplicationReplicaRequestType requestType();
+    static proto::ReplicationReplicaRequestType replicaRequestType();
 
     static void extractResponseData(ResponseMessageType const& msg,
                                     ResponseDataType& data);
@@ -117,7 +117,7 @@ struct StatusFindRequestPolicy {
 
     static char const* requestName();
 
-    static proto::ReplicationReplicaRequestType requestType();
+    static proto::ReplicationReplicaRequestType replicaRequestType();
 
     static void extractResponseData(ResponseMessageType const& msg,
                                     ResponseDataType& data);
@@ -142,7 +142,7 @@ struct StatusFindAllRequestPolicy {
 
     static char const* requestName();
 
-    static proto::ReplicationReplicaRequestType requestType();
+    static proto::ReplicationReplicaRequestType replicaRequestType();
 
     static void extractResponseData(ResponseMessageType const& msg,
                                     ResponseDataType& data);
@@ -156,6 +156,30 @@ struct StatusFindAllRequestPolicy {
             request->worker(),
             request->targetRequestParams().database,
             request->responseData());
+        request->serviceProvider()->databaseServices()->updateRequestState(*request,
+                                                                           request->targetRequestId(),
+                                                                           request->targetPerformance());
+    }
+};
+
+struct StatusEchoRequestPolicy {
+
+    using ResponseMessageType     = proto::ReplicationResponseEcho;
+    using ResponseDataType        = std::string;
+    using TargetRequestParamsType = EchoRequestParams;
+
+    static char const* requestName();
+
+    static proto::ReplicationReplicaRequestType replicaRequestType();
+
+    static void extractResponseData(ResponseMessageType const& msg,
+                                    ResponseDataType& data);
+
+    static void extractTargetRequestParams(ResponseMessageType const& msg,
+                                           TargetRequestParamsType& params);
+
+    template <class REQUEST_PTR>
+    static void saveReplicaInfo(REQUEST_PTR const& request) {
         request->serviceProvider()->databaseServices()->updateRequestState(*request,
                                                                            request->targetRequestId(),
                                                                            request->targetPerformance());
@@ -231,7 +255,7 @@ public:
                 POLICY::requestName(),
                 worker,
                 targetRequestId,
-                POLICY::requestType(),
+                POLICY::replicaRequestType(),
                 onFinish,
                 keepTracking,
                 messenger));
@@ -247,7 +271,7 @@ private:
                   char const* requestName,
                   std::string const& worker,
                   std::string const& targetRequestId,
-                  proto::ReplicationReplicaRequestType requestType,
+                  proto::ReplicationReplicaRequestType replicaRequestType,
                   CallbackType onFinish,
                   bool keepTracking,
                   std::shared_ptr<Messenger> const& messenger)
@@ -256,7 +280,7 @@ private:
                               requestName,
                               worker,
                               targetRequestId,
-                              requestType,
+                              replicaRequestType,
                               keepTracking,
                               messenger),
             _onFinish(onFinish) {
@@ -374,6 +398,7 @@ typedef StatusRequest<StatusReplicationRequestPolicy> StatusReplicationRequest;
 typedef StatusRequest<StatusDeleteRequestPolicy>      StatusDeleteRequest;
 typedef StatusRequest<StatusFindRequestPolicy>        StatusFindRequest;
 typedef StatusRequest<StatusFindAllRequestPolicy>     StatusFindAllRequest;
+typedef StatusRequest<StatusEchoRequestPolicy>        StatusEchoRequest;
 
 }}} // namespace lsst::qserv::replica
 

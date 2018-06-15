@@ -35,7 +35,7 @@ char const* StopReplicationRequestPolicy::requestName() {
     return "REQUEST_STOP:REPLICA_CREATE";
 }
 
-proto::ReplicationReplicaRequestType StopReplicationRequestPolicy::requestType() {
+proto::ReplicationReplicaRequestType StopReplicationRequestPolicy::replicaRequestType() {
     return proto::ReplicationReplicaRequestType::REPLICA_CREATE;
 }
 
@@ -59,7 +59,7 @@ char const* StopDeleteRequestPolicy::requestName() {
     return "REQUEST_STOP:REPLICA_DELETE";
 }
 
-proto::ReplicationReplicaRequestType StopDeleteRequestPolicy::requestType() {
+proto::ReplicationReplicaRequestType StopDeleteRequestPolicy::replicaRequestType() {
     return proto::ReplicationReplicaRequestType::REPLICA_DELETE;
 }
 
@@ -83,7 +83,7 @@ char const* StopFindRequestPolicy::requestName() {
     return "REQUEST_STOP:REPLICA_FIND";
 }
 
-proto::ReplicationReplicaRequestType StopFindRequestPolicy::requestType() {
+proto::ReplicationReplicaRequestType StopFindRequestPolicy::replicaRequestType() {
     return proto::ReplicationReplicaRequestType::REPLICA_FIND;
 }
 
@@ -108,7 +108,7 @@ char const* StopFindAllRequestPolicy::requestName() {
     return "REQUEST_STOP:REPLICA_FIND_ALL";
 }
 
-proto::ReplicationReplicaRequestType StopFindAllRequestPolicy::requestType() {
+proto::ReplicationReplicaRequestType StopFindAllRequestPolicy::replicaRequestType() {
     return proto::ReplicationReplicaRequestType::REPLICA_FIND_ALL;
 }
 
@@ -122,6 +122,30 @@ void StopFindAllRequestPolicy::extractResponseData(ResponseMessageType const& ms
 
 void StopFindAllRequestPolicy::extractTargetRequestParams(ResponseMessageType const& msg,
                                                           TargetRequestParamsType& params) {
+    if (msg.has_request()) {
+        params = TargetRequestParamsType(msg.request());
+    }
+}
+
+// ------------------------------------------
+// --------- StopEchoRequestPolicy ----------
+// ------------------------------------------
+
+char const* StopEchoRequestPolicy::requestName() {
+    return "REQUEST_STOP:REPLICA_ECHO";
+}
+
+proto::ReplicationReplicaRequestType StopEchoRequestPolicy::replicaRequestType() {
+    return proto::ReplicationReplicaRequestType::REPLICA_ECHO;
+}
+
+void StopEchoRequestPolicy::extractResponseData(ResponseMessageType const& msg,
+                                                ResponseDataType& data) {
+    data = msg.data();
+}
+
+void StopEchoRequestPolicy::extractTargetRequestParams(ResponseMessageType const& msg,
+                                                       TargetRequestParamsType& params) {
     if (msg.has_request()) {
         params = TargetRequestParamsType(msg.request());
     }
