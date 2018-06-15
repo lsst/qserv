@@ -168,7 +168,7 @@ void EchoRequest::awaken(boost::system::error_code const& ec) {
 
     proto::ReplicationRequestHeader hdr;
     hdr.set_id(id());
-    hdr.set_type(proto::ReplicationRequestHeader::REPLICA);
+    hdr.set_type(proto::ReplicationRequestHeader::REQUEST);
     hdr.set_management_type(proto::ReplicationManagementRequestType::REQUEST_STATUS);
 
     buffer()->serialize(hdr);
@@ -305,13 +305,15 @@ void EchoRequest::notifyImpl() {
 }
 
 void EchoRequest::savePersistentState(util::Lock const& lock) {
+    LOGS(_log, LOG_LVL_DEBUG, context() << "savePersistentState");
     controller()->serviceProvider()->databaseServices()->saveState(*this, performance(lock));
 }
 
 std::string EchoRequest::extendedPersistentState(SqlGeneratorPtr const& gen) const {
+    LOGS(_log, LOG_LVL_DEBUG, context() << "extendedPersistentState");
     return gen->sqlPackValues(id(),
-                              delay(),
-                              data().size());
+                              data().size(),
+                              delay());
 }
 
 }}} // namespace lsst::qserv::replica

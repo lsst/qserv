@@ -24,6 +24,7 @@
 /// testing all known types of requests.
 
 // System headers
+#include <atomic>
 #include <cstdlib>
 #include <iostream>
 #include <vector>
@@ -48,7 +49,8 @@
 // LSST headers
 #include "lsst/log/Log.h"
 
-using namespace lsst::qserv;
+using namespace lsst::qserv::replica;
+namespace util = lsst::qserv::util;
 
 namespace {
 
@@ -56,7 +58,6 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.tools.qserv-replica-controller-cmd
 
 // Command line parameters
 //
-std::string configUrl;
 std::string operation;
 std::string worker;
 std::string sourceWorker;
@@ -66,13 +67,13 @@ std::string data;
 uint32_t    chunk;
 uint64_t    delay;
 
-// Options and flags
-//
-int  priority        = 0;
-bool keepTracking    = true;
-bool allowDuplicate  = false;
-bool saveReplicaInfo = true;
-bool computeCheckSum = false;
+int  priority         = 0;
+bool keepTracking     = true;
+bool allowDuplicate   = false;
+bool saveReplicaInfo  = true;
+bool computeCheckSum  = false;
+std::string configUrl = "";
+
 
 /// Report result of the operation
 template <class T>
@@ -83,7 +84,7 @@ void printRequest(typename T::Ptr request) {
 }
 
 template <>
-void printRequest<replica::ServiceManagementRequestBase>(replica::ServiceManagementRequestBase::Ptr request) {
+void printRequest<ServiceManagementRequestBase>(ServiceManagementRequestBase::Ptr request) {
     LOGS(_log, LOG_LVL_INFO, request->context() << "** DONE **");
     LOGS(_log, LOG_LVL_INFO, request->context() << "servicState:\n\n" << request->getServiceState());
     LOGS(_log, LOG_LVL_INFO, request->context() << "performance:\n"   << request->performance());
@@ -102,21 +103,23 @@ bool test() {
         ///////////////////////////////////////////////////////////////////////
         // Start the controller in its own thread before injecting any requests
 
-        replica::ServiceProvider::Ptr const provider   = replica::ServiceProvider::create(configUrl);
-        replica::Controller::Ptr      const controller = replica::Controller::create(provider);
+        ServiceProvider::Ptr const provider   = ServiceProvider::create(configUrl);
+        Controller::Ptr      const controller = Controller::create(provider);
 
         controller->run();
 
         /////////////////////////////////////////
         // Launch a request of the requested type
 
-        replica::Request::Ptr request;
+        std::atomic<bool> finished(false);
+        Request::Ptr request;
 
         if ("REPLICA_CREATE" == operation) {
             request = controller->replicate(
                 worker, sourceWorker, db, chunk,
-                [] (replica::ReplicationRequest::Ptr request) {
-                    printRequest<replica::ReplicationRequest>(request);
+                [&finished] (ReplicationRequest::Ptr request) {
+                    printRequest<ReplicationRequest>(request);
+                    finished = true;
                 },
                 priority,
                 keepTracking,
@@ -125,11 +128,13 @@ bool test() {
         } else if ("REPLICA_CREATE,CANCEL" == operation) {
             request = controller->replicate(
                 worker, sourceWorker, db, chunk,
-                [] (replica::ReplicationRequest::Ptr request) {
-                    printRequest<replica::ReplicationRequest>(request);
+                [&finished] (ReplicationRequest::Ptr request) {
+                    printRequest<ReplicationRequest>(request);
+                    finished = true;
                 },
                 priority,
-                keepTracking);
+                keepTracking,
+                allowDuplicate);
 
             util::BlockPost blockPost(0, 500);
             blockPost.wait();
@@ -139,8 +144,9 @@ bool test() {
         } else if ("REPLICA_DELETE" == operation) {
             request = controller->deleteReplica(
                 worker, db, chunk,
-                [] (replica::DeleteRequest::Ptr request) {
-                    printRequest<replica::DeleteRequest>(request);
+                [&finished] (DeleteRequest::Ptr request) {
+                    printRequest<DeleteRequest>(request);
+                    finished = true;
                 },
                 priority,
                 keepTracking,
@@ -149,8 +155,9 @@ bool test() {
         } else if ("REPLICA_FIND" == operation) {
             request = controller->findReplica(
                 worker, db, chunk,
-                [] (replica::FindRequest::Ptr request) {
-                    printRequest<replica::FindRequest>(request);
+                [&finished] (FindRequest::Ptr request) {
+                    printRequest<FindRequest>(request);
+                    finished = true;
                 },
                 priority,
                 computeCheckSum,
@@ -159,8 +166,9 @@ bool test() {
         } else if ("REPLICA_FIND_ALL" == operation) {
             request = controller->findAllReplicas(
                 worker, db, saveReplicaInfo,
-                [] (replica::FindAllRequest::Ptr request) {
-                    printRequest<replica::FindAllRequest>(request);
+                [&finished] (FindAllRequest::Ptr request) {
+                    printRequest<FindAllRequest>(request);
+                    finished = true;
                 },
                 priority,
                 keepTracking);
@@ -168,8 +176,9 @@ bool test() {
         } else if ("REPLICA_ECHO" == operation) {
             request = controller->echo(
                 worker, data, delay,
-                [] (replica::EchoRequest::Ptr request) {
-                    printRequest<replica::EchoRequest>(request);
+                [&finished] (EchoRequest::Ptr request) {
+                    printRequest<EchoRequest>(request);
+                    finished = true;
                 },
                 priority,
                 keepTracking);
@@ -177,125 +186,140 @@ bool test() {
         } else if ("REQUEST_STATUS:REPLICA_CREATE"  == operation) {
             request = controller->statusOfReplication(
                 worker, id,
-                [] (replica::StatusReplicationRequest::Ptr request) {
-                    printRequest     <replica::StatusReplicationRequest>(request);
-                    printRequestExtra<replica::StatusReplicationRequest>(request);
+                [&finished] (StatusReplicationRequest::Ptr request) {
+                    printRequest     <StatusReplicationRequest>(request);
+                    printRequestExtra<StatusReplicationRequest>(request);
+                    finished = true;
                 },
                 keepTracking);
 
         } else if ("REQUEST_STATUS:REPLICA_DELETE"  == operation) {
             request = controller->statusOfDelete(
                 worker, id,
-                [] (replica::StatusDeleteRequest::Ptr request) {
-                    printRequest     <replica::StatusDeleteRequest>(request);
-                    printRequestExtra<replica::StatusDeleteRequest>(request);
+                [&finished] (StatusDeleteRequest::Ptr request) {
+                    printRequest     <StatusDeleteRequest>(request);
+                    printRequestExtra<StatusDeleteRequest>(request);
+                    finished = true;
                 },
                 keepTracking);
 
         } else if ("REQUEST_STATUS:REPLICA_FIND"  == operation) {
             request = controller->statusOfFind(
                 worker, id,
-                [] (replica::StatusFindRequest::Ptr request) {
-                    printRequest     <replica::StatusFindRequest>(request);
-                    printRequestExtra<replica::StatusFindRequest>(request);
+                [&finished] (StatusFindRequest::Ptr request) {
+                    printRequest     <StatusFindRequest>(request);
+                    printRequestExtra<StatusFindRequest>(request);
+                    finished = true;
                 },
                 keepTracking);
 
         } else if ("REQUEST_STATUS:REPLICA_FIND_ALL"  == operation) {
             request = controller->statusOfFindAll(
                 worker, id,
-                [] (replica::StatusFindAllRequest::Ptr request) {
-                    printRequest     <replica::StatusFindAllRequest>(request);
-                    printRequestExtra<replica::StatusFindAllRequest>(request);
+                [&finished] (StatusFindAllRequest::Ptr request) {
+                    printRequest     <StatusFindAllRequest>(request);
+                    printRequestExtra<StatusFindAllRequest>(request);
+                    finished = true;
                 },
                 keepTracking);
 
         } else if ("REQUEST_STATUS:REPLICA_ECHO" == operation) {
             request = controller->statusOfEcho(
                 worker, id,
-                [] (replica::StatusEchoRequest::Ptr request) {
-                    printRequest     <replica::StatusEchoRequest>(request);
-                    printRequestExtra<replica::StatusEchoRequest>(request);
+                [&finished] (StatusEchoRequest::Ptr request) {
+                    printRequest     <StatusEchoRequest>(request);
+                    printRequestExtra<StatusEchoRequest>(request);
+                    finished = true;
                 },
                 keepTracking);
 
         } else if ("REQUEST_STOP:REPLICA_CREATE" == operation) {
             request = controller->stopReplication(
                 worker, id,
-                [] (replica::StopReplicationRequest::Ptr request) {
-                    printRequest     <replica::StopReplicationRequest>(request);
-                    printRequestExtra<replica::StopReplicationRequest>(request);
+                [&finished] (StopReplicationRequest::Ptr request) {
+                    printRequest     <StopReplicationRequest>(request);
+                    printRequestExtra<StopReplicationRequest>(request);
+                    finished = true;
                 },
                 keepTracking);
 
         } else if ("REQUEST_STOP:REPLICA_DELETE" == operation) {
             request = controller->stopReplicaDelete(
                 worker, id,
-                [] (replica::StopDeleteRequest::Ptr request) {
-                    printRequest     <replica::StopDeleteRequest>(request);
-                    printRequestExtra<replica::StopDeleteRequest>(request);
+                [&finished] (StopDeleteRequest::Ptr request) {
+                    printRequest     <StopDeleteRequest>(request);
+                    printRequestExtra<StopDeleteRequest>(request);
+                    finished = true;
                 },
                 keepTracking);
 
         } else if ("REQUEST_STOP:REPLICA_FIND" == operation) {
             request = controller->stopReplicaFind(
                 worker, id,
-                [] (replica::StopFindRequest::Ptr request) {
-                    printRequest     <replica::StopFindRequest>(request);
-                    printRequestExtra<replica::StopFindRequest>(request);
+                [&finished] (StopFindRequest::Ptr request) {
+                    printRequest     <StopFindRequest>(request);
+                    printRequestExtra<StopFindRequest>(request);
+                    finished = true;
                 },
                 keepTracking);
 
-        } else if ("REQUEST_STOP:REPLICA_FIND_ALL"  == operation) {
+        } else if ("REQUEST_STOP:REPLICA_FIND_ALL" == operation) {
             request = controller->stopReplicaFindAll(
                 worker, id,
-                [] (replica::StopFindAllRequest::Ptr request) {
-                    printRequest     <replica::StopFindAllRequest>(request);
-                    printRequestExtra<replica::StopFindAllRequest>(request);
+                [&finished] (StopFindAllRequest::Ptr request) {
+                    printRequest     <StopFindAllRequest>(request);
+                    printRequestExtra<StopFindAllRequest>(request);
+                    finished = true;
                 },
                 keepTracking);
 
-        } else if ("REQUEST_STOP:REPLICA_ECHO"  == operation) {
+        } else if ("REQUEST_STOP:REPLICA_ECHO" == operation) {
             request = controller->stopEcho(
                 worker, id,
-                [] (replica::StopEchoRequest::Ptr request) {
-                    printRequest     <replica::StopEchoRequest>(request);
-                    printRequestExtra<replica::StopEchoRequest>(request);
+                [&finished] (StopEchoRequest::Ptr request) {
+                    printRequest     <StopEchoRequest>(request);
+                    printRequestExtra<StopEchoRequest>(request);
+                    finished = true;
                 },
                 keepTracking);
 
         } else if ("SERVICE_SUSPEND" == operation) {
             request = controller->suspendWorkerService(
                 worker,
-                [] (replica::ServiceSuspendRequest::Ptr request) {
-                    printRequest<replica::ServiceManagementRequestBase>(request);
+                [&finished] (ServiceSuspendRequest::Ptr request) {
+                    printRequest<ServiceManagementRequestBase>(request);
+                    finished = true;
                 });
 
-        } else if ("SERVICE_RESUME"  == operation) {
+        } else if ("SERVICE_RESUME" == operation) {
             request = controller->resumeWorkerService(
                 worker,
-                [] (replica::ServiceResumeRequest::Ptr request) {
-                    printRequest<replica::ServiceManagementRequestBase>(request);
+                [&finished] (ServiceResumeRequest::Ptr request) {
+                    printRequest<ServiceManagementRequestBase>(request);
+                    finished = true;
                 });
 
-        } else if ("SERVICE_STATUS"  == operation) {
+        } else if ("SERVICE_STATUS" == operation) {
             request = controller->statusOfWorkerService(
                 worker,
-                [] (replica::ServiceStatusRequest::Ptr request) {
-                    printRequest<replica::ServiceManagementRequestBase>(request);
+                [&finished] (ServiceStatusRequest::Ptr request) {
+                    printRequest<ServiceManagementRequestBase>(request);
+                    finished = true;
                 });
 
-        } else if ("SERVICE_REQUESTS"  == operation) {
+        } else if ("SERVICE_REQUESTS" == operation) {
             request = controller->requestsOfWorkerService(
                 worker,
-                [] (replica::ServiceRequestsRequest::Ptr request) {
-                    printRequest<replica::ServiceManagementRequestBase>(request);
+                [&finished] (ServiceRequestsRequest::Ptr request) {
+                    printRequest<ServiceManagementRequestBase>(request);
+                    finished = true;
                 });
-        } else if ("SERVICE_DRAIN"  == operation) {
+        } else if ("SERVICE_DRAIN" == operation) {
             request = controller->drainWorkerService(
                 worker,
-                [] (replica::ServiceDrainRequest::Ptr request) {
-                    printRequest<replica::ServiceManagementRequestBase>(request);
+                [&finished] (ServiceDrainRequest::Ptr request) {
+                    printRequest<ServiceManagementRequestBase>(request);
+                    finished = true;
                 });
 
         } else {
@@ -306,7 +330,7 @@ bool test() {
 
         util::BlockPost blockPost(0, 5000);     // for random delays (milliseconds) between iterations
 
-        while (request->state() != replica::Request::State::FINISHED) {
+        while (not finished) {
             std::cout << "HEARTBEAT: " << blockPost.wait() << " msec" << std::endl;;
         }
         controller->stop();
