@@ -14,11 +14,11 @@ USER qserv
 
 # Respectively xrootd, qserv-wmanager ports
 # Used on both worker and master
-EXPOSE 21094 25012
+EXPOSE 1094 5012
 
 # Respectively cmsd, mysql-proxy ports
 # Used on master only
-<COMMENT_ON_WORKER>EXPOSE 22131 24040
+<COMMENT_ON_WORKER>EXPOSE 2131 4040
 
 COPY scripts/*.sh scripts/
 
