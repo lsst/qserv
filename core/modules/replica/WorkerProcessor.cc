@@ -34,6 +34,7 @@
 #include "replica/Performance.h"
 #include "replica/ServiceProvider.h"
 #include "replica/WorkerDeleteRequest.h"
+#include "replica/WorkerEchoRequest.h"
 #include "replica/WorkerFindRequest.h"
 #include "replica/WorkerFindAllRequest.h"
 #include "replica/WorkerReplicationRequest.h"
@@ -213,29 +214,24 @@ void WorkerProcessor::enqueueForReplication(
     // the completed is that this replica may have already been deleted from this worker.
 
     for (auto&& ptr: _newRequests) {
-        if (::ifDuplicateRequest(response,
-                                 ptr,
-                                 request)) return;
+        if (::ifDuplicateRequest(response, ptr, request)) return;
     }
     for (auto&& ptr: _inProgressRequests) {
-        if (::ifDuplicateRequest(response,
-                                 ptr,
-                                 request)) return;
+        if (::ifDuplicateRequest(response, ptr,request)) return;
     }
 
     // The code below may catch exceptions if other parameters of the requites
     // won't pass further validation against the present configuration of the request
     // procesisng service.
     try {
-        auto const ptr =
-            _requestFactory.createReplicationRequest(
-                _worker,
-                id,
-                request.priority(),
-                request.database(),
-                request.chunk(),
-                request.worker());
-
+        auto const ptr = _requestFactory.createReplicationRequest(
+            _worker,
+            id,
+            request.priority(),
+            request.database(),
+            request.chunk(),
+            request.worker()
+        );
         _newRequests.push(ptr);
 
         response.set_status(proto::ReplicationStatus::QUEUED);
@@ -269,32 +265,27 @@ void WorkerProcessor::enqueueForDeletion(std::string const& id,
     // the completed is that this replica may have already been deleted from this worker.
 
     for (auto&& ptr : _newRequests) {
-        if (::ifDuplicateRequest(response,
-                                 ptr,
-                                 request)) return;
+        if (::ifDuplicateRequest(response, ptr, request)) return;
     }
     for (auto&& ptr : _inProgressRequests) {
-        if (::ifDuplicateRequest(response,
-                                 ptr,
-                                 request)) return;
+        if (::ifDuplicateRequest(response, ptr, request)) return;
     }
 
     // The code below may catch exceptions if other parameters of the requites
     // won't pass further validation against the present configuration of the request
     // procesisng service.
     try {
-        auto const ptr =
-            _requestFactory.createDeleteRequest(
-                _worker,
-                id,
-                request.priority(),
-                request.database(),
-                request.chunk());
-
+        auto const ptr = _requestFactory.createDeleteRequest(
+            _worker,
+            id,
+            request.priority(),
+            request.database(),
+            request.chunk()
+        );
         _newRequests.push(ptr);
 
-        response.set_status(               proto::ReplicationStatus::QUEUED);
-        response.set_status_ext(           proto::ReplicationStatusExt::NONE);
+        response.set_status(proto::ReplicationStatus::QUEUED);
+        response.set_status_ext(proto::ReplicationStatusExt::NONE);
         response.set_allocated_performance(ptr->performance().info());
 
         setInfo(ptr, response);
@@ -320,27 +311,38 @@ void WorkerProcessor::enqueueForFind(std::string const& id,
 
     util::Lock lock(_mtx, context() + "enqueueForFind");
 
-    auto const ptr =
-        _requestFactory.createFindRequest(
+    // The code below may catch exceptions if other parameters of the requites
+    // won't pass further validation against the present configuration of the request
+    // procesisng service.
+    try {
+        auto const ptr = _requestFactory.createFindRequest(
             _worker,
             id,
             request.priority(),
             request.database(),
             request.chunk(),
-            request.compute_cs());
+            request.compute_cs()
+        );
+        _newRequests.push(ptr);
+    
+        response.set_status(proto::ReplicationStatus::QUEUED);
+        response.set_status_ext(proto::ReplicationStatusExt::NONE);
+        response.set_allocated_performance(ptr->performance().info());
+    
+        setInfo(ptr, response);
 
-    _newRequests.push(ptr);
+    } catch (std::invalid_argument const& ec) {
+        LOGS(_log, LOG_LVL_ERROR, context() << "enqueueForFind  " << ec.what());
 
-    response.set_status(               proto::ReplicationStatus::QUEUED);
-    response.set_status_ext(           proto::ReplicationStatusExt::NONE);
-    response.set_allocated_performance(ptr->performance().info());
-
-    setInfo(ptr, response);
+        setDefaultResponse(response,
+                           proto::ReplicationStatus::BAD,
+                           proto::ReplicationStatusExt::INVALID_PARAM);
+    }
 }
 
-void WorkerProcessor::enqueueForFindAll(std::string const&                      id,
+void WorkerProcessor::enqueueForFindAll(std::string const& id,
                                         proto::ReplicationRequestFindAll const& request,
-                                        proto::ReplicationResponseFindAll&      response) {
+                                        proto::ReplicationResponseFindAll& response) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "enqueueForFindAll"
         << "  id: " << id
@@ -348,23 +350,87 @@ void WorkerProcessor::enqueueForFindAll(std::string const&                      
 
     util::Lock lock(_mtx, context() + "enqueueForFindAll");
 
-    // TODO: run the sanity check to ensure no such request is found in any
-    //       of the queue. Return 'DUPLICATE' error status if the one is found.
-
-    auto const ptr =
-        _requestFactory.createFindAllRequest(
+    // The code below may catch exceptions if other parameters of the requites
+    // won't pass further validation against the present configuration of the request
+    // procesisng service.
+    try {
+        auto const ptr = _requestFactory.createFindAllRequest(
             _worker,
             id,
             request.priority(),
-            request.database());
+            request.database()
+        );
+        _newRequests.push(ptr);
+    
+        response.set_status(proto::ReplicationStatus::QUEUED);
+        response.set_status_ext(proto::ReplicationStatusExt::NONE);
+        response.set_allocated_performance(ptr->performance().info());
+    
+        setInfo(ptr, response);
 
-    _newRequests.push(ptr);
+    } catch (std::invalid_argument const& ec) {
+        LOGS(_log, LOG_LVL_ERROR, context() << "enqueueForFindAll  " << ec.what());
 
-    response.set_status(               proto::ReplicationStatus::QUEUED);
-    response.set_status_ext(           proto::ReplicationStatusExt::NONE);
-    response.set_allocated_performance(ptr->performance().info());
+        setDefaultResponse(response,
+                           proto::ReplicationStatus::BAD,
+                           proto::ReplicationStatusExt::INVALID_PARAM);
+    }
+}
 
-    setInfo(ptr, response);
+void WorkerProcessor::enqueueForEcho(std::string const& id,
+                                     proto::ReplicationRequestEcho const& request,
+                                     proto::ReplicationResponseEcho& response) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << "enqueueForEcho"
+        << "  id: " << id
+        << "  data.size: " << request.data().size()
+        << "  delay: " << request.delay());
+
+    util::Lock lock(_mtx, context() + "enqueueForEcho");
+
+    // Instant response if no delay was requested
+
+    if (0 == request.delay()) {
+
+        WorkerPerformance performance;
+        performance.setUpdateStart();
+        performance.setUpdateFinish();
+
+        response.set_status(proto::ReplicationStatus::SUCCESS);
+        response.set_status_ext(proto::ReplicationStatusExt::NONE);
+        response.set_allocated_performance(performance.info());
+        response.set_data(request.data());
+
+        return;
+    }
+
+    // The code below may catch exceptions if other parameters of the requites
+    // won't pass further validation against the present configuration of the request
+    // procesisng service.
+
+    try {
+        auto const ptr = _requestFactory.createEchoRequest(
+            _worker,
+            id,
+            request.priority(),
+            request.data(),
+            request.delay()
+        );
+        _newRequests.push(ptr);
+    
+        response.set_status(proto::ReplicationStatus::QUEUED);
+        response.set_status_ext(proto::ReplicationStatusExt::NONE);
+        response.set_allocated_performance(ptr->performance().info());
+    
+        setInfo(ptr, response);
+
+    } catch (std::invalid_argument const& ec) {
+        LOGS(_log, LOG_LVL_ERROR, context() << "enqueueForEcho  " << ec.what());
+
+        setDefaultResponse(response,
+                           proto::ReplicationStatus::BAD,
+                           proto::ReplicationStatusExt::INVALID_PARAM);
+    }
 }
 
 WorkerRequest::Ptr WorkerProcessor::dequeueOrCancelImpl(util::Lock const& lock,
@@ -807,6 +873,17 @@ void WorkerProcessor::setInfo(WorkerRequest::Ptr const& request,
     if (not ptr) {
         throw std::logic_error("incorrect dynamic type of request id: " + request->id() +
                                " in WorkerProcessor::setInfo(WorkerFindAllRequest)");
+    }
+    ptr->setInfo(response);
+}
+
+void WorkerProcessor::setInfo(WorkerRequest::Ptr const& request,
+                              proto::ReplicationResponseEcho& response) {
+
+    auto ptr = std::dynamic_pointer_cast<WorkerEchoRequest>(request);
+    if (not ptr) {
+        throw std::logic_error("incorrect dynamic type of request id: " + request->id() +
+                               " in WorkerProcessor::setInfo(WorkerEchoRequest)");
     }
     ptr->setInfo(response);
 }

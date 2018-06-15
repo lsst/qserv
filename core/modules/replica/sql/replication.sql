@@ -582,6 +582,7 @@ CREATE TABLE IF NOT EXISTS `request` (
                'REPLICA_DELETE',
                'REPLICA_FIND',
                'REPLICA_FIND_ALL',
+               'REPLICA_ECHO',
                'QSERV_ADD_REPLICA',
                'QSERV_REMOVE_REPLICA',
                'QSERV_GET_REPLICAS',
@@ -709,6 +710,31 @@ CREATE TABLE IF NOT EXISTS `request_replica_find_all` (
   PRIMARY KEY (`request_id`) ,
 
   CONSTRAINT `request_replica_find_all_fk_1`
+    FOREIGN KEY (`request_id` )
+    REFERENCES `request` (`id` )
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
+)
+ENGINE = InnoDB;
+
+-- -----------------------------------------------------
+-- Table `request_replica_echo`
+-- -----------------------------------------------------
+--
+-- Extended parameters of the 'REPLICA_ECHO' requests
+--
+DROP TABLE IF EXISTS `request_replica_echo` ;
+
+CREATE TABLE IF NOT EXISTS `request_replica_echo` (
+
+  `request_id`  VARCHAR(255) NOT NULL ,
+
+  `data_length` INT    UNSIGNED NOT NULL ,
+  `delay`       BIGINT UNSIGNED NOT NULL ,
+
+  PRIMARY KEY (`request_id`) ,
+
+  CONSTRAINT `request_replica_echo_fk_1`
     FOREIGN KEY (`request_id` )
     REFERENCES `request` (`id` )
     ON DELETE CASCADE

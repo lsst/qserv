@@ -152,9 +152,7 @@ std::string Generators::uniqueId() {
 
 ReplicationRequestParams::ReplicationRequestParams()
     :   priority(0),
-        database(),
-        chunk(0),
-        sourceWorker() {
+        chunk(0) {
 }
 
 ReplicationRequestParams::ReplicationRequestParams(proto::ReplicationRequestReplicate const& message)
@@ -166,9 +164,9 @@ ReplicationRequestParams::ReplicationRequestParams(proto::ReplicationRequestRepl
 
 DeleteRequestParams::DeleteRequestParams()
     :   priority(0),
-        database(),
         chunk(0) {
 }
+
 DeleteRequestParams::DeleteRequestParams(proto::ReplicationRequestDelete const& message)
     :   priority(message.priority()),
         database(message.database()),
@@ -177,7 +175,6 @@ DeleteRequestParams::DeleteRequestParams(proto::ReplicationRequestDelete const& 
 
 FindRequestParams::FindRequestParams()
     :   priority(0),
-        database(),
         chunk(0) {
 }
 
@@ -188,12 +185,24 @@ FindRequestParams::FindRequestParams(proto::ReplicationRequestFind const& messag
 }
 
 FindAllRequestParams::FindAllRequestParams()
-    :   priority(0),
-        database() {
+    :   priority(0) {
 }
+
 FindAllRequestParams::FindAllRequestParams(proto::ReplicationRequestFindAll const& message)
     :   priority(message.priority()),
         database(message.database()) {
 }
+
+EchoRequestParams::EchoRequestParams()
+    :   priority(0),
+        delay(0) {
+}
+
+EchoRequestParams::EchoRequestParams(proto::ReplicationRequestEcho const& message)
+    :   priority(message.priority()),
+        data(message.data()),
+        delay(message.delay()) {
+}
+
 
 }}} // namespace lsst::qserv::replica

@@ -255,6 +255,18 @@ private:
                        unsigned int& val) const;
 
     /**
+     * Implement positional parameter lookup for the unsigned long integer type
+     *
+     * @param pos - position number starting with 0
+     * @param val - a value to be set upon the successfull completion
+     *              of the method
+     * 
+     * @see method CmdLineParser::parameter()
+     */
+    void parameterImpl(unsigned int   pos,
+                       unsigned long& val) const;
+
+    /**
      * Implement positional parameter lookup for the string type
      *
      * @param pos - position number starting with 0

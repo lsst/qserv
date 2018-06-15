@@ -79,22 +79,23 @@ protected:
     /**
      * Construct the request
      *
-     * @param serviceProvider  - a host of services for various communications
-     * @param io_service       - network communication service
-     * @param requestName      - the name of a request
-     * @param worker           - the name of a worker node (the one to be affected by the request)
-     * @param targetRequestId  - an identifier of the target request whose remote status
-     *                           is going to be inspected
-     * @param requestType      - the type of a request
-     * @param keepTracking     - keep tracking the request before it finishes or fails
-     * @param messenger        - an interface for communicating with workers
+     * @param serviceProvider    - a host of services for various communications
+     * @param io_service         - network communication service
+     * @param requestName        - the name of a request
+     * @param worker             - the name of a worker node (the one to be affected by the request)
+     * @param targetRequestId    - an identifier of the target request whose remote status
+     *                             is going to be inspected
+     * @param replicaRequestType - the sub-type of the replication request (if applies for the general
+     *                             type above)
+     * @param keepTracking       - keep tracking the request before it finishes or fails
+     * @param messenger          - an interface for communicating with workers
      */
     StopRequestBase(ServiceProvider::Ptr const& serviceProvider,
                      boost::asio::io_service& io_service,
                      char const* requestName,
                      std::string const& worker,
                      std::string const& targetRequestId,
-                     proto::ReplicationReplicaRequestType requestType,
+                     proto::ReplicationReplicaRequestType replicaRequestType,
                      bool keepTracking,
                      std::shared_ptr<Messenger> const& messenger);
 
@@ -139,6 +140,15 @@ protected:
       */
      virtual void saveReplicaInfo() = 0;
 
+private:
+
+    /**
+     * Serialize request data into a network buffer and send the message to a worker
+     *
+     * @param lock - a lock on a mutex must be acquired before calling this method
+     */
+    void sendImpl(util::Lock const& lock);
+
 protected:
 
     /// The performance of the target operation
@@ -149,8 +159,8 @@ private:
     /// An identifier of the targer request whose state is to be queried
     std::string _targetRequestId;
 
-    /// The type of the targer request (must match the identifier)
-    proto::ReplicationReplicaRequestType  _requestType;
+    /// Request type (must match its identifier)
+    proto::ReplicationReplicaRequestType _replicaRequestType;
 };
 
 }}} // namespace lsst::qserv::replica

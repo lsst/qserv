@@ -35,6 +35,7 @@
 #include "replica/Configuration.h"
 #include "replica/DatabaseServices.h"
 #include "replica/DeleteRequest.h"
+#include "replica/EchoRequest.h"
 #include "replica/FindRequest.h"
 #include "replica/FindAllRequest.h"
 #include "replica/Messenger.h"
@@ -354,22 +355,21 @@ ReplicationRequest::Ptr Controller::replicate(
 
     Controller::Ptr controller = shared_from_this();
 
-    ReplicationRequest::Ptr request =
-        ReplicationRequest::create(
-            _serviceProvider,
-            _io_service,
-            workerName,
-            sourceWorkerName,
-            database,
-            chunk,
-            [controller] (ReplicationRequest::Ptr request) {
-                controller->finish(request->id());
-            },
-            priority,
-            keepTracking,
-            allowDuplicate,
-            _messenger
-        );
+    auto const request = ReplicationRequest::create(
+        _serviceProvider,
+        _io_service,
+        workerName,
+        sourceWorkerName,
+        database,
+        chunk,
+        [controller] (ReplicationRequest::Ptr request) {
+            controller->finish(request->id());
+        },
+        priority,
+        keepTracking,
+        allowDuplicate,
+        _messenger
+    );
 
     // Register the request (along with its callback) by its unique
     // identifier in the local registry. Once it's complete it'll
@@ -404,21 +404,20 @@ DeleteRequest::Ptr Controller::deleteReplica(
 
     Controller::Ptr controller = shared_from_this();
 
-    DeleteRequest::Ptr request =
-        DeleteRequest::create(
-            _serviceProvider,
-            _io_service,
-            workerName,
-            database,
-            chunk,
-            [controller] (DeleteRequest::Ptr request) {
-                controller->finish(request->id());
-            },
-            priority,
-            keepTracking,
-            allowDuplicate,
-            _messenger
-        );
+    auto const request = DeleteRequest::create(
+        _serviceProvider,
+        _io_service,
+        workerName,
+        database,
+        chunk,
+        [controller] (DeleteRequest::Ptr request) {
+            controller->finish(request->id());
+        },
+        priority,
+        keepTracking,
+        allowDuplicate,
+        _messenger
+    );
 
     // Register the request (along with its callback) by its unique
     // identifier in the local registry. Once it's complete it'll
@@ -453,21 +452,20 @@ FindRequest::Ptr Controller::findReplica(
 
     Controller::Ptr controller = shared_from_this();
 
-    FindRequest::Ptr request =
-        FindRequest::create(
-            _serviceProvider,
-            _io_service,
-            workerName,
-            database,
-            chunk,
-            [controller] (FindRequest::Ptr request) {
-                controller->finish(request->id());
-            },
-            priority,
-            computeCheckSum,
-            keepTracking,
-            _messenger
-        );
+    auto const request = FindRequest::create(
+        _serviceProvider,
+        _io_service,
+        workerName,
+        database,
+        chunk,
+        [controller] (FindRequest::Ptr request) {
+            controller->finish(request->id());
+        },
+        priority,
+        computeCheckSum,
+        keepTracking,
+        _messenger
+    );
 
     // Register the request (along with its callback) by its unique
     // identifier in the local registry. Once it's complete it'll
@@ -501,20 +499,19 @@ FindAllRequest::Ptr Controller::findAllReplicas(
 
     Controller::Ptr controller = shared_from_this();
 
-    FindAllRequest::Ptr request =
-        FindAllRequest::create(
-            _serviceProvider,
-            _io_service,
-            workerName,
-            database,
-            saveReplicaInfo,
-            [controller] (FindAllRequest::Ptr request) {
-                controller->finish(request->id());
-            },
-            priority,
-            keepTracking,
-            _messenger
-        );
+    auto const request = FindAllRequest::create(
+        _serviceProvider,
+        _io_service,
+        workerName,
+        database,
+        saveReplicaInfo,
+        [controller] (FindAllRequest::Ptr request) {
+            controller->finish(request->id());
+        },
+        priority,
+        keepTracking,
+        _messenger
+    );
 
     // Register the request (along with its callback) by its unique
     // identifier in the local registry. Once it's complete it'll
@@ -522,6 +519,52 @@ FindAllRequest::Ptr Controller::findAllReplicas(
 
     _registry[request->id()] =
         std::make_shared<RequestWrapperImpl<FindAllRequest>>(request, onFinish);
+
+    // Initiate the request
+
+    request->start(controller, jobId, requestExpirationIvalSec);
+
+    return request;
+}
+
+
+EchoRequest::Ptr Controller::echo(std::string const& workerName,
+                                  std::string const& data,
+                                  uint64_t delay,
+                                  EchoRequestCallbackType onFinish,
+                                  int priority,
+                                  bool keepTracking,
+                                  std::string const& jobId,
+                                  unsigned int requestExpirationIvalSec) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << "echo");
+
+    util::Lock lock(_mtx, context() + "echo");
+
+    assertIsRunning();
+
+    Controller::Ptr controller = shared_from_this();
+
+    auto const request = EchoRequest::create(
+        _serviceProvider,
+        _io_service,
+        workerName,
+        data,
+        delay,
+        [controller] (EchoRequest::Ptr request) {
+            controller->finish(request->id());
+        },
+        priority,
+        keepTracking,
+        _messenger
+    );
+
+    // Register the request (along with its callback) by its unique
+    // identifier in the local registry. Once it's complete it'll
+    // be automatically removed from the Registry.
+
+    _registry[request->id()] =
+        std::make_shared<RequestWrapperImpl<EchoRequest>>(request, onFinish);
 
     // Initiate the request
 
@@ -622,6 +665,29 @@ StopFindAllRequest::Ptr Controller::stopReplicaFindAll(
         requestExpirationIvalSec);
 }
 
+StopEchoRequest::Ptr Controller::stopEcho(
+                                    std::string const& workerName,
+                                    std::string const& targetRequestId,
+                                    StopEchoRequestCallbackType onFinish,
+                                    bool keepTracking,
+                                    std::string const& jobId,
+                                    unsigned int requestExpirationIvalSec) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << "stopEcho  targetRequestId = " << targetRequestId);
+
+    util::Lock lock(_mtx, context() + "stopEcho");
+
+    return ControllerImpl::requestManagementOperation<StopEchoRequest>(
+        shared_from_this(),
+        jobId,
+        workerName,
+        targetRequestId,
+        onFinish,
+        keepTracking,
+        _messenger,
+        requestExpirationIvalSec);
+}
+
 StatusReplicationRequest::Ptr Controller::statusOfReplication(
                                         std::string const& workerName,
                                         std::string const& targetRequestId,
@@ -704,6 +770,29 @@ StatusFindAllRequest::Ptr Controller::statusOfFindAll(
     util::Lock lock(_mtx, context() + "statusOfFindAll");
 
     return ControllerImpl::requestManagementOperation<StatusFindAllRequest>(
+        shared_from_this(),
+        jobId,
+        workerName,
+        targetRequestId,
+        onFinish,
+        keepTracking,
+        _messenger,
+        requestExpirationIvalSec);
+}
+
+StatusEchoRequest::Ptr Controller::statusOfEcho(
+                                    std::string const& workerName,
+                                    std::string const& targetRequestId,
+                                    StatusEchoRequest::CallbackType onFinish,
+                                    bool keepTracking,
+                                    std::string const& jobId,
+                                    unsigned int requestExpirationIvalSec) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << "statusOfEcho  targetRequestId = " << targetRequestId);
+
+    util::Lock lock(_mtx, context() + "statusOfEcho");
+
+    return ControllerImpl::requestManagementOperation<StatusEchoRequest>(
         shared_from_this(),
         jobId,
         workerName,

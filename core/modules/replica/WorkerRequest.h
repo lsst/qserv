@@ -132,7 +132,7 @@ public:
      * may mean both success or failure, depeniding on the completion status
      * of the request.
      *
-     * This method is required to be called wgie th erequest is in STATUS_IN_PROGRESS.
+     * This method is required to be called while the request state is STATUS_IN_PROGRESS.
      *
      * The method will throw custom exception WorkerRequestCancelled when
      * it detects a cancellation request.

@@ -47,12 +47,12 @@ namespace replica {
 
 StopRequestBase::StopRequestBase(ServiceProvider::Ptr const& serviceProvider,
                                  boost::asio::io_service& io_service,
-                                 char const*              requestTypeName,
-                                 std::string const&       worker,
-                                 std::string const&       targetRequestId,
-                                 proto::ReplicationReplicaRequestType requestType,
-                                 bool                     keepTracking,
-                                 std::shared_ptr<Messenger> const&  messenger)
+                                 char const* requestTypeName,
+                                 std::string const& worker,
+                                 std::string const& targetRequestId,
+                                 proto::ReplicationReplicaRequestType replicaRequestType,
+                                 bool keepTracking,
+                                 std::shared_ptr<Messenger> const& messenger)
     :   RequestMessenger(serviceProvider,
                          io_service,
                          requestTypeName,
@@ -62,32 +62,12 @@ StopRequestBase::StopRequestBase(ServiceProvider::Ptr const& serviceProvider,
                          false /* allowDuplicate */,
                          messenger),
         _targetRequestId(targetRequestId),
-        _requestType(requestType) {
+        _replicaRequestType(replicaRequestType) {
 }
 
 void StopRequestBase::startImpl(util::Lock const& lock) {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
-
-    // Serialize the Request message header and the request itself into
-    // the network buffer.
-
-    buffer()->resize();
-
-    proto::ReplicationRequestHeader hdr;
-    hdr.set_id(id());
-    hdr.set_type(proto::ReplicationRequestHeader::REQUEST);
-    hdr.set_management_type(proto::ReplicationManagementRequestType::REQUEST_STOP);
-
-    buffer()->serialize(hdr);
-
-    proto::ReplicationRequestStop message;
-    message.set_id(_targetRequestId);
-    message.set_type(_requestType);
-
-    buffer()->serialize(message);
-
-    send(lock);
+    sendImpl(lock);
 }
 
 void StopRequestBase::wait(util::Lock const& lock) {
@@ -124,21 +104,28 @@ void StopRequestBase::awaken(boost::system::error_code const& ec) {
 
     if (state() == State::FINISHED) return;
 
-    // Serialize the Status message header and the request itself into
+    sendImpl(lock);
+}
+
+void StopRequestBase::sendImpl(util::Lock const& lock) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << "sendImpl");
+
+    // Serialize the Stop message header and the request itself into
     // the network buffer.
 
     buffer()->resize();
 
     proto::ReplicationRequestHeader hdr;
     hdr.set_id(id());
-    hdr.set_type(proto::ReplicationRequestHeader::REQUEST);
-    hdr.set_management_type(proto::ReplicationManagementRequestType::REQUEST_STATUS);
+    hdr.set_type(proto::ReplicationRequestHeader::REPLICA);
+    hdr.set_management_type(proto::ReplicationManagementRequestType::REQUEST_STOP);
 
     buffer()->serialize(hdr);
 
-    proto::ReplicationRequestStatus message;
+    proto::ReplicationRequestStop message;
     message.set_id(_targetRequestId);
-    message.set_type(_requestType);
+    message.set_replica_type(_replicaRequestType);
 
     buffer()->serialize(message);
 

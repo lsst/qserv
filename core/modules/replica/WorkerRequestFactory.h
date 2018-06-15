@@ -47,6 +47,7 @@ class WorkerReplicationRequest;
 class WorkerDeleteRequest;
 class WorkerFindRequest;
 class WorkerFindAllRequest;
+class WorkerEchoRequest;
 
 /**
   * Class WorkerRequestFactoryBase is an abstract base class for a family of
@@ -62,6 +63,7 @@ public:
     typedef std::shared_ptr<WorkerDeleteRequest>      WorkerDeleteRequestPtr;
     typedef std::shared_ptr<WorkerFindRequest>        WorkerFindRequestPtr;
     typedef std::shared_ptr<WorkerFindAllRequest>     WorkerFindAllRequestPtr;
+    typedef std::shared_ptr<WorkerEchoRequest>        WorkerEchoRequestPtr;
 
     // The default constructor and copy semantics are prohibited
 
@@ -130,7 +132,21 @@ public:
             std::string const& id,
             int priority,
             std::string const& database) = 0;
-            
+
+    /**
+     * Create an instance of the test request
+     *
+     * @see class WorkerEchoRequest
+     *
+     * @return a pointer to the newely created object
+     */
+    virtual WorkerEchoRequestPtr createEchoRequest(
+            std::string const& worker,
+            std::string const& id,
+            int priority,
+            std::string const& data,
+            uint64_t delay) = 0;
+ 
 protected:
 
     /**
@@ -185,16 +201,12 @@ public:
     explicit WorkerRequestFactory(ServiceProvider::Ptr const& serviceProvider,
                                   std::string const& technology=std::string());
 
-    ~WorkerRequestFactory() override {
-        delete _ptr;
-    }
+    ~WorkerRequestFactory() final { delete _ptr; }
 
     /**
      * @see WorkerReplicationRequestBase::technology()
      */
-    std::string technology() const override {
-        return _ptr->technology();
-    }
+    std::string technology() const final { return _ptr->technology(); }
 
     /**
      * @see WorkerReplicationRequestBase::createReplicationRequest()
@@ -205,7 +217,7 @@ public:
             int priority,
             std::string const& database,
             unsigned int chunk,
-            std::string const& sourceWorker) override {
+            std::string const& sourceWorker) final {
 
         return _ptr->createReplicationRequest(
             worker,
@@ -224,7 +236,7 @@ public:
             std::string const& id,
             int priority,
             std::string const& database,
-            unsigned int chunk) override {
+            unsigned int chunk) final {
 
         return _ptr->createDeleteRequest(
             worker,
@@ -243,7 +255,7 @@ public:
             int priority,
             std::string const& database,
             unsigned int chunk,
-            bool computeCheckSum) override {
+            bool computeCheckSum) final {
         
         return _ptr->createFindRequest(
             worker,
@@ -261,13 +273,31 @@ public:
             std::string const& worker,
             std::string const& id,
             int priority,
-            std::string const& database) override {
+            std::string const& database) final {
         
         return _ptr->createFindAllRequest(
             worker,
             id,
             priority,
             database);
+    }
+
+    /**
+     * @see WorkerReplicationRequestBase::createEchoRequest()
+     */
+    WorkerEchoRequestPtr createEchoRequest(
+            std::string const& worker,
+            std::string const& id,
+            int priority,
+            std::string const& data,
+            uint64_t delay) final {
+
+        return _ptr->createEchoRequest(
+            worker,
+            id,
+            priority,
+            data,
+            delay);
     }
 
 protected:
