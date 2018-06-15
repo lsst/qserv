@@ -119,7 +119,7 @@ void StatusRequestBase::sendImpl(util::Lock const& lock) {
 
     proto::ReplicationRequestHeader hdr;
     hdr.set_id(id());
-    hdr.set_type(proto::ReplicationRequestHeader::REPLICA);
+    hdr.set_type(proto::ReplicationRequestHeader::REQUEST);
     hdr.set_management_type(proto::ReplicationManagementRequestType::REQUEST_STATUS);
 
     buffer()->serialize(hdr);
