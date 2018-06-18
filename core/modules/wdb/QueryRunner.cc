@@ -159,7 +159,8 @@ bool QueryRunner::runQuery() {
     // Wait for memman to finish reserving resources. This can take several seconds.
     util::Timer memTimer;
     memTimer.start();
-    //_task->waitForMemMan();  &&&
+
+    _task->waitForMemMan();
     memTimer.stop();
     double mElapsed = 0;
     double avgWait = 0;

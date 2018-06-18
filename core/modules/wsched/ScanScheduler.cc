@@ -165,7 +165,8 @@ bool ScanScheduler::_ready() {
     bool logMemStats = false;
     // If ready failed, holding on to this is unlikely to help, otherwise the new Task now has its own handle.
     if (_memManHandleToUnlock != memman::MemMan::HandleType::INVALID) {
-        LOGS(_log, LOG_LVL_DEBUG, "ScanScheduler::_ready unlocking handle=" << _memManHandleToUnlock);
+        LOGS(_log, LOG_LVL_DEBUG, "ScanScheduler::_ready unlocking handle=" << _memManHandleToUnlock <<
+                                   " " << _memMan->getStatus(_memManHandleToUnlock).toString());
         _memMan->unlock(_memManHandleToUnlock);
         _memManHandleToUnlock = memman::MemMan::HandleType::INVALID;
         logMemStats = true;
@@ -264,6 +265,8 @@ bool ScanScheduler::removeTask(wbase::Task::Ptr const& task, bool removeRunning)
 
 
 void ScanScheduler::logMemManStats() {
+    LOGS(_log, LOG_LVL_DEBUG, "&&&mem Scan " <<_memMan->getStatistics().toString());
+    /* &&&
     auto s = _memMan->getStatistics();
     LOGS(_log, LOG_LVL_DEBUG, "bMax=" << s.bytesLockMax
          << " bLocked=" << s.bytesLocked
@@ -275,6 +278,8 @@ void ScanScheduler::logMemManStats() {
          << " FlxLck=" << s.numFlexLock
          << " lckCalls=" << s.numLocks
          << " errs=" << s.numErrors);
+    */
+
 }
 
 }}} // namespace lsst::qserv::wsched

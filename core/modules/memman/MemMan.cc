@@ -22,6 +22,7 @@
  */
 
 // system headers
+#include <sstream>
 #include <sys/resource.h>
 #include <sys/time.h>
 
@@ -85,5 +86,36 @@ MemMan *MemMan::create(uint64_t maxBytes, std::string const &dbPath) {
     //
     return new MemManReal(dbPath, maxBytes);
 }
+
+
+std::string MemMan::Statistics::toString() {
+    std::stringstream os;
+    os <<  "MemManStats ";
+    os << " LockMax=" << bytesLockMax;
+    os << " Locked=" << bytesLocked;
+    os << " Reserved=" << bytesReserved;
+    os << " MapErrors=" << numMapErrors;
+    os << " LokErrors=" << numLokErrors;
+    os << " FSets=" << numFSets;
+    os << " Files=" << numFiles;
+    os << " ReqdFiles=" << numReqdFiles;
+    os << " FlexFiles=" << numFlexFiles;
+    os << " FlexLock=" << numFlexLock;
+    os << " Locks=" << numLocks;
+    os << " Errors=" << numErrors;
+
+    return os.str();
+}
+
+
+std::string MemMan::Status::toString() {
+    std::stringstream os;
+    os <<  "MemManHandle ";
+    os << " bLock=" << bytesLock;
+    os << " nFiles=" << numFiles;
+    os << " chunk=" << chunk;
+    return os.str();
+}
+
 }}} // namespace lsst:qserv:memman
 
