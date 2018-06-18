@@ -390,10 +390,13 @@ ChunkTasks::ReadyState ChunkTasks::ready(bool useFlexibleLock) {
         std::vector<memman::TableInfo> tblVect;
         for (auto const& tbl : scanInfo.infoTables) {
             memman::TableInfo ti(tbl.db + "/" + tbl.table, lckOptTbl, lckOptIdx);
+            LOGS(_log, LOG_LVL_DEBUG, "&&& memman table:" << tbl.db + "/" + tbl.table);
             tblVect.push_back(ti);
         }
         // If tblVect is empty, we should get the empty handle
+        LOGS(_log, LOG_LVL_DEBUG, "&&&memPrep " <<_memMan->getStatistics().toString());
         memman::MemMan::Handle handle = _memMan->prepare(tblVect, chunkId);
+        LOGS(_log, LOG_LVL_DEBUG, "&&&memPrep " <<_memMan->getStatistics().toString());
         if (handle == 0) {
             switch (errno) {
             case ENOMEM:

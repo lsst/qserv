@@ -238,7 +238,7 @@ std::chrono::milliseconds Task::getRunTime() const {
 /// if they are mlock'ed in the same order they were scheduled, hence the ulockEvents
 /// EventThread and CommandMlock class.
 void Task::waitForMemMan() {
-#if 0  // &&&
+#if 0  // &&&  - disable the queue
     class CommandMlock : public util::CommandTracked {
     public:
         using Ptr = std::shared_ptr<CommandMlock>;
@@ -268,16 +268,17 @@ void Task::waitForMemMan() {
     LOGS(_log, LOG_LVL_DEBUG, _idStr << " waitForMemMan end");
     _safeToMoveRunning = true;
 #endif
+    if (_memMan != nullptr) { // &&& delete or re-write bloc
+        LOGS(_log, LOG_LVL_DEBUG, "&&&memWait " <<_memMan->getStatistics().toString());
+        if (_memMan != nullptr && _memMan->lock(_memHandle, true)) {
+            int errorCode = (errno == EAGAIN ? ENOMEM : errno);
+            LOGS(_log, LOG_LVL_WARN, _idStr << " mlock err=" << errorCode);
+        }
+        LOGS(_log, LOG_LVL_DEBUG, "&&&memWait " <<_memMan->getStatistics().toString());
+    }
 
-       if (_memMan != nullptr && _memMan->lock(_memHandle, true)) {
-           int errorCode = (errno == EAGAIN ? ENOMEM : errno);
-           LOGS(_log, LOG_LVL_WARN, _idStr << " mlock err=" << errorCode);
-       }
-
-       LOGS(_log, LOG_LVL_DEBUG, _idStr << " waitForMemMan end");
+    LOGS(_log, LOG_LVL_DEBUG, _idStr << " waitForMemMan end");
        _safeToMoveRunning = true;
-
-
 }
 
 std::ostream& operator<<(std::ostream& os, Task const& t) {

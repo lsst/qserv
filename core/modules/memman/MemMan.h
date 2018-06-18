@@ -30,6 +30,8 @@
 #include <string>
 #include <vector>
 
+#include "util/InstanceCount.h" // &&& delete
+
 namespace lsst {
 namespace qserv {
 namespace memman {
@@ -185,6 +187,7 @@ public:
         uint32_t numFlexLock;  //!< Number  flexible files that were locked
         uint32_t numLocks;     //!< Number of calls to lock()
         uint32_t numErrors;    //!< Number of calls that failed
+        std::string toString();
     };
 
     virtual Statistics getStatistics() = 0;
@@ -217,6 +220,8 @@ public:
 protected:
 
     static uint64_t lockLimit;
+
+    util::InstanceCount ic{"MemMan"}; // &&& delete
 };
 
 }}} // namespace lsst:qserv:memman
