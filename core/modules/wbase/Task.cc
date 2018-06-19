@@ -274,7 +274,8 @@ void Task::waitForMemMan() {
             int errorCode = (errno == EAGAIN ? ENOMEM : errno);
             LOGS(_log, LOG_LVL_WARN, _idStr << " mlock err=" << errorCode);
         }
-        LOGS(_log, LOG_LVL_DEBUG, "&&&memWait " <<_memMan->getStatistics().toString());
+        LOGS(_log, LOG_LVL_DEBUG, "&&&memWait " <<_memMan->getStatistics().toString() <<
+                                  " " << _memMan->getStatus(_memHandle).toString());
     }
 
     LOGS(_log, LOG_LVL_DEBUG, _idStr << " waitForMemMan end");

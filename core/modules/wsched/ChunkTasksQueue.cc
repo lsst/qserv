@@ -352,7 +352,7 @@ bool ChunkTasks::readyToAdvance() {
 // If a Task is ready to be run, _readyTask will not be nullptr.
 ChunkTasks::ReadyState ChunkTasks::ready(bool useFlexibleLock) {
     auto logMemManRes =
-            [this, useFlexibleLock](bool starved, std::string const& msg, int handle,
+            [this, useFlexibleLock](bool starved, std::string const& msg, int handle, int chunkId,
                    std::vector<memman::TableInfo> const& tblVect) {
         setResourceStarved(starved);
         if (!starved) {
@@ -361,7 +361,7 @@ ChunkTasks::ReadyState ChunkTasks::ready(bool useFlexibleLock) {
                 str += tblInfo.tableName + " ";
             }
             LOGS(_log, LOG_LVL_DEBUG, "ready memMan flex=" << useFlexibleLock
-                  << " handle=" << handle << " " << msg << " - " << str);
+                  << " handle=" << handle << " " << msg << "chunk=" << chunkId << " - " << str);
         }
     };
 
@@ -376,12 +376,13 @@ ChunkTasks::ReadyState ChunkTasks::ready(bool useFlexibleLock) {
     // after this point it will return READY or NO_RESOURCES, and ChunkTasksQueue::_ready
     // will not examine any further chunks upon seeing those results.
     auto task = _activeTasks.top();
+    int chunkId = -1;
     if (!task->hasMemHandle()) {
         memman::TableInfo::LockType lckOptTbl = memman::TableInfo::LockType::REQUIRED;
         if (useFlexibleLock) lckOptTbl = memman::TableInfo::LockType::FLEXIBLE;
         memman::TableInfo::LockType lckOptIdx = memman::TableInfo::LockType::NOLOCK;
         auto scanInfo = task->getScanInfo();
-        auto chunkId = task->getChunkId();
+        chunkId = task->getChunkId();
         if (chunkId != _chunkId) {
             // This would slow things down badly, but the system would survive.
             LOGS(_log, LOG_LVL_ERROR, "ChunkTasks " << _chunkId << " got task for chunk " << chunkId
@@ -390,17 +391,18 @@ ChunkTasks::ReadyState ChunkTasks::ready(bool useFlexibleLock) {
         std::vector<memman::TableInfo> tblVect;
         for (auto const& tbl : scanInfo.infoTables) {
             memman::TableInfo ti(tbl.db + "/" + tbl.table, lckOptTbl, lckOptIdx);
-            LOGS(_log, LOG_LVL_DEBUG, "&&& memman table:" << tbl.db + "/" + tbl.table);
+            // LOGS(_log, LOG_LVL_DEBUG, "&&& memman table:" << tbl.db + "/" + tbl.table); &&&
             tblVect.push_back(ti);
         }
         // If tblVect is empty, we should get the empty handle
-        LOGS(_log, LOG_LVL_DEBUG, "&&&memPrep " <<_memMan->getStatistics().toString());
+        LOGS(_log, LOG_LVL_DEBUG, "&&&memPrep " << _memMan->getStatistics().toString());
         memman::MemMan::Handle handle = _memMan->prepare(tblVect, chunkId);
-        LOGS(_log, LOG_LVL_DEBUG, "&&&memPrep " <<_memMan->getStatistics().toString());
+        LOGS(_log, LOG_LVL_DEBUG, "&&&memPrep " << _memMan->getStatistics().toString() <<
+                                  " " << _memMan->getStatus(handle).toString());
         if (handle == 0) {
             switch (errno) {
             case ENOMEM:
-                logMemManRes(true, "ENOMEM", handle, tblVect);
+                logMemManRes(true, "ENOMEM", handle, chunkId, tblVect);
                 return ChunkTasks::ReadyState::NO_RESOURCES;
             case ENOENT:
                 LOGS(_log, LOG_LVL_ERROR, "_memMgr->lock errno=ENOENT chunk not found " << task->getIdStr());
@@ -417,7 +419,7 @@ ChunkTasks::ReadyState ChunkTasks::ready(bool useFlexibleLock) {
             }
         }
         task->setMemHandle(handle);
-        logMemManRes(false, task->getIdStr() + " got handle", handle, tblVect);
+        logMemManRes(false, task->getIdStr() + " got handle", handle, chunkId, tblVect);
     }
 
     // There is a Task to run at this point, pull it off the heap to avoid confusion.

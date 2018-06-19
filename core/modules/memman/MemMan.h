@@ -205,6 +205,7 @@ public:
         uint64_t bytesLock; //!< Number of resource bytes locked
         uint32_t numFiles;  //!< Number of files resource has
         int      chunk;     //!< Chunk number associated with resource
+        std::string toString();
     };
 
     virtual Status getStatus(Handle handle) = 0;

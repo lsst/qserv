@@ -107,5 +107,25 @@ std::string MemMan::Statistics::toString() {
     return os.str();
 }
 
+
+std::string MemMan::Status::toString() {
+    std::stringstream os;
+    os <<  "MemManStats ";
+    os << " LockMax=" << bytesLockMax;
+    os << " Locked=" << bytesLocked;
+    os << " Reserved=" << bytesReserved;
+    os << " MapErrors=" << numMapErrors;
+    os << " LokErrors=" << numLokErrors;
+    os << " FSets=" << numFSets;
+    os << " Files=" << numFiles;
+    os << " ReqdFiles=" << numReqdFiles;
+    os << " FlexFiles=" << numFlexFiles;
+    os << " FlexLock=" << numFlexLock;
+    os << " Locks=" << numLocks;
+    os << " Errors=" << numErrors;
+
+    return os.str();
+}
+
 }}} // namespace lsst:qserv:memman
 
