@@ -110,20 +110,10 @@ std::string MemMan::Statistics::toString() {
 
 std::string MemMan::Status::toString() {
     std::stringstream os;
-    os <<  "MemManStats ";
-    os << " LockMax=" << bytesLockMax;
-    os << " Locked=" << bytesLocked;
-    os << " Reserved=" << bytesReserved;
-    os << " MapErrors=" << numMapErrors;
-    os << " LokErrors=" << numLokErrors;
-    os << " FSets=" << numFSets;
-    os << " Files=" << numFiles;
-    os << " ReqdFiles=" << numReqdFiles;
-    os << " FlexFiles=" << numFlexFiles;
-    os << " FlexLock=" << numFlexLock;
-    os << " Locks=" << numLocks;
-    os << " Errors=" << numErrors;
-
+    os <<  "MemManHandle ";
+    os << " bLock=" << bytesLock;
+    os << " nFiles=" << numFiles;
+    os << " chunk=" << chunk;
     return os.str();
 }
 
