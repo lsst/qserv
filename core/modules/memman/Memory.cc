@@ -86,7 +86,7 @@ std::string Memory::filePath(std::string const& dbTable,
 /******************************************************************************/
 /*                               m e m L o c k                                */
 /******************************************************************************/
-  
+std::mutex localMtx; // &&& Allow only one mlock call at a time.
 int Memory::memLock(MemInfo mInfo, bool isFlex) {
 
     // Verify that this is a valid mapping
@@ -95,6 +95,7 @@ int Memory::memLock(MemInfo mInfo, bool isFlex) {
 
     // Lock this map into memory. Return success if this worked.
     //
+    std::lock_guard<std::mutex> localLG(localMtx); // &&&
     if (!mlock(mInfo._memAddr, mInfo._memSize)) {
         _lokBytes += mInfo._memSize;
         if (isFlex) _flexNum++;

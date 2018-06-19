@@ -46,7 +46,6 @@ std::unordered_map<std::string, MemFile*> fileCache;
 /******************************************************************************/
 
 MemFile::MLResult MemFile::memLock() {
-
     // The _fileMutex is used here to serialize multiple calls to lock the same
     // file as a file may appear in multiple file sets. This mutex is held for
     // duration of all operations here. It also serialized memory unmapping.
