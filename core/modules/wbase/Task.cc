@@ -238,7 +238,7 @@ std::chrono::milliseconds Task::getRunTime() const {
 /// if they are mlock'ed in the same order they were scheduled, hence the ulockEvents
 /// EventThread and CommandMlock class.
 void Task::waitForMemMan() {
-#if 1  // &&&  - disable the queue
+#if 0  // &&&  - disable the queue
     class CommandMlock : public util::CommandTracked {
     public:
         using Ptr = std::shared_ptr<CommandMlock>;
