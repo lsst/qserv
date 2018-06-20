@@ -238,40 +238,10 @@ std::chrono::milliseconds Task::getRunTime() const {
 /// if they are mlock'ed in the same order they were scheduled, hence the ulockEvents
 /// EventThread and CommandMlock class.
 void Task::waitForMemMan() {
-#if 0  // &&&  - disable the queue
-    class CommandMlock : public util::CommandTracked {
-    public:
-        using Ptr = std::shared_ptr<CommandMlock>;
-        CommandMlock(memman::MemMan::Ptr memMan, memman::MemMan::Handle handle) : _memMan{memMan}, _handle{handle} {}
-        void action(util::CmdData*) override {
-            if (_memMan->lock(_handle, true)) {
-                errorCode = (errno == EAGAIN ? ENOMEM : errno);
-            }
-        }
-        int errorCode{0}; ///< Error code if mlock fails.
-    private:
-        memman::MemMan::Ptr _memMan;
-        memman::MemMan::Handle _handle;
-    };
 
-    LOGS(_log,LOG_LVL_DEBUG, _idStr << " waitForMemMan begin handle=" << _memHandle);
     if (_memMan != nullptr) {
-        runUlockEventsThreadOnce();
-        auto cmd = std::make_shared<CommandMlock>(_memMan, _memHandle);
-        ulockEvents.queCmd(cmd); // local EventThread for fifo serialization of mlock calls.
-        cmd->waitComplete();
-        if (cmd->errorCode) {
-            LOGS(_log, LOG_LVL_WARN, _idStr << " mlock err=" << cmd->errorCode <<
-                    " " <<_memMan->getStatistics().toString() <<
-                    " " << _memMan->getStatus(_memHandle).toString());
-        }
-        LOGS(_log, LOG_LVL_DEBUG, "&&&memWait " <<_memMan->getStatistics().toString() <<
-                                  " " << _memMan->getStatus(_memHandle).toString());
-    }
-#else
-    if (_memMan != nullptr) { // &&& delete or re-write bloc
         LOGS(_log, LOG_LVL_DEBUG, "&&&memWait " <<_memMan->getStatistics().toString());
-        if (_memMan != nullptr && _memMan->lock(_memHandle, true)) {
+        if (_memMan->lock(_memHandle, true)) {
             int errorCode = (errno == EAGAIN ? ENOMEM : errno);
             LOGS(_log, LOG_LVL_WARN, _idStr << " mlock err=" << errorCode <<
                     " " <<_memMan->getStatistics().toString() <<
@@ -280,7 +250,6 @@ void Task::waitForMemMan() {
         LOGS(_log, LOG_LVL_DEBUG, "&&&memWait " <<_memMan->getStatistics().toString() <<
                                               " " << _memMan->getStatus(_memHandle).toString());
     }
-#endif
     LOGS(_log, LOG_LVL_DEBUG, _idStr << " waitForMemMan end");
     _safeToMoveRunning = true;
 }
