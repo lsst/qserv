@@ -57,10 +57,12 @@ public:
     //-----------------------------------------------------------------------------
 
     struct MLResult {
-        uint64_t bLocked;
-        int      retc;
-        MLResult() : bLocked(0), retc(0) {}
-        MLResult(uint64_t lksz, int rc) : bLocked(lksz), retc(rc) {}
+        uint64_t bLocked{0};
+        double   mlockTime{0.0};
+        int      retc{0};
+
+        MLResult() {}
+        MLResult(uint64_t lksz, double mlockT, int rc) : bLocked(lksz), mlockTime(mlockT), retc(rc) {}
     };
 
     MLResult    memLock();

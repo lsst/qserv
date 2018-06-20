@@ -77,13 +77,22 @@ public:
 
     uint64_t size() {return _memSize;}
 
-    MemInfo() : _memAddr((void *)-1), _memSize(0) {}
+    //-----------------------------------------------------------------------------
+    //! @brief Return the time it took to mlock the file in seconds.
+    //!
+    //! @return the time it took to mlock the file in seconds.
+    //-----------------------------------------------------------------------------
+
+    double mlockTime() {return _mlockTime;}
+
+    MemInfo() : _memAddr((void *)-1) {}
    ~MemInfo() {}
 
 private:
 
     union {void  *_memAddr; int _errCode;};
-    uint64_t      _memSize;  //!< If contains 0 then _errCode is valid.
+    uint64_t      _memSize{0};     //!< If contains 0 then _errCode is valid.
+    double        _mlockTime{0.0}; ///< Time for mlock call to complete.
 };
 
 //-----------------------------------------------------------------------------
@@ -245,6 +254,8 @@ private:
     std::atomic_uint   _numMapErrs;
     std::atomic_uint   _numLokErrs;
     std::atomic_uint   _flexNum;
+
+    static std::mutex  _mlockMtx;    // Prevent multiple concurrent mlock calls.
 };
 }}} // namespace lsst:qserv:memman
 #endif  // LSST_QSERV_MEMMAN_MEMORY_H

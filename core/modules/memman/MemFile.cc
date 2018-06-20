@@ -56,7 +56,7 @@ MemFile::MLResult MemFile::memLock() {
     // If the file is already locked, indicate success
     //
     if (_isLocked) {
-        MLResult aokResult(_memInfo.size(), 0);
+        MLResult aokResult(_memInfo.size(), _memInfo.mlockTime(), 0);
         return aokResult;
     }
 
@@ -66,7 +66,7 @@ MemFile::MLResult MemFile::memLock() {
     else {
         rc = _memory.memLock(_memInfo, _isFlex);
         if (rc == 0) {
-            MLResult aokResult(_memInfo.size(),0);
+            MLResult aokResult(_memInfo.size(), _memInfo.mlockTime(), 0);
             _isLocked = true;
             return aokResult;
         }
@@ -75,13 +75,13 @@ MemFile::MLResult MemFile::memLock() {
     // If this is a flexible table, we can ignore this error.
     //
     if (_isFlex) {
-        MLResult nilResult(0,0);
+        MLResult nilResult(0, 0.0, 0);
         return nilResult;
     }
 
     // Diagnose any errors
     //
-    MLResult errResult(0, rc);
+    MLResult errResult(0, 0.0, rc);
     return errResult;
 }
 

@@ -31,9 +31,14 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+// qserv headers
+#include "util/Timer.h"
+
 namespace lsst {
 namespace qserv {
 namespace memman {
+
+std::mutex Memory::_mlockMtx;
 
 /******************************************************************************/
 /*                              f i l e I n f o                               */
@@ -86,7 +91,7 @@ std::string Memory::filePath(std::string const& dbTable,
 /******************************************************************************/
 /*                               m e m L o c k                                */
 /******************************************************************************/
-std::mutex localMtx; // &&& Allow only one mlock call at a time.
+
 int Memory::memLock(MemInfo mInfo, bool isFlex) {
 
     // Verify that this is a valid mapping
@@ -95,8 +100,16 @@ int Memory::memLock(MemInfo mInfo, bool isFlex) {
 
     // Lock this map into memory. Return success if this worked.
     //
-    std::lock_guard<std::mutex> localLG(localMtx); // &&&
-    if (!mlock(mInfo._memAddr, mInfo._memSize)) {
+    int result = 0;
+    util::Timer timer;
+    {
+        std::lock_guard<std::mutex> localLG(_mlockMtx);
+        timer.start();
+        result = mlock(mInfo._memAddr, mInfo._memSize);
+        timer.stop();
+    }
+    mInfo._mlockTime = timer.getElapsed();
+    if (!result) {
         _lokBytes += mInfo._memSize;
         if (isFlex) _flexNum++;
         return 0;

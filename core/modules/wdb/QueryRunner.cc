@@ -140,6 +140,7 @@ std::atomic<uint64_t> over40(0);
 
 bool QueryRunner::runQuery() {
     LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " QueryRunner::runQuery()");
+
     // Make certain our Task knows that this object is no longer in use when this function exits.
     class Release {
     public:
@@ -159,7 +160,6 @@ bool QueryRunner::runQuery() {
     // Wait for memman to finish reserving resources. This can take several seconds.
     util::Timer memTimer;
     memTimer.start();
-
     _task->waitForMemMan();
     memTimer.stop();
     double mElapsed = 0;
