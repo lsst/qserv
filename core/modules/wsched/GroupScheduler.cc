@@ -143,10 +143,10 @@ util::Command::Ptr GroupScheduler::getCmd(bool wait)  {
 
 
 void GroupScheduler::commandFinish(util::Command::Ptr const& cmd) {
+    LOGS(_log, LOG_LVL_DEBUG, "&&&sched GroupScheduler::commandFinish");
     --_inFlight;
     auto t = std::dynamic_pointer_cast<wbase::Task>(cmd);
     if (t != nullptr) _decrChunkTaskCount(t->getChunkId());
-    _cv.notify_all(); // need to notify all threads that resources are available.
 }
 
 

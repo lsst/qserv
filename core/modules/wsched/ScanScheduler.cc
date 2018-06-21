@@ -81,6 +81,7 @@ void ScanScheduler::commandStart(util::Command::Ptr const& cmd) {
 }
 
 void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
+    LOGS(_log, LOG_LVL_DEBUG, "&&&sched ScanScheduler::commandFinish");
     wbase::Task::Ptr t = std::dynamic_pointer_cast<wbase::Task>(cmd);
     _infoChanged = true;
     if (t == nullptr) {
@@ -117,7 +118,7 @@ void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
     }
     // Whenever a Task finishes, all sleeping threads need to check if resources
     // are available to run new Tasks.
-    _cv.notify_all();
+    _cv.notify_all(); // &&& needed ???
 }
 
 
