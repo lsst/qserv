@@ -88,7 +88,7 @@ DEPS_DIR=$(echo "$DEPS_DIR" | sed 's%\(.*[^/]\)/*%\1%')
 # So, copy it from templates to SCRIPT_DIR directory
 SCRIPT_DIR="$DOCKERDIR/scripts"
 
-TPL_DEPS_SCRIPT="$DEPS_DIR/qserv-install-deps-debian8.sh"
+TPL_DEPS_SCRIPT="$DEPS_DIR/qserv-install-deps-rhel7.sh"
 
 printf "Add physical link to dependencies install script: %s\n" "$TPL_DEPS_SCRIPT"
 ln -f "$TPL_DEPS_SCRIPT" "$SCRIPT_DIR/install-deps.sh"

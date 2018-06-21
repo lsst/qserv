@@ -1,6 +1,6 @@
 # dev and release are the same at release time
 FROM <DOCKER_REPO>:dev
-MAINTAINER Fabrice Jammes <fabrice.jammes@in2p3.fr>
+LABEL maintainer="Fabrice Jammes <fabrice.jammes@in2p3.fr>"
 
 USER root
 
@@ -22,7 +22,7 @@ ENV QSERV_RUN_DIR /qserv/run
 #   - builds Qserv
 #   - installs Qserv inside LSST stack (i.e. /qserv/stack/Linux64/qserv/branch-version)
 #   - declares it using 'qserv-dev' tag
-RUN bash -c ". /qserv/stack/loadLSST.bash && \
+RUN bash -cl ". /qserv/stack/loadLSST.bash && \
     cp -r /home/qserv/src/qserv /tmp && \
     cd /tmp/qserv && \
     setup -r . -t qserv-dev && \
@@ -33,7 +33,7 @@ RUN bash -c ". /qserv/stack/loadLSST.bash && \
 # Generate /qserv/run/sysconfig/qserv and /qserv/run/etc/init.d/qserv-functions
 # required by k8s setup
 # TODO make it simpler
-RUN bash -c ". /qserv/stack/loadLSST.bash && \
+RUN bash -cl ". /qserv/stack/loadLSST.bash && \
              setup qserv -t qserv-dev && \
              cp \"\$SCISQL_DIR\"/lib/libscisql-scisql_?.?.so \"\$MARIADB_DIR\"/lib/plugin && \
              qserv-configure.py --init --force --qserv-run-dir \"$QSERV_RUN_DIR\" && \
