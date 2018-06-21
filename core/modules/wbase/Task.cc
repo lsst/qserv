@@ -64,13 +64,6 @@ dump(std::ostream& os,
     return os;
 }
 
-/// Local EventThread for fifo serialization of mlock calls.
-lsst::qserv::util::EventThread ulockEvents{};
-std::once_flag ulockEventsFlag;
-void runUlockEventsThreadOnce() {
-    std::call_once(ulockEventsFlag, [](){ ulockEvents.run(); });
-}
-
 } // annonymous namespace
 
 namespace lsst {

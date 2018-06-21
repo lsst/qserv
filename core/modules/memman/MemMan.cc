@@ -112,8 +112,10 @@ std::string MemMan::Status::toString() {
     std::stringstream os;
     os <<  "MemManHandle ";
     os << " bLock=" << bytesLock;
+    os << " secs=" << secondsLock;
     os << " nFiles=" << numFiles;
     os << " chunk=" << chunk;
+    os << " MB/sec=" << bytesLock/(1048576.0*secondsLock);
     return os.str();
 }
 

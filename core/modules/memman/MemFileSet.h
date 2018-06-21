@@ -141,7 +141,7 @@ public:
 
     MemFileSet(Memory& memory, int numLock, int numFlex, int chunk)
               : _memory(memory), _lockBytes(0), _numFiles(0), _chunk(chunk),
-                _mtxLocked(false) {
+                _lockSeconds(0.0), _mtxLocked(false) {
                 _lockFiles.reserve(numLock);
                 _flexFiles.reserve(numFlex);
               }
@@ -156,7 +156,8 @@ private:
     uint64_t              _lockBytes;     // Total bytes locked
     uint32_t              _numFiles;
     int                   _chunk;
-    std::atomic_bool      _mtxLocked;     // true -> _setMutex is locked
+    double                _lockSeconds;   // Number of seconds spent locking all files.
+    std::atomic<bool>     _mtxLocked;     // true -> _setMutex is locked
 };
 
 }}} // namespace lsst:qserv:memman

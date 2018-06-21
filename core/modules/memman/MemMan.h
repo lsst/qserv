@@ -202,10 +202,11 @@ public:
     //-----------------------------------------------------------------------------
 
     struct Status {
-        uint64_t bytesLock; //!< Number of resource bytes locked
-        uint32_t numFiles;  //!< Number of files resource has
-        int      chunk;     //!< Chunk number associated with resource
-        std::string toString();
+        uint64_t bytesLock;   //!< Number of resource bytes locked
+        double   secondsLock; //!< Number of seconds spent locking files.
+        uint32_t numFiles;    //!< Number of files resource has
+        int      chunk;       //!< Chunk number associated with resource
+        std::string toString(); //!< Returns string suitable for logging.
     };
 
     virtual Status getStatus(Handle handle) = 0;
