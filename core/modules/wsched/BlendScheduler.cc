@@ -211,13 +211,14 @@ void BlendScheduler::commandStart(util::Command::Ptr const& cmd) {
 }
 
 void BlendScheduler::commandFinish(util::Command::Ptr const& cmd) {
+    LOGS(_log, LOG_LVL_DEBUG, "&&&sched BlendScheduler::commandFinish");
     auto t = std::dynamic_pointer_cast<wbase::Task>(cmd);
     if (t == nullptr) {
         LOGS(_log, LOG_LVL_WARN, "BlendScheduler::commandFinish cmd failed conversion");
         return;
     }
     wcontrol::Scheduler::Ptr s = std::dynamic_pointer_cast<wcontrol::Scheduler>(t->getTaskScheduler());
-    LOGS(_log, LOG_LVL_DEBUG, "BlendScheduler::commandFinish " << t->getIdStr());
+    LOGS(_log, LOG_LVL_DEBUG, "&&&sched BlendScheduler::commandFinish " << t->getIdStr()); // &&& keep
     if (s != nullptr) {
         s->commandFinish(t);
     } else {
@@ -225,9 +226,9 @@ void BlendScheduler::commandFinish(util::Command::Ptr const& cmd) {
     }
     _infoChanged = true;
     _logChunkStatus();
-
+    LOGS(_log, LOG_LVL_DEBUG, "&&&sched BlendScheduler::commandFinish calling finishedTask");
     _queries->finishedTask(t);
-
+    LOGS(_log, LOG_LVL_DEBUG, "&&&sched BlendScheduler::commandFinish *****");
     notify(true);
 }
 
@@ -241,6 +242,7 @@ bool BlendScheduler::ready() {
 /// Returns true when any sub-scheduler has a command ready.
 /// Precondition util::CommandQueue::_mx must be locked when this is called.
 bool BlendScheduler::_ready() {
+    LOGS(_log, LOG_LVL_DEBUG, "&&&sched BlendScheduler::_ready");
     std::ostringstream os;
     bool ready = false;
 
@@ -255,7 +257,7 @@ bool BlendScheduler::_ready() {
     for (auto sched : _schedulers) {
         availableThreads = sched->applyAvailableThreads(availableThreads);
         ready = sched->ready();
-        if (changed && LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
+        if (true || (changed && LOG_CHECK_LVL(_log, LOG_LVL_DEBUG))) {  // &&& delete true ||
             os << sched->getName() << "(r=" << ready << " sz=" << sched->getSize()
                << " fl=" << sched-> getInFlight() << " avail=" << availableThreads << ") ";
         }
@@ -264,18 +266,22 @@ bool BlendScheduler::_ready() {
     if (!ready) {
         ready = _ctrlCmdQueue.ready();
     }
-    if (changed) {
+    if (true || changed) { // &&& delete true ||
         LOGS(_log, LOG_LVL_DEBUG, getName() << "_ready() " << os.str());
     }
     return ready;
 }
 
 util::Command::Ptr BlendScheduler::getCmd(bool wait) {
+    LOGS(_log, LOG_LVL_DEBUG, "&&&sched BlendScheduler::getCmd a wait=" << wait);
     std::unique_lock<std::mutex> lock(util::CommandQueue::_mx);
     if (wait) {
-        util::CommandQueue::_cv.wait(lock, [this](){return _ready();});
+        //util::CommandQueue::_cv.wait(lock, [this](){return _ready();}); // &&&
+        while (!_ready()) {
+            util::CommandQueue::_cv.wait(lock);
+        }
     }
-
+    LOGS(_log, LOG_LVL_DEBUG, "&&&sched BlendScheduler::getCmd b");
     // Try to get a command from the schedulers
     util::Command::Ptr cmd;
     int availableThreads = calcAvailableTheads();
@@ -301,6 +307,7 @@ util::Command::Ptr BlendScheduler::getCmd(bool wait) {
         _logChunkStatus();
     }
     // returning nullptr is acceptable.
+    LOGS(_log, LOG_LVL_DEBUG, "&&&sched BlendScheduler::getCmd c cmd!=nullptr -> " <<  (cmd != nullptr));
     return cmd;
 }
 

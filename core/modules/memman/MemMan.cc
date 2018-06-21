@@ -88,7 +88,7 @@ MemMan *MemMan::create(uint64_t maxBytes, std::string const &dbPath) {
 }
 
 
-std::string MemMan::Statistics::toString() {
+std::string MemMan::Statistics::logString() {
     std::stringstream os;
     os <<  "MemManStats ";
     os << " LockMax=" << bytesLockMax;
@@ -108,12 +108,14 @@ std::string MemMan::Statistics::toString() {
 }
 
 
-std::string MemMan::Status::toString() {
+std::string MemMan::Status::logString() {
     std::stringstream os;
     os <<  "MemManHandle ";
     os << " bLock=" << bytesLock;
+    os << " secs=" << secondsLock;
     os << " nFiles=" << numFiles;
     os << " chunk=" << chunk;
+    os << " MB/sec=" << bytesLock/(1048576.0*secondsLock);
     return os.str();
 }
 

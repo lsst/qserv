@@ -187,7 +187,7 @@ public:
         uint32_t numFlexLock;  //!< Number  flexible files that were locked
         uint32_t numLocks;     //!< Number of calls to lock()
         uint32_t numErrors;    //!< Number of calls that failed
-        std::string toString();
+        std::string logString(); //!< Returns a string suitable for logging.
     };
 
     virtual Statistics getStatistics() = 0;
@@ -202,10 +202,14 @@ public:
     //-----------------------------------------------------------------------------
 
     struct Status {
-        uint64_t bytesLock; //!< Number of resource bytes locked
-        uint32_t numFiles;  //!< Number of files resource has
-        int      chunk;     //!< Chunk number associated with resource
-        std::string toString();
+        uint64_t bytesLock{0};   //!< Number of resource bytes locked
+        double   secondsLock{0}; //!< Number of seconds spent locking files.
+        uint32_t numFiles{0};    //!< Number of files resource has
+        int      chunk{-1};      //!< Chunk number associated with resource
+        Status() {}
+        Status(uint64_t bytesLock_, double seconds, uint32_t numFiles_, int chunk_)
+          : bytesLock(bytesLock_), secondsLock(seconds), numFiles(numFiles_), chunk(chunk_) {}
+        std::string logString(); //!< Returns a string suitable for logging.
     };
 
     virtual Status getStatus(Handle handle) = 0;

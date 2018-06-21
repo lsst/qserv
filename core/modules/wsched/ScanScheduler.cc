@@ -81,6 +81,7 @@ void ScanScheduler::commandStart(util::Command::Ptr const& cmd) {
 }
 
 void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
+    LOGS(_log, LOG_LVL_DEBUG, "&&&sched ScanScheduler::commandFinish a");
     wbase::Task::Ptr t = std::dynamic_pointer_cast<wbase::Task>(cmd);
     _infoChanged = true;
     if (t == nullptr) {
@@ -92,6 +93,7 @@ void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
     LOGS(_log, LOG_LVL_DEBUG, t->getIdStr() << " commandFinish " << getName()
                                   << " inFlight=" << _inFlight);
     _taskQueue->taskComplete(t);
+    LOGS(_log, LOG_LVL_DEBUG, "&&&sched ScanScheduler::commandFinish b");
 
     if (_memManHandleToUnlock != memman::MemMan::HandleType::INVALID) {
         LOGS(_log, LOG_LVL_DEBUG, "ScanScheduler::commandFinish unlocking handle=" << _memManHandleToUnlock);
@@ -102,6 +104,7 @@ void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
     // Wait to unlock the tables until after the next call to _ready or commandFinish.
     // This is done in case only one thread is running on this scheduler as
     // we don't want to release the tables in case the next Task wants some of them.
+    LOGS(_log, LOG_LVL_DEBUG, "&&&sched ScanScheduler::commandFinish c");
     if (!_taskQueue->empty()) {
         _memManHandleToUnlock = t->getMemHandle();
         LOGS(_log, LOG_LVL_DEBUG, t->getIdStr() << " setting handleToUnlock handle=" << _memManHandleToUnlock);
@@ -118,11 +121,13 @@ void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
     // Whenever a Task finishes, all sleeping threads need to check if resources
     // are available to run new Tasks.
     _cv.notify_all();
+    LOGS(_log, LOG_LVL_DEBUG, "&&&sched ScanScheduler::commandFinish d");
 }
 
 
 /// Returns true if there is a Task ready to go and we aren't up against any limits.
 bool ScanScheduler::ready() {
+    LOGS(_log, LOG_LVL_DEBUG, "&&&sched ScanScheduler::ready");
     std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
     return _ready();
 }
@@ -130,6 +135,9 @@ bool ScanScheduler::ready() {
 /// Precondition: _mx is locked
 /// Returns true if there is a Task ready to go and we aren't up against any limits.
 bool ScanScheduler::_ready() {
+    LOGS(_log, LOG_LVL_DEBUG, "&&&sched ScanScheduler::_ready name="<< getName() << " inFlight="
+                 << _inFlight << " maxThreads=" << _maxThreads << " adj=" << _maxThreadsAdj
+                 << " activeChunks=" << getActiveChunkCount());
     bool logStuff = false;
     if (_infoChanged) {
         _infoChanged = false;
@@ -162,11 +170,13 @@ bool ScanScheduler::_ready() {
 
     bool useFlexibleLock = (_inFlight < 1);
     auto rdy = _taskQueue->ready(useFlexibleLock); // Only returns true if MemMan grants resources.
+    LOGS(_log, LOG_LVL_DEBUG, "&&&sched ScanScheduler::_ready _taskQueue->ready()=" << rdy);
     bool logMemStats = false;
     // If ready failed, holding on to this is unlikely to help, otherwise the new Task now has its own handle.
     if (_memManHandleToUnlock != memman::MemMan::HandleType::INVALID) {
         LOGS(_log, LOG_LVL_DEBUG, "ScanScheduler::_ready unlocking handle=" << _memManHandleToUnlock <<
-                                   " " << _memMan->getStatus(_memManHandleToUnlock).toString());
+                                   " " << _memMan->getStatus(_memManHandleToUnlock).logString());
+        LOGS(_log, LOG_LVL_DEBUG, "&&&sched ScanScheduler::_ready unlocking handle");
         _memMan->unlock(_memManHandleToUnlock);
         _memManHandleToUnlock = memman::MemMan::HandleType::INVALID;
         logMemStats = true;
@@ -265,7 +275,7 @@ bool ScanScheduler::removeTask(wbase::Task::Ptr const& task, bool removeRunning)
 
 
 void ScanScheduler::logMemManStats() {
-    LOGS(_log, LOG_LVL_DEBUG, "&&&mem Scan " <<_memMan->getStatistics().toString());
+    LOGS(_log, LOG_LVL_DEBUG, "&&&mem Scan " <<_memMan->getStatistics().logString());
     /* &&&
     auto s = _memMan->getStatistics();
     LOGS(_log, LOG_LVL_DEBUG, "bMax=" << s.bytesLockMax
