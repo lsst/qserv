@@ -47,8 +47,9 @@ do
     docker rm -f "$i" || echo "No existing container for $i"
     docker run --detach=true --add-host $MASTER:$MASTER_IP\
         -e "QSERV_MASTER=$MASTER" --name "$i" -h "${i}"  "$WORKER_IMAGE"
-	WORKER_IP=$(docker inspect -f '{{ .NetworkSettings.IPAddress }}' $i)
-	HOSTFILE="${HOSTFILE}$WORKER_IP    $i\n"
+    WORKER_IP=$(docker inspect -f '{{ .NetworkSettings.IPAddress }}' $i)
+    HOSTFILE="${HOSTFILE}$WORKER_IP    $i
+"
 done
 
 # Add worker entries to master hostfile, for data-loading

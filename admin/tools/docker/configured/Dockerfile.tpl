@@ -1,12 +1,13 @@
 FROM <DOCKER_IMAGE>
-MAINTAINER Fabrice Jammes <fabrice.jammes@in2p3.fr>
+LABEL maintainer="Fabrice Jammes <fabrice.jammes@in2p3.fr>"
 
 # Allow the start.sh script to modify the local timezone settings
 # if requested.
 
 USER root
 
-RUN chown qserv:qserv /etc/localtime && chown qserv:qserv /etc/timezone
+RUN if [ -f /etc/localtime ]; then chown qserv:qserv /etc/localtime; fi && \
+    if [ -f /etc/timezone ]; then chown qserv:qserv /etc/timezone; fi
 
 WORKDIR /qserv
 
@@ -22,7 +23,7 @@ EXPOSE 1094 5012
 
 COPY scripts/*.sh scripts/
 
-RUN bash -c ". /qserv/stack/loadLSST.bash && setup qserv -t qserv-dev && /qserv/scripts/configure.sh <NODE_TYPE>"
+RUN bash -cl ". /qserv/stack/loadLSST.bash && setup qserv -t qserv-dev && /qserv/scripts/configure.sh <NODE_TYPE>"
 
 # WARNING: Unsafe because it is pushed in Docker Hub
 # TODO: use consul to manage secret

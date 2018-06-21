@@ -23,6 +23,13 @@ else
   }
 fi
 
+# If we don't have LSB init functions, check alternate location
+# (for getpidofproc)
+etc_functions="/etc/init.d/functions"
+if test ! -f $lsb_functions -a -f $etc_functions ; then
+  . $etc_functions
+fi
+
 # Check if any of $pid (could be plural) are running
 checkpid() {
     local i
