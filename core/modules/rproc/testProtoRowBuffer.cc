@@ -49,11 +49,11 @@ BOOST_FIXTURE_TEST_SUITE(suite, Fixture)
 BOOST_AUTO_TEST_CASE(TestEscape) {
     // Roundabout initialization needed: passing the literal to the
     // string constructor would truncate at the first null.
-    char src[] = "abcdef \0 \b \n \r \t \032 \\N";
+    char src[] = "abcdef \0 \b \n \r \t \032 \\N \\";
     // sizeof includes the last null
     std::string test1(src, (sizeof(src) / sizeof(src[0])) - 1);
 
-    std::string eTest1 = "abcdef \\0 \\b \\n \\r \\t \\Z \\N";
+    std::string eTest1 = "abcdef \\0 \\b \\n \\r \\t \\Z \\N \\";
     std::string target(test1.size() * 2, 'X');
 
     int count = ProtoRowBuffer::escapeString(target.begin(), test1.begin(), test1.end());
