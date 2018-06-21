@@ -586,7 +586,8 @@ CREATE TABLE IF NOT EXISTS `request` (
                'QSERV_ADD_REPLICA',
                'QSERV_REMOVE_REPLICA',
                'QSERV_GET_REPLICAS',
-               'QSERV_SET_REPLICAS') NOT NULL ,
+               'QSERV_SET_REPLICAS',
+               'QSERV_TEST_ECHO') NOT NULL ,
 
   `worker`   VARCHAR(255) NOT NULL ,
   `priority` INT          DEFAULT 0 ,
@@ -856,6 +857,29 @@ CREATE TABLE IF NOT EXISTS `request_qserv_set_replicas` (
 )
 ENGINE = InnoDB;
 
+-- -----------------------------------------------------
+-- Table `request_qserv_test_echo`
+-- -----------------------------------------------------
+--
+-- Extended parameters of the 'QSERV_TEST_ECHO' requests
+--
+DROP TABLE IF EXISTS `request_qserv_test_echo` ;
+
+CREATE TABLE IF NOT EXISTS `request_qserv_test_echo` (
+
+  `request_id`  VARCHAR(255) NOT NULL ,
+
+  `data_length` INT UNSIGNED NOT NULL ,
+
+  PRIMARY KEY (`request_id`) ,
+
+  CONSTRAINT `request_qserv_test_echo_fk_1`
+    FOREIGN KEY (`request_id` )
+    REFERENCES `request` (`id` )
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
+)
+ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------

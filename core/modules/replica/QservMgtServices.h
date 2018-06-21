@@ -38,6 +38,7 @@
 #include "replica/RemoveReplicaQservMgtRequest.h"
 #include "replica/ServiceProvider.h"
 #include "replica/SetReplicasQservMgtRequest.h"
+#include "replica/TestEchoQservMgtRequest.h"
 #include "util/Mutex.h"
 
 // Forward declarations
@@ -207,6 +208,28 @@ public:
                                             std::string const& jobId="",
                                             SetReplicasQservMgtRequest::CallbackType onFinish = nullptr,
                                             unsigned int requestExpirationIvalSec=0);
+
+    /**
+     * Set new replicas at the new replicas at a Qserv worker
+     *
+     * @param worker   - the name of a worker
+     * @param data     - data to be sent to a worker
+     * @param onFinish - callback function to be called upon request completion
+     * @param jobId    - an optional identifier of a job specifying a context
+     *                   in which a request will be executed.
+     * @param requestExpirationIvalSec - an optional parameter (if differs from 0)
+     *                   allowing to override the default value of
+     *                   the corresponding parameter from the Configuration.
+     *
+     * @return pointer to the request object if the request was made. Return
+     *         nullptr otherwise.
+     */
+    TestEchoQservMgtRequest::Ptr echo(std::string const& worker,
+                                      std::string const& data,
+                                      std::string const& jobId="",
+                                      TestEchoQservMgtRequest::CallbackType onFinish = nullptr,
+                                      unsigned int requestExpirationIvalSec=0);
+
 private:
 
     /**
