@@ -277,7 +277,7 @@ util::Command::Ptr BlendScheduler::getCmd(bool wait) {
     std::unique_lock<std::mutex> lock(util::CommandQueue::_mx);
     if (wait) {
         //util::CommandQueue::_cv.wait(lock, [this](){return _ready();}); // &&&
-        if (!_ready()) {
+        while (!_ready()) {
             util::CommandQueue::_cv.wait(lock);
         }
     }
