@@ -159,14 +159,8 @@ int MemFileSet::mapAll() {
   
 MemMan::Status MemFileSet::status() {
 
-    MemMan::Status myStatus;
+    MemMan::Status myStatus(_lockBytes, _lockSeconds, _numFiles, _chunk);
 
-    // Fill out status information and return it.
-    //
-    myStatus.bytesLock   = _lockBytes;
-    myStatus.secondsLock = _lockSeconds;
-    myStatus.numFiles    = _numFiles;
-    myStatus.chunk       = _chunk;
     return myStatus;
 }
 }}} // namespace lsst:qserv:memman

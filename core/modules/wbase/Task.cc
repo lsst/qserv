@@ -231,21 +231,29 @@ std::chrono::milliseconds Task::getRunTime() const {
 /// if they are mlock'ed in the same order they were scheduled, hence the ulockEvents
 /// EventThread and CommandMlock class.
 void Task::waitForMemMan() {
-
     if (_memMan != nullptr) {
-        LOGS(_log, LOG_LVL_DEBUG, "&&&memWait " <<_memMan->getStatistics().toString());
+        LOGS(_log, LOG_LVL_DEBUG, "&&&memWait " <<_memMan->getStatistics().logString());
         if (_memMan->lock(_memHandle, true)) {
             int errorCode = (errno == EAGAIN ? ENOMEM : errno);
             LOGS(_log, LOG_LVL_WARN, _idStr << " mlock err=" << errorCode <<
-                    " " <<_memMan->getStatistics().toString() <<
-                    " " << _memMan->getStatus(_memHandle).toString());
+                    " " <<_memMan->getStatistics().logString() <<
+                    " " << _memMan->getStatus(_memHandle).logString());
         }
-        LOGS(_log, LOG_LVL_DEBUG, "&&&memWait " <<_memMan->getStatistics().toString() <<
-                                              " " << _memMan->getStatus(_memHandle).toString());
+        LOGS(_log, LOG_LVL_DEBUG, "&&&memWait " <<_memMan->getStatistics().logString() <<
+                                              " " << _memMan->getStatus(_memHandle).logString());
     }
     LOGS(_log, LOG_LVL_DEBUG, _idStr << " waitForMemMan end");
     _safeToMoveRunning = true;
 }
+
+
+memman::MemMan::Status Task::getMemHandleStatus() {
+    if (_memMan == nullptr || !hasMemHandle()) {
+        return memman::MemMan::Status();
+    }
+    return _memMan->getStatus(_memHandle);
+}
+
 
 std::ostream& operator<<(std::ostream& os, Task const& t) {
     proto::TaskMsg& m = *t.msg;

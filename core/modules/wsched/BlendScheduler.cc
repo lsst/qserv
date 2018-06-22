@@ -218,7 +218,7 @@ void BlendScheduler::commandFinish(util::Command::Ptr const& cmd) {
         return;
     }
     wcontrol::Scheduler::Ptr s = std::dynamic_pointer_cast<wcontrol::Scheduler>(t->getTaskScheduler());
-    LOGS(_log, LOG_LVL_DEBUG, "BlendScheduler::commandFinish " << t->getIdStr());
+    LOGS(_log, LOG_LVL_DEBUG, "&&&sched BlendScheduler::commandFinish " << t->getIdStr()); // &&& keep
     if (s != nullptr) {
         s->commandFinish(t);
     } else {
@@ -226,7 +226,7 @@ void BlendScheduler::commandFinish(util::Command::Ptr const& cmd) {
     }
     _infoChanged = true;
     _logChunkStatus();
-
+    LOGS(_log, LOG_LVL_DEBUG, "&&&sched BlendScheduler::commandFinish calling finishedTask");
     _queries->finishedTask(t);
     LOGS(_log, LOG_LVL_DEBUG, "&&&sched BlendScheduler::commandFinish *****");
     notify(true);
@@ -276,7 +276,10 @@ util::Command::Ptr BlendScheduler::getCmd(bool wait) {
     LOGS(_log, LOG_LVL_DEBUG, "&&&sched BlendScheduler::getCmd a wait=" << wait);
     std::unique_lock<std::mutex> lock(util::CommandQueue::_mx);
     if (wait) {
-        util::CommandQueue::_cv.wait(lock, [this](){return _ready();});
+        //util::CommandQueue::_cv.wait(lock, [this](){return _ready();}); // &&&
+        if (!_ready()) {
+            util::CommandQueue::_cv.wait(lock);
+        }
     }
     LOGS(_log, LOG_LVL_DEBUG, "&&&sched BlendScheduler::getCmd b");
     // Try to get a command from the schedulers

@@ -395,10 +395,10 @@ ChunkTasks::ReadyState ChunkTasks::ready(bool useFlexibleLock) {
             tblVect.push_back(ti);
         }
         // If tblVect is empty, we should get the empty handle
-        LOGS(_log, LOG_LVL_DEBUG, "&&&memPrep " << _memMan->getStatistics().toString());
+        LOGS(_log, LOG_LVL_DEBUG, "&&&memPrep " << _memMan->getStatistics().logString());
         memman::MemMan::Handle handle = _memMan->prepare(tblVect, chunkId);
-        LOGS(_log, LOG_LVL_DEBUG, "&&&memPrep " << _memMan->getStatistics().toString() <<
-                                  " " << _memMan->getStatus(handle).toString());
+        LOGS(_log, LOG_LVL_DEBUG, "&&&memPrep " << _memMan->getStatistics().logString() <<
+                                  " " << _memMan->getStatus(handle).logString());
         if (handle == 0) {
             switch (errno) {
             case ENOMEM:

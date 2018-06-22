@@ -171,26 +171,37 @@ bool QueryRunner::runQuery() {
         ++memWaitCallCount;
         avgWait = totalMemWaitTime/memWaitCallCount;
     }
-    if (mElapsed < 1.0) {
-        ++lessThan1;
-    } else if (mElapsed < 5.0) {
-        ++lessThan5;
-    } else if (mElapsed < 10.0) {
-        ++lessThan10;
-    } else if (mElapsed < 20.0) {
-        ++lessThan20;
-    } else if (mElapsed < 40.0) {
-        ++lessThan40;
-    } else {
-        ++over40;
+
+    if (LOG_CHECK_INFO()) {
+        std::string mHLStr;
+        if (_task->hasMemHandle()) {
+            auto handleStats = _task->getMemHandleStatus();
+            mHLStr = handleStats.logString();
+            double apparent = handleStats.bytesLock/mElapsed;
+        }
+        if (mElapsed < 1.0) {
+            ++lessThan1;
+        } else if (mElapsed < 5.0) {
+            ++lessThan5;
+        } else if (mElapsed < 10.0) {
+            ++lessThan10;
+        } else if (mElapsed < 20.0) {
+            ++lessThan20;
+        } else if (mElapsed < 40.0) {
+            ++lessThan40;
+        } else {
+            ++over40;
+        }
+        LOGS(_log, LOG_LVL_INFO, "&&& memWait=" << mElapsed <<
+                " avg=" << avgWait <<
+                " <1=" << lessThan1 <<
+                " <5=" << lessThan5 <<
+                " <10=" << lessThan10 <<
+                " <20=" << lessThan20 <<
+                " <40=" << lessThan40 <<
+                " >40=" << over40 <<
+                " " << mHLStr);
     }
-    LOGS(_log, LOG_LVL_INFO, "&&& memWait=" << mElapsed << " avg=" << avgWait <<
-            " <1=" << lessThan1 <<
-            " <5=" << lessThan5 <<
-            " <10=" << lessThan10 <<
-            " <20=" << lessThan20 <<
-            " <40=" << lessThan40 <<
-            " >40=" << over40);
 
     if (_task->getCancelled()) {
         LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " runQuery, task was cancelled after locking tables.");
@@ -542,14 +553,13 @@ bool QueryRunner::_dispatchChannel() {
                 MYSQL_RES* res = _primeResult(query); // This runs the SQL query.
                 sqlTimer.stop();
                 LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " &&& running fragment timer=" << sqlTimer.getElapsed());
-
                 if (!res) {
                     erred = true;
                     continue;
                 }
                 if (firstResult) {
-                    _fillSchema(res);
                     firstResult = false;
+                    _fillSchema(res);
                     numFields = mysql_num_fields(res);
                 } // TODO: may want to confirm (cheaply) that
                 // successive queries have the same result schema.

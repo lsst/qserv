@@ -91,26 +91,20 @@ MemMan::Statistics MemManReal::getStatistics() {
 
 MemMan::Status MemManReal::getStatus(Handle handle) {
 
-    Status status;
-
     // First check if this is a valid handle and, if so, find it in our cache.
     // Once found, get its real status from the file set object.
     //
     if (handle != HandleType::INVALID && handle != HandleType::ISEMPTY) {
-       hanMutex.lock();
+       std::lock_guard<std::mutex> lg(hanMutex);
        auto it = hanCache.find(handle);
        if (it != hanCache.end() && it->second->isOwner(_memory)) {
-          status = it->second->status();
-          hanMutex.unlock();
-          return status;
+          return it->second->status();
        }
-       hanMutex.unlock();
      }
 
     // Return null status
     //
-    memset(&status, 0, sizeof(status));
-    return status;
+    return Status();
 }
   
 /******************************************************************************/
