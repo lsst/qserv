@@ -66,6 +66,7 @@ void ChunkTasksQueue::queueTask(wbase::Task::Ptr const& task) {
 
 /// @return true if this object is ready to provide a Task from its queue.
 bool ChunkTasksQueue::ready(bool useFlexibleLock) {
+    LOGS(_log, LOG_LVL_DEBUG, "&&& ChunkTasksQueue::ready");
     std::lock_guard<std::mutex> lock(_mapMx);
     return _ready(useFlexibleLock);
 }
@@ -81,6 +82,7 @@ bool ChunkTasksQueue::ready(bool useFlexibleLock) {
 /// run the next Task on the current chunk.
 /// The _activeChunk advances when all of its Tasks have completed.
 bool ChunkTasksQueue::_ready(bool useFlexibleLock) {
+    LOGS(_log, LOG_LVL_DEBUG, "&&& ChunkTasksQueue::_ready");
     if (_readyChunk != nullptr) {
         return true;
     }

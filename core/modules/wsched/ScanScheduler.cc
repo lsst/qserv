@@ -127,6 +127,7 @@ void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
 
 /// Returns true if there is a Task ready to go and we aren't up against any limits.
 bool ScanScheduler::ready() {
+    LOGS(_log, LOG_LVL_DEBUG, "&&&sched ScanScheduler::ready");
     std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
     return _ready();
 }
@@ -134,6 +135,9 @@ bool ScanScheduler::ready() {
 /// Precondition: _mx is locked
 /// Returns true if there is a Task ready to go and we aren't up against any limits.
 bool ScanScheduler::_ready() {
+    LOGS(_log, LOG_LVL_DEBUG, "&&&sched ScanScheduler::_ready name="<< getName() << " inFlight="
+                 << _inFlight << " maxThreads=" << _maxThreads << " adj=" << _maxThreadsAdj
+                 << " activeChunks=" << getActiveChunkCount());
     bool logStuff = false;
     if (_infoChanged) {
         _infoChanged = false;
@@ -166,6 +170,7 @@ bool ScanScheduler::_ready() {
 
     bool useFlexibleLock = (_inFlight < 1);
     auto rdy = _taskQueue->ready(useFlexibleLock); // Only returns true if MemMan grants resources.
+    LOGS(_log, LOG_LVL_DEBUG, "&&&sched ScanScheduler::_ready _taskQueue->ready()=" << rdy);
     bool logMemStats = false;
     // If ready failed, holding on to this is unlikely to help, otherwise the new Task now has its own handle.
     if (_memManHandleToUnlock != memman::MemMan::HandleType::INVALID) {

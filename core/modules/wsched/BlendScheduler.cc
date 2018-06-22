@@ -257,7 +257,7 @@ bool BlendScheduler::_ready() {
     for (auto sched : _schedulers) {
         availableThreads = sched->applyAvailableThreads(availableThreads);
         ready = sched->ready();
-        if (changed && LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
+        if (true || (changed && LOG_CHECK_LVL(_log, LOG_LVL_DEBUG))) {  // &&& delete true ||
             os << sched->getName() << "(r=" << ready << " sz=" << sched->getSize()
                << " fl=" << sched-> getInFlight() << " avail=" << availableThreads << ") ";
         }
@@ -266,7 +266,7 @@ bool BlendScheduler::_ready() {
     if (!ready) {
         ready = _ctrlCmdQueue.ready();
     }
-    if (changed) {
+    if (true || changed) { // &&& delete true ||
         LOGS(_log, LOG_LVL_DEBUG, getName() << "_ready() " << os.str());
     }
     return ready;
