@@ -75,7 +75,7 @@ MemFile::MLResult MemFile::memLock() {
     // If this is a flexible table, we can ignore this error.
     //
     if (_isFlex) {
-        MLResult nilResult(0, 0.0, 0);
+        MLResult nilResult(0, _memInfo.mlockTime(), 0);
         return nilResult;
     }
 

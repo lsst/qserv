@@ -285,7 +285,7 @@ void QuerySession::_preparePlugins() {
     _plugins->push_back(std::make_shared<qana::MatchTablePlugin>());
     _plugins->push_back(std::make_shared<qana::QservRestrictorPlugin>());
     _plugins->push_back(std::make_shared<qana::PostPlugin>());
-    _plugins->push_back(std::make_shared<qana::ScanTablePlugin>());
+    _plugins->push_back(std::make_shared<qana::ScanTablePlugin>(_interactiveChunkLimit));
 
     QueryPluginPtrVector::iterator i;
     for(i=_plugins->begin(); i != _plugins->end(); ++i) {

@@ -428,6 +428,10 @@ struct SchedFixture {
                 std::chrono::seconds(_examineAllSleep), 5);
         blend = std::make_shared<wsched::BlendScheduler>("blendSched", queries, maxThreads,
                 group, scanSlow, scanSchedulers);
+        group->setPosition(0);
+        scanFast->setPosition(1);
+        scanMed->setPosition(2);
+        scanSlow->setPosition(3);
         queries->setBlendScheduler(blend);
         queries->setRequiredTasksCompleted(1); // Make it easy to set a baseline.
     }

@@ -126,6 +126,8 @@ public:
     int moveUserQueryToSnail(QueryId qId, SchedulerBase::Ptr const& source);
     int moveUserQuery(QueryId qId, SchedulerBase::Ptr const& source, SchedulerBase::Ptr const& destination);
 
+    void setPrioritizeByInFlight(bool val) { _prioritizeByInFlight = val; }
+
 private:
     int _getAdjustedMaxThreads(int oldAdjMax, int inFlight);
     bool _ready();
@@ -140,10 +142,13 @@ private:
     std::shared_ptr<ScanScheduler> _scanSnail; ///< extremely slow scheduler.
     std::vector<SchedulerBase::Ptr> _schedulers; ///< list of all schedulers including _group and _scanSnail
 
-    std::atomic<bool> _flagReorderScans{false};
+    std::atomic<bool> _flagReorderScans{false}; // &&& delete
     std::atomic<bool> _infoChanged{true}; //< Used to limit debug logging.
 
     wpublish::QueriesAndChunks::Ptr _queries; /// UserQuery statistics.
+
+    bool _prioritizeByInFlight{false}; // &&& delete if it doesn't work
+    SchedulerBase::Ptr _readySched; //< Pointer to the scheduler with a ready task.
 };
 
 }}} // namespace lsst::qserv::wsched

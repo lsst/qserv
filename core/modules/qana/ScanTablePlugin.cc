@@ -70,7 +70,8 @@ ScanTablePlugin::applyLogical(query::SelectStmt& stmt,
 
 void
 ScanTablePlugin::applyFinal(query::QueryContext& context) {
-    int const scanThreshold = 2;
+    //int const scanThreshold = 2; &&&
+    int const scanThreshold = _interactiveChunkLimit;
     if (context.chunkCount < scanThreshold) {
         context.scanInfo.infoTables.clear();
         context.scanInfo.scanRating = 0;

@@ -123,12 +123,11 @@ SsiService::SsiService(XrdSsiLogger* log, wconfig::WorkerConfig const& workerCon
             "SchedSlow", maxThread, workerConfig.getMaxReserveSlow(), workerConfig.getPrioritySlow(),
             workerConfig.getMaxActiveChunksSlow(), memMan, medium+1, slow, slowScanMaxMinutes),
         std::make_shared<wsched::ScanScheduler>(
+           "SchedFast", maxThread, workerConfig.getMaxReserveFast(), workerConfig.getPriorityFast(),
+           workerConfig.getMaxActiveChunksFast(), memMan, fastest, fast, fastScanMaxMinutes),
+        std::make_shared<wsched::ScanScheduler>(
             "SchedMed", maxThread, workerConfig.getMaxReserveMed(), workerConfig.getPriorityMed(),
             workerConfig.getMaxActiveChunksMed(), memMan, fast+1, medium, medScanMaxMinutes),
-        std::make_shared<wsched::ScanScheduler>(
-            "SchedFast", maxThread, workerConfig.getMaxReserveFast(), workerConfig.getPriorityFast(),
-            workerConfig.getMaxActiveChunksFast(), memMan, fastest, fast, fastScanMaxMinutes),
-
     };
 
     auto snail = std::make_shared<wsched::ScanScheduler>(
@@ -140,6 +139,7 @@ SsiService::SsiService(XrdSsiLogger* log, wconfig::WorkerConfig const& workerCon
                 maxTasksBootedPerUserQuery);
     wsched::BlendScheduler::Ptr blendSched = std::make_shared<wsched::BlendScheduler>("BlendSched", queries,
             maxThread, group, snail, scanSchedulers);
+    blendSched->setPrioritizeByInFlight(true);
     queries->setBlendScheduler(blendSched);
 
     unsigned int requiredTasksCompleted = workerConfig.getRequiredTasksCompleted();
