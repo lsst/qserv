@@ -275,7 +275,7 @@ bool BlendScheduler::_ready() {
                 checked.insert(sched.get());
             }
             if (true || (changed && LOG_CHECK_LVL(_log, LOG_LVL_DEBUG))) {  // &&& delete true ||
-                os << sched->getName() << "(r=" << ready << " sz=" << sched->getSize()
+                os << sched->getName() << "!(r=" << ready << " sz=" << sched->getSize()
                                    << " fl=" << sched-> getInFlight() << " avail=" << availableThreads << ") ";
             }
             if (ready) break;
