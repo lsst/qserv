@@ -321,17 +321,38 @@ util::Command::Ptr BlendScheduler::getCmd(bool wait) {
         // Try to get a command from the schedulers
 
         int availableThreads = calcAvailableTheads();
-        for (auto const& sched : _schedulers) {
-            availableThreads = sched->applyAvailableThreads(availableThreads);
-            cmd = sched->getCmd(false); // no wait
-            if (cmd != nullptr) {
-                LOGS(_log, LOG_LVL_DEBUG, "Blend getCmd() using cmd from " << sched->getName());
-                wbase::Task::Ptr task = std::dynamic_pointer_cast<wbase::Task>(cmd);
-                break;
+
+        if (_prioritizeNoInFlightSched) { // &&&
+            for (auto const& sched : _schedulers) {
+                availableThreads = sched->applyAvailableThreads(availableThreads);
+                auto groupSched = std::dynamic_pointer_cast<GroupScheduler>(sched);
+                if (sched->getInFlight() < 1 || groupSched != nullptr) {
+                    cmd = sched->getCmd(false); // no wait
+                }
+                if (cmd != nullptr) {
+                    LOGS(_log, LOG_LVL_DEBUG, "Blend getCmd() zero using cmd from " << sched->getName());
+                    wbase::Task::Ptr task = std::dynamic_pointer_cast<wbase::Task>(cmd);
+                    break;
+                }
+                // adjMax = _getAdjustedMaxThreads(adjMax, sched->getInFlight()); // DM-4943 possible alternate method
+                LOGS(_log, LOG_LVL_DEBUG, "Blend getCmd() zero nothing from " << sched->getName()
+                        << " avail=" << availableThreads);
             }
-            // adjMax = _getAdjustedMaxThreads(adjMax, sched->getInFlight()); // DM-4943 possible alternate method
-            LOGS(_log, LOG_LVL_DEBUG, "Blend getCmd() nothing from " << sched->getName()
-                    << " avail=" << availableThreads);
+        }
+
+        if (cmd == nullptr) {
+            for (auto const& sched : _schedulers) {
+                availableThreads = sched->applyAvailableThreads(availableThreads);
+                cmd = sched->getCmd(false); // no wait
+                if (cmd != nullptr) {
+                    LOGS(_log, LOG_LVL_DEBUG, "Blend getCmd() using cmd from " << sched->getName());
+                    wbase::Task::Ptr task = std::dynamic_pointer_cast<wbase::Task>(cmd);
+                    break;
+                }
+                // adjMax = _getAdjustedMaxThreads(adjMax, sched->getInFlight()); // DM-4943 possible alternate method
+                LOGS(_log, LOG_LVL_DEBUG, "Blend getCmd() nothing from " << sched->getName()
+                        << " avail=" << availableThreads);
+            }
         }
         if (cmd == nullptr) {
             // The scheduler didn't have anything, see if there's anything on the control queue,
