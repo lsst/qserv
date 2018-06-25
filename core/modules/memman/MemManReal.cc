@@ -29,9 +29,13 @@
 #include <string.h>
 #include <unordered_map>
 
+// LSST headers
+#include "lsst/log/Log.h" // &&& delete
+
 // Qserv Headers
 #include "memman/MemFile.h"
 #include "memman/MemFileSet.h"
+#include "util/Timer.h"
 
 /******************************************************************************/
 /*                  L o c a l   S t a t i c   O b j e c t s                   */
@@ -46,6 +50,8 @@ std::unordered_map<lsst::qserv::memman::MemMan::Handle,
 
 lsst::qserv::memman::MemMan::Handle handleNum
                              = lsst::qserv::memman::MemMan::HandleType::ISEMPTY;
+
+LOG_LOGGER _log = LOG_GET("lsst.qserv.memman.MemMan");
 }
 
 namespace lsst {
@@ -257,7 +263,11 @@ bool MemManReal::unlock(Handle handle) {
     // file set lock. It will be unlocked by the destructor.
     //
     fsP->serialize(true);
+    util::Timer unlockTimer;
+    unlockTimer.start();
     delete fsP;
+    unlockTimer.stop();
+    LOGS(_log, LOG_LVL_DEBUG, "&&&sched MemManReal::unlock time=" << unlockTimer.getElapsed());
     return true;
 }
 
