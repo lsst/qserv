@@ -140,6 +140,7 @@ SsiService::SsiService(XrdSsiLogger* log, wconfig::WorkerConfig const& workerCon
                 maxTasksBootedPerUserQuery);
     wsched::BlendScheduler::Ptr blendSched = std::make_shared<wsched::BlendScheduler>("BlendSched", queries,
             maxThread, group, snail, scanSchedulers);
+    blendSched->setPrioritizeNoInFlightSched(true);
     queries->setBlendScheduler(blendSched);
 
     unsigned int requiredTasksCompleted = workerConfig.getRequiredTasksCompleted();

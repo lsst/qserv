@@ -126,6 +126,8 @@ public:
     int moveUserQueryToSnail(QueryId qId, SchedulerBase::Ptr const& source);
     int moveUserQuery(QueryId qId, SchedulerBase::Ptr const& source, SchedulerBase::Ptr const& destination);
 
+    void setPrioritizeNoInFlightSched(bool val) { _prioritizeNoInFlightSched = val; }
+
 private:
     int _getAdjustedMaxThreads(int oldAdjMax, int inFlight);
     bool _ready();
@@ -144,6 +146,8 @@ private:
     std::atomic<bool> _infoChanged{true}; //< Used to limit debug logging.
 
     wpublish::QueriesAndChunks::Ptr _queries; /// UserQuery statistics.
+
+    bool _prioritizeNoInFlightSched{false}; // &&& delete if it doesn't work
 };
 
 }}} // namespace lsst::qserv::wsched

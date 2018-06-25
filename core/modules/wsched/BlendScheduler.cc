@@ -266,7 +266,7 @@ bool BlendScheduler::_ready() {
     std::set<SchedulerBase*> checked; // set to avoid checking some schedulers twice.
 
     // Try prioritizing schedulers with fewer jobs &&& There are better ways to do this.
-    if (!ready) {
+    if (_prioritizeNoInFlightSched && !ready) {
         for (auto sched : _schedulers) {
             availableThreads = sched->applyAvailableThreads(availableThreads);
             auto groupSched = std::dynamic_pointer_cast<GroupScheduler>(sched);
