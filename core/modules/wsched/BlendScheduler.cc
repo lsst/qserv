@@ -228,21 +228,29 @@ void BlendScheduler::commandFinish(util::Command::Ptr const& cmd) {
     _logChunkStatus();
     LOGS(_log, LOG_LVL_DEBUG, "&&&sched BlendScheduler::commandFinish calling finishedTask");
     _queries->finishedTask(t);
-    LOGS(_log, LOG_LVL_DEBUG, "&&&sched BlendScheduler::commandFinish *****");
+    LOGS(_log, LOG_LVL_DEBUG, "&&&sched notify BlendScheduler::commandFinish  NNNNNNNN");
     notify(true);
 }
 
 
 bool BlendScheduler::ready() {
-    std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
-    return _ready();
+    bool ready = false;
+    {
+        std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
+        ready = _ready();
+    }
+    if (ready) {
+        LOGS(_log, LOG_LVL_DEBUG, "&&&sched notify BlendScheduler::ready  NNNNNNNN");
+        notify(false); // &&& getting cases of where threads aren't being woken up. If one can run, more probably can.
+    }
+    return ready;
 }
 
 
 /// Returns true when any sub-scheduler has a command ready.
 /// Precondition util::CommandQueue::_mx must be locked when this is called.
 bool BlendScheduler::_ready() {
-    LOGS(_log, LOG_LVL_DEBUG, "&&&sched BlendScheduler::_ready");
+    LOGS(_log, LOG_LVL_DEBUG, "&&&sched BlendScheduler::_ready  NNNNNNNNN");
     std::ostringstream os;
     bool ready = false;
 
@@ -254,15 +262,41 @@ bool BlendScheduler::_ready() {
     // Get the total number of threads schedulers want reserved
     int availableThreads = calcAvailableTheads();
     bool changed = _infoChanged.exchange(false);
-    for (auto sched : _schedulers) {
-        availableThreads = sched->applyAvailableThreads(availableThreads);
-        ready = sched->ready();
-        if (true || (changed && LOG_CHECK_LVL(_log, LOG_LVL_DEBUG))) {  // &&& delete true ||
-            os << sched->getName() << "(r=" << ready << " sz=" << sched->getSize()
-               << " fl=" << sched-> getInFlight() << " avail=" << availableThreads << ") ";
+
+    std::set<SchedulerBase*> checked; // set to avoid checking some schedulers twice.
+
+    // Try prioritizing schedulers with fewer jobs &&& There are better ways to do this.
+    if (!ready) {
+        for (auto sched : _schedulers) {
+            availableThreads = sched->applyAvailableThreads(availableThreads);
+            auto groupSched = std::dynamic_pointer_cast<GroupScheduler>(sched);
+            if (sched->getInFlight() < 1 || groupSched != nullptr) {
+                ready = sched->ready();
+                checked.insert(sched.get());
+            }
+            if (true || (changed && LOG_CHECK_LVL(_log, LOG_LVL_DEBUG))) {  // &&& delete true ||
+                os << sched->getName() << "(r=" << ready << " sz=" << sched->getSize()
+                                   << " fl=" << sched-> getInFlight() << " avail=" << availableThreads << ") ";
+            }
+            if (ready) break;
         }
-        if (ready) break;
     }
+
+    if (!ready) {
+        for (auto sched : _schedulers) {
+            availableThreads = sched->applyAvailableThreads(availableThreads);
+            if (checked.find(sched.get()) == checked.end()) {
+                ready = sched->ready();
+                // add to checked if another test is made.
+            }
+            if (true || (changed && LOG_CHECK_LVL(_log, LOG_LVL_DEBUG))) {  // &&& delete true ||
+                os << sched->getName() << "(r=" << ready << " sz=" << sched->getSize()
+                       << " fl=" << sched-> getInFlight() << " avail=" << availableThreads << ") ";
+            }
+            if (ready) break;
+        }
+    }
+
     if (!ready) {
         ready = _ctrlCmdQueue.ready();
     }
@@ -274,37 +308,42 @@ bool BlendScheduler::_ready() {
 
 util::Command::Ptr BlendScheduler::getCmd(bool wait) {
     LOGS(_log, LOG_LVL_DEBUG, "&&&sched BlendScheduler::getCmd a wait=" << wait);
-    std::unique_lock<std::mutex> lock(util::CommandQueue::_mx);
-    if (wait) {
-        //util::CommandQueue::_cv.wait(lock, [this](){return _ready();}); // &&&
-        while (!_ready()) {
-            util::CommandQueue::_cv.wait(lock);
-        }
-    }
-    LOGS(_log, LOG_LVL_DEBUG, "&&&sched BlendScheduler::getCmd b");
-    // Try to get a command from the schedulers
     util::Command::Ptr cmd;
-    int availableThreads = calcAvailableTheads();
-    for (auto const& sched : _schedulers) {
-        availableThreads = sched->applyAvailableThreads(availableThreads);
-        cmd = sched->getCmd(false); // no wait
-        if (cmd != nullptr) {
-            LOGS(_log, LOG_LVL_DEBUG, "Blend getCmd() using cmd from " << sched->getName());
-            wbase::Task::Ptr task = std::dynamic_pointer_cast<wbase::Task>(cmd);
-            break;
+    {
+        std::unique_lock<std::mutex> lock(util::CommandQueue::_mx);
+        if (wait) {
+            //util::CommandQueue::_cv.wait(lock, [this](){return _ready();}); // &&&
+            while (!_ready()) {
+                util::CommandQueue::_cv.wait(lock);
+            }
         }
-        // adjMax = _getAdjustedMaxThreads(adjMax, sched->getInFlight()); // DM-4943 possible alternate method
-        LOGS(_log, LOG_LVL_DEBUG, "Blend getCmd() nothing from " << sched->getName()
-             << " avail=" << availableThreads);
-    }
-    if (cmd == nullptr) {
-        // The scheduler didn't have anything, see if there's anything on the control queue,
-        // which could change the size of the pool.
-        cmd = _ctrlCmdQueue.getCmd();
+        LOGS(_log, LOG_LVL_DEBUG, "&&&sched BlendScheduler::getCmd b");
+        // Try to get a command from the schedulers
+
+        int availableThreads = calcAvailableTheads();
+        for (auto const& sched : _schedulers) {
+            availableThreads = sched->applyAvailableThreads(availableThreads);
+            cmd = sched->getCmd(false); // no wait
+            if (cmd != nullptr) {
+                LOGS(_log, LOG_LVL_DEBUG, "Blend getCmd() using cmd from " << sched->getName());
+                wbase::Task::Ptr task = std::dynamic_pointer_cast<wbase::Task>(cmd);
+                break;
+            }
+            // adjMax = _getAdjustedMaxThreads(adjMax, sched->getInFlight()); // DM-4943 possible alternate method
+            LOGS(_log, LOG_LVL_DEBUG, "Blend getCmd() nothing from " << sched->getName()
+                    << " avail=" << availableThreads);
+        }
+        if (cmd == nullptr) {
+            // The scheduler didn't have anything, see if there's anything on the control queue,
+            // which could change the size of the pool.
+            cmd = _ctrlCmdQueue.getCmd();
+        }
     }
     if (cmd != nullptr) {
         _infoChanged = true;
         _logChunkStatus();
+        LOGS(_log, LOG_LVL_DEBUG, "&&&sched notify BlendScheduler::getCmd  NNNNNNNN");
+        notify(true);
     }
     // returning nullptr is acceptable.
     LOGS(_log, LOG_LVL_DEBUG, "&&&sched BlendScheduler::getCmd c cmd!=nullptr -> " <<  (cmd != nullptr));
