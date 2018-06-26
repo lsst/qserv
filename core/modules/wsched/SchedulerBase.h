@@ -108,6 +108,10 @@ public:
     /// moving from/to ScanSchedulers.
     bool removeTask(wbase::Task::Ptr const& task, bool removeRunning) override { return false; }
 
+
+    void setPosition(int val) { _position = val; }
+    int getPosition() const { return _position; }
+
 protected:
     /// Increment the _userQueryCounts entry for queryId, creating it if needed.
     /// Precondition util::CommandQueue::_mx must be locked.
@@ -144,6 +148,7 @@ private:
     // TODO: Decide to keep or remove _maxActiveChunks and related code. This depends primarily
     //       on 'everything' scheduler limits/needs.
     int _maxActiveChunks; ///< Limit the number of chunks this scheduler can work on at one time.
+    int _position{10}; ///< Position of this scheduler in the list of schedulers.
 };
 
 }}} // namespace lsst::qserv::wsched

@@ -81,12 +81,16 @@ BlendScheduler::BlendScheduler(std::string const& name,
     // If these are not defined, there is no point in continuing.
     assert(_group);
     assert(_scanSnail);
+    int position = 0;
     _schedulers.push_back(_group); // _group scheduler must be first in the list.
+    _group->setPosition(position++);
     for (auto const& sched : scanSchedulers) {
         _schedulers.push_back(sched);
+        sched->setPosition(position++);
         sched->setBlendScheduler(this);
     }
     _schedulers.push_back(_scanSnail);
+    _scanSnail->setPosition(position++);
     assert(_schedulers.size() >= 2); // Must have at least _group and _scanSnail in the list.
     _sortScanSchedulers();
     for (auto sched : _schedulers) {
@@ -108,6 +112,8 @@ BlendScheduler::~BlendScheduler() {
 
 
 void BlendScheduler::_sortScanSchedulers() {
+/* &&& possibly delete the priority code
+void BlendScheduler::_sortScanSchedulers() {
     auto greaterThan = [](SchedulerBase::Ptr const& a, SchedulerBase::Ptr const& b)->bool {
         // Experiment of sorts, priority depends on number of Tasks in each scheduler.
         auto aVal = a->getUserQueriesInQ() + a->getPriority();
@@ -120,6 +126,31 @@ void BlendScheduler::_sortScanSchedulers() {
     } else {
         LOGS(_log, LOG_LVL_DEBUG, "not enough schedulers, _schedulers.size=" << _schedulers.size());
     }
+}
+*/
+
+    auto lessThan = [this](SchedulerBase::Ptr const& a, SchedulerBase::Ptr const& b) -> bool {
+        // group scheduler is always first
+        if (a == _group) return true;
+        if (b == _group) return false;
+
+        // snail scheduler is always last
+        if (a == _scanSnail) return false;
+        if (b == _scanSnail) return true;
+
+        // base on the number of scans in flight.
+        if (_prioritizeByInFlight) {
+            auto aInFlight = a->getInFlight();
+            auto bInFlight = b->getInFlight();
+            if (aInFlight < bInFlight) return true;
+            if (bInFlight < aInFlight) return false;
+        }
+
+        /// Order by original position in the list
+        return (a->getPosition() < b->getPosition());
+    };
+
+    std::sort(_schedulers.begin(), _schedulers.end(), lessThan);
 }
 
 
@@ -254,33 +285,18 @@ bool BlendScheduler::_ready() {
     std::ostringstream os;
     bool ready = false;
 
+    /* &&&
     if (_flagReorderScans) {
         _flagReorderScans = false;
         _sortScanSchedulers();
     }
+    */
 
     // Get the total number of threads schedulers want reserved
     int availableThreads = calcAvailableTheads();
     bool changed = _infoChanged.exchange(false);
 
     std::set<SchedulerBase*> checked; // set to avoid checking some schedulers twice.
-
-    // Try prioritizing schedulers with fewer jobs &&& There are better ways to do this.
-    if (_prioritizeNoInFlightSched && !ready) {
-        for (auto sched : _schedulers) {
-            availableThreads = sched->applyAvailableThreads(availableThreads);
-            auto groupSched = std::dynamic_pointer_cast<GroupScheduler>(sched);
-            if (sched->getInFlight() < 1 || groupSched != nullptr) {
-                ready = sched->ready();
-                checked.insert(sched.get());
-            }
-            if (true || (changed && LOG_CHECK_LVL(_log, LOG_LVL_DEBUG))) {  // &&& delete true ||
-                os << sched->getName() << "!(r=" << ready << " sz=" << sched->getSize()
-                                   << " fl=" << sched-> getInFlight() << " avail=" << availableThreads << ") ";
-            }
-            if (ready) break;
-        }
-    }
 
     if (!ready) {
         for (auto sched : _schedulers) {
@@ -306,6 +322,7 @@ bool BlendScheduler::_ready() {
     return ready;
 }
 
+
 util::Command::Ptr BlendScheduler::getCmd(bool wait) {
     LOGS(_log, LOG_LVL_DEBUG, "&&&sched BlendScheduler::getCmd a wait=" << wait);
     util::Command::Ptr cmd;
@@ -322,24 +339,6 @@ util::Command::Ptr BlendScheduler::getCmd(bool wait) {
 
         int availableThreads = calcAvailableTheads();
 
-        if (_prioritizeNoInFlightSched) { // &&&
-            for (auto const& sched : _schedulers) {
-                availableThreads = sched->applyAvailableThreads(availableThreads);
-                auto groupSched = std::dynamic_pointer_cast<GroupScheduler>(sched);
-                if (sched->getInFlight() < 1 || groupSched != nullptr) {
-                    cmd = sched->getCmd(false); // no wait
-                }
-                if (cmd != nullptr) {
-                    LOGS(_log, LOG_LVL_DEBUG, "Blend getCmd() zero using cmd from " << sched->getName());
-                    wbase::Task::Ptr task = std::dynamic_pointer_cast<wbase::Task>(cmd);
-                    break;
-                }
-                // adjMax = _getAdjustedMaxThreads(adjMax, sched->getInFlight()); // DM-4943 possible alternate method
-                LOGS(_log, LOG_LVL_DEBUG, "Blend getCmd() zero nothing from " << sched->getName()
-                        << " avail=" << availableThreads);
-            }
-        }
-
         if (cmd == nullptr) {
             for (auto const& sched : _schedulers) {
                 availableThreads = sched->applyAvailableThreads(availableThreads);
@@ -347,6 +346,7 @@ util::Command::Ptr BlendScheduler::getCmd(bool wait) {
                 if (cmd != nullptr) {
                     LOGS(_log, LOG_LVL_DEBUG, "Blend getCmd() using cmd from " << sched->getName());
                     wbase::Task::Ptr task = std::dynamic_pointer_cast<wbase::Task>(cmd);
+                    _sortScanSchedulers();
                     break;
                 }
                 // adjMax = _getAdjustedMaxThreads(adjMax, sched->getInFlight()); // DM-4943 possible alternate method
