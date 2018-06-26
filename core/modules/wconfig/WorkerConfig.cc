@@ -58,7 +58,8 @@ WorkerConfig::WorkerConfig(const util::ConfigStore& configStore)
       _prioritySlow(configStore.getInt("scheduler.priority_slow", 2)),
       _prioritySnail(configStore.getInt("scheduler.priority_snail", 1)),
       _priorityMed(configStore.getInt("scheduler.priority_med", 3)),
-      _priorityFast(configStore.getInt("scheduler.priority_fast", 4)),
+      // _priorityFast(configStore.getInt("scheduler.priority_fast", 4)), &&&
+      _priorityFast(configStore.getInt("scheduler.priority_fast", 5)), // &&& restore above line
       _maxReserveSlow(configStore.getInt("scheduler.reserve_slow", 2)),
       _maxReserveSnail(configStore.getInt("scheduler.reserve_snail", 2)),
       _maxReserveMed(configStore.getInt("scheduler.reserve_med", 2)),

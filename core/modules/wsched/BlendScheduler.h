@@ -148,6 +148,7 @@ private:
     wpublish::QueriesAndChunks::Ptr _queries; /// UserQuery statistics.
 
     bool _prioritizeByInFlight{false}; // &&& delete if it doesn't work
+    SchedulerBase::Ptr _readySched; //< Pointer to the scheduler with a ready task.
 };
 
 }}} // namespace lsst::qserv::wsched

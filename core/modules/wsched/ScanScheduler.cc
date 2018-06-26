@@ -159,7 +159,7 @@ bool ScanScheduler::_ready() {
         return false;
     }
 
-    // Only run this test if _taskQueue is a ChunkDisk. ChunkTasksQueue does this internally.
+    // Only run this test if _taskQueue is a ChunkDisk. ChunkTasksQueue does this in its ready() call.
     if (std::dynamic_pointer_cast<ChunkDisk>(_taskQueue) != nullptr
           &&_taskQueue->nextTaskDifferentChunkId()) {
         auto activeChunkCount = getActiveChunkCount();
@@ -176,12 +176,13 @@ bool ScanScheduler::_ready() {
     bool useFlexibleLock = (_inFlight < 1);
     util::Timer readyTimer; // &&& delete
     readyTimer.start();
+    /// Once _taskQueue->ready() has a task ready, it stays on that task until it is used by getTask().
     auto rdy = _taskQueue->ready(useFlexibleLock); // Only returns true if MemMan grants resources.
     readyTimer.stop();
     LOGS(_log, LOG_LVL_DEBUG, "&&&sched ScanScheduler::_ready a _taskQueue->ready()=" << rdy << " readyTimer=" << readyTimer.getElapsed());
     bool logMemStats = false;
     // If ready failed, holding on to this is unlikely to help, otherwise the new Task now has its own handle
-    // which and will keep needed files from being unlocked.
+    // which and will keep needed files in memory.
     if (_memManHandleToUnlock != memman::MemMan::HandleType::INVALID) {
         LOGS(_log, LOG_LVL_DEBUG, "ScanScheduler::_ready unlocking handle=" << _memManHandleToUnlock <<
                                    " " << _memMan->getStatus(_memManHandleToUnlock).logString());
