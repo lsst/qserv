@@ -59,10 +59,10 @@ docker run \
     -v ${CONFIG_DIR}:/qserv/replication/config:ro \
     -v ${LOG_DIR}:${LOG_DIR} \
     -e "TOOL=${TOOL}" \
-    -e "PARAMETERS='${PARAMETERS}'" \
+    -e "PARAMETERS=${PARAMETERS}" \
     -e "LOG_DIR=${LOG_DIR}" \
     -e "LSST_LOG_CONFIG=${LSST_LOG_CONFIG}" \
     -e "CONFIG=${CONFIG}" \
     --name "${TOOL}" \
     $IMAGE_TAG \
-    bash -c \''/qserv/bin/${TOOL} ${PARAMETERS} --config=${CONFIG} >& ${LOG_DIR}/${TOOL}.log'\'
+    bash -c '/qserv/bin/${TOOL} ${PARAMETERS} --config=${CONFIG} >& ${LOG_DIR}/${TOOL}.log'
