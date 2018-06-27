@@ -44,9 +44,9 @@ for WORKER in $WORKERS; do
         -e "WORKER_CONTAINER_NAME=${WORKER_CONTAINER_NAME}" \
         -e "LOG_DIR=${LOG_DIR}" \
         -e "LSST_LOG_CONFIG=${LSST_LOG_CONFIG}" \
-        -e "WORKER_CONFIG=${WORKER_CONFIG}" \
+        -e "CONFIG=${CONFIG}" \
         -e "WORKER=${WORKER}" \
         --name "${WORKER_CONTAINER_NAME}" \
         $IMAGE_TAG \
-        bash -c \''/qserv/bin/qserv-replica-worker ${WORKER} --config=${WORKER_CONFIG} >& ${LOG_DIR}/${WORKER_CONTAINER_NAME}.log'\'
+        bash -c \''/qserv/bin/qserv-replica-worker ${WORKER} --config=${CONFIG} >& ${LOG_DIR}/${WORKER_CONTAINER_NAME}.log'\'
 done
