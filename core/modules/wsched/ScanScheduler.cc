@@ -92,7 +92,8 @@ void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
 
     _taskQueue->taskComplete(t); // does not need _mx protection.
     {
-        std::lock_guard<std::mutex> guard(util::CommandQueue::_mx);
+        //std::lock_guard<std::mutex> guard(util::CommandQueue::_mx);
+        util::LockGuardTimed guard(util::CommandQueue::_mx, "&&&sched ScanScheduler::commandFinish");
         --_inFlight;
         LOGS(_log, LOG_LVL_DEBUG, t->getIdStr() << " commandFinish " << getName()
                 << " inFlight=" << _inFlight);
@@ -133,7 +134,8 @@ void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
 /// Returns true if there is a Task ready to go and we aren't up against any limits.
 bool ScanScheduler::ready() {
     LOGS(_log, LOG_LVL_DEBUG, "&&&sched ScanScheduler::ready");
-    std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
+    //std::lock_guard<std::mutex> lock(util::CommandQueue::_mx); &&&
+    util::LockGuardTimed guard(util::CommandQueue::_mx, "&&&sched ScanScheduler::ready");
     return _ready();
 }
 
@@ -206,16 +208,25 @@ bool ScanScheduler::_ready() {
 
 
 std::size_t ScanScheduler::getSize() const {
-    std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
+    //std::lock_guard<std::mutex> lock(util::CommandQueue::_mx); &&&
+    util::LockGuardTimed guard(util::CommandQueue::_mx, "&&&sched ScanScheduler::getSize");
     return _taskQueue->getSize();
 }
 
 
 util::Command::Ptr ScanScheduler::getCmd(bool wait)  {
+    util::Timer timeToLock; // &&&
+    util::Timer timeHeld; // &&&
+    timeToLock.start();
     std::unique_lock<std::mutex> lock(util::CommandQueue::_mx);
+    timeToLock.stop();
+    timeHeld.start();
     if (wait) {
         util::CommandQueue::_cv.wait(lock, [this](){return _ready();});
+        timeHeld.start();
     } else if (!_ready()) {
+        timeHeld.stop();
+        LOGS(_log, LOG_LVL_DEBUG, "&&&sched lockTime ScanScheduler::getCmd !ready toLock=" << timeToLock.getElapsed() << " held=" << timeHeld.getElapsed());
         return nullptr;
     }
     bool useFlexibleLock = (_inFlight < 1);
@@ -227,6 +238,8 @@ util::Command::Ptr ScanScheduler::getCmd(bool wait)  {
         _decrCountForUserQuery(task->getQueryId());
         _incrChunkTaskCount(task->getChunkId());
     }
+    timeHeld.stop();
+    LOGS(_log, LOG_LVL_DEBUG, "&&&sched lockTime ScanScheduler::getCmd ready toLock=" << timeToLock.getElapsed() << " held=" << timeHeld.getElapsed());
     return task;
 }
 
@@ -238,7 +251,8 @@ void ScanScheduler::queCmd(util::Command::Ptr const& cmd) {
         return;
     }
     {
-        std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
+        //std::lock_guard<std::mutex> lock(util::CommandQueue::_mx); &&&
+        util::LockGuardTimed guard(util::CommandQueue::_mx, "&&&sched ScanScheduler::queCmd");
         auto uqCount = _incrCountForUserQuery(t->getQueryId());
         LOGS(_log, LOG_LVL_DEBUG, getName() << " queCmd " << t->getIdStr()
                 << " uqCount=" << uqCount);

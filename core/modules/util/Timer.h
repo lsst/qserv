@@ -29,6 +29,7 @@
 #include <ostream>
 #include <sys/time.h>
 #include <time.h>
+#include <mutex>
 
 namespace lsst {
 namespace qserv {
@@ -62,6 +63,18 @@ struct Timer {
 };
 
 std::ostream& operator<<(std::ostream & os, Timer const & tm);
+
+class LockGuardTimed {
+public:
+    LockGuardTimed(std::mutex& mtx, std::string const& note);
+    ~LockGuardTimed();
+
+private:
+    std::mutex& _mtx;
+    std::string _note;
+    Timer timeToLock;
+    Timer timeHeld;
+};
 
 }}} // namespace lsst::qserv::util
 
