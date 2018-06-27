@@ -50,7 +50,7 @@ if [ -z "${is_master}" ]; then
     exit 1
 fi
 
-echo docker run \
+docker run \
     --rm \
     --detach \
     --network host \
@@ -66,4 +66,3 @@ echo docker run \
     --name "${TOOL}" \
     $IMAGE_TAG \
     bash -c \''/qserv/bin/${TOOL} ${PARAMETERS} --config=${CONFIG} >& ${LOG_DIR}/${TOOL}.log'\'
-done
