@@ -473,7 +473,7 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool last) {
     bool flushOk = jq->getDescription()->respHandler()->flush(blen, last, largeResult);
     if (largeResult) {
         if (!_largeResult) LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " holdState largeResult set to true");
-        _largeResult = true; // Once the worker indicates it's a large result, it stays that way.
+        //_largeResult = true; // Once the worker indicates it's a large result, it stays that way. &&& look into large result logic
     }
 
     if (flushOk) {
