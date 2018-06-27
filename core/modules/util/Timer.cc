@@ -27,6 +27,14 @@
 // System headers
 #include <cstdio>
 
+// LSST headers
+#include "lsst/log/Log.h"
+
+namespace {
+LOG_LOGGER _log = LOG_GET("lsst.qserv.util.Timer");
+}
+
+
 namespace lsst {
 namespace qserv {
 namespace util {
@@ -57,5 +65,21 @@ std::ostream & operator<<(std::ostream & os, Timer const & timer) {
     os << ' ' << timer.getElapsed();
     return os;
 }
+
+
+LockGuardTimed::LockGuardTimed(std::mutex& mtx, std::string const& note)
+    : _mtx(mtx), _note(note) {
+    timeToLock.start();
+    _mtx.lock();
+    timeToLock.stop();
+    timeHeld.start();
+}
+
+LockGuardTimed::~LockGuardTimed() {
+    _mtx.unlock();
+    timeHeld.stop();
+    LOGS(_log, LOG_LVL_DEBUG, "lockTime " << _note << " toLock=" << timeToLock.getElapsed() << " held=" << timeHeld.getElapsed());
+}
+
 
 }}} // namespace lsst::qserv::util

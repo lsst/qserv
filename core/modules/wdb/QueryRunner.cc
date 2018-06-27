@@ -178,6 +178,7 @@ bool QueryRunner::runQuery() {
             auto handleStats = _task->getMemHandleStatus();
             mHLStr = handleStats.logString();
             double apparent = handleStats.bytesLock/mElapsed;
+            mHLStr += " apparent=" + std::to_string(apparent);
         }
         if (mElapsed < 1.0) {
             ++lessThan1;
@@ -382,7 +383,7 @@ void QueryRunner::_transmit(bool last, uint rowCount, size_t tSize) {
                                       << " totalBytes=" << totalBytes);
             util::Timer t;
             t.start();
-            streamBuf->waitForDoneWithThis(); // block until this buffer has been sent. &&&
+            //streamBuf->waitForDoneWithThis(); // block until this buffer has been sent. &&&
             t.stop();
             double elapsed = t.getElapsed();
             if (elapsed < 0.1) { ++tLessTenth; }
@@ -443,7 +444,7 @@ void QueryRunner::_transmitHeader(std::string& msg) {
         // intentionally not waiting for streamBuf to finish, as this message is tiny. &&&
         util::Timer t;
         t.start();
-        streamBuf->waitForDoneWithThis(); // block until this buffer has been sent. &&&
+        //streamBuf->waitForDoneWithThis(); // block until this buffer has been sent. &&&
         t.stop();
         double elapsed = t.getElapsed();
         if (elapsed < 0.1) { ++thLessTenth; }
