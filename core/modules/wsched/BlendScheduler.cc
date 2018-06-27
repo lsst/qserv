@@ -343,6 +343,8 @@ util::Command::Ptr BlendScheduler::getCmd(bool wait) {
             //util::CommandQueue::_cv.wait(lock, [this](){return _ready();}); // &&&
             while (!_ready()) {
                 util::CommandQueue::_cv.wait(lock);
+                //auto now = std::chrono::system_clock::now();  &&&
+                //_cv.wait_until(lock, now + 10s); &&&
             }
             ready = true;
         } else {

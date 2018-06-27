@@ -46,7 +46,7 @@ public:
     // Types
     typedef std::shared_ptr<ScanTablePlugin> Ptr;
 
-    ScanTablePlugin() {}
+    explicit ScanTablePlugin(int interactiveChunkLimit) : _interactiveChunkLimit(interactiveChunkLimit) {}
     virtual ~ScanTablePlugin() {}
 
     void prepare() override {}
@@ -58,6 +58,7 @@ private:
     proto::ScanInfo _findScanTables(query::SelectStmt& stmt,
                                     query::QueryContext& context);
     proto::ScanInfo _scanInfo;
+    int _interactiveChunkLimit;
 };
 
 }}} // namespace lsst::qserv::qana

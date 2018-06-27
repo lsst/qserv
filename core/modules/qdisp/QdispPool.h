@@ -129,8 +129,8 @@ public:
         _prQueue->addPriQueue(2, 6, 850); // FAST queries (Object table)
         _prQueue->addPriQueue(3, 7, 250); // MEDIUM queries (Source table)
         _prQueue->addPriQueue(4, 6, 150); // SLOW queries (Object Extra table)
-        _prQueue->addPriQueue(5, 6, 20);  // FAST large results
-        _prQueue->addPriQueue(6, 6, 20);  // MEDIUM large results
+        _prQueue->addPriQueue(5, 6, 500);  // FAST large results
+        _prQueue->addPriQueue(6, 6, 100);  // MEDIUM large results
         _prQueue->addPriQueue(7, 6, 20);  // Everything else (slow things)
         // default priority is the lowest priority.
     }

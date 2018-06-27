@@ -33,7 +33,6 @@
 // Qserv Headers
 #include "memman/MemFile.h"
 #include "memman/MemFileSet.h"
-#include "util/Timer.h"
 
 /******************************************************************************/
 /*                  L o c a l   S t a t i c   O b j e c t s                   */
