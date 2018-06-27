@@ -32,6 +32,6 @@ set -e
 
 for AGENT in $MASTERS $WORKERS; do
     AGENT_HOST="qserv-${AGENT}"
-    echo ssh -n $AGENT_HOST '$(docker pull '$IMAGE_TAG')'
+    ssh -n $AGENT_HOST '$(docker pull '$IMAGE_TAG')'
 done
 
