@@ -37,6 +37,7 @@
 // Qserv headers
 #include "ccontrol/ConfigError.h"
 #include "ccontrol/ConfigMap.h"
+#include "ccontrol/A4UserQueryFactory.h"
 #include "ccontrol/UserQueryAsyncResult.h"
 #include "ccontrol/UserQueryDrop.h"
 #include "ccontrol/UserQueryFlushChunksCache.h"
@@ -87,6 +88,7 @@ public:
     qmeta::CzarId qMetaCzarId = {0};   ///< Czar ID in QMeta database
 };
 
+
 ////////////////////////////////////////////////////////////////////////
 UserQueryFactory::UserQueryFactory(czar::CzarConfig const& czarConfig,
                                    std::string const& czarName)
@@ -105,6 +107,7 @@ UserQueryFactory::UserQueryFactory(czar::CzarConfig const& czarConfig,
     _impl->queryMetadata->cleanup(_impl->qMetaCzarId);
 }
 
+
 UserQuery::Ptr
 UserQueryFactory::newUserQuery(std::string const& aQuery,
                                std::string const& defaultDb,
@@ -118,6 +121,7 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
 
     // First check for SUBMIT and strip it
     std::string query = aQuery;
+
     std::string stripped;
     bool async = false;
     if (UserQueryType::isSubmit(query, stripped)) {
@@ -134,19 +138,31 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
     bool full = false;
     QueryId userJobId = 0;
 
+
+
     if (UserQueryType::isSelect(query)) {
         // Processing regular select query
         bool sessionValid = true;
         std::string errorExtra;
 
         // Parse SELECT
+        std::shared_ptr<query::SelectStmt> a4stmt = a4NewUserQuery(query);
+        if (a4stmt) {
+            LOGS(_log, LOG_LVL_DEBUG, "Antlr4 generated select statement: " << *a4stmt);
+        } else {
+            LOGS(_log, LOG_LVL_DEBUG, "Antlr4 did not generate a select statement.");
+        }
+
         std::shared_ptr<query::SelectStmt> stmt;
-        try {
-            auto parser = parser::SelectParser::newInstance(query);
-            parser->setup();
-            stmt = parser->getSelectStmt();
-        } catch(parser::ParseException const& e) {
-            return std::make_shared<UserQueryInvalid>(std::string("ParseException:") + e.what());
+        if (nullptr == stmt) {
+            try {
+                auto parser = parser::SelectParser::newInstance(query);
+                parser->setup();
+                stmt = parser->getSelectStmt();
+            } catch(parser::ParseException const& e) {
+                return std::make_shared<UserQueryInvalid>(std::string("ParseException:") + e.what());
+            }
+            LOGS(_log, LOG_LVL_DEBUG, "Old-style generated select statement: " << *stmt);
         }
 
         // handle special database/table names

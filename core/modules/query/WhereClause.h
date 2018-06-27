@@ -69,6 +69,7 @@ public:
     }
     std::shared_ptr<BoolTerm const> getRootTerm() const { return _tree; }
     std::shared_ptr<BoolTerm> getRootTerm() { return _tree; }
+    void setRootTerm(std::shared_ptr<BoolTerm> term) { _tree = term; }
     std::shared_ptr<ColumnRef::Vector const> getColumnRefs() const;
     std::shared_ptr<AndTerm> getRootAndTerm();
 

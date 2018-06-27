@@ -45,7 +45,9 @@
 
 namespace lsst {
 namespace qserv {
-
+namespace query {
+class SelectStmt;
+}
 namespace czar {
 class CzarConfig;
 }
