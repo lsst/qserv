@@ -30,7 +30,6 @@
 #include <string>
 #include <vector>
 
-#include "util/InstanceCount.h" // &&& delete
 
 namespace lsst {
 namespace qserv {
@@ -225,8 +224,6 @@ public:
 protected:
 
     static uint64_t lockLimit;
-
-    util::InstanceCount ic{"MemMan"}; // &&& delete
 };
 
 }}} // namespace lsst:qserv:memman

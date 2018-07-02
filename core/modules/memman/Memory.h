@@ -155,7 +155,7 @@ public:
     //! @return !0     - Memory not locked, retuned value is the errno.
     //-----------------------------------------------------------------------------
 
-    int     memLock(MemInfo mInfo, bool isFlex);
+    int     memLock(MemInfo& mInfo, bool isFlex);
 
     //-----------------------------------------------------------------------------
     //! @brief Map a database file in memory.

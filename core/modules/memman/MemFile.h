@@ -140,7 +140,10 @@ private:
     bool        _isMapped   = false;   // Protected by _fileMutex
     bool        _isReserved = false;   // Ditto
     bool        _isLocked   = false;   // Ditto
-    bool        _isFlex;               // Set once at object creation
+    bool const  _isFlex;               // Set once at object creation
+
+    std::mutex  _mlockFileMutex;       // Protect mlock call allowing _fileMutex to unlock. &&&
+    std::atomic<bool> _mlocking;       // Flag indicating mlock is being called.  &&&
 };
 
 }}} // namespace lsst:qserv:memman
