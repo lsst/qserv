@@ -52,6 +52,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.QueryRequest");
 }
 
+#define USING_POOL 1
 
 namespace lsst {
 namespace qserv {
@@ -280,6 +281,7 @@ bool QueryRequest::ProcessResponse(XrdSsiErrInfo  const& eInfo, XrdSsiRespInfo c
 /// Retrieve and process results in using the XrdSsi stream mechanism
 /// Uses a copy of JobQuery::Ptr instead of _jobQuery as a call to cancel() would reset _jobQuery.
 bool QueryRequest::_importStream(JobQuery::Ptr const& jq) {
+#if USING_POOL // &&& stop using pool
     if (_askForResponseDataCmd != nullptr) {
         LOGS(_log, LOG_LVL_ERROR, "_importStream There's already an _askForResponseDataCmd object!!");
         // Keep the previous object from wedging the pool.
@@ -287,32 +289,23 @@ bool QueryRequest::_importStream(JobQuery::Ptr const& jq) {
     }
     _askForResponseDataCmd = std::make_shared<AskForResponseDataCmd>(shared_from_this(), jq);
     _queueAskForResponse(_askForResponseDataCmd, jq);
-/* &&&
-    util::Timer tWaiting; // &&&
-    util::Timer tTotal; // &&&
+#else
     {
-        tTotal.start();
-        //auto qr = _qRequest.lock();
         if (jq == nullptr) {
-            LOGS(_log, LOG_LVL_WARN, _idStr << " AskForResp null before GetResponseData");
-            // No way to call _errorFinish().
-            _setState(State::DONE2);
-            return;
+            LOGS(_log, LOG_LVL_WARN, _jobIdStr << " AskForResp null before GetResponseData");
+            return false;
         }
 
         if (isQueryCancelled()) {
-            LOGS(_log, LOG_LVL_DEBUG, _idStr << " AskForResp query was cancelled");
+            LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " AskForResp query was cancelled");
             _errorFinish(true);
-            _setState(State::DONE2);
-            return;
+            return false;
         }
         std::vector<char>& buffer = jq->getDescription()->respHandler()->nextBuffer();
-        LOGS(_log, LOG_LVL_DEBUG, _idStr << " AskForResp GetResponseData size=" << buffer.size());
-        tWaiting.start();
+        LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " AskForResp GetResponseData size=" << buffer.size());
         GetResponseData(&buffer[0], buffer.size());
     }
-*/
-
+#endif
     return true;
 }
 
@@ -454,8 +447,11 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(XrdSsiErrInfo const& eI
 
     // Handle the response in a separate thread so we can give this one back to XrdSsi.
     // _askForResponseDataCmd should call QueryRequest::_processData() next.
+#if USING_POOL    // &&& stop using pool
     _askForResponseDataCmd->notifyDataSuccess(blen, last);
+#else
 
+#endif
     return XrdSsiRequest::PRD_Normal;
 }
 
@@ -473,7 +469,7 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool last) {
     bool flushOk = jq->getDescription()->respHandler()->flush(blen, last, largeResult);
     if (largeResult) {
         if (!_largeResult) LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " holdState largeResult set to true");
-        //_largeResult = true; // Once the worker indicates it's a large result, it stays that way. &&& look into large result logic
+        _largeResult = true; // Once the worker indicates it's a large result, it stays that way. &&& look into large result logic
     }
 
     if (flushOk) {

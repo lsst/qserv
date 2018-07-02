@@ -31,8 +31,15 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // qserv headers
 #include "util/Timer.h"
+
+namespace {
+LOG_LOGGER _log = LOG_GET("lsst.qserv.memman.Memory");
+}
 
 namespace lsst {
 namespace qserv {
@@ -92,7 +99,7 @@ std::string Memory::filePath(std::string const& dbTable,
 /*                               m e m L o c k                                */
 /******************************************************************************/
 
-int Memory::memLock(MemInfo mInfo, bool isFlex) {
+int Memory::memLock(MemInfo& mInfo, bool isFlex) {
 
     // Verify that this is a valid mapping
     //
@@ -103,13 +110,16 @@ int Memory::memLock(MemInfo mInfo, bool isFlex) {
     int result = 0;
     util::Timer timer;
     {
-        std::lock_guard<std::mutex> localLG(_mlockMtx);
+        std::lock_guard<std::mutex> lg(_mlockMtx);
+        LOGS(_log, LOG_LVL_DEBUG, "&&& MMMM mlock start");
         timer.start();
         result = mlock(mInfo._memAddr, mInfo._memSize);
         timer.stop();
+        LOGS(_log, LOG_LVL_DEBUG, "&&& MMMM mlock stop " << timer.getElapsed());
     }
     mInfo._mlockTime = timer.getElapsed();
     if (!result) {
+        std::lock_guard<std::mutex> guard(_memMutex);
         _lokBytes += mInfo._memSize;
         if (isFlex) _flexNum++;
         return 0;
@@ -153,7 +163,13 @@ MemInfo Memory::mapFile(std::string const& fPath) {
 
     // Map the file into memory
     //
+    util::Timer mmapTimer; // &&&
+    LOGS(_log, LOG_LVL_DEBUG, "&&& MMMM mmap start");
+    mmapTimer.start();
     mInfo._memAddr = mmap(0, mInfo._memSize, PROT_READ, MAP_SHARED, fdNum, 0);
+    mmapTimer.stop();
+    LOGS(_log, LOG_LVL_DEBUG, "&&& MMMM mmap stop " << mmapTimer.getElapsed());
+
 
     // Diagnose any errors or update statistics.
     //

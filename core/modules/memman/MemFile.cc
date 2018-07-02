@@ -28,9 +28,18 @@
 #include <errno.h>
 #include <unordered_map>
 
+// LSST headers
+#include "lsst/log/Log.h"
+
+namespace {
+LOG_LOGGER _log = LOG_GET("lsst.qserv.memman.MemFile");
+}
+
+
 namespace lsst {
 namespace qserv {
 namespace memman {
+
 
 /******************************************************************************/
 /*                  L o c a l   S t a t i c   O b j e c t s                   */
@@ -45,6 +54,60 @@ std::unordered_map<std::string, MemFile*> fileCache;
 /*                               m e m L o c k                                */
 /******************************************************************************/
 
+#if 1  // &&&
+MemFile::MLResult MemFile::memLock() {
+    // The _fileMutex is used here to serialize multiple calls to lock the same
+    // file as a file may appear in multiple file sets. This mutex is held for
+    // duration of all operations here. It also serialized memory unmapping.
+    //
+    std::lock_guard<std::mutex> guardMlock(_mlockFileMutex);
+    int rc = 0;
+    {
+        std::lock_guard<std::mutex> guard(_fileMutex);
+
+        // If the file is already locked, indicate success
+        //
+        if (_isLocked) {
+            MLResult aokResult(_memInfo.size(), _memInfo.mlockTime(), 0);
+            return aokResult;
+        }
+
+        // Lock this table in memory if possible. If not, simulate an ENOMEM.
+        //
+        if (!_isMapped) {
+            rc = ENOMEM;
+            _mlocking = true;
+        }
+    }
+
+
+    // Only call if _isMapped was true. The only line that sets it false is protected by _mlockFileMutex.
+    if (rc == 0) {
+        rc = _memory.memLock(_memInfo, _isFlex);
+        if (rc == 0) {
+            std::lock_guard<std::mutex> guard(_fileMutex);
+            _mlocking = false;
+            MLResult aokResult(_memInfo.size(), _memInfo.mlockTime(), 0);
+            _isLocked = true;
+            return aokResult;
+        }
+    }
+    _mlocking = false;
+ 
+    // If this is a flexible table, we can ignore this error.
+    //
+    if (_isFlex) {
+        MLResult nilResult(0, 0.0, 0);
+        return nilResult;
+    }
+
+    // Diagnose any errors
+    //
+    MLResult errResult(0, 0.0, rc);
+    return errResult;
+}
+
+#else // &&&
 MemFile::MLResult MemFile::memLock() {
     // The _fileMutex is used here to serialize multiple calls to lock the same
     // file as a file may appear in multiple file sets. This mutex is held for
@@ -71,11 +134,11 @@ MemFile::MLResult MemFile::memLock() {
             return aokResult;
         }
     }
- 
+
     // If this is a flexible table, we can ignore this error.
     //
     if (_isFlex) {
-        MLResult nilResult(0, _memInfo.mlockTime(), 0);
+        MLResult nilResult(0, 0.0, 0);
         return nilResult;
     }
 
@@ -84,18 +147,26 @@ MemFile::MLResult MemFile::memLock() {
     MLResult errResult(0, 0.0, rc);
     return errResult;
 }
+#endif // &&&
 
 /******************************************************************************/
 /*                                m e m M a p                                 */
 /******************************************************************************/
 
 int MemFile::memMap() {
-
+    //
     std::lock_guard<std::mutex> guard(_fileMutex);
 
     // If the file is already mapped, indicate success
     //
     if (_isMapped) return 0;
+
+    // If _mlocking == true, _isMapped somehow got set to false during memLock() call
+    if (_mlocking) {
+        LOGS(_log, LOG_LVL_ERROR, "Opperations in bad order _isMapped=" << _isMapped <<
+                                  " _mlocking=" << _mlocking);
+        return 0;
+    }
 
     // Check if we need to verify there is enough memory for this table. If it's
     // already reserved (unlikely) then there is no need to check.
@@ -212,6 +283,7 @@ void MemFile::release() {
     // We lock the file mutex. We also get the size of the file as memRel()
     // destroys the _memInfo object.
     //
+    _mlockFileMutex.lock();
     _fileMutex.lock();
     uint64_t fSize = _memInfo.size();
 
@@ -230,6 +302,7 @@ void MemFile::release() {
     // Delete ourselves as we are done
     //
     _fileMutex.unlock();
+    _mlockFileMutex.unlock();
     delete this;
 }
 }}} // namespace lsst:qserv:memman

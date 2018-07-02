@@ -345,6 +345,7 @@ util::Command::Ptr BlendScheduler::getCmd(bool wait) {
     util::Timer timeHeld; // &&&
     LOGS(_log, LOG_LVL_DEBUG, "&&&sched BlendScheduler::getCmd a wait=" << wait);
     util::Command::Ptr cmd;
+    double totalTimeHeld = 0.0;
     bool ready = false;
     {
         timeToLock.start();
@@ -354,6 +355,8 @@ util::Command::Ptr BlendScheduler::getCmd(bool wait) {
         if (wait) {
             //util::CommandQueue::_cv.wait(lock, [this](){return _ready();}); // &&&
             while (!_ready()) {
+                timeHeld.stop();
+                totalTimeHeld += timeHeld.getElapsed();
                 util::CommandQueue::_cv.wait(lock);
                 //auto now = std::chrono::system_clock::now();  &&&
                 //_cv.wait_until(lock, now + 10s); &&&
@@ -411,7 +414,9 @@ util::Command::Ptr BlendScheduler::getCmd(bool wait) {
     // returning nullptr is acceptable.
     LOGS(_log, LOG_LVL_DEBUG, "&&&sched BlendScheduler::getCmd c cmd!=nullptr -> " <<  (cmd != nullptr));
     timeHeld.stop();
-    LOGS(_log, LOG_LVL_DEBUG, "&&&sched lockTime BlendScheduler::getCmd ready toLock=" << timeToLock.getElapsed() << " held=" << timeHeld.getElapsed());
+    totalTimeHeld += timeHeld.getElapsed();
+    LOGS(_log, LOG_LVL_DEBUG, "&&&sched lockTime BlendScheduler::getCmd ready toLock=" << timeToLock.getElapsed() << " held=" << timeHeld.getElapsed()
+            << " totalHeld=" << totalTimeHeld);
     return cmd;
 }
 
