@@ -4,10 +4,6 @@ branches:
     - master
     - /^tickets\/.*$/
 
-cache:
-  directories:
-  - build
-
 sudo: false
 
 services:
@@ -35,9 +31,7 @@ script:
   - echo "Building and testing $IMAGE (alias $BRANCH_IMAGE) and related master and worker images"
   # Retrieve current qserv dependencies
   - docker pull qserv/qserv:dev
-  - ./admin/tools/docker/3_build-git-image.sh -F -L -T "$IMAGE" "$PWD"
-  - ./admin/tools/docker/4_build-configured-images.sh -L -i "$IMAGE"
-  - ./admin/tools/docker/deployment/localhost/run-multinode-tests.sh
+  - ./admin/tools/docker/3_build-git-image.sh -F -L -T "$IMAGE" "$PWD" && ./admin/tools/docker/4_build-configured-images.sh -L -i "$IMAGE" && ./admin/tools/docker/deployment/localhost/run-multinode-tests.sh
 
 notifications:
   slack:
@@ -56,4 +50,3 @@ after_success:
   - docker push "$BRANCH_IMAGE"
   - docker push "${BRANCH_IMAGE}_master"
   - docker push "${BRANCH_IMAGE}_worker"
-
