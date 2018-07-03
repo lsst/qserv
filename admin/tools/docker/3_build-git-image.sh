@@ -96,10 +96,10 @@ then
 fi
 
 export SRC_DIRS
-docker run -e SRC_DIRS --name "$CONTAINER" -t -u qserv \
+docker run -e SRC_DIRS --name "$CONTAINER" -t -u root \
     -v "$DIR"/git/scripts:/home/qserv/bin \
     $OPT_MOUNT -- "$DOCKER_IMAGE" \
-    bash -lc "/home/qserv/bin/eups-builder.sh"
+    su -c 'bash -lc "/home/qserv/bin/eups-builder.sh"' qserv
 
 if [ -z "$DOCKERTAG" ]; then
     # Docker tags must not contain '/'
