@@ -514,6 +514,7 @@ private:
 };
 
 bool QueryRunner::_dispatchChannel() {
+    util::InstanceCount ic("Active_dispatchChannel &&&");
     proto::TaskMsg& m = *_task->msg;
     _initMsgs();
     bool firstResult = true;

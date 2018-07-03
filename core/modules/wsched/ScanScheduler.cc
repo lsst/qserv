@@ -181,7 +181,7 @@ bool ScanScheduler::_ready() {
     /// Once _taskQueue->ready() has a task ready, it stays on that task until it is used by getTask().
     auto rdy = _taskQueue->ready(useFlexibleLock); // Only returns true if MemMan grants resources.
     readyTimer.stop();
-    LOGS(_log, LOG_LVL_DEBUG, "&&&sched ScanScheduler::_ready a _taskQueue->ready()=" << rdy << " readyTimer=" << readyTimer.getElapsed());
+    LOGS(_log, LOG_LVL_DEBUG, "&&&sched ScanScheduler::_ready a _taskQueue->ready()=" << rdy << " readyTimer=" << readyTimer.getElapsed() << " useFlexibleLock=" << useFlexibleLock);
     bool logMemStats = false;
     // If ready failed, holding on to this is unlikely to help, otherwise the new Task now has its own handle
     // which and will keep needed files in memory.

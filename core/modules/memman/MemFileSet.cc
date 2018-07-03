@@ -109,6 +109,7 @@ int MemFileSet::lockAll(bool strict) {
     for (auto mfP : _flexFiles) {
         mlResult = mfP->memLock();
         totLocked += mlResult.bLocked;
+        totMlockSeconds += mlResult.mlockTime;
     }
 
     // We ignore optional files at this point. FUTURE!!!
@@ -117,6 +118,7 @@ int MemFileSet::lockAll(bool strict) {
     // All done, update the statistics.
     //
     _lockBytes += totLocked;
+    _lockSeconds += totMlockSeconds;
     return 0;
 }
 
