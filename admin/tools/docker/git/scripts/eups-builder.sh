@@ -32,6 +32,7 @@ done
 QSERV_RUN_DIR=/qserv/run
 
 setup qserv_distrib -t qserv-dev
+cp "$SCISQL_DIR"/lib/libscisql-scisql_?.?.so "$MARIADB_DIR"/lib/plugin
 qserv-configure.py --init --force --qserv-run-dir "$QSERV_RUN_DIR"
 qserv-configure.py --etc --qserv-run-dir "$QSERV_RUN_DIR" --force
 rm "$QSERV_RUN_DIR"/qserv-meta.conf
