@@ -143,7 +143,7 @@ private:
     bool const  _isFlex;               // Set once at object creation
 
     std::mutex  _mlockFileMutex;       // Protect mlock call allowing _fileMutex to unlock. &&&
-    std::atomic<bool> _mlocking;       // Flag indicating mlock is being called.  &&&
+    std::atomic<bool> _mlocking{false};       // Flag indicating mlock is being called.  &&&
 };
 
 }}} // namespace lsst:qserv:memman
