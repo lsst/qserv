@@ -13,13 +13,12 @@ DIR=$(cd "$(dirname "$0")"; pwd -P)
 
 usage() {
     cat << EOD
-Usage: $(basename "$0") [options] local-path [local-path1] [local-path2] 
+Usage: $(basename "$0") [options] local-path [local-path1] [local-path2]
 
 Available options:
-  -R git-ref    Use git branch/tag for the build
-                (from https://github.com/lsst/qserv)
-                Example: 'tickets/DM-6444'
   -h            This message
+  -F            Allow to build event if user uid on host is not 1000
+                (chmod o+w on source directories is required as a pre-requisite)
   -L            Do not push image to Docker Hub
   -T            Prefix for the name of the produced images,
                 default is to compute it from git branch name.
