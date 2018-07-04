@@ -21,17 +21,17 @@ before_install:
   - BRANCH=$(if [ "$TRAVIS_PULL_REQUEST" == "false" ]; then echo $TRAVIS_BRANCH; else echo $TRAVIS_PULL_REQUEST_BRANCH; fi)
   - BRANCH_TAG="travis_"$(echo "$BRANCH" | sed -e "s,tickets/,,")
   - BRANCH_IMAGE="qserv/qserv:${BRANCH_TAG}"
-
-install:
-  # Retrieve container with Qserv dependencies
-  - docker pull qserv/qserv:dev
+  # Docker user id is 1000, but travis user uid is 2000
+  # So give permission to docker user to create qserv/build/ and other scons tmp
+  # files
+  - chmod o+w .
 
 script:
   # Only message in 'script' section are displayer, meesage below have to be there
   - echo "Building and testing $IMAGE (alias $BRANCH_IMAGE) and related master and worker images"
-  - ./admin/tools/docker/3_build-git-image.sh -L -T "$IMAGE" "$PWD"
-  - ./admin/tools/docker/4_build-configured-images.sh -L -i "$IMAGE"
-  - ./admin/tools/docker/deployment/localhost/run-multinode-tests.sh
+  # Retrieve current qserv dependencies
+  - docker pull qserv/qserv:dev
+  - ./admin/tools/docker/3_build-git-image.sh -F -L -T "$IMAGE" "$PWD" && ./admin/tools/docker/4_build-configured-images.sh -L -i "$IMAGE" && ./admin/tools/docker/deployment/localhost/run-multinode-tests.sh
 
 notifications:
   slack:
@@ -50,4 +50,3 @@ after_success:
   - docker push "$BRANCH_IMAGE"
   - docker push "${BRANCH_IMAGE}_master"
   - docker push "${BRANCH_IMAGE}_worker"
-
