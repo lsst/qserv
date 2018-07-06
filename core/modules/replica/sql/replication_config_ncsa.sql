@@ -9,7 +9,7 @@ SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='TRADITIONAL' ;
 -- Common parameters of all types of servers
 
 INSERT INTO `config` VALUES ('common', 'request_buf_size_bytes',     '131072');
-INSERT INTO `config` VALUES ('common', 'request_retry_interval_sec', '1');
+INSERT INTO `config` VALUES ('common', 'request_retry_interval_sec', '5');
 
 -- Controller-specific parameters
 
@@ -18,7 +18,7 @@ INSERT INTO `config` VALUES ('controller', 'http_server_port',       '80');
 INSERT INTO `config` VALUES ('controller', 'http_server_threads',    '16');
 INSERT INTO `config` VALUES ('controller', 'request_timeout_sec', '57600');   -- 16 hours
 INSERT INTO `config` VALUES ('controller', 'job_timeout_sec',     '57600');   -- 16 hours
-INSERT INTO `config` VALUES ('controller', 'job_heartbeat_sec',      '60');
+INSERT INTO `config` VALUES ('controller', 'job_heartbeat_sec',       '0');   -- temporarily disabled
 
 -- Connection parameters for the Qserv Management Services
 
@@ -34,8 +34,8 @@ INSERT INTO `config` VALUES ('worker', 'technology',                 'FS');
 INSERT INTO `config` VALUES ('worker', 'svc_port',                   '50000');
 INSERT INTO `config` VALUES ('worker', 'fs_port',                    '50001');
 INSERT INTO `config` VALUES ('worker', 'num_svc_processing_threads', '16');
-INSERT INTO `config` VALUES ('worker', 'num_fs_processing_threads',  '16');
-INSERT INTO `config` VALUES ('worker', 'fs_buf_size_bytes',          '1048576');
+INSERT INTO `config` VALUES ('worker', 'num_fs_processing_threads',  '32');       -- double compared to the previous one to allowe more elasticity
+INSERT INTO `config` VALUES ('worker', 'fs_buf_size_bytes',          '4194304');  -- 4 MB
 INSERT INTO `config` VALUES ('worker', 'data_dir',                   '/qserv/data/mysql');
 
 -- Preload parameters for runnig all services on the same host

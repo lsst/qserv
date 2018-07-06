@@ -238,13 +238,13 @@ void DeleteWorkerJob::cancelImpl(util::Lock const& lock) {
                 ptr->id(),
                 nullptr,    /* onFinish */
                 true,       /* keepTracking */
-                id()         /* jobId */);
+                id()        /* jobId */
+            );
         }
     }
 
     // Stop chained jobs (if any) as well
 
-    for (auto&& ptr: _findAllJobs)   ptr->cancel();
     for (auto&& ptr: _replicateJobs) ptr->cancel();
 }
 
@@ -291,8 +291,8 @@ DeleteWorkerJob::disableWorker(util::Lock const& lock) {
 
     controller()->serviceProvider()->config()->disableWorker(worker());
 
-    // Launch the chained jobs to get chunk disposition within the rest
-    // of the cluster
+    // Launch chained jobs to ensure the minimal replication level
+    // which might be affected by the worker removal.
 
     _numLaunched = 0;
     _numFinished = 0;
@@ -300,78 +300,19 @@ DeleteWorkerJob::disableWorker(util::Lock const& lock) {
 
     auto self = shared_from_base<DeleteWorkerJob>();
 
-    bool const saveReplicInfo = true;   // always save the replica info in a database because
-                                        // the algorithm depends on it.
-
     for (auto&& databaseFamily: controller()->serviceProvider()->config()->databaseFamilies()) {
-        FindAllJob::Ptr job = FindAllJob::create(
+        ReplicateJob::Ptr const job = ReplicateJob::create(
             databaseFamily,
-            saveReplicInfo,
+            0,  /* numReplicas -- pull from Configuration */
             controller(),
             id(),
-            [self] (FindAllJob::Ptr job) {
+            [self] (ReplicateJob::Ptr job) {
                 self->onJobFinish(job);
             }
         );
         job->start();
-        _findAllJobs.push_back(job);
+        _replicateJobs.push_back(job);
         _numLaunched++;
-    }
-}
-
-void DeleteWorkerJob::onJobFinish(FindAllJob::Ptr const& job) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << "onJobFinish(FindAllJob) "
-         << " databaseFamily: " << job->databaseFamily());
-
-    // IMPORTANT: the final state is required to be tested twice. The first time
-    // it's done in order to avoid deadlock on the "in-flight" requests reporting
-    // their completion while the job termination is in a progress. And the second
-    // test is made after acquering the lock to recheck the state in case if it
-    // has transitioned while acquering the lock.
-    
-    if (state() == State::FINISHED) return;
-
-    util::Lock lock(_mtx, context() + "onJobFinish(FindAllJob)");
-
-    if (state() == State::FINISHED) return;
-
-    _numFinished++;
-
-    if (job->extendedState() != ExtendedState::SUCCESS) {
-        finish(lock, ExtendedState::FAILED);
-        return;
-    }
-
-    // Process the normal completion of the child job
-
-    _numSuccess++;
-
-    if (_numFinished == _numLaunched) {
-
-        // Launch chained jobs to ensure the minimal replication level
-        // which might be affected by the worker removal.
-
-        _numLaunched = 0;
-        _numFinished = 0;
-        _numSuccess  = 0;
-
-        auto self = shared_from_base<DeleteWorkerJob>();
-
-        for (auto&& databaseFamily: controller()->serviceProvider()->config()->databaseFamilies()) {
-            ReplicateJob::Ptr const job = ReplicateJob::create(
-                databaseFamily,
-                0,  /* numReplicas -- pull from Configuration */
-                controller(),
-                id(),
-                [self] (ReplicateJob::Ptr job) {
-                    self->onJobFinish(job);
-                }
-            );
-            job->start();
-            _replicateJobs.push_back(job);
-            _numLaunched++;
-        }
     }
 }
 

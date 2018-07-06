@@ -152,7 +152,7 @@ int main(int argc, const char* const argv[]) {
             "Flags and options:\n"
             "  --config             - a configuration URL (a configuration file or a set of the database\n"
             "                         connection parameters [ DEFAULT: file:replication.cfg ]\n"
-            "  --force              - force teh operation even if some replicas are in use\n"
+            "  --force              - force the operation even if some replicas are in use\n"
             "  --progress-report    - progress report when executing batches of requests\n"
             "  --error-report       - detailed report on failed requests\n"
             "  --chunk-locks-report - report chunks which are locked\n");

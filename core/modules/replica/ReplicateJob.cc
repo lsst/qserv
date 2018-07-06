@@ -26,6 +26,7 @@
 // System headers
 #include <algorithm>
 #include <future>
+#include <limits.h>
 #include <set>
 #include <stdexcept>
 
@@ -154,11 +155,13 @@ void ReplicateJob::cancelImpl(util::Lock const& lock) {
     }
     _findAllJob = nullptr;
 
-    for (auto&& ptr: _jobs) {
+    _chunk2jobs.clear();
+
+    _jobs.clear();
+    for (auto&& ptr: _activeJobs) {
         ptr->cancel();
     }
-    _chunk2jobs.clear();
-    _jobs.clear();
+    _activeJobs.clear();
 
     _numFailedLocks = 0;
 
@@ -175,6 +178,7 @@ void ReplicateJob::restart(util::Lock const& lock) {
         throw std::logic_error("ReplicateJob::restart()  not allowed in this object state");
     }
     _jobs.clear();
+    _activeJobs.clear();
 
     _numFailedLocks = 0;
 
@@ -325,6 +329,14 @@ void ReplicateJob::onPrecursorJobFinish() {
     // Check which chunks are under-represented. Then find a least loaded
     // worker and launch a replica creation job.
 
+    // The number of times each source worker is allocated is computed and used
+    // by the replication planner in order to spread the load accross as many
+    // source workes as possible.
+    std::map<std::string,size_t> sourceWorkerAllocations;
+    for (auto&& worker: controller()->serviceProvider()->config()->workers()) {
+        sourceWorkerAllocations[worker] = 0;
+    }
+
     auto self = shared_from_base<ReplicateJob>();
 
     for (auto&& chunk2replicas: chunk2numReplicas2create) {
@@ -341,16 +353,21 @@ void ReplicateJob::onPrecursorJobFinish() {
             continue;
         }
 
-        // Find the first available source worker which has a 'good'
+        // Find the least used (as a source) worker which has a 'good'
         // chunk
 
         std::string sourceWorker;
+        size_t minAllocations = ULLONG_MAX;
+
         for (auto&& workerEntry: replicaData.isGood.at(chunk)) {
             std::string const& worker = workerEntry.first;
             bool const isGood = workerEntry.second;
             if (isGood) {
-                sourceWorker = worker;
-                break;
+                size_t const allocations = sourceWorkerAllocations[worker];
+                if (allocations < minAllocations) {
+                    sourceWorker = worker;
+                    minAllocations = allocations;
+                }
             }
         }
         if (sourceWorker.empty()) {
@@ -368,7 +385,7 @@ void ReplicateJob::onPrecursorJobFinish() {
         // a new one on each step.
         //
         // NOTE: the worker ocupancy map worker2occupancy will get
-        // updated on ech successful iteration of the loop, so that
+        // updated on each successful iteration of the loop, so that
         // the corresponidng destination worker will also be accounted
         // for when deciding on a placement of other replicas.
 
@@ -405,8 +422,7 @@ void ReplicateJob::onPrecursorJobFinish() {
                 return;
             }
 
-            // Finally, launch and register for further tracking a replica
-            // creation job
+            // Finally, create, but DO NOT START the replica creation job.
 
             auto ptr = CreateReplicaJob::create(
                 databaseFamily(),
@@ -420,17 +436,15 @@ void ReplicateJob::onPrecursorJobFinish() {
                 },
                 options(lock)   // inherit from the current job
             );
-            ptr->start();
-
             _chunk2jobs[chunk][destinationWorker] = ptr;
             _jobs.push_back(ptr);
 
-            _numLaunched++;
-
-            // Bump the worker occupancy, so that it will be taken into
-            // consideration when deciding on destinations of other replicas.
+            // Bump the occupancy of wokers on both ends of the operations, so that it
+            // will be taken into consideration when deciding on sources and destinations
+            // of other replicas.
 
             worker2occupancy[destinationWorker]++;
+            sourceWorkerAllocations[sourceWorker]++;
         }
     }
 
@@ -451,6 +465,34 @@ void ReplicateJob::onPrecursorJobFinish() {
 
             restart(lock);
         }
+        return;
+    }
+
+    // Otherwise start the first batch of jobs. The number of jobs in
+    // the batch is determined by the number of source workers in
+    // the above prepared plan multiplied by the number of worker-side
+    // processing threads.
+
+    std::set<std::string> destinationWorkers;
+    for (auto&& ptr: _jobs) {
+        destinationWorkers.insert(ptr->destinationWorker());
+    }
+    size_t const numJobs = destinationWorkers.size() *
+        controller()->serviceProvider()->config()->workerNumProcessingThreads();
+
+    size_t const numJobsLaunched = launchNextJobs(lock, numJobs);
+    if (0 != numJobsLaunched) {
+        _numLaunched += numJobsLaunched;
+    } else {
+        LOGS(_log, LOG_LVL_ERROR, context()
+             << "onPrecursorJobFinish  unexpected failure when launching " << numJobs
+             << " replication jobs");
+        for (auto&& ptr: _jobs) {
+            release(ptr->chunk());
+        }
+        _chunk2jobs.clear();
+        _jobs.clear();
+        finish(lock, ExtendedState::FAILED);
     }
 }
 
@@ -470,6 +512,7 @@ void ReplicateJob::onCreateJobFinish(CreateReplicaJob::Ptr const& job) {
     // has transitioned while acquering the lock.
 
     if (state() == State::FINISHED) {
+        _activeJobs.remove(job);
         release(job->chunk());
         return;
     }
@@ -477,9 +520,15 @@ void ReplicateJob::onCreateJobFinish(CreateReplicaJob::Ptr const& job) {
     util::Lock lock(_mtx, context() + "onCreateJobFinish");
 
     if (state() == State::FINISHED) {
+        _activeJobs.remove(job);
         release(job->chunk());
         return;
     }
+
+    // The job needs to be removed from this list so that the next job schedule
+    // would operate on the actual state of the active job disposition.
+
+    _activeJobs.remove(job);
 
     // Make sure the chunk is released regardless of the completion
     // status of the replica creation job.
@@ -518,26 +567,122 @@ void ReplicateJob::onCreateJobFinish(CreateReplicaJob::Ptr const& job) {
         _replicaData.workers[job->destinationWorker()] = false;
     }
 
-    // Evaluate the status of on-going operations to see if the job
-    // has finished.
-    //
-    if (_numFinished == _numLaunched) {
-        if (_numSuccess == _numLaunched) {
-            if (_numFailedLocks) {
+    // Try to submit one more job
 
-                // Make another iteration (and another one, etc. as many as needed)
-                // before it succeeds or fails.
+    size_t const numJobsLaunched = launchNextJobs(lock, 1);
+    if (numJobsLaunched != 0) {
+        _numLaunched += numJobsLaunched;
+    } else {
 
-                restart(lock);
-                return;
+        // Evaluate the status of on-going operations to see if the job
+        // has finished.
 
+        if (_numFinished == _numLaunched) {
+            if (_numSuccess == _numLaunched) {
+                if (_numFailedLocks) {
+    
+                    // Make another iteration (and another one, etc. as many as needed)
+                    // before it succeeds or fails.
+    
+                    restart(lock);
+                    return;
+    
+                } else {
+                    finish(lock, ExtendedState::SUCCESS);
+                }
             } else {
-                finish(lock, ExtendedState::SUCCESS);
+                finish(lock, ExtendedState::FAILED);
             }
-        } else {
-            finish(lock, ExtendedState::FAILED);
         }
     }
+}
+
+size_t ReplicateJob::launchNextJobs(util::Lock const& lock,
+                                    size_t numJobs) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << "launchNextJobs  numJobs=" << numJobs);
+
+    /*
+    size_t const numThreads =
+        controller()->serviceProvider()->config()->workerNumProcessingThreads();
+    */
+
+    // Compute the number of jobs which are already active at both ends
+    // (destination and source workers). Note that we need to scan both
+    // list to get a complete picture of what's on the workers' side.
+
+    std::map<std::string,size_t> numAtDest;
+    std::map<std::string,size_t> numAtSrc;
+
+    for (auto&& ptr: _jobs) {
+        if (numAtDest.end() == numAtDest.find(ptr->destinationWorker())) {
+            numAtDest[ptr->destinationWorker()] = 0;
+        }
+        if (numAtSrc.end() == numAtSrc.find(ptr->sourceWorker())) {
+            numAtSrc[ptr->sourceWorker()] = 0;
+        }
+    }
+    for (auto&& ptr: _activeJobs) {
+        auto itrAtDest = numAtDest.find(ptr->destinationWorker());
+        if (numAtDest.end() == itrAtDest) {
+            numAtDest[ptr->destinationWorker()] = 1;
+        } else {
+            itrAtDest->second++;
+        }
+        auto itrAtSrc = numAtSrc.find(ptr->sourceWorker());
+        if (numAtSrc.end() == itrAtSrc) {
+            numAtSrc[ptr->sourceWorker()] = 1;
+        } else {
+            itrAtSrc->second++;
+        }
+    }
+    
+    // Try to fulfil the request (to submit the given number of jobs)
+    // by evaluating best candidates using an algorithm explained
+    // within the loop below.
+    
+    size_t numJobsLaunched = 0;
+    for (size_t i = 0; i < numJobs; ++i) {
+
+        // THE LOAD BALANCING ALGORITHM:
+        //
+        //   The algorithms evaluates candidates (pairs of (dstWorker,srcWorker))
+        //   to find the one which allows more even spread of load among the destination
+        //   and source workers. For each pair of the workers the algorithm computets
+        //   a 'load' which is just a sum of the on-going activities at both ends of
+        //   the proposed transfer:
+        //
+        //     load := numAtDest[destWorker] * numAtSrc[srcWorker]
+        //
+        //   A part which has the lowest number will be selected.
+
+        size_t minLoad = ULLONG_MAX;
+        CreateReplicaJob::Ptr job;
+
+        for (auto&& ptr: _jobs) {            
+            size_t const load = numAtDest[ptr->destinationWorker()] +
+                                numAtSrc [ptr->sourceWorker()];
+            if (load <= minLoad) {
+                minLoad = load;
+                job = ptr;
+            }
+        }
+        if (nullptr != job) {
+
+            // Update occupancy of the worker nodes at both ends
+            numAtDest[job->destinationWorker()]++;
+            numAtSrc [job->sourceWorker()]++;
+
+            // Move the job into another queue
+            _activeJobs.push_back(job);
+            _jobs.remove(job);
+
+            // Let it run
+            job->start();
+            numJobsLaunched++;
+        }
+    }
+    return numJobsLaunched;
 }
 
 void ReplicateJob::release(unsigned int chunk) {

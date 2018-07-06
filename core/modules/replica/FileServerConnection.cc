@@ -242,7 +242,8 @@ void FileServerConnection::requestReceived(boost::system::error_code const& ec,
             break;
         }
 
-        // If requested open the file and leave its descriptor open
+        // If the file content was requested then open the file and leave
+        // its descriptor open.
 
         _fileName = file.string();
         if (request.send_content()) {

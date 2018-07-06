@@ -195,6 +195,21 @@ protected:
     void onCreateJobFinish(CreateReplicaJob::Ptr const& job);
 
     /**
+     * Submit a batch of the replica creation job
+     *
+     * This method implements a load balancing algorithm which tries to
+     * prevent excessive use of resources by controllers and to avoid
+     * "hot spots" or underutilization at workers.
+     *
+     * @param lock    - the lock must be acquired by a caller of the method
+     * @param numJobs - desired number of jobs to submit
+     *
+     * @retun actual number of submitted jobs
+     */
+    size_t launchNextJobs(util::Lock const& lock,
+                          size_t numJobs);
+
+    /**
      * Restart the job from scratch. This method will reset object context
      * to a state it was before method Job::startImpl() called and then call
      * Job::startImpl() again.
@@ -247,8 +262,11 @@ protected:
              std::map<std::string,
                       CreateReplicaJob::Ptr>> _chunk2jobs;
 
-    /// A collection of replica creation jobs implementing the operation
+    /// Replica creation jobs which are ready to be launched
     std::list<CreateReplicaJob::Ptr> _jobs;
+
+    /// Jobs which are already active
+    std::list<CreateReplicaJob::Ptr> _activeJobs;
 
     // The counter of jobs which will be updated. They need to be atomic
     // to avoid race condition between the onFinish() callbacks executed within

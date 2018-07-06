@@ -38,7 +38,6 @@
 
 // Qserv headers
 #include "replica/Job.h"
-#include "replica/FindAllJob.h"
 #include "replica/FindAllRequest.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/ReplicateJob.h"
@@ -213,14 +212,6 @@ protected:
 
     /**
      * The calback function to be invoked on a completion of a job
-     * which harvests chunk disposition accross relevant worker nodes.
-     *
-     * @param request - a pointer to a job
-     */
-    void onJobFinish(FindAllJob::Ptr const& job);
-
-    /**
-     * The calback function to be invoked on a completion of a job
      * which ensures the desired replication level after disabling .
      *
      * @param request - a pointer to a job
@@ -250,10 +241,6 @@ protected:
     /// the affected worker in order to get the latest state of the worker's
     /// replicas
     std::list<FindAllRequest::Ptr> _findAllRequests;
-
-    /// The chained jobs (one per database family) needed to refresh replica
-    /// disposition accross a replication setup
-    std::list<FindAllJob::Ptr> _findAllJobs;
 
     /// The chained jobs (one per each database family which are launched after
     /// disabling the worker in order to ensure the minimum replication level
