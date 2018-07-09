@@ -56,9 +56,12 @@ std::unordered_map<std::string, MemFile*> fileCache;
 
 #if 1  // &&&
 MemFile::MLResult MemFile::memLock() {
+    //
     // The _fileMutex is used here to serialize multiple calls to lock the same
     // file as a file may appear in multiple file sets. This mutex is held for
     // duration of all operations here. It also serialized memory unmapping.
+    // _mlockFileMutex protects _isLocked, allowing _fileMutex to be unlocked
+    // during the mlock call.
     //
     std::lock_guard<std::mutex> guardMlock(_mlockFileMutex);
     int rc = 0;
@@ -85,7 +88,7 @@ MemFile::MLResult MemFile::memLock() {
     if (rc == 0) {
         rc = _memory.memLock(_memInfo, _isFlex);
         if (rc == 0) {
-            std::lock_guard<std::mutex> guard(_fileMutex);
+            std::lock_guard<std::mutex> guardSet(_fileMutex);
             _mlocking = false;
             MLResult aokResult(_memInfo.size(), _memInfo.mlockTime(), 0);
             _isLocked = true;

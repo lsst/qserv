@@ -169,7 +169,7 @@ MemInfo Memory::mapFile(std::string const& fPath) {
     LOGS(_log, LOG_LVL_DEBUG, "&&& MMMM mmap start");
     mmapTimer.start();
     {
-        std::lock_guard<std::mutex> memGuard(_mlockMtx); // &&&
+        std::lock_guard<std::mutex> memGuard(_mlockMtx); // &&&  So far, this doesn't seem to help.
         mInfo._memAddr = mmap(0, mInfo._memSize, PROT_READ, MAP_SHARED, fdNum, 0);
     }
     mmapTimer.stop();
