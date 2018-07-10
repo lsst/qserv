@@ -280,6 +280,9 @@ void QueryRunner::_fillSchema(MYSQL_RES* result) {
 bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, size_t& tSize) {
     MYSQL_ROW row;
 
+    size_t prevTotalBytes = 1; // &&&
+    bool moved = false;
+
     while ((row = mysql_fetch_row(result))) {
         auto lengths = mysql_fetch_lengths(result);
         proto::RowBundle* rawRow =_result->add_row();
@@ -303,25 +306,32 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, si
             szLimit = std::min(szLimit, _initialBlockSize);
         }
 
-        // &&& As long as the amount of memory being used waiting to send results is less than
-        // the threshold, don't wait for the transmit, Otherwise, the system needs to wait so it
-        // doesn't run out of memory.
-        // Block on the buffer actually being sent if 10GB are already waiting or this is a largeResult.
-        auto totalBytes = xrdsvc::StreamBuffer::getTotalBytes();
-        LOGS(_log, LOG_LVL_DEBUG, "&&& MMMM totalBytes=" << totalBytes);
-        if (totalBytes < 10000000000) { // TODO:DM-10273 add to configuration &&&
-            // &&& move this and the matching code below into a private function
-            // This task is going to have multiple results to return to the czar and
-            // the speed this task can be completed will be limited by the czar's ability to
-            // read in results, which could be very very slow. The upshot of this is the
-            // scheduler for this worker should stop waiting for this task. leavePool()
-            // will tell the scheduler this task is finished and create a new thread in the pool
-            // to replace this one.
-            auto pet = _task->getAndNullPoolEventThread();
-            if (pet != nullptr) {
-                pet->leavePool();
-            } else {
-                LOGS(_log, LOG_LVL_DEBUG, "Large result PoolEventThread was null. Probably already moved. a");
+        if (not moved) {
+            // &&& As long as the amount of memory being used waiting to send results is less than
+            // the threshold, don't wait for the transmit, Otherwise, the system needs to wait so it
+            // doesn't run out of memory.
+            // Block on the buffer actually being sent if 10GB are already waiting or this is a largeResult.
+            auto totalBytes = xrdsvc::StreamBuffer::getTotalBytes();
+            if (totalBytes != prevTotalBytes) {
+                LOGS(_log, LOG_LVL_DEBUG, "&&& MMMM totalBytes=" << totalBytes);
+                prevTotalBytes = totalBytes;
+            }
+
+            if (totalBytes < 10000000000) { // TODO:DM-10273 add to configuration &&&
+                // &&& move this and the matching code below into a private function
+                // This task is going to have multiple results to return to the czar and
+                // the speed this task can be completed will be limited by the czar's ability to
+                // read in results, which could be very very slow. The upshot of this is the
+                // scheduler for this worker should stop waiting for this task. leavePool()
+                // will tell the scheduler this task is finished and create a new thread in the pool
+                // to replace this one.
+                auto pet = _task->getAndNullPoolEventThread();
+                if (pet != nullptr) {
+                    pet->leavePool();
+                    moved = true;
+                } else {
+                    LOGS(_log, LOG_LVL_DEBUG, "Large result PoolEventThread was null. Probably already moved. a");
+                }
             }
         }
 
@@ -348,6 +358,7 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, si
             auto pet = _task->getAndNullPoolEventThread();
             if (pet != nullptr) {
                 pet->leavePool();
+                moved = true;
             } else {
                 LOGS(_log, LOG_LVL_DEBUG, "Large result PoolEventThread was null. Probably already moved. b");
             }
