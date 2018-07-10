@@ -280,7 +280,7 @@ void QueryRunner::_fillSchema(MYSQL_RES* result) {
 bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, size_t& tSize) {
     MYSQL_ROW row;
 
-    size_t prevTotalBytes = 1; // &&&
+    size_t prevTotalBytes = 0; // &&&
     bool moved = false;
 
     while ((row = mysql_fetch_row(result))) {
@@ -306,7 +306,7 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, si
             szLimit = std::min(szLimit, _initialBlockSize);
         }
 
-        if (not moved) {
+        if (false && not moved) {
             // &&& As long as the amount of memory being used waiting to send results is less than
             // the threshold, don't wait for the transmit, Otherwise, the system needs to wait so it
             // doesn't run out of memory.
