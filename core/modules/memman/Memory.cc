@@ -99,6 +99,12 @@ std::string Memory::filePath(std::string const& dbTable,
 /*                               m e m L o c k                                */
 /******************************************************************************/
 
+std::atomic<uint64_t> lessThan1(0);
+std::atomic<uint64_t> lessThan10(0);
+std::atomic<uint64_t> lessThan20(0);
+std::atomic<uint64_t> lessThan40(0);
+std::atomic<uint64_t> over40(0);
+
 int Memory::memLock(MemInfo& mInfo, bool isFlex) {
 
     // Verify that this is a valid mapping
@@ -118,7 +124,23 @@ int Memory::memLock(MemInfo& mInfo, bool isFlex) {
 
     }
     mInfo._mlockTime = timer.getElapsed();
-    LOGS(_log, LOG_LVL_DEBUG, "&&& MMMM mlock stop " << mInfo._mlockTime);
+    if (mInfo._mlockTime < 1.0) {
+        ++lessThan1;
+    } else if (mInfo._mlockTime < 10.0) {
+        ++lessThan10;
+    } else if (mInfo._mlockTime < 20.0) {
+        ++lessThan20;
+    } else if (mInfo._mlockTime < 40.0) {
+        ++lessThan40;
+    } else {
+        ++over40;
+    }
+    LOGS(_log, LOG_LVL_DEBUG, "&&& MMMM mlock stop " << mInfo._mlockTime <<
+            " <1=" << lessThan1 <<
+            " <10=" << lessThan10 <<
+            " <20=" << lessThan20 <<
+            " <40=" << lessThan40 <<
+            " >40=" << over40);
 
     if (!result) {
         std::lock_guard<std::mutex> guard(_memMutex);
@@ -169,7 +191,7 @@ MemInfo Memory::mapFile(std::string const& fPath) {
     LOGS(_log, LOG_LVL_DEBUG, "&&& MMMM mmap start");
     mmapTimer.start();
     {
-        std::lock_guard<std::mutex> memGuard(_mlockMtx); // &&&  So far, this doesn't seem to help.
+        //std::lock_guard<std::mutex> memGuard(_mlockMtx); // &&&  So far, this doesn't seem to help.
         mInfo._memAddr = mmap(0, mInfo._memSize, PROT_READ, MAP_SHARED, fdNum, 0);
     }
     mmapTimer.stop();
