@@ -84,7 +84,8 @@ def generate(env):
         # clang on OS x
 
         # Increase compiler strictness
-        env.Append(CCFLAGS=['-pedantic', '-Wall', '-Wno-variadic-macros'])
+        env.Append(CCFLAGS=['-pedantic', '-Wall', '-Wextra',
+                            '-Wno-unused-parameter', '-Wno-variadic-macros'])
         env.Append(CXXFLAGS=['-std=c++14'])
 
         # Required for XCode 7.3 @rpath linker issues
@@ -101,7 +102,8 @@ def generate(env):
         # Linux with any compiler
 
         # Increase compiler strictness
-        env.Append(CCFLAGS=['-pedantic', '-Wall', '-Wno-variadic-macros'])
+        env.Append(CCFLAGS=['-pedantic', '-Wall', '-Wextra',
+                            '-Wno-unused-parameter', '-Wno-variadic-macros'])
         env.Append(CXXFLAGS=['-std=c++14'])
 
         if toolchain == 'gcc':
