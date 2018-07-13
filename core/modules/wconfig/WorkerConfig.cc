@@ -58,7 +58,8 @@ WorkerConfig::WorkerConfig(const util::ConfigStore& configStore)
       _prioritySlow(configStore.getInt("scheduler.priority_slow", 2)),
       _prioritySnail(configStore.getInt("scheduler.priority_snail", 1)),
       _priorityMed(configStore.getInt("scheduler.priority_med", 3)),
-      _priorityFast(configStore.getInt("scheduler.priority_fast", 4)),
+      //_priorityFast(configStore.getInt("scheduler.priority_fast", 4)), // &&&
+      _priorityFast(configStore.getInt("scheduler.priority_fast", 12)), // &&&
       _maxReserveSlow(configStore.getInt("scheduler.reserve_slow", 2)),
       _maxReserveSnail(configStore.getInt("scheduler.reserve_snail", 2)),
       _maxReserveMed(configStore.getInt("scheduler.reserve_med", 2)),
@@ -66,7 +67,7 @@ WorkerConfig::WorkerConfig(const util::ConfigStore& configStore)
       _maxActiveChunksSlow(configStore.getInt("scheduler.maxactivechunks_slow", 2)),
       _maxActiveChunksSnail(configStore.getInt("scheduler.maxactivechunks_snail", 1)),
       _maxActiveChunksMed(configStore.getInt("scheduler.maxactivechunks_med", 4)),
-      _maxActiveChunksFast(configStore.getInt("scheduler.maxactivechunks_fast", 4)),
+      _maxActiveChunksFast(configStore.getInt("scheduler.maxactivechunks_fast", 5)), // &&& was 4
       _scanMaxMinutesFast(configStore.getInt("scheduler.scanmaxminutes_fast", 60)),
       _scanMaxMinutesMed(configStore.getInt("scheduler.scanmaxminutes_med", 60*8)),
       _scanMaxMinutesSlow(configStore.getInt("scheduler.scanmaxminutes_slow", 60*12)),

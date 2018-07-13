@@ -125,7 +125,7 @@ private:
     void _resize();
 
     std::mutex _poolMutex; ///< Protects _pool
-    std::vector<std::shared_ptr<PoolEventThread>> _pool; ///< All the threads in our pool.
+    std::vector<std::shared_ptr<PoolEventThread>> _pool; ///< All the threads in our pool.  &&& change to set ???
 
     std::mutex _countMutex; ///< protects _targetThrdCount
     unsigned int _targetThrdCount{0}; ///< How many threads wanted in the pool.
