@@ -37,6 +37,7 @@
 #include "replica/QservMgtRequest.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/Request.h"
+#include "replica/SemanticMaps.h"
 
 namespace {
 
@@ -158,7 +159,7 @@ void DatabaseServicesMySQL::saveState(Job const& job,
         if (not extendedPersistentState.empty()) {
             LOGS(_log, LOG_LVL_DEBUG, context << "extendedPersistentState: " << extendedPersistentState);
             _conn->execute("INSERT INTO " + _conn->sqlId(extendedTableName) +
-                           " VALUES " + extendedPersistentState);
+                           " VALUES "     + extendedPersistentState);
         }
         _conn->commit ();
 
@@ -269,7 +270,7 @@ void DatabaseServicesMySQL::saveState(QservMgtRequest const& request,
         if (not extendedPersistentState.empty()) {
             LOGS(_log, LOG_LVL_DEBUG, context << "extendedPersistentState: " << extendedPersistentState);
             _conn->execute("INSERT INTO " + _conn->sqlId(extendedTableName) +
-                           " VALUES " + extendedPersistentState);
+                           " VALUES "     + extendedPersistentState);
         }
         _conn->commit ();
 
@@ -362,7 +363,7 @@ void DatabaseServicesMySQL::saveState(Request const& request,
         if (not extendedPersistentState.empty()) {
             LOGS(_log, LOG_LVL_DEBUG, context << "extendedPersistentState: " << extendedPersistentState);
             _conn->execute("INSERT INTO " + _conn->sqlId(extendedTableName) +
-                           " VALUES " + extendedPersistentState);
+                           " VALUES "     + extendedPersistentState);
         }
         _conn->commit ();
 
@@ -462,7 +463,7 @@ void DatabaseServicesMySQL::saveReplicaInfo(ReplicaInfo const& info) {
 
 void DatabaseServicesMySQL::saveReplicaInfoCollection(std::string const& worker,
                                                       std::string const& database,
-                                                      ReplicaInfoCollection const& infoCollection) {
+                                                      ReplicaInfoCollection const& newReplicaInfoCollection) {
 
     std::string const context = "DatabaseServicesMySQL::saveReplicaInfoCollection  ";
 
@@ -474,7 +475,7 @@ void DatabaseServicesMySQL::saveReplicaInfoCollection(std::string const& worker,
             lock,
             worker,
             database,
-            infoCollection);
+            newReplicaInfoCollection);
         _conn->commit();
     } catch (database::mysql::Error const& ex) {
         if (_conn->inTransaction()) _conn->rollback();
@@ -482,8 +483,6 @@ void DatabaseServicesMySQL::saveReplicaInfoCollection(std::string const& worker,
     }
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
 }
-
-
 
 void DatabaseServicesMySQL::saveReplicaInfoImpl(util::Lock const& lock,
                                                 ReplicaInfo const& info) {
@@ -521,90 +520,147 @@ void DatabaseServicesMySQL::saveReplicaInfoImpl(util::Lock const& lock,
             // This query will also cascade delete the relevant file entries
             // See details in the schema.
             _conn->execute(
-                "DELETE FROM " + _conn->sqlId(   "replica") +
-                "  WHERE " +     _conn->sqlEqual("worker",   info.worker()) +
-                "    AND " +     _conn->sqlEqual("database", info.database()) +
-                "    AND " +     _conn->sqlEqual("chunk",    info.chunk()));
+                "DELETE FROM " + _conn->sqlId("replica") +
+                "  WHERE "     + _conn->sqlEqual("worker",   info.worker()) +
+                "    AND "     + _conn->sqlEqual("database", info.database()) +
+                "    AND "     + _conn->sqlEqual("chunk",    info.chunk()));
         }
 
     } catch (database::mysql::DuplicateKeyError const&) {
 
-        // Update the info in case if something has changed (recomputed control/check sum,
-        // changed file size, the files migrated, etc.)
+        // Replace the replica
 
-        // Get the PK
-        //
-        // NOTES: in theory this method may throw exceptions. Though, this shouldn't
-        //        be happening in this context. We got here because the PK in question
-        //        already exists.
-
-        uint64_t replicaId;
-        if (not _conn->executeSingleValueSelect(
-                "SELECT id FROM " + _conn->sqlId(   "replica") +
-                "  WHERE " +        _conn->sqlEqual("worker",   info.worker()) +
-                "    AND " +        _conn->sqlEqual("database", info.database()) +
-                "    AND " +        _conn->sqlEqual("chunk",    info.chunk()),
-                "id",
-                replicaId)) {
-
-            throw std::logic_error(context + "NULL value is not allowed in this context");
-        }
-
-        // --------------------------------------------------------
-        // Completelly replace the replica using the recursive call
-        // --------------------------------------------------------
-
-        _conn->execute(
-            "DELETE FROM " + _conn->sqlId(   "replica") +
-            "  WHERE " +     _conn->sqlEqual("id",replicaId));
-
-        saveReplicaInfoImpl(lock,
-                            info);
+        deleteReplicaInfoImpl(lock, info.worker(), info.database(), info.chunk());
+        saveReplicaInfoImpl(lock, info);
     }
 }
 
 void DatabaseServicesMySQL::saveReplicaInfoCollectionImpl(util::Lock const& lock,
                                                           std::string const& worker,
                                                           std::string const& database,
-                                                          ReplicaInfoCollection const& infoCollection) {
+                                                          ReplicaInfoCollection const& newReplicaInfoCollection) {
 
     std::string const context = "DatabaseServicesMySQL::saveReplicaInfoCollectionImpl  ";
 
-    LOGS(_log, LOG_LVL_DEBUG, context << "infoCollection.size(): " << infoCollection.size());
+    LOGS(_log, LOG_LVL_DEBUG, context << "num.replicas: " << newReplicaInfoCollection.size());
 
-    // Group new replicas by categories
-    std::map<std::string,                       // worker
-             std::map<std::string,              // database
-                      std::map<unsigned int,    // chunk
-                               bool>>> newReplicas;
+    // Group new replicas by contexts
 
-    for (auto&& info: infoCollection) {
-        newReplicas[info.worker()][info.database()][info.chunk()] = true;
+    WorkerDatabaseChunkMap<ReplicaInfo const*> newReplicas;
+    for (auto&& replica: newReplicaInfoCollection) {
+        
+        // Ignore replicas which are not in the specified context
+        if (replica.worker() == worker and replica.database() == database) {
+            newReplicas.atWorker(replica.worker())
+                       .atDatabase(replica.database())
+                       .atChunk(replica.chunk()) = &replica;
+        }
+    }
+    
+    // Obtain old replicas and group them by contexts
+
+    std::vector<ReplicaInfo> oldReplicaInfoCollection;
+    findWorkerReplicasImpl(lock, oldReplicaInfoCollection, worker, database);
+
+    WorkerDatabaseChunkMap<ReplicaInfo const*> oldReplicas;
+    for (auto&& replica: oldReplicaInfoCollection) {
+        oldReplicas.atWorker(replica.worker())
+                   .atDatabase(replica.database())
+                   .atChunk(replica.chunk()) = &replica;
     }
 
+    // Find differences between the collections
+
+    WorkerDatabaseChunkMap<ReplicaInfo const*> inBoth;
+    WorkerDatabaseChunkMap<ReplicaInfo const*> inNewReplicasOnly;
+    WorkerDatabaseChunkMap<ReplicaInfo const*> inOldReplicasOnly;
+
+    SemanticMaps::intersect(newReplicas,
+                            oldReplicas,
+                            inBoth);
+
+    SemanticMaps::diff2(newReplicas,
+                        oldReplicas,
+                        inNewReplicasOnly,
+                        inOldReplicasOnly);
+
+
+    // Eiminate outdated replicas
+    
+    for (auto&& worker: inOldReplicasOnly.workerNames()) {
+
+        auto const& databases = inOldReplicasOnly.worker(worker);
+        for (auto&& database: databases.databaseNames()) {
+
+            auto const& chunks = databases.database(database);
+            for (auto&& chunk: chunks.chunkNumbers()) {
+                deleteReplicaInfoImpl(lock, worker, database, chunk);
+            }
+        }
+    }
+
+    // Insert new replicas not present in the old collection
+
+    for (auto&& worker: inNewReplicasOnly.workerNames()) {
+
+        auto const& databases = inNewReplicasOnly.worker(worker);
+        for (auto&& database: databases.databaseNames()) {
+
+            auto const& chunks = databases.database(database);
+            for (auto&& chunk: chunks.chunkNumbers()) {
+                ReplicaInfo const* ptr = chunks.chunk(chunk);
+                saveReplicaInfoImpl(lock, *ptr);
+            }
+        }
+    }
+
+    // Deep comparision of the replicas in the intersect area to see
+    // wich of those need to be updated.
+
+   for (auto&& worker: inBoth.workerNames()) {
+
+        auto const& newDatabases = newReplicas.worker(worker);
+        auto const& oldDatabases = oldReplicas.worker(worker);
+
+        auto const& databases = inBoth.worker(worker);
+        for (auto&& database: databases.databaseNames()) {
+
+            auto const& newChunks = newDatabases.database(database);
+            auto const& oldChunks = oldDatabases.database(database);
+
+            auto const& chunks = databases.database(database);
+            for (auto&& chunk: chunks.chunkNumbers()) {
+
+                ReplicaInfo const* newPtr = newChunks.chunk(chunk);
+                ReplicaInfo const* oldPtr = oldChunks.chunk(chunk);
+
+                if (*newPtr != *oldPtr) {
+                    deleteReplicaInfoImpl(lock, worker, database, chunk);
+                    saveReplicaInfoImpl(lock, *newPtr);
+                }
+            }
+        }
+    }
+/*
     // Note that this algorithm will also work if the input collection has
     // multiple contexts. The algorithm will affect database stored replicas
     // in the requested ('worker' and 'database' parameters of the method)
     // context only.
 
-    if (newReplicas.count( worker) and
-        newReplicas.at(    worker).count(database) and
-        not newReplicas.at(worker).at(   database).empty()) {
+    if (newReplicas.workerExists(worker) and
+        newReplicas.worker(worker).databaseExists(database) and
+        not newReplicas.worker(worker).database(database).empty()) {
 
         // Check each old replicas to see if it's present in the new collection
-        std::vector<ReplicaInfo> oldReplicas;
-        if (findWorkerReplicasImpl(lock, oldReplicas, worker, database)) {
+        std::vector<ReplicaInfo> oldReplicaInfoCollection;
+        if (findWorkerReplicasImpl(lock, oldReplicaInfoCollection, worker, database)) {
 
-            for (ReplicaInfo const& replica: oldReplicas) {
+            for (auto&& replica: oldReplicaInfoCollection) {
                 unsigned int const chunk = replica.chunk();
 
                 // Eliminate the 'dead' chunks entry from the database
-                if (not newReplicas.at(worker).at(database).count(chunk)) {
-                    _conn->execute(
-                        "DELETE FROM " + _conn->sqlId(   "replica") +
-                        "  WHERE " +     _conn->sqlEqual("worker",   worker) +
-                        "    AND " +     _conn->sqlEqual("database", database) +
-                        "    AND " +     _conn->sqlEqual("chunk",    chunk));
+                if (not newReplicas.worker(worker).database(database).chunkExists(chunk)) {
+                    deleteReplicaInfoImpl(lock, worker, database, chunk);
                 }
             }
         }
@@ -613,17 +669,29 @@ void DatabaseServicesMySQL::saveReplicaInfoCollectionImpl(util::Lock const& lock
 
         // Bulk delete if the input collection is empty or has no context
         _conn->execute(
-            "DELETE FROM " + _conn->sqlId(   "replica") +
-            "  WHERE " +     _conn->sqlEqual("worker",   worker) +
-            "    AND " +     _conn->sqlEqual("database", database));
+            "DELETE FROM " + _conn->sqlId("replica") +
+            "  WHERE "     + _conn->sqlEqual("worker",   worker) +
+            "    AND "     + _conn->sqlEqual("database", database));
     }
 
     // Finally push new (or update existing) replicas info into the database
     // (some of those replicas will be brand new, others - will need to be updated)
-    for (auto&& info: infoCollection) {
+    for (auto&& info: newReplicaInfoCollection) {
         saveReplicaInfoImpl(lock, info);
     }
+*/
+
     LOGS(_log, LOG_LVL_DEBUG, context << "** DONE **");
+}
+
+void DatabaseServicesMySQL::deleteReplicaInfoImpl(util::Lock const& lock,
+                                                  std::string const& worker,
+                                                  std::string const& database,
+                                                  unsigned int chunk) {
+    _conn->execute("DELETE FROM " + _conn->sqlId("replica") +
+                   "  WHERE "     + _conn->sqlEqual("worker",   worker) +
+                   "    AND "     + _conn->sqlEqual("database", database) +
+                   "    AND "     + _conn->sqlEqual("chunk",    chunk));
 }
 
 bool DatabaseServicesMySQL::findOldestReplicas(std::vector<ReplicaInfo>& replicas,
@@ -644,9 +712,9 @@ bool DatabaseServicesMySQL::findOldestReplicas(std::vector<ReplicaInfo>& replica
                 replicas,
                 "SELECT * FROM " + _conn->sqlId("replica") +
                 (enabledWorkersOnly ?
-                " WHERE " +        _conn->sqlIn("worker", _configuration->workers(true)) : "") +
-                " ORDER BY "     + _conn->sqlId("verify_time") + " ASC LIMIT " + std::to_string(maxReplicas)) or
-        not replicas.size()) {
+                " WHERE "        + _conn->sqlIn("worker", _configuration->workers(true)) : "") +
+                " ORDER BY "     + _conn->sqlId("verify_time") +
+                " ASC LIMIT "    + std::to_string(maxReplicas)) or not replicas.size()) {
 
         LOGS(_log, LOG_LVL_ERROR, context << "failed to find the oldest replica(s)");
         return false;
@@ -672,11 +740,11 @@ bool DatabaseServicesMySQL::findReplicas(std::vector<ReplicaInfo>& replicas,
     if (not findReplicasImpl(
                 lock,
                 replicas,
-                "SELECT * FROM " +  _conn->sqlId(   "replica") +
-                "  WHERE " +        _conn->sqlEqual("chunk",    chunk) +
-                "    AND " +        _conn->sqlEqual("database", database) +
+                "SELECT * FROM " +  _conn->sqlId("replica") +
+                "  WHERE "       +  _conn->sqlEqual("chunk",    chunk) +
+                "    AND "       +  _conn->sqlEqual("database", database) +
                 (enabledWorkersOnly ?
-                 "   AND " +        _conn->sqlIn(   "worker",   _configuration->workers(true)) :""))) {
+                 "   AND "       +  _conn->sqlIn("worker", _configuration->workers(true)) :""))) {
 
         LOGS(_log, LOG_LVL_ERROR, context << "failed to find replicas");
         return false;
@@ -719,10 +787,10 @@ bool DatabaseServicesMySQL::findWorkerReplicasImpl(util::Lock const& lock,
     if (not findReplicasImpl(
                 lock,
                 replicas,
-                "SELECT * FROM " + _conn->sqlId(   "replica") +
-                "  WHERE " +       _conn->sqlEqual("worker",   worker) +
+                "SELECT * FROM " + _conn->sqlId("replica") +
+                "  WHERE "       + _conn->sqlEqual("worker", worker) +
                 (database.empty() ? "" :
-                "  AND "   +       _conn->sqlEqual( "database", database)))) {
+                "  AND "         + _conn->sqlEqual( "database", database)))) {
 
         LOGS(_log, LOG_LVL_ERROR, context << "failed to find replicas");
         return false;
@@ -737,7 +805,7 @@ bool DatabaseServicesMySQL::findWorkerReplicas(std::vector<ReplicaInfo>& replica
                                                std::string const& databaseFamily) const {
     std::string const context =
          "DatabaseServicesMySQL::findWorkerReplicas  worker: " + worker +
-         " chunk: " + std::to_string(chunk) + "  database family: " + databaseFamily;
+         " chunk: " + std::to_string(chunk) + " database family: " + databaseFamily;
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
@@ -752,11 +820,11 @@ bool DatabaseServicesMySQL::findWorkerReplicas(std::vector<ReplicaInfo>& replica
     if (not findReplicasImpl(
                 lock,
                 replicas,
-                "SELECT * FROM " + _conn->sqlId(   "replica") +
-                "  WHERE " +       _conn->sqlEqual("worker", worker) +
-                "  AND "   +       _conn->sqlEqual("chunk",  chunk) +
+                "SELECT * FROM " + _conn->sqlId("replica") +
+                "  WHERE "       + _conn->sqlEqual("worker", worker) +
+                "  AND "         + _conn->sqlEqual("chunk",  chunk) +
                 (databaseFamily.empty() ? "" :
-                "  AND " + _conn->sqlIn("database", _configuration->databases(databaseFamily))))) {
+                "  AND "         + _conn->sqlIn("database", _configuration->databases(databaseFamily))))) {
 
         LOGS(_log, LOG_LVL_ERROR, context << "failed to find replicas");
         return false;
@@ -815,7 +883,7 @@ bool DatabaseServicesMySQL::findReplicasImpl(util::Lock const& lock,
                 ReplicaInfo::FileInfoCollection files;
 
                 _conn2->execute(
-                    "SELECT * FROM " + _conn->sqlId(   "replica_file") +
+                    "SELECT * FROM " + _conn->sqlId("replica_file") +
                     "  WHERE "       + _conn->sqlEqual("replica_id", id));
 
                 if (_conn2->hasResult()) {

@@ -87,6 +87,29 @@ public:
 
         /// The size of the input file
         uint64_t inSize;
+
+        /**
+         * Comparision operator
+         *
+         * @param other - object to be compared with
+         * @return 'true' if the current object is semantically identical to the other one
+         */
+        bool operator==(FileInfo const& other) const {
+            return
+                name == other.name and
+                size == other.size and
+                cs   == other.cs;
+        }
+
+        /**
+         * The complementary comparision operator
+         * 
+         * @param other - object to be compared with
+         * @return 'true' if the current object is semantically different from the other one
+         */
+        bool operator!=(FileInfo const& other) const {
+            return not operator==(other);
+        }
     };
     typedef std::vector<FileInfo> FileInfoCollection;
 
@@ -188,6 +211,41 @@ public:
      * @param info - Protobuf object
      */
     void setInfo(proto::ReplicationReplicaInfo* info) const;
+
+    /**
+     * Comparision operator
+     *
+     * @param other - object to be compared with
+     * @return 'true' if the current object is semantically identical to the other one
+     */
+    bool operator==(ReplicaInfo const& other) const {
+        return
+            _status   == other._status and
+            _worker   == other._worker and
+            _database == other._database and
+            _chunk    == other._chunk and
+            equalFileCollections(other);
+    }
+    
+    /**
+     * The complementary comparision operator
+     * 
+     * @param other - object to be compared with
+     * @return 'true' if the current object is semantically different from the other one
+     */
+    bool operator!=(ReplicaInfo const& other) const {
+        return not operator==(other);
+    }
+
+private:
+
+    /**
+     * Compare this object's file collection with the other's
+     *
+     * @param other - object whose file collection needs to be compared with the current one's
+     * @return 'true' of both collections are semantically equivalent
+     */
+    bool equalFileCollections(ReplicaInfo const& other) const;    
 
 private:
 

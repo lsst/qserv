@@ -27,6 +27,7 @@
 /// (see individual class documentation for more information)
 
 // System headers
+#include <iosfwd>
 #include <map>
 #include <stdexcept>
 #include <string>
@@ -351,12 +352,10 @@ using ChunkDatabaseWorkerMap =
         detail::ChunkMap<
             detail::DatabaseMap<
                 detail::WorkerMap<T>>>;
-
-/**
- * 3-layered map template for any value type
- *
- *   .worker(name).chunk(number).database(name) -> T
- */
+ 
+ /**
+  * Dictionary of: worker-chunk-database
+  */
 template<typename T>
 using WorkerChunkDatabaseMap =
         detail::WorkerMap<
@@ -364,10 +363,23 @@ using WorkerChunkDatabaseMap =
                 detail::DatabaseMap<T>>>;
 
 /**
- * Merge algorithm for the 3-layered map template for any
- * value type:
- *
- *   .chunk(number).database(name).worker(name) -> T
+ * Dictionary of: worker-database-chunk
+ */
+template<typename T>
+using WorkerDatabaseChunkMap =
+        detail::WorkerMap<
+            detail::DatabaseMap<
+                detail::ChunkMap<T>>>;
+
+
+// Algorithms are pout into a nested namespace below in order
+// to avoid confusing them with simple singe-worded user defined
+// functions.
+
+namespace SemanticMaps {
+
+/**
+ * Merge algorithm for dictionaries of: chunk-database-worker
  *
  * @param dst - destination collection to be extended
  * @param src - input collection whose content is to be merged
@@ -380,9 +392,9 @@ using WorkerChunkDatabaseMap =
  * @throws std::range_error - on duplicate keys if ignoreDuplicateKeys is 'false'
  */
  template<typename T>
- void mergeMap(ChunkDatabaseWorkerMap<T>& dst,
-               ChunkDatabaseWorkerMap<T> const& src,
-               bool ignoreDuplicateKeys = false) {
+ void merge(ChunkDatabaseWorkerMap<T>& dst,
+            ChunkDatabaseWorkerMap<T> const& src,
+            bool ignoreDuplicateKeys = false) {
 
      for (auto const chunk: src.chunkNumbers()) {
          auto const& srcChunkMap = src.chunk(chunk);
@@ -393,6 +405,121 @@ using WorkerChunkDatabaseMap =
          }
      }
  }
+
+/**
+ * One-directional comparison of dictionaries of: worker-database-chunk
+ *
+ * The method will also report keys which aren't found in second dictionary.
+ *
+ * NOTE: the output dictionary will be modified even if the method
+ *       will not find any differences.
+ *
+ * @param one       - input dictionary to be compared with the second one
+ * @param two       - input dictionary to be compared with the first one
+ * @param inOneOnly - output dictionary with elements of the first map which
+ *                    are not found in the second map
+ *
+ * @return 'true' if different
+ */
+ template<typename T>
+ bool diff(WorkerDatabaseChunkMap<T> const& one,
+           WorkerDatabaseChunkMap<T> const& two,
+           WorkerDatabaseChunkMap<T>& inOneOnly) {
+
+    inOneOnly.clear();
+    for (auto&& worker: one.workerNames()) {
+        if (not         two.workerExists(worker)) {
+            inOneOnly.insertWorker(worker,
+                                   one.worker(worker));
+            continue;
+        }
+        for (auto&& database: one.worker(worker).databaseNames()) {
+            if (not           two.worker(worker).databaseExists(database)) {
+                inOneOnly.atWorker(worker)
+                         .insertDatabase(database,
+                                         one.worker(worker).database(database));
+                continue;
+            }
+            for (auto&& chunk: one.worker(worker).database(database).chunkNumbers()) {
+                if (not        two.worker(worker).database(database).chunkExists(chunk)) {
+                    inOneOnly.atWorker(worker)
+                             .atDatabase(database)
+                             .insertChunk(chunk,
+                                          one.worker(worker).database(database).chunk(chunk));
+                }
+            }
+        }
+    }    
+    return not inOneOnly.empty();
+}
+
+/**
+ * Bi-directional comparison of dictionaries of: worker-database-chunk
+ *
+ * The method will also report keys which aren't found in opposte dictionaries.
+ *
+ * NOTE: the output dictionaries will be modified even if the method
+ *       will not find any differences.
+ *
+ * @param one       - input dictionary to be compared with the second one
+ * @param two       - input dictionary to be compared with the first one
+ * @param inOneOnly - output dictionary with elements of the first map which
+ *                    are not found in the second map
+ * @param inTwoOnly - output dictionary with elements of the second map which
+ *                    are not found in the first map
+ *
+ * @return 'true' if different
+ */
+ template<typename T>
+ bool diff2(WorkerDatabaseChunkMap<T> const& one,
+            WorkerDatabaseChunkMap<T> const& two,
+            WorkerDatabaseChunkMap<T>& inOneOnly,
+            WorkerDatabaseChunkMap<T>& inTwoOnly) {
+
+    bool const notEqual1 = diff<T>(one, two, inOneOnly);
+    bool const notEqual2 = diff<T>(two, one, inTwoOnly);
+
+    return notEqual1 or notEqual2;
+}
+
+/**
+ * Find an intersection of two dictionaries of: worker-database-chunk
+ *
+ * The method will report keys which are found in both dictionaries.
+ *
+ * NOTE: the output dictionary will be modified even if the method
+ *       will not find any differences.
+ *
+ * @param one    - input dictionary to be compared with the second one
+ * @param two    - input dictionary to be compared with the first one
+ * @param inBoth - output dictionary with elements of the first map which
+ *                 are not found in the second map
+ */
+ template<typename T>
+ void intersect(WorkerDatabaseChunkMap<T> const& one,
+                WorkerDatabaseChunkMap<T> const& two,
+                WorkerDatabaseChunkMap<T>& inBoth) {
+
+    inBoth.clear();
+    for (auto&& worker: one.workerNames()) {
+        if (two.workerExists(worker)) {
+            for (auto&& database: one.worker(worker).databaseNames()) {
+                if (two.worker(worker).databaseExists(database)) {
+                    for (auto&& chunk: one.worker(worker).database(database).chunkNumbers()) {
+                        if (two.worker(worker).database(database).chunkExists(chunk)) {
+                            inBoth.atWorker(worker)
+                                  .atDatabase(database)
+                                  .insertChunk(chunk,
+                                               one.worker(worker).database(database).chunk(chunk));
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+}  // namespace SemanticMaps
 
 }}} // namespace lsst::qserv::replica
 

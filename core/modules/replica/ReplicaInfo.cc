@@ -173,6 +173,24 @@ std::map<std::string,ReplicaInfo::FileInfo> ReplicaInfo::fileInfoMap() const {
     return result;
 }
 
+bool ReplicaInfo::equalFileCollections(ReplicaInfo const& other) const {
+
+    // Files of both comllection needs to be map-sorted because objects may
+    // have them stored in different order.
+
+    std::map<std::string,ReplicaInfo::FileInfo> thisFileInfo  = this->fileInfoMap();
+    std::map<std::string,ReplicaInfo::FileInfo> otherFileInfo = other.fileInfoMap();
+
+    if (thisFileInfo.size() != otherFileInfo.size()) return false;
+
+    for (auto&& elem: thisFileInfo) {
+        auto otherIter = otherFileInfo.find(elem.first);
+        if (otherIter == otherFileInfo.end()) return false;
+        if (otherIter->second != elem.second) return false;
+    }
+    return true;
+}
+
 std::ostream& operator<<(std::ostream& os, ReplicaInfo::FileInfo const& fi) {
 
     static float const MB =  1024.0*1024.0;

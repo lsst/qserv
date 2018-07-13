@@ -118,7 +118,7 @@ public:
      */
     void saveReplicaInfoCollection(std::string const& worker,
                                    std::string const& database,
-                                   ReplicaInfoCollection const& infoCollection) final;
+                                   ReplicaInfoCollection const& newReplicaInfoCollection) final;
 
     /**
      * @see DatabaseServices::findOldestReplica()
@@ -181,16 +181,28 @@ private:
     /**
      * Actual implementation of the multiple replicas update algorithm.
      *
-     * @param lock           - lock on a mutex must be acquired before calling this method
-     * @param worker         - woker name (as per the request)
-     * @param database       - database name (as per the request)
-     * @param infoCollection - collection of replicas
+     * @param lock                     - lock on a mutex must be acquired before calling this method
+     * @param worker                   - worker name (as per the request)
+     * @param database                 - database name (as per the request)
+     * @param newReplicaInfoCollection - collection of new replicas
      */
     void saveReplicaInfoCollectionImpl(util::Lock const& lock,
                                        std::string const& worker,
                                        std::string const& database,
-                                       ReplicaInfoCollection const& infoCollection);
+                                       ReplicaInfoCollection const& newReplicaInfoCollection);
 
+    /**
+     * Delete a replica from the database.
+     *
+     * @param lock     - lock on a mutex must be acquired before calling this method
+     * @param worker   - worker name
+     * @param database - database name
+     * @param chunk    - chunk to be removed
+     */
+    void deleteReplicaInfoImpl(util::Lock const& lock,
+                               std::string const& worker,
+                               std::string const& database,
+                               unsigned int chunk);
     /**
      * Fetch replicas satisfying the specified query
      *

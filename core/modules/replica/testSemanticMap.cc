@@ -176,12 +176,8 @@ BOOST_AUTO_TEST_CASE(SemanticMapsTest) {
     // Test API using a 3-layer map
     // ----------------------------
 
-    typedef detail::WorkerMap<
-            detail::DatabaseMap<
-            detail::ChunkMap<double>>> WorkerDatabaseChunkMap;
-
-    WorkerDatabaseChunkMap workerDatabaseChunkMap;
-    WorkerDatabaseChunkMap const& constWorkerDatabaseChunkMap = workerDatabaseChunkMap;
+    WorkerDatabaseChunkMap<double> workerDatabaseChunkMap;
+    WorkerDatabaseChunkMap<double> const& constWorkerDatabaseChunkMap = workerDatabaseChunkMap;
 
     for (auto&& worker: workers) {
         for (auto&& database: databases) {
@@ -220,6 +216,114 @@ BOOST_AUTO_TEST_CASE(SemanticMapsTest) {
             }
         }
     });
+
+    // ----------------------------------------
+    // Test 'diff2' and 'intesrsect' algorithms
+    // ----------------------------------------
+
+    auto dump = [](WorkerDatabaseChunkMap<int> const& d,
+                   std::string const& indent="  ") {
+        for (auto&& worker: d.workerNames()) {
+            for (auto&& database: d.worker(worker).databaseNames()) {
+                for (auto&& chunk: d.worker(worker).database(database).chunkNumbers()) {
+                    LOGLS_INFO(LOG_GET("lsst.qserv.testSemanticMap"),
+                               indent
+                               << "[" << worker + "][" << database + "][" << chunk << "] = "
+                               << std::to_string(d.worker(worker).database(database).chunk(chunk)));
+                }
+            }
+        }
+    };
+
+    WorkerDatabaseChunkMap<int> one;
+    WorkerDatabaseChunkMap<int> two;
+
+    // common
+    one.atWorker("A").atDatabase("a").atChunk(1) = 1;
+    two.atWorker("A").atDatabase("a").atChunk(1) = 1;
+
+    // diff #1
+    one.atWorker("A").atDatabase("a").atChunk(2) = 2;
+    one.atWorker("A").atDatabase("a").atChunk(3) = 3;
+    one.atWorker("A").atDatabase("b").atChunk(4) = 4;
+    one.atWorker("B").atDatabase("c").atChunk(5) = 5;
+
+    // diff #2
+    two.atWorker("C").atDatabase("x").atChunk(6) = 6;
+
+    // Find intersects
+    WorkerDatabaseChunkMap<int> inBoth;
+    BOOST_REQUIRE_NO_THROW({
+        SemanticMaps::intersect(one, two, inBoth);
+    });
+
+    // Find differences
+    WorkerDatabaseChunkMap<int> inOneOnly;
+    WorkerDatabaseChunkMap<int> inTwoOnly;
+    BOOST_REQUIRE_NO_THROW({
+        BOOST_CHECK(SemanticMaps::diff2(one, two, inOneOnly, inTwoOnly));
+    });
+
+    // Report and test the findings
+    LOGLS_INFO(LOG_GET("lsst.qserv.testSemanticMap"), "one:");
+    dump(one);
+
+    LOGLS_INFO(LOG_GET("lsst.qserv.testSemanticMap"), "two:");
+    dump(two);
+
+    LOGLS_INFO(LOG_GET("lsst.qserv.testSemanticMap"), "inBoth:");
+    dump(inBoth);
+
+    LOGLS_INFO(LOG_GET("lsst.qserv.testSemanticMap"), "inOneOnly:");
+    dump(inOneOnly);
+
+    LOGLS_INFO(LOG_GET("lsst.qserv.testSemanticMap"), "inTwoOnly:");
+    dump(inTwoOnly);
+
+    // assert: diff #2
+    BOOST_CHECK(
+        inBoth.size() == 1
+        and inBoth.workerExists("A")
+        and inBoth.worker("A").size() == 1
+        and inBoth.worker("A").databaseExists("a")
+        and inBoth.worker("A").database("a").size() == 1
+        and inBoth.worker("A").database("a").chunkExists(1)
+        and inBoth.worker("A").database("a").chunk(1) == 1
+    );
+
+    // assert: diff #1
+    BOOST_CHECK(
+        inOneOnly.size() == 2
+        and inOneOnly.workerExists("A")
+        and inOneOnly.worker("A").size() == 2
+        and inOneOnly.worker("A").databaseExists("a")
+        and inOneOnly.worker("A").database("a").size() == 2
+        and inOneOnly.worker("A").database("a").chunkExists(2)
+        and inOneOnly.worker("A").database("a").chunk(2) == 2
+        and inOneOnly.worker("A").database("a").chunkExists(3)
+        and inOneOnly.worker("A").database("a").chunk(3) == 3
+        and inOneOnly.worker("A").databaseExists("b")
+        and inOneOnly.worker("A").database("b").size() == 1
+        and inOneOnly.worker("A").database("b").chunkExists(4)
+        and inOneOnly.worker("A").database("b").chunk(4) == 4
+        and inOneOnly.workerExists("B")
+        and inOneOnly.worker("B").size() == 1
+        and inOneOnly.worker("B").databaseExists("c")
+        and inOneOnly.worker("B").database("c").size() == 1
+        and inOneOnly.worker("B").database("c").chunkExists(5)
+        and inOneOnly.worker("B").database("c").chunk(5) == 5
+    );
+
+    // assert: diff #2
+    BOOST_CHECK(
+        inTwoOnly.size() == 1
+        and inTwoOnly.workerExists("C")
+        and inTwoOnly.worker("C").size() == 1
+        and inTwoOnly.worker("C").databaseExists("x")
+        and inTwoOnly.worker("C").database("x").size() == 1
+        and inTwoOnly.worker("C").database("x").chunkExists(6)
+        and inTwoOnly.worker("C").database("x").chunk(6) == 6
+    );
 
     LOGS_INFO("SemanticMaps test ends");
 }
