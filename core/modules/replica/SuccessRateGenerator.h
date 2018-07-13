@@ -82,8 +82,6 @@ public:
 
 private:
 
-    double _successRate;
-
     std::random_device          _rd;    // Will be used to obtain a seed for the random number engine
     std::mt19937                _gen;   // Standard mersenne_twister_engine seeded with rd()
     std::bernoulli_distribution _distr;

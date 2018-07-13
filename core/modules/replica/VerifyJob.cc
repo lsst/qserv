@@ -49,7 +49,13 @@ namespace replica {
 ///////////////////////////////////////////////////
 
 ReplicaDiff::ReplicaDiff()
-    :   _notEqual(false) {
+    :   _notEqual(false),
+        _statusMismatch(false),
+        _numFilesMismatch(false),
+        _fileNamesMismatch(false),
+        _fileSizeMismatch(false),
+        _fileCsMismatch(false),
+        _fileMtimeMismatch(false) {
 }
 
 ReplicaDiff::ReplicaDiff(ReplicaInfo const& replica1,

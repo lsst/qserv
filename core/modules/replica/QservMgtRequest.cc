@@ -85,6 +85,7 @@ QservMgtRequest::QservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
         _worker(worker),
         _state(State::CREATED),
         _extendedState(ExtendedState::NONE),
+        _service(nullptr),
         _requestExpirationIvalSec(serviceProvider->config()->xrootdTimeoutSec()),
         _requestExpirationTimer(io_service) {
 }

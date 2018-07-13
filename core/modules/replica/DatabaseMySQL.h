@@ -1006,7 +1006,7 @@ private:
 
     // Get updated after fetching each row of the result set
 
-    MYSQL_ROW _row;     // must be cahed here to ensure its lifespan
+    MYSQL_ROW _row;     // must be cached here to ensure its lifespan
                         // while a client will be processing its content.
 };
 

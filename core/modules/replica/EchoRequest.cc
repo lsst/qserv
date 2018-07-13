@@ -24,7 +24,6 @@
 #include "replica/EchoRequest.h"
 
 // System headers
-#include <future>
 #include <stdexcept>
 
 // Third party headers

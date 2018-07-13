@@ -102,7 +102,8 @@ ChunkNumberValidator::Ptr const& ChunkNumber::defaultValidator() {
 }
 
 ChunkNumber::ChunkNumber(ChunkNumberValidator::Ptr const& validator)
-    :   _valid(false),
+    :   _value(0),
+        _valid(false),
         _overflow(false),
         _validator(validator) {
 }

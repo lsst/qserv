@@ -105,7 +105,8 @@ RebalanceJob::RebalanceJob(std::string const& databaseFamily,
             options),
         _databaseFamily(databaseFamily),
         _estimateOnly(estimateOnly),
-        _onFinish(onFinish) {
+        _onFinish(onFinish),
+        _numFailedLocks(0) {
 }
 
 RebalanceJob::~RebalanceJob() {
