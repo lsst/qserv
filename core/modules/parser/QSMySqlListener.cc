@@ -372,7 +372,7 @@ public:
 
 class ScalarFunctionCallCBH : public BaseCBH {
 public:
-    virtual void handleScalarFunctionCall(shared_ptr<query::ValueFactor> const & funcValueFactor) = 0;
+    virtual void handleScalarFunctionCall(shared_ptr<query::FuncExpr> const & funcExpr) = 0;
 };
 
 
@@ -1431,10 +1431,10 @@ public:
         _functionValueFactor = query::ValueFactor::newFuncFactor(funcExpr);
     }
 
-    void handleScalarFunctionCall(shared_ptr<query::ValueFactor> const & funcValueFactor) override {
+    void handleScalarFunctionCall(shared_ptr<query::FuncExpr> const & funcExpr) override {
         ASSERT_EXECUTION_CONDITION(nullptr == _functionValueFactor, "should only be set once.",
                 _ctx);
-        _functionValueFactor = funcValueFactor;
+        _functionValueFactor = query::ValueFactor::newFuncFactor(funcExpr);
     }
 
     void onExit() override {
@@ -1721,8 +1721,7 @@ public:
         ASSERT_EXECUTION_CONDITION(_valueExprs.empty() == false && _name.empty() == false,
                 "valueExprs or name is not populated.", _ctx);
         auto funcExpr = query::FuncExpr::newWithArgs(_name, _valueExprs);
-        auto valueFactor = query::ValueFactor::newFuncFactor(funcExpr);
-        lockedParent()->handleScalarFunctionCall(valueFactor);
+        lockedParent()->handleScalarFunctionCall(funcExpr);
     }
 
     string name() const override { return getTypeName(this); }
