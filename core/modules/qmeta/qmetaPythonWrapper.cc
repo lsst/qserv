@@ -42,9 +42,7 @@ namespace lsst {
 namespace qserv {
 namespace qmeta {
 
-PYBIND11_PLUGIN(qmetaLib) {
-
-    py::module mod("qmetaLib");
+PYBIND11_MODULE(qmetaLib, mod) {
 
     py::class_<QInfo> clsQInfo(mod, "QInfo");
 
@@ -122,8 +120,6 @@ PYBIND11_PLUGIN(qmetaLib) {
     py::register_exception<SqlError>(mod, "SqlError", clsQMetaError.ptr());
     py::register_exception<MissingTableError>(mod, "MissingTableError", clsQMetaError.ptr());
     py::register_exception<ConsistencyError>(mod, "ConsistencyError", clsQMetaError.ptr());
-
-    return mod.ptr();
 }
 
 }}} // namespace lsst::qserv::qmeta
