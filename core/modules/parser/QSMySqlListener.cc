@@ -2306,7 +2306,8 @@ private:
 
 class FunctionCallExpressionAtomAdapter :
         public AdapterT<FunctionCallExpressionAtomCBH>,
-        public UdfFunctionCallCBH {
+        public UdfFunctionCallCBH,
+		public ScalarFunctionCallCBH {
 public:
     FunctionCallExpressionAtomAdapter(shared_ptr<FunctionCallExpressionAtomCBH> parent,
                                       QSMySqlParser::FunctionCallExpressionAtomContext* ctx)
@@ -2315,6 +2316,11 @@ public:
     {}
 
     void handleUdfFunctionCall(shared_ptr<query::FuncExpr> const & funcExpr) override {
+        ASSERT_EXECUTION_CONDITION(_funcExpr == nullptr, "the funcExpr must be set only once.", _ctx)
+        _funcExpr = funcExpr;
+    }
+
+    void handleScalarFunctionCall(shared_ptr<query::FuncExpr> const & funcExpr) {
         ASSERT_EXECUTION_CONDITION(_funcExpr == nullptr, "the funcExpr must be set only once.", _ctx)
         _funcExpr = funcExpr;
     }
