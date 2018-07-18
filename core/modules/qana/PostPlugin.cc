@@ -126,19 +126,12 @@ PostPlugin::applyPhysical(QueryPlugin::Plan& plan,
                         switch (vfType) {
                         case query::ValueFactor::COLUMNREF:
                         {
-                            if (selValExpr->isColumnRef()) {
-                                query::ColumnRef::Ptr selColRef = selValExpr->getColumnRef();
-                                LOGS(_log, LOG_LVL_DEBUG, "Select db=" << selColRef->db
-                                        << " tbl=" << selColRef->table << " col=" << selColRef->column
-                                        << " alias=" << alias);
-                                std::string col = selColRef->column;
-                                if (!col.empty()) {
-                                    validSelectCols.push_back(col);
-                                }
-                            } else {
-                                // It is something complicated like psf*30 and will have to use an alias.
-                                LOGS(_log, LOG_LVL_DEBUG, "Select not ColumnRef order by would need alias");
-                            }
+                            query::ColumnRef::Vector columnRefVec;
+                            auto const columnRef = vf->getColumnRef();
+                            LOGS(_log, LOG_LVL_DEBUG, "Select db=" << columnRef->db
+                                    << " tbl=" << columnRef->table << " col=" << columnRef->column
+                                    << " alias=" << alias);
+                            validSelectCols.push_back(columnRef->column);
                         }
                         break;
                         // These cases are complicated and should use an alias for ORDER BY.
