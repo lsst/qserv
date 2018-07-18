@@ -157,47 +157,49 @@ PostPlugin::applyPhysical(QueryPlugin::Plan& plan,
             auto const& expr = ordByTerm.getExpr();
             query::ValueExpr::FactorOpVector& factorOps = expr->getFactorOps();
             for (auto& factorOp:factorOps) {
-                auto factor = factorOp.factor;
-                query::ColumnRef::Ptr ordByColRef = factor->getColumnRef();
-                std::string orderByDb = ordByColRef->db;
-                std::string orderByTbl = ordByColRef->table;
-                std::string orderByCol = ordByColRef->column;
-                LOGS(_log, LOG_LVL_DEBUG, "Order By factorOp->factor=" << factor
-                     << " db=" << orderByDb << " tbl=" << orderByTbl << " col=" << orderByCol);
+                query::ColumnRef::Vector orderByColumnRefVec;
+                factorOp.factor->findColumnRefs(orderByColumnRefVec);
+                for (auto const & ordByColRef : orderByColumnRefVec) {
+                    std::string orderByDb = ordByColRef->db;
+                    std::string orderByTbl = ordByColRef->table;
+                    std::string orderByCol = ordByColRef->column;
+                    LOGS(_log, LOG_LVL_DEBUG, "Order By factorOp->factor=" << factorOp.factor
+                         << " db=" << orderByDb << " tbl=" << orderByTbl << " col=" << orderByCol);
 
-                // If db or table is not empty, that's an error as those typically will not
-                // be passed back to the proxy in the table column name and the proxy will
-                // throw an error when it can't locate the ORDER BY argument in the result columns.
-                if (!orderByDb.empty() || !orderByTbl.empty()) {
-                    if (!orderByTbl.empty()) orderByTbl += ".";
-                    std::string msg = "ORDER BY argument should not include database or table for "
-                        + orderByDb + " " + orderByTbl + orderByCol + ".\n Remove qualifiers or "
-                        "use an alias.\n  ex:'SELECT a.val AS aVal ... ORDER BY aVal";
-                    LOGS(_log, LOG_LVL_WARN, msg);
-                    throw AnalysisError(msg);
-                }
+                    // If db or table is not empty, that's an error as those typically will not
+                    // be passed back to the proxy in the table column name and the proxy will
+                    // throw an error when it can't locate the ORDER BY argument in the result columns.
+                    if (!orderByDb.empty() || !orderByTbl.empty()) {
+                        if (!orderByTbl.empty()) orderByTbl += ".";
+                        std::string msg = "ORDER BY argument should not include database or table for "
+                            + orderByDb + " " + orderByTbl + orderByCol + ".\n Remove qualifiers or "
+                            "use an alias.\n  ex:'SELECT a.val AS aVal ... ORDER BY aVal";
+                        LOGS(_log, LOG_LVL_WARN, msg);
+                        throw AnalysisError(msg);
+                    }
 
-                // Check if the ORDER BY column matches a single valid column
-                int matchCount = 0;
-                for (auto& selCol : validSelectCols) {
-                    if (selCol == orderByCol) ++matchCount;
-                }
-                if (matchCount == 0) {
-                    // error, no match for ORDER BY column
-                    std::string msg = "ORDER BY No match for " + orderByCol
-                                                + " in " + toString(util::printable(validSelectCols)) + ".\n"
-                                                "  Consider an alias. "
-                                                "ex:'SELECT a.val AS aVal, ABS(val) AS absVal ... ORDER BY aVal, absVal'";
-                    LOGS(_log, LOG_LVL_WARN, msg);
-                    throw AnalysisError(msg);
-                }
-                if (matchCount > 1) {
-                    // error, the output column is ambiguous
-                    std::string msg = "ORDER BY Duplicate match for " + orderByCol
-                            + " in " + toString(util::printable(validSelectCols)) + ".\n Use an alias. "
-                            "ex:'SELECT a.val, b.val AS bVal ... ORDER BY bVal";
-                    LOGS(_log, LOG_LVL_WARN, msg);
-                    throw AnalysisError(msg);
+                    // Check if the ORDER BY column matches a single valid column
+                    int matchCount = 0;
+                    for (auto& selCol : validSelectCols) {
+                        if (selCol == orderByCol) ++matchCount;
+                    }
+                    if (matchCount == 0) {
+                        // error, no match for ORDER BY column
+                        std::string msg = "ORDER BY No match for " + orderByCol
+                                                    + " in " + toString(util::printable(validSelectCols)) + ".\n"
+                                                    "  Consider an alias. "
+                                                    "ex:'SELECT a.val AS aVal, ABS(val) AS absVal ... ORDER BY aVal, absVal'";
+                        LOGS(_log, LOG_LVL_WARN, msg);
+                        throw AnalysisError(msg);
+                    }
+                    if (matchCount > 1) {
+                        // error, the output column is ambiguous
+                        std::string msg = "ORDER BY Duplicate match for " + orderByCol
+                                + " in " + toString(util::printable(validSelectCols)) + ".\n Use an alias. "
+                                "ex:'SELECT a.val, b.val AS bVal ... ORDER BY bVal";
+                        LOGS(_log, LOG_LVL_WARN, msg);
+                        throw AnalysisError(msg);
+                    }
                 }
             }
 
