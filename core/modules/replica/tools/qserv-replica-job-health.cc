@@ -33,12 +33,10 @@
 
 // Qserv headers
 #include "proto/replication.pb.h"
+#include "replica/ClusterHealthJob.h"
 #include "replica/Configuration.h"
 #include "replica/Controller.h"
-#include "replica/QservMgtServices.h"
-#include "replica/ServiceManagementRequest.h"
 #include "replica/ServiceProvider.h"
-#include "replica/TestEchoQservMgtRequest.h"
 #include "util/BlockPost.h"
 #include "util/CmdLineParser.h"
 
@@ -49,10 +47,7 @@ namespace {
 
 // Command line parameters
 
-std::string reportJobs;
-std::string reportRequests;
-std::string configUrl;
-
+std::string  configUrl;
 unsigned int timeoutSec;
 
 
@@ -70,57 +65,52 @@ bool test() {
 
         controller->run();
 
-        // Data to be sent for testing purposes
-        std::string const data = "test";
-
         // No parent job
         std::string const jobId;
 
         // Launch test requests to both the Replication system's and Qserv workers
 
-        std::atomic<unsigned int> requestsNumFinished(0);
-        std::atomic<unsigned int> qservRequestsNumFinished(0);
-
-        std::vector<ServiceStatusRequest::Ptr>    requests;
-        std::vector<TestEchoQservMgtRequest::Ptr> qservRequests;
-
-        for (auto const& worker: provider->config()->workers()) {
-            requests.push_back(
-                controller->statusOfWorkerService(
-                    worker,
-                    [&requestsNumFinished] (ServiceStatusRequest::Ptr const& ptr) {
-                        requestsNumFinished++;
-                    },
-                    jobId,
-                    timeoutSec
-                )
-            );
-            qservRequests.push_back(
-                provider->qservMgtServices()->echo(
-                    worker,
-                    data,
-                    jobId,
-                    [&qservRequestsNumFinished] (TestEchoQservMgtRequest::Ptr const& ptr) {
-                        qservRequestsNumFinished++;
-                    },
-                    timeoutSec
-                )
-            );
-        }
+        std::atomic<bool> finished(false);
+ 
+        auto const job = ClusterHealthJob::create(
+            controller,
+            jobId,
+            [&finished] (ClusterHealthJob::Ptr const& job) {
+                finished = true;
+            },
+            timeoutSec
+        );
+        job->start();
 
         // Wait before all request are finished
 
         util::BlockPost blockPost(1000, 2000);
-        while (requestsNumFinished + qservRequestsNumFinished < requests.size() + qservRequests.size()) {
+        while (not finished) {
             blockPost.wait();
-            std::cout
-                << "finished: " << (requestsNumFinished + qservRequestsNumFinished)
-                << "/" + (requests.size() + qservRequests.size()) << std::endl;
         };
 
         //////////////////////////////
         // Analyse and display results
 
+        std::cout
+            << "ClusterHealth job finished: " << job->state2string() << std::endl;
+
+        if (job->extendedState() == Job::ExtendedState::SUCCESS) {
+            ClusterHealth const& health = job->clusterHealth();
+            std::cout
+                << "  good: " << (health.good() ? "YES" : "NO") << "\n"
+                << "  Replication workers\n";
+            for (auto&& entry: health.replication()) {
+                std::cout
+                    << "    " << entry.first << "\t: " << (entry.second ? "UP" : "*") << "\n";
+            }
+            std::cout
+                << "  Qserv workers\n";
+            for (auto&& entry: health.qserv()) {
+                std::cout
+                    << "    " << entry.first << "\t: " << (entry.second ? "UP" : "*") << "\n";
+            }
+        }
 
         ///////////////////////////////////////////////////
         // Shutdown the controller and join with its thread
@@ -152,14 +142,9 @@ int main(int argc, const char* const argv[]) {
             "  [--config=<url>] [--timeout=<seconds>]\n"
             "\n"
             "Flags and options:\n"
-            "  --jobs     - report active jobs\n"
-            "  --requests - report active requests\n"
-            "  --config   - configuration URL [ DEFAULT: file:replication.cfg ]\n"
-            "  --timeout  - timeout (seconds) for status requests sent to\n"
-            "               the Replication system and Qserv wokers [DEFAULT: 10]\n");
-
-        ::reportJobs     = parser.flag("jobs");
-        ::reportRequests = parser.flag("requests");
+            "  --config  - configuration URL [ DEFAULT: file:replication.cfg ]\n"
+            "  --timeout - timeout (seconds) for status requests sent to\n"
+            "              the Replication system and Qserv wokers [DEFAULT: 10]\n");
 
         ::configUrl  = parser.option<std::string>("config", "file:replication.cfg");
         ::timeoutSec = parser.option<unsigned int>("timeout", 10);

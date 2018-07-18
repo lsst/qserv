@@ -202,7 +202,8 @@ CREATE TABLE IF NOT EXISTS `job` (
                'CREATE_REPLICA',
                'DELETE_REPLICA',
                'QSERV_SYNC',
-               'QSERV_GET_REPLICAS') NOT NULL ,
+               'QSERV_GET_REPLICAS',
+               'CLUSTER_HEALTH') NOT NULL ,
 
   `state`      VARCHAR(255) NOT NULL ,
   `ext_state`  VARCHAR(255) DEFAULT '' ,
@@ -561,6 +562,30 @@ CREATE TABLE IF NOT EXISTS `job_qserv_get_replicas` (
   PRIMARY KEY (`job_id`) ,
 
   CONSTRAINT `job_qserv_get_replicas_fk_1`
+    FOREIGN KEY (`job_id` )
+    REFERENCES `job` (`id` )
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
+)
+ENGINE = InnoDB;
+
+-- -----------------------------------------------------
+-- Table `job_cluster_health`
+-- -----------------------------------------------------
+--
+-- Extended parameters of the 'CLUSTER_HEALTH' jobs
+--
+DROP TABLE IF EXISTS `job_cluster_health` ;
+
+CREATE TABLE IF NOT EXISTS `job_cluster_health` (
+
+  `job_id`  VARCHAR(255) NOT NULL ,
+
+  `timeout` INT UNSIGNED NOT NULL ,
+
+  PRIMARY KEY (`job_id`) ,
+
+  CONSTRAINT `job_cluster_health_fk_1`
     FOREIGN KEY (`job_id` )
     REFERENCES `job` (`id` )
     ON DELETE CASCADE
