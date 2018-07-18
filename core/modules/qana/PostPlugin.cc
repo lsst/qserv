@@ -124,22 +124,31 @@ PostPlugin::applyPhysical(QueryPlugin::Plan& plan,
                         LOGS(_log, LOG_LVL_DEBUG, "vfType=" << vf->getTypeString(vfType));
 
                         switch (vfType) {
-                        case query::ValueFactor::COLUMNREF:
+                        case query::ValueFactor::COLUMNREF: // fall through
+                        case query::ValueFactor::FUNCTION:
                         {
                             query::ColumnRef::Vector columnRefVec;
-                            auto const columnRef = vf->getColumnRef();
-                            LOGS(_log, LOG_LVL_DEBUG, "Select db=" << columnRef->db
-                                    << " tbl=" << columnRef->table << " col=" << columnRef->column
-                                    << " alias=" << alias);
-                            validSelectCols.push_back(columnRef->column);
+                            vf->findColumnRefs(columnRefVec);
+                            for (auto const & columnRef : columnRefVec) {
+                                LOGS(_log, LOG_LVL_DEBUG, "Select db=" << columnRef->db
+                                        << " tbl=" << columnRef->table << " col=" << columnRef->column
+                                        << " alias=" << alias);
+                                validSelectCols.push_back(columnRef->column);
+                            }
                         }
                         break;
                         // These cases are complicated and should use an alias for ORDER BY.
-                        case query::ValueFactor::FUNCTION: // fall through
                         case query::ValueFactor::AGGFUNC:  // fall through
+                            throw AnalysisError("Aggregate functions in ORDER BY are not supported.");
+                            break;
                         case query::ValueFactor::STAR:     // fall through
+                            throw AnalysisError("* in ORDER BY is not supported.");
+                            break;
                         case query::ValueFactor::CONST:    // fall through
+                            throw AnalysisError("Constant values in ORDER BY are not supported.");
+                            break;
                         case query::ValueFactor::EXPR:
+                            throw AnalysisError("Expressions in ORDER BY are not supported.");
                             break;
                         }
                     }
