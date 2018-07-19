@@ -101,61 +101,36 @@ PostPlugin::applyPhysical(QueryPlugin::Plan& plan,
         }
     }
 
+    // For query results to be ordered, the columns and/or aliases used by the ORDER BY statement must also
+    // be present in the SELECT statement. Only unqualified column names in the SELECT statement and that are
+    // *not* in a function or expression may be used by the ORDER BY statement. For example, things like
+    // ABS(col), t.col,  and col * 5 must be aliased if they will be used by the ORDER BY statement.
+    //
+    // This block creates a list of column names & aliases in the select list that may be used by the
+    // ORDER BY statement.
     if (_orderBy) {
         auto const& selectList = plan.stmtOriginal.getSelectList();
         auto const& selValExprList = selectList.getValueExprList();
         std::vector<std::string> validSelectCols;
+        LOGS(_log, LOG_LVL_DEBUG, "finding columns usable by ORDER BY from SELECT valueExprs:"
+                << util::printable(*selValExprList));
         for (auto const& selValExpr : *selValExprList) {
-            LOGS(_log, LOG_LVL_DEBUG, "selValExpr=" << selValExpr);
-
             std::string alias = selValExpr->getAlias();
             // If the SELECT column has an alias, the ORDER BY statement must use the alias.
             if (!alias.empty()) {
                 validSelectCols.push_back(alias);
             } else {
-                // Most likely, there's only a need to support simple column names.
-                // Requiring aliases for things like ABS(col), t.col,  and col * 5 greatly simplifies
-                // the problem.
-                auto const& selFactorOps = selValExpr->getFactorOps();
-                if (selFactorOps.size() > 0) {
-                    query::ValueFactorPtr const& vf = selFactorOps.front().factor;
-                    if (vf) {
-                        auto vfType = vf->getType();
-                        LOGS(_log, LOG_LVL_DEBUG, "vfType=" << vf->getTypeString(vfType));
-
-                        switch (vfType) {
-                        case query::ValueFactor::COLUMNREF: // fall through
-                        case query::ValueFactor::FUNCTION:
-                        {
-                            query::ColumnRef::Vector columnRefVec;
-                            vf->findColumnRefs(columnRefVec);
-                            for (auto const & columnRef : columnRefVec) {
-                                LOGS(_log, LOG_LVL_DEBUG, "Select db=" << columnRef->db
-                                        << " tbl=" << columnRef->table << " col=" << columnRef->column
-                                        << " alias=" << alias);
-                                validSelectCols.push_back(columnRef->column);
-                            }
-                        }
-                        break;
-                        // These cases are complicated and should use an alias for ORDER BY.
-                        case query::ValueFactor::AGGFUNC:  // fall through
-                            throw AnalysisError("Aggregate functions in ORDER BY are not supported.");
-                            break;
-                        case query::ValueFactor::STAR:     // fall through
-                            throw AnalysisError("* in ORDER BY is not supported.");
-                            break;
-                        case query::ValueFactor::CONST:    // fall through
-                            throw AnalysisError("Constant values in ORDER BY are not supported.");
-                            break;
-                        case query::ValueFactor::EXPR:
-                            throw AnalysisError("Expressions in ORDER BY are not supported.");
-                            break;
-                        }
-                    }
+                // if the ValueExpr is not of type COLUMN, getColumnRef will return nullptr;
+                auto const & selColumnRef = selValExpr->getColumnRef();
+                if (nullptr == selColumnRef) {
+                    continue;
                 }
+                if (selColumnRef->db.empty() == false || selColumnRef->table.empty() == false) {
+                    continue;
+                }
+                validSelectCols.push_back(selColumnRef->column);
             }
         }
-
         LOGS(_log, LOG_LVL_DEBUG, "valid colNames=" << util::printable(validSelectCols));
 
         // For each element in the ORDER BY clause, see if it matches one item in validSelectCol
