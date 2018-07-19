@@ -111,14 +111,14 @@ PostPlugin::applyPhysical(QueryPlugin::Plan& plan,
     if (_orderBy) {
         auto const& selectList = plan.stmtOriginal.getSelectList();
         auto const& selValExprList = selectList.getValueExprList();
-        std::vector<std::string> validSelectCols;
+        query::ColumnRef::Vector validSelectCols;
         LOGS(_log, LOG_LVL_DEBUG, "finding columns usable by ORDER BY from SELECT valueExprs:"
                 << util::printable(*selValExprList));
         for (auto const& selValExpr : *selValExprList) {
             std::string alias = selValExpr->getAlias();
             // If the SELECT column has an alias, the ORDER BY statement must use the alias.
             if (!alias.empty()) {
-                validSelectCols.push_back(alias);
+                validSelectCols.push_back(std::make_shared<query::ColumnRef>("", alias, ""));
             } else {
                 // if the ValueExpr is not of type COLUMN, getColumnRef will return nullptr;
                 auto const & selColumnRef = selValExpr->getColumnRef();
@@ -128,7 +128,7 @@ PostPlugin::applyPhysical(QueryPlugin::Plan& plan,
                 if (selColumnRef->db.empty() == false || selColumnRef->table.empty() == false) {
                     continue;
                 }
-                validSelectCols.push_back(selColumnRef->column);
+                validSelectCols.push_back(selColumnRef);
             }
         }
         LOGS(_log, LOG_LVL_DEBUG, "valid colNames=" << util::printable(validSelectCols));
@@ -136,57 +136,33 @@ PostPlugin::applyPhysical(QueryPlugin::Plan& plan,
         // For each element in the ORDER BY clause, see if it matches one item in validSelectCol
         auto orderBy = plan.stmtOriginal.getOrderBy();
         auto ordByTerms = orderBy.getTerms();
+        LOGS(_log, LOG_LVL_DEBUG, "ORDER BY terms:" << util::printable(*ordByTerms));
         for (auto const& ordByTerm : *ordByTerms) {
-            LOGS(_log, LOG_LVL_DEBUG, "order by term=" << ordByTerm);
             auto const& expr = ordByTerm.getExpr();
-            query::ValueExpr::FactorOpVector& factorOps = expr->getFactorOps();
-            for (auto& factorOp:factorOps) {
-                query::ColumnRef::Vector orderByColumnRefVec;
-                factorOp.factor->findColumnRefs(orderByColumnRefVec);
-                for (auto const & ordByColRef : orderByColumnRefVec) {
-                    std::string orderByDb = ordByColRef->db;
-                    std::string orderByTbl = ordByColRef->table;
-                    std::string orderByCol = ordByColRef->column;
-                    LOGS(_log, LOG_LVL_DEBUG, "Order By factorOp->factor=" << factorOp.factor
-                         << " db=" << orderByDb << " tbl=" << orderByTbl << " col=" << orderByCol);
-
-                    // If db or table is not empty, that's an error as those typically will not
-                    // be passed back to the proxy in the table column name and the proxy will
-                    // throw an error when it can't locate the ORDER BY argument in the result columns.
-                    if (!orderByDb.empty() || !orderByTbl.empty()) {
-                        if (!orderByTbl.empty()) orderByTbl += ".";
-                        std::string msg = "ORDER BY argument should not include database or table for "
-                            + orderByDb + " " + orderByTbl + orderByCol + ".\n Remove qualifiers or "
-                            "use an alias.\n  ex:'SELECT a.val AS aVal ... ORDER BY aVal";
-                        LOGS(_log, LOG_LVL_WARN, msg);
-                        throw AnalysisError(msg);
-                    }
-
-                    // Check if the ORDER BY column matches a single valid column
-                    int matchCount = 0;
-                    for (auto& selCol : validSelectCols) {
-                        if (selCol == orderByCol) ++matchCount;
-                    }
-                    if (matchCount == 0) {
-                        // error, no match for ORDER BY column
-                        std::string msg = "ORDER BY No match for " + orderByCol
-                                                    + " in " + toString(util::printable(validSelectCols)) + ".\n"
-                                                    "  Consider an alias. "
-                                                    "ex:'SELECT a.val AS aVal, ABS(val) AS absVal ... ORDER BY aVal, absVal'";
-                        LOGS(_log, LOG_LVL_WARN, msg);
-                        throw AnalysisError(msg);
-                    }
-                    if (matchCount > 1) {
-                        // error, the output column is ambiguous
-                        std::string msg = "ORDER BY Duplicate match for " + orderByCol
-                                + " in " + toString(util::printable(validSelectCols)) + ".\n Use an alias. "
-                                "ex:'SELECT a.val, b.val AS bVal ... ORDER BY bVal";
-                        LOGS(_log, LOG_LVL_WARN, msg);
-                        throw AnalysisError(msg);
+            query::ColumnRef::Vector orderByColumnRefVec;
+            expr->findColumnRefs(orderByColumnRefVec);
+            for (auto const & ordByColRef : orderByColumnRefVec) {
+                // Check that the ORDER BY column does not have a database or table name
+                if (ordByColRef->db.empty() == false || ordByColRef->table.empty() == false) {
+                    throw AnalysisError("ORDER BY can only contain columns without database or table name, or alises. "
+                            + ordByColRef->db + "." + ordByColRef->table + "." + ordByColRef->column + " is not supported.");
+                }
+                // Check if the ORDER BY column matches a single valid column
+                query::ColumnRef::Ptr match;
+                for (auto const & selCol : validSelectCols) {
+                    if (selCol == ordByColRef) {
+                        if (match != nullptr) {
+                            throw AnalysisError("ORDER BY Duplicate match for " + toString(ordByColRef)
+                                    + " in SELECT columns:" + toString(util::printable(validSelectCols)));
+                        }
                     }
                 }
+                // Check that there is a match for ORDER BY column
+                if (nullptr == match) {
+                    throw AnalysisError("ORDER BY No match for " + toString(ordByColRef) + " in SELECT columns:"
+                            + toString(util::printable(validSelectCols)));
+                }
             }
-
         }
     }
 
