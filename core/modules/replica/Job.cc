@@ -323,7 +323,7 @@ void Job::setState(util::Lock const& lock,
     // in the transient state transition in order to ensure a consistent view
     // onto the combined state.
 
-    if (state() == State::FINISHED) {
+    if (newState == State::FINISHED) {
         _endTime = PerformanceUtils::now();
     }
     _extendedState = newExtendedState;

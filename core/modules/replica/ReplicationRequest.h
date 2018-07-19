@@ -184,7 +184,7 @@ private:
     void notifyImpl() final;
 
     /**
-      * @see Request::savePersistentState()
+     * @see Request::savePersistentState()
      */
     void savePersistentState(util::Lock const& lock) final;
 

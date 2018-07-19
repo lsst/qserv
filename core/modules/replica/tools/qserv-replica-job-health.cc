@@ -98,17 +98,18 @@ bool test() {
         if (job->extendedState() == Job::ExtendedState::SUCCESS) {
             ClusterHealth const& health = job->clusterHealth();
             std::cout
-                << "  good: " << (health.good() ? "YES" : "NO") << "\n"
-                << "  Replication workers\n";
+                << "ClusterHealth report \n"
+                << "  in overall good state: " << (health.good() ? "YES" : "NO") << "\n"
+                << "  replication worker agents\n";
             for (auto&& entry: health.replication()) {
                 std::cout
-                    << "    " << entry.first << "\t: " << (entry.second ? "UP" : "*") << "\n";
+                    << "    " << entry.first << ":\t " << (entry.second ? "UP" : "*") << "\n";
             }
             std::cout
-                << "  Qserv workers\n";
+                << "  qserv workers\n";
             for (auto&& entry: health.qserv()) {
                 std::cout
-                    << "    " << entry.first << "\t: " << (entry.second ? "UP" : "*") << "\n";
+                    << "    " << entry.first << ":\t " << (entry.second ? "UP" : "*") << "\n";
             }
         }
 

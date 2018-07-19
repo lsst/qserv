@@ -190,21 +190,7 @@ CREATE TABLE IF NOT EXISTS `job` (
   `controller_id`  VARCHAR(255) NOT NULL ,  -- all jobs must be associated with a controller
   `parent_job_id`  VARCHAR(255)     NULL ,  -- for jobs formming a tree
 
-  `type` ENUM ('FIXUP',
-               'FIND_ALL',
-               'REPLICATE',
-               'PURGE',
-               'REBALANCE',
-               'VERIFY',
-               'DELETE_WORKER',
-               'ADD_WORKER',
-               'MOVE_REPLICA',
-               'CREATE_REPLICA',
-               'DELETE_REPLICA',
-               'QSERV_SYNC',
-               'QSERV_GET_REPLICAS',
-               'CLUSTER_HEALTH') NOT NULL ,
-
+  `type`       VARCHAR(255) NOT NULL ,
   `state`      VARCHAR(255) NOT NULL ,
   `ext_state`  VARCHAR(255) DEFAULT '' ,
 
@@ -603,17 +589,7 @@ CREATE TABLE IF NOT EXISTS `request` (
   `id`      VARCHAR(255) NOT NULL ,
   `job_id`  VARCHAR(255) NOT NULL ,
 
-  `name` ENUM ('REPLICA_CREATE',
-               'REPLICA_DELETE',
-               'REPLICA_FIND',
-               'REPLICA_FIND_ALL',
-               'REPLICA_ECHO',
-               'QSERV_ADD_REPLICA',
-               'QSERV_REMOVE_REPLICA',
-               'QSERV_GET_REPLICAS',
-               'QSERV_SET_REPLICAS',
-               'QSERV_TEST_ECHO') NOT NULL ,
-
+  `name`     VARCHAR(255) NOT NULL ,
   `worker`   VARCHAR(255) NOT NULL ,
   `priority` INT          DEFAULT 0 ,
 

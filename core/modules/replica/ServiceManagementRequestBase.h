@@ -161,6 +161,11 @@ private:
     void analyze(bool success,
                  proto::ReplicationServiceResponse const& message);
 
+    /**
+     * @see Request::savePersistentState()
+     */
+    void savePersistentState(util::Lock const& lock) final;
+
 private:
 
     /// Request type
