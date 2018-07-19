@@ -1872,7 +1872,8 @@ private:
 class FunctionArgsAdapter :
         public AdapterT<FunctionArgsCBH>,
         public ConstantCBH,
-        public FullColumnNameCBH {
+        public FullColumnNameCBH,
+        public ScalarFunctionCallCBH{
 public:
     FunctionArgsAdapter(shared_ptr<FunctionArgsCBH> const & parent,
                         QSMySqlParser::FunctionArgsContext* ctx)
@@ -1888,6 +1889,12 @@ public:
     void handleFullColumnName(shared_ptr<query::ValueFactor> const & columnName) override {
         auto valueExpr = make_shared<query::ValueExpr>();
         ValueExprFactory::addValueFactor(valueExpr, columnName);
+        _args.push_back(valueExpr);
+    }
+
+    void handleScalarFunctionCall(shared_ptr<query::FuncExpr> const & funcExpr) {
+        auto valueExpr = make_shared<query::ValueExpr>();
+        ValueExprFactory::addFuncExpr(valueExpr, funcExpr);
         _args.push_back(valueExpr);
     }
 
