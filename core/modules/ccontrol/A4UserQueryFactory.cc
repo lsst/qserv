@@ -55,7 +55,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.A4UserQueryFactory");
 // parse a query as expected, in the case where the string was not tokenized as expected.
 vector<pair<string, string>> getTokenPairs(CommonTokenStream & tokens, QSMySqlLexer & lexer) {
     vector<pair<string, string>> ret;
-    for (auto t : tokens.getTokens()) {
+    for (auto&& t : tokens.getTokens()) {
         string name = lexer.getVocabulary().getSymbolicName(t->getType());
         if (name.empty()) {
             name = lexer.getVocabulary().getLiteralName(t->getType());
