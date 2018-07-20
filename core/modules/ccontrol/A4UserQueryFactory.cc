@@ -23,6 +23,9 @@
 
 #include "ccontrol/A4UserQueryFactory.h"
 
+#include <string>
+#include <utility>
+
 #include "antlr4-runtime.h"
 
 // these must be included before Log.h because they have a function called LOGS
@@ -34,7 +37,7 @@
 
 #include "parser/QSMySqlListener.h"
 #include "query/SelectStmt.h"
-
+#include "util/IterableFormatter.h"
 
 
 // antlr4 C++ runtime seems to require that we use namespace antlr4; trying to use it with classes
@@ -42,21 +45,40 @@
 // antlr4 namespace. I may be wrong about this though; it needs research (before merge to master).
 // If I'm right we should see about fixing the antlr4 cpp runtime & issuing a PR to them.
 using namespace antlr4;
+using namespace std;
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.A4UserQueryFactory");
+
+// For the current query, this returns a list where each pair contains a bit of the string from the query
+// and how antlr4 tokenized that bit of string. It is useful for debugging problems where antlr4 did not
+// parse a query as expected, in the case where the string was not tokenized as expected.
+vector<pair<string, string>> getTokenPairs(CommonTokenStream & tokens, QSMySqlLexer & lexer) {
+    vector<pair<string, string>> ret;
+    for (auto t : tokens.getTokens()) {
+        string name = lexer.getVocabulary().getSymbolicName(t->getType());
+        if (name.empty()) {
+            name = lexer.getVocabulary().getLiteralName(t->getType());
+        }
+        ret.push_back(make_pair(name, t->getText()));
+    }
+    return ret;
+}
+
 }
 
 namespace lsst {
 namespace qserv {
 namespace ccontrol {
 
-
-std::shared_ptr<query::SelectStmt> a4NewUserQuery(const std::string& userQuery) {
+shared_ptr<query::SelectStmt> a4NewUserQuery(const string& userQuery) {
     ANTLRInputStream input(userQuery);
     QSMySqlLexer lexer(&input);
     CommonTokenStream tokens(&lexer);
     tokens.fill();
+
+    LOGS(_log, LOG_LVL_DEBUG, "New user query, antlr4 tokens: " <<  util::printable(getTokenPairs(tokens, lexer)));
+
     QSMySqlParser parser(&tokens);
     tree::ParseTree *tree = parser.root();
     LOGS(_log, LOG_LVL_DEBUG, "New user query, antlr4 string tree: " << tree->toStringTree(&parser));
