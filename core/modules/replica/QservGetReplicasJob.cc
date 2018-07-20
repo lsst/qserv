@@ -30,7 +30,6 @@
 // Qserv headers
 #include "lsst/log/Log.h"
 #include "replica/Configuration.h"
-#include "replica/DatabaseMySQL.h"
 #include "replica/QservMgtServices.h"
 #include "replica/ServiceProvider.h"
 
@@ -99,10 +98,11 @@ QservGetReplicasJobResult const& QservGetReplicasJob::getReplicaData() const {
         "QservGetReplicasJob::getReplicaData  the method can't be called while the job hasn't finished");
 }
 
-std::string QservGetReplicasJob::extendedPersistentState(SqlGeneratorPtr const& gen) const {
-    return gen->sqlPackValues(id(),
-                              databaseFamily(),
-                              inUseOnly() ? 1 : 0);
+std::map<std::string,std::string> QservGetReplicasJob::extendedPersistentState() const {
+    std::map<std::string,std::string> result;
+    result["database_family"] = databaseFamily();
+    result["in_use_only"]     = inUseOnly() ? "1" : "0";
+    return result;
 }
 
 void QservGetReplicasJob::startImpl(util::Lock const& lock) {

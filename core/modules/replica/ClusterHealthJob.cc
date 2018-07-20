@@ -30,7 +30,6 @@
 // Qserv headers
 #include "lsst/log/Log.h"
 #include "replica/Controller.h"
-#include "replica/DatabaseMySQL.h"
 #include "replica/QservMgtServices.h"
 #include "replica/ServiceProvider.h"
 
@@ -134,9 +133,10 @@ ClusterHealth const& ClusterHealthJob::clusterHealth() const {
             context() + "clusterHealth  can't use this operation before finishing the job");
 }
 
-std::string ClusterHealthJob::extendedPersistentState(SqlGeneratorPtr const& gen) const {
-    return gen->sqlPackValues(id(),
-                              timeoutSec());
+std::map<std::string,std::string> ClusterHealthJob::extendedPersistentState() const {
+    std::map<std::string,std::string> result;
+    result["timeout_sec"] = std::to_string(timeoutSec());
+    return result;
 }
 
 void ClusterHealthJob::startImpl(util::Lock const& lock) {

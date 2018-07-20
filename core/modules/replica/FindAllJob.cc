@@ -30,9 +30,7 @@
 // Qserv headers
 #include "lsst/log/Log.h"
 #include "replica/Configuration.h"
-#include "replica/DatabaseMySQL.h"
 #include "replica/ServiceProvider.h"
-
 
 namespace {
 
@@ -97,9 +95,10 @@ FindAllJobResult const& FindAllJob::getReplicaData() const {
         "FindAllJob::getReplicaData  the method can't be called while the job hasn't finished");
 }
 
-std::string FindAllJob::extendedPersistentState(SqlGeneratorPtr const& gen) const {
-    return gen->sqlPackValues(id(),
-                              databaseFamily());
+std::map<std::string,std::string> FindAllJob::extendedPersistentState() const {
+    std::map<std::string,std::string> result;
+    result["database_family"] = databaseFamily();
+    return result;
 }
 
 void FindAllJob::startImpl(util::Lock const& lock) {

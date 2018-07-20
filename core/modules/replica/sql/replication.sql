@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS `config` (
 )
 ENGINE = InnoDB;
 
+
 -- -----------------------------------------------------
 -- Table `config_worker`
 -- -----------------------------------------------------
@@ -105,6 +106,7 @@ CREATE TABLE IF NOT EXISTS `config_database_family` (
 )
 ENGINE = InnoDB;
 
+
 -- -----------------------------------------------------
 -- Table `config_database`
 -- -----------------------------------------------------
@@ -133,6 +135,7 @@ CREATE TABLE IF NOT EXISTS `config_database` (
     ON UPDATE CASCADE
 )
 ENGINE = InnoDB;
+
 
 -- -----------------------------------------------------
 -- Table `config_database_table`
@@ -220,23 +223,26 @@ CREATE TABLE IF NOT EXISTS `job` (
 )
 ENGINE = InnoDB;
 
--- -----------------------------------------------------
--- Table `job_fixup`
--- -----------------------------------------------------
---
--- Extended parameters of the 'FIXUP' jobs
---
-DROP TABLE IF EXISTS `job_fixup` ;
 
-CREATE TABLE IF NOT EXISTS `job_fixup` (
+-- -----------------------------------------------------
+-- Table `job_ext`
+-- -----------------------------------------------------
+--
+-- Extended parameters of the jobs
+--
+DROP TABLE IF EXISTS `job_ext` ;
+
+CREATE TABLE IF NOT EXISTS `job_ext` (
 
   `job_id`  VARCHAR(255) NOT NULL ,
 
-  `database_family`  VARCHAR(255) NOT NULL ,
+  `param` VARCHAR(255) NOT NULL ,
+  `value` LONGBLOB     NOT NULL ,
 
-  PRIMARY KEY (`job_id`) ,
+  KEY (`job_id`) ,
+  KEY (`job_id`,`param`) ,
 
-  CONSTRAINT `job_fixup_fk_1`
+  CONSTRAINT `job_ext_fk_1`
     FOREIGN KEY (`job_id` )
     REFERENCES `job` (`id` )
     ON DELETE CASCADE
@@ -244,340 +250,6 @@ CREATE TABLE IF NOT EXISTS `job_fixup` (
 )
 ENGINE = InnoDB;
 
--- -----------------------------------------------------
--- Table `job_find_all`
--- -----------------------------------------------------
---
--- Extended parameters of the 'FIND_ALL' jobs
---
-DROP TABLE IF EXISTS `job_find_all` ;
-
-CREATE TABLE IF NOT EXISTS `job_find_all` (
-
-  `job_id`  VARCHAR(255) NOT NULL ,
-
-  `database_family`  VARCHAR(255) NOT NULL ,
-
-  PRIMARY KEY (`job_id`) ,
-
-  CONSTRAINT `job_find_all_fk_1`
-    FOREIGN KEY (`job_id`)
-    REFERENCES `job` (`id`)
-    ON DELETE CASCADE
-    ON UPDATE CASCADE
-)
-ENGINE = InnoDB;
-
-
--- -----------------------------------------------------
--- Table `job_replicate`
--- -----------------------------------------------------
---
--- Extended parameters of the 'REPLICATE' jobs
---
-DROP TABLE IF EXISTS `job_replicate` ;
-
-CREATE TABLE IF NOT EXISTS `job_replicate` (
-
-  `job_id`  VARCHAR(255) NOT NULL ,
-
-  `database_family`  VARCHAR(255) NOT NULL ,
-  `num_replicas`     INT          NOT NULL ,
-
-  PRIMARY KEY (`job_id`) ,
-
-  CONSTRAINT `job_replicate_fk_1`
-    FOREIGN KEY (`job_id` )
-    REFERENCES `job` (`id` )
-    ON DELETE CASCADE
-    ON UPDATE CASCADE
-)
-ENGINE = InnoDB;
-
-
--- -----------------------------------------------------
--- Table `job_purge`
--- -----------------------------------------------------
---
--- Extended parameters of the 'PURGE' jobs
---
-DROP TABLE IF EXISTS `job_purge` ;
-
-CREATE TABLE IF NOT EXISTS `job_purge` (
-
-  `job_id`  VARCHAR(255) NOT NULL ,
-
-  `database_family`  VARCHAR(255) NOT NULL ,
-  `num_replicas`     INT          NOT NULL ,
-
-  PRIMARY KEY (`job_id`) ,
-
-  CONSTRAINT `job_purge_fk_1`
-    FOREIGN KEY (`job_id` )
-    REFERENCES `job` (`id` )
-    ON DELETE CASCADE
-    ON UPDATE CASCADE
-)
-ENGINE = InnoDB;
-
-
--- -----------------------------------------------------
--- Table `job_rebalance`
--- -----------------------------------------------------
---
--- Extended parameters of the 'REBALANCE' jobs
---
-DROP TABLE IF EXISTS `job_rebalance` ;
-
-CREATE TABLE IF NOT EXISTS `job_rebalance` (
-
-  `job_id`  VARCHAR(255) NOT NULL ,
-
-  `database_family`  VARCHAR(255) NOT NULL ,
-
-  PRIMARY KEY (`job_id`) ,
-
-  CONSTRAINT `job_rebalance_fk_1`
-    FOREIGN KEY (`job_id` )
-    REFERENCES `job` (`id` )
-    ON DELETE CASCADE
-    ON UPDATE CASCADE
-)
-ENGINE = InnoDB;
-
-
--- -----------------------------------------------------
--- Table `job_verify`
--- -----------------------------------------------------
---
--- Extended parameters of the 'VERIFY' jobs
---
-DROP TABLE IF EXISTS `job_verify` ;
-
-CREATE TABLE IF NOT EXISTS `job_verify` (
-
-  `job_id`  VARCHAR(255) NOT NULL ,
-
-  `max_replicas`  INT     NOT NULL ,
-  `compute_cs`    BOOLEAN NOT NULL ,
-
-  PRIMARY KEY (`job_id`) ,
-
-  CONSTRAINT `job_verify_fk_1`
-    FOREIGN KEY (`job_id` )
-    REFERENCES `job` (`id` )
-    ON DELETE CASCADE
-    ON UPDATE CASCADE
-)
-ENGINE = InnoDB;
-
-
--- -----------------------------------------------------
--- Table `job_delete_worker`
--- -----------------------------------------------------
---
--- Extended parameters of the 'DELETE_WORKER' jobs
---
-DROP TABLE IF EXISTS `job_delete_worker` ;
-
-CREATE TABLE IF NOT EXISTS `job_delete_worker` (
-
-  `job_id`  VARCHAR(255) NOT NULL ,
-
-  `worker`    VARCHAR(255) NOT NULL ,
-  `permanent` BOOLEAN      NOT NULL ,
-
-  PRIMARY KEY (`job_id`) ,
-
-  CONSTRAINT `job_delete_worker_fk_1`
-    FOREIGN KEY (`job_id` )
-    REFERENCES `job` (`id` )
-    ON DELETE CASCADE
-    ON UPDATE CASCADE
-)
-ENGINE = InnoDB;
-
-
--- -----------------------------------------------------
--- Table `job_add_worker`
--- -----------------------------------------------------
---
--- Extended parameters of the 'ADD_WORKER' jobs
---
-DROP TABLE IF EXISTS `job_add_worker` ;
-
-CREATE TABLE IF NOT EXISTS `job_add_worker` (
-
-  `job_id`  VARCHAR(255) NOT NULL ,
-
-  `worker` VARCHAR(255) NOT NULL ,
-
-  PRIMARY KEY (`job_id`) ,
-
-  CONSTRAINT `job_add_worker_fk_1`
-    FOREIGN KEY (`job_id` )
-    REFERENCES `job` (`id` )
-    ON DELETE CASCADE
-    ON UPDATE CASCADE
-)
-ENGINE = InnoDB;
-
-
--- -----------------------------------------------------
--- Table `job_move_replica`
--- -----------------------------------------------------
---
--- Extended parameters of the 'MOVE_REPLICA' jobs
---
-DROP TABLE IF EXISTS `job_move_replica` ;
-
-CREATE TABLE IF NOT EXISTS `job_move_replica` (
-
-  `job_id`  VARCHAR(255) NOT NULL ,
-
-  `database_family`    VARCHAR(255) NOT NULL ,
-  `chunk`              INT UNSIGNED NOT NULL ,
-  `source_worker`      VARCHAR(255) NOT NULL ,
-  `destination_worker` VARCHAR(255) NOT NULL ,
-  `purge`              BOOLEAN      NOT NULL ,
-
-  PRIMARY KEY (`job_id`) ,
-
-  CONSTRAINT `job_move_replica_fk_1`
-    FOREIGN KEY (`job_id` )
-    REFERENCES `job` (`id` )
-    ON DELETE CASCADE
-    ON UPDATE CASCADE
-)
-ENGINE = InnoDB;
-
-
--- -----------------------------------------------------
--- Table `job_create_replica`
--- -----------------------------------------------------
---
--- Extended parameters of the 'CREATE_REPLICA' jobs
---
-DROP TABLE IF EXISTS `job_create_replica` ;
-
-CREATE TABLE IF NOT EXISTS `job_create_replica` (
-
-  `job_id`  VARCHAR(255) NOT NULL ,
-
-  `database_family`    VARCHAR(255) NOT NULL ,
-  `chunk`              INT UNSIGNED NOT NULL ,
-  `source_worker`      VARCHAR(255) NOT NULL ,
-  `destination_worker` VARCHAR(255) NOT NULL ,
-
-  PRIMARY KEY (`job_id`) ,
-
-  CONSTRAINT `job_create_replica_fk_1`
-    FOREIGN KEY (`job_id` )
-    REFERENCES `job` (`id` )
-    ON DELETE CASCADE
-    ON UPDATE CASCADE
-)
-ENGINE = InnoDB;
-
--- -----------------------------------------------------
--- Table `job_delete_replica`
--- -----------------------------------------------------
---
--- Extended parameters of the 'DELETE_REPLICA' jobs
---
-DROP TABLE IF EXISTS `job_delete_replica` ;
-
-CREATE TABLE IF NOT EXISTS `job_delete_replica` (
-
-  `job_id`  VARCHAR(255) NOT NULL ,
-
-  `database_family` VARCHAR(255) NOT NULL ,
-  `chunk`           INT UNSIGNED NOT NULL ,
-  `worker`          VARCHAR(255) NOT NULL ,
-
-  PRIMARY KEY (`job_id`) ,
-
-  CONSTRAINT `job_delete_replica_fk_1`
-    FOREIGN KEY (`job_id` )
-    REFERENCES `job` (`id` )
-    ON DELETE CASCADE
-    ON UPDATE CASCADE
-)
-ENGINE = InnoDB;
-
--- -----------------------------------------------------
--- Table `job_qserv_sync`
--- -----------------------------------------------------
---
--- Extended parameters of the 'QSERV_SYNC' jobs
---
-DROP TABLE IF EXISTS `job_qserv_sync` ;
-
-CREATE TABLE IF NOT EXISTS `job_qserv_sync` (
-
-  `job_id`  VARCHAR(255) NOT NULL ,
-
-  `database_family` VARCHAR(255) NOT NULL ,
-  `force`           BOOLEAN      NOT NULL ,
-
-  PRIMARY KEY (`job_id`) ,
-
-  CONSTRAINT `job_qserv_sync_fk_1`
-    FOREIGN KEY (`job_id` )
-    REFERENCES `job` (`id` )
-    ON DELETE CASCADE
-    ON UPDATE CASCADE
-)
-ENGINE = InnoDB;
-
--- -----------------------------------------------------
--- Table `job_qserv_get_replicas`
--- -----------------------------------------------------
---
--- Extended parameters of the 'QSERV_GET_REPLICAS' jobs
---
-DROP TABLE IF EXISTS `job_qserv_get_replicas` ;
-
-CREATE TABLE IF NOT EXISTS `job_qserv_get_replicas` (
-
-  `job_id`  VARCHAR(255) NOT NULL ,
-
-  `database_family` VARCHAR(255) NOT NULL ,
-  `in_use_only`     BOOLEAN      NOT NULL ,
-
-  PRIMARY KEY (`job_id`) ,
-
-  CONSTRAINT `job_qserv_get_replicas_fk_1`
-    FOREIGN KEY (`job_id` )
-    REFERENCES `job` (`id` )
-    ON DELETE CASCADE
-    ON UPDATE CASCADE
-)
-ENGINE = InnoDB;
-
--- -----------------------------------------------------
--- Table `job_cluster_health`
--- -----------------------------------------------------
---
--- Extended parameters of the 'CLUSTER_HEALTH' jobs
---
-DROP TABLE IF EXISTS `job_cluster_health` ;
-
-CREATE TABLE IF NOT EXISTS `job_cluster_health` (
-
-  `job_id`  VARCHAR(255) NOT NULL ,
-
-  `timeout` INT UNSIGNED NOT NULL ,
-
-  PRIMARY KEY (`job_id`) ,
-
-  CONSTRAINT `job_cluster_health_fk_1`
-    FOREIGN KEY (`job_id` )
-    REFERENCES `job` (`id` )
-    ON DELETE CASCADE
-    ON UPDATE CASCADE
-)
-ENGINE = InnoDB;
 
 -- -----------------------------------------------------
 -- Table `request`
@@ -616,265 +288,24 @@ ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `request_replica_create`
+-- Table `request_ext`
 -- -----------------------------------------------------
 --
--- Extended parameters of the 'REPLICA_CREATE' requests
+-- Extended parameters of the requests
 --
-DROP TABLE IF EXISTS `request_replica_create` ;
+DROP TABLE IF EXISTS `request_ext` ;
 
-CREATE TABLE IF NOT EXISTS `request_replica_create` (
+CREATE TABLE IF NOT EXISTS `request_ext` (
 
   `request_id`  VARCHAR(255) NOT NULL ,
 
-  `database` VARCHAR(255) NOT NULL ,
-  `chunk`    INT UNSIGNED NOT NULL ,
+  `param` VARCHAR(255) NOT NULL ,
+  `value` LONGBLOB     NOT NULL ,
 
-  `source_worker`  VARCHAR(255) NOT NULL ,
+  KEY (`request_id`) ,
+  KEY (`request_id`,`param`) ,
 
-  PRIMARY KEY (`request_id`) ,
-
-  CONSTRAINT `request_replica_create_fk_1`
-    FOREIGN KEY (`request_id` )
-    REFERENCES `request` (`id` )
-    ON DELETE CASCADE
-    ON UPDATE CASCADE
-)
-ENGINE = InnoDB;
-
-
--- -----------------------------------------------------
--- Table `request_replica_delete`
--- -----------------------------------------------------
---
--- Extended parameters of the 'REPLICA_DELETE' requests
---
-DROP TABLE IF EXISTS `request_replica_delete` ;
-
-CREATE TABLE IF NOT EXISTS `request_replica_delete` (
-
-  `request_id`  VARCHAR(255) NOT NULL ,
-
-  `database` VARCHAR(255) NOT NULL ,
-  `chunk`    INT UNSIGNED NOT NULL ,
-
-  PRIMARY KEY (`request_id`) ,
-
-  CONSTRAINT `request_replica_delete_fk_1`
-    FOREIGN KEY (`request_id` )
-    REFERENCES `request` (`id` )
-    ON DELETE CASCADE
-    ON UPDATE CASCADE
-)
-ENGINE = InnoDB;
-
-
--- -----------------------------------------------------
--- Table `request_replica_find`
--- -----------------------------------------------------
---
--- Extended parameters of the 'REPLICA_FIND' requests
---
-DROP TABLE IF EXISTS `request_replica_find` ;
-
-CREATE TABLE IF NOT EXISTS `request_replica_find` (
-
-  `request_id`  VARCHAR(255) NOT NULL ,
-
-  `database` VARCHAR(255) NOT NULL ,
-  `chunk`    INT UNSIGNED NOT NULL ,
-
-  PRIMARY KEY (`request_id`) ,
-
-  CONSTRAINT `request_replica_find_fk_1`
-    FOREIGN KEY (`request_id` )
-    REFERENCES `request` (`id` )
-    ON DELETE CASCADE
-    ON UPDATE CASCADE
-)
-ENGINE = InnoDB;
-
-
--- -----------------------------------------------------
--- Table `request_replica_find_all`
--- -----------------------------------------------------
---
--- Extended parameters of the 'REPLICA_FIND_ALL' requests
---
-DROP TABLE IF EXISTS `request_replica_find_all` ;
-
-CREATE TABLE IF NOT EXISTS `request_replica_find_all` (
-
-  `request_id`  VARCHAR(255) NOT NULL ,
-
-  `database` VARCHAR(255) NOT NULL ,
-
-  PRIMARY KEY (`request_id`) ,
-
-  CONSTRAINT `request_replica_find_all_fk_1`
-    FOREIGN KEY (`request_id` )
-    REFERENCES `request` (`id` )
-    ON DELETE CASCADE
-    ON UPDATE CASCADE
-)
-ENGINE = InnoDB;
-
--- -----------------------------------------------------
--- Table `request_replica_echo`
--- -----------------------------------------------------
---
--- Extended parameters of the 'REPLICA_ECHO' requests
---
-DROP TABLE IF EXISTS `request_replica_echo` ;
-
-CREATE TABLE IF NOT EXISTS `request_replica_echo` (
-
-  `request_id`  VARCHAR(255) NOT NULL ,
-
-  `data_length` INT    UNSIGNED NOT NULL ,
-  `delay`       BIGINT UNSIGNED NOT NULL ,
-
-  PRIMARY KEY (`request_id`) ,
-
-  CONSTRAINT `request_replica_echo_fk_1`
-    FOREIGN KEY (`request_id` )
-    REFERENCES `request` (`id` )
-    ON DELETE CASCADE
-    ON UPDATE CASCADE
-)
-ENGINE = InnoDB;
-
-
--- -----------------------------------------------------
--- Table `request_qserv_add_replica`
--- -----------------------------------------------------
---
--- Extended parameters of the 'QSERV_ADD_REPLICA' requests
---
-DROP TABLE IF EXISTS `request_qserv_add_replica` ;
-
-CREATE TABLE IF NOT EXISTS `request_qserv_add_replica` (
-
-  `request_id`  VARCHAR(255) NOT NULL ,
-
-  `databases`   LONGTEXT     NOT NULL ,
-  `chunk`       INT UNSIGNED NOT NULL ,
-
-  PRIMARY KEY (`request_id`) ,
-
-  CONSTRAINT `request_qserv_add_replica_fk_1`
-    FOREIGN KEY (`request_id` )
-    REFERENCES `request` (`id` )
-    ON DELETE CASCADE
-    ON UPDATE CASCADE
-)
-ENGINE = InnoDB;
-
-
--- -----------------------------------------------------
--- Table `request_qserv_remove_replica`
--- -----------------------------------------------------
---
--- Extended parameters of the 'QSERV_REMOVE_REPLICA' requests
---
-DROP TABLE IF EXISTS `request_qserv_remove_replica` ;
-
-CREATE TABLE IF NOT EXISTS `request_qserv_remove_replica` (
-
-  `request_id`  VARCHAR(255) NOT NULL ,
-
-  --
-  -- comma separated sequence of database names
-  --
-  --   '<database1>,<database2>, ...'
-  --
-  `databases`   LONGTEXT     NOT NULL ,
-  `chunk`       INT UNSIGNED NOT NULL ,
-  `force`       BOOLEAN      NOT NULL ,
-
-  PRIMARY KEY (`request_id`) ,
-
-  CONSTRAINT `request_qserv_remove_replica_fk_1`
-    FOREIGN KEY (`request_id` )
-    REFERENCES `request` (`id` )
-    ON DELETE CASCADE
-    ON UPDATE CASCADE
-)
-ENGINE = InnoDB;
-
--- -----------------------------------------------------
--- Table `request_qserv_get_replicas`
--- -----------------------------------------------------
---
--- Extended parameters of the 'QSERV_GET_REPLICAS' requests
---
-DROP TABLE IF EXISTS `request_qserv_get_replicas` ;
-
-CREATE TABLE IF NOT EXISTS `request_qserv_get_replicas` (
-
-  `request_id`   VARCHAR(255) NOT NULL ,
-
-  `database_family`  VARCHAR(255) NOT NULL ,
-  `in_use_only`      BOOLEAN      NOT NULL ,
-
-  PRIMARY KEY (`request_id`) ,
-
-  CONSTRAINT `request_qserv_get_replicas_fk_1`
-    FOREIGN KEY (`request_id` )
-    REFERENCES `request` (`id` )
-    ON DELETE CASCADE
-    ON UPDATE CASCADE
-)
-ENGINE = InnoDB;
-
--- -----------------------------------------------------
--- Table `request_qserv_set_replicas`
--- -----------------------------------------------------
---
--- Extended parameters of the 'QSERV_SET_REPLICAS' requests
---
-DROP TABLE IF EXISTS `request_qserv_set_replicas` ;
-
-CREATE TABLE IF NOT EXISTS `request_qserv_set_replicas` (
-
-  `request_id`  VARCHAR(255) NOT NULL ,
-
-  --
-  -- comma separated sequence of pairs representing databases
-  -- and chunks:
-  --
-  --   '<database1>:<chunk1>,<database2>:<chunk2>, ...'
-  --
-  `replicas` LONGTEXT NOT NULL ,
-  `force`    BOOLEAN  NOT NULL ,
-
-  PRIMARY KEY (`request_id`) ,
-
-  CONSTRAINT `request_qserv_set_replicas_fk_1`
-    FOREIGN KEY (`request_id` )
-    REFERENCES `request` (`id` )
-    ON DELETE CASCADE
-    ON UPDATE CASCADE
-)
-ENGINE = InnoDB;
-
--- -----------------------------------------------------
--- Table `request_qserv_test_echo`
--- -----------------------------------------------------
---
--- Extended parameters of the 'QSERV_TEST_ECHO' requests
---
-DROP TABLE IF EXISTS `request_qserv_test_echo` ;
-
-CREATE TABLE IF NOT EXISTS `request_qserv_test_echo` (
-
-  `request_id`  VARCHAR(255) NOT NULL ,
-
-  `data_length` INT UNSIGNED NOT NULL ,
-
-  PRIMARY KEY (`request_id`) ,
-
-  CONSTRAINT `request_qserv_test_echo_fk_1`
+  CONSTRAINT `request_ext_fk_1`
     FOREIGN KEY (`request_id` )
     REFERENCES `request` (`id` )
     ON DELETE CASCADE

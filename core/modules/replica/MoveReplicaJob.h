@@ -164,7 +164,7 @@ public:
     /**
      * @see Job::extendedPersistentState()
      */
-    std::string extendedPersistentState(SqlGeneratorPtr const& gen) const override;
+    std::map<std::string,std::string> extendedPersistentState() const override;
 
 protected:
 

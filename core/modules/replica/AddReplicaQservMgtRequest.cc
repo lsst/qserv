@@ -34,7 +34,6 @@
 #include "global/ResourceUnit.h"
 #include "lsst/log/Log.h"
 #include "replica/Configuration.h"
-#include "replica/DatabaseMySQL.h"
 #include "replica/ServiceProvider.h"
 
 namespace {
@@ -80,10 +79,13 @@ AddReplicaQservMgtRequest::AddReplicaQservMgtRequest(
         _qservRequest(nullptr) {
 }
 
-std::string AddReplicaQservMgtRequest::extendedPersistentState(SqlGeneratorPtr const& gen) const {
-    return gen->sqlPackValues(id(),
-                              databases(),
-                              chunk());
+std::map<std::string,std::string> AddReplicaQservMgtRequest::extendedPersistentState() const {
+    std::map<std::string,std::string> result;
+    result["chunk"] = chunk();
+    for (auto&& database: databases()) {
+        result["database"] = database;
+    }
+    return result;
 }
 
 void AddReplicaQservMgtRequest::startImpl(util::Lock const& lock) {

@@ -185,7 +185,7 @@ private:
     /**
      * @see Request::extendedPersistentState()
      */
-    std::string extendedPersistentState(SqlGeneratorPtr const& gen) const final;
+    std::map<std::string,std::string> extendedPersistentState() const override;
 
 private:
 

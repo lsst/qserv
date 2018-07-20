@@ -33,7 +33,6 @@
 // Qserv headers
 #include "lsst/log/Log.h"
 #include "replica/Controller.h"
-#include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
 #include "replica/Messenger.h"
 #include "replica/ProtocolBuffer.h"
@@ -308,11 +307,11 @@ void EchoRequest::savePersistentState(util::Lock const& lock) {
     controller()->serviceProvider()->databaseServices()->saveState(*this, performance(lock));
 }
 
-std::string EchoRequest::extendedPersistentState(SqlGeneratorPtr const& gen) const {
-    LOGS(_log, LOG_LVL_DEBUG, context() << "extendedPersistentState");
-    return gen->sqlPackValues(id(),
-                              data().size(),
-                              delay());
+std::map<std::string,std::string> EchoRequest::extendedPersistentState() const {
+    std::map<std::string,std::string> result;
+    result["data_length_bytes"]  = std::to_string(data().size());
+    result["delay_milliseconds"] = std::to_string(delay());
+    return result;
 }
 
 }}} // namespace lsst::qserv::replica

@@ -32,7 +32,6 @@
 #include "lsst/log/Log.h"
 #include "replica/Common.h"
 #include "replica/Configuration.h"
-#include "replica/DatabaseMySQL.h"
 #include "replica/ErrorReporting.h"
 #include "replica/ServiceProvider.h"
 #include "util/BlockPost.h"
@@ -114,10 +113,11 @@ PurgeJobResult const& PurgeJob::getReplicaData() const {
         "PurgeJob::getReplicaData  the method can't be called while the job hasn't finished");
 }
 
-std::string PurgeJob::extendedPersistentState(SqlGeneratorPtr const& gen) const {
-    return gen->sqlPackValues(id(),
-                              databaseFamily(),
-                              numReplicas());
+std::map<std::string,std::string> PurgeJob::extendedPersistentState() const {
+    std::map<std::string,std::string> result;
+    result["database_family"] = databaseFamily();
+    result["num_replicas"]    = std::to_string(numReplicas());
+    return result;
 }
 
 void PurgeJob::startImpl(util::Lock const& lock) {

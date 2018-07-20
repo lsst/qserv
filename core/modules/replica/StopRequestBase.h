@@ -149,6 +149,16 @@ private:
      */
     void sendImpl(util::Lock const& lock);
 
+    /**
+     * @see Request::savePersistentState()
+     */
+    void savePersistentState(util::Lock const& lock) final;
+
+    /**
+     * @see Request::extendedPersistentState()
+     */
+    std::map<std::string,std::string> extendedPersistentState() const override;
+
 protected:
 
     /// The performance of the target operation

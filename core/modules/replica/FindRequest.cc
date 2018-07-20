@@ -34,7 +34,6 @@
 // Qserv headers
 #include "lsst/log/Log.h"
 #include "replica/Controller.h"
-#include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
 #include "replica/Messenger.h"
 #include "replica/ProtocolBuffer.h"
@@ -319,10 +318,11 @@ void FindRequest::savePersistentState(util::Lock const& lock) {
     controller()->serviceProvider()->databaseServices()->saveState(*this, performance(lock));
 }
 
-std::string FindRequest::extendedPersistentState(SqlGeneratorPtr const& gen) const {
-    return gen->sqlPackValues(id(),
-                              database(),
-                              chunk());
+std::map<std::string,std::string> FindRequest::extendedPersistentState() const {
+    std::map<std::string,std::string> result;
+    result["database"] = database();
+    result["chunk"]    = std::to_string(chunk());
+    return result;
 }
 
 }}} // namespace lsst::qserv::replica

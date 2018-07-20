@@ -144,22 +144,17 @@ void DatabaseServicesMySQL::saveState(Job const& job,
         );
 
         // Extended state (if any provided by a specific job class) is recorded
-        // in a job-specific table whose name is based on a value of the job's
-        // 'type' parameter.
+        // in a separate table.
 
-        std::string extendedTableName = "job_" + job.type();
-        std::transform(extendedTableName.begin(),
-                       extendedTableName.end(),
-                       extendedTableName.begin(),
-                       [] (unsigned char c) {
-                           return std::tolower(c);
-                       });
-
-        std::string const extendedPersistentState = job.extendedPersistentState(_conn);
-        if (not extendedPersistentState.empty()) {
-            LOGS(_log, LOG_LVL_DEBUG, context << "extendedPersistentState: " << extendedPersistentState);
-            _conn->execute("INSERT INTO " + _conn->sqlId(extendedTableName) +
-                           " VALUES "     + extendedPersistentState);
+        for (auto&& entry: job.extendedPersistentState()) {
+            std::string const& param = entry.first;
+            std::string const& value = entry.second;
+            LOGS(_log, LOG_LVL_DEBUG, context << "extendedPersistentState: ('" << param << "','" << value << "')");
+            _conn->executeInsertQuery(
+                "job_ext",
+                job.id(),
+                param,value
+            );
         }
         _conn->commit ();
 
@@ -255,22 +250,17 @@ void DatabaseServicesMySQL::saveState(QservMgtRequest const& request,
             performance.c_finish_time);
 
         // Extended state (if any provided by a specific request class) is recorded
-        // in a request-specific table whose name is based on a value of the request's
-        // 'type' parameter.
+        // in a separate table.
 
-        std::string extendedTableName = "request_" + request.type();
-        std::transform(extendedTableName.begin(),
-                       extendedTableName.end(),
-                       extendedTableName.begin(),
-                       [] (unsigned char c) {
-                           return std::tolower(c);
-                       });
-
-        std::string const extendedPersistentState = request.extendedPersistentState(_conn);
-        if (not extendedPersistentState.empty()) {
-            LOGS(_log, LOG_LVL_DEBUG, context << "extendedPersistentState: " << extendedPersistentState);
-            _conn->execute("INSERT INTO " + _conn->sqlId(extendedTableName) +
-                           " VALUES "     + extendedPersistentState);
+        for (auto&& entry: request.extendedPersistentState()) {
+            std::string const& param = entry.first;
+            std::string const& value = entry.second;
+            LOGS(_log, LOG_LVL_DEBUG, context << "extendedPersistentState: ('" << param << "','" << value << "')");
+            _conn->executeInsertQuery(
+                "request_ext",
+                request.id(),
+                param,value
+            );
         }
         _conn->commit ();
 
@@ -348,22 +338,17 @@ void DatabaseServicesMySQL::saveState(Request const& request,
             performance.c_finish_time);
 
         // Extended state (if any provided by a specific request class) is recorded
-        // in a request-specific table whose name is based on a value of the request's
-        // 'type' parameter.
+        // in a separate table.
 
-        std::string extendedTableName = "request_" + request.type();
-        std::transform(extendedTableName.begin(),
-                       extendedTableName.end(),
-                       extendedTableName.begin(),
-                       [] (unsigned char c) {
-                           return std::tolower(c);
-                       });
-
-        std::string const extendedPersistentState = request.extendedPersistentState(_conn);
-        if (not extendedPersistentState.empty()) {
-            LOGS(_log, LOG_LVL_DEBUG, context << "extendedPersistentState: " << extendedPersistentState);
-            _conn->execute("INSERT INTO " + _conn->sqlId(extendedTableName) +
-                           " VALUES "     + extendedPersistentState);
+        for (auto&& entry: request.extendedPersistentState()) {
+            std::string const& param = entry.first;
+            std::string const& value = entry.second;
+            LOGS(_log, LOG_LVL_DEBUG, context << "extendedPersistentState: ('" << param << "','" << value << "')");
+            _conn->executeInsertQuery(
+                "request_ext",
+                request.id(),
+                param,value
+            );
         }
         _conn->commit ();
 
@@ -572,13 +557,12 @@ void DatabaseServicesMySQL::saveReplicaInfoCollectionImpl(util::Lock const& lock
     // Find differences between the collections
 
     WorkerDatabaseChunkMap<ReplicaInfo const*> inBoth;
-    WorkerDatabaseChunkMap<ReplicaInfo const*> inNewReplicasOnly;
-    WorkerDatabaseChunkMap<ReplicaInfo const*> inOldReplicasOnly;
-
     SemanticMaps::intersect(newReplicas,
                             oldReplicas,
                             inBoth);
 
+    WorkerDatabaseChunkMap<ReplicaInfo const*> inNewReplicasOnly;
+    WorkerDatabaseChunkMap<ReplicaInfo const*> inOldReplicasOnly;
     SemanticMaps::diff2(newReplicas,
                         oldReplicas,
                         inNewReplicasOnly,

@@ -30,7 +30,6 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
-#include "replica/DatabaseMySQL.h"
 #include "replica/ErrorReporting.h"
 #include "replica/ServiceProvider.h"
 #include "util/BlockPost.h"
@@ -100,9 +99,10 @@ FixUpJobResult const& FixUpJob::getReplicaData() const {
         "FixUpJob::getReplicaData  the method can't be called while the job hasn't finished");
 }
 
-std::string FixUpJob::extendedPersistentState(SqlGeneratorPtr const& gen) const {
-    return gen->sqlPackValues(id(),
-                              databaseFamily());
+std::map<std::string,std::string> FixUpJob::extendedPersistentState() const {
+    std::map<std::string,std::string> result;
+    result["database_family"] = databaseFamily();
+    return result;
 }
 
 void FixUpJob::startImpl(util::Lock const& lock) {

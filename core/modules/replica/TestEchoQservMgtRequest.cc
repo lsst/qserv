@@ -36,7 +36,6 @@
 #include "global/ResourceUnit.h"
 #include "lsst/log/Log.h"
 #include "replica/Configuration.h"
-#include "replica/DatabaseMySQL.h"
 #include "replica/ServiceProvider.h"
 
 namespace {
@@ -86,9 +85,10 @@ std::string const& TestEchoQservMgtRequest::dataEcho() const {
     return _dataEcho;
 }
 
-std::string TestEchoQservMgtRequest::extendedPersistentState(SqlGeneratorPtr const& gen) const {
-    return gen->sqlPackValues(id(),
-                              data().size());
+std::map<std::string,std::string> TestEchoQservMgtRequest::extendedPersistentState() const {
+    std::map<std::string,std::string> result;
+    result["data_length_bytes"] = std::to_string(data().size());
+    return result;
 }
 
 void TestEchoQservMgtRequest::startImpl(util::Lock const& lock) {
