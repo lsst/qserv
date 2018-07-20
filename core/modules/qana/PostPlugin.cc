@@ -150,11 +150,12 @@ PostPlugin::applyPhysical(QueryPlugin::Plan& plan,
                 // Check if the ORDER BY column matches a single valid column
                 query::ColumnRef::Ptr match;
                 for (auto const & selCol : validSelectCols) {
-                    if (selCol == ordByColRef) {
+                    if (*selCol == *ordByColRef) {
                         if (match != nullptr) {
                             throw AnalysisError("ORDER BY Duplicate match for " + toString(ordByColRef)
                                     + " in SELECT columns:" + toString(util::printable(validSelectCols)));
                         }
+                        match = selCol;
                     }
                 }
                 // Check that there is a match for ORDER BY column
