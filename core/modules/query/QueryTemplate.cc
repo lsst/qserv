@@ -95,9 +95,22 @@ public:
 
 // Return a string representation of the object
 std::string QueryTemplate::sqlFragment() const {
-    std::ostringstream oss;
-    oss << *this;
-    return oss.str();
+    std::string lastEntry;
+    std::string sep(" ");
+    std::ostringstream os;
+    for (auto const& entry : _entries ) {
+        std::string const& entryStr = entry->getValue();
+        if (entryStr.empty()) {
+            return std::string();
+        }
+        if (!lastEntry.empty()
+          && lsst::qserv::sql::sqlShouldSeparate(lastEntry, *lastEntry.rbegin(), entryStr.at(0))) {
+            os << sep;
+        }
+        os << entryStr;
+        lastEntry = entryStr;
+    }
+    return os.str();
 }
 
 

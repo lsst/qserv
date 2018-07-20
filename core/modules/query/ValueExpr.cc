@@ -49,6 +49,7 @@
 #include "query/FuncExpr.h"
 #include "query/QueryTemplate.h"
 #include "query/ValueFactor.h"
+#include "util/IterableFormatter.h"
 
 namespace lsst {
 namespace qserv {
@@ -71,22 +72,27 @@ renderList(QueryTemplate& qt, ValueExprPtrVector const& vel) {
 ////////////////////////////////////////////////////////////////////////
 // ValueExpr::FactorOp
 ////////////////////////////////////////////////////////////////////////
-std::ostream&
-operator<<(std::ostream& os, ValueExpr::FactorOp const& fo) {
-    os << "FACT:" << fo.factor << " OP:";
-    char const* opStr;
-    switch(fo.op) {
-    case ValueExpr::NONE: opStr = "NONE"; break;
-    case ValueExpr::UNKNOWN: opStr = "UNKNOWN"; break;
-    case ValueExpr::PLUS: opStr = "PLUS"; break;
-    case ValueExpr::MINUS: opStr = "MINUS"; break;
-    case ValueExpr::MULTIPLY: opStr = "MULTIPLY"; break;
-    case ValueExpr::DIVIDE: opStr = "DIVIDE"; break;
-    default: opStr = "broken"; break;
+
+std::ostream& operator<<(std::ostream& os, const ValueExpr::FactorOp& factorOp) {
+    os << "FactorOp(op:";
+    switch(factorOp.op) {
+    case ValueExpr::NONE: os << "NONE"; break;
+    case ValueExpr::UNKNOWN: os << "UNKNOWN"; break;
+    case ValueExpr::PLUS: os << "PLUS"; break;
+    case ValueExpr::MINUS: os << "MINUS"; break;
+    case ValueExpr::MULTIPLY: os << "MULTIPLY"; break;
+    case ValueExpr::DIVIDE: os << "DIVIDE"; break;
+    default: os << "!!unhandled!!"; break;
     }
-    os << opStr;
+    os << ", factor:" << factorOp.factor;
+    os << ")";
     return os;
 }
+
+bool ValueExpr::FactorOp::operator==(const FactorOp& rhs) const {
+    return (util::ptrCompare<ValueFactor>(factor, rhs.factor) && op == rhs.op);
+}
+
 
 ////////////////////////////////////////////////////////////////////////
 // ValueExpr statics
@@ -104,32 +110,6 @@ ValueExprPtr ValueExpr::newSimple(std::shared_ptr<ValueFactor> vt)  {
 // ValueExpr
 ////////////////////////////////////////////////////////////////////////
 ValueExpr::ValueExpr() {
-}
-
-/** Print a string representation of the object
- *
- * @param out
- * @return void
- */
-void ValueExpr::dbgPrint(std::ostream& os) {
-    ColumnRef::Vector cList;
-    os << "ValueExpr:\t\"" << *this << "\"\n";
-    os << "\tAlias:\t\"" << this->_alias << "\"\n";
-    os << "\tIsColumnRef:\t" << this->isColumnRef() << "\n";
-    os << "\tIsFactor:\t" << this->isFactor() << "\n";
-    os << "\tIsStar:\t" << this->isStar() << "\n";
-    this->findColumnRefs(cList);
-    typedef ColumnRef::Vector::const_iterator ColIter;
-    for(ColIter i=cList.begin(), e=cList.end(); i != e; ++i) {
-        os << "\tColumnRef:\t" << *i << "\n";
-    }
-    bool hasAgg = false;
-    qana::CheckAggregation ca(hasAgg);
-    for(FactorOpVector::const_iterator i=this->_factorOps.begin(),
-            e=this->_factorOps.end(); i != e; ++i) {
-            ca(*i);
-            os << "\tFactorOp:\t\"" << *i << "\", hasAgg: " << hasAgg << "\n";
-    }
 }
 
 std::shared_ptr<ColumnRef> ValueExpr::copyAsColumnRef() const {
@@ -152,7 +132,7 @@ std::string ValueExpr::copyAsLiteral() const{
     std::shared_ptr<ValueFactor> factor = _factorOps.front().factor;
     assert(factor);
     if (factor->getType() != ValueFactor::CONST) { return s; }
-    return factor->getTableStar();
+    return factor->getConstVal();
 }
 
 template<typename T>
@@ -176,11 +156,10 @@ double ValueExpr::copyAsType<double>(double const& defaultValue) const;
 template int ValueExpr::copyAsType<int>(int const&) const;
 
 
-void ValueExpr::findColumnRefs(ColumnRef::Vector& vector) {
-    for(FactorOpVector::iterator i=_factorOps.begin();
-        i != _factorOps.end(); ++i) {
-        assert(i->factor); // FactorOps should never have null ValueFactors
-        i->factor->findColumnRefs(vector);
+void ValueExpr::findColumnRefs(ColumnRef::Vector& vector) const {
+    for (const auto& factorOp : _factorOps){
+        assert(factorOp.factor); // FactorOps should never have null ValueFactors
+        factorOp.factor->findColumnRefs(vector);
     }
 }
 
@@ -258,23 +237,32 @@ ValueExprPtr ValueExpr::clone() const {
  * @return a string representation of the object
  */
 std::string ValueExpr::sqlFragment() const {
-    std::ostringstream oss;
-
-    oss << *this;
-    return oss.str();
-}
-
-std::ostream& operator<<(std::ostream& os, ValueExpr const& ve) {
     // Reuse QueryTemplate-based rendering
     QueryTemplate qt;
     ValueExpr::render render(qt, false);
-    render.applyToQT(ve);
+    render.applyToQT(this);
+    std::ostringstream os;
     os << qt;
+    return os.str();
+}
+
+std::ostream& operator<<(std::ostream& os, ValueExpr const& ve) {
+    os << "ValueExpr(";
+    os << "alias:" << ve._alias;
+    os << ", isColumnRef:" << ve.isColumnRef();
+    os << ", isFactor:" << ve.isFactor();
+    os << ", isStar:" << ve.isStar();
+    bool hasAgg = false;
+    qana::CheckAggregation ca(hasAgg);
+    os << ", hasAgg:" << hasAgg;
+    os << ", factorOps:";
+    os << util::printable(ve._factorOps);
+    os << ")";
     return os;
 }
 
 std::ostream& operator<<(std::ostream& os, ValueExpr const* ve) {
-    if (!ve) return os << "<NULL>";
+    if (!ve) return os << "nullptr";
     return os << *ve;
 }
 ////////////////////////////////////////////////////////////////////////
@@ -311,6 +299,11 @@ void ValueExpr::render::applyToQT(ValueExpr const& ve) {
     if (!ve._alias.empty()) { _qt.append("AS"); _qt.append(ve._alias); }
 }
 
+bool ValueExpr::operator==(const ValueExpr& rhs) const {
+    return (_alias == rhs._alias &&
+            _factorOps == rhs._factorOps);
+}
+
 // Miscellaneous
 struct _copyValueExpr {
     ValueExprPtr operator()(ValueExprPtr const& p) {
@@ -324,4 +317,6 @@ void cloneValueExprPtrVector(ValueExprPtrVector& dest,
                    dest.begin(),
                    _copyValueExpr());
 }
+
+
 }}} // namespace lsst::qserv::query

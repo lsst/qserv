@@ -63,6 +63,8 @@ public:
     friend std::ostream& operator<<(std::ostream& os, ColumnRef const& cr);
     friend std::ostream& operator<<(std::ostream& os, ColumnRef const* cr);
     void renderTo(QueryTemplate& qt) const;
+
+    bool operator==(const ColumnRef& rhs) const;
 };
 
 }}} // namespace lsst::qserv::query

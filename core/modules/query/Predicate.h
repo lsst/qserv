@@ -37,6 +37,7 @@
 // Local headers
 #include "query/typedefs.h"
 #include "query/BoolTerm.h"
+#include "query/ValueExpr.h"
 
 namespace lsst {
 namespace qserv {
@@ -72,6 +73,9 @@ public:
     virtual void renderTo(QueryTemplate& qt) const = 0;
 
     virtual BoolFactorTerm::Ptr copySyntax() const { return BoolFactorTerm::Ptr(); }
+
+protected:
+    virtual void dbgPrint(std::ostream& os) const = 0;
 };
 
 /// GenericPredicate is a Predicate whose structure whose semantic meaning
@@ -109,9 +113,14 @@ public:
 
     static int lookupOp(char const* op);
 
+    bool operator==(const BoolFactorTerm& rhs) const override;
+
     ValueExprPtr left;
     int op; // Parser token type of operator
     ValueExprPtr right;
+
+protected:
+    void dbgPrint(std::ostream& os) const override;
 };
 
 /// InPredicate is a Predicate comparing a row value to a set
@@ -131,13 +140,21 @@ public:
     virtual BoolFactorTerm::Ptr clone() const;
     virtual BoolFactorTerm::Ptr copySyntax() const { return clone();}
 
+    bool operator==(const BoolFactorTerm& rhs) const override;
+
     ValueExprPtr value;
     ValueExprPtrVector cands;
+
+protected:
+    void dbgPrint(std::ostream& os) const override;
 };
 
 /// BetweenPredicate is a Predicate comparing a row value to a range
 class BetweenPredicate : public Predicate {
 public:
+    BetweenPredicate() {}
+    BetweenPredicate(ValueExprPtr iValue, ValueExprPtr iMinValue, ValueExprPtr iMaxValue)
+    : value(iValue), minValue(iMinValue), maxValue(iMaxValue) {}
     typedef std::shared_ptr<BetweenPredicate> Ptr;
 
     virtual ~BetweenPredicate() {}
@@ -151,9 +168,14 @@ public:
     virtual BoolFactorTerm::Ptr clone() const;
     virtual BoolFactorTerm::Ptr copySyntax() const { return clone(); }
 
+    bool operator==(const BoolFactorTerm& rhs) const override;
+
     ValueExprPtr value;
     ValueExprPtr minValue;
     ValueExprPtr maxValue;
+
+protected:
+    void dbgPrint(std::ostream& os) const override;
 };
 
 /// LikePredicate is a Predicate involving a row value compared to a pattern
@@ -173,8 +195,13 @@ public:
     virtual BoolFactorTerm::Ptr clone() const;
     virtual BoolFactorTerm::Ptr copySyntax() const { return clone(); }
 
+    bool operator==(const BoolFactorTerm& rhs) const override;
+
     ValueExprPtr value;
     ValueExprPtr charValue;
+
+protected:
+    void dbgPrint(std::ostream& os) const override;
 };
 
 /// NullPredicate is a Predicate involving a row value compared to NULL
@@ -195,8 +222,13 @@ public:
 
     static int reverseOp(int op); // Reverses operator token
 
+    bool operator==(const BoolFactorTerm& rhs) const override;
+
     ValueExprPtr value;
     bool hasNot;
+
+protected:
+    void dbgPrint(std::ostream& os) const override;
 };
 
 }}} // namespace lsst::qserv::query

@@ -67,6 +67,19 @@ public:
     typedef std::shared_ptr<SelectStmt const> Cptr;
 
     SelectStmt();
+    SelectStmt(std::shared_ptr<FromList> fromList, std::shared_ptr<SelectList> selectList,
+            std::shared_ptr<WhereClause> whereClause, std::shared_ptr<OrderByClause> orderBy,
+            std::shared_ptr<GroupByClause> groupBy, std::shared_ptr<HavingClause> having, bool hasDistinct,
+            int limit)
+    : _fromList(fromList)
+    , _selectList(selectList)
+    , _whereClause(whereClause)
+    , _orderBy(orderBy)
+    , _groupBy(groupBy)
+    , _having(having)
+    , _hasDistinct(hasDistinct)
+    , _limit(limit)
+    {}
 
     std::shared_ptr<WhereClause const> getWhere() const;
     QueryTemplate getQueryTemplate() const;
@@ -111,6 +124,11 @@ public:
     int getLimit() const { return _limit; }
 
     /**
+     * @brief Set LIMIT value in LIMIT clause for a SQL query
+     */
+    void setLimit(int limit) { _limit = limit; }
+
+    /**
      * @brief Indicate existence of a LIMIT clause
      *
      * @return: true if LIMIT clause exists, else false
@@ -143,12 +161,12 @@ public:
      *  @param selectStmt: SelectStmt to output
      *
      *  @return std::ostream containing selectStmt output
-     *
-     *  @warning this function always add a trailing whitespace
      */
     friend std::ostream& operator<<(std::ostream& os, SelectStmt const& selectStmt);
 
- private:
+    bool operator==(const SelectStmt& rhs) const;
+
+private:
     // Declarations
     friend class parser::SelectFactory;
 
@@ -166,6 +184,7 @@ public:
     StringVector OutputMods; // Output modifiers (order, grouping,
                              // sort, limit
 };
+
 
 }}} // namespace lsst::qserv::query
 

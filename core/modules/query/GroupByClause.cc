@@ -42,6 +42,7 @@
 // Qserv headers
 #include "query/QueryTemplate.h"
 #include "query/ValueExpr.h"
+#include "util/IterableFormatter.h"
 
 namespace lsst {
 namespace qserv {
@@ -67,20 +68,27 @@ GroupByTerm& GroupByTerm::operator=(GroupByTerm const& gb) {
 }
 
 std::ostream& operator<<(std::ostream& os, GroupByTerm const& t) {
-    os << *(t._expr);
-    if (!t._collate.empty()) os << " COLLATE " << t._collate;
+    os << "GroupByTerm(expr:" << t._expr;
+    os << ", collate:" << t._collate;
+    os << ")";
     return os;
+}
+
+bool GroupByTerm::operator==(const GroupByTerm& rhs) const {
+    return util::ptrCompare<ValueExpr>(_expr, rhs._expr) &&
+            _collate == rhs._collate;
 }
 
 ////////////////////////////////////////////////////////////////////////
 // GroupByClause
 ////////////////////////////////////////////////////////////////////////
 std::ostream& operator<<(std::ostream& os, GroupByClause const& c) {
-    if (c._terms.get()) {
-        os << "GROUP BY ";
-        std::copy(c._terms->begin(),c._terms->end(),
-              std::ostream_iterator<GroupByTerm>(os,", "));
-    }
+    os <<"GroupByClause(terms:" << util::ptrPrintable(c._terms) << ")";
+    return os;
+}
+
+std::ostream& operator<<(std::ostream& os, GroupByClause const* c) {
+    (nullptr == c) ? os << "nullptr" : os << *c;
     return os;
 }
 
@@ -126,5 +134,10 @@ void GroupByClause::findValueExprs(ValueExprPtrVector& list) {
         list.push_back(i->getExpr());
     }
 }
+
+bool GroupByClause::operator==(const GroupByClause& rhs) const {
+    return util::ptrDequeCompare<GroupByTerm>(_terms, rhs._terms);
+}
+
 
 }}} // namespace lsst::qserv::query

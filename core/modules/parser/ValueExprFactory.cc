@@ -55,12 +55,39 @@ namespace lsst {
 namespace qserv {
 namespace parser {
 
+
+void ValueExprFactory::addValueFactor(std::shared_ptr<query::ValueExpr> valueExpr,
+                                      std::shared_ptr<query::ValueFactor> valueFactor) {
+    query::ValueExpr::FactorOp factorOp;
+    factorOp.factor = valueFactor;
+    valueExpr->_factorOps.push_back(factorOp);
+}
+
+
+void ValueExprFactory::addFuncExpr(std::shared_ptr<query::ValueExpr> valueExpr,
+                                   std::shared_ptr<query::FuncExpr> funcExpr) {
+    query::ValueExpr::FactorOp factorOp;
+    factorOp.factor = query::ValueFactor::newFuncFactor(funcExpr);
+    valueExpr->_factorOps.push_back(factorOp);
+}
+
+
+bool ValueExprFactory::addOp(std::shared_ptr<query::ValueExpr> valueExpr, query::ValueExpr::Op op) {
+    if (valueExpr->_factorOps.empty()) {
+        return false;
+    }
+    valueExpr->_factorOps.back().op = op;
+    return true;
+}
+
+
 ////////////////////////////////////////////////////////////////////////
 // ValueExprFactory implementation
 ////////////////////////////////////////////////////////////////////////
 ValueExprFactory::ValueExprFactory(std::shared_ptr<ColumnRefNodeMap> cMap)
     : _valueFactorFactory(new ValueFactorFactory(cMap, *this)) {
 }
+
 
 // VALUE_EXP                     //
 // |      \                      //

@@ -60,11 +60,16 @@ public:
     GroupByTerm() {}
     ~GroupByTerm() {}
 
+    GroupByTerm(ValueExprPtr valueExpr, std::string collate)
+    : _expr(valueExpr), _collate(collate) {}
+
     ValueExprPtr& getExpr() { return _expr; }
     std::string getCollate() const { return _collate; }
     GroupByTerm cloneValue() const;
 
     GroupByTerm& operator=(GroupByTerm const& gb);
+
+    bool operator==(const GroupByTerm& rhs) const;
 
 private:
     friend std::ostream& operator<<(std::ostream& os, GroupByTerm const& gb);
@@ -90,8 +95,13 @@ public:
 
     void findValueExprs(ValueExprPtrVector& list);
 
+    bool operator==(const GroupByClause& rhs) const;
+
+    void addTerm(GroupByTerm const& term) { _addTerm(term); }
+
 private:
     friend std::ostream& operator<<(std::ostream& os, GroupByClause const& gc);
+    friend std::ostream& operator<<(std::ostream& os, GroupByClause const* gc);
     friend class parser::ModFactory;
 
     void _addTerm(GroupByTerm const& t) { _terms->push_back(t); }

@@ -35,7 +35,6 @@
 #include <algorithm>
 #include <iostream>
 #include <memory>
-#include <sstream>
 #include <stdexcept>
 
 // Third-party headers
@@ -44,6 +43,8 @@
 #include "global/Bug.h"
 #include "query/Predicate.h"
 #include "query/QueryTemplate.h"
+#include "util/PointerCompare.h"
+#include "util/IterableFormatter.h"
 
 namespace {
 
@@ -68,7 +69,14 @@ namespace query {
 ////////////////////////////////////////////////////////////////////////
 std::ostream&
 operator<<(std::ostream& os, WhereClause const& wc) {
-    os << "WHERE " << wc.getGenerated();
+    os << "WhereClause(tree:" << wc._tree;
+    os << ", restrs:" << util::ptrPrintable(wc._restrs);
+    os << ")";
+    return os;
+}
+std::ostream&
+operator<<(std::ostream& os, WhereClause const* wc) {
+    (nullptr == wc) ? os << "nullptr" : os << *wc;
     return os;
 }
 void findColumnRefs(std::shared_ptr<BoolFactor> f, ColumnRef::Vector& vector) {
@@ -206,6 +214,12 @@ WhereClause::prependAndTerm(std::shared_ptr<BoolTerm> t) {
 }
 
 
+bool WhereClause::operator==(WhereClause& rhs) const {
+    return (util::ptrCompare<BoolTerm>(_tree, rhs._tree) &&
+            util::ptrVectorPtrCompare<QsRestrictor>(_restrs, rhs._restrs));
+}
+
+
 ////////////////////////////////////////////////////////////////////////
 // WhereClause (private)
 ////////////////////////////////////////////////////////////////////////
@@ -213,5 +227,6 @@ void
 WhereClause::resetRestrs() {
     _restrs = std::make_shared<QsRestrictor::PtrVector>();
 }
+
 
 }}} // namespace lsst::qserv::query

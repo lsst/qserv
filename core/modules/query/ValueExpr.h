@@ -38,6 +38,7 @@
 // Local headers
 #include "query/ColumnRef.h"
 #include "query/typedefs.h"
+#include "util/PointerCompare.h"
 
 
 // Forward declarations
@@ -69,6 +70,7 @@ public:
         FactorOp() : op(NONE) {}
         std::shared_ptr<ValueFactor> factor;
         Op op;
+        bool operator==(const FactorOp& rhs) const;
     };
     typedef std::vector<FactorOp> FactorOpVector;
     friend std::ostream& operator<<(std::ostream& os, FactorOp const& fo);
@@ -81,13 +83,6 @@ public:
     /// @return a const list of ValueFactor-Op
     FactorOpVector const& getFactorOps() const { return _factorOps; }
 
-    /**
-     * Output ValueExpr for debugging purpose
-     *
-     * @param os output stream
-     */
-    void dbgPrint(std::ostream& os);
-
     std::shared_ptr<ColumnRef> copyAsColumnRef() const;
 
     std::string copyAsLiteral() const;
@@ -95,7 +90,7 @@ public:
     template<typename T>
     T copyAsType(T const& defaultValue) const;
 
-    void findColumnRefs(ColumnRef::Vector& vector);
+    void findColumnRefs(ColumnRef::Vector& vector) const;
 
     /*
      * Check if at least one of the FactorOps of the
@@ -128,10 +123,15 @@ public:
     friend class parser::ValueExprFactory;
     class render;
     friend class render;
+
+    bool operator==(const ValueExpr& rhs) const;
+
 private:
     std::string _alias;
     FactorOpVector _factorOps;
 };
+
+
 /// A helper functor for rendering to QueryTemplates
 class ValueExpr::render {
 public:

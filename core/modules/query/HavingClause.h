@@ -64,8 +64,11 @@ public:
     std::shared_ptr<HavingClause> copySyntax();
     void findValueExprs(ValueExprPtrVector& list);
 
+    bool operator==(const HavingClause& rhs) const;
+
 private:
     friend std::ostream& operator<<(std::ostream& os, HavingClause const& h);
+    friend std::ostream& operator<<(std::ostream& os, HavingClause const* h);
     friend class parser::ModFactory;
     std::shared_ptr<BoolTerm> _tree;
 };

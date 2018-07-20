@@ -269,8 +269,8 @@ double getNumericConst(ValueExprPtr const& ve) {
         return std::numeric_limits<double>::quiet_NaN();
     }
     char *e = nullptr;
-    double a = std::strtod(vf->getTableStar().c_str(), &e);
-    if (e == vf->getTableStar().c_str()) {
+    double a = std::strtod(vf->getConstVal().c_str(), &e);
+    if (e == vf->getConstVal().c_str()) {
         // conversion error - non-numeric constant
         return std::numeric_limits<double>::quiet_NaN();
     }
@@ -290,7 +290,7 @@ FuncExpr::Ptr getAngSepFunc(ValueExprPtr const& ve) {
         return fe;
     }
     fe = vf->getFuncExpr();
-    if (!fe || fe->name != "scisql_angSep" || fe->params.size() != 4) {
+    if (!fe || fe->getName() != "scisql_angSep" || fe->params.size() != 4) {
         return FuncExpr::Ptr();
     }
     return fe;
@@ -911,7 +911,7 @@ bool RelationGraph::_validate()
 RelationGraph::RelationGraph(SelectStmt& stmt, TableInfoPool& pool) :
     _query(&stmt)
 {
-    LOGS(_log, LOG_LVL_DEBUG, "RG: stmt=" << stmt);
+    LOGS(_log, LOG_LVL_DEBUG, "RG: stmt=" << stmt.getQueryTemplate());
 
     // Check that at least one thing is being selected.
     if (!stmt.getSelectList().getValueExprList() ||

@@ -83,6 +83,7 @@ public:
     void setTable(std::string const& table_) { _table = table_; }
     JoinRefPtrVector& getJoins() { return _joinRefs; }
     void addJoin(std::shared_ptr<JoinRef> r);
+    void addJoins(const JoinRefPtrVector& r);
 
     class Func {
     public:
@@ -99,8 +100,12 @@ public:
 
     TableRef::Ptr clone() const;
 
+    bool operator==(const TableRef& rhs) const;
+
     class render;
 private:
+    friend std::ostream& operator<<(std::ostream& os, TableRef const& refN);
+    friend std::ostream& operator<<(std::ostream& os, TableRef const* refN);
 
     std::string _alias;
     std::string _db;
@@ -119,8 +124,6 @@ public:
     int _count;
 };
 
-std::ostream& operator<<(std::ostream& os, TableRef const& refN);
-std::ostream& operator<<(std::ostream& os, TableRef const* refN);
 
 // Containers
 typedef std::vector<TableRef::Ptr> TableRefList;

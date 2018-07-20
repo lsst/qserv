@@ -108,7 +108,7 @@ const std::string RenderedBoolTermFromRPN(const char **rpn)
     }
 
     std::ostringstream str;
-    str << *(pdl.front());
+    pdl.front()->putStream(str);
     return str.str();
 }
 
@@ -227,9 +227,8 @@ BOOST_AUTO_TEST_CASE(DM_737_REGRESSION) {
     // render result, and check.  Should have parens around OR clause.
     std::shared_ptr<WhereClause> wc1 = wc0->clone();
     wc1->prependAndTerm(ot0);
-    std::ostringstream str0;
-    str0 << *wc1;
-    BOOST_CHECK_EQUAL(str0.str(), "WHERE (refObjectId IS NULL OR flags<>2) AND foo!=bar AND baz<3.14159");
+    auto str0 = wc1->getGenerated();
+    BOOST_CHECK_EQUAL(str0, "(refObjectId IS NULL OR flags<>2) AND foo!=bar AND baz<3.14159");
 }
 
 BOOST_AUTO_TEST_SUITE_END()

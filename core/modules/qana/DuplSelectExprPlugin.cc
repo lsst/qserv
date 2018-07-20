@@ -118,9 +118,7 @@ DuplSelectExprPlugin::getDuplicateSelectErrors(query::SelectStmt const& stmt) co
     query::ValueExprPtrVector valueExprList = *(selectList.getValueExprList());
 
     if (LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
-        std::ostringstream stream;
-        selectList.dbgPrint(stream);
-        LOGS(_log, LOG_LVL_DEBUG, "Input stmt:\n" << stream.str());
+        LOGS(_log, LOG_LVL_DEBUG, "Input stmt:\n" << selectList);
     }
 
     StringVector selectExprNormalizedNames;

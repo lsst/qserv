@@ -58,6 +58,8 @@
 #include "query/QueryTemplate.h"
 #include "query/typedefs.h"
 #include "query/ValueFactor.h"
+#include "util/PointerCompare.h"
+#include "util/IterableFormatter.h"
 
 namespace lsst {
 namespace qserv {
@@ -86,25 +88,16 @@ SelectList::addStar(std::string const& table) {
     _valueExprList->push_back(ve);
 }
 
-void
-SelectList::dbgPrint(std::ostream& os) const {
-    if (!_valueExprList) {
-        throw std::logic_error("Corrupt SelectList object");
-    }
-    for(ValueExprPtrVectorConstIter viter = _valueExprList->begin(),
-        e = _valueExprList->end();
-        viter != e;
-        ++viter) {
-        (*viter)->dbgPrint(os);
-    }
-}
 
 std::ostream&
 operator<<(std::ostream& os, SelectList const& sl) {
-    os << "SELECT ";
-    std::copy(sl._valueExprList->begin(), sl._valueExprList->end(),
-                  std::ostream_iterator<ValueExprPtr>(os,", "));
-    os << "(FIXME)";
+    os << "SelectList(valueExprList:" << util::ptrPrintable(sl._valueExprList) << ")";
+    return os;
+}
+
+std::ostream&
+operator<<(std::ostream& os, SelectList const* sl) {
+    (nullptr == sl) ? os << "nullptr" : os << *sl;
     return os;
 }
 
@@ -138,6 +131,10 @@ std::shared_ptr<SelectList> SelectList::copySyntax() {
     newS->_valueExprList = std::make_shared<ValueExprPtrVector>(*_valueExprList);
     // For the other fields, default-copied versions are okay.
     return newS;
+}
+
+bool SelectList::operator==(const SelectList& rhs) {
+    return util::ptrVectorPtrCompare<ValueExpr>(_valueExprList, rhs._valueExprList);
 }
 
 }}} // namespace lsst::qserv::query

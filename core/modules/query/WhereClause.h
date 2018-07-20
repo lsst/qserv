@@ -69,6 +69,7 @@ public:
     }
     std::shared_ptr<BoolTerm const> getRootTerm() const { return _tree; }
     std::shared_ptr<BoolTerm> getRootTerm() { return _tree; }
+    void setRootTerm(std::shared_ptr<BoolTerm> term) { _tree = term; }
     std::shared_ptr<ColumnRef::Vector const> getColumnRefs() const;
     std::shared_ptr<AndTerm> getRootAndTerm();
 
@@ -82,15 +83,18 @@ public:
     void resetRestrs();
     void prependAndTerm(std::shared_ptr<BoolTerm> t);
 
+    bool operator==(WhereClause& rhs) const;
+
 private:
     friend std::ostream& operator<<(std::ostream& os, WhereClause const& wc);
+    friend std::ostream& operator<<(std::ostream& os, WhereClause const* wc);
+
     friend class parser::WhereFactory;
 
-    std::string _original;
     std::shared_ptr<BoolTerm> _tree;
-    std::shared_ptr<QsRestrictor::PtrVector> _restrs;
-
+    std::shared_ptr<QsRestrictor::PtrVector> _restrs{std::make_shared<query::QsRestrictor::PtrVector>()};
 };
+
 
 }}} // namespace lsst::qserv::query
 

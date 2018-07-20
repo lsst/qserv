@@ -41,16 +41,35 @@ namespace lsst {
 namespace qserv {
 namespace query {
 
+
 std::ostream& operator<<(std::ostream& os, ColumnRef const& cr) {
-    return os << "(" << cr.db << "," << cr.table << "," << cr.column << ")";
+    os << "ColumnRef(";
+    os << "db:" << cr.db;
+    os << ", table:" << cr.table;
+    os << ", column:" << cr.column;
+    os << ")";
+    return os;
 }
 
 std::ostream& operator<<(std::ostream& os, ColumnRef const* cr) {
-    return os << *cr;
+    if (nullptr == cr) {
+        os << "nullptr";
+    } else {
+        return os << *cr;
+    }
+    return os;
 }
 
 void ColumnRef::renderTo(QueryTemplate& qt) const {
     qt.append(*this);
 }
+
+bool ColumnRef::operator==(const ColumnRef& rhs) const {
+    return db == rhs.db &&
+            table == rhs.table &&
+            column == rhs.column;
+
+}
+
 
 }}} // namespace lsst::qserv::query

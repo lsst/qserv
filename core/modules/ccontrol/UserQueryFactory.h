@@ -45,7 +45,9 @@
 
 namespace lsst {
 namespace qserv {
-
+namespace query {
+class SelectStmt;
+}
 namespace czar {
 class CzarConfig;
 }
@@ -73,6 +75,9 @@ public:
                                 qdisp::QdispPool::Ptr const& qdispPool,
                                 std::string const& userQueryId,
                                 std::string const& msgTableName);
+
+    static std::shared_ptr<query::SelectStmt> antlr2NewSelectStmt(const std::string& query);
+
 
 private:
     class Impl;

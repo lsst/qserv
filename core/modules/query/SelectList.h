@@ -67,7 +67,6 @@ public:
     SelectList() : _valueExprList(std::make_shared<ValueExprPtrVector>()) {}
     ~SelectList() {}
     void addStar(std::string const& table);
-    void dbgPrint(std::ostream& os) const;
 
     std::string getGenerated();
     void renderTo(QueryTemplate& qt) const;
@@ -80,9 +79,13 @@ public:
     }
 
     friend class parser::SelectListFactory;
+
+    bool operator==(const SelectList& rhs);
 private:
 
     friend std::ostream& operator<<(std::ostream& os, SelectList const& sl);
+    friend std::ostream& operator<<(std::ostream& os, SelectList const* sl);
+
     std::shared_ptr<ValueExprPtrVector> _valueExprList;
 };
 

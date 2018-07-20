@@ -139,7 +139,7 @@ public:
     static std::ostream& renderDbg(std::ostream& os, T const& t) {
         QueryTemplate qt;
         t.renderTo(qt);
-        return os << qt;
+        return os << qt.sqlFragment();
     }
 
 private:

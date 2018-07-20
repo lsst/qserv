@@ -51,6 +51,7 @@
 #include "parser/parseTreeUtil.h"
 #include "parser/ParseException.h"
 #include "parser/SqlSQL2Parser.hpp" // applies several "using antlr::***".
+#include "query/ValueFactor.h"
 #include "query/WhereClause.h"
 
 
@@ -201,7 +202,6 @@ WhereFactory::attachTo(SqlSQL2Parser& p) {
 void
 WhereFactory::_import(antlr::RefAST a) {
     _clause = std::make_shared<query::WhereClause>();
-    _clause->_restrs = std::make_shared<query::QsRestrictor::PtrVector>();
     if (a->getType() != SqlSQL2TokenTypes::SQL2RW_where) {
         throw ParseException("Bug: _import expected WHERE node", a);
     }
@@ -222,6 +222,34 @@ WhereFactory::_import(antlr::RefAST a) {
         _addOrSibs(first->getFirstChild());
     }
 }
+
+void
+WhereFactory::addQservRestrictor(std::shared_ptr<query::WhereClause>& whereClause,
+                                 const std::string& function,
+                                 const std::vector<std::shared_ptr<query::ValueFactor>>& parameters) {
+
+    // Here we extract the args from a vector of ValueFactor::ColumnRef
+    // This is a side effect of the current IR, where in most cases a constant string is represented as
+    // a column name. But in a QservRestrictor (aka QservFunction) each par is simply represented by a string.
+    auto restrictor = std::make_shared<query::QsRestrictor>();
+    for (auto const valueFactor : parameters) {
+        if (query::ValueFactor::CONST != valueFactor->getType()) {
+            throw std::logic_error("QServFunctionSpec args are (currently) expected as constVal.");
+        }
+        restrictor->_params.push_back(valueFactor->getConstVal());
+    }
+
+    // Add case insensitive behavior in order to mimic MySQL functions/procedures
+    std::string insensitiveFunction(function);
+    if (insensitiveFunction != "sIndex") {
+        std::transform(insensitiveFunction.begin(), insensitiveFunction.end(), insensitiveFunction.begin(),
+                ::tolower);
+        LOGS(_log, LOG_LVL_DEBUG, "Qserv restrictor changed to lower-case: " << insensitiveFunction);
+    }
+    restrictor->_name = insensitiveFunction;
+    whereClause->_restrs->push_back(restrictor);
+}
+
 void
 WhereFactory::_addQservRestrictor(antlr::RefAST a) {
     std::string r(a->getText()); // e.g. qserv_areaspec_box
@@ -288,7 +316,6 @@ WhereFactory::_addOrSibs(antlr::RefAST a) {
     walkTreeVisit(a, p);
     BoolTermFactory f(_vf);
     _clause->_tree = f.newOrTerm(a);
-    _clause->_original = p.result;
     // FIXME: Store template.
     // Template must allow table substitution.
     // For now, reuse old templating scheme.

@@ -34,6 +34,7 @@
 // System headers
 #include <iostream>
 #include <iterator>
+#include <memory>
 #include <sstream>
 #include <string>
 #include <utility>
@@ -75,8 +76,10 @@ public:
     explicit IterableFormatter(Iter begin, Iter end,
                                char const *const open, char const *const close,
                                char const *const sep) :
-            _begin(begin), _end(end), _open(open), _close(close), _sep(sep) {
+            _begin(begin), _end(end), _open(open), _close(close), _sep(sep), _nullptr(false){
     }
+
+    explicit IterableFormatter() : _open(nullptr), _close(nullptr), _sep(nullptr), _nullptr(true) {}
 
     /**
      *  Output operator for IterableFormatter<Iterable>
@@ -87,6 +90,10 @@ public:
      */
     friend std::ostream& operator<<(std::ostream& os,
                                     IterableFormatter<Iter> const& self) {
+        if (self._nullptr) {
+            os << "nullptr";
+            return os;
+        }
         os << self._open;
         auto it = self._begin;
         if (it != self._end) {
@@ -107,10 +114,17 @@ private:
     char const *const _open;
     char const *const _close;
     char const *const _sep;
+    bool _nullptr;
 
     // generic item formatting
     template <typename T>
     static void _item_fmt(std::ostream& os, T const& item) { os << item; }
+    // specialization for shared_ptr; allows the container to contain `shared_ptr`s. If the pointer is null,
+    // "nullptr" will be printed.
+    template <typename T>
+    static void _item_fmt(std::ostream& os, std::shared_ptr<T> const& item) {
+        (nullptr == item) ? os << "nullptr" : os << *item;
+    }
     // specialization for string
     static void _item_fmt(std::ostream& os, std::string const& item) { os << '"' << item << '"'; }
     static void _item_fmt(std::ostream& os, char const* item) { os << '"' << item << '"'; }
@@ -152,6 +166,24 @@ IterableFormatter<typename Iterable::const_iterator> printable(Iterable const& x
 {
     return printable(x.begin(), x.end(), open, close, sep);
 }
+
+/**
+ *  Create a printable wrapper for a pointer to an iterable data structure.
+ *  If the pointer is null, "nullptr" will be printed.
+ */
+template <typename Iterable>
+IterableFormatter<typename Iterable::const_iterator> ptrPrintable(std::shared_ptr<Iterable> const& x,
+                                  char const *const open = "[", char const *const close = "]",
+                                  char const *const sep = ", ")
+{
+    if (x != nullptr) {
+        Iterable& xderef = *(x.get());
+        return printable(xderef, open, close, sep);
+    } else {
+        return IterableFormatter<typename Iterable::const_iterator>();
+    }
+}
+
 
 }}} // namespace lsst::qserv::util
 #endif // LSST_QSERV_UTIL_ITERABLERFORMATTER_H

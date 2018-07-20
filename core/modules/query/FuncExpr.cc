@@ -38,20 +38,36 @@
 
 // Third-party headers
 
+
+#include "lsst/log/Log.h"
+
 // Qserv headers
 #include "query/ColumnRef.h"
 #include "query/QueryTemplate.h"
 #include "query/ValueExpr.h"
 #include "query/ValueFactor.h"
+#include "util/IterableFormatter.h"
+
+namespace {
+
+LOG_LOGGER _log = LOG_GET("lsst.qserv.FuncExpr");
+
+}
 
 namespace lsst {
 namespace qserv {
 namespace query {
 
+
+const std::string &
+FuncExpr::getName() const {
+    return _name;
+}
+
 FuncExpr::Ptr
 FuncExpr::newLike(FuncExpr const& src, std::string const& newName) {
     FuncExpr::Ptr e = std::make_shared<FuncExpr>();
-    e->name = newName;
+    e->setName(newName);
     e->params = src.params; // Shallow list copy.
     return e;
 }
@@ -66,9 +82,22 @@ FuncExpr::newArg1(std::string const& newName, std::string const& arg1) {
 FuncExpr::Ptr
 FuncExpr::newArg1(std::string const& newName, ValueExprPtr ve) {
     FuncExpr::Ptr e = std::make_shared<FuncExpr>();
-    e->name = newName;
+    e->setName(newName);
     e->params.push_back(ve);
     return e;
+}
+
+FuncExpr::Ptr
+FuncExpr::newWithArgs(std::string const& newName, const ValueExprPtrVector& ve) {
+    FuncExpr::Ptr e = std::make_shared<FuncExpr>();
+    e->setName(newName);
+    e->params = ve;
+    return e;
+}
+
+void
+FuncExpr::setName(const std::string& val) {
+    _name = val;
 }
 
 void
@@ -84,30 +113,37 @@ FuncExpr::findColumnRefs(ColumnRef::Vector& outputRefs) {
 std::shared_ptr<FuncExpr>
 FuncExpr::clone() const {
     FuncExpr::Ptr e = std::make_shared<FuncExpr>();
-    e->name = name;
+    e->setName(getName());
     cloneValueExprPtrVector(e->params, params);
     return e;
 }
 
 std::ostream&
 operator<<(std::ostream& os, FuncExpr const& fe) {
-    os << "(" << fe.name << ",";
-    output(os, fe.params);
+    os << "FuncExpr(";
+    os << "name:" << fe._name;
+    os << ", params:" << util::printable(fe.params);
     os << ")";
     return os;
 }
 
 std::ostream&
 operator<<(std::ostream& os, FuncExpr const* fe) {
-    return os << *fe;
+    (nullptr == fe) ? os << "nullptr" : os << *fe;
+    return os;
 }
 
 void
 FuncExpr::renderTo(QueryTemplate& qt) const {
-    qt.append(name);
+    qt.append(getName());
     qt.append("(");
     renderList(qt, params);
     qt.append(")");
+}
+
+bool FuncExpr::operator==(const FuncExpr& rhs) const {
+    return _name == rhs._name &&
+           util::vectorPtrCompare<ValueExpr>(params, rhs.params);
 }
 
 }}} // namespace lsst::qserv::query
