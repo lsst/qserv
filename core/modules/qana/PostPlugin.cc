@@ -109,29 +109,8 @@ PostPlugin::applyPhysical(QueryPlugin::Plan& plan,
     // This block creates a list of column names & aliases in the select list that may be used by the
     // ORDER BY statement.
     if (_orderBy) {
-        auto const& selectList = plan.stmtOriginal.getSelectList();
-        auto const& selValExprList = selectList.getValueExprList();
-        query::ColumnRef::Vector validSelectCols;
-        LOGS(_log, LOG_LVL_DEBUG, "finding columns usable by ORDER BY from SELECT valueExprs:"
-                << util::printable(*selValExprList));
-        for (auto const& selValExpr : *selValExprList) {
-            std::string alias = selValExpr->getAlias();
-            // If the SELECT column has an alias, the ORDER BY statement must use the alias.
-            if (!alias.empty()) {
-                validSelectCols.push_back(std::make_shared<query::ColumnRef>("", alias, ""));
-            } else {
-                // if the ValueExpr is not of type COLUMN, getColumnRef will return nullptr;
-                auto const & selColumnRef = selValExpr->getColumnRef();
-                if (nullptr == selColumnRef) {
-                    continue;
-                }
-                if (selColumnRef->db.empty() == false || selColumnRef->table.empty() == false) {
-                    continue;
-                }
-                validSelectCols.push_back(selColumnRef);
-            }
-        }
-        LOGS(_log, LOG_LVL_DEBUG, "valid colNames=" << util::printable(validSelectCols));
+
+        auto validSelectCols = getValidOrderByColumns(plan.stmtOriginal);
 
         // For each element in the ORDER BY clause, see if it matches one item in validSelectCol
         auto orderBy = plan.stmtOriginal.getOrderBy();
@@ -142,11 +121,6 @@ PostPlugin::applyPhysical(QueryPlugin::Plan& plan,
             query::ColumnRef::Vector orderByColumnRefVec;
             expr->findColumnRefs(orderByColumnRefVec);
             for (auto const & ordByColRef : orderByColumnRefVec) {
-                // Check that the ORDER BY column does not have a database or table name
-                if (ordByColRef->db.empty() == false || ordByColRef->table.empty() == false) {
-                    throw AnalysisError("ORDER BY can only contain columns without database or table name, or alises. "
-                            + ordByColRef->db + "." + ordByColRef->table + "." + ordByColRef->column + " is not supported.");
-                }
                 // Check if the ORDER BY column matches a single valid column
                 query::ColumnRef::Ptr match;
                 for (auto const & selCol : validSelectCols) {
@@ -180,6 +154,33 @@ PostPlugin::applyPhysical(QueryPlugin::Plan& plan,
             mList.addStar(std::string());
         }
     }
+}
+
+
+query::ColumnRef::Vector PostPlugin::getValidOrderByColumns(query::SelectStmt const & selectStatement) {
+
+    std::shared_ptr<query::ValueExprPtrVector> selectValueExprList =
+            selectStatement.getSelectList().getValueExprList();
+
+    query::ColumnRef::Vector validSelectCols;
+    LOGS(_log, LOG_LVL_DEBUG, "finding columns usable by ORDER BY from SELECT valueExprs:"
+            << util::printable(*selectValueExprList));
+    for (auto const & selValExpr : *selectValueExprList) {
+        std::string alias = selValExpr->getAlias();
+        // If the SELECT column has an alias, the ORDER BY statement must use the alias.
+        if (!alias.empty()) {
+            validSelectCols.push_back(std::make_shared<query::ColumnRef>("", "", alias));
+        } else {
+            // if the ValueExpr is not of type COLUMN, getColumnRef will return nullptr;
+            auto const & selColumnRef = selValExpr->getColumnRef();
+            if (nullptr == selColumnRef) {
+                continue;
+            }
+            validSelectCols.push_back(selColumnRef);
+        }
+    }
+    LOGS(_log, LOG_LVL_DEBUG, "valid colNames=" << util::printable(validSelectCols));
+    return validSelectCols;
 }
 
 }}} // namespace lsst::qserv::qana

@@ -958,10 +958,16 @@ public:
         shared_ptr<query::ValueFactor> valueFactor;
         switch(_strings.size()) {
         case 1:
+            // only 1 value is set in strings; it is the column name.
             valueFactor = ValueFactorFactory::newColumnColumnFactor("", "", _strings[0]);
             break;
         case 2:
+            // 2 values are set in strings; they are table and column name.
             valueFactor = ValueFactorFactory::newColumnColumnFactor("", _strings[0], _strings[1]);
+            break;
+        case 3:
+            // 3 values are set in strings; they are database name, table name, and column name.
+            valueFactor = ValueFactorFactory::newColumnColumnFactor(_strings[0], _strings[1], _strings[2]);
             break;
         default:
             ASSERT_EXECUTION_CONDITION(false, "Unhandled number of strings.", _ctx);
