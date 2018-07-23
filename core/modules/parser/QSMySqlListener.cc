@@ -946,6 +946,9 @@ public:
         case 2:
             valueFactor = ValueFactorFactory::newColumnColumnFactor("", _strings[0], _strings[1]);
             break;
+        case 3:
+            valueFactor = ValueFactorFactory::newColumnColumnFactor(_strings[0], _strings[1], _strings[2]);
+            break;
         default:
             ASSERT_EXECUTION_CONDITION(false, "Unhandled number of strings.", _ctx);
         }
