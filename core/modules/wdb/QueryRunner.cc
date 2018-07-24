@@ -179,6 +179,8 @@ bool QueryRunner::runQuery() {
             mHLStr = handleStats.logString();
             double apparent = handleStats.bytesLock/mElapsed;
             mHLStr += " apparent=" + std::to_string(apparent);
+        } else {
+            mHLStr += " no handle";
         }
         if (mElapsed < 1.0) {
             ++lessThan1;
@@ -193,7 +195,7 @@ bool QueryRunner::runQuery() {
         } else {
             ++over40;
         }
-        LOGS(_log, LOG_LVL_INFO, "&&& memWait=" << mElapsed <<
+        LOGS(_log, LOG_LVL_INFO, _task->getIdStr() << "&&& memWait=" << mElapsed <<
                 " avg=" << avgWait <<
                 " <1=" << lessThan1 <<
                 " <5=" << lessThan5 <<
@@ -306,7 +308,7 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, si
             szLimit = std::min(szLimit, _initialBlockSize);
         }
 
-        if (false && not moved) {
+        if (false && not moved) { // &&&
             // &&& As long as the amount of memory being used waiting to send results is less than
             // the threshold, don't wait for the transmit, Otherwise, the system needs to wait so it
             // doesn't run out of memory.

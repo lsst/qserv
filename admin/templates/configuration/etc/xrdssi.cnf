@@ -29,8 +29,8 @@ location = {{QSERV_DATA_DIR}}/mysql
 [scheduler]
 
 # Thread pool size
-# thread_pool_size = 10
-thread_pool_size = 20
+# thread_pool_size = 20
+thread_pool_size = 12
 
 # Required number of completed tasks for table in a chunk for the average time to be valid
 # required_tasks_completed = 25

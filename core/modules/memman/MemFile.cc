@@ -54,7 +54,6 @@ std::unordered_map<std::string, MemFile*> fileCache;
 /*                               m e m L o c k                                */
 /******************************************************************************/
 
-#if 1  // &&&
 MemFile::MLResult MemFile::memLock() {
     //
     // The _fileMutex is used here to serialize multiple calls to lock the same
@@ -84,7 +83,7 @@ MemFile::MLResult MemFile::memLock() {
     }
 
 
-    // Only call if _isMapped was true. The only line that sets it false is protected by _mlockFileMutex.
+    // Only call if _isMapped was true. The only line that sets it to false is protected by _mlockFileMutex.
     if (rc == 0) {
         rc = _memory.memLock(_memInfo, _isFlex);
         if (rc == 0) {
@@ -110,47 +109,7 @@ MemFile::MLResult MemFile::memLock() {
     return errResult;
 }
 
-#else // &&&
-MemFile::MLResult MemFile::memLock() {
-    // The _fileMutex is used here to serialize multiple calls to lock the same
-    // file as a file may appear in multiple file sets. This mutex is held for
-    // duration of all operations here. It also serialized memory unmapping.
-    //
-    std::lock_guard<std::mutex> guard(_fileMutex);
-    int rc;
 
-    // If the file is already locked, indicate success
-    //
-    if (_isLocked) {
-        MLResult aokResult(_memInfo.size(), _memInfo.mlockTime(), 0);
-        return aokResult;
-    }
-
-    // Lock this table in memory if possible. If not, simulate an ENOMEM.
-    //
-    if (!_isMapped) rc = ENOMEM;
-    else {
-        rc = _memory.memLock(_memInfo, _isFlex);
-        if (rc == 0) {
-            MLResult aokResult(_memInfo.size(), _memInfo.mlockTime(), 0);
-            _isLocked = true;
-            return aokResult;
-        }
-    }
-
-    // If this is a flexible table, we can ignore this error.
-    //
-    if (_isFlex) {
-        MLResult nilResult(0, 0.0, 0);
-        return nilResult;
-    }
-
-    // Diagnose any errors
-    //
-    MLResult errResult(0, 0.0, rc);
-    return errResult;
-}
-#endif // &&&
 
 /******************************************************************************/
 /*                                m e m M a p                                 */
