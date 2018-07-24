@@ -65,8 +65,8 @@ public:
     void renderTo(QueryTemplate& qt) const;
 
     bool operator==(const ColumnRef& rhs) const;
-
     bool operator!=(const ColumnRef& rhs) const { return false == (*this == rhs); }
+    bool operator<(const ColumnRef& rhs) const;
 };
 
 }}} // namespace lsst::qserv::query

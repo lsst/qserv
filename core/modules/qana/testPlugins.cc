@@ -159,6 +159,102 @@ BOOST_DATA_TEST_CASE(UsedOrderBy, ORDER_BY_QUERIES, query) {
             " do not match expected ORDER BY colums:" << util::printable(query.expectedColumns));
 }
 
+
+struct ColumnDifferenceData {
+    ColumnDifferenceData(query::ColumnRef::Vector a, query::ColumnRef::Vector r, bool p)
+    : available(a), required(r), pass(p)  {}
+
+    query::ColumnRef::Vector available;
+    query::ColumnRef::Vector required;
+    bool pass; // if the test should pass; i.e. the available columns should satisfy the required columns.
+};
+
+std::ostream& operator<<(std::ostream& os, ColumnDifferenceData const& self) {
+    os << "ColumnDifferenceData(";
+    os << "available:" << util::printable(self.available);
+    os << ", required:" << util::printable(self.required);
+    os << ")";
+    return os;
+}
+
+static const std::vector<ColumnDifferenceData> COLUMN_REF_DIFFERENCE_QUERIES = {
+    ColumnDifferenceData(
+        {   // available:
+            std::make_shared<query::ColumnRef>("", "", "foo"),
+            std::make_shared<query::ColumnRef>("", "", "bar"),
+            std::make_shared<query::ColumnRef>("", "", "baz"),
+        },
+        {   // required:
+            std::make_shared<query::ColumnRef>("", "", "foo"),
+            std::make_shared<query::ColumnRef>("", "", "bar"),
+        },
+        true
+    ),
+    ColumnDifferenceData(
+        {   // available:
+            std::make_shared<query::ColumnRef>("", "", "foo"),
+            std::make_shared<query::ColumnRef>("", "", "bar"),
+        },
+        {   // required:
+            std::make_shared<query::ColumnRef>("", "", "foo"),
+            std::make_shared<query::ColumnRef>("", "", "bar"),
+            std::make_shared<query::ColumnRef>("", "", "baz"),
+        },
+        false
+    ),
+    ColumnDifferenceData(
+        {   // available:
+            std::make_shared<query::ColumnRef>("", "", "foo"),
+            std::make_shared<query::ColumnRef>("", "", "bar"),
+            std::make_shared<query::ColumnRef>("", "", "baz"),
+        },
+        {   // required:
+            std::make_shared<query::ColumnRef>("", "", "foo"),
+            std::make_shared<query::ColumnRef>("", "", "bar"),
+            std::make_shared<query::ColumnRef>("", "", "baz"),
+        },
+        true
+    ),
+    ColumnDifferenceData(
+        {   // available:
+            std::make_shared<query::ColumnRef>("foo", "bar", "baz"),
+        },
+        {   // required:
+            std::make_shared<query::ColumnRef>("foo", "bar", "baz"),
+        },
+        true
+    ),
+    ColumnDifferenceData(
+        {   // available:
+            std::make_shared<query::ColumnRef>("", "", "foo"),
+        },
+        {   // required:
+            std::make_shared<query::ColumnRef>("", "", "foo"),
+            std::make_shared<query::ColumnRef>("", "", "foo"),
+        },
+        true
+    ),
+    ColumnDifferenceData(
+        {   // available:
+            std::make_shared<query::ColumnRef>("", "", "foo"),
+            std::make_shared<query::ColumnRef>("", "", "foo"),
+        },
+        {   // required:
+            std::make_shared<query::ColumnRef>("", "", "foo"),
+        },
+        true
+    )
+};
+
+
+BOOST_DATA_TEST_CASE(ColumnRefVecDifference, COLUMN_REF_DIFFERENCE_QUERIES, columns) {
+    query::ColumnRef::Vector missing;
+    BOOST_REQUIRE_MESSAGE(
+            qana::PostPlugin::verifyColumnsForOrderBy(columns.available, columns.required, missing),
+            "available columns did not satisfy required columns:" << columns <<
+            " missing:" << util::printable(missing));
+}
+
 BOOST_AUTO_TEST_CASE(Exceptions) {
     // Should throw an Analysis error, because columnref is invalid.
     // Under normal operation, the columnref is patched by the TablePlugin
