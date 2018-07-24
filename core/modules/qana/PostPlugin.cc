@@ -36,6 +36,7 @@
 // System headers
 #include <cstddef>
 #include <stdexcept>
+#include <set>
 #include <string>
 
 // Third-party headers
@@ -54,6 +55,7 @@
 #include "query/SelectStmt.h"
 #include "query/ValueFactor.h"
 #include "util/IterableFormatter.h"
+#include "util/PointerCompare.h"
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qana.PostPlugin");
@@ -196,6 +198,18 @@ query::ColumnRef::Vector PostPlugin::getUsedOrderByColumns(query::SelectStmt con
         usedColumns.insert(usedColumns.end(), orderByColumnRefVec.begin(), orderByColumnRefVec.end());
     }
     return usedColumns;
+}
+
+bool PostPlugin::verifyColumnsForOrderBy(query::ColumnRef::Vector const & available,
+        query::ColumnRef::Vector const & required, query::ColumnRef::Vector & missing) {
+    missing.clear();
+    std::set<query::ColumnRef::Ptr, util::Compare<query::ColumnRef>> availableSet(
+            available.begin(), available.end());
+    std::set<query::ColumnRef::Ptr, util::Compare<query::ColumnRef>> requiredSet(
+            required.begin(), required.end());
+    std::set_difference(requiredSet.begin(), requiredSet.end(), availableSet.begin(), availableSet.end(),
+            std::inserter(missing, missing.end()), util::Compare<query::ColumnRef>());
+    return missing.empty();
 }
 
 }}} // namespace lsst::qserv::qana

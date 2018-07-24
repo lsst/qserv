@@ -68,7 +68,24 @@ bool ColumnRef::operator==(const ColumnRef& rhs) const {
     return db == rhs.db &&
             table == rhs.table &&
             column == rhs.column;
+}
 
+
+bool ColumnRef::operator<(const ColumnRef& rhs) const {
+    if (db < rhs.db) {
+        return true;
+    } else if (db > rhs.db) {
+        return false;
+    } else if (table < rhs.table) {
+        return true;
+    } else if (table > rhs.table) {
+        return false;
+    } else if (column < rhs.column) {
+        return true;
+    } else if (column > rhs.column) {
+        return false;
+    }
+    return false;
 }
 
 
