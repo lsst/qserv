@@ -253,16 +253,52 @@ static const std::vector<ColumnDifferenceData> COLUMN_REF_DIFFERENCE_QUERIES = {
             std::make_shared<query::ColumnRef>("", "", "foo"),
         },
         true
+    ),
+    ColumnDifferenceData(
+        {   // available:
+            std::make_shared<query::ColumnRef>("", "foo", "bar"),
+            std::make_shared<query::ColumnRef>("", "", "baz"),
+        },
+        {   // required:
+            std::make_shared<query::ColumnRef>("", "", "bar"),
+        },
+        true
+    ),
+    ColumnDifferenceData(
+        {   // available:
+            std::make_shared<query::ColumnRef>("", "foo", "bar"),
+            std::make_shared<query::ColumnRef>("", "baz", "bar"),
+        },
+        {   // required:
+            std::make_shared<query::ColumnRef>("", "", "bar"),
+        },
+        false
+    ),
+    ColumnDifferenceData(
+        {   // available:
+            std::make_shared<query::ColumnRef>("", "", "foo"),
+            std::make_shared<query::ColumnRef>("", "", "bar"),
+        },
+        {   // required:
+            std::make_shared<query::ColumnRef>("", "baz", "foo"),
+        },
+        false // since we don't know if the select foo comes from the baz table or not.
     )
 };
 
 
 BOOST_DATA_TEST_CASE(ColumnRefVecDifference, COLUMN_REF_DIFFERENCE_QUERIES, columns) {
     query::ColumnRef::Vector missing;
-    BOOST_REQUIRE_MESSAGE(
-            columns.pass == qana::PostPlugin::verifyColumnsForOrderBy(columns.available, columns.required, missing),
-            "available columns did not satisfy required columns:" << columns <<
-            ", missing:" << util::printable(missing) << ", size:" << missing.size() << ", empty:" << missing.empty());
+    if (columns.pass) {
+        BOOST_REQUIRE_MESSAGE(
+                qana::PostPlugin::verifyColumnsForOrderBy(columns.available, columns.required, missing),
+                    "available columns did not satisfy required columns:" << columns <<
+                    ", missing:" << util::printable(missing));
+    } else {
+        BOOST_REQUIRE_MESSAGE(
+                false == qana::PostPlugin::verifyColumnsForOrderBy(columns.available, columns.required, missing),
+                    "available columns should not satisfy required columns:" << columns);
+    }
 }
 
 BOOST_AUTO_TEST_CASE(Exceptions) {

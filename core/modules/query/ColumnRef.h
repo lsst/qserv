@@ -64,6 +64,13 @@ public:
     friend std::ostream& operator<<(std::ostream& os, ColumnRef const* cr);
     void renderTo(QueryTemplate& qt) const;
 
+    // Returns true if rhs could refer to the same column as this ColumnRef.
+    // only considers populated member variables, e.g. if `db` is not populated
+    // in this or in rhs it is ignored during comparison, except if e.g. db is
+    // populated but table is not (or table is but column is not) this will return
+    // false.
+    bool matches(const ColumnRef::Ptr & rhs) const;
+
     bool operator==(const ColumnRef& rhs) const;
     bool operator!=(const ColumnRef& rhs) const { return false == (*this == rhs); }
     bool operator<(const ColumnRef& rhs) const;

@@ -182,12 +182,38 @@ query::ColumnRef::Vector PostPlugin::getUsedOrderByColumns(query::SelectStmt con
 bool PostPlugin::verifyColumnsForOrderBy(query::ColumnRef::Vector const & available,
         query::ColumnRef::Vector const & required, query::ColumnRef::Vector & missing) {
     missing.clear();
+
+    // convert `available` and `required` to sets:
     std::set<query::ColumnRef::Ptr, util::Compare<query::ColumnRef>> availableSet(
             available.begin(), available.end());
     std::set<query::ColumnRef::Ptr, util::Compare<query::ColumnRef>> requiredSet(
             required.begin(), required.end());
+
+    // create a list of missing columns, where for a column in `required` there is not an exact match in
+    // `available`.
     std::set_difference(requiredSet.begin(), requiredSet.end(), availableSet.begin(), availableSet.end(),
             std::inserter(missing, missing.end()), util::Compare<query::ColumnRef>());
+
+    auto mItr = missing.rbegin();
+    while (mItr != missing.rend()) {
+        // make a set of ColumnRef from available that can match missing
+        // if set size is 1, that is a usable match and we use that.
+        // else (0 or >1) then we don't have a descrete match and we don't have a usable match.
+        std::set<query::ColumnRef::Ptr, util::Compare<query::ColumnRef>> usable;
+        for (auto&& a : available) {
+            if ((*mItr)->matches(a)) {
+                usable.insert(a);
+            }
+        }
+        // increment, and erase if usable.size is 1. (We increment and then erase because we are using a
+        // reverse iterator (to preserve the validity of the iterators in the `missing` vector), and
+        // increment-then-erase via iterator base is how you remove an item using a reverse iterator.)
+        ++mItr;
+        if (usable.size() == 1) {
+            missing.erase(mItr.base());
+        }
+    }
+
     return missing.empty();
 }
 
