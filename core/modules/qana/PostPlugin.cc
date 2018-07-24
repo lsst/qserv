@@ -111,36 +111,14 @@ PostPlugin::applyPhysical(QueryPlugin::Plan& plan,
     // This block creates a list of column names & aliases in the select list that may be used by the
     // ORDER BY statement.
     if (_orderBy) {
-
-        auto validSelectCols = getValidOrderByColumns(plan.stmtOriginal);
-        auto usedSelectCols = getUsedOrderByColumns(plan.stmtOriginal);
-
-        // For each element in the ORDER BY clause, see if it matches one item in validSelectCol
-        auto orderBy = plan.stmtOriginal.getOrderBy();
-        auto ordByTerms = orderBy.getTerms();
-        LOGS(_log, LOG_LVL_DEBUG, "ORDER BY terms:" << util::printable(*ordByTerms));
-        for (auto const& ordByTerm : *ordByTerms) {
-            auto const& expr = ordByTerm.getExpr();
-            query::ColumnRef::Vector orderByColumnRefVec;
-            expr->findColumnRefs(orderByColumnRefVec);
-            for (auto const & ordByColRef : orderByColumnRefVec) {
-                // Check if the ORDER BY column matches a single valid column
-                query::ColumnRef::Ptr match;
-                for (auto const & selCol : validSelectCols) {
-                    if (*selCol == *ordByColRef) {
-                        if (match != nullptr) {
-                            throw AnalysisError("ORDER BY Duplicate match for " + toString(ordByColRef)
-                                    + " in SELECT columns:" + toString(util::printable(validSelectCols)));
-                        }
-                        match = selCol;
-                    }
-                }
-                // Check that there is a match for ORDER BY column
-                if (nullptr == match) {
-                    throw AnalysisError("ORDER BY No match for " + toString(ordByColRef) + " in SELECT columns:"
-                            + toString(util::printable(validSelectCols)));
-                }
-            }
+        auto validSelectColumns = getValidOrderByColumns(plan.stmtOriginal);
+        auto orderByColumns = getUsedOrderByColumns(plan.stmtOriginal);
+        LOGS(_log, LOG_LVL_DEBUG, "selectColumns:" << util::printable(validSelectColumns) <<
+                ", orderByColumns:" << util::printable(orderByColumns));
+        query::ColumnRef::Vector missingColumns;
+        if (false == verifyColumnsForOrderBy(validSelectColumns, orderByColumns, missingColumns)) {
+            throw AnalysisError("ORDER BY No match for " + toString(util::printable(missingColumns)) +
+                    " in SELECT columns:" + toString(util::printable(validSelectColumns)));
         }
     }
 
@@ -199,6 +177,7 @@ query::ColumnRef::Vector PostPlugin::getUsedOrderByColumns(query::SelectStmt con
     }
     return usedColumns;
 }
+
 
 bool PostPlugin::verifyColumnsForOrderBy(query::ColumnRef::Vector const & available,
         query::ColumnRef::Vector const & required, query::ColumnRef::Vector & missing) {
