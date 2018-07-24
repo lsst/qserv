@@ -111,6 +111,7 @@ PostPlugin::applyPhysical(QueryPlugin::Plan& plan,
     if (_orderBy) {
 
         auto validSelectCols = getValidOrderByColumns(plan.stmtOriginal);
+        auto usedSelectCols = getUsedOrderByColumns(plan.stmtOriginal);
 
         // For each element in the ORDER BY clause, see if it matches one item in validSelectCol
         auto orderBy = plan.stmtOriginal.getOrderBy();
@@ -181,6 +182,20 @@ query::ColumnRef::Vector PostPlugin::getValidOrderByColumns(query::SelectStmt co
     }
     LOGS(_log, LOG_LVL_DEBUG, "valid colNames=" << util::printable(validSelectCols));
     return validSelectCols;
+}
+
+
+query::ColumnRef::Vector PostPlugin::getUsedOrderByColumns(query::SelectStmt const & selectStatement) {
+    // For each element in the ORDER BY clause, see if it matches one item in validSelectCol
+    query::ColumnRef::Vector usedColumns;
+    auto ordByTerms = selectStatement.getOrderBy().getTerms();
+    for (auto const & ordByTerm : *ordByTerms) {
+        auto const & expr = ordByTerm.getExpr();
+        query::ColumnRef::Vector orderByColumnRefVec;
+        expr->findColumnRefs(orderByColumnRefVec);
+        usedColumns.insert(usedColumns.end(), orderByColumnRefVec.begin(), orderByColumnRefVec.end());
+    }
+    return usedColumns;
 }
 
 }}} // namespace lsst::qserv::qana
