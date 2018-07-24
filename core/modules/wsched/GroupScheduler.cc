@@ -143,12 +143,9 @@ util::Command::Ptr GroupScheduler::getCmd(bool wait)  {
 
 
 void GroupScheduler::commandFinish(util::Command::Ptr const& cmd) {
-    LOGS(_log, LOG_LVL_DEBUG, "&&&sched GroupScheduler::commandFinish a");
     --_inFlight;
     auto t = std::dynamic_pointer_cast<wbase::Task>(cmd);
-    LOGS(_log, LOG_LVL_DEBUG, "&&&sched GroupScheduler::commandFinish b");
     if (t != nullptr) _decrChunkTaskCount(t->getChunkId());
-    LOGS(_log, LOG_LVL_DEBUG, "&&&sched GroupScheduler::commandFinish c");
 }
 
 

@@ -42,26 +42,13 @@ namespace wsched {
 
 /// Set priority to use when starting next chunk.
 void SchedulerBase::setPriority(int priority) {
-    _priorityNext = priority;
-    // apply immediately if this is effectively a better priority.
-    if (_priorityNext < _priority) applyPriority();
-}
-
-
-/// Apply _priorityNext to this scheduler.
-void SchedulerBase::applyPriority() {
-    if (_priority != _priorityNext) {
-        LOGS(_log, LOG_LVL_DEBUG,
-            getName() << " applying priority old=" << _priority << " new=" << _priorityNext);
-        _priority = _priorityNext;
-        if (_blendScheduler != nullptr) _blendScheduler->setFlagReorderScans();
-    }
+    _priority = priority;
 }
 
 
 /// Return to default priority for next chunk.
 void SchedulerBase::setPriorityDefault() {
-    _priorityNext = _priorityDefault;
+    _priority = _priorityDefault;
 }
 
 

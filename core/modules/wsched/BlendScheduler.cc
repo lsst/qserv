@@ -102,8 +102,7 @@ BlendScheduler::BlendScheduler(std::string const& name,
 
 BlendScheduler::~BlendScheduler() {
     /// Cleanup pointers.
-    //std::lock_guard<std::mutex> lock(util::CommandQueue::_mx); &&&
-    util::LockGuardTimed guard(util::CommandQueue::_mx, "&&&sched BlendScheduler::~BlendSchedule");
+    std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
     for (auto const& sched : _schedulers) {
         auto const& scanSched = std::dynamic_pointer_cast<ScanScheduler>(sched);
         if (scanSched != nullptr) {
@@ -114,23 +113,6 @@ BlendScheduler::~BlendScheduler() {
 
 
 void BlendScheduler::_sortScanSchedulers() {
-/* &&& possibly delete the priority code
-void BlendScheduler::_sortScanSchedulers() {
-    auto greaterThan = [](SchedulerBase::Ptr const& a, SchedulerBase::Ptr const& b)->bool {
-        // Experiment of sorts, priority depends on number of Tasks in each scheduler.
-        auto aVal = a->getUserQueriesInQ() + a->getPriority();
-        auto bVal = b->getUserQueriesInQ() + b->getPriority();
-        return aVal > bVal;
-    };
-    // The first scheduler should always be _group (for interactive queries).
-    if (_schedulers.size() >= 2) {
-        std::sort(_schedulers.begin()+1, _schedulers.end(), greaterThan);
-    } else {
-        LOGS(_log, LOG_LVL_DEBUG, "not enough schedulers, _schedulers.size=" << _schedulers.size());
-    }
-}
-*/
-
     auto lessThan = [this](SchedulerBase::Ptr const& a, SchedulerBase::Ptr const& b) -> bool {
         // group scheduler is always first
         if (a == _group) return true;
@@ -154,11 +136,11 @@ void BlendScheduler::_sortScanSchedulers() {
 
     std::sort(_schedulers.begin(), _schedulers.end(), lessThan);
 
-    std::string str = "&&&sched sort:";
-    for (auto& sched : _schedulers) {  // &&& delete
+    std::string str = "sort:";
+    for (auto& sched : _schedulers) {
         str += sched->getName() + ", ";
     }
-    LOGS(_log, LOG_LVL_DEBUG, str); // &&& delete
+    LOGS(_log, LOG_LVL_DEBUG, str);
 }
 
 
@@ -167,9 +149,8 @@ void BlendScheduler::queCmd(util::Command::Ptr const& cmd) {
     if (task == nullptr) {
         LOGS(_log, LOG_LVL_INFO, "BlendScheduler::queCmd got control command");
         {
-        //std::lock_guard<std::mutex> lock(util::CommandQueue::_mx); &&&
-        util::LockGuardTimed guard(util::CommandQueue::_mx, "&&&sched BlendScheduler::queCmd a");
-        _ctrlCmdQueue.queCmd(cmd);
+            util::LockGuardTimed guard(util::CommandQueue::_mx, "BlendScheduler::queCmd a");
+            _ctrlCmdQueue.queCmd(cmd);
         }
         notify(true);
         return;
@@ -179,8 +160,7 @@ void BlendScheduler::queCmd(util::Command::Ptr const& cmd) {
     }
     LOGS(_log, LOG_LVL_DEBUG, "BlendScheduler::queCmd " << task->getIdStr());
 
-    //std::lock_guard<std::mutex> lock(util::CommandQueue::_mx); &&&
-    util::LockGuardTimed guard(util::CommandQueue::_mx, "&&&sched BlendScheduler::queCmd b");
+    util::LockGuardTimed guard(util::CommandQueue::_mx, "BlendScheduler::queCmd b");
     // Check for scan tables
     SchedulerBase::Ptr s{nullptr};
     auto const& scanTables = task->getScanInfo().infoTables;
@@ -254,14 +234,13 @@ void BlendScheduler::commandStart(util::Command::Ptr const& cmd) {
 }
 
 void BlendScheduler::commandFinish(util::Command::Ptr const& cmd) {
-    LOGS(_log, LOG_LVL_DEBUG, "&&&sched BlendScheduler::commandFinish");
     auto t = std::dynamic_pointer_cast<wbase::Task>(cmd);
     if (t == nullptr) {
         LOGS(_log, LOG_LVL_WARN, "BlendScheduler::commandFinish cmd failed conversion");
         return;
     }
     wcontrol::Scheduler::Ptr s = std::dynamic_pointer_cast<wcontrol::Scheduler>(t->getTaskScheduler());
-    LOGS(_log, LOG_LVL_DEBUG, "&&&sched BlendScheduler::commandFinish " << t->getIdStr()); // &&& keep
+    LOGS(_log, LOG_LVL_DEBUG, "BlendScheduler::commandFinish " << t->getIdStr());
     if (s != nullptr) {
         s->commandFinish(t);
     } else {
@@ -269,9 +248,7 @@ void BlendScheduler::commandFinish(util::Command::Ptr const& cmd) {
     }
     _infoChanged = true;
     _logChunkStatus();
-    LOGS(_log, LOG_LVL_DEBUG, "&&&sched BlendScheduler::commandFinish calling finishedTask");
     _queries->finishedTask(t);
-    LOGS(_log, LOG_LVL_DEBUG, "&&&sched notify BlendScheduler::commandFinish  NNNNNNNN");
     notify(true);
 }
 
@@ -279,13 +256,11 @@ void BlendScheduler::commandFinish(util::Command::Ptr const& cmd) {
 bool BlendScheduler::ready() {
     bool ready = false;
     {
-        //std::lock_guard<std::mutex> lock(util::CommandQueue::_mx); &&&
-        util::LockGuardTimed guard(util::CommandQueue::_mx, "&&&sched BlendScheduler::ready");
+        util::LockGuardTimed guard(util::CommandQueue::_mx, "BlendScheduler::ready");
         ready = _ready();
     }
     if (ready) {
-        LOGS(_log, LOG_LVL_DEBUG, "&&&sched notify BlendScheduler::ready  NNNNNNNN");
-        notify(false); // &&& getting cases of where threads aren't being woken up. If one can run, more probably can.
+        notify(false);
     }
     return ready;
 }
@@ -294,16 +269,8 @@ bool BlendScheduler::ready() {
 /// Returns true when any sub-scheduler has a command ready.
 /// Precondition util::CommandQueue::_mx must be locked when this is called.
 bool BlendScheduler::_ready() {
-    LOGS(_log, LOG_LVL_DEBUG, "&&&sched BlendScheduler::_ready  NNNNNNNNN");
     std::ostringstream os;
     bool ready = false;
-
-    /* &&&
-    if (_flagReorderScans) {
-        _flagReorderScans = false;
-        _sortScanSchedulers();
-    }
-    */
 
     // _readSched points to the scheduler with a ready task until that
     // task has been retrieved by getCmd().
@@ -319,7 +286,7 @@ bool BlendScheduler::_ready() {
         for (auto sched : _schedulers) {
             availableThreads = sched->applyAvailableThreads(availableThreads);
             ready = sched->ready();
-            if (true || (changed && LOG_CHECK_LVL(_log, LOG_LVL_DEBUG))) {  // &&& delete true ||
+            if (changed && LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
                 os << sched->getName() << "(r=" << ready << " sz=" << sched->getSize()
                        << " fl=" << sched-> getInFlight() << " avail=" << availableThreads << ") ";
             }
@@ -333,7 +300,7 @@ bool BlendScheduler::_ready() {
     if (!ready) {
         ready = _ctrlCmdQueue.ready();
     }
-    if (true || changed) { // &&& delete true ||
+    if (changed) {
         LOGS(_log, LOG_LVL_DEBUG, getName() << "_ready() " << os.str());
     }
     return ready;
@@ -341,9 +308,8 @@ bool BlendScheduler::_ready() {
 
 
 util::Command::Ptr BlendScheduler::getCmd(bool wait) {
-    util::Timer timeToLock; // &&&
-    util::Timer timeHeld; // &&&
-    LOGS(_log, LOG_LVL_DEBUG, "&&&sched BlendScheduler::getCmd a wait=" << wait);
+    util::Timer timeToLock;
+    util::Timer timeHeld;
     util::Command::Ptr cmd;
     double totalTimeHeld = 0.0;
     bool ready = false;
@@ -353,42 +319,19 @@ util::Command::Ptr BlendScheduler::getCmd(bool wait) {
         timeToLock.stop();
         timeHeld.start();
         if (wait) {
-            //util::CommandQueue::_cv.wait(lock, [this](){return _ready();}); // &&&
+            // util::CommandQueue::_cv.wait(lock, [this](){return _ready();});
             while (!_ready()) {
                 timeHeld.stop();
                 totalTimeHeld += timeHeld.getElapsed();
                 util::CommandQueue::_cv.wait(lock);
-                //auto now = std::chrono::system_clock::now();  &&&
-                //_cv.wait_until(lock, now + 10s); &&&
                 timeHeld.start();
             }
             ready = true;
         } else {
             ready = _ready();
         }
-        LOGS(_log, LOG_LVL_DEBUG, "&&&sched BlendScheduler::getCmd b");
+
         // Try to get a command from the schedulers
-
-        /* &&&
-        int availableThreads = calcAvailableTheads();
-
-        if (cmd == nullptr) {
-            for (auto const& sched : _schedulers) {
-                availableThreads = sched->applyAvailableThreads(availableThreads);
-                cmd = sched->getCmd(false); // no wait
-                if (cmd != nullptr) {
-                    LOGS(_log, LOG_LVL_DEBUG, "Blend getCmd() using cmd from " << sched->getName());
-                    wbase::Task::Ptr task = std::dynamic_pointer_cast<wbase::Task>(cmd);
-                    _sortScanSchedulers();
-                    break;
-                }
-                // adjMax = _getAdjustedMaxThreads(adjMax, sched->getInFlight()); // DM-4943 possible alternate method
-                LOGS(_log, LOG_LVL_DEBUG, "Blend getCmd() nothing from " << sched->getName()
-                        << " avail=" << availableThreads);
-            }
-        }
-        */
-
         if (ready && _readySched != nullptr) {
             cmd = _readySched->getCmd(false);
             if (cmd != nullptr) {
@@ -408,15 +351,13 @@ util::Command::Ptr BlendScheduler::getCmd(bool wait) {
     if (cmd != nullptr) {
         _infoChanged = true;
         _logChunkStatus();
-        LOGS(_log, LOG_LVL_DEBUG, "&&&sched notify BlendScheduler::getCmd  NNNNNNNN");
         notify(true);
     }
     // returning nullptr is acceptable.
-    LOGS(_log, LOG_LVL_DEBUG, "&&&sched BlendScheduler::getCmd c cmd!=nullptr -> " <<  (cmd != nullptr));
     timeHeld.stop();
     totalTimeHeld += timeHeld.getElapsed();
-    LOGS(_log, LOG_LVL_DEBUG, "&&&sched lockTime BlendScheduler::getCmd ready toLock=" << timeToLock.getElapsed() << " held=" << timeHeld.getElapsed()
-            << " totalHeld=" << totalTimeHeld);
+    LOGS(_log, LOG_LVL_DEBUG, "lockTime BlendScheduler::getCmd ready toLock=" << timeToLock.getElapsed() <<
+                              " held=" << timeHeld.getElapsed() << " totalHeld=" << totalTimeHeld);
     return cmd;
 }
 
@@ -446,8 +387,7 @@ int BlendScheduler::calcAvailableTheads() {
 
 /// Returns the number of Tasks queued in all sub-schedulers.
 std::size_t BlendScheduler::getSize() const {
-    //std::lock_guard<std::mutex> lock(util::CommandQueue::_mx); &&&
-    util::LockGuardTimed guard(util::CommandQueue::_mx, "&&&sched BlendScheduler::getSize");
+    std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
     std::size_t sz = 0;
     for (auto sched : _schedulers) {
         sz += sched->getSize();
@@ -457,8 +397,7 @@ std::size_t BlendScheduler::getSize() const {
 
 /// Returns the number of Tasks inFlight.
 int BlendScheduler::getInFlight() const {
-    //std::lock_guard<std::mutex> lock(util::CommandQueue::_mx); &&&
-    util::LockGuardTimed guard(util::CommandQueue::_mx, "&&&sched BlendScheduler::getInFlight");
+    std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
     int inFlight = 0;
     for (auto const& sched : _schedulers) {
         inFlight += sched->getInFlight();

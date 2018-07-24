@@ -66,7 +66,6 @@ void ChunkTasksQueue::queueTask(wbase::Task::Ptr const& task) {
 
 /// @return true if this object is ready to provide a Task from its queue.
 bool ChunkTasksQueue::ready(bool useFlexibleLock) {
-    LOGS(_log, LOG_LVL_DEBUG, "&&& ChunkTasksQueue::ready");
     std::lock_guard<std::mutex> lock(_mapMx);
     return _ready(useFlexibleLock);
 }
@@ -82,7 +81,6 @@ bool ChunkTasksQueue::ready(bool useFlexibleLock) {
 /// run the next Task on the current chunk.
 /// The _activeChunk advances when all of its Tasks have completed.
 bool ChunkTasksQueue::_ready(bool useFlexibleLock) {
-    LOGS(_log, LOG_LVL_DEBUG, "&&& ChunkTasksQueue::_ready");
     if (_readyChunk != nullptr) {
         return true;
     }
@@ -393,13 +391,11 @@ ChunkTasks::ReadyState ChunkTasks::ready(bool useFlexibleLock) {
         std::vector<memman::TableInfo> tblVect;
         for (auto const& tbl : scanInfo.infoTables) {
             memman::TableInfo ti(tbl.db + "/" + tbl.table, lckOptTbl, lckOptIdx);
-            // LOGS(_log, LOG_LVL_DEBUG, "&&& memman table:" << tbl.db + "/" + tbl.table); &&&
             tblVect.push_back(ti);
         }
         // If tblVect is empty, we should get the empty handle
-        LOGS(_log, LOG_LVL_DEBUG, "&&&memPrep " << _memMan->getStatistics().logString());
         memman::MemMan::Handle handle = _memMan->prepare(tblVect, chunkId);
-        LOGS(_log, LOG_LVL_DEBUG, "&&&memPrep " << _memMan->getStatistics().logString() <<
+        LOGS(_log, LOG_LVL_DEBUG, "memPrep " << _memMan->getStatistics().logString() <<
                                   " " << _memMan->getStatus(handle).logString());
         if (handle == 0) {
             switch (errno) {
