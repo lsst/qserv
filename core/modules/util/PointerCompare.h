@@ -116,6 +116,24 @@ bool ptrDequeCompare(const std::shared_ptr<std::deque<T>> & lhs,
 }
 
 
+template <typename T>
+struct Compare
+{
+    using is_transparent = void;
+
+    bool operator() (const std::shared_ptr<T>& a, const std::shared_ptr<T>& b) const {
+        return *a < *b;
+    }
+
+    bool operator() (const std::shared_ptr<T>& a, int b) const {
+        return *a < b;
+    }
+
+    bool operator() (int a, const std::shared_ptr<T>& b) const {
+        return a < *b;
+    }
+};
+
 }}} // namespace lsst::qserv::util
 
 #endif // LSST_QSERV_UTIL_POINTER_COMPARE_H

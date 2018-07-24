@@ -36,6 +36,7 @@
 // System headers
 #include <cstddef>
 #include <stdexcept>
+#include <set>
 #include <string>
 
 // Third-party headers
@@ -54,6 +55,7 @@
 #include "query/SelectStmt.h"
 #include "query/ValueFactor.h"
 #include "util/IterableFormatter.h"
+#include "util/PointerCompare.h"
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qana.PostPlugin");
@@ -101,113 +103,22 @@ PostPlugin::applyPhysical(QueryPlugin::Plan& plan,
         }
     }
 
+    // For query results to be ordered, the columns and/or aliases used by the ORDER BY statement must also
+    // be present in the SELECT statement. Only unqualified column names in the SELECT statement and that are
+    // *not* in a function or expression may be used by the ORDER BY statement. For example, things like
+    // ABS(col), t.col,  and col * 5 must be aliased if they will be used by the ORDER BY statement.
+    //
+    // This block creates a list of column names & aliases in the select list that may be used by the
+    // ORDER BY statement.
     if (_orderBy) {
-        auto const& selectList = plan.stmtOriginal.getSelectList();
-        auto const& selValExprList = selectList.getValueExprList();
-        std::vector<std::string> validSelectCols;
-        for (auto const& selValExpr : *selValExprList) {
-            LOGS(_log, LOG_LVL_DEBUG, "selValExpr=" << selValExpr);
-
-            std::string alias = selValExpr->getAlias();
-            // If the SELECT column has an alias, the ORDER BY statement must use the alias.
-            if (!alias.empty()) {
-                validSelectCols.push_back(alias);
-            } else {
-                // Most likely, there's only a need to support simple column names.
-                // Requiring aliases for things like ABS(col), t.col,  and col * 5 greatly simplifies
-                // the problem.
-                auto const& selFactorOps = selValExpr->getFactorOps();
-                if (selFactorOps.size() > 0) {
-                    query::ValueFactorPtr const& vf = selFactorOps.front().factor;
-                    if (vf) {
-                        auto vfType = vf->getType();
-                        LOGS(_log, LOG_LVL_DEBUG, "vfType=" << vf->getTypeString(vfType));
-
-                        switch (vfType) {
-                        case query::ValueFactor::COLUMNREF:
-                        {
-                            if (selValExpr->isColumnRef()) {
-                                query::ColumnRef::Ptr selColRef = selValExpr->getColumnRef();
-                                LOGS(_log, LOG_LVL_DEBUG, "Select db=" << selColRef->db
-                                        << " tbl=" << selColRef->table << " col=" << selColRef->column
-                                        << " alias=" << alias);
-                                std::string col = selColRef->column;
-                                if (!col.empty()) {
-                                    validSelectCols.push_back(col);
-                                }
-                            } else {
-                                // It is something complicated like psf*30 and will have to use an alias.
-                                LOGS(_log, LOG_LVL_DEBUG, "Select not ColumnRef order by would need alias");
-                            }
-                        }
-                        break;
-                        // These cases are complicated and should use an alias for ORDER BY.
-                        case query::ValueFactor::FUNCTION: // fall through
-                        case query::ValueFactor::AGGFUNC:  // fall through
-                        case query::ValueFactor::STAR:     // fall through
-                        case query::ValueFactor::CONST:    // fall through
-                        case query::ValueFactor::EXPR:
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-
-        LOGS(_log, LOG_LVL_DEBUG, "valid colNames=" << util::printable(validSelectCols));
-
-        // For each element in the ORDER BY clause, see if it matches one item in validSelectCol
-        auto orderBy = plan.stmtOriginal.getOrderBy();
-        auto ordByTerms = orderBy.getTerms();
-        for (auto const& ordByTerm : *ordByTerms) {
-            LOGS(_log, LOG_LVL_DEBUG, "order by term=" << ordByTerm);
-            auto const& expr = ordByTerm.getExpr();
-            query::ValueExpr::FactorOpVector& factorOps = expr->getFactorOps();
-            for (auto& factorOp:factorOps) {
-                auto factor = factorOp.factor;
-                query::ColumnRef::Ptr ordByColRef = factor->getColumnRef();
-                std::string orderByDb = ordByColRef->db;
-                std::string orderByTbl = ordByColRef->table;
-                std::string orderByCol = ordByColRef->column;
-                LOGS(_log, LOG_LVL_DEBUG, "Order By factorOp->factor=" << factor
-                     << " db=" << orderByDb << " tbl=" << orderByTbl << " col=" << orderByCol);
-
-                // If db or table is not empty, that's an error as those typically will not
-                // be passed back to the proxy in the table column name and the proxy will
-                // throw an error when it can't locate the ORDER BY argument in the result columns.
-                if (!orderByDb.empty() || !orderByTbl.empty()) {
-                    if (!orderByTbl.empty()) orderByTbl += ".";
-                    std::string msg = "ORDER BY argument should not include database or table for "
-                        + orderByDb + " " + orderByTbl + orderByCol + ".\n Remove qualifiers or "
-                        "use an alias.\n  ex:'SELECT a.val AS aVal ... ORDER BY aVal";
-                    LOGS(_log, LOG_LVL_WARN, msg);
-                    throw AnalysisError(msg);
-                }
-
-                // Check if the ORDER BY column matches a single valid column
-                int matchCount = 0;
-                for (auto& selCol : validSelectCols) {
-                    if (selCol == orderByCol) ++matchCount;
-                }
-                if (matchCount == 0) {
-                    // error, no match for ORDER BY column
-                    std::string msg = "ORDER BY No match for " + orderByCol
-                                                + " in " + toString(util::printable(validSelectCols)) + ".\n"
-                                                "  Consider an alias. "
-                                                "ex:'SELECT a.val AS aVal, ABS(val) AS absVal ... ORDER BY aVal, absVal'";
-                    LOGS(_log, LOG_LVL_WARN, msg);
-                    throw AnalysisError(msg);
-                }
-                if (matchCount > 1) {
-                    // error, the output column is ambiguous
-                    std::string msg = "ORDER BY Duplicate match for " + orderByCol
-                            + " in " + toString(util::printable(validSelectCols)) + ".\n Use an alias. "
-                            "ex:'SELECT a.val, b.val AS bVal ... ORDER BY bVal";
-                    LOGS(_log, LOG_LVL_WARN, msg);
-                    throw AnalysisError(msg);
-                }
-            }
-
+        auto validSelectColumns = getValidOrderByColumns(plan.stmtOriginal);
+        auto orderByColumns = getUsedOrderByColumns(plan.stmtOriginal);
+        LOGS(_log, LOG_LVL_DEBUG, "selectColumns:" << util::printable(validSelectColumns) <<
+                ", orderByColumns:" << util::printable(orderByColumns));
+        query::ColumnRef::Vector missingColumns;
+        if (false == verifyColumnsForOrderBy(validSelectColumns, orderByColumns, missingColumns)) {
+            throw AnalysisError("ORDER BY No match for " + toString(util::printable(missingColumns)) +
+                    " in SELECT columns:" + toString(util::printable(validSelectColumns)));
         }
     }
 
@@ -224,6 +135,60 @@ PostPlugin::applyPhysical(QueryPlugin::Plan& plan,
             mList.addStar(std::string());
         }
     }
+}
+
+
+query::ColumnRef::Vector PostPlugin::getValidOrderByColumns(query::SelectStmt const & selectStatement) {
+
+    std::shared_ptr<query::ValueExprPtrVector> selectValueExprList =
+            selectStatement.getSelectList().getValueExprList();
+
+    query::ColumnRef::Vector validSelectCols;
+    LOGS(_log, LOG_LVL_DEBUG, "finding columns usable by ORDER BY from SELECT valueExprs:"
+            << util::printable(*selectValueExprList));
+    for (auto const& selValExpr : *selectValueExprList) {
+        std::string alias = selValExpr->getAlias();
+        // If the SELECT column has an alias, the ORDER BY statement must use the alias.
+        if (!alias.empty()) {
+            validSelectCols.push_back(std::make_shared<query::ColumnRef>("", "", alias));
+        } else {
+            // if the ValueExpr is not of type COLUMN, getColumnRef will return nullptr;
+            auto const & selColumnRef = selValExpr->getColumnRef();
+            if (nullptr == selColumnRef) {
+                continue;
+            }
+            validSelectCols.push_back(selColumnRef);
+        }
+    }
+    LOGS(_log, LOG_LVL_DEBUG, "valid colNames=" << util::printable(validSelectCols));
+    return validSelectCols;
+}
+
+
+query::ColumnRef::Vector PostPlugin::getUsedOrderByColumns(query::SelectStmt const & selectStatement) {
+    // For each element in the ORDER BY clause, see if it matches one item in validSelectCol
+    query::ColumnRef::Vector usedColumns;
+    auto ordByTerms = selectStatement.getOrderBy().getTerms();
+    for (auto const& ordByTerm : *ordByTerms) {
+        auto const& expr = ordByTerm.getExpr();
+        query::ColumnRef::Vector orderByColumnRefVec;
+        expr->findColumnRefs(orderByColumnRefVec);
+        usedColumns.insert(usedColumns.end(), orderByColumnRefVec.begin(), orderByColumnRefVec.end());
+    }
+    return usedColumns;
+}
+
+
+bool PostPlugin::verifyColumnsForOrderBy(query::ColumnRef::Vector const & available,
+        query::ColumnRef::Vector const & required, query::ColumnRef::Vector & missing) {
+    missing.clear();
+    std::set<query::ColumnRef::Ptr, util::Compare<query::ColumnRef>> availableSet(
+            available.begin(), available.end());
+    std::set<query::ColumnRef::Ptr, util::Compare<query::ColumnRef>> requiredSet(
+            required.begin(), required.end());
+    std::set_difference(requiredSet.begin(), requiredSet.end(), availableSet.begin(), availableSet.end(),
+            std::inserter(missing, missing.end()), util::Compare<query::ColumnRef>());
+    return missing.empty();
 }
 
 }}} // namespace lsst::qserv::qana

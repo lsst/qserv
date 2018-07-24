@@ -171,17 +171,18 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
             LOGS(_log, LOG_LVL_DEBUG, "Antlr4 did not generate a select statement.");
         }
 
-        // parse using antlr v2
+        // TEMP while developing the antlr4 parser listener
+        // parse using antlr v2, log results, compare with antlr4
         std::shared_ptr<query::SelectStmt> a2stmt;
         try {
             a2stmt = antlr2NewSelectStmt(query);
         } catch(parser::ParseException const& e) {
-            return std::make_shared<UserQueryInvalid>(std::string("ParseException:") + e.what());
+            LOGS(_log, LOG_LVL_DEBUG, "antlr v2 parse exception: " << e.what());
         }
-        LOGS(_log, LOG_LVL_DEBUG, "Old-style generated select statement: " << a2stmt->getQueryTemplate());
-        LOGS(_log, LOG_LVL_DEBUG, "Old-style Hierarchy: " << *a2stmt);
-
-        // TEMP while developing the antlr4 parser listener
+        if (a2stmt != nullptr) {
+			LOGS(_log, LOG_LVL_DEBUG, "Old-style generated select statement: " << a2stmt->getQueryTemplate());
+			LOGS(_log, LOG_LVL_DEBUG, "Old-style Hierarchy: " << *a2stmt);
+        }
         if (a4stmt && a2stmt) {
             bool theyMatch(*a4stmt == *a2stmt);
             LOGS(_log, LOG_LVL_DEBUG, "antlr v2 and antlr4 generated queries match:" << theyMatch);

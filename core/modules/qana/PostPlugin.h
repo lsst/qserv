@@ -25,6 +25,7 @@
 
 // Qserv headers
 #include "qana/QueryPlugin.h"
+#include "query/ColumnRef.h"
 
 
 // Forward declarations
@@ -33,6 +34,7 @@ namespace qserv {
 namespace query {
 
 class OrderByClause;
+class ValueExpr;
 
 }}} // namespace lsst::qserv::query
 
@@ -60,6 +62,13 @@ public:
 
     int _limit;
     std::shared_ptr<query::OrderByClause> _orderBy;
+
+    // these functions are used internally, they are available publicly for unit testing.
+    static query::ColumnRef::Vector getValidOrderByColumns(query::SelectStmt const & selectStatement);
+    static query::ColumnRef::Vector getUsedOrderByColumns(query::SelectStmt const & selectStatement);
+    static bool verifyColumnsForOrderBy(query::ColumnRef::Vector const & available,
+                                        query::ColumnRef::Vector const & required,
+                                        query::ColumnRef::Vector & missing);
 };
 
 }}} // namespace lsst::qserv::qana

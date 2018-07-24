@@ -100,7 +100,7 @@ public:
     void renderTo(QueryTemplate& qt) const;
     std::shared_ptr<OrderByClause> clone() const;
     std::shared_ptr<OrderByClause> copySyntax();
-    std::shared_ptr<OrderByTermVector> getTerms() { return _terms; }
+    std::shared_ptr<OrderByTermVector> getTerms() const { return _terms; }
     void addTerm(const OrderByTerm& term) { _terms->push_back(term); }
 
     void findValueExprs(ValueExprPtrVector& list);

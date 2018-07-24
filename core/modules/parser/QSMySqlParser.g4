@@ -4,6 +4,14 @@ import MySqlParser;
 
 options { tokenVocab=QSMySqlLexer; }
 
+// adds `MINUS?` before REAL_LITERAL
+constant
+    : stringLiteral | decimalLiteral
+    | hexadecimalLiteral | booleanLiteral
+    | MINUS? REAL_LITERAL | BIT_STRING
+    | NOT? nullLiteral=(NULL_LITERAL | NULL_SPEC_LITERAL)
+    ;
+
 // same as MySqlParser, adds qservFunctionSpecExpression
 // Simplified approach for expression
 expression
@@ -34,7 +42,6 @@ predicate
    | predicate NOT? regex=(REGEXP | RLIKE) predicate               #regexpPredicate
    | (LOCAL_ID VAR_ASSIGN)? expressionAtom                         #expressionAtomPredicate
    ;
- 
  
  decimalLiteral
     : MINUS? DECIMAL_LITERAL | ZERO_DECIMAL | ONE_DECIMAL | TWO_DECIMAL
