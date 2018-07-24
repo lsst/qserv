@@ -135,10 +135,34 @@ BOOST_DATA_TEST_CASE(OrderBy, QUERIES, query) {
     auto validOrderByColumns = qana::PostPlugin::getValidOrderByColumns(*selectStatement);
     BOOST_REQUIRE_MESSAGE(compare(validOrderByColumns, query.expectedColumns),
             "for statement:\"" << query.query << "\"" <<
-            ", order by columns:" << util::printable(validOrderByColumns) <<
+            ", available order by columns:" << util::printable(validOrderByColumns) <<
             " do not match expected order by colums:" << util::printable(query.expectedColumns));
 }
 
+static const std::vector<OrderByQueryAndExpectedColumns> ORDER_BY_QUERIES = {
+        OrderByQueryAndExpectedColumns("SELECT foo ORDER BY bar",
+                {std::make_shared<query::ColumnRef>("", "", "bar")}),
+
+        // note, don't use the column name inside a function; it must be aliased to be usable.
+        OrderByQueryAndExpectedColumns("SELECT foo ORDER BY foo.bar, my_func(baz)",
+                {std::make_shared<query::ColumnRef>("", "foo", "bar"),
+                 std::make_shared<query::ColumnRef>("", "", "baz")}),
+
+        OrderByQueryAndExpectedColumns("SELECT some_func(boz) as foo from my_table ORDER BY foo",
+                {std::make_shared<query::ColumnRef>("", "", "foo")}),
+
+        OrderByQueryAndExpectedColumns("SELECT foo.bar.baz from my_table ORDER BY foo.bar.baz",
+                {std::make_shared<query::ColumnRef>("foo", "bar", "baz")})
+};
+
+BOOST_DATA_TEST_CASE(UsedOrderBy, ORDER_BY_QUERIES, query) {
+    std::shared_ptr<query::SelectStmt> selectStatement = ccontrol::a4NewUserQuery(query.query);
+    auto usedOrderByColumns = qana::PostPlugin::getUsedOrderByColumns(*selectStatement);
+    BOOST_REQUIRE_MESSAGE(compare(usedOrderByColumns, query.expectedColumns),
+            "for statement:\"" << query.query << "\"" <<
+            ", ORDER BY used columns:" << util::printable(usedOrderByColumns) <<
+            " do not match expected ORDER BY colums:" << util::printable(query.expectedColumns));
+}
 
 BOOST_AUTO_TEST_CASE(Exceptions) {
     // Should throw an Analysis error, because columnref is invalid.
