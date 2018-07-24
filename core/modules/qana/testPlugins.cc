@@ -250,6 +250,16 @@ static const std::vector<ColumnDifferenceData> COLUMN_REF_DIFFERENCE_QUERIES = {
             std::make_shared<query::ColumnRef>("", "", "foo"),
         },
         true
+    ),
+    ColumnDifferenceData(
+        {   // available:
+            std::make_shared<query::ColumnRef>("", "", "foo"),
+            std::make_shared<query::ColumnRef>("", "", "bar"),
+        },
+        {   // required:
+            std::make_shared<query::ColumnRef>("", "", "foo"),
+        },
+        true
     )
 };
 
@@ -257,9 +267,9 @@ static const std::vector<ColumnDifferenceData> COLUMN_REF_DIFFERENCE_QUERIES = {
 BOOST_DATA_TEST_CASE(ColumnRefVecDifference, COLUMN_REF_DIFFERENCE_QUERIES, columns) {
     query::ColumnRef::Vector missing;
     BOOST_REQUIRE_MESSAGE(
-            qana::PostPlugin::verifyColumnsForOrderBy(columns.available, columns.required, missing),
+            columns.pass == qana::PostPlugin::verifyColumnsForOrderBy(columns.available, columns.required, missing),
             "available columns did not satisfy required columns:" << columns <<
-            " missing:" << util::printable(missing));
+            ", missing:" << util::printable(missing) << ", size:" << missing.size() << ", empty:" << missing.empty());
 }
 
 BOOST_AUTO_TEST_CASE(Exceptions) {
