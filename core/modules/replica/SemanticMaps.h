@@ -519,6 +519,22 @@ namespace SemanticMaps {
     }
 }
 
+/**
+ * @return a total number of keys accross all leaf nodes
+ *
+ * @param d - input dictionary to be tested
+ */
+template<typename T>
+size_t count(WorkerDatabaseChunkMap<T> const& d) {
+    size_t num = 0;
+    for (auto&& worker: d.workerNames()) {
+        for (auto&& database: d.worker(worker).databaseNames()) {
+            num += d.worker(worker).database(database).size();
+        }
+    }
+    return num;
+}
+
 }  // namespace SemanticMaps
 
 }}} // namespace lsst::qserv::replica

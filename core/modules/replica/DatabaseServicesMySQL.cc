@@ -527,9 +527,14 @@ void DatabaseServicesMySQL::saveReplicaInfoCollectionImpl(util::Lock const& lock
 
     std::string const context = "DatabaseServicesMySQL::saveReplicaInfoCollectionImpl  ";
 
-    LOGS(_log, LOG_LVL_DEBUG, context << "num.replicas: " << newReplicaInfoCollection.size());
+    LOGS(_log, LOG_LVL_DEBUG, context
+         << "worker: " << worker
+         << " database: " << database
+         << " num.replicas: " << newReplicaInfoCollection.size());
 
     // Group new replicas by contexts
+
+    LOGS(_log, LOG_LVL_DEBUG, context << "new replicas group: 1");
 
     WorkerDatabaseChunkMap<ReplicaInfo const*> newReplicas;
     for (auto&& replica: newReplicaInfoCollection) {
@@ -541,11 +546,19 @@ void DatabaseServicesMySQL::saveReplicaInfoCollectionImpl(util::Lock const& lock
                        .atChunk(replica.chunk()) = &replica;
         }
     }
+    LOGS(_log, LOG_LVL_DEBUG, context << "new replicas group: 2");
     
     // Obtain old replicas and group them by contexts
 
+    LOGS(_log, LOG_LVL_DEBUG, context << "old replicas fetch: 1");
+
     std::vector<ReplicaInfo> oldReplicaInfoCollection;
     findWorkerReplicasImpl(lock, oldReplicaInfoCollection, worker, database);
+
+    LOGS(_log, LOG_LVL_DEBUG, context << "old replicas fetch: 2"
+         << " num.replicas: " << oldReplicaInfoCollection.size());
+
+    LOGS(_log, LOG_LVL_DEBUG, context << "old replicas group: 1");
 
     WorkerDatabaseChunkMap<ReplicaInfo const*> oldReplicas;
     for (auto&& replica: oldReplicaInfoCollection) {
@@ -554,7 +567,11 @@ void DatabaseServicesMySQL::saveReplicaInfoCollectionImpl(util::Lock const& lock
                    .atChunk(replica.chunk()) = &replica;
     }
 
+    LOGS(_log, LOG_LVL_DEBUG, context << "old replicas group: 2");
+
     // Find differences between the collections
+
+    LOGS(_log, LOG_LVL_DEBUG, context << "*** replicas compa: 1");
 
     WorkerDatabaseChunkMap<ReplicaInfo const*> inBoth;
     SemanticMaps::intersect(newReplicas,
@@ -568,8 +585,14 @@ void DatabaseServicesMySQL::saveReplicaInfoCollectionImpl(util::Lock const& lock
                         inNewReplicasOnly,
                         inOldReplicasOnly);
 
+    LOGS(_log, LOG_LVL_DEBUG, context << "*** replicas compa: 2"
+         << " #both: " << SemanticMaps::count(inBoth)
+         << " #new: " << SemanticMaps::count(inNewReplicasOnly)
+         << " #old: " << SemanticMaps::count(inOldReplicasOnly));
 
     // Eiminate outdated replicas
+
+    LOGS(_log, LOG_LVL_DEBUG, context << "old replicas remov: 1");
     
     for (auto&& worker: inOldReplicasOnly.workerNames()) {
 
@@ -583,7 +606,11 @@ void DatabaseServicesMySQL::saveReplicaInfoCollectionImpl(util::Lock const& lock
         }
     }
 
+    LOGS(_log, LOG_LVL_DEBUG, context << "old replicas remov: 2");
+
     // Insert new replicas not present in the old collection
+
+    LOGS(_log, LOG_LVL_DEBUG, context << "new replicas inser: 1");
 
     for (auto&& worker: inNewReplicasOnly.workerNames()) {
 
@@ -598,8 +625,12 @@ void DatabaseServicesMySQL::saveReplicaInfoCollectionImpl(util::Lock const& lock
         }
     }
 
+    LOGS(_log, LOG_LVL_DEBUG, context << "new replicas inser: 2");
+
     // Deep comparision of the replicas in the intersect area to see
     // wich of those need to be updated.
+
+    LOGS(_log, LOG_LVL_DEBUG, context << "old replicas updat: 1");
 
    for (auto&& worker: inBoth.workerNames()) {
 
@@ -625,45 +656,7 @@ void DatabaseServicesMySQL::saveReplicaInfoCollectionImpl(util::Lock const& lock
             }
         }
     }
-/*
-    // Note that this algorithm will also work if the input collection has
-    // multiple contexts. The algorithm will affect database stored replicas
-    // in the requested ('worker' and 'database' parameters of the method)
-    // context only.
-
-    if (newReplicas.workerExists(worker) and
-        newReplicas.worker(worker).databaseExists(database) and
-        not newReplicas.worker(worker).database(database).empty()) {
-
-        // Check each old replicas to see if it's present in the new collection
-        std::vector<ReplicaInfo> oldReplicaInfoCollection;
-        if (findWorkerReplicasImpl(lock, oldReplicaInfoCollection, worker, database)) {
-
-            for (auto&& replica: oldReplicaInfoCollection) {
-                unsigned int const chunk = replica.chunk();
-
-                // Eliminate the 'dead' chunks entry from the database
-                if (not newReplicas.worker(worker).database(database).chunkExists(chunk)) {
-                    deleteReplicaInfoImpl(lock, worker, database, chunk);
-                }
-            }
-        }
-
-    } else {
-
-        // Bulk delete if the input collection is empty or has no context
-        _conn->execute(
-            "DELETE FROM " + _conn->sqlId("replica") +
-            "  WHERE "     + _conn->sqlEqual("worker",   worker) +
-            "    AND "     + _conn->sqlEqual("database", database));
-    }
-
-    // Finally push new (or update existing) replicas info into the database
-    // (some of those replicas will be brand new, others - will need to be updated)
-    for (auto&& info: newReplicaInfoCollection) {
-        saveReplicaInfoImpl(lock, info);
-    }
-*/
+    LOGS(_log, LOG_LVL_DEBUG, context << "old replicas updat: 2");
 
     LOGS(_log, LOG_LVL_DEBUG, context << "** DONE **");
 }

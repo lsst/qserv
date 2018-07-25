@@ -22,9 +22,9 @@
 #ifndef LSST_QSERV_REPLICA_DATABASESERVICESMYSQL_H
 #define LSST_QSERV_REPLICA_DATABASESERVICESMYSQL_H
 
-/// DatabaseServices.h declares:
+/// DatabaseServicesMySQL.h declares:
 ///
-/// class DatabaseServices
+/// class DatabaseServicesMySQL
 /// (see individual class documentation for more information)
 
 // System headers
