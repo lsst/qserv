@@ -136,24 +136,6 @@ public:
     }
 
 
-    /* &&&
-    void queCmd0(PriorityCommand::Ptr const& cmd) {
-            _prQueue->queCmd(cmd, 0);
-        }
-
-    void queCmd1(PriorityCommand::Ptr const& cmd) {
-        _prQueue->queCmd(cmd, 1);
-    }
-
-    void queCmd2(PriorityCommand::Ptr const& cmd) {
-        _prQueue->queCmd(cmd, 2);
-    }
-
-    void queCmd3(PriorityCommand::Ptr const& cmd) {
-        _prQueue->queCmd(cmd, 2);
-    }
-    */
-
     /// Lower priority numbers are higher priority.
     /// Invalid priorities get the lowest priority, which
     /// is the bottom of the heap.

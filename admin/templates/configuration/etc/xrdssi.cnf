@@ -44,11 +44,11 @@ group_size = 10
 # Running the fast scheduler at high priority tends to make it use significant 
 # resources on a small number of queries.
 # priority_snail = -20
-# priority_slow = 2
-priority_slow = 4
+priority_slow = 2
+# priority_slow = 4
 # priority_med = 3
-# priority_fast = 4
-priority_fast = 2
+priority_fast = 4
+# priority_fast = 2
 
 
 

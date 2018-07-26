@@ -119,7 +119,6 @@ public:
     bool ready() override;
     int applyAvailableThreads(int tempMax) override { return tempMax;} //< does nothing
 
-    void setFlagReorderScans() { _flagReorderScans = true; }
     int calcAvailableTheads();
 
     bool isScanSnail(SchedulerBase::Ptr const& scan);
@@ -142,12 +141,11 @@ private:
     std::shared_ptr<ScanScheduler> _scanSnail; ///< extremely slow scheduler.
     std::vector<SchedulerBase::Ptr> _schedulers; ///< list of all schedulers including _group and _scanSnail
 
-    std::atomic<bool> _flagReorderScans{false}; // &&& delete
     std::atomic<bool> _infoChanged{true}; //< Used to limit debug logging.
 
     wpublish::QueriesAndChunks::Ptr _queries; /// UserQuery statistics.
 
-    bool _prioritizeByInFlight{false}; // &&& delete if it doesn't work
+    bool _prioritizeByInFlight{false}; // Schedulers with more tasks inflight get lower priority.
     SchedulerBase::Ptr _readySched; //< Pointer to the scheduler with a ready task.
 };
 

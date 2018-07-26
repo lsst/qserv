@@ -82,7 +82,6 @@ void ScanScheduler::commandStart(util::Command::Ptr const& cmd) {
 }
 
 void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
-    LOGS(_log, LOG_LVL_DEBUG, "&&&sched ScanScheduler::commandFinish a");
     wbase::Task::Ptr t = std::dynamic_pointer_cast<wbase::Task>(cmd);
     _infoChanged = true;
     if (t == nullptr) {
@@ -92,12 +91,10 @@ void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
 
     _taskQueue->taskComplete(t); // does not need _mx protection.
     {
-        //std::lock_guard<std::mutex> guard(util::CommandQueue::_mx);
-        util::LockGuardTimed guard(util::CommandQueue::_mx, "&&&sched ScanScheduler::commandFinish");
+        std::lock_guard<std::mutex> guard(util::CommandQueue::_mx);
         --_inFlight;
         LOGS(_log, LOG_LVL_DEBUG, t->getIdStr() << " commandFinish " << getName()
                 << " inFlight=" << _inFlight);
-        LOGS(_log, LOG_LVL_DEBUG, "&&&sched ScanScheduler::commandFinish b");
 
         // If there's an old _memManHandleToUnlock, it needs to be unlocked before a new value is assigned.
         if (_memManHandleToUnlock != memman::MemMan::HandleType::INVALID) {
@@ -109,7 +106,6 @@ void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
         // Wait to unlock the tables until after the next call to _ready or commandFinish.
         // This is done in case only one thread is running on this scheduler as
         // we don't want to release the tables in case the next Task wants some of them.
-        LOGS(_log, LOG_LVL_DEBUG, "&&&sched ScanScheduler::commandFinish c");
         if (!_taskQueue->empty()) {
             _memManHandleToUnlock = t->getMemHandle();
             LOGS(_log, LOG_LVL_DEBUG, t->getIdStr() << " setting handleToUnlock handle=" << _memManHandleToUnlock);
@@ -120,31 +116,22 @@ void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
         }
 
         _decrChunkTaskCount(t->getChunkId());
-        if (_taskQueue->nextTaskDifferentChunkId()) {
-            applyPriority();
-        }
     }
     // Whenever a Task finishes, all sleeping threads need to check if resources
     // are available to run new Tasks.
     _cv.notify_all();
-    LOGS(_log, LOG_LVL_DEBUG, "&&&sched ScanScheduler::commandFinish d");
 }
 
 
 /// Returns true if there is a Task ready to go and we aren't up against any limits.
 bool ScanScheduler::ready() {
-    LOGS(_log, LOG_LVL_DEBUG, "&&&sched ScanScheduler::ready");
-    //std::lock_guard<std::mutex> lock(util::CommandQueue::_mx); &&&
-    util::LockGuardTimed guard(util::CommandQueue::_mx, "&&&sched ScanScheduler::ready");
+    std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
     return _ready();
 }
 
 /// Precondition: _mx is locked
 /// Returns true if there is a Task ready to go and we aren't up against any limits.
 bool ScanScheduler::_ready() {
-    LOGS(_log, LOG_LVL_DEBUG, "&&&sched ScanScheduler::_ready name="<< getName() << " inFlight="
-                 << _inFlight << " maxThreads=" << _maxThreads << " adj=" << _maxThreadsAdj
-                 << " activeChunks=" << getActiveChunkCount());
     bool logStuff = false;
     if (_infoChanged) {
         _infoChanged = false;
@@ -176,28 +163,20 @@ bool ScanScheduler::_ready() {
     }
 
     bool useFlexibleLock = (_inFlight < 1);
-    util::Timer readyTimer; // &&& delete
-    readyTimer.start();
     /// Once _taskQueue->ready() has a task ready, it stays on that task until it is used by getTask().
     auto rdy = _taskQueue->ready(useFlexibleLock); // Only returns true if MemMan grants resources.
-    readyTimer.stop();
-    LOGS(_log, LOG_LVL_DEBUG, "&&&sched ScanScheduler::_ready a _taskQueue->ready()=" << rdy << " readyTimer=" << readyTimer.getElapsed() << " useFlexibleLock=" << useFlexibleLock);
     bool logMemStats = false;
     // If ready failed, holding on to this is unlikely to help, otherwise the new Task now has its own handle
     // which and will keep needed files in memory.
     if (_memManHandleToUnlock != memman::MemMan::HandleType::INVALID) {
         LOGS(_log, LOG_LVL_DEBUG, "ScanScheduler::_ready unlocking handle=" << _memManHandleToUnlock <<
                                    " " << _memMan->getStatus(_memManHandleToUnlock).logString());
-        LOGS(_log, LOG_LVL_DEBUG, "&&&sched ScanScheduler::_ready unlocking handle");
         _memMan->unlock(_memManHandleToUnlock);
         _memManHandleToUnlock = memman::MemMan::HandleType::INVALID;
         logMemStats = true;
         if (!rdy) {
             // Try again now that memory is freed
-            readyTimer.start();
-            auto rdy = _taskQueue->ready(useFlexibleLock); // Only returns true if MemMan grants resources.
-            readyTimer.stop();
-            LOGS(_log, LOG_LVL_DEBUG, "&&&sched ScanScheduler::_ready b _taskQueue->ready()=" << rdy << " readyTimer=" << readyTimer.getElapsed());
+            rdy = _taskQueue->ready(useFlexibleLock); // Only returns true if MemMan grants resources.
         }
     }
     if (rdy || logMemStats) {
@@ -208,25 +187,16 @@ bool ScanScheduler::_ready() {
 
 
 std::size_t ScanScheduler::getSize() const {
-    //std::lock_guard<std::mutex> lock(util::CommandQueue::_mx); &&&
-    util::LockGuardTimed guard(util::CommandQueue::_mx, "&&&sched ScanScheduler::getSize");
+    std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
     return _taskQueue->getSize();
 }
 
 
 util::Command::Ptr ScanScheduler::getCmd(bool wait)  {
-    util::Timer timeToLock; // &&&
-    util::Timer timeHeld; // &&&
-    timeToLock.start();
     std::unique_lock<std::mutex> lock(util::CommandQueue::_mx);
-    timeToLock.stop();
-    timeHeld.start();
     if (wait) {
         util::CommandQueue::_cv.wait(lock, [this](){return _ready();});
-        timeHeld.start();
     } else if (!_ready()) {
-        timeHeld.stop();
-        LOGS(_log, LOG_LVL_DEBUG, "&&&sched lockTime ScanScheduler::getCmd !ready toLock=" << timeToLock.getElapsed() << " held=" << timeHeld.getElapsed());
         return nullptr;
     }
     bool useFlexibleLock = (_inFlight < 1);
@@ -238,8 +208,6 @@ util::Command::Ptr ScanScheduler::getCmd(bool wait)  {
         _decrCountForUserQuery(task->getQueryId());
         _incrChunkTaskCount(task->getChunkId());
     }
-    timeHeld.stop();
-    LOGS(_log, LOG_LVL_DEBUG, "&&&sched lockTime ScanScheduler::getCmd ready toLock=" << timeToLock.getElapsed() << " held=" << timeHeld.getElapsed());
     return task;
 }
 
@@ -251,8 +219,7 @@ void ScanScheduler::queCmd(util::Command::Ptr const& cmd) {
         return;
     }
     {
-        //std::lock_guard<std::mutex> lock(util::CommandQueue::_mx); &&&
-        util::LockGuardTimed guard(util::CommandQueue::_mx, "&&&sched ScanScheduler::queCmd");
+        std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
         auto uqCount = _incrCountForUserQuery(t->getQueryId());
         LOGS(_log, LOG_LVL_DEBUG, getName() << " queCmd " << t->getIdStr()
                 << " uqCount=" << uqCount);
@@ -308,21 +275,7 @@ bool ScanScheduler::removeTask(wbase::Task::Ptr const& task, bool removeRunning)
 
 
 void ScanScheduler::logMemManStats() {
-    LOGS(_log, LOG_LVL_DEBUG, "&&&mem Scan " <<_memMan->getStatistics().logString());
-    /* &&&
-    auto s = _memMan->getStatistics();
-    LOGS(_log, LOG_LVL_DEBUG, "bMax=" << s.bytesLockMax
-         << " bLocked=" << s.bytesLocked
-         << " bReserved=" << s.bytesReserved
-         << " FSets=" << s.numFSets
-         << " files=" << s.numFiles
-         << " ReqF=" << s.numReqdFiles
-         << " FlxF=" << s.numFlexFiles
-         << " FlxLck=" << s.numFlexLock
-         << " lckCalls=" << s.numLocks
-         << " errs=" << s.numErrors);
-    */
-
+    LOGS(_log, LOG_LVL_DEBUG, "Scan " <<_memMan->getStatistics().logString());
 }
 
 }}} // namespace lsst::qserv::wsched

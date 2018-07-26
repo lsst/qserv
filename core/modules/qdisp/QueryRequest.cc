@@ -46,13 +46,11 @@
 #include "qdisp/JobStatus.h"
 #include "qdisp/ResponseHandler.h"
 #include "util/common.h"
-#include "util/Timer.h" // &&&
+#include "util/Timer.h"
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.QueryRequest");
 }
-
-#define USING_POOL 1
 
 namespace lsst {
 namespace qserv {
@@ -69,8 +67,8 @@ public:
 
     void action(util::CmdData *data) override {
         // If everything is ok, call GetResponseData to have XrdSsi ask the worker for the data.
-        util::Timer tWaiting; // &&&
-        util::Timer tTotal; // &&&
+        util::Timer tWaiting;
+        util::Timer tTotal;
         {
             tTotal.start();
             auto jq = _jQuery.lock();
@@ -125,21 +123,17 @@ public:
                 LOGS(_log, LOG_LVL_WARN, _idStr << " AskForResp null before processData");
                 return;
             }
-            LOGS(_log, LOG_LVL_DEBUG, _idStr << " &&& AskForResp processing start" << _blen);
             qr->_processData(jq, _blen, _last);
-            LOGS(_log, LOG_LVL_DEBUG, _idStr << " &&& AskForResp processing end" << _blen);
             // _processData will have created another AskForResponseDataCmd object if needed.
             tTotal.stop();
         }
         _setState(State::DONE2);
-        LOGS(_log, LOG_LVL_DEBUG, _idStr << " Ask data is done.");
-        LOGS(_log, LOG_LVL_DEBUG, _idStr << " &&& AskForResp time wait=" << tWaiting.getElapsed() <<
+        LOGS(_log, LOG_LVL_DEBUG, _idStr << " Ask data is done wait=" << tWaiting.getElapsed() <<
                 " total=" << tTotal.getElapsed());
     }
 
     void notifyDataSuccess(int blen, bool last) {
         {
-            LOGS(_log, LOG_LVL_DEBUG, _idStr << "notifyDataSuccess &&&");
             std::lock_guard<std::mutex> lg(_mtx);
             _blen = blen;
             _last = last;
@@ -175,7 +169,6 @@ private:
 
     int _blen{-1};
     bool _last{true};
-    // util::InstanceCount _ic{"AskForResponseDataCmd"}; &&&
 };
 
 
@@ -281,7 +274,6 @@ bool QueryRequest::ProcessResponse(XrdSsiErrInfo  const& eInfo, XrdSsiRespInfo c
 /// Retrieve and process results in using the XrdSsi stream mechanism
 /// Uses a copy of JobQuery::Ptr instead of _jobQuery as a call to cancel() would reset _jobQuery.
 bool QueryRequest::_importStream(JobQuery::Ptr const& jq) {
-#if USING_POOL // &&& stop using pool
     if (_askForResponseDataCmd != nullptr) {
         LOGS(_log, LOG_LVL_ERROR, "_importStream There's already an _askForResponseDataCmd object!!");
         // Keep the previous object from wedging the pool.
@@ -289,23 +281,6 @@ bool QueryRequest::_importStream(JobQuery::Ptr const& jq) {
     }
     _askForResponseDataCmd = std::make_shared<AskForResponseDataCmd>(shared_from_this(), jq);
     _queueAskForResponse(_askForResponseDataCmd, jq);
-#else
-    {
-        if (jq == nullptr) {
-            LOGS(_log, LOG_LVL_WARN, _jobIdStr << " AskForResp null before GetResponseData");
-            return false;
-        }
-
-        if (isQueryCancelled()) {
-            LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " AskForResp query was cancelled");
-            _errorFinish(true);
-            return false;
-        }
-        std::vector<char>& buffer = jq->getDescription()->respHandler()->nextBuffer();
-        LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " AskForResp GetResponseData size=" << buffer.size());
-        GetResponseData(&buffer[0], buffer.size());
-    }
-#endif
     return true;
 }
 
@@ -336,45 +311,6 @@ void QueryRequest::_queueAskForResponse(AskForResponseDataCmd::Ptr const& cmd, J
         _qdispPool->queCmd(cmd, 7);
     }
 
-    /* &&&
-    int rating = jq->getDescription()->getScanRating();
-    if (jq->getDescription()->getScanInteractive()) {
-        _qdispPool->queCmd(cmd, 0);
-    } else if (rating <= proto::ScanInfo::Rating::FAST) {
-        if (_largeResult) {
-            _qdispPool->queCmd(cmd, 4);
-        } else {
-            _qdispPool->queCmd(cmd, 1);
-        }
-    } else if (rating <= proto::ScanInfo::Rating::MEDIUM) {
-        if (_largeResult) {
-            _qdispPool->queCmd(cmd, 5);
-        } else {
-            _qdispPool->queCmd(cmd, 2);
-        }
-    } else if (rating <= proto::ScanInfo::Rating::SLOW) {
-        if (not _largeResult) {
-            _qdispPool->queCmd(cmd, 3);
-        }
-    } else {
-        _qdispPool->queCmd(cmd, 6);
-    }
-    */
-
-    /* &&&
-    if (_largeResult) {
-        LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " queueing priority low");
-        _qdispPool->queCmdLow(cmd);
-    } else {
-        if (jq->getDescription()->getScanInteractive()) {
-            LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " queueing priority vhigh");
-            _qdispPool->queCmdVeryHigh(cmd);
-        } else {
-            LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " queueing priority norm");
-            _qdispPool->queCmdNorm(cmd);
-        }
-    }
-    */
 }
 
 /// Process an incoming error.
@@ -447,11 +383,7 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(XrdSsiErrInfo const& eI
 
     // Handle the response in a separate thread so we can give this one back to XrdSsi.
     // _askForResponseDataCmd should call QueryRequest::_processData() next.
-#if USING_POOL    // &&& stop using pool
     _askForResponseDataCmd->notifyDataSuccess(blen, last);
-#else
-
-#endif
     return XrdSsiRequest::PRD_Normal;
 }
 
@@ -469,7 +401,7 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool last) {
     bool flushOk = jq->getDescription()->respHandler()->flush(blen, last, largeResult);
     if (largeResult) {
         if (!_largeResult) LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " holdState largeResult set to true");
-        _largeResult = true; // Once the worker indicates it's a large result, it stays that way. &&& look into large result logic
+        _largeResult = true; // Once the worker indicates it's a large result, it stays that way.
     }
 
     if (flushOk) {

@@ -49,7 +49,7 @@ public:
                   int maxActiveChunks, int priority) :
         _name{name}, _maxReserve{maxReserve}, _maxReserveDefault{maxReserve},
         _maxThreads{maxThreads}, _maxThreadsAdj{maxThreads},
-        _priority{priority}, _priorityDefault{priority}, _priorityNext{priority} {
+        _priority{priority}, _priorityDefault{priority} {
             setMaxActiveChunks(maxActiveChunks);
         }
     virtual ~SchedulerBase() {}
@@ -72,7 +72,6 @@ public:
     // Hooks for changing this schedulers priority/reserved threads.
     int  getPriority() { return _priority; }
     void setPriority(int priority); ///< Priority to use starting next chunk
-    void applyPriority();           ///< Apply _priorityNext
     void setPriorityDefault();      ///< Return to default priority next chunk
     int getMaxReserve() { return _maxReserve; }
     virtual void setMaxReserve(int maxReserve) { _maxReserve = maxReserve; }
@@ -134,7 +133,6 @@ protected:
     BlendScheduler *_blendScheduler{nullptr};
     int _priority; ///< Current priority, higher value - higher priority
     int _priorityDefault;
-    int _priorityNext; ///< Priority to use starting with the next chunk.
 
     std::atomic<int> _inFlight{0}; //< Number of Tasks running.
 
