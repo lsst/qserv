@@ -207,7 +207,7 @@ public:
      */
     virtual bool findOldestReplicas(std::vector<ReplicaInfo>& replicas,
                                     size_t maxReplicas=1,
-                                    bool   enabledWorkersOnly=true) const = 0;
+                                    bool   enabledWorkersOnly=true) = 0;
 
     /**
      * Find all replicas for the specified chunk and the database.
@@ -229,7 +229,7 @@ public:
     virtual bool findReplicas(std::vector<ReplicaInfo>& replicas,
                               unsigned int chunk,
                               std::string const& database,
-                              bool enabledWorkersOnly=true) const = 0;
+                              bool enabledWorkersOnly=true) = 0;
 
     /**
      * Find all replicas for the specified worker and a database (or all
@@ -251,7 +251,7 @@ public:
      */
     virtual bool findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
                                     std::string const& worker,
-                                    std::string const& database=std::string()) const = 0;
+                                    std::string const& database=std::string()) = 0;
 
     /**
      * Find all replicas for the specified chunk on a worker.
@@ -273,7 +273,7 @@ public:
     virtual bool findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
                                     unsigned int chunk,
                                     std::string const& worker,
-                                    std::string const& databaseFamily=std::string()) const = 0;
+                                    std::string const& databaseFamily=std::string()) = 0;
 
 protected:
 

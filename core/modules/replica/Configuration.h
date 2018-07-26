@@ -270,6 +270,9 @@ public:
     /// @return the name of a database to be set upon the connection
     std::string const& databaseName() const { return _databaseName; }
 
+    /// @return the number of concurrent connections to the database service
+    size_t databaseServicesPoolSize() const { return _databaseServicesPoolSize; }
+
     // ---------------------------------------------------
     // -- Configuration parameters related to databases --
     // ---------------------------------------------------
@@ -472,6 +475,7 @@ protected:
     static std::string  const defaultDatabaseUser;
     static std::string  const defaultDatabasePassword;
     static std::string  const defaultDatabaseName;
+    static size_t       const defaultDatabaseServicesPoolSize;
     static size_t       const defaultReplicationLevel;
     static unsigned int const defaultNumStripes;
     static unsigned int const defaultNumSubStripes;
@@ -551,6 +555,9 @@ protected:
 
     /// The name of a database to be set upon the connection
     std::string _databaseName;
+
+    /// @return the number of concurrent connections to the database service
+    size_t _databaseServicesPoolSize;
 };
 
 }}} // namespace lsst::qserv::replica

@@ -20,6 +20,10 @@ INSERT INTO `config` VALUES ('controller', 'request_timeout_sec', '57600');   --
 INSERT INTO `config` VALUES ('controller', 'job_timeout_sec',     '57600');   -- 16 hours
 INSERT INTO `config` VALUES ('controller', 'job_heartbeat_sec',       '0');   -- temporarily disabled
 
+-- Database service-specific parameters
+
+INSERT INTO `config` VALUES ('database', 'services_pool_size', '16');
+
 -- Connection parameters for the Qserv Management Services
 
 INSERT INTO `config` VALUES ('xrootd', 'auto_notify',         '1');

@@ -673,7 +673,7 @@ void DatabaseServicesMySQL::deleteReplicaInfoImpl(util::Lock const& lock,
 
 bool DatabaseServicesMySQL::findOldestReplicas(std::vector<ReplicaInfo>& replicas,
                                                size_t maxReplicas,
-                                               bool enabledWorkersOnly) const {
+                                               bool enabledWorkersOnly) {
 
     std::string const context = "DatabaseServicesMySQL::findOldestReplicas  ";
 
@@ -702,7 +702,7 @@ bool DatabaseServicesMySQL::findOldestReplicas(std::vector<ReplicaInfo>& replica
 bool DatabaseServicesMySQL::findReplicas(std::vector<ReplicaInfo>& replicas,
                                          unsigned int chunk,
                                          std::string const& database,
-                                         bool enabledWorkersOnly) const {
+                                         bool enabledWorkersOnly) {
     std::string const context =
          "DatabaseServicesMySQL::findReplicas  chunk: " + std::to_string(chunk) +
          "  database: " + database + "  ";
@@ -731,7 +731,7 @@ bool DatabaseServicesMySQL::findReplicas(std::vector<ReplicaInfo>& replicas,
 
 bool DatabaseServicesMySQL::findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
                                                std::string const& worker,
-                                               std::string const& database) const {
+                                               std::string const& database) {
 
     std::string const context = "DatabaseServicesMySQL::findWorkerReplicas  ";
 
@@ -746,7 +746,7 @@ bool DatabaseServicesMySQL::findWorkerReplicas(std::vector<ReplicaInfo>& replica
 bool DatabaseServicesMySQL::findWorkerReplicasImpl(util::Lock const& lock,
                                                    std::vector<ReplicaInfo>& replicas,
                                                    std::string const& worker,
-                                                   std::string const& database) const {
+                                                   std::string const& database) {
     std::string const context =
          "DatabaseServicesMySQL::findWorkerReplicasImpl  worker: " + worker +
          " database: " + database + "  ";
@@ -779,7 +779,7 @@ bool DatabaseServicesMySQL::findWorkerReplicasImpl(util::Lock const& lock,
 bool DatabaseServicesMySQL::findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
                                                unsigned int chunk,
                                                std::string const& worker,
-                                               std::string const& databaseFamily) const {
+                                               std::string const& databaseFamily) {
     std::string const context =
          "DatabaseServicesMySQL::findWorkerReplicas  worker: " + worker +
          " chunk: " + std::to_string(chunk) + " database family: " + databaseFamily;
@@ -812,7 +812,7 @@ bool DatabaseServicesMySQL::findWorkerReplicas(std::vector<ReplicaInfo>& replica
 
 bool DatabaseServicesMySQL::findReplicasImpl(util::Lock const& lock,
                                              std::vector<ReplicaInfo>& replicas,
-                                             std::string const& query) const {
+                                             std::string const& query) {
 
     std::string const context = "DatabaseServicesMySQL::findReplicasImpl(replicas,query)  ";
 

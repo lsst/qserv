@@ -30,7 +30,7 @@
 // Qserv headers
 #include "replica/ChunkLocker.h"
 #include "replica/Configuration.h"
-#include "replica/DatabaseServices.h"
+#include "replica/DatabaseServicesPool.h"
 #include "replica/QservMgtServices.h"
 
 namespace lsst {
@@ -48,7 +48,7 @@ ServiceProvider::Ptr ServiceProvider::create(std::string const& configUrl) {
 
 ServiceProvider::ServiceProvider(std::string const& configUrl) {
     _configuration    = Configuration::load(configUrl);
-    _databaseServices = DatabaseServices::create(_configuration);
+    _databaseServices = DatabaseServicesPool::create(_configuration);
 }
 
 void ServiceProvider::assertWorkerIsValid(std::string const& name) {

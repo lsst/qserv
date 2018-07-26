@@ -136,7 +136,8 @@ std::string  const Configuration::defaultDatabaseHost                ("localhost
 uint16_t     const Configuration::defaultDatabasePort                (3306);
 std::string  const Configuration::defaultDatabaseUser                (FileUtils::getEffectiveUser());
 std::string  const Configuration::defaultDatabasePassword            ("");
-std::string  const Configuration::defaultDatabaseName                ("replica");
+std::string  const Configuration::defaultDatabaseName                ("qservReplica");
+size_t       const Configuration::defaultDatabaseServicesPoolSize    (1);
 size_t       const Configuration::defaultReplicationLevel            (1);
 unsigned int const Configuration::defaultNumStripes                  (340);
 unsigned int const Configuration::defaultNumSubStripes               (12);
@@ -182,7 +183,8 @@ Configuration::Configuration()
         _databasePort               (defaultDatabasePort),
         _databaseUser               (defaultDatabaseUser),
         _databasePassword           (defaultDatabasePassword),
-        _databaseName               (defaultDatabaseName) {
+        _databaseName               (defaultDatabaseName),
+        _databaseServicesPoolSize   (defaultDatabaseServicesPoolSize) {
 }
 
 std::string Configuration::context() const {
@@ -345,6 +347,7 @@ void Configuration::dumpIntoLogger() {
     LOGS(_log, LOG_LVL_DEBUG, context() << "defaultDatabaseUser:                 " << defaultDatabaseUser);
     LOGS(_log, LOG_LVL_DEBUG, context() << "defaultDatabasePassword:             " << "*****");
     LOGS(_log, LOG_LVL_DEBUG, context() << "defaultDatabaseName:                 " << defaultDatabaseName);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultDatabaseServicesPoolSize:     " << defaultDatabaseServicesPoolSize);
     LOGS(_log, LOG_LVL_DEBUG, context() << "defaultReplicationLevel:             " << defaultReplicationLevel);
     LOGS(_log, LOG_LVL_DEBUG, context() << "defaultNumStripes:                   " << defaultNumStripes);
     LOGS(_log, LOG_LVL_DEBUG, context() << "defaultNumSubStripes:                " << defaultNumSubStripes);
@@ -370,6 +373,7 @@ void Configuration::dumpIntoLogger() {
     LOGS(_log, LOG_LVL_DEBUG, context() << "_databaseUser:                       " << _databaseUser);
     LOGS(_log, LOG_LVL_DEBUG, context() << "_databasePassword:                   " << "*****");
     LOGS(_log, LOG_LVL_DEBUG, context() << "_databaseName:                       " << _databaseName);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "_databaseServicesPoolSize:           " << _databaseServicesPoolSize);
     for (auto&& elem: _workerInfo) {
         LOGS(_log, LOG_LVL_DEBUG, context() << elem.second);
     }

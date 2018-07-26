@@ -266,6 +266,8 @@ void ConfigurationMySQL::loadConfiguration() {
         ::tryParameter(row, "controller", "job_timeout_sec",     _jobTimeoutSec) or
         ::tryParameter(row, "controller", "job_heartbeat_sec",   _jobHeartbeatTimeoutSec) or
 
+        ::tryParameter(row, "database", "services_pool_size", _databaseServicesPoolSize) or
+
         ::tryParameter(row, "xrootd", "auto_notify",         _xrootdAutoNotify) or
         ::tryParameter(row, "xrootd", "host",                _xrootdHost) or
         ::tryParameter(row, "xrootd", "port",                _xrootdPort) or

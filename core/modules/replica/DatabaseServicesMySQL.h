@@ -125,7 +125,7 @@ public:
      */
     bool findOldestReplicas(std::vector<ReplicaInfo>& replicas,
                             size_t maxReplicas,
-                            bool enabledWorkersOnly) const final;
+                            bool enabledWorkersOnly) final;
 
     /**
      * @see DatabaseServices::findReplicas()
@@ -133,14 +133,14 @@ public:
     bool findReplicas(std::vector<ReplicaInfo>& replicas,
                       unsigned int chunk,
                       std::string const& database,
-                      bool enabledWorkersOnly) const final;
+                      bool enabledWorkersOnly) final;
 
     /**
      * @see DatabaseServices::findWorkerReplicas()
      */
     bool findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
                             std::string const& worker,
-                            std::string const& database) const final;
+                            std::string const& database) final;
 
     /**
      * @see DatabaseServices::findWorkerReplicas()
@@ -148,7 +148,7 @@ public:
     bool findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
                             unsigned int chunk,
                             std::string const& worker,
-                            std::string const& databaseFamily) const final;
+                            std::string const& databaseFamily) final;
 
 private:
 
@@ -167,7 +167,7 @@ private:
     bool findWorkerReplicasImpl(util::Lock const& lock,
                                 std::vector<ReplicaInfo>& replicas,
                                 std::string const& worker,
-                                std::string const& database) const;
+                                std::string const& database);
 
     /**
      * Actual implementation of the replica update algorithm.
@@ -214,7 +214,7 @@ private:
      */
     bool findReplicasImpl(util::Lock const& lock,
                           std::vector<ReplicaInfo>& replicas,
-                          std::string const& query) const;
+                          std::string const& query);
 
 private:
 
@@ -229,7 +229,7 @@ private:
 
     /// The mutex for enforcing thread safety of the class's public API
     /// and internal operations.
-    mutable util::Mutex _mtx;
+    util::Mutex _mtx;
 };
 
 }}} // namespace lsst::qserv::replica
