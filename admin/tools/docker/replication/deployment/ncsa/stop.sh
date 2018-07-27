@@ -31,6 +31,6 @@ set -e
 . $(dirname $0)/env.sh
 
 for WORKER in $WORKERS; do
-    WORKER_HOST="qserv-${WORKER}"
-    ssh -n $WORKER_HOST 'echo '$WORKER'": "$(docker stop '$WORKER_CONTAINER_NAME')" "$(docker rm '$WORKER_CONTAINER_NAME')'
+    HOST="qserv-${WORKER}"
+    ssh -n $HOST 'echo '$WORKER'": "$(docker stop '$WORKER_CONTAINER_NAME')" "$(docker rm '$WORKER_CONTAINER_NAME')'
 done

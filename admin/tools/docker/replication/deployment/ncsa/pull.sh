@@ -30,8 +30,14 @@ set -e
 
 . $(dirname $0)/env.sh
 
-for AGENT in $MASTERS $WORKERS; do
-    AGENT_HOST="qserv-${AGENT}"
-    ssh -n $AGENT_HOST '$(docker pull '$IMAGE_TAG')'
+# Replication system's tools
+
+for n in $MASTER $WORKERS; do
+    HOST="qserv-${n}"
+    ssh -n $HOST '$(docker pull '$IMAGE_TAG')'
 done
 
+# Database container
+
+MASTER_HOST="qserv-${MASTER}"
+ssh -n $MASTER_HOST '$(docker pull '$DB_IMAGE_TAG')'

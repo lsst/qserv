@@ -28,25 +28,52 @@ set -e
 
 . $(dirname $0)/env.sh
 
+# Start database services on the master node and ensure the they're running
+# before starting workers. Otherwise workers would fail.
+
+HOST="qserv-${MASTER}"
+echo "${MASTER}: staring MariaDB service"
+ssh -n $MASTER_HOST docker run \
+    --detach \
+    --network host \
+    --name "${DB_CONTAINER_NAME}" \
+    -u 1000:1000 \
+    -v /etc/passwd:/etc/passwd:ro \
+    -v "${DATA_DIR}/mysql:${DATA_DIR}/mysql" \
+    -v "${LOG_DIR}:${LOG_DIR}" \
+    -e "MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}" \
+    "${DB_IMAGE_TAG}" \
+    --port="${DB_PORT}" \
+    --general-log-file="${LOG_DIR}/${DB_CONTAINER_NAME}.general.log" \
+    --log-error="${LOG_DIR}/${DB_CONTAINER_NAME}.error.log" \
+    --log-slow-query-log-file="${LOG_DIR}/${DB_CONTAINER_NAME}.slow-query.log" \
+    --pid-file="${LOG_DIR}/${DB_CONTAINER_NAME}.pid"
+
+# Wait before the database container started
+echo "${MASTER}: waiting for the service to start"
+ssh -n $MASTER_HOST 'while true; do sleep 1; if [ -f "'${LOG_DIR}/${DB_CONTAINER_NAME}.pid'"]; then break; fi; done'
+
+exit 1
+
 # Start workers on all nodes
 
 for WORKER in $WORKERS; do
-    WORKER_HOST="qserv-${WORKER}"
-    echo "${WORKER}:"
-    ssh -n $WORKER_HOST docker run \
+    HOST="qserv-${WORKER}"
+    echo "${WORKER}: staring worker agent"
+    ssh -n $HOST docker run \
         --detach \
         --network host \
+        --name "${WORKER_CONTAINER_NAME}" \
         -u 1000:1000 \
         -v /etc/passwd:/etc/passwd:ro \
-        -v ${DATA_DIR}/mysql:${DATA_DIR}/mysql \
-        -v ${CONFIG_DIR}:/qserv/replication/config:ro \
-        -v ${LOG_DIR}:${LOG_DIR} \
+        -v "${DATA_DIR}/mysql:${DATA_DIR}/mysql" \
+        -v "${CONFIG_DIR}:/qserv/replication/config:ro" \
+        -v "${LOG_DIR}:${LOG_DIR}" \
         -e "WORKER_CONTAINER_NAME=${WORKER_CONTAINER_NAME}" \
         -e "LOG_DIR=${LOG_DIR}" \
         -e "LSST_LOG_CONFIG=${LSST_LOG_CONFIG}" \
         -e "CONFIG=${CONFIG}" \
         -e "WORKER=${WORKER}" \
-        --name "${WORKER_CONTAINER_NAME}" \
-        $IMAGE_TAG \
+        "${IMAGE_TAG}" \
         bash -c \''/qserv/bin/qserv-replica-worker ${WORKER} --config=${CONFIG} >& ${LOG_DIR}/${WORKER_CONTAINER_NAME}.log'\'
 done

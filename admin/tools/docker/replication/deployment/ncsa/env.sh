@@ -47,11 +47,22 @@ function get_param {
 DATA_DIR="$(get_param data_dir)"
 CONFIG_DIR="$(get_param config_dir)"
 LOG_DIR="$(get_param log_dir)"
+
 LSST_LOG_CONFIG="${CONFIG_DIR}/$(get_param lsst_log_config)"
-CONFIG="$(get_param config)"
-IMAGE_TAG=$(get_param image_tag)
+
+IMAGE_TAG="$(get_param image_tag)"
+DB_IMAGE_TAG="$(get_param db_image_tag)"
+
 WORKER_CONTAINER_NAME="$(get_param worker_container_name)"
+DB_CONTAINER_NAME="$(get_param db_container_name)"
+
 WORKERS="$(get_param workers)"
-MASTERS="$(get_param masters)"
+MASTER="$(get_param master)"
+
+DB_PORT="$(get_param db_port)"
+DB_ROOT_PASSWORD="$(get_param db_root_password)"
+
+CONFIG="mysql://qsreplica@lsst-qserv-${MASTER}:${DB_PORT}/qservReplica"
+
 
 unset basedir
