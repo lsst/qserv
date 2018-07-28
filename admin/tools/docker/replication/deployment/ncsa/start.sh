@@ -33,7 +33,7 @@ set -e
 
 HOST="qserv-${MASTER}"
 echo "${MASTER}: staring MariaDB service"
-ssh -n $MASTER_HOST docker run \
+ssh -n $HOST docker run \
     --detach \
     --network host \
     --name "${DB_CONTAINER_NAME}" \
@@ -51,7 +51,7 @@ ssh -n $MASTER_HOST docker run \
 
 # Wait before the database container started
 echo "${MASTER}: waiting for the service to start"
-ssh -n $MASTER_HOST 'while true; do sleep 1; if [ -f "'${LOG_DIR}/${DB_CONTAINER_NAME}.pid'"]; then break; fi; done'
+ssh -n $HOST 'while true; do sleep 1; if [ -f "'${LOG_DIR}/${DB_CONTAINER_NAME}.pid'"]; then break; fi; done'
 
 exit 1
 

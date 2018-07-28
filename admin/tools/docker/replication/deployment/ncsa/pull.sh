@@ -30,14 +30,14 @@ set -e
 
 . $(dirname $0)/env.sh
 
-# Replication system's tools
+# Database container
+
+HOST="qserv-${MASTER}"
+ssh -n $HOST docker pull $DB_IMAGE_TAG
+
+# Replication System's tools
 
 for n in $MASTER $WORKERS; do
     HOST="qserv-${n}"
-    ssh -n $HOST '$(docker pull '$IMAGE_TAG')'
+    ssh -n $HOST docker pull $IMAGE_TAG
 done
-
-# Database container
-
-MASTER_HOST="qserv-${MASTER}"
-ssh -n $MASTER_HOST '$(docker pull '$DB_IMAGE_TAG')'

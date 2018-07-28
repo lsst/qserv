@@ -39,14 +39,11 @@ PARAMETERS="$@"
 # Make sure thi scommand is run on one of the master nodes
 
 is_master=
-for MASTER in $MASTERS; do
-    if [ "lsst-qserv-${MASTER}" == "$(hostname -s)" ]; then
-        is_master=1
-        break
-    fi
-done
+if [ "lsst-qserv-${MASTER}" == "$(hostname -s)" ]; then
+    is_master=1
+fi
 if [ -z "${is_master}" ]; then
-    (>&2 echo "this tool must be run on one of the masters: ${MASTERS}")
+    (>&2 echo "this tool must be run on the master: ${MASTER}")
     exit 1
 fi
 
