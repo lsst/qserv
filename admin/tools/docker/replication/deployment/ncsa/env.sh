@@ -44,6 +44,7 @@ function get_param {
     echo "$(cat $path)"
 }
 
+DB_DATA_DIR="$(get_param db_data_dir)"
 DATA_DIR="$(get_param data_dir)"
 CONFIG_DIR="$(get_param config_dir)"
 LOG_DIR="$(get_param log_dir)"

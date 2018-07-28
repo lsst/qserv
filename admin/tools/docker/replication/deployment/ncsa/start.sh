@@ -39,19 +39,19 @@ ssh -n $HOST docker run \
     --name "${DB_CONTAINER_NAME}" \
     -u 1000:1000 \
     -v /etc/passwd:/etc/passwd:ro \
-    -v "${DATA_DIR}/mysql:${DATA_DIR}/mysql" \
-    -v "${LOG_DIR}:${LOG_DIR}" \
+    -v "${DB_DATA_DIR}/mysql:/var/lib/mysql" \
+    -v "${DB_DATA_DIR}/log:${DB_DATA_DIR}/log" \
     -e "MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}" \
     "${DB_IMAGE_TAG}" \
     --port="${DB_PORT}" \
-    --general-log-file="${LOG_DIR}/${DB_CONTAINER_NAME}.general.log" \
-    --log-error="${LOG_DIR}/${DB_CONTAINER_NAME}.error.log" \
-    --log-slow-query-log-file="${LOG_DIR}/${DB_CONTAINER_NAME}.slow-query.log" \
-    --pid-file="${LOG_DIR}/${DB_CONTAINER_NAME}.pid"
+    --general-log --general-log-file="${DB_DATA_DIR}/log/${DB_CONTAINER_NAME}.general.log" \
+    --log-error="${DB_DATA_DIR}/log/${DB_CONTAINER_NAME}.error.log" \
+    --slow-query-log --slow-query-log-file="${DB_DATA_DIR}/log/${DB_CONTAINER_NAME}.slow-query.log" \
+    --pid-file="${DB_DATA_DIR}/log/${DB_CONTAINER_NAME}.pid"
 
 # Wait before the database container started
 echo "${MASTER}: waiting for the service to start"
-ssh -n $HOST 'while true; do sleep 1; if [ -f "'${LOG_DIR}/${DB_CONTAINER_NAME}.pid'"]; then break; fi; done'
+ssh -n $HOST 'while true; do sleep 1; echo "still not running..."; if [ -f "'${DB_DATA_DIR}/log/${DB_CONTAINER_NAME}.pid'" ]; then break; fi; done'
 
 exit 1
 
