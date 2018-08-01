@@ -48,9 +48,7 @@ namespace lsst {
 namespace qserv {
 namespace css {
 
-PYBIND11_PLUGIN(cssLib) {
-
-    py::module mod("cssLib");
+PYBIND11_MODULE(cssLib, mod) {
 
     py::class_<KvInterface, std::shared_ptr<KvInterface>>(mod, "KvInterface")
         .def("create", &KvInterface::create)
@@ -203,8 +201,6 @@ PYBIND11_PLUGIN(cssLib) {
     mod.attr("KEY_STATUS_FAILED_PFX") = KEY_STATUS_FAILED_PFX;
     mod.attr("NODE_STATE_ACTIVE") = NODE_STATE_ACTIVE;
     mod.attr("NODE_STATE_INACTIVE") = NODE_STATE_INACTIVE;
-
-    return mod.ptr();
 
 }
 
