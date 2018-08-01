@@ -30,6 +30,9 @@ set -e
 
 . $(dirname $0)/env.sh
 
+HOST="qserv-${MASTER}"
+ssh -n $HOST 'echo '$MASTER'": "$(docker ps -a | grep '$DB_CONTAINER_NAME')'
+
 for WORKER in $WORKERS; do
     HOST="qserv-${WORKER}"
     ssh -n $HOST 'echo '$WORKER'": "$(docker ps -a | grep '$WORKER_CONTAINER_NAME')'

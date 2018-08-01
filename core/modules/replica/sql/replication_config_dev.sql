@@ -48,8 +48,8 @@ INSERT INTO `config` VALUES ('xrootd', 'request_timeout_sec', '600');
 -- tables
 
 INSERT INTO `config` VALUES ('worker', 'technology',                 'FS');
-INSERT INTO `config` VALUES ('worker', 'svc_port',                   '50000');
-INSERT INTO `config` VALUES ('worker', 'fs_port',                    '50001');
+INSERT INTO `config` VALUES ('worker', 'svc_port',                   '25000');
+INSERT INTO `config` VALUES ('worker', 'fs_port',                    '25001');
 INSERT INTO `config` VALUES ('worker', 'num_svc_processing_threads', '10');
 INSERT INTO `config` VALUES ('worker', 'num_fs_processing_threads',  '16');
 INSERT INTO `config` VALUES ('worker', 'fs_buf_size_bytes',          '1048576');
@@ -57,13 +57,13 @@ INSERT INTO `config` VALUES ('worker', 'data_dir',                   '/datasets/
 
 -- Preload parameters for runnig all services on the same host
 
-INSERT INTO `config_worker` VALUES ('one',   1, 0, 'lsst-dev01', '50001', 'lsst-dev01', '50101', NULL);
-INSERT INTO `config_worker` VALUES ('two',   1, 0, 'lsst-dev01', '50002', 'lsst-dev01', '50102', NULL);
-INSERT INTO `config_worker` VALUES ('three', 1, 0, 'lsst-dev01', '50003', 'lsst-dev01', '50103', NULL);
-INSERT INTO `config_worker` VALUES ('four',  1, 0, 'lsst-dev01', '50004', 'lsst-dev01', '50104', NULL);
-INSERT INTO `config_worker` VALUES ('five',  1, 0, 'lsst-dev01', '50005', 'lsst-dev01', '50105', NULL);
-INSERT INTO `config_worker` VALUES ('six',   1, 0, 'lsst-dev01', '50006', 'lsst-dev01', '50106', NULL);
-INSERT INTO `config_worker` VALUES ('seven', 1, 0, 'lsst-dev01', '50007', 'lsst-dev01', '50107', NULL);
+INSERT INTO `config_worker` VALUES ('one',   1, 0, 'lsst-dev01', '25001', 'lsst-dev01', '25101', NULL);
+INSERT INTO `config_worker` VALUES ('two',   1, 0, 'lsst-dev01', '25002', 'lsst-dev01', '25102', NULL);
+INSERT INTO `config_worker` VALUES ('three', 1, 0, 'lsst-dev01', '25003', 'lsst-dev01', '25103', NULL);
+INSERT INTO `config_worker` VALUES ('four',  1, 0, 'lsst-dev01', '25004', 'lsst-dev01', '25104', NULL);
+INSERT INTO `config_worker` VALUES ('five',  1, 0, 'lsst-dev01', '25005', 'lsst-dev01', '25105', NULL);
+INSERT INTO `config_worker` VALUES ('six',   1, 0, 'lsst-dev01', '25006', 'lsst-dev01', '25106', NULL);
+INSERT INTO `config_worker` VALUES ('seven', 1, 0, 'lsst-dev01', '25007', 'lsst-dev01', '25107', NULL);
 
 -- This database lives witin its own family
 

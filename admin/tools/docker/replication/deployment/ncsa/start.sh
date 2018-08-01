@@ -35,25 +35,34 @@ HOST="qserv-${MASTER}"
 echo "${MASTER}: staring MariaDB service"
 ssh -n $HOST docker run \
     --detach \
-    --network host \
     --name "${DB_CONTAINER_NAME}" \
     -u 1000:1000 \
     -v /etc/passwd:/etc/passwd:ro \
     -v "${DB_DATA_DIR}/mysql:/var/lib/mysql" \
     -v "${DB_DATA_DIR}/log:${DB_DATA_DIR}/log" \
     -e "MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}" \
+    -p "${DB_PORT}:${DB_PORT}/tcp" \
     "${DB_IMAGE_TAG}" \
     --port="${DB_PORT}" \
+    --max-connections=4096 \
+    --query-cache-size=0 \
     --general-log --general-log-file="${DB_DATA_DIR}/log/${DB_CONTAINER_NAME}.general.log" \
     --log-error="${DB_DATA_DIR}/log/${DB_CONTAINER_NAME}.error.log" \
     --slow-query-log --slow-query-log-file="${DB_DATA_DIR}/log/${DB_CONTAINER_NAME}.slow-query.log" \
     --pid-file="${DB_DATA_DIR}/log/${DB_CONTAINER_NAME}.pid"
+if [ "$?" != "0" ]; then
+    echo "failed to start the MariaDB container"
+    exit 1
+fi
 
 # Wait before the database container started
 echo "${MASTER}: waiting for the service to start"
-ssh -n $HOST 'while true; do sleep 1; echo "still not running..."; if [ -f "'${DB_DATA_DIR}/log/${DB_CONTAINER_NAME}.pid'" ]; then break; fi; done'
-
-exit 1
+ssh -n $HOST 'sleep 10; if [ ! -f "'${DB_DATA_DIR}/log/${DB_CONTAINER_NAME}.pid'" ]; then exit 2; fi'
+if [ "$?" != "0" ]; then
+    echo "failed to start MariaDB. See detail below"
+    ssh -n $HOST docker logs "${DB_IMAGE_TAG}"
+    exit 2
+fi
 
 # Start workers on all nodes
 
