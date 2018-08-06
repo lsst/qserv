@@ -82,7 +82,7 @@ std::string getTypeName(T obj) {
 #define ENTER_EXIT_PARENT(NAME) \
 void QSMySqlListener::enter##NAME(QSMySqlParser::NAME##Context* ctx) { \
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " '" << getQueryString(ctx) << "'"); \
-    pushAdapterStack<NAME##CBH, NAME##Adapter>(ctx); \
+    pushAdapterStack<NAME##CBH, NAME##Adapter, QSMySqlParser::NAME##Context>(ctx); \
 } \
 \
 void QSMySqlListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) { \
@@ -121,7 +121,6 @@ void QSMySqlListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) {\
 // called.
 #define IGNORED_WARN(NAME, WARNING) \
 void QSMySqlListener::enter##NAME(QSMySqlParser::NAME##Context* ctx) { \
-    LOGS(_log, LOG_LVL_WARN, __FUNCTION__ << " " << WARNING << ", near '" << getQueryString(ctx) << "'"); \
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " is IGNORED"); \
 } \
 \
@@ -508,10 +507,10 @@ public:
 };
 
 
-template <typename CBH>
+template <typename CBH, typename CTX>
 class AdapterT : public Adapter {
 public:
-    AdapterT(shared_ptr<CBH> const & parent) : _parent(parent) {}
+    AdapterT(shared_ptr<CBH> const & parent, CTX * ctx) : _ctx(ctx), _parent(parent) {}
 
 protected:
     shared_ptr<CBH> lockedParent() {
@@ -522,6 +521,8 @@ protected:
         }
         return parent;
     }
+
+    CTX* _ctx;
 
 private:
     weak_ptr<CBH> _parent;
@@ -557,11 +558,10 @@ private:
 
 
 class DmlStatementAdapter :
-        public AdapterT<DmlStatementCBH>,
+        public AdapterT<DmlStatementCBH, QSMySqlParser::DmlStatementContext>,
         public SimpleSelectCBH {
 public:
-    DmlStatementAdapter(shared_ptr<DmlStatementCBH> const & parent, antlr4::ParserRuleContext* ctx)
-    : AdapterT(parent) {}
+    using AdapterT::AdapterT;
 
     void handleSelectStatement(shared_ptr<query::SelectStmt> const & selectStatement) override {
         _selectStatement = selectStatement;
@@ -577,11 +577,10 @@ private:
 
 
 class SimpleSelectAdapter :
-        public AdapterT<SimpleSelectCBH>,
+        public AdapterT<SimpleSelectCBH, QSMySqlParser::SimpleSelectContext>,
         public QuerySpecificationCBH {
 public:
-    SimpleSelectAdapter(shared_ptr<SimpleSelectCBH> const & parent, antlr4::ParserRuleContext* ctx)
-    : AdapterT(parent) {}
+    using AdapterT::AdapterT;
 
     void handleQuerySpecification(shared_ptr<query::SelectList> const & selectList,
                                   shared_ptr<query::FromList> const & fromList,
@@ -617,16 +616,14 @@ private:
 
 
 class QuerySpecificationAdapter :
-        public AdapterT<QuerySpecificationCBH>,
+        public AdapterT<QuerySpecificationCBH, QSMySqlParser::QuerySpecificationContext>,
         public SelectElementsCBH,
         public FromClauseCBH,
         public OrderByClauseCBH,
         public LimitClauseCBH,
         public SelectSpecCBH {
 public:
-    QuerySpecificationAdapter(shared_ptr<QuerySpecificationCBH> const & parent,
-            antlr4::ParserRuleContext* ctx)
-    : AdapterT(parent) {}
+    using AdapterT::AdapterT;
 
     void handleSelectList(shared_ptr<query::SelectList> const & selectList) override {
         _selectList = selectList;
@@ -669,14 +666,13 @@ private:
 
 
 class SelectElementsAdapter :
-        public AdapterT<SelectElementsCBH>,
+        public AdapterT<SelectElementsCBH, QSMySqlParser::SelectElementsContext>,
         public SelectColumnElementCBH,
         public SelectFunctionElementCBH {
 public:
-    SelectElementsAdapter(shared_ptr<SelectElementsCBH> const & parent,
-            QSMySqlParser::SelectElementsContext* ctx)
-    : AdapterT(parent)
-    , _ctx(ctx) {
+    using AdapterT::AdapterT;
+
+    void onEnter() override {
         if (_ctx->star != nullptr) {
             SelectListFactory::addStarFactor(_selectList);
         }
@@ -696,20 +692,18 @@ public:
 
 private:
     shared_ptr<query::SelectList> _selectList{make_shared<query::SelectList>()};
-    QSMySqlParser::SelectElementsContext* _ctx;
 };
 
 
 class FromClauseAdapter :
-        public AdapterT<FromClauseCBH>,
+        public AdapterT<FromClauseCBH, QSMySqlParser::FromClauseContext>,
         public TableSourcesCBH,
         public PredicateExpressionCBH,
         public LogicalExpressionCBH,
         public QservFunctionSpecCBH,
         public GroupByItemCBH {
 public:
-    FromClauseAdapter(shared_ptr<FromClauseCBH> const & parent, QSMySqlParser::FromClauseContext* ctx)
-    : AdapterT(parent), _ctx(ctx) {}
+    using AdapterT::AdapterT;
 
     void handleTableSources(query::TableRefListPtr const & tableRefList) override {
         _tableRefList = tableRefList;
@@ -781,16 +775,14 @@ private:
     query::TableRefListPtr _tableRefList;
     shared_ptr<query::OrTerm> _rootTerm;
     shared_ptr<query::GroupByClause> _groupByClause;
-    QSMySqlParser::FromClauseContext* _ctx;
 };
 
 
 class TableSourcesAdapter :
-        public AdapterT<TableSourcesCBH>,
+        public AdapterT<TableSourcesCBH, QSMySqlParser::TableSourcesContext>,
         public TableSourceBaseCBH {
 public:
-    TableSourcesAdapter(shared_ptr<TableSourcesCBH> const & parent, antlr4::ParserRuleContext* ctx)
-    : AdapterT(parent) {}
+    using AdapterT::AdapterT;
 
     void handleTableSource(shared_ptr<query::TableRef> const & tableRef) override {
         _tableRefList->push_back(tableRef);
@@ -806,15 +798,11 @@ private:
 
 
 class TableSourceBaseAdapter :
-        public AdapterT<TableSourceBaseCBH>,
+        public AdapterT<TableSourceBaseCBH, QSMySqlParser::TableSourceBaseContext>,
         public AtomTableItemCBH,
         public InnerJoinCBH {
 public:
-    TableSourceBaseAdapter(shared_ptr<TableSourceBaseCBH> const & parent,
-            QSMySqlParser::TableSourceBaseContext* ctx)
-    : AdapterT(parent)
-    , _ctx(ctx)
-    {}
+    using AdapterT::AdapterT;
 
     void handleAtomTableItem(shared_ptr<query::TableRef> const & tableRef) override {
         ASSERT_EXECUTION_CONDITION(nullptr == _tableRef, "expeceted one AtomTableItem callback.", _ctx);
@@ -832,22 +820,17 @@ public:
     }
 
 private:
-    QSMySqlParser::TableSourceBaseContext* _ctx;
     shared_ptr<query::TableRef> _tableRef;
     vector<shared_ptr<query::JoinRef>> _joinRefs;
 };
 
 
 class AtomTableItemAdapter :
-        public AdapterT<AtomTableItemCBH>,
+        public AdapterT<AtomTableItemCBH, QSMySqlParser::AtomTableItemContext>,
         public TableNameCBH,
         public UidCBH {
 public:
-    AtomTableItemAdapter(shared_ptr<AtomTableItemCBH> const & parent,
-            QSMySqlParser::AtomTableItemContext* ctx)
-    : AdapterT(parent)
-    , _ctx(ctx)
-    {}
+    using AdapterT::AdapterT;
 
     void handleTableName(vector<string> const & uidlist) override {
         if (uidlist.size() == 1) {
@@ -870,7 +853,6 @@ public:
     }
 
 protected:
-    QSMySqlParser::AtomTableItemContext* _ctx;
     string _db;
     string _table;
     string _alias;
@@ -878,11 +860,10 @@ protected:
 
 
 class TableNameAdapter :
-        public AdapterT<TableNameCBH>,
+        public AdapterT<TableNameCBH, QSMySqlParser::TableNameContext>,
         public FullIdCBH {
 public:
-    TableNameAdapter(shared_ptr<TableNameCBH> const & parent, antlr4::ParserRuleContext* ctx)
-    : AdapterT(parent) {}
+    using AdapterT::AdapterT;
 
     void handleFullId(vector<string> const & uidlist) override {
         lockedParent()->handleTableName(uidlist);
@@ -893,11 +874,10 @@ public:
 
 
 class FullIdAdapter :
-        public AdapterT<FullIdCBH>,
+        public AdapterT<FullIdCBH, QSMySqlParser::FullIdContext>,
         public UidCBH {
 public:
-    FullIdAdapter(shared_ptr<FullIdCBH> const & parent, QSMySqlParser::FullIdContext* ctx)
-    : AdapterT(parent), _ctx(ctx) {}
+    using AdapterT::AdapterT;
 
     virtual ~FullIdAdapter() {}
 
@@ -915,19 +895,15 @@ public:
     }
 private:
     vector<string> _uidlist;
-    QSMySqlParser::FullIdContext* _ctx;
 };
 
 
 class FullColumnNameAdapter :
-        public AdapterT<FullColumnNameCBH>,
+        public AdapterT<FullColumnNameCBH, QSMySqlParser::FullColumnNameContext>,
         public UidCBH,
         public DottedIdCBH {
 public:
-    FullColumnNameAdapter(shared_ptr<FullColumnNameCBH> const & parent, antlr4::ParserRuleContext* ctx)
-    : AdapterT(parent)
-    , _ctx(ctx)
-    {}
+    using AdapterT::AdapterT;
 
     void handleUid(string const & string) override {
         _strings.push_back(string);
@@ -954,17 +930,14 @@ public:
 
 private:
     vector<string> _strings;
-    antlr4::ParserRuleContext* _ctx;
 };
 
 
 class ConstantExpressionAtomAdapter :
-        public AdapterT<ConstantExpressionAtomCBH>,
+        public AdapterT<ConstantExpressionAtomCBH, QSMySqlParser::ConstantExpressionAtomContext>,
         public ConstantCBH {
 public:
-    ConstantExpressionAtomAdapter(shared_ptr<ConstantExpressionAtomCBH> const & parent,
-                                  antlr4::ParserRuleContext* ctx)
-    : AdapterT(parent) {}
+    using AdapterT::AdapterT;
 
     void handleConstant(string const & val) override {
         lockedParent()->handleConstantExpressionAtom(query::ValueFactor::newConstFactor(val));
@@ -975,12 +948,10 @@ public:
 
 
 class FullColumnNameExpressionAtomAdapter :
-        public AdapterT<FullColumnNameExpressionAtomCBH>,
+        public AdapterT<FullColumnNameExpressionAtomCBH, QSMySqlParser::FullColumnNameExpressionAtomContext>,
         public FullColumnNameCBH {
 public:
-    FullColumnNameExpressionAtomAdapter(shared_ptr<FullColumnNameExpressionAtomCBH> const & parent,
-                                        antlr4::ParserRuleContext* ctx)
-    : AdapterT(parent) {}
+    using AdapterT::AdapterT;
 
     void handleFullColumnName(shared_ptr<query::ValueFactor> const & valueFactor) override {
         lockedParent()->HandleFullColumnNameExpressionAtom(valueFactor);
@@ -991,7 +962,7 @@ public:
 
 
 class ExpressionAtomPredicateAdapter :
-        public AdapterT<ExpressionAtomPredicateCBH>,
+        public AdapterT<ExpressionAtomPredicateCBH, QSMySqlParser::ExpressionAtomPredicateContext>,
         public ConstantExpressionAtomCBH,
         public FullColumnNameExpressionAtomCBH,
         public FunctionCallExpressionAtomCBH,
@@ -999,10 +970,7 @@ class ExpressionAtomPredicateAdapter :
         public MathExpressionAtomCBH,
         public UnaryExpressionAtomCBH {
 public:
-    ExpressionAtomPredicateAdapter(shared_ptr<ExpressionAtomPredicateCBH> const & parent,
-                                   QSMySqlParser::ExpressionAtomPredicateContext* ctx)
-    : AdapterT(parent)
-    , _ctx(ctx) {}
+    using AdapterT::AdapterT;
 
     void handleConstantExpressionAtom(shared_ptr<query::ValueFactor> const & valueFactor) override {
         auto valueExpr = query::ValueExpr::newSimple(valueFactor);
@@ -1041,20 +1009,14 @@ public:
     }
 
     void onExit() override {}
-
-private:
-    QSMySqlParser::ExpressionAtomPredicateContext* _ctx;
 };
 
 
 class QservFunctionSpecAdapter :
-        public AdapterT<QservFunctionSpecCBH>,
+        public AdapterT<QservFunctionSpecCBH, QSMySqlParser::QservFunctionSpecContext>,
         public ConstantsCBH {
 public:
-    QservFunctionSpecAdapter(shared_ptr<QservFunctionSpecCBH> & parent,
-            QSMySqlParser::QservFunctionSpecContext* ctx)
-    : AdapterT(parent)
-    , _ctx(ctx) {}
+    using AdapterT::AdapterT;
 
     void handleConstants(vector<string> const & values) override {
         ASSERT_EXECUTION_CONDITION(_args.empty(), "args should be set exactly once.", _ctx);
@@ -1087,23 +1049,20 @@ private:
         ASSERT_EXECUTION_CONDITION(false, "could not get qserv function name.", _ctx);
     }
 
-    QSMySqlParser::QservFunctionSpecContext* _ctx;
     vector<shared_ptr<query::ValueFactor>> _args;
 };
 
 
 // PredicateExpressionAdapter gathers BoolFactors into a BoolFactor (which is a BoolTerm).
 class PredicateExpressionAdapter :
-        public AdapterT<PredicateExpressionCBH>,
+        public AdapterT<PredicateExpressionCBH, QSMySqlParser::PredicateExpressionContext>,
         public BinaryComparasionPredicateCBH,
         public BetweenPredicateCBH,
         public InPredicateCBH,
         public ExpressionAtomPredicateCBH,
         public LikePredicateCBH {
 public:
-    PredicateExpressionAdapter(shared_ptr<PredicateExpressionCBH> const & parent,
-            QSMySqlParser::PredicateExpressionContext* ctx)
-    : AdapterT(parent), _ctx(ctx) {}
+    using AdapterT::AdapterT;
 
     // BinaryComparasionPredicateCBH
     void handleBinaryComparasionPredicate(
@@ -1152,7 +1111,6 @@ public:
     }
 
 private:
-
     void _prepBoolFactor() {
         ASSERT_EXECUTION_CONDITION(nullptr == _valueExpr, "Can't use PredicateExpressionAdapter for " <<
                 "BoolFactor and ValueExpr at the same time.", _ctx);
@@ -1169,20 +1127,15 @@ private:
 
     shared_ptr<query::BoolFactor> _boolFactor;
     shared_ptr<query::ValueExpr> _valueExpr;
-    QSMySqlParser::PredicateExpressionContext* _ctx;
 };
 
 
 class BinaryComparasionPredicateAdapter :
-        public AdapterT<BinaryComparasionPredicateCBH>,
+        public AdapterT<BinaryComparasionPredicateCBH, QSMySqlParser::BinaryComparasionPredicateContext>,
         public ExpressionAtomPredicateCBH,
         public ComparisonOperatorCBH {
 public:
-    BinaryComparasionPredicateAdapter(shared_ptr<BinaryComparasionPredicateCBH> const & parent,
-            QSMySqlParser::BinaryComparasionPredicateContext* ctx)
-    : AdapterT(parent)
-    , _ctx(ctx)
-    {}
+    using AdapterT::AdapterT;
 
     void handleComparisonOperator(string const & text) override {
         ASSERT_EXECUTION_CONDITION(_comparison.empty(), "comparison must be set only once.", _ctx);
@@ -1239,37 +1192,25 @@ private:
     shared_ptr<query::ValueExpr> _left;
     string _comparison;
     shared_ptr<query::ValueExpr> _right;
-    QSMySqlParser::BinaryComparasionPredicateContext* _ctx;
 };
 
 
 class ComparisonOperatorAdapter :
-        public AdapterT<ComparisonOperatorCBH> {
+        public AdapterT<ComparisonOperatorCBH, QSMySqlParser::ComparisonOperatorContext> {
 public:
-    ComparisonOperatorAdapter(shared_ptr<ComparisonOperatorCBH> const & parent,
-            QSMySqlParser::ComparisonOperatorContext* ctx)
-    : AdapterT(parent)
-    ,  _ctx(ctx)
-    {}
+    using AdapterT::AdapterT;
 
     void onExit() override {
         lockedParent()->handleComparisonOperator(_ctx->getText());
     }
-
-private:
-    QSMySqlParser::ComparisonOperatorContext* _ctx;
 };
 
 
 class OrderByClauseAdapter :
-        public AdapterT<OrderByClauseCBH>,
+        public AdapterT<OrderByClauseCBH, QSMySqlParser::OrderByClauseContext>,
         public OrderByExpressionCBH {
 public:
-    OrderByClauseAdapter(shared_ptr<OrderByClauseCBH> const & parent,
-            QSMySqlParser::OrderByClauseContext* ctx)
-    : AdapterT(parent)
-    ,  _ctx(ctx)
-    {}
+    using AdapterT::AdapterT;
 
     void handleOrderByExpression(query::OrderByTerm const & orderByTerm) {
         _orderByClause->addTerm(orderByTerm);
@@ -1280,21 +1221,17 @@ public:
     }
 
 private:
-    QSMySqlParser::OrderByClauseContext* _ctx;
     shared_ptr<query::OrderByClause> _orderByClause { make_shared<query::OrderByClause>() };
 };
 
 
 class OrderByExpressionAdapter :
-        public AdapterT<OrderByExpressionCBH>,
+        public AdapterT<OrderByExpressionCBH, QSMySqlParser::OrderByExpressionContext>,
         public PredicateExpressionCBH {
 public:
-    OrderByExpressionAdapter(shared_ptr<OrderByExpressionCBH> const & parent,
-            QSMySqlParser::OrderByExpressionContext* ctx)
-    : AdapterT(parent)
-    ,  _ctx(ctx)
-    , orderBy(query::OrderByTerm::DEFAULT)
-    {
+    using AdapterT::AdapterT;
+
+    void onEnter() override {
         if (_ctx->ASC() == nullptr && _ctx->DESC() != nullptr) {
             orderBy = query::OrderByTerm::DESC;
         } else if (_ctx->ASC() != nullptr && _ctx->DESC() == nullptr) {
@@ -1319,23 +1256,22 @@ public:
         lockedParent()->handleOrderByExpression(orderByTerm);
     }
 
+    string name() const override { return getTypeName(this); }
+
 private:
-    QSMySqlParser::OrderByExpressionContext* _ctx;
-    query::OrderByTerm::Order orderBy;
+    query::OrderByTerm::Order orderBy {query::OrderByTerm::DEFAULT};
     shared_ptr<query::ValueExpr> _valueExpr;
 };
 
 
 class InnerJoinAdapter :
-        public AdapterT<InnerJoinCBH>,
+        public AdapterT<InnerJoinCBH, QSMySqlParser::InnerJoinContext>,
         public AtomTableItemCBH,
         public UidListCBH {
 public:
-    InnerJoinAdapter(shared_ptr<InnerJoinCBH> const & parent,
-            QSMySqlParser::InnerJoinContext* ctx)
-    : AdapterT(parent)
-    , _ctx(ctx)
-    {
+    using AdapterT::AdapterT;
+
+    void onEnter() override {
         ASSERT_EXECUTION_CONDITION(nullptr == _ctx->INNER() && nullptr == _ctx->CROSS(),
                 "INNER and CROSS join are not currently supported by the parser.", _ctx);
     }
@@ -1362,21 +1298,15 @@ public:
     }
 
 private:
-    QSMySqlParser::InnerJoinContext* _ctx;
     shared_ptr<query::ColumnRef> _using;
     shared_ptr<query::TableRef> _tableRef;
 };
 
 
 class SelectSpecAdapter :
-        public AdapterT<SelectSpecCBH> {
+        public AdapterT<SelectSpecCBH, QSMySqlParser::SelectSpecContext> {
 public:
-    SelectSpecAdapter(shared_ptr<SelectSpecCBH> const & parent,
-            QSMySqlParser::SelectSpecContext* ctx)
-    : AdapterT(parent)
-    , _ctx(ctx)
-    {
-    }
+    using AdapterT::AdapterT;
 
     void onExit() override {
         ASSERT_EXECUTION_CONDITION(_ctx->ALL() == nullptr,
@@ -1402,25 +1332,18 @@ public:
 
         lockedParent()->handleSelectSpec(_ctx->DISTINCT() != nullptr);
     }
-
-private:
-    QSMySqlParser::SelectSpecContext* _ctx;
 };
 
 
 // handles `functionCall (AS? uid)?` e.g. "COUNT AS object_count"
 class SelectFunctionElementAdapter :
-        public AdapterT<SelectFunctionElementCBH>,
+        public AdapterT<SelectFunctionElementCBH, QSMySqlParser::SelectFunctionElementContext>,
         public AggregateFunctionCallCBH,
         public UidCBH,
         public UdfFunctionCallCBH,
         public ScalarFunctionCallCBH {
 public:
-    SelectFunctionElementAdapter(shared_ptr<SelectFunctionElementCBH> const & parent,
-                                 QSMySqlParser::SelectFunctionElementContext* ctx)
-    : AdapterT(parent)
-    , _ctx(ctx)
-    {}
+    using AdapterT::AdapterT;
 
     void handleUid(string const & string) override {
         // Uid is expected to be the aliasName in `functionCall AS aliasName`
@@ -1459,17 +1382,14 @@ public:
 private:
     string _asName;
     shared_ptr<query::ValueFactor> _functionValueFactor;
-    QSMySqlParser::SelectFunctionElementContext* _ctx;
 };
 
 
 class GroupByItemAdapter :
-        public AdapterT<GroupByItemCBH>,
+        public AdapterT<GroupByItemCBH, QSMySqlParser::GroupByItemContext>,
         public PredicateExpressionCBH {
 public:
-    GroupByItemAdapter(shared_ptr<GroupByItemCBH> const & parent, QSMySqlParser::GroupByItemContext* ctx)
-    : AdapterT(parent)
-    , _ctx(ctx) {}
+    using AdapterT::AdapterT;
 
     void handlePredicateExpression(shared_ptr<query::BoolFactor> const & boolFactor) override {
         ASSERT_EXECUTION_CONDITION(false, "Unexpected GroupByItemAdapter boolFactor callback.", _ctx);
@@ -1485,37 +1405,29 @@ public:
     }
 
 private:
-    QSMySqlParser::GroupByItemContext* _ctx;
     shared_ptr<query::ValueExpr> _valueExpr;
 
 };
 
 
 class LimitClauseAdapter :
-        public AdapterT<LimitClauseCBH> {
+        public AdapterT<LimitClauseCBH, QSMySqlParser::LimitClauseContext> {
 public:
-    LimitClauseAdapter(shared_ptr<LimitClauseCBH> const & parent, QSMySqlParser::LimitClauseContext* ctx)
-    : AdapterT(parent)
-    , _ctx(ctx) {}
+    using AdapterT::AdapterT;
 
     void onExit() override {
         ASSERT_EXECUTION_CONDITION(_ctx->limit != nullptr,
                 "Could not get a decimalLiteral context to read limit.", _ctx);
         lockedParent()->handleLimitClause(atoi(_ctx->limit->getText().c_str()));
     }
-
-private:
-    QSMySqlParser::LimitClauseContext* _ctx;
 };
 
 
 class SimpleIdAdapter :
-        public AdapterT<SimpleIdCBH>,
+        public AdapterT<SimpleIdCBH, QSMySqlParser::SimpleIdContext>,
         public FunctionNameBaseCBH {
 public:
-    SimpleIdAdapter(shared_ptr<SimpleIdCBH> const & parent, QSMySqlParser::SimpleIdContext* ctx)
-    : AdapterT(parent)
-    , _ctx(ctx) {}
+    using AdapterT::AdapterT;
 
     void handleFunctionNameBase(string const & name) override {
         // for all callbacks to SimpleIdAdapter are dropped and the value is fetched from the text value
@@ -1525,18 +1437,13 @@ public:
     void onExit() override {
         lockedParent()->handleSimpleId(_ctx->getText());
     }
-
-private:
-    QSMySqlParser::SimpleIdContext* _ctx;
 };
 
 
 class DottedIdAdapter :
-        public AdapterT<DottedIdCBH> {
+        public AdapterT<DottedIdCBH, QSMySqlParser::DottedIdContext> {
 public:
-    DottedIdAdapter(shared_ptr<DottedIdCBH> const & parent, QSMySqlParser::DottedIdContext* ctx)
-    : AdapterT(parent)
-    , _ctx(ctx) {}
+    using AdapterT::AdapterT;
 
     void onExit() override {
         // currently the on kind of callback we receive here seems to be the `: DOT_ID` form, which is defined
@@ -1551,22 +1458,15 @@ public:
         txt.erase(0, 1);
         lockedParent()->handleDottedId(txt);
     }
-
-private:
-    QSMySqlParser::DottedIdContext* _ctx;
 };
 
 
 class SelectColumnElementAdapter :
-        public AdapterT<SelectColumnElementCBH>,
+        public AdapterT<SelectColumnElementCBH, QSMySqlParser::SelectColumnElementContext>,
         public FullColumnNameCBH,
         public UidCBH {
 public:
-    SelectColumnElementAdapter(shared_ptr<SelectColumnElementCBH> const & parent,
-            antlr4::ParserRuleContext* ctx)
-    : AdapterT(parent)
-    , _ctx(ctx)
-    {}
+    using AdapterT::AdapterT;
 
     void handleFullColumnName(shared_ptr<query::ValueFactor> const & valueFactor) override {
         ASSERT_EXECUTION_CONDITION(nullptr == _valueFactor,
@@ -1589,16 +1489,14 @@ public:
 private:
     shared_ptr<query::ValueFactor> _valueFactor;
     string _alias;
-    antlr4::ParserRuleContext* _ctx;
 };
 
 
 class UidAdapter :
-        public AdapterT<UidCBH>,
+        public AdapterT<UidCBH, QSMySqlParser::UidContext>,
         public SimpleIdCBH {
 public:
-    UidAdapter(shared_ptr<UidCBH> const & parent, QSMySqlParser::UidContext* ctx)
-    : AdapterT(parent), _ctx(ctx) {}
+    using AdapterT::AdapterT;
 
     void handleSimpleId(string const & val) {
         _val = val;
@@ -1619,32 +1517,26 @@ public:
     }
 
 private:
-    QSMySqlParser::UidContext* _ctx;
     string _val;
 };
 
 
 class ConstantAdapter :
-        public AdapterT<ConstantCBH> {
+        public AdapterT<ConstantCBH, QSMySqlParser::ConstantContext> {
 public:
-    ConstantAdapter(shared_ptr<ConstantCBH> const & parent, QSMySqlParser::ConstantContext* ctx)
-    : AdapterT(parent), _ctx(ctx) {}
+    using AdapterT::AdapterT;
 
     void onExit() override {
         lockedParent()->handleConstant(_ctx->getText());
     }
-
-private:
-    QSMySqlParser::ConstantContext* _ctx;
 };
 
 
 class UidListAdapter :
-        public AdapterT<UidListCBH>,
+        public AdapterT<UidListCBH, QSMySqlParser::UidListContext>,
         public UidCBH {
 public:
-    UidListAdapter(shared_ptr<UidListCBH> const & parent, QSMySqlParser::UidListContext* ctx)
-    : AdapterT(parent), _ctx(ctx) {}
+    using AdapterT::AdapterT;
 
     void handleUid(string const & string) override {
         _strings.push_back(string);
@@ -1657,19 +1549,15 @@ public:
     }
 
 private:
-    QSMySqlParser::UidListContext* _ctx;
     vector<string> _strings;
 };
 
 
 class ExpressionsAdapter :
-        public AdapterT<ExpressionsCBH>,
+        public AdapterT<ExpressionsCBH, QSMySqlParser::ExpressionsContext>,
         public PredicateExpressionCBH {
 public:
-    ExpressionsAdapter(shared_ptr<ExpressionsCBH> const & parent, QSMySqlParser::ExpressionsContext* ctx)
-    : AdapterT(parent)
-    , _ctx(ctx)
-    {}
+    using AdapterT::AdapterT;
 
     void handlePredicateExpression(shared_ptr<query::BoolFactor> const & boolFactor) override {
         ASSERT_EXECUTION_CONDITION(false, "Unhandled PredicateExpression with BoolFactor.", _ctx);
@@ -1684,17 +1572,15 @@ public:
     }
 
 private:
-    QSMySqlParser::ExpressionsContext* _ctx;
     vector<shared_ptr<query::ValueExpr>> _expressions;
 };
 
 
 class ConstantsAdapter :
-        public AdapterT<ConstantsCBH>,
+        public AdapterT<ConstantsCBH, QSMySqlParser::ConstantsContext>,
         public ConstantCBH {
 public:
-    ConstantsAdapter(shared_ptr<ConstantsCBH> const & parent, QSMySqlParser::ConstantsContext* ctx)
-    : AdapterT(parent) {}
+    using AdapterT::AdapterT;
 
     void handleConstant(string const & val) override {
         _values.push_back(val);
@@ -1710,12 +1596,10 @@ private:
 
 
 class AggregateFunctionCallAdapter :
-        public AdapterT<AggregateFunctionCallCBH>,
+        public AdapterT<AggregateFunctionCallCBH, QSMySqlParser::AggregateFunctionCallContext>,
         public AggregateWindowedFunctionCBH {
 public:
-    AggregateFunctionCallAdapter(shared_ptr<AggregateFunctionCallCBH> const & parent,
-                                 QSMySqlParser::AggregateFunctionCallContext* ctx)
-    : AdapterT(parent) {}
+    using AdapterT::AdapterT;
 
     void handleAggregateWindowedFunction(shared_ptr<query::ValueFactor> const & aggValueFactor) override {
         lockedParent()->handleAggregateFunctionCall(aggValueFactor);
@@ -1726,15 +1610,11 @@ public:
 
 
 class ScalarFunctionCallAdapter :
-        public AdapterT<ScalarFunctionCallCBH>,
+        public AdapterT<ScalarFunctionCallCBH, QSMySqlParser::ScalarFunctionCallContext>,
         public ScalarFunctionNameCBH,
         public FunctionArgsCBH {
 public:
-    ScalarFunctionCallAdapter(shared_ptr<ScalarFunctionCallCBH> const & parent,
-                              QSMySqlParser::ScalarFunctionCallContext* ctx)
-    : AdapterT(parent)
-    , _ctx(ctx)
-    {}
+    using AdapterT::AdapterT;
 
     void handleScalarFunctionName(string const & name) override {
         ASSERT_EXECUTION_CONDITION(_name.empty(), "name should be set once.", _ctx);
@@ -1755,22 +1635,17 @@ public:
     }
 
 private:
-    QSMySqlParser::ScalarFunctionCallContext* _ctx;
     vector<shared_ptr<query::ValueExpr>> _valueExprs;
     string _name;
 };
 
 
 class UdfFunctionCallAdapter :
-        public AdapterT<UdfFunctionCallCBH>,
+        public AdapterT<UdfFunctionCallCBH, QSMySqlParser::UdfFunctionCallContext>,
         public FullIdCBH,
         public FunctionArgsCBH {
 public:
-    UdfFunctionCallAdapter(shared_ptr<UdfFunctionCallCBH> const & parent,
-                           QSMySqlParser::UdfFunctionCallContext* ctx)
-    : AdapterT(parent)
-    , _ctx(ctx)
-    {}
+    using AdapterT::AdapterT;
 
     void handleFunctionArgs(vector<shared_ptr<query::ValueExpr>> const & valueExprs) override {
         // This is only expected to be called once.
@@ -1796,17 +1671,14 @@ public:
 private:
     vector<shared_ptr<query::ValueExpr>> _args;
     string _functionName;
-    QSMySqlParser::UdfFunctionCallContext* _ctx;
 };
 
 
 class AggregateWindowedFunctionAdapter :
-        public AdapterT<AggregateWindowedFunctionCBH>,
+        public AdapterT<AggregateWindowedFunctionCBH, QSMySqlParser::AggregateWindowedFunctionContext>,
         public FunctionArgCBH {
 public:
-    AggregateWindowedFunctionAdapter(shared_ptr<AggregateWindowedFunctionCBH> const & parent,
-                                     QSMySqlParser::AggregateWindowedFunctionContext* ctx)
-    : AdapterT(parent), _ctx(ctx) {}
+    using AdapterT::AdapterT;
 
     void handleFunctionArg(shared_ptr<query::ValueFactor> const & valueFactor) override {
         ASSERT_EXECUTION_CONDITION(nullptr == _valueFactor,
@@ -1837,18 +1709,14 @@ public:
 
 private:
     shared_ptr<query::ValueFactor> _valueFactor;
-    QSMySqlParser::AggregateWindowedFunctionContext* _ctx;
 };
 
 
 class ScalarFunctionNameAdapter :
-        public AdapterT<ScalarFunctionNameCBH>,
+        public AdapterT<ScalarFunctionNameCBH, QSMySqlParser::ScalarFunctionNameContext>,
         public FunctionNameBaseCBH {
 public:
-    ScalarFunctionNameAdapter(shared_ptr<ScalarFunctionNameCBH> const & parent,
-                        QSMySqlParser::ScalarFunctionNameContext* ctx)
-    : AdapterT(parent)
-    , _ctx(ctx) {}
+    using AdapterT::AdapterT;
 
     void handleFunctionNameBase(string const & name) override {
         _name = name;
@@ -1865,19 +1733,16 @@ public:
     }
 
 private:
-    QSMySqlParser::ScalarFunctionNameContext* _ctx;
     string _name;
 };
 
 
 class FunctionArgsAdapter :
-        public AdapterT<FunctionArgsCBH>,
+        public AdapterT<FunctionArgsCBH, QSMySqlParser::FunctionArgsContext>,
         public ConstantCBH,
         public FullColumnNameCBH {
 public:
-    FunctionArgsAdapter(shared_ptr<FunctionArgsCBH> const & parent,
-                        QSMySqlParser::FunctionArgsContext* ctx)
-    : AdapterT(parent) {}
+    using AdapterT::AdapterT;
 
     // ConstantCBH
     void handleConstant(string const & val) override {
@@ -1902,13 +1767,10 @@ private:
 
 
 class FunctionArgAdapter :
-        public AdapterT<FunctionArgCBH>,
+        public AdapterT<FunctionArgCBH, QSMySqlParser::FunctionArgContext>,
         public FullColumnNameCBH {
 public:
-    FunctionArgAdapter(shared_ptr<FunctionArgCBH> const & parent,
-                        QSMySqlParser::FunctionArgContext* ctx)
-    : AdapterT(parent)
-    , _ctx(ctx) {}
+    using AdapterT::AdapterT;
 
     void handleFullColumnName(shared_ptr<query::ValueFactor> const & columnName) override {
         ASSERT_EXECUTION_CONDITION(nullptr == _valueFactor,
@@ -1922,21 +1784,17 @@ public:
 
 private:
     shared_ptr<query::ValueFactor> _valueFactor;
-    QSMySqlParser::FunctionArgContext* _ctx;
 };
 
 
 class LogicalExpressionAdapter :
-        public AdapterT<LogicalExpressionCBH>,
+        public AdapterT<LogicalExpressionCBH, QSMySqlParser::LogicalExpressionContext>,
         public LogicalExpressionCBH,
         public PredicateExpressionCBH,
         public LogicalOperatorCBH,
         public QservFunctionSpecCBH {
 public:
-    LogicalExpressionAdapter(shared_ptr<LogicalExpressionCBH> parent,
-                             QSMySqlParser::LogicalExpressionContext* ctx)
-    : AdapterT(parent)
-    , _ctx(ctx) {}
+    using AdapterT::AdapterT;
 
     void handlePredicateExpression(shared_ptr<query::BoolFactor> const & boolFactor) override {
         _setNextTerm(boolFactor);
@@ -2011,7 +1869,6 @@ private:
     // subsequent logical expression. TBD if that's really an issue.
     vector<shared_ptr<query::BoolTerm>> _terms;
     shared_ptr<query::LogicalTerm> _logicalOperator;
-    QSMySqlParser::LogicalExpressionContext* _ctx;
 };
 
 
@@ -2023,14 +1880,11 @@ ostream& operator<<(ostream& os, const LogicalExpressionAdapter& logicalExpressi
 
 
 class InPredicateAdapter :
-        public AdapterT<InPredicateCBH>,
+        public AdapterT<InPredicateCBH, QSMySqlParser::InPredicateContext>,
         public ExpressionAtomPredicateCBH,
         public ExpressionsCBH {
 public:
-    InPredicateAdapter(shared_ptr<InPredicateCBH> parent,
-                            QSMySqlParser::InPredicateContext * ctx)
-    : AdapterT(parent)
-    , _ctx(ctx) {}
+    using AdapterT::AdapterT;
 
     void handleExpressionAtomPredicate(shared_ptr<query::ValueExpr> const & valueExpr,
             antlr4::ParserRuleContext* childCtx) override {
@@ -2066,20 +1920,16 @@ public:
     }
 
 private:
-    QSMySqlParser::InPredicateContext * _ctx;
     shared_ptr<query::ValueExpr> _predicate;
     vector<shared_ptr<query::ValueExpr>> _expressions;
 };
 
 
 class BetweenPredicateAdapter :
-        public AdapterT<BetweenPredicateCBH>,
+        public AdapterT<BetweenPredicateCBH, QSMySqlParser::BetweenPredicateContext>,
         public ExpressionAtomPredicateCBH {
 public:
-    BetweenPredicateAdapter(shared_ptr<BetweenPredicateCBH> parent,
-                            QSMySqlParser::BetweenPredicateContext* ctx)
-    : AdapterT(parent)
-    , _ctx(ctx) {}
+    using AdapterT::AdapterT;
 
     void handleExpressionAtomPredicate(shared_ptr<query::ValueExpr> const & valueExpr,
             antlr4::ParserRuleContext* childCtx) override {
@@ -2113,7 +1963,6 @@ public:
     }
 
 private:
-    QSMySqlParser::BetweenPredicateContext* _ctx;
     shared_ptr<query::ValueExpr> _val;
     shared_ptr<query::ValueExpr> _min;
     shared_ptr<query::ValueExpr> _max;
@@ -2121,14 +1970,10 @@ private:
 
 
 class LikePredicateAdapter :
-        public AdapterT<LikePredicateCBH>,
+        public AdapterT<LikePredicateCBH, QSMySqlParser::LikePredicateContext>,
         public ExpressionAtomPredicateCBH {
 public:
-    LikePredicateAdapter(shared_ptr<LikePredicateCBH> parent,
-                               QSMySqlParser::LikePredicateContext* ctx)
-    : AdapterT(parent)
-    , _ctx(ctx)
-    {}
+    using AdapterT::AdapterT;
 
     void handleExpressionAtomPredicate(shared_ptr<query::ValueExpr> const & valueExpr,
             antlr4::ParserRuleContext* childCtx) override {
@@ -2157,22 +2002,17 @@ public:
     }
 
 private:
-    QSMySqlParser::LikePredicateContext* _ctx;
     shared_ptr<query::ValueExpr> _valueExprA;
     shared_ptr<query::ValueExpr> _valueExprB;
 };
 
 
 class UnaryExpressionAtomAdapter :
-        public AdapterT<UnaryExpressionAtomCBH>,
+        public AdapterT<UnaryExpressionAtomCBH, QSMySqlParser::UnaryExpressionAtomContext>,
         public UnaryOperatorCBH,
         public ConstantExpressionAtomCBH {
 public:
-    UnaryExpressionAtomAdapter(shared_ptr<UnaryExpressionAtomCBH> parent,
-                               QSMySqlParser::UnaryExpressionAtomContext* ctx)
-    : AdapterT(parent)
-    , _ctx(ctx)
-    {}
+    using AdapterT::AdapterT;
 
     void handleUnaryOperator(string const & val) override {
         ASSERT_EXECUTION_CONDITION(_operatorPrefix.empty(),
@@ -2197,21 +2037,16 @@ public:
     }
 
 private:
-    QSMySqlParser::UnaryExpressionAtomContext* _ctx;
     shared_ptr<query::ValueFactor> _valueFactor;
     string _operatorPrefix;
 };
 
 
 class NestedExpressionAtomAdapter :
-        public AdapterT<NestedExpressionAtomCBH>,
+        public AdapterT<NestedExpressionAtomCBH, QSMySqlParser::NestedExpressionAtomContext>,
         public PredicateExpressionCBH {
 public:
-    NestedExpressionAtomAdapter(shared_ptr<NestedExpressionAtomCBH> parent,
-                                QSMySqlParser::NestedExpressionAtomContext* ctx)
-    : AdapterT(parent)
-    , _ctx(ctx)
-    {}
+    using AdapterT::AdapterT;
 
     void handlePredicateExpression(shared_ptr<query::BoolFactor> const & boolFactor) override {
         _boolFactors.push_back(boolFactor);
@@ -2234,24 +2069,18 @@ public:
     }
 
 private:
-
-    QSMySqlParser::NestedExpressionAtomContext* _ctx;
     vector<shared_ptr<query::BoolFactor>> _boolFactors;
 };
 
 
 class MathExpressionAtomAdapter :
-        public AdapterT<MathExpressionAtomCBH>,
+        public AdapterT<MathExpressionAtomCBH, QSMySqlParser::MathExpressionAtomContext>,
         public MathOperatorCBH,
         public FunctionCallExpressionAtomCBH,
         public FullColumnNameExpressionAtomCBH,
         public ConstantExpressionAtomCBH {
 public:
-    MathExpressionAtomAdapter(shared_ptr<MathExpressionAtomCBH> parent,
-                              QSMySqlParser::MathExpressionAtomContext* ctx)
-    : AdapterT(parent)
-    , _ctx(ctx)
-    {}
+    using AdapterT::AdapterT;
 
     void handleFunctionCallExpressionAtom(shared_ptr<query::FuncExpr> const & funcExpr) override {
         ValueExprFactory::addFuncExpr(_getValueExpr(), funcExpr);
@@ -2301,19 +2130,14 @@ private:
     }
 
     shared_ptr<query::ValueExpr> _valueExpr;
-    QSMySqlParser::MathExpressionAtomContext* _ctx;
 };
 
 
 class FunctionCallExpressionAtomAdapter :
-        public AdapterT<FunctionCallExpressionAtomCBH>,
+        public AdapterT<FunctionCallExpressionAtomCBH, QSMySqlParser::FunctionCallExpressionAtomContext>,
         public UdfFunctionCallCBH {
 public:
-    FunctionCallExpressionAtomAdapter(shared_ptr<FunctionCallExpressionAtomCBH> parent,
-                                      QSMySqlParser::FunctionCallExpressionAtomContext* ctx)
-    : AdapterT(parent)
-    , _ctx(ctx)
-    {}
+    using AdapterT::AdapterT;
 
     void handleUdfFunctionCall(shared_ptr<query::FuncExpr> const & funcExpr) override {
         ASSERT_EXECUTION_CONDITION(_funcExpr == nullptr, "the funcExpr must be set only once.", _ctx)
@@ -2329,35 +2153,25 @@ public:
 
 private:
     shared_ptr<query::FuncExpr> _funcExpr;
-    QSMySqlParser::FunctionCallExpressionAtomContext* _ctx;
 };
 
 
 class UnaryOperatorAdapter :
-        public AdapterT<UnaryOperatorCBH> {
+        public AdapterT<UnaryOperatorCBH, QSMySqlParser::UnaryOperatorContext> {
 public:
-    UnaryOperatorAdapter(shared_ptr<UnaryOperatorCBH> parent,
-                         QSMySqlParser::UnaryOperatorContext* ctx)
-    : AdapterT(parent)
-    , _ctx(ctx)
-    {}
+    using AdapterT::AdapterT;
+
 
     void onExit() override {
         lockedParent()->handleUnaryOperator(_ctx->getText());
     }
-
-private:
-    QSMySqlParser::UnaryOperatorContext* _ctx;
 };
 
 
 class LogicalOperatorAdapter :
-        public AdapterT<LogicalOperatorCBH> {
+        public AdapterT<LogicalOperatorCBH, QSMySqlParser::LogicalOperatorContext> {
 public:
-    LogicalOperatorAdapter(shared_ptr<LogicalOperatorCBH> parent,
-                           QSMySqlParser::LogicalOperatorContext* ctx)
-    : AdapterT(parent)
-    , _ctx(ctx) {}
+    using AdapterT::AdapterT;
 
     void onExit() override {
         if (_ctx->AND() != nullptr) {
@@ -2366,19 +2180,13 @@ public:
             ASSERT_EXECUTION_CONDITION(false, "undhandled logical operator", _ctx);
         }
     }
-
-private:
-    QSMySqlParser::LogicalOperatorContext* _ctx;
 };
 
 
 class MathOperatorAdapter :
-        public AdapterT<MathOperatorCBH> {
+        public AdapterT<MathOperatorCBH, QSMySqlParser::MathOperatorContext> {
 public:
-    MathOperatorAdapter(shared_ptr<MathOperatorCBH> parent,
-                        QSMySqlParser::MathOperatorContext* ctx)
-    : AdapterT(parent)
-    , _ctx(ctx) {}
+    using AdapterT::AdapterT;
 
     void onExit() override {
         if (_ctx->getText() == "-") {
@@ -2389,27 +2197,17 @@ public:
             ASSERT_EXECUTION_CONDITION(false, "Unhanlded operator type:" << _ctx->getText(), _ctx);
         }
     }
-
-private:
-    QSMySqlParser::MathOperatorContext* _ctx;
 };
 
 
 class FunctionNameBaseAdapter :
-        public AdapterT<FunctionNameBaseCBH> {
+        public AdapterT<FunctionNameBaseCBH, QSMySqlParser::FunctionNameBaseContext> {
 public:
-    FunctionNameBaseAdapter(shared_ptr<FunctionNameBaseCBH> parent,
-                            QSMySqlParser::FunctionNameBaseContext* ctx)
-    : AdapterT(parent)
-    , _ctx(ctx)
-    {}
+    using AdapterT::AdapterT;
 
     void onExit() override {
         lockedParent()->handleFunctionNameBase(_ctx->getText());
     }
-
-private:
-    QSMySqlParser::FunctionNameBaseContext* _ctx;
 };
 
 
