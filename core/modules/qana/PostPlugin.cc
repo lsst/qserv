@@ -198,10 +198,10 @@ bool PostPlugin::verifyColumnsForOrderBy(query::ColumnRef::Vector const & availa
     while (mItr != missing.rend()) {
         // make a set of ColumnRef from available that can match missing
         // if set size is 1, that is a usable match and we use that.
-        // else (0 or >1) then we don't have a descrete match and we don't have a usable match.
+        // else (0 or >1) then we don't have a discrete match and we don't have a usable match.
         std::set<query::ColumnRef::Ptr, util::Compare<query::ColumnRef>> usable;
         for (auto&& a : available) {
-            if ((*mItr)->matches(a)) {
+            if ((*mItr)->isSubsetOf(a)) {
                 usable.insert(a);
             }
         }

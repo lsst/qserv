@@ -49,8 +49,6 @@ using namespace lsst::qserv;
 BOOST_AUTO_TEST_SUITE(Suite)
 
 
-
-
 struct TestColumns {
     TestColumns(query::ColumnRef::Ptr CRa, query::ColumnRef::Ptr CRb, bool p)
     : a(CRa), b(CRb), pass(p)  {}
@@ -102,7 +100,8 @@ static const std::vector<TestColumns> COLUMN_REF_MATCHES = {
 
 
 BOOST_DATA_TEST_CASE(ColumnRefMatches, COLUMN_REF_MATCHES, columns) {
-    BOOST_REQUIRE_MESSAGE(columns.pass == columns.a->matches(columns.b), "TODO");
+    BOOST_REQUIRE_MESSAGE(columns.pass == columns.a->isSubsetOf(columns.b), columns.a <<
+            (columns.pass ? "should " : "should NOT ") << "be a subset of " << columns.b);
 }
 
 

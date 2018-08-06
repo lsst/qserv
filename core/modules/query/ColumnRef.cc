@@ -65,7 +65,7 @@ void ColumnRef::renderTo(QueryTemplate& qt) const {
     qt.append(*this);
 }
 
-bool ColumnRef::matches(const ColumnRef::Ptr & rhs) const {
+bool ColumnRef::isSubsetOf(const ColumnRef::Ptr & rhs) const {
     // the columns can not be empty
     if (column.empty() || rhs->column.empty()) {
         return false;
