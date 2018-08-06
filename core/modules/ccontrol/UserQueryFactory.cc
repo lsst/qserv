@@ -66,7 +66,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQueryFactory");
 }
 
-#define USE_ANTLR4_QUERY 0
+#define USE_ANTLR4_QUERY 1
 
 namespace lsst {
 namespace qserv {
