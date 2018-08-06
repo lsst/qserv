@@ -81,12 +81,12 @@ std::string getTypeName(T obj) {
 // stack), and the exit function pops the adapter from the top of the stack.
 #define ENTER_EXIT_PARENT(NAME) \
 void QSMySqlListener::enter##NAME(QSMySqlParser::NAME##Context* ctx) { \
-    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " '" << getQueryString(ctx) << "'"); \
+    LOGS(_log, LOG_LVL_TRACE, __FUNCTION__ << " '" << getQueryString(ctx) << "'"); \
     pushAdapterStack<NAME##CBH, NAME##Adapter, QSMySqlParser::NAME##Context>(ctx); \
 } \
 \
 void QSMySqlListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) { \
-    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__); \
+    LOGS(_log, LOG_LVL_TRACE, __FUNCTION__); \
     popAdapterStack<NAME##Adapter>(ctx); \
 } \
 
@@ -97,7 +97,7 @@ void QSMySqlListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) { \
 // parsing will abort.
 #define UNHANDLED(NAME) \
 void QSMySqlListener::enter##NAME(QSMySqlParser::NAME##Context* ctx) { \
-    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " is UNHANDLED '" << getQueryString(ctx) << "'"); \
+    LOGS(_log, LOG_LVL_TRACE, __FUNCTION__ << " is UNHANDLED '" << getQueryString(ctx) << "'"); \
     throw QSMySqlListener::adapter_order_error(string(__FUNCTION__) + string(" not supported.")); \
 } \
 \
@@ -109,11 +109,11 @@ void QSMySqlListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) {}\
 // appropraite.
 #define IGNORED(NAME) \
 void QSMySqlListener::enter##NAME(QSMySqlParser::NAME##Context* ctx) { \
-    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " is IGNORED"); \
+    LOGS(_log, LOG_LVL_TRACE, __FUNCTION__ << " is IGNORED"); \
 } \
 \
 void QSMySqlListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) {\
-    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " is IGNORED"); \
+    LOGS(_log, LOG_LVL_TRACE, __FUNCTION__ << " is IGNORED"); \
 } \
 
 
@@ -121,11 +121,11 @@ void QSMySqlListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) {\
 // called.
 #define IGNORED_WARN(NAME, WARNING) \
 void QSMySqlListener::enter##NAME(QSMySqlParser::NAME##Context* ctx) { \
-    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " is IGNORED"); \
+    LOGS(_log, LOG_LVL_TRACE, __FUNCTION__ << " is IGNORED"); \
 } \
 \
 void QSMySqlListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) {\
-    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " is IGNORED"); \
+    LOGS(_log, LOG_LVL_TRACE, __FUNCTION__ << " is IGNORED"); \
 } \
 
 
