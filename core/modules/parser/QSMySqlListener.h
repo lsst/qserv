@@ -1657,7 +1657,7 @@ private:
     // the kinds of children that may be assigned to them. The stack represents execution state while the
     // antlr4 walker traverses it's internal AST. The root object (separate from the stack) will end up owning
     // the parsed query.
-    std::stack<std::shared_ptr<Adapter>> _adapterStack;
+    std::deque<std::shared_ptr<Adapter>> _adapterStack;
     std::shared_ptr<RootAdapter> _rootAdapter;
 
     template<typename ParentAdapter, typename ChildAdapter, typename Context>

@@ -2227,13 +2227,13 @@ shared_ptr<query::SelectStmt> QSMySqlListener::getSelectStatement() const {
 // for the new Adapter. Returns the new Adapter.
 template<typename ParentCBH, typename ChildAdapter, typename Context>
 shared_ptr<ChildAdapter> QSMySqlListener::pushAdapterStack(Context* ctx) {
-    auto p = dynamic_pointer_cast<ParentCBH>(_adapterStack.top());
+    auto p = dynamic_pointer_cast<ParentCBH>(_adapterStack.back());
     ASSERT_EXECUTION_CONDITION(p != nullptr, "can't acquire expected Adapter `" <<
             getTypeName<ParentCBH>() <<
             "` from top of listenerStack.",
             ctx);
     auto childAdapter = make_shared<ChildAdapter>(p, ctx);
-    _adapterStack.push(childAdapter);
+    _adapterStack.push_back(childAdapter);
     childAdapter->onEnter();
     return childAdapter;
 }
@@ -2241,9 +2241,9 @@ shared_ptr<ChildAdapter> QSMySqlListener::pushAdapterStack(Context* ctx) {
 
 template<typename ChildAdapter>
 void QSMySqlListener::popAdapterStack(antlr4::ParserRuleContext* ctx) {
-    shared_ptr<Adapter> adapterPtr = _adapterStack.top();
+    shared_ptr<Adapter> adapterPtr = _adapterStack.back();
     adapterPtr->onExit();
-    _adapterStack.pop();
+    _adapterStack.pop_back();
     // capturing adapterPtr and casting it to the expected type is useful as a sanity check that the enter &
     // exit functions are called in the correct order (balanced). The dynamic cast is of course not free and
     // this code could be optionally disabled or removed entirely if the check is found to be unnecesary or
@@ -2264,7 +2264,7 @@ void QSMySqlListener::enterRoot(QSMySqlParser::RootContext* ctx) {
     ASSERT_EXECUTION_CONDITION(_adapterStack.empty(), "RootAdatper should be the first entry on the stack.",
             ctx);
     _rootAdapter = make_shared<RootAdapter>();
-    _adapterStack.push(_rootAdapter);
+    _adapterStack.push_back(_rootAdapter);
     _rootAdapter->onEnter(ctx);
 }
 
@@ -2272,6 +2272,7 @@ void QSMySqlListener::enterRoot(QSMySqlParser::RootContext* ctx) {
 void QSMySqlListener::exitRoot(QSMySqlParser::RootContext* ctx) {
     popAdapterStack<RootAdapter>(ctx);
 }
+
 
 IGNORED(SqlStatements)
 IGNORED(SqlStatement)
