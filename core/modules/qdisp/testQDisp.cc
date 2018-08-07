@@ -202,7 +202,6 @@ BOOST_AUTO_TEST_SUITE(Suite)
     // the same chunkID for all tests (see setRName() below).
     //
     int chunkId = 1234;
-    //int millisInt = 20000; &&&
     int millisInt = 50000;
 
 BOOST_AUTO_TEST_CASE(Executive) {

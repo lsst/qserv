@@ -125,7 +125,7 @@ int MemFile::memMap() {
 
     // If _mlocking == true, _isMapped somehow got set to false during memLock() call
     if (_mlocking) {
-        LOGS(_log, LOG_LVL_ERROR, "&&& MMMM Operations in bad order _isMapped=" << _isMapped <<
+        LOGS(_log, LOG_LVL_ERROR, "mlocking operations in bad order _isMapped=" << _isMapped <<
                                   " _mlocking=" << _mlocking);
         return 0;
     }
