@@ -70,6 +70,10 @@ public:
         : std::runtime_error(msg) {}
     };
 
+    // For error messages, returns a comma delimited list of the names of adapters currently in the adapter
+    // stack.
+    std::string printAdapterStack() const;
+
 protected:
 
     virtual void enterRoot(QSMySqlParser::RootContext * /*ctx*/) override;
@@ -1651,6 +1655,7 @@ protected:
     virtual void exitEveryRule(antlr4::ParserRuleContext * /*ctx*/) override { }
     virtual void visitTerminal(antlr4::tree::TerminalNode * /*node*/) override { }
     virtual void visitErrorNode(antlr4::tree::ErrorNode * /*node*/) override { }
+
 
 private:
     // Adapter is a base class for a stack of adapter objects. Adapters implement appropriate API for

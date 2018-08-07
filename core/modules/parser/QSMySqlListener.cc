@@ -138,6 +138,7 @@ if (false == (CONDITION)) { \
         msg << getTypeName(this) << "::" << __FUNCTION__; \
         msg << " messsage:\"" << MESSAGE << "\""; \
         msg << ", in or around query segment: '" << getQueryString(CTX) << "'"; \
+        msg << ", with adapter stack:" << printAdapterStack(); \
         throw QSMySqlListener::adapter_execution_error(msg.str()); \
     } \
 } \
@@ -504,13 +505,16 @@ public:
 
     // onExit is called just before the Adapter is popped from the context stack
     virtual void onExit() = 0;
+
+    virtual string name() const = 0;
 };
 
 
 template <typename CBH, typename CTX>
 class AdapterT : public Adapter {
 public:
-    AdapterT(shared_ptr<CBH> const & parent, CTX * ctx) : _ctx(ctx), _parent(parent) {}
+    AdapterT(shared_ptr<CBH> const & parent, CTX * ctx, QSMySqlListener const * const listener)
+    : _ctx(ctx), qsMySqlListener(listener), _parent(parent) {}
 
 protected:
     shared_ptr<CBH> lockedParent() {
@@ -524,7 +528,14 @@ protected:
 
     CTX* _ctx;
 
+    // Used for error messages, uses the QSMySqlListener to get a list of the names of the adapters in the
+    // adapter stack,
+    std::string printAdapterStack() const { return qsMySqlListener->printAdapterStack(); }
+
 private:
+    // Mostly the QSMySqlListener is not used by adapters. It is needed to get the adapter stack list for
+    // error messages.
+    QSMySqlListener const * const qsMySqlListener;
     weak_ptr<CBH> _parent;
 };
 
@@ -535,6 +546,7 @@ class RootAdapter :
 public:
     RootAdapter()
     : _ctx(nullptr)
+    , qsMySqlListener(nullptr)
     {}
 
     shared_ptr<query::SelectStmt> const & getSelectStatement() { return _selectStatement; }
@@ -543,17 +555,23 @@ public:
         _selectStatement = selectStatement;
     }
 
-    void onEnter(QSMySqlParser::RootContext* ctx) {
+    void onEnter(QSMySqlParser::RootContext* ctx, QSMySqlListener const * const listener) {
         _ctx = ctx;
+        qsMySqlListener = listener;
     }
 
     void onExit() override {
         ASSERT_EXECUTION_CONDITION(_selectStatement != nullptr, "Could not parse query.", _ctx);
     }
 
+    string name() const override { return getTypeName(this); }
+
+    std::string printAdapterStack() const { return qsMySqlListener->printAdapterStack(); }
+
 private:
     shared_ptr<query::SelectStmt> _selectStatement;
     QSMySqlParser::RootContext* _ctx;
+    QSMySqlListener const * qsMySqlListener;
 };
 
 
@@ -570,6 +588,8 @@ public:
     void onExit() override {
         lockedParent()->handleDmlStatement(_selectStatement);
     }
+
+    string name () const override { return getTypeName(this); }
 
 private:
     shared_ptr<query::SelectStmt> _selectStatement;
@@ -603,6 +623,8 @@ public:
                 _orderByClause, _groupByClause, nullptr, _distinct, _limit);
         lockedParent()->handleSelectStatement(selectStatement);
     }
+
+    string name() const override { return getTypeName(this); }
 
 private:
     shared_ptr<query::SelectList> _selectList;
@@ -654,6 +676,8 @@ public:
                 _limit, _groupByClause, _distinct);
     }
 
+    string name() const override { return getTypeName(this); }
+
 private:
     shared_ptr<query::WhereClause> _whereClause;
     shared_ptr<query::FromList> _fromList;
@@ -689,6 +713,8 @@ public:
     void onExit() override {
         lockedParent()->handleSelectList(_selectList);
     }
+
+    string name() const override { return getTypeName(this); }
 
 private:
     shared_ptr<query::SelectList> _selectList{make_shared<query::SelectList>()};
@@ -756,6 +782,8 @@ public:
         lockedParent()->handleFromClause(fromList, _whereClause, _groupByClause);
     }
 
+    string name() const override { return getTypeName(this); }
+
 private:
     void _initWhereClause() {
         if (nullptr == _whereClause) {
@@ -792,6 +820,8 @@ public:
         lockedParent()->handleTableSources(_tableRefList);
     }
 
+    string name() const override { return getTypeName(this); }
+
 private:
     query::TableRefListPtr _tableRefList{make_shared<query::TableRefList>()};
 };
@@ -818,6 +848,8 @@ public:
         _tableRef->addJoins(_joinRefs);
         lockedParent()->handleTableSource(_tableRef);
     }
+
+    string name() const override { return getTypeName(this); }
 
 private:
     shared_ptr<query::TableRef> _tableRef;
@@ -852,6 +884,8 @@ public:
         lockedParent()->handleAtomTableItem(tableRef);
     }
 
+    string name() const override { return getTypeName(this); }
+
 protected:
     string _db;
     string _table;
@@ -870,7 +904,10 @@ public:
     }
 
     void onExit() override {}
+
+    string name() const override { return getTypeName(this); }
 };
+
 
 
 class FullIdAdapter :
@@ -893,6 +930,9 @@ public:
     void onExit() override {
         lockedParent()->handleFullId(_uidlist);
     }
+
+    string name() const override { return getTypeName(this); }
+
 private:
     vector<string> _uidlist;
 };
@@ -928,6 +968,8 @@ public:
         lockedParent()->handleFullColumnName(valueFactor);
     }
 
+    string name() const override { return getTypeName(this); }
+
 private:
     vector<string> _strings;
 };
@@ -944,7 +986,10 @@ public:
     }
 
     void onExit() override {}
+
+    string name() const override { return getTypeName(this); }
 };
+
 
 
 class FullColumnNameExpressionAtomAdapter :
@@ -958,7 +1003,10 @@ public:
     }
 
     void onExit() override {}
+
+    string name() const override { return getTypeName(this); }
 };
+
 
 
 class ExpressionAtomPredicateAdapter :
@@ -1009,6 +1057,8 @@ public:
     }
 
     void onExit() override {}
+
+    string name() const override { return getTypeName(this); }
 };
 
 
@@ -1028,6 +1078,8 @@ public:
     void onExit() override {
         lockedParent()->handleQservFunctionSpec(getFunctionName(), _args);
     }
+
+    string name() const override { return getTypeName(this); }
 
 private:
     string getFunctionName() {
@@ -1110,6 +1162,8 @@ public:
         }
     }
 
+    string name() const override { return getTypeName(this); }
+
 private:
     void _prepBoolFactor() {
         ASSERT_EXECUTION_CONDITION(nullptr == _valueExpr, "Can't use PredicateExpressionAdapter for " <<
@@ -1188,6 +1242,8 @@ public:
         lockedParent()->handleBinaryComparasionPredicate(compPredicate);
     }
 
+    string name() const override { return getTypeName(this); }
+
 private:
     shared_ptr<query::ValueExpr> _left;
     string _comparison;
@@ -1203,7 +1259,10 @@ public:
     void onExit() override {
         lockedParent()->handleComparisonOperator(_ctx->getText());
     }
+
+    string name() const override { return getTypeName(this); }
 };
+
 
 
 class OrderByClauseAdapter :
@@ -1219,6 +1278,8 @@ public:
     void onExit() override {
         lockedParent()->handleOrderByClause(_orderByClause);
     }
+
+    string name() const override { return getTypeName(this); }
 
 private:
     shared_ptr<query::OrderByClause> _orderByClause { make_shared<query::OrderByClause>() };
@@ -1297,6 +1358,8 @@ public:
         lockedParent()->handleInnerJoin(joinRef);
     }
 
+    string name() const override { return getTypeName(this); }
+
 private:
     shared_ptr<query::ColumnRef> _using;
     shared_ptr<query::TableRef> _tableRef;
@@ -1332,7 +1395,10 @@ public:
 
         lockedParent()->handleSelectSpec(_ctx->DISTINCT() != nullptr);
     }
+
+    string name() const override { return getTypeName(this); }
 };
+
 
 
 // handles `functionCall (AS? uid)?` e.g. "COUNT AS object_count"
@@ -1379,6 +1445,8 @@ public:
         lockedParent()->handleSelectFunctionElement(valueExpr);
     }
 
+    string name() const override { return getTypeName(this); }
+
 private:
     string _asName;
     shared_ptr<query::ValueFactor> _functionValueFactor;
@@ -1404,9 +1472,10 @@ public:
         lockedParent()->handleGroupByItem(_valueExpr);
     }
 
+    string name() const override { return getTypeName(this); }
+
 private:
     shared_ptr<query::ValueExpr> _valueExpr;
-
 };
 
 
@@ -1420,7 +1489,10 @@ public:
                 "Could not get a decimalLiteral context to read limit.", _ctx);
         lockedParent()->handleLimitClause(atoi(_ctx->limit->getText().c_str()));
     }
+
+    string name() const override { return getTypeName(this); }
 };
+
 
 
 class SimpleIdAdapter :
@@ -1437,6 +1509,8 @@ public:
     void onExit() override {
         lockedParent()->handleSimpleId(_ctx->getText());
     }
+
+    string name() const override { return getTypeName(this); }
 };
 
 
@@ -1458,6 +1532,8 @@ public:
         txt.erase(0, 1);
         lockedParent()->handleDottedId(txt);
     }
+
+    string name() const override { return getTypeName(this); }
 };
 
 
@@ -1485,6 +1561,8 @@ public:
         valueExpr->setAlias(_alias);
         lockedParent()->handleColumnElement(valueExpr);
     }
+
+    string name() const override { return getTypeName(this); }
 
 private:
     shared_ptr<query::ValueFactor> _valueFactor;
@@ -1516,6 +1594,8 @@ public:
         lockedParent()->handleUid(_val);
     }
 
+    string name() const override { return getTypeName(this); }
+
 private:
     string _val;
 };
@@ -1529,6 +1609,8 @@ public:
     void onExit() override {
         lockedParent()->handleConstant(_ctx->getText());
     }
+
+    string name() const override { return getTypeName(this); }
 };
 
 
@@ -1547,6 +1629,8 @@ public:
             lockedParent()->handleUidList(_strings);
         }
     }
+
+    string name() const override { return getTypeName(this); }
 
 private:
     vector<string> _strings;
@@ -1571,6 +1655,8 @@ public:
         lockedParent()->handleExpressions(_expressions);
     }
 
+    string name() const override { return getTypeName(this); }
+
 private:
     vector<shared_ptr<query::ValueExpr>> _expressions;
 };
@@ -1590,6 +1676,8 @@ public:
         lockedParent()->handleConstants(_values);
     }
 
+    string name() const override { return getTypeName(this); }
+
 private:
     vector<string> _values;
 };
@@ -1606,6 +1694,8 @@ public:
     }
 
     void onExit() override {}
+
+    string name() const override { return getTypeName(this); }
 };
 
 
@@ -1633,6 +1723,8 @@ public:
         auto valueFactor = query::ValueFactor::newFuncFactor(funcExpr);
         lockedParent()->handleScalarFunctionCall(valueFactor);
     }
+
+    string name() const override { return getTypeName(this); }
 
 private:
     vector<shared_ptr<query::ValueExpr>> _valueExprs;
@@ -1667,6 +1759,8 @@ public:
         auto funcExpr = query::FuncExpr::newWithArgs(_functionName, _args);
         lockedParent()->handleUdfFunctionCall(funcExpr);
     }
+
+    string name() const override { return getTypeName(this); }
 
 private:
     vector<shared_ptr<query::ValueExpr>> _args;
@@ -1707,6 +1801,8 @@ public:
         lockedParent()->handleAggregateWindowedFunction(aggValueFactor);
     }
 
+    string name() const override { return getTypeName(this); }
+
 private:
     shared_ptr<query::ValueFactor> _valueFactor;
 };
@@ -1731,6 +1827,8 @@ public:
                 "not populated; expected a callback from functionNameBase", _ctx);
         lockedParent()->handleScalarFunctionName(_name);
     }
+
+    string name() const override { return getTypeName(this); }
 
 private:
     string _name;
@@ -1761,6 +1859,8 @@ public:
         lockedParent()->handleFunctionArgs(_args);
     }
 
+    string name() const override { return getTypeName(this); }
+
 private:
     vector<shared_ptr<query::ValueExpr>> _args;
 };
@@ -1781,6 +1881,8 @@ public:
     void onExit() override {
         lockedParent()->handleFunctionArg(_valueFactor);
     }
+
+    string name() const override { return getTypeName(this); }
 
 private:
     shared_ptr<query::ValueFactor> _valueFactor;
@@ -1845,6 +1947,8 @@ public:
         }
         lockedParent()->handleLogicalExpression(_logicalOperator, _ctx);
     }
+
+    string name() const override { return getTypeName(this); }
 
 private:
     void _setLogicalOperator(shared_ptr<query::LogicalTerm> const & logicalTerm) {
@@ -1919,6 +2023,8 @@ public:
         return os;
     }
 
+    string name() const override { return getTypeName(this); }
+
 private:
     shared_ptr<query::ValueExpr> _predicate;
     vector<shared_ptr<query::ValueExpr>> _expressions;
@@ -1962,6 +2068,8 @@ public:
         lockedParent()->handleBetweenPredicate(betweenPredicate);
     }
 
+    string name() const override { return getTypeName(this); }
+
 private:
     shared_ptr<query::ValueExpr> _val;
     shared_ptr<query::ValueExpr> _min;
@@ -2001,6 +2109,8 @@ public:
         lockedParent()->handleLikePredicate(likePredicate);
     }
 
+    string name() const override { return getTypeName(this); }
+
 private:
     shared_ptr<query::ValueExpr> _valueExprA;
     shared_ptr<query::ValueExpr> _valueExprB;
@@ -2036,6 +2146,8 @@ public:
         lockedParent()->handleUnaryExpressionAtom(_valueFactor);
     }
 
+    string name() const override { return getTypeName(this); }
+
 private:
     shared_ptr<query::ValueFactor> _valueFactor;
     string _operatorPrefix;
@@ -2067,6 +2179,8 @@ public:
         lockedParent()->handleNestedExpressionAtom(make_shared<query::BoolTermFactor>(orTerm));
         lockedParent()->handleNestedExpressionAtom(make_shared<query::PassTerm>(")"));
     }
+
+    string name() const override { return getTypeName(this); }
 
 private:
     vector<shared_ptr<query::BoolFactor>> _boolFactors;
@@ -2121,6 +2235,8 @@ public:
         lockedParent()->handleMathExpressionAtomAdapter(_valueExpr);
     }
 
+    string name() const override { return getTypeName(this); }
+
 private:
     shared_ptr<query::ValueExpr> const & _getValueExpr() {
         if (nullptr == _valueExpr) {
@@ -2151,6 +2267,8 @@ public:
         lockedParent()->handleFunctionCallExpressionAtom(_funcExpr);
     }
 
+    string name() const override { return getTypeName(this); }
+
 private:
     shared_ptr<query::FuncExpr> _funcExpr;
 };
@@ -2165,7 +2283,10 @@ public:
     void onExit() override {
         lockedParent()->handleUnaryOperator(_ctx->getText());
     }
+
+    string name() const override { return getTypeName(this); }
 };
+
 
 
 class LogicalOperatorAdapter :
@@ -2180,6 +2301,8 @@ public:
             ASSERT_EXECUTION_CONDITION(false, "undhandled logical operator", _ctx);
         }
     }
+
+    string name() const override { return getTypeName(this); }
 };
 
 
@@ -2197,7 +2320,10 @@ public:
             ASSERT_EXECUTION_CONDITION(false, "Unhanlded operator type:" << _ctx->getText(), _ctx);
         }
     }
+
+    string name() const override { return getTypeName(this); }
 };
+
 
 
 class FunctionNameBaseAdapter :
@@ -2208,6 +2334,8 @@ public:
     void onExit() override {
         lockedParent()->handleFunctionNameBase(_ctx->getText());
     }
+
+    string name() const override { return getTypeName(this); }
 };
 
 
@@ -2232,7 +2360,7 @@ shared_ptr<ChildAdapter> QSMySqlListener::pushAdapterStack(Context* ctx) {
             getTypeName<ParentCBH>() <<
             "` from top of listenerStack.",
             ctx);
-    auto childAdapter = make_shared<ChildAdapter>(p, ctx);
+    auto childAdapter = make_shared<ChildAdapter>(p, ctx, this);
     _adapterStack.push_back(childAdapter);
     childAdapter->onEnter();
     return childAdapter;
@@ -2257,6 +2385,15 @@ void QSMySqlListener::popAdapterStack(antlr4::ParserRuleContext* ctx) {
 }
 
 
+string QSMySqlListener::printAdapterStack() const {
+    string ret;
+    for (auto&& adapter : _adapterStack) {
+        ret += adapter->name() + ", ";
+    }
+    return ret;
+}
+
+
 // QSMySqlListener class methods
 
 
@@ -2265,7 +2402,7 @@ void QSMySqlListener::enterRoot(QSMySqlParser::RootContext* ctx) {
             ctx);
     _rootAdapter = make_shared<RootAdapter>();
     _adapterStack.push_back(_rootAdapter);
-    _rootAdapter->onEnter(ctx);
+    _rootAdapter->onEnter(ctx, this);
 }
 
 
