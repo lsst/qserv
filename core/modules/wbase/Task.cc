@@ -232,17 +232,15 @@ std::chrono::milliseconds Task::getRunTime() const {
 /// EventThread and CommandMlock class.
 void Task::waitForMemMan() {
     if (_memMan != nullptr) {
-        LOGS(_log, LOG_LVL_DEBUG, "&&&memWait " <<_memMan->getStatistics().logString());
         if (_memMan->lock(_memHandle, true)) {
             int errorCode = (errno == EAGAIN ? ENOMEM : errno);
             LOGS(_log, LOG_LVL_WARN, _idStr << " mlock err=" << errorCode <<
                     " " <<_memMan->getStatistics().logString() <<
                     " " << _memMan->getStatus(_memHandle).logString());
         }
-        LOGS(_log, LOG_LVL_DEBUG, "&&&memWait " <<_memMan->getStatistics().logString() <<
-                                              " " << _memMan->getStatus(_memHandle).logString());
+        LOGS(_log, LOG_LVL_DEBUG, _idStr << " waitForMemMan " <<_memMan->getStatistics().logString() <<
+                                  " " << _memMan->getStatus(_memHandle).logString());
     }
-    LOGS(_log, LOG_LVL_DEBUG, _idStr << " waitForMemMan end");
     _safeToMoveRunning = true;
 }
 

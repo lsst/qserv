@@ -114,10 +114,10 @@ int Memory::memLock(MemInfo& mInfo, bool isFlex) {
     // Lock this map into memory. Return success if this worked.
     //
     int result = 0;
-    util::Timer timer; // &&&
+    util::Timer timer;
     {
         std::lock_guard<std::mutex> lg(_mlockMtx);
-        LOGS(_log, LOG_LVL_DEBUG, "&&& MMMM mlock start");
+        LOGS(_log, LOG_LVL_DEBUG, "mlock start");
         timer.start();
         result = mlock(mInfo._memAddr, mInfo._memSize);
         timer.stop();
@@ -135,7 +135,7 @@ int Memory::memLock(MemInfo& mInfo, bool isFlex) {
     } else {
         ++over40;
     }
-    LOGS(_log, LOG_LVL_DEBUG, "&&& MMMM mlock stop " << mInfo._mlockTime <<
+    LOGS(_log, LOG_LVL_DEBUG, "mlock stop " << mInfo._mlockTime <<
             " <1=" << lessThan1 <<
             " <10=" << lessThan10 <<
             " <20=" << lessThan20 <<
@@ -187,16 +187,7 @@ MemInfo Memory::mapFile(std::string const& fPath) {
 
     // Map the file into memory
     //
-    util::Timer mmapTimer; // &&&
-    LOGS(_log, LOG_LVL_DEBUG, "&&& MMMM mmap start");
-    mmapTimer.start();
-    {
-        //std::lock_guard<std::mutex> memGuard(_mlockMtx); // &&&  So far, this doesn't seem to help.
-        mInfo._memAddr = mmap(0, mInfo._memSize, PROT_READ, MAP_SHARED, fdNum, 0);
-    }
-    mmapTimer.stop();
-    LOGS(_log, LOG_LVL_DEBUG, "&&& MMMM mmap stop " << mmapTimer.getElapsed());
-
+    mInfo._memAddr = mmap(0, mInfo._memSize, PROT_READ, MAP_SHARED, fdNum, 0);
 
     // Diagnose any errors or update statistics.
     //

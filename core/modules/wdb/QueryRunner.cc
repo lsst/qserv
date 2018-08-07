@@ -195,7 +195,7 @@ bool QueryRunner::runQuery() {
         } else {
             ++over40;
         }
-        LOGS(_log, LOG_LVL_INFO, _task->getIdStr() << "&&& memWait=" << mElapsed <<
+        LOGS(_log, LOG_LVL_INFO, _task->getIdStr() << "memWait=" << mElapsed <<
                 " avg=" << avgWait <<
                 " <1=" << lessThan1 <<
                 " <5=" << lessThan5 <<
@@ -282,9 +282,6 @@ void QueryRunner::_fillSchema(MYSQL_RES* result) {
 bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, size_t& tSize) {
     MYSQL_ROW row;
 
-    size_t prevTotalBytes = 0; // &&&
-    bool moved = false;
-
     while ((row = mysql_fetch_row(result))) {
         auto lengths = mysql_fetch_lengths(result);
         proto::RowBundle* rawRow =_result->add_row();
@@ -303,41 +300,6 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, si
         unsigned int szLimit = std::min(proto::ProtoHeaderWrap::PROTOBUFFER_DESIRED_LIMIT,
                                         proto::ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT);
 
-        // Use small blocks until it is considered a large result and it is not an interactive query.
-        if (!_largeResult && !_task->getOnInteractive()) {
-            szLimit = std::min(szLimit, _initialBlockSize);
-        }
-
-        if (false && not moved) { // &&&
-            // &&& As long as the amount of memory being used waiting to send results is less than
-            // the threshold, don't wait for the transmit, Otherwise, the system needs to wait so it
-            // doesn't run out of memory.
-            // Block on the buffer actually being sent if 10GB are already waiting or this is a largeResult.
-            auto totalBytes = xrdsvc::StreamBuffer::getTotalBytes();
-            if (totalBytes != prevTotalBytes) {
-                LOGS(_log, LOG_LVL_DEBUG, "&&& MMMM totalBytes=" << totalBytes);
-                prevTotalBytes = totalBytes;
-            }
-
-            if (totalBytes < 10000000000) { // TODO:DM-10273 add to configuration &&&
-                // &&& move this and the matching code below into a private function
-                // This task is going to have multiple results to return to the czar and
-                // the speed this task can be completed will be limited by the czar's ability to
-                // read in results, which could be very very slow. The upshot of this is the
-                // scheduler for this worker should stop waiting for this task. leavePool()
-                // will tell the scheduler this task is finished and create a new thread in the pool
-                // to replace this one.
-                auto pet = _task->getAndNullPoolEventThread();
-                if (pet != nullptr) {
-                    pet->leavePool();
-                    moved = true;
-                } else {
-                    LOGS(_log, LOG_LVL_DEBUG, "Large result PoolEventThread was null. Probably already moved. a");
-                }
-            }
-        }
-
-
         // Each element needs to be mysql-sanitized
         if (tSize > szLimit) {
             if (tSize > proto::ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT) {
@@ -350,17 +312,15 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, si
             rowCount = 0;
             tSize = 0;
             _initMsg();
-            // &&& move this and the matching code above into a private member function
             // This task is going to have multiple results to return to the czar and
             // the speed this task can be completed will be limited by the czar's ability to
             // read in results, which could be very very slow. The upshot of this is the
             // scheduler for this worker should stop waiting for this task. leavePool()
             // will tell the scheduler this task is finished and create a new thread in the pool
-            // to replace this one.
+            // to replace this thread.
             auto pet = _task->getAndNullPoolEventThread();
             if (pet != nullptr) {
                 pet->leavePool();
-                moved = true;
             } else {
                 LOGS(_log, LOG_LVL_DEBUG, "Large result PoolEventThread was null. Probably already moved. b");
             }
@@ -413,33 +373,32 @@ void QueryRunner::_transmit(bool last, uint rowCount, size_t tSize) {
         if (!sent) {
             LOGS(_log, LOG_LVL_ERROR, _task->getIdStr() << " Failed to transmit message!");
         }
-        // Block on the buffer actually being sent if 10GB are already waiting or this is a largeResult.
-        auto totalBytes = xrdsvc::StreamBuffer::getTotalBytes(); // &&& always wait, delete this if statement, see fill rows above. Blocking the scheduler due to memory being used now happens there
-        if (true || _largeResult || totalBytes > 10000000000) {  // TODO:DM-10273 add to configuration &&&
-            LOGS(_log, LOG_LVL_INFO, _task->getIdStr() << " waiting for buffer largeResult=" << _largeResult
-                                      << " totalBytes=" << totalBytes);
-            util::Timer t;
-            t.start();
-            streamBuf->waitForDoneWithThis(); // block until this buffer has been sent. &&&
-            t.stop();
-            double elapsed = t.getElapsed();
-            if (elapsed < 0.1) { ++tLessTenth; }
-            else if (elapsed < 1.0) { ++tLess1; }
-            else if (elapsed < 5.0) { ++tLess5; }
-            else if (elapsed < 10.0) { ++tLess10; }
-            else if (elapsed < 20.0) { ++tLess20; }
-            else if (elapsed < 40.0) { ++tLess40; }
-            else { ++tMore40; }
+        // Block on the buffer being sent.
+        auto totalBytes = xrdsvc::StreamBuffer::getTotalBytes();
+        LOGS(_log, LOG_LVL_INFO, _task->getIdStr() << " waiting for buffer largeResult=" << _largeResult
+                << " totalBytes=" << totalBytes);
+        util::Timer t;
+        t.start();
+        streamBuf->waitForDoneWithThis(); // Block until this buffer has been sent.
+        t.stop();
+        double elapsed = t.getElapsed();
+        if (elapsed < 0.1) { ++tLessTenth; }
+        else if (elapsed < 1.0) { ++tLess1; }
+        else if (elapsed < 5.0) { ++tLess5; }
+        else if (elapsed < 10.0) { ++tLess10; }
+        else if (elapsed < 20.0) { ++tLess20; }
+        else if (elapsed < 40.0) { ++tLess40; }
+        else { ++tMore40; }
 
-            LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " &&& transmit waited for " << t.getElapsed() <<
-                    " <0.1=" << tLessTenth <<
-                    " <1=" << tLess1 <<
-                    " <5=" << tLess5 <<
-                    " <10=" << tLess10 <<
-                    " <20=" << tLess20 <<
-                    " <40=" << tLess40 <<
-                    " >40=" << tMore40 );
-        }
+        LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " transmit waited for " << t.getElapsed() <<
+                " <0.1=" << tLessTenth <<
+                " <1="   << tLess1 <<
+                " <5="   << tLess5 <<
+                " <10="  << tLess10 <<
+                " <20="  << tLess20 <<
+                " <40="  << tLess40 <<
+                " >40="  << tMore40 );
+
     } else {
         LOGS(_log, LOG_LVL_DEBUG, "_transmit cancelled");
     }
@@ -478,10 +437,9 @@ void QueryRunner::_transmitHeader(std::string& msg) {
         if (!sent) {
             LOGS(_log, LOG_LVL_ERROR, _task->getIdStr() << " Failed to transmit header!");
         }
-        // intentionally not waiting for streamBuf to finish, as this message is tiny. &&&
         util::Timer t;
         t.start();
-        streamBuf->waitForDoneWithThis(); // block until this buffer has been sent. &&&
+        streamBuf->waitForDoneWithThis(); // Block until this buffer has been sent.
         t.stop();
         double elapsed = t.getElapsed();
         if (elapsed < 0.1) { ++thLessTenth; }
@@ -492,7 +450,7 @@ void QueryRunner::_transmitHeader(std::string& msg) {
         else if (elapsed < 40.0) { ++thLess40; }
         else { ++thMore40; }
 
-        LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " h&&& transmit waited for " << t.getElapsed() <<
+        LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " h transmit waited for " << t.getElapsed() <<
                 " <0.1=" << thLessTenth <<
                 " <1=" << thLess1 <<
                 " <5=" << thLess5 <<
@@ -551,7 +509,6 @@ private:
 };
 
 bool QueryRunner::_dispatchChannel() {
-    util::InstanceCount ic("Active_dispatchChannel &&&");
     proto::TaskMsg& m = *_task->msg;
     _initMsgs();
     bool firstResult = true;
@@ -586,12 +543,12 @@ bool QueryRunner::_dispatchChannel() {
             ChunkResource cr(req.getResourceFragment(i));
             // Use query fragment as-is, funnel results.
             for(auto const& query : queries) {
-                LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " running fragment=" << query);
-                util::Timer sqlTimer; // &&&
+                util::Timer sqlTimer;
                 sqlTimer.start();
                 MYSQL_RES* res = _primeResult(query); // This runs the SQL query.
                 sqlTimer.stop();
-                LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " &&& running fragment timer=" << sqlTimer.getElapsed());
+                LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " fragment time=" << sqlTimer.getElapsed()
+                                                            << " query=" << query);
                 if (!res) {
                     erred = true;
                     continue;
