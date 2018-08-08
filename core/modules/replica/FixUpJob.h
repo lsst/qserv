@@ -106,8 +106,8 @@ public:
      */
     static Ptr create(std::string const& databaseFamily,
                       Controller::Ptr const& controller,
-                      std::string const& parentJobId,
-                      CallbackType onFinish,
+                      std::string const& parentJobId=std::string(),
+                      CallbackType onFinish=nullptr,
                       Job::Options const& options=defaultOptions());
 
     // Default construction and copy semantics are prohibited

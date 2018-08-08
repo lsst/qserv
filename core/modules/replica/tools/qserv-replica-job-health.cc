@@ -74,11 +74,11 @@ bool test() {
  
         auto const job = ClusterHealthJob::create(
             controller,
+            timeoutSec,
             jobId,
             [&finished] (ClusterHealthJob::Ptr const& job) {
                 finished = true;
-            },
-            timeoutSec
+            }
         );
         job->start();
 

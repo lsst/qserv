@@ -93,31 +93,31 @@ Job::Options const& ClusterHealthJob::defaultOptions() {
 // -------------------------
 
 ClusterHealthJob::Ptr ClusterHealthJob::create(Controller::Ptr const& controller,
+                                               unsigned int timeoutSec,
                                                std::string const& parentJobId,
                                                CallbackType onFinish,
-                                               unsigned int timeoutSec,
                                                Job::Options const& options) {
     return ClusterHealthJob::Ptr(
         new ClusterHealthJob(controller,
+                             timeoutSec,
                              parentJobId,
                              onFinish,
-                             timeoutSec,
                              options));
 }
 
 ClusterHealthJob::ClusterHealthJob(Controller::Ptr const& controller,
+                                   unsigned int timeoutSec,
                                    std::string const& parentJobId,
                                    CallbackType onFinish,
-                                   unsigned int timeoutSec,
                                    Job::Options const& options)
     :   Job(controller,
             parentJobId,
             "CLUSTER_HEALTH",
             options),
-        _onFinish(onFinish),
         _timeoutSec(timeoutSec == 0
                     ? controller->serviceProvider()->config()->controllerRequestTimeoutSec()
                     : timeoutSec),
+        _onFinish(onFinish),
         _health(controller->serviceProvider()->config()->workers()),
         _numStarted(0),
         _numFinished(0) {

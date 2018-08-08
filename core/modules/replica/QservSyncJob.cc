@@ -56,6 +56,7 @@ Job::Options const& QservSyncJob::defaultOptions() {
 
 QservSyncJob::Ptr QservSyncJob::create(std::string const& databaseFamily,
                                        Controller::Ptr const& controller,
+                                       unsigned int requestExpirationIvalSec,
                                        std::string const& parentJobId,
                                        bool force,
                                        CallbackType onFinish,
@@ -63,6 +64,7 @@ QservSyncJob::Ptr QservSyncJob::create(std::string const& databaseFamily,
     return QservSyncJob::Ptr(
         new QservSyncJob(databaseFamily,
                        controller,
+                       requestExpirationIvalSec,
                        parentJobId,
                        force,
                        onFinish,
@@ -71,6 +73,7 @@ QservSyncJob::Ptr QservSyncJob::create(std::string const& databaseFamily,
 
 QservSyncJob::QservSyncJob(std::string const& databaseFamily,
                            Controller::Ptr const& controller,
+                           unsigned int requestExpirationIvalSec,
                            std::string const& parentJobId,
                            bool force,
                            CallbackType onFinish,
@@ -80,6 +83,7 @@ QservSyncJob::QservSyncJob(std::string const& databaseFamily,
             "QSERV_SYNC",
             options),
         _databaseFamily(databaseFamily),
+        _requestExpirationIvalSec(requestExpirationIvalSec),
         _force(force),
         _onFinish(onFinish),
         _numLaunched(0),
@@ -157,7 +161,8 @@ void QservSyncJob::startImpl(util::Lock const& lock) {
                 id(),   /* jobId */
                 [self] (SetReplicasQservMgtRequest::Ptr const& request) {
                     self->onRequestFinish(request);
-                }
+                },
+                _requestExpirationIvalSec
             )
         );
         _numLaunched++;

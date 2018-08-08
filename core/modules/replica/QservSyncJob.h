@@ -96,8 +96,11 @@ public:
      *
      * @param databaseFamily - name of a database family
      * @param controller     - for launching requests
+     * @param requestExpirationIvalSec - an optional parameter (if differs from 0)
+     *                         allowing to override the default value of
+     *                         the corresponding parameter from the Configuration.
      * @param parentJobId    - optional identifier of a parent job
-     * @param force          - proceed with the operation even if some replicas affceted by
+     * @param force          - proceed with the operation even if some replicas affected by
      *                         the operation are in use.
      * @param onFinish       - (optional) callback function to be called upon a completion of the job
      * @param options        - (optional) job options
@@ -106,7 +109,8 @@ public:
      */
     static Ptr create(std::string const& databaseFamily,
                       Controller::Ptr const& controller,
-                      std::string const& parentJobId,
+                      unsigned int requestExpirationIvalSec=0,
+                      std::string const& parentJobId=std::string(),
                       bool force = false,
                       CallbackType onFinish = nullptr,
                       Job::Options const& options = defaultOptions());
@@ -158,6 +162,7 @@ protected:
      */
     QservSyncJob(std::string const& databaseFamily,
                  Controller::Ptr const& controller,
+                 unsigned int requestExpirationIvalSec,
                  std::string const& parentJobId,
                  bool force,
                  CallbackType onFinish,
@@ -189,6 +194,9 @@ protected:
 
     /// The name of the database family
     std::string _databaseFamily;
+
+    /// The optional override for the request expiration timeouts
+    unsigned int _requestExpirationIvalSec;
 
     /// Flag indicating to report (if set) the 'force' mode of the operation
     bool _force;

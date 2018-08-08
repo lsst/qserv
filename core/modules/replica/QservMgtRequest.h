@@ -194,9 +194,6 @@ public:
      * Explicitly cancel any asynchronous operation(s) and put the object into
      * the FINISHED::CANCELLED state. This operation is very similar to the
      * timeout-based request expiration, except it's requested explicitly.
-     *
-     * ATTENTION: this operation won't affect the remote (server-side) state
-     * of the operation in case if the request was queued.
      */
     void cancel();
 

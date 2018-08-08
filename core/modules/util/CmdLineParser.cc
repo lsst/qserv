@@ -44,7 +44,7 @@ CmdLineParser::in(std::string const&              val,
 
 CmdLineParser::CmdLineParser(int                argc,
                              const char* const* argv,
-                             const char*        usage)
+                             std::string const& usage)
     :   _usage(usage) {
 
     _usage = _usage +

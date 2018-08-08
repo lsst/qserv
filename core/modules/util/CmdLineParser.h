@@ -89,7 +89,7 @@ public:
      */
     CmdLineParser(int                argc,
                   const char* const* argv,
-                  const char*        usage);
+                  std::string const& usage);
 
     /// Destructor
     ~CmdLineParser() = default;

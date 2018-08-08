@@ -77,6 +77,7 @@ bool test() {
         auto job = replica::QservSyncJob::create(
             databaseFamily,
             controller,
+            0,  /* default timeout to be pulled from the Configuration*/
             std::string(),
             force,
             [&finished] (replica::QservSyncJob::Ptr const& job) {

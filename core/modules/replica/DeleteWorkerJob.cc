@@ -165,7 +165,7 @@ void DeleteWorkerJob::startImpl(util::Lock const& lock) {
         if (statusRequest->getServiceState().state == ServiceState::State::RUNNING) {
 
             // Make sure the service won't be executing any other "leftover"
-            // requests which may be interfeering with the current job's requests
+            // requests which may be interfering with the current job's requests
 
             std::atomic<bool> drainRequestFinished{false};
 
