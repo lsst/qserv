@@ -29,6 +29,7 @@
 
 #include "lsst/log/Log.h"
 
+#include "parser/ParseException.h"
 #include "parser/SelectListFactory.h"
 #include "parser/ValueExprFactory.h"
 #include "parser/ValueFactorFactory.h"
@@ -98,7 +99,7 @@ void QSMySqlListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) { \
 #define UNHANDLED(NAME) \
 void QSMySqlListener::enter##NAME(QSMySqlParser::NAME##Context* ctx) { \
     LOGS(_log, LOG_LVL_TRACE, __FUNCTION__ << " is UNHANDLED '" << getQueryString(ctx) << "'"); \
-    throw QSMySqlListener::adapter_order_error(string(__FUNCTION__) + string(" not supported.")); \
+    throw adapter_order_error(string(__FUNCTION__) + string(" not supported.")); \
 } \
 \
 void QSMySqlListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) {}\
@@ -139,7 +140,7 @@ if (false == (CONDITION)) { \
         msg << " messsage:\"" << MESSAGE << "\""; \
         msg << ", in or around query segment: '" << getQueryString(CTX) << "'"; \
         msg << ", with adapter stack:" << printAdapterStack(); \
-        throw QSMySqlListener::adapter_execution_error(msg.str()); \
+        throw adapter_execution_error(msg.str()); \
     } \
 } \
 
@@ -520,7 +521,7 @@ protected:
     shared_ptr<CBH> lockedParent() {
         shared_ptr<CBH> parent = _parent.lock();
         if (nullptr == parent) {
-            throw QSMySqlListener::adapter_execution_error(
+            throw adapter_execution_error(
                     "Locking weak ptr to parent callback handler returned null");
         }
         return parent;

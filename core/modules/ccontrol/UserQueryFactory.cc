@@ -66,7 +66,6 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQueryFactory");
 }
 
-#define USE_ANTLR4_QUERY 1
 
 namespace lsst {
 namespace qserv {
@@ -158,19 +157,20 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
         // Parse SELECT
 
         // parse using antlr4
-        std::shared_ptr<query::SelectStmt> a4stmt;
+        std::shared_ptr<query::SelectStmt> stmt;
         try {
-            a4stmt = a4NewUserQuery(query);
-        } catch (std::exception& e) {
-            LOGS(_log, LOG_LVL_ERROR, "Antlr4 error: " << e.what());
-        }
-        if (a4stmt) {
-            LOGS(_log, LOG_LVL_DEBUG, "Antlr4-style Hierarchy: " << *a4stmt);
-            LOGS(_log, LOG_LVL_DEBUG, "Antlr4 generated select statement: " << a4stmt->getQueryTemplate());
-        } else {
-            LOGS(_log, LOG_LVL_DEBUG, "Antlr4 did not generate a select statement.");
+            stmt = a4NewUserQuery(query);
+        } catch (parser::adapter_order_error& e) {
+            return std::make_shared<UserQueryInvalid>(std::string("ParseException:") + e.what());
+        } catch (parser::adapter_execution_error& e) {
+            return std::make_shared<UserQueryInvalid>(std::string("ParseException:") + e.what());
         }
 
+// While the antlr4 parser is still under development we will leave in the code that can be used to generate
+// IR using our antlr v2 parser. It is very useful for debugging & development. At some point the antlr4
+// parser maturity will have obviously passed what we could do with antlr v2 and we should remove all the
+// antlr v2 parser code from qserv.
+#if 0
         // parse using antlr v2
         std::shared_ptr<query::SelectStmt> a2stmt;
         try {
@@ -180,23 +180,8 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
         }
         LOGS(_log, LOG_LVL_DEBUG, "Old-style generated select statement: " << a2stmt->getQueryTemplate());
         LOGS(_log, LOG_LVL_DEBUG, "Old-style Hierarchy: " << *a2stmt);
-
-        // TEMP while developing the antlr4 parser listener
-        if (a4stmt && a2stmt) {
-            bool theyMatch(*a4stmt == *a2stmt);
-            LOGS(_log, LOG_LVL_DEBUG, "antlr v2 and antlr4 generated queries match:" << theyMatch);
-        }
-
-        // TEMP while developing the antlr4 query generation; decide which generated select statment to use
-        // to process the query:
-#if USE_ANTLR4_QUERY
-        if (nullptr == a4stmt) {
-            return std::make_shared<UserQueryInvalid>(std::string("Antlr4 can't parse that query yet."));
-        }
-        std::shared_ptr<query::SelectStmt> stmt = a4stmt;
-#else
-        std::shared_ptr<query::SelectStmt> stmt = a2stmt;
 #endif
+
 
 
         // handle special database/table names

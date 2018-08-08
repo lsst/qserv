@@ -65,6 +65,24 @@ protected:
         : std::runtime_error(msg) {}
 };
 
+
+// antlr4 parse exception; this may be raised during listening if there is an error in the enter/exit
+// functions. It may happen because an unanticipated SQL statement was entered into qserv and we don't yet
+// have the proper handling for it set up yet.
+class adapter_order_error : public std::runtime_error {
+public:
+    explicit adapter_order_error(const std::string& msg)
+    : std::runtime_error(msg) {}
+};
+
+
+// antlr4 parse exception; thrown in the case of unexpected events during the parse.
+class adapter_execution_error : public std::runtime_error {
+public:
+    explicit adapter_execution_error(std::string msg)
+    : std::runtime_error(msg) {}
+};
+
 }}} // namespace lsst::qserv::parser
 
 #endif // LSST_QSERV_PARSER_PARSEEXCEPTION_H
