@@ -32,7 +32,7 @@ set -e
 # before starting workers. Otherwise workers would fail.
 
 HOST="qserv-${MASTER}"
-echo "${MASTER}: staring MariaDB service"
+echo "${MASTER}: starting MariaDB service"
 ssh -n $HOST docker run \
     --detach \
     --name "${DB_CONTAINER_NAME}" \
@@ -68,14 +68,14 @@ fi
 
 for WORKER in $WORKERS; do
     HOST="qserv-${WORKER}"
-    echo "${WORKER}: staring worker agent"
+    echo "${WORKER}: starting worker agent"
     ssh -n $HOST docker run \
         --detach \
         --network host \
         --name "${WORKER_CONTAINER_NAME}" \
         -u 1000:1000 \
         -v /etc/passwd:/etc/passwd:ro \
-        -v "${DATA_DIR}/mysql:${DATA_DIR}/mysql" \
+        -v "${QSERV_DATA_DIR}/mysql:${QSERV_DATA_DIR}/mysql" \
         -v "${CONFIG_DIR}:/qserv/replication/config:ro" \
         -v "${LOG_DIR}:${LOG_DIR}" \
         -e "WORKER_CONTAINER_NAME=${WORKER_CONTAINER_NAME}" \
@@ -83,6 +83,26 @@ for WORKER in $WORKERS; do
         -e "LSST_LOG_CONFIG=${LSST_LOG_CONFIG}" \
         -e "CONFIG=${CONFIG}" \
         -e "WORKER=${WORKER}" \
-        "${IMAGE_TAG}" \
+        "${REPLICATION_IMAGE_TAG}" \
         bash -c \''/qserv/bin/qserv-replica-worker ${WORKER} --config=${CONFIG} >& ${LOG_DIR}/${WORKER_CONTAINER_NAME}.log'\'
 done
+
+# Start master controller
+
+HOST="qserv-${MASTER}"
+echo "${MASTER}: starting Master Controller"
+docker run \
+    --detach \
+    --network host \
+    -u 1000:1000 \
+    -v /etc/passwd:/etc/passwd:ro \
+    -v ${CONFIG_DIR}:/qserv/replication/config:ro \
+    -v ${LOG_DIR}:${LOG_DIR} \
+    -e "TOOL=qserv-replica-master" \
+    -e "PARAMETERS=${MASTER_PARAMETERS}" \
+    -e "LOG_DIR=${LOG_DIR}" \
+    -e "LSST_LOG_CONFIG=${LSST_LOG_CONFIG}" \
+    -e "CONFIG=${CONFIG}" \
+    --name "${MASTER_CONTAINER_NAME}" \
+    "${REPLICATION_IMAGE_TAG}" \
+    bash -c '/qserv/bin/${TOOL} ${PARAMETERS} --config=${CONFIG} >& ${LOG_DIR}/${TOOL}.log'

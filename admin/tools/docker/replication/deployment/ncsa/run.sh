@@ -61,5 +61,5 @@ docker run \
     -e "LSST_LOG_CONFIG=${LSST_LOG_CONFIG}" \
     -e "CONFIG=${CONFIG}" \
     --name "${TOOL}" \
-    $IMAGE_TAG \
+    "${REPLICATION_IMAGE_TAG}" \
     bash -c '/qserv/bin/${TOOL} ${PARAMETERS} --config=${CONFIG} >& ${LOG_DIR}/${TOOL}.log'

@@ -271,7 +271,7 @@ struct Application {
             // Reset this flag to let the Health Monitoring thread know that
             // this thread has finished.
 
-            if (stopReplication) stopReplication = true;
+            stopReplication = false;
         });
         replicationThread.detach();
     }

@@ -30,10 +30,13 @@ set -e
 
 . $(dirname $0)/env.sh
 
-HOST="qserv-${MASTER}"
-ssh -n $HOST 'echo '$MASTER'": "$(docker stop '$DB_CONTAINER_NAME')" "$(docker rm '$DB_CONTAINER_NAME')'
-
 for WORKER in $WORKERS; do
     HOST="qserv-${WORKER}"
     ssh -n $HOST 'echo '$WORKER'": "$(docker stop '$WORKER_CONTAINER_NAME')" "$(docker rm '$WORKER_CONTAINER_NAME')'
 done
+
+HOST="qserv-${MASTER}"
+ssh -n $HOST 'echo '$MASTER'": "$(docker stop '$MASTER_CONTAINER_NAME')" "$(docker rm '$MASTER_CONTAINER_NAME')'
+
+HOST="qserv-${MASTER}"
+ssh -n $HOST 'echo '$MASTER'": "$(docker stop '$DB_CONTAINER_NAME')" "$(docker rm '$DB_CONTAINER_NAME')'

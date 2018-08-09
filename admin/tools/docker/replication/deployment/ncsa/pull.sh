@@ -39,5 +39,5 @@ ssh -n $HOST docker pull $DB_IMAGE_TAG
 
 for n in $MASTER $WORKERS; do
     HOST="qserv-${n}"
-    ssh -n $HOST docker pull $IMAGE_TAG
+    ssh -n $HOST docker pull $REPLICATION_IMAGE_TAG
 done

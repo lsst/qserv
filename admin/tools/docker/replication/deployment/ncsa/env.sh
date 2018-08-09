@@ -44,26 +44,45 @@ function get_param {
     echo "$(cat $path)"
 }
 
-DB_DATA_DIR="$(get_param db_data_dir)"
-DATA_DIR="$(get_param data_dir)"
-CONFIG_DIR="$(get_param config_dir)"
-LOG_DIR="$(get_param log_dir)"
+# Base directory where Qserv is installed on the worker nodes
+QSERV_DATA_DIR="/qserv/data"
 
-LSST_LOG_CONFIG="${CONFIG_DIR}/$(get_param lsst_log_config)"
+# Base directory of the replication system on both master and worker nodes
+REPLICATION_DATA_DIR="/qserv/replication"
 
-IMAGE_TAG="$(get_param image_tag)"
-DB_IMAGE_TAG="$(get_param db_image_tag)"
+# Base directory where the Replication system's MariaDB/MySQL service
+# of the master node wil create its folder 'mysql'
+DB_DATA_DIR="${REPLICATION_DATA_DIR}"
 
-WORKER_CONTAINER_NAME="$(get_param worker_container_name)"
-DB_CONTAINER_NAME="$(get_param db_container_name)"
+# Configuration files of the Replication system's processes on both master
+# and the worker nodes.   
+CONFIG_DIR="${REPLICATION_DATA_DIR}/config"
+
+# Log files of the Replication system's processes on both master
+# and the worker nodes.   
+LOG_DIR="${REPLICATION_DATA_DIR}/log"
+
+# Configuration file of the Replication system's processes on both master
+# and the worker nodes.   
+LSST_LOG_CONFIG="${CONFIG_DIR}/log4cxx.replication.properties"
+
+# Tags for the relevant containers
+REPLICATION_IMAGE_TAG="qserv/replica:tools"
+DB_IMAGE_TAG="mariadb:10.2.16"
+
+DB_CONTAINER_NAME="qserv-replica-mariadb"
+MASTER_CONTAINER_NAME="qserv-replica-master"
+WORKER_CONTAINER_NAME="qserv-replica-worker"
 
 WORKERS="$(get_param workers)"
 MASTER="$(get_param master)"
 
-DB_PORT="$(get_param db_port)"
-DB_ROOT_PASSWORD="$(get_param db_root_password)"
+DB_PORT=23306
+DB_ROOT_PASSWORD="CHANGEME"
 
 CONFIG="mysql://qsreplica@lsst-qserv-${MASTER}:${DB_PORT}/qservReplica"
 
+# Optional parameters of the Master Controller
+MASTER_PARAMETERS="--worker-evict-timeout=240"
 
 unset basedir
