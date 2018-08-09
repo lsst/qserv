@@ -127,15 +127,7 @@ void QueryRunner::_setDb() {
 }
 
 
-std::mutex totalMemWaitMtx;
-double totalMemWaitTime(0);
-double memWaitCallCount(0);
-std::atomic<uint64_t> lessThan1(0);
-std::atomic<uint64_t> lessThan5(0);
-std::atomic<uint64_t> lessThan10(0);
-std::atomic<uint64_t> lessThan20(0);
-std::atomic<uint64_t> lessThan40(0);
-std::atomic<uint64_t> over40(0);
+util::TimerHistogram memWaitHisto("memWait Hist", {1, 5, 10, 20, 40});
 
 
 bool QueryRunner::runQuery() {
@@ -162,49 +154,8 @@ bool QueryRunner::runQuery() {
     memTimer.start();
     _task->waitForMemMan();
     memTimer.stop();
-    double mElapsed = 0;
-    double avgWait = 0;
-    {
-        std::lock_guard<std::mutex> lckt(totalMemWaitMtx);
-        mElapsed = memTimer.getElapsed();
-        totalMemWaitTime += mElapsed;
-        ++memWaitCallCount;
-        avgWait = totalMemWaitTime/memWaitCallCount;
-    }
-
-    if (LOG_CHECK_INFO()) {
-        std::string mHLStr;
-        if (_task->hasMemHandle()) {
-            auto handleStats = _task->getMemHandleStatus();
-            mHLStr = handleStats.logString();
-            double apparent = handleStats.bytesLock/mElapsed;
-            mHLStr += " apparent=" + std::to_string(apparent);
-        } else {
-            mHLStr += " no handle";
-        }
-        if (mElapsed < 1.0) {
-            ++lessThan1;
-        } else if (mElapsed < 5.0) {
-            ++lessThan5;
-        } else if (mElapsed < 10.0) {
-            ++lessThan10;
-        } else if (mElapsed < 20.0) {
-            ++lessThan20;
-        } else if (mElapsed < 40.0) {
-            ++lessThan40;
-        } else {
-            ++over40;
-        }
-        LOGS(_log, LOG_LVL_INFO, _task->getIdStr() << "memWait=" << mElapsed <<
-                " avg=" << avgWait <<
-                " <1=" << lessThan1 <<
-                " <5=" << lessThan5 <<
-                " <10=" << lessThan10 <<
-                " <20=" << lessThan20 <<
-                " <40=" << lessThan40 <<
-                " >40=" << over40 <<
-                " " << mHLStr);
-    }
+    auto logMsg = memWaitHisto.addTime(memTimer.getElapsed(), _task->getIdStr());
+    LOGS(_log, LOG_LVL_INFO, logMsg);
 
     if (_task->getCancelled()) {
         LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " runQuery, task was cancelled after locking tables.");
@@ -330,13 +281,7 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, si
 }
 
 
-std::atomic<uint64_t> tLessTenth{0};
-std::atomic<uint64_t> tLess1{0};
-std::atomic<uint64_t> tLess5{0};
-std::atomic<uint64_t> tLess10{0};
-std::atomic<uint64_t> tLess20{0};
-std::atomic<uint64_t> tLess40{0};
-std::atomic<uint64_t> tMore40{0};
+util::TimerHistogram transmitHisto("transmit Hist", {0.1, 1, 5, 10, 20, 40});
 
 
 /// Transmit result data with its header.
@@ -381,24 +326,8 @@ void QueryRunner::_transmit(bool last, uint rowCount, size_t tSize) {
         t.start();
         streamBuf->waitForDoneWithThis(); // Block until this buffer has been sent.
         t.stop();
-        double elapsed = t.getElapsed();
-        if (elapsed < 0.1) { ++tLessTenth; }
-        else if (elapsed < 1.0) { ++tLess1; }
-        else if (elapsed < 5.0) { ++tLess5; }
-        else if (elapsed < 10.0) { ++tLess10; }
-        else if (elapsed < 20.0) { ++tLess20; }
-        else if (elapsed < 40.0) { ++tLess40; }
-        else { ++tMore40; }
-
-        LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " transmit waited for " << t.getElapsed() <<
-                " <0.1=" << tLessTenth <<
-                " <1="   << tLess1 <<
-                " <5="   << tLess5 <<
-                " <10="  << tLess10 <<
-                " <20="  << tLess20 <<
-                " <40="  << tLess40 <<
-                " >40="  << tMore40 );
-
+        auto logMsg = transmitHisto.addTime(t.getElapsed(), _task->getIdStr());
+        LOGS(_log, LOG_LVL_DEBUG, logMsg);
     } else {
         LOGS(_log, LOG_LVL_DEBUG, "_transmit cancelled");
     }
@@ -406,13 +335,7 @@ void QueryRunner::_transmit(bool last, uint rowCount, size_t tSize) {
 }
 
 
-std::atomic<uint64_t> thLessTenth{0};
-std::atomic<uint64_t> thLess1{0};
-std::atomic<uint64_t> thLess5{0};
-std::atomic<uint64_t> thLess10{0};
-std::atomic<uint64_t> thLess20{0};
-std::atomic<uint64_t> thLess40{0};
-std::atomic<uint64_t> thMore40{0};
+util::TimerHistogram transHeaderHisto("transHeader Hist", {0.1, 1, 5, 10, 20, 40});
 
 
 /// Transmit the protoHeader
@@ -441,23 +364,8 @@ void QueryRunner::_transmitHeader(std::string& msg) {
         t.start();
         streamBuf->waitForDoneWithThis(); // Block until this buffer has been sent.
         t.stop();
-        double elapsed = t.getElapsed();
-        if (elapsed < 0.1) { ++thLessTenth; }
-        else if (elapsed < 1.0) { ++thLess1; }
-        else if (elapsed < 5.0) { ++thLess5; }
-        else if (elapsed < 10.0) { ++thLess10; }
-        else if (elapsed < 20.0) { ++thLess20; }
-        else if (elapsed < 40.0) { ++thLess40; }
-        else { ++thMore40; }
-
-        LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " h transmit waited for " << t.getElapsed() <<
-                " <0.1=" << thLessTenth <<
-                " <1=" << thLess1 <<
-                " <5=" << thLess5 <<
-                " <10=" << thLess10 <<
-                " <20=" << thLess20 <<
-                " <40=" << thLess40 <<
-                " >40=" << thMore40 );
+        auto logMsg = transHeaderHisto.addTime(t.getElapsed(), _task->getIdStr());
+        LOGS(_log, LOG_LVL_DEBUG, logMsg);
     } else {
         LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " _transmitHeader cancelled");
     }

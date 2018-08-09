@@ -116,7 +116,6 @@ MemFile::MLResult MemFile::memLock() {
 /******************************************************************************/
 
 int MemFile::memMap() {
-    //
     std::lock_guard<std::mutex> guard(_fileMutex);
 
     // If the file is already mapped, indicate success

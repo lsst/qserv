@@ -83,7 +83,7 @@ public:
     //! @return the time it took to mlock the file in seconds.
     //-----------------------------------------------------------------------------
 
-    double mlockTime() {return _mlockTime;}
+    double mlockTime() { return _mlockTime; }
 
     MemInfo() : _memAddr((void *)-1) {}
    ~MemInfo() {}

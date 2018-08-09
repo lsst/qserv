@@ -84,14 +84,14 @@ BlendScheduler::BlendScheduler(std::string const& name,
     assert(_scanSnail);
     int position = 0;
     _schedulers.push_back(_group); // _group scheduler must be first in the list.
-    _group->setPosition(position++);
+    _group->setDefaultPosition(position++);
     for (auto const& sched : scanSchedulers) {
         _schedulers.push_back(sched);
-        sched->setPosition(position++);
+        sched->setDefaultPosition(position++);
         sched->setBlendScheduler(this);
     }
     _schedulers.push_back(_scanSnail);
-    _scanSnail->setPosition(position++);
+    _scanSnail->setDefaultPosition(position++);
     assert(_schedulers.size() >= 2); // Must have at least _group and _scanSnail in the list.
     _sortScanSchedulers();
     for (auto sched : _schedulers) {
@@ -131,7 +131,7 @@ void BlendScheduler::_sortScanSchedulers() {
         }
 
         /// Order by original position in the list
-        return (a->getPosition() < b->getPosition());
+        return (a->getDefaultPosition() < b->getDefaultPosition());
     };
 
     std::sort(_schedulers.begin(), _schedulers.end(), lessThan);
@@ -283,7 +283,7 @@ bool BlendScheduler::_ready() {
     bool changed = _infoChanged.exchange(false);
 
     if (!ready) {
-        for (auto sched : _schedulers) {
+        for (auto&& sched : _schedulers) {
             availableThreads = sched->applyAvailableThreads(availableThreads);
             ready = sched->ready();
             if (changed && LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
@@ -332,7 +332,7 @@ util::Command::Ptr BlendScheduler::getCmd(bool wait) {
         }
 
         // Try to get a command from the schedulers
-        if (ready && _readySched != nullptr) {
+        if (ready && (_readySched != nullptr)) {
             cmd = _readySched->getCmd(false);
             if (cmd != nullptr) {
                 LOGS(_log, LOG_LVL_DEBUG, "Blend getCmd() using cmd from " << _readySched->getName());

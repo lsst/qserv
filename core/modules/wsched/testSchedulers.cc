@@ -408,7 +408,6 @@ BOOST_AUTO_TEST_CASE(ScanScheduleTest) {
     sched.commandFinish(tsk1);
     BOOST_CHECK(sched.getInFlight() == 0);
     BOOST_CHECK(sched.ready() == false);
-
 }
 
 
@@ -428,10 +427,10 @@ struct SchedFixture {
                 std::chrono::seconds(_examineAllSleep), 5);
         blend = std::make_shared<wsched::BlendScheduler>("blendSched", queries, maxThreads,
                 group, scanSlow, scanSchedulers);
-        group->setPosition(0);
-        scanFast->setPosition(1);
-        scanMed->setPosition(2);
-        scanSlow->setPosition(3);
+        group->setDefaultPosition(0);
+        scanFast->setDefaultPosition(1);
+        scanMed->setDefaultPosition(2);
+        scanSlow->setDefaultPosition(3);
         queries->setBlendScheduler(blend);
         queries->setRequiredTasksCompleted(1); // Make it easy to set a baseline.
     }
@@ -477,6 +476,7 @@ BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
 
     BOOST_CHECK(f.blend->ready() == false);
     BOOST_CHECK(f.blend->calcAvailableTheads() == 5);
+
     // Put one message on each scheduler except ScanFast, which gets 2.
     LOGS(_log, LOG_LVL_DEBUG, "BlendScheduleTest-1 add Tasks");
     Task::Ptr g1 = makeTask(newTaskMsgSimple(40, f.qIdInc++, 0));

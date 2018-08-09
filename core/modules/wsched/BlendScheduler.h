@@ -145,7 +145,7 @@ private:
 
     wpublish::QueriesAndChunks::Ptr _queries; /// UserQuery statistics.
 
-    bool _prioritizeByInFlight{false}; // Schedulers with more tasks inflight get lower priority.
+    std::atomic<bool> _prioritizeByInFlight{false}; // Schedulers with more tasks inflight get lower priority.
     SchedulerBase::Ptr _readySched; //< Pointer to the scheduler with a ready task.
 };
 

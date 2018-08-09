@@ -306,6 +306,8 @@ void QueryRequest::_queueAskForResponse(AskForResponseDataCmd::Ptr const& cmd, J
     } else if (rating <= proto::ScanInfo::Rating::SLOW) {
         if (not _largeResult) {
             _qdispPool->queCmd(cmd, 4);
+        } else {
+            _qdispPool->queCmd(cmd, 7);
         }
     } else {
         _qdispPool->queCmd(cmd, 7);

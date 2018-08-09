@@ -98,12 +98,7 @@ std::string Memory::filePath(std::string const& dbTable,
 /******************************************************************************/
 /*                               m e m L o c k                                */
 /******************************************************************************/
-
-std::atomic<uint64_t> lessThan1(0);
-std::atomic<uint64_t> lessThan10(0);
-std::atomic<uint64_t> lessThan20(0);
-std::atomic<uint64_t> lessThan40(0);
-std::atomic<uint64_t> over40(0);
+util::TimerHistogram mlockHisto("mlock Hist", {1, 10, 20, 40});
 
 int Memory::memLock(MemInfo& mInfo, bool isFlex) {
 
@@ -121,26 +116,10 @@ int Memory::memLock(MemInfo& mInfo, bool isFlex) {
         timer.start();
         result = mlock(mInfo._memAddr, mInfo._memSize);
         timer.stop();
-
     }
     mInfo._mlockTime = timer.getElapsed();
-    if (mInfo._mlockTime < 1.0) {
-        ++lessThan1;
-    } else if (mInfo._mlockTime < 10.0) {
-        ++lessThan10;
-    } else if (mInfo._mlockTime < 20.0) {
-        ++lessThan20;
-    } else if (mInfo._mlockTime < 40.0) {
-        ++lessThan40;
-    } else {
-        ++over40;
-    }
-    LOGS(_log, LOG_LVL_DEBUG, "mlock stop " << mInfo._mlockTime <<
-            " <1=" << lessThan1 <<
-            " <10=" << lessThan10 <<
-            " <20=" << lessThan20 <<
-            " <40=" << lessThan40 <<
-            " >40=" << over40);
+    auto logMsg = mlockHisto.addTime(mInfo._mlockTime, LOG_CHECK_DEBUG() ? "a":"");
+    LOGS(_log, LOG_LVL_DEBUG, logMsg);
 
     if (!result) {
         std::lock_guard<std::mutex> guard(_memMutex);
