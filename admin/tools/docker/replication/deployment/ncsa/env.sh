@@ -86,3 +86,72 @@ CONFIG="mysql://qsreplica@lsst-qserv-${MASTER}:${DB_PORT}/qservReplica"
 MASTER_PARAMETERS="--worker-evict-timeout=240"
 
 unset basedir
+
+
+# Parse command-line options
+
+HELP="
+General usage:
+
+    ${0} [OPTIONS]
+
+General options:
+
+    -h|--help
+        print this help
+
+Options restricting a scope of the operation:
+
+    -w=<name>|--worker=<name>
+        select one worker only
+
+    -m|--master
+        master controller
+
+    -d|--db
+        database service
+"
+
+ALL=1
+WORKER=
+MASTER_CONTROLLER=
+DB_SERVICE=
+
+for i in "$@"; do
+    case $i in
+    -w=*|--worker=*)
+        ALL=
+        WORKER="${i#*=}"
+        if [ "${WORKER}" == "*" ]; then
+            WORKER=$WORKERS
+        fi
+        shift
+        ;;
+    -m|--master)
+        ALL=
+        MASTER_CONTROLLER=1
+        shift
+        ;;
+    -d|--db)
+        ALL=
+        DB_SERVICE=1
+        shift # past argument
+        ;;
+    -h|--help)
+        (>&2 echo "${HELP}")
+        exit 2
+        ;;
+    *)
+        (>&2 echo "error: unknown option '${i}'${HELP}")
+        ;;
+    esac
+done
+if [ ! -z "${ALL}" ]; then
+    MASTER_CONTROLLER=1
+    DB_SERVICE=1
+else
+    WORKERS=$WORKER
+fi
+unset HELP
+unset ALL
+unset WORKER

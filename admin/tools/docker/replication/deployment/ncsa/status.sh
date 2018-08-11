@@ -30,13 +30,17 @@ set -e
 
 . $(dirname $0)/env.sh
 
-HOST="qserv-${MASTER}"
-ssh -n $HOST 'echo '$MASTER'": "$(docker ps -a | grep '$DB_CONTAINER_NAME')'
-
-HOST="qserv-${MASTER}"
-ssh -n $HOST 'echo '$MASTER'": "$(docker ps -a | grep '$MASTER_CONTAINER_NAME')'
+if [ ! -z "${MASTER_CONTROLLER}" ]; then
+    HOST="qserv-${MASTER}"
+    ssh -n $HOST 'echo "["'$MASTER'"] master controller: "$(docker ps -a | grep '$MASTER_CONTAINER_NAME')'
+fi
 
 for WORKER in $WORKERS; do
     HOST="qserv-${WORKER}"
-    ssh -n $HOST 'echo '$WORKER'": "$(docker ps -a | grep '$WORKER_CONTAINER_NAME')'
+    ssh -n $HOST 'echo "["'$WORKER'"] worker agent: "$(docker ps -a | grep '$WORKER_CONTAINER_NAME')'
 done
+
+if [ ! -z "${DB_SERVICE}" ]; then
+    HOST="qserv-${MASTER}"
+    ssh -n $HOST 'echo "["'$MASTER'"] database service: "$(docker ps -a | grep '$DB_CONTAINER_NAME')'
+fi
