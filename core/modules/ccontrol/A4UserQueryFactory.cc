@@ -76,12 +76,10 @@ shared_ptr<query::SelectStmt> a4NewUserQuery(const string& userQuery) {
     QSMySqlLexer lexer(&input);
     CommonTokenStream tokens(&lexer);
     tokens.fill();
-
-    LOGS(_log, LOG_LVL_DEBUG, "New user query, antlr4 tokens: " <<  util::printable(getTokenPairs(tokens, lexer)));
-
+    LOGS(_log, LOG_LVL_TRACE, "New user query, antlr4 tokens: " <<  util::printable(getTokenPairs(tokens, lexer)));
     QSMySqlParser parser(&tokens);
     tree::ParseTree *tree = parser.root();
-    LOGS(_log, LOG_LVL_DEBUG, "New user query, antlr4 string tree: " << tree->toStringTree(&parser));
+    LOGS(_log, LOG_LVL_TRACE, "New user query, antlr4 string tree: " << tree->toStringTree(&parser));
     tree::ParseTreeWalker walker;
     parser::QSMySqlListener listener;
     walker.walk(&listener, tree);
