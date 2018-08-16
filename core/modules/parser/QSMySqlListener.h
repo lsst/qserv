@@ -54,7 +54,7 @@ public:
 
     // For error messages, returns a comma delimited list of the names of adapters currently in the adapter
     // stack.
-    std::string printAdapterStack() const;
+    std::string adapterStackToString() const;
 
 protected:
 

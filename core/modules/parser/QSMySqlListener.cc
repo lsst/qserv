@@ -139,7 +139,7 @@ if (false == (CONDITION)) { \
         msg << getTypeName(this) << "::" << __FUNCTION__; \
         msg << " messsage:\"" << MESSAGE << "\""; \
         msg << ", in or around query segment: '" << getQueryString(CTX) << "'"; \
-        msg << ", with adapter stack:" << printAdapterStack(); \
+        msg << ", with adapter stack:" << adapterStackToString(); \
         throw adapter_execution_error(msg.str()); \
     } \
 } \
@@ -531,7 +531,7 @@ protected:
 
     // Used for error messages, uses the QSMySqlListener to get a list of the names of the adapters in the
     // adapter stack,
-    std::string printAdapterStack() const { return qsMySqlListener->printAdapterStack(); }
+    std::string adapterStackToString() const { return qsMySqlListener->adapterStackToString(); }
 
 private:
     // Mostly the QSMySqlListener is not used by adapters. It is needed to get the adapter stack list for
@@ -567,7 +567,7 @@ public:
 
     string name() const override { return getTypeName(this); }
 
-    std::string printAdapterStack() const { return qsMySqlListener->printAdapterStack(); }
+    std::string adapterStackToString() const { return qsMySqlListener->adapterStackToString(); }
 
 private:
     shared_ptr<query::SelectStmt> _selectStatement;
@@ -2386,7 +2386,7 @@ void QSMySqlListener::popAdapterStack(antlr4::ParserRuleContext* ctx) {
 }
 
 
-string QSMySqlListener::printAdapterStack() const {
+string QSMySqlListener::adapterStackToString() const {
     string ret;
     for (auto&& adapter : _adapterStack) {
         ret += adapter->name() + ", ";
