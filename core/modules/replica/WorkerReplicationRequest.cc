@@ -271,14 +271,14 @@ bool WorkerReplicationRequestPOSIX::execute () {
             totalBytes += fs::file_size(file, ec);
             errorContext = errorContext
                 or reportErrorIf(
-                        ec,
+                        ec.value() != 0,
                         ExtendedCompletionStatus::EXT_STATUS_FILE_SIZE,
                         "failed to get the size of input file: " + file.string());
 
             inFile2mtime[file] = fs::last_write_time(file, ec);
             errorContext = errorContext
                 or reportErrorIf(
-                        ec,
+                        ec.value() != 0,
                         ExtendedCompletionStatus::EXT_STATUS_FILE_MTIME,
                         "failed to get the mtime of input file: " + file.string());
         }
@@ -288,7 +288,7 @@ bool WorkerReplicationRequestPOSIX::execute () {
         bool const outDirExists = fs::exists(outDir, ec);
         errorContext = errorContext
             or reportErrorIf(
-                    ec,
+                    ec.value() != 0,
                     ExtendedCompletionStatus::EXT_STATUS_FOLDER_STAT,
                     "failed to check the status of output directory: " + outDir.string())
             or reportErrorIf(
@@ -327,7 +327,7 @@ bool WorkerReplicationRequestPOSIX::execute () {
                 fs::remove(file, ec);
                 errorContext = errorContext
                     or reportErrorIf(
-                            ec,
+                            ec.value() != 0,
                             ExtendedCompletionStatus::EXT_STATUS_FILE_DELETE,
                             "failed to remove temporary file: " + file.string());
             }
@@ -341,7 +341,7 @@ bool WorkerReplicationRequestPOSIX::execute () {
         fs::space_info const space = fs::space(outDir, ec);
         errorContext = errorContext
             or reportErrorIf(
-                    ec,
+                    ec.value() != 0,
                     ExtendedCompletionStatus::EXT_STATUS_SPACE_REQ,
                     "failed to obtaine space information at output folder: " + outDir.string())
             or reportErrorIf(
@@ -365,7 +365,7 @@ bool WorkerReplicationRequestPOSIX::execute () {
         fs::copy_file(inFile, tmpFile, ec);
         errorContext = errorContext
             or reportErrorIf(
-                    ec,
+                    ec.value() != 0,
                     ExtendedCompletionStatus::EXT_STATUS_FILE_COPY,
                     "failed to copy file: " + inFile.string() + " into: " + tmpFile.string());
     }
@@ -395,14 +395,14 @@ bool WorkerReplicationRequestPOSIX::execute () {
             fs::rename(tmpFile, outFile, ec);
             errorContext = errorContext
                 or reportErrorIf(
-                        ec,
+                        ec.value() != 0,
                         ExtendedCompletionStatus::EXT_STATUS_FILE_RENAME,
                         "failed to rename file: " + tmpFile.string());
 
             fs::last_write_time(outFile, inFile2mtime[inFile], ec);
             errorContext = errorContext
                 or reportErrorIf(
-                        ec,
+                        ec.value() != 0,
                         ExtendedCompletionStatus::EXT_STATUS_FILE_MTIME,
                         "failed to set the mtime of output file: " + outFile.string());
         }
@@ -580,7 +580,7 @@ bool WorkerReplicationRequestFS::execute () {
             bool const outDirExists = fs::exists(outDir, ec);
             errorContext = errorContext
                 or reportErrorIf(
-                        ec,
+                        ec.value() != 0,
                         ExtendedCompletionStatus::EXT_STATUS_FOLDER_STAT,
                         "failed to check the status of output directory: " + outDir.string())
                 or reportErrorIf(
@@ -619,7 +619,7 @@ bool WorkerReplicationRequestFS::execute () {
                     fs::remove(file, ec);
                     errorContext = errorContext
                         or reportErrorIf(
-                                ec,
+                                ec.value() != 0,
                                 ExtendedCompletionStatus::EXT_STATUS_FILE_DELETE,
                                 "failed to remove temporary file: " + file.string());
                 }
@@ -633,7 +633,7 @@ bool WorkerReplicationRequestFS::execute () {
             fs::space_info const space = fs::space(outDir, ec);
             errorContext = errorContext
                 or reportErrorIf(
-                        ec,
+                        ec.value() != 0,
                         ExtendedCompletionStatus::EXT_STATUS_SPACE_REQ,
                         "failed to obtaine space information at output folder: " + outDir.string())
                 or reportErrorIf(
@@ -667,7 +667,7 @@ bool WorkerReplicationRequestFS::execute () {
                 fs::resize_file(tmpFile, file2size[file], ec);
                 errorContext = errorContext
                     or reportErrorIf(
-                            ec,
+                            ec.value() != 0,
                             ExtendedCompletionStatus::EXT_STATUS_FILE_RESIZE,
                             "failed to resize the temporary file: " + tmpFile.string());
             }
@@ -860,14 +860,14 @@ bool WorkerReplicationRequestFS::finalize(util::Lock const& lock) {
         fs::rename(tmpFile, outFile, ec);
         errorContext = errorContext
             or reportErrorIf (
-                    ec,
+                    ec.value() != 0,
                     ExtendedCompletionStatus::EXT_STATUS_FILE_RENAME,
                     "failed to rename file: " + tmpFile.string());
 
         fs::last_write_time(outFile, _file2descr[file].mtime, ec);
         errorContext = errorContext
             or reportErrorIf (
-                    ec,
+                    ec.value() != 0,
                     ExtendedCompletionStatus::EXT_STATUS_FILE_MTIME,
                     "failed to change 'mtime' of file: " + tmpFile.string());
     }

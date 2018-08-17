@@ -50,7 +50,7 @@ std::string const context = "CONNECTION  ";
 bool isErrorCode(boost::system::error_code const& ec,
                  std::string const& scope) {
 
-    if (ec) {
+    if (ec.value() != 0) {
         if (ec == boost::asio::error::eof) {
             LOGS(_log, LOG_LVL_DEBUG, context << scope << "  ** closed **");
         } else {

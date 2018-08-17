@@ -122,14 +122,14 @@ bool FileClient::openImpl() {
                 std::to_string(_workerInfo.fsPort)),
         ec
     );
-    if (ec) {
+    if (ec.value() != 0) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed to resolve the server: "
              << _workerInfo.svcHost << ":" << _workerInfo.fsPort
              << ", error: " << ec.message());
         return false;
     }
     boost::asio::connect(_socket, iter, ec);
-    if (ec) {
+    if (ec.value() != 0) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed to connect to the server: "
              << _workerInfo.svcHost << ":" << _workerInfo.fsPort
              << ", error: " << ec.message());
@@ -166,7 +166,7 @@ bool FileClient::openImpl() {
             ),
             ec
         );
-        if (ec) {
+        if (ec.value() != 0) {
             LOGS(_log, LOG_LVL_ERROR, context
                  << "failed to send the file open request to the server: "
                  << _workerInfo.svcHost << ":" << _workerInfo.fsPort
@@ -193,7 +193,7 @@ bool FileClient::openImpl() {
             boost::asio::transfer_at_least(frameLengthBytes),
             ec
         );
-        if (ec) {
+        if (ec.value() != 0) {
             LOGS(_log, LOG_LVL_ERROR, context
                  << "failed to receive the file open response frame header from the server: "
                  << _workerInfo.svcHost << ":" << _workerInfo.fsPort
@@ -218,7 +218,7 @@ bool FileClient::openImpl() {
             boost::asio::transfer_at_least(responseLengthBytes),
             ec
         );
-        if (ec) {
+        if (ec.value() != 0) {
             LOGS(_log, LOG_LVL_ERROR, context
                  << "failed to receive the file open response from the server: "
                  << _workerInfo.svcHost << ":" << _workerInfo.fsPort
@@ -281,7 +281,7 @@ size_t FileClient::read(uint8_t* buf, size_t bufSize) {
         boost::asio::transfer_at_least(bufSize),
         ec
     );
-    if (ec) {
+    if (ec.value() != 0) {
         // The connection may be closed by the server after transferring
         // some amount of byte. We just need to store this status for future attempts
         // to read data from the file.

@@ -217,14 +217,14 @@ bool WorkerFindAllRequestPOSIX::execute() {
                     uint64_t const size = fs::file_size(entry.path(), ec);
                     errorContext = errorContext
                         or reportErrorIf(
-                                ec,
+                                ec.value() != 0,
                                 ExtendedCompletionStatus::EXT_STATUS_FILE_SIZE,
                                 "failed to read file size: " + entry.path().string());
 
                     std::time_t const mtime = fs::last_write_time(entry.path(), ec);
                     errorContext = errorContext
                         or reportErrorIf(
-                                ec,
+                                ec.value() != 0,
                                 ExtendedCompletionStatus::EXT_STATUS_FILE_MTIME,
                                 "failed to read file mtime: " + entry.path().string());
 

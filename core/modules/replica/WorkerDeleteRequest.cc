@@ -204,7 +204,7 @@ bool WorkerDeleteRequestPOSIX::execute() {
             if (fs::remove(file, ec)) ++numFilesDeleted;
             errorContext = errorContext
                 or reportErrorIf(
-                        ec,
+                        ec.value() != 0,
                         ExtendedCompletionStatus::EXT_STATUS_FILE_DELETE,
                         "failed to delete file: " + file.string());
         }
