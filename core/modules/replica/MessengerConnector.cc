@@ -260,7 +260,7 @@ void MessengerConnector::resolved(boost::system::error_code const& ec,
 
     util::Lock lock(_mtx, context() + "resolved");
 
-    if (ec) {
+    if (ec.value() != 0) {
         waitBeforeRestart(lock);
     } else {
         connect(lock, iter);
@@ -295,7 +295,7 @@ void MessengerConnector::connected(boost::system::error_code const& ec,
 
     util::Lock lock(_mtx, context() + "connected");
 
-    if (ec) {
+    if (ec.value() != 0) {
         waitBeforeRestart(lock);
     } else {
         _state = STATE_COMMUNICATING;
@@ -388,7 +388,7 @@ void MessengerConnector::requestSent(boost::system::error_code const& ec,
     if (_currentRequest) {
 
         // The requst is still valid
-        if (ec) {
+        if (ec.value() != 0) {
 
             // If something bad happened along the line then make sure this request
             // will be the first to be served before restarting the communication.
@@ -482,7 +482,7 @@ void MessengerConnector::responseReceived(boost::system::error_code const& ec,
             std::swap(request2notify, _currentRequest);
 
             // The requst is still valid
-            if (ec) {
+            if (ec.value() != 0) {
 
                 // Failed to get any response from a worker
 
@@ -495,7 +495,7 @@ void MessengerConnector::responseReceived(boost::system::error_code const& ec,
                 if (syncReadVerifyHeader(lock,
                                          _inBuffer,
                                          _inBuffer.parseLength(),
-                                         request2notify->id())) {
+                                         request2notify->id()).value() != 0) {
 
                     // Failed to receive the header
 
@@ -508,7 +508,7 @@ void MessengerConnector::responseReceived(boost::system::error_code const& ec,
                     size_t bytes;
                     if (syncReadFrame(lock,
                                       _inBuffer,
-                                      bytes)) {
+                                      bytes).value() != 0) {
 
                         // Failed to read the frame
 
@@ -524,7 +524,7 @@ void MessengerConnector::responseReceived(boost::system::error_code const& ec,
 
                         if (syncReadMessageImpl(lock,
                                                 request2notify->responseBuffer(),
-                                                bytes)) {
+                                                bytes).value() != 0) {
 
                             // Failed to read the message body
 
@@ -551,7 +551,7 @@ void MessengerConnector::responseReceived(boost::system::error_code const& ec,
             // before the cancellation attempt was made. So, we just forget about
             // this request and send no notification to a caller.
 
-            if (ec) {
+            if (ec.value() != 0) {
                 restart(lock);
             } else {
                 sendRequest(lock);
@@ -585,7 +585,7 @@ boost::system::error_code MessengerConnector::syncReadFrame(util::Lock const& lo
          << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : "")
          << " error_code=" << ec);
 
-    if (not ec) bytes = buf.parseLength();
+    if (ec.value() == 0) bytes = buf.parseLength();
     return ec;
 }
 
@@ -597,7 +597,7 @@ boost::system::error_code MessengerConnector::syncReadVerifyHeader(util::Lock co
         syncReadMessageImpl(lock,
                             buf,
                             bytes);
-    if (not ec) {
+    if (ec.value() == 0) {
         proto::ReplicationResponseHeader hdr;
         buf.parse(hdr, bytes);
         if (id != hdr.id()) {

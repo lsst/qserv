@@ -113,7 +113,7 @@ void FileServer::beginAccept() {
 
 void FileServer::handleAccept(FileServerConnection::Ptr const& connection,
                               boost::system::error_code const& ec) {
-    if (not ec) {
+    if (ec.value() == 0) {
         connection->beginProtocol();
     } else {
         LOGS(_log, LOG_LVL_DEBUG, context() << "handleAccept  ec:" << ec);

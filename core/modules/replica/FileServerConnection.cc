@@ -60,7 +60,7 @@ std::string const context = "FILE-SERVER-CONNECTION  ";
 
 bool isErrorCode(boost::system::error_code const& ec,
                  std::string const& scope) {
-    if (ec) {
+    if (ec.value() != 0) {
         if (ec == boost::asio::error::eof) {
             LOGS(_log, LOG_LVL_DEBUG, context << scope << "  ** closed **");
         } else {
@@ -194,7 +194,7 @@ void FileServerConnection::requestReceived(boost::system::error_code const& ec,
 
     LOGS(_log, LOG_LVL_DEBUG, context << "requestReceived");
 
-    if (::isErrorCode (ec, "requestReceived")) return;
+    if (::isErrorCode(ec, "requestReceived")) return;
 
     // Now read the body of the request
 
@@ -230,13 +230,13 @@ void FileServerConnection::requestReceived(boost::system::error_code const& ec,
         }
 
         size = fs::file_size(file, ec);
-        if (ec) {
+        if (ec.value() != 0) {
             LOGS(_log, LOG_LVL_ERROR, context
                  << "requestReceived  failed to get the file size of: " << file);
             break;
         }
         mtime = fs::last_write_time(file, ec);
-        if (ec) {
+        if (ec.value() != 0) {
             LOGS(_log, LOG_LVL_ERROR, context
                  << "requestReceived  failed to get file mtime of: " << file);
             break;
@@ -295,7 +295,7 @@ void FileServerConnection::responseSent(boost::system::error_code const& ec,
 
     LOGS(_log, LOG_LVL_DEBUG, context << "responseSent");
 
-    if (::isErrorCode (ec, "sent")) return;
+    if (::isErrorCode(ec, "sent")) return;
 
     // If the file pointer is not set it means one of two reasons:
     //
@@ -358,7 +358,7 @@ void FileServerConnection::dataSent(boost::system::error_code const& ec,
 
     LOGS(_log, LOG_LVL_DEBUG, context << "dataSent");
 
-    if (::isErrorCode (ec, "dataSent")) return;
+    if (::isErrorCode(ec, "dataSent")) return;
 
     sendData();
 }

@@ -110,7 +110,7 @@ void WorkerServer::beginAccept() {
 void WorkerServer::handleAccept(WorkerServerConnection::Ptr const& connection,
                                 boost::system::error_code const& ec) {
 
-    if (not ec) {
+    if (ec.value() == 0) {
         connection->beginProtocol();
     } else {
 

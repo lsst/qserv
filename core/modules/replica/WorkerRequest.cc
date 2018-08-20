@@ -241,11 +241,13 @@ void WorkerRequest::setStatus(util::Lock const& lock,
 
         case STATUS_CANCELLED:
 
-            // Intercept this status before two others and set the start time to some
-            // meaninful value in case if the request was cancelled while it was sitting
-            // in the input queue before any attempt to execute the one was undertaken
+            // Set the start time to some meaninful value in case if the request was
+            // cancelled while sitting in the input queue
 
             if (0 == _performance.start_time) _performance.setUpdateStart();
+
+            _performance.setUpdateFinish();
+            break;
 
         case STATUS_SUCCEEDED:
         case STATUS_FAILED:
