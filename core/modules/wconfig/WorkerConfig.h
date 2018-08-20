@@ -197,7 +197,7 @@ public:
      *
      * @return fast shared scan priority
      */
-    unsigned int const getPriorityFast() const {
+    unsigned int getPriorityFast() const {
         return _priorityFast;
     }
 
@@ -205,7 +205,7 @@ public:
      *
      * @return medium shared scan priority
      */
-    unsigned int const getPriorityMed() const {
+    unsigned int getPriorityMed() const {
         return _priorityMed;
     }
 
@@ -213,7 +213,7 @@ public:
      *
      * @return slow shared scan priority
      */
-    unsigned int const getPrioritySlow() const {
+    unsigned int getPrioritySlow() const {
         return _prioritySlow;
     }
 
@@ -221,7 +221,7 @@ public:
      *
      * @return slow shared scan priority
      */
-    unsigned int const getPrioritySnail() const {
+    unsigned int getPrioritySnail() const {
         return _prioritySnail;
     }
 
@@ -229,7 +229,7 @@ public:
       *
       * @return fast shared scan maxActiveChunks.
       */
-     unsigned int const getMaxActiveChunksFast() const {
+     unsigned int getMaxActiveChunksFast() const {
          return _maxActiveChunksFast;
      }
 
@@ -237,7 +237,7 @@ public:
       *
       * @return medium shared scan maxActiveChunks.
       */
-     unsigned int const getMaxActiveChunksMed() const {
+     unsigned int getMaxActiveChunksMed() const {
          return _maxActiveChunksMed;
      }
 
@@ -245,7 +245,7 @@ public:
       *
       * @return slow shared scan maxActiveChunks.
       */
-     unsigned int const getMaxActiveChunksSlow() const {
+     unsigned int getMaxActiveChunksSlow() const {
          return _maxActiveChunksSlow;
      }
 
@@ -253,7 +253,7 @@ public:
       *
       * @return snail shared scan maxActiveChunks.
       */
-     unsigned int const getMaxActiveChunksSnail() const {
+     unsigned int getMaxActiveChunksSnail() const {
          return _maxActiveChunksSnail;
      }
 
