@@ -96,9 +96,7 @@ bool ColumnRef::isSubsetOf(const ColumnRef::Ptr & rhs) const {
 
 
 bool ColumnRef::operator==(const ColumnRef& rhs) const {
-    return db == rhs.db &&
-            table == rhs.table &&
-            column == rhs.column;
+    return std::tie(db, table, column) == std::tie(rhs.db, rhs.table, rhs.column);
 }
 
 
