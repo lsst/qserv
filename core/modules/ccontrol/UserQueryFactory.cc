@@ -176,13 +176,15 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
         try {
             a2stmt = antlr2NewSelectStmt(query);
         } catch(parser::ParseException const& e) {
-            return std::make_shared<UserQueryInvalid>(std::string("ParseException:") + e.what());
+            LOGS(_log, LOG_LVL_DEBUG, "antlr v2 parse exception: " << e.what());
+        }
+        if (a2stmt != nullptr) {
+			LOGS(_log, LOG_LVL_DEBUG, "Old-style generated select statement: " << a2stmt->getQueryTemplate());
+			LOGS(_log, LOG_LVL_DEBUG, "Old-style Hierarchy: " << *a2stmt);
         }
         LOGS(_log, LOG_LVL_DEBUG, "Old-style generated select statement: " << a2stmt->getQueryTemplate());
         LOGS(_log, LOG_LVL_DEBUG, "Old-style Hierarchy: " << *a2stmt);
 #endif
-
-
 
         // handle special database/table names
         auto&& tblRefList = stmt->getFromList().getTableRefList();

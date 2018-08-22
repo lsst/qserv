@@ -372,7 +372,7 @@ public:
 
 class ScalarFunctionCallCBH : public BaseCBH {
 public:
-    virtual void handleScalarFunctionCall(shared_ptr<query::ValueFactor> const & funcValueFactor) = 0;
+    virtual void handleScalarFunctionCall(shared_ptr<query::FuncExpr> const & funcExpr) = 0;
 };
 
 
@@ -958,10 +958,16 @@ public:
         shared_ptr<query::ValueFactor> valueFactor;
         switch(_strings.size()) {
         case 1:
+            // only 1 value is set in strings; it is the column name.
             valueFactor = ValueFactorFactory::newColumnColumnFactor("", "", _strings[0]);
             break;
         case 2:
+            // 2 values are set in strings; they are table and column name.
             valueFactor = ValueFactorFactory::newColumnColumnFactor("", _strings[0], _strings[1]);
+            break;
+        case 3:
+            // 3 values are set in strings; they are database name, table name, and column name.
+            valueFactor = ValueFactorFactory::newColumnColumnFactor(_strings[0], _strings[1], _strings[2]);
             break;
         default:
             ASSERT_EXECUTION_CONDITION(false, "Unhandled number of strings.", _ctx);
@@ -1431,10 +1437,10 @@ public:
         _functionValueFactor = query::ValueFactor::newFuncFactor(funcExpr);
     }
 
-    void handleScalarFunctionCall(shared_ptr<query::ValueFactor> const & funcValueFactor) override {
+    void handleScalarFunctionCall(shared_ptr<query::FuncExpr> const & funcExpr) override {
         ASSERT_EXECUTION_CONDITION(nullptr == _functionValueFactor, "should only be set once.",
                 _ctx);
-        _functionValueFactor = funcValueFactor;
+        _functionValueFactor = query::ValueFactor::newFuncFactor(funcExpr);
     }
 
     void onExit() override {
@@ -1721,8 +1727,7 @@ public:
         ASSERT_EXECUTION_CONDITION(_valueExprs.empty() == false && _name.empty() == false,
                 "valueExprs or name is not populated.", _ctx);
         auto funcExpr = query::FuncExpr::newWithArgs(_name, _valueExprs);
-        auto valueFactor = query::ValueFactor::newFuncFactor(funcExpr);
-        lockedParent()->handleScalarFunctionCall(valueFactor);
+        lockedParent()->handleScalarFunctionCall(funcExpr);
     }
 
     string name() const override { return getTypeName(this); }
@@ -1839,7 +1844,8 @@ private:
 class FunctionArgsAdapter :
         public AdapterT<FunctionArgsCBH, QSMySqlParser::FunctionArgsContext>,
         public ConstantCBH,
-        public FullColumnNameCBH {
+        public FullColumnNameCBH,
+        public ScalarFunctionCallCBH{
 public:
     using AdapterT::AdapterT;
 
@@ -1853,6 +1859,12 @@ public:
     void handleFullColumnName(shared_ptr<query::ValueFactor> const & columnName) override {
         auto valueExpr = make_shared<query::ValueExpr>();
         ValueExprFactory::addValueFactor(valueExpr, columnName);
+        _args.push_back(valueExpr);
+    }
+
+    void handleScalarFunctionCall(shared_ptr<query::FuncExpr> const & funcExpr) {
+        auto valueExpr = make_shared<query::ValueExpr>();
+        ValueExprFactory::addFuncExpr(valueExpr, funcExpr);
         _args.push_back(valueExpr);
     }
 
@@ -2252,11 +2264,17 @@ private:
 
 class FunctionCallExpressionAtomAdapter :
         public AdapterT<FunctionCallExpressionAtomCBH, QSMySqlParser::FunctionCallExpressionAtomContext>,
-        public UdfFunctionCallCBH {
+        public UdfFunctionCallCBH,
+        public ScalarFunctionCallCBH {
 public:
     using AdapterT::AdapterT;
 
     void handleUdfFunctionCall(shared_ptr<query::FuncExpr> const & funcExpr) override {
+        ASSERT_EXECUTION_CONDITION(_funcExpr == nullptr, "the funcExpr must be set only once.", _ctx)
+        _funcExpr = funcExpr;
+    }
+
+    void handleScalarFunctionCall(shared_ptr<query::FuncExpr> const & funcExpr) override {
         ASSERT_EXECUTION_CONDITION(_funcExpr == nullptr, "the funcExpr must be set only once.", _ctx)
         _funcExpr = funcExpr;
     }

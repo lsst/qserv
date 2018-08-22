@@ -33,6 +33,7 @@
 
 // System headers
 #include <iostream>
+#include <tuple>
 
 // Qserv headers
 #include "query/QueryTemplate.h"
@@ -64,11 +65,43 @@ void ColumnRef::renderTo(QueryTemplate& qt) const {
     qt.append(*this);
 }
 
-bool ColumnRef::operator==(const ColumnRef& rhs) const {
-    return db == rhs.db &&
-            table == rhs.table &&
-            column == rhs.column;
+bool ColumnRef::isSubsetOf(const ColumnRef::Ptr & rhs) const {
+    // the columns can not be empty
+    if (column.empty() || rhs->column.empty()) {
+        return false;
+    }
+    // if the table is empty, the db must be empty
+    if (table.empty() && !db.empty()) {
+        return false;
+    }
+    if (rhs->table.empty() && !rhs->db.empty()) {
+        return false;
+    }
 
+    if (!db.empty()) {
+        if (db != rhs->db) {
+            return false;
+        }
+    }
+    if (!table.empty()) {
+        if (table != rhs->table) {
+            return false;
+        }
+    }
+    if (column != rhs->column) {
+        return false;
+    }
+    return true;
+}
+
+
+bool ColumnRef::operator==(const ColumnRef& rhs) const {
+    return std::tie(db, table, column) == std::tie(rhs.db, rhs.table, rhs.column);
+}
+
+
+bool ColumnRef::operator<(const ColumnRef& rhs) const {
+    return std::tie(db, table, column) < std::tie(rhs.db, rhs.table, rhs.column);
 }
 
 
