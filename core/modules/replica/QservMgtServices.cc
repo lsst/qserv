@@ -63,8 +63,14 @@ struct QservMgtRequestWrapperImpl
 
     /// The implementation of the virtual method defined in the base class
     void notify() const final {
-        if (_onFinish == nullptr) return;
-        _onFinish(_request);
+
+        LOGS(_log, LOG_LVL_DEBUG, _request->context()
+             << "QservMgtRequestWrapperImpl  1:notify  _request.use_count: " << _request.use_count());
+
+        if (_onFinish != nullptr) _onFinish(_request);
+
+        LOGS(_log, LOG_LVL_DEBUG, _request->context()
+             << "QservMgtRequestWrapperImpl  1:notify  _request.use_count: " << _request.use_count());
     }
 
     QservMgtRequestWrapperImpl(typename T::Ptr const& request,
@@ -72,10 +78,16 @@ struct QservMgtRequestWrapperImpl
         :   QservMgtRequestWrapper(),
             _request(request),
             _onFinish(onFinish) {
+
+        LOGS(_log, LOG_LVL_DEBUG, _request->context()
+             << "QservMgtRequestWrapperImpl  constructed  _request.use_count: " << _request.use_count());
     }
 
     /// Destructor
-    ~QservMgtRequestWrapperImpl() override = default;
+    ~QservMgtRequestWrapperImpl() override {
+        LOGS(_log, LOG_LVL_DEBUG, _request->context()
+             << "QservMgtRequestWrapperImpl  destructed  _request.use_count: " << _request.use_count());
+    }
 
     /// Implement a virtual method of the base class
     std::shared_ptr<QservMgtRequest> request() const override {
@@ -95,16 +107,65 @@ private:
 ////////////////////////////////////////////////////////////////////////
 
 QservMgtServices::Ptr QservMgtServices::create(ServiceProvider::Ptr const& serviceProvider) {
-    return QservMgtServices::Ptr(
-        new QservMgtServices(serviceProvider));
+    auto ptr = QservMgtServices::Ptr(new QservMgtServices(serviceProvider));
+    ptr->run();
+    return ptr;
 }
 
 QservMgtServices::QservMgtServices(ServiceProvider::Ptr const& serviceProvider)
-    :   _serviceProvider(serviceProvider),
-        _io_service(),
-        _work(nullptr),
-        _registry() {
+    :   _serviceProvider(serviceProvider) {
 }
+
+QservMgtServices::~QservMgtServices() {
+    stop();
+}
+
+void QservMgtServices::run() {
+
+    if (nullptr == _thread) {
+
+        // Start Boost I/O services in its own thread
+    
+        _work.reset(new boost::asio::io_service::work(_io_service));
+    
+        auto const self = shared_from_this();
+    
+        _thread.reset(new std::thread(
+            [self] () {
+    
+                // This will prevent the I/O service from exiting the .run()
+                // method event when it will run out of any requests to process.
+                // Unless the service will be explicitly stopped.
+                self->_io_service.run();
+            }
+        ));
+    }
+}
+
+void QservMgtServices::stop() {
+
+    if (nullptr != _thread) {
+
+        // Destroying this object will let the I/O service to (eventually) finish
+        // all on-going work and shut down the I/O threads. In that case there
+        // is no need to stop the service explicitly (which is not a good idea anyway
+        // because there may be outstanding synchronous requests, in which case the service
+        // would get into an unpredictanle state.)
+    
+        _work.reset();
+    
+        // At this point all outstanding requests should finish and the thread
+        // should stop as well.
+        _thread->join();
+    
+        // Always do so in order to put service into a clean state. This will prepare
+        // it for further usage.
+        _io_service.reset();
+    
+        _thread.reset();
+    }
+}
+
 
 AddReplicaQservMgtRequest::Ptr QservMgtServices::addReplica(
                                         unsigned int chunk,
@@ -356,13 +417,17 @@ TestEchoQservMgtRequest::Ptr QservMgtServices::echo(
                    jobId,
                    requestExpirationIvalSec);
 
+    LOGS(_log, LOG_LVL_DEBUG, request->context()
+         << "QservMgtServices::echo  request.use_count: " << request.use_count());
+
     return request;
 }
 
-
-
-
 void QservMgtServices::finish(std::string const& id) {
+
+    std::string const context = id + "  QservMgtServices::finish  ";
+
+    LOGS(_log, LOG_LVL_DEBUG, context);
 
     // IMPORTANT:
     //
@@ -376,19 +441,22 @@ void QservMgtServices::finish(std::string const& id) {
     //   - it will reduce the controller API dead-time due to a prolonged
     //     execution time of of the callback function.
 
-    QservMgtRequestWrapper::Ptr request;
+    QservMgtRequestWrapper::Ptr requestWrapper;
     {
-        util::Lock lock(_mtx, "QservMgtServices::finish");
-        auto&& ptr = _registry.find(id);
-        if (ptr == _registry.end()) {
+        util::Lock lock(_mtx, context);
+        auto&& itr = _registry.find(id);
+        if (itr == _registry.end()) {
             throw std::logic_error(
                         "QservMgtServices::finish: request identifier " + id +
                         " is no longer valid. Check the loginc of the application.");
         }
-        request = ptr->second;
-        _registry.erase(ptr);
+        requestWrapper = itr->second;
+        LOGS(_log, LOG_LVL_DEBUG, context << "1:wrapper.use_count: " << requestWrapper.use_count());
+        _registry.erase(id);
+        LOGS(_log, LOG_LVL_DEBUG, context << "2:wrapper.use_count: " << requestWrapper.use_count());
     }
-    request->notify();
+    requestWrapper->notify();
+    LOGS(_log, LOG_LVL_DEBUG, context << "3:wrapper.use_count: " << requestWrapper.use_count());
 }
 
 XrdSsiService* QservMgtServices::xrdSsiService() {
