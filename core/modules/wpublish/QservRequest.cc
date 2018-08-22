@@ -43,7 +43,7 @@ namespace wpublish {
 int const QservRequest::_bufIncrementSize = 1024;
 
 QservRequest::~QservRequest() {
-    delete _buf;
+    delete [] _buf;
 }
 
 QservRequest::QservRequest()
@@ -172,6 +172,8 @@ XrdSsiRequest::PRD_Xeq QservRequest::ProcessResponseData(const XrdSsiErrInfo& eI
             _buf = new char[_bufCapacity];
 
             std::copy(prevBuf, prevBuf + prevBufCapacity, _buf);
+
+            delete [] prevBuf;
 
             // Keep reading
             GetResponseData(_buf + _bufSize, _bufIncrementSize);
