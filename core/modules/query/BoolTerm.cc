@@ -222,6 +222,15 @@ bool BoolFactor::_checkParen(BoolFactorTerm::PtrVector& terms) {
     pt = dynamic_cast<PassTerm*>(terms.back().get());
     if (!pt || (pt->_text != ")")) { return false; }
 
+    auto boolTermFactorPtr = std::dynamic_pointer_cast<BoolTermFactor>(terms[1]);
+    if (nullptr == boolTermFactorPtr) {
+        return true;
+    }
+    auto logicalTermPtr = std::dynamic_pointer_cast<LogicalTerm>(boolTermFactorPtr->_term);
+    if (nullptr != logicalTermPtr) {
+        return false; // don't remove parens from an AND or an OR.
+    }
+
     return true;
 }
 
