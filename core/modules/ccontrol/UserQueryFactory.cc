@@ -156,16 +156,6 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
 
         // Parse SELECT
 
-        // parse using antlr4
-        std::shared_ptr<query::SelectStmt> stmt;
-        try {
-            stmt = a4NewUserQuery(query);
-        } catch (parser::adapter_order_error& e) {
-            return std::make_shared<UserQueryInvalid>(std::string("ParseException:") + e.what());
-        } catch (parser::adapter_execution_error& e) {
-            return std::make_shared<UserQueryInvalid>(std::string("ParseException:") + e.what());
-        }
-
 // While the antlr4 parser is still under development we will leave in the code that can be used to generate
 // IR using our antlr v2 parser. It is very useful for debugging & development. At some point the antlr4
 // parser maturity will have obviously passed what we could do with antlr v2 and we should remove all the
@@ -185,6 +175,16 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
         LOGS(_log, LOG_LVL_DEBUG, "Old-style generated select statement: " << a2stmt->getQueryTemplate());
         LOGS(_log, LOG_LVL_DEBUG, "Old-style Hierarchy: " << *a2stmt);
 #endif
+
+        // parse using antlr4
+        std::shared_ptr<query::SelectStmt> stmt;
+        try {
+            stmt = a4NewUserQuery(query);
+        } catch (parser::adapter_order_error& e) {
+            return std::make_shared<UserQueryInvalid>(std::string("ParseException:") + e.what());
+        } catch (parser::adapter_execution_error& e) {
+            return std::make_shared<UserQueryInvalid>(std::string("ParseException:") + e.what());
+        }
 
         // handle special database/table names
         auto&& tblRefList = stmt->getFromList().getTableRefList();
