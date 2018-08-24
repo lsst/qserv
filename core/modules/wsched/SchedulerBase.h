@@ -49,7 +49,7 @@ public:
                   int maxActiveChunks, int priority) :
         _name{name}, _maxReserve{maxReserve}, _maxReserveDefault{maxReserve},
         _maxThreads{maxThreads}, _maxThreadsAdj{maxThreads},
-        _priority{priority}, _priorityDefault{priority}, _priorityNext{priority} {
+        _priority{priority}, _priorityDefault{priority} {
             setMaxActiveChunks(maxActiveChunks);
         }
     virtual ~SchedulerBase() {}
@@ -72,7 +72,6 @@ public:
     // Hooks for changing this schedulers priority/reserved threads.
     int  getPriority() { return _priority; }
     void setPriority(int priority); ///< Priority to use starting next chunk
-    void applyPriority();           ///< Apply _priorityNext
     void setPriorityDefault();      ///< Return to default priority next chunk
     int getMaxReserve() { return _maxReserve; }
     virtual void setMaxReserve(int maxReserve) { _maxReserve = maxReserve; }
@@ -108,6 +107,10 @@ public:
     /// moving from/to ScanSchedulers.
     bool removeTask(wbase::Task::Ptr const& task, bool removeRunning) override { return false; }
 
+
+    void setDefaultPosition(int val) { _defaultPosition = val; }
+    int getDefaultPosition() const { return _defaultPosition; }
+
 protected:
     /// Increment the _userQueryCounts entry for queryId, creating it if needed.
     /// Precondition util::CommandQueue::_mx must be locked.
@@ -130,7 +133,6 @@ protected:
     BlendScheduler *_blendScheduler{nullptr};
     int _priority; ///< Current priority, higher value - higher priority
     int _priorityDefault;
-    int _priorityNext; ///< Priority to use starting with the next chunk.
 
     std::atomic<int> _inFlight{0}; //< Number of Tasks running.
 
@@ -144,6 +146,7 @@ private:
     // TODO: Decide to keep or remove _maxActiveChunks and related code. This depends primarily
     //       on 'everything' scheduler limits/needs.
     int _maxActiveChunks; ///< Limit the number of chunks this scheduler can work on at one time.
+    int _defaultPosition{10}; ///< Position of this scheduler in the list of schedulers.
 };
 
 }}} // namespace lsst::qserv::wsched

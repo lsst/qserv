@@ -64,13 +64,6 @@ dump(std::ostream& os,
     return os;
 }
 
-/// Local EventThread for fifo serialization of mlock calls.
-lsst::qserv::util::EventThread ulockEvents{};
-std::once_flag ulockEventsFlag;
-void runUlockEventsThreadOnce() {
-    std::call_once(ulockEventsFlag, [](){ ulockEvents.run(); });
-}
-
 } // annonymous namespace
 
 namespace lsst {
@@ -238,35 +231,27 @@ std::chrono::milliseconds Task::getRunTime() const {
 /// if they are mlock'ed in the same order they were scheduled, hence the ulockEvents
 /// EventThread and CommandMlock class.
 void Task::waitForMemMan() {
-    class CommandMlock : public util::CommandTracked {
-    public:
-        using Ptr = std::shared_ptr<CommandMlock>;
-        CommandMlock(memman::MemMan::Ptr memMan, memman::MemMan::Handle handle) : _memMan{memMan}, _handle{handle} {}
-        void action(util::CmdData*) override {
-            if (_memMan->lock(_handle, true)) {
-                errorCode = (errno == EAGAIN ? ENOMEM : errno);
-            }
-        }
-        int errorCode{0}; ///< Error code if mlock fails.
-    private:
-        memman::MemMan::Ptr _memMan;
-        memman::MemMan::Handle _handle;
-    };
-
-    LOGS(_log,LOG_LVL_DEBUG, _idStr << " waitForMemMan begin handle=" << _memHandle);
     if (_memMan != nullptr) {
-        runUlockEventsThreadOnce();
-        auto cmd = std::make_shared<CommandMlock>(_memMan, _memHandle);
-        ulockEvents.queCmd(cmd); // local EventThread for fifo serialization of mlock calls.
-        cmd->waitComplete();
-        if (cmd->errorCode) {
-            LOGS(_log, LOG_LVL_WARN, _idStr << " mlock err=" << cmd->errorCode);
+        if (_memMan->lock(_memHandle, true)) {
+            int errorCode = (errno == EAGAIN ? ENOMEM : errno);
+            LOGS(_log, LOG_LVL_WARN, _idStr << " mlock err=" << errorCode <<
+                    " " <<_memMan->getStatistics().logString() <<
+                    " " << _memMan->getStatus(_memHandle).logString());
         }
-
+        LOGS(_log, LOG_LVL_DEBUG, _idStr << " waitForMemMan " <<_memMan->getStatistics().logString() <<
+                                  " " << _memMan->getStatus(_memHandle).logString());
     }
-    LOGS(_log, LOG_LVL_DEBUG, _idStr << " waitForMemMan end");
     _safeToMoveRunning = true;
 }
+
+
+memman::MemMan::Status Task::getMemHandleStatus() {
+    if (_memMan == nullptr || !hasMemHandle()) {
+        return memman::MemMan::Status();
+    }
+    return _memMan->getStatus(_memHandle);
+}
+
 
 std::ostream& operator<<(std::ostream& os, Task const& t) {
     proto::TaskMsg& m = *t.msg;

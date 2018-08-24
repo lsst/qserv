@@ -57,10 +57,12 @@ public:
     //-----------------------------------------------------------------------------
 
     struct MLResult {
-        uint64_t bLocked;
-        int      retc;
-        MLResult() : bLocked(0), retc(0) {}
-        MLResult(uint64_t lksz, int rc) : bLocked(lksz), retc(rc) {}
+        uint64_t bLocked{0};
+        double   mlockTime{0.0};
+        int      retc{0};
+
+        MLResult() {}
+        MLResult(uint64_t lksz, double mlockT, int rc) : bLocked(lksz), mlockTime(mlockT), retc(rc) {}
     };
 
     MLResult    memLock();
@@ -138,7 +140,10 @@ private:
     bool        _isMapped   = false;   // Protected by _fileMutex
     bool        _isReserved = false;   // Ditto
     bool        _isLocked   = false;   // Ditto
-    bool        _isFlex;               // Set once at object creation
+    bool const  _isFlex;               // Set once at object creation
+
+    std::mutex  _mlockFileMutex;       // Protects _isLocked
+    std::atomic<bool> _mlocking{false}; // Flag indicating mlock is being called.
 };
 
 }}} // namespace lsst:qserv:memman

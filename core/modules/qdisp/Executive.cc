@@ -184,9 +184,9 @@ JobQuery::Ptr Executive::add(JobDescription::Ptr const& jobDesc) {
 void Executive::queueJobStart(PriorityCommand::Ptr const& cmd, bool scanInteractive) {
     _jobStartCmdList.push_back(cmd);
     if (scanInteractive) {
-        _qdispPool->queCmdVeryHigh(cmd);
+        _qdispPool->queCmd(cmd, 0);
     } else {
-        _qdispPool->queCmdHigh(cmd);
+        _qdispPool->queCmd(cmd, 1);
     }
 }
 

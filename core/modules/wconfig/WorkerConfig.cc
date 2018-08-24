@@ -63,7 +63,7 @@ WorkerConfig::WorkerConfig(const util::ConfigStore& configStore)
       _maxReserveSnail(configStore.getInt("scheduler.reserve_snail", 2)),
       _maxReserveMed(configStore.getInt("scheduler.reserve_med", 2)),
       _maxReserveFast(configStore.getInt("scheduler.reserve_fast", 2)),
-      _maxActiveChunksSlow(configStore.getInt("scheduler.maxactivechunks_slow", 4)),
+      _maxActiveChunksSlow(configStore.getInt("scheduler.maxactivechunks_slow", 2)),
       _maxActiveChunksSnail(configStore.getInt("scheduler.maxactivechunks_snail", 1)),
       _maxActiveChunksMed(configStore.getInt("scheduler.maxactivechunks_med", 4)),
       _maxActiveChunksFast(configStore.getInt("scheduler.maxactivechunks_fast", 4)),

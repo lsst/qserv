@@ -42,9 +42,11 @@
 
 // Qserv headers
 #include "czar/Czar.h"
+#include "proto/ScanTableInfo.h"
 #include "qdisp/JobStatus.h"
 #include "qdisp/ResponseHandler.h"
 #include "util/common.h"
+#include "util/Timer.h"
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.QueryRequest");
@@ -65,24 +67,28 @@ public:
 
     void action(util::CmdData *data) override {
         // If everything is ok, call GetResponseData to have XrdSsi ask the worker for the data.
+        util::Timer tWaiting;
+        util::Timer tTotal;
         {
+            tTotal.start();
             auto jq = _jQuery.lock();
             auto qr = _qRequest.lock();
             if (jq == nullptr || qr == nullptr) {
-                LOGS(_log, LOG_LVL_WARN, _idStr << " AskForResponseData null before GetResponseData");
+                LOGS(_log, LOG_LVL_WARN, _idStr << " AskForResp null before GetResponseData");
                 // No way to call _errorFinish().
                 _setState(State::DONE2);
                 return;
             }
 
             if (qr->isQueryCancelled()) {
-                LOGS(_log, LOG_LVL_DEBUG, _idStr << " AskForResponseData query was cancelled");
+                LOGS(_log, LOG_LVL_DEBUG, _idStr << " AskForResp query was cancelled");
                 qr->_errorFinish(true);
                 _setState(State::DONE2);
                 return;
             }
             std::vector<char>& buffer = jq->getDescription()->respHandler()->nextBuffer();
-            LOGS(_log, LOG_LVL_DEBUG, _idStr << " Asking for GetResponseData size=" << buffer.size());
+            LOGS(_log, LOG_LVL_DEBUG, _idStr << " AskForResp GetResponseData size=" << buffer.size());
+            tWaiting.start();
             qr->GetResponseData(&buffer[0], buffer.size());
         }
 
@@ -92,15 +98,16 @@ public:
             std::unique_lock<std::mutex> uLock(_mtx);
             // TODO: make timed wait, check for wedged, if weak pointers dead, log and give up.
             _cv.wait(uLock, [this](){ return _state != State::STARTED0; });
+            tWaiting.stop();
             // _mtx is locked at this point.
-            LOGS(_log, LOG_LVL_DEBUG, _idStr << " Ask data should be DATAREADY1 " << (int)_state);
+            LOGS(_log, LOG_LVL_DEBUG, _idStr << " AskForResp should be DATAREADY1 " << (int)_state);
             if (_state == State::DONE2) {
                 // There was a problem. End the stream associated
                 auto qr = _qRequest.lock();
                 if (qr != nullptr) {
                     qr->_errorFinish();
                 }
-                LOGS(_log, LOG_LVL_INFO, _idStr << " AskForResponseDataCmd returning early");
+                LOGS(_log, LOG_LVL_INFO, _idStr << " AskForResp returning early");
                 return;
             }
         }
@@ -113,14 +120,16 @@ public:
             auto qr = _qRequest.lock();
             if (jq == nullptr || qr == nullptr) {
                 _setState(State::DONE2);
-                LOGS(_log, LOG_LVL_WARN, _idStr << " AskForResponseData null before processData");
+                LOGS(_log, LOG_LVL_WARN, _idStr << " AskForResp null before processData");
                 return;
             }
             qr->_processData(jq, _blen, _last);
             // _processData will have created another AskForResponseDataCmd object if needed.
+            tTotal.stop();
         }
         _setState(State::DONE2);
-        LOGS(_log, LOG_LVL_DEBUG, _idStr << " Ask data is done.");
+        LOGS(_log, LOG_LVL_DEBUG, _idStr << " Ask data is done wait=" << tWaiting.getElapsed() <<
+                " total=" << tTotal.getElapsed());
     }
 
     void notifyDataSuccess(int blen, bool last) {
@@ -139,7 +148,7 @@ public:
         _cv.notify_all();
     }
 
-    State getState() {
+    State getState() const {
         std::lock_guard<std::mutex> lg(_mtx);
         return _state;
     }
@@ -154,13 +163,12 @@ private:
     std::weak_ptr<QueryRequest> _qRequest;
     std::weak_ptr<JobQuery> _jQuery;
     std::string _idStr;
-    std::mutex _mtx;
+    mutable std::mutex _mtx;
     std::condition_variable _cv;
     State _state = State::STARTED0;
 
     int _blen{-1};
     bool _last{true};
-    util::InstanceCount _ic{"AskForResponseDataCmd"};
 };
 
 
@@ -278,18 +286,33 @@ bool QueryRequest::_importStream(JobQuery::Ptr const& jq) {
 
 
 void QueryRequest::_queueAskForResponse(AskForResponseDataCmd::Ptr const& cmd, JobQuery::Ptr const& jq) {
-    if (_largeResult) {
-        LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " queueing priority low");
-        _qdispPool->queCmdLow(_askForResponseDataCmd);
-    } else {
-        if (jq->getDescription()->getScanInteractive()) {
-            LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " queueing priority vhigh");
-            _qdispPool->queCmdVeryHigh(_askForResponseDataCmd);
+    // ScanInfo::Rating { FASTEST = 0, FAST = 10, MEDIUM = 20, SLOW = 30, SLOWEST = 100 };
+
+    int rating = jq->getDescription()->getScanRating();
+    if (jq->getDescription()->getScanInteractive()) {
+        _qdispPool->queCmd(cmd, 0);
+    } else if (rating <= proto::ScanInfo::Rating::FAST) {
+        if (_largeResult) {
+            _qdispPool->queCmd(cmd, 5);
         } else {
-            LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " queueing priority norm");
-            _qdispPool->queCmdNorm(_askForResponseDataCmd);
+            _qdispPool->queCmd(cmd, 2);
         }
+    } else if (rating <= proto::ScanInfo::Rating::MEDIUM) {
+        if (_largeResult) {
+            _qdispPool->queCmd(cmd, 6);
+        } else {
+            _qdispPool->queCmd(cmd, 3);
+        }
+    } else if (rating <= proto::ScanInfo::Rating::SLOW) {
+        if (not _largeResult) {
+            _qdispPool->queCmd(cmd, 4);
+        } else {
+            _qdispPool->queCmd(cmd, 7);
+        }
+    } else {
+        _qdispPool->queCmd(cmd, 7);
     }
+
 }
 
 /// Process an incoming error.
@@ -363,7 +386,6 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(XrdSsiErrInfo const& eI
     // Handle the response in a separate thread so we can give this one back to XrdSsi.
     // _askForResponseDataCmd should call QueryRequest::_processData() next.
     _askForResponseDataCmd->notifyDataSuccess(blen, last);
-
     return XrdSsiRequest::PRD_Normal;
 }
 

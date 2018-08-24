@@ -153,6 +153,7 @@ public:
     bool getOnInteractive() { return _onInteractive; }
     bool hasMemHandle() const { return _memHandle != memman::MemMan::HandleType::INVALID; }
     memman::MemMan::Handle getMemHandle() { return _memHandle; }
+    memman::MemMan::Status getMemHandleStatus();
     void setMemHandle(memman::MemMan::Handle handle) { _memHandle = handle; }
     void setMemMan(memman::MemMan::Ptr const& memMan) { _memMan = memMan; }
     void waitForMemMan();

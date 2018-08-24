@@ -50,24 +50,31 @@ private:
 };
 
 
-// FIFO priority queue. Elements with the same priority are handled in
-// a FIFO manner. Lower integer values are higher priority.
+/// FIFO priority queue. Elements with the same priority are handled in
+/// a FIFO manner. Lower integer values are higher priority.
+/// Higher priority queues get asked first when a thread becomes available
+/// but the system reserves room so that each priority has at least
+/// a minimum number of threads running.
 class PriorityQueue : public util::CommandQueue {
 public:
     using Ptr = std::shared_ptr<PriorityQueue>;
 
+    /// A queue for handling all messages of a given priority.
     class PriQ : public util::CommandQueue {
     public:
         using Ptr = std::shared_ptr<PriQ>;
-        explicit PriQ(int priority, int minRunning) : _priority(priority), _minRunning(minRunning) {}
+        explicit PriQ(int priority, int minRunning, int maxRunning) :
+            _priority(priority), _minRunning(minRunning), _maxRunning(maxRunning) {}
         ~PriQ() override = default;
-        int getPriority() { return _priority; }
-        int getMinRunning() { return _minRunning; }
+        int getPriority() const { return _priority; }
+        int getMinRunning() const { return _minRunning; }
+        int getMaxRunning() const { return _maxRunning; }
 
         std::atomic<int> running{0}; ///< number of jobs of this priority currently running.
     private:
-        int _priority; ///< priority value of this queue
-        int _minRunning; ///< minimum number of threads
+        int const _priority;   ///< priority value of this queue
+        int const _minRunning; ///< minimum number of threads (unless nothing on this queue to run)
+        int const _maxRunning; ///< maximum number of threads for this PriQ to use.
     };
 
 
@@ -76,12 +83,12 @@ public:
     PriorityQueue& operator=(PriorityQueue const&) = delete;
 
 
-    PriorityQueue(int defaultPriority, int minRunning) : _defaultPriority(defaultPriority) {
-        _queues[_defaultPriority] = std::make_shared<PriQ>(_defaultPriority, minRunning);
+    PriorityQueue(int defaultPriority, int minRunning, int maxRunning) : _defaultPriority(defaultPriority) {
+        _queues[_defaultPriority] = std::make_shared<PriQ>(_defaultPriority, minRunning, maxRunning);
     }
 
     ///< @Return true if the queue could be added.
-    bool addPriQueue(int priority, int minRunning);
+    bool addPriQueue(int priority, int minRunning, int spareThreads);
 
     /// The pool needs to be able to place commands in this queue for shutdown.
     void queCmd(util::Command::Ptr const& cmd) override;
@@ -111,35 +118,44 @@ private:
 };
 
 
+/// This class is used to provide a pool of threads for handling out going
+/// and incoming messages from xrootd as well as a system for prioritizing
+/// the messages.
+/// This has not worked entirely as intended. Reducing the number of threads
+/// had negative impacts on xrootd, but other changes have been made such that
+/// reducing the size of the thread pools can be tried again.
+/// What it does do is prioritize out going messages (typically jobs going to
+/// workers), allow interactive queries to be handled quickly, even under
+/// substantial loads, and it gives a good idea of how busy the czar really
+/// is. Large numbers of queued items in any of the scan queries, or large
+/// results would be good indicators to avoid giving a particular czar more
+/// user queries.
+///
 class QdispPool {
 public:
     typedef std::shared_ptr<QdispPool> Ptr;
 
     QdispPool() {
-        _prQueue->addPriQueue(0,1);  // Highest priority queue
-        _prQueue->addPriQueue(1,1);  // High priority queue
-        _prQueue->addPriQueue(2,9); // Normal priority queue
-        _prQueue->addPriQueue(3,3);  // Low priority queue
+        // Numbers are based on 1200 threads in the _pool. Large results
+        // tend to be slow to give up their threads, thus can't be allowed
+        // to eat up the pool. Bandwidth also makes running many of the
+        // slow queries at the same time a burden on the system.
+        // TODO: Set up thread pool size and queues in configuration. DM-10237
+        _prQueue->addPriQueue(0, 1, 90);  // Highest priority - interactive queries
+        _prQueue->addPriQueue(1, 1, 50);  // Outgoing shared scan queries.
+        _prQueue->addPriQueue(2, 6, 850); // FAST queries (Object table)
+        _prQueue->addPriQueue(3, 7, 250); // MEDIUM queries (Source table)
+        _prQueue->addPriQueue(4, 6, 150); // SLOW queries (Object Extra table)
+        _prQueue->addPriQueue(5, 6, 500); // FAST large results
+        _prQueue->addPriQueue(6, 6, 100); // MEDIUM large results
+        _prQueue->addPriQueue(7, 6, 20);  // Everything else (slow things)
         // default priority is the lowest priority.
     }
 
 
-    void queCmdVeryHigh(PriorityCommand::Ptr const& cmd) {
-            _prQueue->queCmd(cmd, 0);
-        }
-
-    void queCmdHigh(PriorityCommand::Ptr const& cmd) {
-        _prQueue->queCmd(cmd, 1);
-    }
-
-    void queCmdLow(PriorityCommand::Ptr const& cmd) {
-        _prQueue->queCmd(cmd, 3);
-    }
-
-    void queCmdNorm(PriorityCommand::Ptr const& cmd) {
-        _prQueue->queCmd(cmd, 2);
-    }
-
+    /// Lower priority numbers are higher priority.
+    /// Invalid priorities get the lowest priority, which
+    /// is the bottom of the heap.
     void queCmd(PriorityCommand::Ptr const& cmd, int priority) {
         _prQueue->queCmd(cmd, priority);
     }
@@ -152,8 +168,8 @@ public:
 
 private:
     /// The default priority queue is meant for pool control commands.
-    PriorityQueue::Ptr _prQueue = std::make_shared<PriorityQueue>(100,1); // default (lowest) priority.
-    util::ThreadPool::Ptr _pool{util::ThreadPool::newThreadPool(30, _prQueue)};
+    PriorityQueue::Ptr _prQueue = std::make_shared<PriorityQueue>(100, 1, 5); // default (lowest) priority.
+    util::ThreadPool::Ptr _pool{util::ThreadPool::newThreadPool(1200, _prQueue)};
 };
 
 

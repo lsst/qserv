@@ -126,8 +126,13 @@ void QueryRunner::_setDb() {
     }
 }
 
+
+util::TimerHistogram memWaitHisto("memWait Hist", {1, 5, 10, 20, 40});
+
+
 bool QueryRunner::runQuery() {
     LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " QueryRunner::runQuery()");
+
     // Make certain our Task knows that this object is no longer in use when this function exits.
     class Release {
     public:
@@ -145,7 +150,12 @@ bool QueryRunner::runQuery() {
     }
 
     // Wait for memman to finish reserving resources. This can take several seconds.
+    util::Timer memTimer;
+    memTimer.start();
     _task->waitForMemMan();
+    memTimer.stop();
+    auto logMsg = memWaitHisto.addTime(memTimer.getElapsed(), _task->getIdStr());
+    LOGS(_log, LOG_LVL_INFO, logMsg);
 
     if (_task->getCancelled()) {
         LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " runQuery, task was cancelled after locking tables.");
@@ -241,11 +251,6 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, si
         unsigned int szLimit = std::min(proto::ProtoHeaderWrap::PROTOBUFFER_DESIRED_LIMIT,
                                         proto::ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT);
 
-        // Use small blocks until it is considered a large result and it is not an interactive query.
-        if (!_largeResult && !_task->getOnInteractive()) {
-            szLimit = std::min(szLimit, _initialBlockSize);
-        }
-
         // Each element needs to be mysql-sanitized
         if (tSize > szLimit) {
             if (tSize > proto::ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT) {
@@ -263,17 +268,21 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, si
             // read in results, which could be very very slow. The upshot of this is the
             // scheduler for this worker should stop waiting for this task. leavePool()
             // will tell the scheduler this task is finished and create a new thread in the pool
-            // to replace this one.
+            // to replace this thread.
             auto pet = _task->getAndNullPoolEventThread();
             if (pet != nullptr) {
                 pet->leavePool();
             } else {
-                LOGS(_log, LOG_LVL_DEBUG, "Large result PoolEventThread was null. Probably already moved.");
+                LOGS(_log, LOG_LVL_DEBUG, "Large result PoolEventThread was null. Probably already moved. b");
             }
         }
     }
     return true;
 }
+
+
+util::TimerHistogram transmitHisto("transmit Hist", {0.1, 1, 5, 10, 20, 40});
+
 
 /// Transmit result data with its header.
 /// If 'last' is true, this is the last message in the result set
@@ -309,22 +318,25 @@ void QueryRunner::_transmit(bool last, uint rowCount, size_t tSize) {
         if (!sent) {
             LOGS(_log, LOG_LVL_ERROR, _task->getIdStr() << " Failed to transmit message!");
         }
-        // Block on the buffer actually being sent if 10GB are already waiting or this is a largeResult.
+        // Block on the buffer being sent.
         auto totalBytes = xrdsvc::StreamBuffer::getTotalBytes();
-        if (_largeResult || totalBytes > 10000000000) {  // TODO:DM-10273 add to configuration
-            LOGS(_log, LOG_LVL_INFO, _task->getIdStr() << " waiting for buffer largeResult=" << _largeResult
-                                      << " totalBytes=" << totalBytes);
-            util::Timer t;
-            t.start();
-            streamBuf->waitForDoneWithThis(); // block until this buffer has been sent.
-            t.stop();
-            LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " waited for " << t.getElapsed());
-        }
+        LOGS(_log, LOG_LVL_INFO, _task->getIdStr() << " waiting for buffer largeResult=" << _largeResult
+                << " totalBytes=" << totalBytes);
+        util::Timer t;
+        t.start();
+        streamBuf->waitForDoneWithThis(); // Block until this buffer has been sent.
+        t.stop();
+        auto logMsg = transmitHisto.addTime(t.getElapsed(), _task->getIdStr());
+        LOGS(_log, LOG_LVL_DEBUG, logMsg);
     } else {
         LOGS(_log, LOG_LVL_DEBUG, "_transmit cancelled");
     }
     _largeResult = true; // Transmits after the first are considered large results.
 }
+
+
+util::TimerHistogram transHeaderHisto("transHeader Hist", {0.1, 1, 5, 10, 20, 40});
+
 
 /// Transmit the protoHeader
 void QueryRunner::_transmitHeader(std::string& msg) {
@@ -348,7 +360,12 @@ void QueryRunner::_transmitHeader(std::string& msg) {
         if (!sent) {
             LOGS(_log, LOG_LVL_ERROR, _task->getIdStr() << " Failed to transmit header!");
         }
-        // intentionally not waiting for streamBuf to finish, as this message is tiny.
+        util::Timer t;
+        t.start();
+        streamBuf->waitForDoneWithThis(); // Block until this buffer has been sent.
+        t.stop();
+        auto logMsg = transHeaderHisto.addTime(t.getElapsed(), _task->getIdStr());
+        LOGS(_log, LOG_LVL_DEBUG, logMsg);
     } else {
         LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " _transmitHeader cancelled");
     }
@@ -433,16 +450,20 @@ bool QueryRunner::_dispatchChannel() {
             }
             ChunkResource cr(req.getResourceFragment(i));
             // Use query fragment as-is, funnel results.
-            for (auto const& query : queries) {
-                LOGS(_log, LOG_LVL_DEBUG, "running fragment=" << query);
+            for(auto const& query : queries) {
+                util::Timer sqlTimer;
+                sqlTimer.start();
                 MYSQL_RES* res = _primeResult(query); // This runs the SQL query.
+                sqlTimer.stop();
+                LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " fragment time=" << sqlTimer.getElapsed()
+                                                            << " query=" << query);
                 if (!res) {
                     erred = true;
                     continue;
                 }
                 if (firstResult) {
-                    _fillSchema(res);
                     firstResult = false;
+                    _fillSchema(res);
                     numFields = mysql_num_fields(res);
                 } // TODO: may want to confirm (cheaply) that
                 // successive queries have the same result schema.

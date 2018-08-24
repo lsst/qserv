@@ -26,6 +26,16 @@
 
 // System headers
 #include <cstdio>
+#include <float.h>
+#include <set>
+
+// LSST headers
+#include "lsst/log/Log.h"
+
+namespace {
+LOG_LOGGER _log = LOG_GET("lsst.qserv.util.Timer");
+}
+
 
 namespace lsst {
 namespace qserv {
@@ -56,6 +66,78 @@ std::ostream & operator<<(std::ostream & os, Timer const & timer) {
     Timer::write(os, timer.startTime);
     os << ' ' << timer.getElapsed();
     return os;
+}
+
+
+LockGuardTimed::LockGuardTimed(std::mutex& mtx, std::string const& note)
+    : _mtx(mtx), _note(note) {
+    timeToLock.start();
+    _mtx.lock();
+    timeToLock.stop();
+    timeHeld.start();
+}
+
+LockGuardTimed::~LockGuardTimed() {
+    _mtx.unlock();
+    timeHeld.stop();
+    LOGS(_log, LOG_LVL_DEBUG, "lockTime " << _note << " toLock=" << timeToLock.getElapsed() <<
+                              " held=" << timeHeld.getElapsed());
+}
+
+
+TimerHistogram::TimerHistogram(std::string const& label, std::vector<double> const& times) : _label(label) {
+    //sort vector and remove duplicates.
+    std::set<double> timeSet;
+    for (auto& t:times) {
+        timeSet.insert(t);
+    }
+    for (auto& t:timeSet) {
+        _buckets.emplace_back(bucket(t));
+    }
+}
+
+
+std::string TimerHistogram::addTime(double time, std::string const& note) {
+    std::lock_guard<std::mutex> lock(_mtx);
+    _total += time;
+    ++_totalCount;
+    bool found = false;
+    for(auto& bkt:_buckets) {
+        if (time < bkt.getMaxVal()) {
+            ++bkt.count;
+            found = true;
+            break;
+        }
+    }
+    if (not found) {
+        ++_overMaxCount;
+    }
+
+    if (note == "") {
+        return "";
+    }
+    return _getString(note);
+}
+
+
+std::string TimerHistogram::getString(std::string const& note) {
+    std::lock_guard<std::mutex> lock(_mtx);
+    return _getString(note);
+}
+
+
+/// _mtx must be locked before calling this function.
+///
+std::string TimerHistogram::_getString(std::string const& note) {
+    std::stringstream os;
+    os << _label << " " << note << " avg=" << (_total/_totalCount) << " ";
+    double maxB = -DBL_MAX;
+    for (auto& bkt:_buckets) {
+        os << " <" << bkt.getMaxVal() << "=" << bkt.count;
+        maxB = bkt.getMaxVal();
+    }
+    os << " >" << maxB << "=" << _overMaxCount;
+    return os.str();
 }
 
 }}} // namespace lsst::qserv::util

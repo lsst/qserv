@@ -86,6 +86,7 @@ int MemFileSet::lockAll(bool strict) {
 
     MemFile::MLResult mlResult;
     uint64_t totLocked = 0;
+    double totMlockSeconds = 0.0;
 
     // Try to lock all of the required tables. Any failure is considered fatal.
     // The caller should delete the fileset upon return in this case.
@@ -93,8 +94,10 @@ int MemFileSet::lockAll(bool strict) {
     for (auto mfP : _lockFiles) {
         mlResult = mfP->memLock();
         totLocked += mlResult.bLocked;
+        totMlockSeconds += mlResult.mlockTime;
         if (mlResult.retc != 0 && strict) {
             _lockBytes += totLocked;
+            _lockSeconds += totMlockSeconds;
             return mlResult.retc;
         }
     }
@@ -106,6 +109,7 @@ int MemFileSet::lockAll(bool strict) {
     for (auto mfP : _flexFiles) {
         mlResult = mfP->memLock();
         totLocked += mlResult.bLocked;
+        totMlockSeconds += mlResult.mlockTime;
     }
 
     // We ignore optional files at this point. FUTURE!!!
@@ -114,6 +118,7 @@ int MemFileSet::lockAll(bool strict) {
     // All done, update the statistics.
     //
     _lockBytes += totLocked;
+    _lockSeconds += totMlockSeconds;
     return 0;
 }
 
@@ -156,13 +161,8 @@ int MemFileSet::mapAll() {
   
 MemMan::Status MemFileSet::status() {
 
-    MemMan::Status myStatus;
+    MemMan::Status myStatus(_lockBytes, _lockSeconds, _numFiles, _chunk);
 
-    // Fill out status information and return it.
-    //
-    myStatus.bytesLock = _lockBytes;
-    myStatus.numFiles  = _numFiles;
-    myStatus.chunk     = _chunk;
     return myStatus;
 }
 }}} // namespace lsst:qserv:memman

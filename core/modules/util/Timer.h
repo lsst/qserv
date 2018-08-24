@@ -29,6 +29,8 @@
 #include <ostream>
 #include <sys/time.h>
 #include <time.h>
+#include <mutex>
+#include <vector>
 
 namespace lsst {
 namespace qserv {
@@ -62,6 +64,64 @@ struct Timer {
 };
 
 std::ostream& operator<<(std::ostream & os, Timer const & tm);
+
+/// This class is used to log how long it takes to lock a mutex
+/// and how long the mutex is held.
+class LockGuardTimed {
+public:
+    LockGuardTimed(std::mutex& mtx, std::string const& note);
+    LockGuardTimed() = delete;
+    LockGuardTimed(LockGuardTimed const&) = delete;
+    ~LockGuardTimed();
+
+    LockGuardTimed& operator=(LockGuardTimed const&) = delete;
+
+private:
+    std::mutex& _mtx;
+    std::string _note;
+    Timer timeToLock;
+    Timer timeHeld;
+};
+
+
+/// This class is useful for getting an idea of how long something usually takes.
+/// It is also fairly easy to locate an abnormally long call in the log by
+/// searching for the first instance of a particular histogram value.
+class TimerHistogram {
+public:
+    /// This keeps track of the count of entries with values greater than
+    /// the previous bucket's maxVal and less than this bucket's maxVal.
+    class bucket {
+    public:
+        bucket(double maxV) : _maxVal(maxV) {}
+        bucket() = delete;
+        bucket(bucket const&) = default;
+
+        double getMaxVal() { return _maxVal; }
+        int count{0};
+    private:
+        double _maxVal;
+    };
+
+    TimerHistogram(std::string const& label, std::vector<double> const& times);
+    TimerHistogram() = delete;
+    TimerHistogram(TimerHistogram const&) = delete;
+    TimerHistogram& operator=(TimerHistogram const&) = delete;
+
+    // Add a time to the histogram. If note is != "", return a log worthy string of the histogram.
+    std::string addTime(double time, std::string const& note="");
+    std::string getString(std::string const& note=""); ///< @return a log worthy version of the histogram.
+
+private:
+    std::string _getString(std::string const& note);
+
+    std::string _label;
+    std::mutex _mtx;
+    std::vector<bucket> _buckets;
+    uint64_t _overMaxCount{0};
+    double _total{0.0};
+    uint64_t _totalCount{0};
+};
 
 }}} // namespace lsst::qserv::util
 

@@ -46,6 +46,7 @@
 #include "global/Bug.h"
 #include "proto/worker.pb.h"
 #include "util/EventThread.h"
+#include "util/Timer.h"
 #include "wcontrol/Foreman.h"
 #include "wsched/GroupScheduler.h"
 #include "wsched/ScanScheduler.h"
@@ -81,12 +82,16 @@ BlendScheduler::BlendScheduler(std::string const& name,
     // If these are not defined, there is no point in continuing.
     assert(_group);
     assert(_scanSnail);
+    int position = 0;
     _schedulers.push_back(_group); // _group scheduler must be first in the list.
+    _group->setDefaultPosition(position++);
     for (auto const& sched : scanSchedulers) {
         _schedulers.push_back(sched);
+        sched->setDefaultPosition(position++);
         sched->setBlendScheduler(this);
     }
     _schedulers.push_back(_scanSnail);
+    _scanSnail->setDefaultPosition(position++);
     assert(_schedulers.size() >= 2); // Must have at least _group and _scanSnail in the list.
     _sortScanSchedulers();
     for (auto sched : _schedulers) {
@@ -108,18 +113,34 @@ BlendScheduler::~BlendScheduler() {
 
 
 void BlendScheduler::_sortScanSchedulers() {
-    auto greaterThan = [](SchedulerBase::Ptr const& a, SchedulerBase::Ptr const& b)->bool {
-        // Experiment of sorts, priority depends on number of Tasks in each scheduler.
-        auto aVal = a->getPriority() + a->getUserQueriesInQ();
-        auto bVal = b->getPriority() + b->getUserQueriesInQ();
-        return aVal > bVal;
+    auto lessThan = [this](SchedulerBase::Ptr const& a, SchedulerBase::Ptr const& b) -> bool {
+        // group scheduler is always first
+        if (a == _group) return true;
+        if (b == _group) return false;
+
+        // snail scheduler is always last
+        if (a == _scanSnail) return false;
+        if (b == _scanSnail) return true;
+
+        // base on the number of scans in flight.
+        if (_prioritizeByInFlight) {
+            auto aInFlight = a->getInFlight() - a->getPriority();
+            auto bInFlight = b->getInFlight() - b->getPriority();
+            if (aInFlight < bInFlight) return true;
+            if (bInFlight < aInFlight) return false;
+        }
+
+        /// Order by original position in the list
+        return (a->getDefaultPosition() < b->getDefaultPosition());
     };
-    // The first scheduler should always be _group (for interactive queries).
-    if (_schedulers.size() >= 2) {
-        std::sort(_schedulers.begin()+1, _schedulers.end(), greaterThan);
-    } else {
-        LOGS(_log, LOG_LVL_DEBUG, "not enough schedulers, _schedulers.size=" << _schedulers.size());
+
+    std::sort(_schedulers.begin(), _schedulers.end(), lessThan);
+
+    std::string str = "sort:";
+    for (auto& sched : _schedulers) {
+        str += sched->getName() + ", ";
     }
+    LOGS(_log, LOG_LVL_DEBUG, str);
 }
 
 
@@ -127,8 +148,10 @@ void BlendScheduler::queCmd(util::Command::Ptr const& cmd) {
     wbase::Task::Ptr task = std::dynamic_pointer_cast<wbase::Task>(cmd);
     if (task == nullptr) {
         LOGS(_log, LOG_LVL_INFO, "BlendScheduler::queCmd got control command");
-        std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
-        _ctrlCmdQueue.queCmd(cmd);
+        {
+            util::LockGuardTimed guard(util::CommandQueue::_mx, "BlendScheduler::queCmd a");
+            _ctrlCmdQueue.queCmd(cmd);
+        }
         notify(true);
         return;
     }
@@ -137,7 +160,7 @@ void BlendScheduler::queCmd(util::Command::Ptr const& cmd) {
     }
     LOGS(_log, LOG_LVL_DEBUG, "BlendScheduler::queCmd " << task->getIdStr());
 
-    std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
+    util::LockGuardTimed guard(util::CommandQueue::_mx, "BlendScheduler::queCmd b");
     // Check for scan tables
     SchedulerBase::Ptr s{nullptr};
     auto const& scanTables = task->getScanInfo().infoTables;
@@ -225,16 +248,21 @@ void BlendScheduler::commandFinish(util::Command::Ptr const& cmd) {
     }
     _infoChanged = true;
     _logChunkStatus();
-
     _queries->finishedTask(t);
-
     notify(true);
 }
 
 
 bool BlendScheduler::ready() {
-    std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
-    return _ready();
+    bool ready = false;
+    {
+        util::LockGuardTimed guard(util::CommandQueue::_mx, "BlendScheduler::ready");
+        ready = _ready();
+    }
+    if (ready) {
+        notify(false);
+    }
+    return ready;
 }
 
 
@@ -244,23 +272,31 @@ bool BlendScheduler::_ready() {
     std::ostringstream os;
     bool ready = false;
 
-    if (_flagReorderScans) {
-        _flagReorderScans = false;
-        _sortScanSchedulers();
+    // _readSched points to the scheduler with a ready task until that
+    // task has been retrieved by getCmd().
+    if (_readySched != nullptr) {
+        ready = true;
     }
 
     // Get the total number of threads schedulers want reserved
     int availableThreads = calcAvailableTheads();
     bool changed = _infoChanged.exchange(false);
-    for (auto sched : _schedulers) {
-        availableThreads = sched->applyAvailableThreads(availableThreads);
-        ready = sched->ready();
-        if (changed && LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
-            os << sched->getName() << "(r=" << ready << " sz=" << sched->getSize()
-               << " fl=" << sched-> getInFlight() << " avail=" << availableThreads << ") ";
+
+    if (!ready) {
+        for (auto&& sched : _schedulers) {
+            availableThreads = sched->applyAvailableThreads(availableThreads);
+            ready = sched->ready();
+            if (changed && LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
+                os << sched->getName() << "(r=" << ready << " sz=" << sched->getSize()
+                       << " fl=" << sched-> getInFlight() << " avail=" << availableThreads << ") ";
+            }
+            if (ready) {
+                _readySched = sched;
+                break;
+            }
         }
-        if (ready) break;
     }
+
     if (!ready) {
         ready = _ctrlCmdQueue.ready();
     }
@@ -270,37 +306,58 @@ bool BlendScheduler::_ready() {
     return ready;
 }
 
-util::Command::Ptr BlendScheduler::getCmd(bool wait) {
-    std::unique_lock<std::mutex> lock(util::CommandQueue::_mx);
-    if (wait) {
-        util::CommandQueue::_cv.wait(lock, [this](){return _ready();});
-    }
 
-    // Try to get a command from the schedulers
+util::Command::Ptr BlendScheduler::getCmd(bool wait) {
+    util::Timer timeToLock;
+    util::Timer timeHeld;
     util::Command::Ptr cmd;
-    int availableThreads = calcAvailableTheads();
-    for (auto const& sched : _schedulers) {
-        availableThreads = sched->applyAvailableThreads(availableThreads);
-        cmd = sched->getCmd(false); // no wait
-        if (cmd != nullptr) {
-            LOGS(_log, LOG_LVL_DEBUG, "Blend getCmd() using cmd from " << sched->getName());
-            wbase::Task::Ptr task = std::dynamic_pointer_cast<wbase::Task>(cmd);
-            break;
+    double totalTimeHeld = 0.0;
+    bool ready = false;
+    {
+        timeToLock.start();
+        std::unique_lock<std::mutex> lock(util::CommandQueue::_mx);
+        timeToLock.stop();
+        timeHeld.start();
+        if (wait) {
+            // util::CommandQueue::_cv.wait(lock, [this](){return _ready();});
+            while (!_ready()) {
+                timeHeld.stop();
+                totalTimeHeld += timeHeld.getElapsed();
+                util::CommandQueue::_cv.wait(lock);
+                timeHeld.start();
+            }
+            ready = true;
+        } else {
+            ready = _ready();
         }
-        // adjMax = _getAdjustedMaxThreads(adjMax, sched->getInFlight()); // DM-4943 possible alternate method
-        LOGS(_log, LOG_LVL_DEBUG, "Blend getCmd() nothing from " << sched->getName()
-             << " avail=" << availableThreads);
-    }
-    if (cmd == nullptr) {
-        // The scheduler didn't have anything, see if there's anything on the control queue,
-        // which could change the size of the pool.
-        cmd = _ctrlCmdQueue.getCmd();
+
+        // Try to get a command from the schedulers
+        if (ready && (_readySched != nullptr)) {
+            cmd = _readySched->getCmd(false);
+            if (cmd != nullptr) {
+                LOGS(_log, LOG_LVL_DEBUG, "Blend getCmd() using cmd from " << _readySched->getName());
+                wbase::Task::Ptr task = std::dynamic_pointer_cast<wbase::Task>(cmd);
+            }
+            _readySched.reset();
+            _sortScanSchedulers();
+        }
+
+        if (cmd == nullptr) {
+            // The scheduler didn't have anything, see if there's anything on the control queue,
+            // which could change the size of the pool.
+            cmd = _ctrlCmdQueue.getCmd();
+        }
     }
     if (cmd != nullptr) {
         _infoChanged = true;
         _logChunkStatus();
+        notify(true);
     }
     // returning nullptr is acceptable.
+    timeHeld.stop();
+    totalTimeHeld += timeHeld.getElapsed();
+    LOGS(_log, LOG_LVL_DEBUG, "lockTime BlendScheduler::getCmd ready toLock=" << timeToLock.getElapsed() <<
+                              " held=" << timeHeld.getElapsed() << " totalHeld=" << totalTimeHeld);
     return cmd;
 }
 

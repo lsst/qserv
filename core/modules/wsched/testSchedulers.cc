@@ -408,7 +408,6 @@ BOOST_AUTO_TEST_CASE(ScanScheduleTest) {
     sched.commandFinish(tsk1);
     BOOST_CHECK(sched.getInFlight() == 0);
     BOOST_CHECK(sched.ready() == false);
-
 }
 
 
@@ -428,6 +427,10 @@ struct SchedFixture {
                 std::chrono::seconds(_examineAllSleep), 5);
         blend = std::make_shared<wsched::BlendScheduler>("blendSched", queries, maxThreads,
                 group, scanSlow, scanSchedulers);
+        group->setDefaultPosition(0);
+        scanFast->setDefaultPosition(1);
+        scanMed->setDefaultPosition(2);
+        scanSlow->setDefaultPosition(3);
         queries->setBlendScheduler(blend);
         queries->setRequiredTasksCompleted(1); // Make it easy to set a baseline.
     }
