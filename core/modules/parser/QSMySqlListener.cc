@@ -469,6 +469,7 @@ class LogicalOperatorCBH : public BaseCBH {
 public:
     enum OperatorType {
         AND,
+        OR,
     };
     virtual void handleLogicalOperator(OperatorType operatorType) = 0;
 };
@@ -1934,8 +1935,12 @@ public:
 
         case LogicalOperatorCBH::AND:
             // We capture the AndTerm into a base class so we can pass by reference into the setter.
-            shared_ptr<query::LogicalTerm> logicalTerm = make_shared<query::AndTerm>();
-            _setLogicalOperator(logicalTerm);
+            _setLogicalOperator(make_shared<query::AndTerm>());
+            break;
+
+        case LogicalOperatorCBH::OR:
+            // We capture the OrTerm into a base class so we can pass by reference into the setter.
+            _setLogicalOperator(make_shared<query::OrTerm>());
             break;
         }
     }
@@ -2169,34 +2174,49 @@ private:
 
 class NestedExpressionAtomAdapter :
         public AdapterT<NestedExpressionAtomCBH, QSMySqlParser::NestedExpressionAtomContext>,
-        public PredicateExpressionCBH {
+        public PredicateExpressionCBH,
+        public LogicalExpressionCBH {
 public:
     using AdapterT::AdapterT;
 
     void handlePredicateExpression(shared_ptr<query::BoolFactor> const & boolFactor) override {
-        _boolFactors.push_back(boolFactor);
+        auto andTerm = make_shared<query::AndTerm>();
+        andTerm->addBoolTerm(boolFactor);
+        auto orTerm = make_shared<query::OrTerm>();
+        orTerm->addBoolTerm(andTerm);
+        auto boolTermFactor = make_shared<query::BoolTermFactor>(orTerm);
+        _boolTermFactors.push_back(boolTermFactor);
     }
 
     void handlePredicateExpression(shared_ptr<query::ValueExpr> const & valueExpr) override {
         ASSERT_EXECUTION_CONDITION(false, "Unhandled PredicateExpression with ValueExpr.", _ctx);
     }
 
+    void handleLogicalExpression(shared_ptr<query::LogicalTerm> const & logicalTerm,
+            antlr4::ParserRuleContext* childCtx) override {
+        auto boolTermFactor = std::make_shared<query::BoolTermFactor>(logicalTerm);
+        _boolTermFactors.push_back(boolTermFactor);
+    }
+
+    void handleQservFunctionSpec(string const & functionName,
+            vector<shared_ptr<query::ValueFactor>> const & args) override {
+        ASSERT_EXECUTION_CONDITION(false, "Qserv functions may not appear in nested contexts.", _ctx);
+    }
+
     void onExit() override {
-        ASSERT_EXECUTION_CONDITION(_boolFactors.empty() == false,
+        ASSERT_EXECUTION_CONDITION(_boolTermFactors.empty() == false,
                 "NestedExpressionAtomAdapter not populated.", _ctx)
-        auto andTerm = make_shared<query::AndTerm>();
-        andTerm->setBoolTerms(_boolFactors);
-        auto orTerm = make_shared<query::OrTerm>();
-        orTerm->addBoolTerm(andTerm);
         lockedParent()->handleNestedExpressionAtom(make_shared<query::PassTerm>("("));
-        lockedParent()->handleNestedExpressionAtom(make_shared<query::BoolTermFactor>(orTerm));
+        for (auto&& boolTermFactor : _boolTermFactors) {
+            lockedParent()->handleNestedExpressionAtom(boolTermFactor);
+        }
         lockedParent()->handleNestedExpressionAtom(make_shared<query::PassTerm>(")"));
     }
 
     string name() const override { return getTypeName(this); }
 
 private:
-    vector<shared_ptr<query::BoolFactor>> _boolFactors;
+    vector<shared_ptr<query::BoolTermFactor>> _boolTermFactors;
 };
 
 
@@ -2232,6 +2252,7 @@ public:
                     "Failed to add an operator to valueExpr:" << _getValueExpr(), _ctx);
             break;
         }
+
         }
     }
 
@@ -2316,8 +2337,10 @@ public:
     void onExit() override {
         if (_ctx->AND() != nullptr) {
             lockedParent()->handleLogicalOperator(LogicalOperatorCBH::AND);
+        } else if (_ctx->OR() != nullptr) {
+            lockedParent()->handleLogicalOperator(LogicalOperatorCBH::OR);
         } else {
-            ASSERT_EXECUTION_CONDITION(false, "undhandled logical operator", _ctx);
+            ASSERT_EXECUTION_CONDITION(false, "unhandled logical operator", _ctx);
         }
     }
 
