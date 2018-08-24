@@ -66,6 +66,10 @@ LOG_DIR="${REPLICATION_DATA_DIR}/log"
 # and the worker nodes.   
 LSST_LOG_CONFIG="${CONFIG_DIR}/log4cxx.replication.properties"
 
+# Work directory for the applications. It can be used by applications
+# to store core files, as well as various debug information.
+WORK_DIR="${REPLICATION_DATA_DIR}/work"
+
 # Tags for the relevant containers
 REPLICATION_IMAGE_TAG="qserv/replica:tools"
 DB_IMAGE_TAG="mariadb:10.2.16"
@@ -100,6 +104,10 @@ General options:
     -h|--help
         print this help
 
+    -j|--jemalloc
+        run an application with the JEMALLOC library and collect statistics
+        into a file to be placed in the debug folder.
+
 Options restricting a scope of the operation:
 
     -w=<name>|--worker=<name>
@@ -111,6 +119,8 @@ Options restricting a scope of the operation:
     -d|--db
         database service
 "
+
+USE_JEMALLOC=
 
 ALL=1
 WORKER=
@@ -136,6 +146,10 @@ for i in "$@"; do
         ALL=
         DB_SERVICE=1
         shift # past argument
+        ;;
+    -j|--jemalloc)
+        USE_JEMALLOC=1
+        shift
         ;;
     -h|--help)
         (>&2 echo "${HELP}")

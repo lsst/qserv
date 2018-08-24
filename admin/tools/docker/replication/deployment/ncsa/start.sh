@@ -91,6 +91,10 @@ done
 
 # Start master controller
 
+JEMALLOC_SETUP=
+if [ ! -z "${USE_JEMALLOC}" ]; then
+    JEMALLOC_SETUP="MALLOC_CONF=prof_leak:true,lg_prof_sample:0,prof_final:true LD_PRELOAD=/qserv/lib/libjemalloc.so"
+fi
 if [ ! -z "${MASTER_CONTROLLER}" ]; then
     HOST="qserv-${MASTER}"
     echo "[${MASTER}] starting master controller"
@@ -99,14 +103,17 @@ if [ ! -z "${MASTER_CONTROLLER}" ]; then
         --network host \
         -u 1000:1000 \
         -v /etc/passwd:/etc/passwd:ro \
+        -v ${WORK_DIR}:${WORK_DIR} \
         -v ${CONFIG_DIR}:/qserv/replication/config:ro \
         -v ${LOG_DIR}:${LOG_DIR} \
         -e "TOOL=qserv-replica-master" \
         -e "PARAMETERS=${MASTER_PARAMETERS}" \
+        -e "WORK_DIR=${WORK_DIR}" \
         -e "LOG_DIR=${LOG_DIR}" \
         -e "LSST_LOG_CONFIG=${LSST_LOG_CONFIG}" \
         -e "CONFIG=${CONFIG}" \
+        -e "JEMALLOC_SETUP=${JEMALLOC_SETUP}" \
         --name "${MASTER_CONTAINER_NAME}" \
         "${REPLICATION_IMAGE_TAG}" \
-        bash -c \''/qserv/bin/${TOOL} ${PARAMETERS} --config=${CONFIG} >& ${LOG_DIR}/${TOOL}.log'\'
+        bash -c \''cd ${WORK_DIR}; ${JEMALLOC_SETUP} /qserv/bin/${TOOL} ${PARAMETERS} --config=${CONFIG} >& ${LOG_DIR}/${TOOL}.log'\'
 fi
