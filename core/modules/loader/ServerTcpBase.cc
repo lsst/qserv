@@ -112,15 +112,13 @@ bool TcpServer::testConnect() {
 bool ServerTcpBase::_writeData(tcp::socket& socket, BufferUdp& data) {
     while (data.getBytesLeftToRead() > 0) {
         // Read cursor advances (manually in this case) as data is read from the buffer.
-        auto res =
-                boost::asio::write(socket, boost::asio::buffer(data.getReadCursor(), data.getBytesLeftToRead()));
+        auto res = boost::asio::write(socket,
+                       boost::asio::buffer(data.getReadCursor(), data.getBytesLeftToRead()));
 
-        if (res < 0) {
-            throw LoaderMsgErr("ServerTcpBase::testConnect() write failure errno=" + std::to_string(errno),
-                    __FILE__, __LINE__);
-        }
         data.advanceReadCursor(res);
     }
+
+    return true;
 }
 
 
