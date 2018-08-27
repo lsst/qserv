@@ -151,6 +151,9 @@ private:
     tcp::socket _socket;
     //std::string _message; // &&& must go
     BufferUdp _buf{500000};
+
+    void _handleTest();
+    void _handleTest2(const boost::system::error_code& ec, size_t bytesTrans);
 };
 
 
