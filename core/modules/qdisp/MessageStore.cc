@@ -69,15 +69,15 @@ void MessageStore::addErrorMessage(std::string const& description) {
     addMessage(NOTSET, NOTSET, description, MessageSeverity::MSG_ERROR);
 }
 
-const QueryMessage MessageStore::getMessage(int idx) {
+QueryMessage MessageStore::getMessage(int idx) const {
     return _queryMessages.at(idx);
 }
 
-const int MessageStore::messageCount() {
+int MessageStore::messageCount() const {
     return _queryMessages.size();
 }
 
-const int MessageStore::messageCount(int code) {
+int MessageStore::messageCount(int code) const {
     int count = 0;
     for (std::vector<QueryMessage>::const_iterator i = _queryMessages.begin();
          i != _queryMessages.end(); ++i) {

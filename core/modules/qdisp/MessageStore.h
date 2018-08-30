@@ -102,9 +102,9 @@ public:
      * @param description text of the message
      */
     void addErrorMessage(std::string const& description);
-    const QueryMessage getMessage(int idx);
-    const int messageCount();
-    const int messageCount(int code);
+    QueryMessage getMessage(int idx) const;
+    int messageCount() const ;
+    int messageCount(int code) const;
 
 private:
     std::mutex _storeMutex;

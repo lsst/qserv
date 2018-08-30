@@ -354,14 +354,21 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(XrdSsiErrInfo const& eI
 
     // Work with a copy of _jobQuery so it doesn't get reset underneath us by a call to cancel().
     JobQuery::Ptr jq = _jobQuery;
+    bool jobFinished = false;
     {
         std::lock_guard<std::mutex> lock(_finishStatusMutex);
-        if (_finishStatus != ACTIVE || jq == nullptr || jq->isQueryCancelled()) {
-            LOGS(_log, LOG_LVL_INFO, _jobIdStr << "ProcessResponseData job is inactive.");
-            // Something must have killed this job.
-            _errorFinish();
-            return XrdSsiRequest::PRD_Normal;
-        }
+        jobFinished = _finishStatus != ACTIVE || jq == nullptr;
+    }
+    if (jobFinished) {
+        LOGS(_log, LOG_LVL_INFO, _jobIdStr << "ProcessResponseData job is inactive.");
+        // This job is already dead.
+        _errorFinish();
+        return XrdSsiRequest::PRD_Normal;
+    }
+    if (jq->isQueryCancelled()) {
+        LOGS(_log, LOG_LVL_INFO, _jobIdStr << "ProcessResponseData job is cancelled.");
+        _errorFinish(true);
+        return XrdSsiRequest::PRD_Normal;
     }
 
     // If there's an error, it makes sense to handle it immediately.
