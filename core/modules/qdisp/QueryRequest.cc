@@ -354,14 +354,21 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(XrdSsiErrInfo const& eI
 
     // Work with a copy of _jobQuery so it doesn't get reset underneath us by a call to cancel().
     JobQuery::Ptr jq = _jobQuery;
+    bool jobFinished = false;
     {
         std::lock_guard<std::mutex> lock(_finishStatusMutex);
-        if (_finishStatus != ACTIVE || jq == nullptr || jq->isQueryCancelled()) {
-            LOGS(_log, LOG_LVL_INFO, _jobIdStr << "ProcessResponseData job is inactive.");
-            // Something must have killed this job.
-            _errorFinish();
-            return XrdSsiRequest::PRD_Normal;
-        }
+        jobFinished = _finishStatus != ACTIVE || jq == nullptr;
+    }
+    if (jobFinished) {
+        LOGS(_log, LOG_LVL_INFO, _jobIdStr << "ProcessResponseData job is inactive.");
+        // This job is already dead.
+        _errorFinish();
+        return XrdSsiRequest::PRD_Normal;
+    }
+    if (jq->isQueryCancelled()) {
+        LOGS(_log, LOG_LVL_INFO, _jobIdStr << "ProcessResponseData job is cancelled.");
+        _errorFinish(true);
+        return XrdSsiRequest::PRD_Normal;
     }
 
     // If there's an error, it makes sense to handle it immediately.
@@ -373,10 +380,10 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(XrdSsiErrInfo const& eI
              << " " << reason << ")");
         jq->getDescription()->respHandler()->errorFlush(
             "Couldn't retrieve response data:" + reason + " " + _jobIdStr, eCode);
-        _errorFinish();
 
         // Let the ask for response command end.
         _askForResponseDataCmd->notifyFailed();
+        _errorFinish();
         // An error occurred, let processing continue so it can be cleaned up soon.
         return XrdSsiRequest::PRD_Normal;
     }
@@ -477,7 +484,8 @@ bool QueryRequest::isQueryRequestCancelled() {
 }
 
 
-/// Cleanup pointers so class can be deleted. This should only be called by _finish or _errorFinish.
+/// Cleanup pointers so this class can be deleted.
+/// This should only be called by _finish or _errorFinish.
 void QueryRequest::cleanup() {
     LOGS_DEBUG(_jobIdStr << " QueryRequest::cleanup()");
     {
@@ -498,7 +506,9 @@ void QueryRequest::cleanup() {
 
 
 /// Finalize under error conditions and retry or report completion
-/// This function will destroy this object.
+/// THIS FUNCTION WILL RESULT IN THIS OBJECT BEING DESTROYED, UNLESS there is
+/// a local shared pointer for this QueryRequest and/or its owner JobQuery.
+/// See QueryRequest::cleanup()
 /// @return true if this QueryRequest object had the authority to make changes.
 bool QueryRequest::_errorFinish(bool shouldCancel) {
     LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " _errorFinish() shouldCancel=" << shouldCancel);
@@ -546,6 +556,9 @@ bool QueryRequest::_errorFinish(bool shouldCancel) {
 }
 
 /// Finalize under success conditions and report completion.
+/// THIS FUNCTION WILL RESULT IN THIS OBJECT BEING DESTROYED, UNLESS there is
+/// a local shared pointer for this QueryRequest and/or its owner JobQuery.
+/// See QueryRequest::cleanup()
 void QueryRequest::_finish() {
     LOGS_DEBUG(_jobIdStr << " QueryRequest::_finish");
     {
