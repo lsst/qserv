@@ -63,7 +63,7 @@ namespace qserv {
 namespace tests {
 
 SelectParser::Ptr QueryAnaHelper::getParser(const std::string& stmt) {
-    SelectParser::Ptr p = SelectParser::newInstance(stmt);
+    SelectParser::Ptr p = SelectParser::newInstance(stmt, SelectParser::ANTLR2);
     p->setup();
     return p;
 }

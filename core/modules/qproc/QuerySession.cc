@@ -92,7 +92,7 @@ namespace qproc {
 void QuerySession::analyzeQuery(std::string const& sql) {
     std::shared_ptr<query::SelectStmt> stmt;
     try {
-        auto parser = parser::SelectParser::newInstance(sql);
+        auto parser = parser::SelectParser::newInstance(sql, parser::SelectParser::ANTLR4);
         parser->setup();
         stmt = parser->getSelectStmt();
         analyzeQuery(sql, stmt);
