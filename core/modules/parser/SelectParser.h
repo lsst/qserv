@@ -65,7 +65,9 @@ class SelectParser {
 public:
     typedef std::shared_ptr<SelectParser> Ptr;
 
-    static Ptr newInstance(std::string const& statement);
+    enum AntlrVersion { ANTLR2, ANTLR4 };
+
+    static Ptr newInstance(std::string const& statement, AntlrVersion v);
 
     /// Setup the parser and parse into a SelectStmt
     void setup();
@@ -76,7 +78,7 @@ public:
     std::shared_ptr<query::SelectStmt> getSelectStmt() { return _selectStmt; }
 
 private:
-    SelectParser(std::string const& statement);
+    SelectParser(std::string const& statement, AntlrVersion v);
 
     std::string const _statement;
     std::shared_ptr<query::SelectStmt> _selectStmt;

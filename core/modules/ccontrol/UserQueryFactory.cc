@@ -37,7 +37,6 @@
 // Qserv headers
 #include "ccontrol/ConfigError.h"
 #include "ccontrol/ConfigMap.h"
-#include "ccontrol/A4UserQueryFactory.h"
 #include "ccontrol/UserQueryAsyncResult.h"
 #include "ccontrol/UserQueryDrop.h"
 #include "ccontrol/UserQueryFlushChunksCache.h"
@@ -109,9 +108,15 @@ UserQueryFactory::UserQueryFactory(czar::CzarConfig const& czarConfig,
 }
 
 
-std::shared_ptr<query::SelectStmt>
-UserQueryFactory::antlr2NewSelectStmt(const std::string& query) {
-    auto parser = parser::SelectParser::newInstance(query);
+std::shared_ptr<query::SelectStmt> UserQueryFactory::antlr2NewSelectStmt(const std::string& query) {
+    auto parser = parser::SelectParser::newInstance(query, parser::SelectParser::ANTLR2);
+    parser->setup();
+    return parser->getSelectStmt();
+}
+
+
+std::shared_ptr<query::SelectStmt> UserQueryFactory::antlr4NewSelectStmt(const std::string& query) {
+    auto parser = parser::SelectParser::newInstance(query, parser::SelectParser::ANTLR4);
     parser->setup();
     return parser->getSelectStmt();
 }
@@ -164,7 +169,9 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
         // parse using antlr v2
         std::shared_ptr<query::SelectStmt> a2stmt;
         try {
-            a2stmt = antlr2NewSelectStmt(query);
+            auto parser = parser::SelectParser::newInstance(query, parser::SelectParser::ANTLR2);
+            parser->setup();
+            a2stmt parser->getSelectStmt();
         } catch(parser::ParseException const& e) {
             LOGS(_log, LOG_LVL_DEBUG, "antlr v2 parse exception: " << e.what());
         }
@@ -179,7 +186,10 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
         // parse using antlr4
         std::shared_ptr<query::SelectStmt> stmt;
         try {
-            stmt = a4NewUserQuery(query);
+            auto parser = parser::SelectParser::newInstance(query, parser::SelectParser::ANTLR4);
+            parser->setup();
+            stmt = parser->getSelectStmt();
+        // todo move these catches into SelectParser(?)
         } catch (parser::adapter_order_error& e) {
             return std::make_shared<UserQueryInvalid>(std::string("ParseException:") + e.what());
         } catch (parser::adapter_execution_error& e) {

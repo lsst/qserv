@@ -77,7 +77,7 @@ public:
                                 std::string const& msgTableName);
 
     static std::shared_ptr<query::SelectStmt> antlr2NewSelectStmt(const std::string& query);
-
+    static std::shared_ptr<query::SelectStmt> antlr4NewSelectStmt(const std::string& query);
 
 private:
     class Impl;

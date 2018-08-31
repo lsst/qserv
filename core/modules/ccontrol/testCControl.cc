@@ -392,7 +392,7 @@ BOOST_DATA_TEST_CASE(antlr_compare, QUERIES, query) {
     std::ostringstream a4QueryStr;
     std::shared_ptr<query::SelectStmt> a4SelectStatement;
     try {
-        a4SelectStatement = ccontrol::a4NewUserQuery(query);
+        a4SelectStatement = ccontrol::UserQueryFactory::antlr2NewSelectStmt(query);;
         a4QueryStr << a4SelectStatement->getQueryTemplate();
     } catch (...) {}
 

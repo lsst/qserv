@@ -34,7 +34,7 @@
 #include <list>
 
 // Qserv headers
-#include "ccontrol/A4UserQueryFactory.h"
+#include "ccontrol/UserQueryFactory.h"
 #include "css/CssAccess.h"
 #include "mysql/MySqlConfig.h"
 #include "qana/AnalysisError.h"
@@ -122,7 +122,7 @@ bool columnRefPtrComparisonPredicate(query::ColumnRef::Ptr lhs, query::ColumnRef
 
 
 BOOST_DATA_TEST_CASE(OrderBy, QUERIES, query) {
-    std::shared_ptr<query::SelectStmt> selectStatement = ccontrol::a4NewUserQuery(query.query);
+    auto selectStatement = ccontrol::UserQueryFactory::antlr4NewSelectStmt(query.query);
     auto validOrderByColumns = qana::PostPlugin::getValidOrderByColumns(*selectStatement);
     BOOST_REQUIRE_MESSAGE(std::equal(validOrderByColumns.begin(), validOrderByColumns.end(),
             query.expectedColumns.begin(), query.expectedColumns.end(),
@@ -149,7 +149,7 @@ static const std::vector<OrderByQueryAndExpectedColumns> ORDER_BY_QUERIES = {
 };
 
 BOOST_DATA_TEST_CASE(UsedOrderBy, ORDER_BY_QUERIES, query) {
-    std::shared_ptr<query::SelectStmt> selectStatement = ccontrol::a4NewUserQuery(query.query);
+    std::shared_ptr<query::SelectStmt> selectStatement = ccontrol::UserQueryFactory::antlr4NewSelectStmt(query.query);;
     auto usedOrderByColumns = qana::PostPlugin::getUsedOrderByColumns(*selectStatement);
     BOOST_REQUIRE_MESSAGE(std::equal(usedOrderByColumns.begin(), usedOrderByColumns.end(),
             query.expectedColumns.begin(), query.expectedColumns.end(),
