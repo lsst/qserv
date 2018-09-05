@@ -101,23 +101,41 @@ void TestEchoQservRequest::onResponse(proto::FrameBufferView& view) {
     LOGS(_log, LOG_LVL_DEBUG, "TestEchoQservRequest  ** SERVICE REPLY **  status: "
          << proto::WorkerCommandTestEchoR_Status_Name(reply.status()));
 
-    if (_onFinish) {
-        _onFinish(
-            ::translate(reply.status()),
-            reply.error(),
-            _value,
-            reply.value());
+    if (nullptr != _onFinish) {
+
+        // Clearing the stored callback after finishing the up-stream notification
+        // has two purposes:
+        //
+        // 1. it guaranties (exactly) one time notification
+        // 2. it breaks the up-stream dependency on a caller object if a shared
+        //    pointer to the object was mentioned as the lambda-function's closure
+
+        auto onFinish = std::move(_onFinish);
+
+        onFinish(::translate(reply.status()),
+                 reply.error(),
+                 _value,
+                 reply.value());
     }
 }
 
 void TestEchoQservRequest::onError(std::string const& error) {
 
-    if (_onFinish) {
-        _onFinish(
-            Status::ERROR,
-            error,
-            _value,
-            std::string());
+    if (nullptr != _onFinish) {
+
+        // Clearing the stored callback after finishing the up-stream notification
+        // has two purposes:
+        //
+        // 1. it guaranties (exactly) one time notification
+        // 2. it breaks the up-stream dependency on a caller object if a shared
+        //    pointer to the object was mentioned as the lambda-function's closure
+
+        auto onFinish = std::move(_onFinish);
+
+        onFinish(Status::ERROR,
+                 error,
+                 _value,
+                 std::string());
     }
 }
 

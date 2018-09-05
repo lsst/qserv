@@ -48,6 +48,8 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
+std::atomic<size_t> Request::_numClassInstances(0);
+
 std::string Request::state2string(State state) {
     switch (state) {
         case CREATED:     return "CREATED";
@@ -112,6 +114,16 @@ Request::Request(ServiceProvider::Ptr const& serviceProvider,
         _requestExpirationTimer(io_service) {
 
     _serviceProvider->assertWorkerIsValid(worker);
+
+    // This report is used solely for debugging purposes to allow tracking
+    // potential memory leaks within applications.
+    ++_numClassInstances;
+    LOGS(_log, LOG_LVL_DEBUG, context() << "constructed  instances: " << _numClassInstances);
+}
+
+Request::~Request() {
+    --_numClassInstances;
+    LOGS(_log, LOG_LVL_DEBUG, context() << "destructed   instances: " << _numClassInstances);
 }
 
 std::string Request::state2string() const {

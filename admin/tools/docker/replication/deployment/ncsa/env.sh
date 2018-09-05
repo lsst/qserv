@@ -87,7 +87,7 @@ DB_ROOT_PASSWORD="CHANGEME"
 CONFIG="mysql://qsreplica@lsst-qserv-${MASTER}:${DB_PORT}/qservReplica"
 
 # Optional parameters of the Master Controller
-MASTER_PARAMETERS="--worker-evict-timeout=240"
+MASTER_PARAMETERS="--worker-evict-timeout=1800"
 
 unset basedir
 

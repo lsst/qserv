@@ -39,17 +39,28 @@ namespace lsst {
 namespace qserv {
 namespace wpublish {
 
+std::atomic<size_t> QservRequest::_numClassInstances(0);
+
 // Set this parameter to some reasonable default
 int const QservRequest::_bufIncrementSize = 1024;
 
 QservRequest::~QservRequest() {
+
     delete [] _buf;
+
+    --_numClassInstances;
+    LOGS(_log, LOG_LVL_DEBUG, "QservRequest  destructed   instances: " << _numClassInstances);
 }
 
 QservRequest::QservRequest()
     :    _bufSize(0),
          _bufCapacity(_bufIncrementSize),
          _buf(new char[_bufIncrementSize]) {
+
+    // This report is used solely for debugging purposes to allow tracking
+    // potential memory leaks within applications.
+    ++_numClassInstances;
+    LOGS(_log, LOG_LVL_DEBUG, "QservRequest  constructed  instances: " << _numClassInstances);
 }
 
 char* QservRequest::GetRequest(int& dlen) {

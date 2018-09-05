@@ -64,13 +64,18 @@ struct QservMgtRequestWrapperImpl
     /// The implementation of the virtual method defined in the base class
     void notify() const final {
 
-        LOGS(_log, LOG_LVL_DEBUG, _request->context()
-             << "QservMgtRequestWrapperImpl  1:notify  _request.use_count: " << _request.use_count());
+        if (nullptr != _onFinish) {
 
-        if (_onFinish != nullptr) _onFinish(_request);
+            // Clearing the stored callback after finishing the up-stream notification
+            // has two purposes:
+            //
+            // 1. it guaranties (exactly) one time notification
+            // 2. it breaks the up-stream dependency on a caller object if a shared
+            //    pointer to the object was mentioned as the lambda-function's closure
 
-        LOGS(_log, LOG_LVL_DEBUG, _request->context()
-             << "QservMgtRequestWrapperImpl  1:notify  _request.use_count: " << _request.use_count());
+            auto onFinish = std::move(_onFinish);
+            onFinish(_request);
+        }
     }
 
     QservMgtRequestWrapperImpl(typename T::Ptr const& request,
@@ -78,16 +83,10 @@ struct QservMgtRequestWrapperImpl
         :   QservMgtRequestWrapper(),
             _request(request),
             _onFinish(onFinish) {
-
-        LOGS(_log, LOG_LVL_DEBUG, _request->context()
-             << "QservMgtRequestWrapperImpl  constructed  _request.use_count: " << _request.use_count());
     }
 
     /// Destructor
-    ~QservMgtRequestWrapperImpl() override {
-        LOGS(_log, LOG_LVL_DEBUG, _request->context()
-             << "QservMgtRequestWrapperImpl  destructed  _request.use_count: " << _request.use_count());
-    }
+    ~QservMgtRequestWrapperImpl() = default;
 
     /// Implement a virtual method of the base class
     std::shared_ptr<QservMgtRequest> request() const override {
@@ -417,9 +416,6 @@ TestEchoQservMgtRequest::Ptr QservMgtServices::echo(
                    jobId,
                    requestExpirationIvalSec);
 
-    LOGS(_log, LOG_LVL_DEBUG, request->context()
-         << "QservMgtServices::echo  request.use_count: " << request.use_count());
-
     return request;
 }
 
@@ -451,12 +447,9 @@ void QservMgtServices::finish(std::string const& id) {
                         " is no longer valid. Check the loginc of the application.");
         }
         requestWrapper = itr->second;
-        LOGS(_log, LOG_LVL_DEBUG, context << "1:wrapper.use_count: " << requestWrapper.use_count());
         _registry.erase(id);
-        LOGS(_log, LOG_LVL_DEBUG, context << "2:wrapper.use_count: " << requestWrapper.use_count());
     }
     requestWrapper->notify();
-    LOGS(_log, LOG_LVL_DEBUG, context << "3:wrapper.use_count: " << requestWrapper.use_count());
 }
 
 XrdSsiService* QservMgtServices::xrdSsiService() {

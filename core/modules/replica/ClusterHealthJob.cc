@@ -151,7 +151,7 @@ void ClusterHealthJob::startImpl(util::Lock const& lock) {
 
         auto const replicationRequest = controller()->statusOfWorkerService(
             worker,
-            [self] (ServiceStatusRequest::Ptr const& request) {
+            [self] (ServiceStatusRequest::Ptr request) {
                 self->onRequestFinish(request);
             },
             id(),   /* jobId */
@@ -164,7 +164,7 @@ void ClusterHealthJob::startImpl(util::Lock const& lock) {
             worker,
             testData,
             id(),   /* jobId */
-            [self] (TestEchoQservMgtRequest::Ptr const& request) {
+            [self] (TestEchoQservMgtRequest::Ptr request) {
                 self->onRequestFinish(request);
             },
             timeoutSec()
@@ -200,8 +200,17 @@ void ClusterHealthJob::notifyImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "notifyImpl");
 
-    if (_onFinish) {
-        _onFinish(shared_from_base<ClusterHealthJob>());
+    if (nullptr != _onFinish) {
+
+        // Clearing the stored callback after finishing the up-stream notification
+        // has two purposes:
+        //
+        // 1. it guaranties (exactly) one time notification
+        // 2. it breaks the up-stream dependency on a caller object if a shared
+        //    pointer to the object was mentioned as the lambda-function's closure
+
+        auto onFinish = std::move(_onFinish);
+        onFinish(shared_from_base<ClusterHealthJob>());
     }
 }
 

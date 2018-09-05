@@ -91,13 +91,15 @@ done
 
 # Start master controller
 
-JEMALLOC_SETUP=
-if [ ! -z "${USE_JEMALLOC}" ]; then
-    JEMALLOC_SETUP="MALLOC_CONF=prof_leak:true,lg_prof_sample:0,prof_final:true LD_PRELOAD=/qserv/lib/libjemalloc.so"
-fi
 if [ ! -z "${MASTER_CONTROLLER}" ]; then
     HOST="qserv-${MASTER}"
     echo "[${MASTER}] starting master controller"
+    OPT_MALLOC_CONF=
+    OPT_LD_PRELOAD=
+    if [ ! -z "${USE_JEMALLOC}" ]; then
+        OPT_MALLOC_CONF=prof_leak:true,lg_prof_interval:31,lg_prof_sample:22,prof_final:true
+        OPT_LD_PRELOAD=/qserv/lib/libjemalloc.so
+    fi
     ssh -n $HOST docker run \
         --detach \
         --network host \
@@ -112,8 +114,9 @@ if [ ! -z "${MASTER_CONTROLLER}" ]; then
         -e "LOG_DIR=${LOG_DIR}" \
         -e "LSST_LOG_CONFIG=${LSST_LOG_CONFIG}" \
         -e "CONFIG=${CONFIG}" \
-        -e "JEMALLOC_SETUP=${JEMALLOC_SETUP}" \
+        -e "OPT_MALLOC_CONF=${OPT_MALLOC_CONF}" \
+        -e "OPT_LD_PRELOAD=${OPT_LD_PRELOAD}" \
         --name "${MASTER_CONTAINER_NAME}" \
         "${REPLICATION_IMAGE_TAG}" \
-        bash -c \''cd ${WORK_DIR}; ${JEMALLOC_SETUP} /qserv/bin/${TOOL} ${PARAMETERS} --config=${CONFIG} >& ${LOG_DIR}/${TOOL}.log'\'
+        bash -c \''cd ${WORK_DIR}; MALLOC_CONF=${OPT_MALLOC_CONF} LD_PRELOAD=${OPT_LD_PRELOAD} /qserv/bin/${TOOL} ${PARAMETERS} --config=${CONFIG} >& ${LOG_DIR}/${TOOL}.log'\'
 fi

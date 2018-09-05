@@ -48,12 +48,14 @@ std::string operation;
 bool noAutoReconnect;
 bool noTransaction;
 bool noResultSet;
+bool resultSummaryOnly;
 
 database::ConnectionParams connectionParams;
 
 std::string databaseName;
 std::string fileName;
 
+unsigned int numIter = 1;
 
 // Run various test on transactions
 void runTransactionTest(database::Connection::Ptr const& conn,
@@ -117,11 +119,69 @@ void dropDatabase(database::Connection::Ptr const& conn) {
     }
 }
 
-/// Read a query from a file, execute it and (if requested)
-/// explore its results
-void query(database::Connection::Ptr const& conn) {
+/// Execute it and (if requested) explore its results
+void runQuery(database::Connection::Ptr const& conn,
+              std::string const& query) {
 
-    // Read a query from the standard input or from a file into a string.
+    try {
+
+        if (not noTransaction) conn->begin();
+
+        conn->execute(query);
+        std::cout << "hasResult: " << (conn->hasResult() ? "true" : "false") << std::endl;
+
+        if (conn->hasResult()) {
+        
+            if (not noResultSet) {
+
+                if (not resultSummaryOnly) {
+
+                    // Print the result set content
+
+                    std::cout << "Columns:   ";
+                    for (std::string const& name: conn->columnNames()) {
+                        std::cout << "'" << name << "', ";
+                    }
+                    std::cout << "\n" << std::endl;
+        
+                    database::Row row;
+                    while (conn->next(row)) {
+                        for (std::string const& name: conn->columnNames()) {
+                            std::string val;
+                            bool const notNull = row.get(name, val);
+                            std::cout << name << ": " << (notNull ? "'" + val + "'" : "NULL") << ", ";
+                        }
+                        std::cout << "\n";
+                        for (size_t i = 0; i < row.numColumns(); ++i) {
+                            std::string val;
+                            bool const notNull = row.get(i, val);
+                            std::cout << i << ": " << (notNull ? "'" + val + "'" : "NULL") << ", ";
+                        }
+                        std::cout << "\n";
+                    }
+
+                } else {
+
+                    // Just report the number of rows in the result set
+                    size_t numRows = 0;
+                    database::Row row;
+                    while (conn->next(row)) {
+                        ++numRows;
+                    }
+                    std::cout << "numRows:   " << numRows << "\n";
+                }
+            }
+        }
+        if (not noTransaction) conn->commit();
+
+    } catch (std::logic_error const& ex) {
+        std::cout << ex.what() << std::endl;
+    }
+}
+
+
+/// Read a query from the standard input or from a file into a string.
+std::string getQuery() {
 
     std::string query;
     if (fileName == "-") {
@@ -135,8 +195,8 @@ void query(database::Connection::Ptr const& conn) {
 
         std::ifstream fs(fileName);
         if (not fs) {
-            std::cerr << "faild to read the contents of file: " << fileName << std::endl;
-            return;
+            std::cerr << "failed to read the contents of file: " << fileName << std::endl;
+            return query;
         }
         fs.seekg(0, std::ios::end);
         query.reserve(fs.tellg());
@@ -146,61 +206,36 @@ void query(database::Connection::Ptr const& conn) {
     }
     std::cout << "Query: " << query << std::endl;
 
-    // Execute the query
-
-    try {
-
-        if (not noTransaction) conn->begin();
-
-        conn->execute(query);
-        std::cout << "hasResult: " << (conn->hasResult() ? "true" : "false") << std::endl;
-
-        if (not noResultSet and conn->hasResult()) {
-            std::cout << "Columns:   ";
-            for (std::string const& name: conn->columnNames()) {
-                std::cout << "'" << name << "', ";
-            }
-            std::cout << "\n" << std::endl;
-
-            database::Row row;
-            while (conn->next(row)) {
-                for (std::string const& name: conn->columnNames()) {
-                    std::string val;
-                    bool const notNull = row.get(name, val);
-                    std::cout << name << ": " << (notNull ? "'" + val + "'" : "NULL") << ", ";
-                }
-                std::cout << "\n";
-                for (size_t i = 0; i < row.numColumns(); ++i) {
-                    std::string val;
-                    bool const notNull = row.get(i, val);
-                    std::cout << i << ": " << (notNull ? "'" + val + "'" : "NULL") << ", ";
-                }
-                std::cout << "\n";
-            }
-        }
-        if (not noTransaction) conn->commit();
-
-    } catch (std::logic_error const& ex) {
-        std::cout << ex.what() << std::endl;
-    }
+    return query;
 }
 
 /// Run the test
-bool test() {
+void test() {
 
     try {
+
+        std::string query;
+        if ("QUERY" == operation) {
+            query = getQuery();
+            if (query.empty()) {
+                std::cerr << "error: no query provided" << std::endl;
+                return;
+            }
+        }
+
         database::Connection::Ptr const conn =
             database::Connection::open(connectionParams, not noAutoReconnect);
 
-        if      ("TEST_TRANSACTIONS" == operation) testTransactions(conn);
-        else if ("CREATE_DATABASE"   == operation) createDatabase(conn);
-        else if ("DROP_DATABASE"     == operation) dropDatabase(conn);
-        else if ("QUERY"             == operation) query(conn);
-
+        for (unsigned int i = 0; i < numIter; ++i) {
+            if      ("TEST_TRANSACTIONS" == operation) testTransactions(conn);
+            else if ("CREATE_DATABASE"   == operation) createDatabase(conn);
+            else if ("DROP_DATABASE"     == operation) dropDatabase(conn);
+            else if ("QUERY"             == operation) runQuery(conn, query);
+        }
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
     }
-    return true;
+    return;
 }
 } /// namespace
 
@@ -214,10 +249,11 @@ int main(int argc, const char* const argv[]) {
             "\n"
             "Usage:\n"
             "  <operation> [<parameter> [<parameter> [...]]]\n"
-            "              [--no-auto-reconnect] [--no-transaction] [--no-result-set]\n"
+            "              [--no-auto-reconnect] [--no-transaction] [--no-result-set] [--result-summary-only]\n"
             "              [--host=<name>] [--port=<number>]\n"
             "              [--user=<name>] [--password=<secret>]\n"
             "              [--default-database=<name>]\n"
+            "              [--iter=<num>]\n"
             "\n"
             "Supported operations and mandatory parameters:\n"
             "    TEST_TRANSACTIONS\n"
@@ -228,24 +264,27 @@ int main(int argc, const char* const argv[]) {
             "    QUERY <file>\n"
             "\n"
             "Parameters:\n"
-            "  database             - the name of a database\n"
-            "  file                 - the name of a file from which to read a SQL statement.\n"
-            "                         If the file name is set to '-' then statement will be read\n"
-            "                         from the standard input stream.\n"
+            "  database              - the name of a database\n"
+            "  file                  - the name of a file from which to read a SQL statement.\n"
+            "                          If the file name is set to '-' then statement will be read\n"
+            "                          from the standard input stream.\n"
             "Flags and options:\n"
-            "  --no-auto-reconnect  - do *NOT* auto-reconnect to the service if its drops the connection\n"
-            "                         after a long period of the applicatin inactivity\n"
-            "  --no-transaction     - do *NOT* start/commit transactions when executing\n"
-            "                         database queries\n"
-            "  --no-result-set      - do *NOT* explore the result set after executing statements\n"
-            "  --host               - the DNS name or IP address of a host where the service runs\n"
-            "                         [ DEFAULT: localhost]\n"
-            "  --port               - the port number for the MySQL service\n"
-            "                         [ DEFAULT: 3306]\n"
-            "  --user               - the name of the MySQL user account\n"
-            "  --password           - a password to log into the MySQL user account\n"
-            "  --default-database   - the name of the default database to connect to\n"
-            "                         [ DEFAULT: '']\n");
+            "  --no-auto-reconnect   - do *NOT* auto-reconnect to the service if its drops the connection\n"
+            "                          after a long period of the applicatin inactivity\n"
+            "  --no-transaction      - do *NOT* start/commit transactions when executing\n"
+            "                          database queries\n"
+            "  --no-result-set       - do *NOT* explore the result set after executing statements\n"
+            "  --result-summary-only - print the number of rows for queries instead of their full content\n"
+            "  --host                - the DNS name or IP address of a host where the service runs\n"
+            "                          [ DEFAULT: localhost ]\n"
+            "  --port                - the port number for the MySQL service\n"
+            "                          [ DEFAULT: 3306 ]\n"
+            "  --user                - the name of the MySQL user account\n"
+            "  --password            - a password to log into the MySQL user account\n"
+            "  --default-database    - the name of the default database to connect to\n"
+            "                          [ DEFAULT: '' ]\n"
+            "  --iter                - the number of iterations\n"
+            "                          [ DEFAULT: " + std::to_string(::numIter) + " ]\n");
 
         ::operation = parser.parameterRestrictedBy(
             1, {"TEST_TRANSACTIONS",
@@ -262,14 +301,18 @@ int main(int argc, const char* const argv[]) {
             "QUERY"})) {
             ::fileName = parser.parameter<std::string>(2);
         }
-        ::noAutoReconnect           = parser.flag("no-auto-reconnect");
-        ::noTransaction             = parser.flag("no-transaction");
-        ::noResultSet               = parser.flag("no-result-set");
+        ::noAutoReconnect   = parser.flag("no-auto-reconnect");
+        ::noTransaction     = parser.flag("no-transaction");
+        ::noResultSet       = parser.flag("no-result-set");
+        ::resultSummaryOnly = parser.flag("result-summary-only");
+
         ::connectionParams.host     = parser.option<std::string>("host", "localhost");
-        ::connectionParams.port     = parser.option<uint16_t>("port", 3306);
+        ::connectionParams.port     = parser.option<uint16_t>   ("port", 3306);
         ::connectionParams.user     = parser.option<std::string>("user", replica::FileUtils::getEffectiveUser());
         ::connectionParams.password = parser.option<std::string>("password", "");
         ::connectionParams.database = parser.option<std::string>("default-database", "");
+
+        ::numIter = parser.option<unsigned int>("iter", ::numIter);
 
     } catch (std::exception const& ex) {
         return 1;

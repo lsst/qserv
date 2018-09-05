@@ -112,19 +112,37 @@ void ChunkGroupQservRequest::onResponse(proto::FrameBufferView& view) {
          << "** SERVICE REPLY **  status: "
          << proto::WorkerCommandChunkGroupR_Status_Name(reply.status()));
 
-    if (_onFinish) {
-        _onFinish(
-            ::translate(reply.status()),
-            reply.error());
+    if (nullptr != _onFinish) {
+
+        // Clearing the stored callback after finishing the up-stream notification
+        // has two purposes:
+        //
+        // 1. it guaranties (exactly) one time notification
+        // 2. it breaks the up-stream dependency on a caller object if a shared
+        //    pointer to the object was mentioned as the lambda-function's closure
+
+        auto onFinish = std::move(_onFinish);
+
+        onFinish(::translate(reply.status()),
+                 reply.error());
     }
 }
 
 void ChunkGroupQservRequest::onError(std::string const& error) {
 
-    if (_onFinish) {
-        _onFinish(
-            Status::ERROR,
-            error);
+    if (nullptr != _onFinish) {
+
+        // Clearing the stored callback after finishing the up-stream notification
+        // has two purposes:
+        //
+        // 1. it guaranties (exactly) one time notification
+        // 2. it breaks the up-stream dependency on a caller object if a shared
+        //    pointer to the object was mentioned as the lambda-function's closure
+
+        auto onFinish = std::move(_onFinish);
+
+        onFinish(Status::ERROR,
+                 error);
     }
 }
 

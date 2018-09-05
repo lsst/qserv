@@ -56,6 +56,8 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
+std::atomic<size_t> Job::_numClassInstances(0);
+
 std::string Job::state2string(State state) {
     switch (state) {
         case CREATED:     return "CREATED";
@@ -97,6 +99,16 @@ Job::Job(Controller::Ptr const& controller,
         _endTime(0),
         _heartbeatTimerIvalSec(controller->serviceProvider()->config()->jobHeartbeatTimeoutSec()),
         _expirationIvalSec(controller->serviceProvider()->config()->jobTimeoutSec()) {
+
+    // This report is used solely for debugging purposes to allow tracking
+    // potential memory leaks within applications.
+    ++_numClassInstances;
+    LOGS(_log, LOG_LVL_DEBUG, context() << "constructed  instances: " << _numClassInstances);
+}
+
+Job::~Job() {
+    --_numClassInstances;
+    LOGS(_log, LOG_LVL_DEBUG, context() << "destructed   instances: " << _numClassInstances);
 }
 
 std::string Job::state2string() const {

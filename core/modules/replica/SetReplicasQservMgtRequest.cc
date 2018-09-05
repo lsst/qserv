@@ -171,13 +171,21 @@ void SetReplicasQservMgtRequest::startImpl(util::Lock const& lock) {
 
 void SetReplicasQservMgtRequest::finishImpl(util::Lock const& lock) {
 
-    if (extendedState() == ExtendedState::CANCELLED) {
+    switch (extendedState()) {
 
-        // And if the SSI request is still around then tell it to stop
-        if (_qservRequest) {
-            bool const cancel = true;
-            _qservRequest->Finished(cancel);
-        }
+        case ExtendedState::CANCELLED:
+        case ExtendedState::TIMEOUT_EXPIRED:
+
+            // And if the SSI request is still around then tell it to stop
+
+            if (_qservRequest) {
+                bool const cancel = true;
+                _qservRequest->Finished(cancel);
+            }
+            break;
+
+        default:
+            break;
     }
     _qservRequest = nullptr;
 }
@@ -186,8 +194,17 @@ void SetReplicasQservMgtRequest::notifyImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "notifyImpl");
 
-    if (_onFinish) {
-        _onFinish(shared_from_base<SetReplicasQservMgtRequest>());
+    if (nullptr != _onFinish) {
+
+        // Clearing the stored callback after finishing the up-stream notification
+        // has two purposes:
+        //
+        // 1. it guaranties (exactly) one time notification
+        // 2. it breaks the up-stream dependency on a caller object if a shared
+        //    pointer to the object was mentioned as the lambda-function's closure
+
+        auto onFinish = std::move(_onFinish);
+        onFinish(shared_from_base<SetReplicasQservMgtRequest>());
     }
 }
 }}} // namespace lsst::qserv::replica

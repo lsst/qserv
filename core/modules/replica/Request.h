@@ -145,7 +145,7 @@ public:
     Request(Request const&) = delete;
     Request& operator=(Request const&) = delete;
 
-    virtual ~Request() = default;
+    virtual ~Request();
 
     /// @return reference to the service provider,
     ServiceProvider::Ptr const& serviceProvider() const { return _serviceProvider; }
@@ -444,6 +444,9 @@ protected:
     mutable util::Mutex _mtx;
 
 private:
+
+    /// The global counter for the number of instances of any subclasses
+    static std::atomic<size_t> _numClassInstances;
 
     ServiceProvider::Ptr _serviceProvider;
 

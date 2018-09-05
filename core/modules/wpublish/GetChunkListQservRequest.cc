@@ -107,28 +107,45 @@ void GetChunkListQservRequest::onResponse(proto::FrameBufferView& view) {
         int const num = reply.chunks_size();
         for (int i = 0; i < num; i++) {
             proto::WorkerCommandChunk const& chunkEntry  = reply.chunks(i);
-            if (_inUseOnly and not chunkEntry.use_count()) { continue; }
+            if (_inUseOnly and not chunkEntry.use_count()) continue;
             Chunk chunk {chunkEntry.chunk(), chunkEntry.db(), chunkEntry.use_count()};
             chunks.push_back(chunk);
         }
         LOGS(_log, LOG_LVL_DEBUG, context << "total chunks: " << num);
     }
+    if (nullptr != _onFinish) {
 
-    if (_onFinish) {
-        _onFinish(
-            ::translate(reply.status()),
-            reply.error(),
-            chunks);
+        // Clearing the stored callback after finishing the up-stream notification
+        // has two purposes:
+        //
+        // 1. it guaranties (exactly) one time notification
+        // 2. it breaks the up-stream dependency on a caller object if a shared
+        //    pointer to the object was mentioned as the lambda-function's closure
+
+        auto onFinish = std::move(_onFinish);
+
+        onFinish(::translate(reply.status()),
+                 reply.error(),
+                 chunks);
     }
 }
 
 void GetChunkListQservRequest::onError(std::string const& error) {
 
-    if (_onFinish) {
-        _onFinish(
-            Status::ERROR,
-            error,
-            ChunkCollection());
+    if (nullptr != _onFinish) {
+
+        // Clearing the stored callback after finishing the up-stream notification
+        // has two purposes:
+        //
+        // 1. it guaranties (exactly) one time notification
+        // 2. it breaks the up-stream dependency on a caller object if a shared
+        //    pointer to the object was mentioned as the lambda-function's closure
+
+        auto onFinish = std::move(_onFinish);
+
+        onFinish(Status::ERROR,
+                 error,
+                 ChunkCollection());
     }
 }
 

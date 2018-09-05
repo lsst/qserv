@@ -54,13 +54,16 @@ namespace {
 
 // Command line parameters
 
+std::string configUrl = "file:replication.cfg";
 std::string databaseFamily;
-bool        saveReplicaInfo;
-std::string configUrl;
-bool        pullQservReplicas;
-bool        progressReport;
-bool        errorReport;
-bool        detailedReport;
+
+bool saveReplicaInfo;
+bool pullQservReplicas;
+bool progressReport;
+bool errorReport;
+bool detailedReport;
+
+unsigned int numIter = 1;
 
 void dump(replica::FindAllJobResult const& replicaData) {
     OUT << "*** DETAILED REPORTS ***\n"
@@ -134,193 +137,195 @@ bool test() {
 
         util::BlockPost blockPost(1000,2000);
 
-        ///////////////////////////////////////////////////////////////////
-        // Start two parallel jobs, the firts one getting the latest state
-        // of replicas accross the Replication cluster, and the second one
-        // getting a list of replicas known to Qserv workers.
+        for (unsigned int i = 0; i < numIter; ++i) {
 
-        std::atomic<bool> replicaJobFinished{false};
-        auto findAllJob = replica::FindAllJob::create(
-            databaseFamily,
-            saveReplicaInfo,
-            controller,
-            std::string(),
-            [&replicaJobFinished] (replica::FindAllJob::Ptr const& job) {
-                replicaJobFinished = true;
-            }
-        );
-        findAllJob->start();
-
-        replica::QservGetReplicasJob::Ptr qservGetReplicasJob;
-        if (pullQservReplicas) {
-            std::atomic<bool> qservJobFinished{false};
-            bool const inUseOnly = false;
-            qservGetReplicasJob = replica::QservGetReplicasJob::create(
+            ///////////////////////////////////////////////////////////////////
+            // Start two parallel jobs, the firts one getting the latest state
+            // of replicas accross the Replication cluster, and the second one
+            // getting a list of replicas known to Qserv workers.
+    
+            std::atomic<bool> replicaJobFinished{false};
+            auto findAllJob = replica::FindAllJob::create(
                 databaseFamily,
+                saveReplicaInfo,
                 controller,
                 std::string(),
-                inUseOnly,
-                [&qservJobFinished] (replica::QservGetReplicasJob::Ptr const& job) {
-                    qservJobFinished = true;
+                [&replicaJobFinished] (replica::FindAllJob::Ptr const& job) {
+                    replicaJobFinished = true;
                 }
             );
-            qservGetReplicasJob->start();
-
-            while (not (replicaJobFinished and qservJobFinished)) {
-                blockPost.wait();
-            }
-            OUT << "qserv-replica-job-cunks:\n"
-                << "   FindAllJob          finished: " << findAllJob->state2string() << "\n"
-                << "   QservGetReplicasJob finished: " << qservGetReplicasJob->state2string() << "\n"
-                << std::endl;
-        } else {
-            while (not replicaJobFinished) {
-                blockPost.wait();
-            }
-            OUT << "qserv-replica-job-cunks:\n"
-                << "   FindAllJob          finished: " << findAllJob->state2string() << "\n"
-                << std::endl;
-        }
-
-        //////////////////////////////
-        // Analyse and display results
-
-        replica::FindAllJobResult const& replicaData = findAllJob->getReplicaData();
-        if (detailedReport) {
-            dump(replicaData);
-        }
-        replica::QservGetReplicasJobResult qservReplicaData;
-        if (pullQservReplicas) {
-            qservReplicaData = qservGetReplicasJob->getReplicaData();
-        }
-
-        // Build and print a map of worker "numbers" to use them instead of
-        // (potentially) very long worker identifiers
-
-        std::vector<std::string> const workers = provider->config()->workers();
-        std::map<std::string,size_t> worker2idx;
-
-        OUT << "\n"
-            << "WORKERS:\n";
-        for (size_t idx = 0, num = workers.size(); idx < num; ++idx) {
-            std::string const& worker = workers[idx];
-            worker2idx[worker] = idx;
-            OUT << std::setw(3) << idx << ": " << worker << "\n";
-        }
-        OUT << std::endl;
-
-        // Count chunk replicas per worker from both sources
-
-        std::map<std::string,size_t> worker2numChunks;
-        for (auto const& replicaCollection: replicaData.replicas) {
-            for (auto const& replica: replicaCollection) {
-                worker2numChunks[replica.worker()]++;
-            }
-        }
-
-        std::map<std::string,size_t> qservWorker2numChunks;
-        if (pullQservReplicas) {
-            for (auto const& entry: qservReplicaData.replicas) {
-                auto const& worker = entry.first;
-                auto const& replicaCollection = entry.second;
-                qservWorker2numChunks[worker] = replicaCollection.size();
-            }
-        }
-
-        OUT << "\n"
-            << "CHUNK DISTRIBUTION PER EACH WORKER:\n"
-            << "  LEGEND:\n"
-            << "    for numbers of chunk replicas from different sources: 'R'eplication, 'Q'serv\n"
-            << "-----+------------------------------------------+--------+--------\n"
-            << " idx |                                   worker |      R |      Q \n"
-            << "-----+------------------------------------------+--------+--------\n";
-
-        for (auto const& worker: provider->config()->workers()) {
-
-            std::string const numReplicasStr =
-                replicaData.workers.at(worker) ?
-                    std::to_string(worker2numChunks[worker]) :
-                    "*";
-
-            std::string const numQservReplicasStr =
-                pullQservReplicas and qservReplicaData.workers.at(worker) ?
-                    std::to_string(qservWorker2numChunks[worker]) :
-                    "*";
-
-            OUT << " " << std::setw(3)  << worker2idx[worker] << " |"
-                << " " << std::setw(40) << worker << " |"
-                << " " << std::setw(6)  << numReplicasStr << " |"
-                << " " << std::setw(6)  << numQservReplicasStr
-                << "\n";
-        }
-        OUT << "-----+------------------------------------------+--------+--------\n"
-            << std::endl;
-
-        OUT << "REPLICAS:\n"
-            << "  LEGEND:\n"
-            << "    for the desired minimal replication 'L'evel\n"
-            << "    for numbers of chunk replicas from different sources: 'R'eplication, 'Q'serv\n"
-            << "-------------+----------------------+-----+------+-----+------+------------------------------------------\n"
-            << "       chunk |             database |   R |  R-L |   Q |  Q-R | replicas at workers\n"
-            << "-------------+----------------------+-----+------+-----+------+------------------------------------------\n";
-
-        size_t const replicationLevel = provider->config()->replicationLevel(databaseFamily);
-
-        for (auto chunk: replicaData.chunks.chunkNumbers()) {
-            auto chunkMap = replicaData.chunks.chunk(chunk);
-
-            for (auto database: chunkMap.databaseNames()) {
-                auto databaseMap = chunkMap.database(database);
-
-                size_t      const  numReplicas        = databaseMap.size();
-                std::string const  numReplicasStr     = numReplicas ? std::to_string(numReplicas) : "";
-                long long   const  numReplicasDiff    = numReplicas - replicationLevel;
-                std::string const  numReplicasDiffStr = numReplicasDiff ? std::to_string(numReplicasDiff) : "";
-
-                OUT << " "   << std::setw(11) << chunk
-                    << " | " << std::setw(20) << database
-                    << " | " << std::setw(3)  << numReplicasStr
-                    << " | " << std::setw(4)  << numReplicasDiffStr;
-
-                if (pullQservReplicas) {
-                    size_t const numQservReplicas =
-                        qservReplicaData.useCount.chunkExists(chunk) and
-                        qservReplicaData.useCount.atChunk(chunk).databaseExists(database) ?
-                            qservReplicaData.useCount.atChunk(chunk).atDatabase(database).size() :
-                            0;
-
-                    std::string const numQservReplicasStr     = numQservReplicas ? std::to_string(numQservReplicas) : "";
-                    long long   const numQservReplicasDiff    = numQservReplicas - numReplicas;
-                    std::string const numQservReplicasDiffStr = numQservReplicasDiff ? std::to_string(numQservReplicasDiff) : "";
-
-                    OUT << " | " << std::setw(3)  << numQservReplicasStr
-                        << " | " << std::setw(4)  << numQservReplicasDiffStr;
-                } else {
-                    OUT << " | " << std::setw(3)  << "*"
-                        << " | " << std::setw(4)  << "*";
-                }
-
-                std::set<std::string> workers;
-                for (auto worker: databaseMap.workerNames()) {
-                    workers.insert(worker);
-                }
-                std::set<std::string> qservWorkers;
-                if (qservReplicaData.useCount.chunkExists(chunk) and
-                    qservReplicaData.useCount.atChunk(chunk).databaseExists(database)) {
-                    for (auto const& worker: qservReplicaData.useCount
-                                                             .atChunk(chunk)
-                                                             .atDatabase(database)
-                                                             .workerNames()) {
-                        qservWorkers.insert(worker);
+            findAllJob->start();
+    
+            replica::QservGetReplicasJob::Ptr qservGetReplicasJob;
+            if (pullQservReplicas) {
+                std::atomic<bool> qservJobFinished{false};
+                bool const inUseOnly = false;
+                qservGetReplicasJob = replica::QservGetReplicasJob::create(
+                    databaseFamily,
+                    controller,
+                    std::string(),
+                    inUseOnly,
+                    [&qservJobFinished] (replica::QservGetReplicasJob::Ptr const& job) {
+                        qservJobFinished = true;
                     }
+                );
+                qservGetReplicasJob->start();
+    
+                while (not (replicaJobFinished and qservJobFinished)) {
+                    blockPost.wait();
                 }
-
-                OUT << " | " << workers2str(worker2idx, workers, qservWorkers) << "\n";
+                OUT << "qserv-replica-job-cunks:\n"
+                    << "   FindAllJob          finished: " << findAllJob->state2string() << "\n"
+                    << "   QservGetReplicasJob finished: " << qservGetReplicasJob->state2string() << "\n"
+                    << std::endl;
+            } else {
+                while (not replicaJobFinished) {
+                    blockPost.wait();
+                }
+                OUT << "qserv-replica-job-cunks:\n"
+                    << "   FindAllJob          finished: " << findAllJob->state2string() << "\n"
+                    << std::endl;
             }
+    
+            //////////////////////////////
+            // Analyse and display results
+    
+            replica::FindAllJobResult const& replicaData = findAllJob->getReplicaData();
+            if (detailedReport) {
+                dump(replicaData);
+            }
+            replica::QservGetReplicasJobResult qservReplicaData;
+            if (pullQservReplicas) {
+                qservReplicaData = qservGetReplicasJob->getReplicaData();
+            }
+    
+            // Build and print a map of worker "numbers" to use them instead of
+            // (potentially) very long worker identifiers
+    
+            std::vector<std::string> const workers = provider->config()->workers();
+            std::map<std::string,size_t> worker2idx;
+    
+            OUT << "\n"
+                << "WORKERS:\n";
+            for (size_t idx = 0, num = workers.size(); idx < num; ++idx) {
+                std::string const& worker = workers[idx];
+                worker2idx[worker] = idx;
+                OUT << std::setw(3) << idx << ": " << worker << "\n";
+            }
+            OUT << std::endl;
+    
+            // Count chunk replicas per worker from both sources
+    
+            std::map<std::string,size_t> worker2numChunks;
+            for (auto const& replicaCollection: replicaData.replicas) {
+                for (auto const& replica: replicaCollection) {
+                    worker2numChunks[replica.worker()]++;
+                }
+            }
+    
+            std::map<std::string,size_t> qservWorker2numChunks;
+            if (pullQservReplicas) {
+                for (auto const& entry: qservReplicaData.replicas) {
+                    auto const& worker = entry.first;
+                    auto const& replicaCollection = entry.second;
+                    qservWorker2numChunks[worker] = replicaCollection.size();
+                }
+            }
+    
+            OUT << "\n"
+                << "CHUNK DISTRIBUTION PER EACH WORKER:\n"
+                << "  LEGEND:\n"
+                << "    for numbers of chunk replicas from different sources: 'R'eplication, 'Q'serv\n"
+                << "-----+------------------------------------------+--------+--------\n"
+                << " idx |                                   worker |      R |      Q \n"
+                << "-----+------------------------------------------+--------+--------\n";
+    
+            for (auto const& worker: provider->config()->workers()) {
+    
+                std::string const numReplicasStr =
+                    replicaData.workers.at(worker) ?
+                        std::to_string(worker2numChunks[worker]) :
+                        "*";
+    
+                std::string const numQservReplicasStr =
+                    pullQservReplicas and qservReplicaData.workers.at(worker) ?
+                        std::to_string(qservWorker2numChunks[worker]) :
+                        "*";
+    
+                OUT << " " << std::setw(3)  << worker2idx[worker] << " |"
+                    << " " << std::setw(40) << worker << " |"
+                    << " " << std::setw(6)  << numReplicasStr << " |"
+                    << " " << std::setw(6)  << numQservReplicasStr
+                    << "\n";
+            }
+            OUT << "-----+------------------------------------------+--------+--------\n"
+                << std::endl;
+    
+            OUT << "REPLICAS:\n"
+                << "  LEGEND:\n"
+                << "    for the desired minimal replication 'L'evel\n"
+                << "    for numbers of chunk replicas from different sources: 'R'eplication, 'Q'serv\n"
+                << "-------------+----------------------+-----+------+-----+------+------------------------------------------\n"
+                << "       chunk |             database |   R |  R-L |   Q |  Q-R | replicas at workers\n"
+                << "-------------+----------------------+-----+------+-----+------+------------------------------------------\n";
+    
+            size_t const replicationLevel = provider->config()->replicationLevel(databaseFamily);
+    
+            for (auto chunk: replicaData.chunks.chunkNumbers()) {
+                auto chunkMap = replicaData.chunks.chunk(chunk);
+    
+                for (auto database: chunkMap.databaseNames()) {
+                    auto databaseMap = chunkMap.database(database);
+    
+                    size_t      const  numReplicas        = databaseMap.size();
+                    std::string const  numReplicasStr     = numReplicas ? std::to_string(numReplicas) : "";
+                    long long   const  numReplicasDiff    = numReplicas - replicationLevel;
+                    std::string const  numReplicasDiffStr = numReplicasDiff ? std::to_string(numReplicasDiff) : "";
+    
+                    OUT << " "   << std::setw(11) << chunk
+                        << " | " << std::setw(20) << database
+                        << " | " << std::setw(3)  << numReplicasStr
+                        << " | " << std::setw(4)  << numReplicasDiffStr;
+    
+                    if (pullQservReplicas) {
+                        size_t const numQservReplicas =
+                            qservReplicaData.useCount.chunkExists(chunk) and
+                            qservReplicaData.useCount.atChunk(chunk).databaseExists(database) ?
+                                qservReplicaData.useCount.atChunk(chunk).atDatabase(database).size() :
+                                0;
+    
+                        std::string const numQservReplicasStr     = numQservReplicas ? std::to_string(numQservReplicas) : "";
+                        long long   const numQservReplicasDiff    = numQservReplicas - numReplicas;
+                        std::string const numQservReplicasDiffStr = numQservReplicasDiff ? std::to_string(numQservReplicasDiff) : "";
+    
+                        OUT << " | " << std::setw(3)  << numQservReplicasStr
+                            << " | " << std::setw(4)  << numQservReplicasDiffStr;
+                    } else {
+                        OUT << " | " << std::setw(3)  << "*"
+                            << " | " << std::setw(4)  << "*";
+                    }
+    
+                    std::set<std::string> workers;
+                    for (auto worker: databaseMap.workerNames()) {
+                        workers.insert(worker);
+                    }
+                    std::set<std::string> qservWorkers;
+                    if (qservReplicaData.useCount.chunkExists(chunk) and
+                        qservReplicaData.useCount.atChunk(chunk).databaseExists(database)) {
+                        for (auto const& worker: qservReplicaData.useCount
+                                                                 .atChunk(chunk)
+                                                                 .atDatabase(database)
+                                                                 .workerNames()) {
+                            qservWorkers.insert(worker);
+                        }
+                    }
+    
+                    OUT << " | " << workers2str(worker2idx, workers, qservWorkers) << "\n";
+                }
+            }
+            OUT << "-------------+----------------------+-----+------+-----+------+------------------------------------------\n"
+                << std::endl;
         }
-        OUT << "-------------+----------------------+-----+------+-----+------+------------------------------------------\n"
-            << std::endl;
-
         ///////////////////////////////////////////////////
         // Shutdown the controller and join with its thread
 
@@ -354,27 +359,33 @@ int main(int argc, const char* const argv[]) {
             "                    [--progress-report]\n"
             "                    [--error-report]\n"
             "                    [--detailed-report]\n"
+            "                    [--iter=<num>]\n"
             "\n"
             "Parameters:\n"
             "  <database-family>  - the name of a database family to inspect\n"
             "\n"
             "Flags and options:\n"
-            "  --config               - a configuration URL (a configuration file or a set of the database\n"
-            "                           connection parameters [ DEFAULT: file:replication.cfg ]\n"
+            "  --config               - a configuration URL (a configuration file or a set of\n"
+            "                           the database connection parameters\n"
+            "                           [ DEFAULT: " + ::configUrl + " ]\n"
             "  --do-not-save-replica  - do not save replica info in a database"
             "  --qserv-replicas       - also pull replicas from Qserv workers for the analysis\n"
             "  --progress-report      - progress report when executing batches of requests\n"
             "  --error-report         - detailed report on failed requests\n"
-            "  --detailed-report      - detailed report on results\n");
+            "  --detailed-report      - detailed report on results\n"
+            "  --iter                 - the number of iterations\n"
+            "                           [ DEFAULT: " + std::to_string(::numIter) + " ]\n");
 
         ::databaseFamily = parser.parameter<std::string>(1);
-        ::configUrl      = parser.option<std::string>("config", "file:replication.cfg");
+        ::configUrl      = parser.option<std::string>("config", ::configUrl);
 
         ::saveReplicaInfo   = not parser.flag("do-not-save-replica");
         ::pullQservReplicas =     parser.flag("qserv-replicas");
         ::progressReport    =     parser.flag("progress-report");
         ::errorReport       =     parser.flag("error-report");
         ::detailedReport    =     parser.flag("detailed-report");
+
+        ::numIter = parser.option<unsigned int>("iter", ::numIter);
 
     } catch (std::exception const& ex) {
         return 1;

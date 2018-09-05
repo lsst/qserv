@@ -164,7 +164,7 @@ bool MessengerConnector::exists(std::string const& id) const {
 
 void MessengerConnector::sendImpl(MessageWrapperBase::Ptr const& ptr) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "sendImpl  id: " + ptr->id());
+    LOGS(_log, LOG_LVL_DEBUG, context() << "sendImpl  id: " << ptr->id() << " _requests.size: " << _requests.size());
 
     util::Lock lock(_mtx, context() + "sendImpl");
 
@@ -323,7 +323,8 @@ void MessengerConnector::waitBeforeRestart(util::Lock const& lock) {
 void MessengerConnector::awakenForRestart(boost::system::error_code const& ec) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "awakenForRestart"
-         << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : ""));
+         << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : "")
+         << "  _requests.size=" << _requests.size());
 
     if (isAborted(ec)) return;
 

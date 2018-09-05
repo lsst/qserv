@@ -97,10 +97,6 @@ public:
         /// Problems with request configuration found
         CONFIG_ERROR,
 
-        /// The request could not be implemented due to an unrecoverable
-        /// cliend-side error.
-        CLIENT_ERROR,
-
         /// Server reports that the request can not be implemented due to incorrect
         /// parameters, etc.
         SERVER_BAD,
@@ -135,7 +131,7 @@ public:
     QservMgtRequest(QservMgtRequest const&) = delete;
     QservMgtRequest& operator=(QservMgtRequest const&) = delete;
 
-    virtual ~QservMgtRequest() = default;
+    virtual ~QservMgtRequest();
 
     /// @return reference to a provider of services
     ServiceProvider::Ptr const& serviceProvider() { return _serviceProvider; }
@@ -337,6 +333,9 @@ protected:
     mutable util::Mutex _mtx;
 
 private:
+
+    /// The global counter for the number of instances of any subclasses
+    static std::atomic<size_t> _numClassInstances;
 
     ServiceProvider::Ptr _serviceProvider;
 

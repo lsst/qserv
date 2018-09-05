@@ -71,6 +71,8 @@ struct Application {
 
     unsigned int numReplicas;
 
+    unsigned int numIter;
+
     // Replication system context
 
     ServiceProvider::Ptr provider;
@@ -118,6 +120,7 @@ struct Application {
             workerEvictTimeoutSec   (3600),
             qservSyncTimeoutSec     (60),
             numReplicas             (0),
+            numIter                 (0),
             failed                  (false),
             stopReplication         (false),
             numFinishedJobs         (0),
@@ -140,6 +143,7 @@ struct Application {
             "  [--worker-evict-timeout=<seconds>]\n"
             "  [--qserv-sync-timeout=<seconds>]\n"
             "  [--replicas=<number>]\n"
+            "  [--iter=<num>]\n"
             "\n"
             "Flags and options:\n"
             "  --config                   - configuration URL (a file or a database connection string)\n"
@@ -171,7 +175,10 @@ struct Application {
             "  --replicas                 - minimal number of replicas when running the replication phase\n"
             "                               This number of provided will override the corresponding value found in\n"
             "                               in the Configuration.\n"
-            "                               [ DEFAULT: " + std::to_string(numReplicas) + " replicas of each chunk ]\n");
+            "                               [ DEFAULT: " + std::to_string(numReplicas) + " replicas of each chunk ]\n"
+            "\n"
+            "  --iter                     - the number of iterations\n"
+            "                               [ DEFAULT: " + std::to_string(numIter) + " ]\n");
 
         configUrl = parser.option<std::string>("config", configUrl);
 
@@ -182,6 +189,8 @@ struct Application {
         qservSyncTimeoutSec      = parser.option<unsigned int>("qserv-sync-timeout",      qservSyncTimeoutSec);
         numReplicas              = parser.option<unsigned int>("replicas",                numReplicas);
 
+        numIter = parser.option<unsigned int>("iter", numIter);
+
         LOGS(_log, LOG_LVL_INFO, "MASTER            "
              << "configUrl="               << configUrl << " "
              << "health-probe-interval="   << healthProbeIntervalSec << " "
@@ -189,7 +198,8 @@ struct Application {
              << "worker-response-timeout=" << workerResponseTimeoutSec << " "
              << "worker-evict-timeout="    << workerEvictTimeoutSec << " "
              << "qserv-sync-timeout="      << qservSyncTimeoutSec << " "
-             << "replicas="                << numReplicas);
+             << "replicas="                << numReplicas << " "
+             << "iter="                    << numIter);
 
         ///////////////////////////////////////////////////////////////////////
         // Start the controller in its own thread before injecting any requests
@@ -242,6 +252,8 @@ struct Application {
                 // Qserv stays in sync with the Replicaiton system.
                 // --------------------------------------------------------------
         
+                unsigned int numIterCompleted = 0;
+
                 while (not stopReplication and not failed) {
             
                     if (launchFindAllJobs()) break;
@@ -261,6 +273,17 @@ struct Application {
                     util::BlockPost blockPost(1000 * replicationIntervalSec,
                                               1000 * replicationIntervalSec + 1);
                     blockPost.wait();
+
+                    // Stop the application if running in the iteration restricted mode
+                    // and a desired number of iterations has been reached.
+                    ++numIterCompleted;
+                    if (0 != numIter) {
+                        if (numIterCompleted >= numIter) {
+                            LOGS(_log, LOG_LVL_INFO, replicationLoopContext
+                                 << "desired number of iterations has been reached");
+                            failed = true;
+                        }
+                    }
                 }
     
             } catch (std::exception const& ex) {
@@ -507,8 +530,8 @@ struct Application {
 
                     if (track(job, finished, "ClusterHealthJob")) return;
                     
-                    // ----------------------------------------------
-                    // Update non-response intervals for bth services
+                    // -----------------------------------------------
+                    // Update non-response intervals for both services
 
                     for (auto&& entry: job->clusterHealth().qserv()) {
 
@@ -605,16 +628,16 @@ struct Application {
                                 util::BlockPost blockPost(1000, 2000);
 
                                 while (not stopReplication and not failed) {
-
-                                    // In case if the other thread failed then quite this
-                                    // thread as well
-                                    if (failed) {
-                                        if (stopReplication) stopReplication = false;
-                                        LOGS(_log, LOG_LVL_INFO, healthMonitorContext << "Replication cancellation: tracking aborted");
-                                        return;
-                                    }
                                     LOGS(_log, LOG_LVL_INFO, healthMonitorContext << "Replication cancellation: tracking ...");
                                     blockPost.wait();
+                                }
+
+                                // In case if the other thread failed then quite this
+                                // thread as well
+                                if (failed) {
+                                    if (stopReplication) stopReplication = false;
+                                    LOGS(_log, LOG_LVL_INFO, healthMonitorContext << "Replication cancellation: tracking aborted");
+                                    return;
                                 }
                                 LOGS(_log, LOG_LVL_INFO, healthMonitorContext << "Replication cancellation: tracking finished");
 
@@ -703,13 +726,12 @@ struct Application {
         util::BlockPost blockPost(1000, 2000);
 
         while (not finished and not failed) {
-
-            if (failed) {
-                job->cancel();
-                LOGS(_log, LOG_LVL_INFO, healthMonitorContext << name << ": tracking aborted");
-                return true;
-            }
             blockPost.wait();
+        }
+        if (failed) {
+            job->cancel();
+            LOGS(_log, LOG_LVL_INFO, healthMonitorContext << name << ": tracking aborted");
+            return true;
         }
         LOGS(_log, LOG_LVL_INFO, healthMonitorContext << name << ": tracking finished");
 

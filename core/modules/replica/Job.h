@@ -140,7 +140,7 @@ public:
     Job(Job const&) = delete;
     Job& operator=(Job const&) = delete;
 
-    virtual ~Job() = default;
+    virtual ~Job();
 
     /// @return a reference to the Controller,
     Controller::Ptr const& controller() const { return _controller; }
@@ -408,6 +408,9 @@ protected:
     mutable util::Mutex _mtx;
 
 private:
+
+    /// The global counter for the number of instances of any subclasses
+    static std::atomic<size_t> _numClassInstances;
 
     /// The unique identifier of the job
     std::string _id;
