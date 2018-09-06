@@ -291,6 +291,9 @@ public:
         return t.str();
     }
 
+    std::string getStatementStr() const override {
+        return _statement;
+    }
 
 private:
     Antlr4Parser(std::string const& q)
