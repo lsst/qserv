@@ -60,9 +60,8 @@ public:
     /// ANTLR errors have almost nothing inside
     ParseException(std::string const& msg, antlr::ANTLRException const&);
     explicit ParseException(Bug const& b);
-protected:
-    explicit ParseException(std::string const& msg)
-        : std::runtime_error(msg) {}
+    /// Parse related exception where the antlr/antlr4 context need not be included.
+    explicit ParseException(std::string const& msg);
 };
 
 
@@ -82,6 +81,7 @@ public:
     explicit adapter_execution_error(std::string msg)
     : std::runtime_error(msg) {}
 };
+
 
 }}} // namespace lsst::qserv::parser
 
