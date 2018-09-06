@@ -283,6 +283,9 @@ public:
         return t.str();
     }
 
+    std::string getStatementStr() const override {
+        return _statement;
+    }
 
 private:
     std::string _statement;
