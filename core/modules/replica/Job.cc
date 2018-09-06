@@ -26,7 +26,6 @@
 // System headers
 #include <sstream>
 #include <stdexcept>
-#include <thread>
 #include <utility>      // std::swap
 
 // Third party headers
@@ -176,7 +175,7 @@ void Job::start() {
     // Allow the job to be fully accomplished right away
 
     if (state() == State::FINISHED) {
-        notify();
+        notify(lock);
         return;
     }
 
@@ -236,7 +235,7 @@ void Job::finish(util::Lock const& lock,
     if(_heartbeatTimerPtr)  _heartbeatTimerPtr->cancel();
     if(_expirationTimerPtr) _expirationTimerPtr->cancel();
 
-    notify();
+    notify(lock);
 }
 
 void Job::qservAddReplica(util::Lock const& lock,
@@ -440,22 +439,6 @@ void Job::expired(boost::system::error_code const& ec) {
     if (state() == State::FINISHED) return;
 
     finish(lock, ExtendedState::TIMEOUT_EXPIRED);
-}
-
-void Job::notify() {
-
-    // The callback is being made asynchronously in a separate thread
-    // to avoid blocking the current thread.
-    //
-    // TODO: consider reimplementing this method to send notificatons
-    //       via a thread pool & a queue.
-
-    auto const self = shared_from_this();
-
-    std::thread notifier([self]() {
-        self->notifyImpl();
-    });
-    notifier.detach();
 }
 
 bool JobCompare::operator()(Job::Ptr const& lhs,

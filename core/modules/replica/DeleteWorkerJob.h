@@ -192,9 +192,9 @@ protected:
     void cancelImpl(util::Lock const& lock) final;
 
     /**
-     * @see Job::notifyImpl()
-     */
-    void notifyImpl() final;
+      * @see Job::notify()
+      */
+    void notify(util::Lock const& lock) final;
 
     /**
      * Beging the actual sequence of actions for removing the worker

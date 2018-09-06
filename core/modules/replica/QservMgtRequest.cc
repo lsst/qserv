@@ -25,7 +25,6 @@
 
 // System headers
 #include <stdexcept>
-#include <thread>
 
 // Third party headers
 #include <boost/bind.hpp>
@@ -77,7 +76,6 @@ std::string QservMgtRequest::state2string(ExtendedState state) {
 }
 
 QservMgtRequest::QservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
-                                 boost::asio::io_service& io_service,
                                  std::string const& type,
                                  std::string const& worker)
     :   _serviceProvider(serviceProvider),
@@ -88,7 +86,7 @@ QservMgtRequest::QservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
         _extendedState(ExtendedState::NONE),
         _service(nullptr),
         _requestExpirationIvalSec(serviceProvider->config()->xrootdTimeoutSec()),
-        _requestExpirationTimer(io_service) {
+        _requestExpirationTimer(serviceProvider->io_service()) {
 
     // This report is used solely for debugging purposes to allow tracking
     // potential memory leaks within applications.
@@ -159,7 +157,7 @@ void QservMgtRequest::start(XrdSsiService* service,
                  State::FINISHED,
                  ExtendedState::CONFIG_ERROR);
         
-        notify();
+        notify(lock);
         return;
     }
   
@@ -285,25 +283,8 @@ void QservMgtRequest::finish(util::Lock const& lock,
 
     serviceProvider()->databaseServices()->saveState(*this, _performance, _serverError);
 
-    notify();
+    notify(lock);
 }
-
-void QservMgtRequest::notify() {
-
-    // The callback is being made asynchronously in a separate thread
-    // to avoid blocking the current thread.
-    //
-    // TODO: consider reimplementing this method to send notificatons
-    //       via a thread pool & a queue.
-
-    auto const self = shared_from_this();
-
-    std::thread notifier([self]() {
-        self->notifyImpl();
-    });
-    notifier.detach();
-}
-
 
 void QservMgtRequest::assertState(State desiredState,
                                   std::string const& context) const {

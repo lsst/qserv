@@ -141,9 +141,16 @@ void test() {
 
     try {
 
-        // Initialize the context
+        ///////////////////////////////////////////////////////////////////////////
+        // Start the provider in its own thread pool before initiating any requests
+        // or jobs.
+        //
+        // Note that onFinish callbacks which are activated upon the completion of
+        // the requests or jobs will be run by a thread from the pool.
 
-        replica::ServiceProvider::Ptr const provider = replica::ServiceProvider::create(configUrl);
+        auto provider = replica::ServiceProvider::create(configUrl);
+
+        provider->run();
 
         // Launch the requst and wait for its completion
         //
@@ -226,6 +233,12 @@ void test() {
         while (not finished) {
             blockPost.wait(200);
         }
+
+        //////////////////////////////////////////////////
+        // Shutdown the privider and join with its threads        
+
+        provider->stop();
+
     } catch (const std::exception& ex) {
         std::cerr << ex.what() << std::endl;
     }

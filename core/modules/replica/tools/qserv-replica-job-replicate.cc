@@ -55,15 +55,17 @@ bool test() {
 
     try {
 
-        ///////////////////////////////////////////////////////////////////////
-        // Start the controller in its own thread before injecting any requests
-        // Note that omFinish callbak which are activated upon a completion
-        // of the requsts will be run in that Controller's thread.
+        ///////////////////////////////////////////////////////////////////////////
+        // Start the provider in its own thread pool before initiating any requests
+        // or jobs.
+        //
+        // Note that onFinish callbacks which are activated upon the completion of
+        // the requests or jobs will be run by a thread from the pool.
 
         replica::ServiceProvider::Ptr const provider   = replica::ServiceProvider::create(configUrl);
         replica::Controller::Ptr      const controller = replica::Controller::create(provider);
 
-        controller->run();
+        provider->run();
 
         ////////////////////
         // Start replication
@@ -85,11 +87,10 @@ bool test() {
             blockPost.wait();
         }
 
-        ///////////////////////////////////////////////////
-        // Shutdown the controller and join with its thread
+        //////////////////////////////////////////////////
+        // Shutdown the provider and join with its threads
 
-        controller->stop();
-        controller->join();
+        provider->stop();
 
     } catch (std::exception const& ex) {
         std::cerr << ex.what() << std::endl;

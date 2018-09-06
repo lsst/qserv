@@ -212,10 +212,8 @@ protected:
      * @param serviceProvider - reference to a provider of services
      * @param type            - its type name (used informally for debugging)
      * @param worker          - the name of a worker
-     * @io_service            - BOOST ASIO service
      */
     QservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
-                    boost::asio::io_service& io_service,
                     std::string const& type,
                     std::string const& worker);
 
@@ -269,18 +267,16 @@ protected:
 
     /**
      * Start user-notification protocol (in case if user-defined notifiers
-     * were provided to a subclass).
+     * were provided to a subclass). The callback is expected to be made
+     * asynchronously in a separate thread to avoid blocking the current thread.
      *
-     * @see QservMgtRequest::notifyImpl()
-     */
-    void notify();
-
-    /**
-     * This method is supposed to be provided by subclasses to forward
+     * This method has to be provided by subclasses to forward
      * notification on request completion to a client which initiated
      * the request, etc.
+     *
+     * @param lock - the lock must be acquired by a caller of the method
      */
-    virtual void notifyImpl()=0;
+    virtual void notify(util::Lock const& lock)=0;
 
     /**
      * Ensure the object is in the deseride internal state. Throw an

@@ -50,14 +50,12 @@ namespace replica {
 
 GetReplicasQservMgtRequest::Ptr GetReplicasQservMgtRequest::create(
                                         ServiceProvider::Ptr const& serviceProvider,
-                                        boost::asio::io_service& io_service,
                                         std::string const& worker,
                                         std::string const& databaseFamily,
                                         bool inUseOnly,
                                         GetReplicasQservMgtRequest::CallbackType onFinish) {
     return GetReplicasQservMgtRequest::Ptr(
         new GetReplicasQservMgtRequest(serviceProvider,
-                                       io_service,
                                        worker,
                                        databaseFamily,
                                        inUseOnly,
@@ -66,13 +64,11 @@ GetReplicasQservMgtRequest::Ptr GetReplicasQservMgtRequest::create(
 
 GetReplicasQservMgtRequest::GetReplicasQservMgtRequest(
                                 ServiceProvider::Ptr const& serviceProvider,
-                                boost::asio::io_service& io_service,
                                 std::string const& worker,
                                 std::string const& databaseFamily,
                                 bool inUseOnly,
                                 GetReplicasQservMgtRequest::CallbackType onFinish)
     :   QservMgtRequest(serviceProvider,
-                        io_service,
                         "QSERV_GET_REPLICAS",
                         worker),
         _databaseFamily(databaseFamily),
@@ -197,9 +193,9 @@ void GetReplicasQservMgtRequest::finishImpl(util::Lock const& lock) {
     _qservRequest = nullptr;
 }
 
-void GetReplicasQservMgtRequest::notifyImpl() {
+void GetReplicasQservMgtRequest::notify(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notifyImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
 
     if (nullptr != _onFinish) {
 
@@ -210,8 +206,10 @@ void GetReplicasQservMgtRequest::notifyImpl() {
         // 2. it breaks the up-stream dependency on a caller object if a shared
         //    pointer to the object was mentioned as the lambda-function's closure
 
-        auto onFinish = std::move(_onFinish);
-        onFinish(shared_from_base<GetReplicasQservMgtRequest>());
+        serviceProvider()->io_service().post(
+            std::bind(
+                std::move(_onFinish),
+                shared_from_base<GetReplicasQservMgtRequest>()));
     }
 }
 }}} // namespace lsst::qserv::replica

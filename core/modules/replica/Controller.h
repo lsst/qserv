@@ -36,9 +36,6 @@
 #include <thread>
 #include <vector>
 
-// Third party headers
-#include <boost/asio.hpp>
-
 // Qserv headers
 #include "replica/Request.h"
 #include "replica/RequestTypesFwd.h"
@@ -54,7 +51,6 @@ namespace replica {
 // Forward declarations
 
 class ControllerImpl;
-class Messenger;
 
 /**
  * Class ControllerRequestWrapper is the base class for implementing requests
@@ -150,43 +146,10 @@ public:
     uint64_t startTime() const { return _startTime; }
 
     /// @return the Service Provider used by the server
-    ServiceProvider::Ptr const& serviceProvider() { return _serviceProvider; }
+    ServiceProvider::Ptr const& serviceProvider() const { return _serviceProvider; }
 
     /// @return reference to the I/O service for ASYNC requests
-    boost::asio::io_service& io_service() { return _io_service; }
-
-    /**
-     * Run the Controller in a dedicated thread unless it's already running.
-     * It's safe to call this method multiple times from any thread.
-     */
-    void run();
-
-    /**
-     * Check if the service is running.
-     *
-     * @return true if the service is running.
-     */
-    bool isRunning() const;
-
-    /**
-     * Stop the server. This method will guarantee that all outstanding
-     * opeations will finish and not aborted.
-     *
-     * This operation will also result in stopping the internal thread
-     * in which the server is being run.
-     */
-    void stop();
-
-    /**
-     * Join with a thread in which the service is being run (if any).
-     * If the service was not started or if it's stopped the the method
-     * will return immediattely.
-     *
-     * This method is meant to be used for integration of the service into
-     * a larger multi-threaded application which may require a proper
-     * synchronization between threads.
-     */
-    void join();
+    boost::asio::io_service& io_service() { return serviceProvider()->io_service(); }
 
     /**
      * Create and start a new request for creating a replica.
@@ -687,23 +650,12 @@ private:
     /// The provider of various services
     ServiceProvider::Ptr _serviceProvider;
 
-    // The BOOST ASIO communication services & threads which run them
-
-    size_t _numThreads;
-
-    boost::asio::io_service _io_service;
-    std::unique_ptr<boost::asio::io_service::work> _work;
-    std::vector<std::shared_ptr<std::thread>> _threads;
-
     /// The mutex for enforcing thread safety of the class's public API
     /// and internal operations.
     mutable util::Mutex _mtx;
 
     /// The registry of the on-going requests.
     std::map<std::string,std::shared_ptr<ControllerRequestWrapper>> _registry;
-
-    /// Worker messenger service
-    std::shared_ptr<Messenger> _messenger;
 };
 
 }}} // namespace lsst::qserv::replica

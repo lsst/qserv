@@ -201,15 +201,17 @@ struct Application {
              << "replicas="                << numReplicas << " "
              << "iter="                    << numIter);
 
-        ///////////////////////////////////////////////////////////////////////
-        // Start the controller in its own thread before injecting any requests
-        // Note that omFinish callbak which are activated upon a completion
-        // of the requsts will be run in that Controller's thread.
+        ///////////////////////////////////////////////////////////////////////////
+        // Start the provider in its own thread pool before initiating any requests
+        // or jobs.
+        //
+        // Note that onFinish callbacks which are activated upon the completion of
+        // the requests or jobs will be run by a thread from the pool.
 
         provider   = ServiceProvider::create(configUrl);
         controller = Controller::create(provider);
 
-        controller->run();
+        provider->run();
 
         databaseFamilies = provider->config()->databaseFamilies();
 
@@ -226,11 +228,10 @@ struct Application {
             blockPost.wait();
         }
 
-        ///////////////////////////////////////////////////
-        // Shutdown the controller and join with its thread
+        //////////////////////////////////////////////////
+        // Shutdown the provider and join with its threads
 
-        controller->stop();
-        controller->join();
+        provider->stop();
     }
 
     /**

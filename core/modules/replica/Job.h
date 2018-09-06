@@ -278,11 +278,14 @@ protected:
     virtual void cancelImpl(util::Lock const& lock) = 0;
 
     /**
-      * This method is supposed to be provided by subclasses
-      * to notify a caller by invoking a subclass-specific callback
-      * function registered for the completion of the job.
-      */
-    virtual void notifyImpl() = 0;
+     * This method will begin an optional user protocol upon a completion
+     * of a job (if any user-supplied callback function was provided).
+     * The callback is supposed to be made asynchronously to avoid blocking
+     * the current thread.
+     *
+     * @param lock - the lock must be acquired by a caller of the method
+     */
+    virtual void notify(util::Lock const& lock) = 0;
 
     /**
      * Notify Qserv about a new chunk added to its database.
@@ -392,15 +395,6 @@ private:
      * @param ec - error code to be evaluated
      */
     void expired(boost::system::error_code const& ec);
-
-    /**
-     * This method will begin an optional user protocol upon a completion
-     * of a job (if any user-supplied callback function was provided).
-     * The method will eventually use subclass-specific method notifyImpl().
-     *
-     * @see Job::notifyImpl
-     */
-    void notify();
 
 protected:
 

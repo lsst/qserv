@@ -48,14 +48,12 @@ namespace replica {
 
 AddReplicaQservMgtRequest::Ptr AddReplicaQservMgtRequest::create(
                                         ServiceProvider::Ptr const& serviceProvider,
-                                        boost::asio::io_service& io_service,
                                         std::string const& worker,
                                         unsigned int chunk,
                                         std::vector<std::string> const& databases,
                                         AddReplicaQservMgtRequest::CallbackType onFinish) {
     return AddReplicaQservMgtRequest::Ptr(
         new AddReplicaQservMgtRequest(serviceProvider,
-                                      io_service,
                                       worker,
                                       chunk,
                                       databases,
@@ -64,13 +62,11 @@ AddReplicaQservMgtRequest::Ptr AddReplicaQservMgtRequest::create(
 
 AddReplicaQservMgtRequest::AddReplicaQservMgtRequest(
                                 ServiceProvider::Ptr const& serviceProvider,
-                                boost::asio::io_service& io_service,
                                 std::string const& worker,
                                 unsigned int chunk,
                                 std::vector<std::string> const& databases,
                                 AddReplicaQservMgtRequest::CallbackType onFinish)
     :   QservMgtRequest(serviceProvider,
-                        io_service,
                         "QSERV_ADD_REPLICA",
                         worker),
         _chunk(chunk),
@@ -159,9 +155,9 @@ void AddReplicaQservMgtRequest::finishImpl(util::Lock const& lock) {
     _qservRequest = nullptr;
 }
 
-void AddReplicaQservMgtRequest::notifyImpl() {
+void AddReplicaQservMgtRequest::notify(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notifyImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
 
     if (nullptr != _onFinish) {
 
@@ -172,8 +168,10 @@ void AddReplicaQservMgtRequest::notifyImpl() {
         // 2. it breaks the up-stream dependency on a caller object if a shared
         //    pointer to the object was mentioned as the lambda-function's closure
 
-        auto onFinish = std::move(_onFinish);
-        onFinish(shared_from_base<AddReplicaQservMgtRequest>());
+        serviceProvider()->io_service().post(
+            std::bind(
+                std::move(_onFinish),
+                shared_from_base<AddReplicaQservMgtRequest>()));
     }
 }
 

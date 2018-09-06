@@ -100,13 +100,17 @@ bool test() {
 
     try {
 
-        ///////////////////////////////////////////////////////////////////////
-        // Start the controller in its own thread before injecting any requests
+        ///////////////////////////////////////////////////////////////////////////
+        // Start the provider in its own thread pool before initiating any requests
+        // or jobs.
+        //
+        // Note that onFinish callbacks which are activated upon the completion of
+        // the requests or jobs will be run by a thread from the pool.
 
         ServiceProvider::Ptr const provider   = ServiceProvider::create(configUrl);
         Controller::Ptr      const controller = Controller::create(provider);
 
-        controller->run();
+        provider->run();
 
         /////////////////////////////////////////
         // Launch a request of the requested type
@@ -326,19 +330,14 @@ bool test() {
             return false;
         }
 
-        // Wait before the request is finished. Then stop the master controller
+        // Wait before the request is finished. Then stop the services
 
         util::BlockPost blockPost(0, 5000);     // for random delays (milliseconds) between iterations
 
         while (not finished) {
             std::cout << "HEARTBEAT: " << blockPost.wait() << " msec" << std::endl;;
         }
-        controller->stop();
-
-        // Block the current thread indefinitively or untill the controller is cancelled.
-
-        LOGS(_log, LOG_LVL_DEBUG, "waiting for: controller->join()");
-        controller->join();
+        provider->stop();
 
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;

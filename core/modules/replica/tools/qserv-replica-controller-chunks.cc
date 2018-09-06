@@ -61,14 +61,14 @@ bool test() {
     try {
 
         ///////////////////////////////////////////////////////////////////////
-        // Start the controller in its own thread before injecting any requests
+        // Start the provider in its own threads before injecting any requests
         // Note that omFinish callbak which are activated upon a completion
         // of the requsts will be run in that Controller's thread.
 
         replica::ServiceProvider::Ptr const provider   = replica::ServiceProvider::create(configUrl);
         replica::Controller::Ptr      const controller = replica::Controller::create(provider);
 
-        controller->run();
+        provider->run();
 
         ////////////////////////////////////////
         // Find all replicas accross all workers
@@ -152,10 +152,9 @@ bool test() {
 
 
         ///////////////////////////////////////////////////
-        // Shutdown the controller and join with its thread
+        // Shutdown the provider and join with its threads
 
-        controller->stop();
-        controller->join();
+        provider->stop();
 
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;

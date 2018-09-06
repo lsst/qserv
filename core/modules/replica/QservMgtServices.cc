@@ -106,65 +106,12 @@ private:
 ////////////////////////////////////////////////////////////////////////
 
 QservMgtServices::Ptr QservMgtServices::create(ServiceProvider::Ptr const& serviceProvider) {
-    auto ptr = QservMgtServices::Ptr(new QservMgtServices(serviceProvider));
-    ptr->run();
-    return ptr;
+    return QservMgtServices::Ptr(new QservMgtServices(serviceProvider));
 }
 
 QservMgtServices::QservMgtServices(ServiceProvider::Ptr const& serviceProvider)
     :   _serviceProvider(serviceProvider) {
 }
-
-QservMgtServices::~QservMgtServices() {
-    stop();
-}
-
-void QservMgtServices::run() {
-
-    if (nullptr == _thread) {
-
-        // Start Boost I/O services in its own thread
-    
-        _work.reset(new boost::asio::io_service::work(_io_service));
-    
-        auto const self = shared_from_this();
-    
-        _thread.reset(new std::thread(
-            [self] () {
-    
-                // This will prevent the I/O service from exiting the .run()
-                // method event when it will run out of any requests to process.
-                // Unless the service will be explicitly stopped.
-                self->_io_service.run();
-            }
-        ));
-    }
-}
-
-void QservMgtServices::stop() {
-
-    if (nullptr != _thread) {
-
-        // Destroying this object will let the I/O service to (eventually) finish
-        // all on-going work and shut down the I/O threads. In that case there
-        // is no need to stop the service explicitly (which is not a good idea anyway
-        // because there may be outstanding synchronous requests, in which case the service
-        // would get into an unpredictanle state.)
-    
-        _work.reset();
-    
-        // At this point all outstanding requests should finish and the thread
-        // should stop as well.
-        _thread->join();
-    
-        // Always do so in order to put service into a clean state. This will prepare
-        // it for further usage.
-        _io_service.reset();
-    
-        _thread.reset();
-    }
-}
-
 
 AddReplicaQservMgtRequest::Ptr QservMgtServices::addReplica(
                                         unsigned int chunk,
@@ -189,8 +136,7 @@ AddReplicaQservMgtRequest::Ptr QservMgtServices::addReplica(
         auto const manager = shared_from_this();
     
         request = AddReplicaQservMgtRequest::create(
-            _serviceProvider,
-            _io_service,
+            serviceProvider(),
             worker,
             chunk,
             databases,
@@ -242,8 +188,7 @@ RemoveReplicaQservMgtRequest::Ptr QservMgtServices::removeReplica(
         auto const manager = shared_from_this();
     
         request = RemoveReplicaQservMgtRequest::create(
-            _serviceProvider,
-            _io_service,
+            serviceProvider(),
             worker,
             chunk,
             databases,
@@ -293,8 +238,7 @@ GetReplicasQservMgtRequest::Ptr QservMgtServices::getReplicas(
         auto const manager = shared_from_this();
     
         request = GetReplicasQservMgtRequest::create(
-            _serviceProvider,
-            _io_service,
+            serviceProvider(),
             worker,
             databaseFamily,
             inUseOnly,
@@ -344,8 +288,7 @@ SetReplicasQservMgtRequest::Ptr QservMgtServices::setReplicas(
         auto const manager = shared_from_this();
     
         request = SetReplicasQservMgtRequest::create(
-            _serviceProvider,
-            _io_service,
+            serviceProvider(),
             worker,
             newReplicas,
             force,
@@ -393,8 +336,7 @@ TestEchoQservMgtRequest::Ptr QservMgtServices::echo(
         auto const manager = shared_from_this();
     
         request = TestEchoQservMgtRequest::create(
-            _serviceProvider,
-            _io_service,
+            serviceProvider(),
             worker,
             data,
             [manager] (QservMgtRequest::Ptr const& request) {

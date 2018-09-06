@@ -74,7 +74,6 @@ public:
      * low-level pointers).
      *
      * @param serviceProvider - reference to a provider of services
-     * @param io_service      - BOOST ASIO service
      * @param worker          - the name of a worker
      * @param data            - the data string to be eachoed back by the worker (if successful)
      * @param onFinish        - (optional) callback function to be called upon request completion
@@ -82,7 +81,6 @@ public:
      * @return pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      boost::asio::io_service& io_service,
                       std::string const& worker,
                       std::string const& data,
                       CallbackType onFinish = nullptr);
@@ -112,7 +110,6 @@ private:
      * @see TestEchoQservMgtRequest::created()
      */
     TestEchoQservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
-                            boost::asio::io_service& io_service,
                             std::string const& worker,
                             std::string const& data,
                             CallbackType onFinish);
@@ -128,9 +125,9 @@ private:
     void finishImpl(util::Lock const& lock) final;
 
     /**
-      * @see QservMgtRequest::notifyImpl
+      * @see QservMgtRequest::notify
       */
-    void notifyImpl() final;
+    void notify(util::Lock const& lock) final;
 
     /**
      * Carry over results of the request into a local storage.

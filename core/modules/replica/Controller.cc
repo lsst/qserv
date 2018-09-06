@@ -155,8 +155,8 @@ public:
 
         typename REQUEST_TYPE::Ptr request =
             REQUEST_TYPE::create(
-                controller->_serviceProvider,
-                controller->_io_service,
+                controller->serviceProvider(),
+                controller->serviceProvider()->io_service(),
                 workerName,
                 targetRequestId,
                 [controller] (typename REQUEST_TYPE::Ptr request) {
@@ -201,8 +201,8 @@ public:
 
         typename REQUEST_TYPE::Ptr request =
             REQUEST_TYPE::create(
-                controller->_serviceProvider,
-                controller->_io_service,
+                controller->serviceProvider(),
+                controller->serviceProvider()->io_service(),
                 workerName,
                 [controller] (typename REQUEST_TYPE::Ptr request) {
                     controller->finish(request->id());
@@ -248,102 +248,14 @@ Controller::Controller(ServiceProvider::Ptr const& serviceProvider)
             boost::asio::ip::host_name(),
             getpid()}),
         _startTime(PerformanceUtils::now()),
-        _serviceProvider(serviceProvider),
-        _numThreads(serviceProvider->config()->controllerThreads()) {
+        _serviceProvider(serviceProvider) {
 
-    if (0 == _numThreads) {
-        throw std::runtime_error(
-            "Controller:  configuration problem, the number of threads is set to 0");
-    }
-
-    _messenger = Messenger::create(_serviceProvider, _io_service);
     serviceProvider->databaseServices()->saveState(_identity, _startTime);
 }
 
 std::string Controller::context() const {
     return "R-CONTR " + _identity.id + "  " + _identity.host +
            "[" + std::to_string(_identity.pid) + "]  ";
-}
-
-void Controller::run() {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << "run");
-
-    util::Lock lock(_mtx, context() + "run");
-
-    if (not isRunning()) {
-
-        _work.reset(new boost::asio::io_service::work(_io_service));
-
-        Controller::Ptr const self = shared_from_this();
-
-        _threads.clear();
-        for (size_t i = 0; i < _numThreads; ++i) {
-            _threads.emplace_back(std::make_shared<std::thread>(
-                [self] () {
-
-                    // This will prevent the I/O service from exiting the .run()
-                    // method event when it will run out of any requests to process.
-                    // Unless the service will be explicitly stopped.
-                    self->_io_service.run();
-                }
-            ));
-        }
-    }
-}
-
-bool Controller::isRunning() const {
-    return _threads.size() != 0;
-}
-
-void Controller::stop() {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << "stop");
-
-    if (not isRunning()) return;
-
-    // IMPORTANT:
-    //
-    //   Never attempt running these operations within Lock(_mtx,...)
-    //   due to a possibile deadlock when asynchronous handlers will be
-    //   calling the thread-safe methods. A problem is that until they finish
-    //   in a clean way (as per the _work.reset()) the thread will never finish,
-    //   and the application will hang on _thread->join().
-
-    //   (disabled)
-    //   util::Lock lock(_mtx, context() + "run");
-
-    // These steps will cancel all oustanding requests
-    _messenger->stop();
-
-    // Destroying this object will let the I/O service to (eventually) finish
-    // all on-going work and shut down all Controller's threads. In that case there
-    // is no need to stop the service explicitly (which is not a good idea anyway
-    // because there may be outstanding synchronous requests, in which case the service
-    // would get into an unpredictanle state.)
-
-    _work.reset();
-
-    // At this point all outstanding requests should finish and all threads
-    // should stop as well.
-    join();
-
-    // Always do so in order to put service into a clean state. This will prepare
-    // it for further usage.
-    _io_service.reset();
-
-    _threads.clear();
-
-    // Double check that the collection of requests is empty.
-
-    if (not _registry.empty()) {
-        throw std::logic_error(
-            "Controller::stop() the collection of outstanding requests is not empty");
-    }
-}
-
-void Controller::join() {
-    for (auto&& t: _threads) t->join();
 }
 
 ReplicationRequest::Ptr Controller::replicate(
@@ -367,8 +279,8 @@ ReplicationRequest::Ptr Controller::replicate(
     Controller::Ptr controller = shared_from_this();
 
     auto const request = ReplicationRequest::create(
-        _serviceProvider,
-        _io_service,
+        serviceProvider(),
+        serviceProvider()->io_service(),
         workerName,
         sourceWorkerName,
         database,
@@ -379,7 +291,7 @@ ReplicationRequest::Ptr Controller::replicate(
         priority,
         keepTracking,
         allowDuplicate,
-        _messenger
+        serviceProvider()->messenger()
     );
 
     // Register the request (along with its callback) by its unique
@@ -416,8 +328,8 @@ DeleteRequest::Ptr Controller::deleteReplica(
     Controller::Ptr controller = shared_from_this();
 
     auto const request = DeleteRequest::create(
-        _serviceProvider,
-        _io_service,
+        serviceProvider(),
+        serviceProvider()->io_service(),
         workerName,
         database,
         chunk,
@@ -427,7 +339,7 @@ DeleteRequest::Ptr Controller::deleteReplica(
         priority,
         keepTracking,
         allowDuplicate,
-        _messenger
+        serviceProvider()->messenger()
     );
 
     // Register the request (along with its callback) by its unique
@@ -464,8 +376,8 @@ FindRequest::Ptr Controller::findReplica(
     Controller::Ptr controller = shared_from_this();
 
     auto const request = FindRequest::create(
-        _serviceProvider,
-        _io_service,
+        serviceProvider(),
+        serviceProvider()->io_service(),
         workerName,
         database,
         chunk,
@@ -475,7 +387,7 @@ FindRequest::Ptr Controller::findReplica(
         priority,
         computeCheckSum,
         keepTracking,
-        _messenger
+        serviceProvider()->messenger()
     );
 
     // Register the request (along with its callback) by its unique
@@ -511,8 +423,8 @@ FindAllRequest::Ptr Controller::findAllReplicas(
     Controller::Ptr controller = shared_from_this();
 
     auto const request = FindAllRequest::create(
-        _serviceProvider,
-        _io_service,
+        serviceProvider(),
+        serviceProvider()->io_service(),
         workerName,
         database,
         saveReplicaInfo,
@@ -521,7 +433,7 @@ FindAllRequest::Ptr Controller::findAllReplicas(
         },
         priority,
         keepTracking,
-        _messenger
+        serviceProvider()->messenger()
     );
 
     // Register the request (along with its callback) by its unique
@@ -557,8 +469,8 @@ EchoRequest::Ptr Controller::echo(std::string const& workerName,
     Controller::Ptr controller = shared_from_this();
 
     auto const request = EchoRequest::create(
-        _serviceProvider,
-        _io_service,
+        serviceProvider(),
+        serviceProvider()->io_service(),
         workerName,
         data,
         delay,
@@ -567,7 +479,7 @@ EchoRequest::Ptr Controller::echo(std::string const& workerName,
         },
         priority,
         keepTracking,
-        _messenger
+        serviceProvider()->messenger()
     );
 
     // Register the request (along with its callback) by its unique
@@ -603,7 +515,7 @@ StopReplicationRequest::Ptr Controller::stopReplication(
         targetRequestId,
         onFinish,
         keepTracking,
-        _messenger,
+        serviceProvider()->messenger(),
         requestExpirationIvalSec);
 }
 
@@ -626,7 +538,7 @@ StopDeleteRequest::Ptr Controller::stopReplicaDelete(
         targetRequestId,
         onFinish,
         keepTracking,
-        _messenger,
+        serviceProvider()->messenger(),
         requestExpirationIvalSec);
 }
 
@@ -649,7 +561,7 @@ StopFindRequest::Ptr Controller::stopReplicaFind(
         targetRequestId,
         onFinish,
         keepTracking,
-        _messenger,
+        serviceProvider()->messenger(),
         requestExpirationIvalSec);
 }
 
@@ -672,7 +584,7 @@ StopFindAllRequest::Ptr Controller::stopReplicaFindAll(
         targetRequestId,
         onFinish,
         keepTracking,
-        _messenger,
+        serviceProvider()->messenger(),
         requestExpirationIvalSec);
 }
 
@@ -695,7 +607,7 @@ StopEchoRequest::Ptr Controller::stopEcho(
         targetRequestId,
         onFinish,
         keepTracking,
-        _messenger,
+        serviceProvider()->messenger(),
         requestExpirationIvalSec);
 }
 
@@ -718,7 +630,7 @@ StatusReplicationRequest::Ptr Controller::statusOfReplication(
         targetRequestId,
         onFinish,
         keepTracking,
-        _messenger,
+        serviceProvider()->messenger(),
         requestExpirationIvalSec);
 }
 
@@ -741,7 +653,7 @@ StatusDeleteRequest::Ptr Controller::statusOfDelete(
         targetRequestId,
         onFinish,
         keepTracking,
-        _messenger,
+        serviceProvider()->messenger(),
         requestExpirationIvalSec);
 }
 
@@ -764,7 +676,7 @@ StatusFindRequest::Ptr Controller::statusOfFind(
         targetRequestId,
         onFinish,
         keepTracking,
-        _messenger,
+        serviceProvider()->messenger(),
         requestExpirationIvalSec);
 }
 
@@ -787,7 +699,7 @@ StatusFindAllRequest::Ptr Controller::statusOfFindAll(
         targetRequestId,
         onFinish,
         keepTracking,
-        _messenger,
+        serviceProvider()->messenger(),
         requestExpirationIvalSec);
 }
 
@@ -810,7 +722,7 @@ StatusEchoRequest::Ptr Controller::statusOfEcho(
         targetRequestId,
         onFinish,
         keepTracking,
-        _messenger,
+        serviceProvider()->messenger(),
         requestExpirationIvalSec);
 }
 
@@ -829,7 +741,7 @@ ServiceSuspendRequest::Ptr Controller::suspendWorkerService(
         jobId,
         workerName,
         onFinish,
-        _messenger,
+        serviceProvider()->messenger(),
         requestExpirationIvalSec);
 }
 
@@ -848,7 +760,7 @@ ServiceResumeRequest::Ptr Controller::resumeWorkerService(
         jobId,
         workerName,
         onFinish,
-        _messenger,
+        serviceProvider()->messenger(),
         requestExpirationIvalSec);
 }
 
@@ -867,7 +779,7 @@ ServiceStatusRequest::Ptr Controller::statusOfWorkerService(
         jobId,
         workerName,
         onFinish,
-        _messenger,
+        serviceProvider()->messenger(),
         requestExpirationIvalSec);
 }
 
@@ -886,7 +798,7 @@ ServiceRequestsRequest::Ptr Controller::requestsOfWorkerService(
         jobId,
         workerName,
         onFinish,
-        _messenger,
+        serviceProvider()->messenger(),
         requestExpirationIvalSec);
 }
 
@@ -905,7 +817,7 @@ ServiceDrainRequest::Ptr Controller::drainWorkerService(
         jobId,
         workerName,
         onFinish,
-        _messenger,
+        serviceProvider()->messenger(),
         requestExpirationIvalSec);
 }
 
@@ -937,8 +849,8 @@ void Controller::finish(std::string const& id) {
 }
 
 void Controller::assertIsRunning() const {
-    if (not isRunning()) {
-        throw std::runtime_error("the replication service is not running");
+    if (not serviceProvider()->isRunning()) {
+        throw std::runtime_error("ServiceProvider is not running");
     }
 }
 

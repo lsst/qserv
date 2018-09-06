@@ -217,9 +217,9 @@ void RebalanceJob::restart(util::Lock const& lock) {
     _findAllJob->start();
 }
 
-void RebalanceJob::notifyImpl() {
+void RebalanceJob::notify(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notifyImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
 
     if (nullptr != _onFinish) {
 
@@ -230,8 +230,10 @@ void RebalanceJob::notifyImpl() {
         // 2. it breaks the up-stream dependency on a caller object if a shared
         //    pointer to the object was mentioned as the lambda-function's closure
 
-        auto onFinish = std::move(_onFinish);
-        onFinish(shared_from_base<RebalanceJob>());
+        controller()->io_service().post(
+            std::bind(
+                std::move(_onFinish),
+                shared_from_base<RebalanceJob>()));
     }
 }
 

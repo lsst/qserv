@@ -30,7 +30,6 @@
 // System headers
 #include <map>
 #include <memory>
-#include <thread>
 #include <vector>
 
 // Qserv headers
@@ -103,11 +102,10 @@ public:
     QservMgtServices(QservMgtServices const&) = delete;
     QservMgtServices& operator=(QservMgtServices const&) = delete;
 
-    /// Non-trivial destructor is needed to shut down Boost ASIO services
-    ~QservMgtServices();
+    ~QservMgtServices() = default;
 
     /// @return reference to the ServiceProvider object
-    ServiceProvider::Ptr const& serviceProvider() { return _serviceProvider; }
+    ServiceProvider::Ptr const& serviceProvider() const { return _serviceProvider; }
 
     /**
      * Notify Qserv worker on availability of a new replica
@@ -241,18 +239,6 @@ private:
      */
     explicit QservMgtServices(ServiceProvider::Ptr const& serviceProvider);
 
-
-    /**
-     * This method will start Boost ASIO services which are used for timing
-     * requests. It's safe to call the method many times.
-     */
-    void run();
-
-    /**
-     * Stop Boost ASIO services. It's safe to call the method many times.
-     */
-    void stop();
-
     /**
      * Finalize the completion of the request. This method will notify
      * a requestor on the completion of the operation and it will also
@@ -272,12 +258,6 @@ private:
 private:
 
     ServiceProvider::Ptr _serviceProvider;
-
-    // BOOST ASIO communication services
-
-    boost::asio::io_service _io_service;
-    std::unique_ptr<boost::asio::io_service::work> _work;
-    std::unique_ptr<std::thread> _thread;
 
     /// The registry of the on-going requests.
     std::map<std::string,std::shared_ptr<QservMgtRequestWrapper>> _registry;

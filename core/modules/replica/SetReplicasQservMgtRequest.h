@@ -75,7 +75,6 @@ public:
      * low-level pointers).
      *
      * @param serviceProvider - reference to a provider of services
-     * @param io_service      - BOOST ASIO service
      * @param worker          - name of a worker
      * @param newReplicas     - collection of new replicas (NOTE: useCount field is ignored)
      * @param force           - proceed with the operation even if some replicas affceted by
@@ -83,7 +82,6 @@ public:
      * @param onFinish        - callback function to be called upon request completion
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      boost::asio::io_service& io_service,
                       std::string const& worker,
                       QservReplicaCollection const& newReplicas,
                       bool force = false,
@@ -116,7 +114,6 @@ private:
      * Construct the request with the pointer to the services provider.
      *
      * @param serviceProvider - reference to a provider of services
-     * @param io_service      - BOOST ASIO service
      * @param worker          - the name of a worker
      * @param newReplicas     - collection of new replicas (NOTE: useCount field is ignored)
      * @param force           - proceed with the operation even if some replicas affceted by
@@ -124,7 +121,6 @@ private:
      * @param onFinish        - callback function to be called upon request completion
      */
     SetReplicasQservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
-                               boost::asio::io_service& io_service,
                                std::string const& worker,
                                QservReplicaCollection const& newReplicas,
                                bool force,
@@ -150,9 +146,9 @@ private:
     void finishImpl(util::Lock const& lock) final;
 
     /**
-      * @see QservMgtRequest::notifyImpl
+      * @see QservMgtRequest::notify
       */
-    void notifyImpl() final;
+    void notify(util::Lock const& lock) final;
 
 private:
 

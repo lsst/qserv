@@ -48,7 +48,6 @@ namespace replica {
 
 RemoveReplicaQservMgtRequest::Ptr RemoveReplicaQservMgtRequest::create(
                                         ServiceProvider::Ptr const& serviceProvider,
-                                        boost::asio::io_service& io_service,
                                         std::string const& worker,
                                         unsigned int chunk,
                                         std::vector<std::string> const& databases,
@@ -56,7 +55,6 @@ RemoveReplicaQservMgtRequest::Ptr RemoveReplicaQservMgtRequest::create(
                                         RemoveReplicaQservMgtRequest::CallbackType onFinish) {
     return RemoveReplicaQservMgtRequest::Ptr(
         new RemoveReplicaQservMgtRequest(serviceProvider,
-                                         io_service,
                                          worker,
                                          chunk,
                                          databases,
@@ -66,14 +64,12 @@ RemoveReplicaQservMgtRequest::Ptr RemoveReplicaQservMgtRequest::create(
 
 RemoveReplicaQservMgtRequest::RemoveReplicaQservMgtRequest(
                                 ServiceProvider::Ptr const& serviceProvider,
-                                boost::asio::io_service& io_service,
                                 std::string const& worker,
                                 unsigned int chunk,
                                 std::vector<std::string> const& databases,
                                 bool force,
                                 RemoveReplicaQservMgtRequest::CallbackType onFinish)
     :   QservMgtRequest(serviceProvider,
-                        io_service,
                         "QSERV_REMOVE_REPLICA",
                         worker),
         _chunk(chunk),
@@ -165,9 +161,9 @@ void RemoveReplicaQservMgtRequest::finishImpl(util::Lock const& lock) {
     _qservRequest = nullptr;
 }
 
-void RemoveReplicaQservMgtRequest::notifyImpl() {
+void RemoveReplicaQservMgtRequest::notify(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notifyImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
 
     if (nullptr != _onFinish) {
 
@@ -178,8 +174,10 @@ void RemoveReplicaQservMgtRequest::notifyImpl() {
         // 2. it breaks the up-stream dependency on a caller object if a shared
         //    pointer to the object was mentioned as the lambda-function's closure
 
-        auto onFinish = std::move(_onFinish);
-        onFinish(shared_from_base<RemoveReplicaQservMgtRequest>());
+        serviceProvider()->io_service().post(
+            std::bind(
+                std::move(_onFinish),
+                shared_from_base<RemoveReplicaQservMgtRequest>()));
     }
 }
 

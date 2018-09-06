@@ -76,7 +76,6 @@ public:
      * low-level pointers).
      *
      * @param serviceProvider - reference to a provider of services
-     * @param io_service      - BOOST ASIO service
      * @param worker          - the name of a worker
      * @param chunk           - the chunk number
      * @param databases       - the names of databases
@@ -86,7 +85,6 @@ public:
      * @return pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      boost::asio::io_service& io_service,
                       std::string const& worker,
                       unsigned int chunk,
                       std::vector<std::string> const& databases,
@@ -115,7 +113,6 @@ private:
      * @see RemoveReplicaQservMgtRequest::create()
      */
     RemoveReplicaQservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
-                                 boost::asio::io_service& io_service,
                                  std::string const& worker,
                                  unsigned int chunk,
                                  std::vector<std::string> const& databases,
@@ -133,9 +130,9 @@ private:
     void finishImpl(util::Lock const& lock) final;
 
     /**
-      * @see QservMgtRequest::notifyImpl
+      * @see QservMgtRequest::notify
       */
-    void notifyImpl() final;
+    void notify(util::Lock const& lock) final;
 
 private:
 

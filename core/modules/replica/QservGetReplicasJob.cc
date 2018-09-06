@@ -153,9 +153,9 @@ void QservGetReplicasJob::cancelImpl(util::Lock const& lock) {
     _numSuccess  = 0;
 }
 
-void QservGetReplicasJob::notifyImpl() {
+void QservGetReplicasJob::notify(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notifyImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
 
     if (nullptr != _onFinish) {
 
@@ -166,8 +166,10 @@ void QservGetReplicasJob::notifyImpl() {
         // 2. it breaks the up-stream dependency on a caller object if a shared
         //    pointer to the object was mentioned as the lambda-function's closure
 
-        auto onFinish = std::move(_onFinish);
-        onFinish(shared_from_base<QservGetReplicasJob>());
+        controller()->io_service().post(
+            std::bind(
+                std::move(_onFinish),
+                shared_from_base<QservGetReplicasJob>()));
     }
 }
 

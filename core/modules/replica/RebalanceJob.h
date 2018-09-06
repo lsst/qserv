@@ -236,9 +236,9 @@ protected:
     void cancelImpl(util::Lock const& lock) final;
 
     /**
-      * @see Job::notifyImpl()
+      * @see Job::notify()
       */
-    void notifyImpl() final;
+    void notify(util::Lock const& lock) final;
 
     /**
      * The calback function to be invoked on a completion of the precursor job
@@ -253,6 +253,21 @@ protected:
      * @param request - a pointer to a request
      */
     void onJobFinish(MoveReplicaJob::Ptr const& job);
+
+    /**
+     * Submit a batch of the replica movement job
+     *
+     * This method implements a load balancing algorithm which tries to
+     * prevent excessive use of resources by controllers and to avoid
+     * "hot spots" or underutilization at workers.
+     *
+     * @param lock    - the lock must be acquired by a caller of the method
+     * @param numJobs - desired number of jobs to submit
+     *
+     * @retun actual number of submitted jobs
+     */
+    size_t launchNextJobs(util::Lock const& lock,
+                          size_t numJobs);
 
     /**
      * Restart the job from scratch. This method will reset object context
@@ -300,6 +315,20 @@ protected:
     std::map<unsigned int,          // chunk
              std::map<std::string,  // sourceWorker
                       MoveReplicaJob::Ptr>> _chunk2jobs;
+
+    /// Replica creation jobs which are ready to be launched
+    std::list<MoveReplicaJob::Ptr> _jobs;
+
+    /// Jobs which are already active
+    std::list<MoveReplicaJob::Ptr> _activeJobs;
+
+    // The counter of jobs which will be updated. They need to be atomic
+    // to avoid race condition between the onFinish() callbacks executed within
+    // the Controller's thread and this thread.
+
+    std::atomic<size_t> _numLaunched;   ///< the total number of replica creation jobs launched
+    std::atomic<size_t> _numFinished;   ///< the total number of finished jobs
+    std::atomic<size_t> _numSuccess;    ///< the number of successfully completed jobs
 
     /// The result of the operation (gets updated as requests are finishing)
     RebalanceJobResult _replicaData;
