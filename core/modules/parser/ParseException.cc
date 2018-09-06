@@ -55,9 +55,11 @@ ParseException::ParseException(std::string const& msg,
                                antlr::ANTLRException const&)
     : std::runtime_error(msg)
 {}
-
 ParseException::ParseException(Bug const& b)
-    : std::runtime_error(std::string("Bug during parse:") + b.what()) {
-}
+    : std::runtime_error(std::string("Bug during parse:") + b.what())
+{}
+ParseException::ParseException(std::string const& msg)
+    : std::runtime_error(msg)
+{}
 
 }}} // namespace lsst::qserv::parser
