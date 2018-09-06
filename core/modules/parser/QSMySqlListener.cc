@@ -1906,7 +1906,7 @@ public:
             auto starParExpr = std::make_shared<query::ValueExpr>();
             ValueExprFactory::addValueFactor(starParExpr, starFactor);
             funcExpr = query::FuncExpr::newArg1(_ctx->COUNT()->getText(), starParExpr);
-        } else if (_ctx->AVG() || _ctx->MAX() || _ctx->MIN() || _ctx->SUM()) {
+        } else if (_ctx->AVG() || _ctx->MAX() || _ctx->MIN() || _ctx->SUM() || _ctx->COUNT() ) {
             auto param = std::make_shared<query::ValueExpr>();
             ASSERT_EXECUTION_CONDITION(nullptr != _valueFactor, "ValueFactor must be populated.", _ctx);
             ValueExprFactory::addValueFactor(param, _valueFactor);
@@ -1919,6 +1919,8 @@ public:
                 terminalNode = _ctx->MIN();
             } else if (_ctx->SUM()) {
                 terminalNode = _ctx->SUM();
+            } else if (_ctx->COUNT()) {
+                terminalNode = _ctx->COUNT();
             } else {
                 ASSERT_EXECUTION_CONDITION(false, "Unhandled function type", _ctx);
             }
