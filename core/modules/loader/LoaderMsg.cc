@@ -50,7 +50,7 @@ bool MsgElement::retrieveType(BufferUdp &data, char& elemType) {
 MsgElement::Ptr MsgElement::retrieve(BufferUdp& data) {
     char elemT;
     if (not retrieveType(data, elemT)) {
-        return nullptr;
+        return nullptr; // &&& this should probably throw LoaderMsgErr
     }
     MsgElement::Ptr msgElem = create(elemT);
     if (msgElem != nullptr && not msgElem->retrieveFromData(data)) {

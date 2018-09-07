@@ -149,7 +149,6 @@ private:
 
 
     tcp::socket _socket;
-    //std::string _message; // &&& must go
     BufferUdp _buf{500000};
 
     void _handleTest();
