@@ -40,29 +40,16 @@
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.loader.ServerTcpBase");
+
+const int testNewNodeName = 73; // &&& Get rid of this, possibly make NodeName member of ServerTCPBase
+const int testOldNodeName = 42; // &&& Get rid of this, possibly make NodeName member of ServerTCPBase
+int testOldNodeKeyCount = 100;
 }
 
 namespace lsst {
 namespace qserv {
 namespace loader {
 
-/*
-int ServerTcpBase::testMain()
-{
-  try
-  {
-    boost::asio::io_context io_context;
-    TcpServer server(io_context);
-    io_context.run();
-  }
-  catch (std::exception& e)
-  {
-    std::cerr << e.what() << std::endl;
-  }
-
-  return 0;
-}
-*/
 
 bool TcpServer::testConnect() {
     try
@@ -186,7 +173,7 @@ bool ServerTcpBase::testConnect() {
         data.reset();
         UInt32Element imRightKind(LoaderMsg::IM_YOUR_R_NEIGHBOR);
         imRightKind.appendToData(data);
-        UInt32Element ourName(73);
+        UInt32Element ourName(testNewNodeName);
         ourName.appendToData(data);
         UInt64Element valuePairCount(0);
         valuePairCount.appendToData(data);
@@ -265,7 +252,7 @@ void TcpBaseConnection::_recvKind(const boost::system::error_code& ec, size_t by
         break;
     case LoaderMsg::IM_YOUR_L_NEIGHBOR:
         LOGS(_log, LOG_LVL_INFO, "_recvKind IM_YOUR_L_NEIGHBOR");
-        LOGS(_log, LOG_LVL_ERROR, "&&& _recvKind IM_YOUR_L_NEIGHBOR NEEDS CODE *************");
+        LOGS(_log, LOG_LVL_ERROR, "_recvKind IM_YOUR_L_NEIGHBOR NEEDS CODE!!!***!!!");
         break;
     default:
         LOGS(_log, LOG_LVL_ERROR, "_recvKind unexpected kind=" << msgKind->element);
@@ -316,20 +303,26 @@ void TcpBaseConnection::_handleTest2(const boost::system::error_code& ec, size_t
      auto msgKeys = std::dynamic_pointer_cast<UInt64Element>(msgElem);
      LOGS(_log, LOG_LVL_INFO, "_handleTest2 kind=" << msgKind->element << " msgName=" << msgName->element);
 
-     // test that this is the neighbor that was expected.
-     if (msgKind->element != LoaderMsg::IM_YOUR_R_NEIGHBOR || msgName->element != 73 || msgKeys->element != 0)  {
+     // test that this is the neighbor that was expected. (&&& this test should be done by CentralWorker)
+     if (msgKind->element != LoaderMsg::IM_YOUR_R_NEIGHBOR || msgName->element != testNewNodeName || msgKeys->element != 0)  {
          LOGS(_log, LOG_LVL_ERROR, "_handleTest2 unexpected element or name" <<
               " kind=" << msgKind->element << " msgName=" << msgName->element <<
               " keys=" << msgKeys->element);
          return;
      }
 
-     // send im left neighbor message, how many elements we have. If it had zero elements, an element will be sent
+     // send im_left_neighbor message, how many elements we have. If it had zero elements, an element will be sent
      // so that new neighbor gets a range.
      _buf.reset();
      // build the protobuffer
      msgKind = std::make_shared<UInt32Element>(LoaderMsg::IM_YOUR_L_NEIGHBOR);
      msgKind->appendToData(_buf);
+     UInt32Element ourName(testOldNodeName);
+     ourName.appendToData(_buf);
+     UInt64Element keyCount(testOldNodeKeyCount);
+     keyCount.appendToData(_buf);
+     _writeData(socket, _buf);
+
 
 }
 
