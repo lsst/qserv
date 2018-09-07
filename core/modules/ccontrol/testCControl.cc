@@ -364,7 +364,7 @@ static const std::vector< std::string > QUERIES = {
     "SELECT * from Object order by ra_PS limit 3;",
     "SELECT run FROM LSST.Science_Ccd_Exposure order by field limit 2;",
     "SELECT count(*) from Science_Ccd_Exposure group by visit;",
-    //fails "select count(*) from Object group by flags having count(*) > 3;",
+    "select count(*) from Object group by flags having count(*) > 3;",
     "SELECT count(*), sum(Source.flux), flux2, Source.flux3 from Source where qserv_areaspec_box(0,0,1,1) and flux4=2 and Source.flux5=3;",
     "SELECT count(*) FROM Object"
        " WHERE  qserv_areaspec_box(1,3,2,4) AND"
