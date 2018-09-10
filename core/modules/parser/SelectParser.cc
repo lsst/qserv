@@ -111,6 +111,59 @@ public:
     virtual void setup() = 0;
     virtual void run() = 0;
     virtual query::SelectStmt::Ptr getStatement() = 0;
+
+protected:
+    enum State {
+        INIT, SETUP_DONE, RUN_DONE
+    };
+    std::string stateString(State s) {
+        switch (s) {
+            default:
+                return "??";
+
+            case INIT:
+                return "INIT";
+
+            case SETUP_DONE:
+                return "SETUP_DONE";
+
+            case RUN_DONE:
+                return "RUN_DONE";
+        }
+    }
+
+    void changeState(State to) {
+        switch (_state) {
+            default:
+                throw ParseException("Parse error(INTERNAL): unhandled state transition value: " + _state);
+
+            case INIT:
+                if (SETUP_DONE != to) {
+                    throw ParseException("Parse error(INTERNAL):invalid state transition from INIT to "
+                            + stateString(to));
+                }
+                _state = SETUP_DONE;
+                break;
+
+            case SETUP_DONE:
+                if (RUN_DONE != to) {
+                    throw ParseException("Parse error(INTERNAL):invalid state transition from SETUP_DONE to "
+                            + stateString(to));
+                }
+                _state = RUN_DONE;
+                break;
+
+            case RUN_DONE:
+                // there are no valid transitions from RUN_DONE
+                throw ParseException("Parse error(INTERNAL):invalid state transition from RUN_DONE to "
+                        + stateString(to));
+        }
+    }
+
+    bool runTransitionDone() const { return _state == RUN_DONE; }
+
+private:
+    State _state {INIT};
 };
 
 class Antlr2Parser : public AntlrParser {
@@ -123,10 +176,12 @@ public:
     {}
 
     void setup() override {
+        changeState(SETUP_DONE);
         sf.attachTo(parser);
     }
 
     void run() override {
+        changeState(RUN_DONE);
         parser.initializeASTFactory(factory);
         parser.setASTFactory(&factory);
         try {
@@ -165,6 +220,9 @@ public:
     }
 
     query::SelectStmt::Ptr getStatement() override {
+        if (false == runTransitionDone()) {
+            throw ParseException("Parse error(INTERNAL): run has not been executed on the statement..");
+        }
         return sf.getStatement();
         // _selectStmt->diagnose(); // helpful for debugging.
     }
@@ -187,12 +245,15 @@ public:
     }
 
     void setup() override {
-        // no op
+        changeState(SETUP_DONE);
+        _listener = std::make_shared<parser::QSMySqlListener>(
+                std::static_pointer_cast<ListenerDebugHelper>(shared_from_this()));
     }
 
     void run() override {
+        changeState(RUN_DONE);
         using namespace antlr4;
-        ANTLRInputStream input(statement);
+        ANTLRInputStream input(_statement);
         QSMySqlLexer lexer(&input);
         CommonTokenStream tokens(&lexer);
         tokens.fill();
@@ -201,7 +262,7 @@ public:
         tree::ParseTree *tree = parser.root();
         LOGS(_log, LOG_LVL_TRACE, "New user query, antlr4 string tree: " << tree->toStringTree(&parser));
         tree::ParseTreeWalker walker;
-        walker.walk(&listener, tree);
+        walker.walk(_listener.get(), tree);
     }
 
     query::SelectStmt::Ptr getStatement() override {
@@ -213,8 +274,8 @@ private:
         : _statement(q)
     {}
 
-    std::string statement;
-    parser::QSMySqlListener listener;
+    std::string _statement;
+    std::shared_ptr<parser::QSMySqlListener> _listener;
 };
 
 
