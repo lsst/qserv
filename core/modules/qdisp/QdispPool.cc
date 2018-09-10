@@ -191,4 +191,37 @@ std::string PriorityQueue::statsStr() {
     return os.str();
 }
 
+
+void QdispPool::_setup(bool unitTest) {
+    if (not unitTest) {
+        // Numbers are based on 1200 threads in the _pool. Large results
+        // tend to be slow to give up their threads, thus can't be allowed
+        // to eat up the pool. Bandwidth also makes running many of the
+        // slow queries at the same time a burden on the system.
+        // TODO: Set up thread pool size and queues in configuration. DM-10237
+        _prQueue = std::make_shared<PriorityQueue>(100, 1, 5); // default (lowest) priority.
+        _pool = util::ThreadPool::newThreadPool(1200, _prQueue);
+        _prQueue->addPriQueue(0, 1, 90);  // Highest priority - interactive queries
+        _prQueue->addPriQueue(1, 1, 50);  // Outgoing shared scan queries.
+        _prQueue->addPriQueue(2, 6, 850); // FAST queries (Object table)
+        _prQueue->addPriQueue(3, 7, 250); // MEDIUM queries (Source table)
+        _prQueue->addPriQueue(4, 6, 150); // SLOW queries (Object Extra table)
+        _prQueue->addPriQueue(5, 6, 500); // FAST large results
+        _prQueue->addPriQueue(6, 6, 100); // MEDIUM large results
+        _prQueue->addPriQueue(7, 6, 20);  // Everything else (slow things)
+        // default priority is the lowest priority.
+    } else {
+        _prQueue = std::make_shared<PriorityQueue>(100, 1, 5); // default (lowest) priority.
+        _pool = util::ThreadPool::newThreadPool(50, _prQueue);
+        _prQueue->addPriQueue(0, 1, 3);  // Highest priority - interactive queries
+        _prQueue->addPriQueue(1, 1, 3);  // Outgoing shared scan queries.
+        _prQueue->addPriQueue(2, 1, 3); // FAST queries (Object table)
+        _prQueue->addPriQueue(3, 1, 3); // MEDIUM queries (Source table)
+        _prQueue->addPriQueue(4, 1, 3); // SLOW queries (Object Extra table)
+        _prQueue->addPriQueue(5, 1, 3); // FAST large results
+        _prQueue->addPriQueue(6, 1, 3); // MEDIUM large results
+        _prQueue->addPriQueue(7, 1, 3);  // Everything else (slow things)
+    }
+}
+
 }}} // namespace lsst:qserv::qdisp
