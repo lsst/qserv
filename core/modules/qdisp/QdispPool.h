@@ -135,23 +135,10 @@ class QdispPool {
 public:
     typedef std::shared_ptr<QdispPool> Ptr;
 
-    QdispPool() {
-        // Numbers are based on 1200 threads in the _pool. Large results
-        // tend to be slow to give up their threads, thus can't be allowed
-        // to eat up the pool. Bandwidth also makes running many of the
-        // slow queries at the same time a burden on the system.
-        // TODO: Set up thread pool size and queues in configuration. DM-10237
-        _prQueue->addPriQueue(0, 1, 90);  // Highest priority - interactive queries
-        _prQueue->addPriQueue(1, 1, 50);  // Outgoing shared scan queries.
-        _prQueue->addPriQueue(2, 6, 850); // FAST queries (Object table)
-        _prQueue->addPriQueue(3, 7, 250); // MEDIUM queries (Source table)
-        _prQueue->addPriQueue(4, 6, 150); // SLOW queries (Object Extra table)
-        _prQueue->addPriQueue(5, 6, 500); // FAST large results
-        _prQueue->addPriQueue(6, 6, 100); // MEDIUM large results
-        _prQueue->addPriQueue(7, 6, 20);  // Everything else (slow things)
-        // default priority is the lowest priority.
-    }
-
+    QdispPool() { _setup(false); }
+    explicit QdispPool(bool unitTest) { _setup(unitTest); }
+    QdispPool(QdispPool const&) = delete;
+    QdispPool& operator=(QdispPool const&) = delete;
 
     /// Lower priority numbers are higher priority.
     /// Invalid priorities get the lowest priority, which
@@ -167,9 +154,10 @@ public:
     }
 
 private:
-    /// The default priority queue is meant for pool control commands.
-    PriorityQueue::Ptr _prQueue = std::make_shared<PriorityQueue>(100, 1, 5); // default (lowest) priority.
-    util::ThreadPool::Ptr _pool{util::ThreadPool::newThreadPool(1200, _prQueue)};
+    void _setup(bool unitTest);
+
+    PriorityQueue::Ptr _prQueue;
+    util::ThreadPool::Ptr _pool;
 };
 
 
