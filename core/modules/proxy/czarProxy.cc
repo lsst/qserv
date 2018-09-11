@@ -114,9 +114,12 @@ void log(std::string const& loggername, std::string const& level,
          std::string const& filename, std::string const& funcname,
          unsigned int lineno, std::string const& message) {
     auto logger = lsst::log::Log::getLogger(loggername);
-    logger.logMsg(log4cxx::Level::toLevel(level),
-                  log4cxx::spi::LocationInfo(filename.c_str(), funcname.c_str(), lineno),
-                  message);
+    auto levelPtr = log4cxx::Level::toLevel(level);
+    if (logger.isEnabledFor(levelPtr->toInt())) {
+        logger.logMsg(levelPtr,
+                      log4cxx::spi::LocationInfo(filename.c_str(), funcname.c_str(), lineno),
+                      message);
+    }
 }
 
 
