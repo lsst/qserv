@@ -370,7 +370,7 @@ static const std::vector< std::string > QUERIES = {
        " WHERE  qserv_areaspec_box(1,3,2,4) AND"
        "  scisql_fluxToAbMag(zFlux_PS) BETWEEN 21 AND 21.5;",
     "SELECT f(one)/f2(two) FROM  Object where qserv_areaspec_box(0,0,1,1);",
-    //fails "SELECT (1+f(one))/f2(two) FROM  Object where qserv_areaspec_box(0,0,1,1);",
+    "SELECT (1+f(one))/f2(two) FROM  Object where qserv_areaspec_box(0,0,1,1);",
     // An example slow query from French Petasky colleagues
     //fails "SELECT objectId as id, COUNT(sourceId) AS c"
     //    " FROM Source GROUP BY objectId HAVING  c > 1000 LIMIT 10;",

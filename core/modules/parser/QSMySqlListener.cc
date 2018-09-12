@@ -458,12 +458,13 @@ public:
 class NestedExpressionAtomCBH : public BaseCBH {
 public:
     virtual void handleNestedExpressionAtom(shared_ptr<query::BoolFactorTerm> const & boolFactorTerm) = 0;
+    virtual void handleNestedExpressionAtom(shared_ptr<query::ValueExpr> const & valueExpr) = 0;
 };
 
 
 class MathExpressionAtomCBH : public BaseCBH {
 public:
-    virtual void handleMathExpressionAtomAdapter(shared_ptr<query::ValueExpr> const & valueExpr) = 0;
+    virtual void handleMathExpressionAtom(shared_ptr<query::ValueExpr> const & valueExpr) = 0;
 };
 
 
@@ -1092,7 +1093,7 @@ public:
         lockedParent()->handleExpressionAtomPredicate(valueExpr, _ctx);
     }
 
-    void handleMathExpressionAtomAdapter(shared_ptr<query::ValueExpr> const & valueExpr) override {
+    void handleMathExpressionAtom(shared_ptr<query::ValueExpr> const & valueExpr) override {
         lockedParent()->handleExpressionAtomPredicate(valueExpr, _ctx);
     }
 
@@ -1104,6 +1105,10 @@ public:
 
     void handleNestedExpressionAtom(shared_ptr<query::BoolFactorTerm> const & boolFactorTerm) override {
         lockedParent()->handleExpressionAtomPredicate(boolFactorTerm, _ctx);
+    }
+
+    void handleNestedExpressionAtom(shared_ptr<query::ValueExpr> const & valueExpr) override {
+        ASSERT_EXECUTION_CONDITION(false, "unhandled NestedExpressionAtom(ValueExpr", _ctx);
     }
 
     void handleUnaryExpressionAtom(shared_ptr<query::ValueFactor> const & valueFactor) override {
@@ -2299,6 +2304,8 @@ public:
 
     void handlePredicateExpression(shared_ptr<query::BoolFactor> const & boolFactor,
             antlr4::ParserRuleContext* childCtx) override {
+        ASSERT_EXECUTION_CONDITION(nullptr == _valueExpr,
+                "NestedExpressionAtomAdapter can not have a ValueExpr and BoolFactors.", _ctx)
         auto andTerm = make_shared<query::AndTerm>();
         andTerm->addBoolTerm(boolFactor);
         auto orTerm = make_shared<query::OrTerm>();
@@ -2308,12 +2315,18 @@ public:
     }
 
     void handlePredicateExpression(shared_ptr<query::ValueExpr> const & valueExpr) override {
-        ASSERT_EXECUTION_CONDITION(false, "Unhandled PredicateExpression with ValueExpr.", _ctx);
+        ASSERT_EXECUTION_CONDITION(nullptr == _valueExpr,
+                "NestedExpressionAtomAdapter already has a ValueExpr.", _ctx);
+        ASSERT_EXECUTION_CONDITION(_boolTermFactors.empty(),
+                "NestedExpressionAtomAdapter can not have a ValueExpr and BoolFactors.", _ctx);
+        _valueExpr = valueExpr;
     }
 
     void handleLogicalExpression(shared_ptr<query::LogicalTerm> const & logicalTerm,
             antlr4::ParserRuleContext* childCtx) override {
-        auto boolTermFactor = std::make_shared<query::BoolTermFactor>(logicalTerm);
+        ASSERT_EXECUTION_CONDITION(nullptr == _valueExpr,
+                "NestedExpressionAtomAdapter can not have a ValueExpr and BoolFactors.", _ctx)
+        auto boolTermFactor = make_shared<query::BoolTermFactor>(logicalTerm);
         _boolTermFactors.push_back(boolTermFactor);
     }
 
@@ -2323,19 +2336,22 @@ public:
     }
 
     void onExit() override {
-        ASSERT_EXECUTION_CONDITION(_boolTermFactors.empty() == false,
-                "NestedExpressionAtomAdapter not populated.", _ctx)
-        lockedParent()->handleNestedExpressionAtom(make_shared<query::PassTerm>("("));
-        for (auto&& boolTermFactor : _boolTermFactors) {
-            lockedParent()->handleNestedExpressionAtom(boolTermFactor);
+        if (nullptr == _valueExpr) {
+            lockedParent()->handleNestedExpressionAtom(make_shared<query::PassTerm>("("));
+            for (auto&& boolTermFactor : _boolTermFactors) {
+                lockedParent()->handleNestedExpressionAtom(boolTermFactor);
+            }
+            lockedParent()->handleNestedExpressionAtom(make_shared<query::PassTerm>(")"));
+        } else {
+            lockedParent()->handleNestedExpressionAtom(_valueExpr);
         }
-        lockedParent()->handleNestedExpressionAtom(make_shared<query::PassTerm>(")"));
     }
 
     string name() const override { return getTypeName(this); }
 
 private:
     vector<shared_ptr<query::BoolTermFactor>> _boolTermFactors;
+    shared_ptr<query::ValueExpr> _valueExpr;
 };
 
 
@@ -2344,7 +2360,8 @@ class MathExpressionAtomAdapter :
         public MathOperatorCBH,
         public FunctionCallExpressionAtomCBH,
         public FullColumnNameExpressionAtomCBH,
-        public ConstantExpressionAtomCBH {
+        public ConstantExpressionAtomCBH,
+        public NestedExpressionAtomCBH {
 public:
     using AdapterT::AdapterT;
 
@@ -2390,9 +2407,18 @@ public:
         ValueExprFactory::addValueFactor(_getValueExpr(), valueFactor);
     }
 
+    void handleNestedExpressionAtom(shared_ptr<query::BoolFactorTerm> const & boolFactorTerm) override {
+        LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " " << boolFactorTerm);
+    }
+
+    void handleNestedExpressionAtom(shared_ptr<query::ValueExpr> const & valueExpr) override {
+        auto valueFactor = query::ValueFactor::newExprFactor(valueExpr);
+        ValueExprFactory::addValueFactor(_getValueExpr(), valueFactor);
+    }
+
     void onExit() override {
         ASSERT_EXECUTION_CONDITION(_valueExpr != nullptr, "valueExpr not populated.", _ctx);
-        lockedParent()->handleMathExpressionAtomAdapter(_valueExpr);
+        lockedParent()->handleMathExpressionAtom(_valueExpr);
     }
 
     string name() const override { return getTypeName(this); }
