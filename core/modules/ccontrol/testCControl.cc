@@ -375,16 +375,16 @@ static const std::vector< std::string > QUERIES = {
     "SELECT objectId as id, COUNT(sourceId) AS c"
         " FROM Source GROUP BY objectId HAVING  c > 1000 LIMIT 10;",
     // A query with some expressions
-    //fails "SELECT "
-    //   "ROUND(scisql_fluxToAbMag(uFlux_PS)-scisql_fluxToAbMag(gFlux_PS), 0) AS UG, "
-    //   "ROUND(scisql_fluxToAbMag(gFlux_PS)-scisql_fluxToAbMag(rFlux_PS), 0) AS GR "
-    //   "FROM Object "
-    //   "WHERE scisql_fluxToAbMag(gFlux_PS) < 0.2 "
-    //   "AND scisql_fluxToAbMag(uFlux_PS)-scisql_fluxToAbMag(gFlux_PS) >=-0.27 "
-    //   "AND scisql_fluxToAbMag(gFlux_PS)-scisql_fluxToAbMag(rFlux_PS) >=-0.24 "
-    //   "AND scisql_fluxToAbMag(rFlux_PS)-scisql_fluxToAbMag(iFlux_PS) >=-0.27 "
-    //   "AND scisql_fluxToAbMag(iFlux_PS)-scisql_fluxToAbMag(zFlux_PS) >=-0.35 "
-    //   "AND scisql_fluxToAbMag(zFlux_PS)-scisql_fluxToAbMag(yFlux_PS) >=-0.40;",
+    "SELECT "
+       "ROUND(scisql_fluxToAbMag(uFlux_PS)-scisql_fluxToAbMag(gFlux_PS), 0) AS UG, "
+       "ROUND(scisql_fluxToAbMag(gFlux_PS)-scisql_fluxToAbMag(rFlux_PS), 0) AS GR "
+       "FROM Object "
+       "WHERE scisql_fluxToAbMag(gFlux_PS) < 0.2 "
+       "AND scisql_fluxToAbMag(uFlux_PS)-scisql_fluxToAbMag(gFlux_PS) >=-0.27 "
+       "AND scisql_fluxToAbMag(gFlux_PS)-scisql_fluxToAbMag(rFlux_PS) >=-0.24 "
+       "AND scisql_fluxToAbMag(rFlux_PS)-scisql_fluxToAbMag(iFlux_PS) >=-0.27 "
+       "AND scisql_fluxToAbMag(iFlux_PS)-scisql_fluxToAbMag(zFlux_PS) >=-0.35 "
+       "AND scisql_fluxToAbMag(zFlux_PS)-scisql_fluxToAbMag(yFlux_PS) >=-0.40;",
     // non-chunked query
     "SELECT DISTINCT foo FROM Filter f;",
     // chunked query
@@ -399,14 +399,14 @@ static const std::vector< std::string > QUERIES = {
     //fails "SELECT foo from Filter f limit 5; garbage query !#$%!#$",
 
     // DM-1784: Nested ValueExpr in function calls.
-    //fails "SELECT  o1.objectId "
-    //   "FROM Object o1 "
-    //   "WHERE ABS( (scisql_fluxToAbMag(o1.gFlux_PS)-scisql_fluxToAbMag(o1.rFlux_PS)) - (scisql_fluxToAbMag(o1.gFlux_PS)-scisql_fluxToAbMag(o1.rFlux_PS)) ) < 1;",
-    //fails "SELECT  o1.objectId, o2.objectId objectId2 "
-    //   "FROM Object o1, Object o2 "
-    //   "WHERE scisql_angSep(o1.ra_Test, o1.decl_Test, o2.ra_Test, o2.decl_Test) < 0.00001 "
-    //   "AND o1.objectId <> o2.objectId AND "
-    //   "ABS( (scisql_fluxToAbMag(o1.gFlux_PS)-scisql_fluxToAbMag(o1.rFlux_PS)) - (scisql_fluxToAbMag(o2.gFlux_PS)-scisql_fluxToAbMag(o2.rFlux_PS)) ) < 1;",
+    "SELECT  o1.objectId "
+       "FROM Object o1 "
+       "WHERE ABS( (scisql_fluxToAbMag(o1.gFlux_PS)-scisql_fluxToAbMag(o1.rFlux_PS)) - (scisql_fluxToAbMag(o1.gFlux_PS)-scisql_fluxToAbMag(o1.rFlux_PS)) ) < 1;",
+    "SELECT  o1.objectId, o2.objectId objectId2 "
+       "FROM Object o1, Object o2 "
+       "WHERE scisql_angSep(o1.ra_Test, o1.decl_Test, o2.ra_Test, o2.decl_Test) < 0.00001 "
+       "AND o1.objectId <> o2.objectId AND "
+       "ABS( (scisql_fluxToAbMag(o1.gFlux_PS)-scisql_fluxToAbMag(o1.rFlux_PS)) - (scisql_fluxToAbMag(o2.gFlux_PS)-scisql_fluxToAbMag(o2.rFlux_PS)) ) < 1;",
     "SELECT * FROM RefObjMatch;",
     "SELECT * FROM RefObjMatch WHERE "
                       "foo<>bar AND baz<3.14159;",
