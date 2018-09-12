@@ -300,6 +300,10 @@ public:
     virtual void handleSelectFunctionElement(shared_ptr<query::ValueExpr> const & selectFunction) = 0;
 };
 
+class SelectExpressionElementCBH: public BaseCBH {
+public:
+    virtual void handleSelectExpressionElement(shared_ptr<query::ValueExpr> const & valueExpr) = 0;
+};
 
 class GroupByItemCBH : public BaseCBH {
 public:
@@ -490,6 +494,7 @@ public:
     enum OperatorType {
         SUBTRACT,
         ADD,
+        DIVIDE,
     };
     virtual void handleMathOperator(OperatorType operatorType) = 0;
 };
@@ -720,7 +725,8 @@ class SelectElementsAdapter :
         public AdapterT<SelectElementsCBH, QSMySqlParser::SelectElementsContext>,
         public SelectColumnElementCBH,
         public SelectFunctionElementCBH,
-        public SelectStarElementCBH {
+        public SelectStarElementCBH,
+        public SelectExpressionElementCBH {
 public:
     using AdapterT::AdapterT;
 
@@ -739,6 +745,10 @@ public:
     }
 
     void handleSelectStarElement(shared_ptr<query::ValueExpr> const & valueExpr) override {
+        SelectListFactory::addValueExpr(_selectList, valueExpr);
+    }
+
+    void handleSelectExpressionElement(shared_ptr<query::ValueExpr> const & valueExpr) override {
         SelectListFactory::addValueExpr(_selectList, valueExpr);
     }
 
@@ -1522,6 +1532,34 @@ public:
 private:
     string _asName;
     shared_ptr<query::ValueFactor> _functionValueFactor;
+};
+
+
+class SelectExpressionElementAdapter :
+        public AdapterT<SelectExpressionElementCBH, QSMySqlParser::SelectExpressionElementContext>,
+        public PredicateExpressionCBH {
+public:
+    using AdapterT::AdapterT;
+
+    void handlePredicateExpression(shared_ptr<query::BoolFactor> const & boolFactor,
+            antlr4::ParserRuleContext* childCtx) override {
+        ASSERT_EXECUTION_CONDITION(false, "unexpected call to handlePredicateExpression(BoolFactor).", _ctx);
+    }
+
+    void handlePredicateExpression(shared_ptr<query::ValueExpr> const & valueExpr) override {
+        ASSERT_EXECUTION_CONDITION(nullptr == _valueExpr, "valueExpr must be set only once in SelectExpressionElementAdapter.", _ctx);
+        _valueExpr = valueExpr;
+    }
+
+    void onExit() override {
+        ASSERT_EXECUTION_CONDITION(nullptr != _valueExpr, "valueExpr must be set in SelectExpressionElementAdapter.", _ctx);
+        lockedParent()->handleSelectExpressionElement(_valueExpr);
+    }
+
+    string name() const override { return getTypeName(this); }
+
+private:
+    shared_ptr<query::ValueExpr> _valueExpr;
 };
 
 
@@ -2334,6 +2372,13 @@ public:
             break;
         }
 
+        case MathOperatorCBH::DIVIDE: {
+            bool success = ValueExprFactory::addOp(_getValueExpr(), query::ValueExpr::DIVIDE);
+            ASSERT_EXECUTION_CONDITION(success,
+                    "Failed to add an operator to valueExpr:" << _getValueExpr(), _ctx);
+            break;
+        }
+
         }
     }
 
@@ -2446,6 +2491,8 @@ public:
             lockedParent()->handleMathOperator(MathOperatorCBH::SUBTRACT);
         } else if (_ctx->getText() == "+") {
             lockedParent()->handleMathOperator(MathOperatorCBH::ADD);
+        } else if (_ctx->getText() == "/") {
+            lockedParent()->handleMathOperator(MathOperatorCBH::DIVIDE);
         } else {
             ASSERT_EXECUTION_CONDITION(false, "Unhanlded operator type:" << _ctx->getText(), _ctx);
         }
@@ -2811,7 +2858,7 @@ UNHANDLED(UnionStatement)
 ENTER_EXIT_PARENT(SelectSpec)
 ENTER_EXIT_PARENT(SelectStarElement)
 ENTER_EXIT_PARENT(SelectFunctionElement)
-UNHANDLED(SelectExpressionElement)
+ENTER_EXIT_PARENT(SelectExpressionElement)
 UNHANDLED(SelectIntoVariables)
 UNHANDLED(SelectIntoDumpFile)
 UNHANDLED(SelectIntoTextFile)
