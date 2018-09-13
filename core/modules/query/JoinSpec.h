@@ -69,6 +69,9 @@ public:
     JoinSpec(std::shared_ptr<ColumnRef> ref)
         : _usingColumn(ref) {}
 
+    JoinSpec(std::shared_ptr<ColumnRef> ref, std::shared_ptr<BoolTerm> onTerm)
+        : _usingColumn(ref), _onTerm(onTerm) {}
+
     std::shared_ptr<ColumnRef> getUsing() { return _usingColumn; }
     std::shared_ptr<ColumnRef const> getUsing() const { return _usingColumn; }
     std::shared_ptr<BoolTerm> getOn() { return _onTerm; }

@@ -422,11 +422,11 @@ static const std::vector< std::string > QUERIES = {
        "FROM Object o JOIN Source2 s USING (objectIdObjTest) JOIN Source2 s2 USING (objectIdObjTest) "
        "WHERE o.objectId = 430209694171136;",
 
-    //fails "SELECT s.ra, s.decl, o.foo "
-    //   "FROM Object o "
-    //   "JOIN Source s ON s.objectIdSourceTest = Object.objectIdObjTest "
-    //   "JOIN Source s2 ON s.objectIdSourceTest = s2.objectIdSourceTest "
-    //   "WHERE LSST.Object.objectId = 430209694171136;",
+    "SELECT s.ra, s.decl, o.foo "
+       "FROM Object o "
+       "JOIN Source s ON s.objectIdSourceTest = Object.objectIdObjTest "
+       "JOIN Source s2 ON s.objectIdSourceTest = s2.objectIdSourceTest "
+       "WHERE LSST.Object.objectId = 430209694171136;",
 
     //fails "SELECT s1.foo, s2.foo AS s2_foo "
     //   "FROM Source s1 NATURAL LEFT JOIN Source s2 "
