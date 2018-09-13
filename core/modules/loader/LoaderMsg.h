@@ -308,6 +308,7 @@ public:
 class LoaderMsg {
 public:
     enum {
+        WAITING      = 0,
         MSG_RECEIVED = 100,    // Standard success/error response to received message.
         TEST,                  // Communications test.
         MAST_INFO_REQ,         // Request some information about the master
@@ -326,7 +327,8 @@ public:
         WORKER_LEFT_NEIGHBOR,  // Mast assigns a left neighbor to a worker.
         WORKER_RIGHT_NEIGHBOR, // Mast assigns a right neighbor to a worker.
         IM_YOUR_L_NEIGHBOR,    // Worker message to other worker to setup being neighbors.
-        IM_YOUR_R_NEIGHBOR     // Worker message to other worker to setup being neighbors.
+        IM_YOUR_R_NEIGHBOR,    // Worker message to other worker to setup being neighbors.
+        NEIGHBOR_VERIFIED      //
     };
 
     enum {

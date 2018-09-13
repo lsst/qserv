@@ -42,15 +42,16 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.loader.ServerTcpBase");
 
 const int testNewNodeName = 73; // &&& Get rid of this, possibly make NodeName member of ServerTCPBase
+unsigned int testNewNodeValuePairCount = 81;
 const int testOldNodeName = 42; // &&& Get rid of this, possibly make NodeName member of ServerTCPBase
-int testOldNodeKeyCount = 100;
+unsigned int testOldNodeKeyCount = 1231;
 }
 
 namespace lsst {
 namespace qserv {
 namespace loader {
 
-
+#if 0 //  &&&
 bool TcpServer::testConnect() {
     try
     {
@@ -94,6 +95,7 @@ bool TcpServer::testConnect() {
 
     return 0;
 }
+#endif
 
 
 bool ServerTcpBase::_writeData(tcp::socket& socket, BufferUdp& data) {
@@ -112,7 +114,7 @@ bool ServerTcpBase::_writeData(tcp::socket& socket, BufferUdp& data) {
 bool ServerTcpBase::testConnect() {
     try
     {
-        LOGS(_log, LOG_LVL_INFO, "&&& ServerTcpBase::testConnect");
+        LOGS(_log, LOG_LVL_INFO, "&&& ServerTcpBase::testConnect 1");
         boost::asio::io_context io_context;
 
         tcp::resolver resolver(io_context);
@@ -138,50 +140,62 @@ bool ServerTcpBase::testConnect() {
         UInt32Element kind(LoaderMsg::TEST);
         kind.appendToData(data);
         _writeData(socket, data);
-        /* &&&
-        while (data.getBytesLeftToRead() > 0) {
-            // Read cursor advances (manually in this case) as data is read from the buffer.
-            auto res =
-                    boost::asio::write(socket, boost::asio::buffer(data.getReadCursor(), data.getBytesLeftToRead()));
 
-            if (res < 0) {
-                throw LoaderMsgErr("ServerTcpBase::testConnect() write failure errno=" + std::to_string(errno),
-                        __FILE__, __LINE__);
-            }
-            data.advanceReadCursor(res);
-        }
-        */
-
-        /* &&&
-        data.reset();
-        msgElem = data.readFromSocket(socket);
-        UInt32Element::Ptr nghKind = std::dynamic_pointer_cast<UInt32Element>(msgElem);
-        if (nghKind == nullptr) {
-            throw LoaderMsgErr("ServerTcpBase::testConnect() first element wasn't correct kind " +
-                               msgElem->getStringVal(), __FILE__, __LINE__);
-        }
-
-        // &&& TODO check if name is the expected name, and correct neighbor message
-        if (nghName->element != 'j' || nghKind->element != LoaderMsg::WORKER_RIGHT_NEIGHBOR) {
-            throw LoaderMsgErr("ServerTcpBase::testConnect() first element unexpected data " +
-                               " name=" + nghName->getStringVal() + " kind=" + nghKind->getStringVal() +
-                                msgElem->getStringVal(), __FILE__, __LINE__);
-        }
-        */
-        // &&&HERE
         // send back our name and left neighbor message.
         data.reset();
         UInt32Element imRightKind(LoaderMsg::IM_YOUR_R_NEIGHBOR);
         imRightKind.appendToData(data);
         UInt32Element ourName(testNewNodeName);
         ourName.appendToData(data);
-        UInt64Element valuePairCount(0);
+        UInt64Element valuePairCount(testNewNodeValuePairCount);
         valuePairCount.appendToData(data);
         _writeData(socket, data);
 
+        // Get back left neighbor information
+        auto msgKind = std::dynamic_pointer_cast<UInt32Element>(
+                       data.readFromSocket(socket, "testConnect 2 kind"));
+        auto msgLNName =  std::dynamic_pointer_cast<UInt32Element>(
+                          data.readFromSocket(socket, "testConnect 2 LNName"));
+        auto msgLKeyCount = std::dynamic_pointer_cast<UInt64Element>(
+                            data.readFromSocket(socket, "testConnect 2 LKeyCount"));
+        if (msgKind == nullptr || msgLNName == nullptr || msgLKeyCount == nullptr) {
+            LOGS(_log, LOG_LVL_ERROR, "ServerTcpBase::testConnect 2 - nullptr" <<
+                  " msgKind=" << (msgKind ? "ok" : "null") <<
+                  " msgLNName=" << (msgLNName ? "ok" : "null") <<
+                  " msgLKeyCount=" << (msgLKeyCount ? "ok" : "null"));
+            return false;
+        }
+
+        if (msgKind->element != LoaderMsg::IM_YOUR_L_NEIGHBOR ||
+            msgLNName->element != testOldNodeName ||
+            msgLKeyCount->element != testOldNodeKeyCount) {
+            LOGS(_log, LOG_LVL_ERROR, "ServerTcpBase::testConnect 2 - incorrect data" <<
+                                      " Kind=" << msgKind->element <<
+                                      " LNName=" << msgLNName->element <<
+                                      " LKeyCount=" << msgLKeyCount->element);
+            return false;
+        }
+        LOGS(_log, LOG_LVL_INFO, "ServerTcpBase::testConnect 2 - ok data" <<
+                                 " Kind=" << msgKind->element <<
+                                 " LNName=" << msgLNName->element <<
+                                 " LKeyCount=" << msgLKeyCount->element);
+
+        data.reset();
+        UInt32Element verified(LoaderMsg::NEIGHBOR_VERIFIED);
+        verified.appendToData(data);
+        _writeData(socket, data);
+
+        boost::system::error_code ec;
+        socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
+        if (ec) {
+            LOGS(_log, LOG_LVL_ERROR, "ServerTcpBase::testConnect shutdown ec=" << ec.message());
+            return false;
+        }
+        // socket.close(); &&& should happen when socket falls out of scope
     }
     catch (std::exception& e) {
         std::cerr << e.what() << std::endl;
+        return false;
     }
 
     return true;
@@ -207,6 +221,18 @@ void TcpBaseConnection::start() {
 }
 
 
+void TcpBaseConnection::shutdown() {
+    boost::system::error_code ec;
+    _socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
+    _socket.close();
+}
+
+
+void TcpBaseConnection::_free() {
+    _serverTcpBase->freeConnection(shared_from_this());
+}
+
+
 /// Find out what KIND of message is coming in.
 void TcpBaseConnection::_readKind(const boost::system::error_code&, size_t /*bytes_transferred*/) {
     // &&&; need to read something
@@ -218,6 +244,7 @@ void TcpBaseConnection::_readKind(const boost::system::error_code&, size_t /*byt
     if (bytes > _buf.getAvailableWriteLength()) {
         /// &&& TODO close the connection
         LOGS(_log, LOG_LVL_ERROR, "_readKind Buffer would have overflowed");
+        _free();
         return;
     }
     boost::asio::async_read(_socket, boost::asio::buffer(_buf.getWriteCursor(), bytes),
@@ -235,6 +262,7 @@ void TcpBaseConnection::_readKind(const boost::system::error_code&, size_t /*byt
 void TcpBaseConnection::_recvKind(const boost::system::error_code& ec, size_t bytesTrans) {
     if (ec) {
         LOGS(_log, LOG_LVL_ERROR, "_recvKind ec=" << ec);
+        _free();
         return;
     }
     // Fix the buffer with the information given.
@@ -243,10 +271,12 @@ void TcpBaseConnection::_recvKind(const boost::system::error_code& ec, size_t by
     auto msgKind = std::dynamic_pointer_cast<UInt32Element>(msgElem);
     if (msgKind == nullptr) {
         LOGS(_log, LOG_LVL_ERROR, "_recvKind unexpected type of msg");
+        _free();
         return;
     }
     switch (msgKind->element) {
     case LoaderMsg::TEST:
+        _msgStatus = LoaderMsg::TEST;
         LOGS(_log, LOG_LVL_INFO, "_recvKind TEST");
         _handleTest();
         break;
@@ -256,6 +286,7 @@ void TcpBaseConnection::_recvKind(const boost::system::error_code& ec, size_t by
         break;
     default:
         LOGS(_log, LOG_LVL_ERROR, "_recvKind unexpected kind=" << msgKind->element);
+        _free();
     }
 }
 
@@ -274,6 +305,7 @@ void TcpBaseConnection::_handleTest() {
     if (bytes > _buf.getAvailableWriteLength()) {
         /// &&& TODO close the connection
         LOGS(_log, LOG_LVL_ERROR, "_handleTest Buffer would have overflowed");
+        _free();
         return;
     }
     boost::asio::async_read(_socket, boost::asio::buffer(_buf.getWriteCursor(), bytes),
@@ -291,6 +323,7 @@ void TcpBaseConnection::_handleTest() {
 void TcpBaseConnection::_handleTest2(const boost::system::error_code& ec, size_t bytesTrans) {
     if (ec) {
          LOGS(_log, LOG_LVL_ERROR, "_recvKind ec=" << ec);
+         _free();
          return;
      }
      // Fix the buffer with the information given.
@@ -301,14 +334,20 @@ void TcpBaseConnection::_handleTest2(const boost::system::error_code& ec, size_t
      auto msgName = std::dynamic_pointer_cast<UInt32Element>(msgElem);
      msgElem = MsgElement::retrieve(_buf);
      auto msgKeys = std::dynamic_pointer_cast<UInt64Element>(msgElem);
-     LOGS(_log, LOG_LVL_INFO, "_handleTest2 kind=" << msgKind->element << " msgName=" << msgName->element);
+
 
      // test that this is the neighbor that was expected. (&&& this test should be done by CentralWorker)
-     if (msgKind->element != LoaderMsg::IM_YOUR_R_NEIGHBOR || msgName->element != testNewNodeName || msgKeys->element != 0)  {
+     if (msgKind->element != LoaderMsg::IM_YOUR_R_NEIGHBOR ||
+         msgName->element != testNewNodeName ||
+         msgKeys->element != testNewNodeValuePairCount)  {
          LOGS(_log, LOG_LVL_ERROR, "_handleTest2 unexpected element or name" <<
               " kind=" << msgKind->element << " msgName=" << msgName->element <<
               " keys=" << msgKeys->element);
+         _free();
          return;
+     } else {
+         LOGS(_log, LOG_LVL_INFO, "_handleTest2 kind=" << msgKind->element << " msgName="
+              << msgName->element << " keys=" << msgKeys->element);
      }
 
      // send im_left_neighbor message, how many elements we have. If it had zero elements, an element will be sent
@@ -321,10 +360,37 @@ void TcpBaseConnection::_handleTest2(const boost::system::error_code& ec, size_t
      ourName.appendToData(_buf);
      UInt64Element keyCount(testOldNodeKeyCount);
      keyCount.appendToData(_buf);
-     _writeData(socket, _buf);
-
+     boost::asio::async_write(_socket, boost::asio::buffer(_buf.getReadCursor(), _buf.getBytesLeftToRead()),
+            boost::bind(&TcpBaseConnection::_handleTest2b, shared_from_this(),
+              boost::asio::placeholders::error,
+              boost::asio::placeholders::bytes_transferred));
 
 }
+
+
+void TcpBaseConnection::_handleTest2b(const boost::system::error_code& ec, size_t bytesTrans) {
+    // get verified message and close connection
+    // UInt32Element verified(LoaderMsg::NEIGHBOR_VERIFIED); &&&
+    if (ec) {
+         LOGS(_log, LOG_LVL_ERROR, "_recvKind ec=" << ec);
+         return;
+     }
+     // Fix the buffer with the information given.
+     _buf.advanceWriteCursor(bytesTrans);
+     auto msgElem = MsgElement::retrieve(_buf);
+     if (msgElem == nullptr) {
+         LOGS(_log, LOG_LVL_ERROR, "_handleTest2b Kind nullptr error");
+         return;
+     }
+     auto msgKind = std::dynamic_pointer_cast<UInt32Element>(msgElem);
+     if (msgKind->element != LoaderMsg::NEIGHBOR_VERIFIED) {
+         LOGS(_log, LOG_LVL_ERROR, "_handleTest2b NEIGHBOR_VERIFIED error" <<
+              " kind=" << msgKind->element);
+         return;
+     }
+     _msgStatus = LoaderMsg::NEIGHBOR_VERIFIED;
+}
+
 
 
 }}} // namespace lsst::qserrv::loader
