@@ -50,7 +50,8 @@ bool MsgElement::retrieveType(BufferUdp &data, char& elemType) {
 MsgElement::Ptr MsgElement::retrieve(BufferUdp& data) {
     char elemT;
     if (not retrieveType(data, elemT)) {
-        return nullptr; // &&& this should probably throw LoaderMsgErr
+        LOGS(_log, LOG_LVL_INFO, "no type retrieved");
+        return nullptr; // the data probably has not been read from the socket yet.
     }
     MsgElement::Ptr msgElem = create(elemT);
     if (msgElem != nullptr && not msgElem->retrieveFromData(data)) {

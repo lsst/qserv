@@ -48,25 +48,36 @@ namespace qserv {
 namespace loader {
 
 MsgElement::Ptr BufferUdp::readFromSocket(boost::asio::ip::tcp::socket& socket, std::string const& note) {
+    LOGS(_log, LOG_LVL_INFO, "&&&& readFromSocket !!!!!");
     for (;;) {
         LOGS(_log, LOG_LVL_INFO, note << " &&& readFromSocket");
         boost::system::error_code error;
+
+        // If there's something in the buffer already, get it and return
+        MsgElement::Ptr msgElem = _safeRetrieve();
+        if (msgElem != nullptr) {
+            return msgElem;
+        }
 
         size_t len = socket.read_some(boost::asio::buffer(_wCursor, getAvailableWriteLength()), error);
         _wCursor += len; /// must advance the cursor.
 
         LOGS(_log, LOG_LVL_INFO, note << " &&& readFromSocket len=" << len << " " << dump());
 
-        // error is only supposed to be non-zero if len is zero.
+        // EOF is only a problem if no MsgElement was retrieved.
+        // &&& ??? This is definitely the case in UDP, as nothing more will show up.
+        // &&& ??? But TCP is another issue as eof is returned when the connection is still live but
+        // &&& ??? there's no data (len=0). Why does read_some set error to eof before the tcp connection is closed?
         if (error == boost::asio::error::eof) {
+            LOGS(_log, LOG_LVL_INFO, "&&&& readFromSocket eof");
             break; // Connection closed cleanly by peer.
-        } else if (error) {
-            throw boost::system::system_error(error); // Some other error.
+        } else if (error && error != boost::asio::error::eof) {
+            throw boost::system::system_error(error); // Some bad error.
         }
 
         /// Try to retrieve an element (there's no guarantee that an entire element got read in a single read.
         // Store original cursor positions so they can be restored if the read fails.
-        MsgElement::Ptr msgElem = _safeRetrieve();
+        msgElem = _safeRetrieve();
         if (msgElem != nullptr) {
             return msgElem;
         }
@@ -76,6 +87,7 @@ MsgElement::Ptr BufferUdp::readFromSocket(boost::asio::ip::tcp::socket& socket, 
 
 
 std::shared_ptr<MsgElement> BufferUdp::_safeRetrieve() {
+    LOGS(_log, LOG_LVL_DEBUG, "&&&& _safeRetrieve");
     auto wCursorOriginal = _wCursor;
     auto rCursorOriginal = _rCursor;
     MsgElement::Ptr msgElem = MsgElement::retrieve(*this);
