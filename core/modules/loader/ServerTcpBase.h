@@ -25,10 +25,11 @@
 #define LSST_QSERV_LOADER_SERVER_TCP_BASE_H_
 
 // system headers
+#include <boost/asio.hpp>
+#include <boost/bind.hpp>
 #include <cstdlib>
 #include <iostream>
-#include <boost/bind.hpp>
-#include <boost/asio.hpp>
+#include <set>
 
 // Qserv headers
 #include "loader/BufferUdp.h"
@@ -43,116 +44,44 @@ namespace loader {
 
 using boost::asio::ip::tcp; // &&& Using gotta go
 
-class TcpConnection : public std::enable_shared_from_this<TcpConnection> {
-public:
-    typedef std::shared_ptr<TcpConnection> Ptr;
 
-    static Ptr create(boost::asio::io_context& io_context) {
-        return Ptr(new TcpConnection(io_context));
-    }
-
-    tcp::socket& socket() {
-        return _socket;
-    }
-
-    void start() {
-        _message = makeDaytimeString();
-
-        boost::asio::async_write(_socket, boost::asio::buffer(_message),
-                boost::bind(&TcpConnection::handleWrite, shared_from_this(),
-                        boost::asio::placeholders::error,
-                        boost::asio::placeholders::bytes_transferred));
-    }
-
-    std::string makeDaytimeString() {
-        using namespace std; // For time_t, time and ctime;
-        time_t now = time(0);
-        return ctime(&now);
-    }
-
-private:
-    TcpConnection(boost::asio::io_context& io_context) : _socket(io_context) {}
-
-    void handleWrite(const boost::system::error_code&, size_t /*bytes_transferred*/) {}
-
-    tcp::socket _socket;
-    std::string _message;
-};
-
-
-class TcpServer {
-public:
-  TcpServer(boost::asio::io_context& io_context, int port) :
-      _io_context(io_context), _acceptor(io_context, tcp::endpoint(tcp::v4(), port)), _port(port) {
-      startAccept();
-  }
-
-  ~TcpServer() {
-      _io_context.stop();
-      for (std::thread& t : _threads) {
-          t.join();
-      }
-  }
-
-  void runThread() {
-      auto func = [this]() {
-          _io_context.run();
-      };
-
-      _threads.push_back(std::thread(func));
-  }
-
-  bool testConnect();
-
-private:
-  void startAccept() {
-    TcpConnection::Ptr newConnection = TcpConnection::create(_acceptor.get_executor().context());
-    _acceptor.async_accept(newConnection->socket(),
-        boost::bind(&TcpServer::handleAccept, this, newConnection,
-          boost::asio::placeholders::error));
-  }
-
-  void handleAccept(TcpConnection::Ptr newConnection,
-      const boost::system::error_code& error) {
-    if (!error) {
-      newConnection->start();
-    }
-    startAccept();
-  }
-
-  boost::asio::io_context& _io_context;
-  boost::asio::ip::tcp::acceptor _acceptor;
-  int _port;
-  std::vector<std::thread> _threads;
-};
-
+class ServerTcpBase;
 
 class TcpBaseConnection : public std::enable_shared_from_this<TcpBaseConnection> {
 public:
     typedef std::shared_ptr<TcpBaseConnection> Ptr;
 
-    static Ptr create(boost::asio::io_context& io_context) {
-        return Ptr(new TcpBaseConnection(io_context));
+    static Ptr create(boost::asio::io_context& io_context, ServerTcpBase* tcpBase) {
+        return Ptr(new TcpBaseConnection(io_context, tcpBase));
     }
+
+    ~TcpBaseConnection() { shutdown(); }
 
     tcp::socket& socket() {
         return _socket;
     }
 
     void start();
+    void shutdown();
+    unsigned int getMsgStatus() const { return _msgStatus; }
 
 private:
-    TcpBaseConnection(boost::asio::io_context& io_context) : _socket(io_context) {}
+    TcpBaseConnection(boost::asio::io_context& io_context, ServerTcpBase* tcpBase) :
+        _socket(io_context), _serverTcpBase(tcpBase) {}
 
     void _readKind(const boost::system::error_code&, size_t /*bytes_transferred*/);
     void _recvKind(const boost::system::error_code&, size_t bytesTrans);
 
+    void _free();
 
     tcp::socket _socket;
+    ServerTcpBase* _serverTcpBase; // _serverTcpBase controls this class' lifetime.
     BufferUdp _buf{500000};
+    std::atomic<unsigned int> _msgStatus{LoaderMsg::WAITING};
 
     void _handleTest();
     void _handleTest2(const boost::system::error_code& ec, size_t bytesTrans);
+    void _handleTest2b(const boost::system::error_code& ec, size_t bytesTrans);
 };
 
 
@@ -169,6 +98,13 @@ public:
         for (std::thread& t : _threads) {
             t.join();
         }
+        // &&& Is this thread safe? The server is expected to live until program termination.
+        // &&& If a connection is doing something, and this is called, what happens?
+        // &&& Check _connections empty before deleting?
+        for (auto&& conn:_connections) {
+            conn->shutdown();
+        }
+        _connections.clear();
     }
 
     void runThread() {
@@ -180,9 +116,13 @@ public:
 
     bool testConnect();
 
+    void freeConnection(TcpBaseConnection::Ptr const& conn) {
+        _connections.erase(conn);
+    }
+
 private:
     void startAccept() {
-        TcpBaseConnection::Ptr newConnection = TcpBaseConnection::create(_acceptor.get_executor().context());
+        TcpBaseConnection::Ptr newConnection = TcpBaseConnection::create(_acceptor.get_executor().context(), this);
         _acceptor.async_accept(newConnection->socket(),
                 boost::bind(&ServerTcpBase::handleAccept, this, newConnection,
                         boost::asio::placeholders::error));
@@ -191,6 +131,7 @@ private:
     void handleAccept(TcpBaseConnection::Ptr newConnection,
             const boost::system::error_code& error) {
         if (!error) {
+            _connections.insert(newConnection);
             newConnection->start();
         }
         startAccept();
@@ -202,6 +143,7 @@ private:
     boost::asio::ip::tcp::acceptor _acceptor;
     int _port;
     std::vector<std::thread> _threads;
+    std::set<TcpBaseConnection::Ptr> _connections;
 };
 
 

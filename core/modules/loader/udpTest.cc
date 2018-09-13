@@ -175,7 +175,7 @@ int main(int argc, char* argv[]) {
         }
     }
 
-
+    /* &&&
     /// Start a TCP server and client &&&
     {
         try {
@@ -196,6 +196,7 @@ int main(int argc, char* argv[]) {
             std::cerr << e.what() << std::endl;
         }
     }
+    */
 
     {
         try {
