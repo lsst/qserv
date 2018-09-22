@@ -32,8 +32,10 @@
 #include <string>
 
 // Qserv headers
+#include "replica/Configuration.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/FileUtils.h"
+#include "util/BlockPost.h"
 #include "util/CmdLineParser.h"
 
 using namespace lsst::qserv;
@@ -45,7 +47,11 @@ namespace {
 
 std::string operation;
 
-bool noAutoReconnect;
+bool         databaseAllowReconnect        = replica::Configuration::databaseAllowReconnect();
+unsigned int databaseConnectTimeoutSec     = replica::Configuration::databaseConnectTimeoutSec();
+unsigned int databaseMaxReconnects         = replica::Configuration::databaseMaxReconnects();
+unsigned int databaseTransactionTimeoutSec = replica::Configuration::databaseTransactionTimeoutSec();
+
 bool noTransaction;
 bool noResultSet;
 bool resultSummaryOnly;
@@ -55,7 +61,8 @@ database::ConnectionParams connectionParams;
 std::string databaseName;
 std::string fileName;
 
-unsigned int numIter = 1;
+unsigned int numIter = 1;           // run just once
+unsigned int iterDelayMillisec = 0; // no delay between iterations
 
 // Run various test on transactions
 void runTransactionTest(database::Connection::Ptr const& conn,
@@ -120,8 +127,8 @@ void dropDatabase(database::Connection::Ptr const& conn) {
 }
 
 /// Execute it and (if requested) explore its results
-void runQuery(database::Connection::Ptr const& conn,
-              std::string const& query) {
+void executeQuery(database::Connection::Ptr const& conn,
+                  std::string const& query) {
 
     try {
 
@@ -173,12 +180,27 @@ void runQuery(database::Connection::Ptr const& conn,
             }
         }
         if (not noTransaction) conn->commit();
+        return;
 
     } catch (std::logic_error const& ex) {
         std::cout << ex.what() << std::endl;
     }
+    if (not noTransaction) {
+        if (conn->inTransaction()) conn->rollback();
+    }
 }
 
+/// Execute it and (if requested) explore its results
+void executeQueryWait(database::Connection::Ptr const& conn,
+                      std::string const& query) {
+    conn->execute(
+        std::bind(
+            executeQuery,
+            std::placeholders::_1,
+            query
+        )
+    );
+}
 
 /// Read a query from the standard input or from a file into a string.
 std::string getQuery() {
@@ -214,8 +236,15 @@ void test() {
 
     try {
 
+        // Change default parameters of the database connectors
+
+        replica::Configuration::setDatabaseAllowReconnect(databaseAllowReconnect);
+        replica::Configuration::setDatabaseConnectTimeoutSec(databaseConnectTimeoutSec);
+        replica::Configuration::setDatabaseMaxReconnects(databaseMaxReconnects);
+        replica::Configuration::setDatabaseTransactionTimeoutSec(databaseTransactionTimeoutSec);
+
         std::string query;
-        if ("QUERY" == operation) {
+        if (("QUERY" == operation) or ("QUERY_WAIT" == operation)) {
             query = getQuery();
             if (query.empty()) {
                 std::cerr << "error: no query provided" << std::endl;
@@ -223,15 +252,21 @@ void test() {
             }
         }
 
-        database::Connection::Ptr const conn =
-            database::Connection::open(connectionParams, not noAutoReconnect);
+        auto conn = database::Connection::open(connectionParams);
+
+        util::BlockPost blockPost(iterDelayMillisec, iterDelayMillisec + 1);
 
         for (unsigned int i = 0; i < numIter; ++i) {
+
             if      ("TEST_TRANSACTIONS" == operation) testTransactions(conn);
             else if ("CREATE_DATABASE"   == operation) createDatabase(conn);
             else if ("DROP_DATABASE"     == operation) dropDatabase(conn);
-            else if ("QUERY"             == operation) runQuery(conn, query);
+            else if ("QUERY"             == operation) executeQuery(conn, query);
+            else if ("QUERY_WAIT"        == operation) executeQueryWait(conn, query);
+
+            if (iterDelayMillisec > 0) blockPost.wait();
         }
+
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
     }
@@ -248,49 +283,130 @@ int main(int argc, const char* const argv[]) {
             argv,
             "\n"
             "Usage:\n"
+            "\n"
             "  <operation> [<parameter> [<parameter> [...]]]\n"
-            "              [--no-auto-reconnect] [--no-transaction] [--no-result-set] [--result-summary-only]\n"
-            "              [--host=<name>] [--port=<number>]\n"
-            "              [--user=<name>] [--password=<secret>]\n"
+            "\n"
+            "              [--db-allow-reconnect=<flag>]\n"
+            "              [--db-reconnect-timeout=<sec>]\n"
+            "              [--db-max-retries=<num>]\n"
+            "              [--db-transaction-timeout=<sec>]\n"
+            "\n"
+            "              [--no-transaction]\n"
+            "              [--no-result-set]\n"
+            "              [--result-summary-only]\n"
+            "\n"
+            "              [--host=<name>]\n"
+            "              [--port=<number>]\n"
+            "              [--user=<name>]\n"
+            "              [--password=<secret>]\n"
             "              [--default-database=<name>]\n"
+            "\n"
             "              [--iter=<num>]\n"
+            "              [--iter-delay=<ms>]\n"
             "\n"
             "Supported operations and mandatory parameters:\n"
+            "\n"
             "    TEST_TRANSACTIONS\n"
             "\n"
             "    CREATE_DATABASE <database>\n"
             "    DROP_DATABASE   <database>\n"
             "\n"
-            "    QUERY <file>\n"
+            "    QUERY      <file>\n"
+            "    QUERY_WAIT <file>\n"
             "\n"
             "Parameters:\n"
-            "  database              - the name of a database\n"
-            "  file                  - the name of a file from which to read a SQL statement.\n"
-            "                          If the file name is set to '-' then statement will be read\n"
-            "                          from the standard input stream.\n"
+            "\n"
+            "    <database> \n"
+            "\n"
+            "      the name of a database\n"
+            "\n"
+            "    <file> \n"
+            "\n"
+            "      the name of a file from which to read a SQL statement.\n"
+            "      If the file name is set to '-' then statement will be read\n"
+            "      from the standard input stream.\n"
+            "\n"
             "Flags and options:\n"
-            "  --no-auto-reconnect   - do *NOT* auto-reconnect to the service if its drops the connection\n"
-            "                          after a long period of the applicatin inactivity\n"
-            "  --no-transaction      - do *NOT* start/commit transactions when executing\n"
-            "                          database queries\n"
-            "  --no-result-set       - do *NOT* explore the result set after executing statements\n"
-            "  --result-summary-only - print the number of rows for queries instead of their full content\n"
-            "  --host                - the DNS name or IP address of a host where the service runs\n"
-            "                          [ DEFAULT: localhost ]\n"
-            "  --port                - the port number for the MySQL service\n"
-            "                          [ DEFAULT: 3306 ]\n"
-            "  --user                - the name of the MySQL user account\n"
-            "  --password            - a password to log into the MySQL user account\n"
-            "  --default-database    - the name of the default database to connect to\n"
-            "                          [ DEFAULT: '' ]\n"
-            "  --iter                - the number of iterations\n"
-            "                          [ DEFAULT: " + std::to_string(::numIter) + " ]\n");
+            "\n"
+            "    --db-allow-reconnect \n"
+            "\n"
+            "      change the default database connecton handling node. Set 0 to disable automatic\n"
+            "      reconnects. Any other number would man an opposite scenario.\n"
+            "      DEFAULT: " + std::to_string(::databaseAllowReconnect ? 1 : 0) + "\n"
+            "\n"
+            "    --db-reconnect-timeout \n"
+            "\n"
+            "      change the default value limiting a duration of time for making automatic\n"
+            "      reconnects to a database server before failing and reporting error (if the server\n"
+            "      is not up, or if it's not reachable for some reason)\n"
+            "      DEFAULT: " + std::to_string(::databaseConnectTimeoutSec) + "\n"
+            "\n"
+            "    --db-max-reconnects\n"
+            "\n"
+            "      change the default value limiting a number of attempts to repeat a sequence\n"
+            "      of queries due to connection losses and subsequent reconnects before to fail.\n"
+            "      DEFAULT: " + std::to_string(::databaseMaxReconnects) + "\n"
+            "\n"
+            "    --db-transaction-timeout \n"
+            "\n"
+            "      change the default value limiting a duration of each attempt to execute\n"
+            "      a database transaction before to fail.\n"
+            "      DEFAULT: " + std::to_string(::databaseTransactionTimeoutSec) + "\n"
+            "\n"
+            "    --no-transaction \n"
+            "\n"
+            "      do *NOT* start/commit transactions when executing\n"
+            "      database queries\n"
+            "\n"
+            "    --no-result-set \n"
+            "\n"
+            "      do *NOT* explore the result set after executing statements\n"
+            "\n"
+            "    --result-summary-only \n"
+            "\n"
+            "      print the number of rows for queries instead of their full content\n"
+            "\n"
+            "    --host \n"
+            "\n"
+            "      the DNS name or IP address of a host where the service runs."
+            "      DEFAULT: '" + ::connectionParams.host + "'\n"
+            "\n"
+            "    --port \n"
+            "\n"
+            "      the port number for the MySQL service\n"
+            "      DEFAULT: " + std::to_string(::connectionParams.port) + "\n"
+             "\n"
+            "    --user \n"
+            "\n"
+            "      the name of the MySQL user account\n"
+            "      DEFAULT: '" + ::connectionParams.user + "'\n"
+            "\n"
+            "    --password \n"
+            "\n"
+            "      user password to log into the MySQL user account\n"
+            "      DEFAULT: '" + ::connectionParams.password + "'\n"
+            "\n"
+            "    --default-database \n"
+            "\n"
+            "      the name of the default database to connect to\n"
+            "      DEFAULT: '" + ::connectionParams.database + "'\n"
+            "\n"
+            "    --iter \n"
+            "\n"
+            "      the number of iterations\n"
+            "      DEFAULT: " + std::to_string(::numIter) + "\n"
+            "\n"
+            "    --iter-delay \n"
+            "\n"
+            "      interval (milliseconds) between iterations\n"
+            "      DEFAULT: " + std::to_string(::iterDelayMillisec) + "\n");
 
         ::operation = parser.parameterRestrictedBy(
             1, {"TEST_TRANSACTIONS",
                 "CREATE_DATABASE",
                 "DROP_DATABASE",
-                "QUERY"}
+                "QUERY",
+                "QUERY_WAIT"}
         );
         if (parser.in(::operation, {
             "CREATE_DATABASE",
@@ -298,21 +414,27 @@ int main(int argc, const char* const argv[]) {
             ::databaseName = parser.parameter<std::string>(2);
         }
         if (parser.in(::operation, {
-            "QUERY"})) {
+            "QUERY",
+            "QUERY_WAIT"})) {
             ::fileName = parser.parameter<std::string>(2);
         }
-        ::noAutoReconnect   = parser.flag("no-auto-reconnect");
         ::noTransaction     = parser.flag("no-transaction");
         ::noResultSet       = parser.flag("no-result-set");
         ::resultSummaryOnly = parser.flag("result-summary-only");
 
-        ::connectionParams.host     = parser.option<std::string>("host", "localhost");
-        ::connectionParams.port     = parser.option<uint16_t>   ("port", 3306);
-        ::connectionParams.user     = parser.option<std::string>("user", replica::FileUtils::getEffectiveUser());
-        ::connectionParams.password = parser.option<std::string>("password", "");
-        ::connectionParams.database = parser.option<std::string>("default-database", "");
+        ::connectionParams.host     = parser.option<std::string>("host",             ::connectionParams.host);
+        ::connectionParams.port     = parser.option<uint16_t>(   "port",             ::connectionParams.port);
+        ::connectionParams.user     = parser.option<std::string>("user",             ::connectionParams.user);
+        ::connectionParams.password = parser.option<std::string>("password",         ::connectionParams.password);
+        ::connectionParams.database = parser.option<std::string>("default-database", ::connectionParams.database);
 
-        ::numIter = parser.option<unsigned int>("iter", ::numIter);
+        ::databaseAllowReconnect        = parser.option<unsigned int>("db-allow-reconnect",     ::databaseAllowReconnect);
+        ::databaseConnectTimeoutSec     = parser.option<unsigned int>("db-reconnect-timeout",   ::databaseConnectTimeoutSec);
+        ::databaseMaxReconnects         = parser.option<unsigned int>("db-max-reconnects",      ::databaseMaxReconnects);
+        ::databaseTransactionTimeoutSec = parser.option<unsigned int>("db-transaction-timeout", ::databaseTransactionTimeoutSec);
+
+        ::numIter              = parser.option<unsigned int>("iter",       ::numIter);
+        ::iterDelayMillisec    = parser.option<unsigned int>("iter-delay", ::iterDelayMillisec);
 
     } catch (std::exception const& ex) {
         return 1;

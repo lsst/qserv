@@ -147,6 +147,21 @@ public:
                 FileInfoCollection const& fileInfo);
 
     /**
+     * Construct with the specified state (no files provided)
+     *
+     * @param status     - object status (see notes above)
+     * @param worker     - the name of the worker wre the replica is located
+     * @param database   - the name of the database
+     * @param chunk      - the chunk number
+     * @param verifyTime - when the replica info was obtainer by a worker
+     */
+    ReplicaInfo(Status status,
+                std::string const& worker,
+                std::string const& database,
+                unsigned int chunk,
+                uint64_t verifyTime);
+
+    /**
      * Construct from a protobuf object
      *
      * @param info - Protobuf object
@@ -157,6 +172,20 @@ public:
     ReplicaInfo& operator=(ReplicaInfo const& ri) = default;
 
     ~ReplicaInfo() = default;
+
+    /**
+     * Explicitly set a collection of files.
+     *
+     * @param fileInfo - collection of files to set (or replace older one)
+     */
+    void setFileInfo(FileInfoCollection const& fileInfo);
+
+    /**
+     * Explicitly set a collection of files (the move semantics for the input collection)
+     *
+     * @param fileInfo - collection of files to set (or replace older one)
+     */
+    void setFileInfo(FileInfoCollection&& fileInfo);
 
     // Trivial accessors
 

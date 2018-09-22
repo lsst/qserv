@@ -357,7 +357,11 @@ void DeleteWorkerJob::onJobFinish(ReplicateJob::Ptr const& job) {
         // Construct a collection of orphan replicas if possible
 
         ReplicaInfoCollection replicas;
-        if (controller()->serviceProvider()->databaseServices()->findWorkerReplicas(replicas, worker())) {
+        try {
+            controller()->serviceProvider()->databaseServices()->findWorkerReplicas(
+                replicas,
+                worker()
+            );
             for (ReplicaInfo const& replica: replicas) {
                 unsigned int const chunk    = replica.chunk();
                 std::string const& database = replica.database();
@@ -372,6 +376,13 @@ void DeleteWorkerJob::onJobFinish(ReplicateJob::Ptr const& job) {
                     _replicaData.orphanChunks[chunk][database] = replica;
                 }
             }
+
+        } catch (std::exception const&) {
+            LOGS(_log, LOG_LVL_ERROR, context()
+                 << "onJobFinish(ReplicateJob)  ** failed to find replicas ** "
+                 << " worker: " << worker());
+            finish(lock, ExtendedState::FAILED);
+            return;
         }
 
         // TODO: if the list of orphan chunks is not empty then consider bringing

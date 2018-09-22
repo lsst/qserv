@@ -123,14 +123,14 @@ public:
     /**
      * @see DatabaseServices::findOldestReplica()
      */
-    bool findOldestReplicas(std::vector<ReplicaInfo>& replicas,
+    void findOldestReplicas(std::vector<ReplicaInfo>& replicas,
                             size_t maxReplicas,
                             bool enabledWorkersOnly) final;
 
     /**
      * @see DatabaseServices::findReplicas()
      */
-    bool findReplicas(std::vector<ReplicaInfo>& replicas,
+    void findReplicas(std::vector<ReplicaInfo>& replicas,
                       unsigned int chunk,
                       std::string const& database,
                       bool enabledWorkersOnly) final;
@@ -138,14 +138,14 @@ public:
     /**
      * @see DatabaseServices::findWorkerReplicas()
      */
-    bool findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
+    void findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
                             std::string const& worker,
                             std::string const& database) final;
 
     /**
      * @see DatabaseServices::findWorkerReplicas()
      */
-    bool findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
+    void findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
                             unsigned int chunk,
                             std::string const& worker,
                             std::string const& databaseFamily) final;

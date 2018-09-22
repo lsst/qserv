@@ -63,6 +63,11 @@ struct Application {
     
     std::string configUrl;
 
+    bool         databaseAllowReconnect        = Configuration::databaseAllowReconnect();
+    unsigned int databaseConnectTimeoutSec     = Configuration::databaseConnectTimeoutSec();
+    unsigned int databaseMaxReconnects         = Configuration::databaseMaxReconnects();
+    unsigned int databaseTransactionTimeoutSec = Configuration::databaseTransactionTimeoutSec();
+
     unsigned int healthProbeIntervalSec;
     unsigned int replicationIntervalSec;
     unsigned int workerResponseTimeoutSec;
@@ -113,7 +118,11 @@ struct Application {
      * Construct the application and begin its execution
      */
     Application(int argc, const char* const argv[])
-        :   configUrl               ("file:replication.cfg"),
+        :   configUrl("file:replication.cfg"),
+            databaseAllowReconnect       (Configuration::databaseAllowReconnect()),
+            databaseConnectTimeoutSec    (Configuration::databaseConnectTimeoutSec()),
+            databaseMaxReconnects        (Configuration::databaseMaxReconnects()),
+            databaseTransactionTimeoutSec(Configuration::databaseTransactionTimeoutSec()),
             healthProbeIntervalSec  (60),
             replicationIntervalSec  (60),
             workerResponseTimeoutSec(60),
@@ -136,7 +145,12 @@ struct Application {
             argv,
             "\n"
             "Usage:\n"
+            "\n"
             "  [--config=<url>]\n"
+            "  [--db-allow-reconnect=<flag>]\n"
+            "  [--db-reconnect-timeout=<sec>]\n"
+            "  [--db-max-retries=<num>]\n"
+            "  [--db-transaction-timeout=<sec>]\n"
             "  [--health-probe-interval=<seconds>]\n"
             "  [--replication-interval=<seconds>]\n"
             "  [--worker-response-timeout=<seconds>]\n"
@@ -146,41 +160,88 @@ struct Application {
             "  [--iter=<num>]\n"
             "\n"
             "Flags and options:\n"
-            "  --config                   - configuration URL (a file or a database connection string)\n"
-            "                               [ DEFAULT: " + configUrl + " ]\n"
             "\n"
-            "  --health-probe-interval    - interval (seconds) between running the health monitor\n"
-            "                               [ DEFAULT: " + std::to_string(healthProbeIntervalSec) + " seconds ]\n"
+            "    --config \n"
+            "\n"
+            "      configuration URL (a file or a database connection string)\n"
+            "      DEFAULT: " + configUrl + "\n"
+            "\n"
+            "    --db-allow-reconnect \n"
+            "\n"
+            "      change the default database connecton handling node. Set 0 to disable automatic\n"
+            "      reconnects. Any other number would man an opposite scenario.\n"
+            "      DEFAULT: " + std::to_string(databaseAllowReconnect ? 1 : 0) + "\n"
+            "\n"
+            "    --db-reconnect-timeout \n"
+            "\n"
+            "      change the default value limiting a duration of time for making automatic\n"
+            "      reconnects to a database server before failing and reporting error (if the server\n"
+            "      is not up, or if it's not reachable for some reason)\n"
+            "      DEFAULT: " + std::to_string(databaseConnectTimeoutSec) + "\n"
+            "\n"
+            "    --db-max-reconnects\n"
+            "\n"
+            "      change the default value limiting a number of attempts to repeat a sequence\n"
+            "      of queries due to connection losses and subsequent reconnects before to fail.\n"
+            "      DEFAULT: " + std::to_string(databaseMaxReconnects) + "\n"
+            "\n"
+            "    --db-transaction-timeout \n"
+            "\n"
+            "      change the default value limiting a duration of each attempt to execute\n"
+            "      a database transaction before to fail.\n"
+            "      DEFAULT: " + std::to_string(databaseTransactionTimeoutSec) + "\n"
+            "\n"
+            "    --health-probe-interval \n"
+            "\n"
+            "      interval (seconds) between running the health monitor\n"
+            "      DEFAULT: " + std::to_string(healthProbeIntervalSec) + " seconds\n"
             "\n"
             "\n"
-            "  --replication-interval     - interval (seconds) between running the normal sequence of\n"
-            "                               actions: check - fixup - replicate - rebalance\n"
-            "                               [ DEFAULT: " + std::to_string(replicationIntervalSec) + " seconds ]\n"
+            "    --replication-interval \n"
             "\n"
-            "  --worker-response-timeout  - maximum number of seconds to wait before giving up\n"
-            "                               on worker probes when checking workers' statuses\n"
-            "                               [ DEFAULT: " + std::to_string(workerResponseTimeoutSec) + " seconds ]\n"
+            "      interval (seconds) between running the normal sequence of\n"
+            "      actions: check - fixup - replicate - rebalance\n"
+            "      DEFAULT: " + std::to_string(replicationIntervalSec) + " seconds\n"
+            "\n"
+            "    --worker-response-timeout \n"
+            "\n"
+            "      maximum number of seconds to wait before giving up\n"
+            "      on worker probes when checking workers' statuses\n"
+            "      DEFAULT: " + std::to_string(workerResponseTimeoutSec) + " seconds\n"
            "\n"
-            "  --worker-evict-timeout     - maximum number of seconds to allow troubles workers to recover\n"
-            "                               from the last catastrophic event before evicting them from a cluster\n"
-            "                               [ DEFAULT: " + std::to_string(workerEvictTimeoutSec) + " seconds ]\n"
+            "    --worker-evict-timeout \n"
             "\n"
-            "  --qserv-sync-timeout       - maximum number of seconds to wait before Qserv workers respond\n"
-            "                               to the synchronization requests before bailing out and proceeding\n"
-            "                               to the next step in the normal replication sequence. A value which\n"
-            "                               differs from 0 would override the corresponding parameter specified\n"
-            "                               in the Configuration.\n"
-            "                               [ DEFAULT: " + std::to_string(qservSyncTimeoutSec) + " seconds ]\n"
+            "      maximum number of seconds to allow troubles workers to recover\n"
+            "      from the last catastrophic event before evicting them from a cluster\n"
+            "      DEFAULT: " + std::to_string(workerEvictTimeoutSec) + " seconds\n"
             "\n"
-            "  --replicas                 - minimal number of replicas when running the replication phase\n"
-            "                               This number of provided will override the corresponding value found in\n"
-            "                               in the Configuration.\n"
-            "                               [ DEFAULT: " + std::to_string(numReplicas) + " replicas of each chunk ]\n"
+            "    --qserv-sync-timeout \n"
             "\n"
-            "  --iter                     - the number of iterations\n"
-            "                               [ DEFAULT: " + std::to_string(numIter) + " ]\n");
+            "      maximum number of seconds to wait before Qserv workers respond\n"
+            "      to the synchronization requests before bailing out and proceeding\n"
+            "      to the next step in the normal replication sequence. A value which\n"
+            "      differs from 0 would override the corresponding parameter specified\n"
+            "      in the Configuration.\n"
+            "      DEFAULT: " + std::to_string(qservSyncTimeoutSec) + " seconds\n"
+            "\n"
+            "    --replicas \n"
+            "\n"
+            "      minimal number of replicas when running the replication phase\n"
+            "      This number of provided will override the corresponding value found in\n"
+            "      in the Configuration.\n"
+            "      DEFAULT: " + std::to_string(numReplicas) + " replicas of each chunk\n"
+            "\n"
+            "    --iter \n"
+            "\n"
+            "      the number of iterations (a value of 0 means running indefinitively)\n"
+            "      DEFAULT: " + std::to_string(numIter) + "\n");
 
         configUrl = parser.option<std::string>("config", configUrl);
+
+        databaseAllowReconnect        = parser.option<unsigned int>("db-allow-reconnect",     databaseAllowReconnect);
+        databaseConnectTimeoutSec     = parser.option<unsigned int>("db-reconnect-timeout",   databaseConnectTimeoutSec);
+        databaseMaxReconnects         = parser.option<unsigned int>("db-max-reconnects",      databaseMaxReconnects);
+        databaseTransactionTimeoutSec = parser.option<unsigned int>("db-transaction-timeout", databaseTransactionTimeoutSec);
 
         healthProbeIntervalSec   = parser.option<unsigned int>("health-probe-interval",   healthProbeIntervalSec);
         replicationIntervalSec   = parser.option<unsigned int>("replication-interval",    replicationIntervalSec);
@@ -193,6 +254,10 @@ struct Application {
 
         LOGS(_log, LOG_LVL_INFO, "MASTER            "
              << "configUrl="               << configUrl << " "
+             << "db-allow-reconnect="      << (databaseAllowReconnect ? 1 :0) << " "
+             << "db-reconnect-timeout="    << databaseConnectTimeoutSec << " "
+             << "db-max-reconnects="       << databaseMaxReconnects <<  " "
+             << "db-transaction-timeout="  << databaseTransactionTimeoutSec <<  " "
              << "health-probe-interval="   << healthProbeIntervalSec << " "
              << "replication-interval="    << replicationIntervalSec << " "
              << "worker-response-timeout=" << workerResponseTimeoutSec << " "
@@ -200,6 +265,14 @@ struct Application {
              << "qserv-sync-timeout="      << qservSyncTimeoutSec << " "
              << "replicas="                << numReplicas << " "
              << "iter="                    << numIter);
+
+        ///////////////////////////////////////////////////////////////
+        // Set global configuration options for the database connectors
+
+        Configuration::setDatabaseAllowReconnect(databaseAllowReconnect);
+        Configuration::setDatabaseConnectTimeoutSec(databaseConnectTimeoutSec);
+        Configuration::setDatabaseMaxReconnects(databaseMaxReconnects);
+        Configuration::setDatabaseTransactionTimeoutSec(databaseTransactionTimeoutSec);
 
         ///////////////////////////////////////////////////////////////////////////
         // Start the provider in its own thread pool before initiating any requests

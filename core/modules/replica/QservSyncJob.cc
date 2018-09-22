@@ -125,11 +125,14 @@ void QservSyncJob::startImpl(util::Lock const& lock) {
         for (auto&& database: databases) {
 
             std::vector<ReplicaInfo> replicas;
-            if (not databaseServices->findWorkerReplicas(replicas,
-                                                         worker,
-                                                         database)) {
+            try {
+                databaseServices->findWorkerReplicas(replicas,
+                                                     worker,
+                                                     database);
+            } catch (std::exception const&) {
 
-                LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl  failed to pull replicas for worker: "
+                LOGS(_log, LOG_LVL_DEBUG, context()
+                     << "startImpl  failed to pull replicas for worker: "
                      << worker << ", database: " << database);
 
                 // Set this state and cleanup before aborting the job
@@ -141,7 +144,7 @@ void QservSyncJob::startImpl(util::Lock const& lock) {
                 return;
             }
             for (auto&& info: replicas) {
-                newReplicas.emplace_back(
+                newReplicas.push_back(
                     QservReplica{
                         info.chunk(),
                         info.database(),

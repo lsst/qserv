@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
+ * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -22,25 +22,31 @@
 #ifndef LSST_QSERV_REPLICA_DATABASEMYSQL_H
 #define LSST_QSERV_REPLICA_DATABASEMYSQL_H
 
-/// DatabaseMySQL.h declares:
-///
-/// class Raw
-/// class Connection
-/// (see individual class documentation for more information)
+/**
+ * DatabaseMySQL.h declares:
+ *
+ * class Connection
+ *
+ * (see individual class documentation for more information)
+ */
 
 // System headers
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <map>
 #include <memory>
-#include <ostream>
 #include <sstream>
-#include <stdexcept>
 #include <string>
 #include <vector>
 
 // Third party headers
 #include <mysql/mysql.h>
+
+// Qserv headers
+#include "replica/DatabaseMySQLExceptions.h"
+#include "replica/DatabaseMySQLTypes.h"
+#include "replica/DatabaseMySQLRow.h"
 
 // This header declarations
 
@@ -49,377 +55,6 @@ namespace qserv {
 namespace replica {
 namespace database {
 namespace mysql {
-
-/**
- * Class Error represents a family of exceptions which are specific
- * to the implementation of this API.
- */
-class Error
-    :   public std::runtime_error {
-
-public:
-
-    /**
-     * The normal constructor
-     *
-     * @param what - reason for the exceptioon
-     */
-    explicit Error(std::string const& what)
-        :   std::runtime_error(what) {
-    }
-};
-
-/**
- * Instances of this exception class are thrown on attempts to insert
- * rows with duplicate keys.
- */
-class DuplicateKeyError
-    :   public Error {
-
-public:
-
-    /**
-     * The normal constructor
-     *
-     * @param what - reason for the exceptioon
-     */
-    explicit DuplicateKeyError(std::string const& what)
-        :   Error(what) {
-    }
-};
-
-/**
- * Instances of this exception class are thrown on failed attempts
- * to interpret the contents of the result set.
- */
-class InvalidTypeError
-    :   public Error {
-
-public:
-
-    /**
-     * The normal constructor
-     *
-     * @param what - reason for the exceptioon
-     */
-    explicit InvalidTypeError(std::string const& what)
-        :   Error(what) {
-    }
-};
-
-/**
- * Instances of this exception class are thrown on empty result sets
- * by some methods when a query is supposed to return at least one row.
- */
-class EmptyResultSetError
-    :   public Error {
-
-public:
-
-    /**
-     * The normal constructor
-     *
-     * @param what - reason for the exceptioon
-     */
-    explicit EmptyResultSetError(std::string const& what)
-        :   Error(what) {
-    }
-};
-
-/**
- * Struvct ConnectionParams encapsulates connection parameters to a MySQL server
- */
-struct ConnectionParams {
-    /// The DNS name or IP address of a machine where the database
-    /// server runs
-    std::string host;
-
-    /// The port number of the MySQL service
-    uint16_t port;
-
-    /// The name of a database user
-    std::string user;
-
-    /// The database password
-    std::string password;
-
-    /// The name of a database to be set upon the connection
-    std::string database;
-
-    /**
-     * The factory method will return an instance of this structure initialized
-     * by values of parameters found in the input encoded string. The string is
-     * expected to have the following syntax:
-     *
-     *   mysql://[user][:password]@[host][:port][/database]
-     *
-     * NOTES ON THE SYNTAX:
-     * 1) all keywords are madatory
-     * 2) the corresponding values for for all but the database are optional
-     * 3) default values for other parameters (if missing in the string) will be assumed.
-     *
-     * @param params          - connection parameters packed into a string
-     * @param defaultHost     - default value for a host name
-     * @param defaultPort     - default port number
-     * @param defaultUser     - default value for a database user account
-     * @param defaultPassword - default value for a database user account
-     *
-     * @throw std::invalid_argument - if the string can't be parsed
-     */
-    static ConnectionParams parse(std::string const& params,
-                                  std::string const& defaultHost,
-                                  uint16_t defaultPort,
-                                  std::string const& defaultUser,
-                                  std::string const& defaultPassword);
-
-    /**
-     * Return a string representation of all (but the password) parameters.
-     * The result will be formatted similarily to the one expected by
-     * the non-default constructor of the class.
-     */
-    std::string toString() const;
-};
-
-/// Overloaded operator for serializing ConnectionParams instances
-std::ostream& operator<<(std::ostream&, ConnectionParams const&);
-
-/**
- * Class Row represens the current row obtained from the last result set.
- * It provides an interface for obtainig values of fields and translating
- * them from the internal MySQL representation into the proposed C++ type
- * system.
- *
- * All type-specific 'get' methods defined in this class will return 'true' and
- * set the value returned for the specified column if the value was not 'NULL'.
- * They will return 'false' otherwise. All methods have two parameters:
- *
- *   columnName - the name of a column
- *   value      - the value (of a type which depends on the method signature)
- *                to be initialized upon the succesful completion of a method
- *
- * Methods may also throw the following exceptions:
- *
- *   std::invalid_argument - for unknown column names
- *   InvalidTypeError      - when the conversion of row data into a value of
- *                           the requested type is not possible.
- *
- * @note the validity of each object of this class is limited by the life
- * span of the database Connection object and a result set of the last
- * query. Use this object only for short periods of time while iterating over
- * a result set after each successful invocation of the iterator method
- * Connection::next().
- *
- * @see Connection::next()
- *
- */
-class Row {
-
-public:
-
-    /// Class Connection is allowed to initialize the valid content of rows
-    friend class Connection;
-
-    /**
-     * The class encapsulate a raw data pointer and the number of bytes
-     * in each column.
-     */
-    typedef std::pair<char const*, size_t> Cell;
-
-    /**
-     * The default constructor will initialize invalid instances of the class.
-     *
-     * @note any attempts to call most (but 'isValid', copy constructor,
-     * assignment operator and desturctor) methods of objects constracted
-     * with this state will throw exception std::logic_error. So, make sure
-     * the object is properly set by passing it for initialization to method
-     * Connection::next() when iterating over a result set.
-     *
-     * @see Connection::next()
-     */
-    Row();
-
-    /// Copy constructor
-    Row(Row const& rhs) = default;
-
-    /// The Assignment operator
-    Row& operator=(Row const& rhs) = default;
-
-    ~Row() = default;
-
-    /// @return 'true' of the object has meaningful content
-    bool isValid() const { return _name2indexPtr != nullptr; }
-
-    /// @return width of the row
-    size_t numColumns() const;
-
-    // These methods will return 'true' if the specified field is NULL
-
-    bool isNull(size_t             columnIdx)  const;
-    bool isNull(std::string const& columnName) const;
-
-    // Type-specific data extractors/converters for values of fields.
-    // There are two ways to access the values: either by a relative
-    // index of a column in a result set, or by the name of the column.
-    // The second method has some extra (though, minor) overhead.
-    //
-    // @see class Row
-
-    bool get(size_t      columnIdx,         std::string& value) const;
-    bool get(std::string const& columnName, std::string& value) const;
-
-    // Unsigned integer types
-
-    bool get(size_t columnIdx, uint64_t& value) const;
-    bool get(size_t columnIdx, uint32_t& value) const;
-    bool get(size_t columnIdx, uint16_t& value) const;
-    bool get(size_t columnIdx, uint8_t&  value) const;
-
-    bool get(std::string const& columnName, uint64_t& value) const;
-    bool get(std::string const& columnName, uint32_t& value) const;
-    bool get(std::string const& columnName, uint16_t& value) const;
-    bool get(std::string const& columnName, uint8_t&  value) const;
-
-    // Signed integer types
-
-    bool get(size_t columnIdx, int64_t& value) const;
-    bool get(size_t columnIdx, int32_t& value) const;
-    bool get(size_t columnIdx, int16_t& value) const;
-    bool get(size_t columnIdx, int8_t&  value) const;
-
-    bool get(std::string const& columnName, int64_t& value) const;
-    bool get(std::string const& columnName, int32_t& value) const;
-    bool get(std::string const& columnName, int16_t& value) const;
-    bool get(std::string const& columnName, int8_t&  value) const;
-
-    // Floating point types
-
-    bool get(size_t columnIdx, float&  value) const;
-    bool get(size_t columnIdx, double& value) const;
-
-    bool get(std::string const& columnName, float&  value) const;
-    bool get(std::string const& columnName, double& value) const;
-
-    // Other types
-
-    bool get(size_t columnIdx, bool& value) const;
-
-    bool get(std::string const& columnName, bool&  value) const;
-
-    /**
-     * @return reference to the data cell for the column
-     * @param columnIdx - the index of a column
-     */
-    Cell const& getDataCell(size_t columnIdx) const;
-
-    /**
-     * @return reference to the data cell for the column
-     * @param columnName - the name of a column
-     */
-    Cell const& getDataCell(std::string const& columnName) const;
-
-private:
-
-    /** Mapping column names to the indexes
-     *
-     * NOTE: if the pointer is set to 'nullptr' then the object is not
-     * in the valid state. The valid state is set by class Connection
-     * when iterating over a result set.
-     */
-    std::map<std::string, size_t> const* _name2indexPtr;
-
-    /// Mapping column indexes to the raw data cells
-    std::vector<Cell> _index2cell;
-};
-
-/**
- * Class DoNotProcess is an abstraction for SQL strings which than ordinary
- * values of string types needs to be injected into SQL statements without
- * being processed (excaped and quoted) as regular string values.
- */
-class DoNotProcess {
-
-public:
-
-    /**
-     * The normal constructor
-     *
-     * @param name_ - the input value
-     */
-    explicit DoNotProcess(std::string const& name_);
-
-    DoNotProcess() = delete;
-
-    DoNotProcess(DoNotProcess const&) = default;
-    DoNotProcess& operator=(DoNotProcess const&) = default;
-
-    virtual ~DoNotProcess() = default;
-
-public:
-
-    /**
-     * The exact string value as it should appear within queries. It will
-     * be extracted by the corresponding query generators.
-     */
-    std::string name;
-};
-
-/**
- * Class Keyword is an abstraction for SQL keywords which needs to be processed
- * differently than ordinary values of string types. There won't be escape
- * processing or extra quotes of any kind added to the function name strings.
- */
-class Keyword
-    :   public DoNotProcess {
-
-public:
-
-    // Predefined SQL keywords
-
-    /// @return the object representing the corresponding SQL keyword
-    static Keyword const SQL_NULL;
-
-    /**
-     * The normal constructor
-     *
-     * @param name_ - the input value
-     */
-    explicit Keyword(std::string const& name_);
-
-    Keyword() = delete;
-
-    Keyword(Keyword const&) = default;
-    Keyword& operator=(Keyword const&) = default;
-
-    ~Keyword() override = default;
-};
-
-/**
- * Class Function is an abstraction for SQL functions which needs to be processed
- * differently than ordinary values of string types. There won't be escape
- * processing or extra quotes of any kind added to the function name strings.
- */
-class Function
-    :   public DoNotProcess {
-
-public:
-
-    /// @return the object representing the corresponding SQL function
-    static Function const LAST_INSERT_ID;
-
-    /**
-     * The normal constructor
-     *
-     * @param name_ - the input value
-     */
-    explicit Function(std::string const& name_);
-
-    Function() = delete;
-
-    Function(Function const&) = default;
-    Function& operator=(Function const&) = default;
-
-    ~Function() override = default;
-};
 
 /**
  * Class Connection provides the main API to the database.
@@ -433,28 +68,108 @@ public:
     typedef std::shared_ptr<Connection> Ptr;
 
     /**
-     * Connect to the MySQL service with the specified parameters and return
-     * a pointer to the Connection object.
+     * Connect to the MySQL service with the specified parameters and if successfully
+     * connected return a pointer to the Connection object. Otherwise an exception will
+     * be thrown.
      *
-     * @param connectionParams - the connection parameters
-     * @param autoReconnect    - automatically reconnect to the service
-     *                           if the dropped connection was discovered.
-     *                           This option is useful when the application is inactive
-     *                           for a prologed period of time causing the server to kick out
-     *                           the client. Note that only one reconnection attempt will be
-     *                           made each time the dropped conneciton is detected.
-     * @autoCommit             - if set 'true' then no transactions will be required
-     *                           whene executing queries modifying the contents of tables.
-     *                           ATTENTION: this is a special option which must be used
-     *                           with care. One proposed use case for it is
-     *                           for executing 'LOCK/UNLOCK TABLES' statements.
+     * A behavior of a connector created by the method depends on default values
+     * of Configuration parameters returned by Configuration::databaseAllowReconnect()
+     * and Configuration::databaseConnectTimeoutSec(). If the automatic reconnect is
+     * allowed then multiple connection attempts to a database service can be made
+     * before the connection timeout expires or until some problem which can't be
+     * resolved with the connection retry happens.
      *
-     * @return a valid object if the connection attempt succeeded
-     * @throws Error - if the connection failed
+     * @note
+     *    MySQL auto-commits are disabled
+     *
+     * @note
+     *    MySQL automatic re-connects are not allowed because this Connector class
+     *    implements its own protocol for reconnects (when allowed)
+     *
+     *
+     * Here is an example of using this method to establish a connection:
+     * @code
+     *
+     *    BlockPost delayBetweenReconnects(1000,2000);
+     *    ConnectionParams params = ...;
+     *    Connection::Ptr conn;
+     *    do {
+     *        try {
+     *            conn = Connection::open(params);
+     *            
+     *        } catch (ConnectError const& ex) {
+     *            cerr << "connection attempt failed: " << ex.what << endl;
+     *            delayBetweenReconnects.wait();
+     *            cerr << "reconnecting..." << endl;
+     *            
+     *        } catch (ConnectTimeout const& ex) {
+     *            cerr << "connection attempt expired after: " << ex.timeoutSec() << " seconds "
+     *                 << "due to: " << ex.what << endl;
+     *            throw;
+     *            
+     *        } catch (Error const& ex) {
+     *            cerr << "connection attempt failed: " << ex.what << endl;
+     *            throw;
+     *        }
+     *   } while (nullptr != conn);
+     *
+     * @code
+     *
+     * @param connectionParams
+     *
+     * @return
+     *    a valid object if the connection attempt succeeded (no nullptr
+     *    to be returned under any circumstances)
+     * 
+     * @throws ConnectTimeout
+     *    the exception is thrown only if the automatic reconnects
+     *    are allowed to indicate that connection attempts to a server
+     *    failed to be established within the specified timeout
+     *
+     * @throws ConnectError
+     *    the exception is thrown if automatic reconnets are not allowed
+     *    to indicate that the only connection attempt to a server failed
+     *
+     * @throws Error - for any other database errors
+     *
+     * @see Configuration::databaseAllowReconnect()
+     * @see Configuration::databaseConnectTimeoutSec()
+     * @see Connection::open2()
      */
-    static Ptr open(ConnectionParams const& connectionParams,
-                    bool autoReconnect = true,
-                    bool autoCommit    = false);
+    static Ptr open(ConnectionParams const& connectionParams);
+
+    /**
+     * The factory method allows to override default values of the corresponding
+     * connection management options of the Configuration.
+     *
+     * @note
+     *    if the timeout is set to 0 (the default value) and if reconnects are
+     *    allowed then the method will assume a global value defined by
+     *    the Configuraton parameter: Configuration::databaseConnectTimeoutSec()
+     *
+     * @note
+     *    the same value of the timeout would be also assumed if the connection
+     *    is lost when executing queries or pulling the result sets.
+     * 
+     * @param connectionParams
+     *
+     * @param allowReconnects
+     *    if set to 'true' then multiple reconnection attempts will be allowed
+     *   
+     * @param connectTimeoutSec
+     *    maximum number of seconds to wait before a connecton with a database
+     *    server is established.
+      *
+     * @return
+     *    a valid object if the connection attempt succeeded (no nullptr
+     *    to be returned under any circumstances)
+      *
+     * @see Configuration::databaseConnectTimeoutSec()
+     * @see Connection::open()
+     */
+    static Ptr open2(ConnectionParams const& connectionParams,
+                     bool allowReconnects=false,
+                     unsigned int connectTimeoutSec=0);
 
     // Default construction and copy semantics are prohibited
 
@@ -463,6 +178,9 @@ public:
     Connection& operator=(Connection const&) = delete;
 
     ~Connection();
+
+    /// @return maximum amount of time to wait while making reconnection attempts
+    unsigned int connectTimeoutSec() const { return _connectTimeoutSec; }
 
     /**
       * A front-end to mysql_real_escape_string()
@@ -738,24 +456,30 @@ public:
     /**
      * Start the transaction
      *
-     * @return                  - a smart pointer to self to allow chaned calles.
+     * @return  - a smart pointer to self to allow chaned calles
+     *
      * @throws std::logic_error - if the transaction was already been started
+     * @throws Error            - for any other MySQL specific errors
      */
     Connection::Ptr begin();
 
     /**
      * Commit the transaction
      *
-     * @return                  - a smart pointer to self to allow chaned calles.
+     * @return - a smart pointer to self to allow chaned calles
+     * 
      * @throws std::logic_error - if the transaction was not started
+     * @throws Error            - for any other MySQL specific errors
      */
     Connection::Ptr commit();
 
     /**
      * Rollback the transaction
      *
-     * @return                  - a smart pointer to self to allow chaned calles.
+     * @return - a smart pointer to self to allow chaned calles
+     * 
      * @throws std::logic_error - if the transaction was not started
+     * @throws Error            - for any other MySQL specific errors
      */
     Connection::Ptr rollback();
 
@@ -763,8 +487,10 @@ public:
      * Execute the specified query and initialize object context to allow
      * a result set extraction.
      *
-     * @param  query                 - a query to be execured
-     * @return                       - the smart pointer to self to allow chaned calles.
+     * @param query - query to be execured
+     * 
+     * @return - the smart pointer to self to allow chaned calles
+     * 
      * @throws std::invalid_argument - for empty query strings
      * @throws DuplicateKeyError     - for attempts to insert rows with duplicate keys
      * @throws Error                 - for any other MySQL specific errors
@@ -793,8 +519,8 @@ public:
      *
      * @return - the smart pointer to self to allow chaned calles.
      *
-     * @throws DuplicateKeyError     - for attempts to insert rows with duplicate keys
-     * @throws Error                 - for any other MySQL specific errors
+     * @throws DuplicateKeyError - for attempts to insert rows with duplicate keys
+     * @throws Error             - for any other MySQL specific errors
      */
     template <typename...Targs>
     Connection::Ptr executeInsertQuery(std::string const& tableName,
@@ -839,6 +565,84 @@ public:
     }
 
     /**
+     * Execute a user-supplied algorithm which could be retried the specified
+     * number of times (or until a given timeout expires) if a connection to
+     * a server is lost and re-established before the completion of the algorithm.
+     * By default (see optional parameters to the method) the metod allows one
+     * auto-reconnect. The method will also give up after the specified timeout
+     * (which can differ then the one supplied to the factory method
+     * Connection::openWait()) eill expire.
+     *
+     * Example:
+     *   @code
+     *     Configuration::setDatabaseConnectTimeoutSec(60);
+     *     ConnectionParams params = ... ;
+     *     Connection::Ptr conn = Connection::open(params);
+     *     try {
+     *         conn->execute(
+     *             [](Connection::Ptr conn) {
+     *                 conn->begin();
+     *                 conn->execute("SELECT ...");
+     *                 conn->execute("INSERT ...");
+     *                 conn->commit();
+     *             },
+     *             10                        // 10 extra attempts before to fail
+     *             2 * connectionTimeoutSec  // no longer that 120 seconds
+     *         );
+     *     } catch (ConnectError const& ex) {
+     *         cerr << "you only made one failed attempt because "
+     *              << "no automatic reconnects were allowed. Open your connection "
+     *              << "with factory method Connection::openWait()" << endl;
+     *     } catch (ConnectTimeout const& ex) {
+     *         cerr << "you have exausted the maximum allowed number of retries "
+     *              << "within the specified (or implicitly assumed) "
+     *                 "timeout: " << ex.timeoutSec() << endl;
+     *     } catch (Error const& ex) {
+     *         cerr << "failed due to an unrecoverable error: " << ex.what() 
+     *     }
+     *   @code
+     *
+     *
+     * @param script        - user-provided function (the callable) to execute
+     * @param maxReconnects - (optional) maximum number of reconnects allowed
+     *                        If 0 is passed as a value pf the parameter then the default
+     *                        value corresponding configuration parameter will be
+     *                        assumed: Configuration::databaseMaxReconnects().
+     * @param timeoutSec    - (optional) the maximum duration of time allowed for
+     *                        the procedure to wait before a connection will be established.
+     *                        If 0 is passed as a value pf the parameter then the default
+     *                        value corresponding configuration parameter will be
+     *                        assumed: Configuration::databaseConnectTimeoutSec().
+     *
+     * @throws std::invalid_argument - if 'nullptr' is passed in place of 'script'
+     * @throws ConnectError          - failed to establish a connection if connection was
+     *                                 open with fuctory method Connection::open()
+     * @throws ConnectTimeout        - failed to establish a connection within a timeout
+     *                                 if a connection was open with functory method
+     *                                 Connection::openWait()
+     * @throws MaxReconnectsExceeded - multiple failed (due to connecton losses and subsequent reconnects)
+     *                                 attempts to execute the user function. And the number of the attempts
+     *                                 exceeded a limit set by parameter 'maxReconnects'.
+     * @throws Error                 - for any MySQL specific errors. You may also
+     *                                 catch for specific subclasses (other than ConnectError
+     *                                 or ConnectTimeout) of that class if needed.
+     *
+     * @return pointer to the same connector against which the metod was invoked
+     * in case of successful commpletion of the requested operaton.
+     *
+     * @see Configuration::databaseMaxReconnects()
+     * @see Configuration::setDatabaseMaxReconnects()
+     * 
+     * @see Configuration::databaseConnectTimeoutSec()
+     * @see Configuration::setDatabaseConnectTimeoutSec()
+     * 
+     * @see Connection::open()
+     */
+    Connection::Ptr execute(std::function<void(Ptr)> script,
+                            unsigned int maxReconnects=0,
+                            unsigned int timeoutSec=0);
+    
+    /**
      * Returns 'true' if the last successfull query returned a result set
      * (even though it may be empty)
      */
@@ -876,11 +680,11 @@ public:
      *     }
      *   @code
      *
-     * @throws std::logic_error - if no SQL statement has ever been executed, or
-     *                            if the last query failed.
-     *
      * @return 'true' if the row was initialized or 'false' if past the last row
      *          in the result set.
+     *
+     * @throws std::logic_error - if no SQL statement has ever been executed, or
+     *                            if the last query failed.
      */
     bool next(Row& row);
 
@@ -904,10 +708,11 @@ public:
      * - if the conversion to a proposed type will fail the method will
      *   throw InvalidTypeError
      *
-     * @param query - a query to be executed
-     * @param col   - the name of a columnt from which to exctract a value
-     * @param val   - a value to be set (unless the field contains NULL)
+     * @param query         - a query to be executed
+     * @param col           - the name of a columnt from which to exctract a value
+     * @param val           - a value to be set (unless the field contains NULL)
      * @param noMoreThanOne - flag (if set) forcing the above explained behavior
+     *
      * @return 'true' if the value is not NULL
      */
     template <typename T>
@@ -948,15 +753,39 @@ private:
      * @see Connection::connect()
      */
     Connection(ConnectionParams const& connectionParams,
-               bool autoReconnect,
-               bool autoCommit);
+               unsigned int connectTimeoutSec);
+
 
     /**
-     * Establish a connection
+     * Keep trying to connect to a server until either a timeout expirese or
+     * attempts  attempt to establish a connection
      *
-     * @throws Error - if the connection is not possible
+     * @throws ConnectTimeout - failed to establish a connection within a timeout
+     * @throws Error          - other problem when preparing or establishing a connection
      */
     void connect();
+
+    /**
+     * Make exactly one attempt to establish a connection
+     *
+     * @throws ConnectError  - connection to a server failed
+     * @throws Error         - other problem when preparing or establishing a connection
+     */
+    void connectOnce();
+
+    /**
+     * The method is called to process the last error, reconnect if needed, etc.
+     *
+     * @param context - context rom which this method was called
+     *
+     * @throws std::logic_error  - if the method is called after no actual error happened
+     * @throws Reconnected       - after a successful reconnection has happened
+     * @throws ConnectError      - connection to a server failed
+     * @throws DuplicateKeyError - after the last statement attempted to violate
+     *                             the corresponding key constaint
+     * @throws Error             - for some other error not listed above
+     */
+    void processLastError(std::string const& context);
 
     /**
      * The method is to ensure that the transaction is in the desired state.
@@ -978,11 +807,8 @@ private:
     /// Parameters of the connection
     ConnectionParams const _connectionParams;
 
-    /// Auto-reconnect policy
-    bool _autoReconnect;
-
-    /// Auto-commit policy
-    bool _autoCommit;
+    /// Maximum amount of time to wait while making reconnection attempts
+    unsigned int _connectTimeoutSec;
 
     /// The last SQL statement
     std::string _lastQuery;
@@ -990,8 +816,11 @@ private:
     /// Transaction status
     bool _inTransaction;
 
-    /// Connection
+    // Connection
+
     MYSQL* _mysql;
+    unsigned long _mysqlThreadId;       // thread ID of the current connection
+    unsigned long _connectionAttempt;   // the counter of attempts between successful reconnects
 
     // Last result set
 

@@ -110,37 +110,41 @@ Configuration::Ptr Configuration::load(std::map<std::string, std::string> const&
 
 // Set some reasonable defaults
 
-size_t       const Configuration::defaultRequestBufferSizeBytes      (1024);
-unsigned int const Configuration::defaultRetryTimeoutSec             (1);
-size_t       const Configuration::defaultControllerThreads           (1);
-uint16_t     const Configuration::defaultControllerHttpPort          (80);
-size_t       const Configuration::defaultControllerHttpThreads       (1);
-unsigned int const Configuration::defaultControllerRequestTimeoutSec (3600);
-unsigned int const Configuration::defaultJobTimeoutSec               (6000);
-unsigned int const Configuration::defaultJobHeartbeatTimeoutSec      (60);
-bool         const Configuration::defaultXrootdAutoNotify            (false);
-std::string  const Configuration::defaultXrootdHost                  ("localhost");
-uint16_t     const Configuration::defaultXrootdPort                  (1094);
-unsigned int const Configuration::defaultXrootdTimeoutSec            (3600);
-std::string  const Configuration::defaultWorkerTechnology            ("TEST");
-size_t       const Configuration::defaultWorkerNumProcessingThreads  (1);
-size_t       const Configuration::defaultFsNumProcessingThreads      (1);
-size_t       const Configuration::defaultWorkerFsBufferSizeBytes     (1048576);
-std::string  const Configuration::defaultWorkerSvcHost               ("localhost");
-uint16_t     const Configuration::defaultWorkerSvcPort               (50000);
-std::string  const Configuration::defaultWorkerFsHost                ("localhost");
-uint16_t     const Configuration::defaultWorkerFsPort                (50001);
-std::string  const Configuration::defaultDataDir                     ("{worker}");
-std::string  const Configuration::defaultDatabaseTechnology          ("mysql");
-std::string  const Configuration::defaultDatabaseHost                ("localhost");
-uint16_t     const Configuration::defaultDatabasePort                (3306);
-std::string  const Configuration::defaultDatabaseUser                (FileUtils::getEffectiveUser());
-std::string  const Configuration::defaultDatabasePassword            ("");
-std::string  const Configuration::defaultDatabaseName                ("qservReplica");
-size_t       const Configuration::defaultDatabaseServicesPoolSize    (1);
-size_t       const Configuration::defaultReplicationLevel            (1);
-unsigned int const Configuration::defaultNumStripes                  (340);
-unsigned int const Configuration::defaultNumSubStripes               (12);
+size_t       const Configuration::defaultRequestBufferSizeBytes       (1024);
+unsigned int const Configuration::defaultRetryTimeoutSec              (1);
+size_t       const Configuration::defaultControllerThreads            (1);
+uint16_t     const Configuration::defaultControllerHttpPort           (80);
+size_t       const Configuration::defaultControllerHttpThreads        (1);
+unsigned int const Configuration::defaultControllerRequestTimeoutSec  (3600);
+unsigned int const Configuration::defaultJobTimeoutSec                (6000);
+unsigned int const Configuration::defaultJobHeartbeatTimeoutSec       (60);
+bool         const Configuration::defaultXrootdAutoNotify             (false);
+std::string  const Configuration::defaultXrootdHost                   ("localhost");
+uint16_t     const Configuration::defaultXrootdPort                   (1094);
+unsigned int const Configuration::defaultXrootdTimeoutSec             (3600);
+std::string  const Configuration::defaultWorkerTechnology             ("TEST");
+size_t       const Configuration::defaultWorkerNumProcessingThreads   (1);
+size_t       const Configuration::defaultFsNumProcessingThreads       (1);
+size_t       const Configuration::defaultWorkerFsBufferSizeBytes      (1048576);
+std::string  const Configuration::defaultWorkerSvcHost                ("localhost");
+uint16_t     const Configuration::defaultWorkerSvcPort                (50000);
+std::string  const Configuration::defaultWorkerFsHost                 ("localhost");
+uint16_t     const Configuration::defaultWorkerFsPort                 (50001);
+std::string  const Configuration::defaultDataDir                      ("{worker}");
+std::string  const Configuration::defaultDatabaseTechnology           ("mysql");
+std::string  const Configuration::defaultDatabaseHost                 ("localhost");
+uint16_t     const Configuration::defaultDatabasePort                 (3306);
+std::string  const Configuration::defaultDatabaseUser                 (FileUtils::getEffectiveUser());
+std::string  const Configuration::defaultDatabasePassword             ("");
+std::string  const Configuration::defaultDatabaseName                 ("qservReplica");
+size_t       const Configuration::defaultDatabaseServicesPoolSize     (1);
+bool               Configuration::defaultDatabaseAllowReconnect       (true);
+unsigned int       Configuration::defaultDatabaseConnectTimeoutSec    (3600);
+unsigned int       Configuration::defaultDatabaseMaxReconnects        (1);
+unsigned int       Configuration::defaultDatabaseTransactionTimeoutSec(3600);
+size_t       const Configuration::defaultReplicationLevel             (1);
+unsigned int const Configuration::defaultNumStripes                   (340);
+unsigned int const Configuration::defaultNumSubStripes                (12);
 
 void Configuration::translateDataDir(std::string&       dataDir,
                                      std::string const& workerName) {
@@ -318,62 +322,98 @@ DatabaseInfo const Configuration::databaseInfo(std::string const& name) const {
     return itr->second;
 }
 
+bool Configuration::setDatabaseAllowReconnect(bool value) {
+    std::swap(value, defaultDatabaseAllowReconnect);
+    return value;
+}
+
+unsigned int Configuration::setDatabaseConnectTimeoutSec(unsigned int value) {
+    if (0 == value) {
+        throw std::invalid_argument(
+                "Configuration::setDatabaseConnectTimeoutSec:  0 is not allowed");
+    }
+    std::swap(value, defaultDatabaseConnectTimeoutSec);
+    return value;
+}
+
+unsigned int Configuration::setDatabaseMaxReconnects(unsigned int value) {
+    if (0 == value) {
+        throw std::invalid_argument(
+                "Configuration::setDatabaseMaxReconnects:  0 is not allowed");
+    }
+    std::swap(value, defaultDatabaseMaxReconnects);
+    return value;
+}
+
+unsigned int Configuration::setDatabaseTransactionTimeoutSec(unsigned int value) {
+    if (0 == value) {
+        throw std::invalid_argument(
+                "Configuration::setDatabaseTransactionTimeoutSec:  0 is not allowed");
+    }
+    std::swap(value, defaultDatabaseTransactionTimeoutSec);
+    return value;
+}
+
 void Configuration::dumpIntoLogger() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultRequestBufferSizeBytes:       " << defaultRequestBufferSizeBytes);
-    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultRetryTimeoutSec:              " << defaultRetryTimeoutSec);
-    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultControllerThreads:            " << defaultControllerThreads);
-    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultControllerHttpPort:           " << defaultControllerHttpPort);
-    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultControllerHttpThreads:        " << defaultControllerHttpThreads);
-    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultControllerRequestTimeoutSec:  " << defaultControllerRequestTimeoutSec);
-    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultJobTimeoutSec:                " << defaultJobTimeoutSec);
-    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultJobHeartbeatTimeoutSec:       " << defaultJobHeartbeatTimeoutSec);
-    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultXrootdAutoNotify:             " << (defaultXrootdAutoNotify ? "true" : "false"));
-    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultXrootdHost:                   " << defaultXrootdHost);
-    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultXrootdPort:                   " << defaultXrootdPort);
-    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultXrootdTimeoutSec:             " << defaultXrootdTimeoutSec);
-    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultWorkerTechnology:             " << defaultWorkerTechnology);
-    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultWorkerNumProcessingThreads:   " << defaultWorkerNumProcessingThreads);
-    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultFsNumProcessingThreads:       " << defaultFsNumProcessingThreads);
-    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultWorkerFsBufferSizeBytes:      " << defaultWorkerFsBufferSizeBytes);
-    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultWorkerSvcHost:                " << defaultWorkerSvcHost);
-    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultWorkerSvcPort:                " << defaultWorkerSvcPort);
-    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultWorkerFsHost:                 " << defaultWorkerFsHost);
-    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultWorkerFsPort:                 " << defaultWorkerFsPort);
-    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultDataDir:                      " << defaultDataDir);
-    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultDatabaseTechnology:           " << defaultDatabaseTechnology);
-    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultDatabaseHost:                 " << defaultDatabaseHost);
-    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultDatabasePort:                 " << defaultDatabasePort);
-    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultDatabaseUser:                 " << defaultDatabaseUser);
-    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultDatabasePassword:             " << "*****");
-    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultDatabaseName:                 " << defaultDatabaseName);
-    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultDatabaseServicesPoolSize:     " << defaultDatabaseServicesPoolSize);
-    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultReplicationLevel:             " << defaultReplicationLevel);
-    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultNumStripes:                   " << defaultNumStripes);
-    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultNumSubStripes:                " << defaultNumSubStripes);
-    LOGS(_log, LOG_LVL_DEBUG, context() << "_requestBufferSizeBytes:             " << _requestBufferSizeBytes);
-    LOGS(_log, LOG_LVL_DEBUG, context() << "_retryTimeoutSec:                    " << _retryTimeoutSec);
-    LOGS(_log, LOG_LVL_DEBUG, context() << "_controllerThreads:                  " << _controllerThreads);
-    LOGS(_log, LOG_LVL_DEBUG, context() << "_controllerHttpPort:                 " << _controllerHttpPort);
-    LOGS(_log, LOG_LVL_DEBUG, context() << "_controllerHttpThreads:              " << _controllerHttpThreads);
-    LOGS(_log, LOG_LVL_DEBUG, context() << "_controllerRequestTimeoutSec:        " << _controllerRequestTimeoutSec);
-    LOGS(_log, LOG_LVL_DEBUG, context() << "_jobTimeoutSec:                      " << _jobTimeoutSec);
-    LOGS(_log, LOG_LVL_DEBUG, context() << "_jobHeartbeatTimeoutSec:             " << _jobHeartbeatTimeoutSec);
-    LOGS(_log, LOG_LVL_DEBUG, context() << "_xrootdAutoNotify:                   " << (_xrootdAutoNotify ? "true" : "false"));
-    LOGS(_log, LOG_LVL_DEBUG, context() << "_xrootdHost:                         " << _xrootdHost);
-    LOGS(_log, LOG_LVL_DEBUG, context() << "_xrootdPort:                         " << _xrootdPort);
-    LOGS(_log, LOG_LVL_DEBUG, context() << "_xrootdTimeoutSec:                   " << _xrootdTimeoutSec);
-    LOGS(_log, LOG_LVL_DEBUG, context() << "_workerTechnology:                   " << _workerTechnology);
-    LOGS(_log, LOG_LVL_DEBUG, context() << "_workerNumProcessingThreads:         " << _workerNumProcessingThreads);
-    LOGS(_log, LOG_LVL_DEBUG, context() << "_fsNumProcessingThreads:             " << _fsNumProcessingThreads);
-    LOGS(_log, LOG_LVL_DEBUG, context() << "_workerFsBufferSizeBytes:            " << _workerFsBufferSizeBytes);
-    LOGS(_log, LOG_LVL_DEBUG, context() << "_databaseTechnology:                 " << _databaseTechnology);
-    LOGS(_log, LOG_LVL_DEBUG, context() << "_databaseHost:                       " << _databaseHost);
-    LOGS(_log, LOG_LVL_DEBUG, context() << "_databasePort:                       " << _databasePort);
-    LOGS(_log, LOG_LVL_DEBUG, context() << "_databaseUser:                       " << _databaseUser);
-    LOGS(_log, LOG_LVL_DEBUG, context() << "_databasePassword:                   " << "*****");
-    LOGS(_log, LOG_LVL_DEBUG, context() << "_databaseName:                       " << _databaseName);
-    LOGS(_log, LOG_LVL_DEBUG, context() << "_databaseServicesPoolSize:           " << _databaseServicesPoolSize);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultRequestBufferSizeBytes:        " << defaultRequestBufferSizeBytes);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultRetryTimeoutSec:               " << defaultRetryTimeoutSec);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultControllerThreads:             " << defaultControllerThreads);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultControllerHttpPort:            " << defaultControllerHttpPort);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultControllerHttpThreads:         " << defaultControllerHttpThreads);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultControllerRequestTimeoutSec:   " << defaultControllerRequestTimeoutSec);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultJobTimeoutSec:                 " << defaultJobTimeoutSec);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultJobHeartbeatTimeoutSec:        " << defaultJobHeartbeatTimeoutSec);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultXrootdAutoNotify:              " << (defaultXrootdAutoNotify ? "1" : "0"));
+    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultXrootdHost:                    " << defaultXrootdHost);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultXrootdPort:                    " << defaultXrootdPort);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultXrootdTimeoutSec:              " << defaultXrootdTimeoutSec);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultWorkerTechnology:              " << defaultWorkerTechnology);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultWorkerNumProcessingThreads:    " << defaultWorkerNumProcessingThreads);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultFsNumProcessingThreads:        " << defaultFsNumProcessingThreads);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultWorkerFsBufferSizeBytes:       " << defaultWorkerFsBufferSizeBytes);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultWorkerSvcHost:                 " << defaultWorkerSvcHost);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultWorkerSvcPort:                 " << defaultWorkerSvcPort);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultWorkerFsHost:                  " << defaultWorkerFsHost);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultWorkerFsPort:                  " << defaultWorkerFsPort);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultDataDir:                       " << defaultDataDir);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultDatabaseTechnology:            " << defaultDatabaseTechnology);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultDatabaseHost:                  " << defaultDatabaseHost);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultDatabasePort:                  " << defaultDatabasePort);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultDatabaseUser:                  " << defaultDatabaseUser);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultDatabasePassword:              " << "*****");
+    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultDatabaseName:                  " << defaultDatabaseName);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultDatabaseServicesPoolSize:      " << defaultDatabaseServicesPoolSize);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultDatabaseAllowReconnect:        " << (defaultDatabaseAllowReconnect ? "1" : "0"));
+    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultDatabaseConnectTimeoutSec:     " << defaultDatabaseConnectTimeoutSec);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultDatabaseMaxReconnects:         " << defaultDatabaseMaxReconnects);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultDatabaseTransactionTimeoutSec: " << defaultDatabaseTransactionTimeoutSec);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultReplicationLevel:              " << defaultReplicationLevel);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultNumStripes:                    " << defaultNumStripes);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultNumSubStripes:                 " << defaultNumSubStripes);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "_requestBufferSizeBytes:              " << _requestBufferSizeBytes);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "_retryTimeoutSec:                     " << _retryTimeoutSec);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "_controllerThreads:                   " << _controllerThreads);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "_controllerHttpPort:                  " << _controllerHttpPort);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "_controllerHttpThreads:               " << _controllerHttpThreads);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "_controllerRequestTimeoutSec:         " << _controllerRequestTimeoutSec);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "_jobTimeoutSec:                       " << _jobTimeoutSec);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "_jobHeartbeatTimeoutSec:              " << _jobHeartbeatTimeoutSec);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "_xrootdAutoNotify:                    " << (_xrootdAutoNotify ? "1" : "0"));
+    LOGS(_log, LOG_LVL_DEBUG, context() << "_xrootdHost:                          " << _xrootdHost);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "_xrootdPort:                          " << _xrootdPort);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "_xrootdTimeoutSec:                    " << _xrootdTimeoutSec);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "_workerTechnology:                    " << _workerTechnology);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "_workerNumProcessingThreads:          " << _workerNumProcessingThreads);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "_fsNumProcessingThreads:              " << _fsNumProcessingThreads);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "_workerFsBufferSizeBytes:             " << _workerFsBufferSizeBytes);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "_databaseTechnology:                  " << _databaseTechnology);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "_databaseHost:                        " << _databaseHost);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "_databasePort:                        " << _databasePort);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "_databaseUser:                        " << _databaseUser);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "_databasePassword:                    " << "*****");
+    LOGS(_log, LOG_LVL_DEBUG, context() << "_databaseName:                        " << _databaseName);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "_databaseServicesPoolSize:            " << _databaseServicesPoolSize);
     for (auto&& elem: _workerInfo) {
         LOGS(_log, LOG_LVL_DEBUG, context() << elem.second);
     }

@@ -193,7 +193,7 @@ void DatabaseServicesPool::saveReplicaInfoCollection(std::string const& worker,
     }
 }
 
-bool DatabaseServicesPool::findOldestReplicas(std::vector<ReplicaInfo>& replicas,
+void DatabaseServicesPool::findOldestReplicas(std::vector<ReplicaInfo>& replicas,
                                               size_t maxReplicas,
                                               bool enabledWorkersOnly) {
 
@@ -202,11 +202,10 @@ bool DatabaseServicesPool::findOldestReplicas(std::vector<ReplicaInfo>& replicas
 
     auto service = allocateService();
     try {
-        auto result = service->findOldestReplicas(replicas,
-                                                  maxReplicas,
-                                                  enabledWorkersOnly);
+        service->findOldestReplicas(replicas,
+                                    maxReplicas,
+                                    enabledWorkersOnly);
         releaseService(service);
-        return result;
 
     } catch (std::exception const& ex) {
         releaseService(service);
@@ -214,7 +213,7 @@ bool DatabaseServicesPool::findOldestReplicas(std::vector<ReplicaInfo>& replicas
     }
 }
 
-bool DatabaseServicesPool::findReplicas(std::vector<ReplicaInfo>& replicas,
+void DatabaseServicesPool::findReplicas(std::vector<ReplicaInfo>& replicas,
                                         unsigned int chunk,
                                         std::string const& database,
                                         bool enabledWorkersOnly) {
@@ -224,12 +223,11 @@ bool DatabaseServicesPool::findReplicas(std::vector<ReplicaInfo>& replicas,
 
     auto service = allocateService();
     try {
-        auto result = service->findReplicas(replicas,
-                                            chunk,
-                                            database,
-                                            enabledWorkersOnly);
+        service->findReplicas(replicas,
+                              chunk,
+                              database,
+                              enabledWorkersOnly);
         releaseService(service);
-        return result;
 
     } catch (std::exception const& ex) {
         releaseService(service);
@@ -237,7 +235,7 @@ bool DatabaseServicesPool::findReplicas(std::vector<ReplicaInfo>& replicas,
     }
 }
 
-bool DatabaseServicesPool::findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
+void DatabaseServicesPool::findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
                                               std::string const& worker,
                                               std::string const& database) {
 
@@ -246,11 +244,10 @@ bool DatabaseServicesPool::findWorkerReplicas(std::vector<ReplicaInfo>& replicas
 
     auto service = allocateService();
     try {
-        auto result = service->findWorkerReplicas(replicas,
-                                                  worker,
-                                                  database);
+        service->findWorkerReplicas(replicas,
+                                    worker,
+                                    database);
         releaseService(service);
-        return result;
 
     } catch (std::exception const& ex) {
         releaseService(service);
@@ -258,7 +255,7 @@ bool DatabaseServicesPool::findWorkerReplicas(std::vector<ReplicaInfo>& replicas
     }
 }
 
-bool DatabaseServicesPool::findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
+void DatabaseServicesPool::findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
                                               unsigned int chunk,
                                               std::string const& worker,
                                               std::string const& databaseFamily) {
@@ -268,12 +265,11 @@ bool DatabaseServicesPool::findWorkerReplicas(std::vector<ReplicaInfo>& replicas
 
     auto service = allocateService();
     try {
-        auto result = service->findWorkerReplicas(replicas,
-                                                  chunk,
-                                                  worker,
-                                                  databaseFamily);
+        service->findWorkerReplicas(replicas,
+                                    chunk,
+                                    worker,
+                                    databaseFamily);
         releaseService(service);
-        return result;
 
     } catch (std::exception const& ex) {
         releaseService(service);

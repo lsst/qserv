@@ -105,6 +105,18 @@ ReplicaInfo::ReplicaInfo(Status status,
         _fileInfo(fileInfo) {
 }
 
+ReplicaInfo::ReplicaInfo(Status status,
+                         std::string const& worker,
+                         std::string const& database,
+                         unsigned int chunk,
+                         uint64_t verifyTime)
+    :   _status(status),
+        _worker(worker),
+        _database(database),
+        _chunk(chunk),
+        _verifyTime(verifyTime) {
+}
+
 ReplicaInfo::ReplicaInfo(proto::ReplicationReplicaInfo const* info) {
 
     switch (info->status()) {
@@ -137,6 +149,14 @@ ReplicaInfo::ReplicaInfo(proto::ReplicationReplicaInfo const* info) {
         );
     }
     _verifyTime = info->verify_time();
+}
+
+void ReplicaInfo::setFileInfo(FileInfoCollection const& fileInfo) {
+    _fileInfo = fileInfo;
+}
+
+void ReplicaInfo::setFileInfo(FileInfoCollection&& fileInfo) {
+    _fileInfo = fileInfo;
 }
 
 uint64_t ReplicaInfo::beginTransferTime() const {

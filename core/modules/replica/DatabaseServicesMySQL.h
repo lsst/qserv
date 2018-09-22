@@ -123,14 +123,14 @@ public:
     /**
      * @see DatabaseServices::findOldestReplica()
      */
-    bool findOldestReplicas(std::vector<ReplicaInfo>& replicas,
+    void findOldestReplicas(std::vector<ReplicaInfo>& replicas,
                             size_t maxReplicas,
                             bool enabledWorkersOnly) final;
 
     /**
      * @see DatabaseServices::findReplicas()
      */
-    bool findReplicas(std::vector<ReplicaInfo>& replicas,
+    void findReplicas(std::vector<ReplicaInfo>& replicas,
                       unsigned int chunk,
                       std::string const& database,
                       bool enabledWorkersOnly) final;
@@ -138,14 +138,14 @@ public:
     /**
      * @see DatabaseServices::findWorkerReplicas()
      */
-    bool findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
+    void findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
                             std::string const& worker,
                             std::string const& database) final;
 
     /**
      * @see DatabaseServices::findWorkerReplicas()
      */
-    bool findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
+    void findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
                             unsigned int chunk,
                             std::string const& worker,
                             std::string const& databaseFamily) final;
@@ -164,7 +164,7 @@ private:
      * 
      * @return 'true' if the operation has succeeded (even if no replicas were found)
      */
-    bool findWorkerReplicasImpl(util::Lock const& lock,
+    void findWorkerReplicasImpl(util::Lock const& lock,
                                 std::vector<ReplicaInfo>& replicas,
                                 std::string const& worker,
                                 std::string const& database);
@@ -212,9 +212,20 @@ private:
      *
      * @return 'true' if the operation has succeeded (even if no replicas were found)
      */
-    bool findReplicasImpl(util::Lock const& lock,
+    void findReplicasImpl(util::Lock const& lock,
                           std::vector<ReplicaInfo>& replicas,
                           std::string const& query);
+
+    /**
+     * Fetch files for the specified replica
+     *
+     * @param lock      - lock on a mutex must be acquired before calling this method
+     * @param files     - collection of replica's files to be returned
+     * @param replicaId - unique identifier of a replica
+     */
+    void findReplicaFilesImpl(util::Lock const& lock,
+                              ReplicaInfo::FileInfoCollection& files,
+                              uint64_t replicaId);
 
 private:
 
@@ -223,9 +234,6 @@ private:
 
     /// Database connection
     database::mysql::Connection::Ptr _conn;
-
-    /// Database connection (second instance for nested queries)
-    database::mysql::Connection::Ptr _conn2;
 
     /// The mutex for enforcing thread safety of the class's public API
     /// and internal operations.

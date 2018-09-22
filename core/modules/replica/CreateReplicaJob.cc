@@ -149,8 +149,8 @@ void CreateReplicaJob::startImpl(util::Lock const& lock) {
              (sourceWorker() != destinationWorker()))) {
 
         LOGS(_log, LOG_LVL_ERROR, context() << "startImpl  ** MISCONFIGURED ** "
-             << " database family: '" << databaseFamily() << "'"
-             << " source worker: '" << sourceWorker() << "'"
+             << " database family: '"    << databaseFamily() << "'"
+             << " source worker: '"      << sourceWorker() << "'"
              << " destination worker: '" << destinationWorker() << "'");
 
         setState(lock,
@@ -162,11 +162,14 @@ void CreateReplicaJob::startImpl(util::Lock const& lock) {
     // Make sure no such replicas exist yet at the destination
 
     std::vector<ReplicaInfo> destinationReplicas;
-    if (not controller()->serviceProvider()->databaseServices()->findWorkerReplicas(
-                destinationReplicas,
-                chunk(),
-                destinationWorker(),
-                databaseFamily())) {
+    try {
+        controller()->serviceProvider()->databaseServices()->findWorkerReplicas(
+            destinationReplicas,
+            chunk(),
+            destinationWorker(),
+            databaseFamily());
+
+    } catch (std::exception const&) {
 
         LOGS(_log, LOG_LVL_ERROR, context() << "startImpl  "
              << "** failed to find replicas ** "
@@ -201,11 +204,14 @@ void CreateReplicaJob::startImpl(util::Lock const& lock) {
     //    see if the chunk is available on a source node.
 
     std::vector<ReplicaInfo> sourceReplicas;
-    if (not controller()->serviceProvider()->databaseServices()->findWorkerReplicas(
-                sourceReplicas,
-                chunk(),
-                sourceWorker(),
-                databaseFamily())) {
+    try {
+        controller()->serviceProvider()->databaseServices()->findWorkerReplicas(
+            sourceReplicas,
+            chunk(),
+            sourceWorker(),
+            databaseFamily());
+
+    } catch (std::exception const&) {
 
         LOGS(_log, LOG_LVL_ERROR, context() << "startImpl  ** failed to find replicas ** "
              << " chunk: "  << chunk()

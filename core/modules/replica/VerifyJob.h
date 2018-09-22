@@ -244,18 +244,13 @@ protected:
     void onRequestFinish(FindRequest::Ptr request);
 
     /**
-     * Find the next replicas to be inspected and return 'true' if no suitable
-     * candidates found. Normally the method should never return 'false' unless
-     * no single replica exists in the system or there was a failure to find
-     * replicas in the database.
+     * Find the next replicas to be inspected.
      *
      * @param lock        - the lock must be acquired by a caller of the method
      * @param replicas    - a collection of replicas returned from the database
      * @param numReplicas - a desired number of replicas to be pulled from the database
-     *
-     * @return reslt of the search
      */
-    bool nextReplicas(util::Lock const& lock,
+    void nextReplicas(util::Lock const& lock,
                       std::vector<ReplicaInfo>& replicas,
                       size_t numReplicas);
 

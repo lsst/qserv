@@ -55,6 +55,10 @@ class Request;
   *
   * This is also a base class for database technology-specific implementations
   * of the service.
+  *
+  * Methods of this class may through database-specific exceptions, as well
+  * as general purpose exceptions explained in the methods' documentation
+  * below.
   */
 class DatabaseServices
     :   public std::enable_shared_from_this<DatabaseServices> {
@@ -202,12 +206,10 @@ public:
      * @param maxReplicas        - maximum number of replicas to be returned
      * @param enabledWorkersOnly - (optional) if set to 'true' then only consider known
      *                             workers which are enabled in the Configuration
-     *
-     * @return 'true' in case of success (even if no replicas were found)
      */
-    virtual bool findOldestReplicas(std::vector<ReplicaInfo>& replicas,
+    virtual void findOldestReplicas(std::vector<ReplicaInfo>& replicas,
                                     size_t maxReplicas=1,
-                                    bool   enabledWorkersOnly=true) = 0;
+                                    bool enabledWorkersOnly=true) = 0;
 
     /**
      * Find all replicas for the specified chunk and the database.
@@ -222,11 +224,9 @@ public:
      * @param enabledWorkersOnly - (optional) if set to 'true' then only consider known
      *                             workers which are enabled in the Configuration
      *
-     * @return 'true' in case of success (even if no replicas were found)
-     *
      * @throw std::invalid_argument - if the database is unknown or empty
      */
-    virtual bool findReplicas(std::vector<ReplicaInfo>& replicas,
+    virtual void findReplicas(std::vector<ReplicaInfo>& replicas,
                               unsigned int chunk,
                               std::string const& database,
                               bool enabledWorkersOnly=true) = 0;
@@ -243,13 +243,11 @@ public:
      * @param worker   - worker name
      * @param database - (optional) atabase name
      *
-     * @return 'true' in case of success (even if no replicas were found)
-     *
      * @throw std::invalid_argument - if the worker is unknown or its name
      *                                is empty, or if the database family is
      *                                unknown (if provided)
      */
-    virtual bool findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
+    virtual void findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
                                     std::string const& worker,
                                     std::string const& database=std::string()) = 0;
 
@@ -265,12 +263,10 @@ public:
      * @param worker         - worker name of a worker
      * @param databaseFamily - (optional) database family name
      *
-     * @return 'true' in case of success (even if no replicas were found)
-     *
      * @throw std::invalid_argument - if the worker is unknown or its name is empty,
      *                                or if the database family is unknown (if provided)
      */
-    virtual bool findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
+    virtual void findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
                                     unsigned int chunk,
                                     std::string const& worker,
                                     std::string const& databaseFamily=std::string()) = 0;

@@ -273,6 +273,74 @@ public:
     /// @return the number of concurrent connections to the database service
     size_t databaseServicesPoolSize() const { return _databaseServicesPoolSize; }
 
+    // --------------------------------------------------
+    // -- Global parameters of the database connectors --
+    // --------------------------------------------------
+
+    /**
+     * @return the default mode for database reconnects.
+      */
+    static bool databaseAllowReconnect() { return defaultDatabaseAllowReconnect; }
+
+    /**
+     * Change the default value of the parameter
+     *
+     * @param value - new value of the parameter
+     *
+     * @return the previous value
+     */
+    static bool setDatabaseAllowReconnect(bool value);
+
+    /**
+     * @return the default timeout for connecting to database servers
+     */
+    static unsigned int databaseConnectTimeoutSec() { return defaultDatabaseConnectTimeoutSec; }
+
+    /**
+     * Change the default value of the parameter
+     *
+     * @param value - new value of the parameter (must be strictly greater than 0)
+     *
+     * @return the previous value
+     *
+     * @throws std::invalid_argument if the new value of the parameter is 0
+     */
+    static unsigned int setDatabaseConnectTimeoutSec(unsigned int value);
+
+    /**
+     * @return the default number of a maximum number of attempts to execure
+     * a query due to database connection failures and subsequent reconnects.
+     */
+    static unsigned int databaseMaxReconnects() { return defaultDatabaseMaxReconnects; }
+
+    /**
+     * Change the default value of the parameter
+     *
+     * @param value - new value of the parameter (must be strictly greater than 0)
+     *
+     * @return the previous value
+     *
+     * @throws std::invalid_argument if the new value of the parameter is 0
+     */
+    static unsigned int setDatabaseMaxReconnects(unsigned int value);
+
+    /**
+     * @return the default timeout for executing transactions at a presence
+     * of server reconnects.
+     */
+    static unsigned int databaseTransactionTimeoutSec() { return defaultDatabaseTransactionTimeoutSec; }
+
+    /**
+     * Change the default value of the parameter
+     *
+     * @param value - new value of the parameter (must be strictly greater than 0)
+     *
+     * @return the previous value
+     *
+     * @throws std::invalid_argument if the new value of the parameter is 0
+     */
+    static unsigned int setDatabaseTransactionTimeoutSec(unsigned int value);
+
     // ---------------------------------------------------
     // -- Configuration parameters related to databases --
     // ---------------------------------------------------
@@ -476,6 +544,10 @@ protected:
     static std::string  const defaultDatabasePassword;
     static std::string  const defaultDatabaseName;
     static size_t       const defaultDatabaseServicesPoolSize;
+    static bool               defaultDatabaseAllowReconnect;        // read-write
+    static unsigned int       defaultDatabaseConnectTimeoutSec;     // read-write
+    static unsigned int       defaultDatabaseMaxReconnects;         // read-write
+    static unsigned int       defaultDatabaseTransactionTimeoutSec; // read-write
     static size_t       const defaultReplicationLevel;
     static unsigned int const defaultNumStripes;
     static unsigned int const defaultNumSubStripes;

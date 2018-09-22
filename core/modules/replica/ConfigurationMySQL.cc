@@ -101,12 +101,16 @@ WorkerInfo const ConfigurationMySQL::disableWorker(std::string const& name) {
         // First update the database state
 
         conn = database::mysql::Connection::open(_connectionParams);
-        conn->begin();
-        conn->executeSimpleUpdateQuery(
-            "config_worker",
-            conn->sqlEqual("name", name),
-            std::make_pair("is_enabled",  0));
-        conn->commit();
+        conn->execute(
+            [&name](decltype(conn) conn) {
+                conn->begin();
+                conn->executeSimpleUpdateQuery(
+                    "config_worker",
+                    conn->sqlEqual("name", name),
+                    std::make_pair("is_enabled", 0));
+                conn->commit();
+            }
+        );
 
         // Then update the transient state
 
@@ -120,7 +124,7 @@ WorkerInfo const ConfigurationMySQL::disableWorker(std::string const& name) {
 
     } catch (database::mysql::Error const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context() << "MySQL error: " << ex.what());
-        if (conn and conn->inTransaction()) {
+        if ((nullptr != conn) and conn->inTransaction()) {
             conn->rollback();
         }
     }
@@ -135,10 +139,15 @@ void ConfigurationMySQL::deleteWorker(std::string const& name) {
     try {
 
         // First update the database
+
         conn = database::mysql::Connection::open(_connectionParams);
-        conn->begin();
-        conn->execute ("DELETE FROM config_worker WHERE " + conn->sqlEqual("name", name));
-        conn->commit();
+        conn->execute(
+            [&name](decltype(conn) conn) {
+                conn->begin();
+                conn->execute ("DELETE FROM config_worker WHERE " + conn->sqlEqual("name", name));
+                conn->commit();
+            }
+        );
 
         // Then update the transient state
 
@@ -152,7 +161,7 @@ void ConfigurationMySQL::deleteWorker(std::string const& name) {
 
     } catch (database::mysql::Error const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context ()<< ex.what());
-        if (conn and conn->inTransaction()) {
+        if ((nullptr != conn) and conn->inTransaction()) {
             conn->rollback();
         }
     }
@@ -167,12 +176,16 @@ WorkerInfo const ConfigurationMySQL::setWorkerSvcPort(std::string const& name,
 
         // First update the database
         conn = database::mysql::Connection::open(_connectionParams);
-        conn->begin();
-        conn->executeSimpleUpdateQuery(
-            "config_worker",
-            conn->sqlEqual("name", name),
-            std::make_pair("svc_port", port));
-        conn->commit();
+        conn->execute(
+            [&name,port](decltype(conn) conn) {
+                conn->begin();
+                conn->executeSimpleUpdateQuery(
+                    "config_worker",
+                    conn->sqlEqual("name", name),
+                    std::make_pair("svc_port", port));
+                conn->commit();
+            }
+        );
 
         // Then update the transient state 
 
@@ -186,7 +199,7 @@ WorkerInfo const ConfigurationMySQL::setWorkerSvcPort(std::string const& name,
 
     } catch (database::mysql::Error const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context() << "MySQL error: " << ex.what());
-        if (conn and conn->inTransaction()) {
+        if ((nullptr != conn) and conn->inTransaction()) {
             conn->rollback();
         }
     }
@@ -203,12 +216,16 @@ WorkerInfo const ConfigurationMySQL::setWorkerFsPort(std::string const& name,
 
         // First update the database
         conn = database::mysql::Connection::open(_connectionParams);
-        conn->begin();
-        conn->executeSimpleUpdateQuery(
-            "config_worker",
-            conn->sqlEqual("name", name),
-            std::make_pair("fs_port", port));
-        conn->commit();
+        conn->execute(
+            [&name,port](decltype(conn) conn) {
+                conn->begin();
+                conn->executeSimpleUpdateQuery(
+                    "config_worker",
+                    conn->sqlEqual("name", name),
+                    std::make_pair("fs_port", port));
+                conn->commit();
+            }
+        );
 
         // Then update the transient state 
 
@@ -222,7 +239,7 @@ WorkerInfo const ConfigurationMySQL::setWorkerFsPort(std::string const& name,
 
     } catch (database::mysql::Error const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context() << "MySQL error: " << ex.what());
-        if (conn and conn->inTransaction()) {
+        if ((nullptr != conn) and conn->inTransaction()) {
             conn->rollback();
         }
     }
@@ -238,135 +255,149 @@ void ConfigurationMySQL::loadConfiguration() {
     // The common parameters (if any defined) of the workers will be intialize
     // from table 'config' and be used as defaults when reading worker-specific
     // configurations from table 'config_worker'
+
     uint16_t    commonWorkerSvcPort = Configuration::defaultWorkerSvcPort;
     uint16_t    commonWorkerFsPort  = Configuration::defaultWorkerFsPort;
     std::string commonWorkerDataDir = Configuration::defaultDataDir;
 
-    // Open and keep a database connection for loading other parameters
-    // from there.
-    auto const conn = database::mysql::Connection::open(_connectionParams);
+    database::mysql::Connection::Ptr conn;
 
-    database::mysql::Row row;
+    try {
+        conn = database::mysql::Connection::open(_connectionParams);
+        conn->execute(
+            [&](decltype(conn) conn) {
+    
+                database::mysql::Row row;
+            
+                // Read the common parameters and defaults shared by all components
+                // of the replication system. The table also provides default values
+                // for some critical parameters of the worker-side services.
+            
+                conn->execute("SELECT * FROM " + conn->sqlId("config"));
+            
+                while (conn->next(row)) {
+            
+                    ::tryParameter(row, "common", "request_buf_size_bytes",     _requestBufferSizeBytes) or
+                    ::tryParameter(row, "common", "request_retry_interval_sec", _retryTimeoutSec) or
+            
+                    ::tryParameter(row, "controller", "num_threads",         _controllerThreads) or
+                    ::tryParameter(row, "controller", "http_server_port",    _controllerHttpPort) or
+                    ::tryParameter(row, "controller", "http_server_threads", _controllerHttpThreads) or
+                    ::tryParameter(row, "controller", "request_timeout_sec", _controllerRequestTimeoutSec) or
+                    ::tryParameter(row, "controller", "job_timeout_sec",     _jobTimeoutSec) or
+                    ::tryParameter(row, "controller", "job_heartbeat_sec",   _jobHeartbeatTimeoutSec) or
+            
+                    ::tryParameter(row, "database", "services_pool_size", _databaseServicesPoolSize) or
+            
+                    ::tryParameter(row, "xrootd", "auto_notify",         _xrootdAutoNotify) or
+                    ::tryParameter(row, "xrootd", "host",                _xrootdHost) or
+                    ::tryParameter(row, "xrootd", "port",                _xrootdPort) or
+                    ::tryParameter(row, "xrootd", "request_timeout_sec", _xrootdTimeoutSec) or
+            
+                    ::tryParameter(row, "worker", "technology",                 _workerTechnology) or
+                    ::tryParameter(row, "worker", "num_svc_processing_threads", _workerNumProcessingThreads) or
+                    ::tryParameter(row, "worker", "num_fs_processing_threads",  _fsNumProcessingThreads) or
+                    ::tryParameter(row, "worker", "fs_buf_size_bytes",          _workerFsBufferSizeBytes) or
+                    ::tryParameter(row, "worker", "svc_port",                   commonWorkerSvcPort)  or
+                    ::tryParameter(row, "worker", "fs_port",                    commonWorkerFsPort) or
+                    ::tryParameter(row, "worker", "data_dir",                   commonWorkerDataDir);
+                }
+            
+                // Read worker-specific configurations and construct WorkerInfo.
+                // Use the above retreived common parameters as defaults where applies
+            
+                conn->execute("SELECT * FROM " + conn->sqlId ("config_worker"));
+            
+                while (conn->next(row)) {
+                    WorkerInfo info;
+                    ::readMandatoryParameter(row, "name",         info.name);
+                    ::readMandatoryParameter(row, "is_enabled",   info.isEnabled);
+                    ::readMandatoryParameter(row, "is_read_only", info.isReadOnly);
+                    ::readMandatoryParameter(row, "svc_host",     info.svcHost);
+                    ::readOptionalParameter( row, "svc_port",     info.svcPort, commonWorkerSvcPort);
+                    ::readMandatoryParameter(row, "fs_host",      info.fsHost);
+                    ::readOptionalParameter( row, "fs_port",      info.fsPort,  commonWorkerFsPort);
+                    ::readOptionalParameter( row, "data_dir",     info.dataDir, commonWorkerDataDir);
+            
+                    Configuration::translateDataDir(info.dataDir, info.name);
+            
+                    _workerInfo[info.name] = info;
+                }
+            
+                // Read database family-specific configurations and construct DatabaseFamilyInfo
+            
+                conn->execute("SELECT * FROM " + conn->sqlId ("config_database_family"));
+            
+                while (conn->next(row)) {
+            
+                    std::string name;
+            
+                    ::readMandatoryParameter(row, "name", name);
+                    _databaseFamilyInfo[name].name = name;
+            
+                    ::readMandatoryParameter(row, "min_replication_level", _databaseFamilyInfo[name].replicationLevel);
+                    ::readMandatoryParameter(row, "num_stripes",           _databaseFamilyInfo[name].numStripes);
+                    ::readMandatoryParameter(row, "num_sub_stripes",       _databaseFamilyInfo[name].numSubStripes);
+            
+                    _databaseFamilyInfo[name].chunkNumberValidator =
+                        std::make_shared<ChunkNumberQservValidator>(
+                                static_cast<int32_t>(_databaseFamilyInfo[name].numStripes),
+                                static_cast<int32_t>(_databaseFamilyInfo[name].numSubStripes));
+                }
+            
+                // Read database-specific configurations and construct DatabaseInfo.
+            
+                conn->execute("SELECT * FROM " + conn->sqlId ("config_database"));
+            
+                while (conn->next(row)) {
+            
+                    std::string database;
+                    ::readMandatoryParameter(row, "database", database);
+                    _databaseInfo[database].name = database;
+            
+                    ::readMandatoryParameter(row, "family_name", _databaseInfo[database].family);
+                }
+            
+                // Read database-specific table definitions and extend the corresponding DatabaseInfo.
+            
+                conn->execute("SELECT * FROM " + conn->sqlId ("config_database_table"));
+            
+                while (conn->next(row)) {
+            
+                    std::string database;
+                    ::readMandatoryParameter(row, "database", database);
+            
+                    std::string table;
+                    ::readMandatoryParameter(row, "table", table);
+            
+                    bool isPartitioned;
+                    ::readMandatoryParameter(row, "is_partitioned", isPartitioned);
+            
+                    if (isPartitioned) _databaseInfo[database].partitionedTables.push_back(table);
+                    else               _databaseInfo[database].regularTables    .push_back(table);
+                }
+            
+                // Values of these parameters are predetermined by the connection
+                // parameters passed into this object
+            
+                _databaseTechnology = "mysql";
+                _databaseHost       = _connectionParams.host;
+                _databasePort       = _connectionParams.port;
+                _databaseUser       = _connectionParams.user;
+                _databasePassword   = _connectionParams.password;
+                _databaseName       = _connectionParams.database;
+            
+                dumpIntoLogger();
+            }
+        );
 
-    // Read the common parameters and defaults shared by all components
-    // of the replication system. The table also provides default values
-    // for some critical parameters of the worker-side services.
-
-    conn->execute("SELECT * FROM " + conn->sqlId("config"));
-
-    while (conn->next(row)) {
-
-        ::tryParameter(row, "common", "request_buf_size_bytes",     _requestBufferSizeBytes) or
-        ::tryParameter(row, "common", "request_retry_interval_sec", _retryTimeoutSec) or
-
-        ::tryParameter(row, "controller", "num_threads",         _controllerThreads) or
-        ::tryParameter(row, "controller", "http_server_port",    _controllerHttpPort) or
-        ::tryParameter(row, "controller", "http_server_threads", _controllerHttpThreads) or
-        ::tryParameter(row, "controller", "request_timeout_sec", _controllerRequestTimeoutSec) or
-        ::tryParameter(row, "controller", "job_timeout_sec",     _jobTimeoutSec) or
-        ::tryParameter(row, "controller", "job_heartbeat_sec",   _jobHeartbeatTimeoutSec) or
-
-        ::tryParameter(row, "database", "services_pool_size", _databaseServicesPoolSize) or
-
-        ::tryParameter(row, "xrootd", "auto_notify",         _xrootdAutoNotify) or
-        ::tryParameter(row, "xrootd", "host",                _xrootdHost) or
-        ::tryParameter(row, "xrootd", "port",                _xrootdPort) or
-        ::tryParameter(row, "xrootd", "request_timeout_sec", _xrootdTimeoutSec) or
-
-        ::tryParameter(row, "worker", "technology",                 _workerTechnology) or
-        ::tryParameter(row, "worker", "num_svc_processing_threads", _workerNumProcessingThreads) or
-        ::tryParameter(row, "worker", "num_fs_processing_threads",  _fsNumProcessingThreads) or
-        ::tryParameter(row, "worker", "fs_buf_size_bytes",          _workerFsBufferSizeBytes) or
-        ::tryParameter(row, "worker", "svc_port",                   commonWorkerSvcPort)  or
-        ::tryParameter(row, "worker", "fs_port",                    commonWorkerFsPort) or
-        ::tryParameter(row, "worker", "data_dir",                   commonWorkerDataDir);
+    } catch (database::mysql::Error const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context() << "MySQL error: " << ex.what());
+        if ((nullptr != conn) and conn->inTransaction()) {
+            conn->rollback();
+        }
+        throw;
     }
-
-    // Read worker-specific configurations and construct WorkerInfo.
-    // Use the above retreived common parameters as defaults where applies
-
-    conn->execute("SELECT * FROM " + conn->sqlId ("config_worker"));
-
-    while (conn->next(row)) {
-        WorkerInfo info;
-        ::readMandatoryParameter(row, "name",         info.name);
-        ::readMandatoryParameter(row, "is_enabled",   info.isEnabled);
-        ::readMandatoryParameter(row, "is_read_only", info.isReadOnly);
-        ::readMandatoryParameter(row, "svc_host",     info.svcHost);
-        ::readOptionalParameter( row, "svc_port",     info.svcPort, commonWorkerSvcPort);
-        ::readMandatoryParameter(row, "fs_host",      info.fsHost);
-        ::readOptionalParameter( row, "fs_port",      info.fsPort,  commonWorkerFsPort);
-        ::readOptionalParameter( row, "data_dir",     info.dataDir, commonWorkerDataDir);
-
-        Configuration::translateDataDir(info.dataDir, info.name);
-
-        _workerInfo[info.name] = info;
-    }
-
-    // Read database family-specific configurations and construct DatabaseFamilyInfo
-
-    conn->execute("SELECT * FROM " + conn->sqlId ("config_database_family"));
-
-    while (conn->next(row)) {
-
-        std::string name;
-
-        ::readMandatoryParameter(row, "name", name);
-        _databaseFamilyInfo[name].name = name;
-
-        ::readMandatoryParameter(row, "min_replication_level", _databaseFamilyInfo[name].replicationLevel);
-        ::readMandatoryParameter(row, "num_stripes",           _databaseFamilyInfo[name].numStripes);
-        ::readMandatoryParameter(row, "num_sub_stripes",       _databaseFamilyInfo[name].numSubStripes);
-
-        _databaseFamilyInfo[name].chunkNumberValidator =
-            std::make_shared<ChunkNumberQservValidator>(
-                    static_cast<int32_t>(_databaseFamilyInfo[name].numStripes),
-                    static_cast<int32_t>(_databaseFamilyInfo[name].numSubStripes));
-    }
-
-    // Read database-specific configurations and construct DatabaseInfo.
-
-    conn->execute("SELECT * FROM " + conn->sqlId ("config_database"));
-
-    while (conn->next(row)) {
-
-        std::string database;
-        ::readMandatoryParameter(row, "database", database);
-        _databaseInfo[database].name = database;
-
-        ::readMandatoryParameter(row, "family_name", _databaseInfo[database].family);
-    }
-
-    // Read database-specific table definitions and extend the corresponding DatabaseInfo.
-
-    conn->execute("SELECT * FROM " + conn->sqlId ("config_database_table"));
-
-    while (conn->next(row)) {
-
-        std::string database;
-        ::readMandatoryParameter(row, "database", database);
-
-        std::string table;
-        ::readMandatoryParameter(row, "table", table);
-
-        bool isPartitioned;
-        ::readMandatoryParameter(row, "is_partitioned", isPartitioned);
-
-        if (isPartitioned) _databaseInfo[database].partitionedTables.push_back(table);
-        else               _databaseInfo[database].regularTables    .push_back(table);
-    }
-
-    // Values of these parameters are predetermined by the connection
-    // parameters passed into this object
-
-    _databaseTechnology = "mysql";
-    _databaseHost       = _connectionParams.host;
-    _databasePort       = _connectionParams.port;
-    _databaseUser       = _connectionParams.user;
-    _databasePassword   = _connectionParams.password;
-    _databaseName       = _connectionParams.database;
-
-    dumpIntoLogger();
 }
 
 }}} // namespace lsst::qserv::replica

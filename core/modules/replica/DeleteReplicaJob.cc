@@ -161,11 +161,14 @@ void DeleteReplicaJob::startImpl(util::Lock const& lock) {
     // 2. launching FindRequest for each member of the database family to
     //    see if the chunk is available on a source node.
 
-    if (not controller()->serviceProvider()->databaseServices()->findWorkerReplicas(
-                _replicas,
-                chunk(),
-                worker(),
-                databaseFamily())) {
+    try {
+        controller()->serviceProvider()->databaseServices()->findWorkerReplicas(
+            _replicas,
+            chunk(),
+            worker(),
+            databaseFamily());
+
+    } catch (std::exception const&) {
 
         LOGS(_log, LOG_LVL_ERROR, context() << "startImpl  ** failed to find replicas ** "
              << " chunk: "  << chunk()
