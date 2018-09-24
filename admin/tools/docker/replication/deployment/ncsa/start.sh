@@ -26,10 +26,15 @@ set -e
 # Load parameters of the setup into the corresponding environment
 # variables
 
-. $(dirname $0)/env.sh
+. $(dirname $0)/env_svc.sh
 
 # Start database services on the master node and ensure the they're running
 # before starting workers. Otherwise workers would fail.
+#
+# The general log is temporarily disabled because it results in a huge size
+# of the log file.
+#
+#   --general-log --general-log-file="${DB_DATA_DIR}/log/${DB_CONTAINER_NAME}.general.log" \
 
 if [ ! -z "${DB_SERVICE}" ]; then
     HOST="qserv-${MASTER}"
@@ -47,7 +52,6 @@ if [ ! -z "${DB_SERVICE}" ]; then
         --port="${DB_PORT}" \
         --max-connections=4096 \
         --query-cache-size=0 \
-        --general-log --general-log-file="${DB_DATA_DIR}/log/${DB_CONTAINER_NAME}.general.log" \
         --log-error="${DB_DATA_DIR}/log/${DB_CONTAINER_NAME}.error.log" \
         --slow-query-log --slow-query-log-file="${DB_DATA_DIR}/log/${DB_CONTAINER_NAME}.slow-query.log" \
         --pid-file="${DB_DATA_DIR}/log/${DB_CONTAINER_NAME}.pid"
