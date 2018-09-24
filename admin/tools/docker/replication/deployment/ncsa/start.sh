@@ -54,6 +54,7 @@ if [ ! -z "${DB_SERVICE}" ]; then
         --query-cache-size=0 \
         --log-error="${DB_DATA_DIR}/log/${DB_CONTAINER_NAME}.error.log" \
         --slow-query-log --slow-query-log-file="${DB_DATA_DIR}/log/${DB_CONTAINER_NAME}.slow-query.log" \
+        --log-warnings=2 \
         --pid-file="${DB_DATA_DIR}/log/${DB_CONTAINER_NAME}.pid"
     if [ "$?" != "0" ]; then
         echo "failed to start the database container"
