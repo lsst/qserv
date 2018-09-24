@@ -28,8 +28,7 @@ set -e
 
 . $(dirname $0)/env_svc.sh
 
-# Start database services on the master node and ensure the they're running
-# before starting workers. Otherwise workers would fail.
+# Start database services on the master node
 #
 # The general log is temporarily disabled because it results in a huge size
 # of the log file.
@@ -59,15 +58,6 @@ if [ ! -z "${DB_SERVICE}" ]; then
     if [ "$?" != "0" ]; then
         echo "failed to start the database container"
         exit 1
-    fi
-    
-    # Wait before the database container started
-    echo "[${MASTER}] waiting for the service to start"
-    ssh -n $HOST 'sleep 10; if [ ! -f "'${DB_DATA_DIR}/log/${DB_CONTAINER_NAME}.pid'" ]; then exit 2; fi'
-    if [ "$?" != "0" ]; then
-        echo "the database service has not started. See detail below"
-        ssh -n $HOST docker logs "${DB_IMAGE_TAG}"
-        exit 2
     fi
 fi
 
