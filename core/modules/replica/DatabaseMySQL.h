@@ -31,6 +31,7 @@
  */
 
 // System headers
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
@@ -774,9 +775,11 @@ private:
     void connectOnce();
 
     /**
-     * The method is called to process the last error, reconnect if needed, etc.
+     * The method is called to process the last error, reconnect if needed (and allowed), etc.
      *
-     * @param context - context rom which this method was called
+     * @param context              - context from which this method was called
+     * @param instantAutoReconnect - (optional) flag allowing to make instant reconnects for
+     *                               qualified error conditions
      *
      * @throws std::logic_error  - if the method is called after no actual error happened
      * @throws Reconnected       - after a successful reconnection has happened
@@ -785,7 +788,8 @@ private:
      *                             the corresponding key constaint
      * @throws Error             - for some other error not listed above
      */
-    void processLastError(std::string const& context);
+    void processLastError(std::string const& context,
+                          bool instantAutoReconnect=true);
 
     /**
      * The method is to ensure that the transaction is in the desired state.
@@ -803,6 +807,12 @@ private:
     void assertQueryContext() const;
 
 private:
+
+    /// Sequence of the connector identifiers
+    static std::atomic<size_t> _nextId;
+
+    /// Unique identifier of a connector
+    size_t _id;
 
     /// Parameters of the connection
     ConnectionParams const _connectionParams;

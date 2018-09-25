@@ -298,10 +298,8 @@ void DatabaseServicesMySQL::saveState(QservMgtRequest const& request,
     
             _conn->execute(
                 [&](decltype(_conn) conn) {
-
                     conn->rollback();
                     conn->begin();
-
                     conn->executeSimpleUpdateQuery(
                         "request",
                         _conn->sqlEqual("id",                                          request.id()),
@@ -314,7 +312,6 @@ void DatabaseServicesMySQL::saveState(QservMgtRequest const& request,
                         std::make_pair("w_start_time",   performance.w_start_time),
                         std::make_pair("w_finish_time",  performance.w_finish_time),
                         std::make_pair("c_finish_time",  performance.c_finish_time));
-        
                     conn->commit();
                 }
             );
@@ -360,11 +357,9 @@ void DatabaseServicesMySQL::saveState(Request const& request,
         try {
             _conn->execute(
                 [&](decltype(_conn) conn) {
-
                     conn->begin();
 
                     // The primary state of the request
-
                     conn->executeInsertQuery(
                         "request",
                         request.id(),
@@ -384,7 +379,6 @@ void DatabaseServicesMySQL::saveState(Request const& request,
             
                     // Extended state (if any provided by a specific request class) is recorded
                     // in a separate table.
-            
                     for (auto&& entry: request.extendedPersistentState()) {
 
                         std::string const& param = entry.first;
@@ -407,10 +401,8 @@ void DatabaseServicesMySQL::saveState(Request const& request,
     
             _conn->execute(
                 [&](decltype(_conn) conn) {
-
                     conn->rollback();
                     conn->begin();
-
                     conn->executeSimpleUpdateQuery(
                         "request",
                         _conn->sqlEqual("id", request.id()),
@@ -423,7 +415,6 @@ void DatabaseServicesMySQL::saveState(Request const& request,
                         std::make_pair("w_start_time",   performance.w_start_time),
                         std::make_pair("w_finish_time",  performance.w_finish_time),
                         std::make_pair("c_finish_time",  performance.c_finish_time));
-    
                     conn->commit();
                 }
             );
@@ -465,7 +456,6 @@ void DatabaseServicesMySQL::updateRequestState(Request const& request,
         try {
             _conn->execute(
                 [&](decltype(_conn) conn) {
-
                     conn->begin();
                     conn->executeSimpleUpdateQuery(
                         "request",
@@ -476,7 +466,6 @@ void DatabaseServicesMySQL::updateRequestState(Request const& request,
                         std::make_pair("w_receive_time", targetRequestPerformance.w_receive_time),
                         std::make_pair("w_start_time",   targetRequestPerformance.w_start_time),
                         std::make_pair("w_finish_time",  targetRequestPerformance.w_finish_time));
-
                     conn->commit();
                 }
             );
@@ -866,25 +855,14 @@ void DatabaseServicesMySQL::findWorkerReplicasImpl(util::Lock const& lock,
             throw std::invalid_argument(context + "unknow database");
         }
     }
-    try {
-        _conn->execute(
-            [&](decltype(_conn) conn) {
-                conn->begin();
-                findReplicasImpl(
-                    lock,
-                    replicas,
-                    "SELECT * FROM " + conn->sqlId("replica") +
-                    "  WHERE "       + conn->sqlEqual("worker", worker) +
-                    (database.empty() ? "" :
-                    "  AND "         + conn->sqlEqual( "database", database)));
-                conn->rollback();
-            }
-        );
-    } catch (database::mysql::Error const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
-        if (_conn->inTransaction()) _conn->rollback();
-        throw;
-    }
+    findReplicasImpl(
+        lock,
+        replicas,
+        "SELECT * FROM " + _conn->sqlId("replica") +
+        "  WHERE "       + _conn->sqlEqual("worker", worker) +
+        (database.empty() ? "" :
+        "  AND "         + _conn->sqlEqual( "database", database)));
+
     LOGS(_log, LOG_LVL_DEBUG, context << "** DONE ** replicas.size(): " << replicas.size());
 }
 
