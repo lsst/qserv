@@ -466,6 +466,8 @@ static const std::vector< std::string > QUERIES = {
        "WHERE qserv_areaspec_box(355, 0, 360, 20) AND filterName = 'g' "
        "ORDER BY objectId, taiMidPoint ASC;",
     "SELECT DISTINCT rFlux_PS FROM Object;",
+    "SELECT count(*) FROM   Object o "
+       "WHERE closestToObj is NULL;",
     //fails "SELECT count(*) FROM   Object o "
     //   "INNER JOIN RefObjMatch o2t ON (o.objectIdObjTest = o2t.objectId) "
     //   "INNER JOIN SimRefObject t ON (o2t.refObjectId = t.refObjectId) "

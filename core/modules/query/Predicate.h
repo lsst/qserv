@@ -209,7 +209,14 @@ class NullPredicate : public Predicate {
 public:
     typedef std::shared_ptr<NullPredicate> Ptr;
 
+    NullPredicate()
+    : hasNot(false) {}
+
+    NullPredicate(ValueExprPtr valueExpr, bool hasNotNull)
+    : value(valueExpr), hasNot(hasNotNull) {}
+
     virtual ~NullPredicate() {}
+
     virtual char const* getName() const { return "NullPredicate"; }
 
     virtual void findValueExprs(ValueExprPtrVector& vector);
