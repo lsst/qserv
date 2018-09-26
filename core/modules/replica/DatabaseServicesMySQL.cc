@@ -969,8 +969,8 @@ void DatabaseServicesMySQL::findReplicaFilesImpl(util::Lock const& lock,
     if (0 == id2replica.size()) return;
 
     // The collection of replica identifirs will be split into batches to ensure
-    // that a length of the query string pulling files for each batch would not
-    // exceed the corresponidng MySQL limit.
+    // that a length of the query string (for pulling files for each batch) would
+    // not exceed the corresponidng MySQL limit.
 
     std::vector<uint64_t> ids;
     for (auto&& entry: id2replica) {
@@ -980,6 +980,9 @@ void DatabaseServicesMySQL::findReplicaFilesImpl(util::Lock const& lock,
     // Reserving 1024 for the rest of the query. Also assuming the worst case
     // scenario of the highest values of identifiers. Adding one extra byte for
     // a separator.
+    //
+    // TODO: come up with a more reliable algorithm which will avoid using
+    // the fixed correction (of 1024 bytes).
 
    size_t const batchSize =
         (_conn->max_allowed_packet() - 1024) / (1 + std::to_string(UINT64_MAX).size());
@@ -994,7 +997,7 @@ void DatabaseServicesMySQL::findReplicaFilesImpl(util::Lock const& lock,
     // over a collection of replica identifiers.
 
     std::vector<size_t> batches(ids.size() / batchSize, batchSize);     // complete batches
-    size_t const lastBatchSize = ids.size() % batchSize;                // and the last one
+    size_t const lastBatchSize = ids.size() % batchSize;                // and the last one (if any)
     if (0 != lastBatchSize) {
         batches.push_back(lastBatchSize);
     }
@@ -1093,9 +1096,9 @@ void DatabaseServicesMySQL::findReplicaFilesImpl(util::Lock const& lock,
         itr += size;
     }
     
-    // Sanity check to ensure a collection of files has been found each input
+    // Sanity check to ensure a collection of files has been found for each input
     // replica. Note that this is a requirements for a persistent collection
-    // of reolicas.
+    // of reolicas stored by the Replication system.
 
     if (replicas.size() != id2replica.size()) {
         throw std::runtime_error(context + "database content may be corrupt");

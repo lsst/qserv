@@ -24,7 +24,11 @@
 /// the Replication system implementation.
 
 // System headers
+#include <chrono>
+#include <ctime>
+#include <iomanip>
 #include <iostream>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -60,10 +64,49 @@ std::string workerName;
 std::string databaseName;
 std::string databaseFamilyName;
 
+std::string asString(std::time_t t) {
+    std::ostringstream ss;
+    ss << std::put_time(std::localtime(&t), "%F %T");
+    return ss.str();
+}
+
+std::string asString(uint64_t ms) {
+
+    // Milliseconds since Epoch
+    std::chrono::time_point<std::chrono::system_clock> tp((std::chrono::milliseconds(ms)));
+
+    // Convert to system time
+    std::time_t t = std::chrono::system_clock::to_time_t(tp);
+
+    return asString(t);
+}
+
+std::string asStringIf(uint64_t ms) { return 0 == ms ? "" : asString(ms); }
 
 void dump(std::vector<ReplicaInfo> const& replicas) {
-    for (auto&& replica: replicas) {
-        std::cout << replica << "\n";
+    for (auto&& r: replicas) {
+        std::cout
+            << "\n"
+            << " ------------------ REPLICA ------------------\n"
+            << "\n"
+            << "             chunk: " << r.chunk()                              << "\n"
+            << "          database: " << r.database()                           << "\n"
+            << "            worker: " << r.worker()                             << "\n"
+            << "            status: " << ReplicaInfo::status2string(r.status()) << "\n"
+            << "        verifyTime: " << asStringIf(r.verifyTime())             << "\n"
+            << " beginTransferTime: " << asStringIf(r.beginTransferTime())      << "\n"
+            << "   endTransferTime: " << asStringIf(r.endTransferTime())        << "\n";
+        for (auto&& f: r.fileInfo()) {
+            std::cout
+                << "\n"
+                << "              name: " << f.name                          << "\n"
+                << "              size: " << f.size                          << "\n"
+                << "             mtime: " << asString(f.mtime)               << "\n"
+                << "                cs: " << f.cs                            << "\n"
+                << "            inSize: " << f.inSize                        << "\n"
+                << " beginTransferTime: " << asStringIf(f.beginTransferTime) << "\n"
+                << "   endTransferTime: " << asStringIf(f.endTransferTime)   << "\n";
+        }
     }
     std::cout << std::endl;
 }
@@ -80,50 +123,54 @@ void test() {
         Configuration::setDatabaseMaxReconnects(databaseMaxReconnects);
         Configuration::setDatabaseTransactionTimeoutSec(databaseTransactionTimeoutSec);
 
-        auto provider  = ServiceProvider::create(configUrl);
+        auto provider = ServiceProvider::create(configUrl);
 
-        std::vector<ReplicaInfo> replicas;
-
-        if ("FIND_OLDEST_REPLICAS" == ::operation) {
-            provider->databaseServices()->findOldestReplicas(
-                replicas,
-                maxReplicas,
-                enabledWorkersOnly
-            );
-        } else if ("FIND_REPLICAS" == ::operation) {
-            provider->databaseServices()->findReplicas(
-                replicas,
-                chunk,
-                databaseName,
-                enabledWorkersOnly
-            );
-        } else if ("FIND_WORKER_REPLICAS_1" == ::operation) {
-            provider->databaseServices()->findWorkerReplicas(
-                replicas,
-                workerName
-            );
-        } else if ("FIND_WORKER_REPLICAS_2" == ::operation) {
-            provider->databaseServices()->findWorkerReplicas(
-                replicas,
-                workerName,
-                databaseName
-            );
-        } else if ("FIND_WORKER_REPLICAS_3" == ::operation) {
-            provider->databaseServices()->findWorkerReplicas(
-                replicas,
-                chunk,
-                workerName
-            );
-        } else if ("FIND_WORKER_REPLICAS_4" == ::operation) {
-            provider->databaseServices()->findWorkerReplicas(
-                replicas,
-                chunk,
-                workerName,
-                databaseFamilyName
-            );
+        if ("CONFIGURATION" == ::operation) {
+            std::cout << provider->config()->asString() << std::endl;
+        } else {
+            std::vector<ReplicaInfo> replicas;
+    
+            if ("FIND_OLDEST_REPLICAS" == ::operation) {
+                provider->databaseServices()->findOldestReplicas(
+                    replicas,
+                    maxReplicas,
+                    enabledWorkersOnly
+                );
+            } else if ("FIND_REPLICAS" == ::operation) {
+                provider->databaseServices()->findReplicas(
+                    replicas,
+                    chunk,
+                    databaseName,
+                    enabledWorkersOnly
+                );
+            } else if ("FIND_WORKER_REPLICAS_1" == ::operation) {
+                provider->databaseServices()->findWorkerReplicas(
+                    replicas,
+                    workerName
+                );
+            } else if ("FIND_WORKER_REPLICAS_2" == ::operation) {
+                provider->databaseServices()->findWorkerReplicas(
+                    replicas,
+                    workerName,
+                    databaseName
+                );
+            } else if ("FIND_WORKER_REPLICAS_3" == ::operation) {
+                provider->databaseServices()->findWorkerReplicas(
+                    replicas,
+                    chunk,
+                    workerName
+                );
+            } else if ("FIND_WORKER_REPLICAS_4" == ::operation) {
+                provider->databaseServices()->findWorkerReplicas(
+                    replicas,
+                    chunk,
+                    workerName,
+                    databaseFamilyName
+                );
+            }
+            dump(replicas);
         }
-        dump(replicas);
-
+    
     } catch (std::exception const& ex) {
         std::cerr << ex.what() << std::endl;
     }
@@ -151,6 +198,8 @@ int main(int argc, const char* const argv[]) {
             "              [--db-transaction-timeout=<sec>]\n"
             "\n"
             "Supported operations and mandatory parameters:\n"
+            "\n"
+            "    CONFIGURATION\n"
             "\n"
             "    FIND_OLDEST_REPLICAS   [--replicas=<num>] [--enabled-workers-only]\n"
             "\n"
@@ -225,7 +274,8 @@ int main(int argc, const char* const argv[]) {
             );
 
         ::operation = parser.parameterRestrictedBy(
-            1, {"FIND_OLDEST_REPLICAS",
+            1, {"CONFIGURATION",
+                "FIND_OLDEST_REPLICAS",
                 "FIND_REPLICAS",
                 "FIND_WORKER_REPLICAS_1",
                 "FIND_WORKER_REPLICAS_2",

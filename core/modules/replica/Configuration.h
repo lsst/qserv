@@ -506,9 +506,16 @@ public:
     // -----------
 
     /**
+     * Serialize the configuration parameters into a string
+     *
+     * @return string representation of the cached Configuration
+     */
+    std::string asString() const;
+
+    /**
      * Serialize the configuration parameters into the Logger
      */
-    void dumpIntoLogger();
+    void dumpIntoLogger() const;
 
 protected:
 
