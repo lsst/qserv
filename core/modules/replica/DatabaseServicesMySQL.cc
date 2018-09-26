@@ -25,6 +25,7 @@
 
 // System headers
 #include <algorithm>
+#include <cstdint>
 #include <ctime>
 #include <stdexcept>
 
@@ -907,6 +908,7 @@ void DatabaseServicesMySQL::findWorkerReplicas(std::vector<ReplicaInfo>& replica
     LOGS(_log, LOG_LVL_DEBUG, context << "** DONE ** replicas.size(): " << replicas.size());
 }
 
+
 void DatabaseServicesMySQL::findReplicasImpl(util::Lock const& lock,
                                              std::vector<ReplicaInfo>& replicas,
                                              std::string const& query) {
@@ -954,64 +956,149 @@ void DatabaseServicesMySQL::findReplicasImpl(util::Lock const& lock,
         // Extract files for each replica using identifiers of the replicas,
         // update replicas and copy them over into the output collection.
         
-        for (auto&& entry: id2replica) {
-
-            uint64_t const id = entry.first;
-
-            ReplicaInfo::FileInfoCollection files;
-            findReplicaFilesImpl(lock, files, id);
-
-            // Make a copy to be extended and then moved into the output
-            // collection
-
-            ReplicaInfo replica = entry.second;
-
-            replica.setFileInfo(std::move(files));
-            replicas.push_back(std::move(replica));
-        }
+        findReplicaFilesImpl(lock, id2replica, replicas);
     }
 }
 
 void DatabaseServicesMySQL::findReplicaFilesImpl(util::Lock const& lock,
-                                                 ReplicaInfo::FileInfoCollection& files,
-                                                 uint64_t replicaId) {
-    _conn->execute(
-        "SELECT * FROM " + _conn->sqlId("replica_file") +
-        "  WHERE "       + _conn->sqlEqual("replica_id", replicaId));
+                                                 std::map<uint64_t, ReplicaInfo> const& id2replica,
+                                                 std::vector<ReplicaInfo>& replicas) {
 
-    if (_conn->hasResult()) {
+    std::string const context = "DatabaseServicesMySQL::findReplicaFilesImpl  ";
 
-        database::mysql::Row row;
-        while (_conn->next(row)) {
+    if (0 == id2replica.size()) return;
 
-            // Extract attributes of the file
+    // The collection of replica identifirs will be split into batches to ensure
+    // that a length of the query string pulling files for each batch would not
+    // exceed the corresponidng MySQL limit.
 
-            std::string name;
-            uint64_t    size;
-            std::time_t mtime;
-            std::string cs;
-            uint64_t    beginCreateTime;
-            uint64_t    endCreateTime;
+    std::vector<uint64_t> ids;
+    for (auto&& entry: id2replica) {
+        ids.push_back(entry.first);
+    }
 
-            row.get("name",              name);
-            row.get("size",              size);
-            row.get("mtime",             mtime);
-            row.get("cs",                cs);
-            row.get("begin_create_time", beginCreateTime);
-            row.get("end_create_time",   endCreateTime);
+    // Reserving 1024 for the rest of the query. Also assuming the worst case
+    // scenario of the highest values of identifiers. Adding one extra byte for
+    // a separator.
 
-            files.push_back(
-                ReplicaInfo::FileInfo{
-                    name,
-                    size,
-                    mtime,
-                    cs,
-                    beginCreateTime,
-                    endCreateTime,
-                    size
+   size_t const batchSize =
+        (_conn->max_allowed_packet() - 1024) / (1 + std::to_string(UINT64_MAX).size());
+
+    if ((_conn->max_allowed_packet() < 1024) or (0 == batchSize)) {
+        throw std::runtime_error(
+                context + "value of 'max_allowed_packet' set for the MySQL session is too small: " +
+                std::to_string(_conn->max_allowed_packet()));
+    }
+ 
+    // Compute sizes of batches. This will be needed on the next step to iterate
+    // over a collection of replica identifiers.
+
+    std::vector<size_t> batches(ids.size() / batchSize, batchSize);     // complete batches
+    size_t const lastBatchSize = ids.size() % batchSize;                // and the last one
+    if (0 != lastBatchSize) {
+        batches.push_back(lastBatchSize);
+    }
+
+    // Iterate over batches, submit a query per batch, harvest and process
+    // results.
+    //
+    // IMPORTANT: the algorithm assumes that there will be at least one file
+    // per replica. This assumprion will be enfoced wyen the loop will end.
+
+    auto itr = ids.begin();         // points to the first replica identifier of a batch
+    for (size_t size: batches) {
+
+        _conn->execute(
+            "SELECT * FROM " + _conn->sqlId("replica_file") +
+            "  WHERE "       + _conn->sqlIn("replica_id", std::vector<uint64_t>(itr, itr + size)) +
+            "  ORDER BY "    + _conn->sqlId("replica_id"));
+    
+        if (_conn->hasResult()) {
+    
+            uint64_t currentReplicaId = 0;
+            ReplicaInfo::FileInfoCollection files;  // for accumulating files of the current
+                                                    // replica
+
+            auto copyExtendMove = [&id2replica,
+                                   &replicas,
+                                   &files] (uint64_t replicaId) {
+
+                // Copy an incomplete replica from the input collection, extend it
+                // then move it into the output (complete) collection.
+
+                auto replica = id2replica.at(replicaId);
+                replica.setFileInfo(files);
+                replicas.push_back(std::move(replica));
+
+                files.clear();
+            };
+
+            database::mysql::Row row;
+            while (_conn->next(row)) {
+    
+                // Extract attributes of the file
+    
+                uint64_t    replicaId;
+                std::string name;
+                uint64_t    size;
+                std::time_t mtime;
+                std::string cs;
+                uint64_t    beginCreateTime;
+                uint64_t    endCreateTime;
+    
+                row.get("replica_id",        replicaId);
+                row.get("name",              name);
+                row.get("size",              size);
+                row.get("mtime",             mtime);
+                row.get("cs",                cs);
+                row.get("begin_create_time", beginCreateTime);
+                row.get("end_create_time",   endCreateTime);
+
+                // Save files to the current replica if a change in the replica identifier
+                // has been detected (unless just started iterating over the result set).
+
+                if (replicaId != currentReplicaId) {
+                    if (0 != currentReplicaId) {
+                        copyExtendMove(currentReplicaId);
+                    }
+                    currentReplicaId = replicaId;
                 }
-            );
+
+                // Adding this file to the curent replica
+
+                files.push_back(
+                    ReplicaInfo::FileInfo{
+                        name,
+                        size,
+                        mtime,
+                        cs,
+                        beginCreateTime,
+                        endCreateTime,
+                        size
+                    }
+                );
+            }
+            
+            // Save files of the last replica processed before the 'while' loop above
+            // ended. We need to do it here because the algorithm saves files only
+            // when it detects changes in the replica identifier.
+
+            if (0 != currentReplicaId) {
+                copyExtendMove(currentReplicaId);
+            }
         }
+
+        // Advance iterator to the first identifier of the next
+        // batch (if any).
+        itr += size;
+    }
+    
+    // Sanity check to ensure a collection of files has been found each input
+    // replica. Note that this is a requirements for a persistent collection
+    // of reolicas.
+
+    if (replicas.size() != id2replica.size()) {
+        throw std::runtime_error(context + "database content may be corrupt");
     }
 }
 

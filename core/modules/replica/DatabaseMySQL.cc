@@ -51,6 +51,10 @@ namespace mysql {
 
 std::atomic<size_t> Connection::_nextId{0};
 
+unsigned long Connection::max_allowed_packet() {
+    return 4*1024*1024;
+}
+
 Connection::Ptr Connection::open(ConnectionParams const& connectionParams) {
     return open2(connectionParams,
                  Configuration::databaseAllowReconnect(),
@@ -534,10 +538,19 @@ void Connection::connectOnce() {
 
     // Set session attributes
 
-    for (auto&& query: {"SET SESSION SQL_MODE='ANSI'",
-                        "SET SESSION AUTOCOMMIT=0"}) {
-        if (0 != mysql_query(_mysql, query)) {
-            throw Error(context + "mysql_query() failed in query:" + std::string(query) +
+    std::vector<std::string> queries;
+    queries.push_back("SET SESSION SQL_MODE='ANSI'");
+    queries.push_back("SET SESSION AUTOCOMMIT=0");
+    //
+    // TODO: Reconsider this because it won't work in the modern versions
+    //       of MySQL/MariaDB. Perhaps an oposite operation of pulling
+    //       the parameter's value from the server would make more sence here.
+    //
+    // queries.push_back("SET SESSION max_allowed_packet=" + std::to_string(max_allowed_packet()));
+
+    for (auto&& query: queries) {
+        if (0 != mysql_query(_mysql, query.c_str())) {
+            throw Error(context + "mysql_query() failed in query:" + query +
                         ", error: " + std::string(mysql_error(_mysql)));
         }
     }

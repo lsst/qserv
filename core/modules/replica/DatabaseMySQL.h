@@ -68,6 +68,9 @@ public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<Connection> Ptr;
 
+    /// @return value of the corresponidng MySQL variable set for a session
+    static unsigned long max_allowed_packet();
+
     /**
      * Connect to the MySQL service with the specified parameters and if successfully
      * connected return a pointer to the Connection object. Otherwise an exception will

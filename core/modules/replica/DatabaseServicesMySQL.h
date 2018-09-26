@@ -217,15 +217,15 @@ private:
                           std::string const& query);
 
     /**
-     * Fetch files for the specified replica
+     * Fetch files for the replicas
      *
-     * @param lock      - lock on a mutex must be acquired before calling this method
-     * @param files     - collection of replica's files to be returned
-     * @param replicaId - unique identifier of a replica
+     * @param lock       - lock on a mutex must be acquired before calling this method
+     * @param id2replica - input collection of incomplete replicas 
+     * @param replicas   - output collection of complete replicas
      */
     void findReplicaFilesImpl(util::Lock const& lock,
-                              ReplicaInfo::FileInfoCollection& files,
-                              uint64_t replicaId);
+                              std::map<uint64_t, ReplicaInfo> const& id2replica,
+                              std::vector<ReplicaInfo>& replicas);
 
 private:
 
