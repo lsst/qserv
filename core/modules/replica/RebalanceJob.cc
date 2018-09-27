@@ -25,7 +25,6 @@
 
 // System headers
 #include <algorithm>
-#include <future>
 #include <stdexcept>
 
 // Qserv headers
@@ -104,13 +103,7 @@ RebalanceJob::RebalanceJob(std::string const& databaseFamily,
             options),
         _databaseFamily(databaseFamily),
         _estimateOnly(estimateOnly),
-        _onFinish(onFinish),
-        _numFailedLocks(0) {
-}
-
-RebalanceJob::~RebalanceJob() {
-    // Make sure all chuks locked by this job are released
-    controller()->serviceProvider()->chunkLocker().release(id());
+        _onFinish(onFinish) {
 }
 
 RebalanceJobResult const& RebalanceJob::getReplicaData() const {
@@ -190,7 +183,7 @@ void RebalanceJob::restart(util::Lock const& lock) {
         (numLaunched != numFinished)) {
 
         throw std::logic_error(
-                        "RebalanceJob::restart ()  not allowed in this object state");
+                        "RebalanceJob::restart ()  not allowed in this job state");
     }
 
     _moveReplicaJobs.clear();
@@ -542,8 +535,7 @@ void RebalanceJob::onPrecursorJobFinish() {
         return;
     }
 
-    // Now submit chunk movement requests for chunks which could be
-    // locked.
+    // Now submit chunk movement requests
     //
     // TODO: Limit the number of migrated chunks to avoid overloading
     // the cluster with too many simultaneous requests. The chunk migration
@@ -551,14 +543,8 @@ void RebalanceJob::onPrecursorJobFinish() {
 
     auto self = shared_from_base<RebalanceJob>();
 
-    size_t numFailedLocks = 0;
-
     for (auto&& chunkEntry: _replicaData.plan) {
         unsigned int const chunk = chunkEntry.first;
-        if (not controller()->serviceProvider()->chunkLocker().lock({databaseFamily(), chunk}, id())) {
-            ++_numFailedLocks;
-            continue;
-        }
         for (auto&& sourceWorkerEntry: chunkEntry.second) {
             std::string const& sourceWorker      = sourceWorkerEntry.first;
             std::string const& destinationWorker = sourceWorkerEntry.second;
@@ -576,24 +562,14 @@ void RebalanceJob::onPrecursorJobFinish() {
                 }
             );
             _moveReplicaJobs.push_back(job);
-            _chunk2jobs[chunk][sourceWorker] = job;
             job->start();
         }
     }
 
-    // Finish right away if no jobs were submitted and no failed attempts
-    // to lock chunks were encountered.
+    // Finish right away if no jobs were submitted
 
-    if (not _moveReplicaJobs.size()) {
-        if (not numFailedLocks) {
-            finish(lock, ExtendedState::SUCCESS);
-        } else {
-
-            // Start another iteration by requesting the fresh state of
-            // chunks within the family or until it all fails.
-
-            restart(lock);
-        }
+    if (0 == _moveReplicaJobs.size()) {
+        finish(lock, ExtendedState::SUCCESS);
     }
 }
 
@@ -612,26 +588,11 @@ void RebalanceJob::onJobFinish(MoveReplicaJob::Ptr const& job) {
     // test is made after acquering the lock to recheck the state in case if it
     // has transitioned while acquering the lock.
 
-    if (state() == State::FINISHED) {
-        release(job->chunk());
-        return;
-    }
+    if (state() == State::FINISHED) return;
 
     util::Lock lock(_mtx, context() + "onJobFinish");
 
-    if (state() == State::FINISHED) {
-        release(job->chunk());
-        return;
-    }
-
-    // Make sure the chunk is released if this was the last job in
-    // its scope regardless of the completion status of the job.
-
-    _chunk2jobs.at(job->chunk()).erase(job->sourceWorker());
-    if (_chunk2jobs.at(job->chunk()).empty()) {
-        _chunk2jobs.erase(job->chunk());
-        release(job->chunk());
-    }
+    if (state() == State::FINISHED) return;
 
     // Update counters and object state if needed.
 
@@ -682,18 +643,6 @@ void RebalanceJob::onJobFinish(MoveReplicaJob::Ptr const& job) {
             finish(lock, ExtendedState::FAILED);
         }
     }
-}
-
-void RebalanceJob::release(unsigned int chunk) {
-
-    // THREAD-SAFETY NOTE: This method is thread-agnostic because it's trading
-    // a static context of the request with an external service which is guaranteed
-    // to be thread-safe.
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << "release  chunk=" << chunk);
-
-    Chunk chunkObj {databaseFamily(), chunk};
-    controller()->serviceProvider()->chunkLocker().release(chunkObj);
 }
 
 }}} // namespace lsst::qserv::replica

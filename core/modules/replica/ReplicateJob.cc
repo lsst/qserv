@@ -25,7 +25,6 @@
 
 // System headers
 #include <algorithm>
-#include <future>
 #include <limits.h>
 #include <set>
 #include <stdexcept>

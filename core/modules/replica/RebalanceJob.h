@@ -178,8 +178,7 @@ public:
     RebalanceJob(RebalanceJob const&) = delete;
     RebalanceJob& operator=(RebalanceJob const&) = delete;
 
-    /// Destructor (non-trivial in order to release chunks locked by the operation)
-    ~RebalanceJob() final;
+    ~RebalanceJob() = default;
 
     /// @return the name of a database defining a scope of the operation
     std::string const& databaseFamily() const { return _databaseFamily; }
@@ -278,13 +277,6 @@ protected:
      */
     void restart(util::Lock const& lock);
 
-    /**
-     * Unconditionally release the specified chunk
-     *
-     * @param chunk - the chunk number
-     */
-    void release(unsigned int chunk);
-
 protected:
 
     /// The name of the database
@@ -300,21 +292,8 @@ protected:
     /// replica disposition.
     FindAllJob::Ptr _findAllJob;
 
-    /// The number of chunks which required to be moved but couldn't be locked
-    /// in the exclusive mode. The counter will be analyzed upon a completion
-    /// of the last request, and if it were found not empty another iteraton
-    /// of the job will be undertaken
-    size_t _numFailedLocks;
-
     /// A collection of requests implementing the operation
     std::vector<MoveReplicaJob::Ptr> _moveReplicaJobs;
-
-    /// The cache of locked chunks. It's meant to be used for keeping track
-    /// of all jobs associated with each locked chunks. Chuns will get unlocked
-    /// when all relevant jobs will get finished.
-    std::map<unsigned int,          // chunk
-             std::map<std::string,  // sourceWorker
-                      MoveReplicaJob::Ptr>> _chunk2jobs;
 
     /// Replica creation jobs which are ready to be launched
     std::list<MoveReplicaJob::Ptr> _jobs;
