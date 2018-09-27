@@ -116,8 +116,7 @@ public:
     ReplicateJob(ReplicateJob const&) = delete;
     ReplicateJob& operator=(ReplicateJob const&) = delete;
 
-    /// Destructor (non-trivial in order to release chunks locked by the operation)
-    ~ReplicateJob() final;
+    ~ReplicateJob() = default;
 
     /**
      * @return the minimum number of each chunk's replicas to be reached when
@@ -209,22 +208,6 @@ protected:
     size_t launchNextJobs(util::Lock const& lock,
                           size_t numJobs);
 
-    /**
-     * Restart the job from scratch. This method will reset object context
-     * to a state it was before method Job::startImpl() called and then call
-     * Job::startImpl() again.
-     *
-     * @param lock - the lock must be acquired by a caller of the method
-     */
-    void restart(util::Lock const& lock);
-
-    /**
-     * Unconditionally release the specified chunk
-     *
-     * @param chunk - the chunk number
-     */
-    void release(unsigned int chunk);
-
 protected:
 
     /// The name of the database family
@@ -239,25 +222,6 @@ protected:
     /// The chained job to be completed first in order to figure out
     /// replica disposition.
     FindAllJob::Ptr _findAllJob;
-
-    /// The number of chunks which require the replication but couldn't be locked
-    /// in the exclusive mode. The counter will be analyzed upon a completion
-    /// of the last replica creation job, and if it were found not empty another
-    /// iteration of the job will be undertaken
-    size_t _numFailedLocks;
-
-    /// A collection of jobs groupped by the corresponidng chunk
-    /// number. The main idea is simplify tracking the completion status
-    /// of the operation on each chunk. Requests will be added to the
-    /// corresponding group as they're launched, and removed when they
-    /// finished. This allows releasing (unlocking) chunks before
-    /// the whole job finishes.
-    ///
-    /// [chunk][worker]
-    //
-    std::map<unsigned int,
-             std::map<std::string,
-                      CreateReplicaJob::Ptr>> _chunk2jobs;
 
     /// Replica creation jobs which are ready to be launched
     std::list<CreateReplicaJob::Ptr> _jobs;

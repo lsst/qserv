@@ -87,15 +87,9 @@ ReplicateJob::ReplicateJob(std::string const& databaseFamily,
                      numReplicas :
                      controller->serviceProvider()->config()->replicationLevel(databaseFamily)),
         _onFinish(onFinish),
-        _numFailedLocks(0),
         _numLaunched(0),
         _numFinished(0),
         _numSuccess(0) {
-}
-
-ReplicateJob::~ReplicateJob() {
-    // Make sure all chuks locked by this job are released
-    controller()->serviceProvider()->chunkLocker().release(id());
 }
 
 ReplicateJobResult const& ReplicateJob::getReplicaData() const {
@@ -136,8 +130,7 @@ void ReplicateJob::startImpl(util::Lock const& lock) {
     );
     _findAllJob->start();
 
-    setState(lock,
-             State::IN_PROGRESS);
+    setState(lock, State::IN_PROGRESS);
 }
 
 void ReplicateJob::cancelImpl(util::Lock const& lock) {
@@ -147,41 +140,19 @@ void ReplicateJob::cancelImpl(util::Lock const& lock) {
     // The algorithm will also clear resources taken by various
     // locally created objects.
 
-    if (_findAllJob and (_findAllJob->state() != State::FINISHED)) {
+    if ((nullptr != _findAllJob) and (_findAllJob->state() != State::FINISHED)) {
         _findAllJob->cancel();
     }
     _findAllJob = nullptr;
 
-    _chunk2jobs.clear();
-
     _jobs.clear();
-    for (auto&& ptr: _activeJobs) {
-        ptr->cancel();
-    }
+
+    for (auto&& ptr: _activeJobs) ptr->cancel();
     _activeJobs.clear();
 
-    _numFailedLocks = 0;
-
-    _numLaunched = 0;
-    _numFinished = 0;
-    _numSuccess  = 0;
-}
-
-void ReplicateJob::restart(util::Lock const& lock) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << "restart");
-
-    if (_findAllJob or (_numLaunched != _numFinished)) {
-        throw std::logic_error("ReplicateJob::restart()  not allowed in this object state");
-    }
-    _jobs.clear();
-    _activeJobs.clear();
-
-    _numFailedLocks = 0;
-
-    _numLaunched = 0;
-    _numFinished = 0;
-    _numSuccess  = 0;
+    _numLaunched    = 0;
+    _numFinished    = 0;
+    _numSuccess     = 0;
 }
 
 void ReplicateJob::notify(util::Lock const& lock) {
@@ -234,8 +205,6 @@ void ReplicateJob::onPrecursorJobFinish() {
     // replicas for under-represented chunks
     //
     // IMPORTANT:
-    //
-    // - chunks which were found locked by some other job will not be replicated
     //
     // - when deciding on a number of extra replicas to be created the algorithm
     //   will only consider 'good' chunks (the ones which meet the 'colocation'
@@ -352,15 +321,6 @@ void ReplicateJob::onPrecursorJobFinish() {
         unsigned int const chunk              = chunk2replicas.first;
         int          const numReplicas2create = chunk2replicas.second;
 
-        // Chunk locking is mandatory. If it's not possible to do this now then
-        // the job will need to make another attempt later.
-
-        Chunk const chunkObj{databaseFamily(), chunk};
-        if (not controller()->serviceProvider()->chunkLocker().lock(chunkObj, id())) {
-            ++_numFailedLocks;
-            continue;
-        }
-
         // Find the least used (as a source) worker which has a 'good'
         // chunk
 
@@ -382,9 +342,6 @@ void ReplicateJob::onPrecursorJobFinish() {
             LOGS(_log, LOG_LVL_ERROR, context()
                  << "onPrecursorJobFinish  no suitable soure worker found for chunk: "
                  << chunk);
-
-            release(chunk);
-
             finish(lock, ExtendedState::FAILED);
             return;
         }
@@ -423,9 +380,6 @@ void ReplicateJob::onPrecursorJobFinish() {
                 LOGS(_log, LOG_LVL_ERROR, context()
                      << "onPrecursorJobFinish  no suitable destination worker found for chunk: "
                      << chunk);
-
-                release(chunk);
-
                 finish(lock, ExtendedState::FAILED);
                 return;
             }
@@ -444,7 +398,6 @@ void ReplicateJob::onPrecursorJobFinish() {
                 },
                 options(lock)   // inherit from the current job
             );
-            _chunk2jobs[chunk][destinationWorker] = ptr;
             _jobs.push_back(ptr);
 
             // Bump the occupancy of wokers on both ends of the operations, so that it
@@ -460,19 +413,7 @@ void ReplicateJob::onPrecursorJobFinish() {
     // getting into the 'zombie' state.
 
     if (not _jobs.size()) {
-
-        // Finish right away if no problematic chunks found
-
-        if (not _numFailedLocks) {
-            finish(lock, ExtendedState::SUCCESS);
-        } else {
-
-            // Some of the chuks were locked and yet, no single replica creation
-            // job was lunched. Hence we should start another iteration by requesting
-            // the fresh state of the chunks within the family.
-
-            restart(lock);
-        }
+        finish(lock, ExtendedState::SUCCESS);
         return;
     }
 
@@ -495,10 +436,6 @@ void ReplicateJob::onPrecursorJobFinish() {
         LOGS(_log, LOG_LVL_ERROR, context()
              << "onPrecursorJobFinish  unexpected failure when launching " << numJobs
              << " replication jobs");
-        for (auto&& ptr: _jobs) {
-            release(ptr->chunk());
-        }
-        _chunk2jobs.clear();
         _jobs.clear();
         finish(lock, ExtendedState::FAILED);
     }
@@ -521,7 +458,6 @@ void ReplicateJob::onCreateJobFinish(CreateReplicaJob::Ptr const& job) {
 
     if (state() == State::FINISHED) {
         _activeJobs.remove(job);
-        release(job->chunk());
         return;
     }
 
@@ -529,7 +465,6 @@ void ReplicateJob::onCreateJobFinish(CreateReplicaJob::Ptr const& job) {
 
     if (state() == State::FINISHED) {
         _activeJobs.remove(job);
-        release(job->chunk());
         return;
     }
 
@@ -537,15 +472,6 @@ void ReplicateJob::onCreateJobFinish(CreateReplicaJob::Ptr const& job) {
     // would operate on the actual state of the active job disposition.
 
     _activeJobs.remove(job);
-
-    // Make sure the chunk is released regardless of the completion
-    // status of the replica creation job.
-
-    _chunk2jobs.at(job->chunk()).erase(job->destinationWorker());
-    if (_chunk2jobs.at(job->chunk()).empty()) {
-        _chunk2jobs.erase(job->chunk());
-        release(job->chunk());
-    }
 
     // Update counters and object state if needed
 
@@ -586,21 +512,8 @@ void ReplicateJob::onCreateJobFinish(CreateReplicaJob::Ptr const& job) {
         // has finished.
 
         if (_numFinished == _numLaunched) {
-            if (_numSuccess == _numLaunched) {
-                if (_numFailedLocks) {
-    
-                    // Make another iteration (and another one, etc. as many as needed)
-                    // before it succeeds or fails.
-    
-                    restart(lock);
-                    return;
-    
-                } else {
-                    finish(lock, ExtendedState::SUCCESS);
-                }
-            } else {
-                finish(lock, ExtendedState::FAILED);
-            }
+            finish(lock, _numSuccess == _numLaunched ? ExtendedState::SUCCESS
+                                                     : ExtendedState::FAILED);
         }
     }
 }
@@ -691,18 +604,6 @@ size_t ReplicateJob::launchNextJobs(util::Lock const& lock,
         }
     }
     return numJobsLaunched;
-}
-
-void ReplicateJob::release(unsigned int chunk) {
-
-    // THREAD-SAFETY NOTE: This method is thread-agnostic because it's trading
-    // a static context of the request with an external service which is guaranteed
-    // to be thread-safe.
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << "release  chunk=" << chunk);
-
-    Chunk chunkObj {databaseFamily(), chunk};
-    controller()->serviceProvider()->chunkLocker().release(chunkObj);
 }
 
 }}} // namespace lsst::qserv::replica
