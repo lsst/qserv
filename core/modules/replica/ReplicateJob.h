@@ -240,9 +240,6 @@ protected:
     /// replica disposition.
     FindAllJob::Ptr _findAllJob;
 
-    /// The total number of iterations the job has gone so far
-    size_t _numIterations;
-
     /// The number of chunks which require the replication but couldn't be locked
     /// in the exclusive mode. The counter will be analyzed upon a completion
     /// of the last replica creation job, and if it were found not empty another

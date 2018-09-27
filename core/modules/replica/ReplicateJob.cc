@@ -87,7 +87,6 @@ ReplicateJob::ReplicateJob(std::string const& databaseFamily,
                      numReplicas :
                      controller->serviceProvider()->config()->replicationLevel(databaseFamily)),
         _onFinish(onFinish),
-        _numIterations(0),
         _numFailedLocks(0),
         _numLaunched(0),
         _numFinished(0),
@@ -118,9 +117,7 @@ std::map<std::string,std::string> ReplicateJob::extendedPersistentState() const 
 
 void ReplicateJob::startImpl(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl  _numIterations=" << _numIterations);
-
-    ++_numIterations;
+    LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
 
     // Launch the chained job to get chunk disposition
 
