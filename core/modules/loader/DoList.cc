@@ -56,14 +56,14 @@ void DoList::checkList() {
         _list.splice(_list.end(), _addList);
     }
     for (auto iter = _list.begin(); iter != _list.end(); ++iter){
-        LOGS(_log, LOG_LVL_INFO, "  &&& checking item");
+        //LOGS(_log, LOG_LVL_INFO, "  &&& checking item");
         DoListItem::Ptr const& item = *iter;
         auto cmd = item->runIfNeeded(TimeOut::Clock::now());
         if (cmd != nullptr) {
             LOGS(_log, LOG_LVL_INFO, "   &&& queing command");
             _central.queueCmd(cmd);
         } else {
-            LOGS(_log, LOG_LVL_INFO, "   &&& check remove");
+            //LOGS(_log, LOG_LVL_INFO, "   &&& check remove");
             if (item->removeFromList()) {
                 LOGS(_log, LOG_LVL_INFO, "    &&& removing item");
                 item->setAddedToList(false);

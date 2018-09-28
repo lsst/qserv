@@ -289,9 +289,18 @@ public:
         return protoItem;
     }
 
+    /* &&&
     template<typename T>
     static std::unique_ptr<T> protoParse(BufferUdp::Ptr const& data) {
         StringElement::Ptr itemData = std::dynamic_pointer_cast<StringElement>(MsgElement::retrieve(*data));
+        if (itemData == nullptr) { return nullptr; }
+        return itemData->protoParse<T>();
+    }
+    */
+
+    template<typename T>
+    static std::unique_ptr<T> protoParse(BufferUdp& data) {
+        StringElement::Ptr itemData = std::dynamic_pointer_cast<StringElement>(MsgElement::retrieve(data));
         if (itemData == nullptr) { return nullptr; }
         return itemData->protoParse<T>();
     }

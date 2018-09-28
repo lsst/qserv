@@ -94,12 +94,13 @@ message Neighbor {
 }	
 
 
+// Information about a worker and the keys it holds.
 message WorkerKeysInfo {
     required uint32            name       = 1;
     required uint32            mapsize    = 2;
     required uint32            recentadds = 3;
     required WorkerRangeString range      = 4; // TODO replace with WorkerRange
-    optional Neighbor          left       = 5;
+    required Neighbor          left       = 5;
     required Neighbor          right      = 6;
 }
 

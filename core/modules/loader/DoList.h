@@ -71,7 +71,7 @@ private:
 
 
 /// Children of this class must be created with shared pointers.
-class DoListItem :public std::enable_shared_from_this<DoListItem> {
+class DoListItem : public std::enable_shared_from_this<DoListItem> {
 public:
     using Ptr = std::shared_ptr<DoListItem>;
 
@@ -130,7 +130,7 @@ public:
 protected:
     std::atomic<bool>    _addedToList{false}; ///< True when added to a DoList
 
-    bool    _oneShot{false}; ///< After the needed information is gathered, this item can be dropped.
+    bool    _oneShot{false}; ///< True if after the needed information is gathered, this item can be dropped.
     bool    _needInfo{true}; ///< True if information is needed.
     bool    _remove{false}; ///< set to true if this item should no longer be checked.
     TimeOut _timeOut{std::chrono::minutes(15)};

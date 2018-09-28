@@ -28,9 +28,8 @@
 #include <memory>
 #include <string>
 
-
 // Qserv headers
-
+#include "loader/Updateable.h"
 
 
 namespace lsst {
@@ -56,7 +55,7 @@ public:
     }
 
     bool setMin(std::string const& val) {
-        if (not _unlimited && val > _max) {
+        if (not _unlimited && val >= _maxE) {
             return false;
         }
         _min = val;
@@ -65,13 +64,13 @@ public:
     bool setMax(std::string const& val, bool unlimited=false) {
         if (unlimited) {
             _unlimited = true;
-            if (val > _max) { _max = val; }
+            if (val > _maxE) { _maxE = val; }
             return true;
         }
         if (val < _min) {
             return false;
         }
-        _max = val;
+        _maxE = val;
         return true;
     }
 
@@ -82,17 +81,17 @@ public:
         if (unlimited) {
             _unlimited = true;
             _min = vMin;
-            _max = std::max(vMax, _min); // max is irrelevant at this point
+            _maxE = std::max(vMax, _min); // max is irrelevant at this point
         } else {
             _min = vMin;
-            _max = vMax;
+            _maxE = vMax;
         }
         setValid();
         return true;
     }
 
     bool setValid() {
-        if (!_unlimited && _max < _min) {
+        if (!_unlimited && _maxE <= _min) {
             return false;
         }
         _valid = true;
@@ -106,21 +105,21 @@ public:
         if (_min != other._min) { return false; }
         if (_unlimited != other._unlimited) { return false; }
         if (_unlimited) { return true; } // both same _min and _unlimited
-        if (_max != other._max) { return false; }
+        if (_maxE != other._maxE) { return false; }
         return true;
     }
 
     bool isInRange(std::string const& str) const {
         if (not _valid) { return false; }
         if (str < _min) { return false; }
-        if (not _unlimited && str >= _max) { return false; }
+        if (not _unlimited && str >= _maxE) { return false; }
         return true;
     }
 
     bool getValid() const { return _valid; }
     bool getUnlimited() const { return _unlimited; }
     std::string getMin() const { return _min; }
-    std::string getMax() const { return _max; }
+    std::string getMax() const { return _maxE; }
 
     bool operator<(StringRange const& other) const {
         /// Arbitrarily, invalid are less than valid, but such comparisons should be avoided.
@@ -133,6 +132,10 @@ public:
         return false;
     }
 
+    /// Return a string that would slightly follow the value of the input string 'str'
+    /// appendChar is the character appended to a string ending with a character > 'z'
+    static std::string advanceString(std::string const& str, char appendChar='a');
+
 
     friend std::ostream& operator<<(std::ostream&, StringRange const&);
 
@@ -140,10 +143,31 @@ private:
     bool        _valid{false}; ///< true if range is valid
     bool        _unlimited{false}; ///< true if the range includes largest possible values.
     std::string _min; ///< Smallest value = ""
-    std::string _max; ///<
+    std::string _maxE; ///< maximum value exclusive
 
 };
 
+
+struct NeighborsInfo {
+    NeighborsInfo() = default;
+    NeighborsInfo(NeighborsInfo const&) = delete;
+    NeighborsInfo& operator=(NeighborsInfo const&) = delete;
+
+    typedef std::shared_ptr<Updatable<uint32_t>> NeighborPtr;
+    typedef std::weak_ptr<Updatable<uint32_t>> NeighborWPtr;
+    NeighborPtr neighborLeft{new Updatable<uint32_t>(0)};   ///< Neighbor with lesser values
+    NeighborPtr neighborRight{new Updatable<uint32_t>(0)};  ///< Neighbor with higher values
+    uint32_t recentAdds{0}; ///< Number of keys added to this worker recently.
+    uint32_t keyCount{0};   ///< Total number of keys stored on the worker.
+};
+
+
+class BufferUdp;
+
+class ProtoHelper {
+public:
+    static void workerKeysInfoExtractor(BufferUdp& data, uint32_t& name, NeighborsInfo& nInfo, StringRange& strRange);
+};
 
 }}} // namespace lsst::qserv::loader
 
