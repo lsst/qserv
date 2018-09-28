@@ -149,9 +149,9 @@ void ReplicateJob::cancelImpl(util::Lock const& lock) {
     for (auto&& ptr: _activeJobs) ptr->cancel();
     _activeJobs.clear();
 
-    _numLaunched    = 0;
-    _numFinished    = 0;
-    _numSuccess     = 0;
+    _numLaunched = 0;
+    _numFinished = 0;
+    _numSuccess  = 0;
 }
 
 void ReplicateJob::notify(util::Lock const& lock) {

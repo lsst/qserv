@@ -75,7 +75,7 @@ struct Application {
     unsigned int qservSyncTimeoutSec;
 
     unsigned int numReplicas;
-
+    bool         purge;
     unsigned int numIter;
 
     // Replication system context
@@ -129,6 +129,7 @@ struct Application {
             workerEvictTimeoutSec   (3600),
             qservSyncTimeoutSec     (60),
             numReplicas             (0),
+            purge                   (false),
             numIter                 (0),
             failed                  (false),
             stopReplication         (false),
@@ -157,6 +158,7 @@ struct Application {
             "  [--worker-evict-timeout=<seconds>]\n"
             "  [--qserv-sync-timeout=<seconds>]\n"
             "  [--replicas=<number>]\n"
+            "  [--purge]\n"
             "  [--iter=<num>]\n"
             "\n"
             "Flags and options:\n"
@@ -231,6 +233,10 @@ struct Application {
             "      in the Configuration.\n"
             "      DEFAULT: " + std::to_string(numReplicas) + " replicas of each chunk\n"
             "\n"
+            "    --purge \n"
+            "\n"
+            "      also run the purge algorithm to eliminate excess replicas on each cycle\n"
+            "\n"
             "    --iter \n"
             "\n"
             "      the number of iterations (a value of 0 means running indefinitively)\n"
@@ -250,6 +256,8 @@ struct Application {
         qservSyncTimeoutSec      = parser.option<unsigned int>("qserv-sync-timeout",      qservSyncTimeoutSec);
         numReplicas              = parser.option<unsigned int>("replicas",                numReplicas);
 
+        purge = parser.flag("purge");
+
         numIter = parser.option<unsigned int>("iter", numIter);
 
         LOGS(_log, LOG_LVL_INFO, "MASTER            "
@@ -264,6 +272,7 @@ struct Application {
              << "worker-evict-timeout="    << workerEvictTimeoutSec << " "
              << "qserv-sync-timeout="      << qservSyncTimeoutSec << " "
              << "replicas="                << numReplicas << " "
+             << "purge="                   << (purge ? 1 :0) << " "
              << "iter="                    << numIter);
 
         ///////////////////////////////////////////////////////////////
@@ -341,6 +350,11 @@ struct Application {
     
                     if (launchRebalanceJobs()) break;
                     if (launchSyncJobs()) break;
+
+                    if (purge) {
+                        if (launchPurgeJobs()) break;
+                        if (launchSyncJobs()) break;
+                    }
     
                     // Wait before going for another iteration
     
@@ -486,6 +500,34 @@ struct Application {
             jobs.push_back(job);
         }
         return trackJobs("RebalanceJob");
+    }
+
+    /**
+     * Launch excess replica purging jobs.
+     *
+     * @return 'true' if the job cancelation sequence was initiated
+     */
+    bool launchPurgeJobs() {
+
+        LOGS(_log, LOG_LVL_INFO, replicationLoopContext << "launchPurgeJobs");
+
+        jobs.clear();
+        numFinishedJobs = 0;
+
+        for (auto&& family: databaseFamilies) {
+            auto job = PurgeJob::create(
+                family,
+                numReplicas,
+                controller,
+                parentJobId,
+                [this](PurgeJob::Ptr const& job) {
+                    ++(this->numFinishedJobs);
+                }
+            );
+            job->start();
+            jobs.push_back(job);
+        }
+        return trackJobs("PurgeJob");
     }
 
     /**

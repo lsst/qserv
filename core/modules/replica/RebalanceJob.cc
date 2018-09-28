@@ -25,6 +25,7 @@
 
 // System headers
 #include <algorithm>
+#include <set>
 #include <stdexcept>
 
 // Qserv headers
@@ -37,28 +38,6 @@
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.RebalanceJob");
-
-template <class COLLECTION>
-void countJobStates(size_t& numLaunched,
-                    size_t& numFinished,
-                    size_t&  numSuccess,
-                    COLLECTION const& collection) {
-
-    using namespace lsst::qserv::replica;
-
-    numLaunched = collection.size();
-    numFinished = 0;
-    numSuccess  = 0;
-
-    for (auto&& ptr: collection) {
-        if (ptr->state() == Job::State::FINISHED) {
-            numFinished++;
-            if (ptr->extendedState() == Job::ExtendedState::SUCCESS) {
-                numSuccess++;
-            }
-        }
-    }
-}
 
 } /// namespace
 
@@ -103,7 +82,10 @@ RebalanceJob::RebalanceJob(std::string const& databaseFamily,
             options),
         _databaseFamily(databaseFamily),
         _estimateOnly(estimateOnly),
-        _onFinish(onFinish) {
+        _onFinish(onFinish),
+        _numLaunched(0),
+        _numFinished(0),
+        _numSuccess(0) {
 }
 
 RebalanceJobResult const& RebalanceJob::getReplicaData() const {
@@ -124,9 +106,7 @@ std::map<std::string,std::string> RebalanceJob::extendedPersistentState() const 
 
 void RebalanceJob::startImpl(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl  numIterations=" << _replicaData.numIterations);
-
-    _replicaData.numIterations++;
+    LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
 
     // Launch the chained job to get chunk disposition
 
@@ -155,59 +135,19 @@ void RebalanceJob::cancelImpl(util::Lock const& lock) {
     // The algorithm will also clear resources taken by various
     // locally created objects.
 
-    if (_findAllJob and (_findAllJob->state() != State::FINISHED)) {
+    if ((nullptr != _findAllJob) and (_findAllJob->state() != State::FINISHED)) {
         _findAllJob->cancel();
     }
     _findAllJob = nullptr;
 
-    for (auto&& ptr: _moveReplicaJobs) {
-        ptr->cancel();
-    }
-    _moveReplicaJobs.clear();
-}
+    _jobs.clear();
 
-void RebalanceJob::restart(util::Lock const& lock) {
+    for (auto&& ptr: _activeJobs) ptr->cancel();
+    _activeJobs.clear();
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "restart");
-
-    size_t numLaunched;
-    size_t numFinished;
-    size_t numSuccess;
-
-    ::countJobStates(numLaunched,
-                     numFinished,
-                     numSuccess,
-                     _moveReplicaJobs);
-
-    if ((_findAllJob and (_findAllJob->state() != State::FINISHED)) or
-        (numLaunched != numFinished)) {
-
-        throw std::logic_error(
-                        "RebalanceJob::restart ()  not allowed in this job state");
-    }
-
-    _moveReplicaJobs.clear();
-
-    // Take a fresh snapshot of chunk disposition within the cluster
-    // to see what else can be rebalanced. Note that this is going to be
-    // a lengthy operation allowing other on-going activities locking chunks
-    // to be finished before the current job will get another chance
-    // to rebalance (if needed).
-
-    auto self = shared_from_base<RebalanceJob>();
-
-    bool const saveReplicInfo = true;           // always save the replica info in a database because
-                                                // the algorithm depends on it.
-    _findAllJob = FindAllJob::create(
-        databaseFamily(),
-        saveReplicInfo,
-        controller(),
-        id(),
-        [self] (FindAllJob::Ptr job) {
-            self->onPrecursorJobFinish();
-        }
-    );
-    _findAllJob->start();
+    _numLaunched = 0;
+    _numFinished = 0;
+    _numSuccess  = 0;
 }
 
 void RebalanceJob::notify(util::Lock const& lock) {
@@ -471,8 +411,8 @@ void RebalanceJob::onPrecursorJobFinish() {
         std::string               const& sourceWorker   = sourceWorkerEntry.first;
         std::vector<unsigned int> const& chunks         = sourceWorkerEntry.second;
 
-        // Will get decremented in the chunks loop later when looking for chunks
-        // to be moved elswhere.
+        // This number (below) will get decremented in the chunks loop later when
+        // looking for chunks to be moved elsewhere.
         size_t numExtraChunks = chunks.size() - _replicaData.avgChunks;
 
         LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish: "
@@ -535,11 +475,8 @@ void RebalanceJob::onPrecursorJobFinish() {
         return;
     }
 
-    // Now submit chunk movement requests
-    //
-    // TODO: Limit the number of migrated chunks to avoid overloading
-    // the cluster with too many simultaneous requests. The chunk migration
-    // limit should be specifid via the configuration.
+    // Pre-create chunk movement jobs according to the migration
+    // plan.
 
     auto self = shared_from_base<RebalanceJob>();
 
@@ -561,15 +498,39 @@ void RebalanceJob::onPrecursorJobFinish() {
                     self->onJobFinish(job);
                 }
             );
-            _moveReplicaJobs.push_back(job);
-            job->start();
+            _jobs.push_back(job);
         }
     }
 
-    // Finish right away if no jobs were submitted
+    // ATTENTION: this condition needs to be evaluated to prevent
+    // getting into the 'zombie' state.
 
-    if (0 == _moveReplicaJobs.size()) {
+    if (not _jobs.size()) {
         finish(lock, ExtendedState::SUCCESS);
+        return;
+    }
+
+    // Otherwise start the first batch of jobs. The number of jobs in
+    // the batch is determined by the number of source workers in
+    // the above prepared plan multiplied by the number of worker-side
+    // processing threads.
+
+    std::set<std::string> uniqueDestinationWorkers;
+    for (auto&& ptr: _jobs) {
+        uniqueDestinationWorkers.insert(ptr->destinationWorker());
+    }
+    size_t const numJobs = uniqueDestinationWorkers.size() *
+        controller()->serviceProvider()->config()->workerNumProcessingThreads();
+
+    size_t const numJobsLaunched = launchNextJobs(lock, numJobs);
+    if (0 != numJobsLaunched) {
+        _numLaunched += numJobsLaunched;
+    } else {
+        LOGS(_log, LOG_LVL_ERROR, context()
+             << "onPrecursorJobFinish  unexpected failure when launching " << numJobs
+             << " replica migration jobs");
+        _jobs.clear();
+        finish(lock, ExtendedState::FAILED);
     }
 }
 
@@ -588,15 +549,28 @@ void RebalanceJob::onJobFinish(MoveReplicaJob::Ptr const& job) {
     // test is made after acquering the lock to recheck the state in case if it
     // has transitioned while acquering the lock.
 
-    if (state() == State::FINISHED) return;
+    if (state() == State::FINISHED) {
+        _activeJobs.remove(job);
+        return;
+    }
 
     util::Lock lock(_mtx, context() + "onJobFinish");
 
-    if (state() == State::FINISHED) return;
+    if (state() == State::FINISHED) {
+        _activeJobs.remove(job);
+        return;
+    }
+
+    // The job needs to be removed from this list so that the next job schedule
+    // would operate on the actual state of the active job disposition.
+
+    _activeJobs.remove(job);
 
     // Update counters and object state if needed.
 
+    _numFinished++;
     if (job->extendedState() == Job::ExtendedState::SUCCESS) {
+        _numSuccess++;
 
         // Copy over data from the job
 
@@ -622,27 +596,109 @@ void RebalanceJob::onJobFinish(MoveReplicaJob::Ptr const& job) {
         }
     }
 
-    // Evaluate the status of on-going operations to see if the job
-    // has finished.
+    // Try to submit one more job
 
-    size_t numLaunched, numFinished, numSuccess;
-    ::countJobStates(numLaunched, numFinished, numSuccess, _moveReplicaJobs);
+    size_t const numJobsLaunched = launchNextJobs(lock, 1);
+    if (numJobsLaunched != 0) {
+        _numLaunched += numJobsLaunched;
+    } else {
 
-    if (numFinished == numLaunched) {
-        if (numSuccess == numLaunched) {
+        // Evaluate the status of on-going operations to see if the job
+        // has finished.
 
-            // Make another iteration (and another one, etc. as many as needed)
-            // before it succeeds or fails.
-            //
-            // NOTE: a condition for this jobs to succeed is evaluated in
-            //       the precursor job completion code.
-
-            restart(lock);
-
-        } else {
-            finish(lock, ExtendedState::FAILED);
+        if (_numFinished == _numLaunched) {
+            finish(lock, _numSuccess == _numLaunched ? ExtendedState::SUCCESS
+                                                     : ExtendedState::FAILED);
         }
     }
+}
+
+size_t RebalanceJob::launchNextJobs(util::Lock const& lock,
+                                    size_t numJobs) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << "launchNextJobs  numJobs=" << numJobs);
+
+    /*
+    size_t const numThreads =
+        controller()->serviceProvider()->config()->workerNumProcessingThreads();
+    */
+
+    // Compute the number of jobs which are already active at both ends
+    // (destination and source workers). Note that we need to scan both
+    // list to get a complete picture of what's on the workers' side.
+
+    std::map<std::string,size_t> numAtDest;
+    std::map<std::string,size_t> numAtSrc;
+
+    for (auto&& ptr: _jobs) {
+        if (numAtDest.end() == numAtDest.find(ptr->destinationWorker())) {
+            numAtDest[ptr->destinationWorker()] = 0;
+        }
+        if (numAtSrc.end() == numAtSrc.find(ptr->sourceWorker())) {
+            numAtSrc[ptr->sourceWorker()] = 0;
+        }
+    }
+    for (auto&& ptr: _activeJobs) {
+        auto itrAtDest = numAtDest.find(ptr->destinationWorker());
+        if (numAtDest.end() == itrAtDest) {
+            numAtDest[ptr->destinationWorker()] = 1;
+        } else {
+            itrAtDest->second++;
+        }
+        auto itrAtSrc = numAtSrc.find(ptr->sourceWorker());
+        if (numAtSrc.end() == itrAtSrc) {
+            numAtSrc[ptr->sourceWorker()] = 1;
+        } else {
+            itrAtSrc->second++;
+        }
+    }
+    
+    // Try to fulfil the request (to submit the given number of jobs)
+    // by evaluating best candidates using an algorithm explained
+    // within the loop below.
+    
+    size_t numJobsLaunched = 0;
+    for (size_t i = 0; i < numJobs; ++i) {
+
+        // THE LOAD BALANCING ALGORITHM:
+        //
+        //   The algorithms evaluates candidates (pairs of (dstWorker,srcWorker))
+        //   to find the one which allows more even spread of load among the destination
+        //   and source workers. For each pair of the workers the algorithm computets
+        //   a 'load' which is just a sum of the on-going activities at both ends of
+        //   the proposed transfer:
+        //
+        //     load := numAtDest[destWorker] * numAtSrc[srcWorker]
+        //
+        //   A part which has the lowest number will be selected.
+
+        size_t minLoad = ULLONG_MAX;
+        MoveReplicaJob::Ptr job;
+
+        for (auto&& ptr: _jobs) {            
+            size_t const load = numAtDest[ptr->destinationWorker()] +
+                                numAtSrc [ptr->sourceWorker()];
+            if (load <= minLoad) {
+                minLoad = load;
+                job = ptr;
+            }
+        }
+        if (nullptr != job) {
+
+            // Update occupancy of the worker nodes at both ends
+            numAtDest[job->destinationWorker()]++;
+            numAtSrc [job->sourceWorker()]++;
+
+            // Move the job into another queue
+            _activeJobs.push_back(job);
+            _jobs.remove(job);
+
+            // Let it run
+            job->start();
+            numJobsLaunched++;
+        }
+    }
+    return numJobsLaunched;
 }
 
 }}} // namespace lsst::qserv::replica

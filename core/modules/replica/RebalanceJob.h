@@ -93,9 +93,6 @@ struct RebalanceJobResult {
     size_t totalWorkers    {0};     // not counting workers which failed to report chunks
     size_t totalGoodChunks {0};     // good chunks reported by the precursor job
     size_t avgChunks       {0};     // per worker average
-
-    /// The total number of iterations the job has gone so far
-    size_t numIterations {0};
 };
 
 /**
@@ -268,15 +265,6 @@ protected:
     size_t launchNextJobs(util::Lock const& lock,
                           size_t numJobs);
 
-    /**
-     * Restart the job from scratch. This method will reset object context
-     * to a state it was before method Job::startImpl() called and then call
-     * Job::startImpl() again.
-     *
-     * @param lock - the lock must be acquired by a caller of the method
-     */
-    void restart(util::Lock const& lock);
-
 protected:
 
     /// The name of the database
@@ -291,9 +279,6 @@ protected:
     /// The chained job to be completed first in order to figure out
     /// replica disposition.
     FindAllJob::Ptr _findAllJob;
-
-    /// A collection of requests implementing the operation
-    std::vector<MoveReplicaJob::Ptr> _moveReplicaJobs;
 
     /// Replica creation jobs which are ready to be launched
     std::list<MoveReplicaJob::Ptr> _jobs;
