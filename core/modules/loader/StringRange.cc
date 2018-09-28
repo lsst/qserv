@@ -28,7 +28,10 @@
 // System headers
 #include <iostream>
 
-// Third-party headers
+// qserv headers
+#include "loader/BufferUdp.h"
+#include "loader/LoaderMsg.h"
+#include "proto/loader.pb.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -44,10 +47,51 @@ namespace loader {
 std::ostream& operator<<(std::ostream& os, StringRange const& strRange) {
     os << "valid=" << strRange._valid
        << " min=" << strRange._min
-       << " max=" << strRange._max
+       << " max=" << strRange._maxE
        << " unlimited=" << strRange._unlimited;
     return os;
 }
+
+
+std::string StringRange::advanceString(std::string const& str, char appendChar) {
+    std::string output(str);
+    size_t pos = output.size() - 1;
+    char lastChar = output[pos];
+    if (lastChar < 'z') {
+        ++lastChar;
+        output[pos] = lastChar;
+    } else {
+        output += appendChar;
+    }
+    return output;
+}
+
+
+void ProtoHelper::workerKeysInfoExtractor(BufferUdp& data, uint32_t& name, NeighborsInfo& nInfo, StringRange& strRange) {
+    auto funcName = "CentralWorker::_workerKeysInfoExtractor";
+    LOGS(_log, LOG_LVL_INFO, "&&& " << funcName);
+    auto protoItem = StringElement::protoParse<proto::WorkerKeysInfo>(data);
+    if (protoItem == nullptr) {
+        throw LoaderMsgErr(funcName, __FILE__, __LINE__);
+    }
+
+    name = protoItem->name();
+    nInfo.keyCount = protoItem->mapsize();
+    nInfo.recentAdds = protoItem->recentadds();
+    proto::WorkerRangeString protoRange = protoItem->range();
+    bool valid = protoRange.valid();
+    if (valid) {
+        std::string min   = protoRange.min();
+        std::string max   = protoRange.max();
+        bool unlimited = protoRange.maxunlimited();
+        strRange.setMinMax(min, max, unlimited);
+    }
+    proto::Neighbor protoLeftNeigh = protoItem->left();
+    nInfo.neighborLeft->update(protoLeftNeigh.name());
+    proto::Neighbor protoRightNeigh = protoItem->right();
+    nInfo.neighborRight->update(protoRightNeigh.name());
+}
+
 
 }}} // namespace lsst::qserv::loader
 

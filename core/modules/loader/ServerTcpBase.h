@@ -63,7 +63,6 @@ public:
 
     void start();
     void shutdown();
-    unsigned int getMsgStatus() const { return _msgStatus; }
 
 private:
     TcpBaseConnection(boost::asio::io_context& io_context, ServerTcpBase* tcpBase) :
@@ -77,21 +76,35 @@ private:
     tcp::socket _socket;
     ServerTcpBase* _serverTcpBase; // _serverTcpBase controls this class' lifetime.
     BufferUdp _buf{500000};
-    std::atomic<unsigned int> _msgStatus{LoaderMsg::WAITING};
+
+    void _handleImYourLNeighbor(uint32_t bytes);
+    void _handleImYourLNeighbor2(boost::system::error_code const& ec, size_t bytesTrans);
+
 
     void _handleTest();
-    void _handleTest2(const boost::system::error_code& ec, size_t bytesTrans);
-    void _handleTest2b(const boost::system::error_code& ec, size_t bytesTrans);
+    void _handleTest2(boost::system::error_code const& ec, size_t bytesTrans);
+    void _handleTest2b(boost::system::error_code const& ec, size_t bytesTrans);
+    void _handleTest2c(boost::system::error_code const& ec, size_t bytesTrans);
 };
 
+
+class CentralWorker;
 
 
 class ServerTcpBase {
 public:
+    typedef std::shared_ptr<ServerTcpBase> Ptr;
     ServerTcpBase(boost::asio::io_context& io_context, int port) :
         _io_context(io_context), _acceptor(io_context, tcp::endpoint(tcp::v4(), port)), _port(port) {
         startAccept();
     }
+
+    ServerTcpBase(boost::asio::io_context& io_context, int port, CentralWorker* cw) :
+        _io_context(io_context), _acceptor(io_context, tcp::endpoint(tcp::v4(), port)), _port(port),
+        _centralWorker(cw){
+        startAccept();
+    }
+
 
     ~ServerTcpBase() {
         _io_context.stop();
@@ -120,6 +133,10 @@ public:
         _connections.erase(conn);
     }
 
+    uint32_t getOurName();
+
+    static bool _writeData(tcp::socket& socket, BufferUdp& data); // &&& remove underscore
+
 private:
     void startAccept() {
         TcpBaseConnection::Ptr newConnection = TcpBaseConnection::create(_acceptor.get_executor().context(), this);
@@ -137,13 +154,13 @@ private:
         startAccept();
     }
 
-    bool _writeData(tcp::socket& socket, BufferUdp& data);
-
     boost::asio::io_context& _io_context;
     boost::asio::ip::tcp::acceptor _acceptor;
     int _port;
     std::vector<std::thread> _threads;
     std::set<TcpBaseConnection::Ptr> _connections;
+
+    CentralWorker* _centralWorker{nullptr}; // not too thrilled with this
 };
 
 

@@ -32,71 +32,38 @@
 
 // Qserv headers
 #include "loader/Central.h"
+#include "loader/DoList.h"
+#include "loader/Neighbor.h"
+#include "loader/ServerTcpBase.h"
 
 
 namespace lsst {
 namespace qserv {
+
+namespace proto {
+class WorkerKeysInfo;
+}
+
 namespace loader {
 
 
-/// Class to describe one of this worker's neighbor.
-class Neighbor {
-public:
-    Neighbor() = default;
-
-    void setAddress(std::string const& hostName, int port) {
-        std::lock_guard<std::mutex> lck(_nMtx);
-        _address.reset(new NetworkAddress(hostName, port));
-    }
-
-    void setAddress(NetworkAddress const& addr) {
-        std::lock_guard<std::mutex> lck(_nMtx);
-        _address.reset(new NetworkAddress(addr));
-    }
-
-    NetworkAddress getAddress() {
-        std::lock_guard<std::mutex> lck(_nMtx);
-        return *_address;
-    }
-
-    void setName(uint32_t name) {
-        std::lock_guard<std::mutex> lck(_nMtx);
-        if (_name != name) {
-            _established = false;
-            _address.reset(new NetworkAddress("", -1));
-        }
-        _name = name;
-    }
-
-    uint32_t getName() const { return _name; }
-
-    void setEstablished(bool val) {
-        std::lock_guard<std::mutex> lck(_nMtx);
-        _established = val;
-    }
-
-    bool getEstablished() const { return _established; }
-
-private:
-    NetworkAddress::UPtr _address{new NetworkAddress("", -1)};
-    uint32_t _name{0}; ///< Name of neighbor, 0 means no neighbor.
-    bool _established{false};
-    std::mutex _nMtx;
-};
+class CentralWorkerDoListItem;
 
 
 class CentralWorker : public Central {
 public:
-    CentralWorker(boost::asio::io_service& ioService,
-                  std::string const& masterHostName, int masterPort,
-                  std::string const& hostName,       int port)
-        : Central(ioService, masterHostName, masterPort),
-          _hostName(hostName), _port(port) {
-        _server = std::make_shared<WorkerServer>(_ioService, _hostName, _port, this);
-        _monitorWorkers();
-    }
+    enum SocketStatus {
+        VOID0 = 0,
+        STARTING1,
+        ESTABLISHED2
+    };
 
-    ~CentralWorker() override { _wWorkerList.reset(); }
+    CentralWorker(boost::asio::io_service& ioService,
+                  std::string const& masterHostName,   int masterPort,
+                  std::string const& hostName,         int port,
+                  boost::asio::io_context& io_context, int tcpPort);
+
+    ~CentralWorker() override;
 
     WWorkerList::Ptr getWorkerList() const { return _wWorkerList; }
 
@@ -139,9 +106,13 @@ public:
 
     void testSendBadMessage();
 
+    friend CentralWorkerDoListItem;
+
 private:
     void _registerWithMaster();
-    void _monitorWorkers();
+    void _startMonitoring();
+
+    void _monitor();
 
     void _workerInfoReceive(std::unique_ptr<proto::WorkerListItem>& protoBuf);
 
@@ -153,19 +124,28 @@ private:
     void _forwardKeyInfoRequest(WWorkerListItem::Ptr const& target, LoaderMsg const& inMsg,
                                 std::unique_ptr<proto::KeyInfoInsert> const& protoData);
 
+    std::unique_ptr<proto::WorkerKeysInfo> _workerKeysInfoBuilder();
+    static void _workerKeysInfoExtractor(BufferUdp& data, uint32_t& name, NeighborsInfo& nInfo, StringRange& strRange);
+
     void _workerWorkerKeysInfoReq(LoaderMsg const& inMsg);
 
     void _removeOldEntries();
 
+    void _rightConnect();
+    void _rightDisconnect();
+
     bool _connectToLeftNeighbor(uint32_t neighborLeftName);
 
 
-    const std::string _hostName;
-    const int         _port;
+    const std::string        _hostName;
+    const int                _port;
+    boost::asio::io_context& _ioContext;
+    const int                _tcpPort;
+
     WWorkerList::Ptr _wWorkerList{new WWorkerList(this)};
 
     bool _ourNameInvalid{true}; ///< true until the name has been set by the master.
-    uint32_t _ourName; ///< name given to us by the master
+    uint32_t _ourName{0}; ///< name given to us by the master, 0 invalid name.
     mutable std::mutex _ourNameMtx; ///< protects _ourNameInvalid, _ourName
 
 
@@ -175,9 +155,39 @@ private:
     std::chrono::milliseconds _recent{60 * 1000};
     std::mutex _idMapMtx; ///< protects _strRange, _directorIdMap, _recentAdds
 
-    Neighbor _neighborLeft;
-    Neighbor _neighborRight;
+    Neighbor _neighborLeft{Neighbor::LEFT};
+    Neighbor _neighborRight{Neighbor::RIGHT};
+    ServerTcpBase::Ptr _tcpServer; // For our right neighbor to connect to us.
 
+    std::mutex _rightMtx;
+    SocketStatus _rightConnectStatus{VOID0};
+    std::shared_ptr<tcp::socket>  _rightSocket;
+
+    std::shared_ptr<CentralWorkerDoListItem> _centralWorkerDoListItem;
+};
+
+
+/// This class exists to regularly call the CentralWorker::_monitor() function, which
+/// does things like monitor TCP connections.
+class CentralWorkerDoListItem : public DoListItem {
+public:
+    CentralWorkerDoListItem() = delete;
+    explicit CentralWorkerDoListItem(CentralWorker* centralWorker) : _centralWorker(centralWorker) {}
+
+    util::CommandTracked::Ptr createCommand() override {
+        struct CWMonitorCmd : public util::CommandTracked {
+            CWMonitorCmd(CentralWorker* centralW) : centralWorker(centralW) {}
+            void action(util::CmdData*) override {
+                centralWorker->_monitor();
+            }
+            CentralWorker* centralWorker;
+        };
+        util::CommandTracked::Ptr cmd(new CWMonitorCmd(_centralWorker));
+        return cmd;
+    }
+
+private:
+    CentralWorker* _centralWorker;
 };
 
 
