@@ -48,24 +48,6 @@ class CentralMaster;
 class LoaderMsg;
 
 
-// &&& move this declaration
-struct NeighborsInfo {
-    NeighborsInfo() = default;
-    NeighborsInfo(NeighborsInfo const&) = delete;
-    NeighborsInfo& operator=(NeighborsInfo const&) = delete;
-
-    typedef std::shared_ptr<Updatable<uint32_t>> NeighborPtr;
-    typedef std::weak_ptr<Updatable<uint32_t>> NeighborWPtr;
-    NeighborPtr neighborLeft{new Updatable<uint32_t>(0)};   ///< Neighbor with lesser values
-    NeighborPtr neighborRight{new Updatable<uint32_t>(0)};  ///< Neighbor with higher values
-    uint32_t recentAdds{0}; ///< Number of keys added to this worker recently.
-    uint32_t keyCount{0};   ///< Total number of keys stored on the worker.
-};
-
-
-
-
-
 /// Standard information for a single worker, IP address, key range, timeouts.
 class MWorkerListItem : public std::enable_shared_from_this<MWorkerListItem> {
 public:
@@ -204,7 +186,7 @@ private:
 
 /// Create commands to set a worker's neighbor.
 /// It should keep trying this until it works. When the worker sets the neighbor to
-/// the target value, this object should initiate a chain reaction that destorys itself.
+/// the target value, this object should initiate a chain reaction that destroys itself.
 /// It is very important that the message and neighborPtr both point to
 //  the same (left or right) neighbor.
 class SetNeighborOneShot : public DoListItem, public UpdateNotify<uint32_t> {
@@ -248,7 +230,7 @@ class MWorkerList : public DoListItem {
 public:
     using Ptr = std::shared_ptr<MWorkerList>;
 
-    MWorkerList(CentralMaster* central) : _central(central) {}
+    MWorkerList(CentralMaster* central) : _central(central) {} // MUST be created as shared pointer.
     MWorkerList() = delete;
     MWorkerList(MWorkerList const&) = delete;
     MWorkerList& operator=(MWorkerList const&) = delete;

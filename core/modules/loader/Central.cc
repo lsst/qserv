@@ -69,13 +69,13 @@ void Central::run() {
 void Central::_checkDoList() {
     while(_loop) {
         // Run and then sleep for a second. A more advanced timer should be used
-        LOGS(_log, LOG_LVL_INFO, "\n\n &&& checking doList");
+        //LOGS(_log, LOG_LVL_INFO, "\n &&& checking doList");
         _doList.checkList();
         sleep(1);
     }
 }
 
-
+#if 0 // &&&
 void CentralMaster::addWorker(std::string const& ip, int port) {
     // LOGS(_log, LOG_LVL_INFO, "&&& Master::addWorker");
     auto item = _mWorkerList->addWorker(ip, port);
@@ -94,7 +94,14 @@ void CentralMaster::addWorker(std::string const& ip, int port) {
 
 
 void CentralMaster::updateNeighbors(uint32_t workerName, NeighborsInfo const& nInfo) {
+    if (workerName == 0) {
+        return;
+    }
     auto item = getWorkerNamed(workerName);
+    if (item == nullptr) {
+        LOGS(_log, LOG_LVL_WARN, "CentralMaster::updateNeighbors nullptr for workerName=" << workerName);
+        return;
+    }
     item->setKeyCounts(nInfo);
     _assignNeighborIfNeeded();
 }
@@ -119,12 +126,18 @@ void CentralMaster::setWorkerNeighbor(MWorkerListItem::WPtr const& target, int m
 
 
 void CentralMaster::_assignNeighborIfNeeded() {
+    LOGS(_log, LOG_LVL_INFO, "&&& CentralMaster::_assignNeighborIfNeeded");
     // Go through the list and see if all the workers are full.
     // If they are, assign a worker to the end (rightmost) worker
     // and increase the maximum by an order of magnitude, max 10 million.
     // TODO Make a better algorithm, insert workers at busiest worker.
     // TODO maybe rate limit this check.
     std::string funcName("_assignNeighborIfNeeded");
+    if (_addingWorker) {
+        // Already in process of adding a worker, so don't add another one.
+        // check if it failed &&& IMPORTANT
+        return;
+    }
     // Only one thread should ever be working on this logic at a time.
     std::lock_guard<std::mutex> lck(_assignMtx);
     auto pair = _mWorkerList->getActiveInactiveWorkerLists();
@@ -170,16 +183,20 @@ void CentralMaster::_assignNeighborIfNeeded() {
                                __FILE__, __LINE__);
             return;
         }
+        _addingWorker = true;
         /// Fun part !!! &&&
         // Sequence of events goes something like
-        // 1) left item gets message that it is getting a right neighbor, and writes it down
-        // 2) Right item get message that it is getting a left neighbor, writes it down.
-        // 3) Right connects to left item, which should be expecting it.
-        // 4) left item shifts its single largest entry to the right node.
-        // 5) right node now has a valid range, and informs master.
-        // 6) Done, as other bits should converge.
-        // TODO figure out how to detect that it didn't converge and fix it,
-        //      probably by examining the range list. CentralMaster::_mWorkerList
+        // 1) left item gets message from master that it is getting a right neighbor, and writes it down
+        // 2) Right item get message from master that it is getting a left neighbor, writes it down.
+        // 3) Right connects to left item, which should be expecting it. (keeps retrying for a minute &&& check that it only tries)
+        // 4) left item sends its largest key value to right
+        // 5) right node sets it range to unlimited and whatever left sent it + 1  (must make max unsigned int illegal, strings, add a 0 to the end)
+        //    5a) verifies this with master.
+        // 6) right indicates it is valid
+        // 7) left verifies. -  done. - shifting can now occur between nodes. -- set _addingWorker = false
+        // failure) ... if it goes 2 minutes without completing, cleanup + try different worker -- maybe set addingWorker = false
+
+        // Steps 1 and 2
         unlimitedItem->setRightNeighbor(inactiveItem);
         inactiveItem->setLeftNeighbor(unlimitedItem);
     }
@@ -197,7 +214,7 @@ void CentralMaster::reqWorkerKeysInfo(uint64_t msgId, std::string const& ip, sho
     reqMsg.serializeToData(data);
     sendBufferTo(ip, port, data);
 }
-
+#endif
 
 
 std::ostream& operator<<(std::ostream& os, ChunkSubchunk csc) {

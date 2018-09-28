@@ -248,7 +248,6 @@ void WWorkerList::updateEntry(uint32_t name, std::string const& ip, int port, St
             }
             if (strRange.getValid()) {
                 _rangeMap[strRange] = item;
-
             }
         }
     }
@@ -259,11 +258,12 @@ WWorkerListItem::Ptr WWorkerList::findWorkerForKey(std::string const& key) {
     std::unique_lock<std::mutex> lk(_mapMtx);
     // TODO Really could use a custom container for _rangeMap to speed this up.
     for (auto const& elem : _rangeMap) {
+        LOGS(_log, LOG_LVL_INFO, "&&& WWorkerList::findWorkerForKey checking " << elem.first << " -> " << *(elem.second));
         if (elem.second->containsKey(key)) {
             return elem.second;
         }
     }
-    LOGS(_log, LOG_LVL_ERROR, "WWorkerList::findWorkerForKey did not find worker for key=" << key);
+    LOGS(_log, LOG_LVL_WARN, "WWorkerList::findWorkerForKey did not find worker for key=" << key);
     return nullptr;
 }
 
@@ -317,6 +317,7 @@ StringRange WWorkerListItem::setRangeStr(StringRange const& strRange) {
     return false;
     */
     auto oldRange = _range;
+    _range = strRange;
     LOGS(_log, LOG_LVL_INFO, "setRangeStr name=" << _name << " range=" << _range <<
                              " oldRange=" << oldRange);
     return oldRange;

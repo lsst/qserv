@@ -33,7 +33,7 @@
 
 
 // qserv headers
-#include "loader/Central.h"
+#include "loader/CentralMaster.h"
 #include "loader/LoaderMsg.h"
 #include "proto/ProtoImporter.h"
 #include "proto/loader.pb.h"

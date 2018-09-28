@@ -129,7 +129,7 @@ protected:
 };
 
 
-
+#if 0 // &&&
 class CentralMaster : public Central {
 public:
     CentralMaster(boost::asio::io_service& ioService,
@@ -167,8 +167,9 @@ private:
     MWorkerList::Ptr _mWorkerList{new MWorkerList(this)}; ///< List of workers.
 
     std::atomic<bool> _firstWorkerRegistered{false}; ///< True when one worker has been activated.
+    std::atomic<bool> _addingWorker{false}; ///< True while adding a worker to the end of the list. &&& This should probably really be handled by states in the list of workers. &&&
 };
-
+#endif
 
 
 
