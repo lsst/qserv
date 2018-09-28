@@ -92,7 +92,7 @@ void CentralClient::_handleKeyInfo(LoaderMsg const& inMsg, std::unique_ptr<proto
         _waitingKeyInfoMap.erase(iter);
     }
     keyInfoOneShot->keyInfoComplete(key, chunkInfo.chunk, chunkInfo.subchunk, success);
-    LOGS(_log, LOG_LVL_INFO, "Successfully inserted key=" << key << " " << chunkInfo);
+    LOGS(_log, LOG_LVL_INFO, "Successfully found key=" << key << " " << chunkInfo);
 }
 
 

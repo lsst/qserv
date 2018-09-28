@@ -78,7 +78,6 @@ BufferUdp::Ptr WorkerServer::parseMsg(BufferUdp::Ptr const& data,
         _centralWorker->workerKeyInfoReq(inMsg, data);
         break;
     case LoaderMsg::WORKER_KEYS_INFO_REQ:
-        LOGS(_log, LOG_LVL_ERROR, "&&& need to add WORKER_KEYS_INFO_REQ handler for " << inMsg.msgKind->element);
         _centralWorker->workerWorkerKeysInfoReq(inMsg, data);
         break;
     case LoaderMsg::WORKER_RIGHT_NEIGHBOR:
