@@ -32,7 +32,7 @@
 
 
 // qserv headers
-#include "loader/Central.h"
+#include "loader/CentralMaster.h"
 #include "loader/LoaderMsg.h"
 #include "loader/NetworkAddress.h"
 #include "proto/ProtoImporter.h"
@@ -196,7 +196,9 @@ BufferUdp::Ptr MasterServer::workerKeysInfo(LoaderMsg const& inMsg, BufferUdp::P
     LOGS(_log, LOG_LVL_INFO, "  &&& " << funcName);
 
     try {
-        auto protoItem = StringElement::protoParse<proto::WorkerKeysInfo>(data);
+        /* &&&
+        LOGS(_log, LOG_LVL_INFO, "&&& MasterServer::workerKeysInfo parsing data");
+        auto protoItem = StringElement::protoParse<proto::WorkerKeysInfo>(*data);
         if (protoItem == nullptr) {
             throw LoaderMsgErr(funcName, __FILE__, __LINE__);
         }
@@ -206,7 +208,8 @@ BufferUdp::Ptr MasterServer::workerKeysInfo(LoaderMsg const& inMsg, BufferUdp::P
         nInfo.keyCount = protoItem->mapsize();
         nInfo.recentAdds = protoItem->recentadds();
         proto::WorkerRangeString protoRange = protoItem->range();
-        bool valid        = protoRange.valid();
+        LOGS(_log, LOG_LVL_INFO, "&&& MasterServer WorkerKeysInfo aaaaa name=" << workerName << " keyCount=" << nInfo.keyCount << " recentAdds=" << nInfo.recentAdds);
+        bool valid = protoRange.valid();
         StringRange strRange;
         if (valid) {
             std::string min   = protoRange.min();
@@ -217,13 +220,18 @@ BufferUdp::Ptr MasterServer::workerKeysInfo(LoaderMsg const& inMsg, BufferUdp::P
         }
         proto::Neighbor protoLeftNeigh = protoItem->left();
         nInfo.neighborLeft->update(protoLeftNeigh.name());
-
         proto::Neighbor protoRightNeigh = protoItem->right();
         nInfo.neighborRight->update(protoRightNeigh.name());
-
+        */
+        uint32_t name;
+        NeighborsInfo nInfo;
+        StringRange strRange;
+        ProtoHelper::workerKeysInfoExtractor(*data, name, nInfo, strRange);
+        LOGS(_log, LOG_LVL_INFO, "&&& MasterServer WorkerKeysInfo name=" << name << " keyCount=" << nInfo.keyCount << " recentAdds=" << nInfo.recentAdds);
+        LOGS(_log, LOG_LVL_WARN, "&&& MasterServer WorkerKeysInfo range=" << strRange);
         // TODO store the information, -> somewhere decide if it needs a neighbor.
         // &&& move to separate thread.
-        _centralMaster->updateNeighbors(workerName, nInfo);
+        _centralMaster->updateNeighbors(name, nInfo);
     } catch (LoaderMsgErr &msgErr) {
         LOGS(_log, LOG_LVL_ERROR, msgErr.what());
         return replyMsgReceived(senderEndpoint, inMsg, LoaderMsg::STATUS_PARSE_ERR, msgErr.what());
@@ -243,7 +251,7 @@ BufferUdp::Ptr MasterServer::workerInfoRequest(LoaderMsg const& inMsg, BufferUdp
             throw LoaderMsgErr(funcName, __FILE__, __LINE__);
         }
 
-        auto protoItem = StringElement::protoParse<proto::WorkerListItem>(data);
+        auto protoItem = StringElement::protoParse<proto::WorkerListItem>(*data);
         if (protoItem == nullptr) {
             throw LoaderMsgErr(funcName, __FILE__, __LINE__);
         }

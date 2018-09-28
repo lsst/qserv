@@ -26,8 +26,8 @@
 #include <boost/asio.hpp>
 
 // Qserv headers
-#include "loader/Central.h"
 #include "loader/CentralClient.h"
+#include "loader/CentralMaster.h"
 #include "loader/CentralWorker.h"
 #include "loader/LoaderMsg.h"
 #include "loader/MasterServer.h"
@@ -44,6 +44,14 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.loader.test");
 
 using namespace lsst::qserv::loader;
 using  boost::asio::ip::udp;
+
+struct KeyChSch {
+    KeyChSch(std::string const& k, int c, int sc) : key(k), chunk(c), subchunk(sc) {}
+    std::string key;
+    int chunk;
+    int subchunk;
+};
+
 
 int main(int argc, char* argv[]) {
     UInt16Element num16(1 | 2 << 8);
@@ -175,28 +183,6 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    /* &&&
-    /// Start a TCP server and client &&&
-    {
-        try {
-            LOGS(_log, LOG_LVL_INFO, "TCPServ a");
-            boost::asio::io_context io_context;
-            LOGS(_log, LOG_LVL_INFO, "TCPServ b");
-            TcpServer server(io_context, 1041);
-            LOGS(_log, LOG_LVL_INFO, "TCPServ c");
-            server.runThread();
-            LOGS(_log, LOG_LVL_INFO, "TCPServ d");
-
-            server.testConnect();
-            server.testConnect();
-            LOGS(_log, LOG_LVL_INFO, "TCPServ e");
-            sleep(5);
-        }
-        catch (std::exception& e) {
-            std::cerr << e.what() << std::endl;
-        }
-    }
-    */
 
     {
         try {
@@ -218,8 +204,6 @@ int main(int argc, char* argv[]) {
     }
 
 
-    exit(0); // &&&
-
     ////////////////////////////////////////////////////////////////////////////
 
     /// &&& TODO test timeouts. Start a worker server and try to contact master.
@@ -236,11 +220,15 @@ int main(int argc, char* argv[]) {
 
     std::string worker1IP = "127.0.0.1";
     int worker1Port = 10043;
+    int worker1TcpPort = 10143;
     boost::asio::io_service ioServiceWorker1;
+    boost::asio::io_context ioContext1;
 
     std::string worker2IP = "127.0.0.1";
     int worker2Port = 10044;
+    int worker2TcpPort = 10144;
     boost::asio::io_service ioServiceWorker2;
+    boost::asio::io_context ioContext2;
 
     std::string client1AIP = "127.0.0.1";
     int client1APort = 10050;
@@ -256,6 +244,7 @@ int main(int argc, char* argv[]) {
 
 
     CentralMaster cMaster(ioServiceMaster, masterIP, masterPort);
+    cMaster.setMaxKeysPerWorker(4);
     // Need to start several threads so messages aren't dropped while being processed.
     cMaster.run();
     cMaster.run();
@@ -264,14 +253,14 @@ int main(int argc, char* argv[]) {
     cMaster.run();
 
     /// Start worker server 1
-    CentralWorker wCentral1(ioServiceWorker1, masterIP, masterPort, worker1IP, worker1Port);
+    CentralWorker wCentral1(ioServiceWorker1, masterIP, masterPort, worker1IP, worker1Port, ioContext1, worker1TcpPort);
     wCentral1.run();
     wCentral1.run();
     wCentral1.run();
 
 
     /// Start worker server 2
-    CentralWorker wCentral2(ioServiceWorker2, masterIP, masterPort, worker2IP, worker2Port);
+    CentralWorker wCentral2(ioServiceWorker2, masterIP, masterPort, worker2IP, worker2Port, ioContext2, worker2TcpPort);
     wCentral2.run();
     wCentral2.run();
     wCentral2.run();
@@ -290,7 +279,7 @@ int main(int argc, char* argv[]) {
     /// Unknown message kind test. Pretending to be worker1.
     {
         auto originalErrCount = wCentral1.getErrCount();
-        std::cout << "******1******** testSendBadMessage start" << std::endl;
+        std::cout << "******1******** TSTAGE testSendBadMessage start" << std::endl;
         wCentral1.testSendBadMessage();
         sleep(2); // &&& want handshaking
 
@@ -302,14 +291,14 @@ int main(int argc, char* argv[]) {
 
     /// Real message, register worker1 with the master
     {
-        std::cout << "******2******* register worker 1 start" << std::endl;
+        std::cout << "******2******* TSTAGE register worker 1 start" << std::endl;
         wCentral1.registerWithMaster();
 
     }
 
     /// register worker2 with the master
     {
-        std::cout << "******3******* register worker 2 start" << std::endl;
+        std::cout << "******3******* TSTAGE register worker 2 start" << std::endl;
         wCentral2.registerWithMaster();
 
         std::cout << "&&&******1************************************** end" << std::endl;
@@ -335,27 +324,31 @@ int main(int argc, char* argv[]) {
 
 
     /// Client
-    std::cout << "\n\n\n******3******* client register key A" << std::endl;
-    std::string keyA("asdf1");
-    int keyAChunk = 4001;
-    int keyASubchunk = 200001;
-    auto keyAInsert = cCentral1A.keyInsertReq(keyA, keyAChunk, keyASubchunk);
+    std::cout << "\n\n\n******3******* TSTAGE client register key A" << std::endl;
+    KeyChSch keyA("asdf_1", 4001, 200001);
+    auto keyAInsert = cCentral1A.keyInsertReq(keyA.key, keyA.chunk, keyA.subchunk);
 
 
-    sleep(3); // remove &&&
-    std::cout << "\n\n\n******4******* client register key B" << std::endl;
-    std::string keyB("ndjes_bob");
-    int keyBChunk = 9871;
-    int keyBSubchunk = 65008;
-    auto keyBInsert = cCentral1B.keyInsertReq(keyB, keyBChunk, keyBSubchunk);
+    //sleep(3); // remove &&&
+    std::cout << "\n\n\n******4******* TSTAGE client register key B" << std::endl;
+    KeyChSch keyB("ndjes_bob", 9871, 65008);
+    auto keyBInsert = cCentral1B.keyInsertReq(keyB.key, keyB.chunk, keyB.subchunk);
 
-    std::string keyC("asldiebb");
-    int keyCChunk = 422001;
-    int keyCSubchunk = 7373721;
+    KeyChSch keyC("asl_diebb", 422001, 7373721);
+
+    size_t arraySz = 1000;
+    std::vector<KeyChSch> keyList;
+    std::string bStr("a");
+    for (size_t j=0; j<arraySz; ++j) {
+        std::string reversed(bStr.rbegin(), bStr.rend());
+        LOGS(_log, LOG_LVL_INFO, bStr << " newKey=" << reversed << " j(" << j%10 << " ," << j << ")");
+        keyList.emplace_back(reversed, j%10, j);
+        bStr = StringRange::advanceString(bStr, '0');
+    }
 
 
-    // &&& TODO retrieve keys keyA and keyB
-    sleep(10);
+    // retrieve keys keyA and keyB
+    sleep(2); // need to sleep as it never gives up on inserts.
     if (keyAInsert->isFinished() && keyBInsert->isFinished()) {
         LOGS(_log, LOG_LVL_INFO, "both keyA and KeyB inserted.");
     } else {
@@ -364,44 +357,116 @@ int main(int argc, char* argv[]) {
     }
 
     // Retrieve keyA and keyB
-    std::cout << "\n\n\n******5******* client retrieve keyB keyA^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^***" << std::endl;
-    auto keyBInfo = cCentral1A.keyInfoReq(keyB);
-    auto keyAInfo = cCentral1A.keyInfoReq(keyA);
-    auto keyCInfo = cCentral1A.keyInfoReq(keyC);
+    {
+        std::cout << "\n\n\n******5******* TSTAGE client retrieve keyB keyA^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^***" << std::endl;
+        auto keyBInfo = cCentral1A.keyInfoReq(keyB.key);
+        auto keyAInfo = cCentral1A.keyInfoReq(keyA.key);
+        auto keyCInfo = cCentral1A.keyInfoReq(keyC.key);
 
-    keyAInfo->waitComplete();
-    keyBInfo->waitComplete();
-    std::cout << "\n\n\n******5******* client retrieve DONE keyB keyA^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^***" << std::endl;
-    LOGS(_log, LOG_LVL_INFO, "looked up keyA " << *keyAInfo);
-    LOGS(_log, LOG_LVL_INFO, "looked up keyB " << *keyBInfo);
+        keyAInfo->waitComplete();
+        keyBInfo->waitComplete();
+        std::cout << "\n\n\n******5******* TSTAGE client retrieve DONE keyB keyA^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^***" << std::endl;
+        LOGS(_log, LOG_LVL_INFO, "looked up keyA " << *keyAInfo);
+        LOGS(_log, LOG_LVL_INFO, "looked up keyB " << *keyBInfo);
 
-    keyCInfo->waitComplete();
-    LOGS(_log, LOG_LVL_INFO, "looked up (expect to fail) keyC " << *keyCInfo);
+        keyCInfo->waitComplete();
+        LOGS(_log, LOG_LVL_INFO, "looked up (expect to fail) keyC " << *keyCInfo);
 
-    if (keyAInfo->key != keyA || keyAInfo->chunk != keyAChunk || keyAInfo->subchunk != keyASubchunk || !keyAInfo->success) {
-        LOGS(_log, LOG_LVL_ERROR, "keyA lookup got incorrect value " << *keyAInfo);
-        exit(-1);
+        if (keyAInfo->key != keyA.key || keyAInfo->chunk != keyA.chunk || keyAInfo->subchunk != keyA.subchunk || !keyAInfo->success) {
+            LOGS(_log, LOG_LVL_ERROR, "keyA lookup got incorrect value " << *keyAInfo);
+            exit(-1);
+        }
+        if (keyBInfo->key != keyB.key || keyBInfo->chunk != keyB.chunk || keyBInfo->subchunk != keyB.subchunk || !keyBInfo->success) {
+            LOGS(_log, LOG_LVL_ERROR, "keyB lookup got incorrect value " << *keyBInfo);
+            exit(-1);
+        }
+        if (keyCInfo->success) {
+            LOGS(_log, LOG_LVL_ERROR, "keyC lookup got incorrect value " << *keyCInfo);
+            exit(-1);
+        }
     }
 
-    if (keyBInfo->key != keyB || keyBInfo->chunk != keyBChunk || keyBInfo->subchunk != keyBSubchunk || !keyBInfo->success) {
-        LOGS(_log, LOG_LVL_ERROR, "keyB lookup got incorrect value " << *keyBInfo);
-        exit(-1);
+
+
+    // Add item to worker 2, test retrieval
+    {
+        std::cout << "\n\n\n******6******* TSTAGE client insert keyC lookup all keys ***" << std::endl;
+        auto keyCInsert = cCentral2A.keyInsertReq(keyC.key, keyC.chunk, keyC.subchunk);
+        sleep(2); // need to sleep as it never gives up on inserts.
+        if (keyCInsert->isFinished()) {
+            LOGS(_log, LOG_LVL_INFO, "keyC inserted.");
+        }
+
+        auto keyAInfo = cCentral1A.keyInfoReq(keyA.key);
+        std::cout << "\n\n\n******6******* TSTAGE waiting A ***" << std::endl;
+        keyAInfo->waitComplete();
+
+        auto keyBInfo = cCentral2A.keyInfoReq(keyB.key);
+        std::cout << "\n\n\n******6******* TSTAGE waiting B ***" << std::endl;
+        keyBInfo->waitComplete();
+
+        auto keyCInfo = cCentral2A.keyInfoReq(keyC.key);
+        std::cout << "\n\n\n******6******* TSTAGE waiting C ***" << std::endl;
+        keyCInfo->waitComplete();
+
+        std::cout << "\n\n\n******6******* TSTAGE done waiting ***" << std::endl;
+        if (keyAInfo->key != keyA.key || keyAInfo->chunk != keyA.chunk || keyAInfo->subchunk != keyA.subchunk || !keyAInfo->success) {
+            LOGS(_log, LOG_LVL_ERROR, "keyA lookup got incorrect value " << *keyAInfo);
+            exit(-1);
+        }
+        if (keyBInfo->key != keyB.key || keyBInfo->chunk != keyB.chunk || keyBInfo->subchunk != keyB.subchunk || !keyBInfo->success) {
+            LOGS(_log, LOG_LVL_ERROR, "keyB lookup got incorrect value " << *keyBInfo);
+            exit(-1);
+        }
+        if (keyCInfo->key != keyC.key || keyCInfo->chunk != keyC.chunk || keyCInfo->subchunk != keyC.subchunk || !keyCInfo->success) {
+            LOGS(_log, LOG_LVL_ERROR, "keyC lookup got incorrect value " << *keyCInfo);
+            exit(-1);
+        }
     }
 
-    if (keyCInfo->success) {
-        LOGS(_log, LOG_LVL_ERROR, "keyC lookup got incorrect value " << *keyCInfo);
-        exit(-1);
+
+    size_t kPos = 0;
+    {
+        std::cout << "\n\n\n******7******* TSTAGE insert several keys ***" << std::endl;
+        auto keyAInsert = cCentral1A.keyInsertReq(keyA.key, keyA.chunk, keyA.subchunk);
+        std::vector<KeyInfoData::Ptr> keyInfoDataList;
+
+        for (; kPos<10; ++kPos) {
+            auto& elem = keyList[kPos];
+            keyInfoDataList.push_back(cCentral1A.keyInsertReq(elem.key, elem.chunk, elem.subchunk));
+        }
+
+        sleep(2); // need to sleep as it never gives up on inserts.
+        bool insertSuccess = true;
+        for(auto&& kiData : keyInfoDataList) {
+            if (not kiData->isFinished()) {
+                insertSuccess = false;
+            }
+        }
+
+        if (insertSuccess) {
+            LOGS(_log, LOG_LVL_INFO, "insert success kPos=" << kPos);
+        } else {
+            LOGS(_log, LOG_LVL_ERROR, "insert failure kPos=" << kPos);
+            exit(-1);
+        }
+
+        // The number of active servers should have increased from 1 to 2
+
+        if (keyAInsert->isFinished() && keyBInsert->isFinished()) {
+            LOGS(_log, LOG_LVL_INFO, "both keyA and KeyB inserted.");
+        } else {
+            LOGS(_log, LOG_LVL_INFO, "\nkeyA and KeyB insert something did not finish");
+            exit(-1);
+        }
+
     }
-
-
-
-    // TODO Add item to worker 2
 
 
     //ioService.stop(); // &&& this doesn't seem to work cleanly
     // mastT.join(); &&&
 
-    sleep(30);
+    sleep(10);
     std::cout << "DONE" << std::endl;
     exit(0);
 }
