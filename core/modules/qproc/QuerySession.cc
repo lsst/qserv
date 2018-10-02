@@ -90,11 +90,10 @@ namespace qproc {
 
 // Analyze SQL query issued by user
 void QuerySession::analyzeQuery(std::string const& sql) {
-    std::shared_ptr<query::SelectStmt> stmt;
+    std::shared_ptr<query::SelectStmt> stmt = parseQuery(sql);
+
+    // TODO does analyzeQuery ever throw a ParseException? (seems like a parse thing, not an analyze thing?)
     try {
-        auto parser = parser::SelectParser::newInstance(sql, parser::SelectParser::ANTLR4);
-        parser->setup();
-        stmt = parser->getSelectStmt();
         analyzeQuery(sql, stmt);
     } catch(parser::ParseException const& e) {
         // parser failed, we only need to set error here, nothing else should matter
@@ -102,6 +101,23 @@ void QuerySession::analyzeQuery(std::string const& sql) {
         _error = std::string("ParseException:") + e.what();
     }
 }
+
+
+std::shared_ptr<query::SelectStmt> QuerySession::parseQuery(std::string const& sql, bool antlr2) {
+    std::shared_ptr<query::SelectStmt> stmt;
+    try {
+        auto parser = parser::SelectParser::newInstance(sql,
+                antlr2 ? parser::SelectParser::ANTLR2 : parser::SelectParser::ANTLR4);
+        parser->setup();
+        stmt = parser->getSelectStmt();
+    } catch(parser::ParseException const& e) {
+        // parser failed, we only need to set error here, nothing else should matter
+        _original = sql;
+        _error = std::string("ParseException:") + e.what();
+    }
+    return stmt;
+}
+
 
 // Analyze SQL query issued by user
 void QuerySession::analyzeQuery(std::string const& sql, std::shared_ptr<query::SelectStmt> const& stmt) {
