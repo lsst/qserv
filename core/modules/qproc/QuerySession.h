@@ -43,6 +43,7 @@
 #include "css/CssAccess.h"
 #include "global/intTypes.h"
 #include "mysql/MySqlConfig.h"
+#include "parser/SelectParser.h"
 #include "qana/QueryPlugin.h"
 #include "qproc/ChunkQuerySpec.h"
 #include "qproc/ChunkSpec.h"
@@ -83,28 +84,11 @@ public:
         : _css(css), _defaultDb(defaultDb),
           _mysqlSchemaConfig(mysqlSchemaConfig) {}
 
+    std::shared_ptr<query::SelectStmt> parseQuery(std::string statement,
+            parser::SelectParser::AntlrVersion version);
+
     std::string const& getOriginal() const { return _original; }
 
-    /**
-     * @brief Parse the sql query, using it to generate a SelectStmt
-     *
-     * This function is public for access by unit tests only
-     *
-     * @param sql: the sql query
-     * @param antlr2: true to parse the query using the antlr2 parser, else the antlr4 parser will be used.
-     */
-    std::shared_ptr<query::SelectStmt> parseQuery(std::string const& sql, bool antlr2=false);
-
-    /**
-     * @brief Analyze SQL query issued by user
-     *
-     * This query comes from user through mysql-client and mysql-proxy
-     * This function will parse it, apply query plugins (i.e. build parallel and
-     * merge queries) and check for errors
-     *
-     * @param sql: the sql query
-     */
-    void analyzeQuery(std::string const& sql);
     /**
      * @brief Analyze SQL query using parsed query
      *
