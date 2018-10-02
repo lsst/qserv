@@ -175,7 +175,10 @@ void FindAllJob::notify(util::Lock const& lock) {
         controller()->io_service().post(
             std::bind(
                 std::move(_onFinish),
-                shared_from_base<FindAllJob>()));
+                shared_from_base<FindAllJob>()
+            )
+        );
+        _onFinish = nullptr;
     }
 }
 

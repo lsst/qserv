@@ -207,7 +207,10 @@ void QservSyncJob::notify(util::Lock const& lock) {
         controller()->io_service().post(
             std::bind(
                 std::move(_onFinish),
-                shared_from_base<QservSyncJob>()));
+                shared_from_base<QservSyncJob>()
+            )
+        );
+        _onFinish = nullptr;
     }
 }
 

@@ -293,7 +293,10 @@ void DeleteReplicaJob::notify(util::Lock const& lock) {
         controller()->io_service().post(
             std::bind(
                 std::move(_onFinish),
-                shared_from_base<DeleteReplicaJob>()));
+                shared_from_base<DeleteReplicaJob>()
+            )
+        );
+        _onFinish = nullptr;
     }
 }
 

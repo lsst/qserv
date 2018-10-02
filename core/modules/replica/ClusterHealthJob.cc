@@ -212,7 +212,10 @@ void ClusterHealthJob::notify(util::Lock const& lock) {
         controller()->io_service().post(
             std::bind(
                 std::move(_onFinish),
-                shared_from_base<ClusterHealthJob>()));
+                shared_from_base<ClusterHealthJob>()
+            )
+        );
+        _onFinish = nullptr;
     }
 }
 

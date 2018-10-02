@@ -111,7 +111,7 @@ void TestEchoQservRequest::onResponse(proto::FrameBufferView& view) {
         //    pointer to the object was mentioned as the lambda-function's closure
 
         auto onFinish = std::move(_onFinish);
-
+        _onFinish = nullptr;
         onFinish(::translate(reply.status()),
                  reply.error(),
                  _value,
@@ -131,7 +131,7 @@ void TestEchoQservRequest::onError(std::string const& error) {
         //    pointer to the object was mentioned as the lambda-function's closure
 
         auto onFinish = std::move(_onFinish);
-
+        _onFinish = nullptr;
         onFinish(Status::ERROR,
                  error,
                  _value,

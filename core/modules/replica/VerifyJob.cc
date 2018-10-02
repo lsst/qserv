@@ -301,7 +301,10 @@ void VerifyJob::notify(util::Lock const& lock) {
         controller()->io_service().post(
             std::bind(
                 std::move(_onFinish),
-                shared_from_base<VerifyJob>()));
+                shared_from_base<VerifyJob>()
+            )
+        );
+        _onFinish = nullptr;
     }
 }
 

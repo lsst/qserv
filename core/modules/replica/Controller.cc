@@ -80,6 +80,7 @@ struct RequestWrapperImpl
             //    pointer to the object was mentioned as the lambda-function's closure
 
             auto onFinish = std::move(_onFinish);
+            _onFinish = nullptr;
             onFinish(_request);
         }
     }

@@ -166,7 +166,10 @@ void RebalanceJob::notify(util::Lock const& lock) {
         controller()->io_service().post(
             std::bind(
                 std::move(_onFinish),
-                shared_from_base<RebalanceJob>()));
+                shared_from_base<RebalanceJob>()
+            )
+        );
+        _onFinish = nullptr;
     }
 }
 

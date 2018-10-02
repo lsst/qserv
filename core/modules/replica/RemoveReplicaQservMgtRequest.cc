@@ -177,7 +177,10 @@ void RemoveReplicaQservMgtRequest::notify(util::Lock const& lock) {
         serviceProvider()->io_service().post(
             std::bind(
                 std::move(_onFinish),
-                shared_from_base<RemoveReplicaQservMgtRequest>()));
+                shared_from_base<RemoveReplicaQservMgtRequest>()
+            )
+        );
+        _onFinish = nullptr;
     }
 }
 

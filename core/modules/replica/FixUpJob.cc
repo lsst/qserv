@@ -200,7 +200,10 @@ void FixUpJob::notify(util::Lock const& lock) {
         controller()->io_service().post(
             std::bind(
                 std::move(_onFinish),
-                shared_from_base<FixUpJob>()));
+                shared_from_base<FixUpJob>()
+            )
+        );
+        _onFinish = nullptr;
     }
 }
 

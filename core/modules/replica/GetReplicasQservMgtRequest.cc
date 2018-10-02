@@ -209,7 +209,10 @@ void GetReplicasQservMgtRequest::notify(util::Lock const& lock) {
         serviceProvider()->io_service().post(
             std::bind(
                 std::move(_onFinish),
-                shared_from_base<GetReplicasQservMgtRequest>()));
+                shared_from_base<GetReplicasQservMgtRequest>()
+            )
+        );
+        _onFinish = nullptr;
     }
 }
 }}} // namespace lsst::qserv::replica

@@ -303,7 +303,10 @@ void CreateReplicaJob::notify(util::Lock const& lock) {
         controller()->io_service().post(
             std::bind(
                 std::move(_onFinish),
-                shared_from_base<CreateReplicaJob>()));
+                shared_from_base<CreateReplicaJob>()
+            )
+        );
+        _onFinish = nullptr;
     }
 }
 

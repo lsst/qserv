@@ -418,7 +418,10 @@ void DeleteWorkerJob::notify(util::Lock const& lock) {
         controller()->io_service().post(
             std::bind(
                 std::move(_onFinish),
-                shared_from_base<DeleteWorkerJob>()));
+                shared_from_base<DeleteWorkerJob>()
+            )
+        );
+        _onFinish = nullptr;
     }
 }
 
