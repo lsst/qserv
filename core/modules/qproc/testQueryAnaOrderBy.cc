@@ -51,9 +51,11 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "parser/SelectParser.h"
 #include "query/SelectStmt.h"
 #include "tests/QueryAnaFixture.h"
 
+using lsst::qserv::parser::SelectParser;
 using lsst::qserv::qproc::QuerySession;
 using lsst::qserv::query::SelectStmt;
 using lsst::qserv::tests::QueryAnaFixture;
@@ -63,7 +65,7 @@ inline void check(QuerySession::Test qsTest, QueryAnaHelper queryAnaHelper,
                   std::string stmt, std::string expectedParallel,
                   std::string expectedMerge, std::string expectedProxyOrderBy) {
     std::vector<std::string> expectedQueries = { expectedParallel, expectedMerge, expectedProxyOrderBy };
-    auto queries = queryAnaHelper.getInternalQueries(qsTest, stmt);
+    auto queries = queryAnaHelper.getInternalQueries(qsTest, stmt, SelectParser::ANTLR2);
     BOOST_CHECK_EQUAL_COLLECTIONS(queries.begin(), queries.end(),
                                   expectedQueries.begin(), expectedQueries.end());
 }

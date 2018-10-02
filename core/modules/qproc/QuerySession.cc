@@ -88,34 +88,19 @@ namespace qproc {
 // class QuerySession
 ////////////////////////////////////////////////////////////////////////
 
-// Analyze SQL query issued by user
-void QuerySession::analyzeQuery(std::string const& sql) {
-    std::shared_ptr<query::SelectStmt> stmt = parseQuery(sql);
 
-    // TODO does analyzeQuery ever throw a ParseException? (seems like a parse thing, not an analyze thing?)
+std::shared_ptr<query::SelectStmt> QuerySession::parseQuery(std::string const & statement,
+        parser::SelectParser::AntlrVersion version) {
+    auto parser = parser::SelectParser::newInstance(statement, version);
     try {
-        analyzeQuery(sql, stmt);
-    } catch(parser::ParseException const& e) {
-        // parser failed, we only need to set error here, nothing else should matter
-        _original = sql;
-        _error = std::string("ParseException:") + e.what();
-    }
-}
-
-
-std::shared_ptr<query::SelectStmt> QuerySession::parseQuery(std::string const& sql, bool antlr2) {
-    std::shared_ptr<query::SelectStmt> stmt;
-    try {
-        auto parser = parser::SelectParser::newInstance(sql,
-                antlr2 ? parser::SelectParser::ANTLR2 : parser::SelectParser::ANTLR4);
         parser->setup();
-        stmt = parser->getSelectStmt();
     } catch(parser::ParseException const& e) {
-        // parser failed, we only need to set error here, nothing else should matter
-        _original = sql;
+        LOGS(_log, LOG_LVL_DEBUG, "parse exception: " << e.what());
+        _original = statement;
         _error = std::string("ParseException:") + e.what();
+        return nullptr;
     }
-    return stmt;
+    return parser->getSelectStmt();
 }
 
 

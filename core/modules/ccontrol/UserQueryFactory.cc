@@ -108,20 +108,6 @@ UserQueryFactory::UserQueryFactory(czar::CzarConfig const& czarConfig,
 }
 
 
-std::shared_ptr<query::SelectStmt> UserQueryFactory::antlr2NewSelectStmt(const std::string& query) {
-    auto parser = parser::SelectParser::newInstance(query, parser::SelectParser::ANTLR2);
-    parser->setup();
-    return parser->getSelectStmt();
-}
-
-
-std::shared_ptr<query::SelectStmt> UserQueryFactory::antlr4NewSelectStmt(const std::string& query) {
-    auto parser = parser::SelectParser::newInstance(query, parser::SelectParser::ANTLR4);
-    parser->setup();
-    return parser->getSelectStmt();
-}
-
-
 UserQuery::Ptr
 UserQueryFactory::newUserQuery(std::string const& aQuery,
                                std::string const& defaultDb,
