@@ -74,6 +74,9 @@ class QuerySession {
 public:
     typedef std::shared_ptr<QuerySession> Ptr;
 
+    // null constructor should only be used by parser unit tests.
+    QuerySession() {}
+
     QuerySession(std::shared_ptr<css::CssAccess> css,
                  mysql::MySqlConfig const& mysqlSchemaConfig,
                  std::string const& defaultDb)
@@ -81,6 +84,16 @@ public:
           _mysqlSchemaConfig(mysqlSchemaConfig) {}
 
     std::string const& getOriginal() const { return _original; }
+
+    /**
+     * @brief Parse the sql query, using it to generate a SelectStmt
+     *
+     * This function is public for access by unit tests only
+     *
+     * @param sql: the sql query
+     * @param antlr2: true to parse the query using the antlr2 parser, else the antlr4 parser will be used.
+     */
+    std::shared_ptr<query::SelectStmt> parseQuery(std::string const& sql, bool antlr2=false);
 
     /**
      * @brief Analyze SQL query issued by user
@@ -99,6 +112,7 @@ public:
      * @param stmt: parsed select statement
      */
     void analyzeQuery(std::string const& sql, std::shared_ptr<query::SelectStmt> const& stmt);
+
     bool needsMerge() const;
     bool hasChunks() const;
 
