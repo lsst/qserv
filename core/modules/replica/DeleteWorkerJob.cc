@@ -129,10 +129,10 @@ DeleteWorkerJobResult const& DeleteWorkerJob::getReplicaData() const {
         "DeleteWorkerJob::getReplicaData()  the method can't be called while the job hasn't finished");
 }
 
-std::map<std::string,std::string> DeleteWorkerJob::extendedPersistentState() const {
-    std::map<std::string,std::string> result;
-    result["worker"]           = worker();
-    result["permanent_delete"] = permanentDelete() ? "1" : "0";
+std::list<std::pair<std::string,std::string>> DeleteWorkerJob::extendedPersistentState() const {
+    std::list<std::pair<std::string,std::string>> result;
+    result.emplace_back("worker",           worker());
+    result.emplace_back("permanent_delete", permanentDelete() ? "1" : "0");
     return result;
 }
 

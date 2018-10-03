@@ -72,11 +72,11 @@ AddReplicaQservMgtRequest::AddReplicaQservMgtRequest(
         _qservRequest(nullptr) {
 }
 
-std::map<std::string,std::string> AddReplicaQservMgtRequest::extendedPersistentState() const {
-    std::map<std::string,std::string> result;
-    result["chunk"] = chunk();
+std::list<std::pair<std::string,std::string>> AddReplicaQservMgtRequest::extendedPersistentState() const {
+    std::list<std::pair<std::string,std::string>> result;
+    result.emplace_back("chunk", std::to_string(chunk()));
     for (auto&& database: databases()) {
-        result["database"] = database;
+        result.emplace_back("database",database);
     }
     return result;
 }

@@ -240,8 +240,8 @@ public:
      *            method Request::savePersistentState() has a non-trivial
      *            implementation by a subclass.
      */
-    virtual std::map<std::string,std::string> extendedPersistentState() const {
-        return std::map<std::string,std::string>();
+    virtual std::list<std::pair<std::string,std::string>> extendedPersistentState() const {
+        return std::list<std::pair<std::string,std::string>>();
     }
 
 protected:

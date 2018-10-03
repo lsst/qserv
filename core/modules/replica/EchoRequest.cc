@@ -305,10 +305,10 @@ void EchoRequest::savePersistentState(util::Lock const& lock) {
     controller()->serviceProvider()->databaseServices()->saveState(*this, performance(lock));
 }
 
-std::map<std::string,std::string> EchoRequest::extendedPersistentState() const {
-    std::map<std::string,std::string> result;
-    result["data_length_bytes"]  = std::to_string(data().size());
-    result["delay_milliseconds"] = std::to_string(delay());
+std::list<std::pair<std::string,std::string>> EchoRequest::extendedPersistentState() const {
+    std::list<std::pair<std::string,std::string>> result;
+    result.emplace_back("data_length_bytes",  std::to_string(data().size()));
+    result.emplace_back("delay_milliseconds", std::to_string(delay()));
     return result;
 }
 

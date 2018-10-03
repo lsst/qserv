@@ -85,12 +85,12 @@ QservReplicaCollection const& SetReplicasQservMgtRequest::replicas() const {
     return _replicas;
 }
 
-std::map<std::string,std::string> SetReplicasQservMgtRequest::extendedPersistentState() const {
-    std::map<std::string,std::string> result;
+std::list<std::pair<std::string,std::string>> SetReplicasQservMgtRequest::extendedPersistentState() const {
+    std::list<std::pair<std::string,std::string>> result;
     for (auto&& replica: newReplicas()) {
-        result["replica"] = replica.database + ":" + std::to_string(replica.chunk);
+        result.emplace_back("replica", replica.database + ":" + std::to_string(replica.chunk));
     }
-    result["force"] = force() ? "1" : "0";
+    result.emplace_back("force", force() ? "1" : "0");
     return result;
 }
 

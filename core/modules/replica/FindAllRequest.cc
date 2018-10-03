@@ -313,9 +313,9 @@ void FindAllRequest::savePersistentState(util::Lock const& lock) {
     controller()->serviceProvider()->databaseServices()->saveState(*this, performance(lock));
 }
 
-std::map<std::string,std::string> FindAllRequest::extendedPersistentState() const {
-    std::map<std::string,std::string> result;
-    result["database"] = database();
+std::list<std::pair<std::string,std::string>> FindAllRequest::extendedPersistentState() const {
+    std::list<std::pair<std::string,std::string>> result;
+    result.emplace_back("database", database());
     return result;
 }
 

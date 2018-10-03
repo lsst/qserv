@@ -316,10 +316,10 @@ void FindRequest::savePersistentState(util::Lock const& lock) {
     controller()->serviceProvider()->databaseServices()->saveState(*this, performance(lock));
 }
 
-std::map<std::string,std::string> FindRequest::extendedPersistentState() const {
-    std::map<std::string,std::string> result;
-    result["database"] = database();
-    result["chunk"]    = std::to_string(chunk());
+std::list<std::pair<std::string,std::string>> FindRequest::extendedPersistentState() const {
+    std::list<std::pair<std::string,std::string>> result;
+    result.emplace_back("database", database());
+    result.emplace_back("chunk",    std::to_string(chunk()));
     return result;
 }
 

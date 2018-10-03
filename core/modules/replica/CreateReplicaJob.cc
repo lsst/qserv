@@ -126,12 +126,12 @@ CreateReplicaJobResult const& CreateReplicaJob::getReplicaData() const {
         "CreateReplicaJob::getReplicaData  the method can't be called while the job hasn't finished");
 }
 
-std::map<std::string,std::string> CreateReplicaJob::extendedPersistentState() const {
-    std::map<std::string,std::string> result;
-    result["database_family"]    = databaseFamily();
-    result["timeout_sec"]        = std::to_string(chunk());
-    result["source_worker"]      = sourceWorker();
-    result["destination_worker"] = destinationWorker();
+std::list<std::pair<std::string,std::string>> CreateReplicaJob::extendedPersistentState() const {
+    std::list<std::pair<std::string,std::string>> result;
+    result.emplace_back("database_family",    databaseFamily());
+    result.emplace_back("timeout_sec",        std::to_string(chunk()));
+    result.emplace_back("source_worker",      sourceWorker());
+    result.emplace_back("destination_worker", destinationWorker());
     return result;
 }
 

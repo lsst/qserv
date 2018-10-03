@@ -101,10 +101,10 @@ ReplicateJobResult const& ReplicateJob::getReplicaData() const {
         "ReplicateJob::getReplicaData  the method can't be called while the job hasn't finished");
 }
 
-std::map<std::string,std::string> ReplicateJob::extendedPersistentState() const {
-    std::map<std::string,std::string> result;
-    result["database_family"] = databaseFamily();
-    result["num_replicas"]    = std::to_string(numReplicas());
+std::list<std::pair<std::string,std::string>> ReplicateJob::extendedPersistentState() const {
+    std::list<std::pair<std::string,std::string>> result;
+    result.emplace_back("database_family", databaseFamily());
+    result.emplace_back("num_replicas",    std::to_string(numReplicas()));
     return result;
 }
 

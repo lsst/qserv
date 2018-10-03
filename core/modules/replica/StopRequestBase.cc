@@ -210,9 +210,9 @@ void StopRequestBase::savePersistentState(util::Lock const& lock) {
     controller()->serviceProvider()->databaseServices()->saveState(*this, performance(lock));
 }
 
-std::map<std::string,std::string> StopRequestBase::extendedPersistentState() const {
-    std::map<std::string,std::string> result;
-    result["target_request_id"] = targetRequestId();
+std::list<std::pair<std::string,std::string>> StopRequestBase::extendedPersistentState() const {
+    std::list<std::pair<std::string,std::string>> result;
+    result.emplace_back("target_request_id", targetRequestId());
     return result;
 }
 

@@ -325,11 +325,11 @@ void ReplicationRequest::savePersistentState(util::Lock const& lock) {
     controller()->serviceProvider()->databaseServices()->saveState(*this, performance(lock));
 }
 
-std::map<std::string,std::string> ReplicationRequest::extendedPersistentState() const {
-    std::map<std::string,std::string> result;
-    result["database"]      = database();
-    result["chunk"]         = std::to_string(chunk());
-    result["source_worker"] = sourceWorker();
+std::list<std::pair<std::string,std::string>> ReplicationRequest::extendedPersistentState() const {
+    std::list<std::pair<std::string,std::string>> result;
+    result.emplace_back("database",      database());
+    result.emplace_back("chunk",         std::to_string(chunk()));
+    result.emplace_back("source_worker", sourceWorker());
     return result;
 }
 

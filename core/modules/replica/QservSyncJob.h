@@ -151,7 +151,7 @@ public:
     /**
      * @see Job::extendedPersistentState()
      */
-    std::map<std::string,std::string> extendedPersistentState() const override;
+    std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
 
 protected:
 

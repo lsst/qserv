@@ -79,13 +79,13 @@ RemoveReplicaQservMgtRequest::RemoveReplicaQservMgtRequest(
         _qservRequest(nullptr) {
 }
 
-std::map<std::string,std::string> RemoveReplicaQservMgtRequest::extendedPersistentState() const {
-    std::map<std::string,std::string> result;
+std::list<std::pair<std::string,std::string>> RemoveReplicaQservMgtRequest::extendedPersistentState() const {
+    std::list<std::pair<std::string,std::string>> result;
     for (auto&& database: databases()) {
-        result["database"] = database;
+        result.emplace_back("database", database);
     }
-    result["chunk"] = std::to_string(chunk());
-    result["force"] = force() ? "1" : "0";
+    result.emplace_back("chunk", std::to_string(chunk()));
+    result.emplace_back("force", force() ? "1" : "0");
     return result;
 }
 

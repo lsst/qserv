@@ -211,10 +211,10 @@ VerifyJob::VerifyJob(Controller::Ptr const& controller,
         _computeCheckSum(computeCheckSum) {
 }
 
-std::map<std::string,std::string> VerifyJob::extendedPersistentState() const {
-    std::map<std::string,std::string> result;
-    result["max_replicas"]      = std::to_string(maxReplicas());
-    result["compute_check_sum"] = computeCheckSum() ? "1" : "0";
+std::list<std::pair<std::string,std::string>> VerifyJob::extendedPersistentState() const {
+    std::list<std::pair<std::string,std::string>> result;
+    result.emplace_back("max_replicas",      std::to_string(maxReplicas()));
+    result.emplace_back("compute_check_sum", computeCheckSum() ? "1" : "0");
     return result;
 }
 

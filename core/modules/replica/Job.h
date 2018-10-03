@@ -29,7 +29,7 @@
 
 // System headers
 #include <atomic>
-#include <map>
+#include <list>
 #include <memory>
 #include <ostream>
 #include <string>
@@ -202,11 +202,11 @@ public:
     std::string context() const;
 
     /**
-     * @return a dictionary of parameters and the corresponding values to
+     * @return a collection of parameters and the corresponding values to
      * be stored in a database for a job.
      */
-    virtual std::map<std::string,std::string> extendedPersistentState() const {
-        return std::map<std::string,std::string>();
+    virtual std::list<std::pair<std::string,std::string>> extendedPersistentState() const {
+        return std::list<std::pair<std::string,std::string>>();
     }
 
 protected:

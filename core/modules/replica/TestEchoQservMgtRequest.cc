@@ -80,9 +80,9 @@ std::string const& TestEchoQservMgtRequest::dataEcho() const {
     return _dataEcho;
 }
 
-std::map<std::string,std::string> TestEchoQservMgtRequest::extendedPersistentState() const {
-    std::map<std::string,std::string> result;
-    result["data_length_bytes"] = std::to_string(data().size());
+std::list<std::pair<std::string,std::string>> TestEchoQservMgtRequest::extendedPersistentState() const {
+    std::list<std::pair<std::string,std::string>> result;
+    result.emplace_back("data_length_bytes", std::to_string(data().size()));
     return result;
 }
 

@@ -201,8 +201,8 @@ public:
      * @return a dictionary of parameters and the corresponding values to
      * be stored in a database for a request.
      */
-    virtual std::map<std::string,std::string> extendedPersistentState() const {
-        return std::map<std::string,std::string>();
+    virtual std::list<std::pair<std::string,std::string>> extendedPersistentState() const {
+        return std::list<std::pair<std::string,std::string>>();
     }
 
 protected:

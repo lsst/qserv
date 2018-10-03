@@ -133,9 +133,9 @@ ClusterHealth const& ClusterHealthJob::clusterHealth() const {
             context() + "clusterHealth  can't use this operation before finishing the job");
 }
 
-std::map<std::string,std::string> ClusterHealthJob::extendedPersistentState() const {
-    std::map<std::string,std::string> result;
-    result["timeout_sec"] = std::to_string(timeoutSec());
+std::list<std::pair<std::string,std::string>> ClusterHealthJob::extendedPersistentState() const {
+    std::list<std::pair<std::string,std::string>> result;
+    result.emplace_back("timeout_sec",std::to_string(timeoutSec()));
     return result;
 }
 
