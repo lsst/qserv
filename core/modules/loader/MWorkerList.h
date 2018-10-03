@@ -57,8 +57,9 @@ public:
     static MWorkerListItem::Ptr create(uint32_t name, CentralMaster *central) {
         return MWorkerListItem::Ptr(new MWorkerListItem(name, central));
     }
-    static MWorkerListItem::Ptr create(uint32_t name, NetworkAddress const& address, CentralMaster *central) {
-        return MWorkerListItem::Ptr(new MWorkerListItem(name, address, central));
+    static MWorkerListItem::Ptr create(uint32_t name, NetworkAddress const& udpAddress,
+                                       NetworkAddress const& tcpAddress, CentralMaster *central) {
+        return MWorkerListItem::Ptr(new MWorkerListItem(name, udpAddress, tcpAddress, central));
     }
 
 
@@ -68,14 +69,21 @@ public:
 
     virtual ~MWorkerListItem() = default;
 
-    NetworkAddress getAddress() const {
+    NetworkAddress getUdpAddress() const {
         std::lock_guard<std::mutex> lck(_mtx);
-        return *_address;
+        return *_udpAddress;
     }
+
+    NetworkAddress getTcpAddress() const {
+        std::lock_guard<std::mutex> lck(_mtx);
+        return *_tcpAddress;
+    }
+
     uint32_t getName() const {
         // std::lock_guard<std::mutex> lck(_mtx); &&&
         return _name;
     }
+
     StringRange getRangeString() const {
         std::lock_guard<std::mutex> lck(_mtx);
         return _range;
@@ -103,11 +111,18 @@ public:
     friend std::ostream& operator<<(std::ostream& os, MWorkerListItem const& item);
 private:
     MWorkerListItem(uint32_t name, CentralMaster* central) : _name(name), _central(central) {}
-    MWorkerListItem(uint32_t name, NetworkAddress const& address, CentralMaster* central)
-         : _name(name), _address(new NetworkAddress(address)), _central(central) {}
+    MWorkerListItem(uint32_t name,
+                    NetworkAddress const& udpAddress,
+                    NetworkAddress const& tcpAddress,
+                    CentralMaster* central)
+         : _name(name),
+           _udpAddress(new NetworkAddress(udpAddress)),
+           _tcpAddress(new NetworkAddress(tcpAddress)),
+           _central(central) {}
 
     uint32_t _name;
-    NetworkAddress::UPtr _address{new NetworkAddress("", 0)}; ///< empty string indicates address is not valid.
+    NetworkAddress::UPtr _udpAddress{new NetworkAddress("", 0)}; ///< empty string indicates address is not valid.
+    NetworkAddress::UPtr _tcpAddress{new NetworkAddress("", 0)}; ///< empty string indicates address is not valid.
     TimeOut _lastContact{std::chrono::minutes(10)};  ///< Last time information was received from this worker
     StringRange _range;       ///< min and max range for this worker.
     NeighborsInfo _neighborsInfo; ///< information used to set neighbors.
@@ -184,6 +199,7 @@ private:
 };
 
 
+#if 0 // &&&
 /// Create commands to set a worker's neighbor.
 /// It should keep trying this until it works. When the worker sets the neighbor to
 /// the target value, this object should initiate a chain reaction that destroys itself.
@@ -223,7 +239,7 @@ public:
     NeighborsInfo::NeighborWPtr neighborPtr;
 
 };
-
+#endif
 
 
 class MWorkerList : public DoListItem {
@@ -239,9 +255,11 @@ public:
 
     ///// Master only //////////////////////
     // Returns pointer to new item if an item was created.
-    MWorkerListItem::Ptr addWorker(std::string const& ip, int port);
+    MWorkerListItem::Ptr addWorker(std::string const& ip, int udpPort, int tcpPort);
 
-    // Returns true of message could be parsed and a send will be attempted.
+    /// Returns true of message could be parsed and a send will be attempted.
+    /// It sends a list of worker names. The worker then asks for each name individually
+    ///  to get ips, ports, and ranges.
     bool sendListTo(uint64_t msgId, std::string const& ip, short port,
                     std::string const& outHostName, short ourPort);
 

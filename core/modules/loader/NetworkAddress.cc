@@ -69,7 +69,7 @@ NetworkAddress::UPtr NetworkAddress::create(StringElement::Ptr const& data, std:
 
 
 
-NetworkAddress::UPtr NetworkAddress::create(BufferUdp::Ptr const& bufData, std::string const& note) {
+NetworkAddress::UPtr NetworkAddress::create(BufferUdp::Ptr const& bufData, int& tcpPort, std::string const& note) {
 
     StringElement::Ptr data = std::dynamic_pointer_cast<StringElement>(MsgElement::retrieve(*bufData));
 
@@ -93,7 +93,8 @@ NetworkAddress::UPtr NetworkAddress::create(BufferUdp::Ptr const& bufData, std::
         LOGS(_log, LOG_LVL_WARN, "NetworkAddress::create STATUS_PARSE_ERR in " + note);
     }
 
-    UPtr netAddr(new NetworkAddress(addr->workerip(), addr->workerport()));
+    UPtr netAddr(new NetworkAddress(addr->ip(), addr->udpport()));
+    tcpPort = addr->tcpport();
     return netAddr;
 }
 

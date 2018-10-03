@@ -44,6 +44,16 @@ namespace lsst {
 namespace qserv {
 namespace loader {
 
+
+std::ostream& operator<<(std::ostream& os, NeighborsInfo const& ni) {
+    os << "NeighborsInfo";
+    os << " neighborLeft=" << (ni.neighborLeft == nullptr) ? "nullptr" : std::to_string(ni.neighborLeft->get());
+    os << " neighborRight=" << (ni.neighborRight == nullptr) ? "nullptr" : std::to_string(ni.neighborRight->get());
+    os << " recentAdds=" << ni.recentAdds;
+    os << " keyCount=" << ni.keyCount;
+    return os;
+}
+
 std::ostream& operator<<(std::ostream& os, StringRange const& strRange) {
     os << "valid=" << strRange._valid
        << " min=" << strRange._min
