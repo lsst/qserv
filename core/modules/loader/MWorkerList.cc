@@ -50,15 +50,64 @@ namespace lsst {
 namespace qserv {
 namespace loader {
 
+/// Create commands to set a worker's neighbor.
+/// It should keep trying this until it works. When the worker sets the neighbor to
+/// the target value, this object should initiate a chain reaction that destroys itself.
+/// It is very important that the message and neighborPtr both point to
+//  the same (left or right) neighbor.
+class SetNeighborOneShot : public DoListItem, public UpdateNotify<uint32_t> {
+public:
+    using Ptr = std::shared_ptr<SetNeighborOneShot>;
+
+    static Ptr create(CentralMaster* central_,
+               MWorkerListItem::Ptr const& target_,
+               int msg_,
+               uint32_t neighborName_,
+               NeighborsInfo::NeighborPtr const& neighborPtr_) {
+        Ptr oneShot(new SetNeighborOneShot(central_, target_, msg_, neighborName_,  neighborPtr_));
+        auto oneShotPtr = std::static_pointer_cast<SetNeighborOneShot>(oneShot->getDoListItemPtr());
+        auto updatePtr = std::static_pointer_cast<UpdateNotify<uint32_t>>(oneShotPtr);
+        neighborPtr_->registerNotify(updatePtr); // Must do this so it will call our updateNotify().
+        LOGS(_log, LOG_LVL_INFO, "&&& SetNeighborOneShot neighborName=" << neighborName_ << " " << neighborPtr_->get());
+        return oneShot;
+    }
+
+    util::CommandTracked::Ptr createCommand() override;
+
+    // This is called every time the worker sends the master a value for its (left/right) neighbor.
+    // See neighborPtr_->registerNotify()
+    void updateNotify(uint32_t& oldVal, uint32_t& newVal) override {
+        if (newVal == neighborName) {
+            infoReceived(); // This should result in this oneShot DoListItem being removed->destroyed.
+        }
+    }
+
+    CentralMaster* const central;
+    MWorkerListItem::WPtr target;
+    int const message;
+    uint32_t const neighborName;
+    NeighborsInfo::NeighborWPtr neighborPtr;
+private:
+    SetNeighborOneShot(CentralMaster* central_,
+                       MWorkerListItem::Ptr const& target_,
+                       int msg_,
+                       uint32_t neighborName_,
+                       NeighborsInfo::NeighborPtr const& neighborPtr_) :
+                    central(central_), target(target_), message(msg_), neighborName(neighborName_),
+                    neighborPtr(neighborPtr_) {
+            _oneShot = true;
+        }
+};
+
 
 
 util::CommandTracked::Ptr SetNeighborOneShot::createCommand() {
     struct SetNeighborCmd : public util::CommandTracked {
         SetNeighborCmd(SetNeighborOneShot::Ptr const& ptr) : oneShotData(ptr) {}
         void action(util::CmdData*) override {
-            auto data = std::dynamic_pointer_cast<SetNeighborOneShot>(oneShotData.lock());
-            if (data != nullptr) {
-                data->central->setWorkerNeighbor(data->target, data->message, data->neighborName);
+            auto oSData = std::dynamic_pointer_cast<SetNeighborOneShot>(oneShotData.lock());
+            if (oSData != nullptr) {
+                oSData->central->setWorkerNeighbor(oSData->target, oSData->message, oSData->neighborName);
             }
         }
         std::weak_ptr<SetNeighborOneShot> oneShotData;
@@ -89,20 +138,22 @@ util::CommandTracked::Ptr MWorkerList::createCommandMaster(CentralMaster* centra
 
 
 // Returns pointer to new item when new worker added, otherwise nullptr.
-MWorkerListItem::Ptr MWorkerList::addWorker(std::string const& ip, int port) {
-    NetworkAddress address(ip, port);
+MWorkerListItem::Ptr MWorkerList::addWorker(std::string const& ip, int udpPort, int tcpPort) {
+    NetworkAddress udpAddress(ip, udpPort);
+    NetworkAddress tcpAddress(ip, tcpPort);
+
 
     // If it is already in the map, do not change its name.
     std::lock_guard<std::mutex> lock(_mapMtx);
-    auto iter = _ipMap.find(address);
+    auto iter = _ipMap.find(udpAddress);
     if (iter != _ipMap.end()) {
         LOGS(_log, LOG_LVL_WARN, "addWorker, Could not add worker as worker already exists. " <<
-                ip << ":" << port);
+                ip << ":" << udpPort);
         return nullptr;
     }
     // Get an id and make new worker item
-    auto workerListItem = MWorkerListItem::create(_sequenceName++, address, _central);
-    _ipMap.insert(std::make_pair(address, workerListItem));
+    auto workerListItem = MWorkerListItem::create(_sequenceName++, udpAddress, tcpAddress, _central);
+    _ipMap.insert(std::make_pair(udpAddress, workerListItem));
     _nameMap.insert(std::make_pair(workerListItem->getName(), workerListItem));
     LOGS(_log, LOG_LVL_INFO, "Added worker " << *workerListItem);
     _flagListChange();
@@ -125,8 +176,23 @@ bool MWorkerList::sendListTo(uint64_t msgId, std::string const& ip, short port,
             protoList.set_workercount(_nameMap.size());
             for (auto const& item : _nameMap ) {
                 proto::WorkerListItem* protoItem = protoList.add_worker();
-                MWorkerListItem::Ptr wListItem = item.second;
+                MWorkerListItem::Ptr const& wListItem = item.second;
                 protoItem->set_name(wListItem->getName());
+                /* &&& is this needed ???
+                proto::WorkerRangeString* protoRange = protoItem->mutable_rangestr();
+                StringRange range = wListItem->getRangeString();
+                protoRange->set_valid(range.getValid());
+                protoRange->set_min(range.getMin());
+                protoRange->set_max(range.getMax());
+                protoRange->set_maxunlimited(range.getUnlimited());
+                // TODO make version that does not include addresses
+                proto::LdrNetAddress* protoAddr = protoItem->mutable_address();
+                NetWorkAddress udp = wListItem->getUdpAddress();
+                NetWorkAddress tcp = wListItem->getTcpAddress();
+                protoAddr->set_ip(udp.ip);
+                protoAddr->set_udpport(udp.port);
+                protoAddr->set_tcpport(tcp.port);
+                */
             }
             protoList.SerializeToString(&(workerList.element));
             LoaderMsg workerListMsg(LoaderMsg::MAST_WORKER_LIST, msgId, ourHostName, ourPort);
@@ -302,7 +368,7 @@ int MWorkerListItem::getKeyCount() const {
 
 
 std::ostream& operator<<(std::ostream& os, MWorkerListItem const& item) {
-    os << "name=" << item._name << " address=" << *item._address << " range(" << item._range << ")";
+    os << "name=" << item._name << " address=" << *item._udpAddress << " range(" << item._range << ")";
     return os;
 }
 
@@ -314,12 +380,11 @@ void MWorkerListItem::setRightNeighbor(MWorkerListItem::Ptr const& item) {
     // has the correct right neighbor.
     LOGS(_log, LOG_LVL_INFO," &&& MWorkerListItem::setRightNeighbor");
 
-    std::shared_ptr<SetNeighborOneShot> oneShot =
-        std::make_shared<SetNeighborOneShot>(_central,
-                                             shared_from_this(),
-                                             LoaderMsg::WORKER_RIGHT_NEIGHBOR,
-                                             item->getName(),
-                                             _neighborsInfo.neighborRight);
+    auto oneShot = SetNeighborOneShot::create(_central,
+                                              shared_from_this(),
+                                              LoaderMsg::WORKER_RIGHT_NEIGHBOR,
+                                              item->getName(),
+                                              _neighborsInfo.neighborRight);
     _central->addDoListItem(oneShot);
 }
 
@@ -330,12 +395,20 @@ void MWorkerListItem::setLeftNeighbor(MWorkerListItem::Ptr const& item) {
     // has the correct left neighbor.
     LOGS(_log, LOG_LVL_INFO," &&& MWorkerListItem::setLeftNeighbor");
 
+    /* &&&
     SetNeighborOneShot::Ptr oneShot =
         std::make_shared<SetNeighborOneShot>(_central,
                                              shared_from_this(),
                                              LoaderMsg::WORKER_LEFT_NEIGHBOR,
                                              item->getName(),
                                              _neighborsInfo.neighborLeft);
+                                             */
+    auto oneShot = SetNeighborOneShot::create(_central,
+                                              shared_from_this(),
+                                              LoaderMsg::WORKER_LEFT_NEIGHBOR,
+                                              item->getName(),
+                                              _neighborsInfo.neighborLeft);
+
     _central->addDoListItem(oneShot);
 }
 
@@ -352,7 +425,7 @@ util::CommandTracked::Ptr MWorkerListItem::SendListToWorker::createCommand() {
         void action(util::CmdData*) override {
             LOGS(_log, LOG_LVL_INFO, "&&& SendListToWorkerCmd::action");
             centM->getWorkerList()->sendListTo(centM->getNextMsgId(),
-                    tItem->_address->ip, tItem->_address->port,
+                    tItem->_udpAddress->ip, tItem->_udpAddress->port,
                     centM->getMasterHostName(), centM->getMasterPort());
         }
         CentralMaster *centM;
@@ -376,7 +449,7 @@ util::CommandTracked::Ptr MWorkerListItem::ReqWorkerKeyInfo::createCommand() {
         void action(util::CmdData*) override {
             LOGS(_log, LOG_LVL_INFO, "&&& ReqWorkerKeyInfoCmd::action");
             centM->reqWorkerKeysInfo(centM->getNextMsgId(),
-                    tItem->_address->ip, tItem->_address->port,
+                    tItem->_udpAddress->ip, tItem->_udpAddress->port,
                     centM->getMasterHostName(), centM->getMasterPort());
         }
         CentralMaster *centM;

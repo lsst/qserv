@@ -50,7 +50,7 @@ namespace loader {
 MsgElement::Ptr BufferUdp::readFromSocket(boost::asio::ip::tcp::socket& socket, std::string const& note) {
     LOGS(_log, LOG_LVL_INFO, "&&&& readFromSocket !!!!!");
     for (;;) {
-        LOGS(_log, LOG_LVL_INFO, note << " &&& readFromSocket");
+        LOGS(_log, LOG_LVL_INFO, note << " &&& readFromSocket a");
         boost::system::error_code error;
 
         // If there's something in the buffer already, get it and return

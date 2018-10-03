@@ -159,6 +159,8 @@ struct NeighborsInfo {
     NeighborPtr neighborRight{new Updatable<uint32_t>(0)};  ///< Neighbor with higher values
     uint32_t recentAdds{0}; ///< Number of keys added to this worker recently.
     uint32_t keyCount{0};   ///< Total number of keys stored on the worker.
+
+    friend std::ostream& operator<<(std::ostream& os, NeighborsInfo const& ni);
 };
 
 
