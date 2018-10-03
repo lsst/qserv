@@ -25,7 +25,6 @@
 
 // System headers
 #include <stdexcept>
-#include <thread>
 
 // Third party headers
 #include <boost/bind.hpp>
@@ -278,23 +277,7 @@ void Request::finish(util::Lock const& lock,
 
     finishImpl(lock);
 
-    notify();
-}
-
-void Request::notify() {
-
-    // The callback is being made asynchronously in a separate thread
-    // to avoid blocking the current thread.
-    //
-    // TODO: consider reimplementing this method to send notificatons
-    //       via a thread pool & a queue.
-
-    auto const self = shared_from_this();
-
-    std::thread notifier([self]() {
-        self->notifyImpl();
-    });
-    notifier.detach();
+    notify(lock);
 }
 
 bool Request::isAborted(boost::system::error_code const& ec) const {

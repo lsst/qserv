@@ -176,12 +176,9 @@ private:
                  proto::ReplicationResponseReplicate const& message);
 
     /**
-     * Notifying a party which initiated the request.
-     *
-     * This method implements the corresponing virtual method defined
-     * by the base class.
+     * @see Request::notify()
      */
-    void notifyImpl() final;
+    void notify(util::Lock const& lock) final;
 
     /**
      * @see Request::savePersistentState()

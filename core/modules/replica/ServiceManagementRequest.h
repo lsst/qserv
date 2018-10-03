@@ -161,23 +161,10 @@ private:
     }
 
     /**
-     * @see Request::notifyImpl()
+     * @see Request::notify()
      */
-    void notifyImpl() final {
-
-        if (nullptr != _onFinish) {
-    
-            // Clearing the stored callback after finishing the up-stream notification
-            // has two purposes:
-            //
-            // 1. it guaranties (exactly) one time notification
-            // 2. it breaks the up-stream dependency on a caller object if a shared
-            //    pointer to the object was mentioned as the lambda-function's closure
-
-            auto onFinish = std::move(_onFinish);
-            _onFinish = nullptr;
-            onFinish(shared_from_base<ServiceManagementRequest<POLICY>>());
-        }
+    void notify(util::Lock const& lock) final {
+        notifyDefaultImpl<ServiceManagementRequest<POLICY>>(lock, _onFinish);
     }
 
 private:

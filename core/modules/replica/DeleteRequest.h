@@ -167,9 +167,9 @@ private:
                  proto::ReplicationResponseDelete const& message);
 
     /**
-     * @see Request::notifyImpl()
+     * @see Request::notify()
      */
-    void notifyImpl() final;
+    void notify(util::Lock const& lock) final;
 
     /**
      * @see Request::savePersistentState()

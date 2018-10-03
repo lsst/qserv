@@ -165,23 +165,7 @@ void RemoveReplicaQservMgtRequest::notify(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
 
-    if (nullptr != _onFinish) {
-
-        // Clearing the stored callback after finishing the up-stream notification
-        // has two purposes:
-        //
-        // 1. it guaranties (exactly) one time notification
-        // 2. it breaks the up-stream dependency on a caller object if a shared
-        //    pointer to the object was mentioned as the lambda-function's closure
-
-        serviceProvider()->io_service().post(
-            std::bind(
-                std::move(_onFinish),
-                shared_from_base<RemoveReplicaQservMgtRequest>()
-            )
-        );
-        _onFinish = nullptr;
-    }
+    notifyDefaultImpl<RemoveReplicaQservMgtRequest>(lock, _onFinish);
 }
 
 }}} // namespace lsst::qserv::replica
