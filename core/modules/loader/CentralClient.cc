@@ -161,14 +161,15 @@ KeyInfoData::Ptr CentralClient::keyInsertReq(std::string const& key, int chunk, 
 
 void CentralClient::_keyInsertReq(std::string const& key, int chunk, int subchunk) {
     LOGS(_log, LOG_LVL_INFO, "&&& CentralClient::_keyInsertReq trying key=" << key);
-    LoaderMsg msg(LoaderMsg::KEY_INSERT_REQ, getNextMsgId(), getHostName(), getPort());
+    LoaderMsg msg(LoaderMsg::KEY_INSERT_REQ, getNextMsgId(), getHostName(), getUdpPort());
     BufferUdp msgData;
     msg.serializeToData(msgData);
     // create the proto buffer
     lsst::qserv::proto::KeyInfoInsert protoKeyInsert;
     lsst::qserv::proto::LdrNetAddress* protoAddr =  protoKeyInsert.mutable_requester();
-    protoAddr->set_workerip(getHostName());
-    protoAddr->set_workerport(getPort());
+    protoAddr->set_ip(getHostName());
+    protoAddr->set_udpport(getUdpPort());
+    protoAddr->set_tcpport(getTcpPort());
     lsst::qserv::proto::KeyInfo* protoKeyInfo = protoKeyInsert.mutable_keyinfo();
     protoKeyInfo->set_key(key);
     protoKeyInfo->set_chunk(chunk);
@@ -202,14 +203,15 @@ KeyInfoData::Ptr CentralClient::keyInfoReq(std::string const& key) {
 
 void CentralClient::_keyInfoReq(std::string const& key) {
     LOGS(_log, LOG_LVL_INFO, "&&& CentralClient::_keyInfoReq trying key=" << key);
-     LoaderMsg msg(LoaderMsg::KEY_INFO_REQ, getNextMsgId(), getHostName(), getPort());
+     LoaderMsg msg(LoaderMsg::KEY_INFO_REQ, getNextMsgId(), getHostName(), getUdpPort());
      BufferUdp msgData;
      msg.serializeToData(msgData);
      // create the proto buffer
      lsst::qserv::proto::KeyInfoInsert protoKeyInsert;
      lsst::qserv::proto::LdrNetAddress* protoAddr =  protoKeyInsert.mutable_requester();
-     protoAddr->set_workerip(getHostName());
-     protoAddr->set_workerport(getPort());
+     protoAddr->set_ip(getHostName());
+     protoAddr->set_udpport(getUdpPort());
+     protoAddr->set_tcpport(getTcpPort());
      lsst::qserv::proto::KeyInfo* protoKeyInfo = protoKeyInsert.mutable_keyinfo();
      protoKeyInfo->set_key(key);
      protoKeyInfo->set_chunk(0);

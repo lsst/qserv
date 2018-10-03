@@ -63,14 +63,15 @@ public:
                   std::string const& hostName, int port)
         : Central(ioService, masterHostName, masterPort),
           _workerHostName(workerHostName), _workerPort(workerPort),
-          _hostName(hostName), _port(port) {
-        _server = std::make_shared<ClientServer>(_ioService, _hostName, _port, this);
+          _hostName(hostName), _udpPort(port) {
+        _server = std::make_shared<ClientServer>(_ioService, _hostName, _udpPort, this);
     }
 
     ~CentralClient() override = default;
 
     std::string getHostName() const { return _hostName; }
-    int getPort() const { return _port; }
+    int getUdpPort() const { return _udpPort; }
+    int getTcpPort() const { return 0; } ///< No tcp port at this time.
 
     std::string getWorkerHostName() const { return _workerHostName; }
     int getWorkerPort() const { return _workerPort; }
@@ -94,7 +95,7 @@ private:
     const std::string _workerHostName;
     const int         _workerPort;
     const std::string _hostName;
-    const int         _port;
+    const int         _udpPort;
 
     /// Create commands to add a key to the index and track that they are done.
     /// It should keep trying this until it works, and then drop it from _waitingKeyInsertMap.

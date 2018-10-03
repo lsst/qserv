@@ -43,9 +43,12 @@ class StringElement;
 struct NetworkAddress {
     using Ptr = std::shared_ptr<NetworkAddress>;
     using UPtr = std::unique_ptr<NetworkAddress>;
+
     NetworkAddress(std::string const& ip_, int port_) : ip(ip_), port(port_) {}
     NetworkAddress() = delete;
     NetworkAddress(NetworkAddress const&) = default;
+
+    static UPtr create(BufferUdp::Ptr const& bufData, int& tcpPort, std::string const& note);
 
     const std::string ip;
     const int port; // Most of the workers will have the same port number.
@@ -70,7 +73,7 @@ struct NetworkAddress {
     }
 
 
-    static UPtr create(BufferUdp::Ptr const& bufData, std::string const& note);
+
 
     friend std::ostream& operator<<(std::ostream& os, NetworkAddress const& adr);
 };

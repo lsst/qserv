@@ -47,8 +47,6 @@ class CentralMaster;
 class LoaderMsg;
 
 
-
-
 /// Standard information for a single worker, IP address, key range, timeouts.
 class WWorkerListItem : public std::enable_shared_from_this<WWorkerListItem> {
 public:
@@ -69,21 +67,29 @@ public:
 
     virtual ~WWorkerListItem() = default;
 
-    void setNetworkAddress(std::string const& ip, int port);
+    void setUdpAddress(std::string const& ip, int port);
+    void setTcpAddress(std::string const& ip, int port);
 
     /// @Return return the previous range value.
     StringRange setRangeStr(StringRange const& strRange);
 
     StringRange getRange() const;
 
-    NetworkAddress getAddress() const {
+    NetworkAddress getAddressUdp() const {
         std::lock_guard<std::mutex> lck(_mtx);
-        return *_address;
+        return *_udpAddress;
     }
+
+    NetworkAddress getAddressTcp() const {
+           std::lock_guard<std::mutex> lck(_mtx);
+           return *_tcpAddress;
+       }
+
     uint32_t getName() const {
         std::lock_guard<std::mutex> lck(_mtx);
         return _name;
     }
+
     StringRange getRangeString() const {
         std::lock_guard<std::mutex> lck(_mtx);
         return _range;
@@ -101,10 +107,11 @@ public:
 private:
     WWorkerListItem(uint32_t name, CentralWorker* central) : _name(name), _central(central) {}
     WWorkerListItem(uint32_t name, NetworkAddress const& address, CentralWorker* central)
-         : _name(name), _address(new NetworkAddress(address)), _central(central) {}
+         : _name(name), _udpAddress(new NetworkAddress(address)), _central(central) {}
 
     uint32_t _name;
-    NetworkAddress::UPtr _address{new NetworkAddress("",0)}; ///< empty string indicates address is not valid.
+    NetworkAddress::UPtr _udpAddress{new NetworkAddress("",0)}; ///< empty string indicates address is not valid.
+    NetworkAddress::UPtr _tcpAddress{new NetworkAddress("",0)}; ///< empty string indicates address is not valid.
     StringRange _range;      ///< min and max range for this worker.
     mutable std::mutex _mtx; ///< protects _name, _address, _range, _workerUpdateNeedsMasterData
 
@@ -157,7 +164,9 @@ public:
         return iter->second;
     }
 
-    void updateEntry(uint32_t name, std::string const& ip, int port, StringRange& strRange);
+    void updateEntry(uint32_t name,
+                     std::string const& ipUdp, int portUdp, int portTcp,
+                     StringRange& strRange);
     WWorkerListItem::Ptr findWorkerForKey(std::string const& key);
 
     std::string dump() const;

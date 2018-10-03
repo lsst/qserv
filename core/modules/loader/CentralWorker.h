@@ -68,7 +68,8 @@ public:
     WWorkerList::Ptr getWorkerList() const { return _wWorkerList; }
 
     std::string getHostName() const { return _hostName; }
-    int getPort() const { return _port; }
+    int getUdpPort() const { return _udpPort; }
+    int getTcpPort() const { return _tcpPort; }
 
     void registerWithMaster();
 
@@ -134,11 +135,11 @@ private:
     void _rightConnect();
     void _rightDisconnect();
 
-    bool _connectToLeftNeighbor(uint32_t neighborLeftName);
+    // bool _connectToLeftNeighbor(uint32_t neighborLeftName); &&& delete
 
 
     const std::string        _hostName;
-    const int                _port;
+    const int                _udpPort;
     boost::asio::io_context& _ioContext;
     const int                _tcpPort;
 
