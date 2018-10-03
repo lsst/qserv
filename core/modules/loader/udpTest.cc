@@ -428,7 +428,6 @@ int main(int argc, char* argv[]) {
     size_t kPos = 0;
     {
         std::cout << "\n\n\n******7******* TSTAGE insert several keys ***" << std::endl;
-        auto keyAInsert = cCentral1A.keyInsertReq(keyA.key, keyA.chunk, keyA.subchunk);
         std::vector<KeyInfoData::Ptr> keyInfoDataList;
 
         for (; kPos<10; ++kPos) {

@@ -129,50 +129,6 @@ protected:
 };
 
 
-#if 0 // &&&
-class CentralMaster : public Central {
-public:
-    CentralMaster(boost::asio::io_service& ioService,
-                  std::string const& masterHostName, int masterPort)
-        : Central(ioService, masterHostName, masterPort) {
-        _server = std::make_shared<MasterServer>(_ioService, masterHostName, masterPort, this);
-    }
-
-    ~CentralMaster() override { _mWorkerList.reset(); }
-
-    int getMaxKeysPerWorker() const { return _maxKeysPerWorker; }
-
-    void addWorker(std::string const& ip, int port); ///< Add a new worker to the system.
-    void updateNeighbors(uint32_t workerName, NeighborsInfo const& nInfo);
-
-
-    MWorkerListItem::Ptr getWorkerNamed(uint32_t name);
-
-    MWorkerList::Ptr getWorkerList() const { return _mWorkerList; }
-
-    void reqWorkerKeysInfo(uint64_t msgId, std::string const& ip, short port,
-                          std::string const& ourHostName, short ourPort);
-
-    std::string getOurLogId() override { return "master"; }
-
-    void setWorkerNeighbor(MWorkerListItem::WPtr const& target, int message, uint32_t neighborName);
-
-private:
-    void _assignNeighborIfNeeded();
-    std::mutex _assignMtx; ///< Protects critical region where worker's can be set to active.
-
-    std::atomic<int> _maxKeysPerWorker{1000};
-
-
-    MWorkerList::Ptr _mWorkerList{new MWorkerList(this)}; ///< List of workers.
-
-    std::atomic<bool> _firstWorkerRegistered{false}; ///< True when one worker has been activated.
-    std::atomic<bool> _addingWorker{false}; ///< True while adding a worker to the end of the list. &&& This should probably really be handled by states in the list of workers. &&&
-};
-#endif
-
-
-
 }}} // namespace lsst::qserv::loader
 
 

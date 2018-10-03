@@ -73,12 +73,13 @@ util::CommandTracked::Ptr WWorkerList::createCommandWorker(CentralWorker* centra
 
             // TODO make a function for this, it's always going to be the same.
             proto::LdrNetAddress protoOurAddress;
-            protoOurAddress.set_workerip(_centralW->getHostName());
-            protoOurAddress.set_workerport(_centralW->getPort());
+            protoOurAddress.set_ip(_centralW->getHostName());
+            protoOurAddress.set_udpport(_centralW->getUdpPort());
+            protoOurAddress.set_tcpport(_centralW->getTcpPort());
             StringElement eOurAddress(protoOurAddress.SerializeAsString());
 
             LoaderMsg workerInfoReqMsg(LoaderMsg::MAST_WORKER_LIST_REQ, _centralW->getNextMsgId(),
-                                       _centralW->getHostName(), _centralW->getPort());
+                                       _centralW->getHostName(), _centralW->getUdpPort());
             BufferUdp sendBuf(1000);
             workerInfoReqMsg.serializeToData(sendBuf);
             eOurAddress.appendToData(sendBuf);
@@ -208,7 +209,9 @@ std::string WWorkerList::dump() const {
 
 /// There must be a name. However, ip, port, and range may be invalid.
 //  TODO believe our neighbors range over the master
-void WWorkerList::updateEntry(uint32_t name, std::string const& ip, int port, StringRange& strRange) {
+void WWorkerList::updateEntry(uint32_t name,
+                              std::string const& ip, int portUdp, int portTcp,
+                              StringRange& strRange) {
     std::unique_lock<std::mutex> lk(_mapMtx);
     auto iter = _nameMap.find(name);
     if (iter == _nameMap.end()) {
@@ -221,16 +224,18 @@ void WWorkerList::updateEntry(uint32_t name, std::string const& ip, int port, St
     }
     WWorkerListItem::Ptr const& item = iter->second;
     if (ip != "") {
-        if (item->getAddress().ip == "" ) {
-            item->setNetworkAddress(ip, port);
-            NetworkAddress nAddr(ip, port);
+        if (item->getAddressUdp().ip == "" ) {
+            item->setUdpAddress(ip, portUdp);
+            item->setTcpAddress(ip, portTcp);
+            NetworkAddress nAddr(ip, portUdp);
             auto res = _ipMap.insert(std::make_pair(nAddr, item));
-            LOGS(_log, LOG_LVL_INFO, "updateEntry set name=" << name << " ip=" << nAddr <<
+            LOGS(_log, LOG_LVL_INFO, "updateEntry set name=" << name << " Udp=" << nAddr <<
                                      " res=" << res.second);
         }
     }
 
-    // TODO maybe special action should be taken if this is our name.
+
+    // TODO probably special action should be taken if this is our name.
     LOGS(_log, LOG_LVL_INFO, "&&&& updateEntry strRange=" << strRange);
     if (strRange.getValid()) {
         // Does the new range match the old range?
@@ -287,9 +292,9 @@ bool WWorkerListItem::equal(WWorkerListItem& other) {
         LOGS(_log, LOG_LVL_INFO, "&&& item name not equal t=" << _name << " o=" << other._name);
         return false;
     }
-    if (*_address != *other._address) {
+    if (*_udpAddress != *other._udpAddress) {
         LOGS(_log, LOG_LVL_INFO, "&&& item addr != name=" << _name <<
-                                 " t=" << *_address << " o=" << *other._address);
+                                 " t=" << *_udpAddress << " o=" << *other._udpAddress);
         return false;
     }
     /// TODO add range check &&&
@@ -301,12 +306,18 @@ bool WWorkerListItem::equal(WWorkerListItem& other) {
 }
 
 
-void WWorkerListItem::setNetworkAddress(std::string const& ip, int port) {
+void WWorkerListItem::setUdpAddress(std::string const& ip, int port) {
     std::lock_guard<std::mutex> lck(_mtx);
-    _address.reset(new NetworkAddress(ip, port));
-    LOGS(_log, LOG_LVL_INFO, "setNetworkAddress name=" << _name << " addr=" << *_address);
+    _udpAddress.reset(new NetworkAddress(ip, port));
+    LOGS(_log, LOG_LVL_INFO, "set udpAddress name=" << _name << " addr=" << *_udpAddress);
 }
 
+
+void WWorkerListItem::setTcpAddress(std::string const& ip, int port) {
+    std::lock_guard<std::mutex> lck(_mtx);
+    _tcpAddress.reset(new NetworkAddress(ip, port));
+    LOGS(_log, LOG_LVL_INFO, "set tcpAddress name=" << _name << " addr=" << *_tcpAddress);
+}
 
 StringRange WWorkerListItem::setRangeStr(StringRange const& strRange) {
     std::lock_guard<std::mutex> lck(_mtx);
@@ -353,8 +364,9 @@ util::CommandTracked::Ptr WWorkerListItem::createCommandWorkerInfoReq(CentralWor
 
             // TODO make a function for this, it's always going to be the same.
             proto::LdrNetAddress protoOurAddress;
-            protoOurAddress.set_workerip(_centralW->getHostName());
-            protoOurAddress.set_workerport(_centralW->getPort());
+            protoOurAddress.set_ip(_centralW->getHostName());
+            protoOurAddress.set_udpport(_centralW->getUdpPort());
+            protoOurAddress.set_tcpport(_centralW->getTcpPort());
             StringElement eOurAddress(protoOurAddress.SerializeAsString());
 
             proto::WorkerListItem protoItem;
@@ -362,7 +374,7 @@ util::CommandTracked::Ptr WWorkerListItem::createCommandWorkerInfoReq(CentralWor
             StringElement eItem(protoItem.SerializeAsString());
 
             LoaderMsg workerInfoReqMsg(LoaderMsg::MAST_WORKER_INFO_REQ, _centralW->getNextMsgId(),
-                                       _centralW->getHostName(), _centralW->getPort());
+                                       _centralW->getHostName(), _centralW->getUdpPort());
             BufferUdp sendBuf(1000);
             workerInfoReqMsg.serializeToData(sendBuf);
             eOurAddress.appendToData(sendBuf);
@@ -392,7 +404,7 @@ bool WWorkerListItem::containsKey(std::string const& key) const {
 
 
 std::ostream& operator<<(std::ostream& os, WWorkerListItem const& item) {
-    os << "name=" << item._name << " address=" << *(item._address) << " range(" << item._range << ")";
+    os << "name=" << item._name << " address=" << *(item._udpAddress) << " range(" << item._range << ")";
     return os;
 }
 

@@ -54,13 +54,13 @@ namespace loader {
 
 CentralWorker::CentralWorker(boost::asio::io_service& ioService,
     std::string const& masterHostName,   int masterPort,
-    std::string const& hostName,         int port,
-    boost::asio::io_context& io_context, int tcpPort)
+    std::string const& hostName,         int udpPort,
+    boost::asio::io_context& io_context, int tcpPort)  /// &&& move tcpPort next to udpPort
     : Central(ioService, masterHostName, masterPort),
-      _hostName(hostName), _port(port),
+      _hostName(hostName), _udpPort(udpPort),
       _ioContext(io_context), _tcpPort(tcpPort) {
 
-    _server = std::make_shared<WorkerServer>(_ioService, _hostName, _port, this);
+    _server = std::make_shared<WorkerServer>(_ioService, _hostName, _udpPort, this);
     _tcpServer = std::make_shared<ServerTcpBase>(_ioContext, _tcpPort, this);
     _tcpServer->runThread();
     _startMonitoring();
@@ -74,7 +74,8 @@ CentralWorker::~CentralWorker() {
 
 std::string CentralWorker::getOurLogId() {
     std::stringstream os;
-    os << "(w name=" << _ourName << " addr=" << _hostName << ":" << _port << ")";
+    os << "(w name=" << _ourName << " addr=" << _hostName <<
+            ":udp=" << _udpPort << " tcp=" << _tcpPort << ")";
     return os.str();
 }
 
@@ -94,6 +95,18 @@ void CentralWorker::_monitor() {
     std::lock_guard<std::mutex> lck(_rightMtx);
     if (_neighborRight.getName() != 0) {
         if (not _neighborRight.getEstablished()) {
+            auto nAddr = _neighborRight.getAddress();
+            if (nAddr.ip == "") {
+                // look up the network address for the rightNeighbor
+                WWorkerListItem::Ptr nWorker = _wWorkerList->getWorkerNamed(_neighborRight.getName());
+                if (nWorker != nullptr) {
+                    auto addr = nWorker->getAddressTcp();
+                    LOGS(_log, LOG_LVL_INFO, "_monitor neighbor right " << _neighborRight.getName() <<
+                                             " " << addr);
+                    _neighborRight.setAddress(addr);
+                }
+            }
+
             LOGS(_log, LOG_LVL_INFO, "_monitor trying to establish TCP connection with " <<
                     _neighborRight.getName() << " " << _neighborRight.getAddress());
             _rightConnect();
@@ -115,7 +128,14 @@ void CentralWorker::_rightConnect() {
             auto addr = _neighborRight.getAddress();
             tcp::resolver::results_type endpoints = resolver.resolve(addr.ip, std::to_string(addr.port));
             _rightSocket.reset(new tcp::socket(_ioContext));
-
+            boost::system::error_code ec;
+            boost::asio::connect(*_rightSocket, endpoints, ec);
+            if (ec) {
+                _rightSocket.reset();
+                LOGS(_log, LOG_LVL_WARN, "failed to connect to " << _neighborRight.getName() << " " <<
+                     addr << " ec=" << ec.value() << ":" << ec.message());
+                return;
+            }
 
             // Get name from server
             BufferUdp data(1000);
@@ -197,16 +217,17 @@ bool CentralWorker::workerInfoReceive(BufferUdp::Ptr const&  data) {
 void CentralWorker::_workerInfoReceive(std::unique_ptr<proto::WorkerListItem>& protoL) {
     std::unique_ptr<proto::WorkerListItem> protoList(std::move(protoL));
 
-
     // Check the information, if it is our network address, set or check our name.
     // Then compare it with the map, adding new/changed information.
     uint32_t name = protoList->name();
-    std::string ip("");
-    int port = 0;
+    std::string ipUdp("");
+    int portUdp = 0;
+    int portTcp = 0;
     if (protoList->has_address()) {
         proto::LdrNetAddress protoAddr = protoList->address();
-        ip = protoAddr.workerip();
-        port = protoAddr.workerport();
+        ipUdp = protoAddr.ip();
+        portUdp = protoAddr.udpport();
+        portTcp = protoAddr.tcpport();
     }
     StringRange strRange;
     if (protoList->has_rangestr()) {
@@ -222,7 +243,7 @@ void CentralWorker::_workerInfoReceive(std::unique_ptr<proto::WorkerListItem>& p
     }
 
     // If the address matches ours, check the name.
-    if (getHostName() == ip && getPort() == port) {
+    if (getHostName() == ipUdp && getUdpPort() == portUdp) {
         if (isOurNameInvalid()) {
             LOGS(_log, LOG_LVL_INFO, "Setting our name " << name);
             setOurName(name);
@@ -244,7 +265,7 @@ void CentralWorker::_workerInfoReceive(std::unique_ptr<proto::WorkerListItem>& p
     }
 
     // Make/update entry in map.
-    _wWorkerList->updateEntry(name, ip, port, strRange);
+    _wWorkerList->updateEntry(name, ipUdp, portUdp, portTcp, strRange);
 }
 
 
@@ -271,7 +292,7 @@ void CentralWorker::_workerKeyInsertReq(LoaderMsg const& inMsg, std::unique_ptr<
 
     // Get the source of the request
     proto::LdrNetAddress protoAddr = protoData->requester();
-    NetworkAddress nAddr(protoAddr.workerip(), protoAddr.workerport());
+    NetworkAddress nAddr(protoAddr.ip(), protoAddr.udpport());
 
     proto::KeyInfo protoKeyInfo = protoData->keyinfo();
     std::string key = protoKeyInfo.key();
@@ -290,7 +311,7 @@ void CentralWorker::_workerKeyInsertReq(LoaderMsg const& inMsg, std::unique_ptr<
         LOGS(_log, LOG_LVL_INFO, "Key inserted=" << key << "(" << chunkInfo << ")");
         // TODO Send this item to the keyLogger (which would then send KEY_INSERT_COMPLETE back to the requester),
         // for now this function will send the message back for proof of concept.
-        LoaderMsg msg(LoaderMsg::KEY_INSERT_COMPLETE, inMsg.msgId->element, getHostName(), getPort());
+        LoaderMsg msg(LoaderMsg::KEY_INSERT_COMPLETE, inMsg.msgId->element, getHostName(), getUdpPort());
         BufferUdp msgData;
         msg.serializeToData(msgData);
         // protoKeyInfo should still be the same
@@ -315,7 +336,7 @@ void CentralWorker::_workerKeyInsertReq(LoaderMsg const& inMsg, std::unique_ptr<
 void CentralWorker::_forwardKeyInsertRequest(WWorkerListItem::Ptr const& target, LoaderMsg const& inMsg,
                                              std::unique_ptr<proto::KeyInfoInsert> const& protoData) {
     // The proto buffer should be the same, just need a new message.
-    LoaderMsg msg(LoaderMsg::KEY_INSERT_REQ, inMsg.msgId->element, getHostName(), getPort());
+    LoaderMsg msg(LoaderMsg::KEY_INSERT_REQ, inMsg.msgId->element, getHostName(), getUdpPort());
     BufferUdp msgData;
     msg.serializeToData(msgData);
 
@@ -323,7 +344,7 @@ void CentralWorker::_forwardKeyInsertRequest(WWorkerListItem::Ptr const& target,
     protoData->SerializeToString(&(strElem.element));
     strElem.appendToData(msgData);
 
-    auto nAddr = target->getAddress();
+    auto nAddr = target->getAddressUdp();
     sendBufferTo(nAddr.ip, nAddr.port, msgData);
 }
 
@@ -353,7 +374,7 @@ void CentralWorker::_workerKeyInfoReq(LoaderMsg const& inMsg, std::unique_ptr<pr
 
     // Get the source of the request
     proto::LdrNetAddress protoAddr = protoData->requester();
-    NetworkAddress nAddr(protoAddr.workerip(), protoAddr.workerport());
+    NetworkAddress nAddr(protoAddr.ip(), protoAddr.udpport());
 
     proto::KeyInfo protoKeyInfo = protoData->keyinfo();
     std::string key = protoKeyInfo.key();
@@ -369,7 +390,7 @@ void CentralWorker::_workerKeyInfoReq(LoaderMsg const& inMsg, std::unique_ptr<pr
         lck.unlock();
 
         // Key found or not, message will be returned.
-        LoaderMsg msg(LoaderMsg::KEY_INFO, inMsg.msgId->element, getHostName(), getPort());
+        LoaderMsg msg(LoaderMsg::KEY_INFO, inMsg.msgId->element, getHostName(), getUdpPort());
         BufferUdp msgData;
         msg.serializeToData(msgData);
         proto::KeyInfo protoReply;
@@ -414,7 +435,8 @@ bool CentralWorker::workerWorkerSetRightNeighbor(LoaderMsg const& inMsg, BufferU
         return false;
     }
 
-    // Just setting the name, so it can stay here.
+    LOGS(_log, LOG_LVL_INFO, "&&& workerWorkerSetRightNeighbor ourName=" << _ourName << " rightN=" << neighborName->element);
+    // Just setting the name, so it can stay here. See CentralWorker::_monitor(), which establishes/maintains connections.
     _neighborRight.setName(neighborName->element);
     return true;
 }
@@ -427,18 +449,24 @@ bool CentralWorker::workerWorkerSetLeftNeighbor(LoaderMsg const& inMsg, BufferUd
         return false;
     }
 
+    LOGS(_log, LOG_LVL_INFO, "&&& workerWorkerSetLeftNeighbor ourName=" << _ourName << " leftN=" << neighborName->element);
     // &&& TODO move to separate thread
     _neighborLeft.setName(neighborName->element);
+    // Just setting the name, so it can stay here. See CentralWorker::_monitor(), which establishes/maintains connections.
+
+    /* &&&
+
     // Create a one shot to establish communications with the new neighbor
     // by calling CentralWorker::_connectToLeftNeighbor.
     LOGS(_log,LOG_LVL_INFO,"&&& CentralWorker::workerWorkerSetLeftNeighbor needs code **********");
-
     // &&& Make a OneShot to establish the connection or should this be have part of the worker's update process be to maintain neighbor connections????
     _connectToLeftNeighbor(neighborName->element); // && replace with one shot.
+    */
     return true;
 }
 
 
+/* &&&
 bool CentralWorker::_connectToLeftNeighbor(uint32_t neighborLeftName) {
     if (neighborLeftName != _neighborLeft.getName()) {
         LOGS(_log, LOG_LVL_INFO, "neighborLeft name changed to " << neighborLeftName);
@@ -460,6 +488,7 @@ bool CentralWorker::_connectToLeftNeighbor(uint32_t neighborLeftName) {
     exit(-1); // &&&
     return false;
 }
+*/
 
 
 
@@ -495,7 +524,7 @@ void CentralWorker::_workerWorkerKeysInfoReq(LoaderMsg const& inMsg) {
         recentAdds = _recentAdds.size();
     }
 
-    LoaderMsg msg(LoaderMsg::WORKER_KEYS_INFO, msgId, getHostName(), getPort());
+    LoaderMsg msg(LoaderMsg::WORKER_KEYS_INFO, msgId, getHostName(), getUdpPort());
     BufferUdp msgData;
     msg.serializeToData(msgData);
     proto::WorkerKeysInfo protoWKI;
@@ -516,7 +545,7 @@ void CentralWorker::_workerWorkerKeysInfoReq(LoaderMsg const& inMsg) {
 #else
     // &&& TODO put this in a separate function, adding a DoListItem to send it occasionally or when size changes significantly.
     // Build message containing Range, size of map, number of items added.
-    LoaderMsg msg(LoaderMsg::WORKER_KEYS_INFO, msgId, getHostName(), getPort());
+    LoaderMsg msg(LoaderMsg::WORKER_KEYS_INFO, msgId, getHostName(), getUdpPort());
     BufferUdp msgData;
     msg.serializeToData(msgData);
     LOGS(_log, LOG_LVL_INFO, "CentralWorker::_workerWorkerKeysInfoReq building protoWKI &&&");
@@ -596,7 +625,7 @@ void CentralWorker::_workerKeysInfoExtractor(BufferUdp& data, uint32_t& name, Ne
 void CentralWorker::_forwardKeyInfoRequest(WWorkerListItem::Ptr const& target, LoaderMsg const& inMsg,
                                              std::unique_ptr<proto::KeyInfoInsert> const& protoData) {
     // The proto buffer should be the same, just need a new message.
-    LoaderMsg msg(LoaderMsg::KEY_INFO_REQ, inMsg.msgId->element, getHostName(), getPort());
+    LoaderMsg msg(LoaderMsg::KEY_INFO_REQ, inMsg.msgId->element, getHostName(), getUdpPort());
     BufferUdp msgData;
     msg.serializeToData(msgData);
 
@@ -604,19 +633,20 @@ void CentralWorker::_forwardKeyInfoRequest(WWorkerListItem::Ptr const& target, L
     protoData->SerializeToString(&(strElem.element));
     strElem.appendToData(msgData);
 
-    auto nAddr = target->getAddress();
+    auto nAddr = target->getAddressUdp();
     sendBufferTo(nAddr.ip, nAddr.port, msgData);
 }
 
 
 void CentralWorker::_registerWithMaster() {
-    LoaderMsg msg(LoaderMsg::MAST_WORKER_ADD_REQ, getNextMsgId(), getHostName(), getPort());
+    LoaderMsg msg(LoaderMsg::MAST_WORKER_ADD_REQ, getNextMsgId(), getHostName(), getUdpPort());
     BufferUdp msgData;
     msg.serializeToData(msgData);
     // create the proto buffer
     lsst::qserv::proto::LdrNetAddress protoBuf;
-    protoBuf.set_workerip(getHostName());
-    protoBuf.set_workerport(getPort());
+    protoBuf.set_ip(getHostName());
+    protoBuf.set_udpport(getUdpPort());
+    protoBuf.set_tcpport(getTcpPort());
 
     StringElement strElem;
     protoBuf.SerializeToString(&(strElem.element));
@@ -628,7 +658,7 @@ void CentralWorker::_registerWithMaster() {
 
 void CentralWorker::testSendBadMessage() {
     uint16_t kind = 60200;
-    LoaderMsg msg(kind, getNextMsgId(), getHostName(), getPort());
+    LoaderMsg msg(kind, getNextMsgId(), getHostName(), getUdpPort());
     LOGS(_log, LOG_LVL_INFO, "testSendBadMessage msg=" << msg);
     BufferUdp msgData(128);
     msg.serializeToData(msgData);
