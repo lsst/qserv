@@ -152,16 +152,18 @@ BufferUdp::Ptr MasterServer::workerAddRequest(LoaderMsg const& inMsg, BufferUdp:
                                               boost::asio::ip::udp::endpoint const& senderEndpoint) {
 
     /// Message contains the network address of a worker to add to our list.
-    auto addReq = NetworkAddress::create(data, "MasterServer::workerAddRequest");
+    int tcpPort = 0;
+    auto addReq = NetworkAddress::create(data, tcpPort, "MasterServer::workerAddRequest");
     if (addReq == nullptr) {
         return replyMsgReceived(senderEndpoint, inMsg, LoaderMsg::STATUS_PARSE_ERR,
                 "STATUS_PARSE_ERR parse error workerAddRequest ");
     }
 
     // Once the worker has been added, its name will be sent to all other workers.
-    _centralMaster->addWorker(addReq->ip, addReq->port);
+    _centralMaster->addWorker(addReq->ip, addReq->port, tcpPort);
 
-    LOGS(_log, LOG_LVL_INFO, "Adding worker ip=" << addReq->ip << " port=" << addReq->port);
+    LOGS(_log, LOG_LVL_INFO, "Adding worker ip=" << addReq->ip <<
+                             " udp=" << addReq->port << " tcp=" << tcpPort);
 
     return nullptr;
 }
@@ -172,7 +174,8 @@ BufferUdp::Ptr MasterServer::workerListRequest(LoaderMsg const& inMsg, BufferUdp
     std::string funcName("MasterServer::workerListRequest");
     LOGS(_log, LOG_LVL_INFO, "  &&& " << funcName);
 
-    auto addr = NetworkAddress::create(data, funcName);
+    int tcpPort = 0; // only needed for create parameter
+    auto addr = NetworkAddress::create(data, tcpPort, funcName);
     if (addr == nullptr) {
         std::string errStr("STATUS_PARSE_ERR parse error in " + funcName);
         LOGS(_log, LOG_LVL_ERROR, errStr);
@@ -246,7 +249,8 @@ BufferUdp::Ptr MasterServer::workerInfoRequest(LoaderMsg const& inMsg, BufferUdp
     // &&& TODO Wrap this up in a command and put it on a queue.
     try {
         std::string const funcName("MasterServer::workerInfoRequest");
-        NetworkAddress::UPtr requestorAddr = NetworkAddress::create(data, funcName);
+        int tcpPort = 0;
+        NetworkAddress::UPtr requestorAddr = NetworkAddress::create(data, tcpPort, funcName);
         if (requestorAddr == nullptr) {
             throw LoaderMsgErr(funcName, __FILE__, __LINE__);
         }
@@ -271,8 +275,10 @@ BufferUdp::Ptr MasterServer::workerInfoRequest(LoaderMsg const& inMsg, BufferUdp
         proto::LdrNetAddress* protoAddr = protoWorker.mutable_address();
         proto::WorkerRangeString* protoRange = protoWorker.mutable_rangestr();
         protoWorker.set_name(workerItem->getName());
-        protoAddr->set_workerip(workerItem->getAddress().ip);
-        protoAddr->set_workerport(workerItem->getAddress().port);
+        auto udp = workerItem->getUdpAddress();
+        protoAddr->set_ip(udp.ip);
+        protoAddr->set_udpport(udp.port);
+        protoAddr->set_tcpport(workerItem->getTcpAddress().port);
         auto range = workerItem->getRangeString();
         LOGS(_log, LOG_LVL_INFO, "&&&&&&&&&&&&&&&&&&&&&& workerInfoRequest range = " << range);
         protoRange->set_valid(range.getValid());

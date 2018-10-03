@@ -36,8 +36,9 @@ message LdrMsgReceived {
 
 /// Register a worker with the master.    
 message LdrNetAddress {
-    required string workerip     = 1;  // &&& change to ip
-    required uint32 workerport   = 2;  // &&& change to port
+    required string ip      = 1;
+    required uint32 udpport = 2;
+    required uint32 tcpport = 3;
 }
 
 
@@ -64,8 +65,8 @@ message WorkerRange {
 
 message WorkerListItem {
     required uint32            name     = 1; // worker's id number
-    optional LdrNetAddress     address  = 2;
-    optional WorkerRangeString rangestr = 3; // TODO replace with WorkerRange
+    optional WorkerRangeString rangestr = 2; // TODO replace with WorkerRange
+    optional LdrNetAddress     address  = 3;
 }
 
 
