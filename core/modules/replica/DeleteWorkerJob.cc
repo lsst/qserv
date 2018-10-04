@@ -377,10 +377,22 @@ void DeleteWorkerJob::onJobFinish(ReplicateJob::Ptr const& job) {
                 }
             }
 
-        } catch (std::exception const&) {
+        } catch (std::invalid_argument const& ex) {
+    
+            LOGS(_log, LOG_LVL_ERROR, context() << "onJobFinish(ReplicateJob)  "
+                 << "** misconfigured application ** "
+                 << " worker: " << worker()
+                 << " exception: " << ex.what());
+            
+            throw;
+
+        } catch (std::exception const& ex) {
+
             LOGS(_log, LOG_LVL_ERROR, context()
                  << "onJobFinish(ReplicateJob)  ** failed to find replicas ** "
-                 << " worker: " << worker());
+                 << " worker: " << worker()
+                 << " exception: " << ex.what());
+
             finish(lock, ExtendedState::FAILED);
             return;
         }

@@ -168,11 +168,24 @@ void DeleteReplicaJob::startImpl(util::Lock const& lock) {
             worker(),
             databaseFamily());
 
-    } catch (std::exception const&) {
+    } catch (std::invalid_argument const& ex) {
+
+        LOGS(_log, LOG_LVL_ERROR, context() << "startImpl  "
+             << "** misconfigured application ** "
+             << " chunk: " << chunk()
+             << " worker: " << worker()
+             << " databaseFamily: " << databaseFamily()
+             << " exception: " << ex.what());
+        
+        throw;
+
+    } catch (std::exception const& ex) {
 
         LOGS(_log, LOG_LVL_ERROR, context() << "startImpl  ** failed to find replicas ** "
-             << " chunk: "  << chunk()
-             << " worker: " << worker());
+             << " chunk: " << chunk()
+             << " worker: " << worker()
+             << " databaseFamily: " << databaseFamily()
+             << " exception: " << ex.what());
 
         setState(lock,
                  State::FINISHED,
@@ -182,8 +195,9 @@ void DeleteReplicaJob::startImpl(util::Lock const& lock) {
     if (not _replicas.size()) {
         LOGS(_log, LOG_LVL_ERROR, context() << "startImpl  "
              << "** worker has no replicas to be deleted ** "
-             << " chunk: "  << chunk()
-             << " worker: " << worker());
+             << " chunk: " << chunk()
+             << " worker: " << worker()
+             << " databaseFamily: " << databaseFamily());
 
         setState(lock,
                  State::FINISHED,

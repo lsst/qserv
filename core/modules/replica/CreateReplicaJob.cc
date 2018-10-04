@@ -169,12 +169,25 @@ void CreateReplicaJob::startImpl(util::Lock const& lock) {
             destinationWorker(),
             databaseFamily());
 
-    } catch (std::exception const&) {
+    } catch (std::invalid_argument const& ex) {
+
+        LOGS(_log, LOG_LVL_ERROR, context() << "startImpl  "
+             << "** misconfigured application ** "
+             << " chunk: "  << chunk()
+             << " destinationWorker: " << destinationWorker()
+             << " databaseFamily: " << databaseFamily()
+             << " exception: " << ex.what());
+        
+        throw;
+
+    } catch (std::exception const& ex) {
 
         LOGS(_log, LOG_LVL_ERROR, context() << "startImpl  "
              << "** failed to find replicas ** "
              << " chunk: "  << chunk()
-             << " worker: " << destinationWorker());
+             << " destinationWorker: " << destinationWorker()
+             << " databaseFamily: " << databaseFamily()
+             << " exception: " << ex.what());
 
         setState(lock,
                  State::FINISHED,
@@ -185,7 +198,8 @@ void CreateReplicaJob::startImpl(util::Lock const& lock) {
         LOGS(_log, LOG_LVL_ERROR, context() << "startImpl  "
              << "** destination worker already has " << destinationReplicas.size() << " replicas ** "
              << " chunk: "  << chunk()
-             << " worker: " << destinationWorker());
+             << " destinationWorker: " << destinationWorker()
+             << " databaseFamily: " << databaseFamily());
 
         setState(lock,
                  State::FINISHED,
@@ -211,11 +225,24 @@ void CreateReplicaJob::startImpl(util::Lock const& lock) {
             sourceWorker(),
             databaseFamily());
 
-    } catch (std::exception const&) {
+    } catch (std::invalid_argument const& ex) {
+
+        LOGS(_log, LOG_LVL_ERROR, context() << "startImpl  "
+             << "** misconfigured application ** "
+             << " chunk: "  << chunk()
+             << " sourceWorker: " << sourceWorker()
+             << " databaseFamily: " << databaseFamily()
+             << " exception: " << ex.what());
+        
+        throw;
+
+    } catch (std::exception const& ex) {
 
         LOGS(_log, LOG_LVL_ERROR, context() << "startImpl  ** failed to find replicas ** "
              << " chunk: "  << chunk()
-             << " worker: " << sourceWorker());
+             << " sourceWorker: " << sourceWorker()
+             << " databaseFamily: " << databaseFamily()
+             << " exception: " << ex.what());
 
         setState(lock,
                  State::FINISHED,
