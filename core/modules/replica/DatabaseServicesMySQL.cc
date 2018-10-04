@@ -611,19 +611,11 @@ void DatabaseServicesMySQL::saveReplicaInfoCollectionImpl(util::Lock const& lock
                        .atChunk(replica.chunk()) = &replica;
         }
     }
-    LOGS(_log, LOG_LVL_DEBUG, context << "new replicas group: 2");
     
     // Obtain old replicas and group them by contexts
 
-    LOGS(_log, LOG_LVL_DEBUG, context << "old replicas fetch: 1");
-
     std::vector<ReplicaInfo> oldReplicaInfoCollection;
     findWorkerReplicasImpl(lock, oldReplicaInfoCollection, worker, database);
-
-    LOGS(_log, LOG_LVL_DEBUG, context << "old replicas fetch: 2"
-         << " num.replicas: " << oldReplicaInfoCollection.size());
-
-    LOGS(_log, LOG_LVL_DEBUG, context << "old replicas group: 1");
 
     WorkerDatabaseChunkMap<ReplicaInfo const*> oldReplicas;
     for (auto&& replica: oldReplicaInfoCollection) {
@@ -632,11 +624,7 @@ void DatabaseServicesMySQL::saveReplicaInfoCollectionImpl(util::Lock const& lock
                    .atChunk(replica.chunk()) = &replica;
     }
 
-    LOGS(_log, LOG_LVL_DEBUG, context << "old replicas group: 2");
-
     // Find differences between the collections
-
-    LOGS(_log, LOG_LVL_DEBUG, context << "*** replicas compa: 1");
 
     WorkerDatabaseChunkMap<ReplicaInfo const*> inBoth;
     SemanticMaps::intersect(newReplicas,
@@ -650,14 +638,14 @@ void DatabaseServicesMySQL::saveReplicaInfoCollectionImpl(util::Lock const& lock
                         inNewReplicasOnly,
                         inOldReplicasOnly);
 
-    LOGS(_log, LOG_LVL_DEBUG, context << "*** replicas compa: 2"
-         << " #both: " << SemanticMaps::count(inBoth)
-         << " #new: " << SemanticMaps::count(inNewReplicasOnly)
-         << " #old: " << SemanticMaps::count(inOldReplicasOnly));
+    LOGS(_log, LOG_LVL_DEBUG, context << "*** replicas comparision summary *** "
+         << " #new: " << newReplicaInfoCollection.size()
+         << " #old: " << oldReplicaInfoCollection.size()
+         << " #in-both: " << SemanticMaps::count(inBoth)
+         << " #new-only: " << SemanticMaps::count(inNewReplicasOnly)
+         << " #old-only: " << SemanticMaps::count(inOldReplicasOnly));
 
     // Eiminate outdated replicas
-
-    LOGS(_log, LOG_LVL_DEBUG, context << "old replicas remov: 1");
     
     for (auto&& worker: inOldReplicasOnly.workerNames()) {
 
@@ -671,11 +659,7 @@ void DatabaseServicesMySQL::saveReplicaInfoCollectionImpl(util::Lock const& lock
         }
     }
 
-    LOGS(_log, LOG_LVL_DEBUG, context << "old replicas remov: 2");
-
     // Insert new replicas not present in the old collection
-
-    LOGS(_log, LOG_LVL_DEBUG, context << "new replicas inser: 1");
 
     for (auto&& worker: inNewReplicasOnly.workerNames()) {
 
@@ -690,12 +674,8 @@ void DatabaseServicesMySQL::saveReplicaInfoCollectionImpl(util::Lock const& lock
         }
     }
 
-    LOGS(_log, LOG_LVL_DEBUG, context << "new replicas inser: 2");
-
     // Deep comparision of the replicas in the intersect area to see
-    // wich of those need to be updated.
-
-    LOGS(_log, LOG_LVL_DEBUG, context << "old replicas updat: 1");
+    // which of those need to be updated.
 
    for (auto&& worker: inBoth.workerNames()) {
 
@@ -721,7 +701,6 @@ void DatabaseServicesMySQL::saveReplicaInfoCollectionImpl(util::Lock const& lock
             }
         }
     }
-    LOGS(_log, LOG_LVL_DEBUG, context << "old replicas updat: 2");
     LOGS(_log, LOG_LVL_DEBUG, context << "** DONE **");
 }
 
