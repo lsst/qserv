@@ -52,6 +52,10 @@ namespace mysql {
 std::atomic<size_t> Connection::_nextId{0};
 
 unsigned long Connection::max_allowed_packet() {
+
+    // Reasons behind setting this parameter to 4 MB cam be found here:
+    // https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html#sysvar_max_allowed_packet
+
     return 4*1024*1024;
 }
 
@@ -92,8 +96,7 @@ Connection::Connection(ConnectionParams const& connectionParams,
         _fields(nullptr),
         _numFields(0) {
 
-    std::string const context = "Connection[" + std::to_string(_id) + "]  constructed";
-    LOGS(_log, LOG_LVL_DEBUG, context);
+    LOGS(_log, LOG_LVL_DEBUG, "Connection[" + std::to_string(_id) + "]  constructed");
 }
 
 Connection::~Connection() {
@@ -101,16 +104,15 @@ Connection::~Connection() {
     if (nullptr != _res)   mysql_free_result(_res);
     if (nullptr != _mysql) mysql_close(_mysql);
 
-    std::string const context = "Connection[" + std::to_string(_id) + "]  destructed";
-    LOGS(_log, LOG_LVL_DEBUG, context);
+    LOGS(_log, LOG_LVL_DEBUG, "Connection[" + std::to_string(_id) + "]  destructed");
 }
 
 std::string Connection::escape(std::string const& inStr) const {
 
-    std::string const context = "Connection[" + std::to_string(_id) + "]::escape  ";
-
     if (nullptr == _mysql) {
-        throw Error(context + "not connected to the MySQL service");
+        throw Error(
+            "Connection[" + std::to_string(_id) + "]::escape  not connected to the MySQL service"
+        );
     }
     size_t const inLen = inStr.length();
 
