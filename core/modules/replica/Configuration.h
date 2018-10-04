@@ -283,7 +283,9 @@ public:
     static bool databaseAllowReconnect() { return defaultDatabaseAllowReconnect; }
 
     /**
-     * Change the default value of the parameter
+     * Change the default value of a parameter defining a policy for handling
+     * automatic reconnects to a database server. Setting 'true' will enable
+     * reconnects.
      *
      * @param value - new value of the parameter
      *
@@ -297,7 +299,8 @@ public:
     static unsigned int databaseConnectTimeoutSec() { return defaultDatabaseConnectTimeoutSec; }
 
     /**
-     * Change the default value of the parameter
+     * Change the default value of a parameter specifying delays between automatic
+     * reconnects (should those be enabled by the corresponding policy).
      *
      * @param value - new value of the parameter (must be strictly greater than 0)
      *
@@ -308,13 +311,15 @@ public:
     static unsigned int setDatabaseConnectTimeoutSec(unsigned int value);
 
     /**
-     * @return the default number of a maximum number of attempts to execure
+     * @return the default number of a maximum number of attempts to execute
      * a query due to database connection failures and subsequent reconnects.
      */
     static unsigned int databaseMaxReconnects() { return defaultDatabaseMaxReconnects; }
 
     /**
-     * Change the default value of the parameter
+     * Change the default value of a parameter specifying the maximum number
+     * of attempts to execute a query due to database connection failures and
+     * subsequent reconnects (should they be enabled by the corresponding policy).
      *
      * @param value - new value of the parameter (must be strictly greater than 0)
      *
@@ -331,7 +336,8 @@ public:
     static unsigned int databaseTransactionTimeoutSec() { return defaultDatabaseTransactionTimeoutSec; }
 
     /**
-     * Change the default value of the parameter
+     * Change the default value of a parameter specifying a timeout for executing
+     * transactions at a presence of server reconnects.
      *
      * @param value - new value of the parameter (must be strictly greater than 0)
      *
