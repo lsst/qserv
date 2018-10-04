@@ -83,7 +83,7 @@ public:
                       std::string const& worker,
                       unsigned int chunk,
                       std::vector<std::string> const& databases,
-                      CallbackType onFinish = nullptr);
+                      CallbackType const& onFinish = nullptr);
 
     /// @return the chunk number
     unsigned int chunk() const { return _chunk; }
@@ -113,7 +113,7 @@ private:
                               std::string const& worker,
                               unsigned int chunk,
                               std::vector<std::string> const& databases,
-                              CallbackType onFinish);
+                              CallbackType const& onFinish);
 
     /**
       * Implememnt the corresponding method of the base class

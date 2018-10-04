@@ -56,7 +56,7 @@ Job::Options const& FixUpJob::defaultOptions() {
 FixUpJob::Ptr FixUpJob::create(std::string const& databaseFamily,
                                Controller::Ptr const& controller,
                                std::string const& parentJobId,
-                               CallbackType onFinish,
+                               CallbackType const& onFinish,
                                Job::Options const& options) {
     return FixUpJob::Ptr(
         new FixUpJob(databaseFamily,
@@ -69,7 +69,7 @@ FixUpJob::Ptr FixUpJob::create(std::string const& databaseFamily,
 FixUpJob::FixUpJob(std::string const& databaseFamily,
                    Controller::Ptr const& controller,
                    std::string const& parentJobId,
-                   CallbackType onFinish,
+                   CallbackType const& onFinish,
                    Job::Options const& options)
     :   Job(controller,
             parentJobId,

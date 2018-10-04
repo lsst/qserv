@@ -59,7 +59,7 @@ RebalanceJob::Ptr RebalanceJob::create(
                             bool estimateOnly,
                             Controller::Ptr const& controller,
                             std::string const& parentJobId,
-                            CallbackType onFinish,
+                            CallbackType const& onFinish,
                             Job::Options const& options) {
     return RebalanceJob::Ptr(
         new RebalanceJob(databaseFamily,
@@ -74,7 +74,7 @@ RebalanceJob::RebalanceJob(std::string const& databaseFamily,
                            bool estimateOnly,
                            Controller::Ptr const& controller,
                            std::string const& parentJobId,
-                           CallbackType onFinish,
+                           CallbackType const& onFinish,
                            Job::Options const& options)
     :   Job(controller,
             parentJobId,

@@ -85,7 +85,7 @@ public:
                       std::string const& worker,
                       QservReplicaCollection const& newReplicas,
                       bool force = false,
-                      CallbackType onFinish = nullptr);
+                      CallbackType const& onFinish = nullptr);
 
     /// @return collection of new replicas to be set at the Qserv worker
     QservReplicaCollection const& newReplicas() const { return _newReplicas; }
@@ -124,7 +124,7 @@ private:
                                std::string const& worker,
                                QservReplicaCollection const& newReplicas,
                                bool force,
-                               CallbackType onFinish);
+                               CallbackType const& onFinish);
 
     /**
      * Carry over results of the request into a local collection.

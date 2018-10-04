@@ -242,7 +242,7 @@ void Job::qservAddReplica(util::Lock const& lock,
                           unsigned int chunk,
                           std::vector<std::string> const& databases,
                           std::string const& worker,
-                          AddReplicaQservMgtRequest::CallbackType onFinish) {
+                          AddReplicaQservMgtRequest::CallbackType const& onFinish) {
 
     LOGS(_log, LOG_LVL_DEBUG, context()
          << "** START ** Qserv notification on ADD replica:"
@@ -280,7 +280,7 @@ void Job::qservRemoveReplica(util::Lock const& lock,
                              std::vector<std::string> const& databases,
                              std::string const& worker,
                              bool force,
-                             RemoveReplicaQservMgtRequest::CallbackType onFinish) {
+                             RemoveReplicaQservMgtRequest::CallbackType const& onFinish) {
 
     LOGS(_log, LOG_LVL_DEBUG, context()
          << "** START ** Qserv notification on REMOVE replica:"

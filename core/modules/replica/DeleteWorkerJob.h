@@ -126,7 +126,7 @@ public:
                       bool permanentDelete,
                       Controller::Ptr const& controller,
                       std::string const& parentJobId=std::string(),
-                      CallbackType onFinish=nullptr,
+                      CallbackType const& onFinish=nullptr,
                       Job::Options const& options=defaultOptions());
 
     // Default construction and copy semantics are prohibited
@@ -178,7 +178,7 @@ protected:
                     bool permanentDelete,
                     Controller::Ptr const& controller,
                     std::string const& parentJobId,
-                    CallbackType onFinish,
+                    CallbackType const& onFinish,
                     Job::Options const& options);
 
     /**

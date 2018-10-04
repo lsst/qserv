@@ -80,7 +80,7 @@ struct QservMgtRequestWrapperImpl
     }
 
     QservMgtRequestWrapperImpl(typename T::Ptr const& request,
-                               typename T::CallbackType onFinish)
+                               typename T::CallbackType const& onFinish)
         :   QservMgtRequestWrapper(),
             _request(request),
             _onFinish(onFinish) {
@@ -118,7 +118,7 @@ AddReplicaQservMgtRequest::Ptr QservMgtServices::addReplica(
                                         unsigned int chunk,
                                         std::vector<std::string> const& databases,
                                         std::string const& worker,
-                                        AddReplicaQservMgtRequest::CallbackType onFinish,
+                                        AddReplicaQservMgtRequest::CallbackType const& onFinish,
                                         std::string const& jobId,
                                         unsigned int requestExpirationIvalSec) {
 
@@ -170,7 +170,7 @@ RemoveReplicaQservMgtRequest::Ptr QservMgtServices::removeReplica(
                                         std::vector<std::string> const& databases,
                                         std::string const& worker,
                                         bool force,
-                                        RemoveReplicaQservMgtRequest::CallbackType onFinish,
+                                        RemoveReplicaQservMgtRequest::CallbackType const& onFinish,
                                         std::string const& jobId,
                                         unsigned int requestExpirationIvalSec) {
 
@@ -221,7 +221,7 @@ GetReplicasQservMgtRequest::Ptr QservMgtServices::getReplicas(
                                         std::string const& worker,
                                         bool inUseOnly,
                                         std::string const& jobId,
-                                        GetReplicasQservMgtRequest::CallbackType onFinish,
+                                        GetReplicasQservMgtRequest::CallbackType const& onFinish,
                                         unsigned int requestExpirationIvalSec) {
 
     GetReplicasQservMgtRequest::Ptr request;
@@ -271,7 +271,7 @@ SetReplicasQservMgtRequest::Ptr QservMgtServices::setReplicas(
                                         QservReplicaCollection const& newReplicas,
                                         bool force,
                                         std::string const& jobId,
-                                        SetReplicasQservMgtRequest::CallbackType onFinish,
+                                        SetReplicasQservMgtRequest::CallbackType const& onFinish,
                                         unsigned int requestExpirationIvalSec) {
 
     SetReplicasQservMgtRequest::Ptr request;
@@ -319,7 +319,7 @@ TestEchoQservMgtRequest::Ptr QservMgtServices::echo(
                                     std::string const& worker,
                                     std::string const& data,
                                     std::string const& jobId,
-                                    TestEchoQservMgtRequest::CallbackType onFinish,
+                                    TestEchoQservMgtRequest::CallbackType const& onFinish,
                                     unsigned int requestExpirationIvalSec) {
 
     TestEchoQservMgtRequest::Ptr request;

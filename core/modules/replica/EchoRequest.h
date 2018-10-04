@@ -110,7 +110,7 @@ public:
                       std::string const& worker,
                       std::string const& data,
                       uint64_t delay,
-                      CallbackType onFinish,
+                      CallbackType const& onFinish,
                       int  priority,
                       bool keepTracking,
                       std::shared_ptr<Messenger> const& messenger);
@@ -125,7 +125,7 @@ private:
                 std::string const& worker,
                 std::string const& data,
                 uint64_t delay,
-                CallbackType onFinish,
+                CallbackType const& onFinish,
                 int  priority,
                 bool keepTracking,
                 std::shared_ptr<Messenger> const& messenger);

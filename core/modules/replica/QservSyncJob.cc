@@ -59,7 +59,7 @@ QservSyncJob::Ptr QservSyncJob::create(std::string const& databaseFamily,
                                        unsigned int requestExpirationIvalSec,
                                        std::string const& parentJobId,
                                        bool force,
-                                       CallbackType onFinish,
+                                       CallbackType const& onFinish,
                                        Job::Options const& options) {
     return QservSyncJob::Ptr(
         new QservSyncJob(databaseFamily,
@@ -76,7 +76,7 @@ QservSyncJob::QservSyncJob(std::string const& databaseFamily,
                            unsigned int requestExpirationIvalSec,
                            std::string const& parentJobId,
                            bool force,
-                           CallbackType onFinish,
+                           CallbackType const& onFinish,
                            Job::Options const& options)
     :   Job(controller,
             parentJobId,

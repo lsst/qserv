@@ -83,7 +83,7 @@ DeleteReplicaJob::Ptr DeleteReplicaJob::create(std::string const& databaseFamily
                                                    std::string const& worker,
                                                    Controller::Ptr const& controller,
                                                    std::string const& parentJobId,
-                                                   CallbackType onFinish,
+                                                   CallbackType const& onFinish,
                                                    Job::Options const& options) {
     return DeleteReplicaJob::Ptr(
         new DeleteReplicaJob(databaseFamily,
@@ -100,7 +100,7 @@ DeleteReplicaJob::DeleteReplicaJob(std::string const& databaseFamily,
                                    std::string const& worker,
                                    Controller::Ptr const& controller,
                                    std::string const& parentJobId,
-                                   CallbackType onFinish,
+                                   CallbackType const& onFinish,
                                    Job::Options const& options)
     :   Job(controller,
             parentJobId,

@@ -55,7 +55,7 @@ FindAllJob::Ptr FindAllJob::create(std::string const& databaseFamily,
                                    bool saveReplicaInfo,
                                    Controller::Ptr const& controller,
                                    std::string const& parentJobId,
-                                   CallbackType onFinish,
+                                   CallbackType const& onFinish,
                                    Job::Options const& options) {
     return FindAllJob::Ptr(
         new FindAllJob(databaseFamily,
@@ -70,7 +70,7 @@ FindAllJob::FindAllJob(std::string const& databaseFamily,
                        bool saveReplicaInfo,
                        Controller::Ptr const& controller,
                        std::string const& parentJobId,
-                       CallbackType onFinish,
+                       CallbackType const& onFinish,
                        Job::Options const& options)
     :   Job(controller,
             parentJobId,

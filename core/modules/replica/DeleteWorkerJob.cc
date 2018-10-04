@@ -90,7 +90,7 @@ DeleteWorkerJob::Ptr DeleteWorkerJob::create(std::string const& worker,
                                                  bool permanentDelete,
                                                  Controller::Ptr const& controller,
                                                  std::string const& parentJobId,
-                                                 CallbackType onFinish,
+                                                 CallbackType const& onFinish,
                                                  Job::Options const& options) {
     return DeleteWorkerJob::Ptr(
         new DeleteWorkerJob(worker,
@@ -105,7 +105,7 @@ DeleteWorkerJob::DeleteWorkerJob(std::string const& worker,
                                  bool permanentDelete,
                                  Controller::Ptr const& controller,
                                  std::string const& parentJobId,
-                                 CallbackType onFinish,
+                                 CallbackType const& onFinish,
                                  Job::Options const& options)
     :   Job(controller,
             parentJobId,

@@ -58,7 +58,7 @@ MoveReplicaJob::Ptr MoveReplicaJob::create(std::string const& databaseFamily,
                                            bool purge,
                                            Controller::Ptr const& controller,
                                            std::string const& parentJobId,
-                                           CallbackType onFinish,
+                                           CallbackType const& onFinish,
                                            Job::Options const& options) {
     return MoveReplicaJob::Ptr(
         new MoveReplicaJob(databaseFamily,
@@ -79,7 +79,7 @@ MoveReplicaJob::MoveReplicaJob(std::string const& databaseFamily,
                                bool purge,
                                Controller::Ptr const& controller,
                                std::string const& parentJobId,
-                               CallbackType onFinish,
+                               CallbackType const& onFinish,
                                Job::Options const& options)
     :   Job(controller,
             parentJobId,

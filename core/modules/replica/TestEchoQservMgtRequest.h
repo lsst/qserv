@@ -83,7 +83,7 @@ public:
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& worker,
                       std::string const& data,
-                      CallbackType onFinish = nullptr);
+                      CallbackType const& onFinish = nullptr);
 
     /// @return input data string sent to the worker
     std::string const& data() const { return _data; }
@@ -112,7 +112,7 @@ private:
     TestEchoQservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
                             std::string const& worker,
                             std::string const& data,
-                            CallbackType onFinish);
+                            CallbackType const& onFinish);
 
     /**
       * @see QservMgtRequest::startImpl

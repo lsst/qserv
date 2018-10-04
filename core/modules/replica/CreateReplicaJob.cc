@@ -84,7 +84,7 @@ CreateReplicaJob::Ptr CreateReplicaJob::create(std::string const& databaseFamily
                                                    std::string const& destinationWorker,
                                                    Controller::Ptr const& controller,
                                                    std::string const& parentJobId,
-                                                   CallbackType onFinish,
+                                                   CallbackType const& onFinish,
                                                    Job::Options const& options) {
     return CreateReplicaJob::Ptr(
         new CreateReplicaJob(databaseFamily,
@@ -103,7 +103,7 @@ CreateReplicaJob::CreateReplicaJob(std::string const& databaseFamily,
                                    std::string const& destinationWorker,
                                    Controller::Ptr const& controller,
                                    std::string const& parentJobId,
-                                   CallbackType onFinish,
+                                   CallbackType const& onFinish,
                                    Job::Options const& options)
     :   Job(controller,
             parentJobId,

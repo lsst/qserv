@@ -48,7 +48,7 @@ AddReplicaQservMgtRequest::Ptr AddReplicaQservMgtRequest::create(
                                         std::string const& worker,
                                         unsigned int chunk,
                                         std::vector<std::string> const& databases,
-                                        AddReplicaQservMgtRequest::CallbackType onFinish) {
+                                        AddReplicaQservMgtRequest::CallbackType const& onFinish) {
     return AddReplicaQservMgtRequest::Ptr(
         new AddReplicaQservMgtRequest(serviceProvider,
                                       worker,
@@ -62,7 +62,7 @@ AddReplicaQservMgtRequest::AddReplicaQservMgtRequest(
                                 std::string const& worker,
                                 unsigned int chunk,
                                 std::vector<std::string> const& databases,
-                                AddReplicaQservMgtRequest::CallbackType onFinish)
+                                AddReplicaQservMgtRequest::CallbackType const& onFinish)
     :   QservMgtRequest(serviceProvider,
                         "QSERV_ADD_REPLICA",
                         worker),

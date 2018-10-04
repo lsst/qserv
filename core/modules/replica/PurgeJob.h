@@ -106,7 +106,7 @@ public:
                       unsigned int numReplicas,
                       Controller::Ptr const& controller,
                       std::string const& parentJobId,
-                      CallbackType onFinish,
+                      CallbackType const& onFinish,
                       Job::Options const& options=defaultOptions());
 
     // Default construction and copy semantics are prohibited
@@ -162,7 +162,7 @@ protected:
              unsigned int numReplicas,
              Controller::Ptr const& controller,
              std::string const& parentJobId,
-             CallbackType onFinish,
+             CallbackType const& onFinish,
              Job::Options const& options);
 
     /**

@@ -112,7 +112,7 @@ public:
                       unsigned int requestExpirationIvalSec=0,
                       std::string const& parentJobId=std::string(),
                       bool force = false,
-                      CallbackType onFinish = nullptr,
+                      CallbackType const& onFinish = nullptr,
                       Job::Options const& options = defaultOptions());
 
     // Default construction and copy semantics are prohibited
@@ -165,7 +165,7 @@ protected:
                  unsigned int requestExpirationIvalSec,
                  std::string const& parentJobId,
                  bool force,
-                 CallbackType onFinish,
+                 CallbackType const& onFinish,
                  Job::Options const& options);
 
     /**

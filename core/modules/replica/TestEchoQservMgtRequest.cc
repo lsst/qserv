@@ -51,7 +51,7 @@ TestEchoQservMgtRequest::Ptr TestEchoQservMgtRequest::create(
                                         ServiceProvider::Ptr const& serviceProvider,
                                         std::string const& worker,
                                         std::string const& data,
-                                        TestEchoQservMgtRequest::CallbackType onFinish) {
+                                        TestEchoQservMgtRequest::CallbackType const& onFinish) {
     return TestEchoQservMgtRequest::Ptr(
         new TestEchoQservMgtRequest(serviceProvider,
                                     worker,
@@ -63,7 +63,7 @@ TestEchoQservMgtRequest::TestEchoQservMgtRequest(
                                 ServiceProvider::Ptr const& serviceProvider,
                                 std::string const& worker,
                                 std::string const& data,
-                                TestEchoQservMgtRequest::CallbackType onFinish)
+                                TestEchoQservMgtRequest::CallbackType const& onFinish)
     :   QservMgtRequest(serviceProvider,
                         "QSERV_TEST_ECHO",
                         worker),

@@ -60,7 +60,7 @@ PurgeJob::Ptr PurgeJob::create(
                         unsigned int numReplicas,
                         Controller::Ptr const& controller,
                         std::string const& parentJobId,
-                        CallbackType onFinish,
+                        CallbackType const& onFinish,
                         Job::Options const& options) {
     return PurgeJob::Ptr(
         new PurgeJob(databaseFamily,
@@ -75,7 +75,7 @@ PurgeJob::PurgeJob(std::string const& databaseFamily,
                    unsigned int numReplicas,
                    Controller::Ptr const& controller,
                    std::string const& parentJobId,
-                   CallbackType onFinish,
+                   CallbackType const& onFinish,
                    Job::Options const& options)
     :   Job(controller,
             parentJobId,

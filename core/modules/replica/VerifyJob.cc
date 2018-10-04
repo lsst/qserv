@@ -179,8 +179,8 @@ Job::Options const& VerifyJob::defaultOptions() {
 VerifyJob::Ptr VerifyJob::create(
                         Controller::Ptr const& controller,
                         std::string const& parentJobId,
-                        CallbackType onFinish,
-                        CallbackTypeOnDiff onReplicaDifference,
+                        CallbackType const& onFinish,
+                        CallbackTypeOnDiff const& onReplicaDifference,
                         size_t maxReplicas,
                         bool computeCheckSum,
                         Job::Options const& options) {
@@ -196,8 +196,8 @@ VerifyJob::Ptr VerifyJob::create(
 
 VerifyJob::VerifyJob(Controller::Ptr const& controller,
                      std::string const& parentJobId,
-                     CallbackType onFinish,
-                     CallbackTypeOnDiff onReplicaDifference,
+                     CallbackType const& onFinish,
+                     CallbackTypeOnDiff const& onReplicaDifference,
                      size_t maxReplicas,
                      bool computeCheckSum,
                      Job::Options const& options)

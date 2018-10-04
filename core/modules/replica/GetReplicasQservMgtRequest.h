@@ -86,7 +86,7 @@ public:
                       std::string const& worker,
                       std::string const& databaseFamily,
                       bool inUseOnly = false,
-                      CallbackType onFinish = nullptr);
+                      CallbackType const& onFinish = nullptr);
 
     /// @return name of a database family
     std::string const& databaseFamily() const { return _databaseFamily; }
@@ -119,7 +119,7 @@ private:
                                std::string const& worker,
                                std::string const& databaseFamily,
                                bool inUseOnly,
-                               CallbackType onFinish);
+                               CallbackType const& onFinish);
 
     /**
      * Carry over results of the request into a local collection. Filter results

@@ -352,7 +352,7 @@ protected:
                          unsigned int chunk,
                          std::vector<std::string> const& databases,
                          std::string const& worker,
-                         AddReplicaQservMgtRequest::CallbackType onFinish=nullptr);
+                         AddReplicaQservMgtRequest::CallbackType const& onFinish=nullptr);
 
     /**
       * Notify Qserv about a new chunk added to its database.
@@ -371,7 +371,7 @@ protected:
                             std::vector<std::string> const& databases,
                             std::string const& worker,
                             bool force,
-                            RemoveReplicaQservMgtRequest::CallbackType onFinish=nullptr);
+                            RemoveReplicaQservMgtRequest::CallbackType const& onFinish=nullptr);
 
     /**
      * Ensure the object is in the deseride internal state. Throw an

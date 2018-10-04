@@ -165,7 +165,7 @@ public:
     MessageWrapper(std::string const& id,
                    std::shared_ptr<ProtocolBuffer> const& requestBufferPtr,
                    size_t responseBufferCapacityBytes,
-                   CallbackType onFinish)
+                   CallbackType const& onFinish)
         :   MessageWrapperBase(id,
                         requestBufferPtr,
                         responseBufferCapacityBytes),
@@ -273,7 +273,7 @@ public:
     template <class RESPONSE_TYPE>
     void send(std::string const& id,
               std::shared_ptr<ProtocolBuffer> const& requestBufferPtr,
-              typename MessageWrapper<RESPONSE_TYPE>::CallbackType onFinish) {
+              typename MessageWrapper<RESPONSE_TYPE>::CallbackType const& onFinish) {
 
         sendImpl(
             std::make_shared<MessageWrapper<RESPONSE_TYPE>>(

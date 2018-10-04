@@ -123,7 +123,7 @@ public:
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       boost::asio::io_service& io_service,
                       std::string const& worker,
-                      CallbackType onFinish,
+                      CallbackType const& onFinish,
                       std::shared_ptr<Messenger> const& messenger) {
 
         return ServiceManagementRequest<POLICY>::Ptr(
@@ -149,7 +149,7 @@ private:
                              char const* requestName,
                              std::string const& worker,
                              proto::ReplicationServiceRequestType requestType,
-                             CallbackType onFinish,
+                             CallbackType const& onFinish,
                              std::shared_ptr<Messenger> const& messenger)
         :   ServiceManagementRequestBase(serviceProvider,
                                          io_service,

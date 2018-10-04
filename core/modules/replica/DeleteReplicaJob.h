@@ -104,7 +104,7 @@ public:
                       std::string const& worker,
                       Controller::Ptr const& controller,
                       std::string const& parentJobId,
-                      CallbackType onFinish,
+                      CallbackType const& onFinish,
                       Job::Options const& options = defaultOptions());
 
     // Default construction and copy semantics are prohibited
@@ -160,7 +160,7 @@ protected:
                      std::string const& worker,
                      Controller::Ptr const& controller,
                      std::string const& parentJobId,
-                     CallbackType onFinish,
+                     CallbackType const& onFinish,
                      Job::Options const& options);
 
     /**

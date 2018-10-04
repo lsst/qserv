@@ -89,7 +89,7 @@ public:
                       unsigned int chunk,
                       std::vector<std::string> const& databases,
                       bool force = false,
-                      CallbackType onFinish = nullptr);
+                      CallbackType const& onFinish = nullptr);
 
     /// @return number of a chunk
     unsigned int chunk() const { return _chunk; }
@@ -117,7 +117,7 @@ private:
                                  unsigned int chunk,
                                  std::vector<std::string> const& databases,
                                  bool force,
-                                 CallbackType onFinish);
+                                 CallbackType const& onFinish);
 
     /**
       * @see QservMgtRequest::startImpl

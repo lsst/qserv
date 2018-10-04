@@ -52,7 +52,7 @@ GetReplicasQservMgtRequest::Ptr GetReplicasQservMgtRequest::create(
                                         std::string const& worker,
                                         std::string const& databaseFamily,
                                         bool inUseOnly,
-                                        GetReplicasQservMgtRequest::CallbackType onFinish) {
+                                        GetReplicasQservMgtRequest::CallbackType const& onFinish) {
     return GetReplicasQservMgtRequest::Ptr(
         new GetReplicasQservMgtRequest(serviceProvider,
                                        worker,
@@ -66,7 +66,7 @@ GetReplicasQservMgtRequest::GetReplicasQservMgtRequest(
                                 std::string const& worker,
                                 std::string const& databaseFamily,
                                 bool inUseOnly,
-                                GetReplicasQservMgtRequest::CallbackType onFinish)
+                                GetReplicasQservMgtRequest::CallbackType const& onFinish)
     :   QservMgtRequest(serviceProvider,
                         "QSERV_GET_REPLICAS",
                         worker),

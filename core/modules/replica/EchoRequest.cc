@@ -54,7 +54,7 @@ EchoRequest::Ptr EchoRequest::create(ServiceProvider::Ptr const& serviceProvider
                                      std::string const& worker,
                                      std::string const& data,
                                      uint64_t delay,
-                                     CallbackType onFinish,
+                                     CallbackType const& onFinish,
                                      int priority,
                                      bool keepTracking,
                                      std::shared_ptr<Messenger> const& messenger) {
@@ -75,7 +75,7 @@ EchoRequest::EchoRequest(ServiceProvider::Ptr const& serviceProvider,
                            std::string const& worker,
                            std::string const& data,
                            uint64_t delay,
-                           CallbackType onFinish,
+                           CallbackType const& onFinish,
                            int  priority,
                            bool keepTracking,
                            std::shared_ptr<Messenger> const& messenger)

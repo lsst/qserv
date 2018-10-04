@@ -52,7 +52,7 @@ SetReplicasQservMgtRequest::Ptr SetReplicasQservMgtRequest::create(
                                         std::string const& worker,
                                         QservReplicaCollection const& newReplicas,
                                         bool force,
-                                        SetReplicasQservMgtRequest::CallbackType onFinish) {
+                                        SetReplicasQservMgtRequest::CallbackType const& onFinish) {
     return SetReplicasQservMgtRequest::Ptr(
         new SetReplicasQservMgtRequest(serviceProvider,
                                        worker,
@@ -66,7 +66,7 @@ SetReplicasQservMgtRequest::SetReplicasQservMgtRequest(
                                 std::string const& worker,
                                 QservReplicaCollection const& newReplicas,
                                 bool force,
-                                SetReplicasQservMgtRequest::CallbackType onFinish)
+                                SetReplicasQservMgtRequest::CallbackType const& onFinish)
     :   QservMgtRequest(serviceProvider,
                         "QSERV_SET_REPLICAS",
                         worker),

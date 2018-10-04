@@ -175,7 +175,7 @@ public:
                                     std::string const& sourceWorkerName,
                                     std::string const& database,
                                     unsigned int chunk,
-                                    ReplicationRequestCallbackType onFinish=nullptr,
+                                    ReplicationRequestCallbackType const& onFinish=nullptr,
                                     int  priority=0,
                                     bool keepTracking=true,
                                     bool allowDuplicate=true,
@@ -201,7 +201,7 @@ public:
     DeleteRequestPtr deleteReplica(std::string const& workerName,
                                    std::string const& database,
                                    unsigned int chunk,
-                                   DeleteRequestCallbackType onFinish=nullptr,
+                                   DeleteRequestCallbackType const& onFinish=nullptr,
                                    int  priority=0,
                                    bool keepTracking=true,
                                    bool allowDuplicate=true,
@@ -232,7 +232,7 @@ public:
     FindRequestPtr findReplica(std::string const& workerName,
                                std::string const& database,
                                unsigned int chunk,
-                               FindRequestCallbackType onFinish=nullptr,
+                               FindRequestCallbackType const& onFinish=nullptr,
                                int  priority=0,
                                bool computeCheckSum=false,
                                bool keepTracking=true,
@@ -257,7 +257,7 @@ public:
     FindAllRequestPtr findAllReplicas(std::string const& workerName,
                                       std::string const& database,
                                       bool saveReplicaInfo=true,
-                                      FindAllRequestCallbackType onFinish=nullptr,
+                                      FindAllRequestCallbackType const& onFinish=nullptr,
                                       int  priority=0,
                                       bool keepTracking=true,
                                       std::string const& jobId="",
@@ -281,7 +281,7 @@ public:
     EchoRequestPtr echo(std::string const& workerName,
                         std::string const& data,
                         uint64_t delay,
-                        EchoRequestCallbackType onFinish=nullptr,
+                        EchoRequestCallbackType const& onFinish=nullptr,
                         int  priority=0,
                         bool keepTracking=true,
                         std::string const& jobId="",
@@ -302,7 +302,7 @@ public:
      */
     StopReplicationRequestPtr stopReplication(std::string const& workerName,
                                               std::string const& targetRequestId,
-                                              StopReplicationRequestCallbackType onFinish=nullptr,
+                                              StopReplicationRequestCallbackType const& onFinish=nullptr,
                                               bool keepTracking=true,
                                               std::string const& jobId="",
                                               unsigned int requestExpirationIvalSec=0);
@@ -322,7 +322,7 @@ public:
      */
     StopDeleteRequestPtr stopReplicaDelete(std::string const& workerName,
                                            std::string const& targetRequestId,
-                                           StopDeleteRequestCallbackType onFinish=nullptr,
+                                           StopDeleteRequestCallbackType const& onFinish=nullptr,
                                            bool keepTracking=true,
                                            std::string const& jobId="",
                                            unsigned int requestExpirationIvalSec=0);
@@ -342,7 +342,7 @@ public:
      */
     StopFindRequestPtr stopReplicaFind(std::string const& workerName,
                                        std::string const& targetRequestId,
-                                       StopFindRequestCallbackType onFinish=nullptr,
+                                       StopFindRequestCallbackType const& onFinish=nullptr,
                                        bool keepTracking=true,
                                        std::string const& jobId="",
                                        unsigned int requestExpirationIvalSec=0);
@@ -362,7 +362,7 @@ public:
      */
     StopFindAllRequestPtr stopReplicaFindAll(std::string const& workerName,
                                              std::string const& targetRequestId,
-                                             StopFindAllRequestCallbackType onFinish=nullptr,
+                                             StopFindAllRequestCallbackType const& onFinish=nullptr,
                                              bool keepTracking=true,
                                              std::string const& jobId="",
                                              unsigned int requestExpirationIvalSec=0);
@@ -382,7 +382,7 @@ public:
      */
     StopEchoRequestPtr stopEcho(std::string const& workerName,
                                 std::string const& targetRequestId,
-                                StopEchoRequestCallbackType onFinish=nullptr,
+                                StopEchoRequestCallbackType const& onFinish=nullptr,
                                 bool keepTracking=true,
                                 std::string const& jobId="",
                                 unsigned int requestExpirationIvalSec=0);
@@ -403,7 +403,7 @@ public:
     StatusReplicationRequestPtr statusOfReplication(
                                         std::string const& workerName,
                                         std::string const& targetRequestId,
-                                        StatusReplicationRequestCallbackType onFinish=nullptr,
+                                        StatusReplicationRequestCallbackType const& onFinish=nullptr,
                                         bool keepTracking=false,
                                         std::string const& jobId="",
                                         unsigned int requestExpirationIvalSec=0);
@@ -424,7 +424,7 @@ public:
     StatusDeleteRequestPtr statusOfDelete(
                                     std::string const& workerName,
                                     std::string const& targetRequestId,
-                                    StatusDeleteRequestCallbackType onFinish=nullptr,
+                                    StatusDeleteRequestCallbackType const& onFinish=nullptr,
                                     bool keepTracking=false,
                                     std::string const& jobId="",
                                     unsigned int requestExpirationIvalSec=0);
@@ -445,7 +445,7 @@ public:
     StatusFindRequestPtr statusOfFind(
                                     std::string const& workerName,
                                     std::string const& targetRequestId,
-                                    StatusFindRequestCallbackType onFinish=nullptr,
+                                    StatusFindRequestCallbackType const& onFinish=nullptr,
                                     bool keepTracking=false,
                                     std::string const& jobId="",
                                     unsigned int requestExpirationIvalSec=0);
@@ -466,7 +466,7 @@ public:
     StatusFindAllRequestPtr statusOfFindAll(
                                         std::string const& workerName,
                                         std::string const& targetRequestId,
-                                        StatusFindAllRequestCallbackType onFinish=nullptr,
+                                        StatusFindAllRequestCallbackType const& onFinish=nullptr,
                                         bool keepTracking=false,
                                         std::string const& jobId="",
                                         unsigned int requestExpirationIvalSec=0);
@@ -486,7 +486,7 @@ public:
      */
     StatusEchoRequestPtr statusOfEcho(std::string const& workerName,
                                       std::string const& targetRequestId,
-                                      StatusEchoRequestCallbackType onFinish=nullptr,
+                                      StatusEchoRequestCallbackType const& onFinish=nullptr,
                                       bool keepTracking=false,
                                       std::string const& jobId="",
                                       unsigned int requestExpirationIvalSec=0);
@@ -504,7 +504,7 @@ public:
      */
     ServiceSuspendRequestPtr suspendWorkerService(
                                         std::string const& workerName,
-                                        ServiceSuspendRequestCallbackType onFinish=nullptr,
+                                        ServiceSuspendRequestCallbackType const& onFinish=nullptr,
                                         std::string const& jobId="",
                                         unsigned int requestExpirationIvalSec=0);
 
@@ -521,7 +521,7 @@ public:
      */
     ServiceResumeRequestPtr resumeWorkerService(
                                         std::string const& workerName,
-                                        ServiceResumeRequestCallbackType onFinish=nullptr,
+                                        ServiceResumeRequestCallbackType const& onFinish=nullptr,
                                         std::string const& jobId="",
                                         unsigned int requestExpirationIvalSec=0);
     /**
@@ -537,7 +537,7 @@ public:
      */
     ServiceStatusRequestPtr statusOfWorkerService(
                                         std::string const& workerName,
-                                        ServiceStatusRequestCallbackType onFinish=nullptr,
+                                        ServiceStatusRequestCallbackType const& onFinish=nullptr,
                                         std::string const& jobId="",
                                         unsigned int requestExpirationIvalSec=0);
 
@@ -555,7 +555,7 @@ public:
      */
     ServiceRequestsRequestPtr requestsOfWorkerService(
                                         std::string const& workerName,
-                                        ServiceRequestsRequestCallbackType onFinish=nullptr,
+                                        ServiceRequestsRequestCallbackType const& onFinish=nullptr,
                                         std::string const& jobId="",
                                         unsigned int requestExpirationIvalSec=0);
 
@@ -573,7 +573,7 @@ public:
      */
     ServiceDrainRequestPtr drainWorkerService(
                                         std::string const& workerName,
-                                        ServiceDrainRequestCallbackType onFinish=nullptr,
+                                        ServiceDrainRequestCallbackType const& onFinish=nullptr,
                                         std::string const& jobId="",
                                         unsigned int requestExpirationIvalSec=0);
 

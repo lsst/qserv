@@ -248,7 +248,7 @@ public:
                       boost::asio::io_service& io_service,
                       std::string const& worker,
                       std::string const& targetRequestId,
-                      CallbackType onFinish,
+                      CallbackType const& onFinish,
                       bool keepTracking,
                       std::shared_ptr<Messenger> const& messenger) {
         return StopRequest<POLICY>::Ptr(
@@ -277,7 +277,7 @@ private:
                 std::string const& worker,
                 std::string const& targetRequestId,
                 proto::ReplicationReplicaRequestType replicaRequestType,
-                CallbackType onFinish,
+                CallbackType const& onFinish,
                 bool keepTracking,
                 std::shared_ptr<Messenger> const& messenger)
         :   StopRequestBase(serviceProvider,

@@ -58,7 +58,7 @@ QservGetReplicasJob::Ptr QservGetReplicasJob::create(
                                     Controller::Ptr const& controller,
                                     std::string const& parentJobId,
                                     bool inUseOnly,
-                                    CallbackType onFinish,
+                                    CallbackType const& onFinish,
                                     Job::Options const& options) {
     return QservGetReplicasJob::Ptr(
         new QservGetReplicasJob(databaseFamily,
@@ -74,7 +74,7 @@ QservGetReplicasJob::QservGetReplicasJob(
                        Controller::Ptr const& controller,
                        std::string const& parentJobId,
                        bool inUseOnly,
-                       CallbackType onFinish,
+                       CallbackType const& onFinish,
                        Job::Options const& options)
     :   Job(controller,
             parentJobId,

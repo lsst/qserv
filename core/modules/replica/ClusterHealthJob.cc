@@ -69,14 +69,19 @@ void ClusterHealth::updateQservState(std::string const& worker,
 }
 
 void ClusterHealth::updateSummaryState() {
-    bool updatedState = true;
     for (auto&& entry: _replication) {
-        updatedState = updatedState and entry.second;
+        if (not entry.second) {
+            _good = false;
+            return;
+        }
     }
     for (auto&& entry: _qserv) {
-        updatedState = updatedState and entry.second;
+        if (not entry.second) {
+            _good = false;
+            return;
+        }
     }
-    _good = updatedState;
+    _good = true;
 }
 
 Job::Options const& ClusterHealthJob::defaultOptions() {
@@ -95,7 +100,7 @@ Job::Options const& ClusterHealthJob::defaultOptions() {
 ClusterHealthJob::Ptr ClusterHealthJob::create(Controller::Ptr const& controller,
                                                unsigned int timeoutSec,
                                                std::string const& parentJobId,
-                                               CallbackType onFinish,
+                                               CallbackType const& onFinish,
                                                Job::Options const& options) {
     return ClusterHealthJob::Ptr(
         new ClusterHealthJob(controller,
@@ -108,7 +113,7 @@ ClusterHealthJob::Ptr ClusterHealthJob::create(Controller::Ptr const& controller
 ClusterHealthJob::ClusterHealthJob(Controller::Ptr const& controller,
                                    unsigned int timeoutSec,
                                    std::string const& parentJobId,
-                                   CallbackType onFinish,
+                                   CallbackType const& onFinish,
                                    Job::Options const& options)
     :   Job(controller,
             parentJobId,

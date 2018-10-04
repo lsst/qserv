@@ -127,7 +127,7 @@ public:
                                             unsigned int chunk,
                                             std::vector<std::string> const& databases,
                                             std::string const& worker,
-                                            AddReplicaQservMgtRequest::CallbackType onFinish = nullptr,
+                                            AddReplicaQservMgtRequest::CallbackType const& onFinish = nullptr,
                                             std::string const& jobId="",
                                             unsigned int requestExpirationIvalSec=0);
 
@@ -155,7 +155,7 @@ public:
                                             std::vector<std::string> const& databases,
                                             std::string const& worker,
                                             bool force,
-                                            RemoveReplicaQservMgtRequest::CallbackType onFinish = nullptr,
+                                            RemoveReplicaQservMgtRequest::CallbackType const& onFinish = nullptr,
                                             std::string const& jobId="",
                                             unsigned int requestExpirationIvalSec=0);
     /**
@@ -179,7 +179,7 @@ public:
                                             std::string const& worker,
                                             bool inUseOnly = false,
                                             std::string const& jobId="",
-                                            GetReplicasQservMgtRequest::CallbackType onFinish = nullptr,
+                                            GetReplicasQservMgtRequest::CallbackType const& onFinish = nullptr,
                                             unsigned int requestExpirationIvalSec=0);
 
 
@@ -206,7 +206,7 @@ public:
                                             QservReplicaCollection const& newReplicas,
                                             bool force = false,
                                             std::string const& jobId="",
-                                            SetReplicasQservMgtRequest::CallbackType onFinish = nullptr,
+                                            SetReplicasQservMgtRequest::CallbackType const& onFinish = nullptr,
                                             unsigned int requestExpirationIvalSec=0);
 
     /**
@@ -227,7 +227,7 @@ public:
     TestEchoQservMgtRequest::Ptr echo(std::string const& worker,
                                       std::string const& data,
                                       std::string const& jobId="",
-                                      TestEchoQservMgtRequest::CallbackType onFinish = nullptr,
+                                      TestEchoQservMgtRequest::CallbackType const& onFinish = nullptr,
                                       unsigned int requestExpirationIvalSec=0);
 
 private:

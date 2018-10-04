@@ -52,7 +52,7 @@ RemoveReplicaQservMgtRequest::Ptr RemoveReplicaQservMgtRequest::create(
                                         unsigned int chunk,
                                         std::vector<std::string> const& databases,
                                         bool force,
-                                        RemoveReplicaQservMgtRequest::CallbackType onFinish) {
+                                        RemoveReplicaQservMgtRequest::CallbackType const& onFinish) {
     return RemoveReplicaQservMgtRequest::Ptr(
         new RemoveReplicaQservMgtRequest(serviceProvider,
                                          worker,
@@ -68,7 +68,7 @@ RemoveReplicaQservMgtRequest::RemoveReplicaQservMgtRequest(
                                 unsigned int chunk,
                                 std::vector<std::string> const& databases,
                                 bool force,
-                                RemoveReplicaQservMgtRequest::CallbackType onFinish)
+                                RemoveReplicaQservMgtRequest::CallbackType const& onFinish)
     :   QservMgtRequest(serviceProvider,
                         "QSERV_REMOVE_REPLICA",
                         worker),

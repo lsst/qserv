@@ -181,8 +181,8 @@ public:
      */
     static Ptr create(Controller::Ptr const& controller,
                       std::string const& parentJobId,
-                      CallbackType onFinish,
-                      CallbackTypeOnDiff onReplicaDifference,
+                      CallbackType const& onFinish,
+                      CallbackTypeOnDiff const& onReplicaDifference,
                       size_t maxReplicas = 0,
                       bool computeCheckSum = false,
                       Job::Options const& options=defaultOptions());
@@ -215,8 +215,8 @@ protected:
      */
     VerifyJob(Controller::Ptr const& controller,
               std::string const& parentJobId,
-              CallbackType onFinish,
-              CallbackTypeOnDiff onReplicaDifference,
+              CallbackType const& onFinish,
+              CallbackTypeOnDiff const& onReplicaDifference,
               size_t maxReplicas,
               bool computeCheckSum,
               Job::Options const& options);
