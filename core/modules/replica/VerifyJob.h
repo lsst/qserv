@@ -166,26 +166,26 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param controller          - for launching requests
-     * @param parentJobId         - optional identifier of a parent job
-     * @param onFinish            - callback function to be called upon a completion of the job
+     * @param maxReplicas         - maximum number of replicas to process simultaneously
+     *                              (must be greater than 0).
+     * @param computeCheckSum     - compute check/control sum on each file if set to 'true'
      @ @param onReplicaDifference - callback function to be called when two replicas won't match
-     * @param maxReplicas         - (optional) maximum number of replicas to process simultaneously.
-     *                              If the parameter is set to 0 (the default value) then 1 replica
-     *                              will be assumed.
-     * @param computeCheckSum     - (optional) tell a worker server to compute check/control sum on each file
+     * @param controller          - for launching requests
+     * @param parentJobId         - (optional) identifier of a parent job
      * @param onFinish            - (optional) callback function to be called upon a completion of the job
      * @param options             - (optional) job options
      *
      * @return poiter to the created object
+     *
+     * @throws std::invalid_argument - of maxReplicas is 0
      */
-    static Ptr create(Controller::Ptr const& controller,
-                      std::string const& parentJobId,
-                      CallbackType const& onFinish,
+    static Ptr create(size_t maxReplicas,
+                      bool computeCheckSum,
                       CallbackTypeOnDiff const& onReplicaDifference,
-                      size_t maxReplicas = 0,
-                      bool computeCheckSum = false,
-                      Job::Options const& options=defaultOptions());
+                      Controller::Ptr const& controller,
+                      std::string const& parentJobId = std::string(),
+                      CallbackType const& onFinish = nullptr,
+                      Job::Options const& options = defaultOptions());
 
     // Default construction and copy semantics are prohibited
 
@@ -213,12 +213,12 @@ protected:
      *
      * @see VerifyJob::create()
      */
-    VerifyJob(Controller::Ptr const& controller,
+    VerifyJob(size_t maxReplicas,
+              bool computeCheckSum,
+              CallbackTypeOnDiff const& onReplicaDifference,
+              Controller::Ptr const& controller,
               std::string const& parentJobId,
               CallbackType const& onFinish,
-              CallbackTypeOnDiff const& onReplicaDifference,
-              size_t maxReplicas,
-              bool computeCheckSum,
               Job::Options const& options);
 
     /**

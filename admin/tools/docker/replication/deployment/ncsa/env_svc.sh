@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# This file is part of {{ cookiecutter.package_name }}.
+# This file is part of qserv.
 #
 # Developed for the LSST Data Management System.
 # This product includes software developed by the LSST Project
@@ -20,6 +20,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+# Parse command line parameters for services.
 
 set -e
 
@@ -71,21 +73,17 @@ for i in "$@"; do
         if [ "${WORKER}" == "*" ]; then
             WORKER=$WORKERS
         fi
-        shift
         ;;
     -m|--master)
         ALL=
         MASTER_CONTROLLER=1
-        shift
         ;;
     -d|--db)
         ALL=
         DB_SERVICE=1
-        shift # past argument
         ;;
     -j|--jemalloc)
         USE_JEMALLOC=1
-        shift
         ;;
     -h|--help)
         (>&2 echo "${HELP}")
@@ -93,6 +91,7 @@ for i in "$@"; do
         ;;
     *)
         (>&2 echo "error: unknown option '${i}'${HELP}")
+        exit 1
         ;;
     esac
 done

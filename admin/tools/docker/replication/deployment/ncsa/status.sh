@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# This file is part of {{ cookiecutter.package_name }}.
+# This file is part of qserv.
 #
 # Developed for the LSST Data Management System.
 # This product includes software developed by the LSST Project
@@ -21,7 +21,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-# Check and report the status of workers on all nodes
+# Check and report the status of services on all nodes
 
 set -e
 
@@ -30,7 +30,7 @@ set -e
 
 . $(dirname $0)/env_svc.sh
 
-if [ ! -z "${MASTER_CONTROLLER}" ]; then
+if [ -n "${MASTER_CONTROLLER}" ]; then
     HOST="qserv-${MASTER}"
     ssh -n $HOST 'echo "["'$MASTER'"] master controller: "$(docker ps -a | grep '$MASTER_CONTAINER_NAME')'
 fi
@@ -40,7 +40,7 @@ for WORKER in $WORKERS; do
     ssh -n $HOST 'echo "["'$WORKER'"] worker agent: "$(docker ps -a | grep '$WORKER_CONTAINER_NAME')'
 done
 
-if [ ! -z "${DB_SERVICE}" ]; then
+if [ -n "${DB_SERVICE}" ]; then
     HOST="qserv-${MASTER}"
     ssh -n $HOST 'echo "["'$MASTER'"] database service: "$(docker ps -a | grep '$DB_CONTAINER_NAME')'
 fi

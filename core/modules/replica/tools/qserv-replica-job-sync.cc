@@ -78,10 +78,10 @@ bool test() {
         std::atomic<bool> finished{false};
         auto job = replica::QservSyncJob::create(
             databaseFamily,
-            controller,
             0,  /* default timeout to be pulled from the Configuration*/
-            std::string(),
             force,
+            controller,
+            std::string(),
             [&finished] (replica::QservSyncJob::Ptr const& job) {
                 finished = true;
             }

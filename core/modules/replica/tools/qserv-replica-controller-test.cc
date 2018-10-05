@@ -268,21 +268,13 @@ void test() {
         requestGenerator.replicate(10, 10, &blockPost);
         
         // Do a proper clean up of the service by stopping it. This way of stopping
-        // the service will guarantee that all outstanding opeations will finish
+        // the service will guarantee that all outstanding operations will finish
         // and not aborted.
         //
-        // NOTE: Joining to the provider's threada is not needed because
+        // NOTE: Joining to the provider's thread is not needed because
         //       this will always be done internally inside the stop method.
 
-
         reportControllerStatus(controller);
-        //provider->stop();
-        reportControllerStatus(controller);
-
-        //provider->run();
-        reportControllerStatus(controller);
-
-        //requestGenerator.replicate(1000, 100, &blockPost);
 
         // Launch another thread which will test injecting requests from there.
         // 

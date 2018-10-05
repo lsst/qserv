@@ -74,11 +74,8 @@ bool run() {
 
         std::atomic<bool> finished{false};
         auto job = replica::VerifyJob::create (
-            controller,
-            std::string(),
-            [&finished] (replica::VerifyJob::Ptr const& job) {
-                finished = true;
-            },
+            maxReplicas,
+            computeCheckSum,
             [] (replica::VerifyJob::Ptr const& job,
                 replica::ReplicaDiff const& selfReplicaDiff,
                 std::vector<replica::ReplicaDiff> const& otherReplicaDiff) {
@@ -103,8 +100,11 @@ bool run() {
                             << std::endl;
                     }
             },
-            maxReplicas,
-            computeCheckSum
+            controller,
+            std::string(),
+            [&finished] (replica::VerifyJob::Ptr const& job) {
+                finished = true;
+            }
         );
         job->start();
 

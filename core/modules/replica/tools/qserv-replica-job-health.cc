@@ -76,8 +76,8 @@ bool test() {
         std::atomic<bool> finished(false);
  
         auto const job = ClusterHealthJob::create(
-            controller,
             timeoutSec,
+            controller,
             jobId,
             [&finished] (ClusterHealthJob::Ptr const& job) {
                 finished = true;

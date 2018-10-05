@@ -47,7 +47,7 @@ namespace replica {
 namespace detail {
 
 /**
-  * Class template SemanticMap is a base class for type-specif collections.
+  * Class template SemanticMap is a base class for type-specific collections.
   * This class template has two parameters:
   *   K - the key type (name or a numeric identifier)
   *   V - the value type
@@ -57,16 +57,39 @@ class SemanticMap {
 
 public:
 
+    /// Internal collection (is public because this is the only state here)
+    std::map<K, V> coll;
+
     virtual ~SemanticMap() = default;
 
     /// @return number of elements in the collection
-    size_t size() const { return _coll.size(); }
+    size_t size() const { return coll.size(); }
 
     /// @return 'true' if the collection is empty
-    bool empty() const { return _coll.empty(); }
+    bool empty() const { return coll.empty(); }
 
     /// Clear the collection
-    void clear() { _coll.clear(); }
+    void clear() { coll.clear(); }
+
+    /// @return iterator to the beginning of the container
+    decltype(coll.begin()) begin() {
+        return coll.begin();
+    }
+
+    /// @return const iterator to the beginning of the container
+    decltype(coll.cbegin()) begin() const {
+        return coll.cbegin();
+    }
+
+    /// @return iterator to the end of the container
+    decltype(coll.end()) end() {
+        return coll.end();
+    }
+
+    /// @return const iterator to the end of the container
+    decltype(coll.cend()) end() const {
+        return coll.cend();
+    }
 
     /**
      * Merge the content of another collection of the same type
@@ -82,7 +105,7 @@ public:
         if (this == &coll) {
             throw std::invalid_argument("attempted to merge the collection with itself");
         }
-        for (auto&& entry: coll._coll) {
+        for (auto&& entry: coll.coll) {
             K const& k = entry.first;
             V const& v = entry.second;
             if ((not ignoreDuplicateKeys) and exists(k)) {
@@ -101,7 +124,7 @@ protected:
     SemanticMap& operator=(SemanticMap const&) = default;
 
     /// @return 'true' if such exists in the collection
-    bool exists(K const& k) const { return _coll.count(k); }
+    bool exists(K const& k) const { return coll.count(k); }
 
     /**
      * Insert a copy of an existing object
@@ -112,8 +135,8 @@ protected:
      * @return reference to the object within the collection
      */
     V& insert(K const& k, V const& v) {
-        _coll[k] = v;
-        return _coll[k];
+        coll[k] = v;
+        return coll[k];
     }
 
     /**
@@ -125,28 +148,25 @@ protected:
      * @return reference to the object within the collection
      */
     V& insertIfNotExists(K const& k, V const& v) {
-        if (not exists(k)) _coll[k] = v;
-        return _coll[k];
+        if (not exists(k)) coll[k] = v;
+        return coll[k];
     }
 
     /**
      * @param k - object's key
      * @return read-only reference to an object for a key
      */
-    V const& get(K const& k) const { return _coll.at(k); }
+    V const& get(K const& k) const { return coll.at(k); }
 
     /// @return collection object keys
     std::vector<K> keys() const {
         std::vector<K> result;
-        result.reserve(_coll.size());
-        for (auto&& entry: _coll) {
+        result.reserve(coll.size());
+        for (auto&& entry: coll) {
             result.push_back(entry.first);
         }
         return result;
     }
-
-private:
-    std::map<K, V> _coll;
 };
 
 /**

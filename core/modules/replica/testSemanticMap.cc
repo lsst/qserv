@@ -52,12 +52,12 @@ BOOST_AUTO_TEST_CASE(SemanticMapsTest) {
     LOGS_INFO("SemanticMaps test begins");
 
     
-    std::vector<unsigned int> chunks;
+    std::vector<unsigned int> chunkNumbers;
     for (unsigned int chunk = 0; chunk < 10; ++chunk) {
-        chunks.push_back(chunk);
+        chunkNumbers.push_back(chunk);
     }
-    std::vector<std::string> const workers{"host-1","host-2","host-3"};
-    std::vector<std::string> const databases{"A","B","C"};
+    std::vector<std::string> const workerNames{"host-1","host-2","host-3"};
+    std::vector<std::string> const databaseNames{"A","B","C"};
 
     // ----------------------------------------------------
     // Test basic API using a 1-layer map for chunk numbers
@@ -93,7 +93,7 @@ BOOST_AUTO_TEST_CASE(SemanticMapsTest) {
         chunkMap.clear();
         BOOST_CHECK(chunkMap.empty());
     });
-    for (auto&& chunk: chunks) {
+    for (auto&& chunk: chunkNumbers) {
 
         double const value = chunk * 10.;
 
@@ -128,11 +128,11 @@ BOOST_AUTO_TEST_CASE(SemanticMapsTest) {
 
         std::vector<unsigned int> chunksFromMap = chunkMap.chunkNumbers();
         std::sort(chunksFromMap.begin(), chunksFromMap.end());
-        BOOST_CHECK(chunksFromMap == chunks);
+        BOOST_CHECK(chunksFromMap == chunkNumbers);
 
         std::vector<unsigned int> chunksFromConstMap = constChunkMap.chunkNumbers();
         std::sort(chunksFromConstMap.begin(), chunksFromConstMap.end());
-        BOOST_CHECK(chunksFromConstMap == chunks);
+        BOOST_CHECK(chunksFromConstMap == chunkNumbers);
     });
 
     // Explicit insert
@@ -142,7 +142,7 @@ BOOST_AUTO_TEST_CASE(SemanticMapsTest) {
         chunkMap.clear();
         BOOST_CHECK(chunkMap.empty());
     });
-    for (auto&& chunk: chunks) {
+    for (auto&& chunk: chunkNumbers) {
 
         double const value = chunk * 20.;
 
@@ -179,9 +179,9 @@ BOOST_AUTO_TEST_CASE(SemanticMapsTest) {
     WorkerDatabaseChunkMap<double> workerDatabaseChunkMap;
     WorkerDatabaseChunkMap<double> const& constWorkerDatabaseChunkMap = workerDatabaseChunkMap;
 
-    for (auto&& worker: workers) {
-        for (auto&& database: databases) {
-            for (auto&& chunk: chunks) {
+    for (auto&& worker: workerNames) {
+        for (auto&& database: databaseNames) {
+            for (auto&& chunk: chunkNumbers) {
 
                 double const value = chunk * 30.;
 
@@ -199,17 +199,17 @@ BOOST_AUTO_TEST_CASE(SemanticMapsTest) {
         }
     }
     BOOST_REQUIRE_NO_THROW({
-        BOOST_CHECK(workerDatabaseChunkMap.size() == workers.size());
+        BOOST_CHECK(workerDatabaseChunkMap.size() == workerNames.size());
 
-        for (auto&& worker: workers) {
+        for (auto&& worker: workerNames) {
             auto& databaseChunkMap = workerDatabaseChunkMap.worker(worker);
-            BOOST_CHECK(databaseChunkMap.size() == databases.size());
+            BOOST_CHECK(databaseChunkMap.size() == databaseNames.size());
 
-            for (auto&& database: databases) {
+            for (auto&& database: databaseNames) {
                 auto& chunkMap = databaseChunkMap.database(database);
-                BOOST_CHECK(chunkMap.size() == chunks.size());
+                BOOST_CHECK(chunkMap.size() == chunkNumbers.size());
                 
-                for (auto&& chunk: chunks) {
+                for (auto&& chunk: chunkNumbers) {
                     BOOST_CHECK(chunkMap.chunkExists(chunk));
                     BOOST_CHECK(chunkMap.chunk(chunk) == chunk * 30.);
                 }
@@ -217,9 +217,9 @@ BOOST_AUTO_TEST_CASE(SemanticMapsTest) {
         }
     });
 
-    // ----------------------------------------
-    // Test 'diff2' and 'intesrsect' algorithms
-    // ----------------------------------------
+    // ---------------------------------------
+    // Test 'diff2' and 'intersect' algorithms
+    // ---------------------------------------
 
     auto dump = [](WorkerDatabaseChunkMap<int> const& d,
                    std::string const& indent="  ") {
@@ -324,6 +324,72 @@ BOOST_AUTO_TEST_CASE(SemanticMapsTest) {
         and inTwoOnly.worker("C").database("x").chunkExists(6)
         and inTwoOnly.worker("C").database("x").chunk(6) == 6
     );
+
+    // -----------------------
+    // Test iterator semantics
+    // -----------------------
+
+    // prepare a map
+
+    WorkerDatabaseChunkMap<int> workers;
+
+    BOOST_REQUIRE_NO_THROW({
+
+        workers.atWorker("A").atDatabase("a").atChunk(1) = 1;
+        workers.atWorker("A").atDatabase("a").atChunk(2) = 2;
+        workers.atWorker("A").atDatabase("b").atChunk(3) = 3;
+        workers.atWorker("B").atDatabase("c").atChunk(4) = 4;
+
+        LOGLS_INFO(
+            LOG_GET("lsst.qserv.testSemanticMap"),
+            "workers");
+
+        for (auto&& worker: workers) {
+            auto&& workerName = worker.first;
+            auto&& databases  = worker.second;
+
+            for (auto&& database: databases) {
+                auto&& databaseName = database.first;
+                auto&& chunks       = database.second;
+
+                for (auto&& chunk: chunks) {
+                    auto&& chunkNumber = chunk.first;
+                    auto&& value       = chunk.second;
+
+                    LOGLS_INFO(
+                        LOG_GET("lsst.qserv.testSemanticMap"),
+                        "  [" << workerName + "][" << databaseName + "][" << chunkNumber << "] = "
+                        << std::to_string(value));
+                }
+            }
+        }
+
+        LOGLS_INFO(
+            LOG_GET("lsst.qserv.testSemanticMap"),
+            "constWorkers");
+
+        WorkerDatabaseChunkMap<int> const& constWorkers = workers;
+
+        for (auto&& worker: constWorkers) {
+            auto&& workerName = worker.first;
+            auto&& databases  = worker.second;
+
+            for (auto&& database: databases) {
+                auto&& databaseName = database.first;
+                auto&& chunks       = database.second;
+
+                for (auto&& chunk: chunks) {
+                    auto&& chunkNumber = chunk.first;
+                    auto&& value       = chunk.second;
+
+                    LOGLS_INFO(
+                        LOG_GET("lsst.qserv.testSemanticMap"),
+                        "  [" << workerName + "][" << databaseName + "][" << chunkNumber << "] = "
+                        << std::to_string(value));
+                }
+            }
+        }
+    });
 
     LOGS_INFO("SemanticMaps test ends");
 }

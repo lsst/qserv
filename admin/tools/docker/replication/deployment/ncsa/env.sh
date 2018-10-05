@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# This file is part of lsst/qserv.
+# This file is part of qserv.
 #
 # Developed for the LSST Data Management System.
 # This product includes software developed by the LSST Project
@@ -24,12 +24,12 @@
 # This script is supposed to be sourced from a client script in order
 # to set up proper values of the corresponding parameters
 
-basedir=$(dirname $0)
+basedir=$(dirname "$0")
 if [ -z "$basedir" ] || [ "$0" = "bash" ]; then
     (>&2 echo "error: variable 'basedir' is not defined")
     exit 1 
 fi
-basedir="$(readlink -e $basedir)"
+basedir=$(readlink -e $basedir)
 if [ ! -d "$basedir" ]; then
     (>&2 echo "error: path 'basedir' is not a valid directory")
     exit 1
@@ -41,7 +41,7 @@ function get_param {
         (>&2 echo "file not found: $path")
         exit 1
     fi
-    echo "$(cat $path)"
+    cat "$path"
 }
 
 # Base directory where Qserv is installed on the worker nodes
@@ -90,4 +90,4 @@ CONFIG="mysql://qsreplica@lsst-qserv-${MASTER}:${DB_PORT}/qservReplica"
 MASTER_PARAMETERS="--worker-evict-timeout=1800"
 
 unset basedir
-
+unset -f get_param

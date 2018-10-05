@@ -95,18 +95,18 @@ public:
      * low-level pointers).
      *
      * @param databaseFamily - name of a database family
-     * @param controller     - for launching requests
-     * @param parentJobId    - optional identifier of a parent job
      * @param inUseOnly      - return replicas which're presently in use
-     * @param onFinish       - callback function to be called upon a completion of the job
+     * @param controller     - for launching requests
+     * @param parentJobId    - (optional) identifier of a parent job
+     * @param onFinish       - (optional) callback function to be called upon a job completion
      * @param options        - (optional) job options
      *
      * @return pointer to the created object
      */
     static Ptr create(std::string const& databaseFamily,
+                      bool inUseOnly,
                       Controller::Ptr const& controller,
                       std::string const& parentJobId,
-                      bool inUseOnly,
                       CallbackType const& onFinish,
                       Job::Options const& options=defaultOptions());
 
@@ -154,9 +154,9 @@ protected:
      * @see QservGetReplicasJob::create()
      */
     QservGetReplicasJob(std::string const& databaseFamily,
+                        bool inUseOnly,
                         Controller::Ptr const& controller,
                         std::string const& parentJobId,
-                        bool inUseOnly,
                         CallbackType const& onFinish,
                         Job::Options const& options);
 

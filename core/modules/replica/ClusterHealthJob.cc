@@ -97,21 +97,21 @@ Job::Options const& ClusterHealthJob::defaultOptions() {
 //  Class: ClusterHealthJob
 // -------------------------
 
-ClusterHealthJob::Ptr ClusterHealthJob::create(Controller::Ptr const& controller,
-                                               unsigned int timeoutSec,
+ClusterHealthJob::Ptr ClusterHealthJob::create(unsigned int timeoutSec,
+                                               Controller::Ptr const& controller,
                                                std::string const& parentJobId,
                                                CallbackType const& onFinish,
                                                Job::Options const& options) {
     return ClusterHealthJob::Ptr(
-        new ClusterHealthJob(controller,
-                             timeoutSec,
+        new ClusterHealthJob(timeoutSec,
+                             controller,
                              parentJobId,
                              onFinish,
                              options));
 }
 
-ClusterHealthJob::ClusterHealthJob(Controller::Ptr const& controller,
-                                   unsigned int timeoutSec,
+ClusterHealthJob::ClusterHealthJob(unsigned int timeoutSec,
+                                   Controller::Ptr const& controller,
                                    std::string const& parentJobId,
                                    CallbackType const& onFinish,
                                    Job::Options const& options)

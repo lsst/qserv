@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# This file is part of {{ cookiecutter.package_name }}.
+# This file is part of qserv.
 #
 # Developed for the LSST Data Management System.
 # This product includes software developed by the LSST Project
@@ -21,6 +21,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+# The wrapper for running controller-side applications on master nodes
+
 set -e
 
 # Load parameters of the setup into the corresponding environment
@@ -36,13 +38,9 @@ fi
 shift
 PARAMETERS="$@"
 
-# Make sure thi scommand is run on one of the master nodes
+# Make sure this command is run on one of the master nodes
 
-is_master=
-if [ "lsst-qserv-${MASTER}" == "$(hostname -s)" ]; then
-    is_master=1
-fi
-if [ -z "${is_master}" ]; then
+if [ "lsst-qserv-${MASTER}" != "$(hostname -s)" ]; then
     (>&2 echo "this tool must be run on the master: ${MASTER}")
     exit 1
 fi

@@ -97,18 +97,18 @@ public:
      *                         for each chunk. If the parameter is set to 0 then the corresponding
      *                         configuration option for the database family will be assumed.
      * @param controller     - for launching jobs
-     * @param parentJobId    - optional identifier of a parent job
-     * @param onFinish       - callback function to be called upon a completion of the job
-     * @param options        - job options
+     * @param parentJobId    - (optional) identifier of a parent job
+     * @param onFinish       - (optional) callback function to be called upon job completion
+     * @param options        - (optional) job options
      *
      * @return pointer to the created object
      */
     static Ptr create(std::string const& databaseFamily,
                       unsigned int numReplicas,
                       Controller::Ptr const& controller,
-                      std::string const& parentJobId=std::string(),
-                      CallbackType const& onFinish=nullptr,
-                      Job::Options const& options=defaultOptions());
+                      std::string const& parentJobId = std::string(),
+                      CallbackType const& onFinish = nullptr,
+                      Job::Options const& options = defaultOptions());
 
     // Default construction and copy semantics are prohibited
 

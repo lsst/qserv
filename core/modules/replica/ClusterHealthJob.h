@@ -143,19 +143,19 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param controller  - for launching requests
-     * @param timeoutSec  - (optional) maximum number of seconds that (all) requests are allowed to wait
-     *                      before finish or expire. If the parameter is set to 0 (the default value)
-     *                      then the correspondig timeout (for requests) from the Configuration service
+     * @param timeoutSec  - maximum number of seconds that (all) requests are allowed to wait
+     *                      before finish or expire. If the parameter is set to 0 then
+     *                      the correspondig timeout (for requests) from the Configuration service
      *                      will be assumed. ARTTENTION: this timeout could be quite lengthy.
+     * @param controller  - for launching requests
      * @param parentJobId - (optional) identifier of a parent job
      * @param onFinish    - (optional) callback function to be called upon a completion of the job
      * @param options     - (optional) job options
      *
      * @return poiter to the created object
      */
-    static Ptr create(Controller::Ptr const& controller,
-                      unsigned int timeoutSec=0,
+    static Ptr create(unsigned int timeoutSec,
+                      Controller::Ptr const& controller,
                       std::string const& parentJobId=std::string(),
                       CallbackType const& onFinish=nullptr,
                       Job::Options const& options=defaultOptions());
@@ -191,8 +191,8 @@ protected:
      *
      * @see ClusterHealthJob::create()
      */
-    ClusterHealthJob(Controller::Ptr const& controller,
-                     unsigned int timeoutSec,
+    ClusterHealthJob(unsigned int timeoutSec,
+                     Controller::Ptr const& controller,
                      std::string const& parentJobId,
                      CallbackType const& onFinish,
                      Job::Options const& options);

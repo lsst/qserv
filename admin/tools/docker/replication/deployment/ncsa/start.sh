@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# This file is part of {{ cookiecutter.package_name }}.
+# This file is part of qserv.
 #
 # Developed for the LSST Data Management System.
 # This product includes software developed by the LSST Project
@@ -21,6 +21,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+# Start services on all nodes
+
 set -e
 
 # Load parameters of the setup into the corresponding environment
@@ -35,7 +37,7 @@ set -e
 #
 #   --general-log --general-log-file="${DB_DATA_DIR}/log/${DB_CONTAINER_NAME}.general.log" \
 
-if [ ! -z "${DB_SERVICE}" ]; then
+if [ -n "${DB_SERVICE}" ]; then
     HOST="qserv-${MASTER}"
     echo "[${MASTER}] starting database service"
     ssh -n $HOST docker run \
@@ -55,7 +57,7 @@ if [ ! -z "${DB_SERVICE}" ]; then
         --slow-query-log --slow-query-log-file="${DB_DATA_DIR}/log/${DB_CONTAINER_NAME}.slow-query.log" \
         --log-warnings=2 \
         --pid-file="${DB_DATA_DIR}/log/${DB_CONTAINER_NAME}.pid"
-    if [ "$?" != "0" ]; then
+    if [ $? -ne 0 ]; then
         echo "failed to start the database container"
         exit 1
     fi
@@ -86,7 +88,7 @@ done
 
 # Start master controller
 
-if [ ! -z "${MASTER_CONTROLLER}" ]; then
+if [ -n "${MASTER_CONTROLLER}" ]; then
     HOST="qserv-${MASTER}"
     echo "[${MASTER}] starting master controller"
     OPT_MALLOC_CONF=

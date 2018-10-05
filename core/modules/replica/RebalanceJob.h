@@ -155,19 +155,18 @@ public:
      * @param databaseFamily - the name of a database family
      * @param estimateOnly   - do not perform any changes to chunk disposition. Just produce an estimate report.
      * @param controller     - for launching requests
-     * @param parentJobId    - optional identifier of a parent job
-     * @param onFinish       - a callback function to be called upon a completion of the job
-     * @param onFinish       - callback function to be called upon a completion of the job
-     * @param options        - job options
+     * @param parentJobId    - (optional) identifier of a parent job
+     * @param onFinish       - (optional) callback function to be called upon job completion
+     * @param options        - (optional) job options
      *
      * @return pointer to the created object
      */
     static Ptr create(std::string const& databaseFamily,
                       bool estimateOnly,
                       Controller::Ptr const& controller,
-                      std::string const& parentJobId=std::string(),
-                      CallbackType const& onFinish=nullptr,
-                      Job::Options const& options=defaultOptions());
+                      std::string const& parentJobId = std::string(),
+                      CallbackType const& onFinish = nullptr,
+                      Job::Options const& options = defaultOptions());
 
     // Default construction and copy semantics are prohibited
 

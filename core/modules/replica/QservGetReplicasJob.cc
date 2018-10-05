@@ -55,25 +55,25 @@ Job::Options const& QservGetReplicasJob::defaultOptions() {
 
 QservGetReplicasJob::Ptr QservGetReplicasJob::create(
                                     std::string const& databaseFamily,
+                                    bool inUseOnly,
                                     Controller::Ptr const& controller,
                                     std::string const& parentJobId,
-                                    bool inUseOnly,
                                     CallbackType const& onFinish,
                                     Job::Options const& options) {
     return QservGetReplicasJob::Ptr(
         new QservGetReplicasJob(databaseFamily,
+                                inUseOnly,
                                 controller,
                                 parentJobId,
-                                inUseOnly,
                                 onFinish,
                                 options));
 }
 
 QservGetReplicasJob::QservGetReplicasJob(
                        std::string const& databaseFamily,
+                       bool inUseOnly,
                        Controller::Ptr const& controller,
                        std::string const& parentJobId,
-                       bool inUseOnly,
                        CallbackType const& onFinish,
                        Job::Options const& options)
     :   Job(controller,

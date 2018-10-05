@@ -95,23 +95,22 @@ public:
      * low-level pointers).
      *
      * @param databaseFamily - name of a database family
-     * @param controller     - for launching requests
-     * @param requestExpirationIvalSec - an optional parameter (if differs from 0)
-     *                         allowing to override the default value of
+     * @param requestExpirationIvalSec - override the default value of
      *                         the corresponding parameter from the Configuration.
-     * @param parentJobId    - optional identifier of a parent job
      * @param force          - proceed with the operation even if some replicas affected by
      *                         the operation are in use.
+     * @param controller     - for launching requests
+     * @param parentJobId    - (optional) identifier of a parent job
      * @param onFinish       - (optional) callback function to be called upon a completion of the job
      * @param options        - (optional) job options
      *
      * @return pointer to the created object
      */
     static Ptr create(std::string const& databaseFamily,
+                      unsigned int requestExpirationIvalSec,
+                      bool force,
                       Controller::Ptr const& controller,
-                      unsigned int requestExpirationIvalSec=0,
-                      std::string const& parentJobId=std::string(),
-                      bool force = false,
+                      std::string const& parentJobId = std::string(),
                       CallbackType const& onFinish = nullptr,
                       Job::Options const& options = defaultOptions());
 
@@ -161,10 +160,10 @@ protected:
      * @see QservSyncJob::create()
      */
     QservSyncJob(std::string const& databaseFamily,
-                 Controller::Ptr const& controller,
                  unsigned int requestExpirationIvalSec,
-                 std::string const& parentJobId,
                  bool force,
+                 Controller::Ptr const& controller,
+                 std::string const& parentJobId,
                  CallbackType const& onFinish,
                  Job::Options const& options);
 

@@ -142,7 +142,7 @@ bool test() {
         for (unsigned int i = 0; i < numIter; ++i) {
 
             ///////////////////////////////////////////////////////////////////
-            // Start two parallel jobs, the firts one getting the latest state
+            // Start two parallel jobs, the first one getting the latest state
             // of replicas accross the Replication cluster, and the second one
             // getting a list of replicas known to Qserv workers.
     
@@ -164,9 +164,9 @@ bool test() {
                 bool const inUseOnly = false;
                 qservGetReplicasJob = replica::QservGetReplicasJob::create(
                     databaseFamily,
+                    inUseOnly,
                     controller,
                     std::string(),
-                    inUseOnly,
                     [&qservJobFinished] (replica::QservGetReplicasJob::Ptr const& job) {
                         qservJobFinished = true;
                     }
@@ -273,27 +273,29 @@ bool test() {
     
             size_t const replicationLevel = provider->config()->replicationLevel(databaseFamily);
     
-            for (auto chunk: replicaData.chunks.chunkNumbers()) {
-                auto chunkMap = replicaData.chunks.chunk(chunk);
-    
-                for (auto database: chunkMap.databaseNames()) {
-                    auto databaseMap = chunkMap.database(database);
-    
-                    size_t      const  numReplicas        = databaseMap.size();
+            for (auto&& chunk: replicaData.chunks) {
+                auto&& chunkNumber = chunk.first; 
+                auto&& databases   = chunk.second;
+ 
+                for (auto&& database: databases) {
+                    auto&& databaseName = database.first;
+                    auto&& workers      = database.second;
+ 
+                    size_t      const  numReplicas        = workers.size();
                     std::string const  numReplicasStr     = numReplicas ? std::to_string(numReplicas) : "";
                     long long   const  numReplicasDiff    = numReplicas - replicationLevel;
                     std::string const  numReplicasDiffStr = numReplicasDiff ? std::to_string(numReplicasDiff) : "";
     
-                    OUT << " "   << std::setw(11) << chunk
-                        << " | " << std::setw(20) << database
+                    OUT << " "   << std::setw(11) << chunkNumber
+                        << " | " << std::setw(20) << databaseName
                         << " | " << std::setw(3)  << numReplicasStr
                         << " | " << std::setw(4)  << numReplicasDiffStr;
     
                     if (pullQservReplicas) {
                         size_t const numQservReplicas =
-                            qservReplicaData.useCount.chunkExists(chunk) and
-                            qservReplicaData.useCount.atChunk(chunk).databaseExists(database) ?
-                                qservReplicaData.useCount.atChunk(chunk).atDatabase(database).size() :
+                            qservReplicaData.useCount.chunkExists(chunkNumber) and
+                            qservReplicaData.useCount.atChunk(chunkNumber).databaseExists(databaseName) ?
+                                qservReplicaData.useCount.atChunk(chunkNumber).atDatabase(databaseName).size() :
                                 0;
     
                         std::string const numQservReplicasStr     = numQservReplicas ? std::to_string(numQservReplicas) : "";
@@ -307,22 +309,22 @@ bool test() {
                             << " | " << std::setw(4)  << "*";
                     }
     
-                    std::set<std::string> workers;
-                    for (auto worker: databaseMap.workerNames()) {
-                        workers.insert(worker);
+                    std::set<std::string> workerNames;
+                    for (auto&& name: workers.workerNames()) {
+                        workerNames.insert(name);
                     }
-                    std::set<std::string> qservWorkers;
-                    if (qservReplicaData.useCount.chunkExists(chunk) and
-                        qservReplicaData.useCount.atChunk(chunk).databaseExists(database)) {
-                        for (auto const& worker: qservReplicaData.useCount
-                                                                 .atChunk(chunk)
-                                                                 .atDatabase(database)
-                                                                 .workerNames()) {
-                            qservWorkers.insert(worker);
+                    std::set<std::string> qservWorkerNames;
+                    if (qservReplicaData.useCount.chunkExists(chunkNumber) and
+                        qservReplicaData.useCount.atChunk(chunkNumber).databaseExists(databaseName)) {
+                        for (auto&& name: qservReplicaData.useCount
+                                                          .atChunk(chunkNumber)
+                                                          .atDatabase(databaseName)
+                                                          .workerNames()) {
+                            qservWorkerNames.insert(name);
                         }
                     }
     
-                    OUT << " | " << workers2str(worker2idx, workers, qservWorkers) << "\n";
+                    OUT << " | " << workers2str(worker2idx, workerNames, qservWorkerNames) << "\n";
                 }
             }
             OUT << "-------------+----------------------+-----+------+-----+------+------------------------------------------\n"

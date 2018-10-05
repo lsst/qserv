@@ -176,30 +176,29 @@ Job::Options const& VerifyJob::defaultOptions() {
     return options;
 }
 
-VerifyJob::Ptr VerifyJob::create(
-                        Controller::Ptr const& controller,
-                        std::string const& parentJobId,
-                        CallbackType const& onFinish,
-                        CallbackTypeOnDiff const& onReplicaDifference,
-                        size_t maxReplicas,
-                        bool computeCheckSum,
-                        Job::Options const& options) {
+VerifyJob::Ptr VerifyJob::create(size_t maxReplicas,
+                                 bool computeCheckSum,
+                                 CallbackTypeOnDiff const& onReplicaDifference,
+                                 Controller::Ptr const& controller,
+                                 std::string const& parentJobId,
+                                 CallbackType const& onFinish,
+                                 Job::Options const& options) {
     return VerifyJob::Ptr(
-        new VerifyJob(controller,
+        new VerifyJob(maxReplicas,
+                      computeCheckSum,
+                      onReplicaDifference,
+                      controller,
                       parentJobId,
                       onFinish,
-                      onReplicaDifference,
-                      maxReplicas,
-                      computeCheckSum,
                       options));
 }
 
-VerifyJob::VerifyJob(Controller::Ptr const& controller,
+VerifyJob::VerifyJob(size_t maxReplicas,
+                     bool computeCheckSum,
+                     CallbackTypeOnDiff const& onReplicaDifference,
+                     Controller::Ptr const& controller,
                      std::string const& parentJobId,
                      CallbackType const& onFinish,
-                     CallbackTypeOnDiff const& onReplicaDifference,
-                     size_t maxReplicas,
-                     bool computeCheckSum,
                      Job::Options const& options)
     :   Job(controller,
             parentJobId,
@@ -209,6 +208,11 @@ VerifyJob::VerifyJob(Controller::Ptr const& controller,
         _onReplicaDifference(onReplicaDifference),
         _maxReplicas(maxReplicas),
         _computeCheckSum(computeCheckSum) {
+
+    if (0 == maxReplicas) {
+        throw std::invalid_argument(
+                    "VerifyJob:  parameter maxReplicas must be greater than 0");
+    }
 }
 
 std::list<std::pair<std::string,std::string>> VerifyJob::extendedPersistentState() const {

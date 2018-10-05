@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# This file is part of {{ cookiecutter.package_name }}.
+# This file is part of qserv.
 #
 # Developed for the LSST Data Management System.
 # This product includes software developed by the LSST Project
@@ -21,7 +21,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-# Check and report the status of workers on all nodes
+# Pull (update) Docker containers on all nodes
 
 set -e
 
