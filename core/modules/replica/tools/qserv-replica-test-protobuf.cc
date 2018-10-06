@@ -20,8 +20,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-/// qserv-replica-calc-cs.cc calculate and print a checksum of
-/// the specified file.
+/// qserv-replica-test-protobuf.cc test the performance and possible memory
+/// leaks within Google Protobuf
 
 // System headers
 #include <iostream> 
@@ -61,8 +61,12 @@ void test() {
             std::cout << "SpaceUsed: " << message.SpaceUsed() << "  chunks_size: " << message.chunks_size();
             buf.serialize(message);
             std::cout << "  buf.size: " << buf.size() << std::endl;
-            //if (clear) message.clear_chunks();
-            //if (clear) message.Clear();
+
+            // Uncomment either of these to test an effect of explicit resets
+            // of the message content
+            //
+            // if (clear) message.clear_chunks();
+            // if (clear) message.Clear();
         }
 
     } catch (std::exception const& ex) {

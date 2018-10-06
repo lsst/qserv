@@ -256,17 +256,17 @@ protected:
 
 protected:
 
+    /// The maximum number of replicas to be allowed processed simultaneously
+    size_t const _maxReplicas;
+
+    /// This option will be passed on to the worker services
+    bool const _computeCheckSum;
+
     /// Client-defined function to be called upon the completion of the job
     CallbackType _onFinish;
 
     /// Client-defined function to be called when two replicas won't match
     CallbackTypeOnDiff _onReplicaDifference;
-
-    /// The maximum number of replicas to be allowed processed simultaneously
-    size_t _maxReplicas;
-
-    /// This option will be passed on to the worker services
-    bool _computeCheckSum;
 
     /// The current (last) batch if replicas which are being inspected.
     /// The replicas are registered by the corresponding request IDs.

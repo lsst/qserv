@@ -106,7 +106,7 @@ protected:
 protected:
 
     /// Worker messenging service
-    Messenger::Ptr _messenger;
+    Messenger::Ptr const _messenger;
 };
 
 }}} // namespace lsst::qserv::replica

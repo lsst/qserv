@@ -56,6 +56,18 @@ ConnectionParams::ConnectionParams()
         database("") {
 }
 
+ConnectionParams::ConnectionParams(std::string const& host_,
+                                   uint16_t port_,
+                                   std::string const& user_,
+                                   std::string const& password_,
+                                   std::string const& database_)
+    :   host(host_),
+        port(port_),
+        user(user_),
+        password(password_),
+        database(database_) {
+}
+
 ConnectionParams ConnectionParams::parse(std::string const& params,
                                          std::string const& defaultHost,
                                          uint16_t           defaultPort,

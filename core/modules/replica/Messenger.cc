@@ -80,7 +80,7 @@ bool Messenger::exists(std::string const& worker,
 
 MessengerConnector::Ptr const& Messenger::connector(std::string const& worker)  const {
 
-    if (!_connector.count(worker))
+    if (0 == _connector.count(worker))
         throw std::invalid_argument(
             "Messenger::connector(): unknown worker: " + worker);
     return _connector.at(worker);

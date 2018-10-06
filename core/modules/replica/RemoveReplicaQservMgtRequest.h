@@ -137,13 +137,13 @@ private:
 private:
 
     /// The number of a chunk
-    unsigned int _chunk;
+    unsigned int const _chunk;
 
     /// The names of databases
-    std::vector<std::string> _databases;
+    std::vector<std::string> const _databases;
 
     /// Force the removal even if the chunk is in use
-    bool _force;
+    bool const _force;
 
     /// The callback function for sending a notification upon request completion
     CallbackType _onFinish;

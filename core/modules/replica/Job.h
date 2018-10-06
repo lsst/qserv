@@ -458,19 +458,18 @@ private:
     static std::atomic<size_t> _numClassInstances;
 
     /// The unique identifier of the job
-    std::string _id;
+    std::string const _id;
 
     /// The Controller for performing requests
-    Controller::Ptr _controller;
+    Controller::Ptr const _controller;
 
     /// The unique identifier of the parent job
-    std::string _parentJobId;
+    std::string const _parentJobId;
 
     /// The type of the job
-    std::string _type;
+    std::string const _type;
 
-    // Job options
-
+    /// Job options
     Options _options;
 
     /// Primary state of the job

@@ -136,7 +136,7 @@ public:
      * @param worker          - the name of a worker
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      WorkerRequestFactory& requestFactory,
+                      WorkerRequestFactory const& requestFactory,
                       std::string const& worker);
 
     // Default construction and copy semantics are prohibited
@@ -367,7 +367,7 @@ private:
      * @see WorkerProcessor::create
      */
     WorkerProcessor(ServiceProvider::Ptr const& serviceProvider,
-                    WorkerRequestFactory& requestFactory,
+                    WorkerRequestFactory const& requestFactory,
                     std::string const& worker);
 
     /**
@@ -543,13 +543,13 @@ private:
 private:
 
     /// Services used by the processor
-    ServiceProvider::Ptr _serviceProvider;
+    ServiceProvider::Ptr const _serviceProvider;
 
     /// A factory of request objects
-    WorkerRequestFactory& _requestFactory;
+    WorkerRequestFactory const& _requestFactory;
 
     /// The name of the worker
-    std::string _worker;
+    std::string const _worker;
 
     /// Current state of the processor
     State _state;

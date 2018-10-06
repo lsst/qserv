@@ -139,10 +139,10 @@ private:
 private:
 
     /// The chunk number
-    unsigned int _chunk;
+    unsigned int const _chunk;
 
     /// The names of databases
-    std::vector<std::string> _databases;
+    std::vector<std::string> const _databases;
 
     /// The callback function for sending a notification upon request completion
     CallbackType _onFinish;

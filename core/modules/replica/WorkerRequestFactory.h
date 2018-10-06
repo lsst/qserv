@@ -89,7 +89,7 @@ public:
             int priority,
             std::string const& database,
             unsigned int chunk,
-            std::string const& sourceWorker) = 0;
+            std::string const& sourceWorker) const = 0;
 
    /**
      * Create an instance of the replica deletion request
@@ -103,7 +103,7 @@ public:
             std::string const& id,
             int priority,
             std::string const& database,
-            unsigned int chunk) = 0;
+            unsigned int chunk) const = 0;
 
    /**
      * Create an instance of the replica lookup request
@@ -118,7 +118,7 @@ public:
             int priority,
             std::string const& database,
             unsigned int chunk,
-            bool computeCheckSum) = 0;
+            bool computeCheckSum) const = 0;
 
    /**
      * Create an instance of the replicas lookup request
@@ -131,7 +131,7 @@ public:
             std::string const& worker,
             std::string const& id,
             int priority,
-            std::string const& database) = 0;
+            std::string const& database) const = 0;
 
     /**
      * Create an instance of the test request
@@ -145,7 +145,7 @@ public:
             std::string const& id,
             int priority,
             std::string const& data,
-            uint64_t delay) = 0;
+            uint64_t delay) const = 0;
  
 protected:
 
@@ -158,7 +158,7 @@ protected:
 
 protected:
 
-    ServiceProvider::Ptr _serviceProvider;
+    ServiceProvider::Ptr const _serviceProvider;
 };
 
 /**
@@ -217,7 +217,7 @@ public:
             int priority,
             std::string const& database,
             unsigned int chunk,
-            std::string const& sourceWorker) final {
+            std::string const& sourceWorker) const final {
 
         return _ptr->createReplicationRequest(
             worker,
@@ -236,7 +236,7 @@ public:
             std::string const& id,
             int priority,
             std::string const& database,
-            unsigned int chunk) final {
+            unsigned int chunk) const final {
 
         return _ptr->createDeleteRequest(
             worker,
@@ -255,7 +255,7 @@ public:
             int priority,
             std::string const& database,
             unsigned int chunk,
-            bool computeCheckSum) final {
+            bool computeCheckSum) const final {
         
         return _ptr->createFindRequest(
             worker,
@@ -273,7 +273,7 @@ public:
             std::string const& worker,
             std::string const& id,
             int priority,
-            std::string const& database) final {
+            std::string const& database) const final {
         
         return _ptr->createFindAllRequest(
             worker,
@@ -290,7 +290,7 @@ public:
             std::string const& id,
             int priority,
             std::string const& data,
-            uint64_t delay) final {
+            uint64_t delay) const final {
 
         return _ptr->createEchoRequest(
             worker,
@@ -303,7 +303,7 @@ public:
 protected:
 
     /// Pointer to the final implementation of the factory
-    WorkerRequestFactoryBase* _ptr;
+    WorkerRequestFactoryBase const* _ptr;
 };
 
 }}} // namespace lsst::qserv::replica

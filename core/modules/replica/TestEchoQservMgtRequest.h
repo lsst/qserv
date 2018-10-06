@@ -50,7 +50,7 @@ namespace replica {
   * for testing Qserv workers.
   */
 class TestEchoQservMgtRequest
-    :   public QservMgtRequest  {
+    :   public QservMgtRequest {
 
 public:
 
@@ -141,7 +141,7 @@ private:
 private:
 
     /// The data string to be sent to the worker
-    std::string _data;
+    std::string const _data;
 
     /// The callback function for sending a notification upon request completion
     CallbackType _onFinish;

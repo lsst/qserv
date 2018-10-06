@@ -119,11 +119,14 @@ private:
 
 private:
 
-    ServiceProvider::Ptr _serviceProvider;
-    std::string _workerName;
+    ServiceProvider::Ptr const _serviceProvider;
+
+    /// The name of a worker this service is acting upon (used for checking
+    /// a consistency of the protocol)
+    std::string const _workerName;
 
     /// Cached worker descriptor obtained from the configuration
-    WorkerInfo _workerInfo;
+    WorkerInfo const _workerInfo;
 
     boost::asio::io_service        _io_service;
     boost::asio::ip::tcp::acceptor _acceptor;

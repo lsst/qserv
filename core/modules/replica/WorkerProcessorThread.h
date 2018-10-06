@@ -119,13 +119,13 @@ private:
 private:
 
     /// The processor
-    WorkerProcessorPtr _processor;
+    WorkerProcessorPtr const _processor;
 
     /// The identifier of this thread object   
-    unsigned int _id;
+    unsigned int const _id;
 
     /// The processing thread is created on demand when calling method run()
-    std::shared_ptr<std::thread> _thread;
+    std::unique_ptr<std::thread> _thread;
     
     /// The flag to be raised to tell the running thread to stop.
     /// The thread will reset this flag when it finishes.

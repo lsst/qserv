@@ -70,20 +70,14 @@ namespace replica {
 
 DatabaseServicesMySQL::DatabaseServicesMySQL(Configuration::Ptr const& configuration)
     :   DatabaseServices(),
-        _configuration(configuration) {
-
-    // Pull database info from the configuration and prepare
-    // the connection objects.
-
-    database::mysql::ConnectionParams params;
-
-    params.host     = configuration->databaseHost();
-    params.port     = configuration->databasePort();
-    params.user     = configuration->databaseUser();
-    params.password = configuration->databasePassword();
-    params.database = configuration->databaseName();
-
-    _conn = database::mysql::Connection::open(params);
+        _configuration(configuration),
+        _conn(database::mysql::Connection::open(
+            database::mysql::ConnectionParams(
+                configuration->databaseHost(),
+                configuration->databasePort(),
+                configuration->databaseUser(),
+                configuration->databasePassword(),
+                configuration->databaseName()))) {
 }
 
 void DatabaseServicesMySQL::saveState(ControllerIdentity const& identity,

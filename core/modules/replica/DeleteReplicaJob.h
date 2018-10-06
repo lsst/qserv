@@ -196,13 +196,13 @@ protected:
 protected:
 
     /// The name of a database family
-    std::string _databaseFamily;
+    std::string const _databaseFamily;
 
     /// The chunk number
-    unsigned int _chunk;
+    unsigned int const _chunk;
 
     /// The name of a worker where the affected replica is residing
-    std::string _worker;
+    std::string const _worker;
 
     /// Client-defined function to be called upon the completion of the job
     CallbackType _onFinish;

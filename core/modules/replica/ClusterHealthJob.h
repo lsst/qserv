@@ -231,7 +231,7 @@ protected:
 protected:
 
     /// The maximum number life span (seconds) of requests
-    unsigned int _timeoutSec;
+    unsigned int const _timeoutSec;
 
     /// Client-defined function to be called upon the completion of the job
     CallbackType _onFinish;

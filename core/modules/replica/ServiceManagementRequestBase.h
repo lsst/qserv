@@ -169,7 +169,7 @@ private:
 private:
 
     /// Request type
-    proto::ReplicationServiceRequestType _requestType;
+    proto::ReplicationServiceRequestType const _requestType;
 
     /// Detailed status of the worker-side service obtained upon completion of
     /// the management request.

@@ -229,11 +229,14 @@ protected:
 
 protected:
 
-    std::string _databaseFamily;
-    bool        _saveReplicaInfo;
+    /// The name of a database family defining a scope of the operation
+    std::string const _databaseFamily;
+
+    /// The flag indicating if the replica info has to be saved in the database
+    bool const _saveReplicaInfo;
 
     /// Members of the family
-    std::vector<std::string> _databases;
+    std::vector<std::string> const _databases;
 
     /// Client-defined function to be called upon the completion of the job
     CallbackType _onFinish;

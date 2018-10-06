@@ -189,7 +189,7 @@ private:
 
     /// The mutex for enforcing thread safety of the class's public API
     /// and internal operations.
-    std::mutex _mtx;
+    mutable std::mutex _mtx;
 
     /// The condition variable for notifying clients waiting for the next
     /// available service.

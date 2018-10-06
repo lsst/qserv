@@ -377,14 +377,21 @@ protected:
 
 private:
 
-    /// The global counter for the number of instances of any subclasses
+    /// The global counter for the number of instances of any subclass
     static std::atomic<size_t> _numClassInstances;
 
-    ServiceProvider::Ptr _serviceProvider;
+    ServiceProvider::Ptr const _serviceProvider;
 
-    std::string _type;
-    std::string _id;
-    std::string _worker;
+    /// The type of a request (defined by a subclass)
+    std::string const _type;
+
+    /// A unique identifier of a request
+    std::string const _id;
+
+    /// The name of a worker
+    std::string const _worker;
+
+    // Two-level state of a request
 
     std::atomic<State>         _state;
     std::atomic<ExtendedState> _extendedState;

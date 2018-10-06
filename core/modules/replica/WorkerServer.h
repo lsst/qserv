@@ -134,10 +134,14 @@ private:
 
 private:
 
-    ServiceProvider::Ptr _serviceProvider;
-    std::string _workerName;
+    ServiceProvider::Ptr const _serviceProvider;
 
-    WorkerProcessor::Ptr _processor;
+    /// The name of the current worker
+    std::string const _workerName;
+
+    /// This is pointer onto an object where the requests would
+    /// get processed.
+    WorkerProcessor::Ptr const _processor;
 
     boost::asio::io_service        _io_service;
     boost::asio::ip::tcp::acceptor _acceptor;

@@ -648,7 +648,7 @@ private:
     uint64_t const _startTime;
 
     /// The provider of various services
-    ServiceProvider::Ptr _serviceProvider;
+    ServiceProvider::Ptr const _serviceProvider;
 
     /// The mutex for enforcing thread safety of the class's public API
     /// and internal operations.

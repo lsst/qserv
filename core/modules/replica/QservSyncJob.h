@@ -192,13 +192,13 @@ protected:
 protected:
 
     /// The name of the database family
-    std::string _databaseFamily;
+    std::string const _databaseFamily;
 
     /// The optional override for the request expiration timeouts
-    unsigned int _requestExpirationIvalSec;
+    unsigned int const _requestExpirationIvalSec;
 
     /// Flag indicating to report (if set) the 'force' mode of the operation
-    bool _force;
+    bool const _force;
 
     /// Client-defined function to be called upon the completion of the job
     CallbackType _onFinish;

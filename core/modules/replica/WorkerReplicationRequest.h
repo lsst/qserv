@@ -139,9 +139,14 @@ protected:
 
 protected:
 
-    std::string  _database;
-    unsigned int _chunk;
-    std::string  _sourceWorker;
+    /// The name of a database
+    std::string const _database;
+
+    /// Teh number of a chunk
+    unsigned int const _chunk;
+
+    /// The name of a source worker for a new replica
+    std::string const _sourceWorker;
 
     /// Result of the operation
     ReplicaInfo _replicaInfo;
@@ -323,12 +328,14 @@ private:
 
 private:
 
-    // Cached descriptors obtained from the Configuration
+    /// Cached descriptor of the input worker obtained from the Configuration
+    WorkerInfo const _inWorkerInfo;
 
-    WorkerInfo _inWorkerInfo;
-    WorkerInfo _outWorkerInfo;
+    /// Cached descriptor of the output worker obtained from the Configuration
+    WorkerInfo const _outWorkerInfo;
 
-    DatabaseInfo _databaseInfo;
+    /// Cached descriptor of the database obtained from the Configuration
+    DatabaseInfo const _databaseInfo;
 
     /// The flag indicating if the initialization phase of the operation
     /// has alreadty completed

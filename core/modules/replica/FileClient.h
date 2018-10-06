@@ -216,18 +216,18 @@ private:
 
 private:
 
-    // Cached descriptors obtained from the configuration
+    /// Cached worker descriptors obtained from the Configuration
+    WorkerInfo const _workerInfo;
 
-    WorkerInfo _workerInfo;
-
-    DatabaseInfo _databaseInfo;
+    /// Cached database descriptors obtained from the Configuration
+    DatabaseInfo const _databaseInfo;
 
     /// The name of a file to be read
-    std::string _fileName;
+    std::string const _fileName;
 
     /// The flag indicating of the file was open with an intend of reading
     // its content
-    bool _readContent;
+    bool const _readContent;
 
     /// Buffer for data moved over the network
     std::unique_ptr<ProtocolBuffer> _bufferPtr;

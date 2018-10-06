@@ -116,7 +116,8 @@ protected:
                          std::string const& database);
 protected:
 
-    std::string _database;
+    /// The name of a database
+    std::string const _database;
 
     /// Result of the operation
     ReplicaInfoCollection _replicaInfoCollection;

@@ -110,6 +110,13 @@ struct ConnectionParams {
     /// with default values
     ConnectionParams();
 
+    /// Normal constructor
+    ConnectionParams(std::string const& host_,
+                     uint16_t port_,
+                     std::string const& user_,
+                     std::string const& password_,
+                     std::string const& database_);
+
     /**
      * Return a string representation of all (but the password) parameters.
      * The result will be formatted similarily to the one expected by

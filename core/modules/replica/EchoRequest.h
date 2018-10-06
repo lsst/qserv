@@ -183,8 +183,11 @@ private:
 
 private:
 
-    std::string _data;
-    uint64_t    _delay;
+    /// Data to be sent to a worker
+    std::string const _data;
+
+    /// Execution time (milliseconds) of the request at worker
+    uint64_t const _delay;
 
     CallbackType _onFinish;
 

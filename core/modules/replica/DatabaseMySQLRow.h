@@ -100,6 +100,7 @@ public:
      * Connection::next() when iterating over a result set.
      *
      * @see Connection::next()
+     * @see Row::isValid()
      */
     Row();
 

@@ -272,11 +272,19 @@ protected:
 
     ServiceProvider::Ptr _serviceProvider;
 
-    std::string _worker;
-    std::string _type;
-    std::string _id;
+    /// The name of a worker
+    std::string const _worker;
 
-    int _priority;
+    /// The name of  request type (depends on a subclass)
+    std::string const _type;
+
+    /// A unique identifier of a request
+    std::string const _id;
+
+    /// The priority of a request
+    int const _priority;
+
+    // 2-layer state of a request
 
     std::atomic<CompletionStatus>         _status;
     std::atomic<ExtendedCompletionStatus> _extendedStatus;

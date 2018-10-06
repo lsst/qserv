@@ -513,19 +513,19 @@ private:
 
 private:
 
-    ServiceProvider::Ptr _serviceProvider;
+    ServiceProvider::Ptr const _serviceProvider;
 
     /// Cached worker descriptor obtained from the configuration
-    WorkerInfo _workerInfo;
+    WorkerInfo const _workerInfo;
 
     /// The cached parameter for the buffer sizes (pulled from
     /// the Configuration upon the construction of the object).
-    size_t _bufferCapacityBytes;
+    size_t const _bufferCapacityBytes;
 
     /// The cached parameter for the interval between reconnection
     /// attempts (pulled from the Configuration upon the construction of
     /// the object).
-    unsigned int _timerIvalSec;
+    unsigned int const _timerIvalSec;
 
     /// The internal state
     State _state;

@@ -221,10 +221,10 @@ protected:
 protected:
 
     /// The name of a worker to be disabled
-    std::string _worker;
+    std::string const _worker;
 
     /// Permamently remove from the configuration if set
-    bool _permanentDelete;
+    bool const _permanentDelete;
 
     /// Client-defined function to be called upon the completion of the job
     CallbackType _onFinish;

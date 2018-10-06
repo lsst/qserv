@@ -267,10 +267,11 @@ protected:
 protected:
 
     /// The name of the database
-    std::string _databaseFamily;
+    std::string const _databaseFamily;
 
-    /// Estimate mode option
-    bool _estimateOnly;
+    /// Estimate mode option (no actual changes will be made to replica disposition
+    /// if 'true')
+    bool const _estimateOnly;
 
     /// Client-defined function to be called upon the completion of the job
     CallbackType _onFinish;

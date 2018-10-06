@@ -153,10 +153,10 @@ private:
 private:
 
     /// A collection of new replicas to be set at the Qserv worker
-    QservReplicaCollection _newReplicas;
+    QservReplicaCollection const _newReplicas;
 
     /// Flag indicating to report (if set) the 'force' mode of the operation
-    bool _force;
+    bool const _force;
 
     /// The callback function for sending a notification upon request completion
     CallbackType _onFinish;

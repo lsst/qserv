@@ -312,7 +312,7 @@ struct Application {
     /**
      * Run the normal sequence of jobs in a  detached
      * thread until a catastrophic failure happens or an external flag telling
-     * the the thread to abort its activities and cancel on-going jobs is set.
+     * the thread to abort its activities and cancel on-going jobs is set.
      */
     void startReplicationSequence() {
     
@@ -460,19 +460,19 @@ struct Application {
      * thread until a catastrophic failure happens or an external flag telling
      * the the thread to abort its activities and cancel on-going jobs is set.
      *
-     * BOTH of the following REQUIREMENTS must be met before initiating single
-     * worker eviction:
+     * Single worker eviction starts when:
      *
-     * - EVICTED WORKER: both Qserv abd Replication services are not responding
-     *   within the specificed eviction interval.
+     * - both Qserv and Replication services are not responding
+     * within the specificed eviction interval on a worker to be marked for
+     * eviction
      *
-     * - REPLICAITON CLUSTER: the remaining (excluding the EVICTED WORKER) workers
-     *   must be available.
+     * - and the remaining (excluding the evicted workers) Replication workers
+     * must be available
      *
      * Otherwise, the Health Monitoring thread will keep tracking status
-     * of both services on the worker nodes. At the mean time, the Replication
+     * of both services on the worker nodes. In the mean time, the Replication
      * thread will keep trying its best effort in populating a cluster with
-     * replicas (even if some replication worker agenst were down).
+     * replicas (even if some replication worker agents were down).
      */
     void startHealthMonitor() {
 

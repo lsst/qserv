@@ -257,7 +257,7 @@ private:
 
 private:
 
-    ServiceProvider::Ptr _serviceProvider;
+    ServiceProvider::Ptr const _serviceProvider;
 
     /// The registry of the on-going requests.
     std::map<std::string,std::shared_ptr<QservMgtRequestWrapper>> _registry;

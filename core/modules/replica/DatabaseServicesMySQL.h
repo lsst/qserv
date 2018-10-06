@@ -230,14 +230,14 @@ private:
 private:
 
     /// The configuration service
-    Configuration::Ptr _configuration;
+    Configuration::Ptr const _configuration;
 
     /// Database connection
-    database::mysql::Connection::Ptr _conn;
+    database::mysql::Connection::Ptr const _conn;
 
     /// The mutex for enforcing thread safety of the class's public API
     /// and internal operations.
-    util::Mutex _mtx;
+    mutable util::Mutex _mtx;
 };
 
 }}} // namespace lsst::qserv::replica

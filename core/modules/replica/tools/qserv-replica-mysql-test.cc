@@ -126,7 +126,7 @@ void dropDatabase(database::Connection::Ptr const& conn) {
     }
 }
 
-/// Execute it and (if requested) explore its results
+/// Execute the query and (if requested) explore its result set
 void executeQuery(database::Connection::Ptr const& conn,
                   std::string const& query) {
 
@@ -288,7 +288,7 @@ int main(int argc, const char* const argv[]) {
             "\n"
             "              [--db-allow-reconnect=<flag>]\n"
             "              [--db-reconnect-timeout=<sec>]\n"
-            "              [--db-max-retries=<num>]\n"
+            "              [--db-max-reconnects=<num>]\n"
             "              [--db-transaction-timeout=<sec>]\n"
             "\n"
             "              [--no-transaction]\n"

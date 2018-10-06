@@ -59,9 +59,9 @@ ServiceProvider::Ptr ServiceProvider::create(std::string const& configUrl) {
     return ptr;
 }
 
-ServiceProvider::ServiceProvider(std::string const& configUrl) {
-    _configuration    = Configuration::load(configUrl);
-    _databaseServices = DatabaseServicesPool::create(_configuration);
+ServiceProvider::ServiceProvider(std::string const& configUrl)
+    :   _configuration(Configuration::load(configUrl)),
+        _databaseServices(DatabaseServicesPool::create(_configuration)) {
 }
 
 void ServiceProvider::run() {
@@ -72,7 +72,7 @@ void ServiceProvider::run() {
 
     // Check if the service is still not running
 
-    if (_threads.size() != 0) return;
+    if (not _threads.empty()) return;
 
     // Initialize BOOST ASIO servces
 
@@ -82,15 +82,19 @@ void ServiceProvider::run() {
 
     _threads.clear();
     for (size_t i = 0; i < config()->controllerThreads(); ++i) {
-        _threads.emplace_back(std::make_shared<std::thread>(
-            [self] () {
-
-                // This will prevent the I/O service from exiting the .run()
-                // method event when it will run out of any requests to process.
-                // Unless the service will be explicitly stopped.
-                self->_io_service.run();
-            }
-        ));
+        _threads.push_back(
+            std::move(
+                std::make_unique<std::thread>(
+                    [self] () {
+        
+                        // This will prevent the I/O service from exiting the .run()
+                        // method event when it will run out of any requests to process.
+                        // Unless the service will be explicitly stopped.
+                        self->_io_service.run();
+                    }
+                )
+            )
+        );
     }
 }
 
@@ -98,7 +102,7 @@ bool ServiceProvider::isRunning() const {
 
     util::Lock lock(_mtx, context() + "isRunning");
 
-    return _threads.size() != 0;
+    return not _threads.empty();
 }
 
 void ServiceProvider::stop() {
@@ -109,7 +113,7 @@ void ServiceProvider::stop() {
 
     // Check if the service is already stopped
 
-    if (_threads.size() == 0) return;
+    if (_threads.empty()) return;
 
     // These steps will cancel all oustanding requests to workers (if any)
 

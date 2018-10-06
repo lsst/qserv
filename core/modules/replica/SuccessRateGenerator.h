@@ -82,11 +82,18 @@ public:
 
 private:
 
-    std::random_device          _rd;    // Will be used to obtain a seed for the random number engine
-    std::mt19937                _gen;   // Standard mersenne_twister_engine seeded with rd()
+    /// The random device is needed to obtain a seed for the random
+    /// number engine.
+    std::random_device _rd;
+
+    /// Standard mersenne_twister_engine seeded with rd()
+    std::mt19937 _gen;
+
     std::bernoulli_distribution _distr;
 
-    util::Mutex _generatorMtx;   // for thread safety
+    /// The mutex is for synchronized update of the object's state
+    /// within a multithreaded environment.
+    mutable util::Mutex _generatorMtx;
 };
 
 }}} // namespace lsst::qserv::replica

@@ -208,7 +208,7 @@ protected:
 protected:
 
     /// The name of the database family
-    std::string _databaseFamily;
+    std::string const _databaseFamily;
 
     /// Client-defined function to be called upon the completion of the job
     CallbackType _onFinish;

@@ -81,7 +81,7 @@ public:
      * and Configuration::databaseConnectTimeoutSec(). If the automatic reconnect is
      * allowed then multiple connection attempts to a database service can be made
      * before the connection timeout expires or until some problem which can't be
-     * resolved with the connection retry happens.
+     * resolved with the allowed connection retries happens.
      *
      * @note
      *    MySQL auto-commits are disabled
@@ -250,7 +250,7 @@ public:
      *
      * For example, the following call:
      *   @code
-     *     sqlPackValues ("st'r", std::string("c"), 123, 24.5);
+     *     sqlPackValues("st'r", std::string("c"), 123, 24.5);
      *   @code
      * will produce the following output:
      *   @code
@@ -361,17 +361,17 @@ public:
      * For example, the following call:
      * @code
      *     sqlPackPairs (
-     *         std::make_pair ("col1",  "st'r"),
-     *         std::make_pair ("col2",  std::string("c")),
-     *         std::make_pair ("col3",  123),
-     *         std::make_pair ("fk_id", Function::LAST_INSERT_ID));
+     *         std::make_pair("col1",  "st'r"),
+     *         std::make_pair("col2",  std::string("c")),
+     *         std::make_pair("col3",  123),
+     *         std::make_pair("fk_id", Function::LAST_INSERT_ID));
      * @code
      * will produce the following string content:
      * @code
      *     `col1`='st\'r',`col2`="c",`col3`=123,`fk_id`=LAST_INSERT_ID()
      * @code
      *
-     * @param Fargs          - the variadic list of values to be inserted
+     * @param Fargs - the variadic list of values to be inserted
      */
     template <typename...Targs>
     std::string sqlPackPairs(Targs... Fargs) const {
@@ -422,9 +422,9 @@ public:
      *     connection->sqlSimpleUpdateQuery (
      *         "table",
      *         sqlEqual("fk_id", Function::LAST_INSERT_ID),
-     *         std::make_pair ("col1",  "st'r"),
-     *         std::make_pair ("col2",  std::string("c")),
-     *         std::make_pair ("col3",  123));
+     *         std::make_pair("col1",  "st'r"),
+     *         std::make_pair("col2",  std::string("c")),
+     *         std::make_pair("col3",  123));
      * @code
      * This will generate the following query (extra newline symbols are added
      * to me this example a bit easy to read:
@@ -440,6 +440,8 @@ public:
      * @param tableName - the name of a table
      * @param condition - the optional condition for selecting rows to be updated
      * @param Fargs     - the variadic list of values to be inserted
+     *
+     * @return well-formed SQL statement
      */
     template <typename...Targs>
     std::string sqlSimpleUpdateQuery(std::string const& tableName,
@@ -452,15 +454,13 @@ public:
         return qs.str();
     }
 
-    /**
-     * Return the status of the transaction
-     */
+    ///  @return the status of the transaction
     bool inTransaction() const { return _inTransaction; }
 
     /**
      * Start the transaction
      *
-     * @return  - a smart pointer to self to allow chaned calles
+     * @return smart pointer to self to allow chained calls
      *
      * @throws std::logic_error - if the transaction was already been started
      * @throws Error            - for any other MySQL specific errors
@@ -470,7 +470,7 @@ public:
     /**
      * Commit the transaction
      *
-     * @return - a smart pointer to self to allow chaned calles
+     * @return smart pointer to self to allow chained calls
      * 
      * @throws std::logic_error - if the transaction was not started
      * @throws Error            - for any other MySQL specific errors
@@ -480,7 +480,7 @@ public:
     /**
      * Rollback the transaction
      *
-     * @return - a smart pointer to self to allow chaned calles
+     * @return smart pointer to self to allow chaned calles
      * 
      * @throws std::logic_error - if the transaction was not started
      * @throws Error            - for any other MySQL specific errors
@@ -493,7 +493,7 @@ public:
      *
      * @param query - query to be execured
      * 
-     * @return - the smart pointer to self to allow chaned calles
+     * @return smart pointer to self to allow chained calls
      * 
      * @throws std::invalid_argument - for empty query strings
      * @throws DuplicateKeyError     - for attempts to insert rows with duplicate keys
@@ -521,7 +521,7 @@ public:
      * @param tableName - the name of a table
      * @param Fargs     - the variadic list of values to be inserted
      *
-     * @return - the smart pointer to self to allow chaned calles.
+     * @return smart pointer to self to allow chained calls
      *
      * @throws DuplicateKeyError - for attempts to insert rows with duplicate keys
      * @throws Error             - for any other MySQL specific errors
@@ -553,7 +553,7 @@ public:
      * @param whereCondition - the optional condition for selecting rows to be updated
      * @param Fargs          - the variadic list of column-value pairs to be updated
      *
-     * @return - the smart pointer to self to allow chaned calles.
+     * @return smart pointer to self to allow chained calls
      *
      * @throws std::invalid_argument - for empty query strings
      * @throws Error                 - for any MySQL specific errors
@@ -631,7 +631,7 @@ public:
      *                                 catch for specific subclasses (other than ConnectError
      *                                 or ConnectTimeout) of that class if needed.
      *
-     * @return pointer to the same connector against which the metod was invoked
+     * @return pointer to the same connector against which the method was invoked
      * in case of successful commpletion of the requested operaton.
      *
      * @see Configuration::databaseMaxReconnects()
@@ -647,13 +647,13 @@ public:
                             unsigned int timeoutSec=0);
     
     /**
-     * Returns 'true' if the last successfull query returned a result set
+     * @return 'true' if the last successfull query returned a result set
      * (even though it may be empty)
      */
     bool hasResult() const;
 
     /**
-     * Return the names of the columns from the current result set.
+     * @return names of the columns from the current result set
      *
      * NOTE: the columns are returned exactly in the same order they were
      *       requested in the corresponding query.
@@ -685,7 +685,7 @@ public:
      *   @code
      *
      * @return 'true' if the row was initialized or 'false' if past the last row
-     *          in the result set.
+     * in the result set.
      *
      * @throws std::logic_error - if no SQL statement has ever been executed, or
      *                            if the last query failed.
@@ -759,7 +759,6 @@ private:
     Connection(ConnectionParams const& connectionParams,
                unsigned int connectTimeoutSec);
 
-
     /**
      * Keep trying to connect to a server until either a timeout expirese or
      * attempts  attempt to establish a connection
@@ -815,7 +814,7 @@ private:
     static std::atomic<size_t> _nextId;
 
     /// Unique identifier of a connector
-    size_t _id;
+    size_t const _id;
 
     /// Parameters of the connection
     ConnectionParams const _connectionParams;

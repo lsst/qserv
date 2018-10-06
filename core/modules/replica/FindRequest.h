@@ -189,9 +189,15 @@ private:
 
 private:
 
-    std::string  _database;
-    unsigned int _chunk;
-    bool         _computeCheckSum;
+    /// The name of a database for which the replicas will be located
+    std::string const _database;
+
+    /// The number of a chunk
+    unsigned int const _chunk;
+
+    /// The flag which (if 'true') will result in re-computing a checksum
+    /// of each file of the chunk replica
+    bool const _computeCheckSum;
 
     CallbackType _onFinish;
 

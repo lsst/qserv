@@ -159,11 +159,11 @@ protected:
 private:
 
     /// An identifier of the targer request whose state is to be queried
-    std::string _targetRequestId;
+    std::string const _targetRequestId;
 
     /// Request type to be affected by the operation (must match an identifier
     /// of the request too)
-    proto::ReplicationReplicaRequestType _replicaRequestType;
+    proto::ReplicationReplicaRequestType const _replicaRequestType;
 };
 
 }}} // namespace lsst::qserv::replica

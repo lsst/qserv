@@ -490,20 +490,39 @@ private:
     /// The global counter for the number of instances of any subclasses
     static std::atomic<size_t> _numClassInstances;
 
-    ServiceProvider::Ptr _serviceProvider;
+    ServiceProvider::Ptr const _serviceProvider;
 
-    std::string _type;
-    std::string _id;                    ///< own identifier
-    std::string _duplicateRequestId;    ///< effective identifier of a remote (worker-side) request where applies
-    std::string _worker;
+    /// The name of a request type (defined by subclasses)
+    std::string const _type;
 
-    int  _priority;
-    bool _keepTracking;
-    bool _allowDuplicate;
+    /// A unique identifier of a request
+    std::string const _id;
+
+    /// An effective identifier of a remote (worker-side) request where
+    /// this applies. Note that the duplicate requests are discovered
+    /// in a course of communication with worker services.
+    std::string _duplicateRequestId;
+
+    ///The name of a worker
+    std::string const _worker;
+
+    /// The priority level of a request
+    int const _priority;
+
+    /// The flag which will enables continous tracking of the request before
+    /// it finishes or fails
+    bool const _keepTracking;
+
+    /// Follow (if 'true') a previously made request if the current one duplicates it
+    bool const _allowDuplicate;
+
+
+    // 2-level state of a request
 
     std::atomic<State>         _state;
     std::atomic<ExtendedState> _extendedState;
 
+    /// Request status reported by a worker (where this applies)
     std::atomic<ExtendedCompletionStatus> _extendedServerStatus;
 
     /// Performance counters

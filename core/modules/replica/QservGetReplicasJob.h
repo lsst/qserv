@@ -185,10 +185,10 @@ protected:
 protected:
 
     /// The name of the database family
-    std::string _databaseFamily;
+    std::string const _databaseFamily;
 
     /// Flag indicating to report (if set) a subset of chunks which are in use
-    bool _inUseOnly;
+    bool const _inUseOnly;
 
     /// Client-defined function to be called upon the completion of the job
     CallbackType _onFinish;

@@ -149,10 +149,10 @@ private:
 private:
 
     /// The name of a database family
-    std::string _databaseFamily;
+    std::string const _databaseFamily;
 
     /// Flag indicating to report (if set) a subset of chunks which are in use
-    bool _inUseOnly;
+    bool const _inUseOnly;
 
     /// The callback function for sending a notification upon request completion
     CallbackType _onFinish;

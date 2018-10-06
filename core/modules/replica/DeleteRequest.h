@@ -183,8 +183,11 @@ private:
 
 private:
 
-    std::string  _database;
-    unsigned int _chunk;
+    /// The name of a database to which the deleted chunk belongs to
+    std::string const _database;
+
+    /// The number of a chunk to be deleted
+    unsigned int const _chunk;
 
     CallbackType _onFinish;
 

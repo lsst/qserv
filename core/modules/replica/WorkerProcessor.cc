@@ -110,7 +110,7 @@ proto::ReplicationStatus WorkerProcessor::translate(WorkerRequest::CompletionSta
 }
 
 WorkerProcessor::Ptr WorkerProcessor::create(ServiceProvider::Ptr const& serviceProvider,
-                                             WorkerRequestFactory& requestFactory,
+                                             WorkerRequestFactory const& requestFactory,
                                              std::string const& worker) {
     return Ptr(new WorkerProcessor(serviceProvider,
                                    requestFactory,
@@ -118,7 +118,7 @@ WorkerProcessor::Ptr WorkerProcessor::create(ServiceProvider::Ptr const& service
 }
 
 WorkerProcessor::WorkerProcessor(ServiceProvider::Ptr const& serviceProvider,
-                                 WorkerRequestFactory& requestFactory,
+                                 WorkerRequestFactory const& requestFactory,
                                  std::string const& worker)
     :   _serviceProvider(serviceProvider),
         _requestFactory(requestFactory),

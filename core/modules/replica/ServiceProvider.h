@@ -173,13 +173,13 @@ private:
 
     boost::asio::io_service _io_service;
     std::unique_ptr<boost::asio::io_service::work> _work;
-    std::vector<std::shared_ptr<std::thread>> _threads;
+    std::vector<std::unique_ptr<std::thread>> _threads;
 
     /// Configuration manager
-    ConfigurationPtr _configuration;
+    ConfigurationPtr const _configuration;
 
     /// Database services
-    DatabaseServicesPtr _databaseServices;
+    DatabaseServicesPtr const _databaseServices;
 
     /// For claiming exclusive ownership over chunks during replication
     /// operations to ensure consistency of the operations.

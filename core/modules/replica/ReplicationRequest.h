@@ -192,9 +192,14 @@ private:
 
 private:
 
-    std::string  _database;
-    unsigned int _chunk;
-    std::string  _sourceWorker;
+    /// The name of a database
+    std::string const _database;
+
+    /// The number of a chunk
+    unsigned int const _chunk;
+
+    /// The name of a source worker for the new replica
+    std::string const _sourceWorker;
 
     CallbackType _onFinish;
 

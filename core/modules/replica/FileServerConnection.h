@@ -188,18 +188,21 @@ private:
 
 private:
 
-    ServiceProvider::Ptr _serviceProvider;
-    std::string _workerName;
+    ServiceProvider::Ptr const _serviceProvider;
+
+    /// The name of a worker this service is acting upon (used for checking
+    /// a consistency of the protocol)
+    std::string const _workerName;
 
     /// Cached worker descriptor obtained from the configuration
-    WorkerInfo _workerInfo;
+    WorkerInfo const _workerInfo;
 
     /// A socket for communication with clients
     boost::asio::ip::tcp::socket _socket;
 
     /// Buffer management class facilitating serialization/deserialization
     /// of data sent over the network
-    std::shared_ptr<ProtocolBuffer> _bufferPtr;
+    std::shared_ptr<ProtocolBuffer> const _bufferPtr;
 
     /// The name of a file during on-going transfer
     std::string _fileName;

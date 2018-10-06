@@ -212,10 +212,10 @@ protected:
 protected:
 
     /// The name of the database
-    std::string _databaseFamily;
+    std::string const _databaseFamily;
 
     /// The minimum number of (the good) replicas for each chunk
-    unsigned int _numReplicas;
+    unsigned int const _numReplicas;
 
     /// Client-defined function to be called upon the completion of the job
     CallbackType _onFinish;

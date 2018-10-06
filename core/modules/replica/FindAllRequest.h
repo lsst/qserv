@@ -187,8 +187,12 @@ private:
 
 private:
 
-    std::string  _database;
-    bool         _saveReplicaInfo;
+    /// The name of a database for which the replicas will be located
+    std::string const _database;
+
+    /// The flag indicating if the replica info has to be saved in the database
+    bool const _saveReplicaInfo;
+
     CallbackType _onFinish;
 
     /// Request-specific parameters of the target request

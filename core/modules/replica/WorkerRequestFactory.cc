@@ -98,7 +98,7 @@ public:
                                                          int priority,
                                                          std::string const& database,
                                                          unsigned int chunk,
-                                                         std::string const& sourceWorker) final {
+                                                         std::string const& sourceWorker) const final {
         return WorkerReplicationRequest::create(
             _serviceProvider,
             worker,
@@ -118,7 +118,7 @@ public:
                                                std::string const& id,
                                                int priority,
                                                std::string const& database,
-                                               unsigned int chunk) final {
+                                               unsigned int chunk) const final {
         return WorkerDeleteRequest::create(
             _serviceProvider,
             worker,
@@ -138,7 +138,7 @@ public:
                                            int priority,
                                            std::string const& database,
                                            unsigned int chunk,
-                                           bool computeCheckSum) final {
+                                           bool computeCheckSum) const final {
         return WorkerFindRequest::create(
             _serviceProvider,
             worker,
@@ -157,7 +157,7 @@ public:
     WorkerFindAllRequestPtr createFindAllRequest(std::string const& worker,
                                                  std::string const& id,
                                                  int priority,
-                                                 std::string const& database) final {
+                                                 std::string const& database) const final {
         return WorkerFindAllRequest::create(
             _serviceProvider,
             worker,
@@ -175,7 +175,7 @@ public:
                                            std::string const& id,
                                            int priority,
                                            std::string const& data,
-                                           uint64_t delay) final {
+                                           uint64_t delay) const final {
         return WorkerEchoRequest::create(
             _serviceProvider,
             worker,
@@ -230,7 +230,7 @@ public:
                                                          int priority,
                                                          std::string const& database,
                                                          unsigned int chunk,
-                                                         std::string const& sourceWorker) final {
+                                                         std::string const& sourceWorker) const final {
         return WorkerReplicationRequestPOSIX::create(
             _serviceProvider,
             worker,
@@ -250,7 +250,7 @@ public:
                                                std::string const& id,
                                                int priority,
                                                std::string const& database,
-                                               unsigned int chunk) final {
+                                               unsigned int chunk) const final {
         return WorkerDeleteRequestPOSIX::create(
             _serviceProvider,
             worker,
@@ -270,7 +270,7 @@ public:
                                            int priority,
                                            std::string const& database,
                                            unsigned int chunk,
-                                           bool computeCheckSum) final {
+                                           bool computeCheckSum) const final {
         return WorkerFindRequestPOSIX::create(
             _serviceProvider,
             worker,
@@ -289,7 +289,7 @@ public:
     WorkerFindAllRequestPtr createFindAllRequest(std::string const& worker,
                                                  std::string const& id,
                                                  int priority,
-                                                 std::string const& database) final {
+                                                 std::string const& database) const final {
         return WorkerFindAllRequestPOSIX::create(
             _serviceProvider,
             worker,
@@ -307,7 +307,7 @@ public:
                                            std::string const& id,
                                            int priority,
                                            std::string const& data,
-                                           uint64_t delay) final {
+                                           uint64_t delay) const final {
         return WorkerEchoRequestPOSIX::create(
             _serviceProvider,
             worker,
@@ -363,7 +363,7 @@ public:
                                                          int priority,
                                                          std::string const& database,
                                                          unsigned int chunk,
-                                                         std::string const& sourceWorker) final {
+                                                         std::string const& sourceWorker) const final {
         return WorkerReplicationRequestFS::create(
             _serviceProvider,
             worker,
@@ -383,7 +383,7 @@ public:
                                                std::string const& id,
                                                int priority,
                                                std::string const& database,
-                                               unsigned int chunk) final {
+                                               unsigned int chunk) const final {
         return WorkerDeleteRequestFS::create(
             _serviceProvider,
             worker,
@@ -403,7 +403,7 @@ public:
                                            int priority,
                                            std::string const& database,
                                            unsigned int chunk,
-                                           bool computeCheckSum) final {
+                                           bool computeCheckSum) const final {
         return WorkerFindRequestFS::create(
             _serviceProvider,
             worker,
@@ -422,7 +422,7 @@ public:
     WorkerFindAllRequestPtr createFindAllRequest(std::string const& worker,
                                                  std::string const& id,
                                                  int priority,
-                                                 std::string const& database) final {
+                                                 std::string const& database) const final {
         return WorkerFindAllRequestFS::create(
             _serviceProvider,
             worker,
@@ -440,7 +440,7 @@ public:
                                            std::string const& id,
                                            int priority,
                                            std::string const& data,
-                                           uint64_t delay) final {
+                                           uint64_t delay) const final {
         return WorkerEchoRequestFS::create(
             _serviceProvider,
             worker,

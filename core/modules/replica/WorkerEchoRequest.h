@@ -66,7 +66,7 @@ public:
      * @param id               - an identifier of a client request
      * @param priority         - indicates the importance of the request
      * @param data             - the data string to be echoed back
-     * @param delay            - the minimum execution time (milliseconds) of a request
+     * @param delay            - the desired minimum execution time (milliseconds) of a request
      *
      * @return pointer to the created object
      */
@@ -118,8 +118,11 @@ protected:
                       uint64_t delay);
 protected:
 
-    std::string _data;
-    uint64_t _delay;
+    /// The data string to be echoed back
+    std::string const _data;
+
+    /// The desired minimum execution time (milliseconds) of a request
+    uint64_t const _delay;
 
     /// The amount of the initial delay which is still left
     uint64_t _delayLeft;

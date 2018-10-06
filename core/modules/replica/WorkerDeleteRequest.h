@@ -120,8 +120,11 @@ protected:
                         unsigned int chunk);
 protected:
 
-    std::string  _database;
-    unsigned int _chunk;
+    /// The name of a database
+    std::string const _database;
+
+    /// The number of a chunk
+    unsigned int const _chunk;
 
     /// Extended status of the replica deletion request
     ReplicaInfo _replicaInfo;

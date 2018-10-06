@@ -204,10 +204,10 @@ VerifyJob::VerifyJob(size_t maxReplicas,
             parentJobId,
             "VERIFY",
             options),
-        _onFinish(onFinish),
-        _onReplicaDifference(onReplicaDifference),
         _maxReplicas(maxReplicas),
-        _computeCheckSum(computeCheckSum) {
+        _computeCheckSum(computeCheckSum),
+        _onFinish(onFinish),
+        _onReplicaDifference(onReplicaDifference) {
 
     if (0 == maxReplicas) {
         throw std::invalid_argument(
@@ -235,7 +235,7 @@ void VerifyJob::startImpl(util::Lock const& lock) {
                  replicas,
                  maxReplicas());
 
-    if (0 == replicas.size()) {
+    if (replicas.empty()) {
 
         // In theory this should never happen unless the instalation
         // doesn't have a single chunk.

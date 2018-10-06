@@ -129,9 +129,15 @@ protected:
                       bool computeCheckSum);
 protected:
 
-    std::string  _database;
-    unsigned int _chunk;
-    bool         _computeCheckSum;
+    /// The name of a database
+    std::string const _database;
+ 
+    /// The number of a chunk
+    unsigned int const _chunk;
+
+    /// The flag indicating if check/control sums should be
+    /// computed on all files of the chunk
+    bool const _computeCheckSum;
 
     /// Result of the operation
     ReplicaInfo _replicaInfo;
