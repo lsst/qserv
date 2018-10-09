@@ -296,7 +296,7 @@ static const std::vector< std::string > QUERIES = {
     "select * from Object o, Source s where o.objectIdObjTest between 38 and 40 AND s.objectIdSourceTest IN (10, 30, 70);",
     "select chunkId as f1, pm_declErr AS f1 from LSST.Object where bMagF > 20.0 GROUP BY chunkId;",
     "select chunkId, CHUNKID from LSST.Object where bMagF > 20.0 GROUP BY chunkId;",
-    //fails "select sum(pm_declErr), chunkId as f1, chunkId AS f1, avg(pm_declErr) from LSST.Object where bMagF > 20.0 GROUP BY chunkId;",
+    "select sum(pm_declErr), chunkId as f1, chunkId AS f1, avg(pm_declErr) from LSST.Object where bMagF > 20.0 GROUP BY chunkId;",
     "select pm_declErr, chunkId, ra_Test from LSST.Object where bMagF > 20.0 GROUP BY chunkId;",
     "SELECT o1.objectId, o2.objectId, scisql_angSep(o1.ra_PS, o1.decl_PS, o2.ra_PS, o2.decl_PS) AS distance "
                "FROM Object o1, Object o2 "
@@ -361,7 +361,7 @@ static const std::vector< std::string > QUERIES = {
     "SELECT run FROM LSST.Science_Ccd_Exposure order by field limit 2;",
     "SELECT count(*) from Science_Ccd_Exposure group by visit;",
     //fails "select count(*) from Object group by flags having count(*) > 3;",
-    //fails "SELECT count(*), sum(Source.flux), flux2, Source.flux3 from Source where qserv_areaspec_box(0,0,1,1) and flux4=2 and Source.flux5=3;",
+    "SELECT count(*), sum(Source.flux), flux2, Source.flux3 from Source where qserv_areaspec_box(0,0,1,1) and flux4=2 and Source.flux5=3;",
     "SELECT count(*) FROM Object"
        " WHERE  qserv_areaspec_box(1,3,2,4) AND"
        "  scisql_fluxToAbMag(zFlux_PS) BETWEEN 21 AND 21.5;",
