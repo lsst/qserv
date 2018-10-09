@@ -353,7 +353,7 @@ static const std::vector< std::string > QUERIES = {
     "SELECT rFlux FROM Object WHERE iFlux < 0.4 ;",
     "SELECT * FROM Object WHERE iRadius_SG between 0.02 AND 0.021 LIMIT 3;",
     "SELECT * from Science_Ccd_Exposure limit 3;",
-    //fails "SELECT table1.* from Science_Ccd_Exposure limit 3;",
+    "SELECT table1.* from Science_Ccd_Exposure limit 3;",
     "SELECT * from Science_Ccd_Exposure limit 1;",
     "select ra_PS ra1,decl_PS as dec1 from Object order by dec1;",
     "select o1.iflux_PS o1ps, o2.iFlux_PS o2ps, computeX(o1.one, o2.one) from Object o1, Object o2 order by o1.objectId;",

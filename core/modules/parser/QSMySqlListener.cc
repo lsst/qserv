@@ -287,6 +287,11 @@ public:
     virtual void handleSelectSpec(bool distinct) = 0;
 };
 
+class SelectStarElementCBH : public BaseCBH {
+public:
+    virtual void handleSelectStarElement(shared_ptr<query::ValueExpr> const & valueExpr) = 0;
+};
+
 class SelectFunctionElementCBH: public BaseCBH {
 public:
     virtual void handleSelectFunctionElement(shared_ptr<query::ValueExpr> const & selectFunction) = 0;
@@ -682,6 +687,8 @@ public:
     }
 
     void onExit() override {
+        ASSERT_EXECUTION_CONDITION(_selectList != nullptr && _fromList != nullptr,
+                "No query was generated.", _ctx);
         lockedParent()->handleQuerySpecification(_selectList, _fromList, _whereClause, _orderByClause,
                 _limit, _groupByClause, _distinct);
     }
@@ -702,7 +709,8 @@ private:
 class SelectElementsAdapter :
         public AdapterT<SelectElementsCBH, QSMySqlParser::SelectElementsContext>,
         public SelectColumnElementCBH,
-        public SelectFunctionElementCBH {
+        public SelectFunctionElementCBH,
+        public SelectStarElementCBH {
 public:
     using AdapterT::AdapterT;
 
@@ -718,6 +726,10 @@ public:
 
     void handleSelectFunctionElement(shared_ptr<query::ValueExpr> const & selectFunction) override {
         SelectListFactory::addSelectAggFunction(_selectList, selectFunction);
+    }
+
+    void handleSelectStarElement(shared_ptr<query::ValueExpr> const & valueExpr) override {
+        SelectListFactory::addValueExpr(_selectList, valueExpr);
     }
 
     void onExit() override {
@@ -1415,6 +1427,28 @@ public:
     string name() const override { return getTypeName(this); }
 };
 
+
+class SelectStarElementAdapter :
+        public AdapterT<SelectStarElementCBH, QSMySqlParser::SelectStarElementContext>,
+        public FullIdCBH {
+public:
+    using AdapterT::AdapterT;
+
+    void handleFullId(vector<string> const & uidlist) override {
+        ASSERT_EXECUTION_CONDITION(nullptr == _valueExpr, "_valueExpr should only be set once.", _ctx);
+        ASSERT_EXECUTION_CONDITION(uidlist.size() == 1, "Star Elements must be 'tableName.*'", _ctx);
+        _valueExpr = make_shared<query::ValueExpr>();
+        ValueExprFactory::addValueFactor(_valueExpr, query::ValueFactor::newStarFactor(uidlist[0]));
+    }
+
+    void onExit() override {
+        lockedParent()->handleSelectStarElement(_valueExpr);
+    }
+
+    string name() const override { return getTypeName(this); }
+private:
+    shared_ptr<query::ValueExpr> _valueExpr;
+};
 
 
 // handles `functionCall (AS? uid)?` e.g. "COUNT AS object_count"
@@ -2739,7 +2773,7 @@ UNHANDLED(QuerySpecificationNointo)
 UNHANDLED(UnionParenthesis)
 UNHANDLED(UnionStatement)
 ENTER_EXIT_PARENT(SelectSpec)
-UNHANDLED(SelectStarElement)
+ENTER_EXIT_PARENT(SelectStarElement)
 ENTER_EXIT_PARENT(SelectFunctionElement)
 UNHANDLED(SelectExpressionElement)
 UNHANDLED(SelectIntoVariables)
