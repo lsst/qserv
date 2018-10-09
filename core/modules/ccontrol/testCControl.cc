@@ -288,8 +288,8 @@ static const std::vector< std::string > QUERIES = {
 
 
     // from unit tests
-    //fails "select sum(pm_declErr),chunkId, avg(bMagF2) bmf2 from LSST.Object where bMagF > 20.0 GROUP BY chunkId;",
-    //fails "select chunkId, avg(bMagF2) bmf2 from LSST.Object where bMagF > 20.0;",
+    "select sum(pm_declErr),chunkId, avg(bMagF2) bmf2 from LSST.Object where bMagF > 20.0 GROUP BY chunkId;",
+    "select chunkId, avg(bMagF2) bmf2 from LSST.Object where bMagF > 20.0;",
     "select * from Object where objectIdObjTest between 386942193651347 and 386942193651349;",
     "select * from Object where someField between 386942193651347 and 386942193651349;",
     "select * from Object where objectIdObjTest between 38 and 40 and objectIdObjTest IN (10, 30, 70);",

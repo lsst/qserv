@@ -1428,9 +1428,8 @@ public:
     using AdapterT::AdapterT;
 
     void handleUid(string const & string) override {
-        // Uid is expected to be the aliasName in `functionCall AS aliasName`
+        // Uid is expected to be the aliasName in `functionCall AS aliasName` or `functionCall aliasName`
         ASSERT_EXECUTION_CONDITION(_asName.empty(), "Second call to handleUid.", _ctx);
-        ASSERT_EXECUTION_CONDITION(_ctx->AS() != nullptr, "Call to handleUid but AS is null.", _ctx);
         _asName = string;
     }
 
