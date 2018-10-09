@@ -286,11 +286,213 @@ static const std::vector< std::string > QUERIES = {
     // case05/queries/1051_nn.sql.FIXME
     "SELECT o1.objectId AS objId1, o2.objectId AS objId2, scisql_angSep(o1.ra_PS, o1.decl_PS, o2.ra_PS, o2.decl_PS) AS distance FROM Object o1, Object o2 WHERE qserv_areaspec_box(0, 0, 0.2, 1) AND scisql_angSep(o1.ra_PS, o1.decl_PS, o2.ra_PS, o2.decl_PS) < 1 AND o1.objectId <> o2.objectId",
 
+
+    // from unit tests
+    //fails "select sum(pm_declErr),chunkId, avg(bMagF2) bmf2 from LSST.Object where bMagF > 20.0 GROUP BY chunkId;",
+    //fails "select chunkId, avg(bMagF2) bmf2 from LSST.Object where bMagF > 20.0;",
+    "select * from Object where objectIdObjTest between 386942193651347 and 386942193651349;",
+    "select * from Object where someField between 386942193651347 and 386942193651349;",
+    "select * from Object where objectIdObjTest between 38 and 40 and objectIdObjTest IN (10, 30, 70);",
+    "select * from Object o, Source s where o.objectIdObjTest between 38 and 40 AND s.objectIdSourceTest IN (10, 30, 70);",
+    "select chunkId as f1, pm_declErr AS f1 from LSST.Object where bMagF > 20.0 GROUP BY chunkId;",
+    "select chunkId, CHUNKID from LSST.Object where bMagF > 20.0 GROUP BY chunkId;",
+    //fails "select sum(pm_declErr), chunkId as f1, chunkId AS f1, avg(pm_declErr) from LSST.Object where bMagF > 20.0 GROUP BY chunkId;",
+    "select pm_declErr, chunkId, ra_Test from LSST.Object where bMagF > 20.0 GROUP BY chunkId;",
+    "SELECT o1.objectId, o2.objectId, scisql_angSep(o1.ra_PS, o1.decl_PS, o2.ra_PS, o2.decl_PS) AS distance "
+               "FROM Object o1, Object o2 "
+               "WHERE scisql_angSep(o1.ra_PS, o1.decl_PS, o2.ra_PS, o2.decl_PS) < 0.05 "
+               "AND  o1.objectId <> o2.objectId;",
+    "SELECT * FROM Object WHERE someField > 5.0;",
+    "SELECT * FROM LSST.Object WHERE someField > 5.0;",
+    "SELECT * FROM Filter WHERE filterId=4;",
+    "select * from LSST.Object WHERE ra_PS BETWEEN 150 AND 150.2 and decl_PS between 1.6 and 1.7 limit 2;",
+    "select * from LSST.Object WHERE ra_PS BETWEEN 150 AND 150.2 and decl_PS between 1.6 and 1.7 ORDER BY objectId;",
+    "select * from Object where qserv_areaspec_box(0,0,1,1);",
+    "select count(*) from Object as o1, Object as o2 "
+       "where qserv_areaspec_box(6,6,7,7) AND rFlux_PS<0.005 AND scisql_angSep(o1.ra_Test,o1.decl_Test,o2.ra_Test,o2.decl_Test) < 0.001;",
+    "select * from LSST.Object as o1, LSST.Object as o2, LSST.Source "
+       "where o1.id <> o2.id and "
+       "0.024 > scisql_angSep(o1.ra_Test,o1.decl_Test,o2.ra_Test,o2.decl_Test) and "
+       "Source.objectIdSourceTest=o2.objectIdObjTest;",
+    "select count(*) from Bad.Object as o1, Object o2 where qserv_areaspec_box(6,6,7,7) AND o1.ra_PS between 6 and 7 and o1.decl_PS between 6 and 7 ;",
+    "select * from LSST.Object o, Source s WHERE "
+       "qserv_areaspec_box(2,2,3,3) AND o.objectIdObjTest = s.objectIdSourceTest;",
+    "select count(*) from Object as o1, Object as o2;",
+    "select count(*) from LSST.Object as o1, LSST.Object as o2 "
+       "WHERE o1.objectIdObjTest = o2.objectIdObjTest and o1.iFlux > 0.4 and o2.gFlux > 0.4;",
+    // AS alias in column select, <> operator
+    "select o1.objectId, o2.objectI2, scisql_angSep(o1.ra_PS,o1.decl_PS,o2.ra_PS,o2.decl_PS) AS distance "
+       "from LSST.Object as o1, LSST.Object as o2 "
+       "where o1.foo <> o2.foo and o1.objectIdObjTest = o2.objectIdObjTest;",
+    "select count(*) from LSST.Object as o1, LSST.Object as o2;",
+    "select count(*) from LSST.Object o1,LSST.Object o2 "
+       "WHERE qserv_areaspec_box(5.5, 5.5, 6.1, 6.1) AND "
+       "scisql_angSep(o1.ra_Test,o1.decl_Test,o2.ra_Test,o2.decl_Test) < 0.02",
+    // o2.ra_PS and o2.ra_PS_Sigma have to be aliased in order to produce
+    // a result that can't be stored in a table as-is.
+    // It's also a non-distance-bound spatially-unlimited query. Qserv should
+    // reject this during query analysis. But the parser should still handle it.
+    "select o1.ra_PS, o1.ra_PS_Sigma, o2.ra_PS ra_PS2, o2.ra_PS_Sigma ra_PS_Sigma2 "
+      "from Object o1, Object o2 "
+      "where o1.ra_PS_Sigma < 4e-7 and o2.ra_PS_Sigma < 4e-7;",
+    "select o1.ra_PS, o1.ra_PS_Sigma, s.dummy, Exposure.exposureTime "
+       "from LSST.Object o1,  Source s, Exposure "
+       "WHERE o1.objectIdObjTest = s.objectIdSourceTest AND Exposure.id = o1.exposureId;",
+    "select count(*) from Object where qserv_areaspec_box(359.1, 3.16, 359.2,3.17);",
+    "select count(*) from LSST.Object where qserv_areaspec_box(359.1, 3.16, 359.2,3.17);",
+    " SELECT count(*) AS n, AVG(ra_PS), AVG(decl_PS), x_chunkId FROM Object GROUP BY x_chunkId;",
+    "select count(*) from Object where qserv_areaspec_box(359.1, 3.16, 359.2, 3.17);",
+    "SELECT offset, mjdRef, drift FROM LeapSeconds where offset = 10",
+    "SELECT count(*) from Object;",
+    "SELECT count(*) from LSST.Source;",
+    "SELECT count(*) FROM Object WHERE iFlux < 0.4;",
+    "SELECT rFlux FROM Object WHERE iFlux < 0.4 ;",
+    "SELECT * FROM Object WHERE iRadius_SG between 0.02 AND 0.021 LIMIT 3;",
+    "SELECT * from Science_Ccd_Exposure limit 3;",
+    //fails "SELECT table1.* from Science_Ccd_Exposure limit 3;",
+    "SELECT * from Science_Ccd_Exposure limit 1;",
+    "select ra_PS ra1,decl_PS as dec1 from Object order by dec1;",
+    "select o1.iflux_PS o1ps, o2.iFlux_PS o2ps, computeX(o1.one, o2.one) from Object o1, Object o2 order by o1.objectId;",
+    "select ra_PS from LSST.Object where ra_PS between 3 and 4;",
+    "select count(*) from LSST.Object_3840, usnob.Object_3840 where LSST.Object_3840.objectId > usnob.Object_3840.objectId;",
+    "select count(*), max(iFlux_PS) from LSST.Object where iFlux_PS > 100 and col1=col2;",
+    "select count(*), max(iFlux_PS) from LSST.Object where qserv_areaspec_box(0,0,1,1) and iFlux_PS > 100 and col1=col2 and col3=4;",
+    "SELECT * from Object order by ra_PS limit 3;",
+    "SELECT run FROM LSST.Science_Ccd_Exposure order by field limit 2;",
+    "SELECT count(*) from Science_Ccd_Exposure group by visit;",
+    //fails "select count(*) from Object group by flags having count(*) > 3;",
+    //fails "SELECT count(*), sum(Source.flux), flux2, Source.flux3 from Source where qserv_areaspec_box(0,0,1,1) and flux4=2 and Source.flux5=3;",
+    "SELECT count(*) FROM Object"
+       " WHERE  qserv_areaspec_box(1,3,2,4) AND"
+       "  scisql_fluxToAbMag(zFlux_PS) BETWEEN 21 AND 21.5;",
+    //fails "SELECT f(one)/f2(two) FROM  Object where qserv_areaspec_box(0,0,1,1);",
+    //fails "SELECT (1+f(one))/f2(two) FROM  Object where qserv_areaspec_box(0,0,1,1);",
+    // An example slow query from French Petasky colleagues
+    //fails "SELECT objectId as id, COUNT(sourceId) AS c"
+    //    " FROM Source GROUP BY objectId HAVING  c > 1000 LIMIT 10;",
+    // A query with some expressions
+    //fails "SELECT "
+    //   "ROUND(scisql_fluxToAbMag(uFlux_PS)-scisql_fluxToAbMag(gFlux_PS), 0) AS UG, "
+    //   "ROUND(scisql_fluxToAbMag(gFlux_PS)-scisql_fluxToAbMag(rFlux_PS), 0) AS GR "
+    //   "FROM Object "
+    //   "WHERE scisql_fluxToAbMag(gFlux_PS) < 0.2 "
+    //   "AND scisql_fluxToAbMag(uFlux_PS)-scisql_fluxToAbMag(gFlux_PS) >=-0.27 "
+    //   "AND scisql_fluxToAbMag(gFlux_PS)-scisql_fluxToAbMag(rFlux_PS) >=-0.24 "
+    //   "AND scisql_fluxToAbMag(rFlux_PS)-scisql_fluxToAbMag(iFlux_PS) >=-0.27 "
+    //   "AND scisql_fluxToAbMag(iFlux_PS)-scisql_fluxToAbMag(zFlux_PS) >=-0.35 "
+    //   "AND scisql_fluxToAbMag(zFlux_PS)-scisql_fluxToAbMag(yFlux_PS) >=-0.40;",
+    // non-chunked query
+    "SELECT DISTINCT foo FROM Filter f;",
+    // chunked query
+    "SELECT DISTINCT zNumObs FROM Object;",
+    // Stricter sql_stmt grammer rules: reject trailing garbage
+    "SELECT foo FROM Filter f limit 5",
+    "SELECT foo FROM Filter f limit 5;",
+    "SELECT foo FROM Filter f limit 5;; ",
+
+    // this is not supposed to produce a valid query TODO how to address this with antlr4, how to structure the test?
+    //fails "SELECT foo from Filter f limit 5 garbage query !#$%!#$",
+    //fails "SELECT foo from Filter f limit 5; garbage query !#$%!#$",
+
+    // DM-1784: Nested ValueExpr in function calls.
+    //fails "SELECT  o1.objectId "
+    //   "FROM Object o1 "
+    //   "WHERE ABS( (scisql_fluxToAbMag(o1.gFlux_PS)-scisql_fluxToAbMag(o1.rFlux_PS)) - (scisql_fluxToAbMag(o1.gFlux_PS)-scisql_fluxToAbMag(o1.rFlux_PS)) ) < 1;",
+    //fails "SELECT  o1.objectId, o2.objectId objectId2 "
+    //   "FROM Object o1, Object o2 "
+    //   "WHERE scisql_angSep(o1.ra_Test, o1.decl_Test, o2.ra_Test, o2.decl_Test) < 0.00001 "
+    //   "AND o1.objectId <> o2.objectId AND "
+    //   "ABS( (scisql_fluxToAbMag(o1.gFlux_PS)-scisql_fluxToAbMag(o1.rFlux_PS)) - (scisql_fluxToAbMag(o2.gFlux_PS)-scisql_fluxToAbMag(o2.rFlux_PS)) ) < 1;",
+    "SELECT * FROM RefObjMatch;",
+    "SELECT * FROM RefObjMatch WHERE "
+                      "foo<>bar AND baz<3.14159;",
+    //fails "LECT sce.filterName,sce.field "
+    //   "FROM LSST.Science_Ccd_Exposure AS sce "
+    //   "WHERE sce.field=535 AND sce.camcol LIKE '%' ",
+    // Equi-join using index and free-form syntax
+    "SELECT s.ra, s.decl, o.foo FROM Source s, Object o "
+       "WHERE s.objectIdSourceTest=o.objectIdObjTest and o.objectIdObjTest = 430209694171136;",
+    // Equi-join syntax, not supported yet
+    "SELECT s.ra, s.decl, o.foo "
+       "FROM Object o JOIN Source2 s USING (objectIdObjTest) JOIN Source2 s2 USING (objectIdObjTest) "
+       "WHERE o.objectId = 430209694171136;",
+
+    //fails "SELECT s.ra, s.decl, o.foo "
+    //   "FROM Object o "
+    //   "JOIN Source s ON s.objectIdSourceTest = Object.objectIdObjTest "
+    //   "JOIN Source s2 ON s.objectIdSourceTest = s2.objectIdSourceTest "
+    //   "WHERE LSST.Object.objectId = 430209694171136;",
+
+    //fails "SELECT s1.foo, s2.foo AS s2_foo "
+    //   "FROM Source s1 NATURAL LEFT JOIN Source s2 "
+    //   "WHERE s1.bar = s2.bar;",
+    //fails "SELECT s1.foo, s2.foo AS s2_foo "
+    //   "FROM Source s1 NATURAL LEFT JOIN Source s2 "
+    //   "WHERE s1.bar = s2.bar;",
+    //fails "SELECT s1.foo, s2.foo AS s2_foo "
+    //   "FROM Source s1 NATURAL RIGHT JOIN Source s2 "
+    //   "WHERE s1.bar = s2.bar;",
+    //fails "SELECT s1.foo, s2.foo AS s2_foo "
+    //   "FROM Source s1 NATURAL LEFT OUTER JOIN Source s2 "
+    //   "WHERE s1.bar = s2.bar;",
+    //fails "SELECT s1.foo, s2.foo AS s2_foo "
+    //   "FROM Source s1 NATURAL JOIN Source s2 "
+    //   "WHERE s1.bar = s2.bar;",
+    "SELECT * "
+       "FROM Filter f JOIN Science_Ccd_Exposure USING(exposureId);",
+    "SELECT * FROM Object WHERE objectIdObjTest = 430213989000;",
+    "SELECT s.ra, s.decl, o.raRange, o.declRange "
+       "FROM   Object o "
+       "JOIN   Source2 s USING (objectIdObjTest) "
+       "WHERE  o.objectIdObjTest = 390034570102582 "
+       "AND    o.latestObsTime = s.taiMidPoint;",
+    "SELECT sce.filterId, sce.filterName "
+       "FROM Science_Ccd_Exposure AS sce "
+       "WHERE (sce.visit = 887404831) "
+       "AND (sce.raftName = '3,3') "
+       "AND (sce.ccdName LIKE '%')",
+
+    // this query should fail because it contains grammer that is unsupported in SQL92. TBD what grammar fragment(s) are illegal.
+    // "SELECT objectId, ROUND(iE1_SG, 3), ROUND(ABS(iE1_SG), 3) FROM Object WHERE iE1_SG between -0.1 and 0.1 ORDER BY ROUND(ABS(iE1_SG), 3);",
+
+    "SELECT objectId, taiMidPoint, scisql_fluxToAbMag(psfFlux) "
+       "FROM   Source "
+       "JOIN   Object USING(objectId) JOIN   Filter USING(filterId) "
+       "WHERE qserv_areaspec_box(355, 0, 360, 20) AND filterName = 'g' "
+       "ORDER BY objectId, taiMidPoint ASC;",
+    "SELECT DISTINCT rFlux_PS FROM Object;",
+    //fails "SELECT count(*) FROM   Object o "
+    //   "INNER JOIN RefObjMatch o2t ON (o.objectIdObjTest = o2t.objectId) "
+    //   "INNER JOIN SimRefObject t ON (o2t.refObjectId = t.refObjectId) "
+    //   "WHERE  closestToObj = 1 OR closestToObj is NULL;",
+    //fails "SELECT * "
+    //   "FROM Source s1 CROSS JOIN Source s2 "
+    //   "WHERE s1.bar = s2.bar;",
+    //fails "select objectId, sro.*, (sro.refObjectId-1)/2%pow(2,10), typeId "
+    //   "from Source s join RefObjMatch rom using (objectId) "
+    //   "join SimRefObject sro using (refObjectId) where isStar =1 limit 10;",
+    //fails "SELECT objectId, "
+    //   "scisql_fluxToAbMag(uFlux_PS), scisql_fluxToAbMag(gFlux_PS), "
+    //   "scisql_fluxToAbMag(rFlux_PS), scisql_fluxToAbMag(iFlux_PS), "
+    //   "scisql_fluxToAbMag(zFlux_PS), scisql_fluxToAbMag(yFlux_PS), "
+    //   "ra_PS, decl_PS FROM   Object "
+    //   "WHERE  ( scisql_fluxToAbMag(gFlux_PS)-scisql_fluxToAbMag(rFlux_PS) > 0.7 OR scisql_fluxToAbMag(gFlux_PS) > 22.3 ) "
+    //   "AND    scisql_fluxToAbMag(gFlux_PS)-scisql_fluxToAbMag(rFlux_PS) > 0.1 "
+    //   "AND    ( scisql_fluxToAbMag(rFlux_PS)-scisql_fluxToAbMag(iFlux_PS) "
+    //   "< (0.08 + 0.42 * (scisql_fluxToAbMag(gFlux_PS)-scisql_fluxToAbMag(rFlux_PS) - 0.96)) "
+    //   " OR scisql_fluxToAbMag(gFlux_PS)-scisql_fluxToAbMag(rFlux_PS) > 1.26 ) "
+    //   "AND    scisql_fluxToAbMag(iFlux_PS)-scisql_fluxToAbMag(zFlux_PS) < 0.8;",
+    //fails "SELECT  COUNT(*) AS totalCount, "
+    //   "SUM(CASE WHEN (typeId=3) THEN 1 ELSE 0 END) AS galaxyCount "
+    //   "FROM Object WHERE rFlux_PS > 10;",
+    //fails "SELECT scisql_fluxToAbMag(uFlux_PS) "
+    //   "FROM   Object WHERE  (objectId % 100 ) = 40;",
+
+
     // case01/queries/0013_groupedLogicalTerm.sql
 // TODO this needs to be fixed, by proper handling of nested statements in the where clause. This is implemented but not yet checked in.
 //    "select objectId, ra_PS from Object where ra_PS > 359.5 and (objectId = 417853073271391 or  objectId = 399294519599888)",
 
-//    "select sum(pm_declErr),chunkId, avg(bMagF2) bmf2 from LSST.Object where bMagF > 20.0 GROUP BY chunkId;"
 };
 
 // These queries are all marked "FIXME" in the integration tests, and we don't test them (yet).
