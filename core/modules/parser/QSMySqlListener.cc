@@ -1248,7 +1248,7 @@ public:
         } else if ("<>" == _comparison) {
             compPredicate->op = SqlSQL2Tokens::NOT_EQUALS_OP;
         } else if ("!=" == _comparison) {
-            compPredicate->op = SqlSQL2Tokens::NOT_EQUALS_OP;
+            compPredicate->op = SqlSQL2Tokens::NOT_EQUALS_OP_ALT;
         } else {
             ASSERT_EXECUTION_CONDITION(false, "unhandled comparison operator type " << _comparison, _ctx);
         }

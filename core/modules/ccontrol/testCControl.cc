@@ -324,6 +324,10 @@ static const std::vector< std::string > QUERIES = {
     "select o1.objectId, o2.objectI2, scisql_angSep(o1.ra_PS,o1.decl_PS,o2.ra_PS,o2.decl_PS) AS distance "
        "from LSST.Object as o1, LSST.Object as o2 "
        "where o1.foo <> o2.foo and o1.objectIdObjTest = o2.objectIdObjTest;",
+    // and != operator
+    "select o1.objectId, o2.objectI2, scisql_angSep(o1.ra_PS,o1.decl_PS,o2.ra_PS,o2.decl_PS) AS distance "
+        "from LSST.Object as o1, LSST.Object as o2 "
+        "where o1.foo != o2.foo and o1.objectIdObjTest = o2.objectIdObjTest;",
     "select count(*) from LSST.Object as o1, LSST.Object as o2;",
     "select count(*) from LSST.Object o1,LSST.Object o2 "
        "WHERE qserv_areaspec_box(5.5, 5.5, 6.1, 6.1) AND "
