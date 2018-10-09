@@ -40,6 +40,8 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "parser/ParseException.h"
+#include "parser/SelectParser.h"
 #include "qproc/ChunkSpec.h"
 #include "query/QueryTemplate.h"
 #include "query/SelectStmt.h"
@@ -62,16 +64,23 @@ namespace lsst {
 namespace qserv {
 namespace tests {
 
-SelectParser::Ptr QueryAnaHelper::getParser(const std::string& stmt) {
-    SelectParser::Ptr p = SelectParser::newInstance(stmt);
+SelectParser::Ptr QueryAnaHelper::getParser(const std::string& stmt,
+        SelectParser::AntlrVersion antlrVersion) {
+    auto p = SelectParser::newInstance(stmt, antlrVersion);
     p->setup();
     return p;
 }
 
 std::shared_ptr<QuerySession> QueryAnaHelper::buildQuerySession(QuerySession::Test qsTest,
-                                                                const std::string& stmt) {
+                                                                const std::string& stmt,
+                                                                SelectParser::AntlrVersion antlrVersion) {
+
     querySession = std::make_shared<QuerySession>(qsTest);
-    querySession->analyzeQuery(stmt);
+    auto stmtIR = querySession->parseQuery(stmt, antlrVersion);
+    if (nullptr == stmtIR) {
+        return querySession;
+    }
+    querySession->analyzeQuery(stmt, stmtIR);
 
     if (LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
         std::shared_ptr<ConstraintVector> cvRaw(querySession->getConstraints());
@@ -99,9 +108,10 @@ std::string QueryAnaHelper::buildFirstParallelQuery(bool withSubChunks) {
 }
 
 std::vector<std::string> QueryAnaHelper::getInternalQueries(
-        QuerySession::Test& t, const std::string& stmt) {
+        QuerySession::Test& t, const std::string& stmt,
+        parser::SelectParser::AntlrVersion antlrVersion) {
     std::vector<std::string> queries;
-    buildQuerySession(t, stmt);
+    buildQuerySession(t, stmt, antlrVersion);
 
     std::string sql = buildFirstParallelQuery();
 

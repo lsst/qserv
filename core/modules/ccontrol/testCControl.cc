@@ -35,9 +35,11 @@
 #include <boost/test/data/test_case.hpp>
 
 // Qserv headers
-#include "ccontrol/A4UserQueryFactory.h"
 #include "ccontrol/UserQueryType.h"
 #include "ccontrol/UserQueryFactory.h"
+#include "parser/ParseException.h"
+#include "parser/SelectParser.h"
+#include "qproc/QuerySession.h"
 #include "query/SelectStmt.h"
 
 namespace test = boost::test_tools;
@@ -285,7 +287,10 @@ static const std::vector< std::string > QUERIES = {
     "SELECT o1.objectId AS objId1, o2.objectId AS objId2, scisql_angSep(o1.ra_PS, o1.decl_PS, o2.ra_PS, o2.decl_PS) AS distance FROM Object o1, Object o2 WHERE qserv_areaspec_box(0, 0, 0.2, 1) AND scisql_angSep(o1.ra_PS, o1.decl_PS, o2.ra_PS, o2.decl_PS) < 1 AND o1.objectId <> o2.objectId",
 
     // case01/queries/0013_groupedLogicalTerm.sql
-    "select objectId, ra_PS from Object where ra_PS > 359.5 and (objectId = 417853073271391 or  objectId = 399294519599888)"
+// TODO this needs to be fixed, by proper handling of nested statements in the where clause. This is implemented but not yet checked in.
+//    "select objectId, ra_PS from Object where ra_PS > 359.5 and (objectId = 417853073271391 or  objectId = 399294519599888)",
+
+//    "select sum(pm_declErr),chunkId, avg(bMagF2) bmf2 from LSST.Object where bMagF > 20.0 GROUP BY chunkId;"
 };
 
 // These queries are all marked "FIXME" in the integration tests, and we don't test them (yet).
@@ -382,41 +387,40 @@ static const std::vector< std::string > FAIL_QUERIES = {
 };
 
 BOOST_DATA_TEST_CASE(antlr_compare, QUERIES, query) {
-    std::shared_ptr<query::SelectStmt> a2SelectStatement;
+
+    auto a2parser = parser::SelectParser::newInstance(query, parser::SelectParser::ANTLR2);
+    try {
+        a2parser->setup();
+    } catch(parser::ParseException const& e) {
+        BOOST_TEST_MESSAGE("antlr2 parse exception: " << e.what());
+    }
+    auto a2SelectStatement = a2parser->getSelectStmt();
+    BOOST_REQUIRE(a2SelectStatement != nullptr);
     std::ostringstream a2QueryStr;
-    try {
-        a2SelectStatement = ccontrol::UserQueryFactory::antlr2NewSelectStmt(query);
-        a2QueryStr << a2SelectStatement->getQueryTemplate();
-    } catch (...) {}
-
-    std::ostringstream a4QueryStr;
-    std::shared_ptr<query::SelectStmt> a4SelectStatement;
-    try {
-        a4SelectStatement = ccontrol::a4NewUserQuery(query);
-        a4QueryStr << a4SelectStatement->getQueryTemplate();
-    } catch (...) {}
-
-#if 1 // enable this block to log details about the generated select statements.
-      // (you also have to set the flag ` --log_level=message` when running the test)
+    a2QueryStr << a2SelectStatement->getQueryTemplate();
     if (a2SelectStatement != nullptr) {
         BOOST_TEST_MESSAGE("antlr2 query string:" << a2QueryStr.str());
         BOOST_TEST_MESSAGE("antlr2 selectStmt structure:" << *a2SelectStatement);
     }
+
+    auto a4parser = parser::SelectParser::newInstance(query, parser::SelectParser::ANTLR4);
+    try {
+        a4parser->setup();
+    } catch(parser::ParseException const& e) {
+        BOOST_TEST_MESSAGE("antlr4 parse exception: " << e.what());
+    }
+    auto a4SelectStatement = a4parser->getSelectStmt();
+    BOOST_REQUIRE(a4SelectStatement != nullptr);
+    std::ostringstream a4QueryStr;
+    a4QueryStr << a4SelectStatement->getQueryTemplate();
+
     if (a4SelectStatement != nullptr) {
         BOOST_TEST_MESSAGE("antlr4 query string:" << a4QueryStr.str());
         BOOST_TEST_MESSAGE("antlr4 selectStmt structure:" << *a4SelectStatement);
     }
-#endif
 
-    BOOST_REQUIRE(a2SelectStatement != nullptr);
-    BOOST_REQUIRE(a4SelectStatement != nullptr);
-    // the antlr4 query IR sometimes does not match the old antlr IR, because the old antlr added extra terms
-    // in some cases (for example extra BoolTerms in the where statement portion of the IR, which are removed
-    // by BoolTerm::getReduced, which is called by WherePlugin::applyLogical.
-    // So, we compare the query strings that are rendered from the IR, and warn in the case where the IR is
-    // different.
-    BOOST_WARN_MESSAGE(*a2SelectStatement == *a4SelectStatement, "Query IR is different for " << query <<
-            ", old antlr:" << *a2SelectStatement << ", antlr4:" << *a4SelectStatement);
+    BOOST_REQUIRE_MESSAGE(*a2SelectStatement == *a4SelectStatement, "Query IR is different for " << query <<
+        ", antlr4 selectStmt structure:" << *a4SelectStatement);
     BOOST_REQUIRE(a2QueryStr.str() == a4QueryStr.str());
 }
 

@@ -88,20 +88,21 @@ namespace qproc {
 // class QuerySession
 ////////////////////////////////////////////////////////////////////////
 
-// Analyze SQL query issued by user
-void QuerySession::analyzeQuery(std::string const& sql) {
-    std::shared_ptr<query::SelectStmt> stmt;
+
+std::shared_ptr<query::SelectStmt> QuerySession::parseQuery(std::string statement,
+        parser::SelectParser::AntlrVersion version) {
+    auto parser = parser::SelectParser::newInstance(statement, version);
     try {
-        auto parser = parser::SelectParser::newInstance(sql);
         parser->setup();
-        stmt = parser->getSelectStmt();
-        analyzeQuery(sql, stmt);
     } catch(parser::ParseException const& e) {
-        // parser failed, we only need to set error here, nothing else should matter
-        _original = sql;
+        LOGS(_log, LOG_LVL_DEBUG, "parse exception: " << e.what());
+        _original = statement;
         _error = std::string("ParseException:") + e.what();
+        return nullptr;
     }
+    return parser->getSelectStmt();
 }
+
 
 // Analyze SQL query issued by user
 void QuerySession::analyzeQuery(std::string const& sql, std::shared_ptr<query::SelectStmt> const& stmt) {

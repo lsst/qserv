@@ -60,28 +60,28 @@ public:
     /// ANTLR errors have almost nothing inside
     ParseException(std::string const& msg, antlr::ANTLRException const&);
     explicit ParseException(Bug const& b);
-protected:
-    explicit ParseException(std::string const& msg)
-        : std::runtime_error(msg) {}
+    /// Parse related exception where the antlr/antlr4 context need not be included.
+    explicit ParseException(std::string const& msg);
 };
 
 
 // antlr4 parse exception; this may be raised during listening if there is an error in the enter/exit
 // functions. It may happen because an unanticipated SQL statement was entered into qserv and we don't yet
 // have the proper handling for it set up yet.
-class adapter_order_error : public std::runtime_error {
+class adapter_order_error : public ParseException {
 public:
     explicit adapter_order_error(const std::string& msg)
-    : std::runtime_error(msg) {}
+    : ParseException(msg) {}
 };
 
 
 // antlr4 parse exception; thrown in the case of unexpected events during the parse.
-class adapter_execution_error : public std::runtime_error {
+class adapter_execution_error : public ParseException {
 public:
     explicit adapter_execution_error(std::string msg)
-    : std::runtime_error(msg) {}
+    : ParseException(msg) {}
 };
+
 
 }}} // namespace lsst::qserv::parser
 
