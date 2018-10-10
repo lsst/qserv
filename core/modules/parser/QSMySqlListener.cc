@@ -147,6 +147,13 @@ if (false == (CONDITION)) { \
 } \
 
 
+// This macro is used to log (at the trace level) handle... calls, including the class and function name and
+// whatever object or stream of objects (e.g. `valueExpr`, or `valueExpr << " " << functionName` are passed
+// in to CALLBACK_INFO
+#define TRACE_CALLBACK_INFO(CALLBACK_INFO) \
+LOGS(_log, LOG_LVL_TRACE, name() << __FUNCTION__ << " " << CALLBACK_INFO);
+
+
 namespace lsst {
 namespace qserv {
 namespace parser {
