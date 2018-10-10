@@ -1435,8 +1435,8 @@ public:
     using AdapterT::AdapterT;
 
     void onEnter() override {
-        ASSERT_EXECUTION_CONDITION(nullptr == _ctx->INNER() && nullptr == _ctx->CROSS(),
-                "INNER and CROSS join are not currently supported by the parser.", _ctx);
+        ASSERT_EXECUTION_CONDITION(nullptr == _ctx->CROSS(),
+                "CROSS join is not currently supported by the parser.", _ctx);
     }
 
     void handleAtomTableItem(shared_ptr<query::TableRef> const & tableRef) override {
@@ -1464,8 +1464,11 @@ public:
     void onExit() override {
         ASSERT_EXECUTION_CONDITION(_tableRef != nullptr, "TableRef was not set.", _ctx);
         auto joinSpec = make_shared<query::JoinSpec>(_using, _on);
-        // todo where does type get defined?
-        auto joinRef = make_shared<query::JoinRef>(_tableRef, query::JoinRef::DEFAULT, false, joinSpec);
+        auto joinType = query::JoinRef::DEFAULT;
+        if (_ctx->INNER()) {
+            joinType = query::JoinRef::INNER;
+        }
+        auto joinRef = make_shared<query::JoinRef>(_tableRef, joinType, false, joinSpec);
         lockedParent()->handleInnerJoin(joinRef);
     }
 
