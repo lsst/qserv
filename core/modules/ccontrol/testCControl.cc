@@ -406,6 +406,7 @@ static const std::vector< std::string > QUERIES = {
     "SELECT * FROM RefObjMatch;",
     "SELECT * FROM RefObjMatch WHERE "
                       "foo<>bar AND baz<3.14159;",
+    // this is not supposed to produce a valid query TODO how to address this with antlr4, how to structure the test?
     //fails "LECT sce.filterName,sce.field "
     //   "FROM LSST.Science_Ccd_Exposure AS sce "
     //   "WHERE sce.field=535 AND sce.camcol LIKE '%' ",
