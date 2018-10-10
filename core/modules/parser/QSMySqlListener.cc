@@ -285,6 +285,11 @@ public:
     virtual void handleInnerJoin(shared_ptr<query::JoinRef> const & joinRef) = 0;
 };
 
+class NaturalJoinCBH : public BaseCBH {
+public:
+    virtual void handleNaturalJoin(shared_ptr<query::JoinRef> const & joinRef) = 0;
+};
+
 class SelectSpecCBH : public BaseCBH {
 public:
     virtual void handleSelectSpec(bool distinct) = 0;
@@ -886,7 +891,8 @@ private:
 class TableSourceBaseAdapter :
         public AdapterT<TableSourceBaseCBH, QSMySqlParser::TableSourceBaseContext>,
         public AtomTableItemCBH,
-        public InnerJoinCBH {
+        public InnerJoinCBH,
+        public NaturalJoinCBH {
 public:
     using AdapterT::AdapterT;
 
@@ -896,6 +902,10 @@ public:
     }
 
     void handleInnerJoin(shared_ptr<query::JoinRef> const & joinRef) override {
+        _joinRefs.push_back(joinRef);
+    }
+
+    void handleNaturalJoin(shared_ptr<query::JoinRef> const & joinRef) override {
         _joinRefs.push_back(joinRef);
     }
 
@@ -1444,6 +1454,36 @@ private:
     shared_ptr<query::ColumnRef> _using;
     shared_ptr<query::TableRef> _tableRef;
     shared_ptr<query::BoolFactor> _on;
+};
+
+
+class NaturalJoinAdapter :
+        public AdapterT<NaturalJoinCBH, QSMySqlParser::NaturalJoinContext>,
+        public AtomTableItemCBH {
+public:
+    using AdapterT::AdapterT;
+
+    void handleAtomTableItem(shared_ptr<query::TableRef> const & tableRef) override {
+        ASSERT_EXECUTION_CONDITION(nullptr == _tableRef, "expected only one atomTableItem callback.", _ctx);
+        _tableRef = tableRef;
+    }
+
+    void onExit() override {
+        ASSERT_EXECUTION_CONDITION(_tableRef != nullptr, "TableRef was not set.", _ctx);
+        query::JoinRef::Type joinType(query::JoinRef::DEFAULT);
+        if (_ctx->LEFT() != nullptr) {
+            joinType = query::JoinRef::LEFT;
+        } else if (_ctx->RIGHT() != nullptr) {
+            joinType = query::JoinRef::RIGHT;
+        }
+        auto joinRef = make_shared<query::JoinRef>(_tableRef, joinType, true, nullptr);
+        lockedParent()->handleNaturalJoin(joinRef);
+    }
+
+    string name() const override { return getTypeName(this); }
+
+private:
+    shared_ptr<query::TableRef> _tableRef;
 };
 
 
@@ -2901,7 +2941,7 @@ UNHANDLED(IndexHintType)
 ENTER_EXIT_PARENT(InnerJoin)
 UNHANDLED(StraightJoin)
 UNHANDLED(OuterJoin)
-UNHANDLED(NaturalJoin)
+ENTER_EXIT_PARENT(NaturalJoin)
 UNHANDLED(QueryExpression)
 UNHANDLED(QueryExpressionNointo)
 UNHANDLED(QuerySpecificationNointo)

@@ -428,21 +428,21 @@ static const std::vector< std::string > QUERIES = {
        "JOIN Source s2 ON s.objectIdSourceTest = s2.objectIdSourceTest "
        "WHERE LSST.Object.objectId = 430209694171136;",
 
-    //fails "SELECT s1.foo, s2.foo AS s2_foo "
-    //   "FROM Source s1 NATURAL LEFT JOIN Source s2 "
-    //   "WHERE s1.bar = s2.bar;",
-    //fails "SELECT s1.foo, s2.foo AS s2_foo "
-    //   "FROM Source s1 NATURAL LEFT JOIN Source s2 "
-    //   "WHERE s1.bar = s2.bar;",
-    //fails "SELECT s1.foo, s2.foo AS s2_foo "
-    //   "FROM Source s1 NATURAL RIGHT JOIN Source s2 "
-    //   "WHERE s1.bar = s2.bar;",
-    //fails "SELECT s1.foo, s2.foo AS s2_foo "
-    //   "FROM Source s1 NATURAL LEFT OUTER JOIN Source s2 "
-    //   "WHERE s1.bar = s2.bar;",
-    //fails "SELECT s1.foo, s2.foo AS s2_foo "
-    //   "FROM Source s1 NATURAL JOIN Source s2 "
-    //   "WHERE s1.bar = s2.bar;",
+    "SELECT s1.foo, s2.foo AS s2_foo "
+       "FROM Source s1 NATURAL LEFT JOIN Source s2 "
+       "WHERE s1.bar = s2.bar;",
+    "SELECT s1.foo, s2.foo AS s2_foo "
+       "FROM Source s1 NATURAL LEFT JOIN Source s2 "
+       "WHERE s1.bar = s2.bar;",
+    "SELECT s1.foo, s2.foo AS s2_foo "
+       "FROM Source s1 NATURAL RIGHT JOIN Source s2 "
+       "WHERE s1.bar = s2.bar;",
+    "SELECT s1.foo, s2.foo AS s2_foo "
+       "FROM Source s1 NATURAL LEFT OUTER JOIN Source s2 "
+       "WHERE s1.bar = s2.bar;",
+    "SELECT s1.foo, s2.foo AS s2_foo "
+       "FROM Source s1 NATURAL JOIN Source s2 "
+       "WHERE s1.bar = s2.bar;",
     "SELECT * "
        "FROM Filter f JOIN Science_Ccd_Exposure USING(exposureId);",
     "SELECT * FROM Object WHERE objectIdObjTest = 430213989000;",
