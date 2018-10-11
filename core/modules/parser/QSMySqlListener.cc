@@ -223,6 +223,7 @@ public:
     virtual void handleTableSources(query::TableRefListPtr const & tableRefList) = 0;
 };
 
+
 class TableSourceBaseCBH : public BaseCBH {
 public:
     virtual void handleTableSource(shared_ptr<query::TableRef> const & tableRef) = 0;
@@ -258,7 +259,7 @@ public:
     virtual void handleExpressionAtomPredicate(shared_ptr<query::ValueExpr> const & valueExpr,
             antlr4::ParserRuleContext* childCtx) = 0;
 
-    virtual void handleExpressionAtomPredicate(shared_ptr<query::BoolFactorTerm> const & boolFactorTerm,
+    virtual void handleExpressionAtomPredicate(shared_ptr<query::BoolTerm> const & boolTerm,
             antlr4::ParserRuleContext* childCtx) = 0;
 };
 
@@ -287,35 +288,42 @@ public:
     virtual void handleOrderByExpression(query::OrderByTerm const & orderByTerm) = 0;
 };
 
+
 class InnerJoinCBH : public BaseCBH {
 public:
     virtual void handleInnerJoin(shared_ptr<query::JoinRef> const & joinRef) = 0;
 };
+
 
 class NaturalJoinCBH : public BaseCBH {
 public:
     virtual void handleNaturalJoin(shared_ptr<query::JoinRef> const & joinRef) = 0;
 };
 
+
 class SelectSpecCBH : public BaseCBH {
 public:
     virtual void handleSelectSpec(bool distinct) = 0;
 };
+
 
 class SelectStarElementCBH : public BaseCBH {
 public:
     virtual void handleSelectStarElement(shared_ptr<query::ValueExpr> const & valueExpr) = 0;
 };
 
+
 class SelectFunctionElementCBH: public BaseCBH {
 public:
     virtual void handleSelectFunctionElement(shared_ptr<query::ValueExpr> const & selectFunction) = 0;
 };
 
+
 class SelectExpressionElementCBH: public BaseCBH {
 public:
     virtual void handleSelectExpressionElement(shared_ptr<query::ValueExpr> const & valueExpr) = 0;
 };
+
 
 class GroupByItemCBH : public BaseCBH {
 public:
@@ -370,7 +378,7 @@ public:
 
 class PredicateExpressionCBH : public BaseCBH {
 public:
-    virtual void handlePredicateExpression(shared_ptr<query::BoolFactor> const & boolFactor,
+    virtual void handlePredicateExpression(shared_ptr<query::BoolTerm> const & boolTerm,
             antlr4::ParserRuleContext* childCtx) = 0;
     virtual void handlePredicateExpression(shared_ptr<query::ValueExpr> const & valueExpr) = 0;
 };
@@ -386,6 +394,7 @@ class UidListCBH : public BaseCBH {
 public:
     virtual void handleUidList(vector<string> const & strings) = 0;
 };
+
 
 class ExpressionsCBH : public BaseCBH {
 public:
@@ -484,7 +493,7 @@ public:
 
 class NestedExpressionAtomCBH : public BaseCBH {
 public:
-    virtual void handleNestedExpressionAtom(shared_ptr<query::BoolFactorTerm> const & boolFactorTerm) = 0;
+    virtual void handleNestedExpressionAtom(shared_ptr<query::BoolTerm> const & boolTerm) = 0;
     virtual void handleNestedExpressionAtom(shared_ptr<query::ValueExpr> const & valueExpr) = 0;
 };
 
@@ -514,6 +523,10 @@ public:
         OR,
     };
     virtual void handleLogicalOperator(OperatorType operatorType) = 0;
+
+    static string OperatorTypeToStr(OperatorType operatorType) {
+        return operatorType == AND ? "AND" : "OR";
+    }
 };
 
 
@@ -673,6 +686,7 @@ public:
     }
 
     void onExit() override {
+        ASSERT_EXECUTION_CONDITION(_selectList != nullptr, "Failed to create a select list.", _ctx);
         auto selectStatement = make_shared<query::SelectStmt>(_fromList, _selectList, _whereClause,
                 _orderByClause, _groupByClause, _havingClause, _distinct, _limit);
         lockedParent()->handleSelectStatement(selectStatement);
@@ -729,8 +743,6 @@ public:
     }
 
     void onExit() override {
-        ASSERT_EXECUTION_CONDITION(_selectList != nullptr && _fromList != nullptr,
-                "No query was generated.", _ctx);
         lockedParent()->handleQuerySpecification(_selectList, _fromList, _whereClause, _orderByClause,
                 _limit, _groupByClause, _havingClause, _distinct);
     }
@@ -805,20 +817,20 @@ public:
         _tableRefList = tableRefList;
     }
 
-    void handlePredicateExpression(shared_ptr<query::BoolFactor> const & boolFactor,
+    void handlePredicateExpression(shared_ptr<query::BoolTerm> const & boolTerm,
             antlr4::ParserRuleContext* childCtx) override {
         if (_ctx->whereExpr == childCtx) {
-            shared_ptr<query::AndTerm> andTerm = make_shared<query::AndTerm>();
-            shared_ptr<query::BoolTerm> boolTerm = boolFactor;
-            andTerm->addBoolTerm(boolTerm);
-            shared_ptr<query::BoolTerm> andBoolTerm = andTerm;
-            _getRootTerm()->addBoolTerm(andBoolTerm);
+            shared_ptr<query::AndTerm> andTerm = make_shared<query::AndTerm>(boolTerm);
+            auto rootTerm = dynamic_pointer_cast<query::LogicalTerm>(_getWhereClause()->getRootTerm());
+            if (nullptr == rootTerm) {
+                rootTerm = make_shared<query::OrTerm>();
+                _getWhereClause()->setRootTerm(rootTerm);
+            }
+            rootTerm->addBoolTerm(andTerm);
         } else if (_ctx->havingExpr == childCtx) {
             ASSERT_EXECUTION_CONDITION(nullptr == _havingClause, "The having clause should only be set once.", _ctx);
-            auto andTerm = make_shared<query::AndTerm>();
-            andTerm->addBoolTerm(boolFactor);
-            auto orTerm = make_shared<query::OrTerm>();
-            orTerm->addBoolTerm(andTerm);
+            auto andTerm = make_shared<query::AndTerm>(boolTerm);
+            auto orTerm = make_shared<query::OrTerm>(andTerm);
             _havingClause = std::make_shared<query::HavingClause>(orTerm);
         } else {
             ASSERT_EXECUTION_CONDITION(false, "This predicate expression is not yet supported.", _ctx);
@@ -831,20 +843,32 @@ public:
 
     void handleLogicalExpression(shared_ptr<query::LogicalTerm> const & logicalTerm,
             antlr4::ParserRuleContext* childCtx) override {
+        TRACE_CALLBACK_INFO(logicalTerm);
         if (_ctx->whereExpr == childCtx) {
-            auto boolTerm = shared_ptr<query::BoolTerm>(logicalTerm);
-            _getRootTerm()->addBoolTerm(boolTerm);
-            return;
+            auto whereClause = _getWhereClause();
+            ASSERT_EXECUTION_CONDITION(nullptr == whereClause->getRootTerm(),
+                    "expected handleLogicalExpression to be called only once.", _ctx);
+            // The antlr 2 parser code always put the AndTerm into an OrTerm at the top of the where clause
+            // tree. Since I currently don't know what parts of qana and qproc rely on this nesting it is
+            // safer to add the OrTerm here as well. (It also makes testing easier, at least for now, if we
+            // can keep the generated IR from diverging).
+            auto orTerm = dynamic_pointer_cast<query::OrTerm>(logicalTerm);
+            if (orTerm == nullptr) {
+                orTerm = make_shared<query::OrTerm>(logicalTerm);
+                whereClause->setRootTerm(orTerm);
+            } else {
+                whereClause->setRootTerm(logicalTerm);
+            }
         } else if (_ctx->havingExpr == childCtx) {
             ASSERT_EXECUTION_CONDITION(false, "The HAVING expression is not yet supported.", _ctx);
+        } else {
+            ASSERT_EXECUTION_CONDITION(false, "This logical expression is not yet supported.", _ctx);
         }
-        ASSERT_EXECUTION_CONDITION(false, "This logical expression is not yet supported.", _ctx);
     }
 
     void handleQservFunctionSpec(string const & functionName,
             vector<shared_ptr<query::ValueFactor>> const & args) {
-        _initWhereClause();
-        WhereFactory::addQservRestrictor(_whereClause, functionName, args);
+        WhereFactory::addQservRestrictor(_getWhereClause(), functionName, args);
     }
 
     void handleGroupByItem(shared_ptr<query::ValueExpr> const & valueExpr) {
@@ -856,34 +880,22 @@ public:
 
     void onExit() override {
         shared_ptr<query::FromList> fromList = make_shared<query::FromList>(_tableRefList);
-        if (_rootTerm != nullptr) {
-            _initWhereClause();
-            _whereClause->setRootTerm(_rootTerm);
-        }
-
         lockedParent()->handleFromClause(fromList, _whereClause, _groupByClause, _havingClause);
     }
 
     string name() const override { return getTypeName(this); }
 
 private:
-    void _initWhereClause() {
+    shared_ptr<query::WhereClause> & _getWhereClause() {
         if (nullptr == _whereClause) {
             _whereClause = make_shared<query::WhereClause>();
         }
-    }
-
-    shared_ptr<query::OrTerm> const & _getRootTerm() {
-        if (nullptr == _rootTerm) {
-            _rootTerm = make_shared<query::OrTerm>();
-        }
-        return _rootTerm;
+        return _whereClause;
     }
 
     // I think the first term of a where clause is always an OrTerm, and it needs to be added by default.
     shared_ptr<query::WhereClause> _whereClause;
     query::TableRefListPtr _tableRefList;
-    shared_ptr<query::OrTerm> _rootTerm;
     shared_ptr<query::GroupByClause> _groupByClause;
     shared_ptr<query::HavingClause> _havingClause;
 };
@@ -995,7 +1007,6 @@ public:
 
     string name() const override { return getTypeName(this); }
 };
-
 
 
 class FullIdAdapter :
@@ -1135,8 +1146,9 @@ public:
         lockedParent()->handleExpressionAtomPredicate(valueExpr, _ctx);
     }
 
-    void handleNestedExpressionAtom(shared_ptr<query::BoolFactorTerm> const & boolFactorTerm) override {
-        lockedParent()->handleExpressionAtomPredicate(boolFactorTerm, _ctx);
+    void handleNestedExpressionAtom(shared_ptr<query::BoolTerm> const & boolTerm) override {
+        TRACE_CALLBACK_INFO(*boolTerm);
+        lockedParent()->handleExpressionAtomPredicate(boolTerm, _ctx);
     }
 
     void handleNestedExpressionAtom(shared_ptr<query::ValueExpr> const & valueExpr) override {
@@ -1217,72 +1229,73 @@ public:
     // BinaryComparasionPredicateCBH
     void handleBinaryComparasionPredicate(
             shared_ptr<query::CompPredicate> const & comparisonPredicate) override {
-        _prepBoolFactor();
-        _boolFactor->addBoolFactorTerm(comparisonPredicate);
+        _getBoolFactor()->addBoolFactorTerm(comparisonPredicate);
     }
 
     void handleBetweenPredicate(shared_ptr<query::BetweenPredicate> const & betweenPredicate) override {
-        _prepBoolFactor();
-        _boolFactor->addBoolFactorTerm(betweenPredicate);
+        _getBoolFactor()->addBoolFactorTerm(betweenPredicate);
     }
 
     void handleInPredicate(shared_ptr<query::InPredicate> const & inPredicate) override {
-        _prepBoolFactor();
-        _boolFactor->addBoolFactorTerm(inPredicate);
+        _getBoolFactor()->addBoolFactorTerm(inPredicate);
     }
 
     void handleExpressionAtomPredicate(shared_ptr<query::ValueExpr> const & valueExpr,
             antlr4::ParserRuleContext* childCtx) override {
+        TRACE_CALLBACK_INFO(valueExpr);
         _prepValueExpr();
         _valueExpr = valueExpr;
     }
 
-    void handleExpressionAtomPredicate(shared_ptr<query::BoolFactorTerm> const & boolFactorTerm,
+    void handleExpressionAtomPredicate(shared_ptr<query::BoolTerm> const & boolTerm,
             antlr4::ParserRuleContext* childCtx) override {
-        _prepBoolFactor();
-        _boolFactor->addBoolFactorTerm(boolFactorTerm);
+        TRACE_CALLBACK_INFO(boolTerm);
+        ASSERT_EXECUTION_CONDITION(nullptr == _boolTerm && nullptr == _valueExpr, "unexpected", _ctx);
+        _boolTerm = boolTerm;
     }
 
     void handleLikePredicate(shared_ptr<query::LikePredicate> const & likePredicate) override {
-        _prepBoolFactor();
-        _boolFactor->addBoolFactorTerm(likePredicate);
+        _getBoolFactor()->addBoolFactorTerm(likePredicate);
     }
 
     void handleIsNullPredicate(shared_ptr<query::NullPredicate> const & nullPredicate) override {
-        _prepBoolFactor();
-        _boolFactor->addBoolFactorTerm(nullPredicate);
+        _getBoolFactor()->addBoolFactorTerm(nullPredicate);
     }
 
     void onExit() {
-        ASSERT_EXECUTION_CONDITION(nullptr != _valueExpr || nullptr != _boolFactor,
+        ASSERT_EXECUTION_CONDITION(nullptr != _valueExpr || nullptr != _boolTerm,
                 "PredicateExpressionAdapter was not populated.", _ctx);
-        if (_boolFactor != nullptr) {
-            lockedParent()->handlePredicateExpression(_boolFactor, _ctx);
-        } else if (_valueExpr != nullptr) {
-            lockedParent()->handlePredicateExpression(_valueExpr);
+        if (_boolTerm != nullptr) {
+            lockedParent()->handlePredicateExpression(_boolTerm, _ctx);
         } else {
-
+            lockedParent()->handlePredicateExpression(_valueExpr);
         }
     }
 
     string name() const override { return getTypeName(this); }
 
 private:
-    void _prepBoolFactor() {
+    shared_ptr<query::BoolFactor> _getBoolFactor() {
         ASSERT_EXECUTION_CONDITION(nullptr == _valueExpr, "Can't use PredicateExpressionAdapter for " <<
                 "BoolFactor and ValueExpr at the same time.", _ctx);
-        if (nullptr == _boolFactor) {
-            _boolFactor = make_shared<query::BoolFactor>();
+        if (nullptr == _boolTerm) {
+            auto boolFactor = make_shared<query::BoolFactor>();
+            _boolTerm = boolFactor;
+            return boolFactor;
         }
+        auto boolFactor = dynamic_pointer_cast<query::BoolFactor>(_boolTerm);
+        ASSERT_EXECUTION_CONDITION(nullptr != boolFactor, "Can't cast boolTerm:" << _boolTerm <<
+                " to a BoolFactor.", _ctx)
+        return boolFactor;
     }
 
     void _prepValueExpr() {
-        ASSERT_EXECUTION_CONDITION(nullptr == _boolFactor, "Can't use PredicateExpressionAdapter for " <<
+        ASSERT_EXECUTION_CONDITION(nullptr == _boolTerm, "Can't use PredicateExpressionAdapter for " <<
                 "BoolFactor and ValueExpr at the same time.", _ctx);
         ASSERT_EXECUTION_CONDITION(nullptr == _valueExpr, "Can only set _valueExpr once.", _ctx);
     }
 
-    shared_ptr<query::BoolFactor> _boolFactor;
+    shared_ptr<query::BoolTerm> _boolTerm;
     shared_ptr<query::ValueExpr> _valueExpr;
 };
 
@@ -1310,9 +1323,9 @@ public:
         }
     }
 
-    void handleExpressionAtomPredicate(shared_ptr<query::BoolFactorTerm> const & boolFactorTerm,
+    void handleExpressionAtomPredicate(shared_ptr<query::BoolTerm> const & boolFactor,
             antlr4::ParserRuleContext* childCtx) override {
-        ASSERT_EXECUTION_CONDITION(false, "unhandled ExpressionAtomPredicate BoolFactor callback.", _ctx);
+        ASSERT_EXECUTION_CONDITION(false, "unhandled ExpressionAtomPredicate BoolTerm callback.", _ctx);
     }
 
     void onExit() {
@@ -1410,13 +1423,16 @@ public:
         // note that query::OrderByTerm::DEFAULT is the default value of orderBy
     }
 
-    void handlePredicateExpression(shared_ptr<query::BoolFactor> const & boolFactor,
+    void handlePredicateExpression(shared_ptr<query::BoolTerm> const & boolTerm,
             antlr4::ParserRuleContext* childCtx) override {
         ASSERT_EXECUTION_CONDITION(false, "unexpected BoolFactor callback", _ctx);
     }
 
     void handlePredicateExpression(shared_ptr<query::ValueExpr> const & valueExpr) override {
         ASSERT_EXECUTION_CONDITION(nullptr == _valueExpr, "expected exactly one ValueExpr callback", _ctx);
+        if (valueExpr->isFunction()) {
+            throw ParseException("qserv does not support functions in ORDER BY");
+        }
         _valueExpr = valueExpr;
     }
 
@@ -1441,27 +1457,25 @@ class InnerJoinAdapter :
 public:
     using AdapterT::AdapterT;
 
-    void onEnter() override {
-        ASSERT_EXECUTION_CONDITION(nullptr == _ctx->CROSS(),
-                "CROSS join is not currently supported by the parser.", _ctx);
-    }
-
     void handleAtomTableItem(shared_ptr<query::TableRef> const & tableRef) override {
+        TRACE_CALLBACK_INFO(*tableRef);
         ASSERT_EXECUTION_CONDITION(nullptr == _tableRef, "expected only one atomTableItem callback.", _ctx);
         _tableRef = tableRef;
     }
 
     void handleUidList(vector<string> const & strings) override {
+        TRACE_CALLBACK_INFO(util::printable(strings));
         ASSERT_EXECUTION_CONDITION(strings.size() == 1,
             "Current intermediate representation can only handle 1 `using` string.", _ctx);
         ASSERT_EXECUTION_CONDITION(nullptr == _using, "_using should be set exactly once.", _ctx);
         _using = make_shared<query::ColumnRef>("", "", strings[0]);
     }
 
-    void handlePredicateExpression(shared_ptr<query::BoolFactor> const & boolFactor,
+    void handlePredicateExpression(shared_ptr<query::BoolTerm> const & boolTerm,
             antlr4::ParserRuleContext* childCtx) override {
-        ASSERT_EXECUTION_CONDITION(nullptr == _on, "Unexpected second BoolFactor callback: " << boolFactor, _ctx);
-        _on = boolFactor;
+        TRACE_CALLBACK_INFO(*boolTerm);
+        ASSERT_EXECUTION_CONDITION(nullptr == _on, "Unexpected second BoolTerm callback: " << boolTerm, _ctx);
+        _on = _getNestedBoolTerm(boolTerm);
     }
 
     void handlePredicateExpression(shared_ptr<query::ValueExpr> const & valueExpr) override {
@@ -1470,10 +1484,15 @@ public:
 
     void onExit() override {
         ASSERT_EXECUTION_CONDITION(_tableRef != nullptr, "TableRef was not set.", _ctx);
-        auto joinSpec = make_shared<query::JoinSpec>(_using, _on);
-        auto joinType = query::JoinRef::DEFAULT;
-        if (_ctx->INNER()) {
+        query::JoinRef::Type joinType(query::JoinRef::DEFAULT);
+        if (_ctx->INNER() != nullptr) {
             joinType = query::JoinRef::INNER;
+        } else if (_ctx->CROSS() != nullptr) {
+            joinType = query::JoinRef::CROSS;
+        }
+        shared_ptr<query::JoinSpec> joinSpec;
+        if (_using != nullptr || _on != nullptr) {
+            joinSpec = make_shared<query::JoinSpec>(_using, _on);
         }
         auto joinRef = make_shared<query::JoinRef>(_tableRef, joinType, false, joinSpec);
         lockedParent()->handleInnerJoin(joinRef);
@@ -1482,9 +1501,57 @@ public:
     string name() const override { return getTypeName(this); }
 
 private:
+
+    // in a query such as
+    // SELECT count(*) FROM   Object o
+    //        INNER JOIN RefObjMatch o2t ON (o.objectIdObjTest = o2t.objectId)
+    //        INNER JOIN SimRefObject t ON (o2t.refObjectId = t.refObjectId)
+    //        WHERE  closestToObj = 1 OR closestToObj is NULL;,
+    // When a BoolFactor is in parenthesis, the NestedExpressionAtomAdapter puts it in a new BoolFactor that
+    // has an PassTerm with an open parenthesis, then an Or+And that contains the BoolFactor, and then
+    // a PassTerm with close parenthesis. This is the correct IR for parenthesis (a "nestedExpression") in
+    // the WHERE clause. However, our IR does NOT expect the BoolFactor to be put in this sort of structure
+    // in the JOIN clause, so we must extract the contained BoolFactor in this case. This function does that.
+    shared_ptr<query::BoolTerm> _getNestedBoolTerm(shared_ptr<query::BoolTerm> const & boolTerm) {
+        auto boolFactor = dynamic_pointer_cast<query::BoolFactor>(boolTerm);
+        if (nullptr == boolFactor) {
+            return boolTerm;
+        }
+        if (boolFactor->_terms.size() != 3) {
+            return boolFactor;
+        }
+        auto lhsPassTerm = dynamic_pointer_cast<query::PassTerm>(boolFactor->_terms[0]);
+        if (nullptr == lhsPassTerm || lhsPassTerm->_text != "(") {
+            return boolFactor;
+        }
+        auto rhsPassTerm = dynamic_pointer_cast<query::PassTerm>(boolFactor->_terms[2]);
+        if (nullptr == rhsPassTerm || rhsPassTerm->_text != ")") {
+            return boolFactor;
+        }
+        auto boolTermFactor = dynamic_pointer_cast<query::BoolTermFactor>(boolFactor->_terms[1]);
+        if (nullptr == boolTermFactor) {
+            return boolFactor;
+        }
+        auto orTerm = dynamic_pointer_cast<query::OrTerm>(boolTermFactor->_term);
+        if (nullptr == orTerm) {
+            return boolFactor;
+        }
+        if (orTerm->_terms.size() != 1) {
+            return boolFactor;
+        }
+        auto andTerm = dynamic_pointer_cast<query::AndTerm>(orTerm->_terms[0]);
+        if (nullptr == andTerm) {
+            return boolFactor;
+        }
+        if (andTerm->_terms.size() != 1) {
+            return boolFactor;
+        }
+        return andTerm->_terms[0];
+    }
+
     shared_ptr<query::ColumnRef> _using;
     shared_ptr<query::TableRef> _tableRef;
-    shared_ptr<query::BoolFactor> _on;
+    shared_ptr<query::BoolTerm> _on;
 };
 
 
@@ -1632,9 +1699,10 @@ class SelectExpressionElementAdapter :
 public:
     using AdapterT::AdapterT;
 
-    void handlePredicateExpression(shared_ptr<query::BoolFactor> const & boolFactor,
+    void handlePredicateExpression(shared_ptr<query::BoolTerm> const & boolTerm,
             antlr4::ParserRuleContext* childCtx) override {
-        ASSERT_EXECUTION_CONDITION(false, "unexpected call to handlePredicateExpression(BoolFactor).", _ctx);
+        LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << boolTerm);
+        ASSERT_EXECUTION_CONDITION(false, "unexpected call to handlePredicateExpression(BoolTerm).", _ctx);
     }
 
     void handlePredicateExpression(shared_ptr<query::ValueExpr> const & valueExpr) override {
@@ -1660,9 +1728,9 @@ class GroupByItemAdapter :
 public:
     using AdapterT::AdapterT;
 
-    void handlePredicateExpression(shared_ptr<query::BoolFactor> const & boolFactor,
+    void handlePredicateExpression(shared_ptr<query::BoolTerm> const & boolTerm,
             antlr4::ParserRuleContext* childCtx) override {
-        ASSERT_EXECUTION_CONDITION(false, "Unexpected PredicateExpression boolFactor callback.", _ctx);
+        ASSERT_EXECUTION_CONDITION(false, "Unexpected PredicateExpression BoolTerm callback.", _ctx);
     }
 
     void handlePredicateExpression(shared_ptr<query::ValueExpr> const & valueExpr) override {
@@ -1858,9 +1926,9 @@ class ExpressionsAdapter :
 public:
     using AdapterT::AdapterT;
 
-    void handlePredicateExpression(shared_ptr<query::BoolFactor> const & boolFactor,
+    void handlePredicateExpression(shared_ptr<query::BoolTerm> const & boolTerm,
             antlr4::ParserRuleContext* childCtx) override {
-        ASSERT_EXECUTION_CONDITION(false, "Unhandled PredicateExpression with BoolFactor.", _ctx);
+        ASSERT_EXECUTION_CONDITION(false, "Unhandled PredicateExpression with BoolTerm.", _ctx);
     }
 
     void handlePredicateExpression(shared_ptr<query::ValueExpr> const & valueExpr) override {
@@ -2025,7 +2093,7 @@ public:
             }
             funcExpr = query::FuncExpr::newArg1(terminalNode->getText(), param);
         } else {
-            ASSERT_EXECUTION_CONDITION(false, "Unhandled function type", _ctx);
+            ASSERT_EXECUTION_CONDITION(false, "Unhandled exit", _ctx);
         }
         auto aggValueFactor = query::ValueFactor::newAggFactor(funcExpr);
         lockedParent()->handleAggregateWindowedFunction(aggValueFactor);
@@ -2092,9 +2160,9 @@ public:
         _args.push_back(valueExpr);
     }
 
-    void handlePredicateExpression(shared_ptr<query::BoolFactor> const & boolFactor,
+    void handlePredicateExpression(shared_ptr<query::BoolTerm> const & boolTerm,
             antlr4::ParserRuleContext* childCtx) override {
-        ASSERT_EXECUTION_CONDITION(false, "Unhandled PredicateExpression with BoolFactor.", _ctx);
+        ASSERT_EXECUTION_CONDITION(false, "Unhandled PredicateExpression with BoolTerm.", _ctx);
     }
 
     void handlePredicateExpression(shared_ptr<query::ValueExpr> const & valueExpr) override {
@@ -2144,12 +2212,14 @@ class LogicalExpressionAdapter :
 public:
     using AdapterT::AdapterT;
 
-    void handlePredicateExpression(shared_ptr<query::BoolFactor> const & boolFactor,
+    void handlePredicateExpression(shared_ptr<query::BoolTerm> const & boolTerm,
             antlr4::ParserRuleContext* childCtx) override {
-        _setNextTerm(boolFactor);
+        TRACE_CALLBACK_INFO(*boolTerm);
+        _terms.push_back(boolTerm);
     }
 
     void handlePredicateExpression(shared_ptr<query::ValueExpr> const & valueExpr) override {
+        TRACE_CALLBACK_INFO(*valueExpr);
         ASSERT_EXECUTION_CONDITION(false, "Unhandled PredicateExpression with ValueExpr.", _ctx);
     }
 
@@ -2157,10 +2227,12 @@ public:
             vector<shared_ptr<query::ValueFactor>> const & args) override {
         // qserv query IR handles qserv restrictor functions differently than the and/or bool tree that
         // handles the rest of the where clause, pass the function straight up to the parent.
+        TRACE_CALLBACK_INFO(functionName << ", " << util::printable(args));
         lockedParent()->handleQservFunctionSpec(functionName, args);
     }
 
     void handleLogicalOperator(LogicalOperatorCBH::OperatorType operatorType) {
+        TRACE_CALLBACK_INFO(LogicalOperatorCBH::OperatorTypeToStr(operatorType));
         switch (operatorType) {
         default:
             ASSERT_EXECUTION_CONDITION(false, "unhandled operator type", _ctx);
@@ -2178,22 +2250,26 @@ public:
         }
     }
 
-    virtual void handleLogicalExpression(shared_ptr<query::LogicalTerm> const & logicalTerm,
-            antlr4::ParserRuleContext* childCtx) {
+    void handleLogicalExpression(shared_ptr<query::LogicalTerm> const & logicalTerm,
+            antlr4::ParserRuleContext* childCtx) override {
+        TRACE_CALLBACK_INFO(logicalTerm);
         if (_logicalOperator != nullptr && _logicalOperator->merge(*logicalTerm)) {
             return;
         }
-        _setNextTerm(logicalTerm);
+        _terms.push_back(logicalTerm);
     }
 
     void onExit() override {
         ASSERT_EXECUTION_CONDITION(_logicalOperator != nullptr, "logicalOperator is not set; " << *this, _ctx);
-        // Since this is a logical expression e.g. `a AND b` (per the grammar) and `a` or `b` may also be a
-        // logical expression, we try to merge each term, e.g. if this is an AND (query::AndTerm) and the
-        // BoolTerm in the terms list is also an AND term they can be merged.
+
+        bool isOr = dynamic_pointer_cast<query::OrTerm>(_logicalOperator) != nullptr;
         for (auto term : _terms) {
             if (false == _logicalOperator->merge(*term)) {
-                _logicalOperator->addBoolTerm(term);
+                if (isOr) {
+                    _logicalOperator->addBoolTerm(make_shared<query::AndTerm>(term));
+                } else {
+                    _logicalOperator->addBoolTerm(term);
+                }
             }
         }
         lockedParent()->handleLogicalExpression(_logicalOperator, _ctx);
@@ -2207,10 +2283,6 @@ private:
                 "logical operator must be set only once. existing:" << *this <<
                 ", new:" << logicalTerm, _ctx);
         _logicalOperator = logicalTerm;
-    }
-
-    void _setNextTerm(shared_ptr<query::BoolTerm> term) {
-        _terms.push_back(term);
     }
 
     friend ostream& operator<<(ostream& os, const LogicalExpressionAdapter& logicaAndlExpressionAdapter);
@@ -2248,9 +2320,9 @@ public:
         _predicate = valueExpr;
     }
 
-    void handleExpressionAtomPredicate(shared_ptr<query::BoolFactorTerm> const & boolFactorTerm,
+    void handleExpressionAtomPredicate(shared_ptr<query::BoolTerm> const & boolFactor,
             antlr4::ParserRuleContext* childCtx) override {
-        ASSERT_EXECUTION_CONDITION(false, "unhandled ExpressionAtomPredicate BoolFactor callback.", _ctx);
+        ASSERT_EXECUTION_CONDITION(false, "unhandled ExpressionAtomPredicate BoolTerm callback.", _ctx);
     }
 
     void handleExpressions(vector<shared_ptr<query::ValueExpr>> const& valueExprs) override {
@@ -2307,9 +2379,9 @@ public:
         }
     }
 
-    void handleExpressionAtomPredicate(shared_ptr<query::BoolFactorTerm> const & boolFactorTerm,
+    void handleExpressionAtomPredicate(shared_ptr<query::BoolTerm> const & boolFactor,
             antlr4::ParserRuleContext* childCtx) override {
-        ASSERT_EXECUTION_CONDITION(false, "unhandled ExpressionAtomPredicate BoolFactor callback.", _ctx);
+        ASSERT_EXECUTION_CONDITION(false, "unhandled ExpressionAtomPredicate BoolTerm callback.", _ctx);
     }
 
     void onExit() {
@@ -2342,10 +2414,10 @@ public:
         _valueExpr = valueExpr;
     }
 
-    void handleExpressionAtomPredicate(shared_ptr<query::BoolFactorTerm> const & boolFactorTerm,
+    void handleExpressionAtomPredicate(shared_ptr<query::BoolTerm> const & boolFactor,
             antlr4::ParserRuleContext* childCtx) override {
         ASSERT_EXECUTION_CONDITION(false,
-                "unexpected call to handleExpressionAtomPredicate:" << boolFactorTerm, _ctx);
+                "unexpected call to handleExpressionAtomPredicate:" << boolFactor, _ctx);
     }
 
     void handleNullNotnull(bool isNotNull) override {
@@ -2383,10 +2455,9 @@ public:
         }
     }
 
-    void handleExpressionAtomPredicate(shared_ptr<query::BoolFactorTerm> const & boolFactorTerm,
+    void handleExpressionAtomPredicate(shared_ptr<query::BoolTerm> const & boolFactor,
             antlr4::ParserRuleContext* childCtx) override {
-        ASSERT_EXECUTION_CONDITION(false,
-                "Unhandled BoolFactorTerm callback.", _ctx);
+        ASSERT_EXECUTION_CONDITION(false, "Unhandled BoolTerm callback.", _ctx);
     }
 
     void onExit() override {
@@ -2450,47 +2521,50 @@ class NestedExpressionAtomAdapter :
 public:
     using AdapterT::AdapterT;
 
-    void handlePredicateExpression(shared_ptr<query::BoolFactor> const & boolFactor,
+    void handlePredicateExpression(shared_ptr<query::BoolTerm> const & boolTerm,
             antlr4::ParserRuleContext* childCtx) override {
-        ASSERT_EXECUTION_CONDITION(nullptr == _valueExpr,
-                "NestedExpressionAtomAdapter can not have a ValueExpr and BoolFactors.", _ctx)
-        auto andTerm = make_shared<query::AndTerm>();
-        andTerm->addBoolTerm(boolFactor);
-        auto orTerm = make_shared<query::OrTerm>();
-        orTerm->addBoolTerm(andTerm);
-        auto boolTermFactor = make_shared<query::BoolTermFactor>(orTerm);
-        _boolTermFactors.push_back(boolTermFactor);
+        TRACE_CALLBACK_INFO(*boolTerm);
+        ASSERT_EXECUTION_CONDITION(nullptr == _valueExpr && nullptr == _boolTerm,
+                "unexpected " << *boolTerm, _ctx)
+        auto boolFactor = dynamic_pointer_cast<query::BoolFactor>(boolTerm);
+        ASSERT_EXECUTION_CONDITION(nullptr != boolFactor, "could not cast boolTerm:" << *boolTerm <<
+                " to a BoolFactor.", _ctx);
+        auto orBoolFactor = make_shared<query::BoolFactor>(
+                make_shared<query::BoolTermFactor>(
+                    make_shared<query::OrTerm>(
+                        make_shared<query::AndTerm>(boolFactor))));
+        orBoolFactor->addParenthesis();
+        _boolTerm = orBoolFactor;
     }
 
     void handlePredicateExpression(shared_ptr<query::ValueExpr> const & valueExpr) override {
-        ASSERT_EXECUTION_CONDITION(nullptr == _valueExpr,
-                "NestedExpressionAtomAdapter already has a ValueExpr.", _ctx);
-        ASSERT_EXECUTION_CONDITION(_boolTermFactors.empty(),
-                "NestedExpressionAtomAdapter can not have a ValueExpr and BoolFactors.", _ctx);
+        TRACE_CALLBACK_INFO(*valueExpr);
+        ASSERT_EXECUTION_CONDITION(nullptr == _valueExpr && nullptr == _boolTerm,
+                "unexpected " << *valueExpr, _ctx)
         _valueExpr = valueExpr;
     }
 
     void handleLogicalExpression(shared_ptr<query::LogicalTerm> const & logicalTerm,
             antlr4::ParserRuleContext* childCtx) override {
-        ASSERT_EXECUTION_CONDITION(nullptr == _valueExpr,
-                "NestedExpressionAtomAdapter can not have a ValueExpr and BoolFactors.", _ctx)
-        auto boolTermFactor = make_shared<query::BoolTermFactor>(logicalTerm);
-        _boolTermFactors.push_back(boolTermFactor);
+        TRACE_CALLBACK_INFO(*logicalTerm);
+        ASSERT_EXECUTION_CONDITION(nullptr == _valueExpr && nullptr == _boolTerm,
+                "unexpected " << *logicalTerm, _ctx)
+        auto boolFactor = make_shared<query::BoolFactor>(make_shared<query::BoolTermFactor>(logicalTerm));
+        boolFactor->addParenthesis();
+        _boolTerm = boolFactor;
     }
 
     void handleQservFunctionSpec(string const & functionName,
             vector<shared_ptr<query::ValueFactor>> const & args) override {
+        TRACE_CALLBACK_INFO(functionName << " " << util::printable(args));
         ASSERT_EXECUTION_CONDITION(false, "Qserv functions may not appear in nested contexts.", _ctx);
     }
 
     void onExit() override {
-        if (nullptr == _valueExpr) {
-            lockedParent()->handleNestedExpressionAtom(make_shared<query::PassTerm>("("));
-            for (auto&& boolTermFactor : _boolTermFactors) {
-                lockedParent()->handleNestedExpressionAtom(boolTermFactor);
-            }
-            lockedParent()->handleNestedExpressionAtom(make_shared<query::PassTerm>(")"));
-        } else {
+        if (nullptr != _boolTerm) {
+            auto boolFactor = dynamic_pointer_cast<query::BoolFactor>(_boolTerm);
+            lockedParent()->handleNestedExpressionAtom(_boolTerm);
+        } else if (nullptr != _valueExpr) {
             lockedParent()->handleNestedExpressionAtom(_valueExpr);
         }
     }
@@ -2498,8 +2572,8 @@ public:
     string name() const override { return getTypeName(this); }
 
 private:
-    vector<shared_ptr<query::BoolTermFactor>> _boolTermFactors;
     shared_ptr<query::ValueExpr> _valueExpr;
+    shared_ptr<query::BoolTerm> _boolTerm;
 };
 
 
@@ -2555,8 +2629,8 @@ public:
         ValueExprFactory::addValueFactor(_getValueExpr(), valueFactor);
     }
 
-    void handleNestedExpressionAtom(shared_ptr<query::BoolFactorTerm> const & boolFactorTerm) override {
-        LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " " << boolFactorTerm);
+    void handleNestedExpressionAtom(shared_ptr<query::BoolTerm> const & boolTerm) override {
+        ASSERT_EXECUTION_CONDITION(false, "unexpected " << boolTerm, _ctx);
     }
 
     void handleNestedExpressionAtom(shared_ptr<query::ValueExpr> const & valueExpr) override {

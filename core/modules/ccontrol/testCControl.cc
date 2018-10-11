@@ -468,13 +468,13 @@ static const std::vector< std::string > QUERIES = {
     "SELECT DISTINCT rFlux_PS FROM Object;",
     "SELECT count(*) FROM   Object o "
        "WHERE closestToObj is NULL;",
-    //fails "SELECT count(*) FROM   Object o "
-    //   "INNER JOIN RefObjMatch o2t ON (o.objectIdObjTest = o2t.objectId) "
-    //   "INNER JOIN SimRefObject t ON (o2t.refObjectId = t.refObjectId) "
-    //   "WHERE  closestToObj = 1 OR closestToObj is NULL;",
-    //fails "SELECT * "
-    //   "FROM Source s1 CROSS JOIN Source s2 "
-    //   "WHERE s1.bar = s2.bar;",
+    "SELECT count(*) FROM   Object o "
+       "INNER JOIN RefObjMatch o2t ON (o.objectIdObjTest = o2t.objectId) "
+       "INNER JOIN SimRefObject t ON (o2t.refObjectId = t.refObjectId) "
+       "WHERE  closestToObj = 1 OR closestToObj is NULL;",
+    "SELECT * "
+       "FROM Source s1 CROSS JOIN Source s2 "
+       "WHERE s1.bar = s2.bar;",
     //fails "select objectId, sro.*, (sro.refObjectId-1)/2%pow(2,10), typeId "
     //   "from Source s join RefObjMatch rom using (objectId) "
     //   "join SimRefObject sro using (refObjectId) where isStar =1 limit 10;",
@@ -497,8 +497,7 @@ static const std::vector< std::string > QUERIES = {
 
 
     // case01/queries/0013_groupedLogicalTerm.sql
-// TODO this needs to be fixed, by proper handling of nested statements in the where clause. This is implemented but not yet checked in.
-//    "select objectId, ra_PS from Object where ra_PS > 359.5 and (objectId = 417853073271391 or  objectId = 399294519599888)",
+    "select objectId, ra_PS from Object where ra_PS > 359.5 and (objectId = 417853073271391 or  objectId = 399294519599888)",
 
 };
 
