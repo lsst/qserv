@@ -91,11 +91,8 @@ public:
     }
 
     bool setValid() {
-        if (!_unlimited && _maxE <= _min) {
-            return false;
-        }
-        _valid = true;
-        return true;
+        _valid = (_maxE <= _min);
+        return _valid;
     }
 
     /// Return true if other functionally equivalent.
