@@ -75,6 +75,23 @@ public:
         _established = val;
     }
 
+    void setKeyCount(int count) {
+        std::lock_guard<std::mutex> lck(_nMtx);
+        _keyCount = count;
+    }
+
+    void setRange(StringRange const& range) {
+        std::lock_guard<std::mutex> lck(_nMtx);
+        _strRange = range;
+    }
+
+    void getKeyData(int& keyCount, StringRange& range) {
+        std::lock_guard<std::mutex> lck(_nMtx);
+        keyCount = _keyCount;
+        range = _strRange;
+    }
+
+
     bool getEstablished() const { return _established; }
 
 private:
@@ -83,6 +100,8 @@ private:
     bool _established{false};
     std::mutex _nMtx;
     Type _type;
+    int _keyCount{0};
+    StringRange _strRange;
 };
 
 }}} // namespace lsst::qserv::loader
