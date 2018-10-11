@@ -193,7 +193,7 @@ void TcpBaseConnection::_readKind(boost::system::error_code const&, size_t /*byt
     _buf.reset();
 
     UInt32Element elem;
-    size_t const bytes = elem.transmitSize();
+    size_t const bytes = 2*elem.transmitSize(); // uint32 for kind + uint32 for length of message
 
     if (bytes > _buf.getAvailableWriteLength()) {
         /// &&& TODO close the connection
@@ -201,6 +201,8 @@ void TcpBaseConnection::_readKind(boost::system::error_code const&, size_t /*byt
         _free();
         return;
     }
+
+    LOGS(_log, LOG_LVL_INFO, "&&& TcpBaseConnection::_readKind _recvKind reset _buf=" << _buf.dump());
     boost::asio::async_read(_socket, boost::asio::buffer(_buf.getWriteCursor(), bytes),
             boost::asio::transfer_at_least(bytes),
             boost::bind(
@@ -214,6 +216,7 @@ void TcpBaseConnection::_readKind(boost::system::error_code const&, size_t /*byt
 
 
 void TcpBaseConnection::_recvKind(const boost::system::error_code& ec, size_t bytesTrans) {
+    LOGS(_log, LOG_LVL_INFO, "&&& TcpBaseConnection::_recvKind bytes=" << bytesTrans << " ec=" << ec << " " << _buf.dump());
     if (ec) {
         LOGS(_log, LOG_LVL_ERROR, "_recvKind ec=" << ec);
         _free();
@@ -221,6 +224,7 @@ void TcpBaseConnection::_recvKind(const boost::system::error_code& ec, size_t by
     }
     // Fix the buffer with the information given.
     _buf.advanceWriteCursor(bytesTrans);
+    //LOGS(_log, LOG_LVL_INFO, "&&& TcpBaseConnection::_recvKind _buf=" << _buf.dump());
     auto msgElem = MsgElement::retrieve(_buf);
     auto msgKind = std::dynamic_pointer_cast<UInt32Element>(msgElem);
     if (msgKind == nullptr) {
@@ -228,6 +232,7 @@ void TcpBaseConnection::_recvKind(const boost::system::error_code& ec, size_t by
         _free();
         return;
     }
+    //LOGS(_log, LOG_LVL_INFO, "&&& msgKind=" << msgKind->element);
     msgElem = MsgElement::retrieve(_buf);
     auto msgBytes = std::dynamic_pointer_cast<UInt32Element>(msgElem);
     if (msgBytes == nullptr) {
@@ -243,7 +248,6 @@ void TcpBaseConnection::_recvKind(const boost::system::error_code& ec, size_t by
         break;
     case LoaderMsg::IM_YOUR_L_NEIGHBOR:
         LOGS(_log, LOG_LVL_INFO, "_recvKind IM_YOUR_L_NEIGHBOR");
-        LOGS(_log, LOG_LVL_ERROR, "_recvKind IM_YOUR_L_NEIGHBOR NEEDS CODE!!!***!!!");
         _handleImYourLNeighbor(msgBytes->element);
         break;
     default:
@@ -382,6 +386,7 @@ void TcpBaseConnection::_handleImYourLNeighbor(uint32_t bytesInMsg) {
         _free();
         return;
     }
+    LOGS(_log, LOG_LVL_INFO, "&&& _handleImYourLNeighbor bytes=" << bytesInMsg << " buf=" << _buf.dump());
     boost::asio::async_read(_socket, boost::asio::buffer(_buf.getWriteCursor(), bytesInMsg),
             boost::asio::transfer_at_least(bytesInMsg),
             boost::bind(
@@ -402,20 +407,14 @@ void TcpBaseConnection::_handleImYourLNeighbor2(boost::system::error_code const&
     }
     // Fix the buffer with the information given.
     _buf.advanceWriteCursor(bytesTrans);
-    auto msgElem = MsgElement::retrieve(_buf);
-    auto strElem = std::dynamic_pointer_cast<StringElement>(msgElem);
-    if (strElem == nullptr) {
-        LOGS(_log, LOG_LVL_ERROR, "_recvKind unexpected type of msg");
-        _free();
-        return;
-    }
+    LOGS(_log, LOG_LVL_INFO, "&&& _handleImYourLNeighbor2 bytes=" << bytesTrans << " _buf" << _buf.dump());
     try {
-        LOGS(_log, LOG_LVL_INFO, "&&& _handleImYourLNeighbor parsing _buf");
+        // &&& TODO move as much of this to CentralWorker as possible
+        LOGS(_log, LOG_LVL_INFO, "&&& _handleImYourLNeighbor2 parsing bytes=" << bytesTrans << " _buf" << _buf.dump());
         auto protoItem = StringElement::protoParse<proto::WorkerKeysInfo>(_buf);
         if (protoItem == nullptr) {
             throw LoaderMsgErr(funcName, __FILE__, __LINE__);
         }
-
         NeighborsInfo nInfo;
         auto workerName = protoItem->name();
         nInfo.keyCount = protoItem->mapsize();
@@ -423,26 +422,72 @@ void TcpBaseConnection::_handleImYourLNeighbor2(boost::system::error_code const&
         proto::WorkerRangeString protoRange = protoItem->range();
         LOGS(_log, LOG_LVL_INFO, "&&& MasterServer WorkerKeysInfo aaaaa name=" << workerName << " keyCount=" << nInfo.keyCount << " recentAdds=" << nInfo.recentAdds);
         bool valid = protoRange.valid();
-        StringRange strRange;
+        StringRange leftRange;
+        StringRange newLeftRange;
         if (valid) {
             std::string min   = protoRange.min();
             std::string max   = protoRange.max();
             bool unlimited = protoRange.maxunlimited();
-            strRange.setMinMax(min, max, unlimited);
-            //LOGS(_log, LOG_LVL_WARN, "&&& CentralWorker::workerInfoRecieve range=" << strRange);
+            leftRange.setMinMax(min, max, unlimited);
+            LOGS(_log, LOG_LVL_WARN, "&&& TcpBaseConnection::_handleImYourLNeighbor2  leftRange=" << leftRange);
+            newLeftRange = _serverTcpBase->getCentralWorker()->updateLeftNeighborRange(leftRange);
         }
         proto::Neighbor protoLeftNeigh = protoItem->left();
-        nInfo.neighborLeft->update(protoLeftNeigh.name());
+        nInfo.neighborLeft->update(protoLeftNeigh.name());  // Not really useful in this case.
         proto::Neighbor protoRightNeigh = protoItem->right();
-        nInfo.neighborRight->update(protoRightNeigh.name());
+        nInfo.neighborRight->update(protoRightNeigh.name()); // This should be our name
+        if (nInfo.neighborRight->get() != _serverTcpBase->getOurName()) {
+            LOGS(_log, LOG_LVL_ERROR, "Our (" << _serverTcpBase->getOurName() <<
+                                      ") left neighbor does not have our name as its right neighbor" );
+        }
 
+        _serverTcpBase->getCentralWorker()->setNeighborInfoLeft(workerName, nInfo.keyCount, newLeftRange);
+
+        // &&& Need to send newLeftRange back to left neighbor so it can figure out what to do with its range.
+        #if 0 // &&& async if sync doesn't work.
+        _buf.reset();
+        StringElement strElem;
+        std::unique_ptr<proto::WorkerKeysInfo> protoWKI = _workerKeysInfoBuilder();
+        protoWKI->SerializeToString(&(strElem.element));
+        UInt32Element bytesInMsg(strElem.transmitSize());
+        // Must send the number of bytes in the message so TCP client knows how many bytes to read.
+        bytesInMsg.appendToData(_buf);
+        strElem.appendToData(_buf);
+        boost::asio::async_write(_socket, boost::asio::buffer(_buf.getReadCursor(), _buf.getBytesLeftToRead()),
+                        boost::bind(&TcpBaseConnection::_handleImYourLNeighbor3, shared_from_this(),
+                                boost::asio::placeholders::error,
+                                boost::asio::placeholders::bytes_transferred));
+        LOGS(_log, LOG_LVL_INFO, "&&& TcpBaseConnection::_handleImYourLNeighbor2 done");
+        return;
+        #else
+        _buf.reset();
+        StringElement strElem;
+        std::unique_ptr<proto::WorkerKeysInfo> protoWKI = _serverTcpBase->getCentralWorker()->_workerKeysInfoBuilder();
+        protoWKI->SerializeToString(&(strElem.element));
+        UInt32Element bytesInMsg(strElem.transmitSize());
+        // Must send the number of bytes in the message so TCP client knows how many bytes to read.
+        bytesInMsg.appendToData(_buf);
+        strElem.appendToData(_buf);
+        ServerTcpBase::_writeData(_socket, _buf);
+        LOGS(_log, LOG_LVL_INFO, "&&& TcpBaseConnection::_handleImYourLNeighbor2 done");
+        #endif
 
     } catch (LoaderMsgErr &msgErr) {
         LOGS(_log, LOG_LVL_ERROR, msgErr.what());
+        LOGS(_log, LOG_LVL_ERROR, "_handleImYourLNeighbor2 Buffer failed");
+        _free();
+        return;
     }
     boost::system::error_code ecode;
     _readKind(ecode, 0); // get next message
 }
+
+/* &&&
+void TcpBaseConnection::_handleImYourLNeighbor3(boost::system::error_code const& ec, size_t bytesTrans) {
+    boost::system::error_code ecode;
+    _readKind(ecode, 0); // get next message
+}
+*/
 
 }}} // namespace lsst::qserrv::loader
 

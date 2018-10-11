@@ -167,62 +167,15 @@ public:
     char* getBuffer() const { return _buffer; } // &&& kill
 
 
-    bool isRetrieveSafe(size_t len) const {
-        auto newLen = (_rCursor + len);
-        return (newLen <= _end && newLen <= _wCursor);
-    }
+    bool isRetrieveSafe(size_t len) const;
 
-    bool retrieve(void* out, size_t len) {
-        if (isRetrieveSafe(len)) {
-            memcpy(out, _rCursor, len);
-            _rCursor += len;
-            return true;
-        }
-        return false;
-    }
+    bool retrieve(void* out, size_t len);
 
-    bool retrieveString(std::string& out, size_t len) {
-        std::cout << "_rCursor + len=" << (long)(_rCursor + len) << " end=" << (long)_end << std::endl;
-        if (isRetrieveSafe(len)) {
-            const char* strEnd = _rCursor + len;
-            std::string str(_rCursor, strEnd);
-            _rCursor = strEnd;
-            out = str;
-            return true;
-        }
-        return false;
-    }
+    bool retrieveString(std::string& out, size_t len);
 
-    std::string dump(bool hexDump=true) { return dump(hexDump, false); }
+    std::string dump(bool hexDump=true) const { return dump(hexDump, false); }
 
-    std::string dump(bool hexDump, bool charDump) const {
-        std::stringstream os;
-        os << "maxLength=" << _length;
-
-        os <<   " buffer=" << (long)_buffer;
-        os <<  " wCurLen=" << getAvailableWriteLength();
-        os <<  " wCursor=" << (long)_wCursor;
-        os <<  " rCurLen=" << getBytesLeftToRead();
-        os <<  " rCursor=" << (long)_wCursor;
-        os <<      " end=" << (long)_end;
-
-        // hex dump
-        if (hexDump) {
-        os << "(";
-        for (const char* j=_buffer; j < _wCursor; ++j) {
-            os << std::hex << (int)*j << " ";
-        }
-        os << ")";
-        }
-        std::string str(os.str());
-
-        // character dump
-        if (charDump) {
-            str += "(" + std::string(_buffer, _wCursor) + ")";
-        }
-        return str;
-    }
-
+    std::string dump(bool hexDump, bool charDump) const;
 
 private:
     void _setupBuffer() {

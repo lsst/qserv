@@ -101,4 +101,63 @@ std::shared_ptr<MsgElement> BufferUdp::_safeRetrieve() {
 }
 
 
+bool BufferUdp::isRetrieveSafe(size_t len) const {
+    auto newLen = (_rCursor + len);
+    LOGS(_log, LOG_LVL_INFO, "&&& isRetrieveSafe len=" << len << " newLen=" << (void*)newLen << " end=" << (void*)_end << " wc=" << (void*)_wCursor);
+    return (newLen <= _end && newLen <= _wCursor);
+}
+
+
+bool BufferUdp::retrieve(void* out, size_t len) {
+    LOGS(_log, LOG_LVL_INFO, "&&& BufferUdp::retrieve len=" << len << " " << dump());
+    if (isRetrieveSafe(len)) {
+        memcpy(out, _rCursor, len);
+        _rCursor += len;
+        return true;
+    }
+    return false;
+}
+
+
+bool BufferUdp::retrieveString(std::string& out, size_t len) {
+    LOGS(_log, LOG_LVL_INFO, "retrieveString _rCursor + len=" << (void*)(_rCursor + len) << " end=" << (void*)_end);;
+    if (isRetrieveSafe(len)) {
+        const char* strEnd = _rCursor + len;
+        std::string str(_rCursor, strEnd);
+        _rCursor = strEnd;
+        out = str;
+        return true;
+    }
+    return false;
+}
+
+
+std::string BufferUdp::dump(bool hexDump, bool charDump) const {
+        std::stringstream os;
+        os << "maxLength=" << _length;
+
+        os <<   " buffer=" << (void*)_buffer;
+        os <<  " wCurLen=" << getAvailableWriteLength();
+        os <<  " wCursor=" << (void*)_wCursor;
+        os <<  " rCurLen=" << getBytesLeftToRead();
+        os <<  " rCursor=" << (void*)_rCursor;
+        os <<      " end=" << (void*)_end;
+
+        // hex dump
+        if (hexDump) {
+        os << "(";
+        for (const char* j=_buffer; j < _wCursor; ++j) {
+            os << std::hex << (int)*j << " ";
+        }
+        os << ")";
+        }
+        std::string str(os.str());
+
+        // character dump
+        if (charDump) {
+            str += "(" + std::string(_buffer, _wCursor) + ")";
+        }
+        return str;
+    }
+
 }}} // namespace lsst:qserv:loader

@@ -73,6 +73,8 @@ public:
 
     void registerWithMaster();
 
+    StringRange updateLeftNeighborRange(StringRange const& strRange);
+
     bool workerInfoReceive(BufferUdp::Ptr const&  data); // &&& spelling
     bool workerKeyInsertReq(LoaderMsg const& inMsg, BufferUdp::Ptr const&  data);
     bool workerKeyInfoReq(LoaderMsg const& inMsg, BufferUdp::Ptr const&  data);
@@ -107,6 +109,9 @@ public:
 
     void testSendBadMessage();
 
+    std::unique_ptr<proto::WorkerKeysInfo> _workerKeysInfoBuilder(); // TODO make private
+    void setNeighborInfoLeft(uint32_t name, int keyCount, StringRange const& range);  // TODO make private
+
     friend CentralWorkerDoListItem;
 
 private:
@@ -114,6 +119,7 @@ private:
     void _startMonitoring();
 
     void _monitor();
+    void _shiftIfNeeded();
 
     void _workerInfoReceive(std::unique_ptr<proto::WorkerListItem>& protoBuf);
 
@@ -125,7 +131,7 @@ private:
     void _forwardKeyInfoRequest(WWorkerListItem::Ptr const& target, LoaderMsg const& inMsg,
                                 std::unique_ptr<proto::KeyInfoInsert> const& protoData);
 
-    std::unique_ptr<proto::WorkerKeysInfo> _workerKeysInfoBuilder();
+
     static void _workerKeysInfoExtractor(BufferUdp& data, uint32_t& name, NeighborsInfo& nInfo, StringRange& strRange);
 
     void _workerWorkerKeysInfoReq(LoaderMsg const& inMsg);
@@ -143,10 +149,10 @@ private:
     boost::asio::io_context& _ioContext;
     const int                _tcpPort;
 
-    WWorkerList::Ptr _wWorkerList{new WWorkerList(this)};
+    WWorkerList::Ptr _wWorkerList{new WWorkerList(this)}; ///< Maps of workers.
 
     bool _ourNameInvalid{true}; ///< true until the name has been set by the master.
-    uint32_t _ourName{0}; ///< name given to us by the master, 0 invalid name.
+    std::atomic<uint32_t> _ourName{0}; ///< name given to us by the master, 0 invalid name.
     mutable std::mutex _ourNameMtx; ///< protects _ourNameInvalid, _ourName
 
 
@@ -158,6 +164,7 @@ private:
 
     Neighbor _neighborLeft{Neighbor::LEFT};
     Neighbor _neighborRight{Neighbor::RIGHT};
+
     ServerTcpBase::Ptr _tcpServer; // For our right neighbor to connect to us.
 
     std::mutex _rightMtx;
@@ -165,6 +172,8 @@ private:
     std::shared_ptr<tcp::socket>  _rightSocket;
 
     std::shared_ptr<CentralWorkerDoListItem> _centralWorkerDoListItem;
+
+    void _cancelShiftsRightNeighbor();
 };
 
 
