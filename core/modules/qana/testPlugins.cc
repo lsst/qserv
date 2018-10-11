@@ -145,11 +145,6 @@ static const std::vector<OrderByQueryAndExpectedColumns> ORDER_BY_QUERIES = {
         OrderByQueryAndExpectedColumns("SELECT foo ORDER BY bar",
                 {std::make_shared<query::ColumnRef>("", "", "bar")}),
 
-        // note, don't use the column name inside a function; it must be aliased to be usable.
-        OrderByQueryAndExpectedColumns("SELECT foo ORDER BY foo.bar, my_func(baz)",
-                {std::make_shared<query::ColumnRef>("", "foo", "bar"),
-                 std::make_shared<query::ColumnRef>("", "", "baz")}),
-
         OrderByQueryAndExpectedColumns("SELECT some_func(boz) as foo from my_table ORDER BY foo",
                 {std::make_shared<query::ColumnRef>("", "", "foo")}),
 
