@@ -79,6 +79,7 @@ private:
 
     void _handleImYourLNeighbor(uint32_t bytes);
     void _handleImYourLNeighbor2(boost::system::error_code const& ec, size_t bytesTrans);
+    void _handleImYourLNeighbor3(boost::system::error_code const& ec, size_t bytesTrans);
 
 
     void _handleTest();
@@ -134,6 +135,8 @@ public:
     }
 
     uint32_t getOurName();
+
+    CentralWorker* getCentralWorker() const { return _centralWorker; }
 
     static bool _writeData(tcp::socket& socket, BufferUdp& data); // &&& remove underscore
 

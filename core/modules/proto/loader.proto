@@ -107,7 +107,7 @@ message WorkerKeysInfo {
 
 
 message WorkerImNeighbor {
-    required uint32  name     = 1;
-    required uint64  keycount = 2;
-    optional KeyInfo keyinfo  = 3; 
+    required uint32            name     = 1;
+    required uint64            keycount = 2;
+    required WorkerRangeString range      = 4; // TODO replace with WorkerRange
  }
