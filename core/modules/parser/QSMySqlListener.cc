@@ -134,17 +134,15 @@ void QSMySqlListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) {\
 // is raised with a context specific message.
 #define ASSERT_EXECUTION_CONDITION(CONDITION, MESSAGE, CTX) \
 if (false == (CONDITION)) { \
-    { \
-        ostringstream msg; \
-        msg << getTypeName(this) << "::" << __FUNCTION__; \
-        msg << " messsage:\"" << MESSAGE << "\""; \
-        msg << ", in query:" << getStatementStr(); \
-        msg << ", in or around query segment: '" << getQueryString(CTX) << "'"; \
-        msg << ", with adapter stack:" << adapterStackToString(); \
-        msg << ", string tree:" << getStringTree(); \
-        msg << ", tokens:" << getTokens(); \
-        throw adapter_execution_error(msg.str()); \
-    } \
+    ostringstream msg; \
+    msg << getTypeName(this) << "::" << __FUNCTION__; \
+    msg << " messsage:\"" << MESSAGE << "\""; \
+    msg << ", in query:" << getStatementStr(); \
+    msg << ", in or around query segment: '" << getQueryString(CTX) << "'"; \
+    msg << ", with adapter stack:" << adapterStackToString(); \
+    msg << ", string tree:" << getStringTree(); \
+    msg << ", tokens:" << getTokens(); \
+    throw adapter_execution_error(msg.str()); \
 } \
 
 
