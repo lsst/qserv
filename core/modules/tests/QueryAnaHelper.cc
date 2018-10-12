@@ -64,7 +64,7 @@ namespace lsst {
 namespace qserv {
 namespace tests {
 
-SelectParser::Ptr QueryAnaHelper::getParser(const std::string& stmt,
+SelectParser::Ptr QueryAnaHelper::getParser(std::string const & stmt,
         SelectParser::AntlrVersion antlrVersion) {
     auto p = SelectParser::newInstance(stmt, antlrVersion);
     p->setup();
@@ -72,7 +72,7 @@ SelectParser::Ptr QueryAnaHelper::getParser(const std::string& stmt,
 }
 
 std::shared_ptr<QuerySession> QueryAnaHelper::buildQuerySession(QuerySession::Test qsTest,
-                                                                const std::string& stmt,
+                                                                std::string const & stmt,
                                                                 SelectParser::AntlrVersion antlrVersion) {
 
     querySession = std::make_shared<QuerySession>(qsTest);
@@ -108,7 +108,7 @@ std::string QueryAnaHelper::buildFirstParallelQuery(bool withSubChunks) {
 }
 
 std::vector<std::string> QueryAnaHelper::getInternalQueries(
-        QuerySession::Test& t, const std::string& stmt,
+        QuerySession::Test& t, std::string const & stmt,
         parser::SelectParser::AntlrVersion antlrVersion) {
     std::vector<std::string> queries;
     buildQuerySession(t, stmt, antlrVersion);
