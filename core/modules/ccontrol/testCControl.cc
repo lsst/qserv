@@ -475,9 +475,12 @@ static const std::vector< std::string > QUERIES = {
     "SELECT * "
        "FROM Source s1 CROSS JOIN Source s2 "
        "WHERE s1.bar = s2.bar;",
+
+    // this is not supposed to produce a valid query TODO how to address this with antlr4, how to structure the test?
     //fails "select objectId, sro.*, (sro.refObjectId-1)/2%pow(2,10), typeId "
     //   "from Source s join RefObjMatch rom using (objectId) "
     //   "join SimRefObject sro using (refObjectId) where isStar =1 limit 10;",
+
     //fails "SELECT objectId, "
     //   "scisql_fluxToAbMag(uFlux_PS), scisql_fluxToAbMag(gFlux_PS), "
     //   "scisql_fluxToAbMag(rFlux_PS), scisql_fluxToAbMag(iFlux_PS), "
