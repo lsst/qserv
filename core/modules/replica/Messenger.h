@@ -45,7 +45,6 @@ namespace qserv {
 namespace replica {
 
 // Forward declarations
-class Messenger;
 class ProtocolBuffer;
 
 /**

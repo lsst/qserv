@@ -153,6 +153,11 @@ void executeQuery(database::Connection::Ptr const& conn,
         
                     database::Row row;
                     while (conn->next(row)) {
+
+                        // Since this is a tes/demo applcation for the MySQL API then cells
+                        // from each row are printed twice: first - via their names, second
+                        // time - via their relavive numbers.
+                        
                         for (std::string const& name: conn->columnNames()) {
                             std::string val;
                             bool const notNull = row.get(name, val);

@@ -98,7 +98,7 @@ void dump(replica::FindAllJobResult const& replicaData) {
  * @param worker2idx - index map for workers (worker name to its 0-basd index)
  * @param workers    - collection of worker names participating in the operation
  */
-std::string workers2str(std::map<std::string,size_t> const& worker2idx,
+std::string workers2str(std::map<std::string, size_t> const& worker2idx,
                         std::set<std::string> const& workers,
                         std::set<std::string> const& qservWorkers) {
 
@@ -205,7 +205,7 @@ bool test() {
             // (potentially) very long worker identifiers
     
             std::vector<std::string> const workers = provider->config()->workers();
-            std::map<std::string,size_t> worker2idx;
+            std::map<std::string, size_t> worker2idx;
     
             OUT << "\n"
                 << "WORKERS:\n";
@@ -218,14 +218,14 @@ bool test() {
     
             // Count chunk replicas per worker from both sources
     
-            std::map<std::string,size_t> worker2numChunks;
+            std::map<std::string, size_t> worker2numChunks;
             for (auto const& replicaCollection: replicaData.replicas) {
                 for (auto const& replica: replicaCollection) {
                     worker2numChunks[replica.worker()]++;
                 }
             }
     
-            std::map<std::string,size_t> qservWorker2numChunks;
+            std::map<std::string, size_t> qservWorker2numChunks;
             if (pullQservReplicas) {
                 for (auto const& entry: qservReplicaData.replicas) {
                     auto const& worker = entry.first;

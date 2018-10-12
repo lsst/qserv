@@ -52,7 +52,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
 
     LOGS_INFO("Configuration test begins");
 
-    std::map<std::string,std::string> kvMap = {
+    std::map<std::string, std::string> kvMap = {
         {"common.workers",                    "worker-A worker-B worker-C"},
         {"common.database_families",          "production test"},
         {"common.databases",                  "db1 db2 db3 db4 db5"},

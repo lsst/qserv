@@ -148,7 +148,7 @@ BOOST_AUTO_TEST_CASE(ChunkLockerTest) {
         LOGS_INFO("ChunkLocker run thread-safety test: hardware concurrency " << concurrency);
 
         unsigned int const num = 200000UL;
-        std::map<std::string,size_t> numTestsFailedByOwner;
+        std::map<std::string, size_t> numTestsFailedByOwner;
     
         // This function will attempt to ingets 'num' locks on behalf
         // of 'thisOwner'. In case if that's not possible for a particular

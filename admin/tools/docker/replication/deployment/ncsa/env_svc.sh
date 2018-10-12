@@ -87,11 +87,11 @@ for i in "$@"; do
         ;;
     -h|--help)
         (>&2 echo "${HELP}")
-        exit 2
+        return 2
         ;;
     *)
         (>&2 echo "error: unknown option '${i}'${HELP}")
-        exit 1
+        return 1
         ;;
     esac
 done

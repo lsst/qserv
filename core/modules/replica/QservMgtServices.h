@@ -185,7 +185,7 @@ public:
 
 
     /**
-     * Set new replicas at the new replicas at a Qserv worker
+     * Enable a collection of replicas at a Qserv worker
      *
      * @param worker          - the name of a worker
      * @param newReplicas     - collection of new replicas (NOTE: useCount field is ignored)
@@ -210,7 +210,7 @@ public:
                                             unsigned int requestExpirationIvalSec=0);
 
     /**
-     * Set new replicas at the new replicas at a Qserv worker
+     * Send a data string to a Qwserv worker and get the same string in response
      *
      * @param worker   - the name of a worker
      * @param data     - data to be sent to a worker
@@ -260,7 +260,7 @@ private:
     ServiceProvider::Ptr const _serviceProvider;
 
     /// The registry of the on-going requests.
-    std::map<std::string,std::shared_ptr<QservMgtRequestWrapper>> _registry;
+    std::map<std::string, std::shared_ptr<QservMgtRequestWrapper>> _registry;
 
     /// The mutex for enforcing thread safety of the class's public API
     /// and internal operations.

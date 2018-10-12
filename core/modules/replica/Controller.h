@@ -655,7 +655,7 @@ private:
     mutable util::Mutex _mtx;
 
     /// The registry of the on-going requests.
-    std::map<std::string,std::shared_ptr<ControllerRequestWrapper>> _registry;
+    std::map<std::string, std::shared_ptr<ControllerRequestWrapper>> _registry;
 };
 
 }}} // namespace lsst::qserv::replica

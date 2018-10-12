@@ -206,7 +206,7 @@ public:
      * @return a collection of files constituiting the replica as a map,
      * in which the file name is the key.
      */
-    std::map<std::string,FileInfo> fileInfoMap() const;
+    std::map<std::string, FileInfo> fileInfoMap() const;
 
     /**
      * @return the minimum start time of the file migration operations of any

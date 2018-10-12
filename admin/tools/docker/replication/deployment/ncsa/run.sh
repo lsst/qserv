@@ -28,11 +28,11 @@ set -e
 # Load parameters of the setup into the corresponding environment
 # variables
 
-. $(dirname $0)/env.sh
+. $(dirname "$0")/env.sh
 
 TOOL="$1"
 if [ -z "${TOOL}" ]; then
-    (>&2 echo "usage: <tool> [<parameters>]")
+    (>&2 echo "usage: <tool> [<parameters>] [<options>] [<flags>]")
     exit 1
 fi
 shift
@@ -47,17 +47,15 @@ fi
 
 docker run \
     --rm \
-    --detach \
+    -it \
     --network host \
     -u 1000:1000 \
     -v /etc/passwd:/etc/passwd:ro \
     -v ${CONFIG_DIR}:/qserv/replication/config:ro \
-    -v ${LOG_DIR}:${LOG_DIR} \
     -e "TOOL=${TOOL}" \
     -e "PARAMETERS=${PARAMETERS}" \
-    -e "LOG_DIR=${LOG_DIR}" \
     -e "LSST_LOG_CONFIG=${LSST_LOG_CONFIG}" \
     -e "CONFIG=${CONFIG}" \
     --name "${TOOL}" \
     "${REPLICATION_IMAGE_TAG}" \
-    bash -c '/qserv/bin/${TOOL} ${PARAMETERS} --config=${CONFIG} >& ${LOG_DIR}/${TOOL}.log'
+    bash -c '/qserv/bin/${TOOL} ${PARAMETERS} --config=${CONFIG}'

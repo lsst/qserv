@@ -388,7 +388,7 @@ private:
 
     /// Cached file descriptions mapping from short file names into
     /// the corresponidng parameters
-    std::map<std::string,FileDescr> _file2descr;
+    std::map<std::string, FileDescr> _file2descr;
 
     /// The buffer for storying file payload read from a remote file service
     uint8_t* _buf;

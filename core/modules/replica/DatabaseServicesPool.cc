@@ -310,7 +310,20 @@ void DatabaseServicesPool::releaseService(DatabaseServices::Ptr const& service) 
 
     // Move it between queues.
 
-    _usedServices.remove(service);
+    size_t numRemoved = 0;
+    _usedServices.remove_if(
+        [&numRemoved, &service] (DatabaseServices::Ptr const& ptr) {
+            if (ptr == service) {
+                numRemoved++;
+                return true;
+            }
+            return false;
+        }
+    );
+    if (1 != numRemoved) {
+        throw std::logic_error(
+                "DatabaseServicesPool::releaseService  inappropried use of the method");
+    }
     _availableServices.push_back(service);
 
     // Notify one cient (if any) waiting for a service

@@ -392,7 +392,7 @@ using WorkerDatabaseChunkMap =
                 detail::ChunkMap<T>>>;
 
 
-// Algorithms are pout into a nested namespace below in order
+// Algorithms are put into a nested namespace below in order
 // to avoid confusing them with simple singe-worded user defined
 // functions.
 
@@ -434,70 +434,83 @@ namespace SemanticMaps {
  * NOTE: the output dictionary will be modified even if the method
  *       will not find any differences.
  *
- * @param one       - input dictionary to be compared with the second one
- * @param two       - input dictionary to be compared with the first one
- * @param inOneOnly - output dictionary with elements of the first map which
- *                    are not found in the second map
+ * @param one
+ *   input dictionary to be compared with the second one
+ *
+ * @param two
+ *   input dictionary to be compared with the first one
+ *
+ * @param inFirstOnly
+ *   output dictionary with elements of the first map which are not found
+ *   in the second map
  *
  * @return 'true' if different
  */
  template<typename T>
  bool diff(WorkerDatabaseChunkMap<T> const& one,
            WorkerDatabaseChunkMap<T> const& two,
-           WorkerDatabaseChunkMap<T>& inOneOnly) {
+           WorkerDatabaseChunkMap<T>& inFirstOnly) {
 
-    inOneOnly.clear();
+    inFirstOnly.clear();
     for (auto&& worker: one.workerNames()) {
         if (not         two.workerExists(worker)) {
-            inOneOnly.insertWorker(worker,
-                                   one.worker(worker));
+            inFirstOnly.insertWorker(worker,
+                                     one.worker(worker));
             continue;
         }
         for (auto&& database: one.worker(worker).databaseNames()) {
             if (not           two.worker(worker).databaseExists(database)) {
-                inOneOnly.atWorker(worker)
-                         .insertDatabase(database,
+                inFirstOnly.atWorker(worker)
+                           .insertDatabase(database,
                                          one.worker(worker).database(database));
                 continue;
             }
             for (auto&& chunk: one.worker(worker).database(database).chunkNumbers()) {
                 if (not        two.worker(worker).database(database).chunkExists(chunk)) {
-                    inOneOnly.atWorker(worker)
-                             .atDatabase(database)
-                             .insertChunk(chunk,
+                    inFirstOnly.atWorker(worker)
+                               .atDatabase(database)
+                               .insertChunk(chunk,
                                           one.worker(worker).database(database).chunk(chunk));
                 }
             }
         }
     }    
-    return not inOneOnly.empty();
+    return not inFirstOnly.empty();
 }
 
 /**
  * Bi-directional comparison of dictionaries of: worker-database-chunk
  *
- * The method will also report keys which aren't found in opposte dictionaries.
+ * The method will also report keys which aren't found in opposite
+ * dictionaries.
  *
  * NOTE: the output dictionaries will be modified even if the method
  *       will not find any differences.
  *
- * @param one       - input dictionary to be compared with the second one
- * @param two       - input dictionary to be compared with the first one
- * @param inOneOnly - output dictionary with elements of the first map which
- *                    are not found in the second map
- * @param inTwoOnly - output dictionary with elements of the second map which
- *                    are not found in the first map
+ * @param one
+ *   input dictionary to be compared with the second one
+ *
+ * @param two
+ *   input dictionary to be compared with the first one
+ *
+ * @param inFirstOnly
+ *   output dictionary with elements of the first map which are not found
+ *   in the second map
+ *
+ * @param inSecondOnly
+ *   output dictionary with elements of the second map which are not found
+ *   in the first map
  *
  * @return 'true' if different
  */
  template<typename T>
  bool diff2(WorkerDatabaseChunkMap<T> const& one,
             WorkerDatabaseChunkMap<T> const& two,
-            WorkerDatabaseChunkMap<T>& inOneOnly,
-            WorkerDatabaseChunkMap<T>& inTwoOnly) {
+            WorkerDatabaseChunkMap<T>& inFirstOnly,
+            WorkerDatabaseChunkMap<T>& inSecondOnly) {
 
-    bool const notEqual1 = diff<T>(one, two, inOneOnly);
-    bool const notEqual2 = diff<T>(two, one, inTwoOnly);
+    bool const notEqual1 = diff<T>(one, two, inFirstOnly);
+    bool const notEqual2 = diff<T>(two, one, inSecondOnly);
 
     return notEqual1 or notEqual2;
 }

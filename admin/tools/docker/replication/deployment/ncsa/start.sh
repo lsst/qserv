@@ -28,7 +28,7 @@ set -e
 # Load parameters of the setup into the corresponding environment
 # variables
 
-. $(dirname $0)/env_svc.sh
+. $(dirname "$0")/env_svc.sh
 
 # Start database services on the master node
 #

@@ -311,7 +311,7 @@ Connection::Ptr Connection::execute(std::string const& query) {
     return shared_from_this();
 }
 
-Connection::Ptr Connection::execute(std::function<void(Connection::Ptr)> script,
+Connection::Ptr Connection::execute(std::function<void(Connection::Ptr)> const& script,
                                     unsigned int maxReconnects,
                                     unsigned int timeoutSec) {
 

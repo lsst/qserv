@@ -185,8 +185,8 @@ void ReplicaInfo::setInfo(lsst::qserv::proto::ReplicationReplicaInfo* info) cons
     ::setInfoImpl(*this, info);
 }
 
-std::map<std::string,ReplicaInfo::FileInfo> ReplicaInfo::fileInfoMap() const {
-    std::map<std::string,ReplicaInfo::FileInfo> result;
+std::map<std::string, ReplicaInfo::FileInfo> ReplicaInfo::fileInfoMap() const {
+    std::map<std::string, ReplicaInfo::FileInfo> result;
     for (auto&& f: _fileInfo) {
         result[f.name] = f;
     }
@@ -198,8 +198,8 @@ bool ReplicaInfo::equalFileCollections(ReplicaInfo const& other) const {
     // Files of both comllection needs to be map-sorted because objects may
     // have them stored in different order.
 
-    std::map<std::string,ReplicaInfo::FileInfo> thisFileInfo  = this->fileInfoMap();
-    std::map<std::string,ReplicaInfo::FileInfo> otherFileInfo = other.fileInfoMap();
+    std::map<std::string, ReplicaInfo::FileInfo> thisFileInfo  = this->fileInfoMap();
+    std::map<std::string, ReplicaInfo::FileInfo> otherFileInfo = other.fileInfoMap();
 
     if (thisFileInfo.size() != otherFileInfo.size()) return false;
 

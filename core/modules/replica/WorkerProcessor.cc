@@ -438,9 +438,14 @@ WorkerRequest::Ptr WorkerProcessor::dequeueOrCancelImpl(util::Lock const& lock,
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "dequeueOrCancelImpl" << "  id: " << id);
 
-     // Still waiting in the queue?
+    // Still waiting in the queue?
+    //
+    // ATTENTION: the loop variable is a copy of (not a reference to) a shared
+    // pointer to allow removing (if needed) the corresponding entry from the
+    // input collection while retaining a valid copy of the pointer to be placed
+    // into the next stage  collection.
 
-     for (auto&& ptr: _newRequests) {
+    for (auto ptr: _newRequests) {
         if (ptr->id() == id) {
 
             // Cancel it and move it into the final queue in case if a client
@@ -453,17 +458,10 @@ WorkerRequest::Ptr WorkerProcessor::dequeueOrCancelImpl(util::Lock const& lock,
 
                 case WorkerRequest::STATUS_CANCELLED: {
 
-                    // ATTENTION: Make a local copy of a request from a reference onto
-                    // a pointer inside the collection. This reference will get invalidated (and
-                    // the internal pointer will point to a garbage) when the object is removed
-                    // from the collection.
-
-                    auto ptr2remove = ptr;
-
                     _newRequests.remove(id);
-                    _finishedRequests.push_back(ptr2remove);
+                    _finishedRequests.push_back(ptr);
 
-                    return ptr2remove;
+                    return ptr;
                 }
                 default:
                     throw std::logic_error(

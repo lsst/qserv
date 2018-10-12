@@ -488,7 +488,7 @@ struct Application {
 
         try {
 
-            // Accumulte here non-response intervals for each workers until either will
+            // Accumulate here non-response intervals for each workers until either will
             // reach the "eviction" threshold. Then trigger worker eviction sequence.
 
             std::map<std::string,           // worker
@@ -622,7 +622,7 @@ struct Application {
                                 blockPost.wait();
                             }
 
-                            // In case if the other thread failed then quite this
+                            // In case if the other thread failed then quit this
                             // thread as well
                             if (failed) {
                                 if (stopReplication) stopReplication = false;
@@ -682,7 +682,7 @@ struct Application {
                         // So, we just keep monitoring the status of the system. The problem (unless it's
                         // cases 2 or 3) should require a manual repair.
 
-                        LOGS(_log, LOG_LVL_INFO, healthMonitorContext
+                        LOGS(_log, LOG_LVL_ERROR, healthMonitorContext
                              << "automated workers eviction is not possible because too many workers "
                              << workers2evict.size() << " are offline");
 

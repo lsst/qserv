@@ -82,8 +82,8 @@ ReplicaDiff::ReplicaDiff(ReplicaInfo const& replica1,
 
     // Corresponding file entries must match
 
-    std::map<std::string,ReplicaInfo::FileInfo> file2info1 = replica1.fileInfoMap();
-    std::map<std::string,ReplicaInfo::FileInfo> file2info2 = replica2.fileInfoMap();
+    std::map<std::string, ReplicaInfo::FileInfo> file2info1 = replica1.fileInfoMap();
+    std::map<std::string, ReplicaInfo::FileInfo> file2info2 = replica2.fileInfoMap();
 
     for (auto&& f: file2info1) {
 

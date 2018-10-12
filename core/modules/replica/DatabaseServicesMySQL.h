@@ -161,8 +161,6 @@ private:
      * @param replicas  - collection of replicas found upon a successful completion
      * @param worker    - worker name (as per the request)
      * @param database  - database name (as per the request)
-     * 
-     * @return 'true' if the operation has succeeded (even if no replicas were found)
      */
     void findWorkerReplicasImpl(util::Lock const& lock,
                                 std::vector<ReplicaInfo>& replicas,
@@ -209,8 +207,6 @@ private:
      * @param lock     - lock on a mutex must be acquired before calling this method
      * @param replicas - collection of replicas to be returned
      * @param query    - SQL query against the corresponding table
-     *
-     * @return 'true' if the operation has succeeded (even if no replicas were found)
      */
     void findReplicasImpl(util::Lock const& lock,
                           std::vector<ReplicaInfo>& replicas,

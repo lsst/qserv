@@ -22,11 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_DATABASESERVICESPOOL_H
 #define LSST_QSERV_REPLICA_DATABASESERVICESPOOL_H
 
-/// DatabaseServicesPool.h declares:
-///
-/// class DatabaseServicesPool
-/// (see individual class documentation for more information)
-
 // System headers
 #include <condition_variable>
 #include <mutex>
@@ -174,6 +169,8 @@ private:
      * Return a service object back into the pool of the available ones.
      *
      * @param service - service object to be returned back
+     *
+     * @throws std::logic_error if the service object was not previously allocated
      *
      * @see DatabaseServicesPool::allocateService()
      */

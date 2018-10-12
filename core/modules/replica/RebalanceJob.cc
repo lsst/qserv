@@ -25,6 +25,7 @@
 
 // System headers
 #include <algorithm>
+#include <limits>
 #include <set>
 #include <stdexcept>
 
@@ -605,42 +606,18 @@ size_t RebalanceJob::launchNextJobs(util::Lock const& lock,
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "launchNextJobs  numJobs=" << numJobs);
 
-    /*
-    size_t const numThreads =
-        controller()->serviceProvider()->config()->workerNumProcessingThreads();
-    */
-
     // Compute the number of jobs which are already active at both ends
-    // (destination and source workers). Note that we need to scan both
-    // list to get a complete picture of what's on the workers' side.
+    // (destination and source workers).
 
-    std::map<std::string,size_t> numAtDest;
-    std::map<std::string,size_t> numAtSrc;
+    std::map<std::string, size_t> numAtDest;
+    std::map<std::string, size_t> numAtSrc;
 
-    for (auto&& ptr: _jobs) {
-        if (numAtDest.end() == numAtDest.find(ptr->destinationWorker())) {
-            numAtDest[ptr->destinationWorker()] = 0;
-        }
-        if (numAtSrc.end() == numAtSrc.find(ptr->sourceWorker())) {
-            numAtSrc[ptr->sourceWorker()] = 0;
-        }
-    }
     for (auto&& ptr: _activeJobs) {
-        auto itrAtDest = numAtDest.find(ptr->destinationWorker());
-        if (numAtDest.end() == itrAtDest) {
-            numAtDest[ptr->destinationWorker()] = 1;
-        } else {
-            itrAtDest->second++;
-        }
-        auto itrAtSrc = numAtSrc.find(ptr->sourceWorker());
-        if (numAtSrc.end() == itrAtSrc) {
-            numAtSrc[ptr->sourceWorker()] = 1;
-        } else {
-            itrAtSrc->second++;
-        }
+        numAtDest[ptr->destinationWorker()]++;
+        numAtSrc [ptr->sourceWorker()]++;
     }
     
-    // Try to fulfil the request (to submit the given number of jobs)
+    // Try to fulfill the request (to submit the given number of jobs)
     // by evaluating best candidates using an algorithm explained
     // within the loop below.
     
@@ -651,15 +628,15 @@ size_t RebalanceJob::launchNextJobs(util::Lock const& lock,
         //
         //   The algorithms evaluates candidates (pairs of (dstWorker,srcWorker))
         //   to find the one which allows more even spread of load among the destination
-        //   and source workers. For each pair of the workers the algorithm computets
+        //   and source workers. For each pair of the workers the algorithm computes
         //   a 'load' which is just a sum of the on-going activities at both ends of
         //   the proposed transfer:
         //
-        //     load := numAtDest[destWorker] * numAtSrc[srcWorker]
+        //     load := numAtDest[destWorker] + numAtSrc[srcWorker]
         //
         //   A part which has the lowest number will be selected.
 
-        size_t minLoad = ULLONG_MAX;
+        size_t minLoad = std::numeric_limits<unsigned long long>::max();
         MoveReplicaJob::Ptr job;
 
         for (auto&& ptr: _jobs) {            

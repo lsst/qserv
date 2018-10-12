@@ -27,6 +27,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <ctime>
+#include <limits>
 #include <stdexcept>
 
 // Qserv headers
@@ -130,61 +131,56 @@ void DatabaseServicesMySQL::saveState(Job const& job,
     // then the UPDATE query will be executed.
 
     try {
-        try {
-            _conn->execute(
-                [&](decltype(_conn) conn) {
-                    conn->begin();
-                    conn->executeInsertQuery(
-                        "job",
-                        job.id(),
-                        job.controller()->identity().id,
-                        conn->nullIfEmpty(job.parentJobId()),
-                        job.type(),
-                        Job::state2string(job.state()),
-                        Job::state2string(job.extendedState()),
-                                          job.beginTime(),
-                                          job.endTime(),
-                        PerformanceUtils::now(),    // heartbeat
-                        options.priority,
-                        options.exclusive,
-                        options.preemptable
-                    );
-            
-                    // Extended state (if any provided by a specific job class) is recorded
-                    // in a separate table.
-            
-                    for (auto&& entry: job.extendedPersistentState()) {
-                        std::string const& param = entry.first;
-                        std::string const& value = entry.second;
-                        LOGS(_log, LOG_LVL_DEBUG, context << "extendedPersistentState: ('" << param << "','" << value << "')");
-                        conn->executeInsertQuery(
-                            "job_ext",
-                            job.id(),
-                            param,value
-                        );
-                    }
-                    conn->commit ();
-                }
-            );
-    
-        } catch (database::mysql::DuplicateKeyError const&) {
+        _conn->executeInsertOrUpdate(
 
-           _conn->execute(
-                [&](decltype(_conn) conn) {
-                    conn->rollback();
-                    conn->begin();
-                    conn->executeSimpleUpdateQuery(
-                        "job",
-                        _conn->sqlEqual("id",                            job.id()),
-                        std::make_pair( "state",      Job::state2string (job.state())),
-                        std::make_pair( "ext_state",  Job::state2string (job.extendedState())),
-                        std::make_pair( "begin_time",                    job.beginTime()),
-                        std::make_pair( "end_time",                      job.endTime())
+            [&](decltype(_conn) conn) {
+                conn->begin();
+                conn->executeInsertQuery(
+                    "job",
+                    job.id(),
+                    job.controller()->identity().id,
+                    conn->nullIfEmpty(job.parentJobId()),
+                    job.type(),
+                    Job::state2string(job.state()),
+                    Job::state2string(job.extendedState()),
+                                      job.beginTime(),
+                                      job.endTime(),
+                    PerformanceUtils::now(),    // heartbeat
+                    options.priority,
+                    options.exclusive,
+                    options.preemptable
+                );
+        
+                // Extended state (if any provided by a specific job class) is recorded
+                // in a separate table.
+        
+                for (auto&& entry: job.extendedPersistentState()) {
+                    std::string const& param = entry.first;
+                    std::string const& value = entry.second;
+                    LOGS(_log, LOG_LVL_DEBUG, context << "extendedPersistentState: ('" << param << "','" << value << "')");
+                    conn->executeInsertQuery(
+                        "job_ext",
+                        job.id(),
+                        param,value
                     );
-                    conn->commit ();
                 }
-            );
-        }
+                conn->commit ();
+            },
+
+            [&](decltype(_conn) conn) {
+                conn->rollback();
+                conn->begin();
+                conn->executeSimpleUpdateQuery(
+                    "job",
+                    _conn->sqlEqual("id",                            job.id()),
+                    std::make_pair( "state",      Job::state2string (job.state())),
+                    std::make_pair( "ext_state",  Job::state2string (job.extendedState())),
+                    std::make_pair( "begin_time",                    job.beginTime()),
+                    std::make_pair( "end_time",                      job.endTime())
+                );
+                conn->commit ();
+            }
+        );
 
     } catch (database::mysql::Error const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
@@ -251,66 +247,61 @@ void DatabaseServicesMySQL::saveState(QservMgtRequest const& request,
     // then the UPDATE query will be executed.
 
     try {
-        try {
-            _conn->execute(
-                [&](decltype(_conn) conn) {
-                    conn->begin();
+        _conn->executeInsertOrUpdate(
+
+            [&](decltype(_conn) conn) {
+                conn->begin();
+                conn->executeInsertQuery(
+                    "request",
+                    request.id(),
+                    request.jobId(),
+                    request.type(),
+                    request.worker(),
+                    0,
+                    QservMgtRequest::state2string(request.state()),
+                    QservMgtRequest::state2string(request.extendedState()),
+                    serverError,
+                    performance.c_create_time,
+                    performance.c_start_time,
+                    performance.w_receive_time,
+                    performance.w_start_time,
+                    performance.w_finish_time,
+                    performance.c_finish_time);
+        
+                // Extended state (if any provided by a specific request class) is recorded
+                // in a separate table.
+        
+                for (auto&& entry: request.extendedPersistentState()) {
+                    std::string const& param = entry.first;
+                    std::string const& value = entry.second;
+                    LOGS(_log, LOG_LVL_DEBUG, context << "extendedPersistentState: ('" << param << "','" << value << "')");
                     conn->executeInsertQuery(
-                        "request",
+                        "request_ext",
                         request.id(),
-                        request.jobId(),
-                        request.type(),
-                        request.worker(),
-                        0,
-                        QservMgtRequest::state2string(request.state()),
-                        QservMgtRequest::state2string(request.extendedState()),
-                        serverError,
-                        performance.c_create_time,
-                        performance.c_start_time,
-                        performance.w_receive_time,
-                        performance.w_start_time,
-                        performance.w_finish_time,
-                        performance.c_finish_time);
-            
-                    // Extended state (if any provided by a specific request class) is recorded
-                    // in a separate table.
-            
-                    for (auto&& entry: request.extendedPersistentState()) {
-                        std::string const& param = entry.first;
-                        std::string const& value = entry.second;
-                        LOGS(_log, LOG_LVL_DEBUG, context << "extendedPersistentState: ('" << param << "','" << value << "')");
-                        conn->executeInsertQuery(
-                            "request_ext",
-                            request.id(),
-                            param,value
-                        );
-                    }
-                    conn->commit ();
-                 }
-            );
-    
-        } catch (database::mysql::DuplicateKeyError const&) {
-    
-            _conn->execute(
-                [&](decltype(_conn) conn) {
-                    conn->rollback();
-                    conn->begin();
-                    conn->executeSimpleUpdateQuery(
-                        "request",
-                        _conn->sqlEqual("id",                                          request.id()),
-                        std::make_pair("state",          QservMgtRequest::state2string(request.state())),
-                        std::make_pair("ext_state",      QservMgtRequest::state2string(request.extendedState())),
-                        std::make_pair("server_status",                                serverError),
-                        std::make_pair("c_create_time",  performance.c_create_time),
-                        std::make_pair("c_start_time",   performance.c_start_time),
-                        std::make_pair("w_receive_time", performance.w_receive_time),
-                        std::make_pair("w_start_time",   performance.w_start_time),
-                        std::make_pair("w_finish_time",  performance.w_finish_time),
-                        std::make_pair("c_finish_time",  performance.c_finish_time));
-                    conn->commit();
+                        param,value
+                    );
                 }
-            );
-        }
+                conn->commit ();
+            },
+
+            [&](decltype(_conn) conn) {
+                conn->rollback();
+                conn->begin();
+                conn->executeSimpleUpdateQuery(
+                    "request",
+                    _conn->sqlEqual("id",                                          request.id()),
+                    std::make_pair("state",          QservMgtRequest::state2string(request.state())),
+                    std::make_pair("ext_state",      QservMgtRequest::state2string(request.extendedState())),
+                    std::make_pair("server_status",                                serverError),
+                    std::make_pair("c_create_time",  performance.c_create_time),
+                    std::make_pair("c_start_time",   performance.c_start_time),
+                    std::make_pair("w_receive_time", performance.w_receive_time),
+                    std::make_pair("w_start_time",   performance.w_start_time),
+                    std::make_pair("w_finish_time",  performance.w_finish_time),
+                    std::make_pair("c_finish_time",  performance.c_finish_time));
+                conn->commit();
+            }
+        );
 
     } catch (database::mysql::Error const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
@@ -349,71 +340,64 @@ void DatabaseServicesMySQL::saveState(Request const& request,
     // then the UPDATE query will be executed.
 
     try {
-        try {
-            _conn->execute(
-                [&](decltype(_conn) conn) {
-                    conn->begin();
+        _conn->executeInsertOrUpdate(
+            [&](decltype(_conn) conn) {
+                conn->begin();
 
-                    // The primary state of the request
+                // The primary state of the request
+                conn->executeInsertQuery(
+                    "request",
+                    request.id(),
+                    request.jobId(),
+                    request.type(),
+                    request.worker(),
+                    request.priority(),
+                    Request::state2string(request.state()),
+                    Request::state2string(request.extendedState()),
+                    status2string(request.extendedServerStatus()),
+                    performance.c_create_time,
+                    performance.c_start_time,
+                    performance.w_receive_time,
+                    performance.w_start_time,
+                    performance.w_finish_time,
+                    performance.c_finish_time);
+        
+                // Extended state (if any provided by a specific request class) is recorded
+                // in a separate table.
+                for (auto&& entry: request.extendedPersistentState()) {
+
+                    std::string const& param = entry.first;
+                    std::string const& value = entry.second;
+
+                    LOGS(_log, LOG_LVL_DEBUG, context
+                         << "extendedPersistentState: ('" << param << "','" << value << "')");
+
                     conn->executeInsertQuery(
-                        "request",
+                        "request_ext",
                         request.id(),
-                        request.jobId(),
-                        request.type(),
-                        request.worker(),
-                        request.priority(),
-                        Request::state2string(request.state()),
-                        Request::state2string(request.extendedState()),
-                        status2string(request.extendedServerStatus()),
-                        performance.c_create_time,
-                        performance.c_start_time,
-                        performance.w_receive_time,
-                        performance.w_start_time,
-                        performance.w_finish_time,
-                        performance.c_finish_time);
-            
-                    // Extended state (if any provided by a specific request class) is recorded
-                    // in a separate table.
-                    for (auto&& entry: request.extendedPersistentState()) {
-
-                        std::string const& param = entry.first;
-                        std::string const& value = entry.second;
-
-                        LOGS(_log, LOG_LVL_DEBUG, context
-                             << "extendedPersistentState: ('" << param << "','" << value << "')");
-
-                        conn->executeInsertQuery(
-                            "request_ext",
-                            request.id(),
-                            param,value
-                        );
-                    }
-                    conn->commit ();
-                 }
-            );
-
-        } catch (database::mysql::DuplicateKeyError const&) {
-    
-            _conn->execute(
-                [&](decltype(_conn) conn) {
-                    conn->rollback();
-                    conn->begin();
-                    conn->executeSimpleUpdateQuery(
-                        "request",
-                        _conn->sqlEqual("id", request.id()),
-                        std::make_pair("state",          Request::state2string(request.state())),
-                        std::make_pair("ext_state",      Request::state2string(request.extendedState())),
-                        std::make_pair("server_status",          status2string(request.extendedServerStatus())),
-                        std::make_pair("c_create_time",  performance.c_create_time),
-                        std::make_pair("c_start_time",   performance.c_start_time),
-                        std::make_pair("w_receive_time", performance.w_receive_time),
-                        std::make_pair("w_start_time",   performance.w_start_time),
-                        std::make_pair("w_finish_time",  performance.w_finish_time),
-                        std::make_pair("c_finish_time",  performance.c_finish_time));
-                    conn->commit();
+                        param,value
+                    );
                 }
-            );
-        }
+                conn->commit ();
+            },
+            [&](decltype(_conn) conn) {
+                conn->rollback();
+                conn->begin();
+                conn->executeSimpleUpdateQuery(
+                    "request",
+                    _conn->sqlEqual("id", request.id()),
+                    std::make_pair("state",          Request::state2string(request.state())),
+                    std::make_pair("ext_state",      Request::state2string(request.extendedState())),
+                    std::make_pair("server_status",          status2string(request.extendedServerStatus())),
+                    std::make_pair("c_create_time",  performance.c_create_time),
+                    std::make_pair("c_start_time",   performance.c_start_time),
+                    std::make_pair("w_receive_time", performance.w_receive_time),
+                    std::make_pair("w_start_time",   performance.w_start_time),
+                    std::make_pair("w_finish_time",  performance.w_finish_time),
+                    std::make_pair("c_finish_time",  performance.c_finish_time));
+                conn->commit();
+            }
+        );
 
     } catch (database::mysql::Error const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
@@ -958,7 +942,7 @@ void DatabaseServicesMySQL::findReplicaFilesImpl(util::Lock const& lock,
     // the fixed correction (of 1024 bytes).
 
    size_t const batchSize =
-        (_conn->max_allowed_packet() - 1024) / (1 + std::to_string(UINT64_MAX).size());
+        (_conn->max_allowed_packet() - 1024) / (1 + std::to_string(std::numeric_limits<unsigned long long>::max()).size());
 
     if ((_conn->max_allowed_packet() < 1024) or (0 == batchSize)) {
         throw std::runtime_error(

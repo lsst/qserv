@@ -642,10 +642,27 @@ public:
      * 
      * @see Connection::open()
      */
-    Connection::Ptr execute(std::function<void(Ptr)> script,
+    Connection::Ptr execute(std::function<void(Ptr)> const& script,
                             unsigned int maxReconnects=0,
                             unsigned int timeoutSec=0);
-    
+
+    /**
+     * This is just a convenience method for a typical use case
+     *
+     * NOTE: it'sup to the 'updateScript' to rollback a previous transaction
+     * if needed.
+     */
+    Connection::Ptr executeInsertOrUpdate(std::function<void(Ptr)> const& insertScript,
+                                          std::function<void(Ptr)> const& updateScript,
+                                          unsigned int maxReconnects=0,
+                                          unsigned int timeoutSec=0) {
+        try {
+            return execute(insertScript, maxReconnects, timeoutSec);
+        } catch (database::mysql::DuplicateKeyError const&) {
+            return execute(updateScript, maxReconnects, timeoutSec);
+        }
+    }
+
     /**
      * @return 'true' if the last successfull query returned a result set
      * (even though it may be empty)

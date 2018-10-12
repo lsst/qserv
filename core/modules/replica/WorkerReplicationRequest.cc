@@ -224,9 +224,9 @@ bool WorkerReplicationRequestPOSIX::execute () {
     std::vector<fs::path> tmpFiles;
     std::vector<fs::path> outFiles;
 
-    std::map<std::string,fs::path> file2inFile;
-    std::map<std::string,fs::path> file2tmpFile;
-    std::map<std::string,fs::path> file2outFile;
+    std::map<std::string, fs::path> file2inFile;
+    std::map<std::string, fs::path> file2tmpFile;
+    std::map<std::string, fs::path> file2outFile;
 
     std::map<fs::path,std::time_t> inFile2mtime;
 
@@ -547,7 +547,7 @@ bool WorkerReplicationRequestFS::execute () {
             // Check for a presence of input files and calculate space requirement
 
             uintmax_t totalBytes = 0;                   // the total number of bytes in all input files to be moved
-            std::map<std::string,uintmax_t> file2size;  // the number of bytes in each file
+            std::map<std::string, uintmax_t> file2size; // the number of bytes in each file
 
             for (auto&& file: _files) {
 
