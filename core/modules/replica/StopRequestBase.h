@@ -22,14 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_STOPREQUESTBASE_H
 #define LSST_QSERV_REPLICA_STOPREQUESTBASE_H
 
-/// StopRequestBase.h declares:
-///
-/// Common classes shared by all implementations:
-///
-///   class StopRequestBase
-///
-/// (see individual class documentation for more information)
-
 // System headers
 
 #include <memory>

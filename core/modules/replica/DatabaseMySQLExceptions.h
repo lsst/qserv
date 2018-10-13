@@ -23,7 +23,8 @@
 #define LSST_QSERV_REPLICA_DATABASEMYSQLEXCEPTIONS_H
 
 /**
- * DatabaseMySQLExceptions.h declares:
+ * DatabaseMySQLExceptions.h declares a collection of exceptions thrown
+ * by the MySQL-backed implementation of the database service:
  *
  * class Error
  * class ConnectError

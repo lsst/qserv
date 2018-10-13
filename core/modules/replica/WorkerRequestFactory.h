@@ -23,12 +23,6 @@
 #ifndef LSST_QSERV_REPLICA_WORKERREQUESTFACTORY_H
 #define LSST_QSERV_REPLICA_WORKERREQUESTFACTORY_H
 
-/// WorkerRequestFactory.h declares:
-///
-/// class WorkerRequestFactoryBase
-/// class WorkerRequestFactory
-/// (see individual class documentation for more information)
-
 // System headers
 #include <memory>
 #include <string>

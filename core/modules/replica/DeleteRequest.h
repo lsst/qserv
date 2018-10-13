@@ -22,12 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_DELETEREQUEST_H
 #define LSST_QSERV_REPLICA_DELETEREQUEST_H
 
-/// DeleteRequest.h declares:
-///
-///   class DeleteRequest
-///
-/// (see individual class documentation for more information)
-
 // System headers
 #include <functional>
 #include <memory>

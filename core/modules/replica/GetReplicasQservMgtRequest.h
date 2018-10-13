@@ -22,11 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_GET_REPLICAS_QSERVMGTREQUEST_H
 #define LSST_QSERV_REPLICA_GET_REPLICAS_QSERVMGTREQUEST_H
 
-/// GetReplicasQservMgtRequest.h declares:
-///
-/// class GetReplicasQservMgtRequest
-/// (see individual class documentation for more information)
-
 // System headers
 #include <memory>
 #include <string>

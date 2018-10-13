@@ -22,11 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_REQUESTMESSENGER_H
 #define LSST_QSERV_REPLICA_REQUESTMESSENGER_H
 
-/// RequestMessenger.h declares:
-///
-/// class RequestMessenger
-/// (see individual class documentation for more information)
-
 // System headers
 #include <memory>
 #include <string>

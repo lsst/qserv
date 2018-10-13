@@ -22,17 +22,16 @@
 #ifndef LSST_QSERV_REPLICA_STOPREQUEST_H
 #define LSST_QSERV_REPLICA_STOPREQUEST_H
 
-/// StopRequest.h declares:
-///
-/// Common classes shared by all implementations:
-///
-///   class StopRequest
-///   class StopRequestReplicate
-///   class StopRequestDelete
-///   class StopRequestFind
-///   class StopRequestFindAll
-///
-/// (see individual class documentation for more information)
+/**
+ * This header declares a collection of classes representing various
+ * server-side request cancellation tools (requests) as a part of the
+ * Controller-side Replication Framework.
+ *
+ * @see class StopRequestReplicate
+ * @see class StopRequestDelete
+ * @see class StopRequestFind
+ * @see class StopRequestFindAll
+ */
 
 // System headers
 #include <functional>

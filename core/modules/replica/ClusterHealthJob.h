@@ -22,12 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_CLUSTERHEALTHJOB_H
 #define LSST_QSERV_REPLICA_CLUSTERHEALTHJOB_H
 
-/// ClusterHealthJob.h declares:
-///
-/// class  ClusterHealthJob
-///
-/// (see individual class documentation for more information)
-
 // System headers
 #include <atomic>
 #include <functional>

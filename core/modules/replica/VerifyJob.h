@@ -22,12 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_VERIFYJOB_H
 #define LSST_QSERV_REPLICA_VERIFYJOB_H
 
-/// VerifyJob.h declares:
-///
-/// class  VerifyJob
-///
-/// (see individual class documentation for more information)
-
 // System headers
 #include <functional>
 #include <string>

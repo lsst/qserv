@@ -23,13 +23,6 @@
 #ifndef LSST_QSERV_REPLICA_WORKERREPLICATIONREQUEST_H
 #define LSST_QSERV_REPLICA_WORKERREPLICATIONREQUEST_H
 
-/// WorkerReplicationRequest.h declares:
-///
-/// class WorkerReplicationRequest
-/// class WorkerReplicationRequestPOSIX
-/// class WorkerReplicationRequestX
-/// (see individual class documentation for more information)
-
 // System headers
 #include <cstdio>               // std::FILE, C-style file I/O
 #include <ctime>

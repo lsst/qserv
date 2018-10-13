@@ -22,11 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_SUCCESSRATEGENERATOR_H
 #define LSST_QSERV_REPLICA_SUCCESSRATEGENERATOR_H
 
-/// SuccessRateGenerator.h declares:
-///
-/// class SuccessRateGenerator
-/// (see individual class documentation for more information)
-
 // System headers
 #include <random>
 

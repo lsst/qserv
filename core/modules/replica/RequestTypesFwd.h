@@ -23,10 +23,10 @@
 #ifndef LSST_QSERV_REPLICA_REQUESTTYPESFWD_H
 #define LSST_QSERV_REPLICA_REQUESTTYPESFWD_H
 
-/// RequestTypesFwd.h declares:
-///
-/// Forward declarations for smart pointers and calback functions
-/// corresponding to specific requests.
+/**
+ * This header files provides  Forward declarations for smart pointers and
+ * calback functions corresponding to specific requests.
+ */
 
 // System headers
 #include <functional>

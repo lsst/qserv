@@ -22,13 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_MOVEREPLICAJOB_H
 #define LSST_QSERV_REPLICA_MOVEREPLICAJOB_H
 
-/// MoveReplicaJob.h declares:
-///
-/// struct MoveReplicaJobResult
-/// class  MoveReplicaJob
-///
-/// (see individual class documentation for more information)
-
 // System headers
 #include <functional>
 #include <list>

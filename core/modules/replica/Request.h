@@ -22,11 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_REQUEST_H
 #define LSST_QSERV_REPLICA_REQUEST_H
 
-/// Request.h declares:
-///
-/// class Request
-/// (see individual class documentation for more information)
-
 // System headers
 #include <atomic>
 #include <map>

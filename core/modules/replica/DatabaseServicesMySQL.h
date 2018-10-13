@@ -22,10 +22,12 @@
 #ifndef LSST_QSERV_REPLICA_DATABASESERVICESMYSQL_H
 #define LSST_QSERV_REPLICA_DATABASESERVICESMYSQL_H
 
-/// DatabaseServicesMySQL.h declares:
-///
-/// class DatabaseServicesMySQL
-/// (see individual class documentation for more information)
+/**
+ * This hedear represents a MyQL-backed implementation of the
+ * persistent database services of the Replication Framework.
+ *
+ * @see class DatabaseServices
+ */
 
 // System headers
 #include <vector>

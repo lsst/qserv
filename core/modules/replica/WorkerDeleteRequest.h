@@ -23,12 +23,6 @@
 #ifndef LSST_QSERV_REPLICA_WORKERDELETEREQUEST_H
 #define LSST_QSERV_REPLICA_WORKERDELETEREQUEST_H
 
-/// WorkerDeleteRequest.h declares:
-///
-/// class WorkerDeleteRequest
-/// class WorkerDeleteRequestPOSIX
-/// (see individual class documentation for more information)
-
 // System headers
 #include <string>
 

@@ -22,11 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_JOB_H
 #define LSST_QSERV_REPLICA_JOB_H
 
-/// Job.h declares:
-///
-/// class Job
-/// (see individual class documentation for more information)
-
 // System headers
 #include <atomic>
 #include <list>

@@ -22,10 +22,12 @@
 #ifndef LSST_QSERV_REPLICA_CONFIGURATION_H
 #define LSST_QSERV_REPLICA_CONFIGURATION_H
 
-/// Configuration.h declares:
-///
-/// class Configuration
-/// (see individual class documentation for more information)
+/**
+ * This header definesan abstract class Configuration and a number of
+ * other relevant classes, which represent a public interface to
+ * the Configuration service of the Replication System. Specific implementations
+ * of the service's interface are found in separate hedeares and source files.
+ */
 
 // System headers
 #include <iosfwd>

@@ -23,11 +23,6 @@
 #ifndef LSST_QSERV_REPLICA_WORKERSERVERCONNECTION_H
 #define LSST_QSERV_REPLICA_WORKERSERVERCONNECTION_H
 
-/// WorkerServerConnection.h declares:
-///
-/// class WorkerServerConnection
-/// (see individual class documentation for more information)
-
 // System headers
 #include <memory>
 

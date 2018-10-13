@@ -23,11 +23,6 @@
 #ifndef LSST_QSERV_REPLICA_WORKERSERVER_H
 #define LSST_QSERV_REPLICA_WORKERSERVER_H
 
-/// WorkerServer.h declares:
-///
-/// class WorkerServer
-/// (see individual class documentation for more information)
-
 // System headers
 #include <memory>
 

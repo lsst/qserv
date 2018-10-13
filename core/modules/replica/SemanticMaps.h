@@ -22,9 +22,11 @@
 #ifndef LSST_QSERV_REPLICA_SEMANTICMAPS_H
 #define LSST_QSERV_REPLICA_SEMANTICMAPS_H
 
-/// SemanticMaps.h declares:
-///
-/// (see individual class documentation for more information)
+/**
+ * This header declares tools for constructing the header-only views for nested
+ * Standard Libraries's maps. Also a few ready to use algorithms are provided
+ * for some most commonly used map.
+ */
 
 // System headers
 #include <iosfwd>

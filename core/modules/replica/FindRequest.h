@@ -22,12 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_FINDREQUEST_H
 #define LSST_QSERV_REPLICA_FINDREQUEST_H
 
-/// FindRequest.h declares:
-//
-///   class FindRequest
-///
-/// (see individual class documentation for more information)
-
 // System headers
 #include <functional>
 #include <memory>

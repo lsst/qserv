@@ -23,11 +23,18 @@
 #define LSST_QSERV_REPLICA_DATABASEMYSQL_H
 
 /**
- * DatabaseMySQL.h declares:
+ * This header represents a C++ wrapper for the MySQL C language library.
+ * The primary class of this API is Connection.
  *
- * class Connection
+ * @see class Connection
  *
- * (see individual class documentation for more information)
+ * Other public classes of the API, such as class Row, specific exception
+ * classes, as well as some others, are defined in separate headers
+ * included from this one:
+ *
+ * DatabaseMySQLExceptions.h
+ * DatabaseMySQLTypes.h
+ * DatabaseMySQLRow.h
  */
 
 // System headers

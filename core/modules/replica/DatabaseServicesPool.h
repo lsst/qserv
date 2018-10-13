@@ -22,6 +22,12 @@
 #ifndef LSST_QSERV_REPLICA_DATABASESERVICESPOOL_H
 #define LSST_QSERV_REPLICA_DATABASESERVICESPOOL_H
 
+/**
+ * This header is for a class which implements the DatabaseServices
+ * service of the controller-side Replication Framework. The header
+ * is not supposed to be include directly into users' code.
+ */
+
 // System headers
 #include <condition_variable>
 #include <mutex>

@@ -22,12 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_FINDALLREQUEST_H
 #define LSST_QSERV_REPLICA_FINDALLREQUEST_H
 
-/// FindAllRequest.h declares:
-///
-///   class FindAllRequest
-///
-/// (see individual class documentation for more information)
-
 // System headers
 #include <functional>
 #include <memory>

@@ -22,13 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_QSERVSYNCJOB_H
 #define LSST_QSERV_REPLICA_QSERVSYNCJOB_H
 
-/// QservSyncJob.h declares:
-///
-/// struct QservSyncJobResult
-/// class  QservSyncJob
-///
-/// (see individual class documentation for more information)
-
 // System headers
 #include <atomic>
 #include <functional>

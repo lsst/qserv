@@ -22,11 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_REMOVEREPLICAQSERVMGTREQUEST_H
 #define LSST_QSERV_REPLICA_REMOVEREPLICAQSERVMGTREQUEST_H
 
-/// RemoveReplicaQservMgtRequest.h declares:
-///
-/// class RemoveReplicaQservMgtRequest
-/// (see individual class documentation for more information)
-
 // System headers
 #include <memory>
 #include <string>

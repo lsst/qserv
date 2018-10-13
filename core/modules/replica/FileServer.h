@@ -23,10 +23,11 @@
 #ifndef LSST_QSERV_REPLICA_FILESERVER_H
 #define LSST_QSERV_REPLICA_FILESERVER_H
 
-/// FileServer.h declares:
-///
-/// class FileServer
-/// (see individual class documentation for more information)
+/**
+ * This header declares class FileServern which is used
+ * in the server-side impementation of the point-to-point file migration
+ * service of the Replication system.
+ */
 
 // System headers
 #include <memory>

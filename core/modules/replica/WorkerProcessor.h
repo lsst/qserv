@@ -23,11 +23,6 @@
 #ifndef LSST_QSERV_REPLICA_WORKERPROCESSOR_H
 #define LSST_QSERV_REPLICA_WORKERPROCESSOR_H
 
-/// WorkerProcessor.h declares:
-///
-/// class WorkerProcessor
-/// (see individual class documentation for more information)
-
 // System headers
 #include <algorithm>
 #include <list>
@@ -55,7 +50,7 @@ class WorkerRequestFactory;
 
 /**
   * Class WorkerProcessor is a front-end interface for processing
-  * requests of remote clients.
+  * requests from remote clients within worker-side services.
   */
 class WorkerProcessor
     :   public std::enable_shared_from_this<WorkerProcessor> {

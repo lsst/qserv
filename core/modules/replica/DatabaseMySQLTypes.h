@@ -23,15 +23,11 @@
 #define LSST_QSERV_REPLICA_DATABASEMYSQLTYPES_H
 
 /**
- * DatabaseMySQLTypes.h declares:
+ * This header defines public classesused in the implementation of
+ * the C++ wrapper of the MySQL C language library. This header is
+ * not supposed to be included dircetly by user's code.
  *
- *   struct ConnectionParams
- *
- *   class DoNotProcess
- *   class Keyword
- *   class Function
- *
- * (see individual class documentation for more information)
+ * @see class Connection
  */
 
 // System headers

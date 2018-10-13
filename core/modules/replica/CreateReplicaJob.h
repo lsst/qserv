@@ -22,13 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_CREATEREPLICAJOB_H
 #define LSST_QSERV_REPLICA_CREATEREPLICAJOB_H
 
-/// CreateReplicaJob.h declares:
-///
-/// struct CreateReplicaJobResult
-/// class  CreateReplicaJob
-///
-/// (see individual class documentation for more information)
-
 // System headers
 #include <functional>
 #include <list>

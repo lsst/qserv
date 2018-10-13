@@ -22,11 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_SERVICEPROVIDER_H
 #define LSST_QSERV_REPLICA_SERVICEPROVIDER_H
 
-/// ServiceProvider.h declares:
-///
-/// class ServiceProvider
-/// (see individual class documentation for more information)
-
 // System headers
 #include <memory>
 #include <string>

@@ -22,13 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_FILEUTILS_H
 #define LSST_QSERV_REPLICA_FILEUTILS_H
 
-/// FileUtils.h declares:
-///
-/// class FileUtils
-/// class FileCsComputeEngine
-///
-/// (see individual class documentation for more information)
-
 // System headers
 #include <cstdio>       // C-style I/O
 #include <cstdint>      // size_t, uint64_t

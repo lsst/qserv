@@ -22,13 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_DELETEWORKERJOB_H
 #define LSST_QSERV_REPLICA_DELETEWORKERJOB_H
 
-/// DeleteWorkerJob.h declares:
-///
-/// struct DeleteWorkerJobResult
-/// class  DeleteWorkerJob
-///
-/// (see individual class documentation for more information)
-
 // System headers
 #include <atomic>
 #include <functional>

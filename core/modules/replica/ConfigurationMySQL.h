@@ -22,10 +22,10 @@
 #ifndef LSST_QSERV_REPLICA_CONFIGURATIONMYSQL_H
 #define LSST_QSERV_REPLICA_CONFIGURATIONMYSQL_H
 
-/// ConfigurationMySQL.h declares:
-///
-/// class ConfigurationMySQL
-/// (see individual class documentation for more information)
+/**
+ * This header defines a class which provides a MySQL backend
+ * for the Configuration service.
+ */
 
 // System headers
 #include <cstddef>

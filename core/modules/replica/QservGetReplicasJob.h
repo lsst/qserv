@@ -22,13 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_QSERV_GETREPLICASJOB_H
 #define LSST_QSERV_REPLICA_QSERV_GETREPLICASJOB_H
 
-/// QservGetReplicasJob.h declares:
-///
-/// struct QservGetReplicasJobResult
-/// class  QservGetReplicasJob
-///
-/// (see individual class documentation for more information)
-
 // System headers
 #include <atomic>
 #include <functional>

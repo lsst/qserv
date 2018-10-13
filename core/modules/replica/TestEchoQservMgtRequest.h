@@ -22,11 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_TESTECHOQSERVMGTREQUEST_H
 #define LSST_QSERV_REPLICA_TESTECHOQSERVMGTREQUEST_H
 
-/// TestEchoQservMgtRequest.h declares:
-///
-/// class TestEchoQservMgtRequest
-/// (see individual class documentation for more information)
-
 // System headers
 #include <memory>
 #include <string>

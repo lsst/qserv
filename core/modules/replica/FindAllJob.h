@@ -22,13 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_FINDALLJOB_H
 #define LSST_QSERV_REPLICA_FINDALLJOB_H
 
-/// FindAllJob.h declares:
-///
-/// struct FindAllJobResult
-/// class  FindAllJob
-///
-/// (see individual class documentation for more information)
-
 // System headers
 #include <atomic>
 #include <functional>

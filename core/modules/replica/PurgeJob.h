@@ -22,13 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_PURGEJOB_H
 #define LSST_QSERV_REPLICA_PURGEJOB_H
 
-/// PurgeJob.h declares:
-///
-/// struct PurgeJobResult
-/// class  PurgeJob
-///
-/// (see individual class documentation for more information)
-
 // System headers
 #include <atomic>
 #include <functional>

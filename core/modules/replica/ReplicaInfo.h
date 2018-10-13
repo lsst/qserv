@@ -22,10 +22,11 @@
 #ifndef LSST_QSERV_REPLICA_REPLICAINFO_H
 #define LSST_QSERV_REPLICA_REPLICAINFO_H
 
-/// ReplicaInfo.h declares:
-///
-/// struct ReplicaInfo
-/// (see individual class documentation for more information)
+/**
+ * This header declares class ReplicaInfo and other relevant classes which
+ * are the transient representation of replicas within the Controller-side
+ * Replication Framework.
+ */
 
 // System headers
 #include <ctime>

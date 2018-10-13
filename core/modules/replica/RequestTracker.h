@@ -22,14 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_REQUESTTRACKER_H
 #define LSST_QSERV_REPLICA_REQUESTTRACKER_H
 
-/// RequestTracker.h declares:
-///
-/// class RequestTrackerBase
-/// class CommonRequestTracker
-/// class AnyRequestTracker
-///
-/// (see individual class documentation for more information)
-
 // System headers
 #include <atomic>
 #include <ostream>

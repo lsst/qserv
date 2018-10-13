@@ -24,13 +24,16 @@
 
 /// ServiceManagementRequest.h declares:
 ////
-///   class ServiceSuspendRequestPolicy
-///   class ServiceManagementRequest
-///   class ServiceSuspendRequest
-///   class ServiceResumeRequest
-///   class ServiceStatusRequest
-///
-/// (see individual class documentation for more information)
+/**
+ * This class declares a collection of the morker servers management request
+ * classes as part of the Controller-side Replication Framework.
+ *
+ * @see class ServiceSuspendRequestPolicy
+ * @see class ServiceManagementRequest
+ * @see class ServiceSuspendRequest
+ * @see class ServiceResumeRequest
+ * @see class ServiceStatusRequest
+ */
 
 // System headers
 #include <functional>

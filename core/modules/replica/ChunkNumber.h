@@ -22,14 +22,19 @@
 #ifndef LSST_QSERV_REPLICA_CHUNKNUMBER_H
 #define LSST_QSERV_REPLICA_CHUNKNUMBER_H
 
-/// ChunkNumber.h declares:
-///
-/// class ChunkNumberValidator
-/// class ChunkNumberSingleRangeValidator
-/// class ChunkNumberNotValid
-/// class ChunkNumber
-///
-/// (see individual class documentation for more information)
+/**
+ * This header defines a collection of classes which provide a safe abstraction
+ * for chunk numbers. Objects of class ChunkNumber replace the unsigned integer
+ * repesentation. Also, there are pluggable "validator" classes which are meant
+ * to restrict a range of chunk number values as well as ensure that chunk number
+ * objects are used in the right context. See a description of each class for
+ * further details on this subject.
+ *
+ * @see class ChunkNumberValidator
+ * @see class ChunkNumberSingleRangeValidator
+ * @see class ChunkNumberNotValid
+ * @see class ChunkNumber
+ */
 
 // System headers
 #include <iosfwd>

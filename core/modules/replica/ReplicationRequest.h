@@ -22,12 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_REPLICATIONREQUEST_H
 #define LSST_QSERV_REPLICA_REPLICATIONREQUEST_H
 
-/// ReplicationRequest.h declares:
-//
-///   class ReplicationRequest
-///
-/// (see individual class documentation for more information)
-
 // System headers
 #include <functional>
 #include <memory>

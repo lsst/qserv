@@ -22,11 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_MESSENGERCONNECTOR_H
 #define LSST_QSERV_REPLICA_MESSENGERCONNECTOR_H
 
-/// MessengerConnector.h declares:
-///
-/// class MessengerConnector
-/// (see individual class documentation for more information)
-
 // System headers
 #include <functional>
 #include <list>

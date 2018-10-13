@@ -23,11 +23,6 @@
 #ifndef LSST_QSERV_REPLICA_WORKERREQUEST_H
 #define LSST_QSERV_REPLICA_WORKERREQUEST_H
 
-/// WorkerRequest.h declares:
-///
-/// class WorkerRequest
-/// (see individual class documentation for more information)
-
 // System headers
 #include <atomic>
 #include <exception>

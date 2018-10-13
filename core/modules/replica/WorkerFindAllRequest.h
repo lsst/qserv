@@ -23,13 +23,6 @@
 #ifndef LSST_QSERV_REPLICA_WORKERFINDALLREQUEST_H
 #define LSST_QSERV_REPLICA_WORKERFINDALLREQUEST_H
 
-/// WorkerFindAllRequest.h declares:
-///
-/// class WorkerFindAllRequest
-/// class WorkerFindAllRequestPOSIX
-/// class WorkerFindAllRequestX
-/// (see individual class documentation for more information)
-
 // System headers
 #include <string>
 

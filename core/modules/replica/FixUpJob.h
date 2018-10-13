@@ -22,13 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_FIXUPJOB_H
 #define LSST_QSERV_REPLICA_FIXUPJOB_H
 
-/// FixUpJob.h declares:
-///
-/// struct FixUpJobResult
-/// class  FixUpJob
-///
-/// (see individual class documentation for more information)
-
 // System headers
 #include <atomic>
 #include <functional>

@@ -22,13 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_DELETEREPLICAJOB_H
 #define LSST_QSERV_REPLICA_DELETEREPLICAJOB_H
 
-/// DeleteReplicaJob.h declares:
-///
-/// struct DeleteReplicaJobResult
-/// class  DeleteReplicaJob
-///
-/// (see individual class documentation for more information)
-
 // System headers
 #include <functional>
 #include <list>

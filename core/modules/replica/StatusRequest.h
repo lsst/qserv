@@ -22,15 +22,15 @@
 #ifndef LSST_QSERV_REPLICA_STATUSREQUEST_H
 #define LSST_QSERV_REPLICA_STATUSREQUEST_H
 
-/// StatusRequest.h declares:
-///
-///   class StatusRequest
-///   class StatusRequestReplicate
-///   class StatusRequestDelete
-///   class StatusRequestFind
-///   class StatusRequestFindAll
-///
-/// (see individual class documentation for more information)
+/**
+ * This header declares a collection of the request status manaement request
+ * classes for the Controller-side Replication Framework.
+ *
+ * @see class StatusRequestReplicate
+ * @see class StatusRequestDelete
+ * @see class StatusRequestFind
+ * @see class StatusRequestFindAll
+ */
 
 // System headers
 #include <functional>

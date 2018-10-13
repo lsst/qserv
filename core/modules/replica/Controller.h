@@ -23,12 +23,10 @@
 #ifndef LSST_QSERV_REPLICA_CONTROLLER_H
 #define LSST_QSERV_REPLICA_CONTROLLER_H
 
-/// Controller.h declares:
-///
-/// class ControllerIdentity
-/// class Controller
-///
-/// (see individual class documentation for more information)
+/**
+ * This header defines the Replication Controller service for creating and
+ * managing requests sent to the remote worker services.
+ */
 
 // System headers
 #include <map>

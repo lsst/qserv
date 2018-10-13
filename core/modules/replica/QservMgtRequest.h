@@ -22,11 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_QSERVMGTREQUEST_H
 #define LSST_QSERV_REPLICA_QSERVMGTREQUEST_H
 
-/// QservMgtRequest.h declares:
-///
-/// class QservMgtRequest
-/// (see individual class documentation for more information)
-
 // System headers
 #include <atomic>
 #include <functional>

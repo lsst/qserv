@@ -22,12 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_ECHOREQUEST_H
 #define LSST_QSERV_REPLICA_ECHOREQUEST_H
 
-///  .h declares:
-//
-///   class EchoRequest
-///
-/// (see individual class documentation for more information)
-
 // System headers
 #include <functional>
 #include <memory>

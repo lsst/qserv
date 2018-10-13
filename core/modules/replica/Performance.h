@@ -23,12 +23,11 @@
 #ifndef LSST_QSERV_REPLICA_PERFORMANCE_H
 #define LSST_QSERV_REPLICA_PERFORMANCE_H
 
-/// Performance.h declares:
-///
-/// class PerformanceUtils
-/// class Performance
-/// class WorkerPerformance
-/// (see individual class documentation for more information)
+/**
+ * This header declares vaious utilities (classes) which are used
+ * for timing and performance measurements of the Replication system's
+ * operations.
+ */
 
 // System headers
 #include <iostream>

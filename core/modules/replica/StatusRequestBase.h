@@ -22,14 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_STATUSREQUESTBASE_H
 #define LSST_QSERV_REPLICA_STATUSREQUESTBASE_H
 
-/// StatusRequestBase.h declares:
-///
-/// Common classes shared by all implementations:
-///
-///   class StatusRequestBase
-///
-/// (see individual class documentation for more information)
-
 // System headers
 #include <memory>
 #include <string>

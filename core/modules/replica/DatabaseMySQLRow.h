@@ -23,11 +23,12 @@
 #define LSST_QSERV_REPLICA_DATABASEMYSQLROW_H
 
 /**
- * DatabaseMySQLRow.h declares:
+ * This header defines class Row which is one of the public classes of
+ * the C++ wrapper over the MySQL C library.
  *
- * class Raw
+ * @see class Connection
  *
- * (see individual class documentation for more information)
+ * This class is not normaly included dircetly by user's code.
  */
 
 // System headers

@@ -22,11 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_QSERVMGTSERVICES_H
 #define LSST_QSERV_REPLICA_QSERVMGTSERVICES_H
 
-/// QservMgtServices.h declares:
-///
-/// class QservMgtServices
-/// (see individual class documentation for more information)
-
 // System headers
 #include <map>
 #include <memory>

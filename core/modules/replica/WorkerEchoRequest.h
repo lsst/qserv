@@ -23,13 +23,6 @@
 #ifndef LSST_QSERV_REPLICA_WORKERECHOREQUEST_H
 #define LSST_QSERV_REPLICA_WORKERECHOREQUEST_H
 
-/// WorkerEchoRequest.h declares:
-///
-/// class WorkerEchoRequest
-/// class WorkerEchoRequestFS
-/// class WorkerEchoRequestPOSIX
-/// (see individual class documentation for more information)
-
 // System headers
 #include <string>
 

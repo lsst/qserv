@@ -23,10 +23,10 @@
 #ifndef LSST_QSERV_REPLICA_FILECLIENT_H
 #define LSST_QSERV_REPLICA_FILECLIENT_H
 
-/// FileClient.h declares:
-///
-/// class FileClient
-/// (see individual class documentation for more information)
+/**
+ * This header represents the client-side API for the point-to-point
+ * file migration service of the Replication system.
+ */
 
 // System headers
 #include <ctime>
@@ -70,9 +70,8 @@ public:
 };
 
 /**
-  * Class FileClient is used for handling incomming connections to
-  * the file delivery service. Each instance of this class will be runing
-  * in its own thread.
+  * Class FileClient is a client-side API for the point-to-point file migration
+  * service.
   */
 class FileClient
     :   public std::enable_shared_from_this<FileClient>  {

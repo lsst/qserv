@@ -23,11 +23,6 @@
 #ifndef LSST_QSERV_REPLICA_PROTOCOLBUFFER_H
 #define LSST_QSERV_REPLICA_PROTOCOLBUFFER_H
 
-/// ProtocolBuffer.h declares:
-///
-/// class ProtocolBuffer
-/// (see individual class documentation for more information)
-
 // System headers
 #include <arpa/inet.h>  // ntohl
 #include <cstdint>      // uint32_t

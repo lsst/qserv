@@ -23,10 +23,12 @@
 #ifndef LSST_QSERV_REPLICA_FILESERVERCONNECTION_H
 #define LSST_QSERV_REPLICA_FILESERVERCONNECTION_H
 
-/// FileServerConnection.h declares:
-///
-/// class FileServerConnection
-/// (see individual class documentation for more information)
+/**
+ * This header declares class FileServerConnection which is used
+ * in the server-side impementation of the point-to-point file migration
+ * service of teh Replication system. Note, that this header is not supposed
+ * to be dircetly included into any user code.
+ */
 
 // System headers
 #include <cstdio>       // std::FILE, C-style file I/O
