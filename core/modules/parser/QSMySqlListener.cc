@@ -536,6 +536,7 @@ public:
         SUBTRACT,
         ADD,
         DIVIDE,
+        MULTIPLY,
     };
     virtual void handleMathOperator(OperatorType operatorType) = 0;
 };
@@ -1152,7 +1153,7 @@ public:
     }
 
     void handleNestedExpressionAtom(shared_ptr<query::ValueExpr> const & valueExpr) override {
-        ASSERT_EXECUTION_CONDITION(false, "unhandled NestedExpressionAtom(ValueExpr", _ctx);
+        lockedParent()->handleExpressionAtomPredicate(valueExpr, _ctx);
     }
 
     void handleUnaryExpressionAtom(shared_ptr<query::ValueFactor> const & valueFactor) override {
@@ -2583,7 +2584,8 @@ class MathExpressionAtomAdapter :
         public FunctionCallExpressionAtomCBH,
         public FullColumnNameExpressionAtomCBH,
         public ConstantExpressionAtomCBH,
-        public NestedExpressionAtomCBH {
+        public NestedExpressionAtomCBH,
+        public MathExpressionAtomCBH {
 public:
     using AdapterT::AdapterT;
 
@@ -2618,6 +2620,13 @@ public:
             break;
         }
 
+        case MathOperatorCBH::MULTIPLY: {
+            bool success = ValueExprFactory::addOp(_getValueExpr(), query::ValueExpr::MULTIPLY);
+            ASSERT_EXECUTION_CONDITION(success,
+                    "Failed to add an operator to valueExpr:" << _getValueExpr(), _ctx);
+            break;
+        }
+
         }
     }
 
@@ -2636,6 +2645,17 @@ public:
     void handleNestedExpressionAtom(shared_ptr<query::ValueExpr> const & valueExpr) override {
         auto valueFactor = query::ValueFactor::newExprFactor(valueExpr);
         ValueExprFactory::addValueFactor(_getValueExpr(), valueFactor);
+    }
+
+    void handleMathExpressionAtom(shared_ptr<query::ValueExpr> const & valueExpr) override {
+        // for now, make the assumption that in a case where there is more than one operator to add, that
+        // the first call will be a MathExpressionAtom callback which populates _valueExpr, and later calls
+        // will be ValueFactor callbacks. If that's NOT the case and a second MathExpressionAtom callback
+        // might happen, or a ValueFactor callback might happen before a MathExpressionAtom callback then
+        // this algorithm may have to be rewritten; this funciton may need to pass a vector of ValueFactors
+        // as the callback argument, instead of a ValueExpr that contains a vector of ValueFactors.
+        ASSERT_EXECUTION_CONDITION(nullptr == _valueExpr, "expected _valueExpr to be null.", _ctx);
+        _valueExpr = valueExpr;
     }
 
     void onExit() override {
@@ -2741,6 +2761,8 @@ public:
             lockedParent()->handleMathOperator(MathOperatorCBH::ADD);
         } else if (_ctx->getText() == "/") {
             lockedParent()->handleMathOperator(MathOperatorCBH::DIVIDE);
+        } else if (_ctx->getText() == "*") {
+            lockedParent()->handleMathOperator(MathOperatorCBH::MULTIPLY);
         } else {
             ASSERT_EXECUTION_CONDITION(false, "Unhanlded operator type:" << _ctx->getText(), _ctx);
         }
