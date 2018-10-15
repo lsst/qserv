@@ -26,19 +26,19 @@
 
 basedir=$(dirname "$0")
 if [ -z "$basedir" ] || [ "$0" = "bash" ]; then
-    (>&2 echo "error: variable 'basedir' is not defined")
+    >&2 echo "error: variable 'basedir' is not defined"
     return 1 
 fi
 basedir=$(readlink -e "$basedir")
 if [ ! -d "$basedir" ]; then
-    (>&2 echo "error: path 'basedir' is not a valid directory")
+    >&2 echo "error: path 'basedir' is not a valid directory"
     return 1
 fi
 
 function get_param {
     local path="$basedir/$1"
     if [ ! -f "$path" ]; then
-        (>&2 echo "file not found: $path")
+        >&2 echo "file not found: $path"
         return 1
     fi
     cat "$path"

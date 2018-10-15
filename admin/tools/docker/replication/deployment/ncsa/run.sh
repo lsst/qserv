@@ -32,7 +32,7 @@ set -e
 
 TOOL="$1"
 if [ -z "${TOOL}" ]; then
-    (>&2 echo "usage: <tool> [<parameters>] [<options>] [<flags>]")
+    >&2 echo "usage: <tool> [<parameters>] [<options>] [<flags>]"
     exit 1
 fi
 shift
@@ -41,7 +41,7 @@ PARAMETERS="$@"
 # Make sure this command is run on one of the master nodes
 
 if [ "lsst-qserv-${MASTER}" != "$(hostname -s)" ]; then
-    (>&2 echo "this tool must be run on the master: ${MASTER}")
+    >&2 echo "this tool must be run on the master: ${MASTER}"
     exit 1
 fi
 

@@ -90,7 +90,7 @@ for i in "$@"; do
         return 2
         ;;
     *)
-        (>&2 echo "error: unknown option '${i}'${HELP}")
+        >&2 echo "error: unknown option '${i}'${HELP}"
         return 1
         ;;
     esac

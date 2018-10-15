@@ -58,7 +58,7 @@ if [ -n "${DB_SERVICE}" ]; then
         --log-warnings=2 \
         --pid-file="${DB_DATA_DIR}/log/${DB_CONTAINER_NAME}.pid"
     if [ $? -ne 0 ]; then
-        echo "failed to start the database container"
+        >&2 echo "failed to start the database container"
         exit 1
     fi
 fi
