@@ -43,6 +43,7 @@
 #include "css/CssAccess.h"
 #include "global/intTypes.h"
 #include "mysql/MySqlConfig.h"
+#include "parser/SelectParser.h"
 #include "qana/QueryPlugin.h"
 #include "qproc/ChunkQuerySpec.h"
 #include "qproc/ChunkSpec.h"
@@ -74,24 +75,20 @@ class QuerySession {
 public:
     typedef std::shared_ptr<QuerySession> Ptr;
 
+    // null constructor should only be used by parser unit tests.
+    QuerySession() = default;
+
     QuerySession(std::shared_ptr<css::CssAccess> css,
                  mysql::MySqlConfig const& mysqlSchemaConfig,
                  std::string const& defaultDb)
         : _css(css), _defaultDb(defaultDb),
           _mysqlSchemaConfig(mysqlSchemaConfig) {}
 
+    std::shared_ptr<query::SelectStmt> parseQuery(std::string const & statement,
+            parser::SelectParser::AntlrVersion version);
+
     std::string const& getOriginal() const { return _original; }
 
-    /**
-     * @brief Analyze SQL query issued by user
-     *
-     * This query comes from user through mysql-client and mysql-proxy
-     * This function will parse it, apply query plugins (i.e. build parallel and
-     * merge queries) and check for errors
-     *
-     * @param sql: the sql query
-     */
-    void analyzeQuery(std::string const& sql);
     /**
      * @brief Analyze SQL query using parsed query
      *
@@ -99,6 +96,7 @@ public:
      * @param stmt: parsed select statement
      */
     void analyzeQuery(std::string const& sql, std::shared_ptr<query::SelectStmt> const& stmt);
+
     bool needsMerge() const;
     bool hasChunks() const;
 

@@ -40,6 +40,7 @@
 #include <cstdio>
 #include <functional>
 #include <strings.h>
+#include <vector>
 
 // Third-party headers
 #include <antlr/CommonAST.hpp>
@@ -55,6 +56,17 @@
 #include "parser/SqlSQL2Lexer.hpp"
 #include "parser/SqlSQL2TokenTypes.hpp"
 #include "query/SelectStmt.h"
+#include "util/IterableFormatter.h"
+
+// these must be included before Log.h because they have a function called LOGS
+// that conflicts with the LOGS macro defined in Log.h
+#include "antlr4-runtime.h"
+#include "parser/QSMySqlLexer.h"
+#include "parser/QSMySqlParser.h"
+#include "parser/QSMySqlListener.h"
+
+// must come after QSMySqlLexer & Parser because of namespace collision
+#include "lsst/log/Log.h"
 
 // ANTLR headers, declare after auto-generated headers to
 // reduce namespace pollution
@@ -65,6 +77,27 @@
 #include <antlr/RecognitionException.hpp>
 #include <antlr/SemanticException.hpp>
 
+namespace {
+LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.SelectParser");
+
+// For the current query, this returns a list where each pair contains a bit of the string from the query
+// and how antlr4 tokenized that bit of string. It is useful for debugging problems where antlr4 did not
+// parse a query as expected, in the case where the string was not tokenized as expected.
+typedef std::vector<std::pair<std::string, std::string>> VecPairStr;
+VecPairStr getTokenPairs(antlr4::CommonTokenStream & tokens, QSMySqlLexer & lexer) {
+    VecPairStr ret;
+    for (auto&& t : tokens.getTokens()) {
+        std::string name = lexer.getVocabulary().getSymbolicName(t->getType());
+        if (name.empty()) {
+            name = lexer.getVocabulary().getLiteralName(t->getType());
+        }
+        ret.push_back(make_pair(std::move(name), t->getText()));
+    }
+    return ret;
+}
+
+}
+
 namespace lsst {
 namespace qserv {
 namespace parser {
@@ -74,13 +107,81 @@ namespace parser {
 ////////////////////////////////////////////////////////////////////////
 class AntlrParser {
 public:
-    AntlrParser(std::string const& q)
-        : statement(q),
-          stream(q, std::stringstream::in | std::stringstream::out),
-          lexer(stream),
-          parser(lexer)
-        {}
-    void run() {
+    virtual ~AntlrParser() {}
+    virtual void setup() = 0;
+    virtual void run() = 0;
+    virtual query::SelectStmt::Ptr getStatement() = 0;
+
+protected:
+    enum State {
+        INIT, SETUP_DONE, RUN_DONE
+    };
+    std::string stateString(State s) {
+        switch (s) {
+            default:
+                return "??";
+
+            case INIT:
+                return "INIT";
+
+            case SETUP_DONE:
+                return "SETUP_DONE";
+
+            case RUN_DONE:
+                return "RUN_DONE";
+        }
+    }
+
+    void changeState(State to) {
+        switch (_state) {
+            default:
+                throw ParseException("Parse error(INTERNAL): unhandled state transition value: " + _state);
+
+            case INIT:
+                if (SETUP_DONE != to) {
+                    throw ParseException("Parse error(INTERNAL):invalid state transition from INIT to "
+                            + stateString(to));
+                }
+                _state = SETUP_DONE;
+                break;
+
+            case SETUP_DONE:
+                if (RUN_DONE != to) {
+                    throw ParseException("Parse error(INTERNAL):invalid state transition from SETUP_DONE to "
+                            + stateString(to));
+                }
+                _state = RUN_DONE;
+                break;
+
+            case RUN_DONE:
+                // there are no valid transitions from RUN_DONE
+                throw ParseException("Parse error(INTERNAL):invalid state transition from RUN_DONE to "
+                        + stateString(to));
+        }
+    }
+
+    bool runTransitionDone() const { return _state == RUN_DONE; }
+
+private:
+    State _state {INIT};
+};
+
+class Antlr2Parser : public AntlrParser {
+public:
+    Antlr2Parser(std::string const& q)
+        : statement(q)
+        , stream(q, std::stringstream::in | std::stringstream::out)
+        , lexer(stream)
+        , parser(lexer)
+    {}
+
+    void setup() override {
+        changeState(SETUP_DONE);
+        sf.attachTo(parser);
+    }
+
+    void run() override {
+        changeState(RUN_DONE);
         parser.initializeASTFactory(factory);
         parser.setASTFactory(&factory);
         try {
@@ -118,6 +219,16 @@ public:
         RefAST a = parser.getAST();
     }
 
+    query::SelectStmt::Ptr getStatement() override {
+        if (false == runTransitionDone()) {
+            throw ParseException("Parse error(INTERNAL): run has not been executed on the statement..");
+        }
+        return sf.getStatement();
+        // _selectStmt->diagnose(); // helpful for debugging.
+    }
+
+private:
+    SelectFactory sf;
     std::string statement;
     std::stringstream stream;
     ASTFactory factory;
@@ -125,31 +236,100 @@ public:
     SqlSQL2Parser parser;
 };
 
+
+class Antlr4Parser : public AntlrParser, public ListenerDebugHelper, public std::enable_shared_from_this<Antlr4Parser> {
+public:
+
+    static std::shared_ptr<Antlr4Parser> create(std::string const & q) {
+        return std::shared_ptr<Antlr4Parser>(new Antlr4Parser(q));
+    }
+
+    void setup() override {
+        changeState(SETUP_DONE);
+        _listener = std::make_shared<parser::QSMySqlListener>(
+                std::static_pointer_cast<ListenerDebugHelper>(shared_from_this()));
+    }
+
+    void run() override {
+        changeState(RUN_DONE);
+        using namespace antlr4;
+        ANTLRInputStream input(_statement);
+        QSMySqlLexer lexer(&input);
+        CommonTokenStream tokens(&lexer);
+        tokens.fill();
+        QSMySqlParser parser(&tokens);
+        tree::ParseTree *tree = parser.root();
+        tree::ParseTreeWalker walker;
+        walker.walk(_listener.get(), tree);
+    }
+
+    query::SelectStmt::Ptr getStatement() override {
+        return _listener->getSelectStatement();
+    }
+
+    // TODO these funcs can probably be written with less code duplication
+    // and also without stringstream
+    std::string getStringTree() const override {
+        using namespace antlr4;
+        ANTLRInputStream input(_statement);
+        QSMySqlLexer lexer(&input);
+        CommonTokenStream tokens(&lexer);
+        tokens.fill();
+        QSMySqlParser parser(&tokens);
+        tree::ParseTree *tree = parser.root();
+        return tree->toStringTree(&parser);
+    }
+
+    std::string getTokens() const override {
+        using namespace antlr4;
+        ANTLRInputStream input(_statement);
+        QSMySqlLexer lexer(&input);
+        CommonTokenStream tokens(&lexer);
+        tokens.fill();
+        std::ostringstream t;
+        t << util::printable(getTokenPairs(tokens, lexer));
+        return t.str();
+    }
+
+    std::string getStatementStr() const override {
+        return _statement;
+    }
+
+private:
+    Antlr4Parser(std::string const& q)
+        : _statement(q)
+    {}
+
+    std::string _statement;
+    std::shared_ptr<parser::QSMySqlListener> _listener;
+};
+
+
 ////////////////////////////////////////////////////////////////////////
 // class SelectParser
 ////////////////////////////////////////////////////////////////////////
 
-// Static factory function
-SelectParser::Ptr
-SelectParser::newInstance(std::string const& statement) {
-    return std::shared_ptr<SelectParser>(new SelectParser(statement));
+
+SelectParser::Ptr SelectParser::newInstance(std::string const& statement, AntlrVersion v) {
+    return std::shared_ptr<SelectParser>(new SelectParser(statement, v));
 }
 
-// Construtor
-SelectParser::SelectParser(std::string const& statement)
+
+SelectParser::SelectParser(std::string const& statement, AntlrVersion v)
     :_statement(statement) {
+    if (ANTLR2 == v) {
+        _aParser = std::make_shared<Antlr2Parser>(_statement);
+        return;
+    }
+
+    _aParser = Antlr4Parser::create(_statement);
 }
 
-void
-SelectParser::setup() {
-    _selectStmt = std::make_shared<query::SelectStmt>();
-    _aParser = std::make_shared<AntlrParser>(_statement);
-    // model 3: parse tree construction to build intermediate expr.
-    SelectFactory sf;
-    sf.attachTo(_aParser->parser);
+
+void SelectParser::setup() {
+    _aParser->setup();
     _aParser->run();
-    _selectStmt = sf.getStatement();
-    // _selectStmt->diagnose(); // helpful for debugging.
+    _selectStmt = _aParser->getStatement();
 }
 
 }}} // namespace lsst::qserv::parser

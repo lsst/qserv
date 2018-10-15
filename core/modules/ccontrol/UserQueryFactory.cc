@@ -37,7 +37,6 @@
 // Qserv headers
 #include "ccontrol/ConfigError.h"
 #include "ccontrol/ConfigMap.h"
-#include "ccontrol/A4UserQueryFactory.h"
 #include "ccontrol/UserQueryAsyncResult.h"
 #include "ccontrol/UserQueryDrop.h"
 #include "ccontrol/UserQueryFlushChunksCache.h"
@@ -109,14 +108,6 @@ UserQueryFactory::UserQueryFactory(czar::CzarConfig const& czarConfig,
 }
 
 
-std::shared_ptr<query::SelectStmt>
-UserQueryFactory::antlr2NewSelectStmt(const std::string& query) {
-    auto parser = parser::SelectParser::newInstance(query);
-    parser->setup();
-    return parser->getSelectStmt();
-}
-
-
 UserQuery::Ptr
 UserQueryFactory::newUserQuery(std::string const& aQuery,
                                std::string const& defaultDb,
@@ -161,30 +152,28 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
 // parser maturity will have obviously passed what we could do with antlr v2 and we should remove all the
 // antlr v2 parser code from qserv.
 #if 0
-        // parse using antlr v2
-        std::shared_ptr<query::SelectStmt> a2stmt;
+    {
+        auto parser = parser::SelectParser::newInstance(query, parser::SelectParser::ANTLR2);
         try {
-            a2stmt = antlr2NewSelectStmt(query);
-        } catch(parser::ParseException const& e) {
+            parser->setup();
+        } catch (parser::ParseException& e) {
             LOGS(_log, LOG_LVL_DEBUG, "antlr v2 parse exception: " << e.what());
         }
-        if (a2stmt != nullptr) {
+        auto stmt = parser->getSelectStmt();
+        if (stmt != nullptr) {
 			LOGS(_log, LOG_LVL_DEBUG, "Old-style generated select statement: " << a2stmt->getQueryTemplate());
 			LOGS(_log, LOG_LVL_DEBUG, "Old-style Hierarchy: " << *a2stmt);
         }
-        LOGS(_log, LOG_LVL_DEBUG, "Old-style generated select statement: " << a2stmt->getQueryTemplate());
-        LOGS(_log, LOG_LVL_DEBUG, "Old-style Hierarchy: " << *a2stmt);
+    }
 #endif
 
-        // parse using antlr4
-        std::shared_ptr<query::SelectStmt> stmt;
+        auto parser = parser::SelectParser::newInstance(query, parser::SelectParser::ANTLR4);
         try {
-            stmt = a4NewUserQuery(query);
-        } catch (parser::adapter_order_error& e) {
-            return std::make_shared<UserQueryInvalid>(std::string("ParseException:") + e.what());
-        } catch (parser::adapter_execution_error& e) {
+            parser->setup();
+        } catch (parser::ParseException& e) {
             return std::make_shared<UserQueryInvalid>(std::string("ParseException:") + e.what());
         }
+        auto stmt = parser->getSelectStmt();
 
         // handle special database/table names
         auto&& tblRefList = stmt->getFromList().getTableRefList();

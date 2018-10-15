@@ -76,9 +76,6 @@ public:
                                 std::string const& userQueryId,
                                 std::string const& msgTableName);
 
-    static std::shared_ptr<query::SelectStmt> antlr2NewSelectStmt(const std::string& query);
-
-
 private:
     class Impl;
     std::shared_ptr<Impl> _impl;

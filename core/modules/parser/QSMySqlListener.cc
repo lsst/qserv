@@ -134,14 +134,15 @@ void QSMySqlListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) {\
 // is raised with a context specific message.
 #define ASSERT_EXECUTION_CONDITION(CONDITION, MESSAGE, CTX) \
 if (false == (CONDITION)) { \
-    { \
-        ostringstream msg; \
-        msg << getTypeName(this) << "::" << __FUNCTION__; \
-        msg << " messsage:\"" << MESSAGE << "\""; \
-        msg << ", in or around query segment: '" << getQueryString(CTX) << "'"; \
-        msg << ", with adapter stack:" << adapterStackToString(); \
-        throw adapter_execution_error(msg.str()); \
-    } \
+    ostringstream msg; \
+    msg << getTypeName(this) << "::" << __FUNCTION__; \
+    msg << " messsage:\"" << MESSAGE << "\""; \
+    msg << ", in query:" << getStatementStr(); \
+    msg << ", in or around query segment: '" << getQueryString(CTX) << "'"; \
+    msg << ", with adapter stack:" << adapterStackToString(); \
+    msg << ", string tree:" << getStringTree(); \
+    msg << ", tokens:" << getTokens(); \
+    throw adapter_execution_error(msg.str()); \
 } \
 
 
@@ -533,11 +534,15 @@ protected:
     // Used for error messages, uses the QSMySqlListener to get a list of the names of the adapters in the
     // adapter stack,
     std::string adapterStackToString() const { return qsMySqlListener->adapterStackToString(); }
+    std::string getStringTree() const { return qsMySqlListener->getStringTree(); }
+    std::string getTokens() const { return qsMySqlListener->getTokens(); }
+    std::string getStatementStr() const { return qsMySqlListener->getStatementStr(); }
 
 private:
     // Mostly the QSMySqlListener is not used by adapters. It is needed to get the adapter stack list for
     // error messages.
     QSMySqlListener const * const qsMySqlListener;
+
     weak_ptr<CBH> _parent;
 };
 
@@ -569,6 +574,9 @@ public:
     string name() const override { return getTypeName(this); }
 
     std::string adapterStackToString() const { return qsMySqlListener->adapterStackToString(); }
+    std::string getStringTree() const { return qsMySqlListener->getStringTree(); }
+    std::string getTokens() const { return qsMySqlListener->getTokens(); }
+    std::string getStatementStr() const { return qsMySqlListener->getStatementStr(); }
 
 private:
     shared_ptr<query::SelectStmt> _selectStatement;
@@ -2393,8 +2401,9 @@ public:
 /// QSMySqlListener impl
 
 
-QSMySqlListener::QSMySqlListener() {
-}
+QSMySqlListener::QSMySqlListener(std::shared_ptr<ListenerDebugHelper> const & listenerDebugHelper)
+    : _listenerDebugHelper(listenerDebugHelper)
+{}
 
 
 shared_ptr<query::SelectStmt> QSMySqlListener::getSelectStatement() const {
@@ -2444,7 +2453,6 @@ string QSMySqlListener::adapterStackToString() const {
     return ret;
 }
 
-
 // QSMySqlListener class methods
 
 
@@ -2459,6 +2467,31 @@ void QSMySqlListener::enterRoot(QSMySqlParser::RootContext* ctx) {
 
 void QSMySqlListener::exitRoot(QSMySqlParser::RootContext* ctx) {
     popAdapterStack<RootAdapter>(ctx);
+}
+
+
+std::string QSMySqlListener::getStringTree() const {
+    auto ldh = _listenerDebugHelper.lock();
+    if (ldh != nullptr) {
+        return ldh->getStringTree();
+    }
+    return "unexpected null listener debug helper.";
+}
+
+std::string QSMySqlListener::getTokens() const {
+    auto ldh = _listenerDebugHelper.lock();
+    if (ldh != nullptr) {
+        return ldh->getTokens();
+    }
+    return "unexpected null listener debug helper.";
+}
+
+std::string QSMySqlListener::getStatementStr() const {
+    auto ldh = _listenerDebugHelper.lock();
+    if (ldh != nullptr) {
+        return ldh->getStatementStr();
+    }
+    return "unexpected null listener debug helper.";
 }
 
 

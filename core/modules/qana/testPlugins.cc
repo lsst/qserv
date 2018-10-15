@@ -34,9 +34,11 @@
 #include <list>
 
 // Qserv headers
-#include "ccontrol/A4UserQueryFactory.h"
+#include "ccontrol/UserQueryFactory.h"
 #include "css/CssAccess.h"
 #include "mysql/MySqlConfig.h"
+#include "parser/ParseException.h"
+#include "parser/SelectParser.h"
 #include "qana/AnalysisError.h"
 #include "qana/DuplSelectExprPlugin.h"
 #include "qana/PostPlugin.h"
@@ -122,7 +124,13 @@ bool columnRefPtrComparisonPredicate(query::ColumnRef::Ptr lhs, query::ColumnRef
 
 
 BOOST_DATA_TEST_CASE(OrderBy, QUERIES, query) {
-    std::shared_ptr<query::SelectStmt> selectStatement = ccontrol::a4NewUserQuery(query.query);
+    auto parser = parser::SelectParser::newInstance(query.query, parser::SelectParser::ANTLR4);
+    try {
+        parser->setup();
+    } catch(parser::ParseException const& e) {
+        BOOST_TEST_MESSAGE("parse exception: " << e.what());
+    }
+    auto selectStatement = parser->getSelectStmt();
     auto validOrderByColumns = qana::PostPlugin::getValidOrderByColumns(*selectStatement);
     BOOST_REQUIRE_MESSAGE(std::equal(validOrderByColumns.begin(), validOrderByColumns.end(),
             query.expectedColumns.begin(), query.expectedColumns.end(),
@@ -131,6 +139,7 @@ BOOST_DATA_TEST_CASE(OrderBy, QUERIES, query) {
             ", available order by columns:" << util::printable(validOrderByColumns) <<
             " do not match expected order by colums:" << util::printable(query.expectedColumns));
 }
+
 
 static const std::vector<OrderByQueryAndExpectedColumns> ORDER_BY_QUERIES = {
         OrderByQueryAndExpectedColumns("SELECT foo ORDER BY bar",
@@ -149,7 +158,13 @@ static const std::vector<OrderByQueryAndExpectedColumns> ORDER_BY_QUERIES = {
 };
 
 BOOST_DATA_TEST_CASE(UsedOrderBy, ORDER_BY_QUERIES, query) {
-    std::shared_ptr<query::SelectStmt> selectStatement = ccontrol::a4NewUserQuery(query.query);
+    auto parser = parser::SelectParser::newInstance(query.query, parser::SelectParser::ANTLR4);
+    try {
+        parser->setup();
+    } catch(parser::ParseException const& e) {
+        BOOST_TEST_MESSAGE("parse exception: " << e.what());
+    }
+    auto selectStatement = parser->getSelectStmt();
     auto usedOrderByColumns = qana::PostPlugin::getUsedOrderByColumns(*selectStatement);
     BOOST_REQUIRE_MESSAGE(std::equal(usedOrderByColumns.begin(), usedOrderByColumns.end(),
             query.expectedColumns.begin(), query.expectedColumns.end(),
