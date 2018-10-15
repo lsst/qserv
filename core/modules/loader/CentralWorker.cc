@@ -95,28 +95,96 @@ void CentralWorker::_monitor() {
     // TODO &&& check the right neighbor connection, kill and restart if needed.
     std::lock_guard<std::mutex> lck(_rightMtx); // This mutex is locked for a long time &&&
     if (_neighborRight.getName() != 0) {
-        if (not _neighborRight.getEstablished()) {
-            auto nAddr = _neighborRight.getAddress();
-            if (nAddr.ip == "") {
-                // look up the network address for the rightNeighbor
-                WWorkerListItem::Ptr nWorker = _wWorkerList->getWorkerNamed(_neighborRight.getName());
-                if (nWorker != nullptr) {
-                    auto addr = nWorker->getAddressTcp();
-                    LOGS(_log, LOG_LVL_INFO, "_monitor neighbor right " << _neighborRight.getName() <<
-                                             " " << addr);
-                    _neighborRight.setAddress(addr);
+        try {
+            if (not _neighborRight.getEstablished()) {
+                auto nAddr = _neighborRight.getAddress();
+                if (nAddr.ip == "") {
+                    // look up the network address for the rightNeighbor
+                    WWorkerListItem::Ptr nWorker = _wWorkerList->getWorkerNamed(_neighborRight.getName());
+                    if (nWorker != nullptr) {
+                        auto addr = nWorker->getAddressTcp();
+                        LOGS(_log, LOG_LVL_INFO, "_monitor neighbor right " << _neighborRight.getName() <<
+                                " " << addr);
+                        _neighborRight.setAddress(addr);
+                    }
                 }
-            }
 
-            LOGS(_log, LOG_LVL_INFO, "_monitor trying to establish TCP connection with " <<
-                    _neighborRight.getName() << " " << _neighborRight.getAddress());
-            _rightConnect();
+                LOGS(_log, LOG_LVL_INFO, "_monitor trying to establish TCP connection with " <<
+                        _neighborRight.getName() << " " << _neighborRight.getAddress());
+                _rightConnect(); // calls _determineRange() while establishing connection
+            } else {
+                _determineRange();
+            }
+            _shiftIfNeeded();
+        } catch (LoaderMsgErr const& ex) {
+            LOGS(_log, LOG_LVL_WARN, "_monitor() " << ex.what());
+            _rightDisconnect();
         }
-        _shiftIfNeeded();
     } else {
-        //TODO &&& if there is a connection, close it.
+        // If there is a connection, close it.
         _rightDisconnect();
     }
+}
+
+
+void CentralWorker::_determineRange() {
+    std::string const funcName("CentralWorker::_rightConnect");
+    BufferUdp data(2000);
+    {
+        data.reset();
+        UInt32Element imLeftKind(LoaderMsg::IM_YOUR_L_NEIGHBOR);
+        imLeftKind.appendToData(data);
+        StringElement strElem;
+        std::unique_ptr<proto::WorkerKeysInfo> protoWKI = _workerKeysInfoBuilder();
+        protoWKI->SerializeToString(&(strElem.element));
+        UInt32Element bytesInMsg(strElem.transmitSize());
+        // Must send the number of bytes in the message so TCP server knows how many bytes to read.
+        bytesInMsg.appendToData(data);
+        strElem.appendToData(data);
+        ServerTcpBase::_writeData(*_rightSocket, data);
+    }
+    // Get back their basic info
+    {
+        data.reset();
+        auto msgElem = data.readFromSocket(*_rightSocket, "CentralWorker::_rightConnect - range");
+        LOGS(_log, LOG_LVL_INFO, "&&& _rightConnect() parsing data=" << data.dump());
+        auto protoItem = StringElement::protoParse<proto::WorkerKeysInfo>(data);
+        if (protoItem == nullptr) {
+            throw LoaderMsgErr(funcName, __FILE__, __LINE__);
+        }
+        NeighborsInfo nInfoR;
+        auto workerName = protoItem->name();
+        nInfoR.keyCount = protoItem->mapsize();
+        _neighborRight.setKeyCount(nInfoR.keyCount); // TODO add a timestamp to this data.
+        nInfoR.recentAdds = protoItem->recentadds();
+        proto::WorkerRangeString protoRange = protoItem->range();
+        LOGS(_log, LOG_LVL_INFO, "&&& _rightConnect() rightNeighbor name=" << workerName << " keyCount=" << nInfoR.keyCount << " recentAdds=" << nInfoR.recentAdds);
+        bool valid = protoRange.valid();
+        StringRange rightRange;
+        if (valid) {
+            std::string min   = protoRange.min();
+            std::string max   = protoRange.max();
+            bool unlimited = protoRange.maxunlimited();
+            rightRange.setMinMax(min, max, unlimited);
+            LOGS(_log, LOG_LVL_INFO, "&&& _rightConnect rightRange=" << rightRange);
+            _neighborRight.setRange(rightRange);
+            // Adjust our max range given the the right minimum information.
+            {
+                std::lock_guard<std::mutex> lckMap(_idMapMtx);
+                // Can't be unlimited anymore
+                _strRange.setMax(min, false);
+            }
+        }
+        proto::Neighbor protoLeftNeigh = protoItem->left();
+        nInfoR.neighborLeft->update(protoLeftNeigh.name());  // Not really useful in this case.
+        proto::Neighbor protoRightNeigh = protoItem->right();
+        nInfoR.neighborRight->update(protoRightNeigh.name()); // This should be our name
+        if (nInfoR.neighborLeft->get() != getOurName()) {
+            LOGS(_log, LOG_LVL_ERROR, "Our (" << getOurName() <<
+                    ") right neighbor does not have our name as its left neighbor" );
+        }
+    }
+
 }
 
 
@@ -125,10 +193,6 @@ void CentralWorker::_shiftIfNeeded() {
     // There should be reasonably recent information from our neighbors. Use that
     // and our status to ask the right neighbor to give us entries or we send entries
     // to the right neighbor.
-    LOGS(_log, LOG_LVL_ERROR, "&&& CentralWorker::_shiftIfNeeded needs code!!!!!!!!!!!!!!!!!!!!!!111");
-    exit(-1);
-
-
     // If right connection is not established, return
     if (not _neighborRight.getEstablished()) {
         LOGS(_log, LOG_LVL_INFO, "_shiftIfNeeded no right neighbor, no shift.");
@@ -139,16 +203,13 @@ void CentralWorker::_shiftIfNeeded() {
         return;
     }
 
-    // Build message containing Range, size of map, number of items added. &&& duplicate code
+    // Get local copies of range and map info.
     StringRange range;
     size_t mapSize;
-    size_t recentAdds;
     {
         std::lock_guard<std::mutex> lck(_idMapMtx);
         range = _strRange;
         mapSize = _directorIdMap.size();
-        _removeOldEntries();
-        recentAdds = _recentAdds.size();
     }
 
     // If this worker has more keys than the rightNeighbor, consider shifting keys to the right neighbor.
@@ -161,20 +222,38 @@ void CentralWorker::_shiftIfNeeded() {
         LOGS(_log, LOG_LVL_ERROR, "Right neighbor range is less than ours!!!! our=" << range << " right=" << rightRange);
         return;
     }
-    if ()
-    // &&&;
+    int keysToShift = 0;
+    CentralWorker::Direction direction = NONE0;
+    int sourceSize = 0;
+    if (mapSize > rightKeyCount*_thresholdNeighborShift) { // TODO add average check
+        keysToShift = mapSize - rightKeyCount;
+        direction = TORIGHT1;
+        sourceSize = mapSize;
+    } else if (mapSize*_thresholdNeighborShift < rightKeyCount) {
+        keysToShift = rightKeyCount - mapSize;
+        direction = FROMRIGHT2;
+        sourceSize = rightKeyCount;
+    }
+    if (keysToShift > _maxKeysToShift) keysToShift = _maxKeysToShift;
+    if (keysToShift > sourceSize/3) keysToShift = sourceSize/3;
+    if (keysToShift < 1) {
+        LOGS(_log, LOG_LVL_WARN, "Worker doesn't have enough keys to shift.");
+        return;
+    }
+    _shiftWithRightInProgress = true;
+    _shift(direction, keysToShift);
+}
 
-    // else If this worker has fewer keys than the rightNeighbor, consider shifting keys from the right neighbor
-        // If this worker has _thresholdAverage less keys than average or _thresholdNeighborShift fewer keys than the right neighbor
-            // request enough keys from the right to balance (min 1 key, max _maxShiftKeys, never shift more than 20% of our keys)
-    // &&&;
+void CentralWorker::_shift(Direction direction, int keysToShift) {
+    LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift direction=" << direction << " keys=" << keysToShift);
+    LOGS(_log, LOG_LVL_ERROR, "&&& CentralWorker::_shift NEEDS CODE");
+    exit (-1);
 }
 
 
 /// Must hold _rightMtx before calling
 void CentralWorker::_rightConnect() {
     std::string const funcName("CentralWorker::_rightConnect");
-    try {
         if(_rightConnectStatus == VOID0) {
             _rightConnectStatus = STARTING1;
             // Connect to the right neighbor server
@@ -210,6 +289,8 @@ void CentralWorker::_rightConnect() {
             }
 
             // Send our basic info (&&& put this in separate function to be used in other communications !!! &&&)
+            _determineRange();
+#if 0 // &&&
             {
                 data.reset();
                 UInt32Element imLeftKind(LoaderMsg::IM_YOUR_L_NEIGHBOR);
@@ -258,16 +339,12 @@ void CentralWorker::_rightConnect() {
                             ") right neighbor does not have our name as its left neighbor" );
                 }
             }
-
+#endif
 
             // Unless they disconnect.
             _rightConnectStatus = ESTABLISHED2;
             _neighborRight.setEstablished(true);
         }
-    } catch (LoaderMsgErr const& ex) {
-        LOGS(_log, LOG_LVL_WARN, "_rightConnect() " << ex.what());
-        _rightDisconnect();
-    }
 }
 
 
@@ -277,12 +354,11 @@ void CentralWorker::setNeighborInfoLeft(uint32_t name, int keyCount, StringRange
         LOGS(_log, LOG_LVL_ERROR, "disconnecting left since setNeighborInfoLeft name(" << name <<
                                   ") != neighborLeft.name(" << _neighborLeft.getName() << ")");
         _neighborLeft.setEstablished(false);
-        return false;
+        return;
     }
     _neighborLeft.setKeyCount(keyCount);
     _neighborLeft.setRange(range);
     _neighborLeft.setEstablished(true);
-    return true;
 }
 
 
@@ -299,8 +375,11 @@ void CentralWorker::_rightDisconnect() {
 
 void CentralWorker::_cancelShiftsRightNeighbor() {
     LOGS(_log, LOG_LVL_WARN, "Canceling shifts with right neighbor");
-    _shiftWithRightInProgress = false;
-    // TODO What else needs to done?
+    if (_shiftWithRightInProgress.exchange(false)) {
+        // TODO What else needs to done?
+        LOGS(_log, LOG_LVL_ERROR, "CentralWorker::_cancelShiftsRightNeighbor needs code");
+        exit(-1);
+    }
 }
 
 
