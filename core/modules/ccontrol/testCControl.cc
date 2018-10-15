@@ -492,9 +492,14 @@ static const std::vector< std::string > QUERIES = {
        "< (0.08 + 0.42 * (scisql_fluxToAbMag(gFlux_PS)-scisql_fluxToAbMag(rFlux_PS) - 0.96)) "
        " OR scisql_fluxToAbMag(gFlux_PS)-scisql_fluxToAbMag(rFlux_PS) > 1.26 ) "
        "AND    scisql_fluxToAbMag(iFlux_PS)-scisql_fluxToAbMag(zFlux_PS) < 0.8;",
-    //fails "SELECT  COUNT(*) AS totalCount, "
+
+    // this is not supposed to produce a valid query TODO how to address this with antlr4, how to structure the test?
+    // per testQueryAnaGeneral: CASE in column spec is illegal.
+    //"SELECT  COUNT(*) AS totalCount, "
     //   "SUM(CASE WHEN (typeId=3) THEN 1 ELSE 0 END) AS galaxyCount "
     //   "FROM Object WHERE rFlux_PS > 10;",
+    // this is not supposed to produce a valid query TODO how to address this with antlr4, how to structure the test?
+    // per testQueryAnaGeneral: CASE in column spec is illegal.
     //fails "SELECT scisql_fluxToAbMag(uFlux_PS) "
     //   "FROM   Object WHERE  (objectId % 100 ) = 40;",
 
