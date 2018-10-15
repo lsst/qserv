@@ -129,6 +129,10 @@ public:
         return false;
     }
 
+    bool operator>(StringRange const& other) const {
+        return other < *this;
+    }
+
     /// Return a string that would slightly follow the value of the input string 'str'
     /// appendChar is the character appended to a string ending with a character > 'z'
     static std::string advanceString(std::string const& str, char appendChar='a');

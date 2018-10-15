@@ -58,6 +58,12 @@ public:
         ESTABLISHED2
     };
 
+    enum Direction {
+        NONE0 = 0,
+        TORIGHT1,
+        FROMRIGHT2
+    };
+
     CentralWorker(boost::asio::io_service& ioService,
                   std::string const& masterHostName,   int masterPort,
                   std::string const& hostName,         int port,
@@ -119,7 +125,9 @@ private:
     void _startMonitoring();
 
     void _monitor();
+    void _determineRange();
     void _shiftIfNeeded();
+    void _shift(Direction direction, int keysToShift);
 
     void _workerInfoReceive(std::unique_ptr<proto::WorkerListItem>& protoBuf);
 
@@ -141,7 +149,7 @@ private:
     void _rightConnect();
     void _rightDisconnect();
 
-    // bool _connectToLeftNeighbor(uint32_t neighborLeftName); &&& delete
+    void _cancelShiftsRightNeighbor();
 
 
     const std::string        _hostName;
@@ -171,9 +179,13 @@ private:
     SocketStatus _rightConnectStatus{VOID0};
     std::shared_ptr<tcp::socket>  _rightSocket;
 
+    std::atomic<bool> _shiftWithRightInProgress{false};
+    double _thresholdNeighborShift{1.10}; ///< Shift if 10% more than neighbor
+    int _maxKeysToShift{10000};
+
     std::shared_ptr<CentralWorkerDoListItem> _centralWorkerDoListItem;
 
-    void _cancelShiftsRightNeighbor();
+
 };
 
 
