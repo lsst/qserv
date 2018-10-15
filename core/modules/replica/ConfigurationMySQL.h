@@ -110,6 +110,18 @@ private:
      */
     void loadConfiguration();
 
+    /**
+     * The actual implementation of method loadConfiguration.
+     *
+     * @param lock
+     *   the lock on a mutex required for the thread safety
+     *
+     * @param conn
+     *   the refernce to the database connector
+     */
+    void loadConfigurationImpl(util::Lock const& lock,
+                               database::mysql::Connection::Ptr const& conn);
+
 private:
 
     /// Parameters of the connection

@@ -163,11 +163,12 @@ Row::Cell const& Row::getDataCell(std::string const& columnName) const {
     if (not isValid()) {
         throw std::logic_error(context + "the object is not valid");
     }
-    if (not _name2indexPtr->count(columnName)) {
+    auto itr = _name2indexPtr->find(columnName);
+    if (_name2indexPtr->end() == itr) {
         throw std::invalid_argument(
                 context + "the column '" + columnName + "'is not in the result set");
     }
-    return _index2cell.at(_name2indexPtr->at(columnName));
+    return _index2cell.at(itr->second);
 }
 
 

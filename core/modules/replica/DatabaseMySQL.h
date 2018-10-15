@@ -498,7 +498,7 @@ public:
      * Execute the specified query and initialize object context to allow
      * a result set extraction.
      *
-     * @param query - query to be execured
+     * @param query - query to be executed
      * 
      * @return smart pointer to self to allow chained calls
      * 
@@ -579,10 +579,14 @@ public:
      * Execute a user-supplied algorithm which could be retried the specified
      * number of times (or until a given timeout expires) if a connection to
      * a server is lost and re-established before the completion of the algorithm.
-     * By default (see optional parameters to the method) the metod allows one
-     * auto-reconnect. The method will also give up after the specified timeout
-     * (which can differ then the one supplied to the factory method
-     * Connection::openWait()) eill expire.
+     * The numnber of allowed auto-reconnects and the timeout are controlled by
+     * the corresponding parameters of the method.
+     *
+     * Notes:
+     * - in case of reconnects and retries the failed transaction will be aborted
+     * - it's up to a user script to begin and commit a transaction as needed
+     * - it's up to a user script to take care of side effects if the script will run
+     * more than once
      *
      * Example:
      *   @code
@@ -784,8 +788,8 @@ private:
                unsigned int connectTimeoutSec);
 
     /**
-     * Keep trying to connect to a server until either a timeout expirese or
-     * attempts  attempt to establish a connection
+     * Keep trying to connect to a server until either a timeout expires, or
+     * some unrecoverable failure happens while trying to establish a connection.
      *
      * @throws ConnectTimeout - failed to establish a connection within a timeout
      * @throws Error          - other problem when preparing or establishing a connection

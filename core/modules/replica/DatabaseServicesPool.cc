@@ -40,6 +40,46 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
+// ======================
+// == ServiceAllocator ==
+// ======================
+
+/**
+ * Class ServiceAllocator implements the RAII paradigm by allocating
+ * a service (and storing its reference in the corresponding data member)
+ * from the pool in the class's constructor and releasing it back into
+ * the pool in the destructor.
+ */
+class ServiceAllocator {
+public:
+    
+    ServiceAllocator(DatabaseServicesPool::Ptr const& pool)
+        :   _pool(pool),
+            _service(pool->allocateService()) {
+    }
+
+    // Default construction and copy semantics are prohibited
+
+    ServiceAllocator() = delete;
+    ServiceAllocator(ServiceAllocator const&) = delete;
+    ServiceAllocator& operator=(ServiceAllocator const&) = delete;
+
+    ~ServiceAllocator() {
+        _pool->releaseService(_service);
+    }
+
+    /// @return a reference to the allocated service
+    DatabaseServices::Ptr const& operator()() { return _service; }
+
+private:
+    DatabaseServicesPool::Ptr const _pool;
+    DatabaseServices::Ptr const _service;
+};
+
+// ==========================
+// == DatabaseServicesPool ==
+// ==========================
+
 DatabaseServicesPool::Ptr DatabaseServicesPool::create(Configuration::Ptr const& configuration) {
     return DatabaseServicesPool::Ptr(new DatabaseServicesPool(configuration));
 }
@@ -55,162 +95,74 @@ DatabaseServicesPool::DatabaseServicesPool(Configuration::Ptr const& configurati
 void DatabaseServicesPool::saveState(ControllerIdentity const& identity,
                                       uint64_t startTime) {
 
-    // IMPLEMENTATION NOTE: exceptions are temporary intercepted (and re-thrown)
-    // in order to release allocated services.
-
-    auto service = allocateService();
-    try {
-        service->saveState(identity, startTime);
-        releaseService(service);
-
-    } catch (std::exception const& ex) {
-        releaseService(service);
-        throw;
-    }
+    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
+    service()->saveState(identity, startTime);
 }
 
 void DatabaseServicesPool::saveState(Job const& job,
                                       Job::Options const& options) {
 
-    // IMPLEMENTATION NOTE: exceptions are temporary intercepted (and re-thrown)
-    // in order to release allocated services.
-
-    auto service = allocateService();
-    try {
-        service->saveState(job, options);
-        releaseService(service);
-
-    } catch (std::exception const& ex) {
-        releaseService(service);
-        throw;
-    }
+    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
+    service()->saveState(job, options);
 }
 
 void DatabaseServicesPool::updateHeartbeatTime(Job const& job) {
 
-    // IMPLEMENTATION NOTE: exceptions are temporary intercepted (and re-thrown)
-    // in order to release allocated services.
-
-    auto service = allocateService();
-    try {
-        service->updateHeartbeatTime(job);
-        releaseService(service);
-
-    } catch (std::exception const& ex) {
-        releaseService(service);
-        throw;
-    }
+    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
+    service()->updateHeartbeatTime(job);
 }
 
 void DatabaseServicesPool::saveState(QservMgtRequest const& request,
                                       Performance const& performance,
                                       std::string const& serverError) {
 
-    // IMPLEMENTATION NOTE: exceptions are temporary intercepted (and re-thrown)
-    // in order to release allocated services.
-
-    auto service = allocateService();
-    try {
-        service->saveState(request, performance, serverError);
-        releaseService(service);
-
-    } catch (std::exception const& ex) {
-        releaseService(service);
-        throw;
-    }
+    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
+    service()->saveState(request, performance, serverError);
 }
 
 void DatabaseServicesPool::saveState(Request const& request,
                                      Performance const& performance) {
 
-    // IMPLEMENTATION NOTE: exceptions are temporary intercepted (and re-thrown)
-    // in order to release allocated services.
-
-    auto service = allocateService();
-    try {
-        service->saveState(request, performance);
-        releaseService(service);
-
-    } catch (std::exception const& ex) {
-        releaseService(service);
-        throw;
-    }
+    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
+    service()->saveState(request, performance);
 }
 
 void DatabaseServicesPool::updateRequestState(Request const& request,
                                               std::string const& targetRequestId,
                                               Performance const& targetRequestPerformance) {
 
-    // IMPLEMENTATION NOTE: exceptions are temporary intercepted (and re-thrown)
-    // in order to release allocated services.
-
-    auto service = allocateService();
-    try {
-        service->updateRequestState(request,
-                                    targetRequestId,
-                                    targetRequestPerformance);
-        releaseService(service);
-
-    } catch (std::exception const& ex) {
-        releaseService(service);
-        throw;
-    }
+    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
+    service()->updateRequestState(
+        request,
+        targetRequestId,
+        targetRequestPerformance
+    );
 }
 
 void DatabaseServicesPool::saveReplicaInfo(ReplicaInfo const& info) {
 
-    // IMPLEMENTATION NOTE: exceptions are temporary intercepted (and re-thrown)
-    // in order to release allocated services.
-
-    auto service = allocateService();
-    try {
-        service->saveReplicaInfo(info);
-        releaseService(service);
-
-    } catch (std::exception const& ex) {
-        releaseService(service);
-        throw;
-    }
+    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
+    service()->saveReplicaInfo(info);
 }
 
 void DatabaseServicesPool::saveReplicaInfoCollection(std::string const& worker,
                                                      std::string const& database,
                                                      ReplicaInfoCollection const& newReplicaInfoCollection) {
 
-    // IMPLEMENTATION NOTE: exceptions are temporary intercepted (and re-thrown)
-    // in order to release allocated services.
-
-    auto service = allocateService();
-    try {
-        service->saveReplicaInfoCollection(worker,
-                                           database,
-                                           newReplicaInfoCollection);
-        releaseService(service);
-
-    } catch (std::exception const& ex) {
-        releaseService(service);
-        throw;
-    }
+    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
+    service()->saveReplicaInfoCollection(worker,
+                                         database,
+                                         newReplicaInfoCollection);
 }
 
 void DatabaseServicesPool::findOldestReplicas(std::vector<ReplicaInfo>& replicas,
                                               size_t maxReplicas,
                                               bool enabledWorkersOnly) {
 
-    // IMPLEMENTATION NOTE: exceptions are temporary intercepted (and re-thrown)
-    // in order to release allocated services.
-
-    auto service = allocateService();
-    try {
-        service->findOldestReplicas(replicas,
-                                    maxReplicas,
-                                    enabledWorkersOnly);
-        releaseService(service);
-
-    } catch (std::exception const& ex) {
-        releaseService(service);
-        throw;
-    }
+    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
+    service()->findOldestReplicas(replicas,
+                                  maxReplicas,
+                                  enabledWorkersOnly);
 }
 
 void DatabaseServicesPool::findReplicas(std::vector<ReplicaInfo>& replicas,
@@ -218,41 +170,21 @@ void DatabaseServicesPool::findReplicas(std::vector<ReplicaInfo>& replicas,
                                         std::string const& database,
                                         bool enabledWorkersOnly) {
 
-    // IMPLEMENTATION NOTE: exceptions are temporary intercepted (and re-thrown)
-    // in order to release allocated services.
-
-    auto service = allocateService();
-    try {
-        service->findReplicas(replicas,
-                              chunk,
-                              database,
-                              enabledWorkersOnly);
-        releaseService(service);
-
-    } catch (std::exception const& ex) {
-        releaseService(service);
-        throw;
-    }
+    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
+    service()->findReplicas(replicas,
+                            chunk,
+                            database,
+                            enabledWorkersOnly);
 }
 
 void DatabaseServicesPool::findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
                                               std::string const& worker,
                                               std::string const& database) {
 
-    // IMPLEMENTATION NOTE: exceptions are temporary intercepted (and re-thrown)
-    // in order to release allocated services.
-
-    auto service = allocateService();
-    try {
-        service->findWorkerReplicas(replicas,
-                                    worker,
-                                    database);
-        releaseService(service);
-
-    } catch (std::exception const& ex) {
-        releaseService(service);
-        throw;
-    }
+    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
+    service()->findWorkerReplicas(replicas,
+                                  worker,
+                                  database);
 }
 
 void DatabaseServicesPool::findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
@@ -260,21 +192,11 @@ void DatabaseServicesPool::findWorkerReplicas(std::vector<ReplicaInfo>& replicas
                                               std::string const& worker,
                                               std::string const& databaseFamily) {
 
-    // IMPLEMENTATION NOTE: exceptions are temporary intercepted (and re-thrown)
-    // in order to release allocated services.
-
-    auto service = allocateService();
-    try {
-        service->findWorkerReplicas(replicas,
-                                    chunk,
-                                    worker,
-                                    databaseFamily);
-        releaseService(service);
-
-    } catch (std::exception const& ex) {
-        releaseService(service);
-        throw;
-    }
+    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
+    service()->findWorkerReplicas(replicas,
+                                  chunk,
+                                  worker,
+                                  databaseFamily);
 }
 
 DatabaseServices::Ptr DatabaseServicesPool::allocateService() {

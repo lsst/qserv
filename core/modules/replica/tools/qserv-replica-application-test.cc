@@ -59,8 +59,8 @@ public:
             _o1(123),
             _o2(false) {
 
-        // Configure the parser of teh command-line arguments. Note that
-        // the parser will run brfore invoking method "runImpl()".
+        // Configure the parser of the command-line arguments. Note that
+        // the parser is guaranteed to run before invoking method "runImpl()".
 
         parser().required(
             "p1",

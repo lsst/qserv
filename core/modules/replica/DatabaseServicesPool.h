@@ -51,6 +51,9 @@ class DatabaseServicesPool
     :   public DatabaseServices {
 
 public:
+    /// This class wich implements the RAII paradigm is used by
+    /// the implementation of the pool.
+    friend class ServiceAllocator;
 
     /// The pointer type for instances of the class
     typedef std::shared_ptr<DatabaseServicesPool> Ptr;
@@ -152,7 +155,6 @@ public:
                             std::string const& databaseFamily) final;
 
 private:
-
     /**
      * Construct the object.
      *
