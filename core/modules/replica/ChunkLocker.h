@@ -22,13 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_CHUNKLOCKER_H
 #define LSST_QSERV_REPLICA_CHUNKLOCKER_H
 
-/// ChunkLocker.h declares:
-///
-/// struct Chunk
-/// class  ChunkLocker
-///
-/// (see individual class documentation for more information)
-
 // System headers
 #include <list>
 #include <map>

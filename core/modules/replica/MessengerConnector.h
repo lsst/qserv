@@ -22,11 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_MESSENGERCONNECTOR_H
 #define LSST_QSERV_REPLICA_MESSENGERCONNECTOR_H
 
-/// MessengerConnector.h declares:
-///
-/// class MessengerConnector
-/// (see individual class documentation for more information)
-
 // System headers
 #include <functional>
 #include <list>
@@ -165,7 +160,7 @@ public:
     MessageWrapper(std::string const& id,
                    std::shared_ptr<ProtocolBuffer> const& requestBufferPtr,
                    size_t responseBufferCapacityBytes,
-                   CallbackType onFinish)
+                   CallbackType const& onFinish)
         :   MessageWrapperBase(id,
                         requestBufferPtr,
                         responseBufferCapacityBytes),
@@ -273,7 +268,7 @@ public:
     template <class RESPONSE_TYPE>
     void send(std::string const& id,
               std::shared_ptr<ProtocolBuffer> const& requestBufferPtr,
-              typename MessageWrapper<RESPONSE_TYPE>::CallbackType onFinish) {
+              typename MessageWrapper<RESPONSE_TYPE>::CallbackType const& onFinish) {
 
         sendImpl(
             std::make_shared<MessageWrapper<RESPONSE_TYPE>>(
@@ -513,19 +508,19 @@ private:
 
 private:
 
-    ServiceProvider::Ptr _serviceProvider;
+    ServiceProvider::Ptr const _serviceProvider;
 
     /// Cached worker descriptor obtained from the configuration
-    WorkerInfo _workerInfo;
+    WorkerInfo const _workerInfo;
 
     /// The cached parameter for the buffer sizes (pulled from
     /// the Configuration upon the construction of the object).
-    size_t _bufferCapacityBytes;
+    size_t const _bufferCapacityBytes;
 
     /// The cached parameter for the interval between reconnection
     /// attempts (pulled from the Configuration upon the construction of
     /// the object).
-    unsigned int _timerIvalSec;
+    unsigned int const _timerIvalSec;
 
     /// The internal state
     State _state;

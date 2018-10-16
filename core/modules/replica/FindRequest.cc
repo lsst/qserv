@@ -34,7 +34,6 @@
 // Qserv headers
 #include "lsst/log/Log.h"
 #include "replica/Controller.h"
-#include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
 #include "replica/Messenger.h"
 #include "replica/ProtocolBuffer.h"
@@ -56,7 +55,7 @@ FindRequest::Ptr FindRequest::create(ServiceProvider::Ptr const& serviceProvider
                                      std::string const& worker,
                                      std::string const& database,
                                      unsigned int chunk,
-                                     CallbackType onFinish,
+                                     CallbackType const& onFinish,
                                      int priority,
                                      bool computeCheckSum,
                                      bool keepTracking,
@@ -79,7 +78,7 @@ FindRequest::FindRequest(ServiceProvider::Ptr const& serviceProvider,
                            std::string const& worker,
                            std::string const& database,
                            unsigned int  chunk,
-                           CallbackType onFinish,
+                           CallbackType const& onFinish,
                            int  priority,
                            bool computeCheckSum,
                            bool keepTracking,
@@ -306,23 +305,22 @@ void FindRequest::analyze(bool success,
     }
 }
 
-void FindRequest::notifyImpl() {
+void FindRequest::notify(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notifyImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
 
-    if (_onFinish) {
-        _onFinish(shared_from_base<FindRequest>());
-    }
+    notifyDefaultImpl<FindRequest>(lock, _onFinish);
 }
 
 void FindRequest::savePersistentState(util::Lock const& lock) {
     controller()->serviceProvider()->databaseServices()->saveState(*this, performance(lock));
 }
 
-std::string FindRequest::extendedPersistentState(SqlGeneratorPtr const& gen) const {
-    return gen->sqlPackValues(id(),
-                              database(),
-                              chunk());
+std::list<std::pair<std::string,std::string>> FindRequest::extendedPersistentState() const {
+    std::list<std::pair<std::string,std::string>> result;
+    result.emplace_back("database", database());
+    result.emplace_back("chunk",    std::to_string(chunk()));
+    return result;
 }
 
 }}} // namespace lsst::qserv::replica

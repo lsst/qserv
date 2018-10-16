@@ -22,11 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_REMOVEREPLICAQSERVMGTREQUEST_H
 #define LSST_QSERV_REPLICA_REMOVEREPLICAQSERVMGTREQUEST_H
 
-/// RemoveReplicaQservMgtRequest.h declares:
-///
-/// class RemoveReplicaQservMgtRequest
-/// (see individual class documentation for more information)
-
 // System headers
 #include <memory>
 #include <string>
@@ -76,7 +71,6 @@ public:
      * low-level pointers).
      *
      * @param serviceProvider - reference to a provider of services
-     * @param io_service      - BOOST ASIO service
      * @param worker          - the name of a worker
      * @param chunk           - the chunk number
      * @param databases       - the names of databases
@@ -86,12 +80,11 @@ public:
      * @return pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      boost::asio::io_service& io_service,
                       std::string const& worker,
                       unsigned int chunk,
                       std::vector<std::string> const& databases,
                       bool force = false,
-                      CallbackType onFinish = nullptr);
+                      CallbackType const& onFinish = nullptr);
 
     /// @return number of a chunk
     unsigned int chunk() const { return _chunk; }
@@ -105,7 +98,7 @@ public:
     /**
      * @see QservMgtRequest::extendedPersistentState()
      */
-     std::string extendedPersistentState(SqlGeneratorPtr const& gen) const override;
+    std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
 
 private:
 
@@ -115,12 +108,11 @@ private:
      * @see RemoveReplicaQservMgtRequest::create()
      */
     RemoveReplicaQservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
-                                 boost::asio::io_service& io_service,
                                  std::string const& worker,
                                  unsigned int chunk,
                                  std::vector<std::string> const& databases,
                                  bool force,
-                                 CallbackType onFinish);
+                                 CallbackType const& onFinish);
 
     /**
       * @see QservMgtRequest::startImpl
@@ -133,20 +125,20 @@ private:
     void finishImpl(util::Lock const& lock) final;
 
     /**
-      * @see QservMgtRequest::notifyImpl
+      * @see QservMgtRequest::notify
       */
-    void notifyImpl() final;
+    void notify(util::Lock const& lock) final;
 
 private:
 
     /// The number of a chunk
-    unsigned int _chunk;
+    unsigned int const _chunk;
 
     /// The names of databases
-    std::vector<std::string> _databases;
+    std::vector<std::string> const _databases;
 
     /// Force the removal even if the chunk is in use
-    bool _force;
+    bool const _force;
 
     /// The callback function for sending a notification upon request completion
     CallbackType _onFinish;

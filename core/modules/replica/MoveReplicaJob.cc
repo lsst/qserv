@@ -29,7 +29,6 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
-#include "replica/DatabaseMySQL.h"
 #include "replica/Configuration.h"
 #include "util/BlockPost.h"
 
@@ -59,7 +58,7 @@ MoveReplicaJob::Ptr MoveReplicaJob::create(std::string const& databaseFamily,
                                            bool purge,
                                            Controller::Ptr const& controller,
                                            std::string const& parentJobId,
-                                           CallbackType onFinish,
+                                           CallbackType const& onFinish,
                                            Job::Options const& options) {
     return MoveReplicaJob::Ptr(
         new MoveReplicaJob(databaseFamily,
@@ -80,7 +79,7 @@ MoveReplicaJob::MoveReplicaJob(std::string const& databaseFamily,
                                bool purge,
                                Controller::Ptr const& controller,
                                std::string const& parentJobId,
-                               CallbackType onFinish,
+                               CallbackType const& onFinish,
                                Job::Options const& options)
     :   Job(controller,
             parentJobId,
@@ -104,13 +103,14 @@ MoveReplicaJobResult const& MoveReplicaJob::getReplicaData() const {
         "MoveReplicaJob::getReplicaData  the method can't be called while the job hasn't finished");
 }
 
-std::string MoveReplicaJob::extendedPersistentState(SqlGeneratorPtr const& gen) const {
-    return gen->sqlPackValues(id(),
-                              databaseFamily(),
-                              chunk(),
-                              sourceWorker(),
-                              destinationWorker(),
-                              purge() ? 1 : 0);
+std::list<std::pair<std::string,std::string>> MoveReplicaJob::extendedPersistentState() const {
+    std::list<std::pair<std::string,std::string>> result;
+    result.emplace_back("database_family",    databaseFamily());
+    result.emplace_back("chunk",              std::to_string(chunk()));
+    result.emplace_back("source_worker",      sourceWorker());
+    result.emplace_back("destination_worker", destinationWorker());
+    result.emplace_back("purge",              purge() ? "1" : "0");
+    return result;
 }
 
 void MoveReplicaJob::startImpl(util::Lock const& lock) {
@@ -172,13 +172,11 @@ void MoveReplicaJob::cancelImpl(util::Lock const& lock) {
     }
 }
 
-void MoveReplicaJob::notifyImpl() {
+void MoveReplicaJob::notify(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notifyImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
 
-    if (_onFinish) {
-        _onFinish(shared_from_base<MoveReplicaJob>());
-    }
+    notifyDefaultImpl<MoveReplicaJob>(lock, _onFinish);
 }
 
 void MoveReplicaJob::onCreateJobFinish() {

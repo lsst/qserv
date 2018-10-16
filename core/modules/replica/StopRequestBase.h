@@ -22,14 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_STOPREQUESTBASE_H
 #define LSST_QSERV_REPLICA_STOPREQUESTBASE_H
 
-/// StopRequestBase.h declares:
-///
-/// Common classes shared by all implementations:
-///
-///   class StopRequestBase
-///
-/// (see individual class documentation for more information)
-
 // System headers
 
 #include <memory>
@@ -149,6 +141,16 @@ private:
      */
     void sendImpl(util::Lock const& lock);
 
+    /**
+     * @see Request::savePersistentState()
+     */
+    void savePersistentState(util::Lock const& lock) final;
+
+    /**
+     * @see Request::extendedPersistentState()
+     */
+    std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
+
 protected:
 
     /// The performance of the target operation
@@ -157,10 +159,10 @@ protected:
 private:
 
     /// An identifier of the targer request whose state is to be queried
-    std::string _targetRequestId;
+    std::string const _targetRequestId;
 
     /// Request type (must match its identifier)
-    proto::ReplicationReplicaRequestType _replicaRequestType;
+    proto::ReplicationReplicaRequestType const _replicaRequestType;
 };
 
 }}} // namespace lsst::qserv::replica

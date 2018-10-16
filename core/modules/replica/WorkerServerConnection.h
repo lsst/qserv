@@ -23,11 +23,6 @@
 #ifndef LSST_QSERV_REPLICA_WORKERSERVERCONNECTION_H
 #define LSST_QSERV_REPLICA_WORKERSERVERCONNECTION_H
 
-/// WorkerServerConnection.h declares:
-///
-/// class WorkerServerConnection
-/// (see individual class documentation for more information)
-
 // System headers
 #include <memory>
 
@@ -207,7 +202,10 @@ private:
 
 private:
 
-    ServiceProvider::Ptr _serviceProvider;
+    ServiceProvider::Ptr const _serviceProvider;
+
+    /// This is pointer onto an object where the requests would
+    /// get processed.
     WorkerProcessor::Ptr _processor;
 
     boost::asio::ip::tcp::socket _socket;

@@ -35,7 +35,6 @@
 #include "lsst/log/Log.h"
 #include "replica/Configuration.h"
 #include "replica/Controller.h"
-#include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
 #include "replica/Messenger.h"
 #include "replica/ProtocolBuffer.h"
@@ -58,7 +57,7 @@ ReplicationRequest::Ptr ReplicationRequest::create(
                                     std::string const& sourceWorker,
                                     std::string const& database,
                                     unsigned int  chunk,
-                                    CallbackType onFinish,
+                                    CallbackType const& onFinish,
                                     int  priority,
                                     bool keepTracking,
                                     bool allowDuplicate,
@@ -86,7 +85,7 @@ ReplicationRequest::ReplicationRequest(
                                     std::string const& sourceWorker,
                                     std::string const& database,
                                     unsigned int  chunk,
-                                    CallbackType onFinish,
+                                    CallbackType const& onFinish,
                                     int  priority,
                                     bool keepTracking,
                                     bool allowDuplicate,
@@ -315,24 +314,23 @@ void ReplicationRequest::analyze(bool success,
     }
 }
 
-void ReplicationRequest::notifyImpl() {
+void ReplicationRequest::notify(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notifyImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
 
-    if (_onFinish) {
-        _onFinish(shared_from_base<ReplicationRequest>());
-    }
+    notifyDefaultImpl<ReplicationRequest>(lock, _onFinish);
 }
 
 void ReplicationRequest::savePersistentState(util::Lock const& lock) {
     controller()->serviceProvider()->databaseServices()->saveState(*this, performance(lock));
 }
 
-std::string ReplicationRequest::extendedPersistentState(SqlGeneratorPtr const& gen) const {
-    return gen->sqlPackValues(id(),
-                              database(),
-                              chunk(),
-                              sourceWorker());
+std::list<std::pair<std::string,std::string>> ReplicationRequest::extendedPersistentState() const {
+    std::list<std::pair<std::string,std::string>> result;
+    result.emplace_back("database",      database());
+    result.emplace_back("chunk",         std::to_string(chunk()));
+    result.emplace_back("source_worker", sourceWorker());
+    return result;
 }
 
 }}} // namespace lsst::qserv::replica

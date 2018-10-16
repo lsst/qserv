@@ -25,7 +25,6 @@
 
 // System headers
 #include <stdexcept>
-#include <thread>
 
 // Third party headers
 #include <boost/bind.hpp>
@@ -47,6 +46,8 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.Request");
 namespace lsst {
 namespace qserv {
 namespace replica {
+
+std::atomic<size_t> Request::_numClassInstances(0);
 
 std::string Request::state2string(State state) {
     switch (state) {
@@ -112,6 +113,16 @@ Request::Request(ServiceProvider::Ptr const& serviceProvider,
         _requestExpirationTimer(io_service) {
 
     _serviceProvider->assertWorkerIsValid(worker);
+
+    // This report is used solely for debugging purposes to allow tracking
+    // potential memory leaks within applications.
+    ++_numClassInstances;
+    LOGS(_log, LOG_LVL_DEBUG, context() << "constructed  instances: " << _numClassInstances);
+}
+
+Request::~Request() {
+    --_numClassInstances;
+    LOGS(_log, LOG_LVL_DEBUG, context() << "destructed   instances: " << _numClassInstances);
 }
 
 std::string Request::state2string() const {
@@ -266,23 +277,7 @@ void Request::finish(util::Lock const& lock,
 
     finishImpl(lock);
 
-    notify();
-}
-
-void Request::notify() {
-
-    // The callback is being made asynchronously in a separate thread
-    // to avoid blocking the current thread.
-    //
-    // TODO: consider reimplementing this method to send notificatons
-    //       via a thread pool & a queue.
-
-    auto const self = shared_from_this();
-
-    std::thread notifier([self]() {
-        self->notifyImpl();
-    });
-    notifier.detach();
+    notify(lock);
 }
 
 bool Request::isAborted(boost::system::error_code const& ec) const {

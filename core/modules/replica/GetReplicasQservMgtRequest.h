@@ -22,11 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_GET_REPLICAS_QSERVMGTREQUEST_H
 #define LSST_QSERV_REPLICA_GET_REPLICAS_QSERVMGTREQUEST_H
 
-/// GetReplicasQservMgtRequest.h declares:
-///
-/// class GetReplicasQservMgtRequest
-/// (see individual class documentation for more information)
-
 // System headers
 #include <memory>
 #include <string>
@@ -75,7 +70,6 @@ public:
      * low-level pointers).
      *
      * @param serviceProvider - reference to a provider of services
-     * @param io_service      - BOOST ASIO service
      * @param worker          - the name of a worker
      * @param databaseFamily  - the name of a database family
      * @param inUseOnly       - (optional) return replicas which're presently in use
@@ -84,11 +78,10 @@ public:
      * @return pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      boost::asio::io_service& io_service,
                       std::string const& worker,
                       std::string const& databaseFamily,
                       bool inUseOnly = false,
-                      CallbackType onFinish = nullptr);
+                      CallbackType const& onFinish = nullptr);
 
     /// @return name of a database family
     std::string const& databaseFamily() const { return _databaseFamily; }
@@ -108,7 +101,7 @@ public:
     /**
      * @see QservMgtRequest::extendedPersistentState()
      */
-     std::string extendedPersistentState(SqlGeneratorPtr const& gen) const override;
+    std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
 
 private:
 
@@ -118,11 +111,10 @@ private:
      * @see GetReplicasQservMgtRequest::created()
      */
     GetReplicasQservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
-                               boost::asio::io_service& io_service,
                                std::string const& worker,
                                std::string const& databaseFamily,
                                bool inUseOnly,
-                               CallbackType onFinish);
+                               CallbackType const& onFinish);
 
     /**
      * Carry over results of the request into a local collection. Filter results
@@ -145,17 +137,17 @@ private:
     void finishImpl(util::Lock const& lock) final;
 
     /**
-      * @see QservMgtRequest::notifyImpl
+      * @see QservMgtRequest::notify
       */
-    void notifyImpl() final;
+    void notify(util::Lock const& lock) final;
 
 private:
 
     /// The name of a database family
-    std::string _databaseFamily;
+    std::string const _databaseFamily;
 
     /// Flag indicating to report (if set) a subset of chunks which are in use
-    bool _inUseOnly;
+    bool const _inUseOnly;
 
     /// The callback function for sending a notification upon request completion
     CallbackType _onFinish;

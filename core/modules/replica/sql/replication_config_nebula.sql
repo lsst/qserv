@@ -35,6 +35,10 @@ INSERT INTO `config` VALUES ('controller', 'request_timeout_sec',  '600');
 INSERT INTO `config` VALUES ('controller', 'job_timeout_sec',     '6000');
 INSERT INTO `config` VALUES ('controller', 'job_heartbeat_sec',     '60');
 
+-- Database service-specific parameters
+
+INSERT INTO `config` VALUES ('database', 'services_pool_size', '1');
+
 -- Connection parameters for the Qserv Management Services
 
 INSERT INTO `config` VALUES ('xrootd', 'auto_notify',         '0');
@@ -46,8 +50,8 @@ INSERT INTO `config` VALUES ('xrootd', 'request_timeout_sec', '600');
 -- tables
 
 INSERT INTO `config` VALUES ('worker', 'technology',                 'FS');
-INSERT INTO `config` VALUES ('worker', 'svc_port',                   '50000');
-INSERT INTO `config` VALUES ('worker', 'fs_port',                    '50001');
+INSERT INTO `config` VALUES ('worker', 'svc_port',                   '25000');
+INSERT INTO `config` VALUES ('worker', 'fs_port',                    '25001');
 INSERT INTO `config` VALUES ('worker', 'num_svc_processing_threads', '10');
 INSERT INTO `config` VALUES ('worker', 'num_fs_processing_threads',  '16');
 INSERT INTO `config` VALUES ('worker', 'fs_buf_size_bytes',          '1048576');

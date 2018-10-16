@@ -25,7 +25,6 @@
 
 // System headers
 #include <stdexcept>
-#include <thread>
 
 // Third party headers
 #include <boost/bind.hpp>
@@ -49,6 +48,8 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
+std::atomic<size_t> QservMgtRequest::_numClassInstances(0);
+
 std::string QservMgtRequest::state2string(State state) {
     switch (state) {
         case State::CREATED:     return "CREATED";
@@ -64,7 +65,6 @@ std::string QservMgtRequest::state2string(ExtendedState state) {
         case ExtendedState::NONE:                return "NONE";
         case ExtendedState::SUCCESS:             return "SUCCESS";
         case ExtendedState::CONFIG_ERROR:        return "CONFIG_ERROR";
-        case ExtendedState::CLIENT_ERROR:        return "CLIENT_ERROR";
         case ExtendedState::SERVER_BAD:          return "SERVER_BAD";
         case ExtendedState::SERVER_CHUNK_IN_USE: return "SERVER_CHUNK_IN_USE";
         case ExtendedState::SERVER_ERROR:        return "SERVER_ERROR";
@@ -76,7 +76,6 @@ std::string QservMgtRequest::state2string(ExtendedState state) {
 }
 
 QservMgtRequest::QservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
-                                 boost::asio::io_service& io_service,
                                  std::string const& type,
                                  std::string const& worker)
     :   _serviceProvider(serviceProvider),
@@ -85,8 +84,19 @@ QservMgtRequest::QservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
         _worker(worker),
         _state(State::CREATED),
         _extendedState(ExtendedState::NONE),
+        _service(nullptr),
         _requestExpirationIvalSec(serviceProvider->config()->xrootdTimeoutSec()),
-        _requestExpirationTimer(io_service) {
+        _requestExpirationTimer(serviceProvider->io_service()) {
+
+    // This report is used solely for debugging purposes to allow tracking
+    // potential memory leaks within applications.
+    ++_numClassInstances;
+    LOGS(_log, LOG_LVL_DEBUG, context() << "constructed  instances: " << _numClassInstances);
+}
+
+QservMgtRequest::~QservMgtRequest() {
+    --_numClassInstances;
+    LOGS(_log, LOG_LVL_DEBUG, context() << "destructed   instances: " << _numClassInstances);
 }
 
 std::string QservMgtRequest::state2string() const {
@@ -147,7 +157,7 @@ void QservMgtRequest::start(XrdSsiService* service,
                  State::FINISHED,
                  ExtendedState::CONFIG_ERROR);
         
-        notify();
+        notify(lock);
         return;
     }
   
@@ -196,7 +206,10 @@ std::string const& QservMgtRequest::jobId() const {
 
 void QservMgtRequest::expired(boost::system::error_code const& ec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "expired");
+    LOGS(_log, LOG_LVL_DEBUG, context() << "expired"
+         << (ec == boost::asio::error::operation_aborted ? "  ** ABORTED **" : ""));
+
+    // Ignore this event if the timer was aborted
 
     if (ec == boost::asio::error::operation_aborted) return;
 
@@ -270,25 +283,8 @@ void QservMgtRequest::finish(util::Lock const& lock,
 
     serviceProvider()->databaseServices()->saveState(*this, _performance, _serverError);
 
-    notify();
+    notify(lock);
 }
-
-void QservMgtRequest::notify() {
-
-    // The callback is being made asynchronously in a separate thread
-    // to avoid blocking the current thread.
-    //
-    // TODO: consider reimplementing this method to send notificatons
-    //       via a thread pool & a queue.
-
-    auto const self = shared_from_this();
-
-    std::thread notifier([self]() {
-        self->notifyImpl();
-    });
-    notifier.detach();
-}
-
 
 void QservMgtRequest::assertState(State desiredState,
                                   std::string const& context) const {

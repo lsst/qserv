@@ -23,10 +23,11 @@
 #ifndef LSST_QSERV_REPLICA_FILESERVER_H
 #define LSST_QSERV_REPLICA_FILESERVER_H
 
-/// FileServer.h declares:
-///
-/// class FileServer
-/// (see individual class documentation for more information)
+/**
+ * This header declares class FileServern which is used
+ * in the server-side impementation of the point-to-point file migration
+ * service of the Replication system.
+ */
 
 // System headers
 #include <memory>
@@ -119,11 +120,14 @@ private:
 
 private:
 
-    ServiceProvider::Ptr _serviceProvider;
-    std::string _workerName;
+    ServiceProvider::Ptr const _serviceProvider;
+
+    /// The name of a worker this service is acting upon (used for checking
+    /// a consistency of the protocol)
+    std::string const _workerName;
 
     /// Cached worker descriptor obtained from the configuration
-    WorkerInfo _workerInfo;
+    WorkerInfo const _workerInfo;
 
     boost::asio::io_service        _io_service;
     boost::asio::ip::tcp::acceptor _acceptor;

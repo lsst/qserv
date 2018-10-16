@@ -22,10 +22,10 @@
 #ifndef LSST_QSERV_REPLICA_CONFIGURATIONSTORE_H
 #define LSST_QSERV_REPLICA_CONFIGURATIONSTORE_H
 
-/// ConfigurationStore.h declares:
-///
-/// class ConfigurationStore
-/// (see individual class documentation for more information)
+/**
+ * This header defines a class which is used in an implementation
+ * of the Configuration service.
+ */
 
 // System headers
 #include <string>

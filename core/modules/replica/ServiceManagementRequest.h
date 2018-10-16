@@ -24,13 +24,16 @@
 
 /// ServiceManagementRequest.h declares:
 ////
-///   class ServiceSuspendRequestPolicy
-///   class ServiceManagementRequest
-///   class ServiceSuspendRequest
-///   class ServiceResumeRequest
-///   class ServiceStatusRequest
-///
-/// (see individual class documentation for more information)
+/**
+ * This class declares a collection of the morker servers management request
+ * classes as part of the Controller-side Replication Framework.
+ *
+ * @see class ServiceSuspendRequestPolicy
+ * @see class ServiceManagementRequest
+ * @see class ServiceSuspendRequest
+ * @see class ServiceResumeRequest
+ * @see class ServiceStatusRequest
+ */
 
 // System headers
 #include <functional>
@@ -123,7 +126,7 @@ public:
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       boost::asio::io_service& io_service,
                       std::string const& worker,
-                      CallbackType onFinish,
+                      CallbackType const& onFinish,
                       std::shared_ptr<Messenger> const& messenger) {
 
         return ServiceManagementRequest<POLICY>::Ptr(
@@ -149,7 +152,7 @@ private:
                              char const* requestName,
                              std::string const& worker,
                              proto::ReplicationServiceRequestType requestType,
-                             CallbackType onFinish,
+                             CallbackType const& onFinish,
                              std::shared_ptr<Messenger> const& messenger)
         :   ServiceManagementRequestBase(serviceProvider,
                                          io_service,
@@ -161,12 +164,10 @@ private:
     }
 
     /**
-     * @see Request::notifyImpl()
+     * @see Request::notify()
      */
-    void notifyImpl() final {
-        if (_onFinish) {
-            _onFinish(shared_from_base<ServiceManagementRequest<POLICY>>());
-        }
+    void notify(util::Lock const& lock) final {
+        notifyDefaultImpl<ServiceManagementRequest<POLICY>>(lock, _onFinish);
     }
 
 private:

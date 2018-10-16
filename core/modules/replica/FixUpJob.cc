@@ -30,7 +30,6 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
-#include "replica/DatabaseMySQL.h"
 #include "replica/ErrorReporting.h"
 #include "replica/ServiceProvider.h"
 #include "util/BlockPost.h"
@@ -57,7 +56,7 @@ Job::Options const& FixUpJob::defaultOptions() {
 FixUpJob::Ptr FixUpJob::create(std::string const& databaseFamily,
                                Controller::Ptr const& controller,
                                std::string const& parentJobId,
-                               CallbackType onFinish,
+                               CallbackType const& onFinish,
                                Job::Options const& options) {
     return FixUpJob::Ptr(
         new FixUpJob(databaseFamily,
@@ -70,7 +69,7 @@ FixUpJob::Ptr FixUpJob::create(std::string const& databaseFamily,
 FixUpJob::FixUpJob(std::string const& databaseFamily,
                    Controller::Ptr const& controller,
                    std::string const& parentJobId,
-                   CallbackType onFinish,
+                   CallbackType const& onFinish,
                    Job::Options const& options)
     :   Job(controller,
             parentJobId,
@@ -100,9 +99,10 @@ FixUpJobResult const& FixUpJob::getReplicaData() const {
         "FixUpJob::getReplicaData  the method can't be called while the job hasn't finished");
 }
 
-std::string FixUpJob::extendedPersistentState(SqlGeneratorPtr const& gen) const {
-    return gen->sqlPackValues(id(),
-                              databaseFamily());
+std::list<std::pair<std::string,std::string>> FixUpJob::extendedPersistentState() const {
+    std::list<std::pair<std::string,std::string>> result;
+    result.emplace_back("database_family", databaseFamily());
+    return result;
 }
 
 void FixUpJob::startImpl(util::Lock const& lock) {
@@ -184,13 +184,11 @@ void FixUpJob::restart(util::Lock const& lock) {
     _numSuccess  = 0;
 }
 
-void FixUpJob::notifyImpl() {
+void FixUpJob::notify(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notifyImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
 
-    if (_onFinish) {
-        _onFinish(shared_from_base<FixUpJob>());
-    }
+    notifyDefaultImpl<FixUpJob>(lock, _onFinish);
 }
 
 void FixUpJob::onPrecursorJobFinish() {

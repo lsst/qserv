@@ -22,13 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_DELETEWORKERJOB_H
 #define LSST_QSERV_REPLICA_DELETEWORKERJOB_H
 
-/// DeleteWorkerJob.h declares:
-///
-/// struct DeleteWorkerJobResult
-/// class  DeleteWorkerJob
-///
-/// (see individual class documentation for more information)
-
 // System headers
 #include <atomic>
 #include <functional>
@@ -38,7 +31,6 @@
 
 // Qserv headers
 #include "replica/Job.h"
-#include "replica/FindAllJob.h"
 #include "replica/FindAllRequest.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/ReplicateJob.h"
@@ -126,8 +118,8 @@ public:
     static Ptr create(std::string const& worker,
                       bool permanentDelete,
                       Controller::Ptr const& controller,
-                      std::string const& parentJobId,
-                      CallbackType onFinish,
+                      std::string const& parentJobId=std::string(),
+                      CallbackType const& onFinish=nullptr,
                       Job::Options const& options=defaultOptions());
 
     // Default construction and copy semantics are prohibited
@@ -166,7 +158,7 @@ public:
     /**
      * @see Job::extendedPersistentState()
      */
-    std::string extendedPersistentState(SqlGeneratorPtr const& gen) const override;
+    std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
 
 protected:
 
@@ -179,7 +171,7 @@ protected:
                     bool permanentDelete,
                     Controller::Ptr const& controller,
                     std::string const& parentJobId,
-                    CallbackType onFinish,
+                    CallbackType const& onFinish,
                     Job::Options const& options);
 
     /**
@@ -193,9 +185,9 @@ protected:
     void cancelImpl(util::Lock const& lock) final;
 
     /**
-     * @see Job::notifyImpl()
-     */
-    void notifyImpl() final;
+      * @see Job::notify()
+      */
+    void notify(util::Lock const& lock) final;
 
     /**
      * Beging the actual sequence of actions for removing the worker
@@ -213,14 +205,6 @@ protected:
 
     /**
      * The calback function to be invoked on a completion of a job
-     * which harvests chunk disposition accross relevant worker nodes.
-     *
-     * @param request - a pointer to a job
-     */
-    void onJobFinish(FindAllJob::Ptr const& job);
-
-    /**
-     * The calback function to be invoked on a completion of a job
      * which ensures the desired replication level after disabling .
      *
      * @param request - a pointer to a job
@@ -230,10 +214,10 @@ protected:
 protected:
 
     /// The name of a worker to be disabled
-    std::string _worker;
+    std::string const _worker;
 
     /// Permamently remove from the configuration if set
-    bool _permanentDelete;
+    bool const _permanentDelete;
 
     /// Client-defined function to be called upon the completion of the job
     CallbackType _onFinish;
@@ -250,10 +234,6 @@ protected:
     /// the affected worker in order to get the latest state of the worker's
     /// replicas
     std::list<FindAllRequest::Ptr> _findAllRequests;
-
-    /// The chained jobs (one per database family) needed to refresh replica
-    /// disposition accross a replication setup
-    std::list<FindAllJob::Ptr> _findAllJobs;
 
     /// The chained jobs (one per each database family which are launched after
     /// disabling the worker in order to ensure the minimum replication level

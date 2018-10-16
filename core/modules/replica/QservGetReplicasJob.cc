@@ -30,7 +30,6 @@
 // Qserv headers
 #include "lsst/log/Log.h"
 #include "replica/Configuration.h"
-#include "replica/DatabaseMySQL.h"
 #include "replica/QservMgtServices.h"
 #include "replica/ServiceProvider.h"
 
@@ -56,26 +55,26 @@ Job::Options const& QservGetReplicasJob::defaultOptions() {
 
 QservGetReplicasJob::Ptr QservGetReplicasJob::create(
                                     std::string const& databaseFamily,
+                                    bool inUseOnly,
                                     Controller::Ptr const& controller,
                                     std::string const& parentJobId,
-                                    bool inUseOnly,
-                                    CallbackType onFinish,
+                                    CallbackType const& onFinish,
                                     Job::Options const& options) {
     return QservGetReplicasJob::Ptr(
         new QservGetReplicasJob(databaseFamily,
+                                inUseOnly,
                                 controller,
                                 parentJobId,
-                                inUseOnly,
                                 onFinish,
                                 options));
 }
 
 QservGetReplicasJob::QservGetReplicasJob(
                        std::string const& databaseFamily,
+                       bool inUseOnly,
                        Controller::Ptr const& controller,
                        std::string const& parentJobId,
-                       bool inUseOnly,
-                       CallbackType onFinish,
+                       CallbackType const& onFinish,
                        Job::Options const& options)
     :   Job(controller,
             parentJobId,
@@ -99,10 +98,11 @@ QservGetReplicasJobResult const& QservGetReplicasJob::getReplicaData() const {
         "QservGetReplicasJob::getReplicaData  the method can't be called while the job hasn't finished");
 }
 
-std::string QservGetReplicasJob::extendedPersistentState(SqlGeneratorPtr const& gen) const {
-    return gen->sqlPackValues(id(),
-                              databaseFamily(),
-                              inUseOnly() ? 1 : 0);
+std::list<std::pair<std::string,std::string>> QservGetReplicasJob::extendedPersistentState() const {
+    std::list<std::pair<std::string,std::string>> result;
+    result.emplace_back("database_family", databaseFamily());
+    result.emplace_back("in_use_only",     inUseOnly() ? "1" : "0");
+    return result;
 }
 
 void QservGetReplicasJob::startImpl(util::Lock const& lock) {
@@ -153,13 +153,11 @@ void QservGetReplicasJob::cancelImpl(util::Lock const& lock) {
     _numSuccess  = 0;
 }
 
-void QservGetReplicasJob::notifyImpl() {
+void QservGetReplicasJob::notify(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notifyImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
 
-    if (_onFinish) {
-        _onFinish(shared_from_base<QservGetReplicasJob>());
-    }
+    notifyDefaultImpl<QservGetReplicasJob>(lock, _onFinish);
 }
 
 void QservGetReplicasJob::onRequestFinish(GetReplicasQservMgtRequest::Ptr const& request) {

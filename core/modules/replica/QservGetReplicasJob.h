@@ -22,13 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_QSERV_GETREPLICASJOB_H
 #define LSST_QSERV_REPLICA_QSERV_GETREPLICASJOB_H
 
-/// QservGetReplicasJob.h declares:
-///
-/// struct QservGetReplicasJobResult
-/// class  QservGetReplicasJob
-///
-/// (see individual class documentation for more information)
-
 // System headers
 #include <atomic>
 #include <functional>
@@ -95,19 +88,19 @@ public:
      * low-level pointers).
      *
      * @param databaseFamily - name of a database family
-     * @param controller     - for launching requests
-     * @param parentJobId    - optional identifier of a parent job
      * @param inUseOnly      - return replicas which're presently in use
-     * @param onFinish       - callback function to be called upon a completion of the job
+     * @param controller     - for launching requests
+     * @param parentJobId    - (optional) identifier of a parent job
+     * @param onFinish       - (optional) callback function to be called upon a job completion
      * @param options        - (optional) job options
      *
      * @return pointer to the created object
      */
     static Ptr create(std::string const& databaseFamily,
+                      bool inUseOnly,
                       Controller::Ptr const& controller,
                       std::string const& parentJobId,
-                      bool inUseOnly,
-                      CallbackType onFinish,
+                      CallbackType const& onFinish,
                       Job::Options const& options=defaultOptions());
 
     // Default construction and copy semantics are prohibited
@@ -144,7 +137,7 @@ public:
     /**
      * @see Job::extendedPersistentState()
      */
-    std::string extendedPersistentState(SqlGeneratorPtr const& gen) const override;
+    std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
 
 protected:
 
@@ -154,10 +147,10 @@ protected:
      * @see QservGetReplicasJob::create()
      */
     QservGetReplicasJob(std::string const& databaseFamily,
+                        bool inUseOnly,
                         Controller::Ptr const& controller,
                         std::string const& parentJobId,
-                        bool inUseOnly,
-                        CallbackType onFinish,
+                        CallbackType const& onFinish,
                         Job::Options const& options);
 
     /**
@@ -171,9 +164,9 @@ protected:
     void cancelImpl(util::Lock const& lock) final;
 
     /**
-      * @see Job::notifyImpl()
+      * @see Job::notify()
       */
-    void notifyImpl() final;
+    void notify(util::Lock const& lock) final;
 
     /**
      * The calback function to be invoked on a completion of each request.
@@ -185,10 +178,10 @@ protected:
 protected:
 
     /// The name of the database family
-    std::string _databaseFamily;
+    std::string const _databaseFamily;
 
     /// Flag indicating to report (if set) a subset of chunks which are in use
-    bool _inUseOnly;
+    bool const _inUseOnly;
 
     /// Client-defined function to be called upon the completion of the job
     CallbackType _onFinish;

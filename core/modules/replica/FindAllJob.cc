@@ -30,9 +30,7 @@
 // Qserv headers
 #include "lsst/log/Log.h"
 #include "replica/Configuration.h"
-#include "replica/DatabaseMySQL.h"
 #include "replica/ServiceProvider.h"
-
 
 namespace {
 
@@ -57,7 +55,7 @@ FindAllJob::Ptr FindAllJob::create(std::string const& databaseFamily,
                                    bool saveReplicaInfo,
                                    Controller::Ptr const& controller,
                                    std::string const& parentJobId,
-                                   CallbackType onFinish,
+                                   CallbackType const& onFinish,
                                    Job::Options const& options) {
     return FindAllJob::Ptr(
         new FindAllJob(databaseFamily,
@@ -72,7 +70,7 @@ FindAllJob::FindAllJob(std::string const& databaseFamily,
                        bool saveReplicaInfo,
                        Controller::Ptr const& controller,
                        std::string const& parentJobId,
-                       CallbackType onFinish,
+                       CallbackType const& onFinish,
                        Job::Options const& options)
     :   Job(controller,
             parentJobId,
@@ -97,9 +95,10 @@ FindAllJobResult const& FindAllJob::getReplicaData() const {
         "FindAllJob::getReplicaData  the method can't be called while the job hasn't finished");
 }
 
-std::string FindAllJob::extendedPersistentState(SqlGeneratorPtr const& gen) const {
-    return gen->sqlPackValues(id(),
-                              databaseFamily());
+std::list<std::pair<std::string,std::string>> FindAllJob::extendedPersistentState() const {
+    std::list<std::pair<std::string,std::string>> result;
+    result.emplace_back("database_family", databaseFamily());
+    return result;
 }
 
 void FindAllJob::startImpl(util::Lock const& lock) {
@@ -160,13 +159,11 @@ void FindAllJob::cancelImpl(util::Lock const& lock) {
     _numSuccess  = 0;
 }
 
-void FindAllJob::notifyImpl() {
+void FindAllJob::notify(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notifyImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
 
-    if (_onFinish) {
-        _onFinish(shared_from_base<FindAllJob>());
-    }
+    notifyDefaultImpl<FindAllJob>(lock, _onFinish);
 }
 
 void FindAllJob::onRequestFinish(FindAllRequest::Ptr const& request) {

@@ -32,7 +32,6 @@
 #include "lsst/log/Log.h"
 #include "replica/Common.h"
 #include "replica/Configuration.h"
-#include "replica/DatabaseMySQL.h"
 #include "replica/ErrorReporting.h"
 #include "replica/ServiceProvider.h"
 #include "util/BlockPost.h"
@@ -61,7 +60,7 @@ PurgeJob::Ptr PurgeJob::create(
                         unsigned int numReplicas,
                         Controller::Ptr const& controller,
                         std::string const& parentJobId,
-                        CallbackType onFinish,
+                        CallbackType const& onFinish,
                         Job::Options const& options) {
     return PurgeJob::Ptr(
         new PurgeJob(databaseFamily,
@@ -76,7 +75,7 @@ PurgeJob::PurgeJob(std::string const& databaseFamily,
                    unsigned int numReplicas,
                    Controller::Ptr const& controller,
                    std::string const& parentJobId,
-                   CallbackType onFinish,
+                   CallbackType const& onFinish,
                    Job::Options const& options)
     :   Job(controller,
             parentJobId,
@@ -114,10 +113,11 @@ PurgeJobResult const& PurgeJob::getReplicaData() const {
         "PurgeJob::getReplicaData  the method can't be called while the job hasn't finished");
 }
 
-std::string PurgeJob::extendedPersistentState(SqlGeneratorPtr const& gen) const {
-    return gen->sqlPackValues(id(),
-                              databaseFamily(),
-                              numReplicas());
+std::list<std::pair<std::string,std::string>> PurgeJob::extendedPersistentState() const {
+    std::list<std::pair<std::string,std::string>> result;
+    result.emplace_back("database_family", databaseFamily());
+    result.emplace_back("num_replicas",    std::to_string(numReplicas()));
+    return result;
 }
 
 void PurgeJob::startImpl(util::Lock const& lock) {
@@ -188,13 +188,11 @@ void PurgeJob::restart(util::Lock const& lock) {
     _numFinished = 0;
 }
 
-void PurgeJob::notifyImpl() {
+void PurgeJob::notify(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notifyImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
 
-    if (_onFinish) {
-        _onFinish(shared_from_base<PurgeJob>());
-    }
+    notifyDefaultImpl<PurgeJob>(lock, _onFinish);
 }
 
 void PurgeJob::onPrecursorJobFinish() {

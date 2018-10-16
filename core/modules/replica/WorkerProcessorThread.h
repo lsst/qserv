@@ -23,11 +23,6 @@
 #ifndef LSST_QSERV_REPLICA_WORKERPROCESSORTHREAD_H
 #define LSST_QSERV_REPLICA_WORKERPROCESSORTHREAD_H
 
-/// WorkerProcessorThread.h declares:
-///
-/// class WorkerProcessorThread
-/// (see individual class documentation for more information)
-
 // System headers
 #include <atomic>
 #include <memory>
@@ -44,7 +39,7 @@ class WorkerProcessor;
 
 /**
   * Class WorkerProcessorThread is a thread-based request processing engine
-  * for replication requests.
+  * for replication requests witgin worker-side services.
   */
 class WorkerProcessorThread
     : public std::enable_shared_from_this<WorkerProcessorThread> {
@@ -119,13 +114,13 @@ private:
 private:
 
     /// The processor
-    WorkerProcessorPtr _processor;
+    WorkerProcessorPtr const _processor;
 
     /// The identifier of this thread object   
-    unsigned int _id;
+    unsigned int const _id;
 
     /// The processing thread is created on demand when calling method run()
-    std::shared_ptr<std::thread> _thread;
+    std::unique_ptr<std::thread> _thread;
     
     /// The flag to be raised to tell the running thread to stop.
     /// The thread will reset this flag when it finishes.

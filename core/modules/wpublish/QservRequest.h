@@ -25,6 +25,7 @@
 #define LSST_QSERV_WPUBLISH_QSERV_REQUEST_H
 
 // System headers
+#include <atomic>
 
 // Third party headers
 #include "XrdSsi/XrdSsiRequest.hh"
@@ -96,15 +97,15 @@ protected:
                                                int   blen,
                                                bool  last) override;
 
-    /// Request finalizer (cleanup, etc.)
-    //void Finished();
-
 private:
 
     // Request buffer (gets prepared by subclasses before sending a request
     // to the worker service of Qserv)
 
     proto::FrameBuffer _frameBuf;   ///< buffer for serializing messages before sending them
+
+    /// The global counter for the number of instances of any subclasses
+    static std::atomic<size_t> _numClassInstances;
 
     // Response buffer (gets updated when receiving a response stream of
     // data from a worker management service of Qserv)

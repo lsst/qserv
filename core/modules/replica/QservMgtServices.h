@@ -22,11 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_QSERVMGTSERVICES_H
 #define LSST_QSERV_REPLICA_QSERVMGTSERVICES_H
 
-/// QservMgtServices.h declares:
-///
-/// class QservMgtServices
-/// (see individual class documentation for more information)
-
 // System headers
 #include <map>
 #include <memory>
@@ -38,6 +33,7 @@
 #include "replica/RemoveReplicaQservMgtRequest.h"
 #include "replica/ServiceProvider.h"
 #include "replica/SetReplicasQservMgtRequest.h"
+#include "replica/TestEchoQservMgtRequest.h"
 #include "util/Mutex.h"
 
 // Forward declarations
@@ -104,7 +100,7 @@ public:
     ~QservMgtServices() = default;
 
     /// @return reference to the ServiceProvider object
-    ServiceProvider::Ptr const& serviceProvider() { return _serviceProvider; }
+    ServiceProvider::Ptr const& serviceProvider() const { return _serviceProvider; }
 
     /**
      * Notify Qserv worker on availability of a new replica
@@ -126,7 +122,7 @@ public:
                                             unsigned int chunk,
                                             std::vector<std::string> const& databases,
                                             std::string const& worker,
-                                            AddReplicaQservMgtRequest::CallbackType onFinish = nullptr,
+                                            AddReplicaQservMgtRequest::CallbackType const& onFinish = nullptr,
                                             std::string const& jobId="",
                                             unsigned int requestExpirationIvalSec=0);
 
@@ -154,7 +150,7 @@ public:
                                             std::vector<std::string> const& databases,
                                             std::string const& worker,
                                             bool force,
-                                            RemoveReplicaQservMgtRequest::CallbackType onFinish = nullptr,
+                                            RemoveReplicaQservMgtRequest::CallbackType const& onFinish = nullptr,
                                             std::string const& jobId="",
                                             unsigned int requestExpirationIvalSec=0);
     /**
@@ -178,13 +174,13 @@ public:
                                             std::string const& worker,
                                             bool inUseOnly = false,
                                             std::string const& jobId="",
-                                            GetReplicasQservMgtRequest::CallbackType onFinish = nullptr,
+                                            GetReplicasQservMgtRequest::CallbackType const& onFinish = nullptr,
                                             unsigned int requestExpirationIvalSec=0);
 
 
 
     /**
-     * Set new replicas at the new replicas at a Qserv worker
+     * Enable a collection of replicas at a Qserv worker
      *
      * @param worker          - the name of a worker
      * @param newReplicas     - collection of new replicas (NOTE: useCount field is ignored)
@@ -205,8 +201,30 @@ public:
                                             QservReplicaCollection const& newReplicas,
                                             bool force = false,
                                             std::string const& jobId="",
-                                            SetReplicasQservMgtRequest::CallbackType onFinish = nullptr,
+                                            SetReplicasQservMgtRequest::CallbackType const& onFinish = nullptr,
                                             unsigned int requestExpirationIvalSec=0);
+
+    /**
+     * Send a data string to a Qwserv worker and get the same string in response
+     *
+     * @param worker   - the name of a worker
+     * @param data     - data to be sent to a worker
+     * @param onFinish - callback function to be called upon request completion
+     * @param jobId    - an optional identifier of a job specifying a context
+     *                   in which a request will be executed.
+     * @param requestExpirationIvalSec - an optional parameter (if differs from 0)
+     *                   allowing to override the default value of
+     *                   the corresponding parameter from the Configuration.
+     *
+     * @return pointer to the request object if the request was made. Return
+     *         nullptr otherwise.
+     */
+    TestEchoQservMgtRequest::Ptr echo(std::string const& worker,
+                                      std::string const& data,
+                                      std::string const& jobId="",
+                                      TestEchoQservMgtRequest::CallbackType const& onFinish = nullptr,
+                                      unsigned int requestExpirationIvalSec=0);
+
 private:
 
     /**
@@ -234,15 +252,10 @@ private:
 
 private:
 
-    ServiceProvider::Ptr _serviceProvider;
-
-    // BOOST ASIO communication services
-
-    boost::asio::io_service _io_service;
-    std::unique_ptr<boost::asio::io_service::work> _work;
+    ServiceProvider::Ptr const _serviceProvider;
 
     /// The registry of the on-going requests.
-    std::map<std::string,std::shared_ptr<QservMgtRequestWrapper>> _registry;
+    std::map<std::string, std::shared_ptr<QservMgtRequestWrapper>> _registry;
 
     /// The mutex for enforcing thread safety of the class's public API
     /// and internal operations.

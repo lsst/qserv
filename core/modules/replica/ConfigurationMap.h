@@ -22,10 +22,10 @@
 #ifndef LSST_QSERV_REPLICA_CONFIGURATIONMAP_H
 #define LSST_QSERV_REPLICA_CONFIGURATIONMAP_H
 
-/// ConfigurationMap.h declares:
-///
-/// class ConfigurationMap
-/// (see individual class documentation for more information)
+/**
+ * This header defines a class which is used in an implementation
+ * of the Configuration service.
+ */
 
 // System headers
 #include <map>

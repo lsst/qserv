@@ -22,11 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_SUCCESSRATEGENERATOR_H
 #define LSST_QSERV_REPLICA_SUCCESSRATEGENERATOR_H
 
-/// SuccessRateGenerator.h declares:
-///
-/// class SuccessRateGenerator
-/// (see individual class documentation for more information)
-
 // System headers
 #include <random>
 
@@ -82,13 +77,18 @@ public:
 
 private:
 
-    double _successRate;
+    /// The random device is needed to obtain a seed for the random
+    /// number engine.
+    std::random_device _rd;
 
-    std::random_device          _rd;    // Will be used to obtain a seed for the random number engine
-    std::mt19937                _gen;   // Standard mersenne_twister_engine seeded with rd()
+    /// Standard mersenne_twister_engine seeded with rd()
+    std::mt19937 _gen;
+
     std::bernoulli_distribution _distr;
 
-    util::Mutex _generatorMtx;   // for thread safety
+    /// The mutex is for synchronized update of the object's state
+    /// within a multithreaded environment.
+    mutable util::Mutex _generatorMtx;
 };
 
 }}} // namespace lsst::qserv::replica

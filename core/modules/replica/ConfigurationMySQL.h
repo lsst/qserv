@@ -22,10 +22,10 @@
 #ifndef LSST_QSERV_REPLICA_CONFIGURATIONMYSQL_H
 #define LSST_QSERV_REPLICA_CONFIGURATIONMYSQL_H
 
-/// ConfigurationMySQL.h declares:
-///
-/// class ConfigurationMySQL
-/// (see individual class documentation for more information)
+/**
+ * This header defines a class which provides a MySQL backend
+ * for the Configuration service.
+ */
 
 // System headers
 #include <cstddef>
@@ -109,6 +109,18 @@ private:
      *      the configuration is not consistent with expectations of the application
      */
     void loadConfiguration();
+
+    /**
+     * The actual implementation of method loadConfiguration.
+     *
+     * @param lock
+     *   the lock on a mutex required for the thread safety
+     *
+     * @param conn
+     *   the refernce to the database connector
+     */
+    void loadConfigurationImpl(util::Lock const& lock,
+                               database::mysql::Connection::Ptr const& conn);
 
 private:
 

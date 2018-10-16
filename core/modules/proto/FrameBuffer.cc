@@ -39,9 +39,9 @@ namespace proto {
 
 FrameBufferView::FrameBufferView(char const* data,
                                  size_t      size)
-    :   _data (data),
-        _next (data),
-        _size (size) {
+    :   _data(data),
+        _next(data),
+        _size(size) {
 }
 
 uint32_t FrameBufferView::parseLength() {

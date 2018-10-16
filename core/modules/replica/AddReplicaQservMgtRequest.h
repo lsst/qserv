@@ -22,11 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_ADDREPLICAQSERVMGTREQUEST_H
 #define LSST_QSERV_REPLICA_ADDREPLICAQSERVMGTREQUEST_H
 
-/// AddReplicaQservMgtRequest.h declares:
-///
-/// class AddReplicaQservMgtRequest
-/// (see individual class documentation for more information)
-
 // System headers
 #include <memory>
 #include <string>
@@ -72,7 +67,6 @@ public:
      * low-level pointers).
      *
      * @param serviceProvider - reference to a provider of services
-     * @param io_service      - BOOST ASIO service
      * @param worker          - the name of a worker
      * @param chunk           - the chunk number
      * @param databases       - the names of databases
@@ -81,11 +75,10 @@ public:
      * @return pointer to the new object created by the factory
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      boost::asio::io_service& io_service,
                       std::string const& worker,
                       unsigned int chunk,
                       std::vector<std::string> const& databases,
-                      CallbackType onFinish = nullptr);
+                      CallbackType const& onFinish = nullptr);
 
     /// @return the chunk number
     unsigned int chunk() const { return _chunk; }
@@ -98,7 +91,7 @@ public:
      *
      * @see QservMgtRequest::extendedPersistentState()
      */
-     std::string extendedPersistentState(SqlGeneratorPtr const& gen) const override;
+     std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
 
 private:
 
@@ -106,18 +99,16 @@ private:
      * Construct the request with the pointer to the services provider.
      *
      * @param serviceProvider - reference to a provider of services
-     * @param io_service      - BOOST ASIO service
      * @param worker          - the name of a worker
      * @param chunk           - the chunk number
      * @param databases       - the names of databases
      * @param onFinish        - callback function to be called upon request completion
      */
     AddReplicaQservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
-                              boost::asio::io_service& io_service,
                               std::string const& worker,
                               unsigned int chunk,
                               std::vector<std::string> const& databases,
-                              CallbackType onFinish);
+                              CallbackType const& onFinish);
 
     /**
       * Implememnt the corresponding method of the base class
@@ -136,17 +127,17 @@ private:
     /**
       * Implememnt the corresponding method of the base class
       *
-      * @see QservMgtRequest::notifyImpl
+      * @see QservMgtRequest::notify
       */
-    void notifyImpl() final;
+    void notify(util::Lock const& lock) final;
 
 private:
 
     /// The chunk number
-    unsigned int _chunk;
+    unsigned int const _chunk;
 
     /// The names of databases
-    std::vector<std::string> _databases;
+    std::vector<std::string> const _databases;
 
     /// The callback function for sending a notification upon request completion
     CallbackType _onFinish;

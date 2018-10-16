@@ -22,13 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_FIXUPJOB_H
 #define LSST_QSERV_REPLICA_FIXUPJOB_H
 
-/// FixUpJob.h declares:
-///
-/// struct FixUpJobResult
-/// class  FixUpJob
-///
-/// (see individual class documentation for more information)
-
 // System headers
 #include <atomic>
 #include <functional>
@@ -106,8 +99,8 @@ public:
      */
     static Ptr create(std::string const& databaseFamily,
                       Controller::Ptr const& controller,
-                      std::string const& parentJobId,
-                      CallbackType onFinish,
+                      std::string const& parentJobId=std::string(),
+                      CallbackType const& onFinish=nullptr,
                       Job::Options const& options=defaultOptions());
 
     // Default construction and copy semantics are prohibited
@@ -146,7 +139,7 @@ public:
      *
      * @see Job::extendedPersistentState()
      */
-    std::string extendedPersistentState(SqlGeneratorPtr const& gen) const override;
+    std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
 
 protected:
 
@@ -158,7 +151,7 @@ protected:
     FixUpJob(std::string const& databaseFamily,
              Controller::Ptr const& controller,
              std::string const& parentJobId,
-             CallbackType onFinish,
+             CallbackType const& onFinish,
              Job::Options const& options);
 
     /**
@@ -172,9 +165,9 @@ protected:
     void cancelImpl(util::Lock const& lock) final;
 
     /**
-      * @see Job::notifyImpl()
+      * @see Job::notify()
       */
-    void notifyImpl() final;
+    void notify(util::Lock const& lock) final;
 
     /**
      * The calback function to be invoked on a completion of the precursor job
@@ -208,7 +201,7 @@ protected:
 protected:
 
     /// The name of the database family
-    std::string _databaseFamily;
+    std::string const _databaseFamily;
 
     /// Client-defined function to be called upon the completion of the job
     CallbackType _onFinish;

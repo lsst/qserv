@@ -22,11 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_REPLICAFINDER_H
 #define LSST_QSERV_REPLICA_REPLICAFINDER_H
 
-/// ReplicaFinder.h declares:
-///
-/// class ReplicaFinder
-/// (see individual class documentation for more information)
-
 // System headers
 #include <atomic>
 #include <ostream>

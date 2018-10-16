@@ -22,11 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_SETREPLICASQSERVMGTREQUEST_H
 #define LSST_QSERV_REPLICA_SETREPLICASQSERVMGTREQUEST_H
 
-/// SetReplicasQservMgtRequest.h declares:
-///
-/// class SetReplicasQservMgtRequest
-/// (see individual class documentation for more information)
-
 // System headers
 #include <memory>
 #include <string>
@@ -75,7 +70,6 @@ public:
      * low-level pointers).
      *
      * @param serviceProvider - reference to a provider of services
-     * @param io_service      - BOOST ASIO service
      * @param worker          - name of a worker
      * @param newReplicas     - collection of new replicas (NOTE: useCount field is ignored)
      * @param force           - proceed with the operation even if some replicas affceted by
@@ -83,11 +77,10 @@ public:
      * @param onFinish        - callback function to be called upon request completion
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      boost::asio::io_service& io_service,
                       std::string const& worker,
                       QservReplicaCollection const& newReplicas,
                       bool force = false,
-                      CallbackType onFinish = nullptr);
+                      CallbackType const& onFinish = nullptr);
 
     /// @return collection of new replicas to be set at the Qserv worker
     QservReplicaCollection const& newReplicas() const { return _newReplicas; }
@@ -108,7 +101,7 @@ public:
     /**
      * @see QservMgtRequest::extendedPersistentState()
      */
-     std::string extendedPersistentState(SqlGeneratorPtr const& gen) const override;
+    std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
 
 private:
 
@@ -116,7 +109,6 @@ private:
      * Construct the request with the pointer to the services provider.
      *
      * @param serviceProvider - reference to a provider of services
-     * @param io_service      - BOOST ASIO service
      * @param worker          - the name of a worker
      * @param newReplicas     - collection of new replicas (NOTE: useCount field is ignored)
      * @param force           - proceed with the operation even if some replicas affceted by
@@ -124,11 +116,10 @@ private:
      * @param onFinish        - callback function to be called upon request completion
      */
     SetReplicasQservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
-                               boost::asio::io_service& io_service,
                                std::string const& worker,
                                QservReplicaCollection const& newReplicas,
                                bool force,
-                               CallbackType onFinish);
+                               CallbackType const& onFinish);
 
     /**
      * Carry over results of the request into a local collection.
@@ -150,17 +141,17 @@ private:
     void finishImpl(util::Lock const& lock) final;
 
     /**
-      * @see QservMgtRequest::notifyImpl
+      * @see QservMgtRequest::notify
       */
-    void notifyImpl() final;
+    void notify(util::Lock const& lock) final;
 
 private:
 
     /// A collection of new replicas to be set at the Qserv worker
-    QservReplicaCollection _newReplicas;
+    QservReplicaCollection const _newReplicas;
 
     /// Flag indicating to report (if set) the 'force' mode of the operation
-    bool _force;
+    bool const _force;
 
     /// The callback function for sending a notification upon request completion
     CallbackType _onFinish;

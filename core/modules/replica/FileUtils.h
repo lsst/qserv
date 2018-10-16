@@ -22,13 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_FILEUTILS_H
 #define LSST_QSERV_REPLICA_FILEUTILS_H
 
-/// FileUtils.h declares:
-///
-/// class FileUtils
-/// class FileCsComputeEngine
-///
-/// (see individual class documentation for more information)
-
 // System headers
 #include <cstdio>       // C-style I/O
 #include <cstdint>      // size_t, uint64_t
@@ -211,8 +204,11 @@ public:
 
 private:
 
-    std::string _fileName;          ///< the name of an input file
-    size_t      _recordSizeBytes;   ///< desired record size
+    /// The name of an input file
+    std::string const _fileName;
+
+    /// The desired record size when reading from the file
+    size_t const _recordSizeBytes;
 
     /// The file pointer
     std::FILE* _fp;
@@ -307,13 +303,16 @@ public:
 
 private:
 
-    std::vector<std::string> _fileNames;        ///< The names of files to be processed
-    size_t                   _recordSizeBytes;  ///< desired record size
+    /// The names of files to be processed
+    std::vector<std::string> const _fileNames;
+
+    /// The desired record size
+    size_t const _recordSizeBytes;
 
     /// The number of a file which is being processed. The iterator
     /// is set to _fileNames.end() after finishing processing the very
     /// last file of the collection.
-    std::vector<std::string>::iterator _currentFileItr;
+    std::vector<std::string>::const_iterator _currentFileItr;
 
     /// Files which has been or are being processed
     std::map<std::string, std::unique_ptr<FileCsComputeEngine>> _processed;

@@ -22,12 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_VERIFYJOB_H
 #define LSST_QSERV_REPLICA_VERIFYJOB_H
 
-/// VerifyJob.h declares:
-///
-/// class  VerifyJob
-///
-/// (see individual class documentation for more information)
-
 // System headers
 #include <functional>
 #include <string>
@@ -166,26 +160,26 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param controller          - for launching requests
-     * @param parentJobId         - optional identifier of a parent job
-     * @param onFinish            - callback function to be called upon a completion of the job
+     * @param maxReplicas         - maximum number of replicas to process simultaneously
+     *                              (must be greater than 0).
+     * @param computeCheckSum     - compute check/control sum on each file if set to 'true'
      @ @param onReplicaDifference - callback function to be called when two replicas won't match
-     * @param maxReplicas         - (optional) maximum number of replicas to process simultaneously.
-     *                              If the parameter is set to 0 (the default value) then 1 replica
-     *                              will be assumed.
-     * @param computeCheckSum     - (optional) tell a worker server to compute check/control sum on each file
+     * @param controller          - for launching requests
+     * @param parentJobId         - (optional) identifier of a parent job
      * @param onFinish            - (optional) callback function to be called upon a completion of the job
      * @param options             - (optional) job options
      *
      * @return poiter to the created object
+     *
+     * @throws std::invalid_argument - of maxReplicas is 0
      */
-    static Ptr create(Controller::Ptr const& controller,
-                      std::string const& parentJobId,
-                      CallbackType onFinish,
-                      CallbackTypeOnDiff onReplicaDifference,
-                      size_t maxReplicas = 0,
-                      bool computeCheckSum = false,
-                      Job::Options const& options=defaultOptions());
+    static Ptr create(size_t maxReplicas,
+                      bool computeCheckSum,
+                      CallbackTypeOnDiff const& onReplicaDifference,
+                      Controller::Ptr const& controller,
+                      std::string const& parentJobId = std::string(),
+                      CallbackType const& onFinish = nullptr,
+                      Job::Options const& options = defaultOptions());
 
     // Default construction and copy semantics are prohibited
 
@@ -204,7 +198,7 @@ public:
     /**
      * @see Job::extendedPersistentState()
      */
-    std::string extendedPersistentState(SqlGeneratorPtr const& gen) const override;
+    std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
 
 protected:
 
@@ -213,12 +207,12 @@ protected:
      *
      * @see VerifyJob::create()
      */
-    VerifyJob(Controller::Ptr const& controller,
-              std::string const& parentJobId,
-              CallbackType onFinish,
-              CallbackTypeOnDiff onReplicaDifference,
-              size_t maxReplicas,
+    VerifyJob(size_t maxReplicas,
               bool computeCheckSum,
+              CallbackTypeOnDiff const& onReplicaDifference,
+              Controller::Ptr const& controller,
+              std::string const& parentJobId,
+              CallbackType const& onFinish,
               Job::Options const& options);
 
     /**
@@ -232,9 +226,9 @@ protected:
     void cancelImpl(util::Lock const& lock) final;
 
     /**
-      * @see Job::notifyImpl()
+      * @see Job::notify()
       */
-    void notifyImpl() final;
+    void notify(util::Lock const& lock) final;
 
     /**
      * The calback function to be invoked on a completion of each request.
@@ -244,34 +238,29 @@ protected:
     void onRequestFinish(FindRequest::Ptr request);
 
     /**
-     * Find the next replicas to be inspected and return 'true' if no suitable
-     * candidates found. Normally the method should never return 'false' unless
-     * no single replica exists in the system or there was a failure to find
-     * replicas in the database.
+     * Find the next replicas to be inspected.
      *
      * @param lock        - the lock must be acquired by a caller of the method
      * @param replicas    - a collection of replicas returned from the database
      * @param numReplicas - a desired number of replicas to be pulled from the database
-     *
-     * @return reslt of the search
      */
-    bool nextReplicas(util::Lock const& lock,
+    void nextReplicas(util::Lock const& lock,
                       std::vector<ReplicaInfo>& replicas,
                       size_t numReplicas);
 
 protected:
+
+    /// The maximum number of replicas to be allowed processed simultaneously
+    size_t const _maxReplicas;
+
+    /// This option will be passed on to the worker services
+    bool const _computeCheckSum;
 
     /// Client-defined function to be called upon the completion of the job
     CallbackType _onFinish;
 
     /// Client-defined function to be called when two replicas won't match
     CallbackTypeOnDiff _onReplicaDifference;
-
-    /// The maximum number of replicas to be allowed processed simultaneously
-    size_t _maxReplicas;
-
-    /// This option will be passed on to the worker services
-    bool _computeCheckSum;
 
     /// The current (last) batch if replicas which are being inspected.
     /// The replicas are registered by the corresponding request IDs.

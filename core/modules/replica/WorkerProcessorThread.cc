@@ -64,7 +64,7 @@ void WorkerProcessorThread::run() {
 
     auto const self = shared_from_this();
 
-    _thread = std::make_shared<std::thread>([self] () {
+    _thread = std::make_unique<std::thread>([self] () {
 
         LOGS(_log, LOG_LVL_DEBUG, self->context() << "start");
 
@@ -135,7 +135,7 @@ void WorkerProcessorThread::stop() {
 
 void WorkerProcessorThread::stopped() {
     _stop = false;
-    _thread = nullptr;
+    _thread.reset(nullptr);
     _processor->processorThreadStopped(shared_from_this());
 }
 

@@ -22,14 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_STATUSREQUESTBASE_H
 #define LSST_QSERV_REPLICA_STATUSREQUESTBASE_H
 
-/// StatusRequestBase.h declares:
-///
-/// Common classes shared by all implementations:
-///
-///   class StatusRequestBase
-///
-/// (see individual class documentation for more information)
-
 // System headers
 #include <memory>
 #include <string>
@@ -159,11 +151,11 @@ protected:
 private:
 
     /// An identifier of the targer request whose state is to be queried
-    std::string _targetRequestId;
+    std::string const _targetRequestId;
 
     /// Request type to be affected by the operation (must match an identifier
     /// of the request too)
-    proto::ReplicationReplicaRequestType _replicaRequestType;
+    proto::ReplicationReplicaRequestType const _replicaRequestType;
 };
 
 }}} // namespace lsst::qserv::replica

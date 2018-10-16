@@ -22,15 +22,15 @@
 #ifndef LSST_QSERV_REPLICA_STATUSREQUEST_H
 #define LSST_QSERV_REPLICA_STATUSREQUEST_H
 
-/// StatusRequest.h declares:
-///
-///   class StatusRequest
-///   class StatusRequestReplicate
-///   class StatusRequestDelete
-///   class StatusRequestFind
-///   class StatusRequestFindAll
-///
-/// (see individual class documentation for more information)
+/**
+ * This header declares a collection of the request status manaement request
+ * classes for the Controller-side Replication Framework.
+ *
+ * @see class StatusRequestReplicate
+ * @see class StatusRequestDelete
+ * @see class StatusRequestFind
+ * @see class StatusRequestFindAll
+ */
 
 // System headers
 #include <functional>
@@ -244,7 +244,7 @@ public:
                       boost::asio::io_service& io_service,
                       std::string const& worker,
                       std::string const& targetRequestId,
-                      CallbackType onFinish,
+                      CallbackType const& onFinish,
                       bool keepTracking,
                       std::shared_ptr<Messenger> const& messenger) {
 
@@ -272,7 +272,7 @@ private:
                   std::string const& worker,
                   std::string const& targetRequestId,
                   proto::ReplicationReplicaRequestType replicaRequestType,
-                  CallbackType onFinish,
+                  CallbackType const& onFinish,
                   bool keepTracking,
                   std::shared_ptr<Messenger> const& messenger)
         :   StatusRequestBase(serviceProvider,
@@ -286,16 +286,11 @@ private:
             _onFinish(onFinish) {
     }
 
-    /**
-     * Notifying a party which initiated the request.
-     *
-     * This method implements the corresponing virtual method defined
-     * by the base class.
+     /**
+     * @see Request::notify()
      */
-    void notifyImpl() final {
-        if (_onFinish) {
-            _onFinish(shared_from_base<StatusRequest<POLICY>>());
-        }
+    void notify(util::Lock const& lock) final {
+        notifyDefaultImpl<StatusRequest<POLICY>>(lock, _onFinish);
     }
 
     /**

@@ -22,11 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_MESSENGER_H
 #define LSST_QSERV_REPLICA_MESSENGER_H
 
-/// Messenger.h declares:
-///
-/// class Messenger
-/// (see individual class documentation for more information)
-
 // System headers
 #include <functional>
 #include <map>

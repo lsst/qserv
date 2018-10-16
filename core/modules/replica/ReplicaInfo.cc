@@ -105,6 +105,18 @@ ReplicaInfo::ReplicaInfo(Status status,
         _fileInfo(fileInfo) {
 }
 
+ReplicaInfo::ReplicaInfo(Status status,
+                         std::string const& worker,
+                         std::string const& database,
+                         unsigned int chunk,
+                         uint64_t verifyTime)
+    :   _status(status),
+        _worker(worker),
+        _database(database),
+        _chunk(chunk),
+        _verifyTime(verifyTime) {
+}
+
 ReplicaInfo::ReplicaInfo(proto::ReplicationReplicaInfo const* info) {
 
     switch (info->status()) {
@@ -139,6 +151,14 @@ ReplicaInfo::ReplicaInfo(proto::ReplicationReplicaInfo const* info) {
     _verifyTime = info->verify_time();
 }
 
+void ReplicaInfo::setFileInfo(FileInfoCollection const& fileInfo) {
+    _fileInfo = fileInfo;
+}
+
+void ReplicaInfo::setFileInfo(FileInfoCollection&& fileInfo) {
+    _fileInfo = fileInfo;
+}
+
 uint64_t ReplicaInfo::beginTransferTime() const {
     uint64_t t = 0;
     for (auto&& f: _fileInfo) {
@@ -165,12 +185,30 @@ void ReplicaInfo::setInfo(lsst::qserv::proto::ReplicationReplicaInfo* info) cons
     ::setInfoImpl(*this, info);
 }
 
-std::map<std::string,ReplicaInfo::FileInfo> ReplicaInfo::fileInfoMap() const {
-    std::map<std::string,ReplicaInfo::FileInfo> result;
+std::map<std::string, ReplicaInfo::FileInfo> ReplicaInfo::fileInfoMap() const {
+    std::map<std::string, ReplicaInfo::FileInfo> result;
     for (auto&& f: _fileInfo) {
         result[f.name] = f;
     }
     return result;
+}
+
+bool ReplicaInfo::equalFileCollections(ReplicaInfo const& other) const {
+
+    // Files of both comllection needs to be map-sorted because objects may
+    // have them stored in different order.
+
+    std::map<std::string, ReplicaInfo::FileInfo> thisFileInfo  = this->fileInfoMap();
+    std::map<std::string, ReplicaInfo::FileInfo> otherFileInfo = other.fileInfoMap();
+
+    if (thisFileInfo.size() != otherFileInfo.size()) return false;
+
+    for (auto&& elem: thisFileInfo) {
+        auto otherIter = otherFileInfo.find(elem.first);
+        if (otherIter == otherFileInfo.end()) return false;
+        if (otherIter->second != elem.second) return false;
+    }
+    return true;
 }
 
 std::ostream& operator<<(std::ostream& os, ReplicaInfo::FileInfo const& fi) {

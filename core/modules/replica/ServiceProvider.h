@@ -22,18 +22,18 @@
 #ifndef LSST_QSERV_REPLICA_SERVICEPROVIDER_H
 #define LSST_QSERV_REPLICA_SERVICEPROVIDER_H
 
-/// ServiceProvider.h declares:
-///
-/// class ServiceProvider
-/// (see individual class documentation for more information)
-
 // System headers
 #include <memory>
 #include <string>
+#include <thread>
 #include <vector>
+
+// Third party headers
+#include <boost/asio.hpp>
 
 // Qserv headers
 #include "replica/ChunkLocker.h"
+#include "util/Mutex.h"
 
 // This header declarations
 
@@ -44,6 +44,7 @@ namespace replica {
 // Forward declarations
 class Configuration;
 class DatabaseServices;
+class Messenger;
 class QservMgtServices;
 
 /**
@@ -80,6 +81,31 @@ public:
 
     ~ServiceProvider() = default;
 
+    /// @return reference to the I/O service for ASYNC requests
+    boost::asio::io_service& io_service() { return _io_service; }
+
+    /**
+     * Run the services in a pool of threads unless it's already running.
+     * It's safe to call this method multiple times from any thread.
+     */
+    void run();
+
+    /**
+     * Check if the service is running.
+     *
+     * @return true if the service is running.
+     */
+    bool isRunning() const;
+
+    /**
+     * Stop the services. This method will guarantee that all outstanding
+     * opeations will finish and not aborted.
+     *
+     * This operation will also result in stopping the internal threads
+     * in which the server is being run and joining with these threads.
+     */
+    void stop();
+
     /// @return a reference to the configuration service
     ConfigurationPtr const& config() const { return _configuration; }
 
@@ -91,6 +117,9 @@ public:
 
     /// @return a reference to the Qserv notification services
     QservMgtServicesPtr const& qservMgtServices() const { return _qservMgtServices; }
+
+    /// @return a reference to worker messenger service
+    std::shared_ptr<Messenger> const& messenger() const { return _messenger; }
 
     /**
      * Make sure this worker is known in the configuration
@@ -130,13 +159,22 @@ private:
      */
     explicit ServiceProvider(std::string const& configUrl);
 
+    /// @return the context string for debugging and diagnostic printouts
+    std::string context() const;
+
 private:
 
+    // The BOOST ASIO communication services & threads which run them
+
+    boost::asio::io_service _io_service;
+    std::unique_ptr<boost::asio::io_service::work> _work;
+    std::vector<std::unique_ptr<std::thread>> _threads;
+
     /// Configuration manager
-    ConfigurationPtr _configuration;
+    ConfigurationPtr const _configuration;
 
     /// Database services
-    DatabaseServicesPtr _databaseServices;
+    DatabaseServicesPtr const _databaseServices;
 
     /// For claiming exclusive ownership over chunks during replication
     /// operations to ensure consistency of the operations.
@@ -144,6 +182,13 @@ private:
 
     /// Qserv management services
     QservMgtServicesPtr _qservMgtServices;
+
+    /// Worker messenger service
+    std::shared_ptr<Messenger> _messenger;
+
+    /// The mutex for enforcing thread safety of the class's public API
+    /// and internal operations.
+    mutable util::Mutex _mtx;
 };
 
 }}} // namespace lsst::qserv::replica

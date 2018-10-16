@@ -22,10 +22,12 @@
 #ifndef LSST_QSERV_REPLICA_DATABASESERVICESMYSQL_H
 #define LSST_QSERV_REPLICA_DATABASESERVICESMYSQL_H
 
-/// DatabaseServices.h declares:
-///
-/// class DatabaseServices
-/// (see individual class documentation for more information)
+/**
+ * This hedear represents a MyQL-backed implementation of the
+ * persistent database services of the Replication Framework.
+ *
+ * @see class DatabaseServices
+ */
 
 // System headers
 #include <vector>
@@ -118,37 +120,37 @@ public:
      */
     void saveReplicaInfoCollection(std::string const& worker,
                                    std::string const& database,
-                                   ReplicaInfoCollection const& infoCollection) final;
+                                   ReplicaInfoCollection const& newReplicaInfoCollection) final;
 
     /**
      * @see DatabaseServices::findOldestReplica()
      */
-    bool findOldestReplicas(std::vector<ReplicaInfo>& replicas,
+    void findOldestReplicas(std::vector<ReplicaInfo>& replicas,
                             size_t maxReplicas,
-                            bool enabledWorkersOnly) const final;
+                            bool enabledWorkersOnly) final;
 
     /**
      * @see DatabaseServices::findReplicas()
      */
-    bool findReplicas(std::vector<ReplicaInfo>& replicas,
+    void findReplicas(std::vector<ReplicaInfo>& replicas,
                       unsigned int chunk,
                       std::string const& database,
-                      bool enabledWorkersOnly) const final;
+                      bool enabledWorkersOnly) final;
 
     /**
      * @see DatabaseServices::findWorkerReplicas()
      */
-    bool findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
+    void findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
                             std::string const& worker,
-                            std::string const& database) const final;
+                            std::string const& database) final;
 
     /**
      * @see DatabaseServices::findWorkerReplicas()
      */
-    bool findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
+    void findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
                             unsigned int chunk,
                             std::string const& worker,
-                            std::string const& databaseFamily) const final;
+                            std::string const& databaseFamily) final;
 
 private:
 
@@ -161,13 +163,11 @@ private:
      * @param replicas  - collection of replicas found upon a successful completion
      * @param worker    - worker name (as per the request)
      * @param database  - database name (as per the request)
-     * 
-     * @return 'true' if the operation has succeeded (even if no replicas were found)
      */
-    bool findWorkerReplicasImpl(util::Lock const& lock,
+    void findWorkerReplicasImpl(util::Lock const& lock,
                                 std::vector<ReplicaInfo>& replicas,
                                 std::string const& worker,
-                                std::string const& database) const;
+                                std::string const& database);
 
     /**
      * Actual implementation of the replica update algorithm.
@@ -181,39 +181,57 @@ private:
     /**
      * Actual implementation of the multiple replicas update algorithm.
      *
-     * @param lock           - lock on a mutex must be acquired before calling this method
-     * @param worker         - woker name (as per the request)
-     * @param database       - database name (as per the request)
-     * @param infoCollection - collection of replicas
+     * @param lock                     - lock on a mutex must be acquired before calling this method
+     * @param worker                   - worker name (as per the request)
+     * @param database                 - database name (as per the request)
+     * @param newReplicaInfoCollection - collection of new replicas
      */
     void saveReplicaInfoCollectionImpl(util::Lock const& lock,
                                        std::string const& worker,
                                        std::string const& database,
-                                       ReplicaInfoCollection const& infoCollection);
+                                       ReplicaInfoCollection const& newReplicaInfoCollection);
 
+    /**
+     * Delete a replica from the database.
+     *
+     * @param lock     - lock on a mutex must be acquired before calling this method
+     * @param worker   - worker name
+     * @param database - database name
+     * @param chunk    - chunk to be removed
+     */
+    void deleteReplicaInfoImpl(util::Lock const& lock,
+                               std::string const& worker,
+                               std::string const& database,
+                               unsigned int chunk);
     /**
      * Fetch replicas satisfying the specified query
      *
      * @param lock     - lock on a mutex must be acquired before calling this method
      * @param replicas - collection of replicas to be returned
      * @param query    - SQL query against the corresponding table
-     *
-     * @return 'true' if the operation has succeeded (even if no replicas were found)
      */
-    bool findReplicasImpl(util::Lock const& lock,
+    void findReplicasImpl(util::Lock const& lock,
                           std::vector<ReplicaInfo>& replicas,
-                          std::string const& query) const;
+                          std::string const& query);
+
+    /**
+     * Fetch files for the replicas
+     *
+     * @param lock       - lock on a mutex must be acquired before calling this method
+     * @param id2replica - input collection of incomplete replicas 
+     * @param replicas   - output collection of complete replicas
+     */
+    void findReplicaFilesImpl(util::Lock const& lock,
+                              std::map<uint64_t, ReplicaInfo> const& id2replica,
+                              std::vector<ReplicaInfo>& replicas);
 
 private:
 
     /// The configuration service
-    Configuration::Ptr _configuration;
+    Configuration::Ptr const _configuration;
 
     /// Database connection
-    database::mysql::Connection::Ptr _conn;
-
-    /// Database connection (second instance for nested queries)
-    database::mysql::Connection::Ptr _conn2;
+    database::mysql::Connection::Ptr const _conn;
 
     /// The mutex for enforcing thread safety of the class's public API
     /// and internal operations.

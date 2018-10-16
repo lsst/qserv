@@ -22,13 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_REBALANCEJOB_H
 #define LSST_QSERV_REPLICA_REBALANCEJOB_H
 
-/// RebalanceJob.h declares:
-///
-/// struct RebalanceJobResult
-/// class  RebalanceJob
-///
-/// (see individual class documentation for more information)
-
 // System headers
 #include <atomic>
 #include <functional>
@@ -93,9 +86,6 @@ struct RebalanceJobResult {
     size_t totalWorkers    {0};     // not counting workers which failed to report chunks
     size_t totalGoodChunks {0};     // good chunks reported by the precursor job
     size_t avgChunks       {0};     // per worker average
-
-    /// The total number of iterations the job has gone so far
-    size_t numIterations {0};
 };
 
 /**
@@ -158,19 +148,18 @@ public:
      * @param databaseFamily - the name of a database family
      * @param estimateOnly   - do not perform any changes to chunk disposition. Just produce an estimate report.
      * @param controller     - for launching requests
-     * @param parentJobId    - optional identifier of a parent job
-     * @param onFinish       - a callback function to be called upon a completion of the job
-     * @param onFinish       - callback function to be called upon a completion of the job
-     * @param options        - job options
+     * @param parentJobId    - (optional) identifier of a parent job
+     * @param onFinish       - (optional) callback function to be called upon job completion
+     * @param options        - (optional) job options
      *
      * @return pointer to the created object
      */
     static Ptr create(std::string const& databaseFamily,
                       bool estimateOnly,
                       Controller::Ptr const& controller,
-                      std::string const& parentJobId,
-                      CallbackType onFinish,
-                      Job::Options const& options=defaultOptions());
+                      std::string const& parentJobId = std::string(),
+                      CallbackType const& onFinish = nullptr,
+                      Job::Options const& options = defaultOptions());
 
     // Default construction and copy semantics are prohibited
 
@@ -178,8 +167,7 @@ public:
     RebalanceJob(RebalanceJob const&) = delete;
     RebalanceJob& operator=(RebalanceJob const&) = delete;
 
-    /// Destructor (non-trivial in order to release chunks locked by the operation)
-    ~RebalanceJob() final;
+    ~RebalanceJob() = default;
 
     /// @return the name of a database defining a scope of the operation
     std::string const& databaseFamily() const { return _databaseFamily; }
@@ -209,7 +197,7 @@ public:
     /**
      * @see Job::extendedPersistentState()
      */
-    std::string extendedPersistentState(SqlGeneratorPtr const& gen) const override;
+    std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
 
 protected:
 
@@ -222,7 +210,7 @@ protected:
                  bool estimateOnly,
                  Controller::Ptr const& controller,
                  std::string const& parentJobId,
-                 CallbackType onFinish,
+                 CallbackType const& onFinish,
                  Job::Options const& options);
 
     /**
@@ -236,9 +224,9 @@ protected:
     void cancelImpl(util::Lock const& lock) final;
 
     /**
-      * @see Job::notifyImpl()
+      * @see Job::notify()
       */
-    void notifyImpl() final;
+    void notify(util::Lock const& lock) final;
 
     /**
      * The calback function to be invoked on a completion of the precursor job
@@ -255,28 +243,28 @@ protected:
     void onJobFinish(MoveReplicaJob::Ptr const& job);
 
     /**
-     * Restart the job from scratch. This method will reset object context
-     * to a state it was before method Job::startImpl() called and then call
-     * Job::startImpl() again.
+     * Submit a batch of the replica movement job
      *
-     * @param lock - the lock must be acquired by a caller of the method
-     */
-    void restart(util::Lock const& lock);
-
-    /**
-     * Unconditionally release the specified chunk
+     * This method implements a load balancing algorithm which tries to
+     * prevent excessive use of resources by controllers and to avoid
+     * "hot spots" or underutilization at workers.
      *
-     * @param chunk - the chunk number
+     * @param lock    - the lock must be acquired by a caller of the method
+     * @param numJobs - desired number of jobs to submit
+     *
+     * @retun actual number of submitted jobs
      */
-    void release(unsigned int chunk);
+    size_t launchNextJobs(util::Lock const& lock,
+                          size_t numJobs);
 
 protected:
 
     /// The name of the database
-    std::string _databaseFamily;
+    std::string const _databaseFamily;
 
-    /// Estimate mode option
-    bool _estimateOnly;
+    /// Estimate mode option (no actual changes will be made to replica disposition
+    /// if 'true')
+    bool const _estimateOnly;
 
     /// Client-defined function to be called upon the completion of the job
     CallbackType _onFinish;
@@ -285,21 +273,19 @@ protected:
     /// replica disposition.
     FindAllJob::Ptr _findAllJob;
 
-    /// The number of chunks which required to be moved but couldn't be locked
-    /// in the exclusive mode. The counter will be analyzed upon a completion
-    /// of the last request, and if it were found not empty another iteraton
-    /// of the job will be undertaken
-    size_t _numFailedLocks;
+    /// Replica creation jobs which are ready to be launched
+    std::list<MoveReplicaJob::Ptr> _jobs;
 
-    /// A collection of requests implementing the operation
-    std::vector<MoveReplicaJob::Ptr> _moveReplicaJobs;
+    /// Jobs which are already active
+    std::list<MoveReplicaJob::Ptr> _activeJobs;
 
-    /// The cache of locked chunks. It's meant to be used for keeping track
-    /// of all jobs associated with each locked chunks. Chuns will get unlocked
-    /// when all relevant jobs will get finished.
-    std::map<unsigned int,          // chunk
-             std::map<std::string,  // sourceWorker
-                      MoveReplicaJob::Ptr>> _chunk2jobs;
+    // The counter of jobs which will be updated. They need to be atomic
+    // to avoid race condition between the onFinish() callbacks executed within
+    // the Controller's thread and this thread.
+
+    std::atomic<size_t> _numLaunched;   ///< the total number of replica creation jobs launched
+    std::atomic<size_t> _numFinished;   ///< the total number of finished jobs
+    std::atomic<size_t> _numSuccess;    ///< the number of successfully completed jobs
 
     /// The result of the operation (gets updated as requests are finishing)
     RebalanceJobResult _replicaData;

@@ -24,7 +24,6 @@
 #include "replica/GetReplicasQservMgtRequest.h"
 
 // System headers
-#include <future>
 #include <set>
 #include <stdexcept>
 
@@ -36,7 +35,6 @@
 #include "global/ResourceUnit.h"
 #include "lsst/log/Log.h"
 #include "replica/Configuration.h"
-#include "replica/DatabaseMySQL.h"
 #include "replica/ServiceProvider.h"
 
 namespace {
@@ -51,14 +49,12 @@ namespace replica {
 
 GetReplicasQservMgtRequest::Ptr GetReplicasQservMgtRequest::create(
                                         ServiceProvider::Ptr const& serviceProvider,
-                                        boost::asio::io_service& io_service,
                                         std::string const& worker,
                                         std::string const& databaseFamily,
                                         bool inUseOnly,
-                                        GetReplicasQservMgtRequest::CallbackType onFinish) {
+                                        GetReplicasQservMgtRequest::CallbackType const& onFinish) {
     return GetReplicasQservMgtRequest::Ptr(
         new GetReplicasQservMgtRequest(serviceProvider,
-                                       io_service,
                                        worker,
                                        databaseFamily,
                                        inUseOnly,
@@ -67,13 +63,11 @@ GetReplicasQservMgtRequest::Ptr GetReplicasQservMgtRequest::create(
 
 GetReplicasQservMgtRequest::GetReplicasQservMgtRequest(
                                 ServiceProvider::Ptr const& serviceProvider,
-                                boost::asio::io_service& io_service,
                                 std::string const& worker,
                                 std::string const& databaseFamily,
                                 bool inUseOnly,
-                                GetReplicasQservMgtRequest::CallbackType onFinish)
+                                GetReplicasQservMgtRequest::CallbackType const& onFinish)
     :   QservMgtRequest(serviceProvider,
-                        io_service,
                         "QSERV_GET_REPLICAS",
                         worker),
         _databaseFamily(databaseFamily),
@@ -91,10 +85,11 @@ QservReplicaCollection const& GetReplicasQservMgtRequest::replicas() const {
     return _replicas;
 }
 
-std::string GetReplicasQservMgtRequest::extendedPersistentState(SqlGeneratorPtr const& gen) const {
-    return gen->sqlPackValues(id(),
-                              databaseFamily(),
-                              inUseOnly() ? 1 : 0);
+std::list<std::pair<std::string,std::string>> GetReplicasQservMgtRequest::extendedPersistentState() const {
+    std::list<std::pair<std::string,std::string>> result;
+    result.emplace_back("database_family", databaseFamily());
+    result.emplace_back("in_use_only",     inUseOnly() ? "1" : "0");
+    return result;
 }
 
 void GetReplicasQservMgtRequest::setReplicas(
@@ -178,24 +173,30 @@ void GetReplicasQservMgtRequest::startImpl(util::Lock const& lock) {
 
 void GetReplicasQservMgtRequest::finishImpl(util::Lock const& lock) {
 
-    if (extendedState() == ExtendedState::CANCELLED) {
+    switch (extendedState()) {
 
-        // And if the SSI request is still around then tell it to stop
+        case ExtendedState::CANCELLED:
+        case ExtendedState::TIMEOUT_EXPIRED:
 
-        if (_qservRequest) {
-            bool const cancel = true;
-            _qservRequest->Finished(cancel);
-        }
+            // And if the SSI request is still around then tell it to stop
+
+            if (_qservRequest) {
+                bool const cancel = true;
+                _qservRequest->Finished(cancel);
+            }
+            break;
+
+        default:
+            break;
     }
     _qservRequest = nullptr;
 }
 
-void GetReplicasQservMgtRequest::notifyImpl() {
+void GetReplicasQservMgtRequest::notify(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notifyImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
 
-    if (_onFinish) {
-        _onFinish(shared_from_base<GetReplicasQservMgtRequest>());
-    }
+    notifyDefaultImpl<GetReplicasQservMgtRequest>(lock, _onFinish);
 }
+
 }}} // namespace lsst::qserv::replica

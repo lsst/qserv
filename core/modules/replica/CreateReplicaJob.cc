@@ -31,7 +31,6 @@
 // Qserv headers
 #include "lsst/log/Log.h"
 #include "replica/Configuration.h"
-#include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
 #include "replica/ErrorReporting.h"
 #include "replica/QservMgtServices.h"
@@ -85,7 +84,7 @@ CreateReplicaJob::Ptr CreateReplicaJob::create(std::string const& databaseFamily
                                                    std::string const& destinationWorker,
                                                    Controller::Ptr const& controller,
                                                    std::string const& parentJobId,
-                                                   CallbackType onFinish,
+                                                   CallbackType const& onFinish,
                                                    Job::Options const& options) {
     return CreateReplicaJob::Ptr(
         new CreateReplicaJob(databaseFamily,
@@ -104,7 +103,7 @@ CreateReplicaJob::CreateReplicaJob(std::string const& databaseFamily,
                                    std::string const& destinationWorker,
                                    Controller::Ptr const& controller,
                                    std::string const& parentJobId,
-                                   CallbackType onFinish,
+                                   CallbackType const& onFinish,
                                    Job::Options const& options)
     :   Job(controller,
             parentJobId,
@@ -127,12 +126,13 @@ CreateReplicaJobResult const& CreateReplicaJob::getReplicaData() const {
         "CreateReplicaJob::getReplicaData  the method can't be called while the job hasn't finished");
 }
 
-std::string CreateReplicaJob::extendedPersistentState(SqlGeneratorPtr const& gen) const {
-    return gen->sqlPackValues(id(),
-                              databaseFamily(),
-                              chunk(),
-                              sourceWorker(),
-                              destinationWorker());
+std::list<std::pair<std::string,std::string>> CreateReplicaJob::extendedPersistentState() const {
+    std::list<std::pair<std::string,std::string>> result;
+    result.emplace_back("database_family",    databaseFamily());
+    result.emplace_back("timeout_sec",        std::to_string(chunk()));
+    result.emplace_back("source_worker",      sourceWorker());
+    result.emplace_back("destination_worker", destinationWorker());
+    return result;
 }
 
 void CreateReplicaJob::startImpl(util::Lock const& lock) {
@@ -149,8 +149,8 @@ void CreateReplicaJob::startImpl(util::Lock const& lock) {
              (sourceWorker() != destinationWorker()))) {
 
         LOGS(_log, LOG_LVL_ERROR, context() << "startImpl  ** MISCONFIGURED ** "
-             << " database family: '" << databaseFamily() << "'"
-             << " source worker: '" << sourceWorker() << "'"
+             << " database family: '"    << databaseFamily() << "'"
+             << " source worker: '"      << sourceWorker() << "'"
              << " destination worker: '" << destinationWorker() << "'");
 
         setState(lock,
@@ -162,16 +162,32 @@ void CreateReplicaJob::startImpl(util::Lock const& lock) {
     // Make sure no such replicas exist yet at the destination
 
     std::vector<ReplicaInfo> destinationReplicas;
-    if (not controller()->serviceProvider()->databaseServices()->findWorkerReplicas(
-                destinationReplicas,
-                chunk(),
-                destinationWorker(),
-                databaseFamily())) {
+    try {
+        controller()->serviceProvider()->databaseServices()->findWorkerReplicas(
+            destinationReplicas,
+            chunk(),
+            destinationWorker(),
+            databaseFamily());
+
+    } catch (std::invalid_argument const& ex) {
+
+        LOGS(_log, LOG_LVL_ERROR, context() << "startImpl  "
+             << "** misconfigured application ** "
+             << " chunk: "  << chunk()
+             << " destinationWorker: " << destinationWorker()
+             << " databaseFamily: " << databaseFamily()
+             << " exception: " << ex.what());
+        
+        throw;
+
+    } catch (std::exception const& ex) {
 
         LOGS(_log, LOG_LVL_ERROR, context() << "startImpl  "
              << "** failed to find replicas ** "
              << " chunk: "  << chunk()
-             << " worker: " << destinationWorker());
+             << " destinationWorker: " << destinationWorker()
+             << " databaseFamily: " << databaseFamily()
+             << " exception: " << ex.what());
 
         setState(lock,
                  State::FINISHED,
@@ -182,7 +198,8 @@ void CreateReplicaJob::startImpl(util::Lock const& lock) {
         LOGS(_log, LOG_LVL_ERROR, context() << "startImpl  "
              << "** destination worker already has " << destinationReplicas.size() << " replicas ** "
              << " chunk: "  << chunk()
-             << " worker: " << destinationWorker());
+             << " destinationWorker: " << destinationWorker()
+             << " databaseFamily: " << databaseFamily());
 
         setState(lock,
                  State::FINISHED,
@@ -201,15 +218,31 @@ void CreateReplicaJob::startImpl(util::Lock const& lock) {
     //    see if the chunk is available on a source node.
 
     std::vector<ReplicaInfo> sourceReplicas;
-    if (not controller()->serviceProvider()->databaseServices()->findWorkerReplicas(
-                sourceReplicas,
-                chunk(),
-                sourceWorker(),
-                databaseFamily())) {
+    try {
+        controller()->serviceProvider()->databaseServices()->findWorkerReplicas(
+            sourceReplicas,
+            chunk(),
+            sourceWorker(),
+            databaseFamily());
+
+    } catch (std::invalid_argument const& ex) {
+
+        LOGS(_log, LOG_LVL_ERROR, context() << "startImpl  "
+             << "** misconfigured application ** "
+             << " chunk: "  << chunk()
+             << " sourceWorker: " << sourceWorker()
+             << " databaseFamily: " << databaseFamily()
+             << " exception: " << ex.what());
+        
+        throw;
+
+    } catch (std::exception const& ex) {
 
         LOGS(_log, LOG_LVL_ERROR, context() << "startImpl  ** failed to find replicas ** "
              << " chunk: "  << chunk()
-             << " worker: " << sourceWorker());
+             << " sourceWorker: " << sourceWorker()
+             << " databaseFamily: " << databaseFamily()
+             << " exception: " << ex.what());
 
         setState(lock,
                  State::FINISHED,
@@ -281,13 +314,11 @@ void CreateReplicaJob::cancelImpl(util::Lock const& lock) {
     _requests.clear();
 }
 
-void CreateReplicaJob::notifyImpl() {
+void CreateReplicaJob::notify(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notifyImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
 
-    if (_onFinish) {
-        _onFinish(shared_from_base<CreateReplicaJob>());
-    }
+    notifyDefaultImpl<CreateReplicaJob>(lock, _onFinish);
 }
 
 void CreateReplicaJob::onRequestFinish(ReplicationRequest::Ptr const& request) {

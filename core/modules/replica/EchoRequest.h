@@ -22,12 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_ECHOREQUEST_H
 #define LSST_QSERV_REPLICA_ECHOREQUEST_H
 
-///  .h declares:
-//
-///   class EchoRequest
-///
-/// (see individual class documentation for more information)
-
 // System headers
 #include <functional>
 #include <memory>
@@ -110,7 +104,7 @@ public:
                       std::string const& worker,
                       std::string const& data,
                       uint64_t delay,
-                      CallbackType onFinish,
+                      CallbackType const& onFinish,
                       int  priority,
                       bool keepTracking,
                       std::shared_ptr<Messenger> const& messenger);
@@ -125,7 +119,7 @@ private:
                 std::string const& worker,
                 std::string const& data,
                 uint64_t delay,
-                CallbackType onFinish,
+                CallbackType const& onFinish,
                 int  priority,
                 bool keepTracking,
                 std::shared_ptr<Messenger> const& messenger);
@@ -167,9 +161,9 @@ private:
                  lsst::qserv::proto::ReplicationResponseEcho const& message);
 
     /**
-     * @see Request::notifyImpl()
+     * @see Request::notify()
      */
-    void notifyImpl() final;
+    void notify(util::Lock const& lock) final;
 
     /**
      * @see Request::savePersistentState()
@@ -179,12 +173,15 @@ private:
     /**
      * @see Request::extendedPersistentState()
      */
-    std::string extendedPersistentState(SqlGeneratorPtr const& gen) const final;
+    std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
 
 private:
 
-    std::string _data;
-    uint64_t    _delay;
+    /// Data to be sent to a worker
+    std::string const _data;
+
+    /// Execution time (milliseconds) of the request at worker
+    uint64_t const _delay;
 
     CallbackType _onFinish;
 

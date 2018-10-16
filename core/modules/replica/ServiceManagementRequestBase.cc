@@ -33,9 +33,12 @@
 // Qserv headers
 #include "lsst/log/Log.h"
 #include "proto/replication.pb.h"
+#include "replica/Controller.h"
+#include "replica/DatabaseServices.h"
 #include "replica/Messenger.h"
 #include "replica/Performance.h"
 #include "replica/ProtocolBuffer.h"
+#include "replica/ServiceProvider.h"
 
 namespace {
 
@@ -183,12 +186,12 @@ ServiceState const& ServiceManagementRequestBase::getServiceState() const {
 }
 
 ServiceManagementRequestBase::ServiceManagementRequestBase(
-                                    ServiceProvider::Ptr const&      serviceProvider,
-                                    boost::asio::io_service&             io_service,
-                                    char const*                          requestName,
-                                    std::string const&                   worker,
+                                    ServiceProvider::Ptr const& serviceProvider,
+                                    boost::asio::io_service& io_service,
+                                    char const* requestName,
+                                    std::string const& worker,
                                     proto::ReplicationServiceRequestType requestType,
-                                    std::shared_ptr<Messenger> const&    messenger)
+                                    std::shared_ptr<Messenger> const& messenger)
     :   RequestMessenger(serviceProvider,
                          io_service,
                          requestName,
@@ -285,6 +288,10 @@ void ServiceManagementRequestBase::analyze(bool success,
             break;
     }
 
+}
+
+void ServiceManagementRequestBase::savePersistentState(util::Lock const& lock) {
+    controller()->serviceProvider()->databaseServices()->saveState(*this, performance(lock));
 }
 
 }}} // namespace lsst::qserv::replica

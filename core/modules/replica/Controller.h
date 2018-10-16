@@ -23,21 +23,16 @@
 #ifndef LSST_QSERV_REPLICA_CONTROLLER_H
 #define LSST_QSERV_REPLICA_CONTROLLER_H
 
-/// Controller.h declares:
-///
-/// class ControllerIdentity
-/// class Controller
-///
-/// (see individual class documentation for more information)
+/**
+ * This header defines the Replication Controller service for creating and
+ * managing requests sent to the remote worker services.
+ */
 
 // System headers
 #include <map>
 #include <memory>
 #include <thread>
 #include <vector>
-
-// Third party headers
-#include <boost/asio.hpp>
 
 // Qserv headers
 #include "replica/Request.h"
@@ -54,7 +49,6 @@ namespace replica {
 // Forward declarations
 
 class ControllerImpl;
-class Messenger;
 
 /**
  * Class ControllerRequestWrapper is the base class for implementing requests
@@ -150,43 +144,10 @@ public:
     uint64_t startTime() const { return _startTime; }
 
     /// @return the Service Provider used by the server
-    ServiceProvider::Ptr const& serviceProvider() { return _serviceProvider; }
+    ServiceProvider::Ptr const& serviceProvider() const { return _serviceProvider; }
 
     /// @return reference to the I/O service for ASYNC requests
-    boost::asio::io_service& io_service() { return _io_service; }
-
-    /**
-     * Run the Controller in a dedicated thread unless it's already running.
-     * It's safe to call this method multiple times from any thread.
-     */
-    void run();
-
-    /**
-     * Check if the service is running.
-     *
-     * @return true if the service is running.
-     */
-    bool isRunning() const;
-
-    /**
-     * Stop the server. This method will guarantee that all outstanding
-     * opeations will finish and not aborted.
-     *
-     * This operation will also result in stopping the internal thread
-     * in which the server is being run.
-     */
-    void stop();
-
-    /**
-     * Join with a thread in which the service is being run (if any).
-     * If the service was not started or if it's stopped the the method
-     * will return immediattely.
-     *
-     * This method is meant to be used for integration of the service into
-     * a larger multi-threaded application which may require a proper
-     * synchronization between threads.
-     */
-    void join();
+    boost::asio::io_service& io_service() { return serviceProvider()->io_service(); }
 
     /**
      * Create and start a new request for creating a replica.
@@ -212,7 +173,7 @@ public:
                                     std::string const& sourceWorkerName,
                                     std::string const& database,
                                     unsigned int chunk,
-                                    ReplicationRequestCallbackType onFinish=nullptr,
+                                    ReplicationRequestCallbackType const& onFinish=nullptr,
                                     int  priority=0,
                                     bool keepTracking=true,
                                     bool allowDuplicate=true,
@@ -238,7 +199,7 @@ public:
     DeleteRequestPtr deleteReplica(std::string const& workerName,
                                    std::string const& database,
                                    unsigned int chunk,
-                                   DeleteRequestCallbackType onFinish=nullptr,
+                                   DeleteRequestCallbackType const& onFinish=nullptr,
                                    int  priority=0,
                                    bool keepTracking=true,
                                    bool allowDuplicate=true,
@@ -269,7 +230,7 @@ public:
     FindRequestPtr findReplica(std::string const& workerName,
                                std::string const& database,
                                unsigned int chunk,
-                               FindRequestCallbackType onFinish=nullptr,
+                               FindRequestCallbackType const& onFinish=nullptr,
                                int  priority=0,
                                bool computeCheckSum=false,
                                bool keepTracking=true,
@@ -294,7 +255,7 @@ public:
     FindAllRequestPtr findAllReplicas(std::string const& workerName,
                                       std::string const& database,
                                       bool saveReplicaInfo=true,
-                                      FindAllRequestCallbackType onFinish=nullptr,
+                                      FindAllRequestCallbackType const& onFinish=nullptr,
                                       int  priority=0,
                                       bool keepTracking=true,
                                       std::string const& jobId="",
@@ -318,7 +279,7 @@ public:
     EchoRequestPtr echo(std::string const& workerName,
                         std::string const& data,
                         uint64_t delay,
-                        EchoRequestCallbackType onFinish=nullptr,
+                        EchoRequestCallbackType const& onFinish=nullptr,
                         int  priority=0,
                         bool keepTracking=true,
                         std::string const& jobId="",
@@ -339,7 +300,7 @@ public:
      */
     StopReplicationRequestPtr stopReplication(std::string const& workerName,
                                               std::string const& targetRequestId,
-                                              StopReplicationRequestCallbackType onFinish=nullptr,
+                                              StopReplicationRequestCallbackType const& onFinish=nullptr,
                                               bool keepTracking=true,
                                               std::string const& jobId="",
                                               unsigned int requestExpirationIvalSec=0);
@@ -359,7 +320,7 @@ public:
      */
     StopDeleteRequestPtr stopReplicaDelete(std::string const& workerName,
                                            std::string const& targetRequestId,
-                                           StopDeleteRequestCallbackType onFinish=nullptr,
+                                           StopDeleteRequestCallbackType const& onFinish=nullptr,
                                            bool keepTracking=true,
                                            std::string const& jobId="",
                                            unsigned int requestExpirationIvalSec=0);
@@ -379,7 +340,7 @@ public:
      */
     StopFindRequestPtr stopReplicaFind(std::string const& workerName,
                                        std::string const& targetRequestId,
-                                       StopFindRequestCallbackType onFinish=nullptr,
+                                       StopFindRequestCallbackType const& onFinish=nullptr,
                                        bool keepTracking=true,
                                        std::string const& jobId="",
                                        unsigned int requestExpirationIvalSec=0);
@@ -399,7 +360,7 @@ public:
      */
     StopFindAllRequestPtr stopReplicaFindAll(std::string const& workerName,
                                              std::string const& targetRequestId,
-                                             StopFindAllRequestCallbackType onFinish=nullptr,
+                                             StopFindAllRequestCallbackType const& onFinish=nullptr,
                                              bool keepTracking=true,
                                              std::string const& jobId="",
                                              unsigned int requestExpirationIvalSec=0);
@@ -419,7 +380,7 @@ public:
      */
     StopEchoRequestPtr stopEcho(std::string const& workerName,
                                 std::string const& targetRequestId,
-                                StopEchoRequestCallbackType onFinish=nullptr,
+                                StopEchoRequestCallbackType const& onFinish=nullptr,
                                 bool keepTracking=true,
                                 std::string const& jobId="",
                                 unsigned int requestExpirationIvalSec=0);
@@ -440,7 +401,7 @@ public:
     StatusReplicationRequestPtr statusOfReplication(
                                         std::string const& workerName,
                                         std::string const& targetRequestId,
-                                        StatusReplicationRequestCallbackType onFinish=nullptr,
+                                        StatusReplicationRequestCallbackType const& onFinish=nullptr,
                                         bool keepTracking=false,
                                         std::string const& jobId="",
                                         unsigned int requestExpirationIvalSec=0);
@@ -461,7 +422,7 @@ public:
     StatusDeleteRequestPtr statusOfDelete(
                                     std::string const& workerName,
                                     std::string const& targetRequestId,
-                                    StatusDeleteRequestCallbackType onFinish=nullptr,
+                                    StatusDeleteRequestCallbackType const& onFinish=nullptr,
                                     bool keepTracking=false,
                                     std::string const& jobId="",
                                     unsigned int requestExpirationIvalSec=0);
@@ -482,7 +443,7 @@ public:
     StatusFindRequestPtr statusOfFind(
                                     std::string const& workerName,
                                     std::string const& targetRequestId,
-                                    StatusFindRequestCallbackType onFinish=nullptr,
+                                    StatusFindRequestCallbackType const& onFinish=nullptr,
                                     bool keepTracking=false,
                                     std::string const& jobId="",
                                     unsigned int requestExpirationIvalSec=0);
@@ -503,7 +464,7 @@ public:
     StatusFindAllRequestPtr statusOfFindAll(
                                         std::string const& workerName,
                                         std::string const& targetRequestId,
-                                        StatusFindAllRequestCallbackType onFinish=nullptr,
+                                        StatusFindAllRequestCallbackType const& onFinish=nullptr,
                                         bool keepTracking=false,
                                         std::string const& jobId="",
                                         unsigned int requestExpirationIvalSec=0);
@@ -523,7 +484,7 @@ public:
      */
     StatusEchoRequestPtr statusOfEcho(std::string const& workerName,
                                       std::string const& targetRequestId,
-                                      StatusEchoRequestCallbackType onFinish=nullptr,
+                                      StatusEchoRequestCallbackType const& onFinish=nullptr,
                                       bool keepTracking=false,
                                       std::string const& jobId="",
                                       unsigned int requestExpirationIvalSec=0);
@@ -541,7 +502,7 @@ public:
      */
     ServiceSuspendRequestPtr suspendWorkerService(
                                         std::string const& workerName,
-                                        ServiceSuspendRequestCallbackType onFinish=nullptr,
+                                        ServiceSuspendRequestCallbackType const& onFinish=nullptr,
                                         std::string const& jobId="",
                                         unsigned int requestExpirationIvalSec=0);
 
@@ -558,7 +519,7 @@ public:
      */
     ServiceResumeRequestPtr resumeWorkerService(
                                         std::string const& workerName,
-                                        ServiceResumeRequestCallbackType onFinish=nullptr,
+                                        ServiceResumeRequestCallbackType const& onFinish=nullptr,
                                         std::string const& jobId="",
                                         unsigned int requestExpirationIvalSec=0);
     /**
@@ -574,7 +535,7 @@ public:
      */
     ServiceStatusRequestPtr statusOfWorkerService(
                                         std::string const& workerName,
-                                        ServiceStatusRequestCallbackType onFinish=nullptr,
+                                        ServiceStatusRequestCallbackType const& onFinish=nullptr,
                                         std::string const& jobId="",
                                         unsigned int requestExpirationIvalSec=0);
 
@@ -592,7 +553,7 @@ public:
      */
     ServiceRequestsRequestPtr requestsOfWorkerService(
                                         std::string const& workerName,
-                                        ServiceRequestsRequestCallbackType onFinish=nullptr,
+                                        ServiceRequestsRequestCallbackType const& onFinish=nullptr,
                                         std::string const& jobId="",
                                         unsigned int requestExpirationIvalSec=0);
 
@@ -610,7 +571,7 @@ public:
      */
     ServiceDrainRequestPtr drainWorkerService(
                                         std::string const& workerName,
-                                        ServiceDrainRequestCallbackType onFinish=nullptr,
+                                        ServiceDrainRequestCallbackType const& onFinish=nullptr,
                                         std::string const& jobId="",
                                         unsigned int requestExpirationIvalSec=0);
 
@@ -685,25 +646,14 @@ private:
     uint64_t const _startTime;
 
     /// The provider of various services
-    ServiceProvider::Ptr _serviceProvider;
-
-    // The BOOST ASIO communication services & threads which run them
-
-    size_t _numThreads;
-
-    boost::asio::io_service _io_service;
-    std::unique_ptr<boost::asio::io_service::work> _work;
-    std::vector<std::shared_ptr<std::thread>> _threads;
+    ServiceProvider::Ptr const _serviceProvider;
 
     /// The mutex for enforcing thread safety of the class's public API
     /// and internal operations.
     mutable util::Mutex _mtx;
 
     /// The registry of the on-going requests.
-    std::map<std::string,std::shared_ptr<ControllerRequestWrapper>> _registry;
-
-    /// Worker messenger service
-    std::shared_ptr<Messenger> _messenger;
+    std::map<std::string, std::shared_ptr<ControllerRequestWrapper>> _registry;
 };
 
 }}} // namespace lsst::qserv::replica

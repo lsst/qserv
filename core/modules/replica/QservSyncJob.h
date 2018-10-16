@@ -22,13 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_QSERVSYNCJOB_H
 #define LSST_QSERV_REPLICA_QSERVSYNCJOB_H
 
-/// QservSyncJob.h declares:
-///
-/// struct QservSyncJobResult
-/// class  QservSyncJob
-///
-/// (see individual class documentation for more information)
-
 // System headers
 #include <atomic>
 #include <functional>
@@ -95,20 +88,23 @@ public:
      * low-level pointers).
      *
      * @param databaseFamily - name of a database family
-     * @param controller     - for launching requests
-     * @param parentJobId    - optional identifier of a parent job
-     * @param force          - proceed with the operation even if some replicas affceted by
+     * @param requestExpirationIvalSec - override the default value of
+     *                         the corresponding parameter from the Configuration.
+     * @param force          - proceed with the operation even if some replicas affected by
      *                         the operation are in use.
+     * @param controller     - for launching requests
+     * @param parentJobId    - (optional) identifier of a parent job
      * @param onFinish       - (optional) callback function to be called upon a completion of the job
      * @param options        - (optional) job options
      *
      * @return pointer to the created object
      */
     static Ptr create(std::string const& databaseFamily,
+                      unsigned int requestExpirationIvalSec,
+                      bool force,
                       Controller::Ptr const& controller,
-                      std::string const& parentJobId,
-                      bool force = false,
-                      CallbackType onFinish = nullptr,
+                      std::string const& parentJobId = std::string(),
+                      CallbackType const& onFinish = nullptr,
                       Job::Options const& options = defaultOptions());
 
     // Default construction and copy semantics are prohibited
@@ -147,7 +143,7 @@ public:
     /**
      * @see Job::extendedPersistentState()
      */
-    std::string extendedPersistentState(SqlGeneratorPtr const& gen) const override;
+    std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
 
 protected:
 
@@ -157,10 +153,11 @@ protected:
      * @see QservSyncJob::create()
      */
     QservSyncJob(std::string const& databaseFamily,
+                 unsigned int requestExpirationIvalSec,
+                 bool force,
                  Controller::Ptr const& controller,
                  std::string const& parentJobId,
-                 bool force,
-                 CallbackType onFinish,
+                 CallbackType const& onFinish,
                  Job::Options const& options);
 
     /**
@@ -174,9 +171,9 @@ protected:
     void cancelImpl(util::Lock const& lock) final;
 
     /**
-      * @see Job::notifyImpl()
+      * @see Job::notify()
       */
-    void notifyImpl() final;
+    void notify(util::Lock const& lock) final;
 
     /**
      * The calback function to be invoked on a completion of each request.
@@ -188,10 +185,13 @@ protected:
 protected:
 
     /// The name of the database family
-    std::string _databaseFamily;
+    std::string const _databaseFamily;
+
+    /// The optional override for the request expiration timeouts
+    unsigned int const _requestExpirationIvalSec;
 
     /// Flag indicating to report (if set) the 'force' mode of the operation
-    bool _force;
+    bool const _force;
 
     /// Client-defined function to be called upon the completion of the job
     CallbackType _onFinish;

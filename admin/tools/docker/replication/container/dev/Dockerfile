@@ -7,6 +7,8 @@ RUN curl -sO http://www.slac.stanford.edu/exp/lsst/qserv/2016_09/_downloads/qser
 RUN chmod +x qserv-install-deps-rhel7.sh
 RUN /bin/bash qserv-install-deps-rhel7.sh
 
+RUN yum --assumeyes install libuuid-devel
+
 RUN curl -sO https://raw.githubusercontent.com/lsst/lsst/master/scripts/newinstall.sh
 RUN chmod +x newinstall.sh
 

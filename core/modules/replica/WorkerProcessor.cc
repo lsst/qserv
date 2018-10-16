@@ -110,7 +110,7 @@ proto::ReplicationStatus WorkerProcessor::translate(WorkerRequest::CompletionSta
 }
 
 WorkerProcessor::Ptr WorkerProcessor::create(ServiceProvider::Ptr const& serviceProvider,
-                                             WorkerRequestFactory& requestFactory,
+                                             WorkerRequestFactory const& requestFactory,
                                              std::string const& worker) {
     return Ptr(new WorkerProcessor(serviceProvider,
                                    requestFactory,
@@ -118,7 +118,7 @@ WorkerProcessor::Ptr WorkerProcessor::create(ServiceProvider::Ptr const& service
 }
 
 WorkerProcessor::WorkerProcessor(ServiceProvider::Ptr const& serviceProvider,
-                                 WorkerRequestFactory& requestFactory,
+                                 WorkerRequestFactory const& requestFactory,
                                  std::string const& worker)
     :   _serviceProvider(serviceProvider),
         _requestFactory(requestFactory),
@@ -439,8 +439,13 @@ WorkerRequest::Ptr WorkerProcessor::dequeueOrCancelImpl(util::Lock const& lock,
     LOGS(_log, LOG_LVL_DEBUG, context() << "dequeueOrCancelImpl" << "  id: " << id);
 
     // Still waiting in the queue?
+    //
+    // ATTENTION: the loop variable is a copy of (not a reference to) a shared
+    // pointer to allow removing (if needed) the corresponding entry from the
+    // input collection while retaining a valid copy of the pointer to be placed
+    // into the next stage  collection.
 
-    for (auto&& ptr: _newRequests) {
+    for (auto ptr: _newRequests) {
         if (ptr->id() == id) {
 
             // Cancel it and move it into the final queue in case if a client
@@ -451,13 +456,13 @@ WorkerRequest::Ptr WorkerProcessor::dequeueOrCancelImpl(util::Lock const& lock,
 
             switch (ptr->status()) {
 
-                case WorkerRequest::STATUS_CANCELLED:
+                case WorkerRequest::STATUS_CANCELLED: {
 
                     _newRequests.remove(id);
                     _finishedRequests.push_back(ptr);
 
                     return ptr;
-
+                }
                 default:
                     throw std::logic_error(
                         "unexpected request status " + WorkerRequest::status2string(ptr->status()) +

@@ -101,12 +101,16 @@ WorkerInfo const ConfigurationMySQL::disableWorker(std::string const& name) {
         // First update the database state
 
         conn = database::mysql::Connection::open(_connectionParams);
-        conn->begin();
-        conn->executeSimpleUpdateQuery(
-            "config_worker",
-            conn->sqlEqual("name", name),
-            std::make_pair("is_enabled",  0));
-        conn->commit();
+        conn->execute(
+            [&name](decltype(conn) conn) {
+                conn->begin();
+                conn->executeSimpleUpdateQuery(
+                    "config_worker",
+                    conn->sqlEqual("name", name),
+                    std::make_pair("is_enabled", 0));
+                conn->commit();
+            }
+        );
 
         // Then update the transient state
 
@@ -120,7 +124,7 @@ WorkerInfo const ConfigurationMySQL::disableWorker(std::string const& name) {
 
     } catch (database::mysql::Error const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context() << "MySQL error: " << ex.what());
-        if (conn and conn->inTransaction()) {
+        if ((nullptr != conn) and conn->inTransaction()) {
             conn->rollback();
         }
     }
@@ -135,10 +139,15 @@ void ConfigurationMySQL::deleteWorker(std::string const& name) {
     try {
 
         // First update the database
+
         conn = database::mysql::Connection::open(_connectionParams);
-        conn->begin();
-        conn->execute ("DELETE FROM config_worker WHERE " + conn->sqlEqual("name", name));
-        conn->commit();
+        conn->execute(
+            [&name](decltype(conn) conn) {
+                conn->begin();
+                conn->execute ("DELETE FROM config_worker WHERE " + conn->sqlEqual("name", name));
+                conn->commit();
+            }
+        );
 
         // Then update the transient state
 
@@ -152,7 +161,7 @@ void ConfigurationMySQL::deleteWorker(std::string const& name) {
 
     } catch (database::mysql::Error const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context ()<< ex.what());
-        if (conn and conn->inTransaction()) {
+        if ((nullptr != conn) and conn->inTransaction()) {
             conn->rollback();
         }
     }
@@ -167,12 +176,16 @@ WorkerInfo const ConfigurationMySQL::setWorkerSvcPort(std::string const& name,
 
         // First update the database
         conn = database::mysql::Connection::open(_connectionParams);
-        conn->begin();
-        conn->executeSimpleUpdateQuery(
-            "config_worker",
-            conn->sqlEqual("name", name),
-            std::make_pair("svc_port", port));
-        conn->commit();
+        conn->execute(
+            [&name,port](decltype(conn) conn) {
+                conn->begin();
+                conn->executeSimpleUpdateQuery(
+                    "config_worker",
+                    conn->sqlEqual("name", name),
+                    std::make_pair("svc_port", port));
+                conn->commit();
+            }
+        );
 
         // Then update the transient state 
 
@@ -186,7 +199,7 @@ WorkerInfo const ConfigurationMySQL::setWorkerSvcPort(std::string const& name,
 
     } catch (database::mysql::Error const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context() << "MySQL error: " << ex.what());
-        if (conn and conn->inTransaction()) {
+        if ((nullptr != conn) and conn->inTransaction()) {
             conn->rollback();
         }
     }
@@ -203,12 +216,16 @@ WorkerInfo const ConfigurationMySQL::setWorkerFsPort(std::string const& name,
 
         // First update the database
         conn = database::mysql::Connection::open(_connectionParams);
-        conn->begin();
-        conn->executeSimpleUpdateQuery(
-            "config_worker",
-            conn->sqlEqual("name", name),
-            std::make_pair("fs_port", port));
-        conn->commit();
+        conn->execute(
+            [&name,port](decltype(conn) conn) {
+                conn->begin();
+                conn->executeSimpleUpdateQuery(
+                    "config_worker",
+                    conn->sqlEqual("name", name),
+                    std::make_pair("fs_port", port));
+                conn->commit();
+            }
+        );
 
         // Then update the transient state 
 
@@ -222,7 +239,7 @@ WorkerInfo const ConfigurationMySQL::setWorkerFsPort(std::string const& name,
 
     } catch (database::mysql::Error const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context() << "MySQL error: " << ex.what());
-        if (conn and conn->inTransaction()) {
+        if ((nullptr != conn) and conn->inTransaction()) {
             conn->rollback();
         }
     }
@@ -235,16 +252,34 @@ void ConfigurationMySQL::loadConfiguration() {
 
     util::Lock lock(_mtx, context() + "ConfigurationMySQL::loadConfiguration");
 
+    database::mysql::Connection::Ptr conn;
+
+    try {
+        conn = database::mysql::Connection::open(_connectionParams);
+        conn->execute(
+            [this, &lock](decltype(conn) conn) {
+                this->loadConfigurationImpl(lock, conn);
+            }
+        );
+    } catch (database::mysql::Error const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context() << "MySQL error: " << ex.what());
+        if ((nullptr != conn) and conn->inTransaction()) {
+            conn->rollback();
+        }
+        throw;
+    }
+}
+
+void ConfigurationMySQL::loadConfigurationImpl(util::Lock const& lock,
+                                               database::mysql::Connection::Ptr const& conn) {
+
     // The common parameters (if any defined) of the workers will be intialize
     // from table 'config' and be used as defaults when reading worker-specific
     // configurations from table 'config_worker'
+
     uint16_t    commonWorkerSvcPort = Configuration::defaultWorkerSvcPort;
     uint16_t    commonWorkerFsPort  = Configuration::defaultWorkerFsPort;
     std::string commonWorkerDataDir = Configuration::defaultDataDir;
-
-    // Open and keep a database connection for loading other parameters
-    // from there.
-    auto const conn = database::mysql::Connection::open(_connectionParams);
 
     database::mysql::Row row;
 
@@ -265,6 +300,8 @@ void ConfigurationMySQL::loadConfiguration() {
         ::tryParameter(row, "controller", "request_timeout_sec", _controllerRequestTimeoutSec) or
         ::tryParameter(row, "controller", "job_timeout_sec",     _jobTimeoutSec) or
         ::tryParameter(row, "controller", "job_heartbeat_sec",   _jobHeartbeatTimeoutSec) or
+
+        ::tryParameter(row, "database", "services_pool_size", _databaseServicesPoolSize) or
 
         ::tryParameter(row, "xrootd", "auto_notify",         _xrootdAutoNotify) or
         ::tryParameter(row, "xrootd", "host",                _xrootdHost) or
@@ -351,7 +388,7 @@ void ConfigurationMySQL::loadConfiguration() {
         ::readMandatoryParameter(row, "is_partitioned", isPartitioned);
 
         if (isPartitioned) _databaseInfo[database].partitionedTables.push_back(table);
-        else               _databaseInfo[database].regularTables    .push_back(table);
+        else               _databaseInfo[database].regularTables.push_back(table);
     }
 
     // Values of these parameters are predetermined by the connection

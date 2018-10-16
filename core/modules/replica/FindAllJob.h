@@ -22,13 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_FINDALLJOB_H
 #define LSST_QSERV_REPLICA_FINDALLJOB_H
 
-/// FindAllJob.h declares:
-///
-/// struct FindAllJobResult
-/// class  FindAllJob
-///
-/// (see individual class documentation for more information)
-
 // System headers
 #include <atomic>
 #include <functional>
@@ -149,8 +142,8 @@ public:
     static Ptr create(std::string const& databaseFamily,
                       bool saveReplicaInfo,
                       Controller::Ptr const& controller,
-                      std::string const& parentJobId,
-                      CallbackType onFinish,
+                      std::string const& parentJobId=std::string(),
+                      CallbackType const& onFinish=nullptr,
                       Job::Options const& options=defaultOptions());
 
     // Default construction and copy semantics are prohibited
@@ -189,7 +182,7 @@ public:
     /**
      * @see Job::extendedPersistentState()
      */
-    std::string extendedPersistentState(SqlGeneratorPtr const& gen) const override;
+    std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
 
 protected:
 
@@ -202,7 +195,7 @@ protected:
                bool saveReplicaInfo,
                Controller::Ptr const& controller,
                std::string const& parentJobId,
-               CallbackType onFinish,
+               CallbackType const& onFinish,
                Job::Options const& options);
 
     /**
@@ -216,9 +209,9 @@ protected:
     void cancelImpl(util::Lock const& lock) final;
 
     /**
-      * @see Job::notifyImpl()
+      * @see Job::notify()
       */
-    void notifyImpl() final;
+    void notify(util::Lock const& lock) final;
 
     /**
      * The calback function to be invoked on a completion of each request.
@@ -229,11 +222,14 @@ protected:
 
 protected:
 
-    std::string _databaseFamily;
-    bool        _saveReplicaInfo;
+    /// The name of a database family defining a scope of the operation
+    std::string const _databaseFamily;
+
+    /// The flag indicating if the replica info has to be saved in the database
+    bool const _saveReplicaInfo;
 
     /// Members of the family
-    std::vector<std::string> _databases;
+    std::vector<std::string> const _databases;
 
     /// Client-defined function to be called upon the completion of the job
     CallbackType _onFinish;

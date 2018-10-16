@@ -22,13 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_DELETEREPLICAJOB_H
 #define LSST_QSERV_REPLICA_DELETEREPLICAJOB_H
 
-/// DeleteReplicaJob.h declares:
-///
-/// struct DeleteReplicaJobResult
-/// class  DeleteReplicaJob
-///
-/// (see individual class documentation for more information)
-
 // System headers
 #include <functional>
 #include <list>
@@ -104,7 +97,7 @@ public:
                       std::string const& worker,
                       Controller::Ptr const& controller,
                       std::string const& parentJobId,
-                      CallbackType onFinish,
+                      CallbackType const& onFinish,
                       Job::Options const& options = defaultOptions());
 
     // Default construction and copy semantics are prohibited
@@ -146,7 +139,7 @@ public:
     /**
      * @see Job::extendedPersistentState()
      */
-    std::string extendedPersistentState(SqlGeneratorPtr const& gen) const final;
+    std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
 
 protected:
 
@@ -160,7 +153,7 @@ protected:
                      std::string const& worker,
                      Controller::Ptr const& controller,
                      std::string const& parentJobId,
-                     CallbackType onFinish,
+                     CallbackType const& onFinish,
                      Job::Options const& options);
 
     /**
@@ -174,9 +167,9 @@ protected:
     void cancelImpl(util::Lock const& lock) final;
 
     /**
-      * @see Job::notifyImpl()
+      * @see Job::notify()
       */
-    void notifyImpl() final;
+    void notify(util::Lock const& lock) final;
 
     /**
      * Initiate a process of removing the replica from the source worker
@@ -196,13 +189,13 @@ protected:
 protected:
 
     /// The name of a database family
-    std::string _databaseFamily;
+    std::string const _databaseFamily;
 
     /// The chunk number
-    unsigned int _chunk;
+    unsigned int const _chunk;
 
     /// The name of a worker where the affected replica is residing
-    std::string _worker;
+    std::string const _worker;
 
     /// Client-defined function to be called upon the completion of the job
     CallbackType _onFinish;

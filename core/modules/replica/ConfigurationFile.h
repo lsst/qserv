@@ -22,11 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_CONFIGURATIONFILE_H
 #define LSST_QSERV_REPLICA_CONFIGURATIONFILE_H
 
-/// ConfigurationFile.h declares:
-///
-/// class ConfigurationFile
-/// (see individual class documentation for more information)
-
 // System headers
 #include <string>
 

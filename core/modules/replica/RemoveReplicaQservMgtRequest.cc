@@ -34,7 +34,6 @@
 #include "global/ResourceUnit.h"
 #include "lsst/log/Log.h"
 #include "replica/Configuration.h"
-#include "replica/DatabaseMySQL.h"
 #include "replica/ServiceProvider.h"
 
 namespace {
@@ -49,15 +48,13 @@ namespace replica {
 
 RemoveReplicaQservMgtRequest::Ptr RemoveReplicaQservMgtRequest::create(
                                         ServiceProvider::Ptr const& serviceProvider,
-                                        boost::asio::io_service& io_service,
                                         std::string const& worker,
                                         unsigned int chunk,
                                         std::vector<std::string> const& databases,
                                         bool force,
-                                        RemoveReplicaQservMgtRequest::CallbackType onFinish) {
+                                        RemoveReplicaQservMgtRequest::CallbackType const& onFinish) {
     return RemoveReplicaQservMgtRequest::Ptr(
         new RemoveReplicaQservMgtRequest(serviceProvider,
-                                         io_service,
                                          worker,
                                          chunk,
                                          databases,
@@ -67,14 +64,12 @@ RemoveReplicaQservMgtRequest::Ptr RemoveReplicaQservMgtRequest::create(
 
 RemoveReplicaQservMgtRequest::RemoveReplicaQservMgtRequest(
                                 ServiceProvider::Ptr const& serviceProvider,
-                                boost::asio::io_service& io_service,
                                 std::string const& worker,
                                 unsigned int chunk,
                                 std::vector<std::string> const& databases,
                                 bool force,
-                                RemoveReplicaQservMgtRequest::CallbackType onFinish)
+                                RemoveReplicaQservMgtRequest::CallbackType const& onFinish)
     :   QservMgtRequest(serviceProvider,
-                        io_service,
                         "QSERV_REMOVE_REPLICA",
                         worker),
         _chunk(chunk),
@@ -84,11 +79,14 @@ RemoveReplicaQservMgtRequest::RemoveReplicaQservMgtRequest(
         _qservRequest(nullptr) {
 }
 
-std::string RemoveReplicaQservMgtRequest::extendedPersistentState(SqlGeneratorPtr const& gen) const {
-    return gen->sqlPackValues(id(),
-                              databases(),
-                              chunk(),
-                              force() ? 1 : 0);
+std::list<std::pair<std::string,std::string>> RemoveReplicaQservMgtRequest::extendedPersistentState() const {
+    std::list<std::pair<std::string,std::string>> result;
+    for (auto&& database: databases()) {
+        result.emplace_back("database", database);
+    }
+    result.emplace_back("chunk", std::to_string(chunk()));
+    result.emplace_back("force", force() ? "1" : "0");
+    return result;
 }
 
 void RemoveReplicaQservMgtRequest::startImpl(util::Lock const& lock) {
@@ -144,25 +142,30 @@ void RemoveReplicaQservMgtRequest::startImpl(util::Lock const& lock) {
 
 void RemoveReplicaQservMgtRequest::finishImpl(util::Lock const& lock) {
 
-    if (extendedState() == ExtendedState::CANCELLED) {
+    switch (extendedState()) {
 
-        // And if the SSI request is still around then tell it to stop
+        case ExtendedState::CANCELLED:
+        case ExtendedState::TIMEOUT_EXPIRED:
 
-        if (_qservRequest) {
-            bool const cancel = true;
-            _qservRequest->Finished(cancel);
-        }
+            // And if the SSI request is still around then tell it to stop
+
+            if (_qservRequest) {
+                bool const cancel = true;
+                _qservRequest->Finished(cancel);
+            }
+            break;
+
+        default:
+            break;
     }
     _qservRequest = nullptr;
 }
 
-void RemoveReplicaQservMgtRequest::notifyImpl() {
+void RemoveReplicaQservMgtRequest::notify(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notifyImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
 
-    if (_onFinish) {
-        _onFinish(shared_from_base<RemoveReplicaQservMgtRequest>());
-    }
+    notifyDefaultImpl<RemoveReplicaQservMgtRequest>(lock, _onFinish);
 }
 
 }}} // namespace lsst::qserv::replica

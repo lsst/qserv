@@ -22,13 +22,10 @@
 #ifndef LSST_QSERV_REPLICA_QSERVMGTREQUEST_H
 #define LSST_QSERV_REPLICA_QSERVMGTREQUEST_H
 
-/// QservMgtRequest.h declares:
-///
-/// class QservMgtRequest
-/// (see individual class documentation for more information)
-
 // System headers
 #include <atomic>
+#include <functional>
+#include <map>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -50,12 +47,6 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-// Forward declarations
-namespace database {
-namespace mysql {
-class Connection;
-}}
-
 /**
   * Class QservMgtRequest is a base class for a family of the Qserv worker
   * management requests within the master server.
@@ -67,10 +58,6 @@ public:
 
     /// The pointer type for instances of the class
     typedef std::shared_ptr<QservMgtRequest> Ptr;
-
-    /// The pointer type for the database connector which provides a database-specific
-    /// SQL generation services.
-    typedef std::shared_ptr<database::mysql::Connection> SqlGeneratorPtr;
 
     /// The lock type used by the implementations
     typedef std::lock_guard<util::Mutex> LockType;
@@ -106,10 +93,6 @@ public:
         /// Problems with request configuration found
         CONFIG_ERROR,
 
-        /// The request could not be implemented due to an unrecoverable
-        /// cliend-side error.
-        CLIENT_ERROR,
-
         /// Server reports that the request can not be implemented due to incorrect
         /// parameters, etc.
         SERVER_BAD,
@@ -144,7 +127,7 @@ public:
     QservMgtRequest(QservMgtRequest const&) = delete;
     QservMgtRequest& operator=(QservMgtRequest const&) = delete;
 
-    virtual ~QservMgtRequest() = default;
+    virtual ~QservMgtRequest();
 
     /// @return reference to a provider of services
     ServiceProvider::Ptr const& serviceProvider() { return _serviceProvider; }
@@ -203,9 +186,6 @@ public:
      * Explicitly cancel any asynchronous operation(s) and put the object into
      * the FINISHED::CANCELLED state. This operation is very similar to the
      * timeout-based request expiration, except it's requested explicitly.
-     *
-     * ATTENTION: this operation won't affect the remote (server-side) state
-     * of the operation in case if the request was queued.
      */
     void cancel();
 
@@ -213,23 +193,11 @@ public:
     std::string context() const;
 
     /**
-     * @return a string representation for a subclass's persistent state
-     * ready to be insert into the corresponding table as the values string
-     * of the SQL INSERT statement:
-     *     INSERT INTO <request-specific-table> VALUES <result-of-this-method>
-     *
-     * Note, that the result string must include round brackets as reaquired
-     * by the SQL standard. The string values need to be properly escaped and
-     * santized as required by the corresponiding database service (which
-     * is passed as parameter into the method).
-     *
-     * The table name will be automatically deduced from a request-specific value
-     * returned by method QservMgtRequest::type().
-     *
-     * @param gen - pointer to the SQL statements generation service
+     * @return a dictionary of parameters and the corresponding values to
+     * be stored in a database for a request.
      */
-    virtual std::string extendedPersistentState(SqlGeneratorPtr const& gen) const {
-        return std::string();
+    virtual std::list<std::pair<std::string,std::string>> extendedPersistentState() const {
+        return std::list<std::pair<std::string,std::string>>();
     }
 
 protected:
@@ -240,10 +208,8 @@ protected:
      * @param serviceProvider - reference to a provider of services
      * @param type            - its type name (used informally for debugging)
      * @param worker          - the name of a worker
-     * @io_service            - BOOST ASIO service
      */
     QservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
-                    boost::asio::io_service& io_service,
                     std::string const& type,
                     std::string const& worker);
 
@@ -297,18 +263,62 @@ protected:
 
     /**
      * Start user-notification protocol (in case if user-defined notifiers
-     * were provided to a subclass).
+     * were provided to a subclass). The callback is expected to be made
+     * asynchronously in a separate thread to avoid blocking the current thread.
      *
-     * @see QservMgtRequest::notifyImpl()
-     */
-    void notify();
-
-    /**
-     * This method is supposed to be provided by subclasses to forward
+     * This method has to be provided by subclasses to forward
      * notification on request completion to a client which initiated
      * the request, etc.
+     *
+     * The standard implementation of this method in a context of some
+     * subclass 'T' should looks like this:
+     * @code
+     *   void T::notify(util::Lock const& lock) {
+     *       notifyDefaultImpl<T>(lock, _onFinish);
+     *   }
+     * @code
+     * @see QservMgtRequest::notifyDefaultImpl
+     *
+     * @param lock - the lock must be acquired by a caller of the method
      */
-    virtual void notifyImpl()=0;
+    virtual void notify(util::Lock const& lock)=0;
+
+    /**
+     * The helper function which pushes up-stream notifications on behalf of
+     * subclasses. Upon a completion of this method the callback function
+     * object will get reset to 'nullptr'.
+     *
+     * Note, this default implementation works for callback functions which
+     * accept a single parameter - a smart refernce onto an object of
+     * the corresponidng subclass. Subclasses with more complex signatures of
+     * their callbacks should have their own implementations which may look
+     * similarily to this one.
+     *
+     * @param lock     - the lock must be acquired by a caller of the method
+     * @param onFinish - callback function (if set) to be called
+     */
+    template <class T>
+    void notifyDefaultImpl(util::Lock const& lock,
+                           typename T::CallbackType& onFinish) {    
+    
+        if (nullptr != onFinish) {
+    
+            // Clearing the stored callback after finishing the up-stream notification
+            // has two purposes:
+            //
+            // 1. it guaranties (exactly) one time notification
+            // 2. it breaks the up-stream dependency on a caller object if a shared
+            //    pointer to the object was mentioned as the lambda-function's closure
+    
+            serviceProvider()->io_service().post(
+                std::bind(
+                    std::move(onFinish),
+                    shared_from_base<T>()
+                )
+            );
+            onFinish = nullptr;
+        }
+    }
 
     /**
      * Ensure the object is in the deseride internal state. Throw an
@@ -362,11 +372,21 @@ protected:
 
 private:
 
-    ServiceProvider::Ptr _serviceProvider;
+    /// The global counter for the number of instances of any subclass
+    static std::atomic<size_t> _numClassInstances;
 
-    std::string _type;
-    std::string _id;
-    std::string _worker;
+    ServiceProvider::Ptr const _serviceProvider;
+
+    /// The type of a request (defined by a subclass)
+    std::string const _type;
+
+    /// A unique identifier of a request
+    std::string const _id;
+
+    /// The name of a worker
+    std::string const _worker;
+
+    // Two-level state of a request
 
     std::atomic<State>         _state;
     std::atomic<ExtendedState> _extendedState;

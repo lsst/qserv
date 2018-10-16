@@ -22,13 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_MOVEREPLICAJOB_H
 #define LSST_QSERV_REPLICA_MOVEREPLICAJOB_H
 
-/// MoveReplicaJob.h declares:
-///
-/// struct MoveReplicaJobResult
-/// class  MoveReplicaJob
-///
-/// (see individual class documentation for more information)
-
 // System headers
 #include <functional>
 #include <list>
@@ -118,7 +111,7 @@ public:
                       bool purge,
                       Controller::Ptr const& controller,
                       std::string const& parentJobId,
-                      CallbackType onFinish,
+                      CallbackType const& onFinish,
                       Job::Options const& options=defaultOptions());
 
     // Default construction and copy semantics are prohibited
@@ -164,7 +157,7 @@ public:
     /**
      * @see Job::extendedPersistentState()
      */
-    std::string extendedPersistentState(SqlGeneratorPtr const& gen) const override;
+    std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
 
 protected:
 
@@ -180,7 +173,7 @@ protected:
                    bool purge,
                    Controller::Ptr const& controller,
                    std::string const& parentJobId,
-                   CallbackType onFinish,
+                   CallbackType const& onFinish,
                    Job::Options const& options);
 
     /**
@@ -194,9 +187,9 @@ protected:
     void cancelImpl(util::Lock const& lock) final;
 
     /**
-      * @see Job::notifyImpl()
+      * @see Job::notify()
       */
-    void notifyImpl() final;
+    void notify(util::Lock const& lock) final;
 
     /**
      * The calback function to be invoked on a completion of the replica
@@ -213,19 +206,19 @@ protected:
 protected:
 
     /// The name of a database family
-    std::string _databaseFamily;
+    std::string const _databaseFamily;
 
     /// The chunk number
-    unsigned int _chunk;
+    unsigned int const _chunk;
 
     /// The name of a source worker where the input replica is residing
-    std::string _sourceWorker;
+    std::string const _sourceWorker;
 
     /// The name of a destination worker where the output replica will be placed
-    std::string _destinationWorker;
+    std::string const _destinationWorker;
 
     /// The flag indicating if the input replica should be purged
-    bool _purge;
+    bool const _purge;
 
     /// Client-defined function to be called upon the completion of the job
     CallbackType _onFinish;

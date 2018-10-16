@@ -174,19 +174,20 @@ void ConfigurationStore::loadConfiguration(util::ConfigStore const& configStore)
     ::parseKeyVal(configStore, "common.request_buf_size_bytes",     _requestBufferSizeBytes,       defaultRequestBufferSizeBytes);
     ::parseKeyVal(configStore, "common.request_retry_interval_sec", _retryTimeoutSec,              defaultRetryTimeoutSec);
 
-    ::parseKeyVal(configStore, "common.database_technology", _databaseTechnology, defaultDatabaseTechnology);
-    ::parseKeyVal(configStore, "common.database_host",       _databaseHost,       defaultDatabaseHost);
-    ::parseKeyVal(configStore, "common.database_port",       _databasePort,       defaultDatabasePort);
-    ::parseKeyVal(configStore, "common.database_user",       _databaseUser,       defaultDatabaseUser);
-    ::parseKeyVal(configStore, "common.database_password",   _databasePassword,   defaultDatabasePassword);
-    ::parseKeyVal(configStore, "common.database_name",       _databaseName,       defaultDatabaseName);
-
     ::parseKeyVal(configStore, "controller.num_threads",         _controllerThreads,           defaultControllerThreads);
     ::parseKeyVal(configStore, "controller.http_server_port",    _controllerHttpPort,          defaultControllerHttpPort);
     ::parseKeyVal(configStore, "controller.http_server_threads", _controllerHttpThreads,       defaultControllerHttpThreads);
     ::parseKeyVal(configStore, "controller.request_timeout_sec", _controllerRequestTimeoutSec, defaultControllerRequestTimeoutSec);
     ::parseKeyVal(configStore, "controller.job_timeout_sec",     _jobTimeoutSec,               defaultJobTimeoutSec);
     ::parseKeyVal(configStore, "controller.job_heartbeat_sec",   _jobHeartbeatTimeoutSec,      defaultJobHeartbeatTimeoutSec);
+
+    ::parseKeyVal(configStore, "database.technology",         _databaseTechnology,       defaultDatabaseTechnology);
+    ::parseKeyVal(configStore, "database.host",               _databaseHost,             defaultDatabaseHost);
+    ::parseKeyVal(configStore, "database.port",               _databasePort,             defaultDatabasePort);
+    ::parseKeyVal(configStore, "database.user",               _databaseUser,             defaultDatabaseUser);
+    ::parseKeyVal(configStore, "database.password",           _databasePassword,         defaultDatabasePassword);
+    ::parseKeyVal(configStore, "database.name",               _databaseName,             defaultDatabaseName);
+    ::parseKeyVal(configStore, "database.services_pool_size", _databaseServicesPoolSize, defaultDatabaseServicesPoolSize);
 
     ::parseKeyVal(configStore, "xrootd.auto_notify",         _xrootdAutoNotify, defaultXrootdAutoNotify);
     ::parseKeyVal(configStore, "xrootd.host",                _xrootdHost,       defaultXrootdHost);

@@ -22,15 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_SERVICEMANAGEMENTREQUESTBASE_H
 #define LSST_QSERV_REPLICA_SERVICEMANAGEMENTREQUESTBASE_H
 
-/// ServiceManagementRequestBase.h declares:
-///
-/// Common classes shared by all implementations:
-///
-///   class ServiceState
-///   class ServiceManagementRequestBase
-///
-/// (see individual class documentation for more information)
-
 // System headers
 #include <memory>
 #include <ostream>
@@ -161,10 +152,15 @@ private:
     void analyze(bool success,
                  proto::ReplicationServiceResponse const& message);
 
+    /**
+     * @see Request::savePersistentState()
+     */
+    void savePersistentState(util::Lock const& lock) final;
+
 private:
 
     /// Request type
-    proto::ReplicationServiceRequestType _requestType;
+    proto::ReplicationServiceRequestType const _requestType;
 
     /// Detailed status of the worker-side service obtained upon completion of
     /// the management request.

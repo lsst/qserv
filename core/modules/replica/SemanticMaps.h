@@ -22,11 +22,14 @@
 #ifndef LSST_QSERV_REPLICA_SEMANTICMAPS_H
 #define LSST_QSERV_REPLICA_SEMANTICMAPS_H
 
-/// SemanticMaps.h declares:
-///
-/// (see individual class documentation for more information)
+/**
+ * This header declares tools for constructing the header-only views for nested
+ * Standard Libraries's maps. Also a few ready to use algorithms are provided
+ * for some most commonly used map.
+ */
 
 // System headers
+#include <iosfwd>
 #include <map>
 #include <stdexcept>
 #include <string>
@@ -46,7 +49,7 @@ namespace replica {
 namespace detail {
 
 /**
-  * Class template SemanticMap is a base class for type-specif collections.
+  * Class template SemanticMap is a base class for type-specific collections.
   * This class template has two parameters:
   *   K - the key type (name or a numeric identifier)
   *   V - the value type
@@ -56,16 +59,39 @@ class SemanticMap {
 
 public:
 
+    /// Internal collection (is public because this is the only state here)
+    std::map<K, V> coll;
+
     virtual ~SemanticMap() = default;
 
     /// @return number of elements in the collection
-    size_t size() const { return _coll.size(); }
+    size_t size() const { return coll.size(); }
 
     /// @return 'true' if the collection is empty
-    bool empty() const { return _coll.empty(); }
+    bool empty() const { return coll.empty(); }
 
     /// Clear the collection
-    void clear() { _coll.clear(); }
+    void clear() { coll.clear(); }
+
+    /// @return iterator to the beginning of the container
+    decltype(coll.begin()) begin() {
+        return coll.begin();
+    }
+
+    /// @return const iterator to the beginning of the container
+    decltype(coll.cbegin()) begin() const {
+        return coll.cbegin();
+    }
+
+    /// @return iterator to the end of the container
+    decltype(coll.end()) end() {
+        return coll.end();
+    }
+
+    /// @return const iterator to the end of the container
+    decltype(coll.cend()) end() const {
+        return coll.cend();
+    }
 
     /**
      * Merge the content of another collection of the same type
@@ -81,7 +107,7 @@ public:
         if (this == &coll) {
             throw std::invalid_argument("attempted to merge the collection with itself");
         }
-        for (auto&& entry: coll._coll) {
+        for (auto&& entry: coll.coll) {
             K const& k = entry.first;
             V const& v = entry.second;
             if ((not ignoreDuplicateKeys) and exists(k)) {
@@ -100,7 +126,7 @@ protected:
     SemanticMap& operator=(SemanticMap const&) = default;
 
     /// @return 'true' if such exists in the collection
-    bool exists(K const& k) const { return _coll.count(k); }
+    bool exists(K const& k) const { return coll.count(k); }
 
     /**
      * Insert a copy of an existing object
@@ -111,8 +137,8 @@ protected:
      * @return reference to the object within the collection
      */
     V& insert(K const& k, V const& v) {
-        _coll[k] = v;
-        return _coll[k];
+        coll[k] = v;
+        return coll[k];
     }
 
     /**
@@ -124,28 +150,25 @@ protected:
      * @return reference to the object within the collection
      */
     V& insertIfNotExists(K const& k, V const& v) {
-        if (not exists(k)) _coll[k] = v;
-        return _coll[k];
+        if (not exists(k)) coll[k] = v;
+        return coll[k];
     }
 
     /**
      * @param k - object's key
      * @return read-only reference to an object for a key
      */
-    V const& get(K const& k) const { return _coll.at(k); }
+    V const& get(K const& k) const { return coll.at(k); }
 
     /// @return collection object keys
     std::vector<K> keys() const {
         std::vector<K> result;
-        result.reserve(_coll.size());
-        for (auto&& entry: _coll) {
+        result.reserve(coll.size());
+        for (auto&& entry: coll) {
             result.push_back(entry.first);
         }
         return result;
     }
-
-private:
-    std::map<K, V> _coll;
 };
 
 /**
@@ -351,12 +374,10 @@ using ChunkDatabaseWorkerMap =
         detail::ChunkMap<
             detail::DatabaseMap<
                 detail::WorkerMap<T>>>;
-
-/**
- * 3-layered map template for any value type
- *
- *   .worker(name).chunk(number).database(name) -> T
- */
+ 
+ /**
+  * Dictionary of: worker-chunk-database
+  */
 template<typename T>
 using WorkerChunkDatabaseMap =
         detail::WorkerMap<
@@ -364,10 +385,23 @@ using WorkerChunkDatabaseMap =
                 detail::DatabaseMap<T>>>;
 
 /**
- * Merge algorithm for the 3-layered map template for any
- * value type:
- *
- *   .chunk(number).database(name).worker(name) -> T
+ * Dictionary of: worker-database-chunk
+ */
+template<typename T>
+using WorkerDatabaseChunkMap =
+        detail::WorkerMap<
+            detail::DatabaseMap<
+                detail::ChunkMap<T>>>;
+
+
+// Algorithms are put into a nested namespace below in order
+// to avoid confusing them with simple singe-worded user defined
+// functions.
+
+namespace SemanticMaps {
+
+/**
+ * Merge algorithm for dictionaries of: chunk-database-worker
  *
  * @param dst - destination collection to be extended
  * @param src - input collection whose content is to be merged
@@ -380,9 +414,9 @@ using WorkerChunkDatabaseMap =
  * @throws std::range_error - on duplicate keys if ignoreDuplicateKeys is 'false'
  */
  template<typename T>
- void mergeMap(ChunkDatabaseWorkerMap<T>& dst,
-               ChunkDatabaseWorkerMap<T> const& src,
-               bool ignoreDuplicateKeys = false) {
+ void merge(ChunkDatabaseWorkerMap<T>& dst,
+            ChunkDatabaseWorkerMap<T> const& src,
+            bool ignoreDuplicateKeys = false) {
 
      for (auto const chunk: src.chunkNumbers()) {
          auto const& srcChunkMap = src.chunk(chunk);
@@ -393,6 +427,150 @@ using WorkerChunkDatabaseMap =
          }
      }
  }
+
+/**
+ * One-directional comparison of dictionaries of: worker-database-chunk
+ *
+ * The method will also report keys which aren't found in second dictionary.
+ *
+ * NOTE: the output dictionary will be modified even if the method
+ *       will not find any differences.
+ *
+ * @param one
+ *   input dictionary to be compared with the second one
+ *
+ * @param two
+ *   input dictionary to be compared with the first one
+ *
+ * @param inFirstOnly
+ *   output dictionary with elements of the first map which are not found
+ *   in the second map
+ *
+ * @return 'true' if different
+ */
+ template<typename T>
+ bool diff(WorkerDatabaseChunkMap<T> const& one,
+           WorkerDatabaseChunkMap<T> const& two,
+           WorkerDatabaseChunkMap<T>& inFirstOnly) {
+
+    inFirstOnly.clear();
+    for (auto&& worker: one.workerNames()) {
+        if (not         two.workerExists(worker)) {
+            inFirstOnly.insertWorker(worker,
+                                     one.worker(worker));
+            continue;
+        }
+        for (auto&& database: one.worker(worker).databaseNames()) {
+            if (not           two.worker(worker).databaseExists(database)) {
+                inFirstOnly.atWorker(worker)
+                           .insertDatabase(database,
+                                         one.worker(worker).database(database));
+                continue;
+            }
+            for (auto&& chunk: one.worker(worker).database(database).chunkNumbers()) {
+                if (not        two.worker(worker).database(database).chunkExists(chunk)) {
+                    inFirstOnly.atWorker(worker)
+                               .atDatabase(database)
+                               .insertChunk(chunk,
+                                          one.worker(worker).database(database).chunk(chunk));
+                }
+            }
+        }
+    }    
+    return not inFirstOnly.empty();
+}
+
+/**
+ * Bi-directional comparison of dictionaries of: worker-database-chunk
+ *
+ * The method will also report keys which aren't found in opposite
+ * dictionaries.
+ *
+ * NOTE: the output dictionaries will be modified even if the method
+ *       will not find any differences.
+ *
+ * @param one
+ *   input dictionary to be compared with the second one
+ *
+ * @param two
+ *   input dictionary to be compared with the first one
+ *
+ * @param inFirstOnly
+ *   output dictionary with elements of the first map which are not found
+ *   in the second map
+ *
+ * @param inSecondOnly
+ *   output dictionary with elements of the second map which are not found
+ *   in the first map
+ *
+ * @return 'true' if different
+ */
+ template<typename T>
+ bool diff2(WorkerDatabaseChunkMap<T> const& one,
+            WorkerDatabaseChunkMap<T> const& two,
+            WorkerDatabaseChunkMap<T>& inFirstOnly,
+            WorkerDatabaseChunkMap<T>& inSecondOnly) {
+
+    bool const notEqual1 = diff<T>(one, two, inFirstOnly);
+    bool const notEqual2 = diff<T>(two, one, inSecondOnly);
+
+    return notEqual1 or notEqual2;
+}
+
+/**
+ * Find an intersection of two dictionaries of: worker-database-chunk
+ *
+ * The method will report keys which are found in both dictionaries.
+ *
+ * NOTE: the output dictionary will be modified even if the method
+ *       will not find any differences.
+ *
+ * @param one    - input dictionary to be compared with the second one
+ * @param two    - input dictionary to be compared with the first one
+ * @param inBoth - output dictionary with elements of the first map which
+ *                 are not found in the second map
+ */
+ template<typename T>
+ void intersect(WorkerDatabaseChunkMap<T> const& one,
+                WorkerDatabaseChunkMap<T> const& two,
+                WorkerDatabaseChunkMap<T>& inBoth) {
+
+    inBoth.clear();
+    for (auto&& worker: one.workerNames()) {
+        if (two.workerExists(worker)) {
+            for (auto&& database: one.worker(worker).databaseNames()) {
+                if (two.worker(worker).databaseExists(database)) {
+                    for (auto&& chunk: one.worker(worker).database(database).chunkNumbers()) {
+                        if (two.worker(worker).database(database).chunkExists(chunk)) {
+                            inBoth.atWorker(worker)
+                                  .atDatabase(database)
+                                  .insertChunk(chunk,
+                                               one.worker(worker).database(database).chunk(chunk));
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * @return a total number of keys accross all leaf nodes
+ *
+ * @param d - input dictionary to be tested
+ */
+template<typename T>
+size_t count(WorkerDatabaseChunkMap<T> const& d) {
+    size_t num = 0;
+    for (auto&& worker: d.workerNames()) {
+        for (auto&& database: d.worker(worker).databaseNames()) {
+            num += d.worker(worker).database(database).size();
+        }
+    }
+    return num;
+}
+
+}  // namespace SemanticMaps
 
 }}} // namespace lsst::qserv::replica
 

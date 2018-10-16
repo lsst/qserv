@@ -23,10 +23,12 @@
 #ifndef LSST_QSERV_REPLICA_FILESERVERCONNECTION_H
 #define LSST_QSERV_REPLICA_FILESERVERCONNECTION_H
 
-/// FileServerConnection.h declares:
-///
-/// class FileServerConnection
-/// (see individual class documentation for more information)
+/**
+ * This header declares class FileServerConnection which is used
+ * in the server-side impementation of the point-to-point file migration
+ * service of teh Replication system. Note, that this header is not supposed
+ * to be dircetly included into any user code.
+ */
 
 // System headers
 #include <cstdio>       // std::FILE, C-style file I/O
@@ -188,18 +190,21 @@ private:
 
 private:
 
-    ServiceProvider::Ptr _serviceProvider;
-    std::string _workerName;
+    ServiceProvider::Ptr const _serviceProvider;
+
+    /// The name of a worker this service is acting upon (used for checking
+    /// a consistency of the protocol)
+    std::string const _workerName;
 
     /// Cached worker descriptor obtained from the configuration
-    WorkerInfo _workerInfo;
+    WorkerInfo const _workerInfo;
 
     /// A socket for communication with clients
     boost::asio::ip::tcp::socket _socket;
 
     /// Buffer management class facilitating serialization/deserialization
     /// of data sent over the network
-    std::shared_ptr<ProtocolBuffer> _bufferPtr;
+    std::shared_ptr<ProtocolBuffer> const _bufferPtr;
 
     /// The name of a file during on-going transfer
     std::string _fileName;

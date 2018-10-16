@@ -22,12 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_FINDREQUEST_H
 #define LSST_QSERV_REPLICA_FINDREQUEST_H
 
-/// FindRequest.h declares:
-//
-///   class FindRequest
-///
-/// (see individual class documentation for more information)
-
 // System headers
 #include <functional>
 #include <memory>
@@ -114,7 +108,7 @@ public:
                       std::string const& worker,
                       std::string const& database,
                       unsigned int  chunk,
-                      CallbackType onFinish,
+                      CallbackType const& onFinish,
                       int  priority,
                       bool computeCheckSum,
                       bool keepTracking,
@@ -130,7 +124,7 @@ private:
                 std::string const& worker,
                 std::string const& database,
                 unsigned int  chunk,
-                CallbackType onFinish,
+                CallbackType const& onFinish,
                 int  priority,
                 bool computeCheckSum,
                 bool keepTracking,
@@ -173,9 +167,9 @@ private:
                  lsst::qserv::proto::ReplicationResponseFind const& message);
 
     /**
-     * @see Request::notifyImpl()
+     * @see Request::notify()
      */
-    void notifyImpl() final;
+    void notify(util::Lock const& lock) final;
 
     /**
      * @see Request::savePersistentState()
@@ -185,13 +179,19 @@ private:
     /**
      * @see Request::extendedPersistentState()
      */
-    std::string extendedPersistentState(SqlGeneratorPtr const& gen) const final;
+    std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
 
 private:
 
-    std::string  _database;
-    unsigned int _chunk;
-    bool         _computeCheckSum;
+    /// The name of a database for which the replicas will be located
+    std::string const _database;
+
+    /// The number of a chunk
+    unsigned int const _chunk;
+
+    /// The flag which (if 'true') will result in re-computing a checksum
+    /// of each file of the chunk replica
+    bool const _computeCheckSum;
 
     CallbackType _onFinish;
 

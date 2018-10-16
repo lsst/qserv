@@ -28,6 +28,7 @@
 
 // Qserv headers
 #include "proto/replication.pb.h"
+#include "replica/Configuration.h"
 #include "replica/FileServer.h"
 #include "replica/ServiceProvider.h"
 #include "replica/WorkerProcessor.h"
@@ -48,7 +49,12 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.tools.qserv-replica-worker");
 // Command line parameters
 
 std::string workerName;
-std::string configUrl;
+std::string configUrl = "file:replication.cfg";
+
+bool         databaseAllowReconnect        = replica::Configuration::databaseAllowReconnect();
+unsigned int databaseConnectTimeoutSec     = replica::Configuration::databaseConnectTimeoutSec();
+unsigned int databaseMaxReconnects         = replica::Configuration::databaseMaxReconnects();
+unsigned int databaseTransactionTimeoutSec = replica::Configuration::databaseTransactionTimeoutSec();
 
 /**
  * Instantiate and launch the service in its own thread. Then block
@@ -57,18 +63,24 @@ std::string configUrl;
 void service() {
     
     try {
-        replica::ServiceProvider::Ptr const provider = replica::ServiceProvider::create(configUrl);
+        
+        // Change default parameters of the database connectors
+
+        replica::Configuration::setDatabaseAllowReconnect(databaseAllowReconnect);
+        replica::Configuration::setDatabaseConnectTimeoutSec(databaseConnectTimeoutSec);
+        replica::Configuration::setDatabaseMaxReconnects(databaseMaxReconnects);
+        replica::Configuration::setDatabaseTransactionTimeoutSec(databaseTransactionTimeoutSec);
+        
+        auto const provider = replica::ServiceProvider::create(configUrl);
         replica::WorkerRequestFactory requestFactory(provider);
 
-        replica::WorkerServer::Ptr const reqProcSvr =
-            replica::WorkerServer::create(provider, requestFactory, workerName);
+        auto const reqProcSvr = replica::WorkerServer::create(provider, requestFactory, workerName);
 
         std::thread reqProcSvrThread([reqProcSvr] () {
             reqProcSvr->run();
         });
 
-        replica::FileServer::Ptr const fileSvr =
-            replica::FileServer::create(provider, workerName);
+        auto const fileSvr = replica::FileServer::create(provider, workerName);
 
         std::thread fileSvrThread([fileSvr]() {
             fileSvr->run();
@@ -108,17 +120,55 @@ int main(int argc, const char* const argv[]) {
             argv,
             "\n"
             "Usage:\n"
-            "  <worker> [--config=<url>]\n"
+            "  <worker> [--db-allow-reconnect]\n"
+            "           [--db-reconnect-timeout=<sec>]\n"
+            "           [--db-max-retries=<num>]\n"
+            "           [--db-timeout=<sec>]\n"
+            "           [--config=<url>]\n"
             "\n"
             "Parameters:\n"
             "  <worker>   - the name of a worker\n"
             "\n"
             "Flags and options:\n"
-            "  --config   - a configuration URL (a configuration file or a set of the database\n"
-            "               connection parameters [ DEFAULT: file:replication.cfg ]\n");
+            "\n"
+            "    --db-allow-reconnect \n"
+            "\n"
+            "      change the default database connecton handling node. Set 0 to disable automatic\n"
+            "      reconnects. Any other number would man an opposite scenario.\n"
+            "      DEFAULT: " + std::to_string(::databaseAllowReconnect ? 1 : 0) + "\n"
+            "\n"
+            "    --db-reconnect-timeout \n"
+            "\n"
+            "      change the default value limiting a duration of time for making automatic\n"
+            "      reconnects to a database server before failing and reporting error (if the server\n"
+            "      is not up, or if it's not reachable for some reason)\n"
+            "      DEFAULT: " + std::to_string(::databaseConnectTimeoutSec) + "\n"
+            "\n"
+            "    --db-max-reconnects\n"
+            "\n"
+            "      change the default value limiting a number of attempts to repeat a sequence\n"
+            "      of queries due to connection losses and subsequent reconnects before to fail.\n"
+            "      DEFAULT: " + std::to_string(::databaseMaxReconnects) + "\n"
+            "\n"
+            "    --db-transaction-timeout \n"
+            "\n"
+            "      change the default value limiting a duration of each attempt to execute\n"
+            "      a database transaction before to fail.\n"
+            "      DEFAULT: " + std::to_string(::databaseTransactionTimeoutSec) + "\n"
+            "\n"
+            "    --config \n"
+            "\n"
+            "      onfiguration URL (a configuration file or a set of the database\n"
+            "      connection parameters [ DEFAULT: " + ::configUrl + " ]\n");
 
-        ::workerName = parser.parameter<std::string> (1);
-        ::configUrl  = parser.option<std::string>("config", "file:replication.cfg");
+        ::workerName = parser.parameter<std::string>(1);
+
+        ::databaseAllowReconnect        = parser.option<unsigned int>("db-allow-reconnect",     ::databaseAllowReconnect);
+        ::databaseConnectTimeoutSec     = parser.option<unsigned int>("db-reconnect-timeout",   ::databaseConnectTimeoutSec);
+        ::databaseMaxReconnects         = parser.option<unsigned int>("db-max-reconnects",      ::databaseMaxReconnects);
+        ::databaseTransactionTimeoutSec = parser.option<unsigned int>("db-transaction-timeout", ::databaseTransactionTimeoutSec);
+
+        ::configUrl = parser.option<std::string>("config", ::configUrl);
 
     } catch (std::exception const& ex) {
         return 1;

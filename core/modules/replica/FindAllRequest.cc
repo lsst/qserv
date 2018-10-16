@@ -34,7 +34,6 @@
 // Qserv headers
 #include "lsst/log/Log.h"
 #include "replica/Controller.h"
-#include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
 #include "replica/Messenger.h"
 #include "replica/ProtocolBuffer.h"
@@ -56,7 +55,7 @@ FindAllRequest::Ptr FindAllRequest::create(ServiceProvider::Ptr const& servicePr
                                            std::string const& worker,
                                            std::string const& database,
                                            bool saveReplicaInfo,
-                                           CallbackType onFinish,
+                                           CallbackType const& onFinish,
                                            int priority,
                                            bool keepTracking,
                                            std::shared_ptr<Messenger> const& messenger) {
@@ -77,7 +76,7 @@ FindAllRequest::FindAllRequest(ServiceProvider::Ptr const& serviceProvider,
                                std::string const& worker,
                                std::string const& database,
                                bool saveReplicaInfo,
-                               CallbackType onFinish,
+                               CallbackType const& onFinish,
                                int  priority,
                                bool keepTracking,
                                std::shared_ptr<Messenger> const& messenger)
@@ -303,22 +302,21 @@ void FindAllRequest::analyze(bool success,
 
 }
 
-void FindAllRequest::notifyImpl() {
+void FindAllRequest::notify(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notifyImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
 
-    if (_onFinish != nullptr) {
-        _onFinish(shared_from_base<FindAllRequest>());
-    }
+    notifyDefaultImpl<FindAllRequest>(lock, _onFinish);
 }
 
 void FindAllRequest::savePersistentState(util::Lock const& lock) {
     controller()->serviceProvider()->databaseServices()->saveState(*this, performance(lock));
 }
 
-std::string FindAllRequest::extendedPersistentState(SqlGeneratorPtr const& gen) const {
-    return gen->sqlPackValues(id(),
-                              database());
+std::list<std::pair<std::string,std::string>> FindAllRequest::extendedPersistentState() const {
+    std::list<std::pair<std::string,std::string>> result;
+    result.emplace_back("database", database());
+    return result;
 }
 
 }}} // namespace lsst::qserv::replica

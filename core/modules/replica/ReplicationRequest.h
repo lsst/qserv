@@ -22,12 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_REPLICATIONREQUEST_H
 #define LSST_QSERV_REPLICA_REPLICATIONREQUEST_H
 
-/// ReplicationRequest.h declares:
-//
-///   class ReplicationRequest
-///
-/// (see individual class documentation for more information)
-
 // System headers
 #include <functional>
 #include <memory>
@@ -118,7 +112,7 @@ public:
                       std::string const& sourceWorker,
                       std::string const& database,
                       unsigned int chunk,
-                      CallbackType onFinish,
+                      CallbackType const& onFinish,
                       int priority,
                       bool keepTracking,
                       bool allowDuplicate,
@@ -137,7 +131,7 @@ private:
                        std::string const& sourceWorker,
                        std::string const& database,
                        unsigned int  chunk,
-                       CallbackType onFinish,
+                       CallbackType const& onFinish,
                        int priority,
                        bool keepTracking,
                        bool allowDuplicate,
@@ -176,28 +170,30 @@ private:
                  proto::ReplicationResponseReplicate const& message);
 
     /**
-     * Notifying a party which initiated the request.
-     *
-     * This method implements the corresponing virtual method defined
-     * by the base class.
+     * @see Request::notify()
      */
-    void notifyImpl() final;
+    void notify(util::Lock const& lock) final;
 
     /**
-      * @see Request::savePersistentState()
+     * @see Request::savePersistentState()
      */
     void savePersistentState(util::Lock const& lock) final;
 
     /**
      * @see Request::extendedPersistentState()
      */
-    std::string extendedPersistentState(SqlGeneratorPtr const& gen) const final;
+    std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
 
 private:
 
-    std::string  _database;
-    unsigned int _chunk;
-    std::string  _sourceWorker;
+    /// The name of a database
+    std::string const _database;
+
+    /// The number of a chunk
+    unsigned int const _chunk;
+
+    /// The name of a source worker for the new replica
+    std::string const _sourceWorker;
 
     CallbackType _onFinish;
 

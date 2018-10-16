@@ -30,7 +30,6 @@
 // Qserv headers
 #include "lsst/log/Log.h"
 #include "replica/Configuration.h"
-#include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
 #include "replica/QservMgtServices.h"
 #include "replica/ServiceProvider.h"
@@ -56,31 +55,35 @@ Job::Options const& QservSyncJob::defaultOptions() {
 }
 
 QservSyncJob::Ptr QservSyncJob::create(std::string const& databaseFamily,
+                                       unsigned int requestExpirationIvalSec,
+                                       bool force,
                                        Controller::Ptr const& controller,
                                        std::string const& parentJobId,
-                                       bool force,
-                                       CallbackType onFinish,
+                                       CallbackType const& onFinish,
                                        Job::Options const& options) {
     return QservSyncJob::Ptr(
         new QservSyncJob(databaseFamily,
-                       controller,
-                       parentJobId,
-                       force,
-                       onFinish,
-                       options));
+                         requestExpirationIvalSec,
+                         force,
+                         controller,
+                         parentJobId,
+                         onFinish,
+                         options));
 }
 
 QservSyncJob::QservSyncJob(std::string const& databaseFamily,
+                           unsigned int requestExpirationIvalSec,
+                           bool force,
                            Controller::Ptr const& controller,
                            std::string const& parentJobId,
-                           bool force,
-                           CallbackType onFinish,
+                           CallbackType const& onFinish,
                            Job::Options const& options)
     :   Job(controller,
             parentJobId,
             "QSERV_SYNC",
             options),
         _databaseFamily(databaseFamily),
+        _requestExpirationIvalSec(requestExpirationIvalSec),
         _force(force),
         _onFinish(onFinish),
         _numLaunched(0),
@@ -98,10 +101,11 @@ QservSyncJobResult const& QservSyncJob::getReplicaData() const {
         "QservSyncJob::getReplicaData  the method can't be called while the job hasn't finished");
 }
 
-std::string QservSyncJob::extendedPersistentState(SqlGeneratorPtr const& gen) const {
-    return gen->sqlPackValues(id(),
-                              databaseFamily(),
-                              force() ? 1 : 0);
+std::list<std::pair<std::string,std::string>> QservSyncJob::extendedPersistentState() const {
+    std::list<std::pair<std::string,std::string>> result;
+    result.emplace_back("database_family", databaseFamily());
+    result.emplace_back("force",           force() ? "1" : "0");
+    return result;
 }
 
 void QservSyncJob::startImpl(util::Lock const& lock) {
@@ -121,11 +125,14 @@ void QservSyncJob::startImpl(util::Lock const& lock) {
         for (auto&& database: databases) {
 
             std::vector<ReplicaInfo> replicas;
-            if (not databaseServices->findWorkerReplicas(replicas,
-                                                         worker,
-                                                         database)) {
+            try {
+                databaseServices->findWorkerReplicas(replicas,
+                                                     worker,
+                                                     database);
+            } catch (std::exception const&) {
 
-                LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl  failed to pull replicas for worker: "
+                LOGS(_log, LOG_LVL_DEBUG, context()
+                     << "startImpl  failed to pull replicas for worker: "
                      << worker << ", database: " << database);
 
                 // Set this state and cleanup before aborting the job
@@ -137,7 +144,7 @@ void QservSyncJob::startImpl(util::Lock const& lock) {
                 return;
             }
             for (auto&& info: replicas) {
-                newReplicas.emplace_back(
+                newReplicas.push_back(
                     QservReplica{
                         info.chunk(),
                         info.database(),
@@ -157,7 +164,8 @@ void QservSyncJob::startImpl(util::Lock const& lock) {
                 id(),   /* jobId */
                 [self] (SetReplicasQservMgtRequest::Ptr const& request) {
                     self->onRequestFinish(request);
-                }
+                },
+                _requestExpirationIvalSec
             )
         );
         _numLaunched++;
@@ -183,13 +191,11 @@ void QservSyncJob::cancelImpl(util::Lock const& lock) {
     _numSuccess  = 0;
 }
 
-void QservSyncJob::notifyImpl() {
+void QservSyncJob::notify(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notifyImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
 
-    if (_onFinish) {
-        _onFinish(shared_from_base<QservSyncJob>());
-    }
+    notifyDefaultImpl<QservSyncJob>(lock, _onFinish);
 }
 
 void QservSyncJob::onRequestFinish(SetReplicasQservMgtRequest::Ptr const& request) {

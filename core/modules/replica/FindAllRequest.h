@@ -22,12 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_FINDALLREQUEST_H
 #define LSST_QSERV_REPLICA_FINDALLREQUEST_H
 
-/// FindAllRequest.h declares:
-///
-///   class FindAllRequest
-///
-/// (see individual class documentation for more information)
-
 // System headers
 #include <functional>
 #include <memory>
@@ -112,7 +106,7 @@ public:
                       std::string const& worker,
                       std::string const& database,
                       bool saveReplicaInfo,
-                      CallbackType onFinish,
+                      CallbackType const& onFinish,
                       int  priority,
                       bool keepTracking,
                       std::shared_ptr<Messenger> const& messenger);
@@ -129,7 +123,7 @@ private:
                    std::string const& worker,
                    std::string const& database,
                    bool saveReplicaInfo,
-                   CallbackType onFinish,
+                   CallbackType const& onFinish,
                    int  priority,
                    bool keepTracking,
                    std::shared_ptr<Messenger> const& messenger);
@@ -171,9 +165,9 @@ private:
                  proto::ReplicationResponseFindAll const& message);
 
     /**
-     * @see Request::notifyImpl()
+     * @see Request::notify()
      */
-    void notifyImpl() final;
+    void notify(util::Lock const& lock) final;
 
     /**
      * @see Request::savePersistentState()
@@ -183,12 +177,16 @@ private:
     /**
      * @see Request::extendedPersistentState()
      */
-    std::string extendedPersistentState(SqlGeneratorPtr const& gen) const final;
+    std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
 
 private:
 
-    std::string  _database;
-    bool         _saveReplicaInfo;
+    /// The name of a database for which the replicas will be located
+    std::string const _database;
+
+    /// The flag indicating if the replica info has to be saved in the database
+    bool const _saveReplicaInfo;
+
     CallbackType _onFinish;
 
     /// Request-specific parameters of the target request

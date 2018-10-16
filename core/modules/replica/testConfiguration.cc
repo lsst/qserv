@@ -52,24 +52,25 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
 
     LOGS_INFO("Configuration test begins");
 
-    std::map<std::string,std::string> kvMap = {
+    std::map<std::string, std::string> kvMap = {
         {"common.workers",                    "worker-A worker-B worker-C"},
         {"common.database_families",          "production test"},
         {"common.databases",                  "db1 db2 db3 db4 db5"},
         {"common.request_buf_size_bytes",     "8192"},
         {"common.request_retry_interval_sec", "1"},
-        {"common.database_technology",        "mysql"},
-        {"common.database_host",              "mysql.lsst.org"},
-        {"common.database_port",              "13306"},
-        {"common.database_user",              "qsreplica"},
-        {"common.database_password",          "changeme"},
-        {"common.database_name",              "qservReplica"},
         {"controller.num_threads",            "2"},
         {"controller.http_server_port",       "8080"},
         {"controller.http_server_threads",    "3"},
         {"controller.request_timeout_sec",    "100"},
         {"controller.job_timeout_sec",        "200"},
         {"controller.job_heartbeat_sec",      "300"},
+        {"database.technology",               "mysql"},
+        {"database.host",                     "mysql.lsst.org"},
+        {"database.port",                     "13306"},
+        {"database.user",                     "qsreplica"},
+        {"database.password",                 "changeme"},
+        {"database.name",                     "qservReplica"},
+        {"database.services_pool_size",       "2"},
         {"xrootd.auto_notify",                "0"},
         {"xrootd.host",                       "xrootd.lsst.org"},
         {"xrootd.port",                       "1104"},
@@ -210,12 +211,13 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         // -- Configuration parameters related to database services --
         // -----------------------------------------------------------
 
-        BOOST_CHECK(config->databaseTechnology() == "mysql");
-        BOOST_CHECK(config->databaseHost()       == "mysql.lsst.org");
-        BOOST_CHECK(config->databasePort()       == 13306);
-        BOOST_CHECK(config->databaseUser()       == "qsreplica");
-        BOOST_CHECK(config->databasePassword()   == "changeme");
-        BOOST_CHECK(config->databaseName()       == "qservReplica");
+        BOOST_CHECK(config->databaseTechnology()       == "mysql");
+        BOOST_CHECK(config->databaseHost()             == "mysql.lsst.org");
+        BOOST_CHECK(config->databasePort()             == 13306);
+        BOOST_CHECK(config->databaseUser()             == "qsreplica");
+        BOOST_CHECK(config->databasePassword()         == "changeme");
+        BOOST_CHECK(config->databaseName()             == "qservReplica");
+        BOOST_CHECK(config->databaseServicesPoolSize() == 2);
 
         // ---------------------------------------------------
         // -- Configuration parameters related to databases --

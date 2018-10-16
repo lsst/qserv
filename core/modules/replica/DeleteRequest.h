@@ -22,12 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_DELETEREQUEST_H
 #define LSST_QSERV_REPLICA_DELETEREQUEST_H
 
-/// DeleteRequest.h declares:
-///
-///   class DeleteRequest
-///
-/// (see individual class documentation for more information)
-
 // System headers
 #include <functional>
 #include <memory>
@@ -110,7 +104,7 @@ public:
                       std::string const& worker,
                       std::string const& database,
                       unsigned int  chunk,
-                      CallbackType onFinish,
+                      CallbackType const& onFinish,
                       int  priority,
                       bool keepTracking,
                       bool allowDuplicate,
@@ -128,7 +122,7 @@ private:
                   std::string const& worker,
                   std::string const& database,
                   unsigned int  chunk,
-                  CallbackType onFinish,
+                  CallbackType const& onFinish,
                   int  priority,
                   bool keepTracking,
                   bool allowDuplicate,
@@ -167,9 +161,9 @@ private:
                  proto::ReplicationResponseDelete const& message);
 
     /**
-     * @see Request::notifyImpl()
+     * @see Request::notify()
      */
-    void notifyImpl() final;
+    void notify(util::Lock const& lock) final;
 
     /**
      * @see Request::savePersistentState()
@@ -179,12 +173,15 @@ private:
     /**
      * @see Request::extendedPersistentState()
      */
-    std::string extendedPersistentState(SqlGeneratorPtr const& gen) const final;
+    std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
 
 private:
 
-    std::string  _database;
-    unsigned int _chunk;
+    /// The name of a database to which the deleted chunk belongs to
+    std::string const _database;
+
+    /// The number of a chunk to be deleted
+    unsigned int const _chunk;
 
     CallbackType _onFinish;
 

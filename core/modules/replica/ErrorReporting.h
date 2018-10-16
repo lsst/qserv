@@ -22,18 +22,17 @@
 #ifndef LSST_QSERV_REPLICA_ERRORREPORTING_H
 #define LSST_QSERV_REPLICA_ERRORREPORTING_H
 
-/// ErrorReporting.h declares:
-///
-/// function reportRequestState
-/// (see individual class documentation for more information)
+/**
+ * This header file declares a utility method meant for reporting
+ * a summary of requests' states.
+ */
 
 // System headers
 #include <iomanip>
 #include <ostream>
 
 // Qserv headers
-#include "replica/Request.h"
-#include "replica/ServiceManagementRequest.h"
+#include "replica/Common.h"
 
 // This header declarations
 
@@ -56,12 +55,12 @@ void reportRequestState(COLLECTION const& requests,
         << "                                   id |                 type | worker |       state |            ext.state |          server err.code \n"
         << "--------------------------------------+----------------------+--------+-------------+----------------------+--------------------------\n";   
     for (auto&& ptr: requests) {
-        os  << " "   << std::setw(36) <<                                ptr->id()
-            << " | " << std::setw(20) <<                                ptr->type()
-            << " | " << std::setw( 6) <<                                ptr->worker()
-            << " | " << std::setw(11) << replica::Request::state2string(ptr->state())
-            << " | " << std::setw(20) << replica::Request::state2string(ptr->extendedState())
-            << " | " << std::setw(24) << replica::status2string(        ptr->extendedServerStatus())
+        os  << " "   << std::setw(36) << ptr->id()
+            << " | " << std::setw(20) << ptr->type()
+            << " | " << std::setw(6)  << ptr->worker()
+            << " | " << std::setw(11) << ptr->state2string(ptr->state())
+            << " | " << std::setw(20) << ptr->state2string(ptr->extendedState())
+            << " | " << std::setw(24) << replica::status2string(ptr->extendedServerStatus())
             << "\n";
     }
     os  << "--------------------------------------+----------------------+--------+-------------+----------------------+--------------------------\n"

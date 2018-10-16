@@ -23,11 +23,6 @@
 #ifndef LSST_QSERV_REPLICA_WORKERPROCESSOR_H
 #define LSST_QSERV_REPLICA_WORKERPROCESSOR_H
 
-/// WorkerProcessor.h declares:
-///
-/// class WorkerProcessor
-/// (see individual class documentation for more information)
-
 // System headers
 #include <algorithm>
 #include <list>
@@ -55,7 +50,7 @@ class WorkerRequestFactory;
 
 /**
   * Class WorkerProcessor is a front-end interface for processing
-  * requests of remote clients.
+  * requests from remote clients within worker-side services.
   */
 class WorkerProcessor
     :   public std::enable_shared_from_this<WorkerProcessor> {
@@ -136,7 +131,7 @@ public:
      * @param worker          - the name of a worker
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      WorkerRequestFactory& requestFactory,
+                      WorkerRequestFactory const& requestFactory,
                       std::string const& worker);
 
     // Default construction and copy semantics are prohibited
@@ -367,7 +362,7 @@ private:
      * @see WorkerProcessor::create
      */
     WorkerProcessor(ServiceProvider::Ptr const& serviceProvider,
-                    WorkerRequestFactory& requestFactory,
+                    WorkerRequestFactory const& requestFactory,
                     std::string const& worker);
 
     /**
@@ -543,13 +538,13 @@ private:
 private:
 
     /// Services used by the processor
-    ServiceProvider::Ptr _serviceProvider;
+    ServiceProvider::Ptr const _serviceProvider;
 
     /// A factory of request objects
-    WorkerRequestFactory& _requestFactory;
+    WorkerRequestFactory const& _requestFactory;
 
     /// The name of the worker
-    std::string _worker;
+    std::string const _worker;
 
     /// Current state of the processor
     State _state;

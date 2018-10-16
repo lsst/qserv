@@ -32,18 +32,12 @@
 
 // LSST headers
 #include "lsst/log/Log.h"
+
+// Qserv headers
 #include "proto/worker.pb.h"
 #include "wbase/SendChannel.h"
 #include "xrdsvc/SsiProvider.h"
 #include "xrdsvc/XrdName.h"
-
-/******************************************************************************/
-/*                               G l o b a l s                                */
-/******************************************************************************/
-
-extern XrdSsiProvider* XrdSsiProviderLookup;
-
-// Qserv headers
 
 namespace {
 

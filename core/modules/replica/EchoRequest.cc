@@ -24,7 +24,6 @@
 #include "replica/EchoRequest.h"
 
 // System headers
-#include <future>
 #include <stdexcept>
 
 // Third party headers
@@ -34,7 +33,6 @@
 // Qserv headers
 #include "lsst/log/Log.h"
 #include "replica/Controller.h"
-#include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
 #include "replica/Messenger.h"
 #include "replica/ProtocolBuffer.h"
@@ -56,7 +54,7 @@ EchoRequest::Ptr EchoRequest::create(ServiceProvider::Ptr const& serviceProvider
                                      std::string const& worker,
                                      std::string const& data,
                                      uint64_t delay,
-                                     CallbackType onFinish,
+                                     CallbackType const& onFinish,
                                      int priority,
                                      bool keepTracking,
                                      std::shared_ptr<Messenger> const& messenger) {
@@ -77,7 +75,7 @@ EchoRequest::EchoRequest(ServiceProvider::Ptr const& serviceProvider,
                            std::string const& worker,
                            std::string const& data,
                            uint64_t delay,
-                           CallbackType onFinish,
+                           CallbackType const& onFinish,
                            int  priority,
                            bool keepTracking,
                            std::shared_ptr<Messenger> const& messenger)
@@ -295,13 +293,11 @@ void EchoRequest::analyze(bool success,
     }
 }
 
-void EchoRequest::notifyImpl() {
+void EchoRequest::notify(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notifyImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
 
-    if (_onFinish) {
-        _onFinish(shared_from_base<EchoRequest>());
-    }
+    notifyDefaultImpl<EchoRequest>(lock, _onFinish);
 }
 
 void EchoRequest::savePersistentState(util::Lock const& lock) {
@@ -309,11 +305,11 @@ void EchoRequest::savePersistentState(util::Lock const& lock) {
     controller()->serviceProvider()->databaseServices()->saveState(*this, performance(lock));
 }
 
-std::string EchoRequest::extendedPersistentState(SqlGeneratorPtr const& gen) const {
-    LOGS(_log, LOG_LVL_DEBUG, context() << "extendedPersistentState");
-    return gen->sqlPackValues(id(),
-                              data().size(),
-                              delay());
+std::list<std::pair<std::string,std::string>> EchoRequest::extendedPersistentState() const {
+    std::list<std::pair<std::string,std::string>> result;
+    result.emplace_back("data_length_bytes",  std::to_string(data().size()));
+    result.emplace_back("delay_milliseconds", std::to_string(delay()));
+    return result;
 }
 
 }}} // namespace lsst::qserv::replica

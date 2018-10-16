@@ -22,17 +22,16 @@
 #ifndef LSST_QSERV_REPLICA_STOPREQUEST_H
 #define LSST_QSERV_REPLICA_STOPREQUEST_H
 
-/// StopRequest.h declares:
-///
-/// Common classes shared by all implementations:
-///
-///   class StopRequest
-///   class StopRequestReplicate
-///   class StopRequestDelete
-///   class StopRequestFind
-///   class StopRequestFindAll
-///
-/// (see individual class documentation for more information)
+/**
+ * This header declares a collection of classes representing various
+ * server-side request cancellation tools (requests) as a part of the
+ * Controller-side Replication Framework.
+ *
+ * @see class StopRequestReplicate
+ * @see class StopRequestDelete
+ * @see class StopRequestFind
+ * @see class StopRequestFindAll
+ */
 
 // System headers
 #include <functional>
@@ -248,7 +247,7 @@ public:
                       boost::asio::io_service& io_service,
                       std::string const& worker,
                       std::string const& targetRequestId,
-                      CallbackType onFinish,
+                      CallbackType const& onFinish,
                       bool keepTracking,
                       std::shared_ptr<Messenger> const& messenger) {
         return StopRequest<POLICY>::Ptr(
@@ -277,7 +276,7 @@ private:
                 std::string const& worker,
                 std::string const& targetRequestId,
                 proto::ReplicationReplicaRequestType replicaRequestType,
-                CallbackType onFinish,
+                CallbackType const& onFinish,
                 bool keepTracking,
                 std::shared_ptr<Messenger> const& messenger)
         :   StopRequestBase(serviceProvider,
@@ -292,12 +291,10 @@ private:
     }
 
     /**
-     * @see Request::notifyImpl()
+     * @see Request::notify()
      */
-    void notifyImpl() final {
-        if (_onFinish) {
-            _onFinish(shared_from_base<StopRequest<POLICY>>());
-        }
+    void notify(util::Lock const& lock) final {
+        notifyDefaultImpl<StopRequest<POLICY>>(lock, _onFinish);
     }
 
     /**

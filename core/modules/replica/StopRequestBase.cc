@@ -32,6 +32,8 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
+#include "replica/Controller.h"
+#include "replica/DatabaseServices.h"
 #include "replica/ProtocolBuffer.h"
 #include "replica/ServiceProvider.h"
 
@@ -202,6 +204,16 @@ void StopRequestBase::analyze(bool success,
                     proto::ReplicationStatus_Name(status) +
                     "' received from server");
     }
+}
+
+void StopRequestBase::savePersistentState(util::Lock const& lock) {
+    controller()->serviceProvider()->databaseServices()->saveState(*this, performance(lock));
+}
+
+std::list<std::pair<std::string,std::string>> StopRequestBase::extendedPersistentState() const {
+    std::list<std::pair<std::string,std::string>> result;
+    result.emplace_back("target_request_id", targetRequestId());
+    return result;
 }
 
 }}} // namespace lsst::qserv::replica

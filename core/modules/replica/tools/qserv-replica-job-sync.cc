@@ -60,15 +60,17 @@ bool test() {
 
     try {
 
-        ///////////////////////////////////////////////////////////////////////
-        // Start the controller in its own thread before injecting any requests
-        // Note that omFinish callbak which are activated upon a completion
-        // of the requsts will be run in that Controller's thread.
+        ///////////////////////////////////////////////////////////////////////////
+        // Start the provider in its own thread pool before initiating any requests
+        // or jobs.
+        //
+        // Note that onFinish callbacks which are activated upon the completion of
+        // the requests or jobs will be run by a thread from the pool.
 
         replica::ServiceProvider::Ptr const provider   = replica::ServiceProvider::create(configUrl);
         replica::Controller::Ptr      const controller = replica::Controller::create(provider);
 
-        controller->run();
+        provider->run();
 
         ////////////////////////////////////////
         // Find all replicas accross all workers
@@ -76,9 +78,10 @@ bool test() {
         std::atomic<bool> finished{false};
         auto job = replica::QservSyncJob::create(
             databaseFamily,
+            0,  /* default timeout to be pulled from the Configuration*/
+            force,
             controller,
             std::string(),
-            force,
             [&finished] (replica::QservSyncJob::Ptr const& job) {
                 finished = true;
             }
@@ -113,11 +116,10 @@ bool test() {
                 << "\n";
         }
 
-        ///////////////////////////////////////////////////
-        // Shutdown the controller and join with its thread
+        //////////////////////////////////////////////////
+        // Shutdown the provider and join with its threads
 
-        controller->stop();
-        controller->join();
+        provider->stop();
 
     } catch (std::exception const& ex) {
         std::cerr << ex.what() << std::endl;
@@ -152,7 +154,7 @@ int main(int argc, const char* const argv[]) {
             "Flags and options:\n"
             "  --config             - a configuration URL (a configuration file or a set of the database\n"
             "                         connection parameters [ DEFAULT: file:replication.cfg ]\n"
-            "  --force              - force teh operation even if some replicas are in use\n"
+            "  --force              - force the operation even if some replicas are in use\n"
             "  --progress-report    - progress report when executing batches of requests\n"
             "  --error-report       - detailed report on failed requests\n"
             "  --chunk-locks-report - report chunks which are locked\n");

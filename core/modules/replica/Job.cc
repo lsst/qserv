@@ -26,7 +26,6 @@
 // System headers
 #include <sstream>
 #include <stdexcept>
-#include <thread>
 #include <utility>      // std::swap
 
 // Third party headers
@@ -55,6 +54,8 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.Job");
 namespace lsst {
 namespace qserv {
 namespace replica {
+
+std::atomic<size_t> Job::_numClassInstances(0);
 
 std::string Job::state2string(State state) {
     switch (state) {
@@ -97,6 +98,16 @@ Job::Job(Controller::Ptr const& controller,
         _endTime(0),
         _heartbeatTimerIvalSec(controller->serviceProvider()->config()->jobHeartbeatTimeoutSec()),
         _expirationIvalSec(controller->serviceProvider()->config()->jobTimeoutSec()) {
+
+    // This report is used solely for debugging purposes to allow tracking
+    // potential memory leaks within applications.
+    ++_numClassInstances;
+    LOGS(_log, LOG_LVL_DEBUG, context() << "constructed  instances: " << _numClassInstances);
+}
+
+Job::~Job() {
+    --_numClassInstances;
+    LOGS(_log, LOG_LVL_DEBUG, context() << "destructed   instances: " << _numClassInstances);
 }
 
 std::string Job::state2string() const {
@@ -164,7 +175,7 @@ void Job::start() {
     // Allow the job to be fully accomplished right away
 
     if (state() == State::FINISHED) {
-        notify();
+        notify(lock);
         return;
     }
 
@@ -224,14 +235,14 @@ void Job::finish(util::Lock const& lock,
     if(_heartbeatTimerPtr)  _heartbeatTimerPtr->cancel();
     if(_expirationTimerPtr) _expirationTimerPtr->cancel();
 
-    notify();
+    notify(lock);
 }
 
 void Job::qservAddReplica(util::Lock const& lock,
                           unsigned int chunk,
                           std::vector<std::string> const& databases,
                           std::string const& worker,
-                          AddReplicaQservMgtRequest::CallbackType onFinish) {
+                          AddReplicaQservMgtRequest::CallbackType const& onFinish) {
 
     LOGS(_log, LOG_LVL_DEBUG, context()
          << "** START ** Qserv notification on ADD replica:"
@@ -269,7 +280,7 @@ void Job::qservRemoveReplica(util::Lock const& lock,
                              std::vector<std::string> const& databases,
                              std::string const& worker,
                              bool force,
-                             RemoveReplicaQservMgtRequest::CallbackType onFinish) {
+                             RemoveReplicaQservMgtRequest::CallbackType const& onFinish) {
 
     LOGS(_log, LOG_LVL_DEBUG, context()
          << "** START ** Qserv notification on REMOVE replica:"
@@ -323,7 +334,7 @@ void Job::setState(util::Lock const& lock,
     // in the transient state transition in order to ensure a consistent view
     // onto the combined state.
 
-    if (state() == State::FINISHED) {
+    if (newState == State::FINISHED) {
         _endTime = PerformanceUtils::now();
     }
     _extendedState = newExtendedState;
@@ -428,22 +439,6 @@ void Job::expired(boost::system::error_code const& ec) {
     if (state() == State::FINISHED) return;
 
     finish(lock, ExtendedState::TIMEOUT_EXPIRED);
-}
-
-void Job::notify() {
-
-    // The callback is being made asynchronously in a separate thread
-    // to avoid blocking the current thread.
-    //
-    // TODO: consider reimplementing this method to send notificatons
-    //       via a thread pool & a queue.
-
-    auto const self = shared_from_this();
-
-    std::thread notifier([self]() {
-        self->notifyImpl();
-    });
-    notifier.detach();
 }
 
 bool JobCompare::operator()(Job::Ptr const& lhs,

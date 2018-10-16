@@ -22,13 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_REPLICATEJOB_H
 #define LSST_QSERV_REPLICA_REPLICATEJOB_H
 
-/// ReplicateJob.h declares:
-///
-/// struct ReplicateJobResult
-/// class  ReplicateJob
-///
-/// (see individual class documentation for more information)
-
 // System headers
 #include <atomic>
 #include <functional>
@@ -97,18 +90,18 @@ public:
      *                         for each chunk. If the parameter is set to 0 then the corresponding
      *                         configuration option for the database family will be assumed.
      * @param controller     - for launching jobs
-     * @param parentJobId    - optional identifier of a parent job
-     * @param onFinish       - callback function to be called upon a completion of the job
-     * @param options        - job options
+     * @param parentJobId    - (optional) identifier of a parent job
+     * @param onFinish       - (optional) callback function to be called upon job completion
+     * @param options        - (optional) job options
      *
      * @return pointer to the created object
      */
     static Ptr create(std::string const& databaseFamily,
                       unsigned int numReplicas,
                       Controller::Ptr const& controller,
-                      std::string const& parentJobId,
-                      CallbackType onFinish,
-                      Job::Options const& options=defaultOptions());
+                      std::string const& parentJobId = std::string(),
+                      CallbackType const& onFinish = nullptr,
+                      Job::Options const& options = defaultOptions());
 
     // Default construction and copy semantics are prohibited
 
@@ -116,8 +109,7 @@ public:
     ReplicateJob(ReplicateJob const&) = delete;
     ReplicateJob& operator=(ReplicateJob const&) = delete;
 
-    /// Destructor (non-trivial in order to release chunks locked by the operation)
-    ~ReplicateJob() final;
+    ~ReplicateJob() = default;
 
     /**
      * @return the minimum number of each chunk's replicas to be reached when
@@ -150,7 +142,7 @@ public:
     /**
      * @see Job::extendedPersistentState()
      */
-    std::string extendedPersistentState(SqlGeneratorPtr const& gen) const override;
+    std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
 
 protected:
 
@@ -163,7 +155,7 @@ protected:
                  unsigned int numReplicas,
                  Controller::Ptr const& controller,
                  std::string const& parentJobId,
-                 CallbackType onFinish,
+                 CallbackType const& onFinish,
                  Job::Options const& options);
 
     /**
@@ -177,9 +169,9 @@ protected:
     void cancelImpl(util::Lock const& lock) final;
 
     /**
-      * @see Job::notifyImpl()
+      * @see Job::notify()
       */
-    void notifyImpl() final;
+    void notify(util::Lock const& lock) final;
 
     /**
      * The calback function to be invoked on a completion of the precursor job
@@ -195,28 +187,27 @@ protected:
     void onCreateJobFinish(CreateReplicaJob::Ptr const& job);
 
     /**
-     * Restart the job from scratch. This method will reset object context
-     * to a state it was before method Job::startImpl() called and then call
-     * Job::startImpl() again.
+     * Submit a batch of the replica creation job
      *
-     * @param lock - the lock must be acquired by a caller of the method
-     */
-    void restart(util::Lock const& lock);
-
-    /**
-     * Unconditionally release the specified chunk
+     * This method implements a load balancing algorithm which tries to
+     * prevent excessive use of resources by controllers and to avoid
+     * "hot spots" or underutilization at workers.
      *
-     * @param chunk - the chunk number
+     * @param lock    - the lock must be acquired by a caller of the method
+     * @param numJobs - desired number of jobs to submit
+     *
+     * @retun actual number of submitted jobs
      */
-    void release(unsigned int chunk);
+    size_t launchNextJobs(util::Lock const& lock,
+                          size_t numJobs);
 
 protected:
 
     /// The name of the database family
-    std::string _databaseFamily;
+    std::string const _databaseFamily;
 
     /// The minimum number of replicas for each chunk
-    unsigned int _numReplicas;
+    unsigned int const _numReplicas;
 
     /// Client-defined function to be called upon the completion of the job
     CallbackType _onFinish;
@@ -225,30 +216,11 @@ protected:
     /// replica disposition.
     FindAllJob::Ptr _findAllJob;
 
-    /// The total number of iterations the job has gone so far
-    size_t _numIterations;
-
-    /// The number of chunks which require the replication but couldn't be locked
-    /// in the exclusive mode. The counter will be analyzed upon a completion
-    /// of the last replica creation job, and if it were found not empty another
-    /// iteration of the job will be undertaken
-    size_t _numFailedLocks;
-
-    /// A collection of jobs groupped by the corresponidng chunk
-    /// number. The main idea is simplify tracking the completion status
-    /// of the operation on each chunk. Requests will be added to the
-    /// corresponding group as they're launched, and removed when they
-    /// finished. This allows releasing (unlocking) chunks before
-    /// the whole job finishes.
-    ///
-    /// [chunk][worker]
-    //
-    std::map<unsigned int,
-             std::map<std::string,
-                      CreateReplicaJob::Ptr>> _chunk2jobs;
-
-    /// A collection of replica creation jobs implementing the operation
+    /// Replica creation jobs which are ready to be launched
     std::list<CreateReplicaJob::Ptr> _jobs;
+
+    /// Jobs which are already active
+    std::list<CreateReplicaJob::Ptr> _activeJobs;
 
     // The counter of jobs which will be updated. They need to be atomic
     // to avoid race condition between the onFinish() callbacks executed within

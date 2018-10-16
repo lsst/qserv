@@ -22,10 +22,12 @@
 #ifndef LSST_QSERV_REPLICA_COMMON_H
 #define LSST_QSERV_REPLICA_COMMON_H
 
-/// Common.h declares:
-///
-/// enum ExtendedCompletionStatus
-/// (see individual class documentation for more information)
+/**
+ * This declares various small utilities, such data types, functons and
+ * classes which are shared by the code in the rest of this package.
+ * It would be not practical to put each of these utilities in a separate
+ * header.
+ */
 
 // System headers
 #include <string>

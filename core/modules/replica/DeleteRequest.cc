@@ -24,7 +24,6 @@
 #include "replica/DeleteRequest.h"
 
 // System headers
-#include <future>
 #include <stdexcept>
 
 // Third party headers
@@ -36,7 +35,6 @@
 #include "lsst/log/Log.h"
 #include "replica/Configuration.h"
 #include "replica/Controller.h"
-#include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
 #include "replica/Messenger.h"
 #include "replica/ProtocolBuffer.h"
@@ -57,7 +55,7 @@ DeleteRequest::Ptr DeleteRequest::create(ServiceProvider::Ptr const& serviceProv
                                          std::string const& worker,
                                          std::string const& database,
                                          unsigned int  chunk,
-                                         CallbackType onFinish,
+                                         CallbackType const& onFinish,
                                          int  priority,
                                          bool keepTracking,
                                          bool allowDuplicate,
@@ -81,7 +79,7 @@ DeleteRequest::DeleteRequest(ServiceProvider::Ptr const& serviceProvider,
                              std::string const& worker,
                              std::string const& database,
                              unsigned int  chunk,
-                             CallbackType onFinish,
+                             CallbackType const& onFinish,
                              int  priority,
                              bool keepTracking,
                              bool allowDuplicate,
@@ -309,23 +307,22 @@ void DeleteRequest::analyze(bool success,
     }
 }
 
-void DeleteRequest::notifyImpl() {
+void DeleteRequest::notify(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notifyImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
 
-    if (_onFinish) {
-        _onFinish(shared_from_base<DeleteRequest>());
-    }
+    notifyDefaultImpl<DeleteRequest>(lock, _onFinish);
 }
 
 void DeleteRequest::savePersistentState(util::Lock const& lock) {
     controller()->serviceProvider()->databaseServices()->saveState(*this, performance(lock));
 }
 
-std::string DeleteRequest::extendedPersistentState(SqlGeneratorPtr const& gen) const {
-    return gen->sqlPackValues(id(),
-                              database(),
-                              chunk());
+std::list<std::pair<std::string,std::string>> DeleteRequest::extendedPersistentState() const {
+    std::list<std::pair<std::string,std::string>> result;
+    result.emplace_back("database", database());
+    result.emplace_back("chunk",    std::to_string(chunk()));
+    return result;
 }
 
 }}} // namespace lsst::qserv::replica

@@ -221,7 +221,7 @@ private:
  * Print a status of the controller
  */
 void reportControllerStatus(replica::Controller::Ptr const& controller) {
-    LOGS(_log, LOG_LVL_INFO, "controller is " << (controller->isRunning() ? "" : "NOT ") << "running");
+    LOGS(_log, LOG_LVL_INFO, "service provider is " << (controller->serviceProvider()->isRunning() ? "" : "NOT ") << "running");
 }
 
 /**
@@ -232,6 +232,13 @@ void test() {
     try {
 
         util::BlockPost blockPost(0, 100);     // for random delays (milliseconds) between operations
+
+        ///////////////////////////////////////////////////////////////////////////
+        // Start the provider in its own thread pool before initiating any requests
+        // or jobs.
+        //
+        // Note that onFinish callbacks which are activated upon the completion of
+        // the requests or jobs will be run by a thread from the pool.
 
         replica::ServiceProvider::Ptr const provider   = replica::ServiceProvider::create(configUrl);
         replica::Controller::Ptr      const controller = replica::Controller::create(provider);
@@ -247,7 +254,7 @@ void test() {
         // Start the controller in its own thread before injecting any requests
 
         reportControllerStatus(controller);
-        controller->run();
+        provider->run();
         reportControllerStatus(controller);
 
         // Create the first bunch of requests which are to be launched
@@ -261,28 +268,19 @@ void test() {
         requestGenerator.replicate(10, 10, &blockPost);
         
         // Do a proper clean up of the service by stopping it. This way of stopping
-        // the service will guarantee that all outstanding opeations will finish
+        // the service will guarantee that all outstanding operations will finish
         // and not aborted.
         //
-        // NOTE: Joining to the controller's thread is not needed because
+        // NOTE: Joining to the provider's thread is not needed because
         //       this will always be done internally inside the stop method.
-        //       The only reason for joining would be for having an option of
-        //       integrating the controller into a larger application.
 
         reportControllerStatus(controller);
-        //controller->stop();
-        reportControllerStatus(controller);
-
-        //controller->run();
-        reportControllerStatus(controller);
-
-        //requestGenerator.replicate(1000, 100, &blockPost);
 
         // Launch another thread which will test injecting requests from there.
         // 
         // NOTE: The thread may (and will) finish when the specified number of
         // requests will be launched because the requests are execured in
-        // a context of the controller thread.
+        // a context of the provider's threads.
         std::thread another(
             [&requestGenerator, &blockPost] () {
 
@@ -321,9 +319,9 @@ void test() {
             blockPost.wait();
             LOGS(_log, LOG_LVL_INFO, "HEARTBEAT  active requests: " << controller->numActiveRequests());
         }
-        LOGS(_log, LOG_LVL_INFO, "waiting for: controller->join()");
-        controller->join();
-        LOGS(_log, LOG_LVL_INFO, "past: controller->join()");
+        LOGS(_log, LOG_LVL_INFO, "waiting for: provider->stop()");
+        provider->stop();
+        LOGS(_log, LOG_LVL_INFO, "past: provider->stop()");
 
     } catch (std::exception const& ex) {
         std::cerr << ex.what() << std::endl;
