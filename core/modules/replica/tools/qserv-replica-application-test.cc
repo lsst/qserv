@@ -86,6 +86,29 @@ public:
             "verbose mode",
             _verbose
         );
+
+#if 0
+        /* The proposed extension to the command line parser to allow
+         * the following syntax (as per code example)
+         *
+         * COMMAND1 <p1> <p11> [<o1>] [<o11>] [--o11=<v>] [--f1]
+         * COMMAND2 <p1>       [<o1>]                     [--f1] [--f21]
+         * COMMAND2 <p3>       [<o1>]                     [--f1]
+         */
+        std::string cmd;
+        parser({"COMMAND1","COMMAND2","COMMAND3"}, cmd)
+            .required("p1", "description of the required parameter p1 for all commands", p1)
+            .optional("o1", "description of the optional parameter o1 for all commands", o1)
+            .flag("f1", "description of f1", f1);
+
+        command("COMMAND1")
+            .required("p11", "description of the additional required parameter specific for the command", p11)
+            .optional("o11", "description of the additional optional parameter specific for the command", o11)
+            .option("o11", "description of the additional option specific to the command", o11);
+
+        command("COMMAND2")
+            .flag("f21", "description of the additional flag specific to the command", f21);
+#endif
     }
 
 protected:
