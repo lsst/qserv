@@ -394,7 +394,7 @@ static const std::vector< std::string > QUERIES = {
     "SELECT foo FROM Filter f limit 5;",
     "SELECT foo FROM Filter f limit 5;; ",
 
-    // this is not supposed to produce a valid query TODO how to address this with antlr4, how to structure the test?
+    // this is not supposed to produce a valid query. test and fix as needed in DM-16166
     //fails "SELECT foo from Filter f limit 5 garbage query !#$%!#$",
     //fails "SELECT foo from Filter f limit 5; garbage query !#$%!#$",
 
@@ -410,7 +410,7 @@ static const std::vector< std::string > QUERIES = {
     "SELECT * FROM RefObjMatch;",
     "SELECT * FROM RefObjMatch WHERE "
                       "foo<>bar AND baz<3.14159;",
-    // this is not supposed to produce a valid query TODO how to address this with antlr4, how to structure the test?
+    // this is not supposed to produce a valid query. test and fix as needed in DM-16166
     //fails "LECT sce.filterName,sce.field "
     //   "FROM LSST.Science_Ccd_Exposure AS sce "
     //   "WHERE sce.field=535 AND sce.camcol LIKE '%' ",
@@ -476,7 +476,7 @@ static const std::vector< std::string > QUERIES = {
        "FROM Source s1 CROSS JOIN Source s2 "
        "WHERE s1.bar = s2.bar;",
 
-    // this is not supposed to produce a valid query TODO how to address this with antlr4, how to structure the test?
+    // this is not supposed to produce a valid query. test and fix as needed in DM-16166
     //fails "select objectId, sro.*, (sro.refObjectId-1)/2%pow(2,10), typeId "
     //   "from Source s join RefObjMatch rom using (objectId) "
     //   "join SimRefObject sro using (refObjectId) where isStar =1 limit 10;",
@@ -493,12 +493,12 @@ static const std::vector< std::string > QUERIES = {
        " OR scisql_fluxToAbMag(gFlux_PS)-scisql_fluxToAbMag(rFlux_PS) > 1.26 ) "
        "AND    scisql_fluxToAbMag(iFlux_PS)-scisql_fluxToAbMag(zFlux_PS) < 0.8;",
 
-    // this is not supposed to produce a valid query TODO how to address this with antlr4, how to structure the test?
+    // this is not supposed to produce a valid query. test and fix as needed in DM-16166
     // per testQueryAnaGeneral: CASE in column spec is illegal.
     //"SELECT  COUNT(*) AS totalCount, "
     //   "SUM(CASE WHEN (typeId=3) THEN 1 ELSE 0 END) AS galaxyCount "
     //   "FROM Object WHERE rFlux_PS > 10;",
-    // this is not supposed to produce a valid query TODO how to address this with antlr4, how to structure the test?
+    // this is not supposed to produce a valid query. test and fix as needed in DM-16166
     // per testQueryAnaGeneral: CASE in column spec is illegal.
     //fails "SELECT scisql_fluxToAbMag(uFlux_PS) "
     //   "FROM   Object WHERE  (objectId % 100 ) = 40;",
