@@ -78,9 +78,11 @@ private:
     BufferUdp _buf{500000};
 
     void _handleImYourLNeighbor(uint32_t bytes);
-    void _handleImYourLNeighbor2(boost::system::error_code const& ec, size_t bytesTrans);
-    void _handleImYourLNeighbor3(boost::system::error_code const& ec, size_t bytesTrans);
+    void _handleImYourLNeighbor1(boost::system::error_code const& ec, size_t bytesTrans);
+    void _handleImYourLNeighbor2(boost::system::error_code const& ec, size_t bytesTrans); // &&& rename to 2
 
+    void _handleShiftToRight(uint32_t bytes);
+    void _handleShiftToRight1(boost::system::error_code const& ec, size_t bytesTrans);
 
     void _handleTest();
     void _handleTest2(boost::system::error_code const& ec, size_t bytesTrans);

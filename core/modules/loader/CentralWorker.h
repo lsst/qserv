@@ -52,6 +52,8 @@ class CentralWorkerDoListItem;
 
 class CentralWorker : public Central {
 public:
+    typedef std::pair<std::string, ChunkSubchunk> StringKeyPair;
+
     enum SocketStatus {
         VOID0 = 0,
         STARTING1,
@@ -118,6 +120,10 @@ public:
     std::unique_ptr<proto::WorkerKeysInfo> _workerKeysInfoBuilder(); // TODO make private
     void setNeighborInfoLeft(uint32_t name, int keyCount, StringRange const& range);  // TODO make private
 
+    void insertKeys(std::vector<StringKeyPair> const& keyList);
+
+    std::string dumpKeys();
+
     friend CentralWorkerDoListItem;
 
 private:
@@ -182,6 +188,7 @@ private:
     std::atomic<bool> _shiftWithRightInProgress{false};
     double _thresholdNeighborShift{1.10}; ///< Shift if 10% more than neighbor
     int _maxKeysToShift{10000};
+    std::vector<StringKeyPair> _transferList;
 
     std::shared_ptr<CentralWorkerDoListItem> _centralWorkerDoListItem;
 

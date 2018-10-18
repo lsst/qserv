@@ -244,10 +244,71 @@ void CentralWorker::_shiftIfNeeded() {
     _shift(direction, keysToShift);
 }
 
+
 void CentralWorker::_shift(Direction direction, int keysToShift) {
-    LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift direction=" << direction << " keys=" << keysToShift);
-    LOGS(_log, LOG_LVL_ERROR, "&&& CentralWorker::_shift NEEDS CODE");
-    exit (-1);
+    if (direction == FROMRIGHT2) {
+        // &&& construct a message asking for keys to shift keys
+        // &&& Wait for the response
+        LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift AAA direction=" << direction << " keys=" << keysToShift);
+        LOGS(_log, LOG_LVL_ERROR, "&&& CentralWorker::_shift NEEDS CODE");
+        exit (-1);
+    } else if (direction == TORIGHT1) {
+        // &&& construct a message with that many keys and send it
+        proto::KeyList protoKeyList;
+        protoKeyList.set_keycount(keysToShift);
+        std::string minKey(""); // smallest value of a key sent to right neighbor
+        std::string maxKey("");
+        {
+            if (not _transferList.empty()) {
+                throw new LoaderMsgErr("CentralWorker::_shift _transferList not empty");
+            }
+            std::lock_guard<std::mutex> lck(_idMapMtx);
+            bool firstPass = true;
+            for (int j=0; j < keysToShift && _directorIdMap.size() > 1; ++j) {
+                auto iter = _directorIdMap.end();
+                --iter; // rbegin() returns a reverse iterator which doesn't work with erase().
+                if (firstPass) {
+                    maxKey = iter->first;
+                }
+                _transferList.push_back(std::make_pair(iter->first, iter->second));
+                proto::KeyInfo* protoKI = protoKeyList.add_keypair();
+                minKey = iter->first;
+                protoKI->set_key(minKey);
+                protoKI->set_chunk(iter->second.chunk);
+                protoKI->set_subchunk(iter->second.subchunk);
+                _directorIdMap.erase(iter);
+            }
+            // Adjust our range;
+            _strRange.setMax(minKey);
+        }
+        StringElement keyList;
+        protoKeyList.SerializeToString(&(keyList.element));
+        // Send the message kind, followed by the transmit size, and then the protobuffer.
+        UInt32Element kindShiftRight(LoaderMsg::SHIFT_TO_RIGHT);
+        UInt32Element bytesInMsg(keyList.transmitSize());
+        BufferUdp data(kindShiftRight.transmitSize() + bytesInMsg.transmitSize() + keyList.transmitSize());
+        kindShiftRight.appendToData(data);
+        bytesInMsg.appendToData(data);
+        keyList.appendToData(data);
+        ServerTcpBase::_writeData(*_rightSocket, data);
+
+        // read back LoaderMsg::SHIFT_TO_RIGHT_KEYS_RECEIVED
+        data.reset();
+        auto msgElem = data.readFromSocket(*_rightSocket, "CentralWorker::_shift SHIFT_TO_RIGHT_KEYS_RECEIVED");
+        UInt32Element::Ptr received = std::dynamic_pointer_cast<UInt32Element>(msgElem);
+        if (received == nullptr || received->element !=  LoaderMsg::SHIFT_TO_RIGHT_RECEIVED) {
+            {
+                // Restore the original range
+                std::lock_guard<std::mutex> lck(_idMapMtx);
+                _strRange.setMax(maxKey);
+            }
+            throw new LoaderMsgErr("CentralWorker::_shift receive failure");
+        }
+
+        LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift end direction=" << direction << " keys=" << keysToShift);
+    }
+    LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift DumpKeys " << dumpKeys()); // &&& make debug or delete or limit number of keys printed.
+    _shiftWithRightInProgress = false;
 }
 
 
@@ -375,8 +436,20 @@ void CentralWorker::_rightDisconnect() {
 
 void CentralWorker::_cancelShiftsRightNeighbor() {
     LOGS(_log, LOG_LVL_WARN, "Canceling shifts with right neighbor");
+    std::lock_guard<std::mutex> lck(_idMapMtx); // &&& check that this does not cause deadlock
     if (_shiftWithRightInProgress.exchange(false)) {
         // TODO What else needs to done?
+        { // // &&& make this _restoreTransferList()
+            // Restore the transfer list to the id map
+            for (auto&& elem:_transferList) {
+                auto res = _directorIdMap.insert(std::make_pair(elem.first, elem.second));
+                if (not res.second) {
+                    LOGS(_log, LOG_LVL_WARN, "_cancelShiftsRightNeighbor Possible duplicate " <<
+                                             elem.first << ":" << elem.second);
+                }
+            }
+            _transferList.clear();
+        }
         LOGS(_log, LOG_LVL_ERROR, "CentralWorker::_cancelShiftsRightNeighbor needs code");
         exit(-1);
     }
@@ -817,4 +890,48 @@ void CentralWorker::_removeOldEntries() {
 }
 
 
+void CentralWorker::insertKeys(std::vector<StringKeyPair> const& keyList) {
+    std::unique_lock<std::mutex> lck(_idMapMtx);
+    auto minKey = _strRange.getMin();
+    auto maxKey = _strRange.getMax();
+    bool minKeyChanged = false;
+    bool maxKeyChanged = false;
+    for (auto&& elem:keyList) {
+        auto const& key = elem.first;
+        auto res = _directorIdMap.insert(std::make_pair(key, elem.second));
+        if (key < minKey) {
+            minKey = key;
+            minKeyChanged = true;
+        }
+        if (key > maxKey) {
+            maxKey = key;
+            maxKeyChanged = true;
+        }
+        if (not res.second) {
+            LOGS(_log, LOG_LVL_WARN, "insertKeys Possible duplicate " <<
+                                     elem.first << ":" << elem.second);
+        }
+    }
+    if (minKeyChanged) {
+        _strRange.setMin(minKey);
+    }
+    if (maxKeyChanged) {
+        // if unlimited is false, range will be slightly off until corrected by the right neighbor.
+        bool unlimited = _strRange.getUnlimited();
+        _strRange.setMax(maxKey, unlimited);
+    }
+}
+
+
+// TODO add option to print limited number of keys (maybe first 3 keyval pairs and last 3)
+std::string CentralWorker::dumpKeys() {
+    std::stringstream os;
+    std::lock_guard<std::mutex> lck(_idMapMtx);
+    os << "name=" << getOurName() << " count=" << _directorIdMap.size() << " range(" << _strRange << ") pairs: ";
+
+    for (auto&& elem:_directorIdMap) {
+        os << elem.first << "{" << elem.second << "} ";
+    }
+    return os.str();
+}
 }}} // namespace lsst::qserv::loader

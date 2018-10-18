@@ -109,5 +109,12 @@ message WorkerKeysInfo {
 message WorkerImNeighbor {
     required uint32            name     = 1;
     required uint64            keycount = 2;
-    required WorkerRangeString range      = 4; // TODO replace with WorkerRange
+    required WorkerRangeString range    = 4; // TODO replace with WorkerRange
  }
+ 
+ 
+ message KeyList {
+     required uint32       keycount = 1;  // TODO this could be redundant
+     repeated KeyInfo      keypair  = 2;
+}     
+     
