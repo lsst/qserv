@@ -178,21 +178,6 @@ bool MWorkerList::sendListTo(uint64_t msgId, std::string const& ip, short port,
                 proto::WorkerListItem* protoItem = protoList.add_worker();
                 MWorkerListItem::Ptr const& wListItem = item.second;
                 protoItem->set_name(wListItem->getName());
-                /* &&& is this needed ???
-                proto::WorkerRangeString* protoRange = protoItem->mutable_rangestr();
-                StringRange range = wListItem->getRangeString();
-                protoRange->set_valid(range.getValid());
-                protoRange->set_min(range.getMin());
-                protoRange->set_max(range.getMax());
-                protoRange->set_maxunlimited(range.getUnlimited());
-                // TODO make version that does not include addresses
-                proto::LdrNetAddress* protoAddr = protoItem->mutable_address();
-                NetWorkAddress udp = wListItem->getUdpAddress();
-                NetWorkAddress tcp = wListItem->getTcpAddress();
-                protoAddr->set_ip(udp.ip);
-                protoAddr->set_udpport(udp.port);
-                protoAddr->set_tcpport(tcp.port);
-                */
             }
             protoList.SerializeToString(&(workerList.element));
             LoaderMsg workerListMsg(LoaderMsg::MAST_WORKER_LIST, msgId, ourHostName, ourPort);
@@ -202,18 +187,6 @@ bool MWorkerList::sendListTo(uint64_t msgId, std::string const& ip, short port,
         }
     }
 
-    /* &&&
-    // TODO: &&&(creating a client socket here is odd. Should use master socket to send or make a pool of contexts (pool of agents with contexts?)
-    {
-        using namespace boost::asio;
-        io_context ioContext;
-        ip::udp::resolver resolver(ioContext);
-        ip::udp::socket socket(ioContext);
-        socket.open(ip::udp::v4());
-        ip::udp::endpoint endpoint = *resolver.resolve(ip::udp::v4(), ip, std::to_string(port)).begin(); // there has got to be a better way &&&
-        socket.send_to(buffer(_stateListData->begin(), _stateListData->getCurrentWriteLength()), endpoint);
-    }
-    */
     _central->sendBufferTo(ip, port, *_stateListData);
 
     // See if this worker is know.
