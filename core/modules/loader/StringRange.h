@@ -59,6 +59,7 @@ public:
             return false;
         }
         _min = val;
+        return true;
     }
 
     bool setMax(std::string const& val, bool unlimited=false) {
