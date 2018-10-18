@@ -289,14 +289,6 @@ public:
         return protoItem;
     }
 
-    /* &&&
-    template<typename T>
-    static std::unique_ptr<T> protoParse(BufferUdp::Ptr const& data) {
-        StringElement::Ptr itemData = std::dynamic_pointer_cast<StringElement>(MsgElement::retrieve(*data));
-        if (itemData == nullptr) { return nullptr; }
-        return itemData->protoParse<T>();
-    }
-    */
 
     template<typename T>
     static std::unique_ptr<T> protoParse(BufferUdp& data) {
@@ -337,7 +329,10 @@ public:
         WORKER_RIGHT_NEIGHBOR, // Mast assigns a right neighbor to a worker.
         IM_YOUR_L_NEIGHBOR,    // Worker message to other worker to setup being neighbors.
         IM_YOUR_R_NEIGHBOR,    // Worker message to other worker to setup being neighbors.
-        NEIGHBOR_VERIFIED      //
+        NEIGHBOR_VERIFIED,     //
+        SHIFT_TO_RIGHT,
+        SHIFT_TO_RIGHT_RECEIVED,
+        SHIFT_TO_RIGHT_COMPLETE
     };
 
     enum {
