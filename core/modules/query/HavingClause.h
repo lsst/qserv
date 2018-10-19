@@ -58,9 +58,8 @@ public:
     HavingClause() {}
     ~HavingClause() {}
 
-    HavingClause(std::shared_ptr<BoolTerm> tree)
-    : _tree(tree)
-    {}
+    HavingClause(std::shared_ptr<BoolTerm> const & tree)
+        : _tree(tree) {}
 
     std::string getGenerated() const;
     void renderTo(QueryTemplate& qt) const;
