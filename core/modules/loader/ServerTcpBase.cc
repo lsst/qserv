@@ -476,7 +476,7 @@ void TcpBaseConnection::_handleShiftToRight(uint32_t bytesInMsg) {
         _free();
         return;
     }
-    LOGS(_log, LOG_LVL_INFO, "&&& _handleShiftToRight bytes=" << bytesInMsg << " buf=" << _buf.dump());
+    LOGS(_log, LOG_LVL_INFO, "&&&ggggS _handleShiftToRight bytes=" << bytesInMsg << " buf=" << _buf.dump());
     boost::asio::async_read(_socket, boost::asio::buffer(_buf.getWriteCursor(), bytesInMsg),
             boost::asio::transfer_at_least(bytesInMsg),
             boost::bind(
@@ -498,10 +498,10 @@ void TcpBaseConnection::_handleShiftToRight1(boost::system::error_code const& ec
     }
     // Fix the buffer with the information given.
     _buf.advanceWriteCursor(bytesTrans);
-    LOGS(_log, LOG_LVL_INFO, funcName << "&&& bytes=" << bytesTrans << " _buf" << _buf.dump());
+    LOGS(_log, LOG_LVL_INFO, funcName << "&&&ggggS bytes=" << bytesTrans << " _buf" << _buf.dump());
     try {
         // &&& TODO move as much of this to CentralWorker as possible
-        LOGS(_log, LOG_LVL_INFO, funcName << "&&& parsing bytes=" << bytesTrans << " _buf" << _buf.dump());
+        LOGS(_log, LOG_LVL_INFO, funcName << "&&&ggggS parsing bytes=" << bytesTrans << " _buf" << _buf.dump());
         auto protoKeyList = StringElement::protoParse<proto::KeyList>(_buf);
         if (protoKeyList == nullptr) {
             throw LoaderMsgErr(funcName, __FILE__, __LINE__);
@@ -521,14 +521,14 @@ void TcpBaseConnection::_handleShiftToRight1(boost::system::error_code const& ec
         }
 
         // Now that the proto buffer was read without error, insert into map and adjust our range.
-        _serverTcpBase->getCentralWorker()->insertKeys(keyList);
+        _serverTcpBase->getCentralWorker()->insertKeys(keyList, true);
 
-        // &&& send the SHIFT_TO_RIGHT_KEYS_RECEIVED response back.
+        // Send the SHIFT_TO_RIGHT_KEYS_RECEIVED response back.
         _buf.reset();
         UInt32Element elem(LoaderMsg::SHIFT_TO_RIGHT_RECEIVED);
         elem.appendToData(_buf);
         ServerTcpBase::_writeData(_socket, _buf);
-        LOGS(_log, LOG_LVL_INFO, funcName << " &&& done dumpKeys " << _serverTcpBase->getCentralWorker()->dumpKeys());
+        LOGS(_log, LOG_LVL_INFO, funcName << " &&&ggggS done dumpKeys " << _serverTcpBase->getCentralWorker()->dumpKeys());
     } catch (LoaderMsgErr &msgErr) {
         LOGS(_log, LOG_LVL_ERROR, msgErr.what());
         LOGS(_log, LOG_LVL_ERROR, funcName << " key shift failed");
