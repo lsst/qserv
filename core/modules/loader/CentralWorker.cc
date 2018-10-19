@@ -246,25 +246,31 @@ void CentralWorker::_shiftIfNeeded() {
 
 
 void CentralWorker::_shift(Direction direction, int keysToShift) {
+    LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift &&&ggggC 1");
     if (direction == FROMRIGHT2) {
         // &&& construct a message asking for keys to shift keys
         // &&& Wait for the response
-        LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift AAA direction=" << direction << " keys=" << keysToShift);
+        LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift &&&ggggC direction=" << direction << " keys=" << keysToShift);
         LOGS(_log, LOG_LVL_ERROR, "&&& CentralWorker::_shift NEEDS CODE");
         exit (-1);
     } else if (direction == TORIGHT1) {
+        LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift &&&ggggC 2");
         // &&& construct a message with that many keys and send it
         proto::KeyList protoKeyList;
         protoKeyList.set_keycount(keysToShift);
         std::string minKey(""); // smallest value of a key sent to right neighbor
         std::string maxKey("");
         {
+            LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift &&&ggggC 3");
             if (not _transferList.empty()) {
                 throw new LoaderMsgErr("CentralWorker::_shift _transferList not empty");
             }
+            LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift &&&ggggC 4");
             std::lock_guard<std::mutex> lck(_idMapMtx);
+            LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift &&&ggggC 5");
             bool firstPass = true;
             for (int j=0; j < keysToShift && _directorIdMap.size() > 1; ++j) {
+                LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift &&&ggggC 6");
                 auto iter = _directorIdMap.end();
                 --iter; // rbegin() returns a reverse iterator which doesn't work with erase().
                 if (firstPass) {
@@ -279,6 +285,7 @@ void CentralWorker::_shift(Direction direction, int keysToShift) {
                 _directorIdMap.erase(iter);
             }
             // Adjust our range;
+            LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift &&&ggggC 7");
             _strRange.setMax(minKey);
         }
         StringElement keyList;
@@ -290,13 +297,16 @@ void CentralWorker::_shift(Direction direction, int keysToShift) {
         kindShiftRight.appendToData(data);
         bytesInMsg.appendToData(data);
         keyList.appendToData(data);
+        LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift &&&ggggC 8");
         ServerTcpBase::_writeData(*_rightSocket, data);
 
         // read back LoaderMsg::SHIFT_TO_RIGHT_KEYS_RECEIVED
         data.reset();
         auto msgElem = data.readFromSocket(*_rightSocket, "CentralWorker::_shift SHIFT_TO_RIGHT_KEYS_RECEIVED");
         UInt32Element::Ptr received = std::dynamic_pointer_cast<UInt32Element>(msgElem);
+        LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift &&&ggggC 9");
         if (received == nullptr || received->element !=  LoaderMsg::SHIFT_TO_RIGHT_RECEIVED) {
+            LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift &&&ggggC 9error");
             {
                 // Restore the original range
                 std::lock_guard<std::mutex> lck(_idMapMtx);
@@ -304,10 +314,11 @@ void CentralWorker::_shift(Direction direction, int keysToShift) {
             }
             throw new LoaderMsgErr("CentralWorker::_shift receive failure");
         }
-
+        LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift &&&ggggC 10");
         LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift end direction=" << direction << " keys=" << keysToShift);
     }
-    LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift DumpKeys " << dumpKeys()); // &&& make debug or delete or limit number of keys printed.
+    LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift &&&ggggC 11");
+    LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift &&&ggggC DumpKeys " << dumpKeys()); // &&& make debug or delete or limit number of keys printed.
     _shiftWithRightInProgress = false;
 }
 
@@ -549,7 +560,7 @@ StringRange CentralWorker::updateLeftNeighborRange(StringRange const& leftNeighb
         if (not _strRange.getValid()) {
             // Our range has not been set, so base it on the range of the left neighbor.
             // The left range will need to be changed
-            auto min = StringRange::advanceString(leftNeighborRange.getMax());
+            auto min = StringRange::incrementString(leftNeighborRange.getMax());
             auto max = min;
             _strRange.setMinMax(min, max, leftNeighborRange.getUnlimited());
             newLeftNeighborRange.setMax(min, false);
@@ -890,19 +901,13 @@ void CentralWorker::_removeOldEntries() {
 }
 
 
-void CentralWorker::insertKeys(std::vector<StringKeyPair> const& keyList) {
+void CentralWorker::insertKeys(std::vector<StringKeyPair> const& keyList, bool mustSetMin) {
     std::unique_lock<std::mutex> lck(_idMapMtx);
-    auto minKey = _strRange.getMin();
     auto maxKey = _strRange.getMax();
-    bool minKeyChanged = false;
     bool maxKeyChanged = false;
     for (auto&& elem:keyList) {
         auto const& key = elem.first;
         auto res = _directorIdMap.insert(std::make_pair(key, elem.second));
-        if (key < minKey) {
-            minKey = key;
-            minKeyChanged = true;
-        }
         if (key > maxKey) {
             maxKey = key;
             maxKeyChanged = true;
@@ -912,9 +917,13 @@ void CentralWorker::insertKeys(std::vector<StringKeyPair> const& keyList) {
                                      elem.first << ":" << elem.second);
         }
     }
-    if (minKeyChanged) {
-        _strRange.setMin(minKey);
+
+    // On all nodes except the left most, the minimum should be reset.
+    if (mustSetMin && _directorIdMap.size() > 0) {
+        auto minKeyPair = _directorIdMap.begin();
+        _strRange.setMin(minKeyPair->first);
     }
+
     if (maxKeyChanged) {
         // if unlimited is false, range will be slightly off until corrected by the right neighbor.
         bool unlimited = _strRange.getUnlimited();
