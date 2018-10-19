@@ -269,12 +269,10 @@ public:
     BoolFactor() = default;
 
     BoolFactor(BoolFactorTerm::PtrVector const & terms)
-        : _terms(terms)
-    { }
+        : _terms(terms) {}
 
     BoolFactor(BoolFactorTerm::Ptr const & term)
-        : _terms({term})
-    { }
+        : _terms({term}) {}
 
     typedef std::shared_ptr<BoolFactor> Ptr;
     virtual char const* getName() const { return "BoolFactor"; }
