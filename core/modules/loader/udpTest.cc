@@ -343,7 +343,7 @@ int main(int argc, char* argv[]) {
         std::string reversed(bStr.rbegin(), bStr.rend());
         LOGS(_log, LOG_LVL_INFO, bStr << " newKey=" << reversed << " j(" << j%10 << " ," << j << ")");
         keyList.emplace_back(reversed, j%10, j);
-        bStr = StringRange::advanceString(bStr, '0');
+        bStr = StringRange::incrementString(bStr, '0');
     }
 
 

@@ -120,7 +120,7 @@ public:
     std::unique_ptr<proto::WorkerKeysInfo> _workerKeysInfoBuilder(); // TODO make private
     void setNeighborInfoLeft(uint32_t name, int keyCount, StringRange const& range);  // TODO make private
 
-    void insertKeys(std::vector<StringKeyPair> const& keyList);
+    void insertKeys(std::vector<StringKeyPair> const& keyList, bool mustSetMin);
 
     std::string dumpKeys();
 
