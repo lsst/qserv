@@ -25,6 +25,7 @@
 
 #include <cxxabi.h>
 #include <sstream>
+#include <string>
 #include <vector>
 
 #include "lsst/log/Log.h"
@@ -99,8 +100,8 @@ void QSMySqlListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) { \
 // parsing will abort.
 #define UNHANDLED(NAME) \
 void QSMySqlListener::enter##NAME(QSMySqlParser::NAME##Context* ctx) { \
-    LOGS(_log, LOG_LVL_TRACE, __FUNCTION__ << " is UNHANDLED '" << getQueryString(ctx) << "'"); \
-    throw adapter_order_error(string(__FUNCTION__) + string(" not supported.")); \
+    LOGS(_log, LOG_LVL_ERROR, __FUNCTION__ << " is UNHANDLED for '" << getQueryString(ctx) << "'"); \
+    throw adapter_order_error("qserv can not parse query, near \"" + getQueryString(ctx) + "\""); \
 } \
 \
 void QSMySqlListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) {}\
@@ -123,19 +124,22 @@ void QSMySqlListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) {\
 // called.
 #define IGNORED_WARN(NAME, WARNING) \
 void QSMySqlListener::enter##NAME(QSMySqlParser::NAME##Context* ctx) { \
-    LOGS(_log, LOG_LVL_TRACE, __FUNCTION__ << " is IGNORED"); \
+    LOGS(_log, LOG_LVL_WARN, \
+            __FUNCTION__ << " is IGNORED, in '" << getQueryString(ctx) << "' warning:" << WARNING); \
 } \
 \
 void QSMySqlListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) {\
-    LOGS(_log, LOG_LVL_TRACE, __FUNCTION__ << " is IGNORED"); \
+    LOGS(_log, LOG_LVL_TRACE, \
+        __FUNCTION__ << " is IGNORED, see warning in enter-function log entry, above."); \
 } \
 
 
-// A fucntion to assert certain condtions during runtime. In the case of a failure an adapter_exectuion_error
-// is raised with a context specific message.
+// A function to assert certain conditions during runtime. In the case of a failure a detailed message is
+// logged, for debugging, and an adapter_exectuion_error is raised with a message for the user.
 #define ASSERT_EXECUTION_CONDITION(CONDITION, MESSAGE, CTX) \
 if (false == (CONDITION)) { \
     ostringstream msg; \
+    msg << "Execution condition assertion failure:"; \
     msg << getTypeName(this) << "::" << __FUNCTION__; \
     msg << " messsage:\"" << MESSAGE << "\""; \
     msg << ", in query:" << getStatementStr(); \
@@ -143,8 +147,29 @@ if (false == (CONDITION)) { \
     msg << ", with adapter stack:" << adapterStackToString(); \
     msg << ", string tree:" << getStringTree(); \
     msg << ", tokens:" << getTokens(); \
-    throw adapter_execution_error(msg.str()); \
+    LOGS(_log, LOG_LVL_ERROR, msg.str()); \
+    throw adapter_execution_error( \
+        "Error parsing query, near \"" + getQueryString(CTX) + "\""); \
 } \
+
+
+// A function to fail in the case of a not-supported query segment. This should be called with a helpful
+// user-visible error message, e.g. "qserv does not support column names in select statements" (although of
+// course it does!). A condition variable is used for convenience, for example you could say
+// `SelectStatement.hasColumns()` so that if it's true then the error will get raised. In the case of an
+// error a detailed message is logged, for debugging, and an adapter_exectuion_error is raised with a
+// message, including the MESSAGE, for the user.
+#define NOT_SUPPORTED_ERROR(CONDITION, MESSAGE, CTX) \
+if (false == (CONDITION)) { \
+    ostringstream msg; \
+    msg << "Not supported error:"; \
+    msg << getTypeName(this) << "::" << __FUNCTION__; \
+    msg << " messsage:\"" << MESSAGE << "\""; \
+    msg << ", in query:" << getStatementStr(); \
+    LOGS(_log, LOG_LVL_ERROR, msg.str()); \
+    throw adapter_execution_error( \
+        "Error parsing query, near \"" + getQueryString(CTX) + "\"" + MESSAGE); \
+}
 
 
 // This macro is used to log (at the trace level) handle... calls, including the class and function name and
@@ -578,10 +603,8 @@ public:
 protected:
     shared_ptr<CBH> lockedParent() {
         shared_ptr<CBH> parent = _parent.lock();
-        if (nullptr == parent) {
-            throw adapter_execution_error(
-                    "Locking weak ptr to parent callback handler returned null");
-        }
+        ASSERT_EXECUTION_CONDITION(nullptr != parent,
+                "Locking weak ptr to parent callback handler returned null", _ctx);
         return parent;
     }
 
@@ -861,7 +884,8 @@ public:
                 whereClause->setRootTerm(logicalTerm);
             }
         } else if (_ctx->havingExpr == childCtx) {
-            ASSERT_EXECUTION_CONDITION(false, "The HAVING expression is not yet supported.", _ctx);
+            ASSERT_EXECUTION_CONDITION(false,
+                    "The having expression is expected to be handled as a Predicate Expression.", _ctx);
         } else {
             ASSERT_EXECUTION_CONDITION(false, "This logical expression is not yet supported.", _ctx);
         }
@@ -1162,8 +1186,8 @@ public:
     }
 
     void onEnter() override {
-        ASSERT_EXECUTION_CONDITION(_ctx->LOCAL_ID() == nullptr, "LOCAL_ID is not supported", _ctx);
-        ASSERT_EXECUTION_CONDITION(_ctx->VAR_ASSIGN() == nullptr, "VAR_ASSIGN is not supported", _ctx);
+        NOT_SUPPORTED_ERROR(_ctx->LOCAL_ID() == nullptr, "LOCAL_ID is not supported", _ctx);
+        NOT_SUPPORTED_ERROR(_ctx->VAR_ASSIGN() == nullptr, "VAR_ASSIGN is not supported", _ctx);
     }
 
     void onExit() override {}
@@ -1592,25 +1616,25 @@ public:
     using AdapterT::AdapterT;
 
     void onExit() override {
-        ASSERT_EXECUTION_CONDITION(_ctx->ALL() == nullptr,
+        NOT_SUPPORTED_ERROR(_ctx->ALL() == nullptr,
                 "ALL is not supported.", _ctx);
-        ASSERT_EXECUTION_CONDITION(_ctx->DISTINCTROW() == nullptr,
+        NOT_SUPPORTED_ERROR(_ctx->DISTINCTROW() == nullptr,
                 "DISTINCTROW is not supported.", _ctx);
-        ASSERT_EXECUTION_CONDITION(_ctx->HIGH_PRIORITY() == nullptr,
+        NOT_SUPPORTED_ERROR(_ctx->HIGH_PRIORITY() == nullptr,
                 "HIGH_PRIORITY", _ctx);
-        ASSERT_EXECUTION_CONDITION(_ctx->STRAIGHT_JOIN() == nullptr,
+        NOT_SUPPORTED_ERROR(_ctx->STRAIGHT_JOIN() == nullptr,
                 "STRAIGHT_JOIN is not supported.", _ctx);
-        ASSERT_EXECUTION_CONDITION(_ctx->SQL_SMALL_RESULT() == nullptr,
+        NOT_SUPPORTED_ERROR(_ctx->SQL_SMALL_RESULT() == nullptr,
                 "SQL_SMALL_RESULT is not supported.", _ctx);
-        ASSERT_EXECUTION_CONDITION(_ctx->SQL_BIG_RESULT() == nullptr,
+        NOT_SUPPORTED_ERROR(_ctx->SQL_BIG_RESULT() == nullptr,
                 "SQL_BIG_RESULT is not supported.", _ctx);
-        ASSERT_EXECUTION_CONDITION(_ctx->SQL_BUFFER_RESULT() == nullptr,
+        NOT_SUPPORTED_ERROR(_ctx->SQL_BUFFER_RESULT() == nullptr,
                 "SQL_BUFFER_RESULT is not supported.", _ctx);
-        ASSERT_EXECUTION_CONDITION(_ctx->SQL_CACHE() == nullptr,
+        NOT_SUPPORTED_ERROR(_ctx->SQL_CACHE() == nullptr,
                 "SQL_CACHE", _ctx);
-        ASSERT_EXECUTION_CONDITION(_ctx->SQL_NO_CACHE() == nullptr,
+        NOT_SUPPORTED_ERROR(_ctx->SQL_NO_CACHE() == nullptr,
                 "SQL_NO_CACHE is not supported.", _ctx);
-        ASSERT_EXECUTION_CONDITION(_ctx->SQL_CALC_FOUND_ROWS() == nullptr,
+        NOT_SUPPORTED_ERROR(_ctx->SQL_CALC_FOUND_ROWS() == nullptr,
                 "SQL_CALC_FOUND_ROWS is not supported.", _ctx);
 
         lockedParent()->handleSelectSpec(_ctx->DISTINCT() != nullptr);
@@ -2558,7 +2582,7 @@ public:
     void handleQservFunctionSpec(string const & functionName,
             vector<shared_ptr<query::ValueFactor>> const & args) override {
         TRACE_CALLBACK_INFO(functionName << " " << util::printable(args));
-        ASSERT_EXECUTION_CONDITION(false, "Qserv functions may not appear in nested contexts.", _ctx);
+        NOT_SUPPORTED_ERROR(false, "Qserv functions may not appear in nested contexts.", _ctx);
     }
 
     void onExit() override {
