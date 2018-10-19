@@ -53,6 +53,8 @@ namespace parser {
 /// parse node to be bundled with the exception for greater context.
 class ParseException : public std::runtime_error {
 public:
+    ~ParseException() override = default;
+
     ParseException(char const* msg, antlr::RefAST subTree);
     ParseException(std::string const& msg, antlr::RefAST subTree);
     /// Lexer errors don't have a subtree to reference.
@@ -70,16 +72,14 @@ public:
 // have the proper handling for it set up yet.
 class adapter_order_error : public ParseException {
 public:
-    explicit adapter_order_error(const std::string& msg)
-    : ParseException(msg) {}
+    using ParseException::ParseException;
 };
 
 
 // antlr4 parse exception; thrown in the case of unexpected events during the parse.
 class adapter_execution_error : public ParseException {
 public:
-    explicit adapter_execution_error(std::string msg)
-    : ParseException(msg) {}
+    using ParseException::ParseException;
 };
 
 
