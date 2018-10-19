@@ -65,7 +65,8 @@ class Predicate : public BoolFactorTerm {
 public:
     typedef std::shared_ptr<Predicate> Ptr;
 
-    virtual ~Predicate() {}
+    virtual ~Predicate() = default;
+
     virtual char const* getName() const { return "Predicate"; }
 
     friend std::ostream& operator<<(std::ostream& os, Predicate const& bt);
@@ -84,7 +85,8 @@ class GenericPredicate : public Predicate {
 public:
     typedef std::shared_ptr<GenericPredicate> Ptr;
 
-    virtual ~GenericPredicate() {}
+    virtual ~GenericPredicate() = default;
+
     virtual char const* getName() const { return "GenericPredicate"; }
 
     virtual std::ostream& putStream(std::ostream& os) const = 0;
@@ -99,7 +101,8 @@ class CompPredicate : public Predicate {
 public:
     typedef std::shared_ptr<CompPredicate> Ptr;
 
-    virtual ~CompPredicate() {}
+    virtual ~CompPredicate() = default;
+
     virtual char const* getName() const { return "CompPredicate"; }
 
     virtual void findValueExprs(ValueExprPtrVector& vector);
@@ -128,7 +131,8 @@ class InPredicate : public Predicate {
 public:
     typedef std::shared_ptr<InPredicate> Ptr;
 
-    virtual ~InPredicate() {}
+    virtual ~InPredicate() = default;
+
     virtual char const* getName() const { return "InPredicate"; }
 
     virtual void findValueExprs(ValueExprPtrVector& vector);
@@ -157,7 +161,8 @@ public:
     : value(iValue), minValue(iMinValue), maxValue(iMaxValue) {}
     typedef std::shared_ptr<BetweenPredicate> Ptr;
 
-    virtual ~BetweenPredicate() {}
+    virtual ~BetweenPredicate() = default;
+
     virtual char const* getName() const { return "BetweenPredicate"; }
 
     virtual void findValueExprs(ValueExprPtrVector& vector);
@@ -184,7 +189,8 @@ class LikePredicate : public Predicate {
 public:
     typedef std::shared_ptr<LikePredicate> Ptr;
 
-    virtual ~LikePredicate() {}
+    virtual ~LikePredicate() = default;
+
     virtual char const* getName() const { return "LikePredicate"; }
 
     virtual void findValueExprs(ValueExprPtrVector& vector);
@@ -215,7 +221,7 @@ public:
     NullPredicate(ValueExprPtr valueExpr, bool hasNotNull)
     : value(valueExpr), hasNot(hasNotNull) {}
 
-    virtual ~NullPredicate() {}
+    virtual ~NullPredicate() = default;
 
     virtual char const* getName() const { return "NullPredicate"; }
 
