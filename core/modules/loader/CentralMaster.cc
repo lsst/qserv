@@ -121,8 +121,8 @@ void CentralMaster::_assignNeighborIfNeeded() {
     double sum = 0.0;
     int max = 0;
     uint32_t maxName = 0;
-    uint32_t unlimitedName = 0; // Name of the rightmost worker, unlimited upper range.
-    MWorkerListItem::Ptr unlimitedItem;
+    uint32_t rightMostName = 0; // Name of the rightmost worker, unlimited upper range.
+    MWorkerListItem::Ptr rightMostItem;
     for(auto& item : activeList) {
         int keyCount = item->getKeyCount();
         sum += keyCount;
@@ -132,23 +132,23 @@ void CentralMaster::_assignNeighborIfNeeded() {
         }
         auto range = item->getRangeString();
         if (range.getValid() && range.getUnlimited()) {
-            if (unlimitedName != 0) {
-                LOGS(_log, LOG_LVL_ERROR, "_assignNeighborIfNeeded Multiple unlimited workers " <<
-                                           " name=" << unlimitedName <<
+            if (rightMostName != 0) {
+                LOGS(_log, LOG_LVL_ERROR, "_assignNeighborIfNeeded Multiple rightMost workers " <<
+                                           " name=" << rightMostName <<
                                            " name=" << item->getName());
-                throw LoaderMsgErr(funcName + " Multiple unlimited workers " +
-                        " name=" + std::to_string(unlimitedName) +
+                throw LoaderMsgErr(funcName + " Multiple rightMost workers " +
+                        " name=" + std::to_string(rightMostName) +
                         " name=" + std::to_string(item->getName()),
                         __FILE__, __LINE__);
             }
-            unlimitedName = item->getName();
-            unlimitedItem = item;
+            rightMostName = item->getName();
+            rightMostItem = item;
         }
     }
     double avg = sum/(double)(activeList.size());
     LOGS(_log, LOG_LVL_INFO, "max=" << max << " maxName=" << maxName << " avg=" << avg);
     if (avg > getMaxKeysPerWorker()) {
-        // Assign a neighbor to the rightmost worker, if there are any.
+        // Assign a neighbor to the rightmost worker, if there are any unused nodes.
         // TODO Probably better to assign a new neighbor next to the node with the most recent activity.
         //      but that's much more complicated.
         LOGS(_log, LOG_LVL_INFO, "\n\n\n\n\n\n\n\n\n &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&" <<
@@ -166,15 +166,15 @@ void CentralMaster::_assignNeighborIfNeeded() {
         // 2) Right item get message from master that it is getting a left neighbor, writes it down.
         // 3) Right connects to left item, which should be expecting it. (keeps retrying for a minute &&& check that it only tries)
         // 4) left item sends its largest key value to right
-        // 5) right node sets it range to unlimited and whatever left sent it + 1  (must make max unsigned int illegal, strings, add a 0 to the end)
+        // 5) right node sets it range to rightMost and whatever left sent it + 1  (must make max unsigned int illegal, strings, add a 0 to the end)
         //    5a) verifies this with master.
         // 6) right indicates it is valid
         // 7) left verifies. -  done. - shifting can now occur between nodes. -- set _addingWorker = false
         // failure) ... if it goes 2 minutes without completing, cleanup + try different worker -- maybe set addingWorker = false
 
         // Steps 1 and 2
-        unlimitedItem->setRightNeighbor(inactiveItem);
-        inactiveItem->setLeftNeighbor(unlimitedItem);
+        rightMostItem->setRightNeighbor(inactiveItem);
+        inactiveItem->setLeftNeighbor(rightMostItem);
     }
 }
 

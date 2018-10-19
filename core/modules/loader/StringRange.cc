@@ -63,7 +63,7 @@ std::ostream& operator<<(std::ostream& os, StringRange const& strRange) {
 }
 
 
-std::string StringRange::advanceString(std::string const& str, char appendChar) {
+std::string StringRange::incrementString(std::string const& str, char appendChar) {
     std::string output(str);
     size_t pos = output.size() - 1;
     char lastChar = output[pos];
@@ -72,6 +72,24 @@ std::string StringRange::advanceString(std::string const& str, char appendChar) 
         output[pos] = lastChar;
     } else {
         output += appendChar;
+    }
+    return output;
+}
+
+
+std::string StringRange::decrementString(std::string const& str, char minChar) {
+    if (str == "") {
+        return "";
+    }
+    std::string output(str);
+    size_t pos = output.size() - 1;
+    char lastChar = output[pos];
+    --lastChar;
+    if (lastChar > minChar) {
+        output[pos] = lastChar;
+        return output;
+    } else {
+        output.erase(pos, 1);
     }
     return output;
 }
