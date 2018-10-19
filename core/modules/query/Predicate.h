@@ -105,8 +105,8 @@ public:
 
     virtual char const* getName() const { return "CompPredicate"; }
 
-    virtual void findValueExprs(ValueExprPtrVector& vector);
-    virtual void findColumnRefs(ColumnRef::Vector& vector);
+    virtual void findValueExprs(ValueExprPtrVector& vector) const;
+    virtual void findColumnRefs(ColumnRef::Vector& vector) const;
 
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
@@ -135,8 +135,8 @@ public:
 
     virtual char const* getName() const { return "InPredicate"; }
 
-    virtual void findValueExprs(ValueExprPtrVector& vector);
-    virtual void findColumnRefs(ColumnRef::Vector& vector);
+    virtual void findValueExprs(ValueExprPtrVector& vector) const;
+    virtual void findColumnRefs(ColumnRef::Vector& vector) const;
 
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
@@ -165,8 +165,8 @@ public:
 
     virtual char const* getName() const { return "BetweenPredicate"; }
 
-    virtual void findValueExprs(ValueExprPtrVector& vector);
-    virtual void findColumnRefs(ColumnRef::Vector& vector);
+    virtual void findValueExprs(ValueExprPtrVector& vector) const;
+    virtual void findColumnRefs(ColumnRef::Vector& vector) const;
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
     /// Deep copy this term.
@@ -193,8 +193,8 @@ public:
 
     virtual char const* getName() const { return "LikePredicate"; }
 
-    virtual void findValueExprs(ValueExprPtrVector& vector);
-    virtual void findColumnRefs(ColumnRef::Vector& vector);
+    virtual void findValueExprs(ValueExprPtrVector& vector) const;
+    virtual void findColumnRefs(ColumnRef::Vector& vector) const;
 
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
@@ -225,8 +225,8 @@ public:
 
     virtual char const* getName() const { return "NullPredicate"; }
 
-    virtual void findValueExprs(ValueExprPtrVector& vector);
-    virtual void findColumnRefs(ColumnRef::Vector& vector);
+    virtual void findValueExprs(ValueExprPtrVector& vector) const;
+    virtual void findColumnRefs(ColumnRef::Vector& vector) const;
 
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;

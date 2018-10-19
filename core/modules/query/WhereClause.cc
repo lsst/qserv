@@ -129,7 +129,7 @@ WhereClause::getRootAndTerm() {
     return std::dynamic_pointer_cast<AndTerm>(t);
 }
 
-void WhereClause::findValueExprs(ValueExprPtrVector& vector) {
+void WhereClause::findValueExprs(ValueExprPtrVector& vector) const {
     if (_tree) { _tree->findValueExprs(vector); }
 }
 

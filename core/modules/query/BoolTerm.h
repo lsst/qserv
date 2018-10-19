@@ -66,8 +66,8 @@ public:
     virtual std::ostream& putStream(std::ostream& os) const = 0;
     virtual void renderTo(QueryTemplate& qt) const = 0;
 
-    virtual void findValueExprs(ValueExprPtrVector& vector) {}
-    virtual void findColumnRefs(ColumnRef::Vector& vector) {}
+    virtual void findValueExprs(ValueExprPtrVector& vector) const {}
+    virtual void findColumnRefs(ColumnRef::Vector& vector) const {}
 
     virtual bool operator==(const BoolFactorTerm& rhs) const = 0;
 
@@ -101,8 +101,8 @@ public:
 
     virtual OpPrecedence getOpPrecedence() const { return UNKNOWN_PRECEDENCE; }
 
-    virtual void findValueExprs(ValueExprPtrVector& vector) {}
-    virtual void findColumnRefs(ColumnRef::Vector& vector) {}
+    virtual void findValueExprs(ValueExprPtrVector& vector) const {}
+    virtual void findColumnRefs(ColumnRef::Vector& vector) const {}
 
     /// @return a mutable vector iterator for the contained terms
     virtual PtrVector::iterator iterBegin() { return PtrVector::iterator(); }
@@ -161,6 +161,22 @@ public:
         std::copy(terms.begin(), terms.end(), std::back_inserter(_terms));
     }
 
+    virtual void findValueExprs(ValueExprPtrVector& vector) const {
+        for (auto&& boolTerm : _terms) {
+            if (boolTerm) {
+                boolTerm->findValueExprs(vector);
+            }
+        }
+    }
+
+    virtual void findColumnRefs(ColumnRef::Vector& vector) const {
+        for (auto&& boolTerm : _terms) {
+            if (boolTerm) {
+                boolTerm->findColumnRefs(vector);
+            }
+        }
+    }
+
     BoolTerm::PtrVector _terms;
 };
 
@@ -174,19 +190,6 @@ public:
 
     virtual char const* getName() const { return "OrTerm"; }
     virtual OpPrecedence getOpPrecedence() const { return OR_PRECEDENCE; }
-
-    virtual void findValueExprs(ValueExprPtrVector& vector) {
-        typedef BoolTerm::PtrVector::iterator Iter;
-        for (Iter i = _terms.begin(), e = _terms.end(); i != e; ++i) {
-            if (*i) { (*i)->findValueExprs(vector); }
-        }
-    }
-    virtual void findColumnRefs(ColumnRef::Vector& vector) {
-        typedef BoolTerm::PtrVector::iterator Iter;
-        for (Iter i = _terms.begin(), e = _terms.end(); i != e; ++i) {
-            if (*i) { (*i)->findColumnRefs(vector); }
-        }
-    }
 
     virtual PtrVector::iterator iterBegin() { return _terms.begin(); }
     virtual PtrVector::iterator iterEnd() { return _terms.end(); }
@@ -216,19 +219,6 @@ public:
 
     virtual char const* getName() const { return "AndTerm"; }
     virtual OpPrecedence getOpPrecedence() const { return AND_PRECEDENCE; }
-
-    virtual void findValueExprs(ValueExprPtrVector& vector) {
-        typedef BoolTerm::PtrVector::iterator Iter;
-        for (Iter i = _terms.begin(), e = _terms.end(); i != e; ++i) {
-            if (*i) { (*i)->findValueExprs(vector); }
-        }
-    }
-    virtual void findColumnRefs(ColumnRef::Vector& vector) {
-        typedef BoolTerm::PtrVector::iterator Iter;
-        for (Iter i = _terms.begin(), e = _terms.end(); i != e; ++i) {
-            if (*i) { (*i)->findColumnRefs(vector); }
-        }
-    }
 
     virtual PtrVector::iterator iterBegin() { return _terms.begin(); }
     virtual PtrVector::iterator iterEnd() { return _terms.end(); }
@@ -294,16 +284,19 @@ public:
         _terms.push_back(boolFactorTerm);
     }
 
-    virtual void findValueExprs(ValueExprPtrVector& vector) {
-        typedef BoolFactorTerm::PtrVector::iterator Iter;
-        for (Iter i = _terms.begin(), e = _terms.end(); i != e; ++i) {
-            if (*i) { (*i)->findValueExprs(vector); }
+    virtual void findValueExprs(ValueExprPtrVector& vector) const {
+        for (auto&& boolFactorTerm : _terms) {
+            if (boolFactorTerm) {
+                boolFactorTerm->findValueExprs(vector);
+            }
         }
     }
-    virtual void findColumnRefs(ColumnRef::Vector& vector) {
-        typedef BoolFactorTerm::PtrVector::iterator Iter;
-        for (Iter i = _terms.begin(), e = _terms.end(); i != e; ++i) {
-            if (*i) { (*i)->findColumnRefs(vector); }
+
+    virtual void findColumnRefs(ColumnRef::Vector& vector) const {
+        for (auto&& boolFactorTerm : _terms) {
+            if (boolFactorTerm) {
+                boolFactorTerm->findColumnRefs(vector);
+            }
         }
     }
 
@@ -388,10 +381,10 @@ public:
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
 
-    virtual void findValueExprs(ValueExprPtrVector& vector) {
+    virtual void findValueExprs(ValueExprPtrVector& vector) const {
         if (_term) { _term->findValueExprs(vector); }
     }
-    virtual void findColumnRefs(ColumnRef::Vector& vector) {
+    virtual void findColumnRefs(ColumnRef::Vector& vector) const {
         if (_term) { _term->findColumnRefs(vector); }
     }
 

@@ -65,7 +65,7 @@ public:
     void renderTo(QueryTemplate& qt) const;
     std::shared_ptr<HavingClause> clone() const;
     std::shared_ptr<HavingClause> copySyntax();
-    void findValueExprs(ValueExprPtrVector& list);
+    void findValueExprs(ValueExprPtrVector& list) const;
 
     bool operator==(const HavingClause& rhs) const;
 

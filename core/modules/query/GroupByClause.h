@@ -93,7 +93,7 @@ public:
     std::shared_ptr<GroupByClause> clone() const;
     std::shared_ptr<GroupByClause> copySyntax();
 
-    void findValueExprs(ValueExprPtrVector& list);
+    void findValueExprs(ValueExprPtrVector& list) const;
 
     bool operator==(const GroupByClause& rhs) const;
 

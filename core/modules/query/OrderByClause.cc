@@ -184,9 +184,9 @@ std::shared_ptr<OrderByClause> OrderByClause::copySyntax() {
     return std::make_shared<OrderByClause>(*this);
 }
 
-void OrderByClause::findValueExprs(ValueExprPtrVector& list) {
-    for (OrderByTermVector::iterator i = _terms->begin(), e = _terms->end(); i != e; ++i) {
-        list.push_back(i->getExpr());
+void OrderByClause::findValueExprs(ValueExprPtrVector& list) const {
+    for (auto&& orderByTerm : *_terms) {
+        list.push_back(orderByTerm.getExpr());
     }
 }
 
