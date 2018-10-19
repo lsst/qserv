@@ -1230,15 +1230,15 @@ public:
     // BinaryComparasionPredicateCBH
     void handleBinaryComparasionPredicate(
             shared_ptr<query::CompPredicate> const & comparisonPredicate) override {
-        _getBoolFactor()->addBoolFactorTerm(comparisonPredicate);
+        _boolFactorInstance()->addBoolFactorTerm(comparisonPredicate);
     }
 
     void handleBetweenPredicate(shared_ptr<query::BetweenPredicate> const & betweenPredicate) override {
-        _getBoolFactor()->addBoolFactorTerm(betweenPredicate);
+        _boolFactorInstance()->addBoolFactorTerm(betweenPredicate);
     }
 
     void handleInPredicate(shared_ptr<query::InPredicate> const & inPredicate) override {
-        _getBoolFactor()->addBoolFactorTerm(inPredicate);
+        _boolFactorInstance()->addBoolFactorTerm(inPredicate);
     }
 
     void handleExpressionAtomPredicate(shared_ptr<query::ValueExpr> const & valueExpr,
@@ -1256,11 +1256,11 @@ public:
     }
 
     void handleLikePredicate(shared_ptr<query::LikePredicate> const & likePredicate) override {
-        _getBoolFactor()->addBoolFactorTerm(likePredicate);
+        _boolFactorInstance()->addBoolFactorTerm(likePredicate);
     }
 
     void handleIsNullPredicate(shared_ptr<query::NullPredicate> const & nullPredicate) override {
-        _getBoolFactor()->addBoolFactorTerm(nullPredicate);
+        _boolFactorInstance()->addBoolFactorTerm(nullPredicate);
     }
 
     void onExit() {
@@ -1276,7 +1276,7 @@ public:
     string name() const override { return getTypeName(this); }
 
 private:
-    shared_ptr<query::BoolFactor> _getBoolFactor() {
+    shared_ptr<query::BoolFactor> _boolFactorInstance() {
         ASSERT_EXECUTION_CONDITION(nullptr == _valueExpr, "Can't use PredicateExpressionAdapter for " <<
                 "BoolFactor and ValueExpr at the same time.", _ctx);
         if (nullptr == _boolTerm) {
