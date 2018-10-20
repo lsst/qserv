@@ -101,12 +101,9 @@ FuncExpr::setName(const std::string& val) {
 }
 
 void
-FuncExpr::findColumnRefs(ColumnRef::Vector& outputRefs) {
-    for(ValueExprPtrVector::iterator i=params.begin();
-        i != params.end(); ++i) {
-        if (*i) {
-            (**i).findColumnRefs(outputRefs);
-        }
+FuncExpr::findColumnRefs(ColumnRef::Vector& outputRefs) const {
+    for (auto&& valueExpr : params) {
+        valueExpr->findColumnRefs(outputRefs);
     }
 }
 

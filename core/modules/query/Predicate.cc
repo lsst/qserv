@@ -53,31 +53,30 @@ std::ostream& operator<<(std::ostream& os, Predicate const& bt) {
 }
 
 
-void CompPredicate::findColumnRefs(ColumnRef::Vector& vector) {
+void CompPredicate::findColumnRefs(ColumnRef::Vector& vector) const {
     if (left) { left->findColumnRefs(vector); }
     if (right) { right->findColumnRefs(vector); }
 }
 
-void InPredicate::findColumnRefs(ColumnRef::Vector& vector) {
+void InPredicate::findColumnRefs(ColumnRef::Vector& vector) const {
     if (value) { value->findColumnRefs(vector); }
-    std::vector<std::shared_ptr<ValueExpr> >::iterator i;
-    for(i=cands.begin(); i != cands.end(); ++i) {
-        (**i).findColumnRefs(vector);
+    for(auto&& valueExpr : cands) {
+        valueExpr->findColumnRefs(vector);
     }
 }
 
-void BetweenPredicate::findColumnRefs(ColumnRef::Vector& vector) {
+void BetweenPredicate::findColumnRefs(ColumnRef::Vector& vector) const {
     if (value) { value->findColumnRefs(vector); }
     if (minValue) { minValue->findColumnRefs(vector); }
     if (maxValue) { maxValue->findColumnRefs(vector); }
 }
 
-void LikePredicate::findColumnRefs(ColumnRef::Vector& vector) {
+void LikePredicate::findColumnRefs(ColumnRef::Vector& vector) const {
     if (value) { value->findColumnRefs(vector); }
     if (charValue) { charValue->findColumnRefs(vector); }
 }
 
-void NullPredicate::findColumnRefs(ColumnRef::Vector& vector) {
+void NullPredicate::findColumnRefs(ColumnRef::Vector& vector) const {
     if (value) { value->findColumnRefs(vector); }
 }
 
@@ -149,28 +148,28 @@ void NullPredicate::renderTo(QueryTemplate& qt) const {
     qt.append("NULL");
 }
 
-void CompPredicate::findValueExprs(ValueExprPtrVector& vector) {
+void CompPredicate::findValueExprs(ValueExprPtrVector& vector) const {
     vector.push_back(left);
     vector.push_back(right);
 }
 
-void InPredicate::findValueExprs(ValueExprPtrVector& vector) {
+void InPredicate::findValueExprs(ValueExprPtrVector& vector) const {
     vector.push_back(value);
     vector.insert(vector.end(), cands.begin(), cands.end());
 }
 
-void BetweenPredicate::findValueExprs(ValueExprPtrVector& vector) {
+void BetweenPredicate::findValueExprs(ValueExprPtrVector& vector) const {
     vector.push_back(value);
     vector.push_back(minValue);
     vector.push_back(maxValue);
 }
 
-void LikePredicate::findValueExprs(ValueExprPtrVector& vector) {
+void LikePredicate::findValueExprs(ValueExprPtrVector& vector) const {
     vector.push_back(value);
     vector.push_back(charValue);
 }
 
-void NullPredicate::findValueExprs(ValueExprPtrVector& vector) {
+void NullPredicate::findValueExprs(ValueExprPtrVector& vector) const {
     vector.push_back(value);
 }
 

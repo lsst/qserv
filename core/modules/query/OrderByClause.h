@@ -103,7 +103,7 @@ public:
     std::shared_ptr<OrderByTermVector> getTerms() const { return _terms; }
     void addTerm(const OrderByTerm& term) { _terms->push_back(term); }
 
-    void findValueExprs(ValueExprPtrVector& list);
+    void findValueExprs(ValueExprPtrVector& list) const;
 
     bool operator==(const OrderByClause& rhs) const;
 

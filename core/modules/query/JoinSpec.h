@@ -62,12 +62,15 @@ class JoinSpec {
 public:
     typedef std::shared_ptr<JoinSpec> Ptr;
 
-    JoinSpec(std::shared_ptr<BoolTerm> onTerm)
+    JoinSpec(std::shared_ptr<BoolTerm> const& onTerm)
         : _onTerm(onTerm) {}
 
     /// FIXME: not supporting join by multiple columns now
-    JoinSpec(std::shared_ptr<ColumnRef> ref)
+    JoinSpec(std::shared_ptr<ColumnRef> const& ref)
         : _usingColumn(ref) {}
+
+    JoinSpec(std::shared_ptr<ColumnRef> ref, std::shared_ptr<BoolTerm> const& onTerm)
+        : _usingColumn(ref), _onTerm(onTerm) {}
 
     std::shared_ptr<ColumnRef> getUsing() { return _usingColumn; }
     std::shared_ptr<ColumnRef const> getUsing() const { return _usingColumn; }

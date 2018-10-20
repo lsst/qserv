@@ -89,7 +89,7 @@ HavingClause::copySyntax() {
 }
 
 void
-HavingClause::findValueExprs(ValueExprPtrVector& list) {
+HavingClause::findValueExprs(ValueExprPtrVector& list) const {
     if (_tree) { _tree->findValueExprs(list); }
 }
 

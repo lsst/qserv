@@ -111,6 +111,7 @@ public:
 
     // Convenience checkers
     bool isColumnRef() const;
+    bool isFunction() const;
 
     std::string sqlFragment() const;
 

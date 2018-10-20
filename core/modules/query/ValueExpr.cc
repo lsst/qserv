@@ -220,6 +220,16 @@ bool ValueExpr::isColumnRef() const {
     return false;
 }
 
+bool ValueExpr::isFunction() const {
+    if (_factorOps.size() == 1) {
+        ValueFactor const& factor = *_factorOps.front().factor;
+        if (factor.getType() == ValueFactor::FUNCTION) {
+            return true;
+        }
+    }
+    return false;
+}
+
 ValueExprPtr ValueExpr::clone() const {
     // First, make a shallow copy
     ValueExprPtr expr = std::make_shared<ValueExpr>(*this);

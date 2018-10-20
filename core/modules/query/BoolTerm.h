@@ -66,8 +66,8 @@ public:
     virtual std::ostream& putStream(std::ostream& os) const = 0;
     virtual void renderTo(QueryTemplate& qt) const = 0;
 
-    virtual void findValueExprs(ValueExprPtrVector& vector) {}
-    virtual void findColumnRefs(ColumnRef::Vector& vector) {}
+    virtual void findValueExprs(ValueExprPtrVector& vector) const {}
+    virtual void findColumnRefs(ColumnRef::Vector& vector) const {}
 
     virtual bool operator==(const BoolFactorTerm& rhs) const = 0;
 
@@ -101,8 +101,8 @@ public:
 
     virtual OpPrecedence getOpPrecedence() const { return UNKNOWN_PRECEDENCE; }
 
-    virtual void findValueExprs(ValueExprPtrVector& vector) {}
-    virtual void findColumnRefs(ColumnRef::Vector& vector) {}
+    virtual void findValueExprs(ValueExprPtrVector& vector) const {}
+    virtual void findColumnRefs(ColumnRef::Vector& vector) const {}
 
     /// @return a mutable vector iterator for the contained terms
     virtual PtrVector::iterator iterBegin() { return PtrVector::iterator(); }
@@ -144,6 +144,11 @@ class BoolFactor;
 
 class LogicalTerm : public BoolTerm {
 public:
+
+    LogicalTerm() {}
+    LogicalTerm(BoolTerm::PtrVector const & terms) : _terms(terms) {}
+    LogicalTerm(BoolTerm::Ptr const & term) : _terms(BoolTerm::PtrVector{term}) {}
+
     void addBoolTerm(BoolTerm::Ptr boolTerm) {
         _terms.push_back(boolTerm);
     }
@@ -156,6 +161,22 @@ public:
         std::copy(terms.begin(), terms.end(), std::back_inserter(_terms));
     }
 
+    virtual void findValueExprs(ValueExprPtrVector& vector) const {
+        for (auto&& boolTerm : _terms) {
+            if (boolTerm) {
+                boolTerm->findValueExprs(vector);
+            }
+        }
+    }
+
+    virtual void findColumnRefs(ColumnRef::Vector& vector) const {
+        for (auto&& boolTerm : _terms) {
+            if (boolTerm) {
+                boolTerm->findColumnRefs(vector);
+            }
+        }
+    }
+
     BoolTerm::PtrVector _terms;
 };
 
@@ -163,23 +184,12 @@ public:
 /// OrTerm is a set of OR-connected BoolTerms
 class OrTerm : public LogicalTerm {
 public:
+    using LogicalTerm::LogicalTerm;
+
     typedef std::shared_ptr<OrTerm> Ptr;
 
     virtual char const* getName() const { return "OrTerm"; }
     virtual OpPrecedence getOpPrecedence() const { return OR_PRECEDENCE; }
-
-    virtual void findValueExprs(ValueExprPtrVector& vector) {
-        typedef BoolTerm::PtrVector::iterator Iter;
-        for (Iter i = _terms.begin(), e = _terms.end(); i != e; ++i) {
-            if (*i) { (*i)->findValueExprs(vector); }
-        }
-    }
-    virtual void findColumnRefs(ColumnRef::Vector& vector) {
-        typedef BoolTerm::PtrVector::iterator Iter;
-        for (Iter i = _terms.begin(), e = _terms.end(); i != e; ++i) {
-            if (*i) { (*i)->findColumnRefs(vector); }
-        }
-    }
 
     virtual PtrVector::iterator iterBegin() { return _terms.begin(); }
     virtual PtrVector::iterator iterEnd() { return _terms.end(); }
@@ -203,23 +213,12 @@ protected:
 /// AndTerm is a set of AND-connected BoolTerms
 class AndTerm : public LogicalTerm {
 public:
+    using LogicalTerm::LogicalTerm;
+
     typedef std::shared_ptr<AndTerm> Ptr;
 
     virtual char const* getName() const { return "AndTerm"; }
     virtual OpPrecedence getOpPrecedence() const { return AND_PRECEDENCE; }
-
-    virtual void findValueExprs(ValueExprPtrVector& vector) {
-        typedef BoolTerm::PtrVector::iterator Iter;
-        for (Iter i = _terms.begin(), e = _terms.end(); i != e; ++i) {
-            if (*i) { (*i)->findValueExprs(vector); }
-        }
-    }
-    virtual void findColumnRefs(ColumnRef::Vector& vector) {
-        typedef BoolTerm::PtrVector::iterator Iter;
-        for (Iter i = _terms.begin(), e = _terms.end(); i != e; ++i) {
-            if (*i) { (*i)->findColumnRefs(vector); }
-        }
-    }
 
     virtual PtrVector::iterator iterBegin() { return _terms.begin(); }
     virtual PtrVector::iterator iterEnd() { return _terms.end(); }
@@ -235,71 +234,6 @@ public:
     bool merge(const BoolTerm& other) override;
 
     bool operator==(const BoolTerm& rhs) const;
-
-protected:
-    void dbgPrint(std::ostream& os) const override;
-};
-
-
-/// BoolFactor is a plain factor in a BoolTerm
-class BoolFactor : public BoolTerm {
-public:
-    typedef std::shared_ptr<BoolFactor> Ptr;
-    virtual char const* getName() const { return "BoolFactor"; }
-    virtual OpPrecedence getOpPrecedence() const { return OTHER_PRECEDENCE; }
-
-    void addBoolFactorTerm(std::shared_ptr<BoolFactorTerm> boolFactorTerm) {
-        _terms.push_back(boolFactorTerm);
-    }
-
-    virtual void findValueExprs(ValueExprPtrVector& vector) {
-        typedef BoolFactorTerm::PtrVector::iterator Iter;
-        for (Iter i = _terms.begin(), e = _terms.end(); i != e; ++i) {
-            if (*i) { (*i)->findValueExprs(vector); }
-        }
-    }
-    virtual void findColumnRefs(ColumnRef::Vector& vector) {
-        typedef BoolFactorTerm::PtrVector::iterator Iter;
-        for (Iter i = _terms.begin(), e = _terms.end(); i != e; ++i) {
-            if (*i) { (*i)->findColumnRefs(vector); }
-        }
-    }
-
-    virtual std::shared_ptr<BoolTerm> getReduced();
-
-    virtual std::ostream& putStream(std::ostream& os) const;
-    virtual void renderTo(QueryTemplate& qt) const;
-    virtual std::shared_ptr<BoolTerm> clone() const;
-    virtual std::shared_ptr<BoolTerm> copySyntax() const;
-
-    bool operator==(const BoolTerm& rhs) const {
-        auto rhsBoolFactor = dynamic_cast<const BoolFactor*>(&rhs);
-        if (nullptr == rhsBoolFactor) {
-            return false;
-        }
-        return util::vectorPtrCompare<BoolFactorTerm>(_terms, rhsBoolFactor->_terms);
-    }
-
-    BoolFactorTerm::PtrVector _terms;
-
-protected:
-    void dbgPrint(std::ostream& os) const override;
-
-private:
-    bool _reduceTerms(BoolFactorTerm::PtrVector& newTerms, BoolFactorTerm::PtrVector& oldTerms);
-    bool _checkParen(BoolFactorTerm::PtrVector& terms);
-};
-
-
-/// UnknownTerm is a catch-all term intended to help the framework pass-through
-/// syntax that is not analyzed, modified, or manipulated in Qserv.
-class UnknownTerm : public BoolTerm {
-public:
-    typedef std::shared_ptr<UnknownTerm> Ptr;
-    virtual std::ostream& putStream(std::ostream& os) const;
-    virtual void renderTo(QueryTemplate& qt) const;
-    virtual std::shared_ptr<BoolTerm> clone() const;
-    bool operator==(const BoolTerm& rhs) const override;
 
 protected:
     void dbgPrint(std::ostream& os) const override;
@@ -323,6 +257,90 @@ public: // text
     std::string _text;
 
     bool operator==(const BoolFactorTerm& rhs) const override;
+
+protected:
+    void dbgPrint(std::ostream& os) const override;
+};
+
+
+/// BoolFactor is a plain factor in a BoolTerm
+class BoolFactor : public BoolTerm {
+public:
+    BoolFactor() = default;
+
+    BoolFactor(BoolFactorTerm::PtrVector const & terms)
+        : _terms(terms) {}
+
+    BoolFactor(BoolFactorTerm::Ptr const & term)
+        : _terms({term}) {}
+
+    typedef std::shared_ptr<BoolFactor> Ptr;
+    virtual char const* getName() const { return "BoolFactor"; }
+    virtual OpPrecedence getOpPrecedence() const { return OTHER_PRECEDENCE; }
+
+    void addBoolFactorTerm(std::shared_ptr<BoolFactorTerm> boolFactorTerm) {
+        _terms.push_back(boolFactorTerm);
+    }
+
+    virtual void findValueExprs(ValueExprPtrVector& vector) const {
+        for (auto&& boolFactorTerm : _terms) {
+            if (boolFactorTerm) {
+                boolFactorTerm->findValueExprs(vector);
+            }
+        }
+    }
+
+    virtual void findColumnRefs(ColumnRef::Vector& vector) const {
+        for (auto&& boolFactorTerm : _terms) {
+            if (boolFactorTerm) {
+                boolFactorTerm->findColumnRefs(vector);
+            }
+        }
+    }
+
+    virtual std::shared_ptr<BoolTerm> getReduced();
+
+    virtual std::ostream& putStream(std::ostream& os) const;
+    virtual void renderTo(QueryTemplate& qt) const;
+    virtual std::shared_ptr<BoolTerm> clone() const;
+    virtual std::shared_ptr<BoolTerm> copySyntax() const;
+
+    bool operator==(const BoolTerm& rhs) const {
+        auto rhsBoolFactor = dynamic_cast<const BoolFactor*>(&rhs);
+        if (nullptr == rhsBoolFactor) {
+            return false;
+        }
+        return util::vectorPtrCompare<BoolFactorTerm>(_terms, rhsBoolFactor->_terms);
+    }
+
+    // prepend _terms with an open parenthesis PassTerm and append it with a close parenthesis PassTerm.
+    void addParenthesis() {
+        auto leftParen = std::make_shared<PassTerm>("(");
+        auto rightParen = std::make_shared<PassTerm>(")");
+        _terms.insert(_terms.begin(), leftParen);
+        _terms.push_back(rightParen);
+    }
+
+    BoolFactorTerm::PtrVector _terms;
+
+protected:
+    void dbgPrint(std::ostream& os) const override;
+
+private:
+    bool _reduceTerms(BoolFactorTerm::PtrVector& newTerms, BoolFactorTerm::PtrVector& oldTerms);
+    bool _checkParen(BoolFactorTerm::PtrVector& terms);
+};
+
+
+/// UnknownTerm is a catch-all term intended to help the framework pass-through
+/// syntax that is not analyzed, modified, or manipulated in Qserv.
+class UnknownTerm : public BoolTerm {
+public:
+    typedef std::shared_ptr<UnknownTerm> Ptr;
+    virtual std::ostream& putStream(std::ostream& os) const;
+    virtual void renderTo(QueryTemplate& qt) const;
+    virtual std::shared_ptr<BoolTerm> clone() const;
+    bool operator==(const BoolTerm& rhs) const override;
 
 protected:
     void dbgPrint(std::ostream& os) const override;
@@ -361,10 +379,10 @@ public:
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
 
-    virtual void findValueExprs(ValueExprPtrVector& vector) {
+    virtual void findValueExprs(ValueExprPtrVector& vector) const {
         if (_term) { _term->findValueExprs(vector); }
     }
-    virtual void findColumnRefs(ColumnRef::Vector& vector) {
+    virtual void findColumnRefs(ColumnRef::Vector& vector) const {
         if (_term) { _term->findColumnRefs(vector); }
     }
 

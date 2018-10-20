@@ -70,7 +70,7 @@ public:
 
     void setName(const std::string& val);
 
-    void findColumnRefs(ColumnRef::Vector& outputRefs);
+    void findColumnRefs(ColumnRef::Vector& outputRefs) const;
     std::shared_ptr<FuncExpr> clone() const;
 
     // Fields

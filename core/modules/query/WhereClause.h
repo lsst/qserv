@@ -78,7 +78,7 @@ public:
     std::shared_ptr<WhereClause> clone() const;
     std::shared_ptr<WhereClause> copySyntax();
 
-    void findValueExprs(ValueExprPtrVector& list);
+    void findValueExprs(ValueExprPtrVector& list) const;
 
     void resetRestrs();
     void prependAndTerm(std::shared_ptr<BoolTerm> t);

@@ -129,9 +129,9 @@ std::shared_ptr<GroupByClause> GroupByClause::copySyntax() {
     return std::make_shared<GroupByClause>(*this);
 }
 
-void GroupByClause::findValueExprs(ValueExprPtrVector& list) {
-    for (List::iterator i = _terms->begin(), e = _terms->end(); i != e; ++i) {
-        list.push_back(i->getExpr());
+void GroupByClause::findValueExprs(ValueExprPtrVector& list) const {
+    for (auto&& groupByTerm : *_terms) {
+        list.push_back(groupByTerm.getExpr());
     }
 }
 

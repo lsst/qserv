@@ -1022,7 +1022,8 @@ MOD:                                 M O D;
 // Literal Primitives
 
 // Makes the DEC_DIGIT after the decimal point optional
-REAL_LITERAL:                        (DEC_DIGIT+)? '.' (DEC_DIGIT+)?
+REAL_LITERAL:                        (DEC_DIGIT+) '.' (DEC_DIGIT+)?
+                                     | (DEC_DIGIT+)? '.' (DEC_DIGIT+)
                                      | DEC_DIGIT+ '.' EXPONENT_NUM_PART
                                      | (DEC_DIGIT+)? '.' (DEC_DIGIT+ EXPONENT_NUM_PART)
                                      | DEC_DIGIT+ EXPONENT_NUM_PART;

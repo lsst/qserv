@@ -58,11 +58,14 @@ public:
     HavingClause() {}
     ~HavingClause() {}
 
+    HavingClause(std::shared_ptr<BoolTerm> const & tree)
+        : _tree(tree) {}
+
     std::string getGenerated() const;
     void renderTo(QueryTemplate& qt) const;
     std::shared_ptr<HavingClause> clone() const;
     std::shared_ptr<HavingClause> copySyntax();
-    void findValueExprs(ValueExprPtrVector& list);
+    void findValueExprs(ValueExprPtrVector& list) const;
 
     bool operator==(const HavingClause& rhs) const;
 
