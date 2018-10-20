@@ -509,6 +509,7 @@ static const std::vector< std::string > QUERIES = {
 
 };
 
+
 // These queries are all marked "FIXME" in the integration tests, and we don't test them (yet).
 static const std::vector< std::string > FAIL_QUERIES = {
     "SELECT v.objectId, v.ra, v.decl FROM   Object v, Object o WHERE  o.objectId = :objectId AND spDist(v.ra, v.decl, o.ra, o.decl, :dist) AND v.variability > 0.8 AND o.extendedParameter > 0.8", // case01/queries/0006_transientVarObjNearGalaxy.sql.FIXME
