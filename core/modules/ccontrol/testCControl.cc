@@ -658,12 +658,11 @@ std::ostream& operator<<(std::ostream& os, ParseErrorQueryInfo const& i) {
 
 
 static const std::vector< ParseErrorQueryInfo > PARSE_ERROR_QUERIES = {
-    // With the current grammar this string does not parse into a tree. TBD what is a UNION JOIN? (google so
-    // far is not helpful), and either add parse & fail, or just have it remain not parsable, and change the
-    //ParseErrorQueryInfo(
-    // test to the generic "won't parse" error.
-    //    "SELECT s1.foo, s2.foo AS s2_foo FROM Source s1 UNION JOIN Source s2 WHERE s1.bar = s2.bar;",
-    //    "ParseException:qserv does not support UNION JOIN queries"),
+    // "UNION JOIN" is not expected to parse.
+    ParseErrorQueryInfo(
+        "SELECT s1.foo, s2.foo AS s2_foo FROM Source s1 UNION JOIN Source s2 WHERE s1.bar = s2.bar;",
+        "ParseException:Failed to instantiate query: \"SELECT s1.foo, s2.foo AS s2_foo FROM Source s1 UNION "
+        "JOIN Source s2 WHERE s1.bar = s2.bar;\""),
 
     // The qserv manual says:
     // "Expressions/functions in ORDER BY clauses are not allowed
