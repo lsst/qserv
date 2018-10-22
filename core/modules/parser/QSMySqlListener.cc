@@ -56,7 +56,7 @@ using namespace std;
 
 namespace {
 
-LOG_LOGGER _log = LOG_GET("lsst.qserv.QSMySqlListener");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.parser.QSMySqlListener");
 
 std::string getQueryString(antlr4::ParserRuleContext* ctx) {
     return ctx->getStart()->getInputStream()->getText(
