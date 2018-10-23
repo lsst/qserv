@@ -1654,6 +1654,9 @@ protected:
     virtual void visitErrorNode(antlr4::tree::ErrorNode * /*node*/) override { }
 
 private:
+    void assertExecutionCondition(std::string const& function, std::string const& message,
+            antlr4::ParserRuleContext* ctx) const;
+
     // Adapter is a base class for a stack of adapter objects. Adapters implement appropriate API for
     // the kinds of children that may be assigned to them. The stack represents execution state while the
     // antlr4 walker traverses it's internal AST. The root object (separate from the stack) will end up owning
