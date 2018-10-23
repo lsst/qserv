@@ -825,13 +825,6 @@ BOOST_AUTO_TEST_CASE(NoSpec) {
     BOOST_CHECK(i == e);
 }
 
-BOOST_AUTO_TEST_CASE(Union) {
-    std::string stmt = "SELECT s1.foo, s2.foo AS s2_foo "
-        "FROM Source s1 UNION JOIN Source s2 "
-        "WHERE s1.bar = s2.bar;";
-    auto qs = queryAnaHelper.buildQuerySession(qsTest, stmt, SelectParser::ANTLR2);
-    BOOST_CHECK_EQUAL(qs->getError(), "AnalysisError:UNION JOIN queries are not currently supported.");
-}
 BOOST_AUTO_TEST_CASE(Cross) {
     std::string stmt = "SELECT * "
         "FROM Source s1 CROSS JOIN Source s2 "

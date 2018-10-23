@@ -658,9 +658,11 @@ std::ostream& operator<<(std::ostream& os, ParseErrorQueryInfo const& i) {
 
 
 static const std::vector< ParseErrorQueryInfo > PARSE_ERROR_QUERIES = {
+    // "UNION JOIN" is not expected to parse.
     ParseErrorQueryInfo(
         "SELECT s1.foo, s2.foo AS s2_foo FROM Source s1 UNION JOIN Source s2 WHERE s1.bar = s2.bar;",
-        "ParseException:qserv does not support UNION JOIN queries"),
+        "ParseException:Failed to instantiate query: \"SELECT s1.foo, s2.foo AS s2_foo FROM Source s1 UNION "
+        "JOIN Source s2 WHERE s1.bar = s2.bar;\""),
 
     // The qserv manual says:
     // "Expressions/functions in ORDER BY clauses are not allowed
@@ -669,6 +671,10 @@ static const std::vector< ParseErrorQueryInfo > PARSE_ERROR_QUERIES = {
     ParseErrorQueryInfo(
         "SELECT objectId, iE1_SG, ABS(iE1_SG) FROM Object WHERE iE1_SG between -0.1 and 0.1 ORDER BY ABS(iE1_SG)",
         "ParseException:qserv does not support functions in ORDER BY"),
+
+    ParseErrorQueryInfo(
+        "SELECT foo from Filter f limit 5 garbage query !#$%!#$",
+        "ParseException:Failed to instantiate query: \"SELECT foo from Filter f limit 5 garbage query !#$%!#$\""),
 };
 
 
@@ -677,7 +683,7 @@ BOOST_DATA_TEST_CASE(expected_parse_error, PARSE_ERROR_QUERIES, queryInfo) {
     auto selectStmt = querySession.parseQuery(queryInfo.query, parser::SelectParser::ANTLR4);
     BOOST_REQUIRE_EQUAL(selectStmt, nullptr);
     //TODO the message here is good for debugging - need to figuire out how to test the user visible message.
-    //BOOST_REQUIRE_EQUAL(querySession.getError(), queryInfo.errorMessage);
+    BOOST_REQUIRE_EQUAL(querySession.getError(), queryInfo.errorMessage);
 }
 
 

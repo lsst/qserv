@@ -78,7 +78,7 @@
 #include <antlr/SemanticException.hpp>
 
 namespace {
-LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.SelectParser");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.parser.SelectParser");
 
 // For the current query, this returns a list where each pair contains a bit of the string from the query
 // and how antlr4 tokenized that bit of string. It is useful for debugging problems where antlr4 did not
@@ -237,6 +237,57 @@ private:
 };
 
 
+class Antlr4ErrorStrategy : public antlr4::DefaultErrorStrategy {
+public:
+    explicit Antlr4ErrorStrategy(std::string const& statement) : _statement(statement) {}
+    Antlr4ErrorStrategy() = delete;
+    Antlr4ErrorStrategy(Antlr4ErrorStrategy const&) = delete;
+    Antlr4ErrorStrategy& operator=(Antlr4ErrorStrategy const&) = delete;
+
+private:
+    void recover(antlr4::Parser *recognizer, std::exception_ptr e) override {
+        LOGS(_log, LOG_LVL_ERROR, __FUNCTION__ <<
+                " antlr4 could not make a parse tree out of the input statement:" << _statement);
+        throw ParseException(std::string("Failed to instantiate query: \"") + _statement +
+                std::string("\""));
+    }
+
+    antlr4::Token* recoverInline(antlr4::Parser *recognizer) override {
+        LOGS(_log, LOG_LVL_ERROR, __FUNCTION__ <<
+                " antlr4 could not make a parse tree out of the input statement:" << _statement);
+        throw ParseException(std::string("Failed to instantiate query: \"") + _statement +
+                std::string("\""));
+    }
+
+    void sync(antlr4::Parser *recognizer) override {
+        // we want this function to be a no-op so we override it.
+    }
+
+    std::string const& _statement;
+};
+
+
+class NonRecoveringQSMySqlLexer : public QSMySqlLexer {
+public:
+    explicit NonRecoveringQSMySqlLexer(antlr4::CharStream *input, std::string const & statement)
+        : QSMySqlLexer(input), _statement(statement) {}
+    NonRecoveringQSMySqlLexer() = delete;
+    NonRecoveringQSMySqlLexer(NonRecoveringQSMySqlLexer const&) = delete;
+    NonRecoveringQSMySqlLexer& operator=(NonRecoveringQSMySqlLexer const&) = delete;
+
+
+private:
+    virtual void recover(const antlr4::LexerNoViableAltException &e) {
+        LOGS(_log, LOG_LVL_ERROR, __FUNCTION__ <<
+                "antlr4 could not tokenize the input statement:" << _statement);
+        throw ParseException(std::string("Failed to instantiate query: \"") + _statement +
+                std::string("\""));
+    }
+
+    std::string const& _statement;
+};
+
+
 class Antlr4Parser : public AntlrParser, public ListenerDebugHelper, public std::enable_shared_from_this<Antlr4Parser> {
 public:
 
@@ -254,10 +305,11 @@ public:
         changeState(RUN_DONE);
         using namespace antlr4;
         ANTLRInputStream input(_statement);
-        QSMySqlLexer lexer(&input);
+        NonRecoveringQSMySqlLexer lexer(&input, _statement);
         CommonTokenStream tokens(&lexer);
         tokens.fill();
         QSMySqlParser parser(&tokens);
+        parser.setErrorHandler(std::make_shared<Antlr4ErrorStrategy>(_statement));
         tree::ParseTree *tree = parser.root();
         tree::ParseTreeWalker walker;
         walker.walk(_listener.get(), tree);
@@ -291,7 +343,7 @@ public:
         return t.str();
     }
 
-    std::string getStatementStr() const override {
+    std::string getStatementString() const override {
         return _statement;
     }
 
