@@ -48,7 +48,7 @@ class ListenerDebugHelper {
 public:
     virtual std::string getStringTree() const = 0;
     virtual std::string getTokens() const = 0;
-    virtual std::string getStatementStr() const = 0;
+    virtual std::string getStatementString() const = 0;
 };
 
 
@@ -69,7 +69,7 @@ public:
     // returns a key-value list indicating how the query was tokenized
     std::string getTokens() const;
     // returns the original query string
-    std::string getStatementStr() const;
+    std::string getStatementString() const;
 
 protected:
 
@@ -1654,7 +1654,7 @@ protected:
     virtual void visitErrorNode(antlr4::tree::ErrorNode * /*node*/) override { }
 
 private:
-    void assertExecutionCondition(std::string const& function, std::string const& message,
+    void assertExecutionCondition(std::string const& function, bool condition, std::string const& message,
             antlr4::ParserRuleContext* ctx) const;
 
     // Adapter is a base class for a stack of adapter objects. Adapters implement appropriate API for

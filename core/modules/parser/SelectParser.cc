@@ -343,7 +343,7 @@ public:
         return t.str();
     }
 
-    std::string getStatementStr() const override {
+    std::string getStatementString() const override {
         return _statement;
     }
 
