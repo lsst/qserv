@@ -94,24 +94,24 @@ void ServerUdpBase::sendBufferTo(std::string const& hostName, int port, BufferUd
     bool done = false;
 
     auto callbackFunc = [&mtx, &cv, &done](const boost::system::error_code& error, std::size_t bytesTransferred) {
-        LOGS(_log, LOG_LVL_INFO, "&&& message send complete a bytes=" << bytesTransferred << " code=" << error);
+        //LOGS(_log, LOG_LVL_INFO, "&&& message send complete a bytes=" << bytesTransferred << " code=" << error);
         {
             std::lock_guard<std::mutex> lock(mtx);
             done = true;
         }
-        LOGS(_log, LOG_LVL_INFO, "&&& message send complete b bytes=" << bytesTransferred << " code=" << error);
+        //LOGS(_log, LOG_LVL_INFO, "&&& message send complete b bytes=" << bytesTransferred << " code=" << error);
         cv.notify_one(); // there is only one...
-        LOGS(_log, LOG_LVL_INFO, "&&& message send complete c bytes=" << bytesTransferred << " code=" << error);
+        //LOGS(_log, LOG_LVL_INFO, "&&& message send complete c bytes=" << bytesTransferred << " code=" << error);
     };
 
-    LOGS(_log, LOG_LVL_INFO, "&&& sending sendBufferTo a this=" << this );
+    //LOGS(_log, LOG_LVL_INFO, "&&& sending sendBufferTo a this=" << this );
     ip::udp::endpoint dest(boost::asio::ip::address::from_string(hostName), port);
     _socket.async_send_to(buffer(sendBuf.getReadCursor(), sendBuf.getBytesLeftToRead()), dest,
                           callbackFunc);
 
     std::unique_lock<std::mutex> uLock(mtx);
     cv.wait(uLock, [&done](){return done;});
-    LOGS(_log, LOG_LVL_INFO, "&&& sending sendBufferTo b this=" << this);
+    //LOGS(_log, LOG_LVL_INFO, "&&& sending sendBufferTo b this=" << this);
 }
 
 
@@ -132,7 +132,7 @@ void ServerUdpBase::_sendCallback(const boost::system::error_code& error, size_t
 }
 
 void ServerUdpBase::_receivePrepare() {
-    LOGS(_log, LOG_LVL_INFO, "&&& _receivePrepare this=" << this);
+    //LOGS(_log, LOG_LVL_INFO, "&&& _receivePrepare this=" << this);
     _data = std::make_shared<BufferUdp>(); // New buffer for next response, the old buffer
                                            // may still be in use elsewhere.
     _socket.async_receive_from(boost::asio::buffer(_data->getWriteCursor(), _data->getAvailableWriteLength()), _senderEndpoint,
