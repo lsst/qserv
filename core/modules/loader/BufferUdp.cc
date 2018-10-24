@@ -48,9 +48,9 @@ namespace qserv {
 namespace loader {
 
 MsgElement::Ptr BufferUdp::readFromSocket(boost::asio::ip::tcp::socket& socket, std::string const& note) {
-    LOGS(_log, LOG_LVL_INFO, "&&&& readFromSocket !!!!!");
+    //LOGS(_log, LOG_LVL_INFO, "&&&& readFromSocket !!!!!");
     for (;;) {
-        LOGS(_log, LOG_LVL_INFO, note << " &&& readFromSocket a");
+        //LOGS(_log, LOG_LVL_INFO, note << " &&& readFromSocket a");
         boost::system::error_code error;
 
         // If there's something in the buffer already, get it and return
@@ -62,7 +62,7 @@ MsgElement::Ptr BufferUdp::readFromSocket(boost::asio::ip::tcp::socket& socket, 
         size_t len = socket.read_some(boost::asio::buffer(_wCursor, getAvailableWriteLength()), error);
         _wCursor += len; /// must advance the cursor.
 
-        LOGS(_log, LOG_LVL_INFO, note << " &&& readFromSocket len=" << len << " " << dump());
+        //LOGS(_log, LOG_LVL_INFO, note << " &&& readFromSocket len=" << len << " " << dump());
 
         // EOF is only a problem if no MsgElement was retrieved.
         // &&& ??? This is definitely the case in UDP, as nothing more will show up.
@@ -87,7 +87,7 @@ MsgElement::Ptr BufferUdp::readFromSocket(boost::asio::ip::tcp::socket& socket, 
 
 
 std::shared_ptr<MsgElement> BufferUdp::_safeRetrieve() {
-    LOGS(_log, LOG_LVL_DEBUG, "&&&& _safeRetrieve");
+    //LOGS(_log, LOG_LVL_DEBUG, "&&&& _safeRetrieve");
     auto wCursorOriginal = _wCursor;
     auto rCursorOriginal = _rCursor;
     MsgElement::Ptr msgElem = MsgElement::retrieve(*this);
@@ -103,13 +103,13 @@ std::shared_ptr<MsgElement> BufferUdp::_safeRetrieve() {
 
 bool BufferUdp::isRetrieveSafe(size_t len) const {
     auto newLen = (_rCursor + len);
-    LOGS(_log, LOG_LVL_INFO, "&&& isRetrieveSafe len=" << len << " newLen=" << (void*)newLen << " end=" << (void*)_end << " wc=" << (void*)_wCursor);
+    //LOGS(_log, LOG_LVL_INFO, "&&& isRetrieveSafe len=" << len << " newLen=" << (void*)newLen << " end=" << (void*)_end << " wc=" << (void*)_wCursor);
     return (newLen <= _end && newLen <= _wCursor);
 }
 
 
 bool BufferUdp::retrieve(void* out, size_t len) {
-    LOGS(_log, LOG_LVL_INFO, "&&& BufferUdp::retrieve len=" << len << " " << dump());
+    // LOGS(_log, LOG_LVL_INFO, "&&& BufferUdp::retrieve len=" << len << " " << dump());
     if (isRetrieveSafe(len)) {
         memcpy(out, _rCursor, len);
         _rCursor += len;
@@ -120,7 +120,7 @@ bool BufferUdp::retrieve(void* out, size_t len) {
 
 
 bool BufferUdp::retrieveString(std::string& out, size_t len) {
-    LOGS(_log, LOG_LVL_INFO, "retrieveString _rCursor + len=" << (void*)(_rCursor + len) << " end=" << (void*)_end);;
+    //LOGS(_log, LOG_LVL_INFO, "retrieveString _rCursor + len=" << (void*)(_rCursor + len) << " end=" << (void*)_end);;
     if (isRetrieveSafe(len)) {
         const char* strEnd = _rCursor + len;
         std::string str(_rCursor, strEnd);

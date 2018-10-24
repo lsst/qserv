@@ -89,41 +89,48 @@ void CentralWorker::_startMonitoring() {
 
 
 void CentralWorker::_monitor() {
-    // TODO Check if we've heard from left neighbor (possibly kill connection if nothing heard???)
+    // If data gets shifted, check everything again as ranges will have
+    // changed and there may be a lot more data to shift.
+    bool dataShifted = false;
+    do {
+        // TODO Check if we've heard from left neighbor (possibly kill connection if nothing heard???)
 
-
-    // TODO &&& check the right neighbor connection, kill and restart if needed.
-    std::lock_guard<std::mutex> lck(_rightMtx); // This mutex is locked for a long time &&&
-    if (_neighborRight.getName() != 0) {
-        try {
-            if (not _neighborRight.getEstablished()) {
-                auto nAddr = _neighborRight.getAddress();
-                if (nAddr.ip == "") {
-                    // look up the network address for the rightNeighbor
-                    WWorkerListItem::Ptr nWorker = _wWorkerList->getWorkerNamed(_neighborRight.getName());
-                    if (nWorker != nullptr) {
-                        auto addr = nWorker->getAddressTcp();
-                        LOGS(_log, LOG_LVL_INFO, "_monitor neighbor right " << _neighborRight.getName() <<
-                                " " << addr);
-                        _neighborRight.setAddress(addr);
+        // Check the right neighbor connection, kill and restart if needed.
+        // Check if data needs to be shifted with the right node
+        std::lock_guard<std::mutex> lck(_rightMtx); // This mutex is locked for a long time &&&
+        if (_neighborRight.getName() != 0) {
+            try {
+                if (not _neighborRight.getEstablished()) {
+                    auto nAddr = _neighborRight.getAddressTcp();
+                    if (nAddr.ip == "") {
+                        // look up the network address for the rightNeighbor
+                        WWorkerListItem::Ptr nWorker = _wWorkerList->getWorkerNamed(_neighborRight.getName());
+                        if (nWorker != nullptr) {
+                            auto addr = nWorker->getAddressTcp();
+                            auto addrUdp = nWorker->getAddressUdp();
+                            LOGS(_log, LOG_LVL_INFO, "_monitor neighbor right " << _neighborRight.getName() <<
+                                    " T=" << addr << " U=" << addrUdp);
+                            _neighborRight.setAddressTcp(addr);
+                            _neighborRight.setAddressUdp(addrUdp);
+                        }
                     }
-                }
 
-                LOGS(_log, LOG_LVL_INFO, "_monitor trying to establish TCP connection with " <<
-                        _neighborRight.getName() << " " << _neighborRight.getAddress());
-                _rightConnect(); // calls _determineRange() while establishing connection
-            } else {
-                _determineRange();
+                    LOGS(_log, LOG_LVL_INFO, "_monitor trying to establish TCP connection with " <<
+                            _neighborRight.getName() << " " << _neighborRight.getAddressTcp());
+                    _rightConnect(); // calls _determineRange() while establishing connection
+                } else {
+                    _determineRange();
+                }
+                dataShifted = _shiftIfNeeded();
+            } catch (LoaderMsgErr const& ex) {
+                LOGS(_log, LOG_LVL_WARN, "_monitor() " << ex.what());
+                _rightDisconnect();
             }
-            _shiftIfNeeded();
-        } catch (LoaderMsgErr const& ex) {
-            LOGS(_log, LOG_LVL_WARN, "_monitor() " << ex.what());
+        } else {
+            // If there is a connection, close it.
             _rightDisconnect();
         }
-    } else {
-        // If there is a connection, close it.
-        _rightDisconnect();
-    }
+    } while (dataShifted);
 }
 
 
@@ -189,18 +196,18 @@ void CentralWorker::_determineRange() {
 
 
 // must hold _rightMtx before calling
-void CentralWorker::_shiftIfNeeded() {
+bool CentralWorker::_shiftIfNeeded() {
     // There should be reasonably recent information from our neighbors. Use that
     // and our status to ask the right neighbor to give us entries or we send entries
     // to the right neighbor.
     // If right connection is not established, return
     if (not _neighborRight.getEstablished()) {
         LOGS(_log, LOG_LVL_INFO, "_shiftIfNeeded no right neighbor, no shift.");
-        return;
+        return false;
     }
     if (_shiftWithRightInProgress) {
         LOGS(_log, LOG_LVL_INFO, "_shiftIfNeeded shift already in progress.");
-        return;
+        return false;
     }
 
     // Get local copies of range and map info.
@@ -214,13 +221,13 @@ void CentralWorker::_shiftIfNeeded() {
 
     // If this worker has more keys than the rightNeighbor, consider shifting keys to the right neighbor.
         // If this worker has _thresholdAverage more keys than average or _thresholdNeighborShift more keys than the right neighbor
-            // send enough keys to the right to balance (min 1 key, max _maxShiftKeys, never shift more than 20% of our keys)
+            // send enough keys to the right to balance (min 1 key, max _maxShiftKeys, never shift more than 1/3 of our keys)
     int rightKeyCount = 0;
     StringRange rightRange;
     _neighborRight.getKeyData(rightKeyCount, rightRange);
     if (range > rightRange) {
         LOGS(_log, LOG_LVL_ERROR, "Right neighbor range is less than ours!!!! our=" << range << " right=" << rightRange);
-        return;
+        return false;
     }
     int keysToShift = 0;
     CentralWorker::Direction direction = NONE0;
@@ -238,35 +245,56 @@ void CentralWorker::_shiftIfNeeded() {
     if (keysToShift > sourceSize/3) keysToShift = sourceSize/3;
     if (keysToShift < 1) {
         LOGS(_log, LOG_LVL_WARN, "Worker doesn't have enough keys to shift.");
-        return;
+        return false;
     }
     _shiftWithRightInProgress = true;
     _shift(direction, keysToShift);
+    return true;
 }
 
 
 void CentralWorker::_shift(Direction direction, int keysToShift) {
     LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift &&&ggggC 1");
     if (direction == FROMRIGHT2) {
-        // &&& construct a message asking for keys to shift keys
+        LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift FROMRIGHT &&&ggggC 2");
+        // Construct a message asking for keys to shift (it will shift its lowest keys)
+        proto::KeyShiftRequest protoKeyShiftRequest;
+        protoKeyShiftRequest.set_keystoshift(keysToShift);
+        {
+            StringElement keyShiftReq;
+            protoKeyShiftRequest.SerializeToString(&(keyShiftReq.element));
+            // Send the message kind, followed by the transmit size, and then the protobuffer.
+            UInt32Element kindShiftFromRight(LoaderMsg::SHIFT_FROM_RIGHT);
+            UInt32Element bytesInMsg(keyShiftReq.transmitSize());
+            BufferUdp data(kindShiftFromRight.transmitSize() + bytesInMsg.transmitSize() + keyShiftReq.transmitSize());
+            kindShiftFromRight.appendToData(data);
+            bytesInMsg.appendToData(data);
+            keyShiftReq.appendToData(data);
+            LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift &&&hhhC 1");
+            ServerTcpBase::_writeData(*_rightSocket, data);
+        }
         // &&& Wait for the response
+
+
+
+        // &&& send received
         LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift &&&ggggC direction=" << direction << " keys=" << keysToShift);
         LOGS(_log, LOG_LVL_ERROR, "&&& CentralWorker::_shift NEEDS CODE");
         exit (-1);
     } else if (direction == TORIGHT1) {
-        LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift &&&ggggC 2");
-        // &&& construct a message with that many keys and send it
+        LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift TORIGHT &&&ggggC 2");
+        // Construct a message with that many keys and send it (sending the highest keys)
         proto::KeyList protoKeyList;
         protoKeyList.set_keycount(keysToShift);
         std::string minKey(""); // smallest value of a key sent to right neighbor
         std::string maxKey("");
         {
             LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift &&&ggggC 3");
-            if (not _transferList.empty()) {
+            std::lock_guard<std::mutex> lck(_idMapMtx);
+            if (not _transferListToRight1.empty()) {
                 throw new LoaderMsgErr("CentralWorker::_shift _transferList not empty");
             }
             LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift &&&ggggC 4");
-            std::lock_guard<std::mutex> lck(_idMapMtx);
             LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift &&&ggggC 5");
             bool firstPass = true;
             for (int j=0; j < keysToShift && _directorIdMap.size() > 1; ++j) {
@@ -276,7 +304,7 @@ void CentralWorker::_shift(Direction direction, int keysToShift) {
                 if (firstPass) {
                     maxKey = iter->first;
                 }
-                _transferList.push_back(std::make_pair(iter->first, iter->second));
+                _transferListToRight1.push_back(std::make_pair(iter->first, iter->second));
                 proto::KeyInfo* protoKI = protoKeyList.add_keypair();
                 minKey = iter->first;
                 protoKI->set_key(minKey);
@@ -307,19 +335,72 @@ void CentralWorker::_shift(Direction direction, int keysToShift) {
         LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift &&&ggggC 9");
         if (received == nullptr || received->element !=  LoaderMsg::SHIFT_TO_RIGHT_RECEIVED) {
             LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift &&&ggggC 9error");
-            {
-                // Restore the original range
-                std::lock_guard<std::mutex> lck(_idMapMtx);
-                _strRange.setMax(maxKey);
-            }
             throw new LoaderMsgErr("CentralWorker::_shift receive failure");
         }
+        _finishShiftToRight();
         LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift &&&ggggC 10");
         LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift end direction=" << direction << " keys=" << keysToShift);
     }
     LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift &&&ggggC 11");
     LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift &&&ggggC DumpKeys " << dumpKeys()); // &&& make debug or delete or limit number of keys printed.
     _shiftWithRightInProgress = false;
+}
+
+
+void CentralWorker::_finishShiftToRight() {
+    std::lock_guard<std::mutex> lck(_idMapMtx);
+    _transferListToRight1.clear();
+}
+
+
+void CentralWorker::finishShiftFromRight() {
+    std::lock_guard<std::mutex> lck(_idMapMtx);
+    _transferListFromRight.clear();
+}
+
+
+/// Return a list of the smallest keys from our map. Put keys in _transferList in case the copy fails.
+/// TODO add argument for smallest or largest and code to build list from smallest or largest keys.
+StringElement::UPtr CentralWorker::buildKeyList(int keysToShift) {
+    std::string funcName = "CentralWorker::buildKeyList";
+    proto::KeyList protoKeyList;
+    std::string minKey(""); // smallest value of a key sent to right neighbor
+    std::string maxKey("");
+    {
+        LOGS(_log, LOG_LVL_INFO, funcName << " &&&hhhhC 3");
+        std::lock_guard<std::mutex> lck(_idMapMtx);
+        if (not _transferListFromRight.empty()) {
+            throw new LoaderMsgErr("CentralWorker::_shift _transferListFromRight not empty");
+        }
+        LOGS(_log, LOG_LVL_INFO, funcName << " &&&hhhhC 4");
+        int maxKeysToShift = _directorIdMap.size()/3;
+        if (keysToShift > maxKeysToShift) keysToShift = maxKeysToShift;
+        LOGS(_log, LOG_LVL_INFO, funcName << " &&&hhhhC 5");
+        bool firstPass = true;
+        for (int j=0; j < keysToShift && _directorIdMap.size() > 1; ++j) {
+            LOGS(_log, LOG_LVL_INFO, funcName << " &&&hhhhhC 6");
+            auto iter = _directorIdMap.begin();
+            if (firstPass) {
+                minKey = iter->first;
+            }
+            _transferListFromRight.push_back(std::make_pair(iter->first, iter->second));
+            proto::KeyInfo* protoKI = protoKeyList.add_keypair();
+            maxKey = iter->first;
+            protoKI->set_key(maxKey);
+            protoKI->set_chunk(iter->second.chunk);
+            protoKI->set_subchunk(iter->second.subchunk);
+            _directorIdMap.erase(iter);
+        }
+        // Adjust our range;
+        LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift &&&ggggC 7");
+        auto iter = _directorIdMap.begin();
+        if (_strRange.getMin() != "") {
+            _strRange.setMin(iter->first);
+        }
+    }
+    StringElement::UPtr keyList(new StringElement());
+    protoKeyList.SerializeToString(&(keyList->element));
+    return keyList;
 }
 
 
@@ -330,7 +411,7 @@ void CentralWorker::_rightConnect() {
             _rightConnectStatus = STARTING1;
             // Connect to the right neighbor server
             tcp::resolver resolver(_ioContext);
-            auto addr = _neighborRight.getAddress();
+            auto addr = _neighborRight.getAddressTcp();
             tcp::resolver::results_type endpoints = resolver.resolve(addr.ip, std::to_string(addr.port));
             _rightSocket.reset(new tcp::socket(_ioContext));
             boost::system::error_code ec;
@@ -362,56 +443,6 @@ void CentralWorker::_rightConnect() {
 
             // Send our basic info (&&& put this in separate function to be used in other communications !!! &&&)
             _determineRange();
-#if 0 // &&&
-            {
-                data.reset();
-                UInt32Element imLeftKind(LoaderMsg::IM_YOUR_L_NEIGHBOR);
-                imLeftKind.appendToData(data);
-                StringElement strElem;
-                std::unique_ptr<proto::WorkerKeysInfo> protoWKI = _workerKeysInfoBuilder();
-                protoWKI->SerializeToString(&(strElem.element));
-                UInt32Element bytesInMsg(strElem.transmitSize());
-                // Must send the number of bytes in the message so TCP server knows how many bytes to read.
-                bytesInMsg.appendToData(data);
-                strElem.appendToData(data);
-                ServerTcpBase::_writeData(*_rightSocket, data);
-            }
-            // Get back their basic info
-            {
-                data.reset();
-                auto msgElem = data.readFromSocket(*_rightSocket, "CentralWorker::_rightConnect - range");
-                LOGS(_log, LOG_LVL_INFO, "&&& _rightConnect() parsing data=" << data.dump());
-                auto protoItem = StringElement::protoParse<proto::WorkerKeysInfo>(data);
-                if (protoItem == nullptr) {
-                    throw LoaderMsgErr(funcName, __FILE__, __LINE__);
-                }
-                NeighborsInfo nInfoR;
-                auto workerName = protoItem->name();
-                nInfoR.keyCount = protoItem->mapsize();
-                _neighborRight.setKeyCount(nInfoR.keyCount); // TODO add a timestamp to this data.
-                nInfoR.recentAdds = protoItem->recentadds();
-                proto::WorkerRangeString protoRange = protoItem->range();
-                LOGS(_log, LOG_LVL_INFO, "&&& _rightConnect() rightNeighbor name=" << workerName << " keyCount=" << nInfoR.keyCount << " recentAdds=" << nInfoR.recentAdds);
-                bool valid = protoRange.valid();
-                StringRange rightRange;
-                if (valid) {
-                    std::string min   = protoRange.min();
-                    std::string max   = protoRange.max();
-                    bool unlimited = protoRange.maxunlimited();
-                    rightRange.setMinMax(min, max, unlimited);
-                    LOGS(_log, LOG_LVL_INFO, "&&& _rightConnect rightRange=" << rightRange);
-                    _neighborRight.setRange(rightRange);
-                }
-                proto::Neighbor protoLeftNeigh = protoItem->left();
-                nInfoR.neighborLeft->update(protoLeftNeigh.name());  // Not really useful in this case.
-                proto::Neighbor protoRightNeigh = protoItem->right();
-                nInfoR.neighborRight->update(protoRightNeigh.name()); // This should be our name
-                if (nInfoR.neighborLeft->get() != getOurName()) {
-                    LOGS(_log, LOG_LVL_ERROR, "Our (" << getOurName() <<
-                            ") right neighbor does not have our name as its left neighbor" );
-                }
-            }
-#endif
 
             // Unless they disconnect.
             _rightConnectStatus = ESTABLISHED2;
@@ -441,28 +472,48 @@ void CentralWorker::_rightDisconnect() {
         _rightSocket->close();
     }
     _rightConnectStatus = VOID0;
-    _cancelShiftsRightNeighbor();
+    _cancelShiftsToRightNeighbor();
 }
 
 
-void CentralWorker::_cancelShiftsRightNeighbor() {
-    LOGS(_log, LOG_LVL_WARN, "Canceling shifts with right neighbor");
-    std::lock_guard<std::mutex> lck(_idMapMtx); // &&& check that this does not cause deadlock
+void CentralWorker::_cancelShiftsToRightNeighbor() {
+    // Client side of connection. Was sending largest keys right.
+    LOGS(_log, LOG_LVL_WARN, "Canceling shiftToRight neighbor");
+    std::lock_guard<std::mutex> lck(_idMapMtx);
     if (_shiftWithRightInProgress.exchange(false)) {
-        // TODO What else needs to done?
-        { // // &&& make this _restoreTransferList()
-            // Restore the transfer list to the id map
-            for (auto&& elem:_transferList) {
-                auto res = _directorIdMap.insert(std::make_pair(elem.first, elem.second));
-                if (not res.second) {
-                    LOGS(_log, LOG_LVL_WARN, "_cancelShiftsRightNeighbor Possible duplicate " <<
-                                             elem.first << ":" << elem.second);
-                }
+        // Restore the transfer list to the id map
+        for (auto&& elem:_transferListToRight1) {
+            auto res = _directorIdMap.insert(std::make_pair(elem.first, elem.second));
+            if (not res.second) {
+                LOGS(_log, LOG_LVL_WARN, "_cancelShiftsRightNeighbor Possible duplicate " <<
+                        elem.first << ":" << elem.second);
             }
-            _transferList.clear();
         }
-        LOGS(_log, LOG_LVL_ERROR, "CentralWorker::_cancelShiftsRightNeighbor needs code");
-        exit(-1);
+        _transferListToRight1.clear();
+        // Leave the reduced range until fixed by our right neighbor.
+    }
+}
+
+
+void CentralWorker::cancelShiftsFromRightNeighbor() {
+    // Server side of connection. Was sending smallest keys left.
+    LOGS(_log, LOG_LVL_WARN, "Canceling shiftFromRight neighbor");
+    std::lock_guard<std::mutex> lck(_idMapMtx); // &&& check that this does not cause deadlock
+    if (not _transferListFromRight.empty()) {
+        // Restore the transfer list to the id map
+        for (auto&& elem:_transferListFromRight) {
+            auto res = _directorIdMap.insert(std::make_pair(elem.first, elem.second));
+            if (not res.second) {
+                LOGS(_log, LOG_LVL_WARN, "_cancelShiftsRightNeighbor Possible duplicate " <<
+                        elem.first << ":" << elem.second);
+            }
+        }
+        _transferListFromRight.clear();
+
+        // Fix the bottom of the range.
+        if (_strRange.getMin() != "") {
+            _strRange.setMin(_directorIdMap.begin()->first);
+        }
     }
 }
 
@@ -617,6 +668,9 @@ void CentralWorker::_workerKeyInsertReq(LoaderMsg const& inMsg, std::unique_ptr<
 
     /// see if the key should be inserted into our map
     std::unique_lock<std::mutex> lck(_idMapMtx);
+    auto min = _strRange.getMin();
+    auto leftAddress = _neighborLeft.getAddressUdp();
+    auto rightAddress = _neighborRight.getAddressUdp();
     if (_strRange.isInRange(key)) {
         // insert into our map
         auto res = _directorIdMap.insert(std::make_pair(key, chunkInfo));
@@ -645,20 +699,33 @@ void CentralWorker::_workerKeyInsertReq(LoaderMsg const& inMsg, std::unique_ptr<
         lck.unlock();
         // Find the target range in the list and send the request there
         auto targetWorker = _wWorkerList->findWorkerForKey(key);
-        if (targetWorker == nullptr) { return; }
-        if (targetWorker->getName() != _ourName) {
-            _forwardKeyInsertRequest(targetWorker, inMsg, protoData);
+        if (targetWorker != nullptr && targetWorker->getName() != _ourName) {
+            _forwardKeyInsertRequest(targetWorker->getAddressUdp(), inMsg, protoData);
         } else {
             // TODO send request to left or right neighbor
             LOGS(_log, LOG_LVL_ERROR, "CentralWorker::_workerKeyInsertReq needs code to send key to neighbor");
+            if (key < min && leftAddress.ip != "") {
+                _forwardKeyInsertRequest(leftAddress, inMsg, protoData);
+            } else if (key > min && rightAddress.ip != "") {
+                _forwardKeyInsertRequest(rightAddress, inMsg, protoData);
+            }
         }
     }
 }
 
 
-void CentralWorker::_forwardKeyInsertRequest(WWorkerListItem::Ptr const& target, LoaderMsg const& inMsg,
-                                             std::unique_ptr<proto::KeyInfoInsert> const& protoData) {
+void CentralWorker::_forwardKeyInsertRequest(NetworkAddress const& targetAddr, LoaderMsg const& inMsg,
+                                             std::unique_ptr<proto::KeyInfoInsert>& protoData) {
+    // Aside from hops, the proto buffer should be the same.
+    proto::KeyInfo protoKeyInfo = protoData->keyinfo();
+    auto key = protoKeyInfo.key();
     // The proto buffer should be the same, just need a new message.
+    int hops = protoData->hops() + 1;
+    if (hops > 4) {
+        LOGS(_log, LOG_LVL_INFO, "Too many hops, dropping insert request hops=" << hops << " key=" << key);
+        return;
+    }
+    LOGS(_log, LOG_LVL_INFO, "Forwarding key insert hops=" << hops << " key=" << key);
     LoaderMsg msg(LoaderMsg::KEY_INSERT_REQ, inMsg.msgId->element, getHostName(), getUdpPort());
     BufferUdp msgData;
     msg.serializeToData(msgData);
@@ -666,9 +733,7 @@ void CentralWorker::_forwardKeyInsertRequest(WWorkerListItem::Ptr const& target,
     StringElement strElem;
     protoData->SerializeToString(&(strElem.element));
     strElem.appendToData(msgData);
-
-    auto nAddr = target->getAddressUdp();
-    sendBufferTo(nAddr.ip, nAddr.port, msgData);
+    sendBufferTo(targetAddr.ip, targetAddr.port, msgData);
 }
 
 

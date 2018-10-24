@@ -87,6 +87,7 @@ message KeyInfo {
 message KeyInfoInsert {
 	required LdrNetAddress requester = 1;
 	required KeyInfo       keyinfo   = 2;
+	required uint32        hops      = 3;
 }
 
 
@@ -113,8 +114,13 @@ message WorkerImNeighbor {
  }
  
  
- message KeyList {
-     required uint32       keycount = 1;  // TODO this could be redundant
-     repeated KeyInfo      keypair  = 2;
-}     
+message KeyList {
+    required uint32       keycount = 1;  // TODO this could be redundant
+    repeated KeyInfo      keypair  = 2;
+}
      
+
+message KeyShiftRequest {
+    required uint32 keystoshift = 1; 
+}
+

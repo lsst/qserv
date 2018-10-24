@@ -71,7 +71,8 @@ private:
     void _readKind(const boost::system::error_code&, size_t /*bytes_transferred*/);
     void _recvKind(const boost::system::error_code&, size_t bytesTrans);
 
-    void _free();
+    /// Free the connection and cancel shifts from this server.
+    void _freeConnect();
 
     tcp::socket _socket;
     ServerTcpBase* _serverTcpBase; // _serverTcpBase controls this class' lifetime.
@@ -83,6 +84,9 @@ private:
 
     void _handleShiftToRight(uint32_t bytes);
     void _handleShiftToRight1(boost::system::error_code const& ec, size_t bytesTrans);
+
+    void _handleShiftFromRight(uint32_t bytesInMsg);
+    void _handleShiftFromRight1(boost::system::error_code const& ec, size_t bytesTrans);
 
     void _handleTest();
     void _handleTest2(boost::system::error_code const& ec, size_t bytesTrans);

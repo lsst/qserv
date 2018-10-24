@@ -52,19 +52,34 @@ public:
 
     std::string getTypeStr() { return _type == LEFT ? "LEFT" : "RIGHT"; }
 
-    void setAddress(std::string const& hostName, int port) {
+    void setAddressTcp(std::string const& hostName, int port) {
         std::lock_guard<std::mutex> lck(_nMtx);
         _address.reset(new NetworkAddress(hostName, port));
     }
 
-    void setAddress(NetworkAddress const& addr) {
+    void setAddressTcp(NetworkAddress const& addr) {
         std::lock_guard<std::mutex> lck(_nMtx);
         _address.reset(new NetworkAddress(addr));
     }
 
-    NetworkAddress getAddress() {
+    NetworkAddress getAddressTcp() {
         std::lock_guard<std::mutex> lck(_nMtx);
         return *_address;
+    }
+
+    void setAddressUdp(std::string const& hostName, int port) {
+        std::lock_guard<std::mutex> lck(_nMtx);
+        _addressUdp.reset(new NetworkAddress(hostName, port));
+    }
+
+    void setAddressUdp(NetworkAddress const& addr) {
+        std::lock_guard<std::mutex> lck(_nMtx);
+        _addressUdp.reset(new NetworkAddress(addr));
+    }
+
+    NetworkAddress getAddressUdp() {
+        std::lock_guard<std::mutex> lck(_nMtx);
+        return *_addressUdp;
     }
 
     void setName(uint32_t name);
@@ -95,7 +110,8 @@ public:
     bool getEstablished() const { return _established; }
 
 private:
-    NetworkAddress::UPtr _address{new NetworkAddress("", -1)};
+    NetworkAddress::UPtr _address{new NetworkAddress("", -1)}; // &&& rename to _addressTcp
+    NetworkAddress::UPtr _addressUdp{new NetworkAddress("", -1)};
     uint32_t _name{0}; ///< Name of neighbor, 0 means no neighbor.
     bool _established{false};
     std::mutex _nMtx;
