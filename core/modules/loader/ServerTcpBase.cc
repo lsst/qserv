@@ -183,7 +183,11 @@ void TcpBaseConnection::shutdown() {
 }
 
 
-void TcpBaseConnection::_free() {
+void TcpBaseConnection::_freeConnect() {
+    auto centralW = _serverTcpBase->getCentralWorker();
+    if (centralW != nullptr) {
+        centralW->cancelShiftsFromRightNeighbor();
+    }
     _serverTcpBase->freeConnection(shared_from_this());
 }
 
@@ -198,7 +202,7 @@ void TcpBaseConnection::_readKind(boost::system::error_code const&, size_t /*byt
     if (bytes > _buf.getAvailableWriteLength()) {
         /// &&& TODO close the connection
         LOGS(_log, LOG_LVL_ERROR, "_readKind Buffer would have overflowed");
-        _free();
+        _freeConnect();
         return;
     }
 
@@ -219,7 +223,7 @@ void TcpBaseConnection::_recvKind(const boost::system::error_code& ec, size_t by
     LOGS(_log, LOG_LVL_INFO, "&&& TcpBaseConnection::_recvKind bytes=" << bytesTrans << " ec=" << ec << " " << _buf.dump());
     if (ec) {
         LOGS(_log, LOG_LVL_ERROR, "_recvKind ec=" << ec);
-        _free();
+        _freeConnect();
         return;
     }
     // Fix the buffer with the information given.
@@ -229,7 +233,7 @@ void TcpBaseConnection::_recvKind(const boost::system::error_code& ec, size_t by
     auto msgKind = std::dynamic_pointer_cast<UInt32Element>(msgElem);
     if (msgKind == nullptr) {
         LOGS(_log, LOG_LVL_ERROR, "_recvKind unexpected type of msg");
-        _free();
+        _freeConnect();
         return;
     }
     //LOGS(_log, LOG_LVL_INFO, "&&& msgKind=" << msgKind->element);
@@ -237,7 +241,7 @@ void TcpBaseConnection::_recvKind(const boost::system::error_code& ec, size_t by
     auto msgBytes = std::dynamic_pointer_cast<UInt32Element>(msgElem);
     if (msgBytes == nullptr) {
         LOGS(_log, LOG_LVL_ERROR, "_recvKind missing bytes");
-        _free();
+        _freeConnect();
         return;
     }
     LOGS(_log, LOG_LVL_INFO, "_recvKind kind=" << msgKind->element << " bytes=" << msgBytes->element);
@@ -254,9 +258,12 @@ void TcpBaseConnection::_recvKind(const boost::system::error_code& ec, size_t by
         LOGS(_log, LOG_LVL_INFO, "_recvKind SHIFT_TO_RIGHT our left neighbor is shifting to us");
         _handleShiftToRight(msgBytes->element);
         break;
+    case LoaderMsg::SHIFT_FROM_RIGHT:
+        LOGS(_log, LOG_LVL_INFO, "_recvKind SHIFT_FROM_RIGHT our left neighbor needs keys shifted from this");
+        _handleShiftFromRight(msgBytes->element);
     default:
         LOGS(_log, LOG_LVL_ERROR, "_recvKind unexpected kind=" << msgKind->element);
-        _free();
+        _freeConnect();
     }
 }
 
@@ -275,7 +282,7 @@ void TcpBaseConnection::_handleTest() {
     if (bytes > _buf.getAvailableWriteLength()) {
         /// &&& TODO close the connection
         LOGS(_log, LOG_LVL_ERROR, "_handleTest Buffer would have overflowed");
-        _free();
+        _freeConnect();
         return;
     }
     boost::asio::async_read(_socket, boost::asio::buffer(_buf.getWriteCursor(), bytes),
@@ -293,7 +300,7 @@ void TcpBaseConnection::_handleTest() {
 void TcpBaseConnection::_handleTest2(const boost::system::error_code& ec, size_t bytesTrans) {
     if (ec) {
          LOGS(_log, LOG_LVL_ERROR, "_recvKind ec=" << ec);
-         _free();
+         _freeConnect();
          return;
      }
      // Fix the buffer with the information given.
@@ -313,7 +320,7 @@ void TcpBaseConnection::_handleTest2(const boost::system::error_code& ec, size_t
          LOGS(_log, LOG_LVL_ERROR, "_handleTest2 unexpected element or name" <<
               " kind=" << msgKind->element << " msgName=" << msgName->element <<
               " keys=" << msgKeys->element);
-         _free();
+         _freeConnect();
          return;
      } else {
          LOGS(_log, LOG_LVL_INFO, "_handleTest2 kind=" << msgKind->element << " msgName="
@@ -359,7 +366,7 @@ void TcpBaseConnection::_handleTest2c(const boost::system::error_code& ec, size_
     // UInt32Element verified(LoaderMsg::NEIGHBOR_VERIFIED); &&&
     if (ec) {
         LOGS(_log, LOG_LVL_ERROR, "_recvKind ec=" << ec);
-        _free();
+        _freeConnect();
         return;
     }
     // Fix the buffer with the information given.
@@ -367,18 +374,18 @@ void TcpBaseConnection::_handleTest2c(const boost::system::error_code& ec, size_
     auto msgElem = MsgElement::retrieve(_buf);
     if (msgElem == nullptr) {
         LOGS(_log, LOG_LVL_ERROR, "_handleTest2b Kind nullptr error");
-        _free();
+        _freeConnect();
         return;
     }
     auto msgKind = std::dynamic_pointer_cast<UInt32Element>(msgElem);
     if (msgKind != nullptr && msgKind->element != LoaderMsg::NEIGHBOR_VERIFIED) {
         LOGS(_log, LOG_LVL_ERROR, "_handleTest2b NEIGHBOR_VERIFIED error" <<
                 " kind=" << msgKind->element);
-        _free();
+        _freeConnect();
         return;
     }
     LOGS(_log, LOG_LVL_INFO, "TcpBaseConnection::_handleTest SUCCESS");
-    _free(); // Close the connection at the end of the test.
+    _freeConnect(); // Close the connection at the end of the test.
 }
 
 
@@ -387,7 +394,7 @@ void TcpBaseConnection::_handleImYourLNeighbor(uint32_t bytesInMsg) {
     if (bytesInMsg > _buf.getAvailableWriteLength()) {
         /// &&& TODO close the connection
         LOGS(_log, LOG_LVL_ERROR, "_handleImYourLNeighbor Buffer would have overflowed");
-        _free();
+        _freeConnect();
         return;
     }
     LOGS(_log, LOG_LVL_INFO, "&&& _handleImYourLNeighbor bytes=" << bytesInMsg << " buf=" << _buf.dump());
@@ -406,7 +413,7 @@ void TcpBaseConnection::_handleImYourLNeighbor1(boost::system::error_code const&
     std::string const funcName = "_handleImYourLNeighbor2";
     if (ec) {
         LOGS(_log, LOG_LVL_ERROR, funcName << " ec=" << ec);
-        _free();
+        _freeConnect();
         return;
     }
     // Fix the buffer with the information given.
@@ -460,7 +467,7 @@ void TcpBaseConnection::_handleImYourLNeighbor1(boost::system::error_code const&
         LOGS(_log, LOG_LVL_INFO, funcName << "&&& done");
     } catch (LoaderMsgErr &msgErr) {
         LOGS(_log, LOG_LVL_ERROR, funcName << " Buffer failed " << msgErr.what());
-        _free();
+        _freeConnect();
         return;
     }
     boost::system::error_code ecode;
@@ -473,7 +480,7 @@ void TcpBaseConnection::_handleShiftToRight(uint32_t bytesInMsg) {
     // Need to figure out the difference between bytes read and bytes in _buf
     if (bytesInMsg > _buf.getAvailableWriteLength()) {
         LOGS(_log, LOG_LVL_ERROR, "_handleShiftToRight Buffer would have overflowed bytes=" << bytesInMsg);
-        _free();
+        _freeConnect();
         return;
     }
     LOGS(_log, LOG_LVL_INFO, "&&&ggggS _handleShiftToRight bytes=" << bytesInMsg << " buf=" << _buf.dump());
@@ -493,7 +500,7 @@ void TcpBaseConnection::_handleShiftToRight1(boost::system::error_code const& ec
     std::string const funcName = "_handleShiftToRight1";
     if (ec) {
         LOGS(_log, LOG_LVL_ERROR, funcName << " ec=" << ec);
-        _free();
+        _freeConnect();
         return;
     }
     // Fix the buffer with the information given.
@@ -532,7 +539,83 @@ void TcpBaseConnection::_handleShiftToRight1(boost::system::error_code const& ec
     } catch (LoaderMsgErr &msgErr) {
         LOGS(_log, LOG_LVL_ERROR, msgErr.what());
         LOGS(_log, LOG_LVL_ERROR, funcName << " key shift failed");
-        _free();
+        _freeConnect();
+        return;
+    }
+    boost::system::error_code ecode;
+    _readKind(ecode, 0); // get next message
+}
+
+// Our left neighbor wants this node to shift key value pairs to it.
+void TcpBaseConnection::_handleShiftFromRight(uint32_t bytesInMsg) {
+    // Need to figure out the difference between bytes read and bytes in _buf
+    if (bytesInMsg > _buf.getAvailableWriteLength()) {
+        LOGS(_log, LOG_LVL_ERROR, "_handleShiftToRight Buffer would have overflowed bytes=" << bytesInMsg);
+        _freeConnect();
+        return;
+    }
+    LOGS(_log, LOG_LVL_INFO, "&&&hhhhS _handleShiftFromRight bytes=" << bytesInMsg << " buf=" << _buf.dump());
+    boost::asio::async_read(_socket, boost::asio::buffer(_buf.getWriteCursor(), bytesInMsg),
+            boost::asio::transfer_at_least(bytesInMsg),
+            boost::bind(
+                    &TcpBaseConnection::_handleShiftFromRight1,
+                    shared_from_this(),
+                    boost::asio::placeholders::error,
+                    boost::asio::placeholders::bytes_transferred
+            )
+    );
+}
+
+
+void TcpBaseConnection::_handleShiftFromRight1(boost::system::error_code const& ec, size_t bytesTrans) {
+    std::string const funcName = "_handleShiftFromRight1";
+    if (ec) {
+        LOGS(_log, LOG_LVL_ERROR, funcName << " ec=" << ec);
+        _freeConnect();
+        return;
+    }
+    // Fix the buffer with the information given.
+    _buf.advanceWriteCursor(bytesTrans);
+    LOGS(_log, LOG_LVL_INFO, funcName << "&&&hhhhS bytes=" << bytesTrans << " _buf" << _buf.dump());
+    try {
+        // &&& TODO move as much of this to CentralWorker as possible
+        LOGS(_log, LOG_LVL_INFO, funcName << "&&&hhhhS parsing bytes=" << bytesTrans << " _buf" << _buf.dump());
+        auto protoKeyShiftReq = StringElement::protoParse<proto::KeyShiftRequest>(_buf);
+        if (protoKeyShiftReq == nullptr) {
+            throw LoaderMsgErr(funcName + " KeyShiftRequest parse failure ", __FILE__, __LINE__);
+        }
+        // Extract keysToShift from the protobuffer
+        int keyShiftReq = protoKeyShiftReq->keystoshift();
+        if (keyShiftReq < 1) {
+            throw LoaderMsgErr(funcName + " KeyShiftRequest for < 1 key", __FILE__, __LINE__);
+        }
+        // Build and send the KeyList message back (send smallest keys to right node)
+        StringElement::UPtr keyList = _serverTcpBase->getCentralWorker()->buildKeyList(keyShiftReq);
+        UInt32Element kindShiftFromRight(LoaderMsg::SHIFT_FROM_RIGHT);
+        auto keyListTransmitSz = keyList->transmitSize();
+        UInt32Element bytesInMsg(keyListTransmitSz);
+        BufferUdp data(kindShiftFromRight.transmitSize() + bytesInMsg.transmitSize() + keyListTransmitSz);
+        kindShiftFromRight.appendToData(data);
+        bytesInMsg.appendToData(data);
+        keyList->appendToData(data);
+        LOGS(_log, LOG_LVL_INFO, funcName << " &&&hhhhC 8");
+        ServerTcpBase::_writeData(_socket, data);
+
+
+        // Wait for the SHIFT_FROM_RIGHT_KEYS_RECEIVED response back.
+        _buf.reset();
+        auto msgElem = _buf.readFromSocket(_socket, funcName +" waiting for SHIFT_FROM_RIGHT_KEYS_RECEIVED");
+        UInt32Element::Ptr received = std::dynamic_pointer_cast<UInt32Element>(msgElem);
+        if (received == nullptr || received->element !=  LoaderMsg::SHIFT_FROM_RIGHT_RECEIVED) {
+            LOGS(_log, LOG_LVL_INFO, funcName << " did not get SHIFT_FROM_RIGHT_RECEIVED");
+            throw new LoaderMsgErr(funcName + " receive failure");
+        }
+        _serverTcpBase->getCentralWorker()->finishShiftFromRight();
+        LOGS(_log, LOG_LVL_INFO, funcName << " &&&hhhhS done dumpKeys " << _serverTcpBase->getCentralWorker()->dumpKeys());
+    } catch (LoaderMsgErr &msgErr) {
+        LOGS(_log, LOG_LVL_ERROR, msgErr.what());
+        LOGS(_log, LOG_LVL_ERROR, funcName << " key shift failed");
+        _freeConnect();
         return;
     }
     boost::system::error_code ecode;
