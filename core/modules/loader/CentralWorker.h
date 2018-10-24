@@ -122,7 +122,13 @@ public:
 
     void insertKeys(std::vector<StringKeyPair> const& keyList, bool mustSetMin);
 
+    StringElement::UPtr buildKeyList(int keysToShift);
+
     std::string dumpKeys();
+
+
+    void finishShiftFromRight();
+    void cancelShiftsFromRightNeighbor();
 
     friend CentralWorkerDoListItem;
 
@@ -132,14 +138,15 @@ private:
 
     void _monitor();
     void _determineRange();
-    void _shiftIfNeeded();
+    bool _shiftIfNeeded(); ///< @Return true if data was shifted with the right neighbor.
     void _shift(Direction direction, int keysToShift);
 
     void _workerInfoReceive(std::unique_ptr<proto::WorkerListItem>& protoBuf);
 
     void _workerKeyInsertReq(LoaderMsg const& inMsg, std::unique_ptr<proto::KeyInfoInsert>& protoBuf);
-    void _forwardKeyInsertRequest(WWorkerListItem::Ptr const& target, LoaderMsg const& inMsg,
-                                  std::unique_ptr<proto::KeyInfoInsert> const& protoData);
+    //void _forwardKeyInsertRequest(WWorkerListItem::Ptr const& target, LoaderMsg const& inMsg, std::unique_ptr<proto::KeyInfoInsert> const& protoData); &&&
+    void _forwardKeyInsertRequest(NetworkAddress const& targetAddr, LoaderMsg const& inMsg,
+                                  std::unique_ptr<proto::KeyInfoInsert>& protoData);
 
     void _workerKeyInfoReq(LoaderMsg const& inMsg, std::unique_ptr<proto::KeyInfoInsert>& protoBuf);
     void _forwardKeyInfoRequest(WWorkerListItem::Ptr const& target, LoaderMsg const& inMsg,
@@ -155,8 +162,11 @@ private:
     void _rightConnect();
     void _rightDisconnect();
 
-    void _cancelShiftsRightNeighbor();
+    void _cancelShiftsToRightNeighbor();
+    void _finishShiftToRight();
+    void _restoreTransferListToRight();
 
+    void _restoreTransferListFromRight();
 
     const std::string        _hostName;
     const int                _udpPort;
@@ -174,7 +184,8 @@ private:
     std::map<std::string, ChunkSubchunk> _directorIdMap;
     std::deque<std::chrono::system_clock::time_point> _recentAdds; ///< track how many keys added recently.
     std::chrono::milliseconds _recent{60 * 1000};
-    std::mutex _idMapMtx; ///< protects _strRange, _directorIdMap, _recentAdds
+    std::mutex _idMapMtx; ///< protects _strRange, _directorIdMap,
+                          ///< _recentAdds, _transferListToRight, _transferListFromRight
 
     Neighbor _neighborLeft{Neighbor::LEFT};
     Neighbor _neighborRight{Neighbor::RIGHT};
@@ -185,10 +196,12 @@ private:
     SocketStatus _rightConnectStatus{VOID0};
     std::shared_ptr<tcp::socket>  _rightSocket;
 
-    std::atomic<bool> _shiftWithRightInProgress{false};
+    std::atomic<bool> _shiftWithRightInProgress{false};  // &&& rename to _shiftAsClientInProgress
     double _thresholdNeighborShift{1.10}; ///< Shift if 10% more than neighbor
     int _maxKeysToShift{10000};
-    std::vector<StringKeyPair> _transferList;
+    std::vector<StringKeyPair> _transferListToRight1; // &&& delete 1
+
+    std::vector<StringKeyPair> _transferListFromRight;
 
     std::shared_ptr<CentralWorkerDoListItem> _centralWorkerDoListItem;
 

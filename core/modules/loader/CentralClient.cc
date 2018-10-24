@@ -134,7 +134,6 @@ void CentralClient::_handleKeyInsertComplete(LoaderMsg const& inMsg, std::unique
         keyInsertOneShot = iter->second;
         _waitingKeyInsertMap.erase(iter);
     }
-    // keyInsertOneShot->infoReceived(); &&&
     keyInsertOneShot->keyInsertComplete();
     LOGS(_log, LOG_LVL_INFO, "Successfully inserted key=" << key << " " << chunkInfo);
 }
@@ -174,6 +173,7 @@ void CentralClient::_keyInsertReq(std::string const& key, int chunk, int subchun
     protoKeyInfo->set_key(key);
     protoKeyInfo->set_chunk(chunk);
     protoKeyInfo->set_subchunk(subchunk);
+    protoKeyInsert.set_hops(0);
 
     StringElement strElem;
     protoKeyInsert.SerializeToString(&(strElem.element));
@@ -216,6 +216,7 @@ void CentralClient::_keyInfoReq(std::string const& key) {
      protoKeyInfo->set_key(key);
      protoKeyInfo->set_chunk(0);
      protoKeyInfo->set_subchunk(0);
+     protoKeyInsert.set_hops(0);
 
      StringElement strElem;
      protoKeyInsert.SerializeToString(&(strElem.element));
