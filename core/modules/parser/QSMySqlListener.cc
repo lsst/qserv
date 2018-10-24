@@ -134,25 +134,6 @@ void QSMySqlListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) {\
 } \
 
 
-// A function to fail in the case of a not-supported query segment. This should be called with a helpful
-// user-visible error message, e.g. "qserv does not support column names in select statements" (although of
-// course it does!). A condition variable is used for convenience, for example you could say
-// `SelectStatement.hasColumns()` so that if it's true then the error will get raised. In the case of an
-// error a detailed message is logged, for debugging, and an adapter_exectuion_error is raised with a
-// message, including the MESSAGE, for the user.
-#define NOT_SUPPORTED_ERROR(CONDITION, MESSAGE, CTX) \
-if (false == (CONDITION)) { \
-    ostringstream msg; \
-    msg << "Not supported error:"; \
-    msg << getTypeName(this) << "::" << __FUNCTION__; \
-    msg << " messsage:\"" << MESSAGE << "\""; \
-    msg << ", in query:" << getStatementString(); \
-    LOGS(_log, LOG_LVL_ERROR, msg.str()); \
-    throw adapter_execution_error( \
-        "Error parsing query, near \"" + getQueryString(CTX) + "\", " + MESSAGE); \
-}
-
-
 // This macro is used to log (at the trace level) handle... calls, including the class and function name and
 // whatever object or stream of objects (e.g. `valueExpr`, or `valueExpr << " " << functionName` are passed
 // in to CALLBACK_INFO
@@ -587,6 +568,7 @@ public:
 
     // assert that condition is true, otherwise log a message & throw an adapter_execution_error with the
     // text of the query string that the context represents.
+    //
     // function: usually the name of the function where the assert is being executed, most callers pass
     //           __FUNCTION__.
     // condition: the condition that is being asserted. True passes, false logs and throws.
@@ -610,6 +592,35 @@ public:
         msg << ", tokens:" << getTokens();
         LOGS(_log, LOG_LVL_ERROR, msg.str());
         throw adapter_execution_error("Error parsing query, near \"" + queryString + "\"");
+    }
+
+
+    // A function to fail in the case of a not-supported query segment. This should be called with a helpful
+    // user-visible error message, e.g. "qserv does not support column names in select statements" (although
+    // of course it does!). A condition variable is used for convenience, for example you could say
+    // `SelectStatement.hasColumns()` so that if it's true then the error will get raised. In the case of an
+    // error a detailed message is logged, for debugging, and an adapter_exectuion_error is raised with a
+    // message, including the MESSAGE, for the user.
+    //
+    // function: usually the name of the function where the assert is being executed, most callers pass
+    //           __FUNCTION__.
+    // condition: the condition that is being asserted. True passes, false logs and throws.
+    // message: a message for the log, it is not included in the exception.
+    // ctx: the antlr4 context that is used to get the segment of the query that is currently being
+    //      processed.
+    void assertNotSupported(string const& function, bool condition, string const& message,
+            antlr4::ParserRuleContext* ctx) const {
+        if (true == condition) {
+            return;
+        }
+        ostringstream msg;
+        msg << "Not supported error:";
+        msg << getTypeName(this) << "::" << function;
+        msg << " messsage:\"" << message << "\"";
+        msg << ", in query:" << getStatementString();
+        LOGS(_log, LOG_LVL_ERROR, msg.str());
+        throw adapter_execution_error(
+                "Error parsing query, near \"" + getQueryString(ctx) + "\", " + message);
     }
 };
 
@@ -1206,8 +1217,8 @@ public:
     }
 
     void onEnter() override {
-        NOT_SUPPORTED_ERROR(_ctx->LOCAL_ID() == nullptr, "LOCAL_ID is not supported", _ctx);
-        NOT_SUPPORTED_ERROR(_ctx->VAR_ASSIGN() == nullptr, "VAR_ASSIGN is not supported", _ctx);
+        assertNotSupported(__FUNCTION__, _ctx->LOCAL_ID() == nullptr, "LOCAL_ID is not supported", _ctx);
+        assertNotSupported(__FUNCTION__, _ctx->VAR_ASSIGN() == nullptr, "VAR_ASSIGN is not supported", _ctx);
     }
 
     void onExit() override {}
@@ -1636,25 +1647,25 @@ public:
     using AdapterT::AdapterT;
 
     void onExit() override {
-        NOT_SUPPORTED_ERROR(_ctx->ALL() == nullptr,
+        assertNotSupported(__FUNCTION__, _ctx->ALL() == nullptr,
                 "ALL is not supported.", _ctx);
-        NOT_SUPPORTED_ERROR(_ctx->DISTINCTROW() == nullptr,
+        assertNotSupported(__FUNCTION__, _ctx->DISTINCTROW() == nullptr,
                 "DISTINCTROW is not supported.", _ctx);
-        NOT_SUPPORTED_ERROR(_ctx->HIGH_PRIORITY() == nullptr,
+        assertNotSupported(__FUNCTION__, _ctx->HIGH_PRIORITY() == nullptr,
                 "HIGH_PRIORITY", _ctx);
-        NOT_SUPPORTED_ERROR(_ctx->STRAIGHT_JOIN() == nullptr,
+        assertNotSupported(__FUNCTION__, _ctx->STRAIGHT_JOIN() == nullptr,
                 "STRAIGHT_JOIN is not supported.", _ctx);
-        NOT_SUPPORTED_ERROR(_ctx->SQL_SMALL_RESULT() == nullptr,
+        assertNotSupported(__FUNCTION__, _ctx->SQL_SMALL_RESULT() == nullptr,
                 "SQL_SMALL_RESULT is not supported.", _ctx);
-        NOT_SUPPORTED_ERROR(_ctx->SQL_BIG_RESULT() == nullptr,
+        assertNotSupported(__FUNCTION__, _ctx->SQL_BIG_RESULT() == nullptr,
                 "SQL_BIG_RESULT is not supported.", _ctx);
-        NOT_SUPPORTED_ERROR(_ctx->SQL_BUFFER_RESULT() == nullptr,
+        assertNotSupported(__FUNCTION__, _ctx->SQL_BUFFER_RESULT() == nullptr,
                 "SQL_BUFFER_RESULT is not supported.", _ctx);
-        NOT_SUPPORTED_ERROR(_ctx->SQL_CACHE() == nullptr,
+        assertNotSupported(__FUNCTION__, _ctx->SQL_CACHE() == nullptr,
                 "SQL_CACHE", _ctx);
-        NOT_SUPPORTED_ERROR(_ctx->SQL_NO_CACHE() == nullptr,
+        assertNotSupported(__FUNCTION__, _ctx->SQL_NO_CACHE() == nullptr,
                 "SQL_NO_CACHE is not supported.", _ctx);
-        NOT_SUPPORTED_ERROR(_ctx->SQL_CALC_FOUND_ROWS() == nullptr,
+        assertNotSupported(__FUNCTION__, _ctx->SQL_CALC_FOUND_ROWS() == nullptr,
                 "SQL_CALC_FOUND_ROWS is not supported.", _ctx);
 
         lockedParent()->handleSelectSpec(_ctx->DISTINCT() != nullptr);
@@ -1919,7 +1930,8 @@ public:
                     _ctx);
             _val = _ctx->getText();
         }
-        NOT_SUPPORTED_ERROR(_val.find('_') != 0, "Identifiers in Qserv may not start with an underscore.", _ctx);
+        assertNotSupported(__FUNCTION__, _val.find('_') != 0,
+                "Identifiers in Qserv may not start with an underscore.", _ctx);
         lockedParent()->handleUid(_val);
     }
 
@@ -2600,7 +2612,7 @@ public:
     void handleQservFunctionSpec(string const & functionName,
             vector<shared_ptr<query::ValueFactor>> const & args) override {
         TRACE_CALLBACK_INFO(functionName << " " << util::printable(args));
-        NOT_SUPPORTED_ERROR(false, "Qserv functions may not appear in nested contexts.", _ctx);
+        assertNotSupported(__FUNCTION__, false, "Qserv functions may not appear in nested contexts.", _ctx);
     }
 
     void onExit() override {
