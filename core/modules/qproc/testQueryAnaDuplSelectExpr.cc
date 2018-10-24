@@ -96,7 +96,7 @@ BOOST_AUTO_TEST_CASE(Alias) {
 
     std::string expected_err_msg = build_exception_msg("2", "f1", " 1 2");
 
-    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, sql, SelectParser::ANTLR2);
+    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, sql, SelectParser::ANTLR4);
     BOOST_CHECK_EQUAL(qs->getError(), expected_err_msg);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
@@ -107,7 +107,7 @@ BOOST_AUTO_TEST_CASE(CaseInsensitive) {
 
     std::string expected_err_msg = build_exception_msg("2", "chunkid", " 1 2");
 
-    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, sql, SelectParser::ANTLR2);
+    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, sql, SelectParser::ANTLR4);
     BOOST_CHECK_EQUAL(qs->getError(), expected_err_msg);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
@@ -118,7 +118,7 @@ BOOST_AUTO_TEST_CASE(Function) {
 
     std::string expected_err_msg = build_exception_msg("2", "f1", " 2 3");
 
-    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, sql, SelectParser::ANTLR2);
+    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, sql, SelectParser::ANTLR4);
     BOOST_CHECK_EQUAL(qs->getError(), expected_err_msg);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
@@ -127,7 +127,7 @@ BOOST_AUTO_TEST_CASE(Function) {
 BOOST_AUTO_TEST_CASE(Simple) {
     std::string sql = "select pm_declErr, chunkId, ra_Test from LSST.Object where bMagF > 20.0 GROUP BY chunkId;";
 
-     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, sql, SelectParser::ANTLR2);
+     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, sql, SelectParser::ANTLR4);
      std::shared_ptr<QueryContext> context = qs->dbgGetContext();
      BOOST_CHECK(context);
 }
@@ -140,7 +140,7 @@ BOOST_AUTO_TEST_CASE(SameNameDifferentTable) {
 
     std::string expected_err_msg = build_exception_msg("2", "objectid", " 1 2");
 
-     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, sql, SelectParser::ANTLR2);
+     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, sql, SelectParser::ANTLR4);
      BOOST_CHECK_EQUAL(qs->getError(), expected_err_msg);
      std::shared_ptr<QueryContext> context = qs->dbgGetContext();
      BOOST_CHECK(context);

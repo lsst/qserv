@@ -65,7 +65,7 @@ BOOST_FIXTURE_TEST_SUITE(OrderBy, QueryAnaFixture)
 
 BOOST_AUTO_TEST_CASE(SecondaryIndex) {
     std::string stmt = "select * from Object where objectIdObjTest in (2,3145,9999);";
-    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt, SelectParser::ANTLR2);
+    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt, SelectParser::ANTLR4);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
@@ -81,11 +81,11 @@ BOOST_AUTO_TEST_CASE(SecondaryIndex) {
 
 BOOST_AUTO_TEST_CASE(CountIn) {
     std::string stmt = "select COUNT(*) AS N FROM Source WHERE objectId IN(386950783579546, 386942193651348);";
-    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt, SelectParser::ANTLR2);
+    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt, SelectParser::ANTLR4);
     std::string expectedParallel = "SELECT COUNT(*) AS QS1_COUNT FROM LSST.Source_100 AS QST_1_ "
                                    "WHERE objectId IN(386950783579546,386942193651348)";
     std::string expectedMerge = "SELECT SUM(QS1_COUNT) AS N";
-    auto queries = queryAnaHelper.getInternalQueries(qsTest, stmt, SelectParser::ANTLR2);
+    auto queries = queryAnaHelper.getInternalQueries(qsTest, stmt, SelectParser::ANTLR4);
     BOOST_CHECK_EQUAL(queries[0], expectedParallel);
     BOOST_CHECK_EQUAL(queries[1], expectedMerge);
     for(auto i = queryAnaHelper.querySession->cQueryBegin(), e = queryAnaHelper.querySession->cQueryEnd();
@@ -102,7 +102,7 @@ BOOST_AUTO_TEST_CASE(CountIn) {
 
 BOOST_AUTO_TEST_CASE(RestrictorObjectIdAlias) {
     std::string stmt = "select * from Object as o1 where objectIdObjTest IN (2,3145,9999);";
-    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt, SelectParser::ANTLR2);
+    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt, SelectParser::ANTLR4);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
