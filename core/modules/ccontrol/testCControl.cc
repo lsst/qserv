@@ -476,11 +476,6 @@ static const std::vector< std::string > QUERIES = {
        "FROM Source s1 CROSS JOIN Source s2 "
        "WHERE s1.bar = s2.bar;",
 
-    // this is not supposed to produce a valid query. test and fix as needed in DM-16166
-    //fails "select objectId, sro.*, (sro.refObjectId-1)/2%pow(2,10), typeId "
-    //   "from Source s join RefObjMatch rom using (objectId) "
-    //   "join SimRefObject sro using (refObjectId) where isStar =1 limit 10;",
-
     "SELECT objectId, "
        "scisql_fluxToAbMag(uFlux_PS), scisql_fluxToAbMag(gFlux_PS), "
        "scisql_fluxToAbMag(rFlux_PS), scisql_fluxToAbMag(iFlux_PS), "
@@ -670,7 +665,7 @@ static const std::vector< ParseErrorQueryInfo > PARSE_ERROR_QUERIES = {
     // rejected. This is true for Qserv too.
     ParseErrorQueryInfo(
         "SELECT objectId, iE1_SG, ABS(iE1_SG) FROM Object WHERE iE1_SG between -0.1 and 0.1 ORDER BY ABS(iE1_SG)",
-        "ParseException:qserv does not support functions in ORDER BY"),
+        "ParseException:Error parsing query, near \"ABS(iE1_SG)\", qserv does not support functions in ORDER BY."),
 
     ParseErrorQueryInfo(
         "SELECT foo from Filter f limit 5 garbage query !#$%!#$",
@@ -679,6 +674,12 @@ static const std::vector< ParseErrorQueryInfo > PARSE_ERROR_QUERIES = {
     ParseErrorQueryInfo(
         "SELECT count(*) AS n, AVG(ra_PS), AVG(decl_PS), _chunkId FROM Object GROUP BY _chunkId;",
         "ParseException:Error parsing query, near \"_chunkId\", Identifiers in Qserv may not start with an underscore."),
+
+    ParseErrorQueryInfo(
+        "select objectId, sro.*, (sro.refObjectId-1)/2%pow(2,10), typeId "
+            "from Source s join RefObjMatch rom using (objectId) "
+            "join SimRefObject sro using (refObjectId) where isStar =1 limit 10;",
+        "ParseException:Error parsing query, near \"%\""),
 };
 
 
