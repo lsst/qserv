@@ -675,6 +675,10 @@ static const std::vector< ParseErrorQueryInfo > PARSE_ERROR_QUERIES = {
     ParseErrorQueryInfo(
         "SELECT foo from Filter f limit 5 garbage query !#$%!#$",
         "ParseException:Failed to instantiate query: \"SELECT foo from Filter f limit 5 garbage query !#$%!#$\""),
+
+    ParseErrorQueryInfo(
+        "SELECT count(*) AS n, AVG(ra_PS), AVG(decl_PS), _chunkId FROM Object GROUP BY _chunkId;",
+        "ParseException:Error parsing query, near \"_chunkId\", Identifiers in Qserv may not start with an underscore."),
 };
 
 
@@ -682,7 +686,6 @@ BOOST_DATA_TEST_CASE(expected_parse_error, PARSE_ERROR_QUERIES, queryInfo) {
     auto querySession = qproc::QuerySession();
     auto selectStmt = querySession.parseQuery(queryInfo.query, parser::SelectParser::ANTLR4);
     BOOST_REQUIRE_EQUAL(selectStmt, nullptr);
-    //TODO the message here is good for debugging - need to figuire out how to test the user visible message.
     BOOST_REQUIRE_EQUAL(querySession.getError(), queryInfo.errorMessage);
 }
 

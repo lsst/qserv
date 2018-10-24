@@ -149,7 +149,7 @@ if (false == (CONDITION)) { \
     msg << ", in query:" << getStatementString(); \
     LOGS(_log, LOG_LVL_ERROR, msg.str()); \
     throw adapter_execution_error( \
-        "Error parsing query, near \"" + getQueryString(CTX) + "\"" + MESSAGE); \
+        "Error parsing query, near \"" + getQueryString(CTX) + "\", " + MESSAGE); \
 }
 
 
@@ -1919,6 +1919,7 @@ public:
                     _ctx);
             _val = _ctx->getText();
         }
+        NOT_SUPPORTED_ERROR(_val.find('_') != 0, "Identifiers in Qserv may not start with an underscore.", _ctx);
         lockedParent()->handleUid(_val);
     }
 
