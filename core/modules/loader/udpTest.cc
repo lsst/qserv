@@ -451,15 +451,51 @@ int main(int argc, char* argv[]) {
         }
 
         // The number of active servers should have increased from 1 to 2
-
-        if (keyAInsert->isFinished() && keyBInsert->isFinished()) {
-            LOGS(_log, LOG_LVL_INFO, "both keyA and KeyB inserted.");
-        } else {
-            LOGS(_log, LOG_LVL_INFO, "\nkeyA and KeyB insert something did not finish");
-            exit(-1);
-        }
-
+        // &&& check number of servers
     }
+
+
+    {
+            std::cout << "\n\n\n******8******* TSTAGE insert several keys ***" << std::endl;
+            std::vector<KeyInfoData::Ptr> keyInfoDataList;
+
+            for (; kPos<keyList.size(); ++kPos) {
+                auto& elem = keyList[kPos];
+                keyInfoDataList.push_back(cCentral1A.keyInsertReq(elem.key, elem.chunk, elem.subchunk));
+            }
+
+            bool insertSuccess = true;
+            int seconds = 0;
+            do {
+                sleep(1); // need to sleep as it never gives up on inserts.
+                ++seconds;
+                insertSuccess = true;
+                for(auto&& kiData : keyInfoDataList) {
+                    if (not kiData->isFinished()) {
+                        insertSuccess = false;
+                    }
+                }
+                LOGS(_log, LOG_LVL_INFO, "seconds=" << seconds << " insertSuccess=" << insertSuccess);
+            } while (not insertSuccess);
+
+            if (insertSuccess) {
+                LOGS(_log, LOG_LVL_INFO, "insert success kPos=" << kPos << " sec=" << seconds);
+            } else {
+                LOGS(_log, LOG_LVL_ERROR, "insert failure kPos=" << kPos << " sec=" << seconds);
+                exit(-1);
+            }
+
+            // The number of active servers should have increased from 1 to 2
+
+            if (keyAInsert->isFinished() && keyBInsert->isFinished()) {
+                LOGS(_log, LOG_LVL_INFO, "both keyA and KeyB inserted.");
+            } else {
+                LOGS(_log, LOG_LVL_INFO, "\nkeyA and KeyB insert something did not finish");
+                exit(-1);
+            }
+            // &&& check number of servers
+
+        }
 
 
     //ioService.stop(); // &&& this doesn't seem to work cleanly

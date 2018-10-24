@@ -97,7 +97,7 @@ public:
     }
 
     bool setValid() {
-        _valid = (_maxE <= _min);
+        _valid = (_min <= _maxE );
         return _valid;
     }
 

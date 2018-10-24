@@ -252,6 +252,7 @@ public:
 class StringElement : public MsgElement {
 public:
     using Ptr = std::shared_ptr<StringElement>;
+    using UPtr = std::unique_ptr<StringElement>;
     static const int myType = STRING_ELEM;
 
     StringElement(std::string const& element_) : MsgElement(myType), element(element_) {}
@@ -332,7 +333,9 @@ public:
         NEIGHBOR_VERIFIED,     //
         SHIFT_TO_RIGHT,
         SHIFT_TO_RIGHT_RECEIVED,
-        SHIFT_TO_RIGHT_COMPLETE
+        SHIFT_TO_RIGHT_COMPLETE,
+        SHIFT_FROM_RIGHT,
+        SHIFT_FROM_RIGHT_RECEIVED
     };
 
     enum {
