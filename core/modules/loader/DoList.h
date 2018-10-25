@@ -92,7 +92,7 @@ public:
                 return _command;
             }
         } else if (_command->isFinished()) {
-            _command.reset(); // open the door for the command to be sent again
+            _command.reset(); // Allow the command to be sent again later.
         }
         return nullptr;
     }
@@ -125,6 +125,8 @@ public:
         return shared_from_this();
     }
 
+    void setTimeOut(std::chrono::milliseconds timeOut) { _timeOut.setTimeOut(timeOut); }
+
     virtual util::CommandTracked::Ptr createCommand()=0;
 
 protected:
@@ -133,7 +135,7 @@ protected:
     bool    _oneShot{false}; ///< True if after the needed information is gathered, this item can be dropped.
     bool    _needInfo{true}; ///< True if information is needed.
     bool    _remove{false}; ///< set to true if this item should no longer be checked.
-    TimeOut _timeOut{std::chrono::minutes(15)};
+    TimeOut _timeOut{std::chrono::minutes(5)}; ///< If no info is needed, check for info after this period of time.
     TimeOut _timeRequest{std::chrono::seconds(5)}; ///< Rate limiter, no more than 1 message every 5 seconds
     util::CommandTracked::Ptr _command;
     std::mutex _mtx; ///< protects _timeOut, _timeRequest, _command, _oneShot, _needInfo

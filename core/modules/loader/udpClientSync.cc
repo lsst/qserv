@@ -55,7 +55,7 @@ int main(int argc, char* argv[]){
                                              respBuf.getAvailableWriteLength()), senderEndpoint);
             respBuf.advanceWriteCursor(len);
 
-            std::cout << "resp=" << respBuf.dump(true, true) << std::endl;
+            std::cout << "resp=" << respBuf.dumpStr(true, true) << std::endl;
         }
     }
     catch (std::exception& e)
