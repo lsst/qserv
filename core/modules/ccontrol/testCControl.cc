@@ -394,10 +394,6 @@ static const std::vector< std::string > QUERIES = {
     "SELECT foo FROM Filter f limit 5;",
     "SELECT foo FROM Filter f limit 5;; ",
 
-    // this is not supposed to produce a valid query. test and fix as needed in DM-16166
-    //fails "SELECT foo from Filter f limit 5 garbage query !#$%!#$",
-    //fails "SELECT foo from Filter f limit 5; garbage query !#$%!#$",
-
     // DM-1784: Nested ValueExpr in function calls.
     "SELECT  o1.objectId "
        "FROM Object o1 "
@@ -410,10 +406,6 @@ static const std::vector< std::string > QUERIES = {
     "SELECT * FROM RefObjMatch;",
     "SELECT * FROM RefObjMatch WHERE "
                       "foo<>bar AND baz<3.14159;",
-    // this is not supposed to produce a valid query. test and fix as needed in DM-16166
-    //fails "LECT sce.filterName,sce.field "
-    //   "FROM LSST.Science_Ccd_Exposure AS sce "
-    //   "WHERE sce.field=535 AND sce.camcol LIKE '%' ",
     // Equi-join using index and free-form syntax
     "SELECT s.ra, s.decl, o.foo FROM Source s, Object o "
        "WHERE s.objectIdSourceTest=o.objectIdObjTest and o.objectIdObjTest = 430209694171136;",
@@ -487,17 +479,6 @@ static const std::vector< std::string > QUERIES = {
        "< (0.08 + 0.42 * (scisql_fluxToAbMag(gFlux_PS)-scisql_fluxToAbMag(rFlux_PS) - 0.96)) "
        " OR scisql_fluxToAbMag(gFlux_PS)-scisql_fluxToAbMag(rFlux_PS) > 1.26 ) "
        "AND    scisql_fluxToAbMag(iFlux_PS)-scisql_fluxToAbMag(zFlux_PS) < 0.8;",
-
-    // this is not supposed to produce a valid query. test and fix as needed in DM-16166
-    // per testQueryAnaGeneral: CASE in column spec is illegal.
-    //"SELECT  COUNT(*) AS totalCount, "
-    //   "SUM(CASE WHEN (typeId=3) THEN 1 ELSE 0 END) AS galaxyCount "
-    //   "FROM Object WHERE rFlux_PS > 10;",
-    // this is not supposed to produce a valid query. test and fix as needed in DM-16166
-    // per testQueryAnaGeneral: CASE in column spec is illegal.
-    //fails "SELECT scisql_fluxToAbMag(uFlux_PS) "
-    //   "FROM   Object WHERE  (objectId % 100 ) = 40;",
-
 
     // case01/queries/0013_groupedLogicalTerm.sql
     "select objectId, ra_PS from Object where ra_PS > 359.5 and (objectId = 417853073271391 or  objectId = 399294519599888)",
@@ -672,6 +653,14 @@ static const std::vector< ParseErrorQueryInfo > PARSE_ERROR_QUERIES = {
         "ParseException:Failed to instantiate query: \"SELECT foo from Filter f limit 5 garbage query !#$%!#$\""),
 
     ParseErrorQueryInfo(
+        "SELECT foo from Filter f limit 5 garbage query !#$%!#$",
+        "ParseException:Failed to instantiate query: \"SELECT foo from Filter f limit 5 garbage query !#$%!#$\""),
+
+    ParseErrorQueryInfo(
+        "SELECT foo from Filter f limit 5; garbage query !#$%!#$",
+        "ParseException:Failed to instantiate query: \"SELECT foo from Filter f limit 5; garbage query !#$%!#$\""),
+
+    ParseErrorQueryInfo(
         "SELECT count(*) AS n, AVG(ra_PS), AVG(decl_PS), _chunkId FROM Object GROUP BY _chunkId;",
         "ParseException:Error parsing query, near \"_chunkId\", Identifiers in Qserv may not start with an underscore."),
 
@@ -679,6 +668,25 @@ static const std::vector< ParseErrorQueryInfo > PARSE_ERROR_QUERIES = {
         "select objectId, sro.*, (sro.refObjectId-1)/2%pow(2,10), typeId "
             "from Source s join RefObjMatch rom using (objectId) "
             "join SimRefObject sro using (refObjectId) where isStar =1 limit 10;",
+        "ParseException:Error parsing query, near \"%\""),
+
+    ParseErrorQueryInfo(
+        "LECT sce.filterName,sce.field "
+            "FROM LSST.Science_Ccd_Exposure AS sce "
+            "WHERE sce.field=535 AND sce.camcol LIKE '%' ",
+        "ParseException:Failed to instantiate query: \"LECT sce.filterName,sce.field "
+            "FROM LSST.Science_Ccd_Exposure AS sce WHERE sce.field=535 AND sce.camcol LIKE '%' \""),
+
+    // per testQueryAnaGeneral: CASE in column spec is illegal.
+    ParseErrorQueryInfo(
+        "SELECT  COUNT(*) AS totalCount, "
+           "SUM(CASE WHEN (typeId=3) THEN 1 ELSE 0 END) AS galaxyCount "
+           "FROM Object WHERE rFlux_PS > 10;",
+       "ParseException:qserv can not parse query, near \"CASE WHEN (typeId=3) THEN 1 ELSE 0 END\""),
+
+    // per testQueryAnaGeneral: CASE in column spec is illegal.
+    ParseErrorQueryInfo(
+        "SELECT scisql_fluxToAbMag(uFlux_PS) FROM   Object WHERE  (objectId % 100 ) = 40;",
         "ParseException:Error parsing query, near \"%\""),
 };
 
