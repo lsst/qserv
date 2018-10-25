@@ -124,7 +124,8 @@ public:
 
     StringElement::UPtr buildKeyList(int keysToShift);
 
-    std::string dumpKeys();
+    /// @Return a string describing the first and last 'count' keys. count=0 dumps all keys.
+    std::string dumpKeysStr(int count);
 
 
     void finishShiftFromRight();
@@ -214,7 +215,9 @@ private:
 class CentralWorkerDoListItem : public DoListItem {
 public:
     CentralWorkerDoListItem() = delete;
-    explicit CentralWorkerDoListItem(CentralWorker* centralWorker) : _centralWorker(centralWorker) {}
+    explicit CentralWorkerDoListItem(CentralWorker* centralWorker) : _centralWorker(centralWorker) {
+        setTimeOut(std::chrono::seconds(7));
+    }
 
     util::CommandTracked::Ptr createCommand() override {
         struct CWMonitorCmd : public util::CommandTracked {

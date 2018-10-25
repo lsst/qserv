@@ -76,7 +76,7 @@ private:
 
     tcp::socket _socket;
     ServerTcpBase* _serverTcpBase; // _serverTcpBase controls this class' lifetime.
-    BufferUdp _buf{500000};
+    BufferUdp _buf{1000000};
 
     void _handleImYourLNeighbor(uint32_t bytes);
     void _handleImYourLNeighbor1(boost::system::error_code const& ec, size_t bytesTrans);
