@@ -121,7 +121,7 @@ BufferUdp::Ptr ServerUdpBase::parseMsg(BufferUdp::Ptr const& data,
                                        boost::asio::ip::udp::endpoint const& senderEndpoint) {
     // echo server, so send back what we got
     BufferUdp::Ptr sendData = data;
-    LOGS(_log, LOG_LVL_INFO, "pM dump(" << sendData->dump() << ") from endpoint " << senderEndpoint);
+    LOGS(_log, LOG_LVL_INFO, "pM dump(" << sendData->dumpStr() << ") from endpoint " << senderEndpoint);
     return sendData;
 }
 
