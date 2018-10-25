@@ -47,13 +47,15 @@ namespace lsst {
 namespace qserv {
 namespace loader {
 
+/// Repeatedly read a socket until a valid MsgElement is read, eof,  or an error occurs.
 MsgElement::Ptr BufferUdp::readFromSocket(boost::asio::ip::tcp::socket& socket, std::string const& note) {
     //LOGS(_log, LOG_LVL_INFO, "&&&& readFromSocket !!!!!");
     for (;;) {
         //LOGS(_log, LOG_LVL_INFO, note << " &&& readFromSocket a");
         boost::system::error_code error;
 
-        // If there's something in the buffer already, get it and return
+        // If there's something in the buffer already, get it and return.
+        // This can happen when the previous read of socket read multiple elements.
         MsgElement::Ptr msgElem = _safeRetrieve();
         if (msgElem != nullptr) {
             return msgElem;
@@ -72,7 +74,8 @@ MsgElement::Ptr BufferUdp::readFromSocket(boost::asio::ip::tcp::socket& socket, 
             LOGS(_log, LOG_LVL_INFO, "&&&& readFromSocket eof");
             break; // Connection closed cleanly by peer.
         } else if (error && error != boost::asio::error::eof) {
-            throw boost::system::system_error(error); // Some bad error.
+            // throw boost::system::system_error(error); // Some bad error.
+            throw LoaderMsgErr("BufferUdp::readFromSocket note=" + note + " asio error=" + error.message());
         }
 
         /// Try to retrieve an element (there's no guarantee that an entire element got read in a single read.
@@ -132,7 +135,7 @@ bool BufferUdp::retrieveString(std::string& out, size_t len) {
 }
 
 
-std::string BufferUdp::dump(bool hexDump, bool charDump) const {
+std::string BufferUdp::dumpStr(bool hexDump, bool charDump) const {
         std::stringstream os;
         os << "maxLength=" << _length;
 

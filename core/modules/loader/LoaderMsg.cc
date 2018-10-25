@@ -57,7 +57,7 @@ MsgElement::Ptr MsgElement::retrieve(BufferUdp& data) {
     if (msgElem != nullptr && not msgElem->retrieveFromData(data)) {
         // No good way to recover from missing data from a know type.
         throw LoaderMsgErr("static retrieve, incomplete data for type=" +
-                std::to_string((int)elemT) + " data:" + data.dump());
+                std::to_string((int)elemT) + " data:" + data.dumpStr());
     }
     return msgElem;
 }
@@ -105,7 +105,7 @@ bool StringElement::appendToData(BufferUdp& data) {
      // Insert the string
      if (not data.append(element.data(), len)) {
          throw new LoaderMsgErr("StringElement append unexpectedly failed element=" + element +
-                                " data=" + data.dump());
+                                " data=" + data.dumpStr());
      }
      return true;
 
