@@ -42,6 +42,37 @@ class TestApplication
 
 public:
 
+    /// The pointer type for instances of the class
+    typedef std::shared_ptr<TestApplication> Ptr;
+
+    /**
+     * The factory method is the only way of creating objects of this class
+     * because of the very bqse inheritance from 'enable_shared_from_this'.
+     *
+     * @param argc
+     *   the number of command-line arguments
+     *
+     * @param argv
+     *   the vector of comand-line arguments
+     */
+    static Ptr create(int argc,
+                      const char* const argv[]) {
+        return Ptr(new TestApplication(argc, argv));
+    }
+
+    // Default constrution and copy semantics are prohibited
+
+    TestApplication() = delete;
+    TestApplication(TestApplication const&) = delete;
+    TestApplication& operator=(TestApplication const&) = delete;
+
+    ~TestApplication() override = default;
+
+protected:
+
+    /**
+     * @see TestApplication::create()
+     */
     TestApplication(int argc,
                     const char* const argv[])
         :   Application(
@@ -50,7 +81,6 @@ public:
                 "This is a simple demo illustrating how to use class Application"
                 " for constructing user applications with very little efforts spent"
                 " on mandane tasks.",
-                true /* injectHelpOption */,
                 true /* injectDatabaseOptions */,
                 true /* boostProtobufVersionCheck */,
                 true /* enableServiceProvider */
@@ -111,8 +141,6 @@ public:
 #endif
     }
 
-protected:
-
     /**
      * Implement a user-defined sequence of actions here.
      *
@@ -133,22 +161,20 @@ private:
 
     // Values of the command line parameters
 
-    int          _p1;
-    std::string  _p2;
+    int _p1;
+    std::string _p2;
     unsigned int _o1;
-    bool         _o2;
-    bool         _verbose;
+    bool _o2;
+    bool _verbose;
 };
 } /// namespace
 
-int main(int argc,
-         const char* const argv[]) {
-
+int main(int argc, const char* const argv[]) {
     try {
-        ::TestApplication app(argc, argv);
-        return app.run();
+        auto app = ::TestApplication::create(argc, argv);
+        return app->run();
     } catch (std::exception const& ex) {
-        std::cerr << "the application failed, exception: " << ex.what() << std::endl;
+        std::cerr << "main()  the application failed, exception: " << ex.what() << std::endl;
     }
     return 1;
 }

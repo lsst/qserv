@@ -52,24 +52,38 @@ ParserError::ParserError(util::Issue::Context const& ctx,
 
 Parser::Parser(int argc,
                const char* const argv[],
-               std::string const& description,
-               bool injectHelpOption)
-    :   _argc(argc),
-        _argv(argv),
+               std::string const& description)
+    :   _argc       (argc),
+        _argv       (argv),
         _description(description),
-        _injectHelpOption(injectHelpOption),
-        _code(Status::UNDEFINED) {
+        _code       (Status::UNDEFINED),
+        _helpFlag   (false) {
+
+    // Always inject this flag
+    flag("help",
+        "print this 'help'",
+        _helpFlag
+    );
 }
 
 void Parser::reset() {
+
     _allArguments.clear();
     _required.clear();
     _optional.clear();
     _options.clear();
     _flags.clear();
-    _code = Status::UNDEFINED;
-    _usage = "";
-    _help = "";
+
+    _code     = Status::UNDEFINED;
+    _helpFlag = false;
+    _usage    = "";
+    _help     = "";
+
+    // Re-inject this flag
+    flag("help",
+        "print this 'help'",
+        _helpFlag
+    );
 }
 
 Parser& Parser::flag(std::string const& name,
@@ -100,14 +114,8 @@ int Parser::parse() {
 
     try {
 
-        // Inject standard options if requested
+        // Inject standard options
 
-        bool helpFlag = false;
-        if (_injectHelpOption) {
-            flag("help",
-                 "print this 'help'",
-                 helpFlag);
-        }
 
         // Split input arguments into the following 3 categories, assuming
         // the following syntax:
@@ -174,7 +182,7 @@ int Parser::parse() {
         // Intercept and respond to '--help' if found before parsing
         // positional parameters
 
-        if (helpFlag) {
+        if (_helpFlag) {
             std::cerr << help() << std::endl;
             _code = Status::HELP_REQUESTED;
         } else {
@@ -318,68 +326,87 @@ std::string Parser::wrap(std::string const& str,
     return os.str();
 }
 
+std::string Parser::serializeArguments() const {
+
+    if (Status::SUCCESS != _code) {
+        throw std::logic_error(
+            "Application::Parser::serializeArguments()"
+            "  command line arguments have not been parsed yet");
+    }
+    std::ostringstream os;
+    for (auto&& arg: _required) os << *arg << " ";
+    for (auto&& arg: _optional) os << *arg << " ";
+    for (auto&& arg: _options)  os << *arg.second << " ";
+    for (auto&& arg: _flags)    os << *arg.second << " ";
+    return os.str();
+}
+
 } // namespace detail
 
 Application::Application(int argc,
                          const char* const argv[],
                          std::string const& description,
-                         bool const injectHelpOption,
                          bool const injectDatabaseOptions,
                          bool const boostProtobufVersionCheck,
                          bool const enableServiceProvider)
     :    _parser(
             argc,
             argv,
-            description,
-            injectHelpOption
+            description
         ),
-        _injectDatabaseOptions(injectDatabaseOptions),
-        _boostProtobufVersionCheck(boostProtobufVersionCheck),
-        _enableServiceProvider(enableServiceProvider),
-        _config("file:replication.cfg") {
+        _injectDatabaseOptions        (injectDatabaseOptions),
+        _boostProtobufVersionCheck    (boostProtobufVersionCheck),
+        _enableServiceProvider        (enableServiceProvider),
+        _debugFlag                    (false),
+        _config                       ("file:replication.cfg"),
+        _databaseAllowReconnect       (Configuration::databaseAllowReconnect() ? 1 : 0),
+        _databaseConnectTimeoutSec    (Configuration::databaseConnectTimeoutSec()),
+        _databaseMaxReconnects        (Configuration::databaseMaxReconnects()),
+        _databaseTransactionTimeoutSec(Configuration::databaseTransactionTimeoutSec()) {
+
+    if (_boostProtobufVersionCheck) {
+
+        // Verify that the version of the library that we linked against is
+        // compatible with the version of the headers we compiled against.
+
+        GOOGLE_PROTOBUF_VERIFY_VERSION;
+    }
 }
 
 int Application::run() {
 
     // Add extra options to the parser's configuration
 
-    bool debugFlag = false;
     parser().flag(
         "debug",
         "Change the logging lover of the internal LSST level to DEBUG. Note that the Logger"
         " is configured via a configuration file presented to the application via"
         " environment variable LSST_LOG_CONFIG. If this variable is not set then some"
         " default configuation of the Logger will be assumed.",
-        debugFlag
+        _debugFlag
     );
-
-    unsigned int databaseAllowReconnect        = replica::Configuration::databaseAllowReconnect() ? 1 : 0;
-    unsigned int databaseConnectTimeoutSec     = replica::Configuration::databaseConnectTimeoutSec();
-    unsigned int databaseMaxReconnects         = replica::Configuration::databaseMaxReconnects();
-    unsigned int databaseTransactionTimeoutSec = replica::Configuration::databaseTransactionTimeoutSec();
-
     if (_injectDatabaseOptions) {
         parser().option(
             "db-allow-reconnect",
             "Change the default database connecton handling node. Set 0 to disable"
             " automati reconnects. Any other number would allow reconnects.",
-            databaseAllowReconnect
+            _databaseAllowReconnect
         ).option(
             "db-reconnect-timeout",
             "Change the default value limiting a duration of time for making automatic"
             " reconnects to a database server before failing and reporting error"
             " (if the server is not up, or if it's not reachable for some reason)",
-            databaseConnectTimeoutSec
+            _databaseConnectTimeoutSec
         ).option(
             "db-max-reconnects",
             "Change the default value limiting a number of attempts to repeat a sequence"
             " of queries due to connection losses and subsequent reconnects before to fail.",
-            databaseMaxReconnects
+            _databaseMaxReconnects
         ).option(
             "db-transaction-timeout",
             "Change the default value limiting a duration of each attempt to execute"
             " a database transaction before to fail.",
-            databaseTransactionTimeoutSec
+            _databaseTransactionTimeoutSec
         );
     }
     if (_enableServiceProvider) {
@@ -395,24 +422,44 @@ int Application::run() {
 
     // Change the default logging level if requested
 
-    if (not debugFlag) {
-        LOG_CONFIG_PROP("log4j.rootLogger=ERROR");
+    if (not _debugFlag) {
+        LOG_CONFIG_PROP(
+            "log4j.rootLogger=INFO, CONSOLE\n"
+            "log4j.appender.CONSOLE=org.apache.log4j.ConsoleAppender\n"
+            "log4j.appender.CONSOLE.layout=org.apache.log4j.PatternLayout\n"
+            "log4j.appender.CONSOLE.layout.ConversionPattern=%d{yyyy-MM-ddTHH:mm:ss.SSSZ}  LWP %-5X{LWP} %-5p  %m%n\n"
+            "log4j.logger.lsst.qserv=INFO"
+        );
     }
 
     // Change default parameters of the database connectors
     if (_injectDatabaseOptions) {
 
-        Configuration::setDatabaseAllowReconnect(0 != databaseAllowReconnect);
-        Configuration::setDatabaseConnectTimeoutSec(databaseConnectTimeoutSec);
-        Configuration::setDatabaseMaxReconnects(databaseMaxReconnects);
-        Configuration::setDatabaseTransactionTimeoutSec(databaseTransactionTimeoutSec);
+        Configuration::setDatabaseAllowReconnect(0 != _databaseAllowReconnect);
+        Configuration::setDatabaseConnectTimeoutSec(_databaseConnectTimeoutSec);
+        Configuration::setDatabaseMaxReconnects(_databaseMaxReconnects);
+        Configuration::setDatabaseTransactionTimeoutSec(_databaseTransactionTimeoutSec);
     }
     if (_enableServiceProvider) {
+
+        // Create and then start the provider in its own thread pool before
+        // performing any asynchronious operations via BOOST ASIO.
+        //
+        // Note that onFinish callbacks which are activated upon the completion of
+        // the asynchronious activities will be run by a thread from the pool.
+
         _serviceProvider = ServiceProvider::create(_config);
+        _serviceProvider->run();
     }
 
-    // Finally, let the user's code to do the job
-    return runImpl();
+    // Let the user's code to do its job
+    int const exitCode = runImpl();
+
+    // Shutdown the provider and join with its threads
+    if (_enableServiceProvider) {
+        _serviceProvider->stop();
+    }
+    return exitCode;
 }
 
 ServiceProvider::Ptr const& Application::serviceProvider() const {

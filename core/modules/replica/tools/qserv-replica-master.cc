@@ -20,12 +20,17 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-/// qserv-replica-master.cc is a fixed-logic replication Controller executing
-/// a sequence of jobs in an infinite loop. The application is not
-/// meant to respond to any external communications (commands, etc.)
+/**
+ * qserv-replica-master.cc is a latest version of a fixed-logic replication
+ * Controller Replication Controller executing a sequence of jobs in an infinite loop.
+ * The application is not meant to respond to any external communications (commands,
+ * etc.). Also, it doesn't have a state (checkpoints)  which would allow resuming
+ * unfinished tasks in case of restarts.
+ */
 
 // System headers
 #include <atomic>
+#include <iostream>
 #include <stdexcept>
 #include <string>
 #include <thread>
@@ -35,715 +40,322 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "proto/replication.pb.h"
-#include "replica/ClusterHealthJob.h"
+#include "replica/Application.h"
 #include "replica/Configuration.h"
-#include "replica/Controller.h"
-#include "replica/DeleteWorkerJob.h"
-#include "replica/FindAllJob.h"
-#include "replica/FixUpJob.h"
-#include "replica/PurgeJob.h"
-#include "replica/RebalanceJob.h"
-#include "replica/ReplicateJob.h"
-#include "replica/ServiceProvider.h"
-#include "replica/QservSyncJob.h"
+#include "replica/DeleteWorkerThread.h"
+#include "replica/HealthMonitorThread.h"
+#include "replica/ReplicationThread.h"
 #include "util/BlockPost.h"
-#include "util/CmdLineParser.h"
 
 using namespace lsst::qserv::replica;
 namespace util = lsst::qserv::util;
 
 namespace {
 
-LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.qserv-replica-master");
+std::string const description =
+    "This application is the Master Replication Controller which has"
+    " a built-in Cluster Health Monitor and a linear Replication loop."
+    " The Monitor would track a status of both Qserv and Replication workers"
+    " and trigger the worker exclusion sequence if both services were found"
+    " non-responsive within a configured interval."
+    " The interval is specified via the corresponidng command-line option."
+    " And it also has some built-in default value."
+    " Also, note that only a single node failure can trigger the worker"
+    " exclusion sequence."
+    " The controller has a fixed logic, and can't accept any external commands.";
 
-struct Application {
+std::string const logger =
+    "lsst.qserv.replica.qserv-replica-master";
 
-    // Command line parameters
-    
-    std::string configUrl;
+class MasterControllerApp
+    :   public Application {
 
-    bool         databaseAllowReconnect        = Configuration::databaseAllowReconnect();
-    unsigned int databaseConnectTimeoutSec     = Configuration::databaseConnectTimeoutSec();
-    unsigned int databaseMaxReconnects         = Configuration::databaseMaxReconnects();
-    unsigned int databaseTransactionTimeoutSec = Configuration::databaseTransactionTimeoutSec();
+public:
 
-    unsigned int healthProbeIntervalSec;
-    unsigned int replicationIntervalSec;
-    unsigned int workerResponseTimeoutSec;
-    unsigned int workerEvictTimeoutSec;
-    unsigned int qservSyncTimeoutSec;
-
-    unsigned int numReplicas;
-    bool         purge;
-    unsigned int numIter;
-
-    // Replication system context
-
-    ServiceProvider::Ptr provider;
-    Controller::Ptr controller;
-
-    std::vector<std::string> databaseFamilies;
-
-    /// The flag to indicate a catastrophic activity which must result
-    /// in a termination of the application
-    std::atomic<bool> failed;
-    
-    /// This flag is raised by the health monitoring thread to notify
-    /// the replication thread that it should wrap up its operation
-    /// and quit
-    std::atomic<bool> stopReplication;
-
-    /// no parent for any job initited by the application
-    std::string const parentJobId;
-
-    /// Force Qserv synchronization if 'true'
-    bool forceQservSync;
-
-    /// Permanently delete workers if set to 'true'
-    bool permanentDelete;
-
-    // Context strings for threads
-
-    std::string healthMonitorContext;
-    std::string replicationLoopContext;
+    /// The pointer type for instances of the class
+    typedef std::shared_ptr<MasterControllerApp> Ptr;
 
     /**
-     * Construct the application and begin its execution
+     * The factory method is the only way of creating objects of this class
+     * because of the very base class's inheritance from 'enable_shared_from_this'.
+     *
+     * @param argc
+     *   the number of command-line arguments
+     *
+     * @param argv
+     *   the vector of comand-line arguments
+     *
+     * @param description
+     *   the description of the application to be printed when the command-line
+     *   parser is invoked in the "help" mode.
+     *
+     * @param logger
+     *   the name of a logger
      */
-    Application(int argc, const char* const argv[])
-        :   configUrl("file:replication.cfg"),
-            databaseAllowReconnect       (Configuration::databaseAllowReconnect()),
-            databaseConnectTimeoutSec    (Configuration::databaseConnectTimeoutSec()),
-            databaseMaxReconnects        (Configuration::databaseMaxReconnects()),
-            databaseTransactionTimeoutSec(Configuration::databaseTransactionTimeoutSec()),
-            healthProbeIntervalSec  (60),
-            replicationIntervalSec  (60),
-            workerResponseTimeoutSec(60),
-            workerEvictTimeoutSec   (3600),
-            qservSyncTimeoutSec     (60),
-            numReplicas             (0),
-            purge                   (false),
-            numIter                 (0),
-            failed                  (false),
-            stopReplication         (false),
-            forceQservSync          (false),
-            permanentDelete         (false),
-            healthMonitorContext    ("HEALTH-MONITOR    "),
-            replicationLoopContext  ("REPLICATION-LOOP  ") {
+    static Ptr create(int argc,
+                      const char* const argv[],
+                      std::string const& description,
+                      std::string const& logger) {
+        return Ptr(
+            new MasterControllerApp(
+                argc,
+                argv,
+                description,
+                logger
+            )
+        );
+    }
 
-        // Parse command line parameters
+    // Default constrution and copy semantics are prohibited
 
-        util::CmdLineParser parser(
-            argc,
-            argv,
-            "\n"
-            "Usage:\n"
-            "\n"
-            "  [--config=<url>]\n"
-            "  [--db-allow-reconnect=<flag>]\n"
-            "  [--db-reconnect-timeout=<sec>]\n"
-            "  [--db-max-reconnects=<num>]\n"
-            "  [--db-transaction-timeout=<sec>]\n"
-            "  [--health-probe-interval=<seconds>]\n"
-            "  [--replication-interval=<seconds>]\n"
-            "  [--worker-response-timeout=<seconds>]\n"
-            "  [--worker-evict-timeout=<seconds>]\n"
-            "  [--qserv-sync-timeout=<seconds>]\n"
-            "  [--replicas=<number>]\n"
-            "  [--purge]\n"
-            "  [--iter=<num>]\n"
-            "\n"
-            "Flags and options:\n"
-            "\n"
-            "    --config \n"
-            "\n"
-            "      configuration URL (a file or a database connection string)\n"
-            "      DEFAULT: " + configUrl + "\n"
-            "\n"
-            "    --db-allow-reconnect \n"
-            "\n"
-            "      change the default database connecton handling node. Set 0 to disable automatic\n"
-            "      reconnects. Any other number would enable reconnects.\n"
-            "      DEFAULT: " + std::string(databaseAllowReconnect ? "1" : "0") + "\n"
-            "\n"
-            "    --db-reconnect-timeout \n"
-            "\n"
-            "      change the default value limiting a duration of time for making automatic\n"
-            "      reconnects to a database server before failing and reporting error (if the server\n"
-            "      is not up, or if it's not reachable for some reason)\n"
-            "      DEFAULT: " + std::to_string(databaseConnectTimeoutSec) + "\n"
-            "\n"
-            "    --db-max-reconnects\n"
-            "\n"
-            "      change the default value limiting a number of attempts to repeat a sequence\n"
-            "      of queries due to connection losses and subsequent reconnects before to fail.\n"
-            "      DEFAULT: " + std::to_string(databaseMaxReconnects) + "\n"
-            "\n"
-            "    --db-transaction-timeout \n"
-            "\n"
-            "      change the default value limiting a duration of each attempt to execute\n"
-            "      a database transaction before to fail.\n"
-            "      DEFAULT: " + std::to_string(databaseTransactionTimeoutSec) + "\n"
-            "\n"
-            "    --health-probe-interval \n"
-            "\n"
-            "      interval (seconds) between running the health monitor\n"
-            "      DEFAULT: " + std::to_string(healthProbeIntervalSec) + " seconds\n"
-            "\n"
-            "\n"
-            "    --replication-interval \n"
-            "\n"
-            "      interval (seconds) between running the normal sequence of\n"
-            "      actions: check - fixup - replicate - rebalance\n"
-            "      DEFAULT: " + std::to_string(replicationIntervalSec) + " seconds\n"
-            "\n"
-            "    --worker-response-timeout \n"
-            "\n"
-            "      maximum number of seconds to wait before giving up\n"
-            "      on worker probes when checking workers' statuses\n"
-            "      DEFAULT: " + std::to_string(workerResponseTimeoutSec) + " seconds\n"
-           "\n"
-            "    --worker-evict-timeout \n"
-            "\n"
-            "      maximum number of seconds to allow troubles workers to recover\n"
-            "      from the last catastrophic event before evicting them from a cluster\n"
-            "      DEFAULT: " + std::to_string(workerEvictTimeoutSec) + " seconds\n"
-            "\n"
-            "    --qserv-sync-timeout \n"
-            "\n"
-            "      maximum number of seconds to wait before Qserv workers respond\n"
-            "      to the synchronization requests before bailing out and proceeding\n"
-            "      to the next step in the normal replication sequence. A value which\n"
-            "      differs from 0 would override the corresponding parameter specified\n"
-            "      in the Configuration.\n"
-            "      DEFAULT: " + std::to_string(qservSyncTimeoutSec) + " seconds\n"
-            "\n"
-            "    --replicas \n"
-            "\n"
-            "      minimal number of replicas when running the replication phase\n"
-            "      This number of provided will override the corresponding value found in\n"
-            "      in the Configuration.\n"
-            "      DEFAULT: " + std::to_string(numReplicas) + " replicas of each chunk\n"
-            "\n"
-            "    --purge \n"
-            "\n"
-            "      also run the purge algorithm to eliminate excess replicas on each cycle\n"
-            "\n"
-            "    --iter \n"
-            "\n"
-            "      the number of iterations (a value of 0 means running indefinitively)\n"
-            "      DEFAULT: " + std::to_string(numIter) + "\n");
+    MasterControllerApp() = delete;
+    MasterControllerApp(MasterControllerApp const&) = delete;
+    MasterControllerApp& operator=(MasterControllerApp const&) = delete;
 
-        configUrl = parser.option<std::string>("config", configUrl);
+    ~MasterControllerApp() override = default;
 
-        databaseAllowReconnect        = parser.option<unsigned int>("db-allow-reconnect",     databaseAllowReconnect);
-        databaseConnectTimeoutSec     = parser.option<unsigned int>("db-reconnect-timeout",   databaseConnectTimeoutSec);
-        databaseMaxReconnects         = parser.option<unsigned int>("db-max-reconnects",      databaseMaxReconnects);
-        databaseTransactionTimeoutSec = parser.option<unsigned int>("db-transaction-timeout", databaseTransactionTimeoutSec);
+protected:
 
-        healthProbeIntervalSec   = parser.option<unsigned int>("health-probe-interval",   healthProbeIntervalSec);
-        replicationIntervalSec   = parser.option<unsigned int>("replication-interval",    replicationIntervalSec);
-        workerResponseTimeoutSec = parser.option<unsigned int>("worker-response-timeout", workerResponseTimeoutSec);
-        workerEvictTimeoutSec    = parser.option<unsigned int>("worker-evict-timeout",    workerEvictTimeoutSec);
-        qservSyncTimeoutSec      = parser.option<unsigned int>("qserv-sync-timeout",      qservSyncTimeoutSec);
-        numReplicas              = parser.option<unsigned int>("replicas",                numReplicas);
+    /**
+     * @see MasterControllerApp::create()
+     */
+    MasterControllerApp(int argc,
+                        const char* const argv[],
+                        std::string const& description,
+                        std::string const& logger)
+        :   Application(
+                argc,
+                argv,
+                description,
+                true /* injectDatabaseOptions */,
+                true /* boostProtobufVersionCheck */,
+                true /* enableServiceProvider */
+            ),
+            _healthProbeIntervalSec  (60),
+            _replicationIntervalSec  (60),
+            _workerResponseTimeoutSec(60),
+            _workerEvictTimeoutSec   (3600),
+            _qservSyncTimeoutSec     (60),
+            _numReplicas             (0),
+            _numIter                 (0),
+            _purge          (false),
+            _forceQservSync (false),
+            _permanentDelete(false),
+            _failed         (false),
+            _log(LOG_GET(logger)) {
 
-        purge = parser.flag("purge");
+        // Configure the command line parser
 
-        numIter = parser.option<unsigned int>("iter", numIter);
+        parser().option(
+            "health-probe-interval",
+            "interval (seconds) between running the health monitor",
+            _healthProbeIntervalSec
+        ).option(
+            "replication-interval",
+            "interval (seconds) between running the linear sequence of"
+            " actions: check - fixup - replicate - rebalance",
+            _replicationIntervalSec
+        ).option(
+            "worker-response-timeout",
+            "maximum number of seconds to wait before giving up"
+            " on worker probes when checking workers' statuses",
+            _workerResponseTimeoutSec
+        ).option(
+            "worker-evict-timeout",
+            "the maximum number of seconds to allow troubles workers to recover"
+            " from the last catastrophic event before evicting them from a cluster",
+            _workerEvictTimeoutSec
+        ).option(
+            "qserv-sync-timeout",
+            "the maximum number of seconds to wait before Qserv workers respond"
+            " to the synchronization requests before bailing out and proceeding"
+            " to the next step in the normal replication sequence. A value which"
+            " differs from 0 would override the corresponding parameter specified"
+            " in the Configuration.",
+            _qservSyncTimeoutSec
+        ).flag(
+            "qserv-sync-force",
+            "the flag which would force Qserv workers to update their list of replicas"
+            " even if some of the chunk replicas were still in use by on-going queries."
+            " This affect replicas to be deleted from the workers during the synchronization"
+            " stages",
+            _forceQservSync
+        ).option(
+            "replicas",
+            "the minimal number of replicas when running the replication phase"
+            " This number of provided will override the corresponding value found in"
+            " in the Configuration.",
+            _numReplicas
+        ).option(
+            "iter",
+            "the number of iterations (a value of 0 means running indefinitively)",
+            _numIter
+        ).flag(
+            "purge",
+            "also run the purge algorithm in the end of each repliocation cycle in order"
+            " to eliminate excess replicas which might get created by olgorithm ran earlier"
+            " in the cycle",
+            _purge
+        ).flag(
+            "permanent-worker-delete",
+            "this flag would result in the permanent removal of the excluded workers"
+            " workers from the configuration of the Replication system. Please, use"
+            " this option with caution as it may result in loosing some Configuration"
+            " data for the deleted workers",
+            _permanentDelete
+        );
+    }
 
-        LOGS(_log, LOG_LVL_INFO, "MASTER            "
-             << "configUrl="               << configUrl << " "
-             << "db-allow-reconnect="      << (databaseAllowReconnect ? 1 :0) << " "
-             << "db-reconnect-timeout="    << databaseConnectTimeoutSec << " "
-             << "db-max-reconnects="       << databaseMaxReconnects <<  " "
-             << "db-transaction-timeout="  << databaseTransactionTimeoutSec <<  " "
-             << "health-probe-interval="   << healthProbeIntervalSec << " "
-             << "replication-interval="    << replicationIntervalSec << " "
-             << "worker-response-timeout=" << workerResponseTimeoutSec << " "
-             << "worker-evict-timeout="    << workerEvictTimeoutSec << " "
-             << "qserv-sync-timeout="      << qservSyncTimeoutSec << " "
-             << "replicas="                << numReplicas << " "
-             << "purge="                   << (purge ? 1 :0) << " "
-             << "iter="                    << numIter);
+    /**
+     * @see Application::runImpl()
+     */
+    int runImpl() final {
 
-        ///////////////////////////////////////////////////////////////
-        // Set global configuration options for the database connectors
+        LOGS(_log, LOG_LVL_INFO, "MASTER CONTROLLER  " << parser().serializeArguments());
 
-        Configuration::setDatabaseAllowReconnect(databaseAllowReconnect);
-        Configuration::setDatabaseConnectTimeoutSec(databaseConnectTimeoutSec);
-        Configuration::setDatabaseMaxReconnects(databaseMaxReconnects);
-        Configuration::setDatabaseTransactionTimeoutSec(databaseTransactionTimeoutSec);
+        _controller = Controller::create(serviceProvider());
 
-        ///////////////////////////////////////////////////////////////////////////
-        // Start the provider in its own thread pool before initiating any requests
-        // or jobs.
-        //
-        // Note that onFinish callbacks which are activated upon the completion of
-        // the requests or jobs will be run by a thread from the pool.
+        // These threads should be running simultaneously
 
-        provider   = ServiceProvider::create(configUrl);
-        controller = Controller::create(provider);
+        auto self = shared_from_base<MasterControllerApp>();
 
-        provider->run();
+        _replicationThread = ReplicationThread::create(
+            _controller,
+            [self] (ControlThread::Ptr const& ptr) {
+                self->_failed = true;
+            },
+            _qservSyncTimeoutSec,
+            _replicationIntervalSec,
+            _numReplicas,
+            _numIter,
+            _purge
+        );
+        _replicationThread->start();
 
-        databaseFamilies = provider->config()->databaseFamilies();
+        _healthMonitorThread = HealthMonitorThread::create(
+            _controller,
+            [self] (ControlThread::Ptr const& ptr) {
+                self->_failed = true;
+            },
+            [self] (std::string const& worker2evict) {
+                self->_evict(worker2evict);
+            },
+            _workerEvictTimeoutSec,
+            _workerResponseTimeoutSec,
+            _healthProbeIntervalSec
+        );
+        _healthMonitorThread->start();
 
-        // Start both activities in separate threads
-        
-        startReplicationSequence();
-        startHealthMonitor();
-        
         // Keep running before a catastrophic failure is reported by any
         // above initiated activity
 
         util::BlockPost blockPost(1000, 2000);
-        while (not failed) {
+        while (not _failed) {
             blockPost.wait();
         }
 
-        //////////////////////////////////////////////////
-        // Shutdown the provider and join with its threads
+        // Stop all threads if any are still running
 
-        provider->stop();
+        _healthMonitorThread->stop();
+        _replicationThread->stop();
+
+        return 1;
     }
+
+private:
 
     /**
-     * Run the normal sequence of jobs in a  detached
-     * thread until a catastrophic failure happens or an external flag telling
-     * the thread to abort its activities and cancel on-going jobs is set.
+     * Evict the specified worker from the cluster
+     *
+     * NOTE: This method is called by the health-monitoring thread when
+     * a condition for evicting the worker is detected. The calling thread
+     * will be blocked for a duration of this call.
+     *
+     * @param worker
+     *   the name of a worker to be evicted
      */
-    void startReplicationSequence() {
-    
-        LOGS(_log, LOG_LVL_INFO, replicationLoopContext << "start");
+    void _evict(std::string const& worker) {
 
-        std::thread replicationThread([&]() {
-            replicationSequence();
-        });
-        replicationThread.detach();
-    }
-    
-    void replicationSequence() {
+        // This thread needs to be stopped to avoid any interference with
+        // the worker exclusion protocol.
 
-        try {
-            
-            // ---------------------------------------------------------------------
-            // Start the normal loop asynchronously for all known database families.
-            // Each wave of jobs is followed by the synchronization stage to ensure
-            // Qserv stays in sync with the Replicaiton system.
-            // --------------------------------------------------------------
-    
-            unsigned int numIterCompleted = 0;
+        _replicationThread->stop();
 
-            while (not (stopReplication or failed)) {
+        // This thread will be allowed to run for as long as it's permitted by
+        // the corresponding timeouts set for Requests and Jobs in the Configuration,
+        // or until a catastrophic failure occures within any control thread (including
+        // this one).
 
-                bool const saveReplicaInfo = true;
+        auto self = shared_from_base<MasterControllerApp>();
 
-                if (launch<FindAllJob>("FindAllJob", saveReplicaInfo)) break;
-                if (sync()) break;
-
-                if (launch<FixUpJob>("FixUpJob")) break;
-                if (sync()) break;
-
-                if (launch<ReplicateJob>("ReplicateJob", numReplicas)) break;
-                if (sync()) break;
-
-                bool const estimateOnly = false;
-                if (launch<RebalanceJob>("RebalanceJob", estimateOnly)) break;
-                if (sync()) break;
-
-                if (purge) {
-                    if (launch<PurgeJob>("PurgeJob", numReplicas)) break;
-                    if (sync()) break;
-                }
-
-                // Wait before going for another iteration
-
-                util::BlockPost blockPost(1000 * replicationIntervalSec,
-                                          1000 * replicationIntervalSec + 1);
-                blockPost.wait();
-
-                // Stop the application if running in the iteration restricted mode
-                // and a desired number of iterations has been reached.
-                ++numIterCompleted;
-                if (0 != numIter) {
-                    if (numIterCompleted >= numIter) {
-                        LOGS(_log, LOG_LVL_INFO, replicationLoopContext
-                             << "desired number of iterations has been reached");
-                        failed = true;
-                    }
-                }
+        _deleteWorkerThread = DeleteWorkerThread::create(
+            _controller,
+            [self] (ControlThread::Ptr const& ptr) {
+                self->_failed = true;
+            },
+            worker,
+            _permanentDelete
+        );
+        _deleteWorkerThread->startAndWait(
+            [self] (ControlThread::Ptr const& ptr) -> bool {
+                return self->_failed;
             }
+        );
+        _deleteWorkerThread->stop();    // it's safe to call this method even if the thread is
+                                        // no longer running.
 
-        } catch (std::exception const& ex) {
-            LOGS(_log, LOG_LVL_ERROR, replicationLoopContext << "exception: " << ex.what());
-            failed = true;
-        }
+        // Resume the normal replication sequence unless a catastrophic failure
+        // in the system has been detected
         
-        // Reset this flag to let the Health Monitoring thread know that
-        // this thread has finished.
-
-        stopReplication = false;
+        if (not _failed) _replicationThread->start();
     }
 
-    /**
-     * Launch and track a job of the specified type. Note that parameters
-     * of the job are passed as variadic arguments to the method.
-     *
-     * @param jobName - the name of a job
-     * @param Fargs   - job-specific variadic parameters
-     * 
-     * @return 'true' if the job cancelation sequence was initiated
-     */
-    template <class T, typename...Targs>
-    bool launch(std::string const& jobName,
-                Targs... Fargs) {
+private:
 
-        LOGS(_log, LOG_LVL_INFO, replicationLoopContext << jobName);
+    // Command line parameters
 
-        // ---------------
-        // Launch the jobs
+    unsigned int _healthProbeIntervalSec;
+    unsigned int _replicationIntervalSec;
+    unsigned int _workerResponseTimeoutSec;
+    unsigned int _workerEvictTimeoutSec;
+    unsigned int _qservSyncTimeoutSec;
+    unsigned int _numReplicas;
+    unsigned int _numIter;
 
-        std::vector<Job::Ptr> jobs;
-        std::atomic<size_t> numFinishedJobs{0};
+    bool _purge;
+    bool _forceQservSync;
+    bool _permanentDelete;
 
-        for (auto&& family: databaseFamilies) {
-            auto job = T::create(
-                family,
-                Fargs...,
-                controller,
-                parentJobId,
-                [&numFinishedJobs](typename T::Ptr const& job) {
-                    ++numFinishedJobs;
-                }
-            );
-            job->start();
-            jobs.push_back(job);
-        }
+    /// This flag will be raised by any thread if a non-recoverable
+    /// catastrophic failure will be detected.
+    std::atomic<bool> _failed;
 
-        // --------------------------------------------------------------
-        // Track the completion of all jobs. Also monitor the termination
-        // conditions.
+    /// The controller for launching oprations with the Replication system services
+    Controller::Ptr _controller;
 
-        LOGS(_log, LOG_LVL_INFO, replicationLoopContext << jobName << ": tracking started");
+    // Control threads
 
-        util::BlockPost blockPost(1000, 1001);  // ~1 second wait time between iterations
-    
-        while (numFinishedJobs != jobs.size()) {
-            if (stopReplication or failed) {
-                for (auto&& job: jobs) {
-                    job->cancel();
-                }
-                LOGS(_log, LOG_LVL_INFO, replicationLoopContext << jobName << ": tracking aborted");
-                return true;
-            }
-            blockPost.wait();
-        }
-        LOGS(_log, LOG_LVL_INFO, replicationLoopContext << jobName << ": tracking finished");
-        return false;
-    }
+    HealthMonitorThread::Ptr _healthMonitorThread;
+    ReplicationThread::Ptr   _replicationThread;
+    DeleteWorkerThread::Ptr  _deleteWorkerThread;
 
-    /**
-     * Launch Qserv synchronization jobs.
-     *
-     * @return 'true' if the job cancelation sequence was initiated
-     */
-    bool sync() {
-        return launch<QservSyncJob>("QservSyncJob",
-                                    qservSyncTimeoutSec,
-                                    forceQservSync);
-    }
-
-    /**
-     * Run the cluster Health Monitoing sequence of actions in a detached
-     * thread until a catastrophic failure happens or an external flag telling
-     * the the thread to abort its activities and cancel on-going jobs is set.
-     *
-     * Single worker eviction starts when:
-     *
-     * - both Qserv and Replication services are not responding
-     * within the specificed eviction interval on a worker to be marked for
-     * eviction
-     *
-     * - and the remaining (excluding the evicted workers) Replication workers
-     * must be available
-     *
-     * Otherwise, the Health Monitoring thread will keep tracking status
-     * of both services on the worker nodes. In the mean time, the Replication
-     * thread will keep trying its best effort in populating a cluster with
-     * replicas (even if some replication worker agents were down).
-     */
-    void startHealthMonitor() {
-
-        LOGS(_log, LOG_LVL_INFO, healthMonitorContext << "start");
-
-        std::thread healthMonitorThread([&]() {
-            healthMonitoringSequence();
-        });
-        healthMonitorThread.detach();
-    }
-
-    void healthMonitoringSequence() {
-
-        try {
-
-            // Accumulate here non-response intervals for each workers until either will
-            // reach the "eviction" threshold. Then trigger worker eviction sequence.
-
-            std::map<std::string,           // worker
-                     std::map<std::string,  // service
-                              unsigned int>> workerServiceNoResponseSec;
-
-            for (auto&& worker: controller->serviceProvider()->config()->workers()) {
-                workerServiceNoResponseSec[worker]["qserv"] = 0;
-                workerServiceNoResponseSec[worker]["replication"] = 0;
-            }
-            while (not failed) {
-
-                // ---------------------------------------------------------
-                // Probe hosts. Wait for completion or expiration of the job
-                // before analyzing its findings.
-
-                LOGS(_log, LOG_LVL_INFO, healthMonitorContext << "ClusterHealthJob");
-
-                std::atomic<bool> finished(false);
-                auto const job = ClusterHealthJob::create(
-                    workerResponseTimeoutSec,
-                    controller,
-                    parentJobId,
-                    [&finished](ClusterHealthJob::Ptr const& job) {
-                        finished = true;
-                    }
-                );
-                job->start();
-
-                if (track(job, finished, "ClusterHealthJob")) return;
-                
-                // -----------------------------------------------
-                // Update non-response intervals for both services
-
-                for (auto&& entry: job->clusterHealth().qserv()) {
-
-                    auto worker = entry.first;
-                    auto responded = entry.second;
-
-                    if (responded) {
-                        workerServiceNoResponseSec[worker]["qserv"] = 0;
-                    } else {
-                        workerServiceNoResponseSec[worker]["qserv"] += workerResponseTimeoutSec;
-                        LOGS(_log, LOG_LVL_INFO, healthMonitorContext
-                             << "no response from Qserv at worker '" << worker << "' for "
-                             << workerServiceNoResponseSec[worker]["qserv"] << " seconds");
-                    }
-                }
-                for (auto&& entry: job->clusterHealth().replication()) {
-
-                    auto worker = entry.first;
-                    auto responded = entry.second;
-
-                    if (responded) {
-                        workerServiceNoResponseSec[worker]["replication"] = 0;
-                    } else {
-                        workerServiceNoResponseSec[worker]["replication"] += workerResponseTimeoutSec;
-                        LOGS(_log, LOG_LVL_INFO, healthMonitorContext
-                             << "no response from Replication at worker '" << worker << "' for "
-                             << workerServiceNoResponseSec[worker]["replication"] << " seconds");
-                    }
-                }
-
-                // ------------------------------------------------------------------------
-                // Analyze the intervals to see which workers have reached the eviciton
-                // threshold. Also count the total number of Replication workers (including
-                // the evicted ones) which ae offline.
-
-                std::vector<std::string> workers2evict;
-
-                size_t numReplicationWorkersOffline = 0;
-
-                for (auto&& entry: workerServiceNoResponseSec) {
-
-                    auto worker = entry.first;
-
-                    // Both services on the worker must be offline for a duration of
-                    // the eviction interval before electing the worker for eviction.
-
-                    if (entry.second.at("replication") >= workerEvictTimeoutSec) {
-                        if (entry.second.at("qserv") >= workerEvictTimeoutSec) {
-                            workers2evict.push_back(worker);
-                            LOGS(_log, LOG_LVL_INFO, healthMonitorContext
-                                 << "worker '" << worker << "' has reached eviction timeout of "
-                                 << workerEvictTimeoutSec << " seconds");
-                        }
-                        numReplicationWorkersOffline++;
-                    }
-                }
-                switch (workers2evict.size()) {
-
-                    case 0:
-                        
-                        // --------------------------------------------------------------------
-                        // Pause before going for another iteration only if all services on all
-                        // workers are up. Otherwise we would skew (extend) the "no-response"
-                        // intervals.
-
-                        if (0 == numReplicationWorkersOffline) {
-                            util::BlockPost blockPost(1000 * healthProbeIntervalSec,
-                                                      1000 * healthProbeIntervalSec + 1);
-                            blockPost.wait();
-                        }
-                        break;
-
-                    case 1:
-                        
-                        // ----------------------------------------------------------------------
-                        // An important requirement for evicting a worker is that the Replication
-                        // services on the remaining workers must be up and running.
-
-                        if (1 == numReplicationWorkersOffline) {
-
-                            std::string const worker = workers2evict[0];
-
-                            // Stop the Replication sequence and wait before it finishes or fails
-                            // unless the cancellation is already in-progress.
-
-                            if (stopReplication.exchange(true)) {
-                                throw std::logic_error(
-                                            healthMonitorContext +
-                                            "the cancellation of the Replication thread is already in progress");
-                            }
-
-                            LOGS(_log, LOG_LVL_INFO, healthMonitorContext << "Replication cancellation: tracking started");
-
-                            util::BlockPost blockPost(1000, 2000);
-
-                            while (not stopReplication and not failed) {
-                                LOGS(_log, LOG_LVL_INFO, healthMonitorContext << "Replication cancellation: tracking ...");
-                                blockPost.wait();
-                            }
-
-                            // In case if the other thread failed then quit this
-                            // thread as well
-                            if (failed) {
-                                if (stopReplication) stopReplication = false;
-                                LOGS(_log, LOG_LVL_INFO, healthMonitorContext << "Replication cancellation: tracking aborted");
-                                return;
-                            }
-                            LOGS(_log, LOG_LVL_INFO, healthMonitorContext << "Replication cancellation: tracking finished");
-
-                            // ----------------
-                            // Evict the worker
-
-                            LOGS(_log, LOG_LVL_INFO, healthMonitorContext << "DeleteWorkerJob");
-
-                            std::atomic<bool> finished(false);
-
-                            auto const job = DeleteWorkerJob::create(
-                                worker,
-                                permanentDelete,
-                                controller,
-                                parentJobId,
-                                [&finished](DeleteWorkerJob::Ptr const& job) {
-                                    finished = true;
-                                }
-                            );
-                            job->start();
-
-                            if (track(job, finished, "DeleteWorkerJob")) return;
-
-                            // -------------------------------------------------------------------------
-                            // Reset worker-non-response intervals before restart the Replication thread
-                            //
-                            // ATTENTION: the map needs to be rebuild from scratch because one worker
-                            // has been evicted from the Configuration.
-
-                            workerServiceNoResponseSec.clear();
-
-                            for (auto&& worker: controller->serviceProvider()->config()->workers()) {
-                                workerServiceNoResponseSec[worker]["qserv"] = 0;
-                                workerServiceNoResponseSec[worker]["replication"] = 0;
-                            }
-
-                            startReplicationSequence();
-                            break;
-                        }
-                        
-                        // Otherwise, proceed down to the default scenario.
-
-                    default:
-
-                        // Any succesful replication effort is not possible at this stage due
-                        // to one of the following reasons (among other possibilities):
-                        //
-                        //   1) multiple nodes failed simultaneously
-                        //   2) all services on the worker nodes are down (typically after site outage)
-                        //   3) network problems
-                        //
-                        // So, we just keep monitoring the status of the system. The problem (unless it's
-                        // cases 2 or 3) should require a manual repair.
-
-                        LOGS(_log, LOG_LVL_ERROR, healthMonitorContext
-                             << "automated workers eviction is not possible because too many workers "
-                             << workers2evict.size() << " are offline");
-
-                        break;
-                }
-            }
-
-        } catch (std::exception const& ex) {
-            LOGS(_log, LOG_LVL_ERROR, healthMonitorContext << "exception: " << ex.what());
-            failed = true;
-        }
-    }
-
-    /**
-     * Track a job in a context of the Health Monitoring thread
-     *
-     * @param job      - pointer to the job to be tracked
-     * @param finished - job completion flag to monitor
-     * @param name     - name of the job
-     *
-     * @return 'true' if a catastrophic failure detected and the tracking had to abort
-     */
-    bool track(Job::Ptr const& job,
-               std::atomic<bool> const& finished,
-               std::string const& name) {
-
-        LOGS(_log, LOG_LVL_INFO, healthMonitorContext << name << ": tracking started");
-
-        util::BlockPost blockPost(1000, 2000);
-
-        while (not finished and not failed) {
-            blockPost.wait();
-        }
-        if (failed) {
-            job->cancel();
-            LOGS(_log, LOG_LVL_INFO, healthMonitorContext << name << ": tracking aborted");
-            return true;
-        }
-        LOGS(_log, LOG_LVL_INFO, healthMonitorContext << name << ": tracking finished");
-
-        return false;
-    }
+    /// Logger stream
+    LOG_LOGGER _log;
 };
 
 } /// namespace
 
 int main(int argc, const char* const argv[]) {
-
-    // Verify that the version of the library that we linked against is
-    // compatible with the version of the headers we compiled against.
-
-    GOOGLE_PROTOBUF_VERIFY_VERSION;
-
     try {
-
-        // Instantiate and run the application right away
-        ::Application app(argc, argv);
-
+        auto app = ::MasterControllerApp::create(
+            argc,
+            argv,
+            description,
+            logger
+        );
+        return app->run();
     } catch (std::exception const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, "main()  exception: " << ex.what());
-        return 1;
+        std::cerr << "main()  the application failed, exception: " << ex.what() << std::endl;
     }
-    return 0;
+    return 1;
 }

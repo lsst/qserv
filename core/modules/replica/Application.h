@@ -23,7 +23,9 @@
 #define LSST_QSERV_REPLICA_APPLICATION_H
 
 // System headers
+#include <memory>
 #include <string>
+
 
 // Qserv headers
 #include "replica/ApplicationTypes.h"
@@ -40,50 +42,13 @@ namespace replica {
   * tools. The class is meant to take care of mudane tasks such as handling
   * command-line parameters, initializing application environment, etc.
   */
-class Application {
+class Application
+    :   public std::enable_shared_from_this<Application> {
 
 public:
 
     /// To bring the Parser type into the class's scope
     using Parser = detail::Parser;
-
-    /**
-     * Construct and initialize an application.
-     *
-     * @param arc
-     *   argument count
-     * 
-     * @parav argv
-     *   vector of argument values
-     *
-     * @param description
-     *   (optional) descripton of an application as it will appear in
-     *   the documentation string reported with option "--help"
-     *
-     * @param injectHelpOption
-     *   (optional) flag to inject option "--help"
-     *
-     * @param injectDatabaseOptions
-     *   (optional) flag which will inject database options and use an input
-     *   from a user to change the corresponding defaults in the Configuration
-     *
-     * @param boostProtobufVersionCheck
-     *   (optional) flag which will force Google Protobuf version check. The check
-     *   will ensure that a version of the Protobuf library linked to an application
-     *   is consistent with hedear files.
-     *
-     * @param enableServiceProvider
-     *   (optional) flag which will inject configuration option "--config=<url>",
-     *   load the configuration into Configuration and initialize the ServiceProvider
-     *   with the configuration.
-     */
-    Application(int argc,
-                const char* const argv[],
-                std::string const& description = "",
-                bool const injectHelpOption = true,
-                bool const injectDatabaseOptions = true,
-                bool const boostProtobufVersionCheck = false,
-                bool const enableServiceProvider = false);
 
     // Default construction and copy semantics are prohibited
 
@@ -109,6 +74,46 @@ public:
     int run();
 
 protected:
+
+    /**
+     * Construct and initialize an application.
+     *
+     * @param arc
+     *   argument count
+     * 
+     * @parav argv
+     *   vector of argument values
+     *
+     * @param description
+     *   (optional) descripton of an application as it will appear in
+     *   the documentation string reported with option "--help"
+     *
+     * @param injectDatabaseOptions
+     *   (optional) flag which will inject database options and use an input
+     *   from a user to change the corresponding defaults in the Configuration
+     *
+     * @param boostProtobufVersionCheck
+     *   (optional) flag which will force Google Protobuf version check. The check
+     *   will ensure that a version of the Protobuf library linked to an application
+     *   is consistent with hedear files.
+     *
+     * @param enableServiceProvider
+     *   (optional) flag which will inject configuration option "--config=<url>",
+     *   load the configuration into Configuration and initialize the ServiceProvider
+     *   with the configuration.
+     */
+    Application(int argc,
+                const char* const argv[],
+                std::string const& description = "",
+                bool const injectDatabaseOptions = true,
+                bool const boostProtobufVersionCheck = false,
+                bool const enableServiceProvider = false);
+
+    /// @return a shared pointer of the desired subclass (no dynamic type checking)
+    template <class T>
+    std::shared_ptr<T> shared_from_base() {
+        return std::static_pointer_cast<T>(shared_from_this());
+    }
 
     /// @return reference to the parser
     Parser& parser() { return _parser; }
@@ -146,13 +151,22 @@ private:
     /// The flag indicating if Google Protobuf version check is forced
     bool const _boostProtobufVersionCheck;
 
-
     /// The flag indicating if the Configuration object and ServiceProvider
     /// have to be setup.
     bool const _enableServiceProvider;
-    
+
+    /// The standard flag which would turn on the denug output if requsted
+    bool _debugFlag;
+
     /// Configuration URL
     std::string _config;
+
+    // Database connector options (if enabled)
+
+    unsigned int _databaseAllowReconnect;
+    unsigned int _databaseConnectTimeoutSec;
+    unsigned int _databaseMaxReconnects;
+    unsigned int _databaseTransactionTimeoutSec;
     
     /// The provider of the Configuration and other services
     ServiceProvider::Ptr _serviceProvider;

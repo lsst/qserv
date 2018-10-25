@@ -30,6 +30,7 @@
 
 // System headers
 #include <map>
+#include <ostream>
 #include <set>
 #include <sstream>
 #include <string>
@@ -134,6 +135,14 @@ public:
      */
     virtual std::string defaultValue() const = 0;
 
+    /**
+     * Dump the name of an argument and its value into an output stream
+     *
+     * @param
+     *   an output stream object
+     */
+    virtual void dumpNameValue(std::ostream& os) const = 0;
+
 private:
     
     // Parameters of the object passed via the class's constructor
@@ -141,6 +150,15 @@ private:
     std::string const _name;
     std::string const _description;
 };
+
+/**
+ * Dump a string representation of the argument name and its value
+ * to the stream.
+ */
+std::ostream& operator<<(std::ostream& os, ArgumentParser const& arg) {
+    arg.dumpNameValue(os);
+    return os;
+}
 
 /**
  * The class representing (mandatory or optional) parameters
@@ -214,10 +232,17 @@ public:
     /**
      * @see ArgumentParser::defaultValue()
      */
-    virtual std::string defaultValue() const final {
+    std::string defaultValue() const final {
         std::ostringstream os;
         os << _defaultValue;
         return os.str();
+    }
+
+    /**
+     * @see ArgumentParser::dumpNameValue()
+     */
+    void dumpNameValue(std::ostream& os) const final {
+        os << name() << "=" << _var;
     }
 
 private:
@@ -294,10 +319,17 @@ public:
     /**
      * @see ArgumentParser::defaultValue()
      */
-    virtual std::string defaultValue() const final {
+    std::string defaultValue() const final {
         std::ostringstream os;
         os << _defaultValue;
         return os.str();
+    }
+
+    /**
+     * @see ArgumentParser::dumpNameValue()
+     */
+    void dumpNameValue(std::ostream& os) const final {
+        os << name() << "=" << _var;
     }
 
 private:
@@ -361,7 +393,14 @@ public:
     /**
      * @see ArgumentParser::defaultValue()
      */
-    virtual std::string defaultValue() const final { return "false"; }
+    std::string defaultValue() const final { return "false"; }
+
+    /**
+     * @see ArgumentParser::dumpNameValue()
+     */
+    void dumpNameValue(std::ostream& os) const final {
+        os << name() << "=" << (_var ? "1" : "0");
+    }
 
 private:
     
@@ -409,12 +448,10 @@ public:
      * @param arc              - argument count
      * @parav argv             - vector of argument values
      * @param description      - descripton of an application
-     * @param injectHelpOption - flag to inject option '--help'
      */
     Parser(int argc,
            const char* const argv[],
-           std::string const& description,
-           bool injectHelpOption);
+           std::string const& description);
 
     /**
      * Reset the state of the object to the one it was constructed. This
@@ -575,6 +612,16 @@ public:
      */
     int parse();
 
+    /**
+     * @return serialize names and values of the parsed arguments serialized
+     * into a string
+     *
+     * @throws std::logic_error if called before attempted to parse
+     * th command line parameters, or if the parsing didn't successfully
+     * finish with Status::SUCCESS.
+     */
+    std::string serializeArguments() const;
+
 private:
 
     /**
@@ -632,7 +679,6 @@ private:
     int const _argc;
     const char* const* _argv;
     std::string const _description;
-    bool const _injectHelpOption;
 
     /// The names of all parameters, options or flags are registered here
     /// to prevent duplicates.
@@ -654,6 +700,9 @@ private:
     /// invoking method Parser::parse() more than one time. The default value
     /// indicates that the parser has never attempted.
     int _code;
+
+    /// Flag which is used to trigger the "help" regime of the parser
+    bool _helpFlag;
 
     /// The "Usage" string is build when all arguments are registered
     /// and method 'parse()' is invoked.
