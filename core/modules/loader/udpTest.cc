@@ -119,10 +119,10 @@ int main(int argc, char* argv[]) {
         for (auto& ele : elements) {
             if (not ele->appendToData(data)) {
                 throw new LoaderMsgErr("Failed to append " + ele->getStringVal() +
-                        " data:" + data.dump());
+                        " data:" + data.dumpStr());
             }
         }
-        LOGS(_log, LOG_LVL_INFO, "data:" << data.dump());
+        LOGS(_log, LOG_LVL_INFO, "data:" << data.dumpStr());
     } catch (LoaderMsgErr& ex) {
         LOGS(_log, LOG_LVL_ERROR, "Write to buffer FAILED msg=" << ex.what());
         exit(-1);
@@ -138,14 +138,14 @@ int main(int argc, char* argv[]) {
             //inData = MsgElement::retrieveType(inData, elemType);
             //if (not MsgElement::retrieveType(inData, elemType)) { &&&
             if (not MsgElement::retrieveType(data, elemType)) {
-                //throw new LoaderMsgErr("Type was expected but not found!" + inData.dump()); &&&
-                throw new LoaderMsgErr("Type was expected but not found!" + data.dump());
+                //throw new LoaderMsgErr("Type was expected but not found!" + inData.dumpStr()); &&&
+                throw new LoaderMsgErr("Type was expected but not found!" + data.dumpStr());
             }
             MsgElement::Ptr outEle = MsgElement::create(elemType);
             //if (not outEle->retrieveFromData(inData)) { &&&
             if (not outEle->retrieveFromData(data)) {
                 throw new LoaderMsgErr("Failed to retrieve elem=" + outEle->getStringVal() +
-                        " data:" + data.dump());
+                        " data:" + data.dumpStr());
             }
             if (!MsgElement::equal(ele.get(), outEle.get())) {
                 LOGS(_log, LOG_LVL_ERROR,
@@ -171,9 +171,9 @@ int main(int argc, char* argv[]) {
         LoaderMsg outMsg;
         outMsg.parseFromData(lBuf);
         if (  lMsg.msgKind->element    != outMsg.msgKind->element    ||
-              lMsg.msgId->element      != outMsg.msgId->element      ||
-              lMsg.senderHost->element != outMsg.senderHost->element ||
-              lMsg.senderPort->element != outMsg.senderPort->element) {
+                lMsg.msgId->element      != outMsg.msgId->element      ||
+                lMsg.senderHost->element != outMsg.senderHost->element ||
+                lMsg.senderPort->element != outMsg.senderPort->element) {
             LOGS(_log, LOG_LVL_ERROR,
                     "FAILED messages didn't match out:" << outMsg.getStringVal() <<
                     " != lMsg" << lMsg.getStringVal());
@@ -338,12 +338,23 @@ int main(int argc, char* argv[]) {
 
     size_t arraySz = 1000;
     std::vector<KeyChSch> keyList;
-    std::string bStr("a");
-    for (size_t j=0; j<arraySz; ++j) {
-        std::string reversed(bStr.rbegin(), bStr.rend());
-        LOGS(_log, LOG_LVL_INFO, bStr << " newKey=" << reversed << " j(" << j%10 << " ," << j << ")");
-        keyList.emplace_back(reversed, j%10, j);
-        bStr = StringRange::incrementString(bStr, '0');
+    {
+        std::string bStr("a");
+        for (size_t j=0; j<arraySz; ++j) {
+            std::string reversed(bStr.rbegin(), bStr.rend());
+            LOGS(_log, LOG_LVL_INFO, bStr << " newKey=" << reversed << " j(" << j%10 << " ," << j << ")");
+            keyList.emplace_back(reversed, j%10, j);
+            bStr = StringRange::incrementString(bStr, '0');
+        }
+    }
+
+    std::vector<KeyChSch> keyListB;
+    {
+        for (size_t j=0; j<100000; ++j) {
+            std::string str("z");
+            str += std::to_string(j);
+            keyListB.emplace_back(str, j%10, j);
+        }
     }
 
 
@@ -456,52 +467,108 @@ int main(int argc, char* argv[]) {
 
 
     {
-            std::cout << "\n\n\n******8******* TSTAGE insert several keys ***" << std::endl;
-            std::vector<KeyInfoData::Ptr> keyInfoDataList;
+        std::cout << "\n\n\n******8******* TSTAGE insert several keys ***" << std::endl;
+        //std::vector<KeyInfoData::Ptr> keyInfoDataList;
+        std::list<KeyInfoData::Ptr> keyInfoDataList;
 
-            for (; kPos<keyList.size(); ++kPos) {
-                auto& elem = keyList[kPos];
-                keyInfoDataList.push_back(cCentral1A.keyInsertReq(elem.key, elem.chunk, elem.subchunk));
-            }
+        for (; kPos<keyList.size(); ++kPos) {
+            auto& elem = keyList[kPos];
+            keyInfoDataList.push_back(cCentral1A.keyInsertReq(elem.key, elem.chunk, elem.subchunk));
+        }
 
-            bool insertSuccess = true;
-            int seconds = 0;
-            do {
-                sleep(1); // need to sleep as it never gives up on inserts.
-                ++seconds;
-                insertSuccess = true;
+        bool insertSuccess = true;
+        int seconds = 0;
+        int finished = 0;
+        do {
+            sleep(1); // need to sleep as it never gives up on inserts.
+            ++seconds;
+            insertSuccess = true;
+            /* &&&
                 for(auto&& kiData : keyInfoDataList) {
                     if (not kiData->isFinished()) {
                         insertSuccess = false;
                     }
                 }
-                LOGS(_log, LOG_LVL_INFO, "seconds=" << seconds << " insertSuccess=" << insertSuccess);
-            } while (not insertSuccess);
-
-            if (insertSuccess) {
-                LOGS(_log, LOG_LVL_INFO, "insert success kPos=" << kPos << " sec=" << seconds);
-            } else {
-                LOGS(_log, LOG_LVL_ERROR, "insert failure kPos=" << kPos << " sec=" << seconds);
-                exit(-1);
+             */
+            for(auto iter = keyInfoDataList.begin(); iter != keyInfoDataList.end();) {
+                auto keyIter = iter;
+                ++iter;
+                if (not (*keyIter)->isFinished()) {
+                    insertSuccess = false;
+                } else {
+                    keyInfoDataList.erase(keyIter);
+                    ++finished;
+                }
             }
+            LOGS(_log, LOG_LVL_INFO, "seconds=" << seconds << " finished=" << finished <<
+                    " insertSuccess=" << insertSuccess);
+        } while (not insertSuccess);
 
-            // The number of active servers should have increased from 1 to 2
-
-            if (keyAInsert->isFinished() && keyBInsert->isFinished()) {
-                LOGS(_log, LOG_LVL_INFO, "both keyA and KeyB inserted.");
-            } else {
-                LOGS(_log, LOG_LVL_INFO, "\nkeyA and KeyB insert something did not finish");
-                exit(-1);
-            }
-            // &&& check number of servers
-
+        if (insertSuccess) {
+            LOGS(_log, LOG_LVL_INFO, "keyList insert success kPos=" << kPos << " sec=" << seconds);
+        } else {
+            LOGS(_log, LOG_LVL_ERROR, "keyList insert failure kPos=" << kPos << " sec=" << seconds);
+            exit(-1);
         }
+
+        // &&& check number of servers
+
+    }
+
+    {
+        std::cout << "\n\n\n******9******* TSTAGE insert many keys ***" << std::endl;
+        //std::vector<KeyInfoData::Ptr> keyInfoDataList;
+        std::list<KeyInfoData::Ptr> keyInfoDataList;
+
+        for (; kPos<keyListB.size(); ++kPos) {
+            auto& elem = keyListB[kPos];
+            keyInfoDataList.push_back(cCentral1A.keyInsertReq(elem.key, elem.chunk, elem.subchunk));
+        }
+
+        bool insertSuccess = true;
+        int seconds = 0;
+        int finished = 0;
+        do {
+            sleep(1); // need to sleep as it never gives up on inserts.
+            ++seconds;
+            insertSuccess = true;
+            /* &&&
+                    for(auto&& kiData : keyInfoDataList) {
+                        if (not kiData->isFinished()) {
+                            insertSuccess = false;
+                        }
+                    }
+             */
+            for(auto iter = keyInfoDataList.begin(); iter != keyInfoDataList.end();) {
+                auto keyIter = iter;
+                ++iter;
+                if (not (*keyIter)->isFinished()) {
+                    insertSuccess = false;
+                } else {
+                    keyInfoDataList.erase(keyIter);
+                    ++finished;
+                }
+            }
+            LOGS(_log, LOG_LVL_INFO, "seconds=" << seconds << " finished=" << finished <<
+                    " insertSuccess=" << insertSuccess);
+        } while (not insertSuccess);
+
+        if (insertSuccess) {
+            LOGS(_log, LOG_LVL_INFO, "keyListB insert success kPos=" << kPos << " sec=" << seconds);
+        } else {
+            LOGS(_log, LOG_LVL_ERROR, "keyListB insert failure kPos=" << kPos << " sec=" << seconds);
+            exit(-1);
+        }
+
+        // &&& check number of servers
+
+    }
 
 
     //ioService.stop(); // &&& this doesn't seem to work cleanly
     // mastT.join(); &&&
 
-    sleep(10);
+    sleep(60);
     std::cout << "DONE" << std::endl;
     exit(0);
 }

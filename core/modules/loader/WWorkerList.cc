@@ -107,7 +107,7 @@ util::CommandTracked::Ptr WWorkerList::createCommandWorker(CentralWorker* centra
 
 
 bool WWorkerList::workerListReceive(BufferUdp::Ptr const& data) {
-    LOGS(_log, LOG_LVL_INFO, " &&& workerListReceive data=" << data->dump());
+    LOGS(_log, LOG_LVL_INFO, " &&& workerListReceive data=" << data->dumpStr());
     // Open the data protobuffer and add it to our list.
     StringElement::Ptr sData = std::dynamic_pointer_cast<StringElement>(MsgElement::retrieve(*data));
     if (sData == nullptr) {

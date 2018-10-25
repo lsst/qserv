@@ -141,7 +141,8 @@ public:
      }
      */
 
-
+    /// Repeatedly read a socket until a valid MsgElement is read, eof, or an error occurs.
+    /// Errors throw boost::system::system_error(error)
     std::shared_ptr<MsgElement> readFromSocket(boost::asio::ip::tcp::socket& socket, std::string const& note);
 
 
@@ -173,9 +174,9 @@ public:
 
     bool retrieveString(std::string& out, size_t len);
 
-    std::string dump(bool hexDump=true) const { return dump(hexDump, false); }
+    std::string dumpStr(bool hexDump=true) const { return dumpStr(hexDump, false); }
 
-    std::string dump(bool hexDump, bool charDump) const;
+    std::string dumpStr(bool hexDump, bool charDump) const;
 
 private:
     void _setupBuffer() {
