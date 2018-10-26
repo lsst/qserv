@@ -422,6 +422,7 @@ void TcpBaseConnection::_handleImYourLNeighbor1(boost::system::error_code const&
     LOGS(_log, LOG_LVL_INFO, funcName << "&&& bytes=" << bytesTrans << " _buf" << _buf.dumpStr(false));
     try {
         // &&& TODO move as much of this to CentralWorker as possible
+        // Parse left neighbor's key and range information.
         LOGS(_log, LOG_LVL_INFO, funcName <<  "&&& parsing bytes=" << bytesTrans << " _buf" << _buf.dumpStr(false));
         auto protoItem = StringElement::protoParse<proto::WorkerKeysInfo>(_buf);
         if (protoItem == nullptr) {
@@ -455,15 +456,15 @@ void TcpBaseConnection::_handleImYourLNeighbor1(boost::system::error_code const&
 
         _serverTcpBase->getCentralWorker()->setNeighborInfoLeft(workerName, nInfo.keyCount, newLeftRange);
 
-        // Need to send newLeftRange back to left neighbor so it can figure out what to do with its range.
+        // Need to send our range and key count back to left neighbor so it can figure out what to do with its range.
         _buf.reset();
-        StringElement strElem;
+        StringElement strWKI;
         std::unique_ptr<proto::WorkerKeysInfo> protoWKI = _serverTcpBase->getCentralWorker()->_workerKeysInfoBuilder();
-        protoWKI->SerializeToString(&(strElem.element));
-        UInt32Element bytesInMsg(strElem.transmitSize());
-        // Must send the number of bytes in the message so TCP client knows how many bytes to read.
+        protoWKI->SerializeToString(&(strWKI.element));
+        UInt32Element bytesInMsg(strWKI.transmitSize());
+        // Send the number of bytes in the message so TCP client knows how many bytes to read.
         bytesInMsg.appendToData(_buf);
-        strElem.appendToData(_buf);
+        strWKI.appendToData(_buf);
         ServerTcpBase::_writeData(_socket, _buf);
         LOGS(_log, LOG_LVL_INFO, funcName << "&&& done");
     } catch (LoaderMsgErr &msgErr) {
