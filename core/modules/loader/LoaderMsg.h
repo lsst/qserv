@@ -291,6 +291,8 @@ public:
     }
 
 
+    /// This function is only usable if it is know that all data has been read from the socket.
+    /// This the case with UDP, and boost asio async reads that return after X bytes read.
     template<typename T>
     static std::unique_ptr<T> protoParse(BufferUdp& data) {
         StringElement::Ptr itemData = std::dynamic_pointer_cast<StringElement>(MsgElement::retrieve(data));
