@@ -443,7 +443,7 @@ void TcpBaseConnection::_handleImYourLNeighbor1(boost::system::error_code const&
             bool unlimited = protoRange.maxunlimited();
             leftRange.setMinMax(min, max, unlimited);
             LOGS(_log, LOG_LVL_WARN, "&&& TcpBaseConnection::_handleImYourLNeighbor2  leftRange=" << leftRange);
-            newLeftRange = _serverTcpBase->getCentralWorker()->updateLeftNeighborRange(leftRange);
+            newLeftRange = _serverTcpBase->getCentralWorker()->updateRangeWithLeftData(leftRange);
         }
         proto::Neighbor protoLeftNeigh = protoItem->left();
         nInfo.neighborLeft->update(protoLeftNeigh.name());  // Not really useful in this case.

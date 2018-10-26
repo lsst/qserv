@@ -64,7 +64,7 @@ void CentralMaster::addWorker(std::string const& ip, int udpPort, int tcpPort) {
 }
 
 
-void CentralMaster::updateNeighbors(uint32_t workerName, NeighborsInfo const& nInfo) {
+void CentralMaster::updateWorkerInfo(uint32_t workerName, NeighborsInfo const& nInfo, StringRange const& strRange) {
     if (workerName == 0) {
         return;
     }
@@ -74,6 +74,7 @@ void CentralMaster::updateNeighbors(uint32_t workerName, NeighborsInfo const& nI
         return;
     }
     item->setKeyCounts(nInfo);
+    item->setRangeStr(strRange);
     _assignNeighborIfNeeded();
 }
 
@@ -160,18 +161,10 @@ void CentralMaster::_assignNeighborIfNeeded() {
             return;
         }
         _addingWorker = true;
-        /// Fun part !!! &&&
         // Sequence of events goes something like
         // 1) left item gets message from master that it is getting a right neighbor, and writes it down
         // 2) Right item get message from master that it is getting a left neighbor, writes it down.
-        // 3) Right connects to left item, which should be expecting it. (keeps retrying for a minute &&& check that it only tries)
-        // 4) left item sends its largest key value to right
-        // 5) right node sets it range to rightMost and whatever left sent it + 1  (must make max unsigned int illegal, strings, add a 0 to the end)
-        //    5a) verifies this with master.
-        // 6) right indicates it is valid
-        // 7) left verifies. -  done. - shifting can now occur between nodes. -- set _addingWorker = false
-        // failure) ... if it goes 2 minutes without completing, cleanup + try different worker -- maybe set addingWorker = false
-
+        // 3) CentralWorker::_monitor on the left node connects to the right node, ranges are setup and shifts started.
         // Steps 1 and 2
         rightMostItem->setRightNeighbor(inactiveItem);
         inactiveItem->setLeftNeighbor(rightMostItem);
