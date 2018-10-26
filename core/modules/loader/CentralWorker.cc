@@ -145,6 +145,7 @@ void CentralWorker::_determineRange() {
         data.reset();
         UInt32Element imLeftKind(LoaderMsg::IM_YOUR_L_NEIGHBOR);
         imLeftKind.appendToData(data);
+        // Send information about how many keys on this node and their range.
         StringElement strElem;
         std::unique_ptr<proto::WorkerKeysInfo> protoWKI = _workerKeysInfoBuilder();
         protoWKI->SerializeToString(&(strElem.element));
@@ -157,10 +158,16 @@ void CentralWorker::_determineRange() {
     // Get back their basic info
     {
         data.reset();
-        auto msgElem = data.readFromSocket(*_rightSocket, funcName + " - range");
-        LOGS(_log, LOG_LVL_INFO, funcName << "&&&  parsing data=" << data.dumpStr());
+        auto msgElem = data.readFromSocket(*_rightSocket, funcName + " - range bytes");
+        auto bytesInMsg = std::dynamic_pointer_cast<UInt32Element>(msgElem);
+        LOGS(_log, LOG_LVL_INFO, funcName << "&&& bytesInMsg=" << bytesInMsg << " parsing data=" << data.dumpStr());
+        msgElem = data.readFromSocket(*_rightSocket, funcName + " - range info");
+        auto strWKI = std::dynamic_pointer_cast<StringElement>(msgElem);
+        auto protoItem = strWKI->protoParse<proto::WorkerKeysInfo>();
+        /* &&&
         auto protoItem = StringElement::protoParse<proto::WorkerKeysInfo>(data); // shouldn't this be looking at msgElem &&& ???
                                                                                  // probably getting lucky that this is in the buffer &&&
+        */
         if (protoItem == nullptr) {
             LOGS(_log, LOG_LVL_ERROR, "CentralWorker::_determineRange protoItem parse issue!!!!!");
             exit(-1); // &&& remove after checking readFromSocket and parse data, the code looks wrong.
@@ -248,11 +255,14 @@ bool CentralWorker::_shiftIfNeeded() {
         keysToShift = (rightKeyCount - mapSize)/2; // Try for nearly equal number of keys on each.
         direction = FROMRIGHT2;
         sourceSize = rightKeyCount;
+    } else {
+        LOGS(_log, LOG_LVL_INFO, "No reason to shift.");
+        return false;
     }
     if (keysToShift > _maxKeysToShift) keysToShift = _maxKeysToShift;
     if (keysToShift > sourceSize/3) keysToShift = sourceSize/3;
     if (keysToShift < 1) {
-        LOGS(_log, LOG_LVL_WARN, "Worker doesn't have enough keys to shift.");
+        LOGS(_log, LOG_LVL_INFO, "Worker doesn't have enough keys to shift.");
         return false;
     }
     _shiftWithRightInProgress = true;
