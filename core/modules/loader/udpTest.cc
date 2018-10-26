@@ -517,7 +517,6 @@ int main(int argc, char* argv[]) {
 
     {
         std::cout << "\n\n\n******9******* TSTAGE insert many keys ***" << std::endl;
-        //std::vector<KeyInfoData::Ptr> keyInfoDataList;
         std::list<KeyInfoData::Ptr> keyInfoDataList;
 
         for (; kPos<keyListB.size(); ++kPos) {
@@ -532,13 +531,6 @@ int main(int argc, char* argv[]) {
             sleep(1); // need to sleep as it never gives up on inserts.
             ++seconds;
             insertSuccess = true;
-            /* &&&
-                    for(auto&& kiData : keyInfoDataList) {
-                        if (not kiData->isFinished()) {
-                            insertSuccess = false;
-                        }
-                    }
-             */
             for(auto iter = keyInfoDataList.begin(); iter != keyInfoDataList.end();) {
                 auto keyIter = iter;
                 ++iter;
