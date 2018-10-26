@@ -333,7 +333,6 @@ public:
         NEIGHBOR_VERIFIED,     //
         SHIFT_TO_RIGHT,
         SHIFT_TO_RIGHT_RECEIVED,
-        SHIFT_TO_RIGHT_COMPLETE,
         SHIFT_FROM_RIGHT,
         SHIFT_FROM_RIGHT_RECEIVED
     };

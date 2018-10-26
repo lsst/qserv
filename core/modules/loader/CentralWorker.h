@@ -198,7 +198,7 @@ private:
     std::shared_ptr<tcp::socket>  _rightSocket;
 
     std::atomic<bool> _shiftWithRightInProgress{false};  // &&& rename to _shiftAsClientInProgress
-    double _thresholdNeighborShift{1.10}; ///< Shift if 10% more than neighbor
+    double _thresholdNeighborShift{1.10}; ///< Shift if 10% more than neighbor TODO
     int _maxKeysToShift{10000};
     std::vector<StringKeyPair> _transferListToRight1; // &&& delete 1
 
