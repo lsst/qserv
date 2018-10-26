@@ -81,7 +81,7 @@ public:
 
     void registerWithMaster();
 
-    StringRange updateLeftNeighborRange(StringRange const& strRange);
+    StringRange updateRangeWithLeftData(StringRange const& strRange);
 
     bool workerInfoReceive(BufferUdp::Ptr const&  data); // &&& spelling
     bool workerKeyInsertReq(LoaderMsg const& inMsg, BufferUdp::Ptr const&  data);
@@ -138,14 +138,13 @@ private:
     void _startMonitoring();
 
     void _monitor();
-    void _determineRange();
+    bool _determineRange();
     bool _shiftIfNeeded(); ///< @Return true if data was shifted with the right neighbor.
     void _shift(Direction direction, int keysToShift);
 
     void _workerInfoReceive(std::unique_ptr<proto::WorkerListItem>& protoBuf);
 
     void _workerKeyInsertReq(LoaderMsg const& inMsg, std::unique_ptr<proto::KeyInfoInsert>& protoBuf);
-    //void _forwardKeyInsertRequest(WWorkerListItem::Ptr const& target, LoaderMsg const& inMsg, std::unique_ptr<proto::KeyInfoInsert> const& protoData); &&&
     void _forwardKeyInsertRequest(NetworkAddress const& targetAddr, LoaderMsg const& inMsg,
                                   std::unique_ptr<proto::KeyInfoInsert>& protoData);
 
@@ -157,6 +156,7 @@ private:
     static void _workerKeysInfoExtractor(BufferUdp& data, uint32_t& name, NeighborsInfo& nInfo, StringRange& strRange);
 
     void _workerWorkerKeysInfoReq(LoaderMsg const& inMsg);
+    void _sendWorkerKeysInfo(NetworkAddress const& nAddr, uint64_t msgId);
 
     void _removeOldEntries();
 
@@ -187,6 +187,7 @@ private:
     std::chrono::milliseconds _recent{60 * 1000};
     std::mutex _idMapMtx; ///< protects _strRange, _directorIdMap,
                           ///< _recentAdds, _transferListToRight, _transferListFromRight
+    std::atomic<bool> _rangeChanged{false};
 
     Neighbor _neighborLeft{Neighbor::LEFT};
     Neighbor _neighborRight{Neighbor::RIGHT};
@@ -197,15 +198,13 @@ private:
     SocketStatus _rightConnectStatus{VOID0};
     std::shared_ptr<tcp::socket>  _rightSocket;
 
-    std::atomic<bool> _shiftWithRightInProgress{false};  // &&& rename to _shiftAsClientInProgress
-    double _thresholdNeighborShift{1.10}; ///< Shift if 10% more than neighbor TODO
+    std::atomic<bool> _shiftAsClientInProgress{false}; ///< True when shifting to or from right neighbor.
+    double _thresholdNeighborShift{1.10}; ///< Shift if 10% more than neighbor TODO put in config file.
     int _maxKeysToShift{10000};
-    std::vector<StringKeyPair> _transferListToRight1; // &&& delete 1
-
-    std::vector<StringKeyPair> _transferListFromRight;
+    std::vector<StringKeyPair> _transferListToRight; ///< List of items being transfered to right
+    std::vector<StringKeyPair> _transferListFromRight; ///< List of items being transfered to left
 
     std::shared_ptr<CentralWorkerDoListItem> _centralWorkerDoListItem;
-
 
 };
 

@@ -53,7 +53,7 @@ public:
     int getMaxKeysPerWorker() const { return _maxKeysPerWorker; }
 
     void addWorker(std::string const& ip, int udpPort, int tcpPort); ///< Add a new worker to the system.
-    void updateNeighbors(uint32_t workerName, NeighborsInfo const& nInfo);
+    void updateWorkerInfo(uint32_t workerName, NeighborsInfo const& nInfo, StringRange const& strRange);
 
 
     MWorkerListItem::Ptr getWorkerNamed(uint32_t name);
