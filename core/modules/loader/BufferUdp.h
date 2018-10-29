@@ -28,7 +28,6 @@
 #include <arpa/inet.h>
 #include <cstring>
 #include <stdexcept>
-#include <iostream> // &&&
 #include <memory>
 #include <sstream>
 #include <string>
@@ -55,7 +54,6 @@ public:
     using Ptr = std::shared_ptr<BufferUdp>;
 
     BufferUdp() : BufferUdp(MAX_MSG_SIZE) {
-        // std::cout << "&&& bufferUdp " << dump() << std::endl;
     }
 
     explicit BufferUdp(size_t length) : _length(length) {
@@ -132,15 +130,6 @@ public:
     }
 
 
-    /* &&&
-    void setWriteCursor(size_t len) {
-        _wCursor = _buffer + len;
-        if (not isAppendSafe(0)) {
-            throw new std::overflow_error("BufferUdp setCursor beyond buffer len=" + std::to_string(len));
-        }
-     }
-     */
-
     /// Repeatedly read a socket until a valid MsgElement is read, eof, or an error occurs.
     /// Errors throw boost::system::system_error(error)
     std::shared_ptr<MsgElement> readFromSocket(boost::asio::ip::tcp::socket& socket, std::string const& note);
@@ -150,23 +139,21 @@ public:
         return _length;
     }
 
+
     int getBytesLeftToRead() const {
         return _wCursor - _rCursor;
     }
+
 
     /// Returns the amount of room left in the buffer after the write cursor.
     size_t getAvailableWriteLength() const {
         return _end - _wCursor;
     }
 
+
     const char* getReadCursor() const { return _rCursor; }
 
     char* getWriteCursor() const { return _wCursor; }
-
-    const char* begin() const { return _buffer; } // &&& kill
-
-    char* getBuffer() const { return _buffer; } // &&& kill
-
 
     bool isRetrieveSafe(size_t len) const;
 

@@ -48,7 +48,6 @@ namespace loader {
 
 
 void CentralMaster::addWorker(std::string const& ip, int udpPort, int tcpPort) {
-    // LOGS(_log, LOG_LVL_INFO, "&&& Master::addWorker");
     auto item = _mWorkerList->addWorker(ip, udpPort, tcpPort);
 
     if (item != nullptr) {
@@ -82,13 +81,12 @@ void CentralMaster::updateWorkerInfo(uint32_t workerName, NeighborsInfo const& n
 void CentralMaster::setWorkerNeighbor(MWorkerListItem::WPtr const& target, int message, uint32_t neighborName) {
     // Get the target worker's network address
     auto targetWorker = target.lock();
-    LOGS(_log, LOG_LVL_INFO, "&&& CentralMaster::setWorkerNeighbor a " << neighborName);
     if (targetWorker == nullptr) {
         LOGS(_log, LOG_LVL_WARN, "CentralMaster::setWorkerNeighbor nullptr for" << neighborName);
         return;
     }
 
-    LOGS(_log, LOG_LVL_INFO, "&&& CentralMaster::setWorkerNeighbor b " << neighborName << " " << *targetWorker);
+    LOGS(_log, LOG_LVL_DEBUG, "CentralMaster::setWorkerNeighbor " << neighborName << " " << *targetWorker);
     // Build and send the message
     LoaderMsg msg(message, getNextMsgId(), getMasterHostName(), getMasterPort());
     BufferUdp msgData;
@@ -101,7 +99,7 @@ void CentralMaster::setWorkerNeighbor(MWorkerListItem::WPtr const& target, int m
 
 
 void CentralMaster::_assignNeighborIfNeeded() {
-    LOGS(_log, LOG_LVL_INFO, "&&& CentralMaster::_assignNeighborIfNeeded");
+    LOGS(_log, LOG_LVL_DEBUG, "CentralMaster::_assignNeighborIfNeeded");
     // Go through the list and see if all the workers are full.
     // If they are, assign a worker to the end (rightmost) worker
     // and increase the maximum by an order of magnitude, max 10 million.
@@ -110,7 +108,7 @@ void CentralMaster::_assignNeighborIfNeeded() {
     std::string funcName("_assignNeighborIfNeeded");
     if (_addingWorker) {
         // Already in process of adding a worker, so don't add another one.
-        // check if it failed &&& IMPORTANT
+        // TODO Check if it failed.
         return;
     }
     // Only one thread should ever be working on this logic at a time.
@@ -118,7 +116,7 @@ void CentralMaster::_assignNeighborIfNeeded() {
     auto pair = _mWorkerList->getActiveInactiveWorkerLists();
     std::vector<MWorkerListItem::Ptr>& activeList = pair.first;
     std::vector<MWorkerListItem::Ptr>& inactiveList = pair.second;
-    if (inactiveList.empty()) { return; } // not much point if no workers to assign.
+    if (inactiveList.empty() || _addingWorker) { return; }
     double sum = 0.0;
     int max = 0;
     uint32_t maxName = 0;
@@ -152,19 +150,18 @@ void CentralMaster::_assignNeighborIfNeeded() {
         // Assign a neighbor to the rightmost worker, if there are any unused nodes.
         // TODO Probably better to assign a new neighbor next to the node with the most recent activity.
         //      but that's much more complicated.
-        LOGS(_log, LOG_LVL_INFO, "\n\n\n\n\n\n\n\n\n &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&" <<
-                 "\n &&&   ADDING WORKER avg=" << avg);
+        LOGS(_log, LOG_LVL_INFO, "ADDING WORKER avg=" << avg);
         auto inactiveItem = inactiveList.front();
         if (inactiveItem == nullptr) {
             throw LoaderMsgErr(funcName + " _assignNeighborIfNeeded unexpected inactiveList nullptr",
                                __FILE__, __LINE__);
-            return;
         }
         _addingWorker = true;
         // Sequence of events goes something like
         // 1) left item gets message from master that it is getting a right neighbor, and writes it down
         // 2) Right item get message from master that it is getting a left neighbor, writes it down.
-        // 3) CentralWorker::_monitor on the left node connects to the right node, ranges are setup and shifts started.
+        // 3) CentralWorker::_monitor on the left node(rightmostItem) connects to the right node(inactiveItem),
+        //    ranges are setup and shifts are started.
         // Steps 1 and 2
         rightMostItem->setRightNeighbor(inactiveItem);
         inactiveItem->setLeftNeighbor(rightMostItem);
