@@ -45,7 +45,7 @@ namespace lsst {
 namespace qserv {
 namespace loader {
 
-/// &&& TODO add fileId and row to this so it can be checked in _workerKeyInsertReq ?
+/// TODO add fileId and row to this so it can be checked in _workerKeyInsertReq
 struct ChunkSubchunk {
     ChunkSubchunk(int chunk_, int subchunk_) : chunk(chunk_), subchunk(subchunk_) {}
     int const chunk;
@@ -54,16 +54,15 @@ struct ChunkSubchunk {
 };
 
 
-/// &&& Initially, just setting this up as Central for the worker, but may work for both Worker and Master.
-/// &&& This class is central to loader workers and the master.
-/// &&& It is the base class for WorkerCentral and MasterCentral
-// This class is 'central' to the execution of the program, and must be around
-// until the bitter end. As such, it can be accessed by normal pointers.
+/// This class is 'central' to the execution of the program, and must be around
+/// until the bitter end. As such, it can be accessed by normal pointers.
+/// This class is central to loader workers and the master.
+/// It is the base class for CentralWorker, CentralMaster, and CentralClient
 class Central {
 public:
     Central(boost::asio::io_service& ioService,
             std::string const& masterHostName, int masterPort)
-        : _ioService(ioService), _masterHostName(masterHostName), _masterPort(masterPort),
+        : _ioService(ioService), _masterAddr(masterHostName, masterPort),
           _checkDoListThread([this](){ _checkDoList(); }){}
 
     Central() = delete;
@@ -72,15 +71,15 @@ public:
 
     void run();
 
-    std::string getMasterHostName() const { return _masterHostName; }
-    int getMasterPort() const { return _masterPort; }
+    std::string getMasterHostName() const { return _masterAddr.ip; }
+    int getMasterPort() const { return _masterAddr.port; }
+    NetworkAddress getMasterAddr() { return _masterAddr; }
 
     uint64_t getNextMsgId() { return _sequence++; }
 
     int getErrCount() const { return _server->getErrCount(); }
 
-    // WorkerList::Ptr getWorkerList() const { return _workerList; } &&&
-
+    /// Send the contents of 'sendBuf' to 'host:port'
     void sendBufferTo(std::string const& host, int port, BufferUdp& sendBuf) {
         _server->sendBufferTo(host, port, sendBuf);
     }
@@ -111,9 +110,7 @@ protected:
     /// Initialization order is important.
     DoList _doList{*this}; ///< List of items to be checked at regular intervals.
 
-    std::string _masterHostName;    // &&& struct to keep hostName + port (WorkerList.h->NetworkAddress?)
-    int _masterPort;
-    // WorkerList::Ptr _workerList{new WorkerList(this)}; // &&& May not need to be a pointer. &&&
+    NetworkAddress _masterAddr; ///< Network address of the master node.
     
     std::atomic<uint64_t> _sequence{1};
 

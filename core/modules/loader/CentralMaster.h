@@ -77,7 +77,8 @@ private:
     MWorkerList::Ptr _mWorkerList{new MWorkerList(this)}; ///< List of workers.
 
     std::atomic<bool> _firstWorkerRegistered{false}; ///< True when one worker has been activated.
-    std::atomic<bool> _addingWorker{false}; ///< True while adding a worker to the end of the list. &&& This should probably really be handled by states in the list of workers. &&&
+    std::atomic<bool> _addingWorker{false}; ///< True while adding a worker to the end of the list.
+                                            // TODO maybe move _addingWorker to MWorkerList.
 };
 
 }}} // namespace lsst::qserv::loader

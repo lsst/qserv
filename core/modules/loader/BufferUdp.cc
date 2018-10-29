@@ -49,9 +49,8 @@ namespace loader {
 
 /// Repeatedly read a socket until a valid MsgElement is read, eof,  or an error occurs.
 MsgElement::Ptr BufferUdp::readFromSocket(boost::asio::ip::tcp::socket& socket, std::string const& note) {
-    //LOGS(_log, LOG_LVL_INFO, "&&&& readFromSocket !!!!!");
     for (;;) {
-        //LOGS(_log, LOG_LVL_INFO, note << " &&& readFromSocket a");
+        LOGS(_log, LOG_LVL_DEBUG, note << " readFromSocket");
         boost::system::error_code error;
 
         // If there's something in the buffer already, get it and return.
@@ -64,17 +63,14 @@ MsgElement::Ptr BufferUdp::readFromSocket(boost::asio::ip::tcp::socket& socket, 
         size_t len = socket.read_some(boost::asio::buffer(_wCursor, getAvailableWriteLength()), error);
         _wCursor += len; /// must advance the cursor.
 
-        //LOGS(_log, LOG_LVL_INFO, note << " &&& readFromSocket len=" << len << " " << dump());
-
         // EOF is only a problem if no MsgElement was retrieved.
-        // &&& ??? This is definitely the case in UDP, as nothing more will show up.
-        // &&& ??? But TCP is another issue as eof is returned when the connection is still live but
-        // &&& ??? there's no data (len=0). Why does read_some set error to eof before the tcp connection is closed?
+        // ??? This is definitely the case in UDP, EOF as nothing more will show up.
+        // ??? But TCP is another issue as EOF is returned when the connection is still live but
+        // ??? there's no data (len=0). Why does read_some set error to eof before the tcp connection is closed?
         if (error == boost::asio::error::eof) {
-            LOGS(_log, LOG_LVL_INFO, "&&&& readFromSocket eof");
+            LOGS(_log, LOG_LVL_WARN, "readFromSocket eof");
             break; // Connection closed cleanly by peer.
         } else if (error && error != boost::asio::error::eof) {
-            // throw boost::system::system_error(error); // Some bad error.
             throw LoaderMsgErr("BufferUdp::readFromSocket note=" + note + " asio error=" + error.message());
         }
 
@@ -90,7 +86,6 @@ MsgElement::Ptr BufferUdp::readFromSocket(boost::asio::ip::tcp::socket& socket, 
 
 
 std::shared_ptr<MsgElement> BufferUdp::_safeRetrieve() {
-    //LOGS(_log, LOG_LVL_DEBUG, "&&&& _safeRetrieve");
     auto wCursorOriginal = _wCursor;
     auto rCursorOriginal = _rCursor;
     MsgElement::Ptr msgElem = MsgElement::retrieve(*this);
@@ -106,13 +101,11 @@ std::shared_ptr<MsgElement> BufferUdp::_safeRetrieve() {
 
 bool BufferUdp::isRetrieveSafe(size_t len) const {
     auto newLen = (_rCursor + len);
-    //LOGS(_log, LOG_LVL_INFO, "&&& isRetrieveSafe len=" << len << " newLen=" << (void*)newLen << " end=" << (void*)_end << " wc=" << (void*)_wCursor);
     return (newLen <= _end && newLen <= _wCursor);
 }
 
 
 bool BufferUdp::retrieve(void* out, size_t len) {
-    // LOGS(_log, LOG_LVL_INFO, "&&& BufferUdp::retrieve len=" << len << " " << dump());
     if (isRetrieveSafe(len)) {
         memcpy(out, _rCursor, len);
         _rCursor += len;
@@ -123,7 +116,6 @@ bool BufferUdp::retrieve(void* out, size_t len) {
 
 
 bool BufferUdp::retrieveString(std::string& out, size_t len) {
-    //LOGS(_log, LOG_LVL_INFO, "retrieveString _rCursor + len=" << (void*)(_rCursor + len) << " end=" << (void*)_end);;
     if (isRetrieveSafe(len)) {
         const char* strEnd = _rCursor + len;
         std::string str(_rCursor, strEnd);

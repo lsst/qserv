@@ -280,6 +280,7 @@ public:
         return iter->second;
     }
 
+    /// @Return 2 lists. One of active workers, one of inactive workers. Both lists are copies.
     std::pair<std::vector<MWorkerListItem::Ptr>, std::vector<MWorkerListItem::Ptr>>
         getActiveInactiveWorkerLists();
 
