@@ -69,9 +69,8 @@ void Central::run() {
 void Central::_checkDoList() {
     while(_loop) {
         // Run and then sleep for a second. A more advanced timer should be used
-        //LOGS(_log, LOG_LVL_INFO, "\n &&& checking doList");
         _doList.checkList();
-        sleep(1);
+        usleep(100000);
     }
 }
 
