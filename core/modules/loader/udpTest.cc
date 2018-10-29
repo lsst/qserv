@@ -135,14 +135,10 @@ int main(int argc, char* argv[]) {
         for (auto& ele : elements) {
             // check all elements
             char elemType = MsgElement::NOTHING;
-            //inData = MsgElement::retrieveType(inData, elemType);
-            //if (not MsgElement::retrieveType(inData, elemType)) { &&&
             if (not MsgElement::retrieveType(data, elemType)) {
-                //throw new LoaderMsgErr("Type was expected but not found!" + inData.dumpStr()); &&&
                 throw new LoaderMsgErr("Type was expected but not found!" + data.dumpStr());
             }
             MsgElement::Ptr outEle = MsgElement::create(elemType);
-            //if (not outEle->retrieveFromData(inData)) { &&&
             if (not outEle->retrieveFromData(data)) {
                 throw new LoaderMsgErr("Failed to retrieve elem=" + outEle->getStringVal() +
                         " data:" + data.dumpStr());
@@ -205,13 +201,6 @@ int main(int argc, char* argv[]) {
 
 
     ////////////////////////////////////////////////////////////////////////////
-
-    /// &&& TODO test timeouts. Start a worker server and try to contact master.
-    ///    After a few failures, start master
-
-    //WorkerList::Ptr masterWorkerList = std::make_shared<WorkerList>();  &&&
-    //WorkerList::Ptr w1WorkerList = std::make_shared<WorkerList>(); &&&
-    //WorkerList::Ptr w2WorkerList = std::make_shared<WorkerList>(); &&&
 
     /// Start a master server
     std::string masterIP = "127.0.0.1";
@@ -279,9 +268,9 @@ int main(int argc, char* argv[]) {
     /// Unknown message kind test. Pretending to be worker1.
     {
         auto originalErrCount = wCentral1.getErrCount();
-        std::cout << "******1******** TSTAGE testSendBadMessage start" << std::endl;
+        LOGS(_log, LOG_LVL_INFO, "1TSTAGE testSendBadMessage start");
         wCentral1.testSendBadMessage();
-        sleep(2); // &&& want handshaking
+        sleep(2); // TODO handshaking instead of sleep
 
         if (originalErrCount == wCentral1.getErrCount()) {
             LOGS(_log, LOG_LVL_ERROR, "testSendBadMessage errCount did not change " << originalErrCount);
@@ -291,21 +280,19 @@ int main(int argc, char* argv[]) {
 
     /// Real message, register worker1 with the master
     {
-        std::cout << "******2******* TSTAGE register worker 1 start" << std::endl;
+        LOGS(_log, LOG_LVL_INFO, "2TSTAGE register worker 1 start");
         wCentral1.registerWithMaster();
 
     }
 
     /// register worker2 with the master
     {
-        std::cout << "******3******* TSTAGE register worker 2 start" << std::endl;
+        LOGS(_log, LOG_LVL_INFO, "3TSTAGE register worker 2 start");
         wCentral2.registerWithMaster();
-
-        std::cout << "&&&******1************************************** end" << std::endl;
     }
 
 
-    std::cout << "sleeping" << std::endl;
+    LOGS(_log, LOG_LVL_INFO, "sleeping");
     sleep(5); // TODO change to 20 second timeout with a check every 0.1 seconds.
     // The workers should agree on the worker list, and it should have 2 elements.
     if (wCentral1.getWorkerList()->getNameMapSize() == 0) {
@@ -319,18 +306,16 @@ int main(int argc, char* argv[]) {
         LOGS(_log, LOG_LVL_ERROR, "ERROR Worker lists do not match!!!");
         exit(-1);
     } else {
-        LOGS(_log, LOG_LVL_INFO, "Worker lists match!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+        LOGS(_log, LOG_LVL_INFO, "Worker lists match.");
     }
 
 
     /// Client
-    std::cout << "\n\n\n******3******* TSTAGE client register key A" << std::endl;
+    LOGS(_log, LOG_LVL_INFO, "3TSTAGE client register key A");
     KeyChSch keyA("asdf_1", 4001, 200001);
     auto keyAInsert = cCentral1A.keyInsertReq(keyA.key, keyA.chunk, keyA.subchunk);
 
-
-    //sleep(3); // remove &&&
-    std::cout << "\n\n\n******4******* TSTAGE client register key B" << std::endl;
+    LOGS(_log, LOG_LVL_INFO, "4TSTAGE client register key B");;
     KeyChSch keyB("ndjes_bob", 9871, 65008);
     auto keyBInsert = cCentral1B.keyInsertReq(keyB.key, keyB.chunk, keyB.subchunk);
 
@@ -357,7 +342,6 @@ int main(int argc, char* argv[]) {
         }
     }
 
-
     // retrieve keys keyA and keyB
     sleep(2); // need to sleep as it never gives up on inserts.
     if (keyAInsert->isFinished() && keyBInsert->isFinished()) {
@@ -369,14 +353,14 @@ int main(int argc, char* argv[]) {
 
     // Retrieve keyA and keyB
     {
-        std::cout << "\n\n\n******5******* TSTAGE client retrieve keyB keyA^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^***" << std::endl;
+        LOGS(_log, LOG_LVL_INFO, "5TSTAGE client retrieve keyB keyA");
         auto keyBInfo = cCentral1A.keyInfoReq(keyB.key);
         auto keyAInfo = cCentral1A.keyInfoReq(keyA.key);
         auto keyCInfo = cCentral1A.keyInfoReq(keyC.key);
 
         keyAInfo->waitComplete();
         keyBInfo->waitComplete();
-        std::cout << "\n\n\n******5******* TSTAGE client retrieve DONE keyB keyA^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^***" << std::endl;
+        LOGS(_log, LOG_LVL_INFO, "5TSTAGE client retrieve DONE keyB keyA");
         LOGS(_log, LOG_LVL_INFO, "looked up keyA " << *keyAInfo);
         LOGS(_log, LOG_LVL_INFO, "looked up keyB " << *keyBInfo);
 
@@ -401,7 +385,7 @@ int main(int argc, char* argv[]) {
 
     // Add item to worker 2, test retrieval
     {
-        std::cout << "\n\n\n******6******* TSTAGE client insert keyC lookup all keys ***" << std::endl;
+        LOGS(_log, LOG_LVL_INFO, "6TSTAGE client insert keyC lookup all keys");
         auto keyCInsert = cCentral2A.keyInsertReq(keyC.key, keyC.chunk, keyC.subchunk);
         sleep(2); // need to sleep as it never gives up on inserts.
         if (keyCInsert->isFinished()) {
@@ -409,18 +393,18 @@ int main(int argc, char* argv[]) {
         }
 
         auto keyAInfo = cCentral1A.keyInfoReq(keyA.key);
-        std::cout << "\n\n\n******6******* TSTAGE waiting A ***" << std::endl;
+        LOGS(_log, LOG_LVL_INFO, "6TSTAGE waiting A");
         keyAInfo->waitComplete();
 
         auto keyBInfo = cCentral2A.keyInfoReq(keyB.key);
-        std::cout << "\n\n\n******6******* TSTAGE waiting B ***" << std::endl;
+        LOGS(_log, LOG_LVL_INFO, "6TSTAGE waiting B");
         keyBInfo->waitComplete();
 
         auto keyCInfo = cCentral2A.keyInfoReq(keyC.key);
-        std::cout << "\n\n\n******6******* TSTAGE waiting C ***" << std::endl;
+        LOGS(_log, LOG_LVL_INFO, "6TSTAGE waiting C");
         keyCInfo->waitComplete();
 
-        std::cout << "\n\n\n******6******* TSTAGE done waiting ***" << std::endl;
+        LOGS(_log, LOG_LVL_INFO, "6TSTAGE done waiting");
         if (keyAInfo->key != keyA.key || keyAInfo->chunk != keyA.chunk || keyAInfo->subchunk != keyA.subchunk || !keyAInfo->success) {
             LOGS(_log, LOG_LVL_ERROR, "keyA lookup got incorrect value " << *keyAInfo);
             exit(-1);
@@ -438,7 +422,7 @@ int main(int argc, char* argv[]) {
 
     size_t kPos = 0;
     {
-        std::cout << "\n\n\n******7******* TSTAGE insert several keys ***" << std::endl;
+        LOGS(_log, LOG_LVL_INFO, "7TSTAGE insert several keys");
         std::vector<KeyInfoData::Ptr> keyInfoDataList;
 
         for (; kPos<10; ++kPos) {
@@ -462,13 +446,12 @@ int main(int argc, char* argv[]) {
         }
 
         // The number of active servers should have increased from 1 to 2
-        // &&& check number of servers
+        // TODO check number of servers
     }
 
 
     {
-        std::cout << "\n\n\n******8******* TSTAGE insert several keys ***" << std::endl;
-        //std::vector<KeyInfoData::Ptr> keyInfoDataList;
+        LOGS(_log, LOG_LVL_INFO, "8TSTAGE insert several keys");
         std::list<KeyInfoData::Ptr> keyInfoDataList;
 
         for (; kPos<keyList.size(); ++kPos) {
@@ -480,16 +463,9 @@ int main(int argc, char* argv[]) {
         int seconds = 0;
         int finished = 0;
         do {
-            sleep(1); // need to sleep as it never gives up on inserts.
+            sleep(1);
             ++seconds;
             insertSuccess = true;
-            /* &&&
-                for(auto&& kiData : keyInfoDataList) {
-                    if (not kiData->isFinished()) {
-                        insertSuccess = false;
-                    }
-                }
-             */
             for(auto iter = keyInfoDataList.begin(); iter != keyInfoDataList.end();) {
                 auto keyIter = iter;
                 ++iter;
@@ -511,12 +487,12 @@ int main(int argc, char* argv[]) {
             exit(-1);
         }
 
-        // &&& check number of servers
+        // TODO check number of servers
 
     }
 
     {
-        std::cout << "\n\n\n******9******* TSTAGE insert many keys ***" << std::endl;
+        LOGS(_log, LOG_LVL_INFO, "9TSTAGE insert many keys");
         std::list<KeyInfoData::Ptr> keyInfoDataList;
 
         for (; kPos<keyListB.size(); ++kPos) {
@@ -552,15 +528,15 @@ int main(int argc, char* argv[]) {
             exit(-1);
         }
 
-        // &&& check number of servers
+        // TODO check number of servers
 
     }
 
 
-    //ioService.stop(); // &&& this doesn't seem to work cleanly
-    // mastT.join(); &&&
+    //ioService.stop(); // this doesn't seem to work cleanly
+    // mastT.join();
 
-    sleep(60);
-    std::cout << "DONE" << std::endl;
+    sleep(10);
+    LOGS(_log, LOG_LVL_INFO, "DONE");
     exit(0);
 }

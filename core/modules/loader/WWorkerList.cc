@@ -359,8 +359,8 @@ util::CommandTracked::Ptr WWorkerListItem::createCommandWorkerInfoReq(CentralWor
 
         void action(util::CmdData *data) override {
             /// Request all information the master has for one worker.
-            LOGS(_log, LOG_LVL_INFO, "&&& WWorkerListItem::createCommand::WorkerReqCmd::action " <<
-                    "ourName=" << _centralW->getOurLogId() << " req name=" << _name);
+            LOGS(_log, LOG_LVL_INFO, "WWorkerListItem::createCommand::WorkerReqCmd::action " <<
+                                     "ourName=" << _centralW->getOurLogId() << " req name=" << _name);
 
             // TODO make a function for this, it's always going to be the same.
             proto::LdrNetAddress protoOurAddress;
@@ -383,9 +383,7 @@ util::CommandTracked::Ptr WWorkerListItem::createCommandWorkerInfoReq(CentralWor
             // Send the request to master.
             auto masterHost = _centralW->getMasterHostName();
             auto masterPort = _centralW->getMasterPort();
-            LOGS(_log, LOG_LVL_INFO, "&&& WWorkerListItem::createCommand::WorkerReqCmd::action sending " << _centralW->getOurLogId());
             _centralW->sendBufferTo(masterHost, masterPort, sendBuf);
-            LOGS(_log, LOG_LVL_INFO, "&&& WWorkerListItem::createCommand::WorkerReqCmd::action sent" << _centralW->getOurLogId());
         }
 
     private:
