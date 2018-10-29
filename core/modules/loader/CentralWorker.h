@@ -83,7 +83,7 @@ public:
 
     StringRange updateRangeWithLeftData(StringRange const& strRange);
 
-    bool workerInfoReceive(BufferUdp::Ptr const&  data); // &&& spelling
+    bool workerInfoReceive(BufferUdp::Ptr const&  data);
     bool workerKeyInsertReq(LoaderMsg const& inMsg, BufferUdp::Ptr const&  data);
     bool workerKeyInfoReq(LoaderMsg const& inMsg, BufferUdp::Ptr const&  data);
     bool workerWorkerKeysInfoReq(LoaderMsg const& inMsg, BufferUdp::Ptr const& data);
@@ -102,7 +102,7 @@ public:
             _ourNameInvalid = false;
             return true;
         } else {
-            /// &&& add error message, check if _ourname matches name
+            /// TODO add error message, check if _ourname matches name
             return false;
         }
     }
@@ -112,7 +112,6 @@ public:
         return _ourName;
     }
 
-    /// &&& TODO this is only needed for initial testing and should be deleted.
     std::string getOurLogId() override;
 
     void testSendBadMessage();
@@ -125,7 +124,7 @@ public:
     StringElement::UPtr buildKeyList(int keysToShift);
 
     /// @Return a string describing the first and last 'count' keys. count=0 dumps all keys.
-    std::string dumpKeysStr(int count);
+    std::string dumpKeysStr(unsigned int count);
 
 
     void finishShiftFromRight();
@@ -171,8 +170,8 @@ private:
 
     const std::string        _hostName;
     const int                _udpPort;
-    boost::asio::io_context& _ioContext;
     const int                _tcpPort;
+    boost::asio::io_context& _ioContext;
 
     WWorkerList::Ptr _wWorkerList{new WWorkerList(this)}; ///< Maps of workers.
 

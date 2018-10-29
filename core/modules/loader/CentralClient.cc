@@ -53,7 +53,7 @@ namespace loader {
 
 
 void CentralClient::handleKeyInfo(LoaderMsg const& inMsg, BufferUdp::Ptr const& data) {
-    LOGS(_log, LOG_LVL_INFO, "\n\n&&& **** CentralClient::handleKeyInfo ****\n\n");
+    LOGS(_log, LOG_LVL_DEBUG, "CentralClient::handleKeyInfo");
 
     StringElement::Ptr sData = std::dynamic_pointer_cast<StringElement>(MsgElement::retrieve(*data));
     if (sData == nullptr) {
@@ -66,7 +66,7 @@ void CentralClient::handleKeyInfo(LoaderMsg const& inMsg, BufferUdp::Ptr const& 
         return;
     }
 
-    // &&& TODO put in separate thread
+    // TODO put in separate thread
     _handleKeyInfo(inMsg, protoData);
 }
 
@@ -97,7 +97,7 @@ void CentralClient::_handleKeyInfo(LoaderMsg const& inMsg, std::unique_ptr<proto
 
 
 void CentralClient::handleKeyInsertComplete(LoaderMsg const& inMsg, BufferUdp::Ptr const& data) {
-    LOGS(_log, LOG_LVL_INFO, "\n&&& CentralClient::handleKeyInsertComplete");
+    LOGS(_log, LOG_LVL_DEBUG, "CentralClient::handleKeyInsertComplete");
 
     StringElement::Ptr sData = std::dynamic_pointer_cast<StringElement>(MsgElement::retrieve(*data));
     if (sData == nullptr) {
@@ -110,7 +110,7 @@ void CentralClient::handleKeyInsertComplete(LoaderMsg const& inMsg, BufferUdp::P
         return;
     }
 
-    // &&& TODO put in separate thread
+    // TODO put in separate thread
     _handleKeyInsertComplete(inMsg, protoData);
 }
 
@@ -121,7 +121,7 @@ void CentralClient::_handleKeyInsertComplete(LoaderMsg const& inMsg, std::unique
     std::string key = protoData->key();
     ChunkSubchunk chunkInfo(protoData->chunk(), protoData->subchunk());
 
-    LOGS(_log, LOG_LVL_INFO, "trying to remove oneShot for key=" << key << " " << chunkInfo);
+    LOGS(_log, LOG_LVL_DEBUG, "trying to remove oneShot for key=" << key << " " << chunkInfo);
     /// Locate the original one shot and mark it as done.
     CentralClient::KeyInsertReqOneShot::Ptr keyInsertOneShot;
     {
@@ -159,7 +159,7 @@ KeyInfoData::Ptr CentralClient::keyInsertReq(std::string const& key, int chunk, 
 
 
 void CentralClient::_keyInsertReq(std::string const& key, int chunk, int subchunk) {
-    LOGS(_log, LOG_LVL_INFO, "&&& CentralClient::_keyInsertReq trying key=" << key);
+    LOGS(_log, LOG_LVL_INFO, "CentralClient::_keyInsertReq trying key=" << key);
     LoaderMsg msg(LoaderMsg::KEY_INSERT_REQ, getNextMsgId(), getHostName(), getUdpPort());
     BufferUdp msgData;
     msg.serializeToData(msgData);
@@ -202,7 +202,7 @@ KeyInfoData::Ptr CentralClient::keyInfoReq(std::string const& key) {
 
 
 void CentralClient::_keyInfoReq(std::string const& key) {
-    LOGS(_log, LOG_LVL_INFO, "&&& CentralClient::_keyInfoReq trying key=" << key);
+    LOGS(_log, LOG_LVL_INFO, "CentralClient::_keyInfoReq trying key=" << key);
      LoaderMsg msg(LoaderMsg::KEY_INFO_REQ, getNextMsgId(), getHostName(), getUdpPort());
      BufferUdp msgData;
      msg.serializeToData(msgData);
