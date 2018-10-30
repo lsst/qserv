@@ -58,9 +58,6 @@ public:
                                     LoaderMsg const& inMsg,
                                     int status, std::string const& msgTxt); // TODO shows up in both MasterServer and WorkerServer
 
-    //void keyInsert(std::string const& key, int chunk, int subchunk); &&&
-    // KeyValue keyLookup(std::string const& key); &&&
-
 private:
     void _msgRecieved(LoaderMsg const& inMsg, BufferUdp::Ptr const& data,
                       boost::asio::ip::udp::endpoint const& senderEndpoint);

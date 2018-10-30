@@ -126,7 +126,7 @@ BufferUdp::Ptr WorkerServer::replyMsgReceived(boost::asio::ip::udp::endpoint con
     protoBuf.SerializeToString(&(respBuf.element));
 
     auto sendData = std::make_shared<BufferUdp>(1000); // this message should be fairly small.
-    outMsg.serializeToData(*sendData);
+    outMsg.appendToData(*sendData);
     respBuf.appendToData(*sendData);
     return sendData;
 }

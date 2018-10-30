@@ -74,7 +74,7 @@ MsgElement::Ptr MsgElement::create(char elementType) {
     case UINT64_ELEM:
         return std::make_shared<UInt64Element>();
     case NOTHING:
-        // missing break intentional
+        // Fallthrough
     default:
         throw LoaderMsgErr("MsgElement::create Unexpected type " + std::to_string(elementType));
     }
@@ -163,7 +163,7 @@ void LoaderMsg::parseFromData(BufferUdp& data) {
 }
 
 
-void LoaderMsg::serializeToData(BufferUdp& data) { // &&& rename to appendToData
+void LoaderMsg::appendToData(BufferUdp& data) {
     bool success = true;
     if (msgKind == nullptr || msgId == nullptr || senderHost == nullptr || senderPort == nullptr) {
         success = false;
