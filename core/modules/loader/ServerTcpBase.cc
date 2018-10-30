@@ -53,7 +53,7 @@ namespace qserv {
 namespace loader {
 
 
-bool ServerTcpBase::_writeData(tcp::socket& socket, BufferUdp& data) {
+bool ServerTcpBase::writeData(AsioTcp::socket& socket, BufferUdp& data) {
     while (data.getBytesLeftToRead() > 0) {
         // Read cursor advances (manually in this case) as data is read from the buffer.
         auto res = boost::asio::write(socket,
@@ -76,10 +76,10 @@ bool ServerTcpBase::testConnect() {
         LOGS(_log, LOG_LVL_INFO, "ServerTcpBase::testConnect 1");
         boost::asio::io_context io_context;
 
-        tcp::resolver resolver(io_context);
-        tcp::resolver::results_type endpoints = resolver.resolve("127.0.0.1", std::to_string(_port));
+        AsioTcp::resolver resolver(io_context);
+        AsioTcp::resolver::results_type endpoints = resolver.resolve("127.0.0.1", std::to_string(_port));
 
-        tcp::socket socket(io_context);
+        AsioTcp::socket socket(io_context);
         boost::asio::connect(socket, endpoints);
 
 
@@ -100,7 +100,7 @@ bool ServerTcpBase::testConnect() {
         kind.appendToData(data);
         UInt32Element bytes(1234); // dummy value
         bytes.appendToData(data);
-        _writeData(socket, data);
+        writeData(socket, data);
 
         // send back our name and left neighbor message.
         data.reset();
@@ -110,7 +110,7 @@ bool ServerTcpBase::testConnect() {
         ourName.appendToData(data);
         UInt64Element valuePairCount(testNewNodeValuePairCount);
         valuePairCount.appendToData(data);
-        _writeData(socket, data);
+        writeData(socket, data);
 
         // Get back left neighbor information
         auto msgKind = std::dynamic_pointer_cast<UInt32Element>(
@@ -144,7 +144,7 @@ bool ServerTcpBase::testConnect() {
         data.reset();
         UInt32Element verified(LoaderMsg::NEIGHBOR_VERIFIED);
         verified.appendToData(data);
-        _writeData(socket, data);
+        writeData(socket, data);
 
         boost::system::error_code ec;
         socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
@@ -263,8 +263,6 @@ void TcpBaseConnection::_recvKind(const boost::system::error_code& ec, size_t by
 }
 
 
-
-
 void TcpBaseConnection::_handleTest() {
     _buf.reset();
 
@@ -305,8 +303,8 @@ void TcpBaseConnection::_handleTest2(const boost::system::error_code& ec, size_t
      msgElem = MsgElement::retrieve(_buf);
      auto msgKeys = std::dynamic_pointer_cast<UInt64Element>(msgElem);
 
-
-     // test that this is the neighbor that was expected. (&&& this test should be done by CentralWorker)
+     // TODO move most of this to CentralWorker
+     // test that this is the neighbor that was expected.
      if (msgKind->element != LoaderMsg::IM_YOUR_R_NEIGHBOR ||
          msgName->element != testNewNodeName ||
          msgKeys->element != testNewNodeValuePairCount)  {
@@ -355,8 +353,6 @@ void TcpBaseConnection::_handleTest2b(const boost::system::error_code& ec, size_
 
 
 void TcpBaseConnection::_handleTest2c(const boost::system::error_code& ec, size_t bytesTrans) {
-    // get verified message and close connection
-    // UInt32Element verified(LoaderMsg::NEIGHBOR_VERIFIED); &&&
     if (ec) {
         LOGS(_log, LOG_LVL_ERROR, "_recvKind ec=" << ec);
         _freeConnect();
@@ -385,12 +381,12 @@ void TcpBaseConnection::_handleTest2c(const boost::system::error_code& ec, size_
 void TcpBaseConnection::_handleImYourLNeighbor(uint32_t bytesInMsg) {
     // Need to figure out the difference between bytes read and bytes in _buf
     if (bytesInMsg > _buf.getAvailableWriteLength()) {
-        /// &&& TODO close the connection
         LOGS(_log, LOG_LVL_ERROR, "_handleImYourLNeighbor Buffer would have overflowed");
         _freeConnect();
         return;
     }
-    LOGS(_log, LOG_LVL_INFO, "&&& _handleImYourLNeighbor bytes=" << bytesInMsg << " buf=" << _buf.dumpStr(false));
+    LOGS(_log, LOG_LVL_INFO, "_handleImYourLNeighbor bytes=" << bytesInMsg <<
+                             " buf=" << _buf.dumpStr(false));
     boost::asio::async_read(_socket, boost::asio::buffer(_buf.getWriteCursor(), bytesInMsg),
             boost::asio::transfer_at_least(bytesInMsg),
             boost::bind(
@@ -403,7 +399,7 @@ void TcpBaseConnection::_handleImYourLNeighbor(uint32_t bytesInMsg) {
 }
 
 void TcpBaseConnection::_handleImYourLNeighbor1(boost::system::error_code const& ec, size_t bytesTrans) {
-    std::string const funcName = "_handleImYourLNeighbor2";
+    std::string const funcName = "_handleImYourLNeighbor1";
     if (ec) {
         LOGS(_log, LOG_LVL_ERROR, funcName << " ec=" << ec);
         _freeConnect();
@@ -411,11 +407,12 @@ void TcpBaseConnection::_handleImYourLNeighbor1(boost::system::error_code const&
     }
     // Fix the buffer with the information given.
     _buf.advanceWriteCursor(bytesTrans);
-    LOGS(_log, LOG_LVL_INFO, funcName << "&&& bytes=" << bytesTrans << " _buf" << _buf.dumpStr(false));
+    LOGS(_log, LOG_LVL_INFO, funcName << " bytes=" << bytesTrans << " _buf" << _buf.dumpStr(false));
     try {
-        // &&& TODO move as much of this to CentralWorker as possible
+        // TODO move as much of this to CentralWorker as possible
         // Parse left neighbor's key and range information.
-        LOGS(_log, LOG_LVL_INFO, funcName <<  "&&& parsing bytes=" << bytesTrans << " _buf" << _buf.dumpStr(false));
+        LOGS(_log, LOG_LVL_INFO, funcName <<  " parsing bytes=" << bytesTrans <<
+                                 " _buf" << _buf.dumpStr(false));
         auto protoItem = StringElement::protoParse<proto::WorkerKeysInfo>(_buf);
         if (protoItem == nullptr) {
             throw LoaderMsgErr(funcName, __FILE__, __LINE__);
@@ -425,7 +422,8 @@ void TcpBaseConnection::_handleImYourLNeighbor1(boost::system::error_code const&
         nInfo.keyCount = protoItem->mapsize();
         nInfo.recentAdds = protoItem->recentadds();
         proto::WorkerRangeString protoRange = protoItem->range();
-        LOGS(_log, LOG_LVL_INFO, "&&& MasterServer WorkerKeysInfo aaaaa name=" << workerName << " keyCount=" << nInfo.keyCount << " recentAdds=" << nInfo.recentAdds);
+        LOGS(_log, LOG_LVL_INFO, funcName << " WorkerKeysInfo name=" << workerName <<
+                                 " keyCount=" << nInfo.keyCount << " recentAdds=" << nInfo.recentAdds);
         bool valid = protoRange.valid();
         StringRange leftRange;
         StringRange newLeftRange;
@@ -434,7 +432,7 @@ void TcpBaseConnection::_handleImYourLNeighbor1(boost::system::error_code const&
             std::string max   = protoRange.max();
             bool unlimited = protoRange.maxunlimited();
             leftRange.setMinMax(min, max, unlimited);
-            LOGS(_log, LOG_LVL_WARN, "&&& TcpBaseConnection::_handleImYourLNeighbor2  leftRange=" << leftRange);
+            LOGS(_log, LOG_LVL_WARN, funcName << " leftRange=" << leftRange);
             newLeftRange = _serverTcpBase->getCentralWorker()->updateRangeWithLeftData(leftRange);
         }
         proto::Neighbor protoLeftNeigh = protoItem->left();
@@ -457,8 +455,8 @@ void TcpBaseConnection::_handleImYourLNeighbor1(boost::system::error_code const&
         // Send the number of bytes in the message so TCP client knows how many bytes to read.
         bytesInMsg.appendToData(_buf);
         strWKI.appendToData(_buf);
-        ServerTcpBase::_writeData(_socket, _buf);
-        LOGS(_log, LOG_LVL_INFO, funcName << "&&& done");
+        ServerTcpBase::writeData(_socket, _buf);
+        LOGS(_log, LOG_LVL_INFO, funcName << " done");
     } catch (LoaderMsgErr &msgErr) {
         LOGS(_log, LOG_LVL_ERROR, funcName << " Buffer failed " << msgErr.what());
         _freeConnect();
@@ -477,7 +475,7 @@ void TcpBaseConnection::_handleShiftToRight(uint32_t bytesInMsg) {
         _freeConnect();
         return;
     }
-    LOGS(_log, LOG_LVL_INFO, "&&&ggggS _handleShiftToRight bytes=" << bytesInMsg << " buf=" << _buf.dumpStr(false));
+    LOGS(_log, LOG_LVL_INFO, " _handleShiftToRight bytes=" << bytesInMsg << " buf=" << _buf.dumpStr(false));
     boost::asio::async_read(_socket, boost::asio::buffer(_buf.getWriteCursor(), bytesInMsg),
             boost::asio::transfer_at_least(bytesInMsg),
             boost::bind(
@@ -499,16 +497,17 @@ void TcpBaseConnection::_handleShiftToRight1(boost::system::error_code const& ec
     }
     // Fix the buffer with the information given.
     _buf.advanceWriteCursor(bytesTrans);
-    LOGS(_log, LOG_LVL_INFO, funcName << "&&&ggggS bytes=" << bytesTrans << " _buf" << _buf.dumpStr(false));
+    LOGS(_log, LOG_LVL_INFO, funcName << " bytes=" << bytesTrans << " _buf" << _buf.dumpStr(false));
     try {
-        // &&& TODO move as much of this to CentralWorker as possible
-        LOGS(_log, LOG_LVL_INFO, funcName << "&&&ggggS parsing bytes=" << bytesTrans << " _buf" << _buf.dumpStr(false));
+        // TODO move as much of this to CentralWorker as possible
+        LOGS(_log, LOG_LVL_INFO, funcName << " parsing bytes=" << bytesTrans <<
+                                 " _buf" << _buf.dumpStr(false));
         auto protoKeyList = StringElement::protoParse<proto::KeyList>(_buf);
         if (protoKeyList == nullptr) {
             throw LoaderMsgErr(funcName, __FILE__, __LINE__);
         }
         // Extract key pairs from the protobuffer
-        int keyCount = protoKeyList->keycount(); // &&& this could be redundant
+        int keyCount = protoKeyList->keycount(); // TODO delete keycount from KeyList
         int sz = protoKeyList->keypair_size();
         if (keyCount != sz) {
             LOGS(_log, LOG_LVL_WARN, funcName << " keyCount(" << keyCount << ") != sz(" << sz << ")");
@@ -527,9 +526,9 @@ void TcpBaseConnection::_handleShiftToRight1(boost::system::error_code const& ec
         _buf.reset();
         UInt32Element elem(LoaderMsg::SHIFT_TO_RIGHT_RECEIVED);
         elem.appendToData(_buf);
-        ServerTcpBase::_writeData(_socket, _buf);
-        LOGS(_log, LOG_LVL_INFO, funcName << " &&&ggggS done dumpKeys " <<
-                                             _serverTcpBase->getCentralWorker()->dumpKeysStr(3));
+        ServerTcpBase::writeData(_socket, _buf);
+        LOGS(_log, LOG_LVL_INFO, funcName << " done dumpKeys " <<
+                                             _serverTcpBase->getCentralWorker()->dumpKeysStr(2));
     } catch (LoaderMsgErr &msgErr) {
         LOGS(_log, LOG_LVL_ERROR, msgErr.what());
         LOGS(_log, LOG_LVL_ERROR, funcName << " key shift failed");
@@ -542,13 +541,14 @@ void TcpBaseConnection::_handleShiftToRight1(boost::system::error_code const& ec
 
 // Our left neighbor wants this node to shift key value pairs to it.
 void TcpBaseConnection::_handleShiftFromRight(uint32_t bytesInMsg) {
+    std::string const funcName("TcpBaseConnection::_handleShiftFromRight");
     // Need to figure out the difference between bytes read and bytes in _buf
     if (bytesInMsg > _buf.getAvailableWriteLength()) {
-        LOGS(_log, LOG_LVL_ERROR, "_handleShiftToRight Buffer would have overflowed bytes=" << bytesInMsg);
+        LOGS(_log, LOG_LVL_ERROR, funcName << " Buffer would have overflowed bytes=" << bytesInMsg);
         _freeConnect();
         return;
     }
-    LOGS(_log, LOG_LVL_INFO, "&&&hhhhS _handleShiftFromRight bytes=" << bytesInMsg << " buf=" << _buf.dumpStr(false));
+    LOGS(_log, LOG_LVL_INFO, funcName << " bytes=" << bytesInMsg << " buf=" << _buf.dumpStr(false));
     boost::asio::async_read(_socket, boost::asio::buffer(_buf.getWriteCursor(), bytesInMsg),
             boost::asio::transfer_at_least(bytesInMsg),
             boost::bind(
@@ -570,10 +570,10 @@ void TcpBaseConnection::_handleShiftFromRight1(boost::system::error_code const& 
     }
     // Fix the buffer with the information given.
     _buf.advanceWriteCursor(bytesTrans);
-    LOGS(_log, LOG_LVL_INFO, funcName << "&&&hhhhS bytes=" << bytesTrans << " _buf" << _buf.dumpStr(false));
+    LOGS(_log, LOG_LVL_INFO, funcName << " bytes=" << bytesTrans << " _buf" << _buf.dumpStr(false));
     try {
-        // &&& TODO move as much of this to CentralWorker as possible
-        LOGS(_log, LOG_LVL_INFO, funcName << "&&&hhhhS parsing bytes=" << bytesTrans << " _buf" << _buf.dumpStr(false));
+        // TODO move as much of this to CentralWorker as possible
+        LOGS(_log, LOG_LVL_INFO, funcName << " parsing bytes=" << bytesTrans << " _buf" << _buf.dumpStr(false));
         auto protoKeyShiftReq = StringElement::protoParse<proto::KeyShiftRequest>(_buf);
         if (protoKeyShiftReq == nullptr) {
             throw LoaderMsgErr(funcName + " KeyShiftRequest parse failure ", __FILE__, __LINE__);
@@ -584,22 +584,11 @@ void TcpBaseConnection::_handleShiftFromRight1(boost::system::error_code const& 
             throw LoaderMsgErr(funcName + " KeyShiftRequest for < 1 key", __FILE__, __LINE__);
         }
         // Build and send the KeyList message back (send smallest keys to right node)
-        /* &&&
-        StringElement::UPtr keyList = _serverTcpBase->getCentralWorker()->buildKeyList(keyShiftReq);
-        UInt32Element kindShiftFromRight(LoaderMsg::SHIFT_FROM_RIGHT);
-        auto keyListTransmitSz = keyList->transmitSize();
-        UInt32Element bytesInMsg(keyListTransmitSz);
-        BufferUdp data(kindShiftFromRight.transmitSize() + bytesInMsg.transmitSize() + keyListTransmitSz);
-        kindShiftFromRight.appendToData(data);
-        bytesInMsg.appendToData(data);
-        keyList->appendToData(data);
-        */
         StringElement::UPtr keyList = _serverTcpBase->getCentralWorker()->buildKeyList(keyShiftReq);
         auto keyListTransmitSz = keyList->transmitSize();
         BufferUdp data(keyListTransmitSz);
         keyList->appendToData(data);
-        LOGS(_log, LOG_LVL_INFO, funcName << " &&&hhhhC 8");
-        ServerTcpBase::_writeData(_socket, data);
+        ServerTcpBase::writeData(_socket, data);
 
 
         // Wait for the SHIFT_FROM_RIGHT_KEYS_RECEIVED response back.
@@ -611,8 +600,8 @@ void TcpBaseConnection::_handleShiftFromRight1(boost::system::error_code const& 
             throw new LoaderMsgErr(funcName + " receive failure");
         }
         _serverTcpBase->getCentralWorker()->finishShiftFromRight();
-        LOGS(_log, LOG_LVL_INFO, funcName << " &&&hhhhS done dumpKeys " <<
-                                 _serverTcpBase->getCentralWorker()->dumpKeysStr(3));
+        LOGS(_log, LOG_LVL_INFO, funcName << " done dumpKeys " <<
+                                 _serverTcpBase->getCentralWorker()->dumpKeysStr(2));
     } catch (LoaderMsgErr &msgErr) {
         LOGS(_log, LOG_LVL_ERROR, msgErr.what());
         LOGS(_log, LOG_LVL_ERROR, funcName << " key shift failed");
