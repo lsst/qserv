@@ -69,8 +69,6 @@ util::CommandTracked::Ptr WWorkerList::createCommandWorker(CentralWorker* centra
 
         void action(util::CmdData *data) override {
             /// Request a list of all workers.
-            LOGS(_log, LOG_LVL_INFO, "&&& WWorkerListItem::createCommand::WorkerReqCmd::action");
-
             // TODO make a function for this, it's always going to be the same.
             proto::LdrNetAddress protoOurAddress;
             protoOurAddress.set_ip(_centralW->getHostName());
@@ -92,7 +90,6 @@ util::CommandTracked::Ptr WWorkerList::createCommandWorker(CentralWorker* centra
             /// Go through the existing list and add any that have not been add to the doList
             for (auto const& item : _nameMap) {
                 item.second->addDoListItems(_centralW);
-                //_centralW->addDoListItem(item.second);
             }
         }
 
@@ -101,32 +98,34 @@ util::CommandTracked::Ptr WWorkerList::createCommandWorker(CentralWorker* centra
         std::map<uint32_t, WWorkerListItem::Ptr> _nameMap;
     };
 
-    LOGS(_log, LOG_LVL_INFO, "&&& WorkerList::createCommandWorker");
+    LOGS(_log, LOG_LVL_DEBUG, "WorkerList::createCommandWorker");
     return std::make_shared<MastWorkerListReqCmd>(centralW, _nameMap);
 }
 
 
 bool WWorkerList::workerListReceive(BufferUdp::Ptr const& data) {
-    LOGS(_log, LOG_LVL_INFO, " &&& workerListReceive data=" << data->dumpStr());
+    std::string const funcName("WWorkerList::workerListReceive");
+    LOGS(_log, LOG_LVL_INFO, funcName << " data=" << data->dumpStr());
     // Open the data protobuffer and add it to our list.
     StringElement::Ptr sData = std::dynamic_pointer_cast<StringElement>(MsgElement::retrieve(*data));
     if (sData == nullptr) {
-        LOGS(_log, LOG_LVL_WARN, "WorkerList::workerListReceive Failed to parse list");
+        LOGS(_log, LOG_LVL_WARN, funcName << " Failed to parse list");
         return false;
     }
     auto protoList = sData->protoParse<proto::LdrMastWorkerList>();
     if (protoList == nullptr) {
-        LOGS(_log, LOG_LVL_WARN, "WorkerList::workerListReceive Failed to parse list");
+        LOGS(_log, LOG_LVL_WARN, funcName << " Failed to parse list");
         return false;
     }
 
-    // &&& TODO put this in separate thread, the part above can probably be put in a separate function in _central
+    // TODO put this in separate thread, the part above can probably be put in a separate function in _central
     int sizeChange = 0;
     std::string strNames;
     {
         std::lock_guard<std::mutex> lock(_mapMtx);
         size_t initialSize = _nameMap.size();
-        _totalNumberOfWorkers = protoList->workercount(); // There may be more workers than will fit in a message.
+        // There may be more workers than will fit in a message.
+        _totalNumberOfWorkers = protoList->workercount();
         int sz = protoList->worker_size();
 
         for (int j=0; j < sz; ++j) {
@@ -134,9 +133,7 @@ bool WWorkerList::workerListReceive(BufferUdp::Ptr const& data) {
             uint32_t name = protoItem.name();
             // Most of the time, the worker will already be in the map.
             auto item = _nameMap[name];
-            LOGS(_log, LOG_LVL_INFO, j << "&&& _nameMap got name=" << name << " item=" << item);
             if (item == nullptr) {
-                LOGS(_log, LOG_LVL_INFO, "&&& nullptr name=" << name);
                 item = WWorkerListItem::create(name, _central);
                 _nameMap[name] = item;
                 strNames += std::to_string(name) + ",";
@@ -148,10 +145,8 @@ bool WWorkerList::workerListReceive(BufferUdp::Ptr const& data) {
             _flagListChange();
         }
     }
-
-    infoReceived(); // Avoid asking for this info for a while.
-    LOGS(_log, LOG_LVL_INFO, "workerListReceive added " << sizeChange << " names=" << strNames);
-
+    infoReceived(); // This causes it to avoid asking for this info for a while.
+    LOGS(_log, LOG_LVL_INFO, funcName << " added " << sizeChange << " names=" << strNames);
     return true;
 }
 
@@ -162,14 +157,16 @@ void WWorkerList::_flagListChange() {
 
 
 bool WWorkerList::equal(WWorkerList& other) {
-    // Have to lock it this way as other could call it's own equal function which
+    std::string const funcName("WWorkerList::equal");
+    // Have to lock it this way as 'other' could call it's own equal function which
     // would try to lock in reverse order.
     std::lock(_mapMtx, other._mapMtx);
     std::lock_guard<std::mutex> lk1(_mapMtx,       std::adopt_lock);
     std::lock_guard<std::mutex> lk2(other._mapMtx, std::adopt_lock);
 
     if (_nameMap.size() != other._nameMap.size()) {
-        LOGS(_log, LOG_LVL_INFO, "&&& map sizes do not match this=" << _nameMap.size() << " other=" << other._nameMap.size());
+        LOGS(_log, LOG_LVL_INFO, funcName << " map sizes do not match this=" << _nameMap.size() <<
+                                 " other=" << other._nameMap.size());
         return false;
     }
     auto thisIter = _nameMap.begin();
@@ -177,11 +174,11 @@ bool WWorkerList::equal(WWorkerList& other) {
     for (;thisIter != _nameMap.end() && otherIter != other._nameMap.end();
             ++thisIter, ++otherIter) {
         if (thisIter->first != otherIter->first) {
-            LOGS(_log, LOG_LVL_INFO, "&&& map first not equal");
+            LOGS(_log, LOG_LVL_INFO, funcName << " map first not equal");
             return false;
         }
         if (not thisIter->second->equal(*(otherIter->second))) {
-            LOGS(_log, LOG_LVL_INFO, "&&& map second not equal");
+            LOGS(_log, LOG_LVL_INFO, funcName << " map second not equal");
             return false;
         }
     }
@@ -236,7 +233,7 @@ void WWorkerList::updateEntry(uint32_t name,
 
 
     // TODO probably special action should be taken if this is our name.
-    LOGS(_log, LOG_LVL_INFO, "&&&& updateEntry strRange=" << strRange);
+    LOGS(_log, LOG_LVL_INFO, "updateEntry strRange=" << strRange);
     if (strRange.getValid()) {
         // Does the new range match the old range?
         auto oldRange = item->setRangeStr(strRange);
@@ -260,22 +257,22 @@ void WWorkerList::updateEntry(uint32_t name,
 
 
 WWorkerListItem::Ptr WWorkerList::findWorkerForKey(std::string const& key) {
+    std::string const funcName("WWorkerList::findWorkerForKey");
     std::unique_lock<std::mutex> lk(_mapMtx);
     // TODO Really could use a custom container for _rangeMap to speed this up.
     for (auto const& elem : _rangeMap) {
-        LOGS(_log, LOG_LVL_INFO, "&&& WWorkerList::findWorkerForKey checking " << elem.first << " -> " << *(elem.second));
         if (elem.second->containsKey(key)) {
+            LOGS(_log, LOG_LVL_INFO, funcName << " key=" << elem.first << " -> " << *(elem.second));
             return elem.second;
         }
     }
-    LOGS(_log, LOG_LVL_WARN, "WWorkerList::findWorkerForKey did not find worker for key=" << key);
+    LOGS(_log, LOG_LVL_WARN, funcName << " did not find worker for key=" << key);
     return nullptr;
 }
 
 
 
 void WWorkerListItem::addDoListItems(Central *central) {
-    LOGS(_log, LOG_LVL_INFO, "&&& WWorkerListItem::addDoListItems");
     std::lock_guard<std::mutex> lck(_mtx);
     if (_workerUpdateNeedsMasterData == nullptr) {
         _workerUpdateNeedsMasterData.reset(new WorkerNeedsMasterData(shared_from_this(), _central));
@@ -285,21 +282,22 @@ void WWorkerListItem::addDoListItems(Central *central) {
 
 
 bool WWorkerListItem::equal(WWorkerListItem& other) {
+    std::string const funcName("WWorkerListItem::equal");
     std::lock(_mtx, other._mtx);
     std::lock_guard<std::mutex> lck1(_mtx,       std::adopt_lock);
     std::lock_guard<std::mutex> lck2(other._mtx, std::adopt_lock);
     if (_name != other._name) {
-        LOGS(_log, LOG_LVL_INFO, "&&& item name not equal t=" << _name << " o=" << other._name);
+        LOGS(_log, LOG_LVL_INFO, funcName << " item name not equal t=" << _name << " o=" << other._name);
         return false;
     }
     if (*_udpAddress != *other._udpAddress) {
-        LOGS(_log, LOG_LVL_INFO, "&&& item addr != name=" << _name <<
+        LOGS(_log, LOG_LVL_INFO, funcName << " item addr != name=" << _name <<
                                  " t=" << *_udpAddress << " o=" << *other._udpAddress);
         return false;
     }
-    /// TODO add range check &&&
+
     if (not _range.equal(other._range)) {
-        LOGS(_log, LOG_LVL_INFO, "&&& item range != name=" << _name <<
+        LOGS(_log, LOG_LVL_INFO, funcName << " item range != name=" << _name <<
                                  " t=" << _range << " o=" << other._range);
     }
     return true;
@@ -321,12 +319,6 @@ void WWorkerListItem::setTcpAddress(std::string const& ip, int port) {
 
 StringRange WWorkerListItem::setRangeStr(StringRange const& strRange) {
     std::lock_guard<std::mutex> lck(_mtx);
-    /* &&&
-    if (strRange.equal(_range)) { return true; }
-    _range = strRange;
-    LOGS(_log, LOG_LVL_INFO, "setRangeStr name=" << _name << " range=" << _range);
-    return false;
-    */
     auto oldRange = _range;
     _range = strRange;
     LOGS(_log, LOG_LVL_INFO, "setRangeStr name=" << _name << " range=" << _range <<
@@ -391,7 +383,8 @@ util::CommandTracked::Ptr WWorkerListItem::createCommandWorkerInfoReq(CentralWor
         uint32_t _name;
     };
 
-    LOGS(_log, LOG_LVL_INFO, "&&& WWorkerListItem::createCommandWorker this=" << centralW->getOurLogId() << " name=" << _name);
+    LOGS(_log, LOG_LVL_INFO, "WWorkerListItem::createCommandWorker this=" <<
+                             centralW->getOurLogId() << " name=" << _name);
     return std::make_shared<WorkerReqCmd>(centralW, _name);
 }
 

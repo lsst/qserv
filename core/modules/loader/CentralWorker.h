@@ -195,7 +195,7 @@ private:
 
     std::mutex _rightMtx;
     SocketStatus _rightConnectStatus{VOID0};
-    std::shared_ptr<tcp::socket>  _rightSocket;
+    std::shared_ptr<AsioTcp::socket>  _rightSocket;
 
     std::atomic<bool> _shiftAsClientInProgress{false}; ///< True when shifting to or from right neighbor.
     double _thresholdNeighborShift{1.10}; ///< Shift if 10% more than neighbor TODO put in config file.

@@ -35,15 +35,11 @@
 #include "loader/BufferUdp.h"
 
 
-// &&& try to delete these
-#include "loader/LoaderMsg.h"
-
 namespace lsst {
 namespace qserv {
 namespace loader {
 
-using boost::asio::ip::tcp; // &&& Using gotta go
-
+typedef boost::asio::ip::tcp AsioTcp;
 
 class ServerTcpBase;
 
@@ -57,7 +53,7 @@ public:
 
     ~TcpBaseConnection() { shutdown(); }
 
-    tcp::socket& socket() {
+    AsioTcp::socket& socket() {
         return _socket;
     }
 
@@ -74,13 +70,13 @@ private:
     /// Free the connection and cancel shifts from this server.
     void _freeConnect();
 
-    tcp::socket _socket;
+    AsioTcp::socket _socket;
     ServerTcpBase* _serverTcpBase; // _serverTcpBase controls this class' lifetime.
     BufferUdp _buf{1000000};
 
     void _handleImYourLNeighbor(uint32_t bytes);
     void _handleImYourLNeighbor1(boost::system::error_code const& ec, size_t bytesTrans);
-    void _handleImYourLNeighbor2(boost::system::error_code const& ec, size_t bytesTrans); // &&& rename to 2
+    void _handleImYourLNeighbor2(boost::system::error_code const& ec, size_t bytesTrans);
 
     void _handleShiftToRight(uint32_t bytes);
     void _handleShiftToRight1(boost::system::error_code const& ec, size_t bytesTrans);
@@ -102,12 +98,14 @@ class ServerTcpBase {
 public:
     typedef std::shared_ptr<ServerTcpBase> Ptr;
     ServerTcpBase(boost::asio::io_context& io_context, int port) :
-        _io_context(io_context), _acceptor(io_context, tcp::endpoint(tcp::v4(), port)), _port(port) {
+        _io_context(io_context),
+        _acceptor(io_context, AsioTcp::endpoint(AsioTcp::v4(), port)), _port(port) {
         startAccept();
     }
 
     ServerTcpBase(boost::asio::io_context& io_context, int port, CentralWorker* cw) :
-        _io_context(io_context), _acceptor(io_context, tcp::endpoint(tcp::v4(), port)), _port(port),
+        _io_context(io_context),
+        _acceptor(io_context, AsioTcp::endpoint(AsioTcp::v4(), port)), _port(port),
         _centralWorker(cw){
         startAccept();
     }
@@ -118,9 +116,9 @@ public:
         for (std::thread& t : _threads) {
             t.join();
         }
-        // &&& Is this thread safe? The server is expected to live until program termination.
-        // &&& If a connection is doing something, and this is called, what happens?
-        // &&& Check _connections empty before deleting?
+        // The server is expected to live until program termination.
+        // If a connection is doing something, and this is called, what happens?
+        // Check _connections empty before deleting?
         for (auto&& conn:_connections) {
             conn->shutdown();
         }
@@ -144,7 +142,7 @@ public:
 
     CentralWorker* getCentralWorker() const { return _centralWorker; }
 
-    static bool _writeData(tcp::socket& socket, BufferUdp& data); // &&& remove underscore
+    static bool writeData(AsioTcp::socket& socket, BufferUdp& data);
 
 private:
     void startAccept() {
@@ -164,7 +162,7 @@ private:
     }
 
     boost::asio::io_context& _io_context;
-    boost::asio::ip::tcp::acceptor _acceptor;
+    AsioTcp::acceptor _acceptor;
     int _port;
     std::vector<std::thread> _threads;
     std::set<TcpBaseConnection::Ptr> _connections;

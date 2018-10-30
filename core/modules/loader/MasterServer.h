@@ -32,7 +32,7 @@
 
 // Qserv headers
 #include "loader/ServerUdpBase.h"
-#include "loader/WorkerList.h"
+#include "loader/MWorkerList.h"
 
 namespace lsst {
 namespace qserv {
