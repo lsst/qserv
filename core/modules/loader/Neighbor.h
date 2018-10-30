@@ -54,17 +54,17 @@ public:
 
     void setAddressTcp(std::string const& hostName, int port) {
         std::lock_guard<std::mutex> lck(_nMtx);
-        _address.reset(new NetworkAddress(hostName, port));
+        _addressTcp.reset(new NetworkAddress(hostName, port));
     }
 
     void setAddressTcp(NetworkAddress const& addr) {
         std::lock_guard<std::mutex> lck(_nMtx);
-        _address.reset(new NetworkAddress(addr));
+        _addressTcp.reset(new NetworkAddress(addr));
     }
 
     NetworkAddress getAddressTcp() {
         std::lock_guard<std::mutex> lck(_nMtx);
-        return *_address;
+        return *_addressTcp;
     }
 
     void setAddressUdp(std::string const& hostName, int port) {
@@ -110,7 +110,7 @@ public:
     bool getEstablished() const { return _established; }
 
 private:
-    NetworkAddress::UPtr _address{new NetworkAddress("", -1)}; // &&& rename to _addressTcp
+    NetworkAddress::UPtr _addressTcp{new NetworkAddress("", -1)};
     NetworkAddress::UPtr _addressUdp{new NetworkAddress("", -1)};
     uint32_t _name{0}; ///< Name of neighbor, 0 means no neighbor.
     bool _established{false};

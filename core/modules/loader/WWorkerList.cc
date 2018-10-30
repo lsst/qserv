@@ -81,7 +81,7 @@ util::CommandTracked::Ptr WWorkerList::createCommandWorker(CentralWorker* centra
             LoaderMsg workerInfoReqMsg(LoaderMsg::MAST_WORKER_LIST_REQ, _centralW->getNextMsgId(),
                                        _centralW->getHostName(), _centralW->getUdpPort());
             BufferUdp sendBuf(1000);
-            workerInfoReqMsg.serializeToData(sendBuf);
+            workerInfoReqMsg.appendToData(sendBuf);
             eOurAddress.appendToData(sendBuf);
 
             // Send the request to master.
@@ -376,7 +376,7 @@ util::CommandTracked::Ptr WWorkerListItem::createCommandWorkerInfoReq(CentralWor
             LoaderMsg workerInfoReqMsg(LoaderMsg::MAST_WORKER_INFO_REQ, _centralW->getNextMsgId(),
                                        _centralW->getHostName(), _centralW->getUdpPort());
             BufferUdp sendBuf(1000);
-            workerInfoReqMsg.serializeToData(sendBuf);
+            workerInfoReqMsg.appendToData(sendBuf);
             eOurAddress.appendToData(sendBuf);
             eItem.appendToData(sendBuf);
 

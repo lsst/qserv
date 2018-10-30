@@ -48,7 +48,7 @@ namespace loader {
 
 
 void DoList::checkList() {
-    LOGS(_log, LOG_LVL_INFO, "&&& DoList::checkList");
+    LOGS(_log, LOG_LVL_DEBUG, "DoList::checkList");
     std::lock_guard<std::mutex> lock(_listMtx);
     {
         std::lock_guard<std::mutex> lockAddList(_addListMtx);
@@ -56,16 +56,14 @@ void DoList::checkList() {
         _list.splice(_list.end(), _addList);
     }
     for (auto iter = _list.begin(); iter != _list.end(); ++iter){
-        //LOGS(_log, LOG_LVL_INFO, "  &&& checking item");
         DoListItem::Ptr const& item = *iter;
         auto cmd = item->runIfNeeded(TimeOut::Clock::now());
         if (cmd != nullptr) {
-            LOGS(_log, LOG_LVL_INFO, "   &&& queing command");
+            LOGS(_log, LOG_LVL_DEBUG, "queuing command");
             _central.queueCmd(cmd);
         } else {
-            //LOGS(_log, LOG_LVL_INFO, "   &&& check remove");
             if (item->removeFromList()) {
-                LOGS(_log, LOG_LVL_INFO, "    &&& removing item");
+                LOGS(_log, LOG_LVL_INFO, "removing item");
                 item->setAddedToList(false);
                 iter = _list.erase(iter);
             }
@@ -77,7 +75,7 @@ void DoList::checkList() {
 void DoList::runItemNow(DoListItem::Ptr const& item) {
     auto cmd = item->runIfNeeded(TimeOut::Clock::now());
     if (cmd != nullptr) {
-        LOGS(_log, LOG_LVL_INFO, "&&& DoList::addAndRunItemNow queing command");
+        LOGS(_log, LOG_LVL_INFO, "DoList::addAndRunItemNow queuing command");
         _central.queueCmd(cmd);
     }
 }

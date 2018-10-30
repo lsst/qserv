@@ -47,7 +47,7 @@ void Neighbor::setName(uint32_t name) {
     if (_name != name) {
         LOGS(_log, LOG_LVL_INFO, getTypeStr() << "Neighbor changing name from(" << _name <<") to(" << name << ")");
         _established = false;
-        _address.reset(new NetworkAddress("", -1));
+        _addressTcp.reset(new NetworkAddress("", -1));
     }
     _name = name;
 }
