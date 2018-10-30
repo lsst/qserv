@@ -52,7 +52,8 @@ namespace loader {
 BufferUdp::Ptr MasterServer::parseMsg(BufferUdp::Ptr const& data,
                                       boost::asio::ip::udp::endpoint const& senderEndpoint) {
 
-    LOGS(_log, LOG_LVL_INFO, "&&& MasterServer::parseMsg sender " << senderEndpoint << " data length=" << data->getAvailableWriteLength());
+    LOGS(_log, LOG_LVL_DEBUG, "MasterServer::parseMsg sender " << senderEndpoint <<
+                              " data length=" << data->getAvailableWriteLength());
     BufferUdp::Ptr sendData; /// nullptr for empty response.
     LoaderMsg inMsg;
     try {
@@ -66,12 +67,11 @@ BufferUdp::Ptr MasterServer::parseMsg(BufferUdp::Ptr const& data,
     }
 
     try {
-        LOGS(_log, LOG_LVL_INFO, "&&& MasterServer::parseMsg sender " << senderEndpoint <<
+        LOGS(_log, LOG_LVL_INFO, "MasterServer::parseMsg sender " << senderEndpoint <<
                 " kind=" << inMsg.msgKind->element << " data length=" << data->getAvailableWriteLength());
-        // &&& there are better ways to do this than a switch statement.
         switch (inMsg.msgKind->element) {
         case LoaderMsg::MSG_RECEIVED:
-            // TODO: locate msg id in send messages and take action
+            // TODO: locate msg id in send messages and take appropriate action
             break;
         case LoaderMsg::MAST_INFO_REQ:
             // TODO: provide performance information about the master via MAST_INFO
@@ -80,15 +80,13 @@ BufferUdp::Ptr MasterServer::parseMsg(BufferUdp::Ptr const& data,
             sendData = workerListRequest(inMsg, data, senderEndpoint);
             break;
         case LoaderMsg::MAST_WORKER_INFO_REQ:
-            // TODO: Request information about a specific worker via MAST_WORKER_INFO
-            LOGS(_log, LOG_LVL_INFO, "&&& **** MasterServer:: MAST_WORKER_INFO_REQ");
+            // Request information about a specific worker via MAST_WORKER_INFO
             sendData = workerInfoRequest(inMsg, data, senderEndpoint);
             break;
         case LoaderMsg::MAST_WORKER_ADD_REQ:
             sendData = workerAddRequest(inMsg, data, senderEndpoint);
             break;
         case LoaderMsg::WORKER_KEYS_INFO:
-            LOGS(_log, LOG_LVL_INFO, "&&& **** MasterServer::WORKER_KEYS_INFO");
             sendData = workerKeysInfo(inMsg, data, senderEndpoint);
             break;
             // following not expected by master
@@ -98,7 +96,7 @@ BufferUdp::Ptr MasterServer::parseMsg(BufferUdp::Ptr const& data,
         case LoaderMsg::KEY_INSERT_REQ:
         case LoaderMsg::KEY_INFO_REQ:
         case LoaderMsg::KEY_INFO:
-            /// &&& TODO add msg unexpected by master response.
+            /// TODO add msg unexpected by master response.
             break;
         default:
             ++_errCount;
@@ -142,7 +140,7 @@ BufferUdp::Ptr MasterServer::replyMsgReceived(boost::asio::ip::udp::endpoint con
     protoBuf.SerializeToString(&(respBuf.element));
 
     auto sendData = std::make_shared<BufferUdp>(1000); // this message should be fairly small.
-    outMsg.serializeToData(*sendData);
+    outMsg.appendToData(*sendData);
     respBuf.appendToData(*sendData);
     return sendData;
 }
@@ -172,7 +170,7 @@ BufferUdp::Ptr MasterServer::workerAddRequest(LoaderMsg const& inMsg, BufferUdp:
 BufferUdp::Ptr MasterServer::workerListRequest(LoaderMsg const& inMsg, BufferUdp::Ptr const& data,
                                                boost::asio::ip::udp::endpoint const& senderEndpoint) {
     std::string funcName("MasterServer::workerListRequest");
-    LOGS(_log, LOG_LVL_INFO, "  &&& " << funcName);
+    LOGS(_log, LOG_LVL_DEBUG, funcName);
 
     int tcpPort = 0; // only needed for create parameter
     auto addr = NetworkAddress::create(data, tcpPort, funcName);
@@ -182,11 +180,10 @@ BufferUdp::Ptr MasterServer::workerListRequest(LoaderMsg const& inMsg, BufferUdp
         return replyMsgReceived(senderEndpoint, inMsg, LoaderMsg::STATUS_PARSE_ERR, errStr);
     }
 
-    LOGS(_log, LOG_LVL_INFO, "&&& workerListRequest calling sendListTo " << senderEndpoint);
     // TODO: put this in a separate thread.
     auto workerList = _centralMaster->getWorkerList();
     workerList->sendListTo(inMsg.msgId->element, addr->ip, addr->port, getOurHostName(), getOurPort());
-    LOGS(_log, LOG_LVL_INFO, "&&& workerListRequest done sendListTo ");
+    LOGS(_log, LOG_LVL_INFO, funcName << " done sendListTo ");
 
     return nullptr;
 }
@@ -196,17 +193,16 @@ BufferUdp::Ptr MasterServer::workerKeysInfo(LoaderMsg const& inMsg, BufferUdp::P
                                             boost::asio::ip::udp::endpoint const& senderEndpoint) {
 
     std::string funcName("MasterServer::workerKeysInfo");
-    LOGS(_log, LOG_LVL_INFO, "  &&& " << funcName);
+    LOGS(_log, LOG_LVL_DEBUG, funcName);
 
     try {
         uint32_t name;
         NeighborsInfo nInfo;
         StringRange strRange;
         ProtoHelper::workerKeysInfoExtractor(*data, name, nInfo, strRange);
-        LOGS(_log, LOG_LVL_INFO, "&&& MasterServer WorkerKeysInfo name=" << name << " keyCount=" << nInfo.keyCount << " recentAdds=" << nInfo.recentAdds);
-        LOGS(_log, LOG_LVL_INFO, "&&& MasterServer WorkerKeysInfo range=" << strRange);
-        // TODO store the information
-        // &&& move to separate thread.
+        LOGS(_log, LOG_LVL_INFO, funcName << "name=" << name << " keyCount=" << nInfo.keyCount <<
+                                 " recentAdds=" << nInfo.recentAdds << " range=" << strRange);
+        // TODO move to separate thread.
         _centralMaster->updateWorkerInfo(name, nInfo, strRange);
     } catch (LoaderMsgErr &msgErr) {
         LOGS(_log, LOG_LVL_ERROR, msgErr.what());
@@ -218,8 +214,7 @@ BufferUdp::Ptr MasterServer::workerKeysInfo(LoaderMsg const& inMsg, BufferUdp::P
 
 BufferUdp::Ptr MasterServer::workerInfoRequest(LoaderMsg const& inMsg, BufferUdp::Ptr const& data,
                                  boost::asio::ip::udp::endpoint const& senderEndpoint) {
-    LOGS(_log, LOG_LVL_INFO, "  &&& MasterServer::workerInfoRequest **************");
-    // &&& TODO Wrap this up in a command and put it on a queue.
+    // TODO HIGH Wrap this up in a command and put it on a queue.
     try {
         std::string const funcName("MasterServer::workerInfoRequest");
         int tcpPort = 0;
@@ -234,16 +229,16 @@ BufferUdp::Ptr MasterServer::workerInfoRequest(LoaderMsg const& inMsg, BufferUdp
         }
 
         auto workerName = protoItem->name();
-        LOGS(_log, LOG_LVL_INFO, "************************* &&& Master got name=" << workerName);
+        LOGS(_log, LOG_LVL_INFO, funcName << " Master got name=" << workerName);
 
-        /// &&& find the worker name in the map.
+        /// Find the worker name in the map.
         auto workerItem = _centralMaster->getWorkerNamed(protoItem->name());
         if (workerItem == nullptr) {
-            /// &&& TODO construct message for invalid worker
+            /// TODO construct message for invalid worker
             return nullptr;
         }
 
-        /// &&& return worker's name, netaddress, and range in MAST_WORKER_INFO msg
+        /// Return worker's name, netaddress, and range in MAST_WORKER_INFO msg
         proto::WorkerListItem protoWorker;
         proto::LdrNetAddress* protoAddr = protoWorker.mutable_address();
         proto::WorkerRangeString* protoRange = protoWorker.mutable_rangestr();
@@ -253,7 +248,7 @@ BufferUdp::Ptr MasterServer::workerInfoRequest(LoaderMsg const& inMsg, BufferUdp
         protoAddr->set_udpport(udp.port);
         protoAddr->set_tcpport(workerItem->getTcpAddress().port);
         auto range = workerItem->getRangeString();
-        LOGS(_log, LOG_LVL_INFO, "&&&&&&&&&&&&&&&&&&&&&& workerInfoRequest range = " << range);
+        LOGS(_log, LOG_LVL_INFO, funcName << " workerInfoRequest range = " << range);
         protoRange->set_valid(range.getValid());
         protoRange->set_min(range.getMin());
         protoRange->set_max(range.getMax());
@@ -264,10 +259,10 @@ BufferUdp::Ptr MasterServer::workerInfoRequest(LoaderMsg const& inMsg, BufferUdp
                                       _centralMaster->getMasterHostName(), _centralMaster->getMasterPort());
 
         BufferUdp sendBuf;
-        masterWorkerInfoMsg.serializeToData(sendBuf);
+        masterWorkerInfoMsg.appendToData(sendBuf);
         seItem.appendToData(sendBuf);
 
-        // Send the request to the worker that asked for it.
+        // Send the response to the worker that asked for it.
         _centralMaster->sendBufferTo(requestorAddr->ip, requestorAddr->port, sendBuf);
 
     } catch (LoaderMsgErr &msgErr) {

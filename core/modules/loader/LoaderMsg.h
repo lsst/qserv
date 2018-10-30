@@ -43,7 +43,7 @@ namespace qserv {
 namespace loader {
 
 
-// Expand to include basic message information &&&
+// TODO Add more information
 class LoaderMsgErr : public std::exception {
 public:
     LoaderMsgErr(std::string const& msg, std::string const& file, int line) {
@@ -58,7 +58,8 @@ private:
 };
 
 
-// Base class for message elements
+/// Base class for message elements. It include methods for appending or retrieving from
+/// BufferUdp objects.
 class MsgElement {
 public:
     using Ptr = std::shared_ptr<MsgElement>;
@@ -83,31 +84,12 @@ public:
     /// the string has been constructed. Numeric elements have constant size.
     virtual size_t transmitSize() const =0;
 
+    /// Create the correct MsgElement child class for 'elemenetType'
     static MsgElement::Ptr create(char elementType);
 
     static bool retrieveType(BufferUdp &data, char& elemType);
 
     static MsgElement::Ptr retrieve(BufferUdp& data);
-
-
-    /* &&&
-    static bool retrieveType(BufferUdp &data, char& elemType) {
-        return data.retrieve(&elemType, sizeof(elemType));
-    }
-
-    static MsgElement::Ptr retrieve(BufferUdp& data) {
-        char elemT;
-        if (not retrieveType(data, elemT)) {
-            return nullptr;
-        }
-        MsgElement::Ptr msgElem = create(elemT);
-        if (msgElem != nullptr && not msgElem->retrieveFromData(data)) {
-            // No good way to recover from missing data from a know type.
-            throw LoaderMsgErr("static retrieve, incomplete data for type=" +
-                    std::to_string((int)elemT) + " data:" + data.dump());
-        }
-        return msgElem;
-    } */
 
     static bool equal(MsgElement* a, MsgElement* b) {
         if (a == b) return true;
@@ -353,7 +335,7 @@ public:
     virtual ~LoaderMsg() = default;
 
     void parseFromData(BufferUdp& data);
-    void serializeToData(BufferUdp& data);
+    void appendToData(BufferUdp& data);
 
     std::string getStringVal() const;
 

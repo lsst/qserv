@@ -72,7 +72,7 @@ void CentralMaster::updateWorkerInfo(uint32_t workerName, NeighborsInfo const& n
         LOGS(_log, LOG_LVL_WARN, "CentralMaster::updateNeighbors nullptr for workerName=" << workerName);
         return;
     }
-    item->setKeyCounts(nInfo);
+    item->setNeighborsInfo(nInfo);
     item->setRangeStr(strRange);
     _assignNeighborIfNeeded();
 }
@@ -90,7 +90,7 @@ void CentralMaster::setWorkerNeighbor(MWorkerListItem::WPtr const& target, int m
     // Build and send the message
     LoaderMsg msg(message, getNextMsgId(), getMasterHostName(), getMasterPort());
     BufferUdp msgData;
-    msg.serializeToData(msgData);
+    msg.appendToData(msgData);
     UInt32Element neighborNameElem(neighborName);
     neighborNameElem.appendToData(msgData);
     auto addr = targetWorker->getUdpAddress();
@@ -177,7 +177,7 @@ void CentralMaster::reqWorkerKeysInfo(uint64_t msgId, std::string const& ip, sho
                                      std::string const& ourHostName, short ourPort) {
     LoaderMsg reqMsg(LoaderMsg::WORKER_KEYS_INFO_REQ, msgId, ourHostName, ourPort);
     BufferUdp data;
-    reqMsg.serializeToData(data);
+    reqMsg.appendToData(data);
     sendBufferTo(ip, port, data);
 }
 
