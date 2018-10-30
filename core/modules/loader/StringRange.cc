@@ -97,7 +97,7 @@ std::string StringRange::decrementString(std::string const& str, char minChar) {
 
 void ProtoHelper::workerKeysInfoExtractor(BufferUdp& data, uint32_t& name, NeighborsInfo& nInfo, StringRange& strRange) {
     auto funcName = "CentralWorker::_workerKeysInfoExtractor";
-    LOGS(_log, LOG_LVL_INFO, "&&& " << funcName);
+    LOGS(_log, LOG_LVL_DEBUG, funcName);
     auto protoItem = StringElement::protoParse<proto::WorkerKeysInfo>(data);
     if (protoItem == nullptr) {
         throw LoaderMsgErr(funcName, __FILE__, __LINE__);

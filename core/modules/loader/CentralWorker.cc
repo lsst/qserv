@@ -165,7 +165,7 @@ bool CentralWorker::_determineRange() {
         // Must send the number of bytes in the message so TCP server knows how many bytes to read.
         bytesInMsg.appendToData(data);
         strElem.appendToData(data);
-        ServerTcpBase::_writeData(*_rightSocket, data);
+        ServerTcpBase::writeData(*_rightSocket, data);
     }
     // Get back their basic info
     {
@@ -304,7 +304,7 @@ void CentralWorker::_shift(Direction direction, int keysToShift) {
             bytesInMsg.appendToData(data);
             keyShiftReq.appendToData(data);
             LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift FROMRIGHT " << keysToShift);
-            ServerTcpBase::_writeData(*_rightSocket, data);
+            ServerTcpBase::writeData(*_rightSocket, data);
         }
         // Wait for the KeyList response
         {
@@ -333,7 +333,7 @@ void CentralWorker::_shift(Direction direction, int keysToShift) {
         data.reset();
         UInt32Element elem(LoaderMsg::SHIFT_FROM_RIGHT_RECEIVED);
         elem.appendToData(data);
-        ServerTcpBase::_writeData(*_rightSocket, data);
+        ServerTcpBase::writeData(*_rightSocket, data);
         LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift  direction=" << direction << " keys=" << keysToShift);
 
     } else if (direction == TORIGHT1) {
@@ -377,7 +377,7 @@ void CentralWorker::_shift(Direction direction, int keysToShift) {
         bytesInMsg.appendToData(data);
         keyList.appendToData(data);
         LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift TORIGHT sending keys");
-        ServerTcpBase::_writeData(*_rightSocket, data);
+        ServerTcpBase::writeData(*_rightSocket, data);
 
         // read back LoaderMsg::SHIFT_TO_RIGHT_KEYS_RECEIVED
         data.reset();
@@ -460,10 +460,10 @@ void CentralWorker::_rightConnect() {
     if(_rightConnectStatus == VOID0) {
         _rightConnectStatus = STARTING1;
         // Connect to the right neighbor server
-        tcp::resolver resolver(_ioContext);
+        AsioTcp::resolver resolver(_ioContext);
         auto addr = _neighborRight.getAddressTcp();
-        tcp::resolver::results_type endpoints = resolver.resolve(addr.ip, std::to_string(addr.port));
-        _rightSocket.reset(new tcp::socket(_ioContext));
+        AsioTcp::resolver::results_type endpoints = resolver.resolve(addr.ip, std::to_string(addr.port));
+        _rightSocket.reset(new AsioTcp::socket(_ioContext));
         boost::system::error_code ec;
         boost::asio::connect(*_rightSocket, endpoints, ec);
         if (ec) {
