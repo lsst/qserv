@@ -504,9 +504,7 @@ int main(int argc, char* argv[]) {
         int seconds = 0;
         int finished = 0;
         do {
-            sleep(1); // need to sleep as it never gives up on inserts.
-            LOGS(_log, LOG_LVL_INFO, "&&& seconds=" << seconds << " finished=" << finished <<
-                                " insertSuccess=" << insertSuccess << " " << keyInfoDataList.size());
+            sleep(1);
             ++seconds;
             insertSuccess = true;
             for(auto iter = keyInfoDataList.begin(); iter != keyInfoDataList.end();) {
