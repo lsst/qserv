@@ -45,11 +45,8 @@ namespace loader {
 /// A class to allow an object to be notified when the value of an Updatable
 /// object is updated.
 template <class T>
-//class UpdateNotify :public std::enable_shared_from_this<UpdateNotify<T>> { &&&
 class UpdateNotify {
 public:
-    //typedef std::shared_ptr<UpdateNotify<T>> Ptr;  //&&&
-    //typedef std::weak_ptr<UpdateNotify<T>>   WPtr; //&&&
     UpdateNotify() = default;
     virtual ~UpdateNotify() = default;
 

@@ -49,13 +49,13 @@ namespace loader {
 
 BufferUdp::Ptr WorkerServer::parseMsg(BufferUdp::Ptr const& data,
                                       boost::asio::ip::udp::endpoint const& senderEndpoint) {
-    LOGS(_log, LOG_LVL_INFO, "&&& WorkerServer::parseMsg sender " << senderEndpoint << " data length=" << data->getAvailableWriteLength());
+    std::string const funcName("WorkerServer::parseMsg");
     BufferUdp::Ptr sendData; /// nullptr for empty response.
     LoaderMsg inMsg;
     inMsg.parseFromData(*data);
-    LOGS(_log, LOG_LVL_INFO, "&&& WorkerServer::parseMsg sender " << senderEndpoint <<
-            " kind=" << inMsg.msgKind->element << " data length=" << data->getAvailableWriteLength());
-    // &&& there are better ways to do this than a switch statement.
+    LOGS(_log, LOG_LVL_INFO, funcName << " sender " << senderEndpoint <<
+                             " kind=" << inMsg.msgKind->element <<
+                             " data length=" << data->getAvailableWriteLength());
     switch (inMsg.msgKind->element) {
     case LoaderMsg::MAST_INFO:
         // TODO handle a message with information about the master
@@ -64,7 +64,6 @@ BufferUdp::Ptr WorkerServer::parseMsg(BufferUdp::Ptr const& data,
         _centralWorker->getWorkerList()->workerListReceive(data);
         break;
     case LoaderMsg::MSG_RECEIVED:
-        LOGS(_log, LOG_LVL_WARN, "&&& WorkerServer::parseMsg MSG_RECEIVED");
         _msgRecieved(inMsg, data, senderEndpoint);
         sendData.reset(); // never send a response back for one of these, infinite loop.
         break;
@@ -142,11 +141,6 @@ void WorkerServer::_msgRecieved(LoaderMsg const& inMsg, BufferUdp::Ptr const& da
         success = false;
     }
 
-    /* &&&
-    c protoBuf;
-    bool success = proto::ProtoImporter<proto::LdrMsgReceived>::setMsgFrom(
-            protoBuf, seData->element.data(), seData->element.length());
-    */
     std::unique_ptr<proto::LdrMsgReceived> protoBuf;
     if (success) {
         protoBuf = seData->protoParse<proto::LdrMsgReceived>();
