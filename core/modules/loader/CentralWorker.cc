@@ -733,7 +733,7 @@ void CentralWorker::_workerKeyInsertReq(LoaderMsg const& inMsg, std::unique_ptr<
         // for now this function will send the message back for proof of concept.
         LoaderMsg msg(LoaderMsg::KEY_INSERT_COMPLETE, inMsg.msgId->element, getHostName(), getUdpPort());
         BufferUdp msgData;
-        msg.serializeToData(msgData);
+        msg.appendToData(msgData);
         // protoKeyInfo should still be the same
         proto::KeyInfo protoReply;
         protoReply.set_key(key);
@@ -776,7 +776,7 @@ void CentralWorker::_forwardKeyInsertRequest(NetworkAddress const& targetAddr, L
     LOGS(_log, LOG_LVL_INFO, "Forwarding key insert hops=" << hops << " key=" << key);
     LoaderMsg msg(LoaderMsg::KEY_INSERT_REQ, inMsg.msgId->element, getHostName(), getUdpPort());
     BufferUdp msgData;
-    msg.serializeToData(msgData);
+    msg.appendToData(msgData);
 
     StringElement strElem;
     protoData->SerializeToString(&(strElem.element));
@@ -825,7 +825,7 @@ void CentralWorker::_workerKeyInfoReq(LoaderMsg const& inMsg, std::unique_ptr<pr
         // Key found or not, message will be returned.
         LoaderMsg msg(LoaderMsg::KEY_INFO, inMsg.msgId->element, getHostName(), getUdpPort());
         BufferUdp msgData;
-        msg.serializeToData(msgData);
+        msg.appendToData(msgData);
         proto::KeyInfo protoReply;
         protoReply.set_key(key);
         if (iter == _directorIdMap.end()) {
@@ -916,7 +916,7 @@ void CentralWorker::_sendWorkerKeysInfo(NetworkAddress const& nAddr, uint64_t ms
     // Build message containing Range, size of map, number of items added.
     LoaderMsg msg(LoaderMsg::WORKER_KEYS_INFO, msgId, getHostName(), getUdpPort());
     BufferUdp msgData;
-    msg.serializeToData(msgData);
+    msg.appendToData(msgData);
     std::unique_ptr<proto::WorkerKeysInfo> protoWKI = _workerKeysInfoBuilder();
     StringElement strElem;
     protoWKI->SerializeToString(&(strElem.element));
@@ -967,7 +967,7 @@ void CentralWorker::_forwardKeyInfoRequest(WWorkerListItem::Ptr const& target, L
     // The proto buffer should be the same, just need a new message.
     LoaderMsg msg(LoaderMsg::KEY_INFO_REQ, inMsg.msgId->element, getHostName(), getUdpPort());
     BufferUdp msgData;
-    msg.serializeToData(msgData);
+    msg.appendToData(msgData);
 
     StringElement strElem;
     protoData->SerializeToString(&(strElem.element));
@@ -981,7 +981,7 @@ void CentralWorker::_forwardKeyInfoRequest(WWorkerListItem::Ptr const& target, L
 void CentralWorker::_registerWithMaster() {
     LoaderMsg msg(LoaderMsg::MAST_WORKER_ADD_REQ, getNextMsgId(), getHostName(), getUdpPort());
     BufferUdp msgData;
-    msg.serializeToData(msgData);
+    msg.appendToData(msgData);
     // create the proto buffer
     lsst::qserv::proto::LdrNetAddress protoBuf;
     protoBuf.set_ip(getHostName());
@@ -1001,7 +1001,7 @@ void CentralWorker::testSendBadMessage() {
     LoaderMsg msg(kind, getNextMsgId(), getHostName(), getUdpPort());
     LOGS(_log, LOG_LVL_INFO, "testSendBadMessage msg=" << msg);
     BufferUdp msgData(128);
-    msg.serializeToData(msgData);
+    msg.appendToData(msgData);
     sendBufferTo(getMasterHostName(), getMasterPort(), msgData);
 }
 

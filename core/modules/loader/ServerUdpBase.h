@@ -58,6 +58,7 @@ public:
     int getOurPort() const { return _port; }
     uint32_t getErrCount() const { return _errCount; }
 
+    /// This waits for the message to be sent before returning.
     void sendBufferTo(std::string const& host, int port, BufferUdp& sendBuf);
     boost::asio::ip::udp::endpoint resolve(std::string const& hostName, int port);
 

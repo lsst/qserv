@@ -47,27 +47,6 @@ namespace lsst {
 namespace qserv {
 namespace loader {
 
-/* &&&
-NetworkAddress::UPtr NetworkAddress::create(StringElement::Ptr const& data, std::string const& note) {
-    if (data == nullptr) {
-        LOGS(_log, LOG_LVL_WARN, "NetworkAddress::create data==nullptr " + note);
-        return nullptr;
-    }
-
-    proto::LdrNetAddress addr;
-    bool success = proto::ProtoImporter<proto::LdrNetAddress>::setMsgFrom(addr, data->element.data(),
-            data->element.length());
-    if (not success) {
-        LOGS(_log, LOG_LVL_WARN, "NetworkAddress::create STATUS_PARSE_ERR in " + note);
-        return nullptr;
-    }
-
-    UPtr netAddr(new NetworkAddress(addr.workerip(), addr.workerport()));
-    return netAddr;
-}
-*/
-
-
 
 NetworkAddress::UPtr NetworkAddress::create(BufferUdp::Ptr const& bufData, int& tcpPort, std::string const& note) {
 
@@ -77,16 +56,6 @@ NetworkAddress::UPtr NetworkAddress::create(BufferUdp::Ptr const& bufData, int& 
         LOGS(_log, LOG_LVL_WARN, "NetworkAddress::create data==nullptr " + note);
         return nullptr;
     }
-
-    /* &&&
-    proto::LdrNetAddress addr;
-    bool success = proto::ProtoImporter<proto::LdrNetAddress>::setMsgFrom(addr, data->element.data(),
-            data->element.length());
-    if (not success) {
-        LOGS(_log, LOG_LVL_WARN, "NetworkAddress::create STATUS_PARSE_ERR in " + note);
-        return nullptr;
-    }
-    */
 
     auto addr = data->protoParse<proto::LdrNetAddress>();
     if (addr == nullptr) {

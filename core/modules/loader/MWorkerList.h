@@ -80,7 +80,7 @@ public:
     }
 
     uint32_t getName() const {
-        // std::lock_guard<std::mutex> lck(_mtx); &&&
+        std::lock_guard<std::mutex> lck(_mtx);
         return _name;
     }
 
@@ -96,15 +96,13 @@ public:
     void setRangeStr(StringRange const& strRange);
     void setAllInclusiveRange();
 
-    void setKeyCounts(NeighborsInfo const& nInfo);
+    void setNeighborsInfo(NeighborsInfo const& nInfo);
     int  getKeyCount() const;
 
     void setRightNeighbor(MWorkerListItem::Ptr const& item);
     void setLeftNeighbor(MWorkerListItem::Ptr const& item);
 
     void flagNeedToSendList();
-
-    util::CommandTracked::Ptr createCommandMaster(CentralMaster* centralM);
 
     void sendListToWorkerInfoReceived();
 
@@ -154,92 +152,7 @@ private:
     DoListItem::Ptr _reqWorkerKeyInfo;
     std::mutex _doListItemsMtx; ///< protects _sendListToWorker
 
-
-    /* &&&
-    /// Create commands to set a worker's neighbor.
-    /// It should keep trying this until it works. When the worker sets the neighbor to
-    /// the target value, this object should initiate a chain reaction that destorys itself.
-    /// It is very important that the message and neighborPtr both point to
-    //  the same (left or right) neighbor.
-    class SetNeighborOneShot : public DoListItem, public UpdateNotify<uint32_t> {
-    public:
-        using Ptr = std::shared_ptr<SetNeighborOneShot>;
-
-        SetNeighborOneShot(CentralMaster* central_,
-                           MWorkerListItem::Ptr const& target_,
-                           int msg_,
-                           uint32_t neighborName_,
-                           NeighborsInfo::NeighborPtr const& neighborPtr_) :
-              central(central_), target(target_), message(msg_), neighborName(neighborName_),
-              neighborPtr(neighborPtr_) {
-            _oneShot = true;
-            auto oneShotPtr = std::static_pointer_cast<SetNeighborOneShot>(getDoListItemPtr());
-            auto updatePtr = std::static_pointer_cast<UpdateNotify<uint32_t>>(oneShotPtr);
-            neighborPtr_->registerNotify(updatePtr); // Must do this so it will call our updateNotify().
-        }
-
-        util::CommandTracked::Ptr createCommand() override;
-
-        // This is called every time the worker sends the master a value for its (left/right) neighbor.
-        // See neighborPtr_->registerNotify()
-        void updateNotify(uint32_t& oldVal, uint32_t& newVal) override {
-            if (newVal == neighborName) {
-                infoReceived(); // This should result in this oneShot DoListItem being removed->destroyed.
-            }
-        }
-
-        CentralMaster* const central;
-        MWorkerListItem::WPtr target;
-        int const message;
-        uint32_t const neighborName;
-        NeighborsInfo::NeighborWPtr neighborPtr;
-
-    };
-    */
 };
-
-
-#if 0 // &&&
-/// Create commands to set a worker's neighbor.
-/// It should keep trying this until it works. When the worker sets the neighbor to
-/// the target value, this object should initiate a chain reaction that destroys itself.
-/// It is very important that the message and neighborPtr both point to
-//  the same (left or right) neighbor.
-class SetNeighborOneShot : public DoListItem, public UpdateNotify<uint32_t> {
-public:
-    using Ptr = std::shared_ptr<SetNeighborOneShot>;
-
-    SetNeighborOneShot(CentralMaster* central_,
-                       MWorkerListItem::Ptr const& target_,
-                       int msg_,
-                       uint32_t neighborName_,
-                       NeighborsInfo::NeighborPtr const& neighborPtr_) :
-                central(central_), target(target_), message(msg_), neighborName(neighborName_),
-                neighborPtr(neighborPtr_) {
-        _oneShot = true;
-        auto oneShotPtr = std::static_pointer_cast<SetNeighborOneShot>(getDoListItemPtr());
-        auto updatePtr = std::static_pointer_cast<UpdateNotify<uint32_t>>(oneShotPtr);
-        neighborPtr_->registerNotify(updatePtr); // Must do this so it will call our updateNotify().
-    }
-
-    util::CommandTracked::Ptr createCommand() override;
-
-    // This is called every time the worker sends the master a value for its (left/right) neighbor.
-    // See neighborPtr_->registerNotify()
-    void updateNotify(uint32_t& oldVal, uint32_t& newVal) override {
-        if (newVal == neighborName) {
-            infoReceived(); // This should result in this oneShot DoListItem being removed->destroyed.
-        }
-    }
-
-    CentralMaster* const central;
-    MWorkerListItem::WPtr target;
-    int const message;
-    uint32_t const neighborName;
-    NeighborsInfo::NeighborWPtr neighborPtr;
-
-};
-#endif
 
 
 class MWorkerList : public DoListItem {
