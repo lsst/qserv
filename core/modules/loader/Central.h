@@ -79,7 +79,8 @@ public:
 
     int getErrCount() const { return _server->getErrCount(); }
 
-    /// Send the contents of 'sendBuf' to 'host:port'
+    /// Send the contents of 'sendBuf' to 'host:port'. This waits for the message to be
+    /// sent before returning.
     void sendBufferTo(std::string const& host, int port, BufferUdp& sendBuf) {
         _server->sendBufferTo(host, port, sendBuf);
     }

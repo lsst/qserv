@@ -42,9 +42,9 @@
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.loader.ServerTcpBase");
 
-const int testNewNodeName = 73; // &&& Get rid of this, possibly make NodeName member of ServerTCPBase
+const int testNewNodeName = 73; // TODO Get rid of this, possibly make NodeName member of ServerTCPBase
 unsigned int testNewNodeValuePairCount = 81;
-const int testOldNodeName = 42; // &&& Get rid of this, possibly make NodeName member of ServerTCPBase
+const int testOldNodeName = 42; // TODO Get rid of this, possibly make NodeName member of ServerTCPBase
 unsigned int testOldNodeKeyCount = 1231;
 }
 
@@ -73,7 +73,7 @@ uint32_t ServerTcpBase::getOurName() {
 bool ServerTcpBase::testConnect() {
     try
     {
-        LOGS(_log, LOG_LVL_INFO, "&&& ServerTcpBase::testConnect 1");
+        LOGS(_log, LOG_LVL_INFO, "ServerTcpBase::testConnect 1");
         boost::asio::io_context io_context;
 
         tcp::resolver resolver(io_context);
@@ -152,7 +152,7 @@ bool ServerTcpBase::testConnect() {
             LOGS(_log, LOG_LVL_ERROR, "ServerTcpBase::testConnect shutdown ec=" << ec.message());
             return false;
         }
-        // socket.close(); &&& should happen when socket falls out of scope
+        // socket.close(); socket should close when it falls out of scope.
     }
     catch (std::exception& e) {
         std::cerr << e.what() << std::endl;
@@ -167,8 +167,6 @@ void TcpBaseConnection::start() {
     uint32_t ourName = _serverTcpBase->getOurName();
     UInt32Element name(ourName);
     name.appendToData(_buf);
-    //UInt32Element kind(LoaderMsg::WORKER_RIGHT_NEIGHBOR); &&&
-    //kind.appendToData(_buf); &&&
     boost::asio::async_write(_socket, boost::asio::buffer(_buf.getReadCursor(), _buf.getBytesLeftToRead()),
                     boost::bind(&TcpBaseConnection::_readKind, shared_from_this(),
                             boost::asio::placeholders::error,
@@ -200,13 +198,12 @@ void TcpBaseConnection::_readKind(boost::system::error_code const&, size_t /*byt
     size_t const bytes = 2*elem.transmitSize(); // uint32 for kind + uint32 for length of message
 
     if (bytes > _buf.getAvailableWriteLength()) {
-        /// &&& TODO close the connection
         LOGS(_log, LOG_LVL_ERROR, "_readKind Buffer would have overflowed");
         _freeConnect();
         return;
     }
 
-    LOGS(_log, LOG_LVL_INFO, "&&& TcpBaseConnection::_readKind _recvKind reset _buf=" << _buf.dumpStr());
+    LOGS(_log, LOG_LVL_DEBUG, "TcpBaseConnection::_readKind _recvKind reset _buf=" << _buf.dumpStr());
     boost::asio::async_read(_socket, boost::asio::buffer(_buf.getWriteCursor(), bytes),
             boost::asio::transfer_at_least(bytes),
             boost::bind(
@@ -220,7 +217,6 @@ void TcpBaseConnection::_readKind(boost::system::error_code const&, size_t /*byt
 
 
 void TcpBaseConnection::_recvKind(const boost::system::error_code& ec, size_t bytesTrans) {
-    LOGS(_log, LOG_LVL_INFO, "&&& TcpBaseConnection::_recvKind bytes=" << bytesTrans << " ec=" << ec << " " << _buf.dumpStr());
     if (ec) {
         LOGS(_log, LOG_LVL_ERROR, "_recvKind ec=" << ec);
         _freeConnect();
@@ -228,7 +224,6 @@ void TcpBaseConnection::_recvKind(const boost::system::error_code& ec, size_t by
     }
     // Fix the buffer with the information given.
     _buf.advanceWriteCursor(bytesTrans);
-    //LOGS(_log, LOG_LVL_INFO, "&&& TcpBaseConnection::_recvKind _buf=" << _buf.dumpStr());
     auto msgElem = MsgElement::retrieve(_buf);
     auto msgKind = std::dynamic_pointer_cast<UInt32Element>(msgElem);
     if (msgKind == nullptr) {
@@ -236,7 +231,6 @@ void TcpBaseConnection::_recvKind(const boost::system::error_code& ec, size_t by
         _freeConnect();
         return;
     }
-    //LOGS(_log, LOG_LVL_INFO, "&&& msgKind=" << msgKind->element);
     msgElem = MsgElement::retrieve(_buf);
     auto msgBytes = std::dynamic_pointer_cast<UInt32Element>(msgElem);
     if (msgBytes == nullptr) {
@@ -246,10 +240,6 @@ void TcpBaseConnection::_recvKind(const boost::system::error_code& ec, size_t by
     }
     LOGS(_log, LOG_LVL_INFO, "_recvKind kind=" << msgKind->element << " bytes=" << msgBytes->element);
     switch (msgKind->element) {
-    case LoaderMsg::TEST:
-        LOGS(_log, LOG_LVL_INFO, "_recvKind TEST");
-        _handleTest();
-        break;
     case LoaderMsg::IM_YOUR_L_NEIGHBOR:
         LOGS(_log, LOG_LVL_INFO, "_recvKind IM_YOUR_L_NEIGHBOR");
         _handleImYourLNeighbor(msgBytes->element);
@@ -262,6 +252,10 @@ void TcpBaseConnection::_recvKind(const boost::system::error_code& ec, size_t by
         LOGS(_log, LOG_LVL_INFO, "_recvKind SHIFT_FROM_RIGHT our left neighbor needs keys shifted from this");
         _handleShiftFromRight(msgBytes->element);
         break;
+    case LoaderMsg::TEST:
+        LOGS(_log, LOG_LVL_INFO, "_recvKind TEST");
+        _handleTest();
+        break;
     default:
         LOGS(_log, LOG_LVL_ERROR, "_recvKind unexpected kind=" << msgKind->element);
         _freeConnect();
@@ -272,8 +266,7 @@ void TcpBaseConnection::_recvKind(const boost::system::error_code& ec, size_t by
 
 
 void TcpBaseConnection::_handleTest() {
-    // &&&; need to read something
-    _buf.reset();  // TODO - really shouldn't reset the buffer, it's possible something useful is in it.
+    _buf.reset();
 
     UInt32Element kind;
     UInt32Element rNName;
@@ -281,7 +274,6 @@ void TcpBaseConnection::_handleTest() {
     size_t bytes = kind.transmitSize() + rNName.transmitSize() + valuePairCount.transmitSize();
 
     if (bytes > _buf.getAvailableWriteLength()) {
-        /// &&& TODO close the connection
         LOGS(_log, LOG_LVL_ERROR, "_handleTest Buffer would have overflowed");
         _freeConnect();
         return;

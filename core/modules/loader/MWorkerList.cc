@@ -68,7 +68,8 @@ public:
         auto oneShotPtr = std::static_pointer_cast<SetNeighborOneShot>(oneShot->getDoListItemPtr());
         auto updatePtr = std::static_pointer_cast<UpdateNotify<uint32_t>>(oneShotPtr);
         neighborPtr_->registerNotify(updatePtr); // Must do this so it will call our updateNotify().
-        LOGS(_log, LOG_LVL_INFO, "&&& SetNeighborOneShot neighborName=" << neighborName_ << " " << neighborPtr_->get());
+        LOGS(_log, LOG_LVL_INFO, "SetNeighborOneShot neighborName=" <<
+                                 neighborName_ << " " << neighborPtr_->get());
         return oneShot;
     }
 
@@ -117,22 +118,13 @@ util::CommandTracked::Ptr SetNeighborOneShot::createCommand() {
 }
 
 
-
-util::CommandTracked::Ptr MWorkerListItem::createCommandMaster(CentralMaster* centralMaster) {
-    LOGS(_log, LOG_LVL_ERROR, "&&& MWorkerListItem::createCommandMaster This function needs to do something!!!!!!!!!");
-    // &&& ask worker for current range, neighbors, make sure worker is still alive
-    return nullptr;
-}
-
-
 util::CommandTracked::Ptr MWorkerList::createCommand() {
     return createCommandMaster(_central);
 }
 
 
 util::CommandTracked::Ptr MWorkerList::createCommandMaster(CentralMaster* centralM) {
-    // &&& The master probably doesn't need to make any checks on the list, it just
-    // &&& wants to make sure all of its items are on the doList.
+    // The master probably doesn't need to make any checks on the list.
     return nullptr;
 }
 
@@ -182,7 +174,7 @@ bool MWorkerList::sendListTo(uint64_t msgId, std::string const& ip, short port,
             protoList.SerializeToString(&(workerList.element));
             LoaderMsg workerListMsg(LoaderMsg::MAST_WORKER_LIST, msgId, ourHostName, ourPort);
             _stateListData = std::make_shared<BufferUdp>();
-            workerListMsg.serializeToData(*_stateListData);
+            workerListMsg.appendToData(*_stateListData);
             workerList.appendToData(*_stateListData);
         }
     }
@@ -229,7 +221,7 @@ MWorkerList::getActiveInactiveWorkerLists() {
 // must lock _mapMtx before calling this function
 void MWorkerList::_flagListChange() {
     _wListChanged = true;
-    // TODO: &&& on Master only, flag each worker in the list that it needs to send an updated list to it's worker.
+    // On the Master, flag each worker in the list that it needs to send an updated list to it's worker.
     for (auto const& elem : _nameMap) {
         auto const& item = elem.second;
         item->flagNeedToSendList();
@@ -255,15 +247,13 @@ std::string MWorkerList::dump() const {
 
 
 void MWorkerListItem::addDoListItems(Central *central) {
-    LOGS(_log, LOG_LVL_INFO, "&&& MWorkerListItem::addDoListItems a");
+    LOGS(_log, LOG_LVL_DEBUG, "MWorkerListItem::addDoListItems");
     std::lock_guard<std::mutex> lck(_doListItemsMtx);
     if (_sendListToWorker == nullptr) {
-        LOGS(_log, LOG_LVL_INFO, "&&& MWorkerListItem::addDoListItems b");
         _sendListToWorker = std::make_shared<SendListToWorker>(shared_from_this(), _central);
         _central->addDoListItem(_sendListToWorker);
     }
     if (_reqWorkerKeyInfo == nullptr) {
-        LOGS(_log, LOG_LVL_INFO, "&&& MWorkerListItem::addDoListItems c");
         _reqWorkerKeyInfo = std::make_shared<ReqWorkerKeyInfo>(shared_from_this(), _central);
         _central->addDoListItem(_reqWorkerKeyInfo);
     }
@@ -294,15 +284,14 @@ void MWorkerListItem::setRangeStr(StringRange const& strRange) {
 
 
 void MWorkerListItem::setAllInclusiveRange() {
-    LOGS(_log, LOG_LVL_INFO, "&&& MWorkerListItem::setAllInclusiveRange for name=" << _name);
+    LOGS(_log, LOG_LVL_INFO, "MWorkerListItem::setAllInclusiveRange for name=" << _name);
     std::lock_guard<std::mutex> lck(_mtx);
     _range.setAllInclusiveRange();
     _active = true;  /// First worker.
-    LOGS(_log, LOG_LVL_INFO, "&&& MWorkerListItem::setAllInclusiveRange " << _range);
 }
 
 
-void MWorkerListItem::setKeyCounts(NeighborsInfo const& nInfo) { // &&& change name to updateNeighbor
+void MWorkerListItem::setNeighborsInfo(NeighborsInfo const& nInfo) {
     std::lock_guard<std::mutex> lck(_mtx);
     _neighborsInfo.keyCount = nInfo.keyCount;
     _neighborsInfo.recentAdds = nInfo.recentAdds;
@@ -349,9 +338,9 @@ std::ostream& operator<<(std::ostream& os, MWorkerListItem const& item) {
 /// Set this worker's RIGHT neighbor to the worker described in 'item'.
 void MWorkerListItem::setRightNeighbor(MWorkerListItem::Ptr const& item) {
     // Create a one shot to send a message to the worker.
-    // we know it has worked when the worker sends a message back saying it
+    // It knows it has worked when the worker sends a message back saying it
     // has the correct right neighbor.
-    LOGS(_log, LOG_LVL_INFO," &&& MWorkerListItem::setRightNeighbor");
+    LOGS(_log, LOG_LVL_DEBUG," MWorkerListItem::setRightNeighbor");
 
     auto oneShot = SetNeighborOneShot::create(_central,
                                               shared_from_this(),
@@ -362,20 +351,13 @@ void MWorkerListItem::setRightNeighbor(MWorkerListItem::Ptr const& item) {
 }
 
 
+// TODO very similar to MWorkerListItem::setRightNeighbor, consider merging.
 void MWorkerListItem::setLeftNeighbor(MWorkerListItem::Ptr const& item) {
     // Create a one shot to send a message to the worker.
-    // we know it has worked when the worker sends a message back saying it
+    // It knows it has worked when the worker sends a message back saying it
     // has the correct left neighbor.
-    LOGS(_log, LOG_LVL_INFO," &&& MWorkerListItem::setLeftNeighbor");
+    LOGS(_log, LOG_LVL_DEBUG,"MWorkerListItem::setLeftNeighbor");
 
-    /* &&&
-    SetNeighborOneShot::Ptr oneShot =
-        std::make_shared<SetNeighborOneShot>(_central,
-                                             shared_from_this(),
-                                             LoaderMsg::WORKER_LEFT_NEIGHBOR,
-                                             item->getName(),
-                                             _neighborsInfo.neighborLeft);
-                                             */
     auto oneShot = SetNeighborOneShot::create(_central,
                                               shared_from_this(),
                                               LoaderMsg::WORKER_LEFT_NEIGHBOR,
@@ -396,7 +378,7 @@ util::CommandTracked::Ptr MWorkerListItem::SendListToWorker::createCommand() {
     struct SendListToWorkerCmd : public util::CommandTracked {
         SendListToWorkerCmd(CentralMaster *centM_, MWorkerListItem::Ptr const& tItem_) : centM(centM_), tItem(tItem_) {}
         void action(util::CmdData*) override {
-            LOGS(_log, LOG_LVL_INFO, "&&& SendListToWorkerCmd::action");
+            LOGS(_log, LOG_LVL_DEBUG, "SendListToWorkerCmd::action");
             centM->getWorkerList()->sendListTo(centM->getNextMsgId(),
                     tItem->_udpAddress->ip, tItem->_udpAddress->port,
                     centM->getMasterHostName(), centM->getMasterPort());
@@ -404,7 +386,7 @@ util::CommandTracked::Ptr MWorkerListItem::SendListToWorker::createCommand() {
         CentralMaster *centM;
         MWorkerListItem::Ptr tItem;
     };
-    LOGS(_log, LOG_LVL_INFO, "&&& SendListToWorker::createCommand");
+    LOGS(_log, LOG_LVL_DEBUG, "SendListToWorker::createCommand");
     return std::make_shared<SendListToWorkerCmd>(central, item);
 }
 
@@ -420,7 +402,7 @@ util::CommandTracked::Ptr MWorkerListItem::ReqWorkerKeyInfo::createCommand() {
     struct ReqWorkerKeysInfoCmd : public util::CommandTracked {
         ReqWorkerKeysInfoCmd(CentralMaster *centM_, MWorkerListItem::Ptr const& tItem_) : centM(centM_), tItem(tItem_) {}
         void action(util::CmdData*) override {
-            LOGS(_log, LOG_LVL_INFO, "&&& ReqWorkerKeyInfoCmd::action");
+            LOGS(_log, LOG_LVL_DEBUG, "ReqWorkerKeyInfoCmd::action");
             centM->reqWorkerKeysInfo(centM->getNextMsgId(),
                     tItem->_udpAddress->ip, tItem->_udpAddress->port,
                     centM->getMasterHostName(), centM->getMasterPort());
@@ -428,7 +410,7 @@ util::CommandTracked::Ptr MWorkerListItem::ReqWorkerKeyInfo::createCommand() {
         CentralMaster *centM;
         MWorkerListItem::Ptr tItem;
     };
-    LOGS(_log, LOG_LVL_INFO, "&&& SendListToWorker::createCommand");
+    LOGS(_log, LOG_LVL_DEBUG, "SendListToWorker::createCommand");
     return std::make_shared<ReqWorkerKeysInfoCmd>(central, item);
 }
 

@@ -49,18 +49,18 @@ namespace loader {
 
 BufferUdp::Ptr ClientServer::parseMsg(BufferUdp::Ptr const& data,
                                       boost::asio::ip::udp::endpoint const& senderEndpoint) {
-    LOGS(_log, LOG_LVL_INFO, "&&& ClientServer::parseMsg sender " << senderEndpoint << " data length=" << data->getAvailableWriteLength());
+    LOGS(_log, LOG_LVL_DEBUG, "ClientServer::parseMsg sender " << senderEndpoint <<
+                              " data length=" << data->getAvailableWriteLength());
     BufferUdp::Ptr sendData; /// nullptr for empty response.
     LoaderMsg inMsg;
     inMsg.parseFromData(*data);
-    LOGS(_log, LOG_LVL_INFO, "&&& ClientServer::parseMsg sender " << senderEndpoint <<
+    LOGS(_log, LOG_LVL_INFO, "ClientServer::parseMsg sender " << senderEndpoint <<
             " kind=" << inMsg.msgKind->element << " data length=" << data->getAvailableWriteLength());
-    // &&& there are better ways to do this than a switch statement.
     switch (inMsg.msgKind->element) {
     case LoaderMsg::MSG_RECEIVED:
-        LOGS(_log, LOG_LVL_WARN, "&&& ClientServer::parseMsg MSG_RECEIVED");
+        LOGS(_log, LOG_LVL_WARN, "ClientServer::parseMsg MSG_RECEIVED");
         _msgRecieved(inMsg, data, senderEndpoint);
-        sendData.reset(); // never send a response back for one of these, infinite loop.
+        sendData.reset(); // Never send a response back for one of these, infinite loop.
         break;
 
     case LoaderMsg::KEY_INFO:
@@ -77,7 +77,7 @@ BufferUdp::Ptr ClientServer::parseMsg(BufferUdp::Ptr const& data,
     case LoaderMsg::KEY_INSERT_REQ: //  This is what this client should send out
     case LoaderMsg::KEY_INFO_REQ: //  This is what this client should send out
     case LoaderMsg::MAST_WORKER_INFO:
-    case LoaderMsg::MAST_WORKER_LIST: // TODO having the client know this might be useful.
+    case LoaderMsg::MAST_WORKER_LIST: // TODO having the client know would be useful.
     case LoaderMsg::MAST_INFO:
     case LoaderMsg::MAST_INFO_REQ:
     case LoaderMsg::MAST_WORKER_LIST_REQ:
@@ -117,7 +117,7 @@ BufferUdp::Ptr ClientServer::replyMsgReceived(boost::asio::ip::udp::endpoint con
     protoBuf.SerializeToString(&(respBuf.element));
 
     auto sendData = std::make_shared<BufferUdp>(1000); // this message should be fairly small.
-    outMsg.serializeToData(*sendData);
+    outMsg.appendToData(*sendData);
     respBuf.appendToData(*sendData);
     return sendData;
 }
@@ -133,11 +133,6 @@ void ClientServer::_msgRecieved(LoaderMsg const& inMsg, BufferUdp::Ptr const& da
         success = false;
     }
 
-    /* &&&
-    c protoBuf;
-    bool success = proto::ProtoImporter<proto::LdrMsgReceived>::setMsgFrom(
-            protoBuf, seData->element.data(), seData->element.length());
-    */
     std::unique_ptr<proto::LdrMsgReceived> protoBuf;
     if (success) {
         protoBuf = seData->protoParse<proto::LdrMsgReceived>();

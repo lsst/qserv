@@ -162,7 +162,7 @@ int main(int argc, char* argv[]) {
     // test for LoaderMsg serialize and parse
     LoaderMsg lMsg(LoaderMsg::MAST_INFO_REQ, 1, "127.0.0.1", 9876);
     BufferUdp lBuf;
-    lMsg.serializeToData(lBuf);
+    lMsg.appendToData(lBuf);
     {
         LoaderMsg outMsg;
         outMsg.parseFromData(lBuf);
@@ -494,9 +494,9 @@ int main(int argc, char* argv[]) {
     {
         LOGS(_log, LOG_LVL_INFO, "9TSTAGE insert many keys");
         std::list<KeyInfoData::Ptr> keyInfoDataList;
-
-        for (; kPos<keyListB.size(); ++kPos) {
-            auto& elem = keyListB[kPos];
+        size_t pos = 0;
+        for (; pos<keyListB.size(); ++pos) {
+            auto& elem = keyListB[pos];
             keyInfoDataList.push_back(cCentral1A.keyInsertReq(elem.key, elem.chunk, elem.subchunk));
         }
 
@@ -505,6 +505,8 @@ int main(int argc, char* argv[]) {
         int finished = 0;
         do {
             sleep(1); // need to sleep as it never gives up on inserts.
+            LOGS(_log, LOG_LVL_INFO, "&&& seconds=" << seconds << " finished=" << finished <<
+                                " insertSuccess=" << insertSuccess << " " << keyInfoDataList.size());
             ++seconds;
             insertSuccess = true;
             for(auto iter = keyInfoDataList.begin(); iter != keyInfoDataList.end();) {
@@ -518,13 +520,13 @@ int main(int argc, char* argv[]) {
                 }
             }
             LOGS(_log, LOG_LVL_INFO, "seconds=" << seconds << " finished=" << finished <<
-                    " insertSuccess=" << insertSuccess);
+                    " insertSuccess=" << insertSuccess << " " <<  keyInfoDataList.size());
         } while (not insertSuccess);
 
         if (insertSuccess) {
-            LOGS(_log, LOG_LVL_INFO, "keyListB insert success kPos=" << kPos << " sec=" << seconds);
+            LOGS(_log, LOG_LVL_INFO, "keyListB insert success pos=" << pos << " sec=" << seconds);
         } else {
-            LOGS(_log, LOG_LVL_ERROR, "keyListB insert failure kPos=" << kPos << " sec=" << seconds);
+            LOGS(_log, LOG_LVL_ERROR, "keyListB insert failure pos=" << pos << " sec=" << seconds);
             exit(-1);
         }
 
