@@ -430,9 +430,6 @@ static const std::vector< std::string > QUERIES = {
        "FROM Source s1 NATURAL RIGHT JOIN Source s2 "
        "WHERE s1.bar = s2.bar;",
     "SELECT s1.foo, s2.foo AS s2_foo "
-       "FROM Source s1 NATURAL LEFT OUTER JOIN Source s2 "
-       "WHERE s1.bar = s2.bar;",
-    "SELECT s1.foo, s2.foo AS s2_foo "
        "FROM Source s1 NATURAL JOIN Source s2 "
        "WHERE s1.bar = s2.bar;",
     "SELECT * "
@@ -668,7 +665,7 @@ static const std::vector< ParseErrorQueryInfo > PARSE_ERROR_QUERIES = {
         "select objectId, sro.*, (sro.refObjectId-1)/2%pow(2,10), typeId "
             "from Source s join RefObjMatch rom using (objectId) "
             "join SimRefObject sro using (refObjectId) where isStar =1 limit 10;",
-        "ParseException:Error parsing query, near \"%\""),
+        "ParseException:Error parsing query, near \"%\", Unhandled operator type:%"),
 
     ParseErrorQueryInfo(
         "LECT sce.filterName,sce.field "
@@ -683,11 +680,6 @@ static const std::vector< ParseErrorQueryInfo > PARSE_ERROR_QUERIES = {
            "SUM(CASE WHEN (typeId=3) THEN 1 ELSE 0 END) AS galaxyCount "
            "FROM Object WHERE rFlux_PS > 10;",
        "ParseException:qserv can not parse query, near \"CASE WHEN (typeId=3) THEN 1 ELSE 0 END\""),
-
-    // per testQueryAnaGeneral: CASE in column spec is illegal.
-    ParseErrorQueryInfo(
-        "SELECT scisql_fluxToAbMag(uFlux_PS) FROM   Object WHERE  (objectId % 100 ) = 40;",
-        "ParseException:Error parsing query, near \"%\""),
 };
 
 

@@ -499,7 +499,15 @@ public:
 
 class UnaryOperatorCBH : public BaseCBH {
 public:
-    virtual void handleUnaryOperator(string const & val) = 0;
+    enum OperatorType {
+        BANG,  // '!'
+        TILDE, // '~'
+        PLUS,  // '+'
+        MINUS, // '-'
+        NOT,   // NOT
+    };
+
+    virtual void handleUnaryOperator(OperatorType operatorType) = 0;
 };
 
 
@@ -545,6 +553,20 @@ class Adapter {
 public:
     Adapter() {}
     virtual ~Adapter() {}
+
+    // checkContext is called after construction and before the adapter is pushed onto the adapter stack.
+    // In this function Adapter subclasses should verify that all the token and terminalNode members of the
+    // context are either handled (as required or optional) or rejected if they are non-null.
+    // Tokens and terminal nodes are members of the context that are _not_ represented by a child context, so
+    // no callbacks will be received for them.
+    // Other contexts that are child contexts will be represented by another adapter. It is verified that
+    // child contexts are handled by verifying that their parent context is a handler for the child.
+    // In the implementations of child context, tokens and terminal nodes in the associated context should
+    // all be mentioned explicitly, those that are handled and required should be named in
+    // assertExecutionCondition calls (because they are required), those that are not handled should be named
+    // in assertNotSupported calls (because they are not supported), and those that are handled but are
+    // optional should be named in a comment that notes that the token or terminal node is optional.
+    virtual void checkContext() const = 0;
 
     // onEnter is called just after the Adapter is pushed onto the context stack
     virtual void onEnter() {}
@@ -618,6 +640,8 @@ public:
         msg << getTypeName(this) << "::" << function;
         msg << " messsage:\"" << message << "\"";
         msg << ", in query:" << getStatementString();
+        msg << ", string tree:" << getStringTree();
+        msg << ", tokens:" << getTokens();
         LOGS(_log, LOG_LVL_ERROR, msg.str());
         throw adapter_execution_error(
                 "Error parsing query, near \"" + getQueryString(ctx) + "\", " + message);
@@ -672,8 +696,17 @@ public:
         _selectStatement = selectStatement;
     }
 
+    void checkContext() const override {
+        // check for required tokens:
+        assertExecutionCondition(__FUNCTION__, _ctx->EOF() != nullptr,
+                "Missing context condition: EOF is null.", _ctx);
+        // optional:
+        // MINUSMINUS (ignored, it indicates a comment)
+    }
+
     void onEnter(QSMySqlParser::RootContext* ctx, QSMySqlListener const * const listener) {
         _ctx = ctx;
+        checkContext();
         qsMySqlListener = listener;
     }
 
@@ -703,6 +736,10 @@ public:
 
     void handleSelectStatement(shared_ptr<query::SelectStmt> const & selectStatement) override {
         _selectStatement = selectStatement;
+    }
+
+    void checkContext() const override {
+        // there is nothing to check
     }
 
     void onExit() override {
@@ -738,6 +775,10 @@ public:
         _groupByClause = groupByClause;
         _havingClause = havingClause;
         _distinct = distinct;
+    }
+
+    void checkContext() const override {
+        // there is nothing to check
     }
 
     void onExit() override {
@@ -797,6 +838,11 @@ public:
         _distinct = distinct;
     }
 
+    void checkContext() const override {
+        // required:
+        assertExecutionCondition(__FUNCTION__, _ctx->SELECT() != nullptr, "Context check failure.", _ctx);
+    }
+
     void onExit() override {
         lockedParent()->handleQuerySpecification(_selectList, _fromList, _whereClause, _orderByClause,
                 _limit, _groupByClause, _havingClause, _distinct);
@@ -845,6 +891,11 @@ public:
 
     void handleSelectExpressionElement(shared_ptr<query::ValueExpr> const & valueExpr) override {
         SelectListFactory::addValueExpr(_selectList, valueExpr);
+    }
+
+    void checkContext() const override {
+        // optional:
+        // star
     }
 
     void onExit() override {
@@ -934,6 +985,19 @@ public:
         _groupByClause->addTerm(query::GroupByTerm(valueExpr, ""));
     }
 
+    void checkContext() const override {
+        // required:
+        assertExecutionCondition(__FUNCTION__, _ctx->FROM() != nullptr, "Context check failure.", _ctx);
+        // optional:
+        // *WHERE();
+        // *GROUP();
+        // *BY();
+        // *HAVING();
+        // not supported:
+        assertNotSupported(__FUNCTION__, _ctx->WITH() == nullptr, "WITH is not supported", _ctx);
+        assertNotSupported(__FUNCTION__, _ctx->ROLLUP() == nullptr, "ROLLUP is not supported", _ctx);
+    }
+
     void onExit() override {
         shared_ptr<query::FromList> fromList = make_shared<query::FromList>(_tableRefList);
         lockedParent()->handleFromClause(fromList, _whereClause, _groupByClause, _havingClause);
@@ -967,6 +1031,10 @@ public:
         _tableRefList->push_back(tableRef);
     }
 
+    void checkContext() const override {
+        // nothing to check.
+    }
+
     void onExit() override {
         lockedParent()->handleTableSources(_tableRefList);
     }
@@ -997,6 +1065,10 @@ public:
 
     void handleNaturalJoin(shared_ptr<query::JoinRef> const & joinRef) override {
         _joinRefs.push_back(joinRef);
+    }
+
+    void checkContext() const override {
+        // nothing to check
     }
 
     void onExit() override {
@@ -1035,6 +1107,13 @@ public:
         _alias = string;
     }
 
+    void checkContext() const override {
+        // optional:
+        // AS();
+        // not supported:
+        assertNotSupported(__FUNCTION__, _ctx->PARTITION() == nullptr, "PARTITION is not supported", _ctx);
+    }
+
     void onExit() override {
         shared_ptr<query::TableRef> tableRef = make_shared<query::TableRef>(_db, _table, _alias);
         lockedParent()->handleAtomTableItem(tableRef);
@@ -1059,6 +1138,10 @@ public:
         lockedParent()->handleTableName(uidlist);
     }
 
+    void checkContext() const override {
+        // nothing to check
+    }
+
     void onExit() override {}
 
     string name() const override { return getTypeName(this); }
@@ -1080,6 +1163,11 @@ public:
             if (s.front() == '.') _uidlist.push_back(s.erase(0,1));
             else _uidlist.push_back(s);
         }
+    }
+
+    void checkContext() const override {
+        // optional:
+        // DOT_ID();
     }
 
     void onExit() override {
@@ -1106,6 +1194,10 @@ public:
 
     void handleDottedId(string const & dot_id) override {
         _strings.push_back(dot_id);
+    }
+
+    void checkContext() const override {
+        // nothing to check
     }
 
     void onExit() override {
@@ -1146,6 +1238,10 @@ public:
         lockedParent()->handleConstantExpressionAtom(query::ValueFactor::newConstFactor(val));
     }
 
+    void checkContext() const override {
+        // nothing to check
+    }
+
     void onExit() override {}
 
     string name() const override { return getTypeName(this); }
@@ -1161,6 +1257,10 @@ public:
 
     void handleFullColumnName(shared_ptr<query::ValueFactor> const & valueFactor) override {
         lockedParent()->HandleFullColumnNameExpressionAtom(valueFactor);
+    }
+
+    void checkContext() const override {
+        // nothing to check
     }
 
     void onExit() override {}
@@ -1216,7 +1316,8 @@ public:
         lockedParent()->handleExpressionAtomPredicate(valueExpr, _ctx);
     }
 
-    void onEnter() override {
+    void checkContext() const override {
+        // not supported:
         assertNotSupported(__FUNCTION__, _ctx->LOCAL_ID() == nullptr, "LOCAL_ID is not supported", _ctx);
         assertNotSupported(__FUNCTION__, _ctx->VAR_ASSIGN() == nullptr, "VAR_ASSIGN is not supported", _ctx);
     }
@@ -1238,6 +1339,15 @@ public:
         for (auto&& value : values) {
             _args.push_back(query::ValueFactor::newConstFactor(value));
         }
+    }
+
+    void checkContext() const override {
+        // required:
+        assertExecutionCondition(__FUNCTION__, _ctx->QSERV_AREASPEC_BOX() != nullptr ||
+            _ctx->QSERV_AREASPEC_CIRCLE() != nullptr ||
+            _ctx->QSERV_AREASPEC_ELLIPSE() != nullptr ||
+            _ctx->QSERV_AREASPEC_POLY() != nullptr ||
+            _ctx->QSERV_AREASPEC_HULL() != nullptr, "Context check failure.", _ctx);
     }
 
     void onExit() override {
@@ -1319,7 +1429,11 @@ public:
         _boolFactorInstance()->addBoolFactorTerm(nullPredicate);
     }
 
-    void onExit() {
+    void checkContext() const override {
+        // nothing to check
+    }
+
+    void onExit() override {
         assertExecutionCondition(__FUNCTION__, nullptr != _valueExpr || nullptr != _boolTerm,
                 "PredicateExpressionAdapter was not populated.", _ctx);
         if (_boolTerm != nullptr) {
@@ -1384,7 +1498,11 @@ public:
         assertExecutionCondition(__FUNCTION__, false, "unhandled ExpressionAtomPredicate BoolTerm callback.", _ctx);
     }
 
-    void onExit() {
+    void checkContext() const override {
+        // nothing to check
+    }
+
+    void onExit() override {
         assertExecutionCondition(__FUNCTION__, _left != nullptr && _right != nullptr,
                 "left and right values must both be populated", _ctx);
 
@@ -1432,6 +1550,14 @@ class ComparisonOperatorAdapter :
 public:
     using AdapterT::AdapterT;
 
+    void checkContext() const override {
+        const static vector<string> supportedOps {"=", "<", ">", "<>", "!=", ">=", "<="};
+        if (supportedOps.end() == find(supportedOps.begin(), supportedOps.end(), _ctx->getText())) {
+            assertNotSupported(__FUNCTION__, false,
+                    "Unsupported comparison operator: " + _ctx->getText(), _ctx);
+        }
+    }
+
     void onExit() override {
         lockedParent()->handleComparisonOperator(_ctx->getText());
     }
@@ -1449,6 +1575,12 @@ public:
 
     void handleOrderByExpression(query::OrderByTerm const & orderByTerm) {
         _orderByClause->addTerm(orderByTerm);
+    }
+
+    void checkContext() const override {
+        // required:
+        assertExecutionCondition(__FUNCTION__, _ctx->ORDER() != nullptr, "Context check failure.", _ctx);
+        assertExecutionCondition(__FUNCTION__, _ctx->BY() != nullptr, "Context check failure.", _ctx);
     }
 
     void onExit() override {
@@ -1489,6 +1621,13 @@ public:
         assertNotSupported(__FUNCTION__, valueExpr->isFunction() == false,
                 "qserv does not support functions in ORDER BY.", _ctx);
         _valueExpr = valueExpr;
+    }
+
+    void checkContext() const override {
+        // optional:
+        // order;
+        // ASC();
+        // DESC();
     }
 
     void onExit() override {
@@ -1535,6 +1674,16 @@ public:
 
     void handlePredicateExpression(shared_ptr<query::ValueExpr> const & valueExpr) override {
         assertExecutionCondition(__FUNCTION__, false, "Unexpected PredicateExpression ValueExpr callback.", _ctx);
+    }
+
+    void checkContext() const override {
+        // required:
+        assertExecutionCondition(__FUNCTION__, _ctx->JOIN() != nullptr, "Context check failure.", _ctx);
+        // optional:
+        // INNER();
+        // CROSS();
+        // ON();
+        // USING();
     }
 
     void onExit() override {
@@ -1621,6 +1770,17 @@ public:
         _tableRef = tableRef;
     }
 
+    void checkContext() const override {
+        // required:
+        assertExecutionCondition(__FUNCTION__, _ctx->NATURAL() != nullptr, "Context check failure.", _ctx);
+        assertExecutionCondition(__FUNCTION__, _ctx->JOIN() != nullptr, "Context check failure.", _ctx);
+        // optional:
+        // LEFT();
+        // RIGHT();
+        // not supported:
+        assertNotSupported(__FUNCTION__, _ctx->OUTER() == nullptr, "OUTER join is not handled.", _ctx);
+    }
+
     void onExit() override {
         assertExecutionCondition(__FUNCTION__, _tableRef != nullptr, "TableRef was not set.", _ctx);
         query::JoinRef::Type joinType(query::JoinRef::DEFAULT);
@@ -1645,7 +1805,10 @@ class SelectSpecAdapter :
 public:
     using AdapterT::AdapterT;
 
-    void onExit() override {
+    void checkContext() const override {
+        // optional:
+        // DISTINCT();
+        // not supported:
         assertNotSupported(__FUNCTION__, _ctx->ALL() == nullptr,
                 "ALL is not supported.", _ctx);
         assertNotSupported(__FUNCTION__, _ctx->DISTINCTROW() == nullptr,
@@ -1666,7 +1829,9 @@ public:
                 "SQL_NO_CACHE is not supported.", _ctx);
         assertNotSupported(__FUNCTION__, _ctx->SQL_CALC_FOUND_ROWS() == nullptr,
                 "SQL_CALC_FOUND_ROWS is not supported.", _ctx);
+    }
 
+    void onExit() override {
         lockedParent()->handleSelectSpec(_ctx->DISTINCT() != nullptr);
     }
 
@@ -1685,6 +1850,10 @@ public:
         assertExecutionCondition(__FUNCTION__, uidlist.size() == 1, "Star Elements must be 'tableName.*'", _ctx);
         _valueExpr = make_shared<query::ValueExpr>();
         ValueExprFactory::addValueFactor(_valueExpr, query::ValueFactor::newStarFactor(uidlist[0]));
+    }
+
+    void checkContext() const override {
+        // nothing to check
     }
 
     void onExit() override {
@@ -1731,6 +1900,11 @@ public:
         _functionValueFactor = valueFactor;
     }
 
+    void checkContext() const override {
+        // optional:
+        // AS();
+    }
+
     void onExit() override {
         assertExecutionCondition(__FUNCTION__, nullptr != _functionValueFactor,
                 "function value factor not populated.", _ctx);
@@ -1765,6 +1939,14 @@ public:
         _valueExpr = valueExpr;
     }
 
+    void checkContext() const override {
+        // optional:
+        // AS();
+        // not supported:
+        assertNotSupported(__FUNCTION__, _ctx->LOCAL_ID() == nullptr, "LOCAL_ID is not supported", _ctx);
+        assertNotSupported(__FUNCTION__, _ctx->VAR_ASSIGN() == nullptr, "VAR_ASSIGN is not supported", _ctx);
+    }
+
     void onExit() override {
         assertExecutionCondition(__FUNCTION__, nullptr != _valueExpr, "valueExpr must be set in SelectExpressionElementAdapter.", _ctx);
         lockedParent()->handleSelectExpressionElement(_valueExpr);
@@ -1792,6 +1974,12 @@ public:
         _valueExpr = valueExpr;
     }
 
+    void checkContext() const override {
+        // not supported:
+        assertNotSupported(__FUNCTION__, _ctx->ASC() == nullptr, "ASC is not supported", _ctx);
+        assertNotSupported(__FUNCTION__, _ctx->DESC() == nullptr, "DESC is not supported", _ctx);
+    }
+
     void onExit() override {
         assertExecutionCondition(__FUNCTION__, _valueExpr != nullptr, "GroupByItemAdapter not populated.", _ctx);
         lockedParent()->handleGroupByItem(_valueExpr);
@@ -1808,6 +1996,20 @@ class LimitClauseAdapter :
         public AdapterT<LimitClauseCBH, QSMySqlParser::LimitClauseContext> {
 public:
     using AdapterT::AdapterT;
+
+    void checkContext() const override {
+        // we use checkContext here to verify that `limit` is set and `offset` is not set. Since they both
+        // have decimalLiteral values and we ignore DecimalLiteral (and just extract the value directly where
+        // it is used (at least for now), we verify that the size of the decimalLiteral vector is exactly
+        // one.
+
+        // required:
+        assertExecutionCondition(__FUNCTION__, _ctx->LIMIT() != nullptr, "Context check failure.", _ctx);
+        assertExecutionCondition(__FUNCTION__, _ctx->limit != nullptr, "Context check failure.", _ctx);
+        // not supported:
+        assertNotSupported(__FUNCTION__, _ctx->offset == nullptr && _ctx->OFFSET() == nullptr,
+                "offset is not supported", _ctx);
+    }
 
     void onExit() override {
         assertExecutionCondition(__FUNCTION__, _ctx->limit != nullptr,
@@ -1831,6 +2033,20 @@ public:
         // of the context on exit.
     }
 
+    void checkContext() const override {
+        // since we expect either a basic ID, a function name, or a keyword as ID, reject anything else.
+        if (_ctx->ID() != nullptr) {
+            return;
+        } else if (_ctx->functionNameBase() != nullptr) {
+            return;
+        } else if (_ctx->keywordsCanBeId() != nullptr) {
+            LOGS(_log, LOG_LVL_WARN, __FUNCTION__ <<
+                    " reusing keyword as ID: " << _ctx->getText());
+            return;
+        }
+        assertNotSupported(__FUNCTION__, false, "Unsupported SimpleId", _ctx);
+    }
+
     void onExit() override {
         lockedParent()->handleSimpleId(_ctx->getText());
     }
@@ -1843,6 +2059,11 @@ class DottedIdAdapter :
         public AdapterT<DottedIdCBH, QSMySqlParser::DottedIdContext> {
 public:
     using AdapterT::AdapterT;
+
+    void checkContext() const override {
+        // no context checking is done here; the text of the ID is fetched from the context and passed to the
+        // handler.
+    }
 
     void onExit() override {
         // currently the on kind of callback we receive here seems to be the `: DOT_ID` form, which is defined
@@ -1866,6 +2087,13 @@ class NullNotnullAdapter :
         public AdapterT<NullNotnullCBH, QSMySqlParser::NullNotnullContext> {
 public:
     using AdapterT::AdapterT;
+
+    void checkContext() const override {
+        // required:
+        assertExecutionCondition(__FUNCTION__, _ctx->NULL_LITERAL() != nullptr || _ctx->NULL_SPEC_LITERAL() != nullptr, "Context check failure.", _ctx);
+        // optional:
+        // NOT();
+    }
 
     void onExit() override {
         lockedParent()->handleNullNotnull(_ctx->NOT() != nullptr);
@@ -1893,6 +2121,11 @@ public:
         _alias = string;
     }
 
+    void checkContext() const override {
+        // optional:
+        // AS();
+    }
+
     void onExit() override {
         auto valueExpr = make_shared<query::ValueExpr>();
         ValueExprFactory::addValueFactor(valueExpr, _valueFactor);
@@ -1916,6 +2149,10 @@ public:
 
     void handleSimpleId(string const & val) {
         _val = val;
+    }
+
+    void checkContext() const override {
+        // onExit handles the variety of combinations of members of UidContext.
     }
 
     void onExit() override {
@@ -1946,6 +2183,11 @@ class ConstantAdapter :
 public:
     using AdapterT::AdapterT;
 
+    void checkContext() const override {
+        // no context checking is done here; the text of the ID is fetched from the context and passed to the
+        // handler.
+    }
+
     void onExit() override {
         lockedParent()->handleConstant(_ctx->getText());
     }
@@ -1962,6 +2204,10 @@ public:
 
     void handleUid(string const & string) override {
         _strings.push_back(string);
+    }
+
+    void checkContext() const override {
+        // nothing to check
     }
 
     void onExit() override {
@@ -1992,7 +2238,11 @@ public:
         _expressions.push_back(valueExpr);
     }
 
-    void onExit() {
+    void checkContext() const override {
+        // nothing to check
+    }
+
+    void onExit() override {
         lockedParent()->handleExpressions(_expressions);
     }
 
@@ -2011,6 +2261,10 @@ public:
 
     void handleConstant(string const & val) override {
         _values.push_back(val);
+    }
+
+    void checkContext() const override {
+        // nothing to check
     }
 
     void onExit() override {
@@ -2034,6 +2288,10 @@ public:
         lockedParent()->handleAggregateFunctionCall(valueFactor);
     }
 
+    void checkContext() const override {
+        // nothing to check
+    }
+
     void onExit() override {}
 
     string name() const override { return getTypeName(this); }
@@ -2055,6 +2313,10 @@ public:
     void handleFunctionArgs(vector<shared_ptr<query::ValueExpr>> const & valueExprs) override {
         assertExecutionCondition(__FUNCTION__, _valueExprs.empty(), "FunctionArgs should be set once.", _ctx);
         _valueExprs = valueExprs;
+    }
+
+    void checkContext() const override {
+        // nothing to check
     }
 
     void onExit() override {
@@ -2094,6 +2356,10 @@ public:
         _functionName = uidlist.at(0);
     }
 
+    void checkContext() const override {
+        // nothing to check
+    }
+
     void onExit() override {
         assertExecutionCondition(__FUNCTION__, !_functionName.empty(), "Function name unpopulated", _ctx);
         assertExecutionCondition(__FUNCTION__, !_args.empty(), "Function arguments unpopulated", _ctx);
@@ -2120,6 +2386,41 @@ public:
         assertExecutionCondition(__FUNCTION__, nullptr == _valueFactor,
                 "currently ValueFactor can only be set once.", _ctx);
         _valueFactor = valueFactor;
+    }
+
+    void checkContext() const override {
+        // optional:
+        // AVG();
+        // MAX();
+        // MIN();
+        // SUM();
+        // COUNT();
+        // starArg;
+
+        // not supported:
+        assertNotSupported(__FUNCTION__, _ctx->aggregator == nullptr, "aggregator is not supported", _ctx);
+        assertNotSupported(__FUNCTION__, _ctx->ALL() == nullptr, "ALL is not supported", _ctx);
+        assertNotSupported(__FUNCTION__, _ctx->DISTINCT() == nullptr, "DISTINCT is not supported", _ctx);
+        assertNotSupported(__FUNCTION__, _ctx->separator == nullptr, "separator is not supported", _ctx);
+        assertNotSupported(__FUNCTION__, _ctx->SEPARATOR() == nullptr, "SEPARATOR is not supported", _ctx);
+        assertNotSupported(__FUNCTION__, _ctx->functionArgs() == nullptr,
+                "functionArgs (plural) is not supported", _ctx);
+        assertNotSupported(__FUNCTION__, _ctx->BIT_AND() == nullptr, "BIT_AND is not supported", _ctx);
+        assertNotSupported(__FUNCTION__, _ctx->BIT_OR() == nullptr, "BIT_OR is not supported", _ctx);
+        assertNotSupported(__FUNCTION__, _ctx->BIT_XOR() == nullptr, "BIT_XOR is not supported", _ctx);
+        assertNotSupported(__FUNCTION__, _ctx->STD() == nullptr, "STD is not supported", _ctx);
+        assertNotSupported(__FUNCTION__, _ctx->STDDEV() == nullptr, "STDDEV is not supported", _ctx);
+        assertNotSupported(__FUNCTION__, _ctx->STDDEV_POP() == nullptr, "STDDEV_POP is not supported", _ctx);
+        assertNotSupported(__FUNCTION__, _ctx->STDDEV_SAMP() == nullptr,
+                "STDDEV_SAMP is not supported", _ctx);
+        assertNotSupported(__FUNCTION__, _ctx->VAR_POP() == nullptr, "VAR_POP is not supported", _ctx);
+        assertNotSupported(__FUNCTION__, _ctx->VAR_SAMP() == nullptr, "VAR_SAMP is not supported", _ctx);
+        assertNotSupported(__FUNCTION__, _ctx->VARIANCE() == nullptr, "VARIANCE is not supported", _ctx);
+        assertNotSupported(__FUNCTION__, _ctx->GROUP_CONCAT() == nullptr,
+                "GROUP_CONCAT is not supported", _ctx);
+        assertNotSupported(__FUNCTION__, _ctx->ORDER() == nullptr, "ORDER is not supported", _ctx);
+        assertNotSupported(__FUNCTION__, _ctx->BY() == nullptr, "BY is not supported", _ctx);
+        assertNotSupported(__FUNCTION__, _ctx->STRING_LITERAL() == nullptr, "STRING_LITERAL is not supported", _ctx);
     }
 
     void onExit() override {
@@ -2171,6 +2472,34 @@ public:
 
     void handleFunctionNameBase(string const & name) override {
         _name = name;
+    }
+
+    void checkContext() const override {
+        // required:
+        assertExecutionCondition(__FUNCTION__, _ctx->functionNameBase() != nullptr, "Context check failure.", _ctx);
+        // not supported:
+        assertNotSupported(__FUNCTION__, _ctx->ASCII() == nullptr, "ASCII is not supported", _ctx);
+        assertNotSupported(__FUNCTION__, _ctx->CURDATE() == nullptr, "CURDATE is not supported", _ctx);
+        assertNotSupported(__FUNCTION__, _ctx->CURRENT_DATE() == nullptr, "CURRENT_DATE is not supported", _ctx);
+        assertNotSupported(__FUNCTION__, _ctx->CURRENT_TIME() == nullptr, "CURRENT_TIME is not supported", _ctx);
+        assertNotSupported(__FUNCTION__, _ctx->CURRENT_TIMESTAMP() == nullptr, "CURRENT_TIMESTAMP is not supported", _ctx);
+        assertNotSupported(__FUNCTION__, _ctx->CURTIME() == nullptr, "CURTIME is not supported", _ctx);
+        assertNotSupported(__FUNCTION__, _ctx->DATE_ADD() == nullptr, "DATE_ADD is not supported", _ctx);
+        assertNotSupported(__FUNCTION__, _ctx->DATE_SUB() == nullptr, "DATE_SUB is not supported", _ctx);
+        assertNotSupported(__FUNCTION__, _ctx->IF() == nullptr, "IF is not supported", _ctx);
+        assertNotSupported(__FUNCTION__, _ctx->INSERT() == nullptr, "INSERT is not supported", _ctx);
+        assertNotSupported(__FUNCTION__, _ctx->LOCALTIME() == nullptr, "LOCALTIME is not supported", _ctx);
+        assertNotSupported(__FUNCTION__, _ctx->LOCALTIMESTAMP() == nullptr, "LOCALTIMESTAMP is not supported", _ctx);
+        assertNotSupported(__FUNCTION__, _ctx->MID() == nullptr, "MID is not supported", _ctx);
+        assertNotSupported(__FUNCTION__, _ctx->NOW() == nullptr, "NOW is not supported", _ctx);
+        assertNotSupported(__FUNCTION__, _ctx->REPLACE() == nullptr, "REPLACE is not supported", _ctx);
+        assertNotSupported(__FUNCTION__, _ctx->SUBSTR() == nullptr, "SUBSTR is not supported", _ctx);
+        assertNotSupported(__FUNCTION__, _ctx->SUBSTRING() == nullptr, "SUBSTRING is not supported", _ctx);
+        assertNotSupported(__FUNCTION__, _ctx->SYSDATE() == nullptr, "SYSDATE is not supported", _ctx);
+        assertNotSupported(__FUNCTION__, _ctx->TRIM() == nullptr, "TRIM is not supported", _ctx);
+        assertNotSupported(__FUNCTION__, _ctx->UTC_DATE() == nullptr, "UTC_DATE is not supported", _ctx);
+        assertNotSupported(__FUNCTION__, _ctx->UTC_TIME() == nullptr, "UTC_TIME is not supported", _ctx);
+        assertNotSupported(__FUNCTION__, _ctx->UTC_TIMESTAMP() == nullptr, "UTC_TIMESTAMP is not supported", _ctx);
     }
 
     void onExit() override {
@@ -2226,6 +2555,10 @@ public:
         _args.push_back(valueExpr);
     }
 
+    void checkContext() const override {
+        // nothing to check
+    }
+
     void onExit() override {
         lockedParent()->handleFunctionArgs(_args);
     }
@@ -2247,6 +2580,10 @@ public:
         assertExecutionCondition(__FUNCTION__, nullptr == _valueFactor,
                 "Expected exactly one callback; valueFactor should be NULL.", _ctx);
         _valueFactor = columnName;
+    }
+
+    void checkContext() const override {
+        // nothing to check
     }
 
     void onExit() override {
@@ -2314,6 +2651,10 @@ public:
             return;
         }
         _terms.push_back(logicalTerm);
+    }
+
+    void checkContext() const override {
+        // nothing to check
     }
 
     void onExit() override {
@@ -2386,7 +2727,11 @@ public:
         _expressions = valueExprs;
     }
 
-    void onExit() {
+    void checkContext() const override {
+        assertNotSupported(__FUNCTION__, _ctx->NOT() == nullptr, "NOT is not supported.", _ctx);
+    }
+
+    void onExit() override {
         assertExecutionCondition(__FUNCTION__, false == _expressions.empty() && _predicate != nullptr,
                 "InPredicateAdapter was not fully populated.", _ctx);
         auto inPredicate = std::make_shared<query::InPredicate>();
@@ -2440,7 +2785,12 @@ public:
         assertExecutionCondition(__FUNCTION__, false, "unhandled ExpressionAtomPredicate BoolTerm callback.", _ctx);
     }
 
-    void onExit() {
+    void checkContext() const override {
+        // not supported:
+        assertNotSupported(__FUNCTION__, _ctx->NOT() == nullptr, "NOT is not supported.", _ctx);
+    }
+
+    void onExit() override {
         assertExecutionCondition(__FUNCTION__, nullptr != _val && nullptr != _min && nullptr != _max,
                 "val, min, and max must all be set.", _ctx);
         auto betweenPredicate = make_shared<query::BetweenPredicate>(_val, _min, _max);
@@ -2480,7 +2830,11 @@ public:
         _isNotNull = isNotNull;
     }
 
-    void onExit() {
+    void checkContext() const override {
+        // IS is implicit, and other elements are handled via adapters.
+    }
+
+    void onExit() override {
         assertExecutionCondition(__FUNCTION__, _valueExpr != nullptr, "IsNullPredicateAdapter was not populated.", _ctx);
         auto np = make_shared<query::NullPredicate>(_valueExpr, _isNotNull);
         lockedParent()->handleIsNullPredicate(np);
@@ -2516,6 +2870,13 @@ public:
         assertExecutionCondition(__FUNCTION__, false, "Unhandled BoolTerm callback.", _ctx);
     }
 
+    void checkContext() const override {
+        assertNotSupported(__FUNCTION__, _ctx->NOT() == nullptr, "NOT is not supported.", _ctx);
+        assertNotSupported(__FUNCTION__, _ctx->ESCAPE() == nullptr, "ESCAPE is not supported.", _ctx);
+        assertNotSupported(__FUNCTION__, _ctx->STRING_LITERAL() == nullptr,
+                "STRING_LITERAL is not supported", _ctx);
+    }
+
     void onExit() override {
         assertExecutionCondition(__FUNCTION__, _valueExprA != nullptr && _valueExprB != nullptr,
                 "LikePredicateAdapter was not fully populated.", _ctx);
@@ -2540,16 +2901,25 @@ class UnaryExpressionAtomAdapter :
 public:
     using AdapterT::AdapterT;
 
-    void handleUnaryOperator(string const & val) override {
+    void handleUnaryOperator(OperatorType operatorType) override {
         assertExecutionCondition(__FUNCTION__, _operatorPrefix.empty(),
                 "Expected to set the unary operator only once.", _ctx);
-        _operatorPrefix = val;
+
+        // I want to find out what operators we actually test and only allow those.
+        assertExecutionCondition(__FUNCTION__, _operatorPrefix.empty(),
+                "TODO", _ctx);
+
+        //  _operatorPrefix = val;
     }
 
     void handleConstantExpressionAtom(shared_ptr<query::ValueFactor> const & valueFactor) {
         assertExecutionCondition(__FUNCTION__, nullptr == _valueFactor,
                 "Expected to set the ValueFactor only once.", _ctx);
         _valueFactor = valueFactor;
+    }
+
+    void checkContext() const override {
+        // nothing to check
     }
 
     void onExit() override {
@@ -2612,6 +2982,10 @@ public:
             vector<shared_ptr<query::ValueFactor>> const & args) override {
         TRACE_CALLBACK_INFO(functionName << " " << util::printable(args));
         assertNotSupported(__FUNCTION__, false, "Qserv functions may not appear in nested contexts.", _ctx);
+    }
+
+    void checkContext() const override {
+        // nothing to check
     }
 
     void onExit() override {
@@ -2711,6 +3085,10 @@ public:
         _valueExpr = valueExpr;
     }
 
+    void checkContext() const override {
+        // nothing to check
+    }
+
     void onExit() override {
         assertExecutionCondition(__FUNCTION__, _valueExpr != nullptr, "valueExpr not populated.", _ctx);
         lockedParent()->handleMathExpressionAtom(_valueExpr);
@@ -2754,10 +3132,11 @@ public:
         _valueFactor = valueFactor;
     }
 
-    // someday: the `AS uid` part should be handled by making this a UID CBH,
-    // it will set the alias in the generated valueFactor
+    void checkContext() const override {
+        // nothing to check
+    }
 
-    void onExit() {
+    void onExit() override {
         lockedParent()->handleFunctionCallExpressionAtom(_valueFactor);
     }
 
@@ -2774,8 +3153,26 @@ public:
     using AdapterT::AdapterT;
 
 
+    void checkContext() const override {
+        assertNotSupported(__FUNCTION__, _ctx->NOT() == nullptr, "NOT is not supported.", _ctx);
+    }
+
     void onExit() override {
-        lockedParent()->handleUnaryOperator(_ctx->getText());
+        UnaryOperatorCBH::OperatorType operatorType;
+        if (_ctx->getText() == "!") {
+            operatorType = UnaryOperatorCBH::BANG;
+        } else if (_ctx->getText() == "~") {
+            operatorType = UnaryOperatorCBH::TILDE;
+        } else if (_ctx->getText() == "+") {
+            operatorType = UnaryOperatorCBH::PLUS;
+        } else if (_ctx->getText() == "-") {
+            operatorType = UnaryOperatorCBH::MINUS;
+        } else if (_ctx->getText() == "NOT") {
+            operatorType = UnaryOperatorCBH::NOT;
+        } else {
+            assertNotSupported(__FUNCTION__, _ctx->NOT() == nullptr, "Unhandled operator type.", _ctx);
+        }
+        lockedParent()->handleUnaryOperator(operatorType);
     }
 
     string name() const override { return getTypeName(this); }
@@ -2787,6 +3184,11 @@ class LogicalOperatorAdapter :
         public AdapterT<LogicalOperatorCBH, QSMySqlParser::LogicalOperatorContext> {
 public:
     using AdapterT::AdapterT;
+
+    void checkContext() const override {
+        // we don't support all the possible operators indicated by the grammar.
+        // onExit will throw if a supported operator is not found.
+    }
 
     void onExit() override {
         if (_ctx->AND() != nullptr) {
@@ -2807,6 +3209,11 @@ class MathOperatorAdapter :
 public:
     using AdapterT::AdapterT;
 
+    void checkContext() const override {
+        // we don't support all the possible operators indicated by the grammar.
+        // onExit will throw if a supported operator is not found.
+    }
+
     void onExit() override {
         if (_ctx->getText() == "-") {
             lockedParent()->handleMathOperator(MathOperatorCBH::SUBTRACT);
@@ -2817,7 +3224,7 @@ public:
         } else if (_ctx->getText() == "*") {
             lockedParent()->handleMathOperator(MathOperatorCBH::MULTIPLY);
         } else {
-            assertExecutionCondition(__FUNCTION__, false, "Unhanlded operator type:" + _ctx->getText(), _ctx);
+            assertNotSupported(__FUNCTION__, false, "Unhandled operator type:" + _ctx->getText(), _ctx);
         }
     }
 
@@ -2830,6 +3237,14 @@ class FunctionNameBaseAdapter :
         public AdapterT<FunctionNameBaseCBH, QSMySqlParser::FunctionNameBaseContext> {
 public:
     using AdapterT::AdapterT;
+
+    void checkContext() const override {
+        // there's something like 300 possible functions. I'd like to know which ones we support and only
+        // allow those ones through. However, we often use keywords (including SQL function names) as ID
+        // and so this is not a good place to restrict function names because it may be that the token that
+        // parsed as a FunctionNameBase is actually an ID, like a column name.
+        // Filtering for valid functions has to happen in qana.
+    }
 
     void onExit() override {
         lockedParent()->handleFunctionNameBase(_ctx->getText());
@@ -2863,6 +3278,7 @@ shared_ptr<ChildAdapter> QSMySqlListener::pushAdapterStack(Context* ctx) {
             "` from top of listenerStack.",
             ctx);
     auto childAdapter = make_shared<ChildAdapter>(p, ctx, this);
+    childAdapter->checkContext();
     _adapterStack.push_back(childAdapter);
     childAdapter->onEnter();
     return childAdapter;
