@@ -136,6 +136,7 @@ void BetweenPredicate::renderTo(QueryTemplate& qt) const {
 void LikePredicate::renderTo(QueryTemplate& qt) const {
     ValueExpr::render r(qt, false);
     r.applyToQT(value);
+    if (hasNot) { qt.append("NOT"); }
     qt.append("LIKE");
     r.applyToQT(charValue);
 }
@@ -282,11 +283,13 @@ BoolFactorTerm::Ptr LikePredicate::clone() const {
     LikePredicate::Ptr p = std::make_shared<LikePredicate>();
     if (value) p->value = value->clone();
     if (charValue) p->charValue = charValue->clone();
+    p->hasNot = hasNot;
     return BoolFactorTerm::Ptr(p);
 }
 
 void LikePredicate::dbgPrint(std::ostream& os) const {
     os << "LikePredicate(value:" << value;
+    os << ", NOT:" << hasNot;
     os << ", charValue:" << charValue;
     os << ")";
 }
@@ -297,7 +300,8 @@ bool LikePredicate::operator==(const BoolFactorTerm& rhs) const {
         return false;
     }
     return util::ptrCompare<ValueExpr>(value, rhsLikePredicate->value) &&
-           util::ptrCompare<ValueExpr>(charValue, rhsLikePredicate->charValue);
+           util::ptrCompare<ValueExpr>(charValue, rhsLikePredicate->charValue) &&
+           hasNot == rhsLikePredicate->hasNot;
 }
 
 BoolFactorTerm::Ptr NullPredicate::clone() const {

@@ -2871,7 +2871,6 @@ public:
     }
 
     void checkContext() const override {
-        assertNotSupported(__FUNCTION__, _ctx->NOT() == nullptr, "NOT is not supported.", _ctx);
         assertNotSupported(__FUNCTION__, _ctx->ESCAPE() == nullptr, "ESCAPE is not supported.", _ctx);
         assertNotSupported(__FUNCTION__, _ctx->STRING_LITERAL() == nullptr,
                 "STRING_LITERAL is not supported", _ctx);
@@ -2883,6 +2882,7 @@ public:
         auto likePredicate = make_shared<query::LikePredicate>();
         likePredicate->value = _valueExprA;
         likePredicate->charValue = _valueExprB;
+        likePredicate->hasNot = _ctx->NOT() != nullptr;
         lockedParent()->handleLikePredicate(likePredicate);
     }
 

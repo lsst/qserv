@@ -205,6 +205,7 @@ public:
 
     ValueExprPtr value;
     ValueExprPtr charValue;
+    bool hasNot;
 
 protected:
     void dbgPrint(std::ostream& os) const override;
