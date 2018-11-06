@@ -1012,7 +1012,7 @@ BOOST_AUTO_TEST_CASE(Case01_1083) {
         "from Source s join RefObjMatch rom using (objectId) "
         "join SimRefObject sro using (refObjectId) where isStar =1 limit 10;";
     // % is not valid for arithmetic in SQL92
-    char const expectedErr[] = "ParseException:Error parsing query, near \"%\"";
+    char const expectedErr[] = "ParseException:Error parsing query, near \"%\", Unhandled operator type:%";
     auto qs = queryAnaHelper.buildQuerySession(qsTest, stmt, SelectParser::ANTLR4);
     BOOST_CHECK_EQUAL(qs->getError(), expectedErr);
 #if 0 // FIXME
@@ -1067,7 +1067,7 @@ BOOST_AUTO_TEST_CASE(Case01_2006) {
     std::string stmt = "SELECT scisql_fluxToAbMag(uFlux_PS) "
         "FROM   Object WHERE  (objectId % 100 ) = 40;";
     // % is not a valid arithmetic operator in SQL92.
-    char const expectedErr[] = "ParseException:Error parsing query, near \"%\"";
+    char const expectedErr[] = "ParseException:Error parsing query, near \"%\", Unhandled operator type:%";
     auto qs = queryAnaHelper.buildQuerySession(qsTest, stmt, SelectParser::ANTLR4);
     BOOST_CHECK_EQUAL(qs->getError(), expectedErr);
 #if 0 // FIXME
