@@ -486,7 +486,19 @@ static const std::vector< std::string > QUERIES = {
     "select shortName from Filter where shortName LIKE 'Z'",
 
     // DM-16532; this verifies that dotted IDs work for table+column ids. quoted dotted IDs are tested in the antlr4 test, below.
-    "SELECT Source.sourceId, Source.objectId From Source WHERE Source.objectId IN (386942193651348) ORDER BY Source.sourceId;"
+    "SELECT Source.sourceId, Source.objectId From Source WHERE Source.objectId IN (386942193651348) ORDER BY Source.sourceId;",
+
+    // tests for comparison operators that can be parsed by antlr2:
+    "SELECT ra_PS FROM Object WHERE objectId = 417857368235490;",   // =
+    "SELECT ra_PS FROM Object WHERE objectId <> 417857368235490;",  // <>
+    "SELECT ra_PS FROM Object WHERE objectId != 417857368235490;",  // !=
+    "SELECT ra_PS FROM Object WHERE objectId < 417857368235490;",   // <
+    "SELECT ra_PS FROM Object WHERE objectId <= 417857368235490;",  // <=
+    "SELECT ra_PS FROM Object WHERE objectId >= 417857368235490;",  // >=
+    "SELECT ra_PS FROM Object WHERE objectId > 417857368235490;",   // >
+    "SELECT objectId, ra_PS FROM Object WHERE objectId IN (417857368235490, 420949744686724, 420954039650823);",    // IN
+    "SELECT objectId, ra_PS FROM Object WHERE objectId BETWEEN 417857368235490 AND 420949744686724;",   // BETWEEN
+    "SELECT * FROM Filter WHERE filterName LIKE 'dd';", // LIKE
 };
 
 
