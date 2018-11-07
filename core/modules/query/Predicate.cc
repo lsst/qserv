@@ -102,6 +102,7 @@ void CompPredicate::renderTo(QueryTemplate& qt) const {
     r.applyToQT(left);
     switch(op) {
     case SqlSQL2Tokens::EQUALS_OP: qt.append("="); break;
+    case SqlSQL2Tokens::NULL_SAFE_EQUALS_OP: qt.append("<=>"); break;
     case SqlSQL2Tokens::NOT_EQUALS_OP: qt.append("<>"); break;
     case SqlSQL2Tokens::LESS_THAN_OP: qt.append("<"); break;
     case SqlSQL2Tokens::GREATER_THAN_OP: qt.append(">"); break;

@@ -329,6 +329,7 @@ SQL2RW_qserv_areaspec_hull="qserv_areaspec_hull"=414
 // imaginary for qserv parsing
 // IMPORT
 NOT_EQUALS_OP_ALT("!=")=1001
+NULL_SAFE_EQUALS_OP("<=>") = 1002
 SELECT_LIST("select_list")=2001
 SELECT_SUBLIST("select_sublist")=2002
 SELECT_COLUMN("select_column")=2003

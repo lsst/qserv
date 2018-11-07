@@ -1523,6 +1523,8 @@ public:
             compPredicate->op = SqlSQL2Tokens::NOT_EQUALS_OP;
         } else if ("!=" == _comparison) {
             compPredicate->op = SqlSQL2Tokens::NOT_EQUALS_OP_ALT;
+        } else if ("<=>" == _comparison) {
+            compPredicate->op = SqlSQL2Tokens::NULL_SAFE_EQUALS_OP;
         } else if ("<=" == _comparison) {
             compPredicate->op = SqlSQL2Tokens::LESS_THAN_OR_EQUALS_OP;
         } else if (">=" == _comparison) {
@@ -1551,7 +1553,7 @@ public:
     using AdapterT::AdapterT;
 
     void checkContext() const override {
-        const static vector<string> supportedOps {"=", "<", ">", "<>", "!=", ">=", "<="};
+        const static vector<string> supportedOps {"=", "<", ">", "<>", "!=", ">=", "<=", "<=>"};
         if (supportedOps.end() == find(supportedOps.begin(), supportedOps.end(), _ctx->getText())) {
             assertNotSupported(__FUNCTION__, false,
                     "Unsupported comparison operator: " + _ctx->getText(), _ctx);
