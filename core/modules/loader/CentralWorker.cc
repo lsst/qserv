@@ -52,15 +52,15 @@ namespace qserv {
 namespace loader {
 
 
-CentralWorker::CentralWorker(boost::asio::io_service& ioService,
-    std::string const& masterHostName,   int masterPort,
-    std::string const& hostName,         int udpPort,
-    boost::asio::io_context& io_context, int tcpPort)
-    : Central(ioService, masterHostName, masterPort),
-      _hostName(hostName), _udpPort(udpPort),
-       _tcpPort(tcpPort), _ioContext(io_context) {
+CentralWorker::CentralWorker(boost::asio::io_service& ioService_,
+    std::string const& masterHostName_,   int masterPort_,
+    std::string const& hostName_,         int udpPort_,
+    boost::asio::io_context& io_context_, int tcpPort_)
+    : Central(ioService_, masterHostName_, masterPort_),
+      _hostName(hostName_), _udpPort(udpPort_),
+       _tcpPort(tcpPort_), _ioContext(io_context_) {
 
-    _server = std::make_shared<WorkerServer>(_ioService, _hostName, _udpPort, this);
+    _server = std::make_shared<WorkerServer>(ioService, _hostName, _udpPort, this);
     _tcpServer = std::make_shared<ServerTcpBase>(_ioContext, _tcpPort, this);
     _tcpServer->runThread();
     _startMonitoring();
@@ -72,7 +72,7 @@ CentralWorker::~CentralWorker() {
 }
 
 
-std::string CentralWorker::getOurLogId() {
+std::string CentralWorker::getOurLogId() const {
     std::stringstream os;
     os << "(w name=" << _ourName << " addr=" << _hostName <<
             ":udp=" << _udpPort << " tcp=" << _tcpPort << ")";
@@ -82,8 +82,8 @@ std::string CentralWorker::getOurLogId() {
 void CentralWorker::_startMonitoring() {
     // Add _workerList to _doList so it starts checking new entries.
     _centralWorkerDoListItem = std::make_shared<CentralWorkerDoListItem>(this);
-    _doList.addItem(_wWorkerList);
-    _doList.addItem(_centralWorkerDoListItem);
+    doList.addItem(_wWorkerList);
+    doList.addItem(_centralWorkerDoListItem);
 }
 
 
@@ -177,7 +177,7 @@ bool CentralWorker::_determineRange() {
         auto protoItem = strWKI->protoParse<proto::WorkerKeysInfo>();
         if (protoItem == nullptr) {
             LOGS(_log, LOG_LVL_ERROR, funcName << " protoItem parse issue!!!!!");
-            throw LoaderMsgErr(funcName, __FILE__, __LINE__);
+            throw LoaderMsgErr(ERR_LOC, "protoItem parse issue!!!!!");
         }
         NeighborsInfo nInfoR;
         auto workerName = protoItem->name();
@@ -312,11 +312,11 @@ void CentralWorker::_shift(Direction direction, int keysToShift) {
                                                "CentralWorker::_shift waiting for FROMRIGHT KeyList");
             auto keyListElem = std::dynamic_pointer_cast<StringElement>(msgElem);
             if (keyListElem == nullptr) {
-                throw new LoaderMsgErr("CentralWorker::_shift FROMRIGHT failure to get KeyList");
+                throw LoaderMsgErr(ERR_LOC, "_shift FROMRIGHT failure to get KeyList");
             }
             auto protoKeyList = keyListElem->protoParse<proto::KeyList>();
             if (protoKeyList == nullptr) {
-                throw new LoaderMsgErr("CentralWorker::_shift FROMRIGHT failure to parse KeyList");
+                throw LoaderMsgErr(ERR_LOC, "_shift FROMRIGHT failure to parse KeyList");
             }
 
             // TODO This is very similar to code in TcpBaseConnection::_handleShiftToRight and they should be merged.
@@ -347,7 +347,7 @@ void CentralWorker::_shift(Direction direction, int keysToShift) {
         {
             std::lock_guard<std::mutex> lck(_idMapMtx);
             if (not _transferListToRight.empty()) {
-                throw new LoaderMsgErr("CentralWorker::_shift _transferList not empty");
+                throw LoaderMsgErr(ERR_LOC, "_shift _transferList not empty");
             }
             bool firstPass = true;
             for (int j=0; j < keysToShift && _directorIdMap.size() > 1; ++j) {
@@ -386,7 +386,7 @@ void CentralWorker::_shift(Direction direction, int keysToShift) {
         UInt32Element::Ptr received = std::dynamic_pointer_cast<UInt32Element>(msgElem);
         LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift TORIGHT keys were recieved");
         if (received == nullptr || received->element !=  LoaderMsg::SHIFT_TO_RIGHT_RECEIVED) {
-            throw new LoaderMsgErr("CentralWorker::_shift receive failure");
+            throw LoaderMsgErr(ERR_LOC, "_shift receive failure");
         }
         _finishShiftToRight();
         LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift end direction=" << direction << " keys=" << keysToShift);
@@ -419,7 +419,7 @@ StringElement::UPtr CentralWorker::buildKeyList(int keysToShift) {
         LOGS(_log, LOG_LVL_INFO, funcName);
         std::lock_guard<std::mutex> lck(_idMapMtx);
         if (not _transferListFromRight.empty()) {
-            throw new LoaderMsgErr("CentralWorker::_shift _transferListFromRight not empty");
+            throw LoaderMsgErr(ERR_LOC, "_shift _transferListFromRight not empty");
         }
         int maxKeysToShift = _directorIdMap.size()/3;
         if (keysToShift > maxKeysToShift) keysToShift = maxKeysToShift;
@@ -480,14 +480,15 @@ void CentralWorker::_rightConnect() {
             // First element should be UInt32Element with the other worker's name
             UInt32Element::Ptr nghName = std::dynamic_pointer_cast<UInt32Element>(msgElem);
             if (nghName == nullptr) {
-                throw LoaderMsgErr("first element wasn't correct type " +
-                        msgElem->getStringVal(), __FILE__, __LINE__);
+                throw LoaderMsgErr(ERR_LOC, std::string("first element wasn't correct type ") +
+                        msgElem->getStringVal());
             }
 
             // Check if correct name
             if (nghName->element != _neighborRight.getName()) {
-                throw LoaderMsgErr("wrong name expected " + std::to_string(_neighborRight.getName()) +
-                        " got " + std::to_string(nghName->element), __FILE__, __LINE__);
+                throw LoaderMsgErr(ERR_LOC, std::string("wrong name expected ") +
+                                   std::to_string(_neighborRight.getName()) +
+                                   " got " + std::to_string(nghName->element));
             }
         }
 

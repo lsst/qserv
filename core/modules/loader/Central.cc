@@ -25,17 +25,14 @@
 // Class header
 #include "Central.h"
 
-// system headers
+// Third-party headers
 #include <boost/asio.hpp>
 #include <iostream>
 
-// Third-party headers
-
-
 // qserv headers
 #include "loader/LoaderMsg.h"
-#include "proto/ProtoImporter.h"
 #include "proto/loader.pb.h"
+#include "proto/ProtoImporter.h"
 
 
 // LSST headers
@@ -45,6 +42,7 @@
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.loader.Central");
 }
+
 
 namespace lsst {
 namespace qserv {
@@ -61,21 +59,21 @@ Central::~Central() {
 
 
 void Central::run() {
-    std::thread thd([this]() { _ioService.run(); });
+    std::thread thd([this]() { ioService.run(); });
     _ioServiceThreads.push_back(std::move(thd));
 }
 
 
 void Central::_checkDoList() {
     while(_loop) {
-        // Run and then sleep for a second. A more advanced timer should be used
-        _doList.checkList();
+        // Run and then sleep for a second. TODO A more advanced timer should be used
+        doList.checkList();
         usleep(100000);
     }
 }
 
 
-std::ostream& operator<<(std::ostream& os, ChunkSubchunk csc) {
+std::ostream& operator<<(std::ostream& os, ChunkSubchunk const& csc) {
     os << "chunk=" << csc.chunk << " subchunk=" << csc.subchunk;
     return os;
 }
