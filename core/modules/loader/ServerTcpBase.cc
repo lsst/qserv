@@ -57,8 +57,7 @@ bool ServerTcpBase::writeData(AsioTcp::socket& socket, BufferUdp& data) {
     while (data.getBytesLeftToRead() > 0) {
         // Read cursor advances (manually in this case) as data is read from the buffer.
         auto res = boost::asio::write(socket,
-                       boost::asio::buffer(data.getReadCursor(), data.getBytesLeftToRead()));
-
+                                      boost::asio::buffer(data.getReadCursor(), data.getBytesLeftToRead()));
         data.advanceReadCursor(res);
     }
     return true;
@@ -89,8 +88,8 @@ bool ServerTcpBase::testConnect() {
         // First element should be UInt32Element with the other worker's name
         UInt32Element::Ptr nghName = std::dynamic_pointer_cast<UInt32Element>(msgElem);
         if (nghName == nullptr) {
-            throw LoaderMsgErr("ServerTcpBase::testConnect() first element wasn't correct type " +
-                               msgElem->getStringVal(), __FILE__, __LINE__);
+            throw LoaderMsgErr(ERR_LOC, "testConnect() first element wasn't correct type " +
+                               msgElem->getStringVal());
         }
 
         LOGS(_log, LOG_LVL_INFO, "server name=" << nghName->element);
@@ -415,7 +414,7 @@ void TcpBaseConnection::_handleImYourLNeighbor1(boost::system::error_code const&
                                  " _buf" << _buf.dumpStr(false));
         auto protoItem = StringElement::protoParse<proto::WorkerKeysInfo>(_buf);
         if (protoItem == nullptr) {
-            throw LoaderMsgErr(funcName, __FILE__, __LINE__);
+            throw LoaderMsgErr(ERR_LOC, "protoItem nullptr");
         }
         NeighborsInfo nInfo;
         auto workerName = protoItem->name();
@@ -504,7 +503,7 @@ void TcpBaseConnection::_handleShiftToRight1(boost::system::error_code const& ec
                                  " _buf" << _buf.dumpStr(false));
         auto protoKeyList = StringElement::protoParse<proto::KeyList>(_buf);
         if (protoKeyList == nullptr) {
-            throw LoaderMsgErr(funcName, __FILE__, __LINE__);
+            throw LoaderMsgErr(ERR_LOC, "protoKeyList nullptr");
         }
         // Extract key pairs from the protobuffer
         int keyCount = protoKeyList->keycount(); // TODO delete keycount from KeyList
@@ -576,12 +575,12 @@ void TcpBaseConnection::_handleShiftFromRight1(boost::system::error_code const& 
         LOGS(_log, LOG_LVL_INFO, funcName << " parsing bytes=" << bytesTrans << " _buf" << _buf.dumpStr(false));
         auto protoKeyShiftReq = StringElement::protoParse<proto::KeyShiftRequest>(_buf);
         if (protoKeyShiftReq == nullptr) {
-            throw LoaderMsgErr(funcName + " KeyShiftRequest parse failure ", __FILE__, __LINE__);
+            throw LoaderMsgErr(ERR_LOC, " KeyShiftRequest parse failure ");
         }
         // Extract keysToShift from the protobuffer
         int keyShiftReq = protoKeyShiftReq->keystoshift();
         if (keyShiftReq < 1) {
-            throw LoaderMsgErr(funcName + " KeyShiftRequest for < 1 key", __FILE__, __LINE__);
+            throw LoaderMsgErr(ERR_LOC, " KeyShiftRequest for < 1 key");
         }
         // Build and send the KeyList message back (send smallest keys to right node)
         StringElement::UPtr keyList = _serverTcpBase->getCentralWorker()->buildKeyList(keyShiftReq);
@@ -597,7 +596,7 @@ void TcpBaseConnection::_handleShiftFromRight1(boost::system::error_code const& 
         UInt32Element::Ptr received = std::dynamic_pointer_cast<UInt32Element>(msgElem);
         if (received == nullptr || received->element !=  LoaderMsg::SHIFT_FROM_RIGHT_RECEIVED) {
             LOGS(_log, LOG_LVL_INFO, funcName << " did not get SHIFT_FROM_RIGHT_RECEIVED");
-            throw new LoaderMsgErr(funcName + " receive failure");
+            throw LoaderMsgErr(ERR_LOC, " receive failure");
         }
         _serverTcpBase->getCentralWorker()->finishShiftFromRight();
         LOGS(_log, LOG_LVL_INFO, funcName << " done dumpKeys " <<

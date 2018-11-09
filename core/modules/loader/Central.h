@@ -21,24 +21,25 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  *
  */
-#ifndef LSST_QSERV_LOADER_CENTRAL_H_
-#define LSST_QSERV_LOADER_CENTRAL_H_
+#ifndef LSST_QSERV_LOADER_CENTRAL_H
+#define LSST_QSERV_LOADER_CENTRAL_H
 
 // system headers
-#include <boost/bind.hpp>
-#include <boost/asio.hpp>
 #include <thread>
 #include <vector>
+
+// third party headers
+#include <boost/asio.hpp>
+#include <boost/bind.hpp>
 
 // Qserv headers
 #include "loader/ClientServer.h"
 #include "loader/MasterServer.h"
 #include "loader/MWorkerList.h"
-#include "loader/WWorkerList.h"
 #include "loader/WorkerServer.h"
+#include "loader/WWorkerList.h"
 #include "proto/loader.pb.h"
 #include "util/ThreadPool.h"
-
 
 
 namespace lsst {
@@ -50,22 +51,21 @@ struct ChunkSubchunk {
     ChunkSubchunk(int chunk_, int subchunk_) : chunk(chunk_), subchunk(subchunk_) {}
     int const chunk;
     int const subchunk;
-    friend std::ostream& operator<<(std::ostream& os, ChunkSubchunk csc);
+    friend std::ostream& operator<<(std::ostream& os, ChunkSubchunk const& csc);
 };
 
 
 /// This class is 'central' to the execution of the program, and must be around
 /// until the bitter end. As such, it can be accessed by normal pointers.
 /// This class is central to loader workers and the master.
-/// It is the base class for CentralWorker, CentralMaster, and CentralClient
+/// It is the base class for CentralWorker, CentralMaster, and CentralClient.
+/// It provides a DoList and a means to contact the master. The master
+/// needs to know its own address.
 class Central {
 public:
-    Central(boost::asio::io_service& ioService,
-            std::string const& masterHostName, int masterPort)
-        : _ioService(ioService), _masterAddr(masterHostName, masterPort),
-          _checkDoListThread([this](){ _checkDoList(); }){}
-
     Central() = delete;
+    Central(Central const&) = delete;
+    Central& operator=(Central const&) = delete;
 
     virtual ~Central();
 
@@ -73,7 +73,7 @@ public:
 
     std::string getMasterHostName() const { return _masterAddr.ip; }
     int getMasterPort() const { return _masterAddr.port; }
-    NetworkAddress getMasterAddr() { return _masterAddr; }
+    NetworkAddress getMasterAddr() const { return _masterAddr; }
 
     uint64_t getNextMsgId() { return _sequence++; }
 
@@ -85,49 +85,63 @@ public:
         _server->sendBufferTo(host, port, sendBuf);
     }
 
-    // Only allow tracked commands on the queue
+    /// Only allow tracked commands on the queue. The DoList has to able to tell
+    /// if a Command completed.
     void queueCmd(util::CommandTracked::Ptr const& cmd) {
         _queue->queCmd(cmd);
     }
 
+    /// Add a DoListItem to the _doList which will run and
+    /// rerun the item until it is no longer needed.
     bool addDoListItem(DoListItem::Ptr const& item) {
-        return _doList.addItem(item);
+        return doList.addItem(item);
     }
 
+    /// Run the item immediately before adding it to _doList.
     bool runAndAddDoListItem(DoListItem::Ptr const& item) {
-        _doList.runItemNow(item);
-        return _doList.addItem(item);
+        doList.runItemNow(item);
+        return doList.addItem(item);
     }
 
-
-    virtual std::string getOurLogId() { return "baseclass"; }
+    /// Provides a method for identifying different Central classes and
+    /// CentralWorkers in the log file.
+    virtual std::string getOurLogId() const { return "baseclass"; }
 
 protected:
-    /// Repeatedly check the items on the _doList.
-    void _checkDoList();
+    /// All Central objects need an ioService and a way to contact the master.
+    Central(boost::asio::io_service& ioService_,
+            std::string const& masterHostName, int masterPort)
+            : ioService(ioService_), _masterAddr(masterHostName, masterPort),
+              _checkDoListThread([this](){ _checkDoList(); }) {}
 
-    boost::asio::io_service& _ioService;
+    boost::asio::io_service& ioService;
 
     /// Initialization order is important.
-    DoList _doList{*this}; ///< List of items to be checked at regular intervals.
-
-    NetworkAddress _masterAddr; ///< Network address of the master node.
-    
-    std::atomic<uint64_t> _sequence{1};
-
-    util::CommandQueue::Ptr _queue{new util::CommandQueue()};
-    util::ThreadPool::Ptr _pool{util::ThreadPool::newThreadPool(10, _queue)};
-
-    std::vector<std::thread> _ioServiceThreads; ///< List of asio io threads created by this
+    DoList doList{*this}; ///< List of items to be checked at regular intervals.
 
     ServerUdpBase::Ptr _server;
 
-    bool _loop{true};
+private:
+    /// Repeatedly check the items on the _doList.
+    void _checkDoList();
+
+    NetworkAddress _masterAddr; ///< Network address of the master node.
+
+    std::atomic<uint64_t> _sequence{1};
+
+
+    util::CommandQueue::Ptr _queue{std::make_shared<util::CommandQueue>()}; // Must be defined before _pool
+    util::ThreadPool::Ptr _pool{util::ThreadPool::newThreadPool(10, _queue)}; // TODO set via config file
+
+    bool _loop{true}; ///< continue looping through _checkDolList() while this is true.
+
+    std::vector<std::thread> _ioServiceThreads; ///< List of asio io threads created by this
+
+    /// This must be the last member defined in this class to avoid race conditions.
     std::thread _checkDoListThread;
 };
-
 
 }}} // namespace lsst::qserv::loader
 
 
-#endif // LSST_QSERV_LOADER_CENTRAL_H_
+#endif // LSST_QSERV_LOADER_CENTRAL_H

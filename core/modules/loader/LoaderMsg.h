@@ -33,6 +33,7 @@
 // Qserv headers
 #include "loader/BufferUdp.h"
 #include "proto/ProtoImporter.h"
+#include "util/Issue.h"
 
 
 #define MAX_MSG_STRING_LENGTH 5000
@@ -42,7 +43,7 @@ namespace lsst {
 namespace qserv {
 namespace loader {
 
-
+/* &&&
 // TODO Add more information
 class LoaderMsgErr : public std::exception {
 public:
@@ -56,7 +57,13 @@ public:
 private:
     std::string _msg;
 };
+*/
 
+class LoaderMsgErr : public util::Issue {
+public:
+    LoaderMsgErr(util::Issue::Context const& ctx, std::string const& message) :
+        util::Issue(ctx, message) {}
+};
 
 /// Base class for message elements. It include methods for appending or retrieving from
 /// BufferUdp objects.

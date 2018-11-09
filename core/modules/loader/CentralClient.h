@@ -25,10 +25,12 @@
 #define LSST_QSERV_LOADER_CENTRAL_CLIENT_H_
 
 // system headers
-#include <boost/bind.hpp>
-#include <boost/asio.hpp>
 #include <thread>
 #include <vector>
+
+// third party headers
+#include <boost/asio.hpp>
+#include <boost/bind.hpp>
 
 // Qserv headers
 #include "loader/Central.h"
@@ -40,6 +42,11 @@ namespace lsst {
 namespace qserv {
 namespace loader {
 
+
+/// This class is used to track the status and value of jobs inserting
+/// key-value pairs to the system or looking up key-value pairs. The
+/// Tracker base class provides a means of notifying other threads
+/// that the task is complete.
 class KeyInfoData : public util::Tracker {
 public:
     using Ptr = std::shared_ptr<KeyInfoData>;
@@ -54,22 +61,28 @@ public:
     friend std::ostream& operator<<(std::ostream& os, KeyInfoData const& data);
 };
 
-/// TODO Maybe base this one CentralWorker or have a common base class?
+/// This class is 'Central' to the client. The client maintains a UDP port
+/// so replies to its request can be sent directly back to it.
+/// 'Central' provides a DoList for handling requests.
+/// TODO Maybe base this on CentralWorker or have a common base class?
 class CentralClient : public Central {
 public:
-    CentralClient(boost::asio::io_service& ioService,
+    /// The client needs to know the master's IP and its own IP.
+    /// TODO The worker IP is temporary as it should be able to get
+    ///      that information from the master in the future.
+    CentralClient(boost::asio::io_service& ioService_,
                   std::string const& masterHostName, int masterPort,
                   std::string const& workerHostName, int workerPort,
                   std::string const& hostName, int port)
-        : Central(ioService, masterHostName, masterPort),
+        : Central(ioService_, masterHostName, masterPort),
           _workerHostName(workerHostName), _workerPort(workerPort),
           _hostName(hostName), _udpPort(port) {
-        _server = std::make_shared<ClientServer>(_ioService, _hostName, _udpPort, this);
+        _server = std::make_shared<ClientServer>(ioService, _hostName, _udpPort, this);
     }
 
     ~CentralClient() override = default;
 
-    std::string getHostName() const { return _hostName; }
+    std::string const& getHostName() const { return _hostName; }
     int getUdpPort() const { return _udpPort; }
     int getTcpPort() const { return 0; } ///< No tcp port at this time.
 
@@ -77,25 +90,28 @@ public:
     int getWorkerPort() const { return _workerPort; }
 
 
+    /// Asynchronously request a key value insert to the workers. It returns a
+    /// KeyInfoData object for checking the job's status.
     KeyInfoData::Ptr keyInsertReq(std::string const& key, int chunk, int subchunk);
+    /// Handle a workers response to the keyInserReq call
     void handleKeyInsertComplete(LoaderMsg const& inMsg, BufferUdp::Ptr const& data);
 
+    /// Asynchronously request a key value lookup from the workers. It returns a
+    /// KeyInfoData object to be used to track job status and get the value of the key.
     KeyInfoData::Ptr keyInfoReq(std::string const& key);
+    /// Handle a workers response to the keyInfoReq call.
     void handleKeyInfo(LoaderMsg const& inMsg, BufferUdp::Ptr const& data);
 
-    std::string getOurLogId() override { return "client"; }
+    std::string getOurLogId() const override { return "client"; }
 
 private:
-    void _keyInsertReq(std::string const& key, int chunk, int subchunk);
+    void _keyInsertReq(std::string const& key, int chunk, int subchunk); ///< see keyInsertReq()
     void _handleKeyInsertComplete(LoaderMsg const& inMsg, std::unique_ptr<proto::KeyInfo>& protoBuf);
 
-    void _keyInfoReq(std::string const& key);
+    void _keyInfoReq(std::string const& key); ///< see keyInfoReq()
     void _handleKeyInfo(LoaderMsg const& inMsg, std::unique_ptr<proto::KeyInfo>& protoBuf);
 
-    const std::string _workerHostName;
-    const int         _workerPort;
-    const std::string _hostName;
-    const int         _udpPort;
+
 
     /// Create commands to add a key to the index and track that they are done.
     /// It should keep trying this until it works, and then drop it from _waitingKeyInsertMap.
@@ -103,80 +119,47 @@ private:
         using Ptr = std::shared_ptr<KeyInsertReqOneShot>;
 
         KeyInsertReqOneShot(CentralClient* central_, std::string const& key_, int chunk_, int subchunk_) :
-            cmdData(new KeyInfoData(key_, chunk_, subchunk_)), central(central_) {
-            _oneShot = true;
-        }
+            cmdData(new KeyInfoData(key_, chunk_, subchunk_)), central(central_) { _oneShot = true; }
+
+        util::CommandTracked::Ptr createCommand() override;
+
+        /// TODO Have this function take result codes (such as 'success') as arguments
+        /// and put them in cmdData.
+        void keyInsertComplete();
 
         KeyInfoData::Ptr cmdData;
         CentralClient* central;
-
-        util::CommandTracked::Ptr createCommand() override {
-            struct KeyInsertReqCmd : public util::CommandTracked {
-                KeyInsertReqCmd(KeyInfoData::Ptr& cd, CentralClient* cent_) : cData(cd), cent(cent_) {}
-                void action(util::CmdData*) override {
-                    cent->_keyInsertReq(cData->key, cData->chunk, cData->subchunk);
-                }
-                KeyInfoData::Ptr cData;
-                CentralClient* cent;
-            };
-            return std::make_shared<KeyInsertReqCmd>(cmdData, central);
-        }
-
-        // TODO Have this function take result codes as arguments and put them in cmdData.
-        void keyInsertComplete() {
-            cmdData->success = true;
-            cmdData->setComplete();
-            infoReceived();
-        }
     };
 
-    std::map<std::string, KeyInsertReqOneShot::Ptr> _waitingKeyInsertMap;
-    std::mutex _waitingKeyInsertMtx; ///< protects _waitingKeyInsertMap
-
-
     /// Create commands to find a key in the index and get its value.
-    /// It should keep trying this until it works, and then drop it from _waitingKeyInfoMap.
+    /// It should keep trying this until it works and then drop it from _waitingKeyInfoMap.
     struct KeyInfoReqOneShot : public DoListItem {
         using Ptr = std::shared_ptr<KeyInfoReqOneShot>;
 
         KeyInfoReqOneShot(CentralClient* central_, std::string const& key_) :
-            cmdData(new KeyInfoData(key_, -1, -1)), central(central_) {
-            _oneShot = true;
-        }
+            cmdData(new KeyInfoData(key_, -1, -1)), central(central_) { _oneShot = true; }
+
+        util::CommandTracked::Ptr createCommand() override;
+
+        // TODO Have this function take result codes as arguments and put them in cmdData.
+        void keyInfoComplete(std::string const& key, int chunk, int subchunk, bool success);
 
         KeyInfoData::Ptr cmdData;
         CentralClient* central;
-
-        util::CommandTracked::Ptr createCommand() override {
-            struct KeyInfoReqCmd : public util::CommandTracked {
-                KeyInfoReqCmd(KeyInfoData::Ptr& cd, CentralClient* cent_) : cData(cd), cent(cent_) {}
-                void action(util::CmdData*) override {
-                    cent->_keyInfoReq(cData->key);
-                }
-                KeyInfoData::Ptr cData;
-                CentralClient* cent;
-            };
-            return std::make_shared<KeyInfoReqCmd>(cmdData, central);
-        }
-
-        // TODO Have this function take result codes as arguments and put them in cmdData.
-        void keyInfoComplete(std::string const& key, int chunk, int subchunk, bool success) {
-            if (key == cmdData->key) {
-                cmdData->chunk = chunk;
-                cmdData->subchunk = subchunk;
-                cmdData->success = success;
-            }
-            cmdData->setComplete();
-            infoReceived();
-        }
     };
+
+    const std::string _workerHostName;
+    const int         _workerPort;
+    const std::string _hostName;
+    const int         _udpPort;
+
+    std::map<std::string, KeyInsertReqOneShot::Ptr> _waitingKeyInsertMap;
+    std::mutex _waitingKeyInsertMtx; ///< protects _waitingKeyInsertMap
 
     std::map<std::string, KeyInfoReqOneShot::Ptr> _waitingKeyInfoMap;
     std::mutex _waitingKeyInfoMtx; ///< protects _waitingKeyInfoMap
-
 };
 
 }}} // namespace lsst::qserv::loader
-
 
 #endif // LSST_QSERV_LOADER_CENTRAL_CLIENT_H_

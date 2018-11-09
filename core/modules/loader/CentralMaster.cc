@@ -26,12 +26,10 @@
 #include "loader/CentralMaster.h"
 
 // system headers
-#include <boost/asio.hpp>
 #include <iostream>
 
 // Third-party headers
-
-// qserv headers
+#include <boost/asio.hpp>
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -40,7 +38,6 @@
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.loader.CentralMaster");
 }
-
 
 namespace lsst {
 namespace qserv {
@@ -132,13 +129,10 @@ void CentralMaster::_assignNeighborIfNeeded() {
         auto range = item->getRangeString();
         if (range.getValid() && range.getUnlimited()) {
             if (rightMostName != 0) {
-                LOGS(_log, LOG_LVL_ERROR, "_assignNeighborIfNeeded Multiple rightMost workers " <<
-                                           " name=" << rightMostName <<
-                                           " name=" << item->getName());
-                throw LoaderMsgErr(funcName + " Multiple rightMost workers " +
-                        " name=" + std::to_string(rightMostName) +
-                        " name=" + std::to_string(item->getName()),
-                        __FILE__, __LINE__);
+                std::string eStr("Multiple rightMost workers name=");
+                eStr += rightMostName +  " name=" + item->getName();
+                LOGS(_log, LOG_LVL_ERROR, "_assignNeighborIfNeeded " << eStr);
+                throw LoaderMsgErr(ERR_LOC, eStr);
             }
             rightMostName = item->getName();
             rightMostItem = item;
@@ -153,8 +147,7 @@ void CentralMaster::_assignNeighborIfNeeded() {
         LOGS(_log, LOG_LVL_INFO, "ADDING WORKER avg=" << avg);
         auto inactiveItem = inactiveList.front();
         if (inactiveItem == nullptr) {
-            throw LoaderMsgErr(funcName + " _assignNeighborIfNeeded unexpected inactiveList nullptr",
-                               __FILE__, __LINE__);
+            throw LoaderMsgErr(ERR_LOC,"_assignNeighborIfNeeded unexpected inactiveList nullptr");
         }
         _addingWorker = true;
         // Sequence of events goes something like
@@ -162,6 +155,8 @@ void CentralMaster::_assignNeighborIfNeeded() {
         // 2) Right item get message from master that it is getting a left neighbor, writes it down.
         // 3) CentralWorker::_monitor on the left node(rightmostItem) connects to the right node(inactiveItem),
         //    ranges are setup and shifts are started.
+        // 4) When message received from the new worker saying that it has a valid range, set _addingWorker to false.
+        //    &&& TODO in CentralMaster::updateWorkerInfo check for worker name of inactiveItem and if its range is valid.
         // Steps 1 and 2
         rightMostItem->setRightNeighbor(inactiveItem);
         inactiveItem->setLeftNeighbor(rightMostItem);

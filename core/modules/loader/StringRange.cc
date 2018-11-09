@@ -100,7 +100,7 @@ void ProtoHelper::workerKeysInfoExtractor(BufferUdp& data, uint32_t& name, Neigh
     LOGS(_log, LOG_LVL_DEBUG, funcName);
     auto protoItem = StringElement::protoParse<proto::WorkerKeysInfo>(data);
     if (protoItem == nullptr) {
-        throw LoaderMsgErr(funcName, __FILE__, __LINE__);
+        throw LoaderMsgErr(ERR_LOC, "protoItem nullptr");
     }
 
     name = protoItem->name();

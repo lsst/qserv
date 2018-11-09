@@ -41,10 +41,10 @@ namespace loader {
 
 class CentralMaster : public Central {
 public:
-    CentralMaster(boost::asio::io_service& ioService,
-                  std::string const& masterHostName, int masterPort)
-        : Central(ioService, masterHostName, masterPort) {
-        _server = std::make_shared<MasterServer>(_ioService, masterHostName, masterPort, this);
+    CentralMaster(boost::asio::io_service& ioService_,
+                  std::string const& masterHostName_, int masterPort_)
+        : Central(ioService_, masterHostName_, masterPort_) {
+        _server = std::make_shared<MasterServer>(ioService, masterHostName_, masterPort_, this);
     }
 
     ~CentralMaster() override { _mWorkerList.reset(); }
@@ -63,7 +63,7 @@ public:
     void reqWorkerKeysInfo(uint64_t msgId, std::string const& ip, short port,
                           std::string const& ourHostName, short ourPort);
 
-    std::string getOurLogId() override { return "master"; }
+    std::string getOurLogId() const override { return "master"; }
 
     void setWorkerNeighbor(MWorkerListItem::WPtr const& target, int message, uint32_t neighborName);
 

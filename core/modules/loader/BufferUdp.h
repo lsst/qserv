@@ -21,8 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  *
  */
-#ifndef LSST_QSERV_LOADER_BUFFERUDP_H_
-#define LSST_QSERV_LOADER_BUFFERUDP_H_
+#ifndef LSST_QSERV_LOADER_BUFFERUDP_H
+#define LSST_QSERV_LOADER_BUFFERUDP_H
 
 // system headers
 #include <arpa/inet.h>
@@ -32,12 +32,9 @@
 #include <sstream>
 #include <string>
 
-#include <boost/bind.hpp>
+// third party headers
 #include <boost/asio.hpp>
-
-/// The absolute largest UDP message we would send.
-/// Usually, they should be much smaller.
-#define MAX_MSG_SIZE 6000
+#include <boost/bind.hpp>
 
 
 namespace lsst {
@@ -53,116 +50,92 @@ class BufferUdp {
 public:
     using Ptr = std::shared_ptr<BufferUdp>;
 
-    BufferUdp() : BufferUdp(MAX_MSG_SIZE) {
-    }
+    /// The absolute largest UDP message we would send.
+    /// Usually, they should be much smaller.
+    static int const MAX_MSG_SIZE = 6000;
 
-    explicit BufferUdp(size_t length) : _length(length) {
+    /// Create the object with a new _buffer with 'length' bytes.
+    explicit BufferUdp(size_t length = MAX_MSG_SIZE) : _length(length) {
         _buffer = new char[length];
         _ourBuffer = true;
         _setupBuffer();
     }
 
-    /// If the buffer already contains valid data, advanceWriteCursor()
-    /// must be called with the length of the valid data. Otherwise,
-    /// BufferUdp thinks it has an empty buffer.
-    BufferUdp(char* buf, size_t length) : _buffer(buf), _length(length) {
+
+    /// Create a BufferUdp object that uses 'buf' as its buffer, with 'length'
+    /// indicating the number of bytes in the buffer. If 'buf' already
+    /// contains valid data, 'validBytes' must be set to how many bytes of the buffer
+    /// are valid.
+    /// If BufferUdp should take ownership of 'buf', i.e. delete 'buf' when it is done,
+    /// call makeOwnerOfBuffer().
+    BufferUdp(char* buf, size_t length, size_t validBytes) : _buffer(buf), _length(length) {
         _setupBuffer();
+        advanceWriteCursor(validBytes);
     }
 
+    BufferUdp(BufferUdp const&) = delete;
+    BufferUdp& operator=(BufferUdp const&) = delete;
 
-    ~BufferUdp() {
-        if (_ourBuffer) {
-            delete[] _buffer;
-        }
-    }
+    ~BufferUdp() { if (_ourBuffer) { delete[] _buffer; } }
 
-    void reset() {
-        _setupBuffer();
-    }
-
+    /// Resets the cursors in the buffer so it is effectively empty.
+    void reset() { _setupBuffer(); }
 
     /// Return true only if this object owns the buffer.
-    bool releaseOwnership() {
-        if (_ourBuffer) {
-            _ourBuffer = false;
-            return true;
-        }
-        return false;
-    }
+    bool releaseOwnership();
 
-
-    void makeOwnerOfBuffer() {
-        _ourBuffer = true;
-    }
-
+    /// Make this object is responsible for deleting _buffer.
+    void makeOwnerOfBuffer() { _ourBuffer = true; }
 
     /// Return true if there's at least 'len' room left in the buffer.
-    bool isAppendSafe(size_t len) const {
-        return (_wCursor + len) <= _end;
-    }
+    bool isAppendSafe(size_t len) const { return (_wCursor + len) <= _end; }
 
+    /// Append 'len' bytes at 'in' to the end of _buffer, but only if it is safe to do so.
+    bool append(const void* in, size_t len);
 
-    bool append(const void* in, size_t len) {
-        if (isAppendSafe(len)) {
-            memcpy(_wCursor, in, len);
-            _wCursor += len;
-            return true;
-        }
-        return false;
-    }
+    /// Advance the write cursor. This is usually needed after some other object has been
+    /// allowed to write directly to the buffer. (boost::asio)
+    void advanceWriteCursor(size_t len);
 
-
-    void advanceWriteCursor(size_t len) {
-        _wCursor += len;
-        if (not isAppendSafe(0)) {
-            throw new std::overflow_error("BufferUdp advanceWriteCursor beyond buffer len=" +
-                    std::to_string(len));
-        }
-    }
-
-
-    void advanceReadCursor(size_t len) {
-        _rCursor += len;
-        if (_rCursor > _end) {
-            throw new std::overflow_error("BufferUdp advanceReadCursor beyond buffer len=" +
-                                          std::to_string(len));
-        }
-    }
-
+    /// Advance the read cursor, which usually needs to be done after another object
+    /// has been allowed to read directly from the buffer. (boost::asio)
+    void advanceReadCursor(size_t len);
 
     /// Repeatedly read a socket until a valid MsgElement is read, eof, or an error occurs.
-    /// Errors throw boost::system::system_error(error)
+    /// Errors throw LoaderMsgErr
     std::shared_ptr<MsgElement> readFromSocket(boost::asio::ip::tcp::socket& socket, std::string const& note);
 
+    /// Return the total length of _buffer.
+    size_t getMaxLength() const { return _length; }
 
-    size_t getMaxLength() const {
-        return _length;
-    }
-
-
-    int getBytesLeftToRead() const {
-        return _wCursor - _rCursor;
-    }
-
+    /// Returns the number of bytes left to be read from the buffer.
+    int getBytesLeftToRead() const { return _wCursor - _rCursor; }
 
     /// Returns the amount of room left in the buffer after the write cursor.
-    size_t getAvailableWriteLength() const {
-        return _end - _wCursor;
-    }
+    size_t getAvailableWriteLength() const { return _end - _wCursor; }
 
-
+    /// Returns a char* pointing to data to be read from the buffer.
     const char* getReadCursor() const { return _rCursor; }
 
+    /// Returns a char* pointing to where data should be written to the buffer.
     char* getWriteCursor() const { return _wCursor; }
 
+    /// Returns true if retrieving 'len' bytes from the buffer will not violate the buffer rules.
     bool isRetrieveSafe(size_t len) const;
 
+    /// Returns true if 'len' bytes could be copied to out without violating _buffer rules.
     bool retrieve(void* out, size_t len);
 
+    /// Returns true if 'len' bytes could be copied to 'out' without violating _buffer rules.
     bool retrieveString(std::string& out, size_t len);
 
+    /// Dumps basic data to a string. If 'hexDump' is true, include a complete dump of
+    /// _buffer in hex.
     std::string dumpStr(bool hexDump=true) const { return dumpStr(hexDump, false); }
 
+    /// Dumps basic data to a string. If 'hexDump' is true, include a complete dump of
+    /// _buffer in hex. If 'charDump' is true, include a complete dump of the buffer
+    /// in ascii.
     std::string dumpStr(bool hexDump, bool charDump) const;
 
 private:
@@ -172,13 +145,15 @@ private:
         _rCursor = _buffer;
     }
 
-
+    /// Parse the valid portion of _buffer (starting at _rCursor) and see if one
+    /// MsgElement is available. If so, return the element and advance _rCursor.
+    /// Otherwise return nullptr.
     /// If a message is not recovered, the buffer is left effectively unchanged.
     std::shared_ptr<MsgElement> _safeRetrieve();
 
 
     char* _buffer;
-    size_t _length;  ///< Number of elements in the array (total capacity of array).
+    size_t _length;  ///< Number of bytes in the array (total capacity of array).
     char* _end;      ///< Immediately after the last element in the array.
     char* _wCursor;  ///< Where new elements will be appended to the array.
     const char* _rCursor; ///< Where data is read from the buffer.
@@ -188,4 +163,4 @@ private:
 
 }}} // namespace lsst:qserv:loader
 
-#endif // LSST_QSERV_LOADER_BUFFERUDP_H_
+#endif // LSST_QSERV_LOADER_BUFFERUDP_H
