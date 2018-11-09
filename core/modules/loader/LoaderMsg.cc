@@ -56,7 +56,7 @@ MsgElement::Ptr MsgElement::retrieve(BufferUdp& data) {
     MsgElement::Ptr msgElem = create(elemT);
     if (msgElem != nullptr && not msgElem->retrieveFromData(data)) {
         // No good way to recover from missing data from a know type.
-        throw LoaderMsgErr("static retrieve, incomplete data for type=" +
+        throw LoaderMsgErr(ERR_LOC, "static retrieve, incomplete data for type=" +
                 std::to_string((int)elemT) + " data:" + data.dumpStr());
     }
     return msgElem;
@@ -76,7 +76,7 @@ MsgElement::Ptr MsgElement::create(char elementType) {
     case NOTHING:
         // Fallthrough
     default:
-        throw LoaderMsgErr("MsgElement::create Unexpected type " + std::to_string(elementType));
+        throw LoaderMsgErr(ERR_LOC, "MsgElement::create Unexpected type " + std::to_string(elementType));
     }
 }
 
@@ -104,7 +104,7 @@ bool StringElement::appendToData(BufferUdp& data) {
 
      // Insert the string
      if (not data.append(element.data(), len)) {
-         throw new LoaderMsgErr("StringElement append unexpectedly failed element=" + element +
+         throw LoaderMsgErr(ERR_LOC, "StringElement append unexpectedly failed element=" + element +
                                 " data=" + data.dumpStr());
      }
      return true;
@@ -140,25 +140,29 @@ void LoaderMsg::parseFromData(BufferUdp& data) {
     MsgElement::Ptr elem = MsgElement::retrieve(data);
     msgKind = std::dynamic_pointer_cast<UInt16Element>(elem);
     if (msgKind == nullptr) {
-        throw LoaderMsgErr("LoaderMsg::parseMsg wrong type for msgKind:" + MsgElement::getStringVal(elem));
+        throw LoaderMsgErr(ERR_LOC, "LoaderMsg::parseMsg wrong type for msgKind:" +
+                           MsgElement::getStringVal(elem));
     }
 
     elem = MsgElement::retrieve(data);
     msgId = std::dynamic_pointer_cast<UInt64Element>(elem);
     if (msgId == nullptr) {
-        throw LoaderMsgErr("LoaderMsg::parseMsg wrong type for msgId:" + MsgElement::getStringVal(elem));
+        throw LoaderMsgErr(ERR_LOC, "LoaderMsg::parseMsg wrong type for msgId:" +
+                           MsgElement::getStringVal(elem));
     }
 
     elem = MsgElement::retrieve(data);
     senderHost = std::dynamic_pointer_cast<StringElement>(elem);
     if (senderHost == nullptr) {
-        throw LoaderMsgErr("LoaderMsg::parseMsg wrong type for senderHost:" + MsgElement::getStringVal(elem));
+        throw LoaderMsgErr(ERR_LOC, "LoaderMsg::parseMsg wrong type for senderHost:" +
+                           MsgElement::getStringVal(elem));
     }
 
     elem = MsgElement::retrieve(data);
     senderPort = std::dynamic_pointer_cast<UInt32Element>(elem);
     if (senderPort == nullptr) {
-        throw LoaderMsgErr("LoaderMsg::parseMsg wrong type for senderPort:" + MsgElement::getStringVal(elem));
+        throw LoaderMsgErr(ERR_LOC, "LoaderMsg::parseMsg wrong type for senderPort:" +
+                           MsgElement::getStringVal(elem));
     }
 }
 
@@ -180,7 +184,7 @@ void LoaderMsg::appendToData(BufferUdp& data) {
         str += " msgId=" + MsgElement::getStringVal(msgId);
         str += " senderHost=" + MsgElement::getStringVal(senderHost);
         str += " senderPort=" + MsgElement::getStringVal(senderPort);
-        throw LoaderMsgErr(str);
+        throw LoaderMsgErr(ERR_LOC, str);
     }
 }
 

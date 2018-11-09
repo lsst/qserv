@@ -112,7 +112,7 @@ public:
         return _ourName;
     }
 
-    std::string getOurLogId() override;
+    std::string getOurLogId() const override;
 
     void testSendBadMessage();
 

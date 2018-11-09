@@ -21,34 +21,27 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 // Class header
 #include "BufferUdp.h"
-
-// system headers
-
-
-// Third-party headers
-
 
 // qserv headers
 #include "loader/LoaderMsg.h"
 
-
 // LSST headers
 #include "lsst/log/Log.h"
-
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.loader.BufferUdp");
 }
 
+
 namespace lsst {
 namespace qserv {
 namespace loader {
 
-/// Repeatedly read a socket until a valid MsgElement is read, eof,  or an error occurs.
+
 MsgElement::Ptr BufferUdp::readFromSocket(boost::asio::ip::tcp::socket& socket, std::string const& note) {
+    // Repeatedly read a socket until a valid MsgElement is read, eof,  or an error occurs.
     for (;;) {
         LOGS(_log, LOG_LVL_DEBUG, note << " readFromSocket");
         boost::system::error_code error;
@@ -71,7 +64,7 @@ MsgElement::Ptr BufferUdp::readFromSocket(boost::asio::ip::tcp::socket& socket, 
             LOGS(_log, LOG_LVL_WARN, "readFromSocket eof");
             break; // Connection closed cleanly by peer.
         } else if (error && error != boost::asio::error::eof) {
-            throw LoaderMsgErr("BufferUdp::readFromSocket note=" + note + " asio error=" + error.message());
+            throw LoaderMsgErr(ERR_LOC, "BufferUdp::readFromSocket note=" + note + " asio error=" + error.message());
         }
 
         /// Try to retrieve an element (there's no guarantee that an entire element got read in a single read.
@@ -82,6 +75,45 @@ MsgElement::Ptr BufferUdp::readFromSocket(boost::asio::ip::tcp::socket& socket, 
         }
     }
     return nullptr;
+}
+
+
+bool BufferUdp::releaseOwnership() {
+    if (_ourBuffer) {
+        _ourBuffer = false;
+        return true;
+    }
+    return false;
+}
+
+
+bool BufferUdp::append(const void* in, size_t len) {
+    if (isAppendSafe(len)) {
+        memcpy(_wCursor, in, len);
+        _wCursor += len;
+        return true;
+    }
+    return false;
+}
+
+
+void BufferUdp::advanceWriteCursor(size_t len) {
+    _wCursor += len;
+    if (not isAppendSafe(0)) {
+        // The buffer has overflowed.
+        throw std::overflow_error("BufferUdp advanceWriteCursor beyond buffer len=" +
+                                  std::to_string(len));
+    }
+}
+
+
+void BufferUdp::advanceReadCursor(size_t len) {
+    _rCursor += len;
+    if (_rCursor > _end) {
+        // Something read data outside of the buffer range.
+        throw std::overflow_error("BufferUdp advanceReadCursor beyond buffer len=" +
+                                  std::to_string(len));
+    }
 }
 
 
@@ -140,19 +172,19 @@ std::string BufferUdp::dumpStr(bool hexDump, bool charDump) const {
 
         // hex dump
         if (hexDump) {
-        os << "(";
-        for (const char* j=_buffer; j < _wCursor; ++j) {
-            os << std::hex << (int)*j << " ";
+            os << "(";
+            for (const char* j=_buffer; j < _wCursor; ++j) {
+                os << std::hex << (int)*j << " ";
+            }
+            os << ")";
         }
-        os << ")";
-        }
-        std::string str(os.str());
 
         // character dump
         if (charDump) {
-            str += "(" + std::string(_buffer, _wCursor) + ")";
+            os << "(" << std::string(_buffer, _wCursor) << ")";
         }
-        return str;
+
+        return os.str();
     }
 
 }}} // namespace lsst:qserv:loader
