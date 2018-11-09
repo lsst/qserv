@@ -500,6 +500,8 @@ static const std::vector< std::string > QUERIES = {
     "SELECT objectId, ra_PS FROM Object WHERE objectId IN (417857368235490, 420949744686724, 420954039650823);",    // IN
     "SELECT objectId, ra_PS FROM Object WHERE objectId BETWEEN 417857368235490 AND 420949744686724;",   // BETWEEN
     "SELECT * FROM Filter WHERE filterName LIKE 'dd';", // LIKE
+    "select objectId from Object where zFlags is NULL;",    // IS NULL
+    "select objectId from Object where zFlags is NOT NULL;",    // IS NOT NULL
 };
 
 
