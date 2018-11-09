@@ -220,12 +220,12 @@ BufferUdp::Ptr MasterServer::workerInfoRequest(LoaderMsg const& inMsg, BufferUdp
         int tcpPort = 0;
         NetworkAddress::UPtr requestorAddr = NetworkAddress::create(data, tcpPort, funcName);
         if (requestorAddr == nullptr) {
-            throw LoaderMsgErr(funcName, __FILE__, __LINE__);
+            throw LoaderMsgErr(ERR_LOC, "requestorAddr nullptr");
         }
 
         auto protoItem = StringElement::protoParse<proto::WorkerListItem>(*data);
         if (protoItem == nullptr) {
-            throw LoaderMsgErr(funcName, __FILE__, __LINE__);
+            throw LoaderMsgErr(ERR_LOC, "protoItem nullptr");
         }
 
         auto workerName = protoItem->name();

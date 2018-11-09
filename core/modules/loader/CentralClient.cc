@@ -21,22 +21,19 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 // Class header
 #include "CentralClient.h"
 
 // system headers
-#include <boost/asio.hpp>
 #include <iostream>
 
 // Third-party headers
-
+#include <boost/asio.hpp>
 
 // qserv headers
 #include "loader/LoaderMsg.h"
-#include "proto/ProtoImporter.h"
 #include "proto/loader.pb.h"
-
+#include "proto/ProtoImporter.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -49,7 +46,6 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.loader.CentralClient");
 namespace lsst {
 namespace qserv {
 namespace loader {
-
 
 
 void CentralClient::handleKeyInfo(LoaderMsg const& inMsg, BufferUdp::Ptr const& data) {
@@ -76,7 +72,6 @@ void CentralClient::_handleKeyInfo(LoaderMsg const& inMsg, std::unique_ptr<proto
 
     std::string key = protoData->key();
     ChunkSubchunk chunkInfo(protoData->chunk(), protoData->subchunk());
-    bool success = protoData->success();
 
     LOGS(_log, LOG_LVL_INFO, "trying to remove oneShot for lookup key=" << key << " " << chunkInfo);
     /// Locate the original one shot and mark it as done.
@@ -91,7 +86,7 @@ void CentralClient::_handleKeyInfo(LoaderMsg const& inMsg, std::unique_ptr<proto
         keyInfoOneShot = iter->second;
         _waitingKeyInfoMap.erase(iter);
     }
-    keyInfoOneShot->keyInfoComplete(key, chunkInfo.chunk, chunkInfo.subchunk, success);
+    keyInfoOneShot->keyInfoComplete(key, chunkInfo.chunk, chunkInfo.subchunk, protoData->success());
     LOGS(_log, LOG_LVL_INFO, "Successfully found key=" << key << " " << chunkInfo);
 }
 
@@ -99,9 +94,9 @@ void CentralClient::_handleKeyInfo(LoaderMsg const& inMsg, std::unique_ptr<proto
 void CentralClient::handleKeyInsertComplete(LoaderMsg const& inMsg, BufferUdp::Ptr const& data) {
     LOGS(_log, LOG_LVL_DEBUG, "CentralClient::handleKeyInsertComplete");
 
-    StringElement::Ptr sData = std::dynamic_pointer_cast<StringElement>(MsgElement::retrieve(*data));
+    auto sData = std::dynamic_pointer_cast<StringElement>(MsgElement::retrieve(*data));
     if (sData == nullptr) {
-        LOGS(_log, LOG_LVL_WARN, "CentralClient::handleKeyInsertComplete Failed to parse list");
+        LOGS(_log, LOG_LVL_WARN, "CentralClient::handleKeyInsertComplete Failed to retrieve element");
         return;
     }
     auto protoData = sData->protoParse<proto::KeyInfo>();
@@ -147,7 +142,7 @@ KeyInfoData::Ptr CentralClient::keyInsertReq(std::string const& key, int chunk, 
     // Insert a oneShot DoListItem to keep trying to add the key until
     // we get word that it has been added successfully.
     LOGS(_log, LOG_LVL_INFO, "Trying to insert key=" << key << " chunk=" << chunk <<
-                             " subchunk=" <<subchunk);
+                             " subchunk=" << subchunk);
     auto keyInsertOneShot = std::make_shared<CentralClient::KeyInsertReqOneShot>(this, key, chunk, subchunk);
     {
         std::lock_guard<std::mutex> lck(_waitingKeyInsertMtx);
@@ -183,11 +178,11 @@ void CentralClient::_keyInsertReq(std::string const& key, int chunk, int subchun
 }
 
 
-/// Returns a pointer to a Tracker object that can be used to track job
-//  completion and the status of the job. keyInsertOneShot will call
-//  _keyInsertReq until it knows the task was completed, via a call
-//  to _handleKeyInsertComplete
 KeyInfoData::Ptr CentralClient::keyInfoReq(std::string const& key) {
+    // Returns a pointer to a Tracker object that can be used to track job
+    // completion and job status. keyInsertOneShot will call _keyInsertReq until
+    // it knows the task was completed. _handleKeyInsertComplete marks
+    // the jobs complete as the messages come in from workers.
     // Insert a oneShot DoListItem to keep trying to add the key until
     // we get word that it has been added successfully.
     LOGS(_log, LOG_LVL_INFO, "Trying to lookup key=" << key);
@@ -231,5 +226,51 @@ std::ostream& operator<<(std::ostream& os, KeyInfoData const& data) {
           "success=" << data.success;
     return os;
 }
+
+
+util::CommandTracked::Ptr CentralClient::KeyInsertReqOneShot::createCommand() {
+    struct KeyInsertReqCmd : public util::CommandTracked {
+        KeyInsertReqCmd(KeyInfoData::Ptr& cd, CentralClient* cent_) : cData(cd), cent(cent_) {}
+        void action(util::CmdData*) override {
+            cent->_keyInsertReq(cData->key, cData->chunk, cData->subchunk);
+        }
+        KeyInfoData::Ptr cData;
+        CentralClient* cent;
+    };
+    return std::make_shared<KeyInsertReqCmd>(cmdData, central);
+}
+
+
+void CentralClient::KeyInsertReqOneShot::keyInsertComplete() {
+    cmdData->success = true;
+    cmdData->setComplete();
+    infoReceived();
+}
+
+
+util::CommandTracked::Ptr CentralClient::KeyInfoReqOneShot::createCommand()  {
+    struct KeyInfoReqCmd : public util::CommandTracked {
+        KeyInfoReqCmd(KeyInfoData::Ptr& cd, CentralClient* cent_) : cData(cd), cent(cent_) {}
+        void action(util::CmdData*) override {
+            cent->_keyInfoReq(cData->key);
+        }
+        KeyInfoData::Ptr cData;
+        CentralClient* cent;
+    };
+    return std::make_shared<KeyInfoReqCmd>(cmdData, central);
+}
+
+
+void CentralClient::KeyInfoReqOneShot::keyInfoComplete(std::string const& key,
+                                                       int chunk, int subchunk, bool success) {
+    if (key == cmdData->key) {
+        cmdData->chunk = chunk;
+        cmdData->subchunk = subchunk;
+        cmdData->success = success;
+    }
+    cmdData->setComplete();
+    infoReceived();
+}
+
 
 }}} // namespace lsst::qserv::loader
