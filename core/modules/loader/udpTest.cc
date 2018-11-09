@@ -118,7 +118,7 @@ int main(int argc, char* argv[]) {
         std::stringstream os;
         for (auto& ele : elements) {
             if (not ele->appendToData(data)) {
-                throw new LoaderMsgErr("Failed to append " + ele->getStringVal() +
+                throw LoaderMsgErr(ERR_LOC, "Failed to append " + ele->getStringVal() +
                         " data:" + data.dumpStr());
             }
         }
@@ -136,12 +136,12 @@ int main(int argc, char* argv[]) {
             // check all elements
             char elemType = MsgElement::NOTHING;
             if (not MsgElement::retrieveType(data, elemType)) {
-                throw new LoaderMsgErr("Type was expected but not found!" + data.dumpStr());
+                throw LoaderMsgErr(ERR_LOC, "Type was expected but not found!" + data.dumpStr());
             }
             MsgElement::Ptr outEle = MsgElement::create(elemType);
             if (not outEle->retrieveFromData(data)) {
-                throw new LoaderMsgErr("Failed to retrieve elem=" + outEle->getStringVal() +
-                        " data:" + data.dumpStr());
+                throw LoaderMsgErr(ERR_LOC, "Failed to retrieve elem=" + outEle->getStringVal() +
+                                   " data:" + data.dumpStr());
             }
             if (!MsgElement::equal(ele.get(), outEle.get())) {
                 LOGS(_log, LOG_LVL_ERROR,
