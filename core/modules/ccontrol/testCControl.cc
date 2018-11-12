@@ -502,6 +502,7 @@ static const std::vector< std::string > QUERIES = {
     "SELECT * FROM Filter WHERE filterName LIKE 'dd';", // LIKE
     "select objectId from Object where zFlags is NULL;",    // IS NULL
     "select objectId from Object where zFlags is NOT NULL;",    // IS NOT NULL
+    "select objectId, iRadius_SG, ra_PS, decl_PS from Object where iRadius_SG > .5 AND ra_PS < 2 AND decl_PS < 3;" // AND
 };
 
 
