@@ -650,7 +650,7 @@ BOOST_DATA_TEST_CASE(antlr_compare, QUERIES, query) {
 struct Antlr4CompareQueries {
     Antlr4CompareQueries(std::string const & iQuery, std::string const & iCompQuery,
             std::function<void(query::SelectStmt::Ptr const&)> const & iModFunc,
-            std::string const & iSerializedQuery)
+            std::string const & iSerializedQuery=std::string())
         : query(iQuery)
         , compQuery(iCompQuery)
         , serializedQuery(iSerializedQuery)
@@ -732,6 +732,15 @@ static const std::vector<Antlr4CompareQueries> ANTLR4_COMPARE_QUERIES = {
             betweenPredicate->hasNot = true;
         }
     ),
+
+    // tests the && operator.
+    // The Qserv IR converts && to AND as a result of the IR structure and how it serializes it to string.
+    Antlr4CompareQueries(
+        "select objectId, iRadius_SG, ra_PS, decl_PS from Object where iRadius_SG > .5 && ra_PS < 2 && decl_PS < 3;", // &&
+        "select objectId, iRadius_SG, ra_PS, decl_PS from Object where iRadius_SG > .5 AND ra_PS < 2 AND decl_PS < 3;", // AND
+        nullptr,
+        "SELECT objectId,iRadius_SG,ra_PS,decl_PS FROM Object WHERE iRadius_SG>.5 AND ra_PS<2 AND decl_PS<3"
+    ),
 };
 
 
@@ -753,7 +762,8 @@ BOOST_DATA_TEST_CASE(antlr4_compare, ANTLR4_COMPARE_QUERIES, queryInfo) {
     // verify the selectStatements are now the same:
     BOOST_REQUIRE_EQUAL(*selectStatement, *compSelectStatement);
     // verify the selectStatement converted back to sql is the same as the original query:
-    BOOST_REQUIRE_EQUAL(selectStatement->getQueryTemplate().sqlFragment(), queryInfo.serializedQuery);
+    BOOST_REQUIRE_EQUAL(selectStatement->getQueryTemplate().sqlFragment(),
+            (queryInfo.serializedQuery != "" ? queryInfo.serializedQuery : queryInfo.query));
 }
 
 

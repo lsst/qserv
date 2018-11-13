@@ -3200,7 +3200,11 @@ public:
     }
 
     void onExit() override {
-        if (_ctx->AND() != nullptr) {
+        if (_ctx->AND() != nullptr || _ctx->getText() == "&&") {
+            // Qserv IR is not set up to treat AND and && differently, up to and inlcuding that the AndTerm
+            // automatically serializes itself to "AND" (i.e. not to lower case "and" or any other form). If
+            // it becomes important to handle different forms of the lexical AND differently we can add it,
+            // but for now it seems unnecessary.
             lockedParent()->handleLogicalOperator(LogicalOperatorCBH::AND);
         } else if (_ctx->OR() != nullptr) {
             lockedParent()->handleLogicalOperator(LogicalOperatorCBH::OR);
