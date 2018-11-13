@@ -472,12 +472,6 @@ public:
 };
 
 
-class UnaryExpressionAtomCBH : public BaseCBH {
-public:
-    virtual void handleUnaryExpressionAtom(shared_ptr<query::ValueFactor> const & valueFactor) = 0;
-};
-
-
 class NestedExpressionAtomCBH : public BaseCBH {
 public:
     virtual void handleNestedExpressionAtom(shared_ptr<query::BoolTerm> const & boolTerm) = 0;
@@ -494,20 +488,6 @@ public:
 class FunctionCallExpressionAtomCBH : public BaseCBH {
 public:
     virtual void handleFunctionCallExpressionAtom(shared_ptr<query::ValueFactor> const & valueFactor) = 0;
-};
-
-
-class UnaryOperatorCBH : public BaseCBH {
-public:
-    enum OperatorType {
-        BANG,  // '!'
-        TILDE, // '~'
-        PLUS,  // '+'
-        MINUS, // '-'
-        NOT,   // NOT
-    };
-
-    virtual void handleUnaryOperator(OperatorType operatorType) = 0;
 };
 
 
@@ -1276,8 +1256,7 @@ class ExpressionAtomPredicateAdapter :
         public FullColumnNameExpressionAtomCBH,
         public FunctionCallExpressionAtomCBH,
         public NestedExpressionAtomCBH,
-        public MathExpressionAtomCBH,
-        public UnaryExpressionAtomCBH {
+        public MathExpressionAtomCBH {
 public:
     using AdapterT::AdapterT;
 
@@ -1308,11 +1287,6 @@ public:
     }
 
     void handleNestedExpressionAtom(shared_ptr<query::ValueExpr> const & valueExpr) override {
-        lockedParent()->handleExpressionAtomPredicate(valueExpr, _ctx);
-    }
-
-    void handleUnaryExpressionAtom(shared_ptr<query::ValueFactor> const & valueFactor) override {
-        auto valueExpr = query::ValueExpr::newSimple(valueFactor);
         lockedParent()->handleExpressionAtomPredicate(valueExpr, _ctx);
     }
 
@@ -2902,51 +2876,6 @@ private:
 };
 
 
-class UnaryExpressionAtomAdapter :
-        public AdapterT<UnaryExpressionAtomCBH, QSMySqlParser::UnaryExpressionAtomContext>,
-        public UnaryOperatorCBH,
-        public ConstantExpressionAtomCBH {
-public:
-    using AdapterT::AdapterT;
-
-    void handleUnaryOperator(OperatorType operatorType) override {
-        assertExecutionCondition(__FUNCTION__, _operatorPrefix.empty(),
-                "Expected to set the unary operator only once.", _ctx);
-
-        // I want to find out what operators we actually test and only allow those.
-        assertExecutionCondition(__FUNCTION__, _operatorPrefix.empty(),
-                "TODO", _ctx);
-
-        //  _operatorPrefix = val;
-    }
-
-    void handleConstantExpressionAtom(shared_ptr<query::ValueFactor> const & valueFactor) {
-        assertExecutionCondition(__FUNCTION__, nullptr == _valueFactor,
-                "Expected to set the ValueFactor only once.", _ctx);
-        _valueFactor = valueFactor;
-    }
-
-    void checkContext() const override {
-        // nothing to check
-    }
-
-    void onExit() override {
-        assertExecutionCondition(__FUNCTION__, false == _operatorPrefix.empty() && _valueFactor != nullptr,
-                "Expected unary operator and ValueFactor to be populated.", _ctx);
-        assertExecutionCondition(__FUNCTION__, _valueFactor->getType() == query::ValueFactor::CONST,
-                "Currently can only handle const val", _ctx);
-            _valueFactor->setConstVal(_operatorPrefix + _valueFactor->getConstVal());
-        lockedParent()->handleUnaryExpressionAtom(_valueFactor);
-    }
-
-    string name() const override { return getTypeName(this); }
-
-private:
-    shared_ptr<query::ValueFactor> _valueFactor;
-    string _operatorPrefix;
-};
-
-
 class NestedExpressionAtomAdapter :
         public AdapterT<NestedExpressionAtomCBH, QSMySqlParser::NestedExpressionAtomContext>,
         public PredicateExpressionCBH,
@@ -3153,39 +3082,6 @@ public:
 private:
     shared_ptr<query::ValueFactor> _valueFactor;
 };
-
-
-class UnaryOperatorAdapter :
-        public AdapterT<UnaryOperatorCBH, QSMySqlParser::UnaryOperatorContext> {
-public:
-    using AdapterT::AdapterT;
-
-
-    void checkContext() const override {
-        assertNotSupported(__FUNCTION__, _ctx->NOT() == nullptr, "NOT is not supported.", _ctx);
-    }
-
-    void onExit() override {
-        UnaryOperatorCBH::OperatorType operatorType;
-        if (_ctx->getText() == "!") {
-            operatorType = UnaryOperatorCBH::BANG;
-        } else if (_ctx->getText() == "~") {
-            operatorType = UnaryOperatorCBH::TILDE;
-        } else if (_ctx->getText() == "+") {
-            operatorType = UnaryOperatorCBH::PLUS;
-        } else if (_ctx->getText() == "-") {
-            operatorType = UnaryOperatorCBH::MINUS;
-        } else if (_ctx->getText() == "NOT") {
-            operatorType = UnaryOperatorCBH::NOT;
-        } else {
-            assertNotSupported(__FUNCTION__, _ctx->NOT() == nullptr, "Unhandled operator type.", _ctx);
-        }
-        lockedParent()->handleUnaryOperator(operatorType);
-    }
-
-    string name() const override { return getTypeName(this); }
-};
-
 
 
 class LogicalOperatorAdapter :
@@ -3890,7 +3786,7 @@ ENTER_EXIT_PARENT(BetweenPredicate)
 ENTER_EXIT_PARENT(IsNullPredicate)
 ENTER_EXIT_PARENT(LikePredicate)
 UNHANDLED(RegexpPredicate)
-ENTER_EXIT_PARENT(UnaryExpressionAtom)
+UNHANDLED(UnaryExpressionAtom)
 UNHANDLED(CollateExpressionAtom)
 UNHANDLED(SubqueryExpessionAtom)
 UNHANDLED(MysqlVariableExpressionAtom)
@@ -3902,7 +3798,7 @@ UNHANDLED(ExistsExpessionAtom)
 ENTER_EXIT_PARENT(FunctionCallExpressionAtom)
 UNHANDLED(BinaryExpressionAtom)
 UNHANDLED(BitExpressionAtom)
-ENTER_EXIT_PARENT(UnaryOperator)
+UNHANDLED(UnaryOperator)
 ENTER_EXIT_PARENT(LogicalOperator)
 UNHANDLED(BitOperator)
 ENTER_EXIT_PARENT(MathOperator)
