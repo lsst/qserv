@@ -3206,7 +3206,7 @@ public:
             // it becomes important to handle different forms of the lexical AND differently we can add it,
             // but for now it seems unnecessary.
             lockedParent()->handleLogicalOperator(LogicalOperatorCBH::AND);
-        } else if (_ctx->OR() != nullptr) {
+        } else if (_ctx->OR() != nullptr || _ctx->getText() == "||") {
             lockedParent()->handleLogicalOperator(LogicalOperatorCBH::OR);
         } else {
             assertExecutionCondition(__FUNCTION__, false, "unhandled logical operator", _ctx);

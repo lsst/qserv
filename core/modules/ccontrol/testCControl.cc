@@ -502,7 +502,8 @@ static const std::vector< std::string > QUERIES = {
     "SELECT * FROM Filter WHERE filterName LIKE 'dd';", // LIKE
     "select objectId from Object where zFlags is NULL;",    // IS NULL
     "select objectId from Object where zFlags is NOT NULL;",    // IS NOT NULL
-    "select objectId, iRadius_SG, ra_PS, decl_PS from Object where iRadius_SG > .5 AND ra_PS < 2 AND decl_PS < 3;" // AND
+    "select objectId, iRadius_SG, ra_PS, decl_PS from Object where iRadius_SG > .5 AND ra_PS < 2 AND decl_PS < 3;", // AND
+    "select objectId from Object where objectId < 400000000000000 OR objectId > 430000000000000 ORDER BY objectId", // OR
 };
 
 
@@ -740,6 +741,15 @@ static const std::vector<Antlr4CompareQueries> ANTLR4_COMPARE_QUERIES = {
         "select objectId, iRadius_SG, ra_PS, decl_PS from Object where iRadius_SG > .5 AND ra_PS < 2 AND decl_PS < 3;", // AND
         nullptr,
         "SELECT objectId,iRadius_SG,ra_PS,decl_PS FROM Object WHERE iRadius_SG>.5 AND ra_PS<2 AND decl_PS<3"
+    ),
+
+    // tests the || operator.
+    // The Qserv IR converts || to OR as a result of the IR structure and how it serializes it to string.
+    Antlr4CompareQueries(
+        "select objectId from Object where objectId < 400000000000000 || objectId > 430000000000000 ORDER BY objectId;", // ||
+        "select objectId from Object where objectId < 400000000000000 OR objectId > 430000000000000 ORDER BY objectId", // OR
+        nullptr,
+        "SELECT objectId FROM Object WHERE objectId<400000000000000 OR objectId>430000000000000 ORDER BY objectId"
     ),
 };
 
