@@ -116,6 +116,7 @@ void CompPredicate::renderTo(QueryTemplate& qt) const {
 void InPredicate::renderTo(QueryTemplate& qt) const {
     ValueExpr::render r(qt, false);
     r.applyToQT(value);
+    if (hasNot) qt.append("NOT");
     qt.append("IN");
     ValueExpr::render rComma(qt, true);
     qt.append("(");
@@ -238,12 +239,14 @@ BoolFactorTerm::Ptr InPredicate::clone() const {
     std::transform(cands.begin(), cands.end(),
                    std::back_inserter(p->cands),
                    valueExprCopy());
+    p->hasNot = hasNot;
     return BoolFactorTerm::Ptr(p);
 }
 
 void InPredicate::dbgPrint(std::ostream& os) const {
     os << "InPredicate(value:" << value;
     os << ", cands:" << util::printable(cands);
+    os << ", hasNot:" << hasNot;
     os << ")";
 }
 
@@ -253,7 +256,8 @@ bool InPredicate::operator==(const BoolFactorTerm& rhs) const {
         return false;
     }
     return util::ptrCompare<ValueExpr>(value, rhsInPredicate->value) &&
-           util::vectorPtrCompare<ValueExpr>(cands, rhsInPredicate->cands);
+           util::vectorPtrCompare<ValueExpr>(cands, rhsInPredicate->cands) &&
+           hasNot == rhsInPredicate->hasNot;
 }
 
 BoolFactorTerm::Ptr BetweenPredicate::clone() const {

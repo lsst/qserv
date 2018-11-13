@@ -751,6 +751,23 @@ static const std::vector<Antlr4CompareQueries> ANTLR4_COMPARE_QUERIES = {
         nullptr,
         "SELECT objectId FROM Object WHERE objectId<400000000000000 OR objectId>430000000000000 ORDER BY objectId"
     ),
+
+    // tests NOT IN in the InPredicate
+    Antlr4CompareQueries(
+        "SELECT objectId, ra_PS FROM Object WHERE objectId NOT IN (417857368235490, 420949744686724, 420954039650823);",
+        "SELECT objectId, ra_PS FROM Object WHERE objectId IN (417857368235490, 420949744686724, 420954039650823);",
+        [](query::SelectStmt::Ptr const & selectStatement) {
+            // change the BetweenPredicate's hasNot to true
+            auto whereClauseRef = selectStatement->getWhereClause();
+            auto orTerm = std::dynamic_pointer_cast<query::OrTerm>(whereClauseRef.getRootTerm());
+            auto andTerm = std::dynamic_pointer_cast<query::AndTerm>(orTerm->_terms[0]);
+            auto boolFactor = std::dynamic_pointer_cast<query::BoolFactor>(andTerm->_terms[0]);
+            auto inPredicate = std::dynamic_pointer_cast<query::InPredicate>(boolFactor->_terms[0]);
+            inPredicate->hasNot = true;
+        },
+        "SELECT objectId,ra_PS FROM Object WHERE objectId NOT IN(417857368235490,420949744686724,420954039650823)"
+    ),
+
 };
 
 

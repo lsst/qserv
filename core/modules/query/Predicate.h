@@ -131,6 +131,12 @@ class InPredicate : public Predicate {
 public:
     typedef std::shared_ptr<InPredicate> Ptr;
 
+    InPredicate(ValueExprPtr const & iValue, ValueExprPtrVector const & iCands, bool iHasNot)
+            : value(iValue), cands(iCands), hasNot(iHasNot)
+    {}
+
+    InPredicate() : hasNot(false) {}
+
     virtual ~InPredicate() = default;
 
     virtual char const* getName() const { return "InPredicate"; }
@@ -148,6 +154,7 @@ public:
 
     ValueExprPtr value;
     ValueExprPtrVector cands;
+    bool hasNot;
 
 protected:
     void dbgPrint(std::ostream& os) const override;

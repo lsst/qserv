@@ -2737,15 +2737,14 @@ public:
     }
 
     void checkContext() const override {
-        assertNotSupported(__FUNCTION__, _ctx->NOT() == nullptr, "NOT is not supported.", _ctx);
+        // optional:
+        // NOT()
     }
 
     void onExit() override {
         assertExecutionCondition(__FUNCTION__, false == _expressions.empty() && _predicate != nullptr,
                 "InPredicateAdapter was not fully populated.", _ctx);
-        auto inPredicate = std::make_shared<query::InPredicate>();
-        inPredicate->value = _predicate;
-        inPredicate->cands = _expressions;
+        auto inPredicate = std::make_shared<query::InPredicate>(_predicate, _expressions, _ctx->NOT() != nullptr);
         lockedParent()->handleInPredicate(inPredicate);
     }
 
