@@ -50,7 +50,7 @@ void CentralMaster::addWorker(std::string const& ip, int udpPort, int tcpPort) {
     if (item != nullptr) {
         // If that was the first worker added, it gets unlimited range.
         if (_firstWorkerRegistered.exchange(true) == false) {
-            LOGS(_log, LOG_LVL_INFO, "setAllInclusiveRange for name=" << item->getName());
+            LOGS(_log, LOG_LVL_INFO, "setAllInclusiveRange for name=" << item->getId());
             item->setAllInclusiveRange();
         }
 
@@ -60,42 +60,43 @@ void CentralMaster::addWorker(std::string const& ip, int udpPort, int tcpPort) {
 }
 
 
-void CentralMaster::updateWorkerInfo(uint32_t workerName, NeighborsInfo const& nInfo, StringRange const& strRange) {
-    if (workerName == 0) {
+void CentralMaster::updateWorkerInfo(uint32_t workerId, NeighborsInfo const& nInfo, StringRange const& strRange) {
+    if (workerId == 0) {
         return;
     }
-    auto item = getWorkerNamed(workerName);
+    auto item = getWorkerWithId(workerId);
     if (item == nullptr) {
-        LOGS(_log, LOG_LVL_WARN, "CentralMaster::updateNeighbors nullptr for workerName=" << workerName);
+        LOGS(_log, LOG_LVL_WARN, "CentralMaster::updateNeighbors nullptr for workerId=" << workerId);
         return;
     }
+    // TODO setting nInfo and strRange can be done in one call to reduce mutex locking.
     item->setNeighborsInfo(nInfo);
     item->setRangeStr(strRange);
-    _assignNeighborIfNeeded();
+    _assignNeighborIfNeeded(workerId, item);
 }
 
 
-void CentralMaster::setWorkerNeighbor(MWorkerListItem::WPtr const& target, int message, uint32_t neighborName) {
+void CentralMaster::setWorkerNeighbor(MWorkerListItem::WPtr const& target, int message, uint32_t neighborId) {
     // Get the target worker's network address
     auto targetWorker = target.lock();
     if (targetWorker == nullptr) {
-        LOGS(_log, LOG_LVL_WARN, "CentralMaster::setWorkerNeighbor nullptr for" << neighborName);
+        LOGS(_log, LOG_LVL_WARN, "CentralMaster::setWorkerNeighbor nullptr for " << neighborId);
         return;
     }
 
-    LOGS(_log, LOG_LVL_DEBUG, "CentralMaster::setWorkerNeighbor " << neighborName << " " << *targetWorker);
+    LOGS(_log, LOG_LVL_DEBUG, "CentralMaster::setWorkerNeighbor " << neighborId << " " << *targetWorker);
     // Build and send the message
     LoaderMsg msg(message, getNextMsgId(), getMasterHostName(), getMasterPort());
     BufferUdp msgData;
     msg.appendToData(msgData);
-    UInt32Element neighborNameElem(neighborName);
-    neighborNameElem.appendToData(msgData);
+    UInt32Element neighborIdElem(neighborId);
+    neighborIdElem.appendToData(msgData);
     auto addr = targetWorker->getUdpAddress();
     sendBufferTo(addr.ip, addr.port, msgData);
 }
 
 
-void CentralMaster::_assignNeighborIfNeeded() {
+void CentralMaster::_assignNeighborIfNeeded(uint32_t workerId, MWorkerListItem::Ptr const& wItem) {
     LOGS(_log, LOG_LVL_DEBUG, "CentralMaster::_assignNeighborIfNeeded");
     // Go through the list and see if all the workers are full.
     // If they are, assign a worker to the end (rightmost) worker
@@ -103,17 +104,29 @@ void CentralMaster::_assignNeighborIfNeeded() {
     // TODO Make a better algorithm, insert workers at busiest worker.
     // TODO maybe rate limit this check.
     std::string funcName("_assignNeighborIfNeeded");
-    if (_addingWorker) {
-        // Already in process of adding a worker, so don't add another one.
-        // TODO Check if it failed.
+    if (_addingWorkerId != 0 && _addingWorkerId != workerId) {
+        // Already in process of adding a worker, and the worker
+        // with new information wasn't the one added. Nothing to do.
+        // TODO Check if it failed. (May need to go in a timer thread instead)
         return;
     }
     // Only one thread should ever be working on this logic at a time.
     std::lock_guard<std::mutex> lck(_assignMtx);
+    if (_addingWorkerId != 0) {
+        if (_addingWorkerId == workerId) {
+            auto rng = wItem->getRangeString();
+            if (rng.getValid()) {
+                wItem->setActive(true);
+                LOGS(_log, LOG_LVL_INFO, "Successfully activated wId=" << workerId <<
+                        " range=" << rng);
+                _addingWorkerId = 0;
+            }
+        }
+    }
     auto pair = _mWorkerList->getActiveInactiveWorkerLists();
     std::vector<MWorkerListItem::Ptr>& activeList = pair.first;
     std::vector<MWorkerListItem::Ptr>& inactiveList = pair.second;
-    if (inactiveList.empty() || _addingWorker) { return; }
+    if (inactiveList.empty() || _addingWorkerId != 0) { return; }
     double sum = 0.0;
     int max = 0;
     uint32_t maxName = 0;
@@ -124,19 +137,23 @@ void CentralMaster::_assignNeighborIfNeeded() {
         sum += keyCount;
         if (keyCount > max) {
             max = keyCount;
-            maxName = item->getName();
+            maxName = item->getId();
         }
         auto range = item->getRangeString();
         if (range.getValid() && range.getUnlimited()) {
             if (rightMostName != 0) {
                 std::string eStr("Multiple rightMost workers name=");
-                eStr += rightMostName +  " name=" + item->getName();
+                eStr += rightMostName +  " name=" + item->getId();
                 LOGS(_log, LOG_LVL_ERROR, "_assignNeighborIfNeeded " << eStr);
                 throw LoaderMsgErr(ERR_LOC, eStr);
             }
-            rightMostName = item->getName();
+            rightMostName = item->getId();
             rightMostItem = item;
         }
+    }
+    if (rightMostItem == nullptr) {
+        LOGS(_log, LOG_LVL_WARN, funcName << " no rightmost worker found when expected.");
+        return;
     }
     double avg = sum/(double)(activeList.size());
     LOGS(_log, LOG_LVL_INFO, "max=" << max << " maxName=" << maxName << " avg=" << avg);
@@ -149,22 +166,23 @@ void CentralMaster::_assignNeighborIfNeeded() {
         if (inactiveItem == nullptr) {
             throw LoaderMsgErr(ERR_LOC,"_assignNeighborIfNeeded unexpected inactiveList nullptr");
         }
-        _addingWorker = true;
+        _addingWorkerId = inactiveItem->getId();
         // Sequence of events goes something like
         // 1) left item gets message from master that it is getting a right neighbor, and writes it down
         // 2) Right item get message from master that it is getting a left neighbor, writes it down.
         // 3) CentralWorker::_monitor on the left node(rightmostItem) connects to the right node(inactiveItem),
         //    ranges are setup and shifts are started.
-        // 4) When message received from the new worker saying that it has a valid range, set _addingWorker to false.
-        //    &&& TODO in CentralMaster::updateWorkerInfo check for worker name of inactiveItem and if its range is valid.
+        // 4) When message received from the new worker saying that it has a valid range, set _addingWorkerId to 0.
+        //    This check happens earlier in this function.
+        //
         // Steps 1 and 2
         rightMostItem->setRightNeighbor(inactiveItem);
         inactiveItem->setLeftNeighbor(rightMostItem);
     }
 }
 
-MWorkerListItem::Ptr CentralMaster::getWorkerNamed(uint32_t name) {
-    return _mWorkerList->getWorkerNamed(name);
+MWorkerListItem::Ptr CentralMaster::getWorkerWithId(uint32_t id) {
+    return _mWorkerList->getWorkerNamed(id);
 }
 
 

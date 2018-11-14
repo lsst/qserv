@@ -95,7 +95,7 @@ std::string StringRange::decrementString(std::string const& str, char minChar) {
 }
 
 
-void ProtoHelper::workerKeysInfoExtractor(BufferUdp& data, uint32_t& name, NeighborsInfo& nInfo, StringRange& strRange) {
+void ProtoHelper::workerKeysInfoExtractor(BufferUdp& data, uint32_t& wId, NeighborsInfo& nInfo, StringRange& strRange) {
     auto funcName = "CentralWorker::_workerKeysInfoExtractor";
     LOGS(_log, LOG_LVL_DEBUG, funcName);
     auto protoItem = StringElement::protoParse<proto::WorkerKeysInfo>(data);
@@ -103,7 +103,7 @@ void ProtoHelper::workerKeysInfoExtractor(BufferUdp& data, uint32_t& name, Neigh
         throw LoaderMsgErr(ERR_LOC, "protoItem nullptr");
     }
 
-    name = protoItem->name();
+    wId = protoItem->wid();
     nInfo.keyCount = protoItem->mapsize();
     nInfo.recentAdds = protoItem->recentadds();
     proto::WorkerRangeString protoRange = protoItem->range();
@@ -115,9 +115,9 @@ void ProtoHelper::workerKeysInfoExtractor(BufferUdp& data, uint32_t& name, Neigh
         strRange.setMinMax(min, max, unlimited);
     }
     proto::Neighbor protoLeftNeigh = protoItem->left();
-    nInfo.neighborLeft->update(protoLeftNeigh.name());
+    nInfo.neighborLeft->update(protoLeftNeigh.wid());
     proto::Neighbor protoRightNeigh = protoItem->right();
-    nInfo.neighborRight->update(protoRightNeigh.name());
+    nInfo.neighborRight->update(protoRightNeigh.wid());
 }
 
 
