@@ -43,22 +43,6 @@ namespace lsst {
 namespace qserv {
 namespace loader {
 
-/* &&&
-// TODO Add more information
-class LoaderMsgErr : public std::exception {
-public:
-    LoaderMsgErr(std::string const& msg, std::string const& file, int line) {
-        _msg = msg + " " + file + ":" + std::to_string(line);
-    }
-    LoaderMsgErr(std::string const& msg) : _msg(msg) {}
-    const char* what() const throw() override {
-        return _msg.c_str();
-    }
-private:
-    std::string _msg;
-};
-*/
-
 class LoaderMsgErr : public util::Issue {
 public:
     LoaderMsgErr(util::Issue::Context const& ctx, std::string const& message) :

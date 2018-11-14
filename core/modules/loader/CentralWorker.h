@@ -90,26 +90,26 @@ public:
     bool workerWorkerSetRightNeighbor(LoaderMsg const& inMsg, BufferUdp::Ptr const& data);
     bool workerWorkerSetLeftNeighbor(LoaderMsg const& inMsg, BufferUdp::Ptr const& data);
 
-    bool isOurNameInvalid() const {
-        std::lock_guard<std::mutex> lck(_ourNameMtx);
-        return _ourNameInvalid;
+    bool isOurIdInvalid() const {
+        std::lock_guard<std::mutex> lck(_ourIdMtx);
+        return _ourIdInvalid;
     }
 
-    bool setOurName(uint32_t name) {
-        std::lock_guard<std::mutex> lck(_ourNameMtx);
-        if (_ourNameInvalid) {
-            _ourName = name;
-            _ourNameInvalid = false;
+    bool setOurId(uint32_t id) {
+        std::lock_guard<std::mutex> lck(_ourIdMtx);
+        if (_ourIdInvalid) {
+            _ourId = id;
+            _ourIdInvalid = false;
             return true;
         } else {
-            /// TODO add error message, check if _ourname matches name
+            /// TODO add error message, check if _ourId matches id
             return false;
         }
     }
 
-    uint32_t getOurName() const {
-        std::lock_guard<std::mutex> lck(_ourNameMtx);
-        return _ourName;
+    uint32_t getOurId() const {
+        std::lock_guard<std::mutex> lck(_ourIdMtx);
+        return _ourId;
     }
 
     std::string getOurLogId() const override;
@@ -117,7 +117,7 @@ public:
     void testSendBadMessage();
 
     std::unique_ptr<proto::WorkerKeysInfo> _workerKeysInfoBuilder(); // TODO make private
-    void setNeighborInfoLeft(uint32_t name, int keyCount, StringRange const& range);  // TODO make private
+    void setNeighborInfoLeft(uint32_t wId, int keyCount, StringRange const& range);  // TODO make private
 
     void insertKeys(std::vector<StringKeyPair> const& keyList, bool mustSetMin);
 
@@ -151,9 +151,6 @@ private:
     void _forwardKeyInfoRequest(WWorkerListItem::Ptr const& target, LoaderMsg const& inMsg,
                                 std::unique_ptr<proto::KeyInfoInsert> const& protoData);
 
-
-    static void _workerKeysInfoExtractor(BufferUdp& data, uint32_t& name, NeighborsInfo& nInfo, StringRange& strRange);
-
     void _workerWorkerKeysInfoReq(LoaderMsg const& inMsg);
     void _sendWorkerKeysInfo(NetworkAddress const& nAddr, uint64_t msgId);
 
@@ -175,9 +172,9 @@ private:
 
     WWorkerList::Ptr _wWorkerList{new WWorkerList(this)}; ///< Maps of workers.
 
-    bool _ourNameInvalid{true}; ///< true until the name has been set by the master.
-    std::atomic<uint32_t> _ourName{0}; ///< name given to us by the master, 0 invalid name.
-    mutable std::mutex _ourNameMtx; ///< protects _ourNameInvalid, _ourName
+    bool _ourIdInvalid{true}; ///< true until our id has been set by the master.
+    std::atomic<uint32_t> _ourId{0}; ///< id given by the master, 0 is invalid id.
+    mutable std::mutex _ourIdMtx; ///< protects _ourIdInvalid, _ourId
 
 
     StringRange _strRange; ///< range for this worker TODO _range both int and string;

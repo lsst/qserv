@@ -42,14 +42,14 @@ namespace lsst {
 namespace qserv {
 namespace loader {
 
-void Neighbor::setName(uint32_t name) {
+void Neighbor::setId(uint32_t id) {
     std::lock_guard<std::mutex> lck(_nMtx);
-    if (_name != name) {
-        LOGS(_log, LOG_LVL_INFO, getTypeStr() << "Neighbor changing name from(" << _name <<") to(" << name << ")");
+    if (_id != id) {
+        LOGS(_log, LOG_LVL_INFO, getTypeStr() << "Neighbor changing id from(" << _id <<") to(" << id << ")");
         _established = false;
         _addressTcp.reset(new NetworkAddress("", -1));
     }
-    _name = name;
+    _id = id;
 }
 
 
