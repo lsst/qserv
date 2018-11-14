@@ -21,24 +21,33 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  *
  */
-#ifndef LSST_QSERV_LOADER_CENTRALMASTER_H_
-#define LSST_QSERV_LOADER_CENTRALMASTER_H_
+#ifndef LSST_QSERV_LOADER_CENTRALMASTER_H
+#define LSST_QSERV_LOADER_CENTRALMASTER_H
 
 // system headers
-#include <boost/bind.hpp>
-#include <boost/asio.hpp>
 #include <thread>
 #include <vector>
 
+// third party headers
+#include <boost/asio.hpp>
+#include <boost/bind.hpp>
+
 // Qserv headers
 #include "loader/Central.h"
-
 
 
 namespace lsst {
 namespace qserv {
 namespace loader {
 
+/// Central Master is the central element of the master. It maintains a DoList
+/// and a list of all workers including their addresses, key ranges, and number of keys
+/// on each worker. The authoritative ranges come from the workers. The ranges in the
+/// master's list may be out of date but the system should handle it gracefully.
+///
+/// Workers register with the master when they start and are inactive until the master
+/// gives them a valid range or a neighbor. The first worker activated has a range
+/// covering all possible keys.
 class CentralMaster : public Central {
 public:
     CentralMaster(boost::asio::io_service& ioService_,
@@ -53,10 +62,10 @@ public:
     int getMaxKeysPerWorker() const { return _maxKeysPerWorker; }
 
     void addWorker(std::string const& ip, int udpPort, int tcpPort); ///< Add a new worker to the system.
-    void updateWorkerInfo(uint32_t workerName, NeighborsInfo const& nInfo, StringRange const& strRange);
+    void updateWorkerInfo(uint32_t workerId, NeighborsInfo const& nInfo, StringRange const& strRange);
 
 
-    MWorkerListItem::Ptr getWorkerNamed(uint32_t name);
+    MWorkerListItem::Ptr getWorkerWithId(uint32_t id);
 
     MWorkerList::Ptr getWorkerList() const { return _mWorkerList; }
 
@@ -65,23 +74,26 @@ public:
 
     std::string getOurLogId() const override { return "master"; }
 
-    void setWorkerNeighbor(MWorkerListItem::WPtr const& target, int message, uint32_t neighborName);
+    void setWorkerNeighbor(MWorkerListItem::WPtr const& target, int message, uint32_t neighborId);
 
 private:
-    void _assignNeighborIfNeeded();
+    /// Upon receiving new worker information, check if an inactive worker should be made active.
+    void _assignNeighborIfNeeded(uint32_t workerId, MWorkerListItem::Ptr const& wItem);
+
     std::mutex _assignMtx; ///< Protects critical region where worker's can be set to active.
 
-    std::atomic<int> _maxKeysPerWorker{1000};
+    std::atomic<int> _maxKeysPerWorker{1000}; // TODO load from config file.
 
-
-    MWorkerList::Ptr _mWorkerList{new MWorkerList(this)}; ///< List of workers.
+    MWorkerList::Ptr _mWorkerList{std::make_shared<MWorkerList>(this)}; ///< List of workers.
 
     std::atomic<bool> _firstWorkerRegistered{false}; ///< True when one worker has been activated.
-    std::atomic<bool> _addingWorker{false}; ///< True while adding a worker to the end of the list.
-                                            // TODO maybe move _addingWorker to MWorkerList.
+
+    /// The id of the worker being added. '0' indicates no worker being added.
+    /// Its value can only be set to non-zero values within _assignNeighborIfNeeded(...).
+    std::atomic<uint32_t> _addingWorkerId{0}; // TODO maybe move _addingWorkerId to MWorkerList.
 };
 
 }}} // namespace lsst::qserv::loader
 
 
-#endif // LSST_QSERV_LOADER_CENTRALMASTER_H_
+#endif // LSST_QSERV_LOADER_CENTRALMASTER_H

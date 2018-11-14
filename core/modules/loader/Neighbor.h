@@ -82,8 +82,8 @@ public:
         return *_addressUdp;
     }
 
-    void setName(uint32_t name);
-    uint32_t getName() const { return _name; }
+    void setId(uint32_t id);
+    uint32_t getId() const { return _id; }
 
     void setEstablished(bool val) {
         std::lock_guard<std::mutex> lck(_nMtx);
@@ -112,7 +112,7 @@ public:
 private:
     NetworkAddress::UPtr _addressTcp{new NetworkAddress("", -1)};
     NetworkAddress::UPtr _addressUdp{new NetworkAddress("", -1)};
-    uint32_t _name{0}; ///< Name of neighbor, 0 means no neighbor.
+    uint32_t _id{0}; ///< Id of neighbor, 0 means no neighbor.
     bool _established{false};
     std::mutex _nMtx;
     Type _type;
