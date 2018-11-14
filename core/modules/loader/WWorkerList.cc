@@ -65,7 +65,7 @@ util::CommandTracked::Ptr WWorkerList::createCommandWorker(CentralWorker* centra
     class MastWorkerListReqCmd : public util::CommandTracked {
     public:
         MastWorkerListReqCmd(CentralWorker* centralW, std::map<uint32_t, WWorkerListItem::Ptr> nameMap)
-            : _centralW(centralW), _nameMap(nameMap) {}
+            : _centralW(centralW), _wIdMap(nameMap) {}
 
         void action(util::CmdData *data) override {
             /// Request a list of all workers.
@@ -88,18 +88,18 @@ util::CommandTracked::Ptr WWorkerList::createCommandWorker(CentralWorker* centra
             _centralW->sendBufferTo(masterHost, masterPort, sendBuf);
 
             /// Go through the existing list and add any that have not been add to the doList
-            for (auto const& item : _nameMap) {
+            for (auto const& item : _wIdMap) {
                 item.second->addDoListItems(_centralW);
             }
         }
 
     private:
         CentralWorker* _centralW;
-        std::map<uint32_t, WWorkerListItem::Ptr> _nameMap;
+        std::map<uint32_t, WWorkerListItem::Ptr> _wIdMap;
     };
 
     LOGS(_log, LOG_LVL_DEBUG, "WorkerList::createCommandWorker");
-    return std::make_shared<MastWorkerListReqCmd>(centralW, _nameMap);
+    return std::make_shared<MastWorkerListReqCmd>(centralW, _wIdMap);
 }
 
 
@@ -123,24 +123,24 @@ bool WWorkerList::workerListReceive(BufferUdp::Ptr const& data) {
     std::string strNames;
     {
         std::lock_guard<std::mutex> lock(_mapMtx);
-        size_t initialSize = _nameMap.size();
+        size_t initialSize = _wIdMap.size();
         // There may be more workers than will fit in a message.
         _totalNumberOfWorkers = protoList->workercount();
         int sz = protoList->worker_size();
 
         for (int j=0; j < sz; ++j) {
             proto::WorkerListItem const& protoItem = protoList->worker(j);
-            uint32_t name = protoItem.name();
+            uint32_t wId = protoItem.wid();
             // Most of the time, the worker will already be in the map.
-            auto item = _nameMap[name];
+            auto item = _wIdMap[wId];
             if (item == nullptr) {
-                item = WWorkerListItem::create(name, _central);
-                _nameMap[name] = item;
-                strNames += std::to_string(name) + ",";
+                item = WWorkerListItem::create(wId, _central);
+                _wIdMap[wId] = item;
+                strNames += std::to_string(wId) + ",";
                 item->addDoListItems(_central);
             }
         }
-        sizeChange = _nameMap.size() - initialSize;
+        sizeChange = _wIdMap.size() - initialSize;
         if (sizeChange > 0) {
             _flagListChange();
         }
@@ -164,14 +164,14 @@ bool WWorkerList::equal(WWorkerList& other) {
     std::lock_guard<std::mutex> lk1(_mapMtx,       std::adopt_lock);
     std::lock_guard<std::mutex> lk2(other._mapMtx, std::adopt_lock);
 
-    if (_nameMap.size() != other._nameMap.size()) {
-        LOGS(_log, LOG_LVL_INFO, funcName << " map sizes do not match this=" << _nameMap.size() <<
-                                 " other=" << other._nameMap.size());
+    if (_wIdMap.size() != other._wIdMap.size()) {
+        LOGS(_log, LOG_LVL_INFO, funcName << " map sizes do not match this=" << _wIdMap.size() <<
+                                 " other=" << other._wIdMap.size());
         return false;
     }
-    auto thisIter = _nameMap.begin();
-    auto otherIter = other._nameMap.begin();
-    for (;thisIter != _nameMap.end() && otherIter != other._nameMap.end();
+    auto thisIter = _wIdMap.begin();
+    auto otherIter = other._wIdMap.begin();
+    for (;thisIter != _wIdMap.end() && otherIter != other._wIdMap.end();
             ++thisIter, ++otherIter) {
         if (thisIter->first != otherIter->first) {
             LOGS(_log, LOG_LVL_INFO, funcName << " map first not equal");
@@ -191,7 +191,7 @@ std::string WWorkerList::dump() const {
     os << "WWorkerList name:\n";
     {
         std::lock_guard<std::mutex> lck(_mapMtx);
-        for (auto elem:_nameMap) {
+        for (auto elem:_wIdMap) {
             os << "  " << *elem.second << "\n";
         }
 
@@ -206,17 +206,17 @@ std::string WWorkerList::dump() const {
 
 /// There must be a name. However, ip, port, and range may be invalid.
 //  TODO believe our neighbors range over the master
-void WWorkerList::updateEntry(uint32_t name,
+void WWorkerList::updateEntry(uint32_t wId,
                               std::string const& ip, int portUdp, int portTcp,
                               StringRange& strRange) {
     std::unique_lock<std::mutex> lk(_mapMtx);
-    auto iter = _nameMap.find(name);
-    if (iter == _nameMap.end()) {
+    auto iter = _wIdMap.find(wId);
+    if (iter == _wIdMap.end()) {
         // This should rarely happen, make an entry for it
-        auto newItem = WWorkerListItem::create(name, _central);
-        auto res = _nameMap.insert(std::make_pair(name, newItem));
+        auto newItem = WWorkerListItem::create(wId, _central);
+        auto res = _wIdMap.insert(std::make_pair(wId, newItem));
         iter = res.first;
-        LOGS(_log, LOG_LVL_INFO, "updateEntry created entry for name=" << name <<
+        LOGS(_log, LOG_LVL_INFO, "updateEntry created entry for name=" << wId <<
                                  " res=" << res.second);
     }
     WWorkerListItem::Ptr const& item = iter->second;
@@ -226,7 +226,7 @@ void WWorkerList::updateEntry(uint32_t name,
             item->setTcpAddress(ip, portTcp);
             NetworkAddress nAddr(ip, portUdp);
             auto res = _ipMap.insert(std::make_pair(nAddr, item));
-            LOGS(_log, LOG_LVL_INFO, "updateEntry set name=" << name << " Udp=" << nAddr <<
+            LOGS(_log, LOG_LVL_INFO, "updateEntry set name=" << wId << " Udp=" << nAddr <<
                                      " res=" << res.second);
         }
     }
@@ -237,7 +237,7 @@ void WWorkerList::updateEntry(uint32_t name,
     if (strRange.getValid()) {
         // Does the new range match the old range?
         auto oldRange = item->setRangeStr(strRange);
-        LOGS(_log, LOG_LVL_INFO, "updateEntry set name=" << name << " range=" << strRange);
+        LOGS(_log, LOG_LVL_INFO, "updateEntry set name=" << wId << " range=" << strRange);
         if (not oldRange.equal(strRange)) {
             // Since the value changed, it needs to be removed and reinserted.
             // No invalid ranges should be in the map.
@@ -347,12 +347,12 @@ util::CommandTracked::Ptr WWorkerListItem::createCommandWorkerInfoReq(CentralWor
 
     class WorkerReqCmd : public util::CommandTracked {
     public:
-        WorkerReqCmd(CentralWorker* centralW, uint32_t name) : _centralW(centralW), _name(name) {}
+        WorkerReqCmd(CentralWorker* centralW, uint32_t name) : _centralW(centralW), _wId(name) {}
 
         void action(util::CmdData *data) override {
             /// Request all information the master has for one worker.
             LOGS(_log, LOG_LVL_INFO, "WWorkerListItem::createCommand::WorkerReqCmd::action " <<
-                                     "ourName=" << _centralW->getOurLogId() << " req name=" << _name);
+                                     "ourName=" << _centralW->getOurLogId() << " req name=" << _wId);
 
             // TODO make a function for this, it's always going to be the same.
             proto::LdrNetAddress protoOurAddress;
@@ -362,7 +362,7 @@ util::CommandTracked::Ptr WWorkerListItem::createCommandWorkerInfoReq(CentralWor
             StringElement eOurAddress(protoOurAddress.SerializeAsString());
 
             proto::WorkerListItem protoItem;
-            protoItem.set_name(_name);
+            protoItem.set_wid(_wId);
             StringElement eItem(protoItem.SerializeAsString());
 
             LoaderMsg workerInfoReqMsg(LoaderMsg::MAST_WORKER_INFO_REQ, _centralW->getNextMsgId(),
@@ -380,7 +380,7 @@ util::CommandTracked::Ptr WWorkerListItem::createCommandWorkerInfoReq(CentralWor
 
     private:
         CentralWorker* _centralW;
-        uint32_t _name;
+        uint32_t _wId; ///< worker id
     };
 
     LOGS(_log, LOG_LVL_INFO, "WWorkerListItem::createCommandWorker this=" <<

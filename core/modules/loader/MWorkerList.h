@@ -79,9 +79,9 @@ public:
         return *_tcpAddress;
     }
 
-    uint32_t getName() const {
+    uint32_t getId() const {
         std::lock_guard<std::mutex> lck(_mtx);
-        return _name;
+        return _wId;
     }
 
     StringRange getRangeString() const {
@@ -90,6 +90,7 @@ public:
     }
 
     bool isActive() const { return _active; }
+    void setActive(bool val) { _active = val; }
 
     void addDoListItems(Central *central);
 
@@ -108,17 +109,17 @@ public:
 
     friend std::ostream& operator<<(std::ostream& os, MWorkerListItem const& item);
 private:
-    MWorkerListItem(uint32_t name, CentralMaster* central) : _name(name), _central(central) {}
-    MWorkerListItem(uint32_t name,
+    MWorkerListItem(uint32_t wId, CentralMaster* central) : _wId(wId), _central(central) {}
+    MWorkerListItem(uint32_t wId,
                     NetworkAddress const& udpAddress,
                     NetworkAddress const& tcpAddress,
                     CentralMaster* central)
-         : _name(name),
+         : _wId(wId),
            _udpAddress(new NetworkAddress(udpAddress)),
            _tcpAddress(new NetworkAddress(tcpAddress)),
            _central(central) {}
 
-    uint32_t _name;
+    uint32_t _wId; ///< Worker Id
     NetworkAddress::UPtr _udpAddress{new NetworkAddress("", 0)}; ///< empty string indicates address is not valid.
     NetworkAddress::UPtr _tcpAddress{new NetworkAddress("", 0)}; ///< empty string indicates address is not valid.
     TimeOut _lastContact{std::chrono::minutes(10)};  ///< Last time information was received from this worker

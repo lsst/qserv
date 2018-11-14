@@ -74,7 +74,7 @@ CentralWorker::~CentralWorker() {
 
 std::string CentralWorker::getOurLogId() const {
     std::stringstream os;
-    os << "(w name=" << _ourName << " addr=" << _hostName <<
+    os << "(w name=" << _ourId << " addr=" << _hostName <<
             ":udp=" << _udpPort << " tcp=" << _tcpPort << ")";
     return os.str();
 }
@@ -99,32 +99,32 @@ void CentralWorker::_monitor() {
         // Check if data needs to be shifted with the right node
         // This mutex is locked for a long time  TODO break this up?
         std::lock_guard<std::mutex> lck(_rightMtx);
-        LOGS(_log, LOG_LVL_INFO, "_monitor " << _ourName <<
-                                 " checking right neighbor " << _neighborRight.getName());
-        if (_neighborRight.getName() != 0) {
+        LOGS(_log, LOG_LVL_INFO, "_monitor " << _ourId <<
+                                 " checking right neighbor " << _neighborRight.getId());
+        if (_neighborRight.getId() != 0) {
             try {
                 if (not _neighborRight.getEstablished()) {
-                    LOGS(_log, LOG_LVL_INFO, "_monitor " << _ourName << " trying to connect");
+                    LOGS(_log, LOG_LVL_INFO, "_monitor " << _ourId << " trying to connect");
                     auto nAddr = _neighborRight.getAddressTcp();
                     if (nAddr.ip == "") {
                         // look up the network address for the rightNeighbor
                         WWorkerListItem::Ptr nWorker =
-                            _wWorkerList->getWorkerNamed(_neighborRight.getName());
+                            _wWorkerList->getWorkerNamed(_neighborRight.getId());
                         if (nWorker != nullptr) {
                             auto addr = nWorker->getAddressTcp();
                             auto addrUdp = nWorker->getAddressUdp();
                             LOGS(_log, LOG_LVL_INFO, "_monitor neighbor right " <<
-                                _neighborRight.getName() << " T=" << addr << " U=" << addrUdp);
+                                _neighborRight.getId() << " T=" << addr << " U=" << addrUdp);
                             _neighborRight.setAddressTcp(addr);
                             _neighborRight.setAddressUdp(addrUdp);
                         }
                     }
 
                     LOGS(_log, LOG_LVL_INFO, "_monitor trying to establish TCP connection with " <<
-                            _neighborRight.getName() << " " << _neighborRight.getAddressTcp());
+                            _neighborRight.getId() << " " << _neighborRight.getAddressTcp());
                     _rightConnect(); // calls _determineRange() while establishing connection
                 } else {
-                    LOGS(_log, LOG_LVL_INFO, "_monitor " << _ourName << " getting range info");
+                    LOGS(_log, LOG_LVL_INFO, "_monitor " << _ourId << " getting range info");
                     if (_determineRange()) {
                         _rangeChanged = true;
                     }
@@ -180,12 +180,13 @@ bool CentralWorker::_determineRange() {
             throw LoaderMsgErr(ERR_LOC, "protoItem parse issue!!!!!");
         }
         NeighborsInfo nInfoR;
-        auto workerName = protoItem->name();
+        auto workerId = protoItem->wid();
         nInfoR.keyCount = protoItem->mapsize();
         _neighborRight.setKeyCount(nInfoR.keyCount); // TODO add a timestamp to this data.
         nInfoR.recentAdds = protoItem->recentadds();
         proto::WorkerRangeString protoRange = protoItem->range();
-        LOGS(_log, LOG_LVL_INFO, funcName << " rightNeighbor name=" << workerName << " keyCount=" << nInfoR.keyCount << " recentAdds=" << nInfoR.recentAdds);
+        LOGS(_log, LOG_LVL_INFO, funcName << " rightNeighbor workerId=" << workerId <<
+                                 " keyCount=" << nInfoR.keyCount << " recentAdds=" << nInfoR.recentAdds);
         bool valid = protoRange.valid();
         StringRange rightRange;
         if (valid) {
@@ -210,11 +211,11 @@ bool CentralWorker::_determineRange() {
             }
         }
         proto::Neighbor protoLeftNeigh = protoItem->left();
-        nInfoR.neighborLeft->update(protoLeftNeigh.name());  // Not really useful in this case.
+        nInfoR.neighborLeft->update(protoLeftNeigh.wid());  // Not really useful in this case.
         proto::Neighbor protoRightNeigh = protoItem->right();
-        nInfoR.neighborRight->update(protoRightNeigh.name()); // This should be our name
-        if (nInfoR.neighborLeft->get() != getOurName()) {
-            LOGS(_log, LOG_LVL_ERROR, "Our (" << getOurName() <<
+        nInfoR.neighborRight->update(protoRightNeigh.wid()); // This should be our id
+        if (nInfoR.neighborLeft->get() != getOurId()) {
+            LOGS(_log, LOG_LVL_ERROR, "Our (" << getOurId() <<
                 ") right neighbor does not have our name as its left neighbor" );
         }
     }
@@ -468,7 +469,7 @@ void CentralWorker::_rightConnect() {
         boost::asio::connect(*_rightSocket, endpoints, ec);
         if (ec) {
             _rightSocket.reset();
-            LOGS(_log, LOG_LVL_WARN, "failed to connect to " << _neighborRight.getName() << " " <<
+            LOGS(_log, LOG_LVL_WARN, "failed to connect to " << _neighborRight.getId() << " " <<
                     addr << " ec=" << ec.value() << ":" << ec.message());
             return;
         }
@@ -485,9 +486,9 @@ void CentralWorker::_rightConnect() {
             }
 
             // Check if correct name
-            if (nghName->element != _neighborRight.getName()) {
+            if (nghName->element != _neighborRight.getId()) {
                 throw LoaderMsgErr(ERR_LOC, std::string("wrong name expected ") +
-                                   std::to_string(_neighborRight.getName()) +
+                                   std::to_string(_neighborRight.getId()) +
                                    " got " + std::to_string(nghName->element));
             }
         }
@@ -501,11 +502,11 @@ void CentralWorker::_rightConnect() {
 }
 
 
-void CentralWorker::setNeighborInfoLeft(uint32_t name, int keyCount, StringRange const& range) {
-    _neighborLeft.setName(name);
-    if (name != _neighborLeft.getName()) {
-        LOGS(_log, LOG_LVL_ERROR, "disconnecting left since setNeighborInfoLeft name(" << name <<
-                                  ") != neighborLeft.name(" << _neighborLeft.getName() << ")");
+void CentralWorker::setNeighborInfoLeft(uint32_t wId, int keyCount, StringRange const& range) {
+    _neighborLeft.setId(wId);
+    if (wId != _neighborLeft.getId()) {
+        LOGS(_log, LOG_LVL_ERROR, "disconnecting left since setNeighborInfoLeft wId(" << wId <<
+                                  ") != neighborLeft.name(" << _neighborLeft.getId() << ")");
         _neighborLeft.setEstablished(false);
         return;
     }
@@ -517,8 +518,9 @@ void CentralWorker::setNeighborInfoLeft(uint32_t name, int keyCount, StringRange
 
 /// Must hold _rightMtx before calling
 void CentralWorker::_rightDisconnect() {
-    LOGS(_log, LOG_LVL_WARN, "CentralWorker::_rightDisconnect");
+    LOGS(_log, LOG_LVL_DEBUG, "CentralWorker::_rightDisconnect");
     if (_rightSocket != nullptr) {
+        LOGS(_log, LOG_LVL_WARN, "CentralWorker::_rightDisconnect disconnecting");
         _rightSocket->shutdown(boost::asio::ip::tcp::socket::shutdown_both);
         _rightSocket->close();
     }
@@ -529,9 +531,10 @@ void CentralWorker::_rightDisconnect() {
 
 void CentralWorker::_cancelShiftsToRightNeighbor() {
     // Client side of connection. Was sending largest keys right.
-    LOGS(_log, LOG_LVL_WARN, "Canceling shiftToRight neighbor");
+    LOGS(_log, LOG_LVL_DEBUG, "_cancelShiftsToRightNeighbor");
     std::lock_guard<std::mutex> lck(_idMapMtx);
     if (_shiftAsClientInProgress.exchange(false)) {
+        LOGS(_log, LOG_LVL_WARN, "Canceling shiftToRight neighbor");
         // Restore the transfer list to the id map
         for (auto&& elem:_transferListToRight) {
             auto res = _directorIdMap.insert(std::make_pair(elem.first, elem.second));
@@ -570,7 +573,7 @@ void CentralWorker::cancelShiftsFromRightNeighbor() {
 
 
 void CentralWorker::registerWithMaster() {
-    // TODO:HIGH add a one shot DoList item to keep calling _registerWithMaster until we have our name.
+    // TODO:HIGH add a one shot DoList item to keep calling _registerWithMaster until we have our id.
     _registerWithMaster();
 }
 
@@ -597,9 +600,9 @@ bool CentralWorker::workerInfoReceive(BufferUdp::Ptr const&  data) {
 void CentralWorker::_workerInfoReceive(std::unique_ptr<proto::WorkerListItem>& protoL) {
     std::unique_ptr<proto::WorkerListItem> protoList(std::move(protoL));
 
-    // Check the information, if it is our network address, set or check our name.
+    // Check the information, if it is our network address, set or check our id.
     // Then compare it with the map, adding new/changed information.
-    uint32_t name = protoList->name();
+    uint32_t wId = protoList->wid();
     std::string ipUdp("");
     int portUdp = 0;
     int portTcp = 0;
@@ -623,12 +626,12 @@ void CentralWorker::_workerInfoReceive(std::unique_ptr<proto::WorkerListItem>& p
 
     // If the address matches ours, check the name.
     if (getHostName() == ipUdp && getUdpPort() == portUdp) {
-        if (isOurNameInvalid()) {
-            LOGS(_log, LOG_LVL_INFO, "Setting our name " << name);
-            setOurName(name);
-        } else if (getOurName() != name) {
-            LOGS(_log, LOG_LVL_ERROR, "Our name doesn't match address from master! name=" <<
-                                      getOurName() << " masterName=" << name);
+        if (isOurIdInvalid()) {
+            LOGS(_log, LOG_LVL_INFO, "Setting our name " << wId);
+            setOurId(wId);
+        } else if (getOurId() != wId) {
+            LOGS(_log, LOG_LVL_ERROR, "Our wId doesn't match address from master! wId=" <<
+                                      getOurId() << " from master=" << wId);
         }
 
         // It is this worker. If there is a valid range in the message and our range is not valid,
@@ -643,7 +646,7 @@ void CentralWorker::_workerInfoReceive(std::unique_ptr<proto::WorkerListItem>& p
     }
 
     // Make/update entry in map.
-    _wWorkerList->updateEntry(name, ipUdp, portUdp, portTcp, strRange);
+    _wWorkerList->updateEntry(wId, ipUdp, portUdp, portTcp, strRange);
 }
 
 
@@ -743,13 +746,13 @@ void CentralWorker::_workerKeyInsertReq(LoaderMsg const& inMsg, std::unique_ptr<
         StringElement strElem;
         protoReply.SerializeToString(&(strElem.element));
         strElem.appendToData(msgData);
-        LOGS(_log, LOG_LVL_INFO, "sending complete " << key << " to " << nAddr << " from " << _ourName);
+        LOGS(_log, LOG_LVL_INFO, "sending complete " << key << " to " << nAddr << " from " << _ourId);
         sendBufferTo(nAddr.ip, nAddr.port, msgData);
     } else {
         lck.unlock();
         // Find the target range in the list and send the request there
         auto targetWorker = _wWorkerList->findWorkerForKey(key);
-        if (targetWorker != nullptr && targetWorker->getName() != _ourName) {
+        if (targetWorker != nullptr && targetWorker->getName() != _ourId) {
             _forwardKeyInsertRequest(targetWorker->getAddressUdp(), inMsg, protoData);
         } else {
             // Send request to left or right neighbor
@@ -818,7 +821,7 @@ void CentralWorker::_workerKeyInfoReq(LoaderMsg const& inMsg, std::unique_ptr<pr
     /// see if the key is in our map
     std::unique_lock<std::mutex> lck(_idMapMtx);
     if (_strRange.isInRange(key)) {
-        LOGS(_log, LOG_LVL_INFO, "CentralWorker::_workerKeyInfoReq " << _ourName << " looking for key=" << key);
+        LOGS(_log, LOG_LVL_INFO, "CentralWorker::_workerKeyInfoReq " << _ourId << " looking for key=" << key);
         // check out map
         auto iter = _directorIdMap.find(key);
         lck.unlock();
@@ -847,18 +850,18 @@ void CentralWorker::_workerKeyInfoReq(LoaderMsg const& inMsg, std::unique_ptr<pr
         StringElement strElem;
         protoReply.SerializeToString(&(strElem.element));
         strElem.appendToData(msgData);
-        LOGS(_log, LOG_LVL_INFO, "sending key lookup " << key << " to " << nAddr << " from " << _ourName);
+        LOGS(_log, LOG_LVL_INFO, "sending key lookup " << key << " to " << nAddr << " from " << _ourId);
         sendBufferTo(nAddr.ip, nAddr.port, msgData);
     } else {
         // Find the target range in the list and send the request there
         auto targetWorker = _wWorkerList->findWorkerForKey(key);
         if (targetWorker == nullptr) {
-            LOGS(_log, LOG_LVL_INFO, "CentralWorker::_workerKeyInfoReq " << _ourName <<
+            LOGS(_log, LOG_LVL_INFO, "CentralWorker::_workerKeyInfoReq " << _ourId <<
                                      " could not forward key=" << key);
             // TODO HIGH forward request to neighbor in case it was in recent shift.
             return;
         }
-        LOGS(_log, LOG_LVL_INFO, "CentralWorker::_workerKeyInfoReq " << _ourName <<
+        LOGS(_log, LOG_LVL_INFO, "CentralWorker::_workerKeyInfoReq " << _ourId <<
                                  " forwarding key=" << key << " to " << *targetWorker);
         _forwardKeyInfoRequest(targetWorker, inMsg, protoData);
     }
@@ -872,9 +875,9 @@ bool CentralWorker::workerWorkerSetRightNeighbor(LoaderMsg const& inMsg, BufferU
         return false;
     }
 
-    LOGS(_log, LOG_LVL_INFO, "workerWorkerSetRightNeighbor ourName=" << _ourName << " rightN=" << neighborName->element);
+    LOGS(_log, LOG_LVL_INFO, "workerWorkerSetRightNeighbor ourName=" << _ourId << " rightN=" << neighborName->element);
     // Just setting the name, so it can stay here. See CentralWorker::_monitor(), which establishes/maintains connections.
-    _neighborRight.setName(neighborName->element);
+    _neighborRight.setId(neighborName->element);
     return true;
 }
 
@@ -886,9 +889,9 @@ bool CentralWorker::workerWorkerSetLeftNeighbor(LoaderMsg const& inMsg, BufferUd
         return false;
     }
 
-    LOGS(_log, LOG_LVL_INFO, "workerWorkerSetLeftNeighbor ourName=" << _ourName << " leftN=" << neighborName->element);
+    LOGS(_log, LOG_LVL_INFO, "workerWorkerSetLeftNeighbor ourName=" << _ourId << " leftN=" << neighborName->element);
     // TODO move to separate thread
-    _neighborLeft.setName(neighborName->element);
+    _neighborLeft.setId(neighborName->element);
     // Just setting the name. See CentralWorker::_monitor(), which establishes/maintains connections.
     return true;
 }
@@ -922,7 +925,7 @@ void CentralWorker::_sendWorkerKeysInfo(NetworkAddress const& nAddr, uint64_t ms
     StringElement strElem;
     protoWKI->SerializeToString(&(strElem.element));
     strElem.appendToData(msgData);
-    LOGS(_log, LOG_LVL_INFO, "sending WorkerKeysInfo name=" << _ourName <<
+    LOGS(_log, LOG_LVL_INFO, "sending WorkerKeysInfo name=" << _ourId <<
          " mapsize=" << protoWKI->mapsize() << " recentAdds=" << protoWKI->recentadds() <<
          " to " << nAddr);
     sendBufferTo(nAddr.ip, nAddr.port, msgData);
@@ -943,9 +946,9 @@ std::unique_ptr<proto::WorkerKeysInfo> CentralWorker::_workerKeysInfoBuilder() {
         _removeOldEntries();
         recentAdds = _recentAdds.size();
     }
-    LOGS(_log, LOG_LVL_INFO, "CentralWorker WorkerKeysInfo aaaaa name=" << _ourName <<
+    LOGS(_log, LOG_LVL_INFO, "CentralWorker WorkerKeysInfo aaaaa name=" << _ourId <<
                              " keyCount=" << mapSize << " recentAdds=" << recentAdds);
-    protoWKI->set_name(_ourName);
+    protoWKI->set_wid(_ourId);
     protoWKI->set_mapsize(mapSize);
     protoWKI->set_recentadds(recentAdds);
     // TODO make a function to load WorkerRangeString, happens a bit.
@@ -955,9 +958,9 @@ std::unique_ptr<proto::WorkerKeysInfo> CentralWorker::_workerKeysInfoBuilder() {
     protoRange->set_max(range.getMax());
     protoRange->set_maxunlimited(range.getUnlimited());
     proto::Neighbor *protoLeft = protoWKI->mutable_left();
-    protoLeft->set_name(_neighborLeft.getName());
+    protoLeft->set_wid(_neighborLeft.getId());
     proto::Neighbor *protoRight = protoWKI->mutable_right();
-    protoRight->set_name(_neighborRight.getName());
+    protoRight->set_wid(_neighborRight.getId());
     return protoWKI;
 }
 
@@ -1051,7 +1054,7 @@ void CentralWorker::insertKeys(std::vector<StringKeyPair> const& keyList, bool m
 std::string CentralWorker::dumpKeysStr(unsigned int count) {
     std::stringstream os;
     std::lock_guard<std::mutex> lck(_idMapMtx);
-    os << "name=" << getOurName() << " count=" << _directorIdMap.size() << " range("
+    os << "name=" << getOurId() << " count=" << _directorIdMap.size() << " range("
        << _strRange << ") pairs: ";
 
     if (count < 1 || _directorIdMap.size() < count*2) {

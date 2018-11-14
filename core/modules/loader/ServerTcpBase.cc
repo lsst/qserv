@@ -65,7 +65,7 @@ bool ServerTcpBase::writeData(AsioTcp::socket& socket, BufferUdp& data) {
 
 
 uint32_t ServerTcpBase::getOurName() {
-    return (_centralWorker == nullptr) ? 0 : _centralWorker->getOurName();
+    return (_centralWorker == nullptr) ? 0 : _centralWorker->getOurId();
 }
 
 
@@ -417,7 +417,7 @@ void TcpBaseConnection::_handleImYourLNeighbor1(boost::system::error_code const&
             throw LoaderMsgErr(ERR_LOC, "protoItem nullptr");
         }
         NeighborsInfo nInfo;
-        auto workerName = protoItem->name();
+        auto workerName = protoItem->wid();
         nInfo.keyCount = protoItem->mapsize();
         nInfo.recentAdds = protoItem->recentadds();
         proto::WorkerRangeString protoRange = protoItem->range();
@@ -435,9 +435,9 @@ void TcpBaseConnection::_handleImYourLNeighbor1(boost::system::error_code const&
             newLeftRange = _serverTcpBase->getCentralWorker()->updateRangeWithLeftData(leftRange);
         }
         proto::Neighbor protoLeftNeigh = protoItem->left();
-        nInfo.neighborLeft->update(protoLeftNeigh.name());  // Not really useful in this case.
+        nInfo.neighborLeft->update(protoLeftNeigh.wid());  // Not really useful in this case.
         proto::Neighbor protoRightNeigh = protoItem->right();
-        nInfo.neighborRight->update(protoRightNeigh.name()); // This should be our name
+        nInfo.neighborRight->update(protoRightNeigh.wid()); // This should be our name
         if (nInfo.neighborRight->get() != _serverTcpBase->getOurName()) {
             LOGS(_log, LOG_LVL_ERROR, "Our (" << _serverTcpBase->getOurName() <<
                                       ") left neighbor does not have our name as its right neighbor" );

@@ -146,7 +146,7 @@ MWorkerListItem::Ptr MWorkerList::addWorker(std::string const& ip, int udpPort, 
     // Get an id and make new worker item
     auto workerListItem = MWorkerListItem::create(_sequenceName++, udpAddress, tcpAddress, _central);
     _ipMap.insert(std::make_pair(udpAddress, workerListItem));
-    _nameMap.insert(std::make_pair(workerListItem->getName(), workerListItem));
+    _nameMap.insert(std::make_pair(workerListItem->getId(), workerListItem));
     LOGS(_log, LOG_LVL_INFO, "Added worker " << *workerListItem);
     _flagListChange();
 
@@ -169,7 +169,7 @@ bool MWorkerList::sendListTo(uint64_t msgId, std::string const& ip, short port,
             for (auto const& item : _nameMap ) {
                 proto::WorkerListItem* protoItem = protoList.add_worker();
                 MWorkerListItem::Ptr const& wListItem = item.second;
-                protoItem->set_name(wListItem->getName());
+                protoItem->set_wid(wListItem->getId());
             }
             protoList.SerializeToString(&(workerList.element));
             LoaderMsg workerListMsg(LoaderMsg::MAST_WORKER_LIST, msgId, ourHostName, ourPort);
@@ -284,7 +284,7 @@ void MWorkerListItem::setRangeStr(StringRange const& strRange) {
 
 
 void MWorkerListItem::setAllInclusiveRange() {
-    LOGS(_log, LOG_LVL_INFO, "MWorkerListItem::setAllInclusiveRange for name=" << _name);
+    LOGS(_log, LOG_LVL_INFO, "MWorkerListItem::setAllInclusiveRange for name=" << _wId);
     std::lock_guard<std::mutex> lck(_mtx);
     _range.setAllInclusiveRange();
     _active = true;  /// First worker.
@@ -298,12 +298,12 @@ void MWorkerListItem::setNeighborsInfo(NeighborsInfo const& nInfo) {
 
     auto old = _neighborsInfo.neighborLeft->get();
     if (old != 0) {
-        LOGS(_log, LOG_LVL_WARN, "Worker=" << _name <<
+        LOGS(_log, LOG_LVL_WARN, "Worker=" << _wId <<
                 "neighborLeft changing from valid old=" << old <<
                 " to new=" << nInfo.neighborLeft->get());
     }
     if (old != nInfo.neighborLeft->get()) {
-        LOGS(_log, LOG_LVL_INFO, "Worker=" << _name <<
+        LOGS(_log, LOG_LVL_INFO, "Worker=" << _wId <<
                 "neighborLeft=" << nInfo.neighborLeft->get());
     }
     _neighborsInfo.neighborLeft->update(nInfo.neighborLeft->get());
@@ -311,13 +311,13 @@ void MWorkerListItem::setNeighborsInfo(NeighborsInfo const& nInfo) {
 
     old = _neighborsInfo.neighborRight->get();
     if (old != 0) {
-        LOGS(_log, LOG_LVL_WARN, "Worker=" << _name <<
+        LOGS(_log, LOG_LVL_WARN, "Worker=" << _wId <<
                 "neighborRight changing from valid old=" << old <<
                 " to new=" << nInfo.neighborRight->get());
     }
     if (old != nInfo.neighborRight->get()) {
 
-        LOGS(_log, LOG_LVL_INFO, "Worker=" << _name <<
+        LOGS(_log, LOG_LVL_INFO, "Worker=" << _wId <<
                 "neighborRight=" << nInfo.neighborRight->get());
     }
     _neighborsInfo.neighborRight->update(nInfo.neighborRight->get());
@@ -330,7 +330,7 @@ int MWorkerListItem::getKeyCount() const {
 
 
 std::ostream& operator<<(std::ostream& os, MWorkerListItem const& item) {
-    os << "name=" << item._name << " address=" << *item._udpAddress << " range(" << item._range << ")";
+    os << "name=" << item._wId << " address=" << *item._udpAddress << " range(" << item._range << ")";
     return os;
 }
 
@@ -345,7 +345,7 @@ void MWorkerListItem::setRightNeighbor(MWorkerListItem::Ptr const& item) {
     auto oneShot = SetNeighborOneShot::create(_central,
                                               shared_from_this(),
                                               LoaderMsg::WORKER_RIGHT_NEIGHBOR,
-                                              item->getName(),
+                                              item->getId(),
                                               _neighborsInfo.neighborRight);
     _central->addDoListItem(oneShot);
 }
@@ -361,7 +361,7 @@ void MWorkerListItem::setLeftNeighbor(MWorkerListItem::Ptr const& item) {
     auto oneShot = SetNeighborOneShot::create(_central,
                                               shared_from_this(),
                                               LoaderMsg::WORKER_LEFT_NEIGHBOR,
-                                              item->getName(),
+                                              item->getId(),
                                               _neighborsInfo.neighborLeft);
 
     _central->addDoListItem(oneShot);
