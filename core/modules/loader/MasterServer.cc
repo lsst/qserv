@@ -228,11 +228,11 @@ BufferUdp::Ptr MasterServer::workerInfoRequest(LoaderMsg const& inMsg, BufferUdp
             throw LoaderMsgErr(ERR_LOC, "protoItem nullptr");
         }
 
-        auto workerName = protoItem->name();
-        LOGS(_log, LOG_LVL_INFO, funcName << " Master got name=" << workerName);
+        auto workerId = protoItem->wid();
+        LOGS(_log, LOG_LVL_INFO, funcName << " Master got wId=" << workerId);
 
         /// Find the worker name in the map.
-        auto workerItem = _centralMaster->getWorkerNamed(protoItem->name());
+        auto workerItem = _centralMaster->getWorkerWithId(protoItem->wid());
         if (workerItem == nullptr) {
             /// TODO construct message for invalid worker
             return nullptr;
@@ -242,7 +242,7 @@ BufferUdp::Ptr MasterServer::workerInfoRequest(LoaderMsg const& inMsg, BufferUdp
         proto::WorkerListItem protoWorker;
         proto::LdrNetAddress* protoAddr = protoWorker.mutable_address();
         proto::WorkerRangeString* protoRange = protoWorker.mutable_rangestr();
-        protoWorker.set_name(workerItem->getName());
+        protoWorker.set_wid(workerItem->getId());
         auto udp = workerItem->getUdpAddress();
         protoAddr->set_ip(udp.ip);
         protoAddr->set_udpport(udp.port);
