@@ -82,6 +82,9 @@ std::ostream& operator<<(std::ostream& os, const ValueExpr::FactorOp& factorOp) 
     case ValueExpr::MINUS: os << "MINUS"; break;
     case ValueExpr::MULTIPLY: os << "MULTIPLY"; break;
     case ValueExpr::DIVIDE: os << "DIVIDE"; break;
+    case ValueExpr::DIV: os << "DIV"; break;
+    case ValueExpr::MODULO: os << "MODULO"; break;
+    case ValueExpr::MOD: os << "MOD"; break;
     default: os << "!!unhandled!!"; break;
     }
     os << ", factor:" << factorOp.factor;
@@ -296,6 +299,9 @@ void ValueExpr::render::applyToQT(ValueExpr const& ve) {
         case ValueExpr::MINUS: _qt.append("-"); break;
         case ValueExpr::MULTIPLY: _qt.append("*"); break;
         case ValueExpr::DIVIDE: _qt.append("/"); break;
+        case ValueExpr::DIV: _qt.append("DIV"); break;
+        case ValueExpr::MODULO: _qt.append("%"); break;
+        case ValueExpr::MOD: _qt.append("MOD"); break;
         default:
             std::ostringstream ss;
             ss << "Corruption: bad _op in ValueExpr optype=" << i->op;

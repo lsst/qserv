@@ -63,7 +63,9 @@ class ValueFactor;
 class ValueExpr {
 public:
     ValueExpr();
-    enum Op {NONE=200, UNKNOWN, PLUS, MINUS, MULTIPLY, DIVIDE};
+    // in Op: DIVIDE is the `/` operator, "Division; quotient of operands" as specified by MySQL.
+    //        DIV is the `DIV` operator, "Division; integer quotient of operands" as specified by MySQL.
+    enum Op {NONE=200, UNKNOWN, PLUS, MINUS, MULTIPLY, DIVIDE, DIV, MOD, MODULO};
     struct FactorOp {
         explicit FactorOp(std::shared_ptr<ValueFactor> factor_, Op op_=NONE)
             : factor(factor_), op(op_) {}
@@ -82,6 +84,9 @@ public:
     FactorOpVector& getFactorOps() { return _factorOps; }
     /// @return a const list of ValueFactor-Op
     FactorOpVector const& getFactorOps() const { return _factorOps; }
+    /// @return a reference to the list of ValueFactor-Op
+    /// this allows unit tests to make modifications
+    FactorOpVector& getFactorOpsRef() { return _factorOps; }
 
     std::shared_ptr<ColumnRef> copyAsColumnRef() const;
 

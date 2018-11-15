@@ -510,8 +510,11 @@ public:
     enum OperatorType {
         SUBTRACT,
         ADD,
-        DIVIDE,
+        DIVIDE, // `/` operator
         MULTIPLY,
+        DIV,    // `DIV` operator
+        MOD,    // `MOD` operator
+        MODULO, // `%`
     };
     virtual void handleMathOperator(OperatorType operatorType) = 0;
 };
@@ -2991,6 +2994,26 @@ public:
             break;
         }
 
+        case MathOperatorCBH::DIV: {
+            bool success = ValueExprFactory::addOp(_getValueExpr(), query::ValueExpr::DIV);
+            assertExecutionCondition(__FUNCTION__, success,
+                    "Failed to add an operator to valueExpr.", _ctx);
+            break;
+        }
+
+        case MathOperatorCBH::MOD: {
+            bool success = ValueExprFactory::addOp(_getValueExpr(), query::ValueExpr::MOD);
+            assertExecutionCondition(__FUNCTION__, success,
+                    "Failed to add an operator to valueExpr.", _ctx);
+            break;
+        }
+
+        case MathOperatorCBH::MODULO: {
+            bool success = ValueExprFactory::addOp(_getValueExpr(), query::ValueExpr::MODULO);
+            assertExecutionCondition(__FUNCTION__, success,
+                    "Failed to add an operator to valueExpr.", _ctx);
+            break;
+        }
         }
     }
 
@@ -3131,6 +3154,12 @@ public:
             lockedParent()->handleMathOperator(MathOperatorCBH::DIVIDE);
         } else if (_ctx->getText() == "*") {
             lockedParent()->handleMathOperator(MathOperatorCBH::MULTIPLY);
+        } else if (_ctx->DIV() != nullptr) {
+            lockedParent()->handleMathOperator(MathOperatorCBH::DIV);
+        } else if (_ctx->MOD() != nullptr) {
+            lockedParent()->handleMathOperator(MathOperatorCBH::MOD);
+        } else if (_ctx->getText() == "%") {
+            lockedParent()->handleMathOperator(MathOperatorCBH::MODULO);
         } else {
             assertNotSupported(__FUNCTION__, false, "Unhandled operator type:" + _ctx->getText(), _ctx);
         }

@@ -41,8 +41,10 @@
 #include "parser/SelectParser.h"
 #include "qproc/QuerySession.h"
 #include "query/Predicate.h"
+#include "query/SelectList.h"
 #include "query/SelectStmt.h"
 #include "query/SqlSQL2Tokens.h"
+#include "query/ValueFactor.h"
 #include "query/WhereClause.h"
 
 namespace test = boost::test_tools;
@@ -768,6 +770,42 @@ static const std::vector<Antlr4CompareQueries> ANTLR4_COMPARE_QUERIES = {
         "SELECT objectId,ra_PS FROM Object WHERE objectId NOT IN(417857368235490,420949744686724,420954039650823)"
     ),
 
+    // tests the modulo operator
+    Antlr4CompareQueries(
+        "select objectId, ra_PS % 3, decl_PS from Object where ra_PS % 3 > 1.5",
+        "select objectId, ra_PS % 3, decl_PS from Object where ra_PS - 3 > 1.5",
+        [](query::SelectStmt::Ptr const & selectStatement) {
+            // change the subtraction value expr to modulo:
+            auto whereClauseRef = selectStatement->getWhereClause();
+            auto orTerm = std::dynamic_pointer_cast<query::OrTerm>(whereClauseRef.getRootTerm());
+            auto andTerm = std::dynamic_pointer_cast<query::AndTerm>(orTerm->_terms[0]);
+            auto boolFactor = std::dynamic_pointer_cast<query::BoolFactor>(andTerm->_terms[0]);
+            auto compPredicate = std::dynamic_pointer_cast<query::CompPredicate>(boolFactor->_terms[0]);
+            query::ValueExpr::FactorOp& factorOp = compPredicate->left->getFactorOpsRef()[0];
+            factorOp.op = query::ValueExpr::MODULO;
+        },
+        "SELECT objectId,(ra_PS % 3),decl_PS FROM Object WHERE (ra_PS % 3)>1.5"
+    ),
+
+    // tests the MOD operator
+    Antlr4CompareQueries(
+        "select objectId, ra_PS MOD 3, decl_PS from Object where ra_PS MOD 3 > 1.5",
+        "select objectId, ra_PS - 3, decl_PS from Object where ra_PS - 3 > 1.5",
+        [](query::SelectStmt::Ptr const & selectStatement) {
+            // change the subtraction values expr to modulo:
+            query::SelectList& selectList = selectStatement->getSelectList();
+            auto valueExprList = (*selectList.getValueExprList())[1]->getFactorOpsRef()[0].op =
+                    query::ValueExpr::MOD;
+            auto whereClauseRef = selectStatement->getWhereClause();
+            auto orTerm = std::dynamic_pointer_cast<query::OrTerm>(whereClauseRef.getRootTerm());
+            auto andTerm = std::dynamic_pointer_cast<query::AndTerm>(orTerm->_terms[0]);
+            auto boolFactor = std::dynamic_pointer_cast<query::BoolFactor>(andTerm->_terms[0]);
+            auto compPredicate = std::dynamic_pointer_cast<query::CompPredicate>(boolFactor->_terms[0]);
+            query::ValueExpr::FactorOp& factorOp = compPredicate->left->getFactorOpsRef()[0];
+            factorOp.op = query::ValueExpr::MOD;
+        },
+        "SELECT objectId,(ra_PS MOD 3),decl_PS FROM Object WHERE (ra_PS MOD 3)>1.5"
+    ),
 };
 
 
@@ -791,6 +829,8 @@ BOOST_DATA_TEST_CASE(antlr4_compare, ANTLR4_COMPARE_QUERIES, queryInfo) {
     // verify the selectStatement converted back to sql is the same as the original query:
     BOOST_REQUIRE_EQUAL(selectStatement->getQueryTemplate().sqlFragment(),
             (queryInfo.serializedQuery != "" ? queryInfo.serializedQuery : queryInfo.query));
+
+    BOOST_TEST_MESSAGE("antlr4 selectStmt structure:" << *selectStatement);
 }
 
 
