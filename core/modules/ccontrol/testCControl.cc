@@ -881,12 +881,6 @@ static const std::vector< ParseErrorQueryInfo > PARSE_ERROR_QUERIES = {
         "ParseException:Error parsing query, near \"_chunkId\", Identifiers in Qserv may not start with an underscore."),
 
     ParseErrorQueryInfo(
-        "select objectId, sro.*, (sro.refObjectId-1)/2%pow(2,10), typeId "
-            "from Source s join RefObjMatch rom using (objectId) "
-            "join SimRefObject sro using (refObjectId) where isStar =1 limit 10;",
-        "ParseException:Error parsing query, near \"%\", Unhandled operator type:%"),
-
-    ParseErrorQueryInfo(
         "LECT sce.filterName,sce.field "
             "FROM LSST.Science_Ccd_Exposure AS sce "
             "WHERE sce.field=535 AND sce.camcol LIKE '%' ",
