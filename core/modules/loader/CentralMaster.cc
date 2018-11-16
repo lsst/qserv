@@ -97,13 +97,13 @@ void CentralMaster::setWorkerNeighbor(MWorkerListItem::WPtr const& target, int m
 
 
 void CentralMaster::_assignNeighborIfNeeded(uint32_t workerId, MWorkerListItem::Ptr const& wItem) {
-    LOGS(_log, LOG_LVL_DEBUG, "CentralMaster::_assignNeighborIfNeeded");
     // Go through the list and see if all the workers are full.
     // If they are, assign a worker to the end (rightmost) worker
     // and increase the maximum by an order of magnitude, max 10 million.
     // TODO Make a better algorithm, insert workers at busiest worker.
     // TODO maybe rate limit this check.
     std::string funcName("_assignNeighborIfNeeded");
+    LOGS(_log, LOG_LVL_DEBUG, funcName);
     if (_addingWorkerId != 0 && _addingWorkerId != workerId) {
         // Already in process of adding a worker, and the worker
         // with new information wasn't the one added. Nothing to do.
@@ -129,7 +129,7 @@ void CentralMaster::_assignNeighborIfNeeded(uint32_t workerId, MWorkerListItem::
     if (inactiveList.empty() || _addingWorkerId != 0) { return; }
     double sum = 0.0;
     int max = 0;
-    uint32_t maxName = 0;
+    uint32_t maxWId = 0;
     uint32_t rightMostName = 0; // Name of the rightmost worker, unlimited upper range.
     MWorkerListItem::Ptr rightMostItem;
     for(auto& item : activeList) {
@@ -137,7 +137,7 @@ void CentralMaster::_assignNeighborIfNeeded(uint32_t workerId, MWorkerListItem::
         sum += keyCount;
         if (keyCount > max) {
             max = keyCount;
-            maxName = item->getId();
+            maxWId = item->getId();
         }
         auto range = item->getRangeString();
         if (range.getValid() && range.getUnlimited()) {
@@ -156,7 +156,7 @@ void CentralMaster::_assignNeighborIfNeeded(uint32_t workerId, MWorkerListItem::
         return;
     }
     double avg = sum/(double)(activeList.size());
-    LOGS(_log, LOG_LVL_INFO, "max=" << max << " maxName=" << maxName << " avg=" << avg);
+    LOGS(_log, LOG_LVL_INFO, "max=" << max << " maxWId=" << maxWId << " avg=" << avg);
     if (avg > getMaxKeysPerWorker()) {
         // Assign a neighbor to the rightmost worker, if there are any unused nodes.
         // TODO Probably better to assign a new neighbor next to the node with the most recent activity.
@@ -168,12 +168,12 @@ void CentralMaster::_assignNeighborIfNeeded(uint32_t workerId, MWorkerListItem::
         }
         _addingWorkerId = inactiveItem->getId();
         // Sequence of events goes something like
-        // 1) left item gets message from master that it is getting a right neighbor, and writes it down
+        // 1) left item gets message from master that it is getting a right neighbor, writes it down.
         // 2) Right item get message from master that it is getting a left neighbor, writes it down.
-        // 3) CentralWorker::_monitor on the left node(rightmostItem) connects to the right node(inactiveItem),
-        //    ranges are setup and shifts are started.
-        // 4) When message received from the new worker saying that it has a valid range, set _addingWorkerId to 0.
-        //    This check happens earlier in this function.
+        // 3) CentralWorker::_monitor() on the left node(rightmostItem) connects to the right
+        //    node(inactiveItem), ranges are setup and shifts are started.
+        // 4) When message received from the new worker saying that it has a valid range,
+        //    set _addingWorkerId to 0. This check happens earlier in this function.
         //
         // Steps 1 and 2
         rightMostItem->setRightNeighbor(inactiveItem);
@@ -182,16 +182,16 @@ void CentralMaster::_assignNeighborIfNeeded(uint32_t workerId, MWorkerListItem::
 }
 
 MWorkerListItem::Ptr CentralMaster::getWorkerWithId(uint32_t id) {
-    return _mWorkerList->getWorkerNamed(id);
+    return _mWorkerList->getWorkerWithId(id);
 }
 
 
-void CentralMaster::reqWorkerKeysInfo(uint64_t msgId, std::string const& ip, short port,
-                                     std::string const& ourHostName, short ourPort) {
+void CentralMaster::reqWorkerKeysInfo(uint64_t msgId, std::string const& targetIp, short targetPort,
+                                      std::string const& ourHostName, short ourPort) {
     LoaderMsg reqMsg(LoaderMsg::WORKER_KEYS_INFO_REQ, msgId, ourHostName, ourPort);
     BufferUdp data;
     reqMsg.appendToData(data);
-    sendBufferTo(ip, port, data);
+    sendBufferTo(targetIp, targetPort, data);
 }
 
 }}} // namespace lsst::qserv::loader
