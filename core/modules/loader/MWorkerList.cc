@@ -146,7 +146,7 @@ MWorkerListItem::Ptr MWorkerList::addWorker(std::string const& ip, int udpPort, 
     // Get an id and make new worker item
     auto workerListItem = MWorkerListItem::create(_sequenceName++, udpAddress, tcpAddress, _central);
     _ipMap.insert(std::make_pair(udpAddress, workerListItem));
-    _nameMap.insert(std::make_pair(workerListItem->getId(), workerListItem));
+    _wIdMap.insert(std::make_pair(workerListItem->getId(), workerListItem));
     LOGS(_log, LOG_LVL_INFO, "Added worker " << *workerListItem);
     _flagListChange();
 
@@ -165,8 +165,8 @@ bool MWorkerList::sendListTo(uint64_t msgId, std::string const& ip, short port,
             /// TODO send multiple messages (if needed) with each having the address and range of 100 workers.
             ///      This version is useful for testing. _stateListData becomes a vector.
             proto::LdrMastWorkerList protoList;
-            protoList.set_workercount(_nameMap.size());
-            for (auto const& item : _nameMap ) {
+            protoList.set_workercount(_wIdMap.size());
+            for (auto const& item : _wIdMap ) {
                 proto::WorkerListItem* protoItem = protoList.add_worker();
                 MWorkerListItem::Ptr const& wListItem = item.second;
                 protoItem->set_wid(wListItem->getId());
@@ -205,7 +205,7 @@ MWorkerList::getActiveInactiveWorkerLists() {
     std::vector<MWorkerListItem::Ptr> active;
     std::vector<MWorkerListItem::Ptr> inactive;
     std::lock_guard<std::mutex> lck(_mapMtx);
-    for(auto const& elem : _nameMap) {
+    for(auto const& elem : _wIdMap) {
         auto item = elem.second;
         if (item->isActive()) {
             active.push_back(item);
@@ -222,7 +222,7 @@ MWorkerList::getActiveInactiveWorkerLists() {
 void MWorkerList::_flagListChange() {
     _wListChanged = true;
     // On the Master, flag each worker in the list that it needs to send an updated list to it's worker.
-    for (auto const& elem : _nameMap) {
+    for (auto const& elem : _wIdMap) {
         auto const& item = elem.second;
         item->flagNeedToSendList();
     }
@@ -234,7 +234,7 @@ std::string MWorkerList::dump() const {
     os << "MWorkerList:\n";
     {
         std::lock_guard<std::mutex> lck(_mapMtx);
-        for (auto elem:_nameMap) {
+        for (auto elem:_wIdMap) {
             os << "  " << *elem.second << "\n";
         }
         os << "MWorkerList ip:\n";
@@ -297,17 +297,16 @@ void MWorkerListItem::setNeighborsInfo(NeighborsInfo const& nInfo) {
     _neighborsInfo.recentAdds = nInfo.recentAdds;
 
     auto old = _neighborsInfo.neighborLeft->get();
-    if (old != 0) {
+    if (old != 0 && old != nInfo.neighborLeft->get()) {
         LOGS(_log, LOG_LVL_WARN, "Worker=" << _wId <<
-                "neighborLeft changing from valid old=" << old <<
-                " to new=" << nInfo.neighborLeft->get());
+             "neighborLeft changing from valid old=" << old <<
+             " to new=" << nInfo.neighborLeft->get());
     }
     if (old != nInfo.neighborLeft->get()) {
         LOGS(_log, LOG_LVL_INFO, "Worker=" << _wId <<
-                "neighborLeft=" << nInfo.neighborLeft->get());
+             "neighborLeft=" << nInfo.neighborLeft->get());
     }
     _neighborsInfo.neighborLeft->update(nInfo.neighborLeft->get());
-
 
     old = _neighborsInfo.neighborRight->get();
     if (old != 0) {

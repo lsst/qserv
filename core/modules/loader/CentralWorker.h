@@ -21,8 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  *
  */
-#ifndef LSST_QSERV_LOADER_CENTRAL_WORKER_H_
-#define LSST_QSERV_LOADER_CENTRAL_WORKER_H_
+#ifndef LSST_QSERV_LOADER_CENTRAL_WORKER_H
+#define LSST_QSERV_LOADER_CENTRAL_WORKER_H
 
 // system headers
 #include <boost/bind.hpp>
@@ -79,91 +79,145 @@ public:
     int getUdpPort() const { return _udpPort; }
     int getTcpPort() const { return _tcpPort; }
 
-    void registerWithMaster();
-
-    StringRange updateRangeWithLeftData(StringRange const& strRange);
-
-    bool workerInfoReceive(BufferUdp::Ptr const&  data);
-    bool workerKeyInsertReq(LoaderMsg const& inMsg, BufferUdp::Ptr const&  data);
-    bool workerKeyInfoReq(LoaderMsg const& inMsg, BufferUdp::Ptr const&  data);
-    bool workerWorkerKeysInfoReq(LoaderMsg const& inMsg, BufferUdp::Ptr const& data);
-    bool workerWorkerSetRightNeighbor(LoaderMsg const& inMsg, BufferUdp::Ptr const& data);
-    bool workerWorkerSetLeftNeighbor(LoaderMsg const& inMsg, BufferUdp::Ptr const& data);
-
-    bool isOurIdInvalid() const {
-        std::lock_guard<std::mutex> lck(_ourIdMtx);
-        return _ourIdInvalid;
-    }
-
-    bool setOurId(uint32_t id) {
-        std::lock_guard<std::mutex> lck(_ourIdMtx);
-        if (_ourIdInvalid) {
-            _ourId = id;
-            _ourIdInvalid = false;
-            return true;
-        } else {
-            /// TODO add error message, check if _ourId matches id
-            return false;
-        }
-    }
-
     uint32_t getOurId() const {
         std::lock_guard<std::mutex> lck(_ourIdMtx);
         return _ourId;
     }
 
-    std::string getOurLogId() const override;
+    /// Insert the keys in keyList into _keyValueMap, adjusting ranges
+    /// as needed.
+    /// @parameter mustSetMin should be set true if this is not the left
+    ///                       most worker. It causes the minimum value to
+    ///                       be set to the smallest key in _keyValueMap.
+    void insertKeys(std::vector<StringKeyPair> const& keyList, bool mustSetMin);
 
-    void testSendBadMessage();
+    /// @Return a list of the smallest keys from _keyValueMap. The keys are removed from
+    ///         from the map. Put keys are also put in _transferList in case the shift fails
+    ///         and they need to be put back into _keyValueMap.
+    /// TODO add argument for smallest or largest and code to build list from smallest or largest keys.
+    StringElement::UPtr buildKeyList(int keysToShift);
+
+    /////////////////////////////////////////////////////////////////////////////////
+    /// Methods to handle messages received from other servers.
+    /// 'inMsg' contains information about the originator of a request
+    ///         and the type of message.
+    /// 'data'  contains the message data.
+
+    /// Update our range with data from our left neighbor.
+    /// Our minimum key is their maximum key(exclusive).
+    /// @returns what it thinks the range of the left neighbor should be.
+    StringRange updateRangeWithLeftData(StringRange const& strRange);
+
+    /// Receive our name from the master. Returns true if successful.
+    bool workerInfoReceive(BufferUdp::Ptr const&  data);
+
+    /// Receive a request to insert a key value pair.
+    /// If the key value pair could not be inserted, it tries to forward the request appropriately.
+    /// @Returns true if the request could be parsed.
+    bool workerKeyInsertReq(LoaderMsg const& inMsg, BufferUdp::Ptr const&  data);
+
+    /// Receive a request to lookup a key value.
+    /// If the key is not within this worker's range, it tries to forward the request appropriately.
+    /// @Returns true if the request could be parsed.
+    bool workerKeyInfoReq(LoaderMsg const& inMsg, BufferUdp::Ptr const& data);
+
+    /// Receive a request for information about this worker's keys, how many key-value pairs are
+    /// stored and the range of keys the worker is responsible for.
+    /// @Returns true if the message could be parsed.
+    bool workerWorkerKeysInfoReq(LoaderMsg const& inMsg, BufferUdp::Ptr const& data);
+
+    /// Receive a message from the master providing the wId of our right neighbor.
+    bool workerWorkerSetRightNeighbor(LoaderMsg const& inMsg, BufferUdp::Ptr const& data);
+
+    /// Receive a message from the master providing the wId of our left neighbor.
+    bool workerWorkerSetLeftNeighbor(LoaderMsg const& inMsg, BufferUdp::Ptr const& data);
+
+    std::string getOurLogId() const override;
 
     std::unique_ptr<proto::WorkerKeysInfo> _workerKeysInfoBuilder(); // TODO make private
     void setNeighborInfoLeft(uint32_t wId, int keyCount, StringRange const& range);  // TODO make private
 
-    void insertKeys(std::vector<StringKeyPair> const& keyList, bool mustSetMin);
-
-    StringElement::UPtr buildKeyList(int keysToShift);
 
     /// @Return a string describing the first and last 'count' keys. count=0 dumps all keys.
     std::string dumpKeysStr(unsigned int count);
 
-
+    /// Called when our right neighbor indicates it is done with a shift FROMRIGHT
     void finishShiftFromRight();
-    void cancelShiftsFromRightNeighbor();
+
+    /// Called when there has been a problem with shifting with the left neighbor and changes
+    /// to _keyValueMap need to be undone.
+    void cancelShiftsWithLeftNeighbor();
+
+    /// Send a bad message for testing purposes.
+    void testSendBadMessage();
 
     friend CentralWorkerDoListItem;
 
 private:
-    void _registerWithMaster();
+    /// Add the _monitor DoListItem to the DoList
     void _startMonitoring();
 
+    /// Contact the master so it can provide this worker with an id. The master
+    /// will activate this worker when it is needed at a later time.
+    void _registerWithMaster();
+
+    /// @return true if our worker id is not valid.
+    bool _isOurIdInvalid() const {
+        std::lock_guard<std::mutex> lck(_ourIdMtx);
+        return _ourIdInvalid;
+    }
+
+    /// If ourId is invalid, set our id to id.
+    bool _setOurId(uint32_t id);
+
+    /// Disable this worker. Only to be used if the master has deemed
+    /// this worker as too unreliable and replaced it.
+    void _masterDisable();
+
+    /// This function is run to monitor this worker's status. It is used to
+    /// register with the master, connect and control shifting with the
+    /// the right neighbor.
     void _monitor();
+
+    /// Use the information from our right neighbor to set our key range.
     bool _determineRange();
-    bool _shiftIfNeeded(); ///< @Return true if data was shifted with the right neighbor.
+
+    /// If this worker has significantly more or fewer keys than its right neighbor,
+    /// shift keys between them to make a more even distribution.
+    /// @Return true if data was shifted with the right neighbor.
+    bool _shiftIfNeeded();
+
+    /// Attempt to shift keys to or from the right neighbor.
+    /// @parameter keysToShift is number of keys to shift.
+    /// @parameter direction is TO or FROM the right neighbor.
     void _shift(Direction direction, int keysToShift);
 
-    void _workerInfoReceive(std::unique_ptr<proto::WorkerListItem>& protoBuf);
+    void _workerInfoReceive(std::unique_ptr<proto::WorkerListItem>& protoBuf); ///< see workerInfoReceive()
 
+    /// See workerKeyInsertReq(...)
     void _workerKeyInsertReq(LoaderMsg const& inMsg, std::unique_ptr<proto::KeyInfoInsert>& protoBuf);
+    /// Forward a workerKeyInsertReq to an appropriate worker.
     void _forwardKeyInsertRequest(NetworkAddress const& targetAddr, LoaderMsg const& inMsg,
                                   std::unique_ptr<proto::KeyInfoInsert>& protoData);
 
+    /// See workerKeyInfoReq
     void _workerKeyInfoReq(LoaderMsg const& inMsg, std::unique_ptr<proto::KeyInfoInsert>& protoBuf);
+    /// Forward a workerKeyInfoReq to an appropriate worker.
     void _forwardKeyInfoRequest(WWorkerListItem::Ptr const& target, LoaderMsg const& inMsg,
                                 std::unique_ptr<proto::KeyInfoInsert> const& protoData);
 
+    /// See workerWorkerKeysInfoReq(...)
     void _workerWorkerKeysInfoReq(LoaderMsg const& inMsg);
+    /// Send information about our keys (range, number of pairs) to 'nAddr'.
     void _sendWorkerKeysInfo(NetworkAddress const& nAddr, uint64_t msgId);
 
-    void _removeOldEntries();
+    void _removeOldEntries(); ///< remove old entries from _recentAdds
 
-    void _rightConnect();
-    void _rightDisconnect();
+    void _rightConnect(); ///< Connect to the right neighbor
+    void _rightDisconnect(); ///< Disconnect from the right neighbor.
 
-    void _cancelShiftsToRightNeighbor();
-    void _finishShiftToRight();
-    void _restoreTransferListToRight();
-
-    void _restoreTransferListFromRight();
+    void _cancelShiftsWithRightNeighbor(); ///< Cancel shifts to/from the right neighbor.
+    void _finishShiftToRight(); ///< The shift to the right neighbor is complete, cleanup.
 
     const std::string        _hostName;
     const int                _udpPort;
@@ -178,12 +232,12 @@ private:
 
 
     StringRange _strRange; ///< range for this worker TODO _range both int and string;
-    std::map<std::string, ChunkSubchunk> _directorIdMap;
+    std::atomic<bool> _rangeChanged{false};
+    std::map<std::string, ChunkSubchunk> _keyValueMap;
     std::deque<std::chrono::system_clock::time_point> _recentAdds; ///< track how many keys added recently.
     std::chrono::milliseconds _recent{60 * 1000};
-    std::mutex _idMapMtx; ///< protects _strRange, _directorIdMap,
+    std::mutex _idMapMtx; ///< protects _strRange, _keyValueMap,
                           ///< _recentAdds, _transferListToRight, _transferListFromRight
-    std::atomic<bool> _rangeChanged{false};
 
     Neighbor _neighborLeft{Neighbor::LEFT};
     Neighbor _neighborRight{Neighbor::RIGHT};
@@ -198,15 +252,16 @@ private:
     double _thresholdNeighborShift{1.10}; ///< Shift if 10% more than neighbor TODO put in config file.
     int _maxKeysToShift{10000};
     std::vector<StringKeyPair> _transferListToRight; ///< List of items being transfered to right
-    std::vector<StringKeyPair> _transferListFromRight; ///< List of items being transfered to left
+    /// List of items being transfered to our left neighbor. (answering neighbor's FromRight request)
+    std::vector<StringKeyPair> _transferListWithLeft;
 
+    /// The DoListItem that makes sure _monitor() is run.
     std::shared_ptr<CentralWorkerDoListItem> _centralWorkerDoListItem;
-
 };
 
 
 /// This class exists to regularly call the CentralWorker::_monitor() function, which
-/// does things like monitor TCP connections.
+/// does things like monitor TCP connections and control shifting with the right neighbor.
 class CentralWorkerDoListItem : public DoListItem {
 public:
     CentralWorkerDoListItem() = delete;
@@ -233,6 +288,5 @@ private:
 
 }}} // namespace lsst::qserv::loader
 
-
-#endif // LSST_QSERV_LOADER_CENTRAL_WORKER_H_
+#endif // LSST_QSERV_LOADER_CENTRAL_WORKER_H
 
