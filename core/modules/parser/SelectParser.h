@@ -72,6 +72,10 @@ public:
     /// Does not throw.
     static Ptr newInstance(std::string const& statement, AntlrVersion v);
 
+    /// Convenience function to get a SelectStatement.
+    /// This function calls SelectParser::setup; so it may throw any exception thrown by that function.
+    static std::shared_ptr<query::SelectStmt> makeSelectStmt(std::string const& statement, AntlrVersion v);
+
     /// Setup the parser and parse into a SelectStmt
     /// May throw a ParseException (including adapter_order_error and adapter_execution_error)
     void setup();
