@@ -506,6 +506,7 @@ static const std::vector< std::string > QUERIES = {
     "select objectId from Object where zFlags is NOT NULL;",    // IS NOT NULL
     "select objectId, iRadius_SG, ra_PS, decl_PS from Object where iRadius_SG > .5 AND ra_PS < 2 AND decl_PS < 3;", // AND
     "select objectId from Object where objectId < 400000000000000 OR objectId > 430000000000000 ORDER BY objectId", // OR
+    "SELECT objectId from Object where ra_PS/2 > 1", // '/'
 };
 
 
@@ -806,6 +807,22 @@ static const std::vector<Antlr4CompareQueries> ANTLR4_COMPARE_QUERIES = {
         },
         "SELECT objectId,(ra_PS MOD 3),decl_PS FROM Object WHERE (ra_PS MOD 3)>1.5"
     ),
+
+    // tests the DIV operator
+    Antlr4CompareQueries(
+        "SELECT objectId from Object where ra_PS DIV 2 > 1",
+        "SELECT objectId from Object where ra_PS/2 > 1",
+        [](query::SelectStmt::Ptr const & selectStatement) {
+              auto orTerm = std::dynamic_pointer_cast<query::OrTerm>(selectStatement->getWhereClause().getRootTerm());
+              auto andTerm = std::dynamic_pointer_cast<query::AndTerm>(orTerm->_terms[0]);
+              auto boolFactor = std::dynamic_pointer_cast<query::BoolFactor>(andTerm->_terms[0]);
+              auto compPredicate = std::dynamic_pointer_cast<query::CompPredicate>(boolFactor->_terms[0]);
+              query::ValueExpr::FactorOp& factorOp = compPredicate->left->getFactorOpsRef()[0];
+              factorOp.op = query::ValueExpr::DIV;
+        },
+        "SELECT objectId FROM Object WHERE (ra_PS DIV 2)>1"
+    ),
+
 };
 
 
