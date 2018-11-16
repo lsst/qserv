@@ -484,6 +484,9 @@ static const std::vector< std::string > QUERIES = {
 
     // DM-16407
     "select shortName from Filter where shortName LIKE 'Z'",
+
+    // DM-16532; this verifies that dotted IDs work for table+column ids. quoted dotted IDs are tested in the antlr4 test, below.
+    "SELECT Source.sourceId, Source.objectId From Source WHERE Source.objectId IN (386942193651348) ORDER BY Source.sourceId;"
 };
 
 
@@ -674,6 +677,14 @@ static const std::vector<Antlr4CompareQueries> ANTLR4_COMPARE_QUERIES = {
             likePredicate->hasNot = true;
         },
         "SELECT shortName FROM Filter WHERE shortName NOT LIKE 'Z'"
+    ),
+
+    // tests quoted IDs
+    Antlr4CompareQueries(
+        "SELECT `Source`.`sourceId`, `Source`.`objectId` From Source WHERE `Source`.`objectId` IN (386942193651348) ORDER BY `Source`.`sourceId`",
+        "SELECT Source.sourceId, Source.objectId From Source WHERE Source.objectId IN (386942193651348) ORDER BY Source.sourceId",
+        nullptr,
+        "SELECT Source.sourceId,Source.objectId FROM Source WHERE Source.objectId IN(386942193651348) ORDER BY Source.sourceId"
     ),
 };
 

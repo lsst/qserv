@@ -2056,30 +2056,33 @@ public:
 
 
 class DottedIdAdapter :
-        public AdapterT<DottedIdCBH, QSMySqlParser::DottedIdContext> {
+        public AdapterT<DottedIdCBH, QSMySqlParser::DottedIdContext>,
+        public UidCBH {
 public:
     using AdapterT::AdapterT;
 
     void checkContext() const override {
-        // no context checking is done here; the text of the ID is fetched from the context and passed to the
-        // handler.
+        assertExecutionCondition(__FUNCTION__, (_ctx->DOT_ID() != nullptr) != (_ctx->uid() != nullptr),
+                "Context check failure: exactly one of DOT_ID and uid should be non-null.", _ctx);
+    }
+
+    void handleUid(string const & string) override {
+        _id = string;
     }
 
     void onExit() override {
-        // currently the on kind of callback we receive here seems to be the `: DOT_ID` form, which is defined
-        // as `'.' ID_LITERAL;`. This means that we have to extract the value from the DOT_ID; we will not be
-        //called by a child with the string portion, the ID_LITERAL.
-        // I suppose at some point the antlr4 evaulation will try to use the `'.' uid` form, at which point
-        // this will have to become a UidCBH. At that point some checking shoudl be applied; we would not
-        // expect both forms to be used in one instantiation of this adapter. In the meantime, we only attempt
-        // to extract the ID_LITERAL and call our parent with that.
-        string txt = _ctx->getText();
-        assertExecutionCondition(__FUNCTION__, txt.find('.') == 0, "DottedId text is expected to start with a dot", _ctx);
-        txt.erase(0, 1);
-        lockedParent()->handleDottedId(txt);
+        if (_id.empty()) {
+            _id = _ctx->getText();
+            assertExecutionCondition(__FUNCTION__, _id.find('.') == 0, "DOT_ID text is expected to start with a dot", _ctx);
+            _id.erase(0, 1);
+        }
+        lockedParent()->handleDottedId(_id);
     }
 
     string name() const override { return getTypeName(this); }
+
+private:
+    string _id;
 };
 
 
@@ -2165,6 +2168,10 @@ public:
                    "If value is not set by callback then one of the terminal nodes should be populated.",
                     _ctx);
             _val = _ctx->getText();
+            assertExecutionCondition(__FUNCTION__, (_val.find('`') == 0) && (_val.rfind('`') == _val.size()-1),
+                    "REVERSE QUOTE values should begin and end with a backtick(`).", _ctx);
+            _val.erase(_val.begin());
+            _val.erase(--(_val.end()));
         }
         assertNotSupported(__FUNCTION__, _val.find('_') != 0,
                 "Identifiers in Qserv may not start with an underscore.", _ctx);
