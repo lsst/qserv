@@ -21,8 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  *
  */
-#ifndef LSST_QSERV_LOADER_CENTRAL_CLIENT_H_
-#define LSST_QSERV_LOADER_CENTRAL_CLIENT_H_
+#ifndef LSST_QSERV_LOADER_CENTRAL_CLIENT_H
+#define LSST_QSERV_LOADER_CENTRAL_CLIENT_H
 
 // system headers
 #include <thread>
@@ -63,7 +63,7 @@ public:
 
 /// This class is 'Central' to the client. The client maintains a UDP port
 /// so replies to its request can be sent directly back to it.
-/// 'Central' provides a DoList for handling requests.
+/// 'Central' provides access to the master and a DoList for handling requests.
 /// TODO Maybe base this on CentralWorker or have a common base class?
 class CentralClient : public Central {
 public:
@@ -162,4 +162,4 @@ private:
 
 }}} // namespace lsst::qserv::loader
 
-#endif // LSST_QSERV_LOADER_CENTRAL_CLIENT_H_
+#endif // LSST_QSERV_LOADER_CENTRAL_CLIENT_H

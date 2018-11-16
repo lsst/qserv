@@ -183,7 +183,7 @@ void TcpBaseConnection::shutdown() {
 void TcpBaseConnection::_freeConnect() {
     auto centralW = _serverTcpBase->getCentralWorker();
     if (centralW != nullptr) {
-        centralW->cancelShiftsFromRightNeighbor();
+        centralW->cancelShiftsWithLeftNeighbor();
     }
     _serverTcpBase->freeConnection(shared_from_this());
 }
