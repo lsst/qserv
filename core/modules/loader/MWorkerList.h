@@ -184,13 +184,13 @@ public:
     /// Nearly the same on Worker and Master
     size_t getNameMapSize() {
         std::lock_guard<std::mutex> lck(_mapMtx);
-        return _nameMap.size();
+        return _wIdMap.size();
     }
 
-    MWorkerListItem::Ptr getWorkerNamed(uint32_t name) {
+    MWorkerListItem::Ptr getWorkerWithId(uint32_t id) {
         std::lock_guard<std::mutex> lck(_mapMtx);
-        auto iter = _nameMap.find(name);
-        if (iter == _nameMap.end()) { return nullptr; }
+        auto iter = _wIdMap.find(id);
+        if (iter == _wIdMap.end()) { return nullptr; }
         return iter->second;
     }
 
@@ -204,7 +204,7 @@ protected:
     void _flagListChange();
 
     CentralMaster* _central;
-    std::map<uint32_t, MWorkerListItem::Ptr> _nameMap;
+    std::map<uint32_t, MWorkerListItem::Ptr> _wIdMap;
     std::map<NetworkAddress, MWorkerListItem::Ptr> _ipMap;
     bool _wListChanged{false}; ///< true if the list has changed
     BufferUdp::Ptr _stateListData; ///< message

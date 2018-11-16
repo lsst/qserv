@@ -56,6 +56,10 @@ public:
         _server = std::make_shared<MasterServer>(ioService, masterHostName_, masterPort_, this);
     }
 
+    CentralMaster() = delete;
+    CentralMaster(CentralMaster const&) = delete;
+    CentralMaster& operator=(CentralMaster const&) = delete;
+
     ~CentralMaster() override { _mWorkerList.reset(); }
 
     void setMaxKeysPerWorker(int val) { _maxKeysPerWorker = val; }
@@ -69,8 +73,8 @@ public:
 
     MWorkerList::Ptr getWorkerList() const { return _mWorkerList; }
 
-    void reqWorkerKeysInfo(uint64_t msgId, std::string const& ip, short port,
-                          std::string const& ourHostName, short ourPort);
+    void reqWorkerKeysInfo(uint64_t msgId, std::string const& targetIp, short targetPort,
+                           std::string const& ourHostName, short ourPort);
 
     std::string getOurLogId() const override { return "master"; }
 
