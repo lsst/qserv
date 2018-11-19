@@ -174,7 +174,7 @@ void WorkerProcessor::stop() {
         }
 
         // Begin transitioning to the final state via this intermediate one.
-        // The transition will finish asynchronious when all threads will report
+        // The transition will finish asynchronous when all threads will report
         // desired changes in their states.
 
         _state = STATE_IS_STOPPING;
@@ -222,7 +222,7 @@ void WorkerProcessor::enqueueForReplication(
 
     // The code below may catch exceptions if other parameters of the requites
     // won't pass further validation against the present configuration of the request
-    // procesisng service.
+    // processing service.
     try {
         auto const ptr = _requestFactory.createReplicationRequest(
             _worker,
@@ -273,7 +273,7 @@ void WorkerProcessor::enqueueForDeletion(std::string const& id,
 
     // The code below may catch exceptions if other parameters of the requites
     // won't pass further validation against the present configuration of the request
-    // procesisng service.
+    // processing service.
     try {
         auto const ptr = _requestFactory.createDeleteRequest(
             _worker,
@@ -313,7 +313,7 @@ void WorkerProcessor::enqueueForFind(std::string const& id,
 
     // The code below may catch exceptions if other parameters of the requites
     // won't pass further validation against the present configuration of the request
-    // procesisng service.
+    // processing service.
     try {
         auto const ptr = _requestFactory.createFindRequest(
             _worker,
@@ -352,7 +352,7 @@ void WorkerProcessor::enqueueForFindAll(std::string const& id,
 
     // The code below may catch exceptions if other parameters of the requites
     // won't pass further validation against the present configuration of the request
-    // procesisng service.
+    // processing service.
     try {
         auto const ptr = _requestFactory.createFindAllRequest(
             _worker,
@@ -406,7 +406,7 @@ void WorkerProcessor::enqueueForEcho(std::string const& id,
 
     // The code below may catch exceptions if other parameters of the requites
     // won't pass further validation against the present configuration of the request
-    // procesisng service.
+    // processing service.
 
     try {
         auto const ptr = _requestFactory.createEchoRequest(
@@ -480,7 +480,7 @@ WorkerRequest::Ptr WorkerProcessor::dequeueOrCancelImpl(util::Lock const& lock,
             // will take care of moving the request into the final queue when
             // the cancellation will finish.
             //
-            // At the ment time we just notify the client about the cancelattion status
+            // At the meant time we just notify the client about the cancellation status
             // of the request and let it come back later to check the updated status.
 
             ptr->cancel();
@@ -493,7 +493,7 @@ WorkerRequest::Ptr WorkerProcessor::dequeueOrCancelImpl(util::Lock const& lock,
                 case WorkerRequest::STATUS_IS_CANCELLING:
 
                 // The following two states are also allowed here because
-                // in-progress requests are still alowed to progress to the completed
+                // in-progress requests are still allowed to progress to the completed
                 // states before reporting their new state via method:
                 //    WorkerProcessor::processingFinished()
                 // Sometimes, the request just can't finish this in time due to
@@ -552,7 +552,7 @@ WorkerRequest::Ptr WorkerProcessor::checkStatusImpl(util::Lock const& lock,
         if (ptr->id() == id) {
             switch (ptr->status()) {
 
-                // This state requirement is strict for the non-active requsts
+                // This state requirement is strict for the non-active requests
                 case WorkerRequest::STATUS_NONE:
                     return ptr;
 
@@ -576,7 +576,7 @@ WorkerRequest::Ptr WorkerProcessor::checkStatusImpl(util::Lock const& lock,
                 case WorkerRequest::STATUS_IN_PROGRESS:
 
                 // The following three states are also allowed here because
-                // in-progress requests are still alowed to progress to the completed
+                // in-progress requests are still allowed to progress to the completed
                 // states before reporting their new state via method:
                 //    WorkerProcessor::processingFinished()
                 // Sometimes, the request just can't finish this in time due to
@@ -604,7 +604,7 @@ WorkerRequest::Ptr WorkerProcessor::checkStatusImpl(util::Lock const& lock,
         if (ptr->id() == id) {
             switch (ptr->status()) {
 
-                /* This state requirement is strict for the completed requsts */
+                /* This state requirement is strict for the completed requests */
                 case WorkerRequest::STATUS_CANCELLED:
                 case WorkerRequest::STATUS_SUCCEEDED:
                 case WorkerRequest::STATUS_FAILED:
@@ -825,7 +825,7 @@ void WorkerProcessor::processorThreadStopped(
 
     if (_state == STATE_IS_STOPPING) {
 
-        // Complete state transition if all threds are stopped
+        // Complete state transition if all threads are stopped
 
         for (auto&& t: _threads) {
             if (t->isRunning()) return;

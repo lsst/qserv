@@ -29,7 +29,7 @@
 #include <map>
 #include <string>
 
-// Tird party headers
+// Third party headers
 #include <boost/filesystem.hpp>
 
 // Qserv headers
@@ -50,7 +50,7 @@ class FileClient;
 
 /**
   * Class WorkerReplicationRequest represents a context and a state of replication
-  * requsts within the worker servers. It can also be used for testing the framework
+  * requests within the worker servers. It can also be used for testing the framework
   * operation as its implementation won't make any changes to any files or databases.
   *
   * Real implementations of the request processing must derive from this class.
@@ -95,7 +95,7 @@ public:
     /// Destructor
     ~WorkerReplicationRequest() override = default;
 
-    // Trivial accessors
+    // Trivial get methods
 
     std::string const& database() const { return _database; }
 
@@ -106,7 +106,8 @@ public:
     /**
      * Extract request status into the Protobuf response object.
      *
-     * @param response - Protobuf response to be initialized
+     * @param response
+     *   Protobuf response to be initialized
      */
     void setInfo(proto::ReplicationResponseReplicate& response) const;
 
@@ -135,7 +136,7 @@ protected:
     /// The name of a database
     std::string const _database;
 
-    /// Teh number of a chunk
+    /// The number of a chunk
     unsigned int const _chunk;
 
     /// The name of a source worker for a new replica
@@ -301,10 +302,10 @@ private:
     bool finalize(util::Lock const& lock);
 
     /**
-     * Close connections, deallocate resources, etc.
+     * Close connections, de-allocate resources, etc.
      *
      * Any connections and open files will be closed, the buffers will be
-     * released to prevent unneccesary resource utilization. Note that
+     * released to prevent unnecessary resource utilization. Note that
      * request objects can stay in the server's memory for an extended
      * period of time.
      *
@@ -331,7 +332,7 @@ private:
     DatabaseInfo const _databaseInfo;
 
     /// The flag indicating if the initialization phase of the operation
-    /// has alreadty completed
+    /// has already completed
     bool _initialized;
 
     /// Short names of files to be copied
@@ -349,7 +350,7 @@ private:
     /// The file pointer for the temporary output file
     std::FILE* _tmpFilePtr;
 
-    /// The FileDescr struct encapsulates various parameters of a file
+    /// The FileDescr structure encapsulates various parameters of a file
     struct FileDescr {
 
         /// The input file size as reported by a remote server
@@ -368,8 +369,8 @@ private:
         /// The absolute path of a temporary file at a local directory.
         boost::filesystem::path tmpFile;
 
-        /// The final (canonic) file name the temporary file will be renamed intp
-        /// upon a successfull completion of the operation.
+        /// The final (canonic) file name the temporary file will be renamed as
+        /// upon a successful completion of the operation.
         boost::filesystem::path outFile;
 
         /// When the file transfer started
@@ -380,10 +381,10 @@ private:
     };
 
     /// Cached file descriptions mapping from short file names into
-    /// the corresponidng parameters
+    /// the corresponding parameters
     std::map<std::string, FileDescr> _file2descr;
 
-    /// The buffer for storying file payload read from a remote file service
+    /// The buffer for storing file payload read from a remote file service
     uint8_t* _buf;
 
     /// The size of the buffer

@@ -94,7 +94,7 @@ void WorkerFindAllRequest::setInfo(proto::ReplicationResponseFindAll& response) 
 
     // Note that a new Info object is allocated and appended to
     // the 'replica_info_many' series at each step of the iteration below.
-    // The protobuf runtime will take care of deleting those objects.
+    // The Protobuf run-time will take care of deleting those objects.
 
     for (auto&& replicaInfo: _replicaInfoCollection) {
         proto::ReplicationReplicaInfo* info = response.add_replica_info_many();

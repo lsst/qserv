@@ -38,8 +38,8 @@ namespace replica {
  * The SuccessRateGenerator provides a facility for generating a sequence
  * of random boolean values which can be used for simulating Success/Failure
  * scenarios. An implementation of the class is based on the uniform distribution.
- * True values returned by the genrator are interpreted as 'success'. The probability
- * density ('success rate') is specified through the constructr of
+ * True values returned by the generator are interpreted as 'success'. The probability
+ * density ("success rate") is specified through the constructor of
  * the class.
  *
  * THREAD SAFETY: the generator is thread-safe.
@@ -87,7 +87,7 @@ private:
     std::bernoulli_distribution _distr;
 
     /// The mutex is for synchronized update of the object's state
-    /// within a multithreaded environment.
+    /// within a multi-threaded environment.
     mutable util::Mutex _generatorMtx;
 };
 

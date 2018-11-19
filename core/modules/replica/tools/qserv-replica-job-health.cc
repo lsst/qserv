@@ -93,7 +93,7 @@ bool test() {
         };
 
         //////////////////////////////
-        // Analyse and display results
+        // Analyze and display results
 
         std::cout
             << "ClusterHealth job finished: " << job->state2string() << std::endl;

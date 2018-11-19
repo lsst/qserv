@@ -72,13 +72,13 @@ public:
     /// @return a pointer onto a buffer with a serialized request
     std::shared_ptr<ProtocolBuffer> const& requestBufferPtr() const { return _requestBufferPtr; }
 
-    ///  @return a non-const reference to buffer for receiving responses from a worker
+    ///  @return a non-constant reference to buffer for receiving responses from a worker
     ProtocolBuffer& responseBuffer() { return _responseBuffer; }
 
     /**
      * Update the completion status of a request to 'success'.
      *
-     * This method is supposed to be called upon a successful comoletion of a request
+     * This method is supposed to be called upon a successful completion of a request
      * after a valid response is received from a worker and before notifying
      * a subscriber.
      *
@@ -95,11 +95,11 @@ protected:
 
     /**
      * Construct the object in the default failed (member 'success') state. Hence, there is no
-     * need to set this state explicitly unless a transaction turnes out to be
+     * need to set this state explicitly unless a transaction turns out to be
      * a success.
      *
      * @param id_                         - a unique identifier of the request
-     * @param requestBufferPtr_           - an input buffer with seriealized request
+     * @param requestBufferPtr_           - an input buffer with serialized request
      * @param responseBufferCapacityBytes - the initial size of the response buffer
      */
     MessageWrapperBase(std::string const& id_,
@@ -152,9 +152,9 @@ public:
      * The constructor
      *
      * @param id                          - a unique identifier of the request
-     * @param requestBufferPtr            - a request serielized into a network buffer
+     * @param requestBufferPtr            - a request serialized into a network buffer
      * @param responseBufferCapacityBytes - the initial size of the response buffer
-     * @param onFinish                    - an asynchronious callback function called upon
+     * @param onFinish                    - an asynchronous callback function called upon
      *                                      a completion or failure of the operation
      */
     MessageWrapper(std::string const& id,
@@ -205,11 +205,11 @@ private:
  *   when performing internal state transitions.
  *
  * - to avoid deadlocks, only externally called methods of the public API (such
- *   as the ones for sending or cancelling requests) and assynchronious callbacks
+ *   as the ones for sending or cancelling requests) and asynchronous callbacks
  *   are locking the mutex. Those methods are NOT allowed to call each other.
  *   Otherwise deadlocks are imminent.
  *
- * - private methods (where a state transition occures or which are relying
+ * - private methods (where a state transition occurs or which are relying
  *   on specific states) are required to be called with a reference to
  *   the lock acquired prior to the calls.
  */
@@ -238,7 +238,7 @@ public:
      *
      * @param serviceProvider  - a host of services for various communications
      * @param io_service       - the I/O service for communication. The lifespan of
-     *                           the object must exceed the one of this instanc.
+     *                           the object must exceed the one of this instance.
      * @param worker           - the name of a worker
      *
      * @return pointer to the created object
@@ -255,14 +255,14 @@ public:
     /**
      * Initiate sending a message
      *
-     * The response message will be initialized only in case of successfull completion
+     * The response message will be initialized only in case of successful completion
      * of the transaction. The method may throw exception std::logic_error if
      * the MessangerConnector already has another transaction registered with the same
      * transaction 'id'.
      *
      * @param id                - a unique identifier of a request
-     * @param requestBufferPtr  - a request serielized into a network buffer
-     * @param onFinish          - an asynchronious callback function called upon a completion
+     * @param requestBufferPtr  - a request serialized into a network buffer
+     * @param onFinish          - an asynchronous callback function called upon a completion
      *                            or failure of the operation
      */
     template <class RESPONSE_TYPE>
@@ -284,7 +284,7 @@ public:
      * If this call succeeds there won't be any 'onFinish' callback made
      * as provided to the 'onFinish' method in method 'send'.
      *
-     * The method may throw std::logic_error if the Messanger doesn't have
+     * The method may throw std::logic_error if the Messenger doesn't have
      * a transaction registered with the specified transaction 'id'.
      *
      * @param id  - a unique identifier of a request
@@ -292,7 +292,7 @@ public:
     void cancel(std::string const& id);
 
     /**
-     * Return 'true' if the specified requst is known to the Messenger
+     * Return 'true' if the specified request is known to the Messenger
      *
      * @param id - a unique identifier of a request
      */
@@ -350,7 +350,7 @@ private:
     void resolve(util::Lock const& lock);
 
     /**
-     * Callback handler for the asynchronious operation
+     * Callback handler for the asynchronous operation
      *
      * @param ec   - error code to be checked
      * @param iter - the host resolver iterator
@@ -367,8 +367,8 @@ private:
                  boost::asio::ip::tcp::resolver::iterator iter);
 
     /**
-     * Callback handler for the asynchronious operation upon its
-     * successfull completion will trigger a request-specific
+     * Callback handler for the asynchronous operation upon its
+     * successful completion will trigger a request-specific
      * protocol sequence.
      *
      * @param ec   - error code to be checked
@@ -403,7 +403,7 @@ private:
      * Callback handler fired upon a completion of the request sending
      *
      * @param ec                 - error code to be checked
-     * @param bytes_transferred  - the numner of bytes sent
+     * @param bytes_transferred  - the number of bytes sent
      */
     void requestSent(boost::system::error_code const& ec,
                      size_t bytes_transferred);
@@ -419,13 +419,13 @@ private:
      * Callback handler fired upon a completion of the response receiving
      *
      * @param ec                 - error code to be checked
-     * @param bytes_transferred  - the numner of bytes sent
+     * @param bytes_transferred  - the number of bytes sent
      */
     void responseReceived(boost::system::error_code const& ec,
                           size_t bytes_transferred);
 
     /**
-     * Synchroniously read a protocol frame which carries the length
+     * Synchronously read a protocol frame which carries the length
      * of a subsequent message and return that length along with the completion
      * status of the operation.
      *
@@ -440,8 +440,8 @@ private:
                                             size_t& bytes);
 
    /**
-     * Synchriniously read a response header of a known size. Then parse it
-     * and analyze it to ensure its content matches expecations. Return
+     * Synchronously read a response header of a known size. Then parse it
+     * and analyze it to ensure its content matches expectations. Return
      * the completion status of the operation.
      *
      * The method will throw exception std::logic_error if the header's
@@ -449,7 +449,7 @@ private:
      *
      * @param lock  - a lock on a mutex must be acquired before calling this method
      * @param buf   - the buffer to use
-     * @param bytes - a expected length of the message (obtained from a preceeding frame)
+     * @param bytes - a expected length of the message (obtained from a preceding frame)
      *                to be received into the network buffer from the network.
      * @param id    - a unique identifier of a request to match the 'id' in a response header
      *
@@ -461,13 +461,13 @@ private:
                                                    std::string const& id);
 
     /**
-     * Synchriniously read a message of a known size into the specified buffer.
-     * Return the completion status of the operation. After the successfull
+     * Synchronously read a message of a known size into the specified buffer.
+     * Return the completion status of the operation. After the successful
      * completion of the operation the content of the network buffer can be parsed.
      *
      * @param lock  - a lock on a mutex must be acquired before calling this method
      * @param buf   - the buffer to use
-     * @param bytes - a expected length of the message (obtained from a preceeding frame)
+     * @param bytes - a expected length of the message (obtained from a preceding frame)
      *                to be received into the network buffer from the network.
      *
      * @return the completion code of the operation
@@ -479,10 +479,9 @@ private:
     /**
      * Return 'true' if the operation was aborted.
      *
-     * USAGE NOTES:
-     *
-     *    Nomally this method is supposed to be called as the first action
-     *    within asynchronous handlers to figure out if an on-going aynchronous
+     * @note:
+     *    Normally this method is supposed to be called as the first action
+     *    within asynchronous handlers to figure out if an on-going asynchronous
      *    operation was cancelled for some reason. Should this be the case
      *    the caller is supposed to quit right away. It will be up to a code
      *    which initiated the abort to take care of putting the object into
@@ -530,7 +529,7 @@ private:
     boost::asio::deadline_timer    _timer;
 
     /// This mutex is meant to avoid race conditions to the internal data
-    /// structure between a thread which runs the Ntework I/O service
+    /// structure between a thread which runs the Netework I/O service
     /// and threads submitting requests.
     mutable util::Mutex _mtx;
 

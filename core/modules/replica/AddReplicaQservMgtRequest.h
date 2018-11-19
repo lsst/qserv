@@ -50,7 +50,7 @@ public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<AddReplicaQservMgtRequest> Ptr;
 
-    /// The function type for notifications on the completon of the request
+    /// The function type for notifications on the completion of the request
     typedef std::function<void(Ptr)> CallbackType;
 
     // Default construction and copy semantics are prohibited
@@ -111,21 +111,21 @@ private:
                               CallbackType const& onFinish);
 
     /**
-      * Implememnt the corresponding method of the base class
+      * Implement the corresponding method of the base class
       *
       * @see QservMgtRequest::startImpl
       */
     void startImpl(util::Lock const& lock) final;
 
     /**
-      * Implememnt the corresponding method of the base class
+      * Implement the corresponding method of the base class
       *
       * @see QservMgtRequest::finishImpl
       */
     void finishImpl(util::Lock const& lock) final;
 
     /**
-      * Implememnt the corresponding method of the base class
+      * Implement the corresponding method of the base class
       *
       * @see QservMgtRequest::notify
       */

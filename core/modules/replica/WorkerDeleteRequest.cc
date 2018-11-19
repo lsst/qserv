@@ -100,8 +100,8 @@ void WorkerDeleteRequest::setInfo(proto::ReplicationResponseDelete& response) co
 
     response.set_allocated_target_performance(performance().info());
 
-    // Note the ownership transfer of an intermediate protobuf object obtained
-    // from ReplicaInfo object in the call below. The protobuf runtime will take
+    // Note the ownership transfer of an intermediate Protobuf object obtained
+    // from ReplicaInfo object in the call below. The Protobuf run-time will take
     // care of deleting the intermediate object.
 
     response.set_allocated_replica_info(_replicaInfo.info());

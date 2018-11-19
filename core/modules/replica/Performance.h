@@ -50,7 +50,7 @@ namespace qserv {
 namespace replica {
 
 /**
- * Struct PerformanceUtils provides utilities shared by all classes in this scope
+ * Structure PerformanceUtils provides utilities shared by all classes in this scope
  */
 struct PerformanceUtils {
 
@@ -59,7 +59,7 @@ struct PerformanceUtils {
 };
 
 /**
- * Class Performance encapculates controller-side performance counters of requests
+ * Class Performance encapsulates controller-side performance counters of requests
  * 
  * The counters are meant for tracking requests progression over time.
  * All time counters are expressed in milliseconds since Epoch.
@@ -72,7 +72,7 @@ public:
     /**
      * The default constructor
      *
-     * All (but the request creation one) timestamps will be initialized wih 0.
+     * All (but the request creation one) timestamps will be initialized with 0.
      */
     Performance();
     
@@ -116,7 +116,7 @@ public:
     /// Execution started by a worker service
     uint64_t w_start_time;
 
-    /// Execution fiished by a worker service
+    /// Execution finished by a worker service
     uint64_t w_finish_time;
 
     /// A subscriber notified by the Controller
@@ -141,7 +141,7 @@ public:
     /**
      * The default constructor
      *
-     * All (but the request 'receive' one) timestamps will be initialized wih 0.
+     * All (but the request 'receive' one) timestamps will be initialized with 0.
      */
     WorkerPerformance();
     
@@ -165,7 +165,7 @@ public:
     uint64_t setUpdateFinish();
 
     /**
-     * @return a protobuf object
+     * @return a Protobuf object
      *
      * OWNERSHIP TRANSFER NOTE: this method allocates a new object and
      * returns a pointer along with its ownership.
@@ -180,7 +180,7 @@ public:
     /// Execution started by a worker service
     uint64_t start_time;
 
-    /// Execution fiished by a worker service
+    /// Execution finished by a worker service
     uint64_t finish_time;
 };
 

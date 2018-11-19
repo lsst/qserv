@@ -334,8 +334,8 @@ void CreateReplicaJob::onRequestFinish(ReplicationRequest::Ptr const& request) {
     // IMPORTANT: the final state is required to be tested twice. The first time
     // it's done in order to avoid deadlock on the "in-flight" requests reporting
     // their completion while the job termination is in a progress. And the second
-    // test is made after acquering the lock to recheck the state in case if it
-    // has transitioned while acquering the lock.
+    // test is made after acquiring the lock to recheck the state in case if it
+    // has transitioned while acquiring the lock.
     
     if (state() == State::FINISHED) return;
 
@@ -362,13 +362,13 @@ void CreateReplicaJob::onRequestFinish(ReplicationRequest::Ptr const& request) {
     if (numFinished == numLaunched) {
         if (numSuccess == numLaunched) {
 
-            // Notify Qserv about the change in a disposposition of replicas.
+            // Notify Qserv about the change in a disposition of replicas.
             //
             // ATTENTION: only for ACTUALLY participating databases
             //
             // NOTE: The current implementation will not be affected by a result
             //       of the operation. Neither any upstream notifications will be
-            //       sent to a requestor of this job.
+            //       sent to a requester of this job.
 
             std::vector<std::string> databases;
             for (auto&& databaseEntry: _replicaData.chunks[chunk()]) {

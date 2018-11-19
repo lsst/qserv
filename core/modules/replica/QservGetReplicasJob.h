@@ -47,16 +47,16 @@ namespace replica {
  */
 struct QservGetReplicasJobResult {
 
-    /// Per-worker flags indicating if the corresponidng replica retreival
+    /// Per-worker flags indicating if the corresponding replica retrieval
     /// request succeeded.
     std::map<std::string, bool> workers;
 
-    /// Results groupped by:
+    /// Results grouped by:
     ///
     ///   [worker]
     std::map<std::string, QservReplicaCollection> replicas;
 
-    /// Results groupped by:
+    /// Results grouped by:
     ///
     ///   [chunk][database][worker]
     ///
@@ -76,7 +76,7 @@ public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<QservGetReplicasJob> Ptr;
 
-    /// The function type for notifications on the completon of the request
+    /// The function type for notifications on the completion of the request
     typedef std::function<void(Ptr)> CallbackType;
 
     /// @return default options object for this type of a request
@@ -88,7 +88,7 @@ public:
      * low-level pointers).
      *
      * @param databaseFamily - name of a database family
-     * @param inUseOnly      - return replicas which're presently in use
+     * @param inUseOnly      - return replicas which are presently in use
      * @param controller     - for launching requests
      * @param parentJobId    - (optional) identifier of a parent job
      * @param onFinish       - (optional) callback function to be called upon a job completion
@@ -129,7 +129,7 @@ public:
      *   finished. Please, verify the primary and extended status of the object
      *   to ensure that all requests have finished.
      *
-     * @throws std::logic_error - if the job dodn't finished at a time
+     * @throws std::logic_error - if the job didn't finished at a time
      *         when the method was called
      */
     QservGetReplicasJobResult const& getReplicaData() const;
@@ -169,7 +169,7 @@ protected:
     void notify(util::Lock const& lock) final;
 
     /**
-     * The calback function to be invoked on a completion of each request.
+     * The callback function to be invoked on a completion of each request.
      *
      * @param request - a pointer to a request
      */

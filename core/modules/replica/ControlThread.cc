@@ -123,7 +123,7 @@ void ControlThread::_startImpl() {
 
     // By design of this class, any but ControlThreadStopped exceptions thrown
     // by a subclass-specific method called below will be interpreted as
-    // the "abnormal" termination condition to be reported via an optinal
+    // the "abnormal" termination condition to be reported via an optional
     // callback.
 
     bool terminated = false;

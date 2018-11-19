@@ -39,7 +39,7 @@ namespace replica {
 
 /**
   * Class WorkerDeleteRequest represents a context and a state of replica deletion
-  * requsts within the worker servers. It can also be used for testing the framework
+  * requests within the worker servers. It can also be used for testing the framework
   * operation as its implementation won't make any changes to any files or databases.
   *
   * Real implementations of the request processing must derive from this class.
@@ -81,7 +81,7 @@ public:
 
     ~WorkerDeleteRequest() override = default;
 
-    // Trivial accessors
+    // Trivial get methods
 
     std::string const& database() const { return _database; }
 

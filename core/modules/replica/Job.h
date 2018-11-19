@@ -70,7 +70,7 @@ public:
         /// The job is in a progress
         IN_PROGRESS,
 
-        /// The job is finihed. See extended status for more details
+        /// The job is finished. See extended status for more details
         /// (the completion status, etc.)
         FINISHED
     };
@@ -172,7 +172,7 @@ public:
 
     /**
      * @return a start time (milliseconds since UNIX Epoch) or 0 before method start()
-     * is called to actually begin wexecuting the job.
+     * is called to actually begin executing the job.
      */
     uint64_t beginTime() const { return _beginTime; }
 
@@ -219,8 +219,8 @@ protected:
      * @param exclusive   - set to 'true' to indicate that the job can't be
      *                      running simultaneously alongside other jobs.
      * @param preemptable - set to 'true' to indicate that this job can be
-     *                      interrupted to give a way to some other job of
-     *                      high importancy.
+     *                      interrupted to give a way to some other job with
+     *                      higher priority.
      */
     Job(Controller::Ptr const& controller,
         std::string const& parentJobId,
@@ -249,10 +249,10 @@ protected:
 
     /**
      * The sequence of actions to be executed when the job is transitioning into
-     * the finished state (regardless of a specific exended state).
+     * the finished state (regardless of a specific extended state).
      *
      * NOTES:
-     * 1. normally this is mandatory method which is supposrd to be called either
+     * 1. normally this is mandatory method which is supposed to be called either
      *    internally within this class on the job expiration (internal timer) or
      *    cancellation (as requested externally by a user).
      * 
@@ -302,10 +302,10 @@ protected:
      * object will get reset to 'nullptr'.
      *
      * Note, this default implementation works for callback functions which
-     * accept a single parameter - a smart refernce onto an object of
-     * the corresponidng subclass. Subclasses with more complex signatures of
+     * accept a single parameter - a smart reference onto an object of
+     * the corresponding subclass. Subclasses with more complex signatures of
      * their callbacks should have their own implementations which may look
-     * similarily to this one.
+     * similarly to this one.
      *
      * @param lock     - the lock must be acquired by a caller of the method
      * @param onFinish - callback function (if set) to be called
@@ -340,7 +340,7 @@ protected:
      * @param chunk     - chunk number
      * @param databases - the names of databases
      * @param worker    - the name of a worker to be notified
-     * @param onFinish  - (optional) callback funciton to be called upon completion
+     * @param onFinish  - (optional) callback function to be called upon completion
      *                    of the operation
      */
     void qservAddReplica(util::Lock const& lock,
@@ -357,8 +357,8 @@ protected:
       * @param databases - the names of databases
       * @param worker    - the name of a worker to be notified
       * @param force     - the flag indicating of the removal should be done regardless
-      *                    of the usage status of the replpica
-      * @param onFinish  - (optional) callback funciton to be called upon completion
+      *                    of the usage status of the replica
+      * @param onFinish  - (optional) callback function to be called upon completion
       *                    of the operation
       */
     void qservRemoveReplica(util::Lock const& lock,
@@ -369,7 +369,7 @@ protected:
                             RemoveReplicaQservMgtRequest::CallbackType const& onFinish=nullptr);
 
     /**
-     * Ensure the object is in the deseride internal state. Throw an
+     * Ensure the object is in the desired internal state. Throw an
      * exception otherwise.
      *
      * NOTES: normally this condition should never been seen unless
@@ -406,7 +406,7 @@ protected:
 private:
 
     /**
-     * Start the timer (if the corresponidng Configuration parameter is set`).
+     * Start the timer (if the corresponding Configuration parameter is set`).
      * When the time will expire then the callback method heartbeat() which is
      * defined below will be called.
      *
@@ -416,7 +416,7 @@ private:
 
     /**
      * Job heartbeat timer's handler. The heartbeat interval (if any)
-     * is configured via the configuraton service. When the timer expires
+     * is configured via the configuration service. When the timer expires
      * the job would update the corresponding field in a database and restart
      * the time.
      *
@@ -425,7 +425,7 @@ private:
     void heartbeat(boost::system::error_code const& ec);
 
     /**
-     * Start the timer (if the corresponidng Configuration parameter is set`).
+     * Start the timer (if the corresponding Configuration parameter is set`).
      * When the time will expire then the callback method expired() which is
      * defined below will be called.
      *
@@ -435,7 +435,7 @@ private:
 
     /**
      * Job expiration timer's handler. The expiration interval (if any)
-     * is configured via the configuraton service. When the job expires
+     * is configured via the configuration service. When the job expires
      * it finishes with completion status FINISHED::TIMEOUT_EXPIRED.
      *
      * @param ec - error code to be evaluated
@@ -478,7 +478,7 @@ private:
     uint64_t _beginTime;
     uint64_t _endTime;
 
-    // The timer is used to update the corresponidng timestamp within
+    // The timer is used to update the corresponding timestamp within
     // the database for easier tracking of the dead jobs
     unsigned int _heartbeatTimerIvalSec;
     std::unique_ptr<boost::asio::deadline_timer> _heartbeatTimerPtr;
@@ -493,7 +493,7 @@ private:
     std::unique_ptr<boost::asio::deadline_timer> _expirationTimerPtr;
 };
 
-/// Comparision type for strict weak ordering reaquired by std::priority_queue
+/// Comparison type for strict weak ordering required by std::priority_queue
 struct JobCompare {
 
     /// Order jobs by their priorities

@@ -74,7 +74,7 @@ public:
 /**
  * Class ControlThread is the base class for the Controller-side activities run within
  * dedicated threads. The class provides a public interface for starting and stopping
- * the activities, notifying clients on abnornmal termination of the activities,
+ * the activities, notifying clients on abnormal termination of the activities,
  * as well as an infrastructure supporting an implementation of these activities.
  */
 class ControlThread
@@ -112,8 +112,8 @@ public:
     bool isRunning() const { return _isRunning.load(); }
 
     /**
-     * Start a subclass-supplied sequence of actions (virtual meghod 'run')
-     * within a new thread if it's not running. Note that the lifetume of
+     * Start a subclass-supplied sequence of actions (virtual method 'run')
+     * within a new thread if it's not running. Note that the lifetime of
      * the current object is guaranteed to be extended for the duration of
      * the thread.
      *
@@ -133,13 +133,13 @@ public:
     bool stop();
 
     /**
-     * Start the thread (if it's not runing yet) and then keep tracking
+     * Start the thread (if it's not running yet) and then keep tracking
      * its status before it stops or before the optional early-termination
      * evaluator returns 'true'.
      *
      * @param abortWait
-     *   (optional) this functional will be repeatedly called while tracking
-     *   the thread's status
+     *   (optional) this functional will be repeatedly (once a second) called
+     *   while tracking the thread's status
      */
     bool startAndWait(WaitEvaluatorType const& abortWait = nullptr);
 
@@ -174,9 +174,9 @@ protected:
      *
      * @note
      *   any but ControlThreadStopped exceptions thrown by this method will
-     *   be interpreted as abnormal termination of the threadd. Eventually this will
+     *   be interpreted as abnormal termination of the thread. Eventually this will
      *   also result in calling the 'onTerminated' callback if the one was provided
-     *   to the construtor of the class.
+     *   to the constructor of the class.
      *
      * @note
      *   the method may also return normally w/o throwing any exception. This scenario
@@ -184,7 +184,7 @@ protected:
      *   ControlThreadStopped.
      * 
      * @throws
-     *   ControlThreadStopped when the thread cancelation request was detected
+     *   ControlThreadStopped when the thread cancellation request was detected
      */
     virtual void run() = 0;
 
@@ -239,7 +239,7 @@ protected:
      *   job-specific variadic parameters
      * 
      * @throws
-     *   ControlThreadStopped when the thread cancelation request was detected
+     *   ControlThreadStopped when the thread cancellation request was detected
      */
     template <class T, typename...Targs>
     void launch(std::string const& jobName,
@@ -262,7 +262,7 @@ protected:
                 parentJobId,
                 [&numFinishedJobs](typename T::Ptr const& job) {
                     ++numFinishedJobs;
-                    // TODO: analyze job status and report it here
+                    // FIXME: analyze job status and report it here
                 }
             );
             job->start();
@@ -287,7 +287,7 @@ protected:
      *   (optional) force Qserv synchronization if 'true'
      * 
      * @throws
-     *   ControlThreadStopped when the thread cancelation request was detected
+     *   ControlThreadStopped when the thread cancellation request was detected
      *
      * @see QservSyncJob
      */
@@ -297,7 +297,8 @@ protected:
     /**
      * Track the completion of all jobs. Also monitor the thread cancellation
      * condition while tracking the jobs. When such condition will be seen
-     * all jobs will be canceled.
+     * all jobs will be canceled. The tracking will be done with an interval
+     * of 1 second.
      *
      * @param jobName
      *   the name of a job
@@ -346,10 +347,10 @@ private:
     std::string const _name;
 
     /// The callback (if provided) to be called upon an abnormal termination
-    /// of the user-supplied algorithm run in a contex of the thread.
+    /// of the user-supplied algorithm run in a context of the thread.
     CallbackType _onTerminated;
 
-    /// The flag indicating if the threa is already running
+    /// The flag indicating if it's already running
     std::atomic<bool> _isRunning;
 
     /// The flag to be raised when the thread needs to be stopped

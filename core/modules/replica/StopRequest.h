@@ -200,7 +200,7 @@ public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<StopRequest<POLICY>> Ptr;
 
-    /// The function type for notifications on the completon of the request
+    /// The function type for notifications on the completion of the request
     typedef std::function<void(Ptr)> CallbackType;
 
     // Default construction and copy semantics are prohibited
@@ -231,17 +231,31 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider  - a host of services for various communications
-     * @param worker           - the identifier of a worker node (the one to be affectd by the request)
-     * @param io_service       - network communication service
-     * @param targetRequestId  - an identifier of the target request whose remote status
-     *                           is going to be inspected
-     * @param onFinish         - an optional callback function to be called upon a completion of
-     *                           the request.
-     * @param keepTracking     - keep tracking the request before it finishes or fails
-     * @param messenger        - an interface for communicating with workers
+     * @param serviceProvider
+     *   a host of services for various communications
      *
-     * @return pointer to the created object
+     * @param worker
+     *   the identifier of a worker node (the one to be affected by the request)
+     * 
+     * @param io_service
+     *   network communication service
+     *
+     * @param targetRequestId
+     *   an identifier of the target request whose remote status
+     *   is going to be inspected
+     *
+     * @param onFinish
+     *   an optional callback function to be called upon a completion of
+     *   the request.
+     *
+     * @param keepTracking
+     *   keep tracking the request before it finishes or fails
+     *
+     * @param messenger
+     *   an interface for communicating with workers
+     *
+     * @return
+     *   pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       boost::asio::io_service& io_service,
@@ -330,15 +344,17 @@ private:
     /**
      * Parse request-specific reply
      *
-     * @param message - message to parse
+     * @param message
+     *   message to parse
      *
-     * @return status of the operation reported by a server
+     * @return
+     *   status of the operation reported by a server
      */
     proto::ReplicationStatus parseResponse(typename POLICY::ResponseMessageType const& message) {
 
         // This lock must be acquired because the method is going to modify
         // results of the request. Note that the operation doesn't care
-        // about the global state of the request (wether it's already finoshed
+        // about the global state of the request (wether it's already finished
         // or not)
 
         util::Lock lock(_mtx, context() + "parseResponse");

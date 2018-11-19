@@ -67,14 +67,14 @@ void Messenger::stop() {
 void Messenger::cancel(std::string const& worker,
                        std::string const& id) {
 
-    // Forward the request to the corresponidng worker
+    // Forward the request to the corresponding worker
     connector(worker)->cancel(id);
 }
 
 bool Messenger::exists(std::string const& worker,
                        std::string const& id) const {
 
-    // Forward the request to the corresponidng worker
+    // Forward the request to the corresponding worker
     return connector(worker)->exists(id);
 }
 

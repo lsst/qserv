@@ -82,8 +82,8 @@ public:
     static std::vector<std::string> regularFiles(DatabaseInfo const& databaseInfo);
 
     /**
-     * Parse the file name and if successfull fill in a tuple with components of
-     * the name. The file name are expected to matche one of the following patterns:
+     * Parse the file name and if successful fill in a tuple with components of
+     * the name. The file name are expected to match one of the following patterns:
      *
      *   <table>_<chunk>.<ext>
      *   <table>FullOverlap_<chunk>.<ext>
@@ -92,15 +92,15 @@ public:
      *
      *   <table> - is the name of a valid partitioned table as per the database info
      *   <chunk> - is a numeric chunk number
-     *   <ext>   - is one of the database file extentions
+     *   <ext>   - is one of the database file extensions
      *
-     * @param parsed       - the tuple to be initialized upon the successfull completion
-     * @param fileName     - the name of a file (no directory name) including its extention
+     * @param parsed       - the tuple to be initialized upon the successful completion
+     * @param fileName     - the name of a file (no directory name) including its extension
      * @param databaseInfo - the database specification
      *
-     * @return 'true' if the file name matches one of the expected pattens. The tuple's elements
+     * @return 'true' if the file name matches one of the expected pattens. The tuple elements
      * will be (in the order of their definition): the name of a table (including 'FullOverlap'
-     * where applies), the number of a chunk, adm its extention (w/o the dot)
+     * where applies), the number of a chunk, and its extension (w/o the dot)
      */
     static bool parsePartitionedFile(std::tuple<std::string, unsigned int, std::string>& parsed,
                                      std::string const& fileName,
@@ -123,7 +123,7 @@ public:
     static uint64_t compute_cs(std::string const& fileName,
                                size_t recordSizeBytes=DEFAULT_RECORD_SIZE_BYTES);
 
-    /// @return user account uner which the current process runs
+    /// @return user account under which the current process runs
     static std::string getEffectiveUser();
 };
 
@@ -173,7 +173,7 @@ public:
      * are read and the EOF is reached. Any attempts to read the file beyond that
      * will throw exception std::runtime_error.
      *
-     * The engine will close a file immediatelly after reaching its EOF.
+     * The engine will close a file immediately after reaching its EOF.
      *
      * @param fileName        - the name of a file to read
      * @param recordSizeBytes - desired record size
@@ -248,8 +248,11 @@ public:
      * @param fileNames       - files to be processed
      * @param recordSizeBytes - record size (for reading from files)
      *
-     * @throws std::runtime_error if there was a problem with opening the first file
-     * @throws std::invalid_argument if the record size is 0 or too huge (more than FileUtils::MAX_RECORD_SIZE_BYTES)
+     * @throws std::runtime_error
+     *   if there was a problem with opening the first file
+     * 
+     * @throws std::invalid_argument
+     *   if the record size is 0 or too huge (more than FileUtils::MAX_RECORD_SIZE_BYTES)
      */
     explicit MultiFileCsComputeEngine(
                 std::vector<std::string> const& fileNames,
@@ -259,11 +262,11 @@ public:
     std::vector<std::string> const& fileNames() const { return _fileNames; }
     
     /**
-     * @return 'true' if the specified file has been or is being proccessed
-     * so that its final or running checksime or the number of bytes can be
+     * @return 'true' if the specified file has been or is being processed
+     * so that its final or running checksum or the number of bytes can be
      * be obtained.
      *
-     * @throws std::invalid_argument unkown file name
+     * @throws std::invalid_argument unknown file name
      *
      * @param fileName - the name of a file
      */
@@ -272,8 +275,8 @@ public:
     /**
      * @return the number of bytes read so far for the specified file.
      *
-     * @throws std::invalid_argument unkown file name
-     * @throws std::logic_error the file hasn't been proccessed
+     * @throws std::invalid_argument unknown file name
+     * @throws std::logic_error the file hasn't been processed
      *
      * @param fileName - the name of a file
      */
@@ -283,8 +286,8 @@ public:
      * @return the running (and the final one the file is fully read) control
      * sum for the specified file.
      *
-     * @throws std::invalid_argument unkown file name
-     * @throws std::logic_error the file hasn't been proccessed
+     * @throws std::invalid_argument unknown file name
+     * @throws std::logic_error the file hasn't been processed
      *
      * @param fileName - the name of a file
      */

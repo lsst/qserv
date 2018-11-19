@@ -379,10 +379,10 @@ int Application::run() {
 
     parser().flag(
         "debug",
-        "Change the logging lover of the internal LSST level to DEBUG. Note that the Logger"
-        " is configured via a configuration file presented to the application via"
+        "Change the minimum logging level from ERROR to DEBUG. Note that the Logger"
+        " is configured via a configuration file (if any) presented to the application via"
         " environment variable LSST_LOG_CONFIG. If this variable is not set then some"
-        " default configuation of the Logger will be assumed.",
+        " default configuration of the Logger will be assumed.",
         _debugFlag
     );
     if (_injectDatabaseOptions) {

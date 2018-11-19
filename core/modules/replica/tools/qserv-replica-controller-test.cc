@@ -62,22 +62,22 @@ std::string configUrl;
  * of the class is to reduce code duplication in the tests.
  *
  * THREAD SAFETY: an implementation of this class is as thread safe
- * as any objec used by it.
+ * as any object used by it.
  */
 class RequestGenerator {
 
 public:
 
-    /// A collection of REPLICATION requsts
+    /// A collection of REPLICATION requests
     typedef std::vector<replica::ReplicationRequest::Ptr> replication_requests;
 
-    /// A collection of STATUS requsts
+    /// A collection of STATUS requests
     typedef std::vector<replica::StatusReplicationRequest::Ptr> status_requests;
 
-    /// A collection of STOP requsts
+    /// A collection of STOP requests
     typedef std::vector<replica::StopReplicationRequest::Ptr> stop_requests;
 
-    // Default construction and copy semantics are proxibited
+    // Default construction and copy semantics are prohibited
 
     RequestGenerator() = delete;
     RequestGenerator(RequestGenerator const&) = delete;
@@ -102,9 +102,9 @@ public:
     }
 
     /**
-     * Initiate the specified numder of replication requests
+     * Initiate the specified number of replication requests
      * and return a collection of pointers to them. The requests will
-     * address a contigous range of chunk numbers staring with the one
+     * address a contiguous range of chunk numbers staring with the one
      * specified as a parameter of the method.
      *
      * @param num        - the total number of requests to launch
@@ -149,7 +149,7 @@ public:
     }
 
     /**
-     * Initiate status inqueries for the specified replication requests.
+     * Initiate status updates for the specified replication requests.
      *
      * @param replicationRequests - a collection of pointers to the REPLICATION requests
      * 
@@ -279,7 +279,7 @@ void test() {
         // Launch another thread which will test injecting requests from there.
         // 
         // NOTE: The thread may (and will) finish when the specified number of
-        // requests will be launched because the requests are execured in
+        // requests will be launched because the requests are executed in
         // a context of the provider's threads.
         std::thread another(
             [&requestGenerator, &blockPost] () {

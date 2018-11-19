@@ -72,7 +72,7 @@ public:
         /// The request is in a progress
         IN_PROGRESS,
 
-        /// The request is finihed. See extended status for more details
+        /// The request is finished. See extended status for more details
         /// (the completion status, etc.)
         FINISHED
     };
@@ -81,7 +81,7 @@ public:
     static std::string state2string(State state);
 
     /**
-     * Type ExtendedState represents a refined public sub-state of the requiest
+     * Type ExtendedState represents a refined public sub-state of the request
      * once it's FINISHED as per the above defined primary state.
      */
     enum ExtendedState {
@@ -93,7 +93,7 @@ public:
         SUCCESS,
 
         /// The request could not be implemented due to an unrecoverable
-        /// cliend-side error.
+        /// client-side error.
         CLIENT_ERROR,
 
         /// Server reports that the request can not be implemented due to incorrect parameters, etc.
@@ -125,11 +125,11 @@ public:
     /// @return the string representation of the extended state
     static std::string state2string(ExtendedState state);
 
-    /// @return the string representation of the compbined state
+    /// @return the string representation of the combined state
     static std::string state2string(State state,
                                     ExtendedState extendedState);
 
-    /// @return the string representation of the compbined state
+    /// @return the string representation of the combined state
     static std::string state2string(State state,
                                     ExtendedState extendedState,
                                     ExtendedCompletionStatus extendedServerStatus);
@@ -152,10 +152,10 @@ public:
     std::string const& id() const { return _id; }
 
     /**
-     * @return an effective identifier of a remote (worker-side) requst.
+     * @return an effective identifier of a remote (worker-side) request.
      *
      * Normally this is the same request as the one a request object is created with
-     * unless allowing to track duplicate requests (see constructor'x options: 'keepTracking'
+     * unless allowing to track duplicate requests (see constructor's options: 'keepTracking'
      * and 'allowDuplicate') and after the one is found.
      */
     std::string const& remoteId() const;
@@ -190,7 +190,7 @@ public:
      * their state in a database.
      *
      * NOTE: only the first call with the non-default pointer to the Controller
-     * will be considering for building an associaion with the Controller.
+     * will be considering for building an association with the Controller.
      *
      * @param controller - (optional) pointer to an instance of the Controller
      * @param jobId      - (optional) identifier of a job specifying a context
@@ -280,7 +280,7 @@ protected:
     /// @return pointer to a buffer for data moved over the network
     std::shared_ptr<ProtocolBuffer> const& buffer() const { return _bufferPtr; }
 
-    /// @return reference onto a timer used for ordering asynchronious delays
+    /// @return reference onto a timer used for ordering asynchronous delays
     boost::asio::deadline_timer& timer() { return _timer; }
 
     /// @return suggested interval (seconds) between retries in communications with workers
@@ -323,7 +323,7 @@ protected:
 
     /**
      * Request expiration timer's handler. The expiration interval (if any)
-     * is configured via the configuraton service. When the request expires
+     * is configured via the configuration service. When the request expires
      * it finishes with completion status FINISHED::TIMEOUT_EXPIRED.
      *
      * @param ec - error code to be checked
@@ -354,7 +354,7 @@ protected:
       * This method is supposed to be provided by subclasses to save the request's
       * state into a database.
       *
-      * The default implementation o fth emethod is intentionally left empty
+      * The default implementation of the method is intentionally left empty
       * to allow requests not to have the persistent state.
       * 
       * @param lock - a lock on a mutex must be acquired before calling this method
@@ -366,8 +366,8 @@ protected:
      *
      * USAGE NOTES:
      *
-     *    Nomally this method is supposed to be called as the first action
-     *    within asynchronous handlers to figure out if an on-going aynchronous
+     *    Normally this method is supposed to be called as the first action
+     *    within asynchronous handlers to figure out if an on-going asynchronous
      *    operation was cancelled for some reason. Should this be the case
      *    the caller is supposed to quit right away. It will be up to a code
      *    which initiated the abort to take care of putting the object into
@@ -380,7 +380,7 @@ protected:
     bool isAborted(boost::system::error_code const& ec) const;
 
     /**
-     * Ensure the object is in the deseride internal state. Throw an
+     * Ensure the object is in the desired internal state. Throw an
      * exception otherwise.
      *
      * NOTES: normally this condition should never be seen unless
@@ -443,10 +443,10 @@ protected:
      * object will get reset to 'nullptr'.
      *
      * Note, this default implementation works for callback functions which
-     * accept a single parameter - a smart refernce onto an object of
-     * the corresponidng subclass. Subclasses with more complex signatures of
+     * accept a single parameter - a smart reference onto an object of
+     * the corresponding subclass. Subclasses with more complex signatures of
      * their callbacks should have their own implementations which may look
-     * similarily to this one.
+     * similarly to this one.
      *
      * @param lock     - the lock must be acquired by a caller of the method
      * @param onFinish - callback function (if set) to be called
@@ -504,7 +504,7 @@ private:
     /// The priority level of a request
     int const _priority;
 
-    /// The flag which will enables continous tracking of the request before
+    /// The flag which will enables continuous tracking of the request before
     /// it finishes or fails
     bool const _keepTracking;
 
@@ -538,7 +538,7 @@ private:
     /// up to subclasses to manage this timer.
     ///
     /// The only role of this class (apart from providing the objects)
-    /// is to set up the default timer interval from a condifuration.
+    /// is to set up the default timer interval from a configuration.
     unsigned int                _timerIvalSec;
     boost::asio::deadline_timer _timer;
 

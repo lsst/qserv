@@ -125,7 +125,7 @@ void MessengerConnector::stop() {
         }
     }
 
-    // Sending notifications (if requsted) outsize the lock guard to avoid deadlocks.
+    // Sending notifications (if requested) outsize the lock guard to avoid deadlocks.
 
     for (auto&& ptr: requests2notify) ptr->parseAndNotify();
 }
@@ -170,7 +170,7 @@ void MessengerConnector::sendImpl(MessageWrapperBase::Ptr const& ptr) {
 
     if (find(lock, ptr->id()) != nullptr) {
         throw std::logic_error(
-                "MessengerConnector::sendImpl  the request is alrady registered for id:" + ptr->id());
+                "MessengerConnector::sendImpl  the request is already registered for id:" + ptr->id());
     }
 
     // Register the request
@@ -388,7 +388,7 @@ void MessengerConnector::requestSent(boost::system::error_code const& ec,
     }
     if (_currentRequest) {
 
-        // The requst is still valid
+        // The request is still valid
         if (ec.value() != 0) {
 
             // If something bad happened along the line then make sure this request
@@ -403,7 +403,7 @@ void MessengerConnector::requestSent(boost::system::error_code const& ec,
 
         } else {
 
-            // Go wait for a server respone
+            // Go wait for a server response
 
             receiveResponse(lock);
         }
@@ -424,7 +424,7 @@ void MessengerConnector::receiveResponse(util::Lock const& lock) {
     // The message itself will be read from the handler using
     // the synchronous read method. This is based on an assumption
     // that the worker server sends the whole message (its frame and
-    // the message itsef) at once.
+    // the message itself) at once.
 
     size_t const bytes = sizeof(uint32_t);
     _inBuffer.resize(bytes);
@@ -478,7 +478,7 @@ void MessengerConnector::responseReceived(boost::system::error_code const& ec,
 
             // At this point we're done with the current request, regardless of its completion
             // status, or any failures to pull or digest the response data. Hence, removing
-            // completelly it and getting ready to notify a caller.
+            // completely it and getting ready to notify a caller.
 
             std::swap(request2notify, _currentRequest);
 
@@ -560,7 +560,7 @@ void MessengerConnector::responseReceived(boost::system::error_code const& ec,
         }
     }
 
-    // Sending notifications (if requsted) outsize the lock guard to avoid
+    // Sending notifications (if requested) outsize the lock guard to avoid
     // deadlocks.
 
     if (request2notify) request2notify->parseAndNotify();

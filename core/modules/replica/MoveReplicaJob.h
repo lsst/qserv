@@ -42,26 +42,26 @@ namespace qserv {
 namespace replica {
 
 /**
- * Struct MoveReplicaJobResult represents a combined result received
+ * Structure MoveReplicaJobResult represents a combined result received
  * from worker services upon a completion of the job.
  */
 struct MoveReplicaJobResult {
 
-    /// Results reported by workers upon the successfull completion
+    /// Results reported by workers upon the successful completion
     /// of the new replica creation requests
     std::list<ReplicaInfo> createdReplicas;
 
-    /// New replica creation results groupped by: chunk number, database, worker
+    /// New replica creation results grouped by: chunk number, database, worker
     std::map<unsigned int,                  // chunk
              std::map<std::string,          // database
                       std::map<std::string, // destination worker
                                ReplicaInfo>>> createdChunks;
 
-    /// Results reported by workers upon the successfull completion
+    /// Results reported by workers upon the successful completion
     /// of the replica deletion requests
     std::list<ReplicaInfo> deletedReplicas;
 
-    /// Replica deletion results groupped by: chunk number, database, worker
+    /// Replica deletion results grouped by: chunk number, database, worker
     std::map<unsigned int,                  // chunk
              std::map<std::string,          // database
                       std::map<std::string, // source worker
@@ -81,7 +81,7 @@ public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<MoveReplicaJob> Ptr;
 
-    /// The function type for notifications on the completon of the request
+    /// The function type for notifications on the completion of the request
     typedef std::function<void(Ptr)> CallbackType;
 
     /// @return default options object for this type of a request
@@ -149,7 +149,7 @@ public:
      *   finished. Please, verify the primary and extended status of the object
      *   to ensure that all requests have finished.
      *
-     * @throws std::logic_error - if the job dodn't finished at a time
+     * @throws std::logic_error - if the job didn't finished at a time
      *                            when the method was called
      */
     MoveReplicaJobResult const& getReplicaData() const;
@@ -192,13 +192,13 @@ protected:
     void notify(util::Lock const& lock) final;
 
     /**
-     * The calback function to be invoked on a completion of the replica
+     * The callback function to be invoked on a completion of the replica
      * creation job.
      */
     void onCreateJobFinish();
 
     /**
-     * The calback function to be invoked on a completion of the replica
+     * The callback function to be invoked on a completion of the replica
      * deletion job.
      */
      void onDeleteJobFinish();

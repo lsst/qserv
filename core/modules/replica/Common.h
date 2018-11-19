@@ -23,7 +23,7 @@
 #define LSST_QSERV_REPLICA_COMMON_H
 
 /**
- * This declares various small utilities, such data types, functons and
+ * This declares various small utilities, such data types, functions and
  * classes which are shared by the code in the rest of this package.
  * It would be not practical to put each of these utilities in a separate
  * header.
@@ -67,7 +67,7 @@ enum ExtendedCompletionStatus {
     EXT_STATUS_FILE_DELETE,     // failed to delete a file
     EXT_STATUS_FILE_RENAME,     // failed to rename a file
     EXT_STATUS_FILE_EXISTS,     // file already exists
-    EXT_STATUS_SPACE_REQ,       // space inquery requst failed
+    EXT_STATUS_SPACE_REQ,       // space availability request failed
     EXT_STATUS_NO_FOLDER,       // folder doesn't exist
     EXT_STATUS_NO_FILE,         // file doesn't exist
     EXT_STATUS_NO_ACCESS,       // no access to a file or a folder
@@ -103,7 +103,7 @@ private:
 };
 
 /**
- * Struct ReplicationRequestParams encapsulates parameters of the replica
+ * Structure ReplicationRequestParams encapsulates parameters of the replica
  * creation requests.
  */
 struct ReplicationRequestParams {
@@ -121,7 +121,7 @@ struct ReplicationRequestParams {
 };
 
 /**
- * Struct DeleteRequestParams represents parameters of the replica
+ * Structure DeleteRequestParams represents parameters of the replica
  * deletion requests.
  */
 struct DeleteRequestParams {
@@ -139,7 +139,7 @@ struct DeleteRequestParams {
 };
 
 /**
- * Struct FindRequestParams represents parameters of a single replica
+ * Structure FindRequestParams represents parameters of a single replica
  * lookup (finding) requests.
  */
 struct FindRequestParams {
@@ -156,7 +156,7 @@ struct FindRequestParams {
 };
 
 /**
- * Struct FindAllRequestParams represents parameters of the replica
+ * Structure FindAllRequestParams represents parameters of the replica
  * group (depends on a scope of the corresponding request) lookup (finding)
  * requests.
  */
@@ -173,7 +173,7 @@ struct FindAllRequestParams {
 };
 
 /**
- * Struct EchoRequestParams represents parameters of the echo requests.
+ * Structure EchoRequestParams represents parameters of the echo requests.
  */
 struct EchoRequestParams {
 

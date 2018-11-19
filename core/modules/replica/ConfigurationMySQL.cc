@@ -273,7 +273,7 @@ void ConfigurationMySQL::loadConfiguration() {
 void ConfigurationMySQL::loadConfigurationImpl(util::Lock const& lock,
                                                database::mysql::Connection::Ptr const& conn) {
 
-    // The common parameters (if any defined) of the workers will be intialize
+    // The common parameters (if any defined) of the workers will be initialize
     // from table 'config' and be used as defaults when reading worker-specific
     // configurations from table 'config_worker'
 
@@ -318,7 +318,7 @@ void ConfigurationMySQL::loadConfigurationImpl(util::Lock const& lock,
     }
 
     // Read worker-specific configurations and construct WorkerInfo.
-    // Use the above retreived common parameters as defaults where applies
+    // Use the above retrieved common parameters as defaults where applies
 
     conn->execute("SELECT * FROM " + conn->sqlId ("config_worker"));
 

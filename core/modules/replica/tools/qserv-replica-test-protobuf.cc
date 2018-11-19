@@ -62,7 +62,7 @@ void test() {
             buf.serialize(message);
             std::cout << "  buf.size: " << buf.size() << std::endl;
 
-            // Uncomment either of these to test an effect of explicit resets
+            // Un-comment either of these to test an effect of explicit resets
             // of the message content
             //
             // if (clear) message.clear_chunks();

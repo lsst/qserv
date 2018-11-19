@@ -85,7 +85,7 @@ FixUpJob::FixUpJob(std::string const& databaseFamily,
 }
 
 FixUpJob::~FixUpJob() {
-    // Make sure all chuks locked by this job are released
+    // Make sure all chunks locked by this job are released
     controller()->serviceProvider()->chunkLocker().release(id());
 }
 
@@ -198,8 +198,8 @@ void FixUpJob::onPrecursorJobFinish() {
     // IMPORTANT: the final state is required to be tested twice. The first time
     // it's done in order to avoid deadlock on the "in-flight" requests reporting
     // their completion while the job termination is in a progress. And the second
-    // test is made after acquering the lock to recheck the state in case if it
-    // has transitioned while acquering the lock.
+    // test is made after acquiring the lock to recheck the state in case if it
+    // has transitioned while acquiring the lock.
     
     if (state() == State::FINISHED) return;
 
@@ -217,7 +217,7 @@ void FixUpJob::onPrecursorJobFinish() {
     }
 
     /////////////////////////////////////////////////////////////////
-    // Analyse results and prepare a replication plan to fix chunk
+    // Analyze results and prepare a replication plan to fix chunk
     // co-location for under-represented chunks
 
     FindAllJobResult const& replicaData = _findAllJob->getReplicaData();
@@ -244,7 +244,7 @@ void FixUpJob::onPrecursorJobFinish() {
             // Iterate over all participating databases, find the ones which aren't
             // represented on the worker, find a suitable source worker which has
             // a complete chunk for the database and which (the worker) is not the same
-            // as the current one and submite the replication request.
+            // as the current one and submit the replication request.
 
             for (auto&& database: replicaData.databases.at(chunk)) {
 
@@ -314,7 +314,7 @@ void FixUpJob::onPrecursorJobFinish() {
                 finish(lock, ExtendedState::SUCCESS);
             } else {
 
-                // Some of the chuks were locked and yet, no sigle request was
+                // Some of the chunks were locked and yet, no single request was
                 // lunched. Hence we should start another iteration by requesting
                 // the fresh state of the chunks within the family.
 
@@ -339,8 +339,8 @@ void FixUpJob::onRequestFinish(ReplicationRequest::Ptr const& request) {
     // IMPORTANT: the final state is required to be tested twice. The first time
     // it's done in order to avoid deadlock on the "in-flight" requests reporting
     // their completion while the job termination is in a progress. And the second
-    // test is made after acquering the lock to recheck the state in case if it
-    // has transitioned while acquering the lock.
+    // test is made after acquiring the lock to recheck the state in case if it
+    // has transitioned while acquiring the lock.
 
     if (state() == State::FINISHED)  {
         release(chunk);

@@ -121,7 +121,7 @@ void HealthMonitorThread::run() {
             }
         }
 
-        // Analyze the intervals to see which workers have reached the eviciton
+        // Analyze the intervals to see which workers have reached the eviction
         // threshold. Also count the total number of Replication workers (including
         // the evicted ones) which ae offline.
 
@@ -188,7 +188,7 @@ void HealthMonitorThread::run() {
 
             default:
 
-                // Any succesful replication effort is not possible at this stage due
+                // Any successful replication effort is not possible at this stage due
                 // to one of the following reasons (among other possibilities):
                 //
                 //   1) multiple nodes failed simultaneously

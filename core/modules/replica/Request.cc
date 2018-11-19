@@ -159,14 +159,14 @@ void Request::start(std::shared_ptr<Controller> const& controller,
                 CREATED,
                 context() + "start");
 
-    // Change the expiration ival if requested
+    // Change the expiration interval if requested
     if (requestExpirationIvalSec) {
         _requestExpirationIvalSec = requestExpirationIvalSec;
     }
     LOGS(_log, LOG_LVL_DEBUG, context() << "start  _requestExpirationIvalSec: "
          << _requestExpirationIvalSec);
 
-    // Build optional associaitons with the corresponding Controller and the job
+    // Build optional associations with the corresponding Controller and the job
     //
     // NOTE: this is done only once, the first time a non-trivial value
     // of each parameter is presented to the method.
@@ -217,8 +217,8 @@ void Request::expired(boost::system::error_code const& ec) {
     // IMPORTANT: the final state is required to be tested twice. The first time
     // it's done in order to avoid deadlock on the "in-flight" callbacks reporting
     // their completion while the request termination is in a progress. And the second
-    // test is made after acquering the lock to recheck the state in case if it
-    // has transitioned while acquering the lock.
+    // test is made after acquiring the lock to recheck the state in case if it
+    // has transitioned while acquiring the lock.
 
     if (state() == State::FINISHED) return;
 
@@ -236,8 +236,8 @@ void Request::cancel() {
     // IMPORTANT: the final state is required to be tested twice. The first time
     // it's done in order to avoid deadlock on the "in-flight" callbacks reporting
     // their completion while the request termination is in a progress. And the second
-    // test is made after acquering the lock to recheck the state in case if it
-    // has transitioned while acquering the lock.
+    // test is made after acquiring the lock to recheck the state in case if it
+    // has transitioned while acquiring the lock.
 
     if (state() == State::FINISHED) return;
 
@@ -307,7 +307,7 @@ void Request::setState(util::Lock const& lock,
 
     // ATTENTION: ensure the top-level state is the last to change in
     // in the transient state transition in order to guarantee a consistent
-    // view on to the object's state from the clients' prospective.
+    // view on to the object's state from the client's prospective.
 
     _extendedState = newExtendedState;
     _state = newState;

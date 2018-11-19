@@ -72,7 +72,7 @@ FileServer::FileServer(ServiceProvider::Ptr const& serviceProvider,
 void FileServer::run() {
 
     // We shall do so before running the io_service. Otherwise it will
-    // immediatelly finish as soon as it will discover that there are
+    // immediately finish as soon as it will discover that there are
     // outstanding operations.
     beginAccept();
 

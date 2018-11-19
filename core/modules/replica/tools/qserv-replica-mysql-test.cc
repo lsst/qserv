@@ -154,9 +154,9 @@ void executeQuery(database::Connection::Ptr const& conn,
                     database::Row row;
                     while (conn->next(row)) {
 
-                        // Since this is a tes/demo applcation for the MySQL API then cells
+                        // Since this is a test/demo application for the MySQL API then cells
                         // from each row are printed twice: first - via their names, second
-                        // time - via their relavive numbers.
+                        // time - via their relative numbers.
                         
                         for (std::string const& name: conn->columnNames()) {
                             std::string val;
@@ -216,8 +216,8 @@ std::string getQuery() {
                              std::istreambuf_iterator<char>());
     } else {
 
-        // Note a little optimization in which the algorithm detemines the file
-        // size and preallocates the string buffer before
+        // Note a little optimization in which the algorithm determines the file
+        // size and pre-allocates the string buffer before
         // performing the actual read.
 
         std::ifstream fs(fileName);
@@ -335,7 +335,7 @@ int main(int argc, const char* const argv[]) {
             "\n"
             "    --db-allow-reconnect \n"
             "\n"
-            "      change the default database connecton handling node. Set 0 to disable automatic\n"
+            "      change the default database connection handling node. Set 0 to disable automatic\n"
             "      reconnects. Any other number would man an opposite scenario.\n"
             "      DEFAULT: " + std::to_string(::databaseAllowReconnect ? 1 : 0) + "\n"
             "\n"

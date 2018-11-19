@@ -103,9 +103,9 @@ void WorkerReplicationRequest::setInfo(proto::ReplicationResponseReplicate& resp
 
     response.set_allocated_target_performance(performance().info());
 
-    // Note the ownership transfer of an intermediate protobuf object obtained
-    // from  ReplicaInfo object in the call below. The protobuf
-    // runtime will take care of deleting the intermediate objects.
+    // Note the ownership transfer of an intermediate Protobuf object obtained
+    // from  ReplicaInfo object in the call below. The Protobuf
+    // run-time will take care of deleting the intermediate objects.
 
     response.set_allocated_replica_info(_replicaInfo.info());
 
@@ -198,8 +198,8 @@ bool WorkerReplicationRequestPOSIX::execute () {
     // IMPLEMENTATION NOTES:
     //
     // - Note using the overloaded operator '/' which is used to form
-    //   folders and files path names below. The operator will concatename
-    //   names and also insert a file separator for an operationg system
+    //   folders and files path names below. The operator will concatenate
+    //   names and also insert a file separator for an operating system
     //   on which this code will get compiled.
     //
     // - Temporary file names at a destination folders are prepended with
@@ -208,7 +208,7 @@ bool WorkerReplicationRequestPOSIX::execute () {
     //
     // - All operations with the file system namespace (creating new non-temporary
     //   files, checking for folders and files, renaming files, creating folders, etc.)
-    //   are guarded by acquering util::Lock lock(_mtxDataFolderOperations) where it's needed.
+    //   are guarded by acquiring util::Lock lock(_mtxDataFolderOperations) where it's needed.
 
     WorkerInfo   const inWorkerInfo  = _serviceProvider->config()->workerInfo(sourceWorker());
     WorkerInfo   const outWorkerInfo = _serviceProvider->config()->workerInfo(worker());
@@ -334,7 +334,7 @@ bool WorkerReplicationRequestPOSIX::execute () {
         }
 
         // Make sure a file system at the destination has enough space
-        // to accomodate new files
+        // to accommodate new files
         //
         // NOTE: this operation runs after cleaning up temporary files
 
@@ -343,11 +343,11 @@ bool WorkerReplicationRequestPOSIX::execute () {
             or reportErrorIf(
                     ec.value() != 0,
                     ExtendedCompletionStatus::EXT_STATUS_SPACE_REQ,
-                    "failed to obtaine space information at output folder: " + outDir.string())
+                    "failed to obtain space information at output folder: " + outDir.string())
             or reportErrorIf(
                     space.available < totalBytes,
                     ExtendedCompletionStatus::EXT_STATUS_NO_SPACE,
-                    "not enough free space availble at output folder: " + outDir.string());
+                    "not enough free space available at output folder: " + outDir.string());
     }
     if (errorContext.failed) {
         setStatus(lock, STATUS_FAILED, errorContext.extendedStatus);
@@ -355,7 +355,7 @@ bool WorkerReplicationRequestPOSIX::execute () {
     }
 
     // Begin copying files into the destination folder under their
-    // temporary names w/o acquring the directory lock.
+    // temporary names w/o acquiring the directory lock.
 
     for (auto&& file: files) {
 
@@ -377,12 +377,12 @@ bool WorkerReplicationRequestPOSIX::execute () {
     // Rename temporary files into the canonical ones
     // Note that this operation changes the directory namespace in a way
     // which may affect other users (like replica lookup operations, etc.). Hence we're
-    // acquering the directory lock to guarantee a consistent view onto the folder.
+    // acquiring the directory lock to guarantee a consistent view onto the folder.
 
     {
         util::Lock dataFolderLock(_mtxDataFolderOperations, context() + "execute:2");
 
-        // ATTENTION: as per ISO/IEC 9945 thie file rename operation will
+        // ATTENTION: as per ISO/IEC 9945 the file rename operation will
         //            remove empty files. Not sure if this should be treated
         //            in a special way?
 
@@ -413,7 +413,7 @@ bool WorkerReplicationRequestPOSIX::execute () {
     }
 
     // For now (before finalizing the progress reporting protocol) just return
-    // the perentage of the total amount of data moved
+    // the percentage of the total amount of data moved
 
     setStatus(lock, STATUS_SUCCEEDED);
     return true;
@@ -494,8 +494,8 @@ bool WorkerReplicationRequestFS::execute () {
     // IMPLEMENTATION NOTES:
     //
     // - Note using the overloaded operator '/' which is used to form
-    //   folders and files path names below. The operator will concatename
-    //   names and also insert a file separator for an operationg system
+    //   folders and files path names below. The operator will concatenate
+    //   names and also insert a file separator for an operating system
     //   on which this code will get compiled.
     //
     // - Temporary file names at a destination folders are prepended with
@@ -504,7 +504,7 @@ bool WorkerReplicationRequestFS::execute () {
     //
     // - All operations with the file system namespace (creating new non-temporary
     //   files, checking for folders and files, renaming files, creating folders, etc.)
-    //   are guarded by acquering util::Lock lock(_mtxDataFolderOperations) where it's needed.
+    //   are guarded by acquiring util::Lock lock(_mtxDataFolderOperations) where it's needed.
 
     WorkerRequest::ErrorContext errorContext;
 
@@ -626,7 +626,7 @@ bool WorkerReplicationRequestFS::execute () {
             }
 
             // Make sure a file system at the destination has enough space
-            // to accomodate new files
+            // to accommodate new files
             //
             // NOTE: this operation runs after cleaning up temporary files
 
@@ -641,7 +641,7 @@ bool WorkerReplicationRequestFS::execute () {
                         ExtendedCompletionStatus::EXT_STATUS_NO_SPACE,
                         "not enough free space availble at output folder: " + outDir.string());
 
-            // Precreate temporary files with the final size to assert disk space
+            // Pre-create temporary files with the final size to assert disk space
             // availability before filling these files with the actual payload.
 
             for (auto&& file: _files) {
@@ -692,7 +692,7 @@ bool WorkerReplicationRequestFS::execute () {
 
     // Copy the next record from the currently open remote file
     // into the corresponding temporary files at the destination folder
-    // w/o acquring the directory lock.
+    // w/o acquiring the directory lock.
     //
     // NOTE: the while loop below is meant to skip files which are empty
 
@@ -806,7 +806,7 @@ bool WorkerReplicationRequestFS::openFiles(util::Lock const& lock) {
     }
 
     // Reopen a temporary output file locally in the 'append binary mode'
-    // then 'rewind' to the begining of the file before writing into it.
+    // then 'rewind' to the beginning of the file before writing into it.
 
     fs::path const tmpFile = _file2descr[*_fileItr].tmpFile;
 
@@ -835,17 +835,17 @@ bool WorkerReplicationRequestFS::finalize(util::Lock const& lock) {
          << "  database: "     << database()
          << "  chunk: "        << chunk());
 
-    // Unconditionally regardless of the completion of the file ranaming attemp
+    // Unconditionally regardless of the completion of the file renaming attempt
     releaseResources(lock);
 
     // Rename temporary files into the canonical ones
     // Note that this operation changes the directory namespace in a way
     // which may affect other users (like replica lookup operations, etc.). Hence we're
-    // acquering the directory lock to guarantee a consistent view onto the folder.
+    // acquiring the directory lock to guarantee a consistent view onto the folder.
 
     util::Lock dataFolderLock(_mtxDataFolderOperations, context() + "finalize");
 
-    // ATTENTION: as per ISO/IEC 9945 thie file rename operation will
+    // ATTENTION: as per ISO/IEC 9945 the file rename operation will
     //            remove empty files. Not sure if this should be treated
     //            in a special way?
 
@@ -921,7 +921,7 @@ void WorkerReplicationRequestFS::updateInfo(util::Lock const& lock) {
 void
 WorkerReplicationRequestFS::releaseResources(util::Lock const& lock) {
 
-    // Drop a connection to the remore server
+    // Drop a connection to the remote server
     _inFilePtr.reset();
 
     // Close the output file

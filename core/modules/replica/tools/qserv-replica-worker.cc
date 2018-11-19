@@ -133,7 +133,7 @@ int main(int argc, const char* const argv[]) {
             "\n"
             "    --db-allow-reconnect \n"
             "\n"
-            "      change the default database connecton handling node. Set 0 to disable automatic\n"
+            "      change the default database connection handling node. Set 0 to disable automatic\n"
             "      reconnects. Any other number would man an opposite scenario.\n"
             "      DEFAULT: " + std::to_string(::databaseAllowReconnect ? 1 : 0) + "\n"
             "\n"
@@ -158,7 +158,7 @@ int main(int argc, const char* const argv[]) {
             "\n"
             "    --config \n"
             "\n"
-            "      onfiguration URL (a configuration file or a set of the database\n"
+            "      configuration URL (a configuration file or a set of the database\n"
             "      connection parameters [ DEFAULT: " + ::configUrl + " ]\n");
 
         ::workerName = parser.parameter<std::string>(1);

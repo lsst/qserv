@@ -22,7 +22,7 @@
 
 /**
  * qserv-replica-application-test.cc is for testing class Application which
- * is meant to take care of typical mandane tasks in building command-line
+ * is meant to take care of typical tasks in building command-line
  * tools.
  */
 
@@ -53,14 +53,14 @@ public:
      *   the number of command-line arguments
      *
      * @param argv
-     *   the vector of comand-line arguments
+     *   the vector of command-line arguments
      */
     static Ptr create(int argc,
                       const char* const argv[]) {
         return Ptr(new TestApplication(argc, argv));
     }
 
-    // Default constrution and copy semantics are prohibited
+    // Default construction and copy semantics are prohibited
 
     TestApplication() = delete;
     TestApplication(TestApplication const&) = delete;
@@ -80,7 +80,7 @@ protected:
                 argv,
                 "This is a simple demo illustrating how to use class Application"
                 " for constructing user applications with very little efforts spent"
-                " on mandane tasks.",
+                " on typical tasks.",
                 true /* injectDatabaseOptions */,
                 true /* boostProtobufVersionCheck */,
                 true /* enableServiceProvider */

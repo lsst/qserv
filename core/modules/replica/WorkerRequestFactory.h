@@ -75,7 +75,7 @@ public:
      *
      * @see class WorkerReplicationRequest
      *
-     * @return a pointer to the newely created object
+     * @return a pointer to the newly created object
      */
     virtual WorkerReplicationRequestPtr createReplicationRequest(
             std::string const& worker,
@@ -90,7 +90,7 @@ public:
      *
      * @see class WorkerDeleteRequest
      *
-     * @return a pointer to the newely created object
+     * @return a pointer to the newly created object
      */
     virtual WorkerDeleteRequestPtr createDeleteRequest(
             std::string const& worker,
@@ -104,7 +104,7 @@ public:
      *
      * @see class WorkerFindRequest
      *
-     * @return a pointer to the newely created object
+     * @return a pointer to the newly created object
      */
     virtual WorkerFindRequestPtr createFindRequest(
             std::string const& worker,
@@ -119,7 +119,7 @@ public:
      *
      * @see class WorkerFindAllRequest
      *
-     * @return a pointer to the newely created object
+     * @return a pointer to the newly created object
      */
     virtual WorkerFindAllRequestPtr createFindAllRequest(
             std::string const& worker,
@@ -132,7 +132,7 @@ public:
      *
      * @see class WorkerEchoRequest
      *
-     * @return a pointer to the newely created object
+     * @return a pointer to the newly created object
      */
     virtual WorkerEchoRequestPtr createEchoRequest(
             std::string const& worker,
@@ -175,11 +175,11 @@ public:
      *
      * The technology name must be valid. Otherwise std::invalid_argument will
      * be thrown. If the default value of the parameter is assumed then the one
-     * from the currnet configuration will be assumed.
+     * from the current configuration will be assumed.
      *
      * This is the list of technologies which are presently supported:
      *
-     *   'TEST'   - request objects wghich are ment to be used for testing the framework
+     *   'TEST'   - request objects which are meant to be used for testing the framework
      *              operation w/o making any persistent side effects.
      *
      *   'POSIX'  - request objects based on the direct manipulation of files
@@ -189,7 +189,7 @@ public:
      *              on a POSIX file system and for reading remote files using
      *              the built-into-worker simple file server.
      *
-     * @param serviceProvider - provider of various serviceses (including configurations)
+     * @param serviceProvider - provider of various services (including configurations)
      * @param technology      - (optional) the name of a technology
      */
     explicit WorkerRequestFactory(ServiceProvider::Ptr const& serviceProvider,

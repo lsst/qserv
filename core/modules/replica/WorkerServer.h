@@ -44,7 +44,7 @@ namespace replica {
 class WorkerRequestFactory;
 
 /**
-  * Class WorkerServer is used for handling incomming connections to
+  * Class WorkerServer is used for handling incoming connections to
   * the worker replication service. Only one instance of this class is
   * allowed per a thread.
   */
@@ -61,11 +61,10 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider - for configuration, etc. services
-     * @param requestFactory  - the factory of requests
-     * @workerName            - the name of a worker this instance represents
-     *
-     * @return pointer to the new object created by the factory
+     * @param serviceProvider  for configuration, etc. services
+     * @param requestFactory   the factory of requests
+     * @param workerName       the name of a worker this instance represents
+     * @return                 pointer to the new object created by the factory
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       WorkerRequestFactory& requestFactory,
@@ -109,13 +108,13 @@ private:
                  std::string const& workerName);
 
     /**
-     * Begin (asynchrnonously) accepting connection requests.
+     * Begin (asynchronously) accepting connection requests.
      */
     void beginAccept();
     
     /**
      * Handle a connection request once it's detected. The rest of
-     * the comunication will be forewarded to the connection object
+     * the communication will be forwarded to the connection object
      * specified as a parameter of the method.
      *
      * @param connection - object responsible for communications with a client

@@ -205,7 +205,7 @@ void DeleteReplicaJob::startImpl(util::Lock const& lock) {
         return;
     }
 
-    // Notify Qserv about the change in a disposposition of replicas
+    // Notify Qserv about the change in a disposition of replicas
     // if the notification is required before actually deleting the replica.
     //
     // ATTENTION: only for ACTUALLY participating databases
@@ -229,7 +229,7 @@ void DeleteReplicaJob::startImpl(util::Lock const& lock) {
 
         bool const force = true;    // force the removal regardless of the replica
                                     // usage status. See the implementation of the
-                                    // corresponiding worker management service for
+                                    // corresponding worker management service for
                                     // specific detail on what "remove" means in
                                     // that service's context.
         qservRemoveReplica(
@@ -334,8 +334,8 @@ void DeleteReplicaJob::onRequestFinish(DeleteRequest::Ptr const& request) {
     // IMPORTANT: the final state is required to be tested twice. The first time
     // it's done in order to avoid deadlock on the "in-flight" requests reporting
     // their completion while the job termination is in a progress. And the second
-    // test is made after acquering the lock to recheck the state in case if it
-    // has transitioned while acquering the lock.
+    // test is made after acquiring the lock to recheck the state in case if it
+    // has transitioned while acquiring the lock.
     
     if (state() == State::FINISHED) return;
 

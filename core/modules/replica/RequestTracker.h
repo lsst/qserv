@@ -41,7 +41,7 @@ namespace replica {
 
 /**
  * Class RequestTrackerBase is a base class implements a type-independent
- * foundation for the common tracker for a collection of homogenious requests
+ * foundation for the common tracker for a collection of homogeneous requests
  * whose type is specified as the template parameter of the class.
  */
 class RequestTrackerBase {
@@ -79,7 +79,7 @@ public:
     void cancel(bool propagateToServers=false);
 
     /**
-     * The method will reset the tracket to the initial (empty) state. Please,
+     * The method will reset the tracker to the initial (empty) state. Please,
      * make sure there are no outstanding requests which may be still executing.
      *
      * @throws std::logic_error if there is at least one outstanding
@@ -114,7 +114,7 @@ protected:
      * The method to be implemented by a subclass is supposed to return all
      * requests which are known to the subclass.
      *
-     * @return collecton of requests
+     * @return collection of requests
      */
     virtual std::list<Request::Ptr> getRequests() const=0;
 
@@ -146,8 +146,8 @@ private:
 };
 
 /**
- * Class CommonRequestTracker mplements a type-aware common tracker for
- * a collection of homogenious requests whose type is specified as
+ * Class CommonRequestTracker implements a type-aware common tracker for
+ * a collection of homogeneous requests whose type is specified as
  * the template parameter of the class.
  */
 template <class T>
@@ -239,7 +239,7 @@ public:
 
 /**
  * Class AnyRequestTracker implements a type-aware request tracker for
- * a collection of heterogenious requests.
+ * a collection of heterogeneous requests.
  */
 class AnyRequestTracker
     :   public RequestTrackerBase {

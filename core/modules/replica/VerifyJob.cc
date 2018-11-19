@@ -237,7 +237,7 @@ void VerifyJob::startImpl(util::Lock const& lock) {
 
     if (replicas.empty()) {
 
-        // In theory this should never happen unless the instalation
+        // In theory this should never happen unless the installation
         // doesn't have a single chunk.
 
         LOGS(_log, LOG_LVL_ERROR, context()
@@ -306,8 +306,8 @@ void VerifyJob::onRequestFinish(FindRequest::Ptr request) {
     // IMPORTANT: the final state is required to be tested twice. The first time
     // it's done in order to avoid deadlock on the "in-flight" requests reporting
     // their completion while the job termination is in a progress. And the second
-    // test is made after acquering the lock to recheck the state in case if it
-    // has transitioned while acquering the lock.
+    // test is made after acquiring the lock to recheck the state in case if it
+    // has transitioned while acquiring the lock.
 
     if (state() == State::FINISHED) return;
 
@@ -326,8 +326,8 @@ void VerifyJob::onRequestFinish(FindRequest::Ptr request) {
 
         // TODO:
         // - check if the replica still exists. It's fine if it's gone
-        //   because some jobs may chhose either to purge extra replicas
-        //   or rebalance the cluster. So, no subscriber otification is needed
+        //   because some jobs may choose either to purge extra replicas
+        //   or re-balance the cluster. So, no subscriber notification is needed
         //   here.
 
         ;
@@ -337,9 +337,9 @@ void VerifyJob::onRequestFinish(FindRequest::Ptr request) {
         // a subscriber of any changes (after releasing a lock on the mutex).
         //
         // @see class ReplicaDiff for further specific details on replica
-        // differece analysis.
+        // difference analysis.
         //
-        // ATTENTIONS: Replica differeces are reported into the log stream only
+        // ATTENTIONS: Replica differences are reported into the log stream only
         //             when no interest to be notified in the differences
         //             expressed by a caller (no callback provided).
 

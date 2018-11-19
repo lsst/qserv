@@ -165,8 +165,8 @@ void RebalanceJob::onPrecursorJobFinish() {
     // IMPORTANT: the final state is required to be tested twice. The first time
     // it's done in order to avoid deadlock on the "in-flight" requests reporting
     // their completion while the job termination is in a progress. And the second
-    // test is made after acquering the lock to recheck the state in case if it
-    // has transitioned while acquering the lock.
+    // test is made after acquiring the lock to recheck the state in case if it
+    // has transitioned while acquiring the lock.
 
     if (state() == State::FINISHED) return;
 
@@ -181,14 +181,14 @@ void RebalanceJob::onPrecursorJobFinish() {
     if (_findAllJob->extendedState() != ExtendedState::SUCCESS) {
 
         LOGS(_log, LOG_LVL_ERROR, context()
-             << "onPrecursorJobFinish  failed due to the precurson job failure");
+             << "onPrecursorJobFinish  failed due to the precursor job failure");
 
         finish(lock, ExtendedState::FAILED);
         return;
     }
 
-    ///////////////////////////////////////////////
-    // Analyse results and prepare a rebalance plan
+    ////////////////////////////////////////////////
+    // Analyze results and prepare a re-balance plan
 
     FindAllJobResult const& replicaData = _findAllJob->getReplicaData();
 
@@ -238,9 +238,9 @@ void RebalanceJob::onPrecursorJobFinish() {
         return;
     }
 
-    // This map is prepopulated with all workers which have responded to the FindAll
+    // This map is populated with all workers which have responded to the FindAll
     // requests. It's meant to tell the planner which workers to avoid when looking for
-    // a new home for a chunk to be moved elswhere from an overpopulated
+    // a new home for a chunk to be moved elsewhere from an overpopulated
     // worker.
     //
     // IMPORTANT: the map be updated by the planner as it will be deciding
@@ -273,7 +273,7 @@ void RebalanceJob::onPrecursorJobFinish() {
         }
     }
 
-    // Get a disposition of good chunks accross workers. This map will be used
+    // Get a disposition of good chunks across workers. This map will be used
     // on the next step as a foundation for two collections: overpopulated ('source')
     // and underpopulated ('destination') workers.
     //
@@ -362,13 +362,13 @@ void RebalanceJob::onPrecursorJobFinish() {
     if (not destinationWorkers.size()) {
 
         LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish:  "
-             << "no underloaded 'destination' workers found");
+             << "no under-loaded 'destination' workers found");
 
         finish(lock, ExtendedState::SUCCESS);
         return;
     }
 
-    // Prepare the rebalance plan based on the following considerations:
+    // Prepare the re-balance plan based on the following considerations:
     //
     // - use the above formed map 'worker2chunks' to avoid chunk collisions
     //   and to record claimed destination workers
@@ -376,9 +376,9 @@ void RebalanceJob::onPrecursorJobFinish() {
     // - use and update the above formed map 'destinationWorkers'
     //   to find a candidate worker with fewer number of chunks
     //
-    // - the algorithim will go over all chunks of each eligible (source) worker
+    // - the algorithm will go over all chunks of each eligible (source) worker
     //   to see if it's possible to find a new home for a chunk until
-    //   the number of extra chunks parameter is exausted. Note. it's okay
+    //   the number of extra chunks parameter is exhausted. Note. it's okay
     //   if it won't be possible to solve this problem for any chunk
     //   of the source worker - this will be just reported into the log
     //   stream before moving to the next worker. This problem will be
@@ -424,14 +424,14 @@ void RebalanceJob::onPrecursorJobFinish() {
 
             // Search for a candidate worker where to move this chunk to
             //
-            // IMPLEMENTTION NOTES: using non-const references in the loop to allow
+            // IMPLEMENTTION NOTES: using non-constant references in the loop to allow
             // updates to the number of slots
 
             for (auto&& destinationWorkerEntry: destinationWorkers) {
                 std::string const& destinationWorker = destinationWorkerEntry.first;
                 size_t&            numSlots          = destinationWorkerEntry.second;
 
-                // Are there any awailable slots on the worker?
+                // Are there any available slots on the worker?
                 if (not numSlots) continue;
 
                 // Skip this worker if it already has this chunk
@@ -534,8 +534,8 @@ void RebalanceJob::onJobFinish(MoveReplicaJob::Ptr const& job) {
     // IMPORTANT: the final state is required to be tested twice. The first time
     // it's done in order to avoid deadlock on the "in-flight" requests reporting
     // their completion while the job termination is in a progress. And the second
-    // test is made after acquering the lock to recheck the state in case if it
-    // has transitioned while acquering the lock.
+    // test is made after acquiring the lock to recheck the state in case if it
+    // has transitioned while acquiring the lock.
 
     if (state() == State::FINISHED) {
         _activeJobs.remove(job);

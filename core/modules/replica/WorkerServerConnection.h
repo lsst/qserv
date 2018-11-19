@@ -45,13 +45,13 @@ namespace replica {
   * Class WorkerServerConnection is used for handling connections from
   * remote clients. One instance of the class serves one client at a time.
   *
-  * Objects of this class are inistantiated by WorkerServer. After that
-  * the server calls this class's method beginProtocol() which startes
+  * Objects of this class are instantiated by WorkerServer. After that
+  * the server calls this class's method beginProtocol() which starts
   * a series of asynchronous operations to communicate with remote client.
   * When all details of an incoming request are obtained from the client
   * the connection object forwards this request for actual processing
-  * to an instace of the WorkerProcessor class. A response reseived from
-  * the processor is serialized and sent back (asynchroniously) to
+  * to an instance of the WorkerProcessor class. A response resieved from
+  * the processor is serialized and sent back (asynchronously) to
   * the client.
   */
 class WorkerServerConnection
@@ -69,7 +69,7 @@ public:
      *
      * @param serviceProvider - provider of various services
      * @param processor       - processor of long (queued) requests
-     * @param io_service      - enpoint for network I/O
+     * @param io_service      - endpoint for network I/O
      *
      * @return pointer to the new object created by the factory
      */
@@ -89,7 +89,7 @@ public:
     boost::asio::ip::tcp::socket& socket() { return _socket; }
 
     /**
-     * Begin communicating asynchroniously with a client. This is essentially
+     * Begin communicating asynchronously with a client. This is essentially
      * an RPC protocol which runs in a loop this sequence of steps:
      * 
      *   - ASYNC: read a frame header of a request
@@ -100,13 +100,13 @@ public:
      *
      * NOTES: A reason why the read phase is split into four steps is
      *        that a client is expected to send all components of the request
-     *        (frame header, re uest header and request body) at once. This means
-     *        the whole incomming message will be already available on the server's
-     *        host memory when an asyncronous handler for the frame header will fire.
+     *        (frame header, request header and request body) at once. This means
+     *        the whole incoming message will be already available on the server's
+     *        host memory when an asynchronous handler for the frame header will fire.
      *        However, due to a variable length of the request we should know its length
-     *        before attempting to read the rest of the incomming message as this (the later)
+     *        before attempting to read the rest of the incoming message as this (the later)
      *        will require two things: 1) to ensure enough we have enough buffer space
-     *        allocated, and 2) to tell the asynchrnous reader function how many bytes
+     *        allocated, and 2) to tell the asynchronous reader function how many bytes
      *        exactly are we going to read.
      * 
      * The chain ends when a client disconnects or when an error condition
@@ -126,7 +126,7 @@ private:
                            boost::asio::io_service& io_service);
 
     /**
-     * Begin reading (asynchronosly) the frame header of a new request
+     * Begin reading (asynchronously) the frame header of a new request
      *
      * The frame header is presently a 32-bit unsigned integer
      * representing the length of the subsequent message.
@@ -134,10 +134,10 @@ private:
     void receive();
 
     /**
-     * The calback on finishing (either successfully or not) of aynchronious reads.
+     * The callback on finishing (either successfully or not) of asynchronous reads.
      *
      * @param ec                - error condition to be checked for
-     * @param bytes_transferred - the number of bytes receoved (if successful)
+     * @param bytes_transferred - the number of bytes received (if successful)
      */
     void received(boost::system::error_code const& ec,
                   size_t bytes_transferred);
@@ -165,11 +165,11 @@ private:
 
     /**
      * Serialize an identifier of a request into response header
-     * followed by the protobuf response body protobuf object and
+     * followed by the Protobuf response body Protobuf object and
      * send it all back to a client.
      *
-     * @param id   - a unique identifier of a request to which th ereply is sent
-     * @param body - a body of the response
+     * @param id    a unique identifier of a request to which the reply is sent
+     * @param body  a body of the response
      */
     template <class T>
     void reply(std::string const& id,
@@ -187,12 +187,12 @@ private:
     }
 
     /**
-     * Begin sending (asynchronosly) a result back to a client
+     * Begin sending (asynchronously) a result back to a client
      */
     void send();
 
     /**
-     * The calback on finishing (either successfully or not) of aynchronious writes.
+     * The callback on finishing (either successfully or not) of asynchronous writes.
      *
      * @param ec                - error condition to be checked for
      * @param bytes_transferred - the number of bytes sent (if successful)
@@ -210,7 +210,7 @@ private:
 
     boost::asio::ip::tcp::socket _socket;
 
-    /// Buffer management class facilitating serialization/deserialization
+    /// Buffer management class facilitating serialization/de-serialization
     /// of data sent over the network
     std::shared_ptr<ProtocolBuffer> _bufferPtr;
 };

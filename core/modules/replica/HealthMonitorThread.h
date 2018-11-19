@@ -38,7 +38,7 @@ namespace replica {
 /**
  * Class HealthMonitorThread represents a thread which monitors a status of
  * the Replication and Qserv worker services and report worker(s) eligible
- * for eviction if the're not responding within the specified timeout.
+ * for eviction if they're not responding within the specified timeout.
  */
 class HealthMonitorThread
     :   public ControlThread {
@@ -75,10 +75,10 @@ public:
      *
      * @param onWorkerEvictTimeout
      *   callback function to be called when one or more workers
-     *   are continiously not responding during the specifid period of
+     *   are continuously not responding during the specified period of
      *   time (parameter 'workerEvictTimeoutSec'). A candidate worker becomes
      *   eligible for eviction from the cluster if both Replication and Qserv
-     *   worker services are both not respondig.
+     *   worker services are both not responding.
      *
      * @param workerEvictTimeoutSec
      *   the maximum number of seconds a couple of Replication and Qserv services
@@ -87,13 +87,13 @@ public:
      *
      * @param workerResponseTimeoutSec
      *   the number of seconds to wait before a response when probing a remote
-     *   worker service (Replication or Qserv). The timeout is needed for contionious
+     *   worker service (Replication or Qserv). The timeout is needed for continuous
      *   monitoring of all workers even if one (or many of those) are not
      *   responding.
      *
      * @param healthProbeIntervalSec
      *   the number of seconds to wait between iterations of the inner monitoring
-     *   loop. This parametr determines a frequency of probes sent to the worker
+     *   loop. This parameter determines a frequency of probes sent to the worker
      *   services.
      *
      * @return

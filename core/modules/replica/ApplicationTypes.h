@@ -51,7 +51,7 @@ namespace detail {
 
 /**
  * Class ParserError represents exceptions throw by the command-line parser
- * during ptocessing arguments as per user requested syntax description.
+ * during processing arguments as per user requested syntax description.
  */
 class ParserError
     :   public util::Issue {
@@ -111,13 +111,13 @@ public:
 
     virtual ~ArgumentParser() = default;
 
-    // Trivial accessors
+    // Trivial state retrieval methods
 
     std::string const& name() const { return _name; }
     std::string const& description() const { return _description; }
 
     /**
-     * Let a subclass to parse the input string into a value of the corresponidng
+     * Let a subclass to parse the input string into a value of the corresponding
      * (as defined by the class) type.
      *
      * @param inStr - (optional) input string to be parsed
@@ -190,7 +190,7 @@ public:
      *
      * @param var
      *   the reference to the corresponding variable to be initialized with
-     *   a value of the paameter after successful parsing. The type of the
+     *   a value of the parameter after successful parsing. The type of the
      *   parameter is determined by the template argument.
      *
      * @see ArgumentParser::ArgumentParser()
@@ -287,7 +287,7 @@ public:
      *
      * @param var
      *   the reference to the corresponding variable to be initialized with
-     *   a value of the paameter after successful parsing. The type of the
+     *   a value of the parameter after successful parsing. The type of the
      *   parameter is determined by the template argument.
      *
      * @see ArgumentParser::ArgumentParser()
@@ -370,7 +370,7 @@ public:
      *
      * @param var
      *   the reference to the corresponding variable to be initialized with
-     *   a value of the paameter after successful parsing. The type of the
+     *   a value of the parameter after successful parsing. The type of the
      *   parameter is determined by the template argument.
      *
      * @see ArgumentParser::ArgumentParser()
@@ -447,7 +447,7 @@ public:
      *
      * @param arc              - argument count
      * @parav argv             - vector of argument values
-     * @param description      - descripton of an application
+     * @param description      - description of an application
      */
     Parser(int argc,
            const char* const argv[],
@@ -461,7 +461,7 @@ public:
      * IMPORTANT: the operation will NOT return user variables mentioned in
      * the 'add' methods back to their states if method 'parse' has already
      * been called. It's up to a user to reset those variables back to the
-     * desired state if teir intent behind calling this ('reset') method is
+     * desired state if their intent behind calling this ('reset') method is
      * to reconfigure the parser and start over.
      *
      * @see method Parser::reset()
@@ -488,7 +488,7 @@ public:
      *
      * @param var
      *   the reference to the corresponding variable to be initialized with
-     *   a value of the paameter after successful parsing. The type of the
+     *   a value of the parameter after successful parsing. The type of the
      *   parameter is determined by the template argument.
      *
      * @param allowedValues
@@ -521,9 +521,9 @@ public:
     }
 
     /**
-     * Register an optinal positional parameter for parsing. The original
+     * Register an optinoal positional parameter for parsing. The original
      * state of a variable passed into the method will assumed as the default
-     * value of teh parameter. The value will stay intact if the parameter
+     * value of the parameter. The value will stay intact if the parameter
      * won't be found in a command line. Otherwise this method is similar to
      * the above defined 'required'.
      *
@@ -608,7 +608,7 @@ public:
      *
      * @return completion code
      *
-     * @throws ParserError for any problems occuring during the parsing
+     * @throws ParserError for any problems occurring during the parsing
      */
     int parse();
 
@@ -617,7 +617,7 @@ public:
      * into a string
      *
      * @throws std::logic_error if called before attempted to parse
-     * th command line parameters, or if the parsing didn't successfully
+     * the command line parameters, or if the parsing didn't successfully
      * finish with Status::SUCCESS.
      */
     std::string serializeArguments() const;
@@ -638,14 +638,14 @@ private:
      * @return the "Usage" string to be reported in case if any problem
      * with parsing the command line arguments will be seen. The current
      * implementation of this method will build and cache the string the
-     * first time the metghod is invoked.
+     * first time the method is invoked.
      */
     std::string const& usage();
 
     /**
      * @return the complete documentation to be returned if flag "--help"
      * is passed as an argument.  The current implementation of this method
-     * will build and cache the string the first time the metghod is invoked
+     * will build and cache the string the first time the method is invoked
      * regardless if flag "--help" is registered or not for the application.
      */
     std::string const& help();
@@ -659,10 +659,10 @@ private:
      *   the input string to be wrapped
      *   
      * @param indent
-     *   the indent at the begining of each line
+     *   the indent at the beginning of each line
      *   
      * @param width
-     *   the maximum width of each line (including the apecified indent)
+     *   the maximum width of each line (including the specified indent)
      *
      * @return
      *   the wrapped text, in which each line (including the last one)

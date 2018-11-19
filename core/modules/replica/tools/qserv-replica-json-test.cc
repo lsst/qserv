@@ -20,7 +20,7 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-/// qserv-replica-json-test.cc is a siple test for the 'nlohmann' JSON
+/// qserv-replica-json-test.cc is a simple test for the 'nlohmann' JSON
 /// library.
 
 // System headers

@@ -55,7 +55,7 @@ public:
      * Construct the object by reading the configuration
      * from the specified file.
      *
-     * @param configFile - the name of a configuraiton file
+     * @param configFile - the name of a configuration file
      */
     explicit ConfigurationFile(std::string const& configFile);
 

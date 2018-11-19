@@ -161,7 +161,7 @@ void QservMgtRequest::start(XrdSsiService* service,
         return;
     }
   
-    // Build associaitons with the corresponding service and
+    // Build associations with the corresponding service and
     // the job (optional)
 
     _service = service;
@@ -216,8 +216,8 @@ void QservMgtRequest::expired(boost::system::error_code const& ec) {
     // IMPORTANT: the final state is required to be tested twice. The first time
     // it's done in order to avoid deadlock on the "in-flight" callbacks reporting
     // their completion while the request termination is in a progress. And the second
-    // test is made after acquering the lock to recheck the state in case if it
-    // has transitioned while acquering the lock.
+    // test is made after acquiring the lock to recheck the state in case if it
+    // has transitioned while acquiring the lock.
 
     if (state() == State::FINISHED) return;
 
@@ -235,8 +235,8 @@ void QservMgtRequest::cancel() {
     // IMPORTANT: the final state is required to be tested twice. The first time
     // it's done in order to avoid deadlock on the "in-flight" callbacks reporting
     // their completion while the request termination is in a progress. And the second
-    // test is made after acquering the lock to recheck the state in case if it
-    // has transitioned while acquering the lock.
+    // test is made after acquiring the lock to recheck the state in case if it
+    // has transitioned while acquiring the lock.
 
     if (state() == State::FINISHED) return;
 

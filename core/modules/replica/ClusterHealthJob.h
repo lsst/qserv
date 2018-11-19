@@ -113,7 +113,7 @@ private:
 
 /**
   * Class ClusterHealthJob represents a tool which will send probes to the Replication
-  * workr services and Qserv (if enabled) services of all worker nodes. Upon its
+  * worker services and Qserv (if enabled) services of all worker nodes. Upon its
   * completion the job will report a status of each service.
   *
   * The job is implemented not to have any side effects on either class of services.
@@ -126,7 +126,7 @@ public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<ClusterHealthJob> Ptr;
 
-    /// The function type for notifications on the completon of the request
+    /// The function type for notifications on the completion of the request
     typedef std::function<void(Ptr)> CallbackType;
 
    /// @return default options object for this type of a request
@@ -139,14 +139,14 @@ public:
      *
      * @param timeoutSec  - maximum number of seconds that (all) requests are allowed to wait
      *                      before finish or expire. If the parameter is set to 0 then
-     *                      the correspondig timeout (for requests) from the Configuration service
+     *                      the corresponding timeout (for requests) from the Configuration service
      *                      will be assumed. ARTTENTION: this timeout could be quite lengthy.
      * @param controller  - for launching requests
      * @param parentJobId - (optional) identifier of a parent job
      * @param onFinish    - (optional) callback function to be called upon a completion of the job
      * @param options     - (optional) job options
      *
-     * @return poiter to the created object
+     * @return pointer to the created object
      */
     static Ptr create(unsigned int timeoutSec,
                       Controller::Ptr const& controller,
@@ -207,7 +207,7 @@ protected:
     void notify(util::Lock const& lock) final;
 
     /**
-     * The calback function to be invoked on a completion of the Replication
+     * The callback function to be invoked on a completion of the Replication
      * worker probes.
      *
      * @param request - a pointer to a request
@@ -215,7 +215,7 @@ protected:
     void onRequestFinish(ServiceStatusRequest::Ptr const& request);
 
     /**
-     * The calback function to be invoked on a completion of the Qserv
+     * The callback function to be invoked on a completion of the Qserv
      * worker probes.
      *
      * @param request - a pointer to a request

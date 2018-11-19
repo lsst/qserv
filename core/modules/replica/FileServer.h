@@ -25,7 +25,7 @@
 
 /**
  * This header declares class FileServern which is used
- * in the server-side impementation of the point-to-point file migration
+ * in the server-side implementation of the point-to-point file migration
  * service of the Replication system.
  */
 
@@ -47,8 +47,8 @@ namespace qserv {
 namespace replica {
 
 /**
-  * Class FileServer is used for handling incomming connections to
-  * the file delivery service. Each instance of this class will be runing
+  * Class FileServer is used for handling incoming connections to
+  * the file delivery service. Each instance of this class will be running
   * in its own thread.
   */
 class FileServer
@@ -86,7 +86,7 @@ public:
     /**
      * Run the server in a thread pool (as per the Configuration)
      *
-     * ATTENTION: this is the blovking operation. Please, run it
+     * ATTENTION: this is the blocking operation. Please, run it
      * within its own thread if needed.
      */
     void run();
@@ -103,13 +103,13 @@ private:
                std::string const& workerName);
 
     /**
-     * Begin (asynchrnonously) accepting connection requests.
+     * Begin (asynchronously) accepting connection requests.
      */
     void beginAccept();
     
     /**
      * Handle a connection request once it's detected. The rest of
-     * the comunication will be forewarded to the connection object
+     * the communication will be forwarded to the connection object
      * specified as a parameter of the method.
      */
     void handleAccept(FileServerConnection::Ptr const& connection,

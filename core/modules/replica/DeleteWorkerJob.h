@@ -47,14 +47,14 @@ namespace replica {
  */
 struct DeleteWorkerJobResult {
 
-    /// New replicas created upon successfull completion of the request
+    /// New replicas created upon successful completion of the request
     std::map<std::string,               // database family
         std::map<unsigned int,          // chunk
             std::map<std::string,       // database
                 std::map<std::string,   // worker
                     ReplicaInfo>>>> chunks;
 
-    /// Completelly lost replicas which only existed on the deleted worker node
+    /// Completely lost replicas which only existed on the deleted worker node
     std::map<unsigned int,              // chunk
         std::map<std::string,           // database
             ReplicaInfo>> orphanChunks;
@@ -63,7 +63,7 @@ struct DeleteWorkerJobResult {
 /**
   * Class DeleteWorkerJob represents a tool which will disable a worker
   * from any active use in a replication setup. All chunks hosted by
-  * the worker node will be distributed accross the cluster.
+  * the worker node will be distributed across the cluster.
   *
   * Specific steps made by the job:
   * 1. check the status of the worker service (SYNC, short timeout),
@@ -78,13 +78,13 @@ struct DeleteWorkerJobResult {
   *        1.2.1 proceed to step 2
   * 2. change the status of the worker
   *    2.1 disable worker in the configuration
-  *    2.2 update a disposition of chunks accross the rest of the cluster (ASYNC)
+  *    2.2 update a disposition of chunks across the rest of the cluster (ASYNC)
   * 3. launch the replication job ReplicateJob (ASYNC, long timeout)
   * 4. analyze results when the job will finish a report on which replicas were
-  *    made and which could not be made will be prepared. See struct DeleteWorkerJobResult
+  *    made and which could not be made will be prepared. See structure DeleteWorkerJobResult
   *    defined above for specific details.
   *    4.1 load a list of affected worker's replicas from the database
-  *    4.2 if such orpgans found check 1.0 to see if the worker service could
+  *    4.2 if such orphans found check 1.0 to see if the worker service could
   *        be reactivated to pull those missing replicas from that node
   *        TBC...
   */
@@ -96,7 +96,7 @@ public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<DeleteWorkerJob> Ptr;
 
-    /// The function type for notifications on the completon of the request
+    /// The function type for notifications on the completion of the request
     typedef std::function<void(Ptr)> CallbackType;
 
     /// @return default options object for this type of a request
@@ -108,11 +108,12 @@ public:
      * low-level pointers).
      *
      * @param worker          - the name of a worker to be deleted
-     * @param permanentDelete - if set to 'true' the worker record will be completelly wiped out
-     *                          from the configuration
+     * @param permanentDelete - if set to 'true' the worker record will be completely
+     *                          wiped out from the configuration
      * @param controller      - for launching requests
      * @param parentJobId     - optional identifier of a parent job
-     * @param onFinish        - a callback function to be called upon a completion of the job
+     * @param onFinish        - a callback function to be called upon a completion of
+     *                           the job
      * @param options         - (optional) job options
      */
     static Ptr create(std::string const& worker,
@@ -148,9 +149,9 @@ public:
      *   finished. Please, verify the primary and extended status of the object
      *   to ensure that all requests have finished.
      *
-     * @return the data structure to be filled upon the completin of the job.
+     * @return the data structure to be filled upon the completion of the job.
      *
-     * @throws std::logic_error - if the job dodn't finished at a time
+     * @throws std::logic_error - if the job didn't finished at a time
      *                            when the method was called
      */
     DeleteWorkerJobResult const& getReplicaData() const;
@@ -190,21 +191,21 @@ protected:
     void notify(util::Lock const& lock) final;
 
     /**
-     * Beging the actual sequence of actions for removing the worker
+     * Begin the actual sequence of actions for removing the worker
      *
      * @param lock - the lock must be acquired by a caller of the method
      */
     void disableWorker(util::Lock const& lock);
 
     /**
-     * The calback function to be invoked on a completion of each request.
+     * The callback function to be invoked on a completion of each request.
      *
      * @param request - a pointer to a request
      */
     void onRequestFinish(FindAllRequest::Ptr const& request);
 
     /**
-     * The calback function to be invoked on a completion of a job
+     * The callback function to be invoked on a completion of a job
      * which ensures the desired replication level after disabling .
      *
      * @param request - a pointer to a job
@@ -216,7 +217,7 @@ protected:
     /// The name of a worker to be disabled
     std::string const _worker;
 
-    /// Permamently remove from the configuration if set
+    /// Permanently remove from the configuration if set
     bool const _permanentDelete;
 
     /// Client-defined function to be called upon the completion of the job

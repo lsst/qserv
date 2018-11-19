@@ -53,18 +53,18 @@ namespace replica {
 
 /**
   * Class ReplicaInfo represents a status of a replica received from
-  * the correspondig worker service.
+  * the corresponding worker service.
   *
   * Note that this class can only be constructed from an object of
-  * the corresponding protobuf type. And there is a complementary operation
+  * the corresponding Protobuf type. And there is a complementary operation
   * for translating the state of this class's object into an object of
-  * the same protobuf type.
+  * the same Protobuf type.
   */
 class ReplicaInfo {
 
 public:
 
-    /// Struct FileInfo represents an information entry for a file
+    /// Structure FileInfo represents an information entry for a file
     struct FileInfo {
 
         /// The short name of the file
@@ -90,7 +90,7 @@ public:
         uint64_t inSize;
 
         /**
-         * Comparision operator
+         * Comparison operator
          *
          * @param other - object to be compared with
          * @return 'true' if the current object is semantically identical to the other one
@@ -103,7 +103,7 @@ public:
         }
 
         /**
-         * The complementary comparision operator
+         * The complementary comparison operator
          * 
          * @param other - object to be compared with
          * @return 'true' if the current object is semantically different from the other one
@@ -134,7 +134,7 @@ public:
      * Construct with the specified state.
      *
      * @param status     - object status (see notes above)
-     * @param worker     - the name of the worker wre the replica is located
+     * @param worker     - the name of the worker where the replica is located
      * @param database   - the name of the database
      * @param chunk      - the chunk number
      * @param verifyTime - when the replica info was obtainer by a worker
@@ -151,7 +151,7 @@ public:
      * Construct with the specified state (no files provided)
      *
      * @param status     - object status (see notes above)
-     * @param worker     - the name of the worker wre the replica is located
+     * @param worker     - the name of the worker where the replica is located
      * @param database   - the name of the database
      * @param chunk      - the chunk number
      * @param verifyTime - when the replica info was obtainer by a worker
@@ -163,7 +163,7 @@ public:
                 uint64_t verifyTime);
 
     /**
-     * Construct from a protobuf object
+     * Construct from a Protobuf object
      *
      * @param info - Protobuf object
      */
@@ -188,7 +188,7 @@ public:
      */
     void setFileInfo(FileInfoCollection&& fileInfo);
 
-    // Trivial accessors
+    // Trivial get methods
 
     Status status() const { return _status; }
 
@@ -200,11 +200,11 @@ public:
     /// @return the last time when the replica status was checked
     uint64_t verifyTime() const { return _verifyTime; }
 
-    /// @return a collection of files constituiting the replica
+    /// @return a collection of files associated with the replica
     FileInfoCollection const& fileInfo() const { return _fileInfo; }
 
     /**
-     * @return a collection of files constituiting the replica as a map,
+     * @return a collection of files associated with the replica as a map,
      * in which the file name is the key.
      */
     std::map<std::string, FileInfo> fileInfoMap() const;
@@ -228,7 +228,7 @@ public:
     uint64_t endTransferTime() const;
 
     /**
-     * @return a protobuf object
+     * @return a Protobuf object
      *
      * OWNERSHIP TRANSFER NOTE: this method allocates a new object and
      * returns a pointer along with its ownership.
@@ -236,7 +236,7 @@ public:
     lsst::qserv::proto::ReplicationReplicaInfo* info() const;
 
     /**
-     * Initialize a protobuf object from the object's state
+     * Initialize a Protobuf object from the object's state
      *
      * @param info - Protobuf object
      */
@@ -258,7 +258,7 @@ public:
     }
     
     /**
-     * The complementary comparision operator
+     * The complementary comparison operator
      * 
      * @param other - object to be compared with
      * @return 'true' if the current object is semantically different from the other one
@@ -308,7 +308,7 @@ std::ostream& operator<<(std::ostream& os, ReplicaInfoCollection const& ric);
 
 /**
  * Structure QservReplica represents replica entries used in communications
- * with Qserv workers management servies.
+ * with Qserv workers management services.
  */
 struct QservReplica {
     unsigned int chunk;

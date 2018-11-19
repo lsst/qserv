@@ -25,7 +25,7 @@
 /**
  * This header defines a collection of classes which provide a safe abstraction
  * for chunk numbers. Objects of class ChunkNumber replace the unsigned integer
- * repesentation. Also, there are pluggable "validator" classes which are meant
+ * representation. Also, there are plugged "validator" classes which are meant
  * to restrict a range of chunk number values as well as ensure that chunk number
  * objects are used in the right context. See a description of each class for
  * further details on this subject.
@@ -55,7 +55,7 @@ namespace replica {
  * number validation services.
  *
  * Validators are tied to database families (and, indirectly, - to
- * the corresponiding partitioning schemes). Validator instances are also
+ * the corresponding partitioning schemes). Validator instances are also
  * comparable. The comparison is based on the instance uniqueness.
  */
 class ChunkNumberValidator {
@@ -67,10 +67,10 @@ public:
 
     virtual ~ChunkNumberValidator() = default;
 
-    /// @return 'true' if the input validator coresponds to the same instance
+    /// @return 'true' if the input validator corresponds to the same instance
     bool operator==(ChunkNumberValidator const& rhs) const;
 
-    /// @return 'true' if the input validator does not corespondsto the same instance
+    /// @return 'true' if the input validator does not corresponds to the same instance
     bool operator!=(ChunkNumberValidator const& rhs) const { return not operator==(rhs); }
 
     /// @return 'true' if the input value is valid
@@ -84,7 +84,7 @@ public:
 
 protected:
 
-    // No publicly available cnstruction methods for objects of this class 
+    // No publicly available construction methods for objects of this class 
 
     ChunkNumberValidator();
     ChunkNumberValidator(ChunkNumberValidator const&) = default;
@@ -106,7 +106,7 @@ class ChunkNumberSingleRangeValidator
 public:
 
     /**
-     * Constract the validator for a specific rang eof chunk numbers
+     * Construct the validator for a specific range of chunk numbers
      *
      * @param minValue - the minimal (inclusive) number in the range
      * @param maxValue - the maximum (inclusive) number in the range
@@ -141,7 +141,7 @@ class ChunkNumberQservValidator
 public:
 
     /**
-     * Constract the validator with a specific set of the partitioning parameters.
+     * Construct the validator with a specific set of the partitioning parameters.
      * See further details on the meaning of these parameters in a documentation
      * for the constructor of class lsst::sphgeom::Chunker.
      *
@@ -170,7 +170,7 @@ private:
  * circumstances:
  *
  * - when attempting to construct an object using a non-valid (as per
- *   the validator paramter) chunk number
+ *   the validator parameter) chunk number
  *
  * - in binary operations over chunk numbers where either of the objects
  *   is not valid, or if both objects don't corresponds to the same validator.
@@ -185,7 +185,7 @@ typedef std::range_error ChunkNumberNotValid;
  * one of the constructors of the class.
  *
  * Objects of this class are called to be 'compatible' (hence, they can be
- * used in the corresponidng binary operations) if they both are 'valid'
+ * used in the corresponding binary operations) if they both are 'valid'
  * and correspond to the same instance of the 'validator'.
  *
  * Validator objects need to be passed into every explicit constructor
@@ -247,30 +247,21 @@ public:
     /**
      * Explicit conversion into the numeric integer type
      *
-     * @return numbric value of the chunk
+     * @return numeric value of the chunk
      *
-     * @throws ChunkNumberNotValid if the object is not valud
+     * @throws ChunkNumberNotValid if the object is not valid
      */
     unsigned int value() const;
 
-    /**
-     * Implicit conversion into the numeric integer type
-     *
-     * @return numbric value of the chunk
-     *
-     * @throws ChunkNumberNotValid if the object is not valud
-     */
-    //operator unsigned int() const { return value(); }
-
     // The binary operators will throw ChunkNumberNotValid if
-    // eiter of the objects is not valid, or both objects aren't
+    // either of the objects is not valid, or both objects aren't
     // associated to the same validator.
 
     bool operator==(ChunkNumber const& rhs) const;
     bool operator!=(ChunkNumber const& rhs) const { return not operator==(rhs); }
     bool operator<(ChunkNumber const& rhs) const;
 
-    // The binaruy operators will construct temporary numbers from input
+    // The binary operators will construct temporary numbers from input
     // values using validators of the 'lvalue' object, and if the temporaries
     // couldn't be valid exception ChunkNumberNotValid will be thrown.
 
@@ -287,7 +278,7 @@ private:
     static ChunkNumberValidator::Ptr const& defaultValidator();
 
     /**
-     * Checks for validity and compatiblity (both are based on the same validator)
+     * Checks for validity and compatibility (both are based on the same validator)
      * of the input chunk numbers. The method is used in binary operations over
      * 
      *
@@ -306,7 +297,7 @@ private:
     ChunkNumberValidator::Ptr _validator;
 };
 
-/// Pring the chunk numger onto a stream
+/// Print the chunk number onto a stream
 std::ostream& operator<<(std::ostream& os, ChunkNumber const& chunkNumber);
 
 }}} // namespace lsst::qserv::replica

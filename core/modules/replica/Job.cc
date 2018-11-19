@@ -193,8 +193,8 @@ void Job::cancel() {
     // IMPORTANT: the final state is required to be tested twice. The first time
     // it's done in order to avoid deadlock on the "in-flight" requests reporting
     // their completion while the job termination is in a progress. And the second
-    // test is made after acquering the lock to recheck the state in case if it
-    // has transitioned while acquering the lock.
+    // test is made after acquiring the lock to recheck the state in case if it
+    // has transitioned while acquiring the lock.
 
     if (state() == State::FINISHED) return;
 
@@ -349,8 +349,9 @@ void Job::startHeartbeatTimer(util::Lock const& lock) {
 
         LOGS(_log, LOG_LVL_DEBUG, context() << "startHeartbeatTimer");
 
-        // The time needs to be initialized each time when a new interval
-        // is about to begin. Otherwise it will strt firing immediately.
+        // The timer needs to be initialized each time a new interval
+        // is about to begin. Otherwise it will immediately expire when
+        // async_wait() will be called.
         _heartbeatTimerPtr.reset(
             new boost::asio::deadline_timer(
                 controller()->io_service(),
@@ -377,8 +378,8 @@ void Job::heartbeat(boost::system::error_code const& ec) {
     // IMPORTANT: the final state is required to be tested twice. The first time
     // it's done in order to avoid deadlock on the "in-flight" requests reporting
     // their completion while the job termination is in a progress. And the second
-    // test is made after acquering the lock to recheck the state in case if it
-    // has transitioned while acquering the lock.
+    // test is made after acquiring the lock to recheck the state in case if it
+    // has transitioned while acquiring the lock.
 
     if (state() == State::FINISHED) return;
 
@@ -401,8 +402,9 @@ void Job::startExpirationTimer(util::Lock const& lock) {
 
         LOGS(_log, LOG_LVL_DEBUG, context() << "startExpirationTimer");
 
-        // The time needs to be initialized each time when a new interval
-        // is about to begin. Otherwise it will strt firing immediately.
+        // The timer needs to be initialized each time a new interval
+        // is about to begin. Otherwise it will immediately expire when
+        // async_wait() will be called.
         _expirationTimerPtr.reset(
             new boost::asio::deadline_timer(
                 controller()->io_service(),
@@ -429,8 +431,8 @@ void Job::expired(boost::system::error_code const& ec) {
     // IMPORTANT: the final state is required to be tested twice. The first time
     // it's done in order to avoid deadlock on the "in-flight" requests reporting
     // their completion while the job termination is in a progress. And the second
-    // test is made after acquering the lock to recheck the state in case if it
-    // has transitioned while acquering the lock.
+    // test is made after acquiring the lock to recheck the state in case if it
+    // has transitioned while acquiring the lock.
 
     if (state() == State::FINISHED) return;
 

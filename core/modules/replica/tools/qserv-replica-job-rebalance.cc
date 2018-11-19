@@ -163,7 +163,7 @@ bool test () {
         }
 
         //////////////////////////////
-        // Analyse and display results
+        // Analyze and display results
 
         replica::RebalanceJobResult const& replicaData = job->getReplicaData();
 
@@ -211,7 +211,7 @@ int main(int argc, const char* const argv[]) {
             "  --config             - a configuration URL (a configuration file or a set of the database\n"
             "                         connection parameters [ DEFAULT: file:replication.cfg ]\n"
             "  --estimate-only      - do not make any changes to chunk disposition. Just produce\n"
-            "                         and print an estimate for the rebalance plan.\n"
+            "                         and print an estimate for the re-balance plan.\n"
             "  --progress-report    - progress report when executing batches of requests\n"
             "  --error-report       - the flag triggering detailed report on failed requests\n"
             "  --chunk-locks-report - report chunks which are locked\n");
