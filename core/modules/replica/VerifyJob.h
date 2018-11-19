@@ -43,11 +43,11 @@ namespace replica {
  * objects which are stored here.
  *
  * NOTE: a reason why a special class (versus an overloaded version of
- * operator==) is needed to differrenciate between replicas is due to
- * greater flexibily of the special class which not only encapsulates both
- * replicas within a single object, but it also allows compare ovejcts
+ * operator==) is needed to differentiate between replicas is due to
+ * greater flexibility of the special class which not only encapsulates both
+ * replicas within a single object, but it also allows compare objects
  * in a specific context of the replica verification job. Specific aspects
- * of the replica diffences could be also reported.
+ * of the replica differences could be also reported.
  */
 class ReplicaDiff {
 
@@ -80,15 +80,15 @@ public:
     ReplicaInfo const& replica2() const { return _replica2; }
 
     /**
-     * @return 'true' if the object encapculates two snapshots refferring
+     * @return 'true' if the object encapsulates two snapshots referring
      * to the same replica.
      */
     bool isSelf() const;
 
     /**
-     * The comporision operator
+     * The comparison operator
      *
-     * @return 'true' in case if there are diffences between replicas. Specific aspects
+     * @return 'true' in case if there are differences between replicas. Specific aspects
      * of the difference can be explored by directly comparing the replica objects.
      */
     bool operator()() const { return _notEqual; }
@@ -131,7 +131,7 @@ std::ostream& operator<<(std::ostream& os, ReplicaDiff const& ri);
   * against the one which exists in the database. This will include:
   *   - file sizes
   *   - modification timestamps of files
-  *   - control/check sums of files constituiting the replicas
+  *   - control/check sums of files belonging to the replicas
   *
   * Any differences will get reported to a subscriber via a specific callback
   * function. The new status of a replica will be also recorded within the database.
@@ -144,10 +144,10 @@ public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<VerifyJob> Ptr;
 
-    /// The function type for notifications on the completon of the request
+    /// The function type for notifications on the completion of the request
     typedef std::function<void(Ptr)> CallbackType;
 
-    /// The function type for notifications on the completon of the request
+    /// The function type for notifications on the completion of the request
     typedef std::function<void(Ptr,
                                ReplicaDiff const&,
                                std::vector<ReplicaDiff> const&)> CallbackTypeOnDiff;
@@ -160,18 +160,33 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param maxReplicas         - maximum number of replicas to process simultaneously
-     *                              (must be greater than 0).
-     * @param computeCheckSum     - compute check/control sum on each file if set to 'true'
-     @ @param onReplicaDifference - callback function to be called when two replicas won't match
-     * @param controller          - for launching requests
-     * @param parentJobId         - (optional) identifier of a parent job
-     * @param onFinish            - (optional) callback function to be called upon a completion of the job
-     * @param options             - (optional) job options
+     * @param maxReplicas
+     *   maximum number of replicas to process simultaneously
+     *   (must be greater than 0).
      *
-     * @return poiter to the created object
+     * @param computeCheckSum
+     *   compute check/control sum on each file if set to 'true'
      *
-     * @throws std::invalid_argument - of maxReplicas is 0
+     @ @param onReplicaDifference
+     *   callback function to be called when two replicas won't match
+     *
+     * @param controller
+     *   for launching requests
+     *
+     * @param parentJobId
+     *   (optional) identifier of a parent job
+     *
+     * @param onFinish
+     *   (optional) callback function to be called upon a completion of the job
+     *
+     * @param options
+     *   (optional) job options
+     *
+     * @return
+     *   pointer to the created object
+     *
+     * @throws std::invalid_argument
+     *   if maxReplicas is 0
      */
     static Ptr create(size_t maxReplicas,
                       bool computeCheckSum,
@@ -231,7 +246,7 @@ protected:
     void notify(util::Lock const& lock) final;
 
     /**
-     * The calback function to be invoked on a completion of each request.
+     * The callback function to be invoked on a completion of each request.
      *
      * @param request - a pointer to a request
      */

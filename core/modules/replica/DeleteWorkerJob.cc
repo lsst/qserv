@@ -45,7 +45,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.DeleteWorkerJob");
 
 /**
  * Count the total number of entries in the input collection,
- * the number of finished entries, nd the total number of succeeded
+ * the number of finished entries, and the total number of succeeded
  * entries.
  *
  * The "entries" in this context are either derivatives of the Request
@@ -140,7 +140,7 @@ void DeleteWorkerJob::startImpl(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
 
-    util::BlockPost blockPost(1000, 2000);
+    util::BlockPost blockPost(1000, 2000);  // ~1s
 
     auto self = shared_from_base<DeleteWorkerJob>();
 
@@ -258,8 +258,8 @@ void DeleteWorkerJob::onRequestFinish(FindAllRequest::Ptr const& request) {
     // IMPORTANT: the final state is required to be tested twice. The first time
     // it's done in order to avoid deadlock on the "in-flight" requests reporting
     // their completion while the job termination is in a progress. And the second
-    // test is made after acquering the lock to recheck the state in case if it
-    // has transitioned while acquering the lock.
+    // test is made after acquiring the lock to recheck the state in case if it
+    // has transitioned while acquiring the lock.
     
     if (state() == State::FINISHED) return;
 
@@ -274,7 +274,7 @@ void DeleteWorkerJob::onRequestFinish(FindAllRequest::Ptr const& request) {
     // has finished. If so then proceed to the next stage of the job.
     //
     // ATTENTION: we don't care about the completion status of the requests
-    // because the're related to a worker which is going to be removed, and
+    // because they're related to a worker which is going to be removed, and
     // this worker may already be experiencing problems.
     //
     if (_numFinished == _numLaunched) disableWorker(lock);
@@ -285,8 +285,8 @@ DeleteWorkerJob::disableWorker(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "disableWorker");
 
-    // Temporary disable this worker from the configuration. If it's requsted
-    // to be permanently deleted this will be done only after all other relevamnt
+    // Temporary disable this worker from the configuration. If it's requested
+    // to be permanently deleted this will be done only after all other relevant
     // operations of this job will be done.
 
     controller()->serviceProvider()->config()->disableWorker(worker());
@@ -326,8 +326,8 @@ void DeleteWorkerJob::onJobFinish(ReplicateJob::Ptr const& job) {
     // IMPORTANT: the final state is required to be tested twice. The first time
     // it's done in order to avoid deadlock on the "in-flight" requests reporting
     // their completion while the job termination is in a progress. And the second
-    // test is made after acquering the lock to recheck the state in case if it
-    // has transitioned while acquering the lock.
+    // test is made after acquiring the lock to recheck the state in case if it
+    // has transitioned while acquiring the lock.
     
     if (state() == State::FINISHED) return;
 
@@ -399,7 +399,7 @@ void DeleteWorkerJob::onJobFinish(ReplicateJob::Ptr const& job) {
 
         // TODO: if the list of orphan chunks is not empty then consider bringing
         // back the disabled worker (if the service still responds) in the read-only
-        // mode and try using it for redistributing those chunks accross the cluster.
+        // mode and try using it for redistributing those chunks across the cluster.
         //
         // NOTE: this could be a complicated procedure which needs to be thought
         // through.

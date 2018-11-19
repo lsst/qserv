@@ -107,8 +107,8 @@ bool FileClient::openImpl() {
 
     boost::system::error_code ec;
 
-    // Connect to the server synchroniously using error codes to process errors
-    // insteda of exceptions.
+    // Connect to the server synchronously using error codes to process errors
+    // instead of exceptions.
 
     boost::asio::ip::tcp::resolver::query query(
         _workerInfo.svcHost,
@@ -140,7 +140,7 @@ bool FileClient::openImpl() {
     // This step is also implemented through a series of synchronous operations.
     //
     // NOTE: this sequence of steps is happening inside the exception
-    //       trap block to catch exceptions thrown by the Google protobuf
+    //       trap block to catch exceptions thrown by the Google Protobuf
     //       and message buffer manipulation operations. Any exception
     //       happened inside the block will fail the file open operation
     //       with a message posted into the log stream.
@@ -207,8 +207,8 @@ bool FileClient::openImpl() {
 
         const uint32_t responseLengthBytes = _bufferPtr->parseLength();
 
-        _bufferPtr->resize(responseLengthBytes);    // make sure the buffer has enough space to accomodate
-                                                    // the data of the message.
+        _bufferPtr->resize(responseLengthBytes);    // make sure the buffer has enough space to
+                                                    // accommodate the data of the message.
         boost::asio::read(
             _socket,
             boost::asio::buffer(

@@ -36,21 +36,21 @@ namespace replica {
 
 /**
  * Class ProtocolBuffer is a helper class encapsulating serialization,
- * deserialization operations with Google Protobuf objects.
+ * de-serialization operations with Google Protobuf objects.
  */
 class ProtocolBuffer {
 
 public:
 
-    /// Google protobuffers are more efficient below this size (bytes)
+    /// Google Protobuf buffers are more efficient below this size (bytes)
     static size_t const DESIRED_LIMIT;
 
-    /// The hard limit (bytes) for a single Google protobuffer
+    /// The hard limit (bytes) for a single Google Protobuf buffer
     static size_t const HARD_LIMIT;
 
     /**
      * Construct the buffer of some initial capacity, which will be
-     * extended later if needed to accomodate larger messages.
+     * extended later if needed to accommodate larger messages.
      *
      * @param capacity - initial capacity (bytes) of the buffer
      */
@@ -72,7 +72,7 @@ public:
     size_t capacity () const { return _capacity; }
 
     /**
-     * @return current meaninful size (bytes) of the buffer
+     * @return current meaningful size (bytes) of the buffer
      *
      * NOTE: a value return by the method will never exceed the buffer's
      * capacity.
@@ -81,31 +81,35 @@ public:
 
     /**
      * Set the size of the meaningful content of the buffer. If the buffer
-     * capacity is insufficient to accomodate the requested size the buffer
+     * capacity is insufficient to accommodate the requested size the buffer
      * will be extended. In the later case its previous content (if any) will
      * be preserved.
      *
      * @param newSizeBytes - (optional) new size in bytes
      *
-     * @throws std::overflow_error if the buffer doesn't have enough space to accomodate the request
+     * @throws std::overflow_error
+     *   if the buffer doesn't have enough space to accommodate the request
      */
     void resize(size_t newSizeBytes=0);
 
     /**
-     * Add a message into the buffer. The message will be preceeed
+     * Add a message into the buffer. The message will be preceded
      * by a frame header carrying the length of the message.
      *
      * @param message - Protobuf object to be serialized
      *
-     * @throws std::overflow_error if the buffer doesn't have enough space to accomodate the data
-     * @throws std::runtime_error if the serialization failed
+     * @throws std::overflow_error
+     *   if the buffer doesn't have enough space to accommodate the data
+     * 
+     * @throws std::runtime_error
+     *   if the serialization failed
      */
     template <class T>
     void serialize(T const& message) {
 
         uint32_t const bytes = message.ByteSize();
 
-        // Make sure we have enough space to accomodate the frame length
+        // Make sure we have enough space to accommodate the frame length
         // and the message body.
 
         extend(_size + sizeof(uint32_t) + bytes);
@@ -124,8 +128,8 @@ public:
     } 
 
     /**
-     * Parse and deserialize the length of a message from the frame header
-     * assuming the header is stored at the very begining of the data buffer.
+     * Parse and de-serialize the length of a message from the frame header
+     * assuming the header is stored at the very beginning of the data buffer.
      *
      * @return the length of a message
      *
@@ -135,9 +139,9 @@ public:
     uint32_t parseLength() const;
 
     /*
-     * Parse and deserialize the message given the specified size of
+     * Parse and de-serialize the message given the specified size of
      * the message as informed by a prior frame header. The message is
-     * assumed to be stored at the very begining of the data buffer.
+     * assumed to be stored at the very beginning of the data buffer.
      *
      * @param message - Protobuf object to be initialized
      * @param bytes   - number of bytes to be consumed during the operation
@@ -145,7 +149,7 @@ public:
      * @throws std::underflow_error if the buffer doesn't have enough data
      * to be interpreted as the message of the required size
      *
-     * @throws std::runtime_error if the deserialization failed
+     * @throws std::runtime_error if the de-serialization failed
      */
     template <class T>
     void parse(T& message, uint32_t bytes) {
@@ -153,7 +157,7 @@ public:
             throw std::underflow_error("not enough data to be interpreted as the message");
         }
         if (not message.ParseFromArray(_data, bytes)) {
-            throw std::runtime_error("message deserialization failed");
+            throw std::runtime_error("message de-serialization failed");
         }
     }
 
@@ -164,7 +168,7 @@ private:
      * Extend it otherwise. The previous contents (as per its 'size') of the buffer
      * as well as its size will be preserved.
      *
-     * @param newCapacityBytes - the nuber of bytes to be set
+     * @param newCapacityBytes - the number of bytes to be set
      */
     void extend(size_t newCapacityBytes);
 

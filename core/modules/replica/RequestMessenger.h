@@ -90,7 +90,7 @@ protected:
                      bool allowDuplicate,
                      Messenger::Ptr const& messenger);
 
-    /// @return pointer to the messenging service
+    /// @return pointer to the messaging service
     Messenger::Ptr const& messenger() const { return _messenger; }
 
     /**
@@ -100,7 +100,7 @@ protected:
     
 protected:
 
-    /// Worker messenging service
+    /// Worker messaging service
     Messenger::Ptr const _messenger;
 };
 

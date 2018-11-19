@@ -48,7 +48,8 @@ class Messenger;
 class QservMgtServices;
 
 /**
-  * Class ServiceProvider hosts various serviceses for the master server.
+  * Class ServiceProvider hosts various services used by both workers
+  * and controllers.
   */
 class ServiceProvider
     :   public std::enable_shared_from_this<ServiceProvider> {
@@ -99,7 +100,7 @@ public:
 
     /**
      * Stop the services. This method will guarantee that all outstanding
-     * opeations will finish and not aborted.
+     * operations will finish and not aborted.
      *
      * This operation will also result in stopping the internal threads
      * in which the server is being run and joining with these threads.
@@ -133,8 +134,8 @@ public:
     /**
      * Make sure workers are now known in the configuration and they're different
      *
-     * @param workerOneName - name of the first worker in the comparision
-     * @param workerTwoName - name of the second worker in the comparision
+     * @param workerOneName - name of the first worker in the comparison
+     * @param workerTwoName - name of the second worker in the comparison
      *
      * @throws std::invalid_argument if either worker is unknown
      */
@@ -146,7 +147,7 @@ public:
      *
      * @param name - the name of a database
      * 
-     * @throws std::invalid_argument if the database is uknown
+     * @throws std::invalid_argument if the database is unknown
      */
     void assertDatabaseIsValid(std::string const& name);
 

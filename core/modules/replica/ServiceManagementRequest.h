@@ -25,7 +25,7 @@
 /// ServiceManagementRequest.h declares:
 ////
 /**
- * This class declares a collection of the morker servers management request
+ * This class declares a collection of the worker servers management request
  * classes as part of the Controller-side Replication Framework.
  *
  * @see class ServiceSuspendRequestPolicy
@@ -99,7 +99,7 @@ public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<ServiceManagementRequest<POLICY>> Ptr;
 
-    /// The function type for notifications on the completon of the request
+    /// The function type for notifications on the completion of the request
     typedef std::function<void(Ptr)> CallbackType;
 
     // Default construction and copy semantics are prohibited
@@ -118,10 +118,10 @@ public:
      * low-level pointers).
      *
      * @param serviceProvider  - provides various services for the application
-     * @param worker           - identifier of a worker node (the one to be affectd by the request)
+     * @param worker           - identifier of a worker node (the one to be affected by the request)
      * @param io_service       - network communication service (BOOST ASIO)
      * @param onFinish         - callback function to be called upon a completion of the request
-     * @param messenger        - messenging service for workers
+     * @param messenger        - messenger service for workers
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       boost::asio::io_service& io_service,

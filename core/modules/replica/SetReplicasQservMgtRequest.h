@@ -53,7 +53,7 @@ public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<SetReplicasQservMgtRequest> Ptr;
 
-    /// The function type for notifications on the completon of the request
+    /// The function type for notifications on the completion of the request
     typedef std::function<void(Ptr)> CallbackType;
 
     // Default construction and copy semantics are prohibited
@@ -69,12 +69,21 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider - reference to a provider of services
-     * @param worker          - name of a worker
-     * @param newReplicas     - collection of new replicas (NOTE: useCount field is ignored)
-     * @param force           - proceed with the operation even if some replicas affceted by
-     *                          the operation are in use.
-     * @param onFinish        - callback function to be called upon request completion
+     * @param serviceProvider
+     *   reference to a provider of services
+     *
+     * @param worker
+     *   name of a worker
+     *
+     * @param newReplicas
+     *   collection of new replicas (NOTE: useCount field is ignored)
+     *
+     * @param force
+     *   proceed with the operation even if some replicas affected by
+     *   the operation are in use.
+     *
+     * @param onFinish
+     *   callback function to be called upon request completion
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& worker,
@@ -89,12 +98,14 @@ public:
     bool force() const { return _force; }
 
     /**
-      * @return previous collection of replicas which was set at the corresponding
-      *         Qserv worker before the operation.
+      * @return
+      *   previous collection of replicas which was set at the corresponding
+      *   Qserv worker before the operation.
       *
-      * ATTENTION: the method will throw exception std::logic_error if called
-      * before the request finishes or if it's finished with any but SUCCESS
-      * status.
+      * @note
+      *   the method will throw exception std::logic_error if called
+      *   before the request finishes or if it's finished with any but SUCCESS
+      *   status.
       */
     QservReplicaCollection const& replicas() const;
 
@@ -108,12 +119,21 @@ private:
     /**
      * Construct the request with the pointer to the services provider.
      *
-     * @param serviceProvider - reference to a provider of services
-     * @param worker          - the name of a worker
-     * @param newReplicas     - collection of new replicas (NOTE: useCount field is ignored)
-     * @param force           - proceed with the operation even if some replicas affceted by
-     *                          the operation are in use.
-     * @param onFinish        - callback function to be called upon request completion
+     * @param serviceProvider
+     *   reference to a provider of services
+     * 
+     * @param worker
+     *   the name of a worker
+     *
+     * @param newReplicas
+     *   collection of new replicas (NOTE: useCount field is ignored)
+     *
+     * @param force
+     *   proceed with the operation even if some replicas affected by
+     *   the operation are in use.
+     *
+     * @param onFinish
+     *   callback function to be called upon request completion
      */
     SetReplicasQservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
                                std::string const& worker,
@@ -124,8 +144,11 @@ private:
     /**
      * Carry over results of the request into a local collection.
      *
-     * @param lock       - lock must be acquired by a caller of the metod
-     * @param collection - input collection of replicas
+     * @param lock
+     *   lock must be acquired by a caller of the method
+     *
+     * @param collection
+     *   input collection of replicas
      */
      void setReplicas(util::Lock const& lock,
                       wpublish::SetChunkListQservRequest::ChunkCollection const& collection);

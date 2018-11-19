@@ -244,11 +244,11 @@ void DatabaseServicesPool::releaseService(DatabaseServices::Ptr const& service) 
     );
     if (1 != numRemoved) {
         throw std::logic_error(
-                "DatabaseServicesPool::releaseService  inappropried use of the method");
+                "DatabaseServicesPool::releaseService  inappropriate use of the method");
     }
     _availableServices.push_back(service);
 
-    // Notify one cient (if any) waiting for a service
+    // Notify one client (if any) waiting for a service
 
     lock.unlock();
     _available.notify_one();

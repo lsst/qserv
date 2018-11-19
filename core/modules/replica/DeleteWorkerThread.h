@@ -37,9 +37,9 @@ namespace replica {
 
 /**
  * Class DeleteWorkerThread represents a thread which evicts a single worker
- * from a cluster. Note, that depenidng on the anount of data in catalogs served
+ * from a cluster. Note, that depending on the amount of data in catalogs served
  * by the cluster, a desired replication level, and existing replica disposition,
- * reomav of a worker could be a lengthy process.
+ * removal of a worker could be a lengthy process.
  */
 class DeleteWorkerThread
     :   public ControlThread {

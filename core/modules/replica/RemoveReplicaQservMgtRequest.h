@@ -54,7 +54,7 @@ public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<RemoveReplicaQservMgtRequest> Ptr;
 
-    /// The function type for notifications on the completon of the request
+    /// The function type for notifications on the completion of the request
     typedef std::function<void(Ptr)> CallbackType;
 
     // Default construction and copy semantics are prohibited

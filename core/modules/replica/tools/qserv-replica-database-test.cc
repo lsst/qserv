@@ -116,7 +116,7 @@ void test() {
     try {
 
         // Change default parameters of the database connectors before
-        // attemping any operations with the Replication Framework.
+        // attempting any operations with the Replication Framework.
 
         Configuration::setDatabaseAllowReconnect(databaseAllowReconnect);
         Configuration::setDatabaseConnectTimeoutSec(databaseConnectTimeoutSec);

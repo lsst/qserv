@@ -63,8 +63,8 @@ public:
      * and run a user-supplied algorithm. A completion code obtained from
      * this method is supposed to be returned to a shell. These are some of
      * the predefined values returned by the method as defined by type
-     * Parser::Status. Other values are determied by the user-supplied implementaton
-     * of virtual method 'runImpl'.
+     * Parser::Status. Other values are determined by the user-supplied
+     * implementation of virtual method 'runImpl'.
      * 
      * @see Parser::Status
      * @see Application::runImpl()
@@ -85,7 +85,7 @@ protected:
      *   vector of argument values
      *
      * @param description
-     *   (optional) descripton of an application as it will appear in
+     *   (optional) description of an application as it will appear in
      *   the documentation string reported with option "--help"
      *
      * @param injectDatabaseOptions
@@ -95,7 +95,7 @@ protected:
      * @param boostProtobufVersionCheck
      *   (optional) flag which will force Google Protobuf version check. The check
      *   will ensure that a version of the Protobuf library linked to an application
-     *   is consistent with hedear files.
+     *   is consistent with header files.
      *
      * @param enableServiceProvider
      *   (optional) flag which will inject configuration option "--config=<url>",
@@ -123,14 +123,14 @@ protected:
      *
      * @throws std::logic_error
      *   if Configuration loading and ServiceProvider is not enabled
-     *   in the constructor of teh class.
+     *   in the constructor of the class.
      */
     ServiceProvider::Ptr const& serviceProvider() const;
 
     /**
-     * This method is requird to be implements by subclasses to run
+     * This method is required to be implements by subclasses to run
      * the application's logic. The method is called after successfully
-     * parsing the command-line paramters and initializing the aplication's
+     * parsing the command-line parameters and initializing the application's
      * context.
      *
      * @see method Application::run()
@@ -155,7 +155,7 @@ private:
     /// have to be setup.
     bool const _enableServiceProvider;
 
-    /// The standard flag which would turn on the denug output if requsted
+    /// The standard flag which would turn on the debug output if requested
     bool _debugFlag;
 
     /// Configuration URL

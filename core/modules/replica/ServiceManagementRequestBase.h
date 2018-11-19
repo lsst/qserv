@@ -43,7 +43,7 @@ namespace replica {
 class Messenger;
 
 /**
- * Struct ServiceState encapsulates various parameters representing the state
+ * Structure ServiceState encapsulates various parameters representing the state
  * of the remote request processing service. The parameters are available
  * upon the completion of the request.
  */
@@ -57,7 +57,7 @@ struct ServiceState {
     };
     State state;
 
-    /// The backend technology
+    /// The back-end technology
     std::string technology;
 
     /// When the service started (milliseconds since UNIX Epoch)
@@ -109,11 +109,12 @@ public:
     ~ServiceManagementRequestBase() override = default;
 
     /**
-     * @return the state of the worker-side service
+     * @return
+     *   the state of the worker-side service
      * 
-     * @throw exception std::logic_error if the request's primary state
-     * is not 'FINISHED' and its extended state is neither 'SUCCESS'
-     * or 'SERVER_ERROR'.
+     * @throw std::logic_error
+     *   if the request's primary state is not 'FINISHED' and its extended state
+     *   is neither 'SUCCESS' or 'SERVER_ERROR'.
      */
     ServiceState const& getServiceState() const;
 
@@ -128,7 +129,7 @@ protected:
      * @param worker           - name of a worker
      * @param requestType      - type of a request
      * @param onFinish         - callback function to be called upon a completion of the request
-     * @param messenger        - messenging service for workers
+     * @param messenger        - messaging service for workers
      */
     ServiceManagementRequestBase(ServiceProvider::Ptr const& serviceProvider,
                                  boost::asio::io_service& io_service,
@@ -146,7 +147,7 @@ private:
     /**
      * Process the worker response to the requested operation.
      *
-     * @param success - the flag indicating if the operation was successfull
+     * @param success - the flag indicating if the operation was successful
      * @param message - a response from the worker service (if success is 'true')
      */
     void analyze(bool success,

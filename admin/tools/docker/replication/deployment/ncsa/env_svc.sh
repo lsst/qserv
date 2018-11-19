@@ -49,7 +49,11 @@ General options:
 Options restricting a scope of the operation:
 
     -w=<name>|--worker=<name>
-        select one worker only
+        select workers affected by the operation. If '*' is used in place of
+        the worker name then all workers will be assumed. Note that single
+        quotes are required here in order to prevent the shell from expanding
+        the the wildcard symbol into a list of local files in the current
+        working directory.
 
     -m|--master
         master controller

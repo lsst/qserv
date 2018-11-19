@@ -97,8 +97,8 @@ void StopRequestBase::awaken(boost::system::error_code const& ec) {
     // IMPORTANT: the final state is required to be tested twice. The first time
     // it's done in order to avoid deadlock on the "in-flight" callbacks reporting
     // their completion while the request termination is in a progress. And the second
-    // test is made after acquering the lock to recheck the state in case if it
-    // has transitioned while acquering the lock.
+    // test is made after acquiring the lock to recheck the state in case if it
+    // has transitioned while acquiring the lock.
 
     if (state() == State::FINISHED) return;
 
@@ -139,17 +139,17 @@ void StopRequestBase::analyze(bool success,
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "analyze  success=" << (success ? "true" : "false"));
 
-    // This method is called on behalf of an asynchronious callback fired
+    // This method is called on behalf of an asynchronous callback fired
     // upon a completion of the request within method send() - the only
     // client of analyze(). So, we should take care of proper locking and watch
-    // for possible state transition which might occure while the async I/O was
+    // for possible state transition which might occur while the async I/O was
     // still in a progress.
 
     // IMPORTANT: the final state is required to be tested twice. The first time
     // it's done in order to avoid deadlock on the "in-flight" callbacks reporting
     // their completion while the request termination is in a progress. And the second
-    // test is made after acquering the lock to recheck the state in case if it
-    // has transitioned while acquering the lock.
+    // test is made after acquiring the lock to recheck the state in case if it
+    // has transitioned while acquiring the lock.
 
     if (state() == State::FINISHED) return;
 

@@ -64,7 +64,7 @@ public:
     friend class WorkerProcessorThread;
 
     /**
-     * Struct PriorityQueueTyp extends the standard priority queue for pointers
+     * Structure PriorityQueueTyp extends the standard priority queue for pointers
      * to the new (unprocessed) requests.
      * 
      * Its design relies upon the inheritance to get access to the protected
@@ -89,9 +89,11 @@ public:
         /**
          * Remove a request from the queue by its identifier
          *
-         * @param id - an identifier of a request
+         * @param id
+         *   an identifier of a request
          *
-         * @return 'true' if the object was actially removed
+         * @return
+         *   'true' if the object was actually removed
          */
         bool remove(std::string const& id) {
             auto itr = std::find_if (
@@ -126,9 +128,14 @@ public:
     /**
      * The factory method for objects of the class
      *
-     * @param serviceProvider - provider of various services
-     * @param requestFactory  - reference to a factory of requests (for instantiating request objects)
-     * @param worker          - the name of a worker
+     * @param serviceProvider
+     *   provider of various services
+     *
+     * @param requestFactory
+     *   reference to a factory of requests (for instantiating request objects)
+     * 
+     * @param worker
+     *   the name of a worker
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       WorkerRequestFactory const& requestFactory,
@@ -160,10 +167,15 @@ public:
     /**
      * Enqueue the replication request for processing
      *
-     * @param id       - an identifier of a request
-     * @param request  - the protobuf object received from a client
-     * @param response - the protobuf object to be initialized and ready
-     *                   to be sent back to the client
+     * @param id
+     *    an identifier of a request
+     *
+     * @param request
+     *   the Protobuf object received from a client
+     *
+     * @param response
+     *   the Protobuf object to be initialized and ready to be sent back to
+     *   the client
      */
     void enqueueForReplication(std::string const& id,
                                proto::ReplicationRequestReplicate const& request,
@@ -172,10 +184,15 @@ public:
     /**
      * Enqueue the replica deletion request for processing
      *
-     * @param id       - an identifier of a request
-     * @param request  - the protobuf object received from a client
-     * @param response - the protobuf object to be initialized and ready
-     *                   to be sent back to the client
+     * @param id
+     *   an identifier of a request
+     *
+     * @param request
+     *   the Protobuf object received from a client
+     *
+     * @param response
+     *   the Protobuf object to be initialized and ready to be sent back
+     *   to the client
      */
     void enqueueForDeletion(std::string const& id,
                             proto::ReplicationRequestDelete const& request,
@@ -184,10 +201,15 @@ public:
     /**
      * Enqueue the replica lookup request for processing
      *
-     * @param id       - an identifier of a request
-     * @param request  - the protobuf object received from a client
-     * @param response - the protobuf object to be initialized and ready
-     *                   to be sent back to the client
+     * @param id
+     *   an identifier of a request
+     *
+     * @param request
+     *   the Protobuf object received from a client
+     *
+     * @param response
+     *   the Protobuf object to be initialized and ready to be sent back
+     *   to the client
      */
     void enqueueForFind(std::string const& id,
                         proto::ReplicationRequestFind const& request,
@@ -196,10 +218,15 @@ public:
     /**
      * Enqueue the multi-replica lookup request for processing
      *
-     * @param id       - an identifier of a request
-     * @param request  - the protobuf object received from a client
-     * @param response - the protobuf object to be initialized and ready
-     *                   to be sent back to the client
+     * @param id
+     *   an identifier of a request
+     *
+     * @param request
+     *   the Protobuf object received from a client
+     *
+     * @param response
+     *   the Protobuf object to be initialized and ready to be sent back
+     *   to the client
      */
     void enqueueForFindAll(std::string const& id,
                            proto::ReplicationRequestFindAll const& request,
@@ -208,10 +235,15 @@ public:
     /**
      * Enqueue the worker-side testing request for processing
      *
-     * @param id       - an identifier of a request
-     * @param request  - the protobuf object received from a client
-     * @param response - the protobuf object to be initialized and ready
-     *                   to be sent back to the client
+     * @param id
+     *   an identifier of a request
+     *
+     * @param request
+     *   the Protobuf object received from a client
+     *
+     * @param response
+     *   the Protobuf object to be initialized and ready to be sent back
+     *   to the client
      */
     void enqueueForEcho(std::string const& id,
                         proto::ReplicationRequestEcho const& request,
@@ -224,9 +256,14 @@ public:
      *   status_ext
      *   performance
      *   
-     * @param response       - the protobuf object to be updated
-     * @param status         - primary completion status of a request
-     * @param extendedStatus - extended completion status of a request
+     * @param response
+     *   the Protobuf object to be updated
+     *
+     * @param status
+     *   primary completion status of a request
+     *
+     * @param extendedStatus
+     *   extended completion status of a request
      */
     template <class PROTOCOL_RESPONSE_TYPE>
     static void setDefaultResponse(PROTOCOL_RESPONSE_TYPE& response,
@@ -245,15 +282,20 @@ public:
     /**
      * Dequeue replication request
      *
-     * If the request is not being processed yet then it wil be simply removed
+     * If the request is not being processed yet then it will be simply removed
      * from the ready-to-be-processed queue. If it's being processed an attempt
      * to cancel processing will be made. If it has already processed this will
      * be reported.
      *
-     * @param id       - an identifier of a request
-     * @param request  - the protobuf object representing the request
-     * @param response - the protobuf object to be initialized and ready
-     *                   to be sent back to the client
+     * @param id
+     *   an identifier of a request
+     *
+     * @param request
+     *   the Protobuf object representing the request
+     *
+     * @param response
+     *   the Protobuf object to be initialized and ready to be sent back
+     *   to the client
      */
     template <typename RESPONSE_MSG_TYPE>
     void dequeueOrCancel(std::string const& id,
@@ -269,7 +311,7 @@ public:
                            proto::ReplicationStatusExt::INVALID_ID);
 
         // Try to locate a request with specified identifier and make sure
-        // its actual type matches expecations
+        // its actual type matches expectations.
 
         if (WorkerRequest::Ptr ptr = dequeueOrCancelImpl(lock, request.id())) {
             try {
@@ -291,10 +333,15 @@ public:
     /**
      * Return the status of an on-going replication request
      *
-     * @param id       - an identifier of a request
-     * @param request  - the protobuf object representing the request
-     * @param response - the protobuf object to be initialized and ready
-     *                   to be sent back to the client
+     * @param id
+     *   an identifier of a request
+     *
+     * @param request
+     *   the Protobuf object representing the request
+     *
+     * @param response
+     *   the Protobuf object to be initialized and ready to be sent back
+     *   to the client
      */
     template <typename RESPONSE_MSG_TYPE>
     void checkStatus(std::string const& id,
@@ -332,13 +379,17 @@ public:
      * Fill in processor's state and counters into a response object to be sent
      * back to a remote client.
      *
-     * @param response       - the protobuf object to be initialized and ready
-     *                         to be sent back to the client
-     * @param id             - an identifier of an original request this response
-     *                         is being sent
-     * @param status         - desired status to set
-     * @param extendedReport - to return detailed info on all known
-     *                         replica-related requests
+     * @param response
+     *   the Protobuf object to be initialized and ready to be sent back
+     *   to the client
+     * @param id
+     *   an identifier of an original request this response is being sent
+     * 
+     * @param status
+     *   desired status to set
+     * 
+     * @param extendedReport
+     *   to return detailed info on all known replica-related requests
      */
     void setServiceResponse(proto::ReplicationServiceResponse& response,
                             std::string const& id,
@@ -357,7 +408,7 @@ public:
 private:
 
     /**
-     * The constructor of the class is available to the functory method only
+     * The constructor of the class is available to the factory method only
      *
      * @see WorkerProcessor::create
      */
@@ -367,16 +418,18 @@ private:
 
     /**
      * Translate the completion status for replication requests and return
-     * its protobuf counterpart
+     * its Protobuf counterpart
      *
-     * @param status - a completion status of a request processing object
+     * @param status
+     *   a completion status of a request processing object
      *
-     * @return the matching completion status as per a protobuf definition
+     * @return
+     *   the matching completion status as per a Protobuf definition
      */
     static proto::ReplicationStatus translate(WorkerRequest::CompletionStatus status);
 
     /**
-     * Return the next request which is ready to be pocessed
+     * Return the next request which is ready to be processed
      * and if then one found assign it to the specified thread. The request
      * will be removed from the ready-to-be-processed queue.
      *
@@ -388,9 +441,10 @@ private:
      * This method is supposed to be called by one of the processing threads
      * when it becomes available.
      *
-     * ATTENTION: this method will block for a duration of time not exceeding
-     *            the client-specified timeout unless it's set to 0. In the later
-     *            case the method will block indefinitevely.
+     * @note
+     *   this method will block for a duration of time not exceeding
+     *   the client-specified timeout unless it's set to 0. In the later
+     *   case the method will block indefinitely.
      *
      * @param processorThread     - reference to a thread which fetches the next request
      * @param timeoutMilliseconds - (optional) amount of time to wait before to finish if
@@ -498,7 +552,7 @@ private:
     /**
      * Report a decision not to process a request
      *
-     * This method ia supposed to be called by one of the processing threads
+     * This method is supposed to be called by one of the processing threads
      * after it fetches the next ready-to-process request and then decided
      * not to proceed with processing. Normally this should happen when
      * the thread was asked to stop. In that case the request will be put

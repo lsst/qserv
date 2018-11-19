@@ -148,7 +148,7 @@ protected:
 
         parser().option(
             "health-probe-interval",
-            "interval (seconds) between running the health monitor",
+            "interval (seconds) between iterations of the health monitoring probes",
             _healthProbeIntervalSec
         ).option(
             "replication-interval",
@@ -183,7 +183,7 @@ protected:
         ).option(
             "replicas",
             "the minimal number of replicas when running the replication phase"
-            " This number of provided will override the corresponding value found in"
+            " This number if provided and if it's not 0 will override the corresponding value found"
             " in the Configuration.",
             _numReplicas
         ).option(
@@ -192,14 +192,14 @@ protected:
             _numIter
         ).flag(
             "purge",
-            "also run the purge algorithm in the end of each repliocation cycle in order"
-            " to eliminate excess replicas which might get created by olgorithm ran earlier"
-            " in the cycle",
+            "The binary flag which if provided would enable the optional purge algorithm in"
+            " the end of each repliocation cycle in order to eliminate excess replicas which"
+            " might get created by olgorithm ran earlier in the cycle.",
             _purge
         ).flag(
             "permanent-worker-delete",
-            "this flag would result in the permanent removal of the excluded workers"
-            " workers from the configuration of the Replication system. Please, use"
+            "The flag would trigger the permanent removal of the evicted workers"
+            " from the configuration of the Replication system. Please, use"
             " this option with caution as it may result in loosing some Configuration"
             " data for the deleted workers",
             _permanentDelete

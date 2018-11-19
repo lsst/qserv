@@ -38,7 +38,7 @@ namespace qserv {
 namespace replica {
 
 /**
- * Structure Chunk is an abstraction groupping together database families and
+ * Structure Chunk is an abstraction grouping together database families and
  * chunk numbers. This is needed to support chunk replication operations which
  * require chunk collocation.
  */
@@ -48,7 +48,7 @@ struct Chunk {
     unsigned int number;
 
     /**
-     * The overloaded operator for comparing objects of struct Chunk.
+     * The overloaded operator for comparing objects of structure Chunk.
      *
      * The operator is used where the equality of chunks is needed.
      *
@@ -57,11 +57,11 @@ struct Chunk {
     bool operator==(Chunk const& rhs) const;
 
     /**
-     * The overloaded operator for comparing objects of struct Chunk.
+     * The overloaded operator for comparing objects of structure Chunk.
      *
-     * This operator is needed for using objects of the struct
-     * as a key in ordered (map, set, ) or unordered (unordred_map,unordered_set,)
-     * asociative containers.
+     * This operator is needed for using objects of the structure
+     * as a key in ordered (map, set, ) or unordered (unordered_map,unordered_set,)
+     * associative containers.
      *
      * @return 'true' if the chunk is 'less' than the other one.
      */
@@ -80,7 +80,7 @@ class ChunkLocker {
 
 public:
 
-    /// The type for a collection of locked chunks groupped by owners
+    /// The type for a collection of locked chunks grouped by owners
     typedef std::map<std::string, std::list<Chunk>> OwnerToChunks;
 
     /// A map of chunks to their owners
@@ -116,13 +116,13 @@ public:
                   std::string& ownerId) const;
 
     /**
-     * Find chunks which are loacked by a particular owner (if provided),
+     * Find chunks which are locked by a particular owner (if provided),
      * or by all owners.
      *
      * @param owner - an optional owner. If the owner is not provided then
      *                all chunks will be returned
      *
-     * @return a collection of chunks groupped by owners
+     * @return a collection of chunks grouped by owners
      */
     OwnerToChunks locked(std::string const& owner=std::string()) const;
 
@@ -130,11 +130,11 @@ public:
      * Lock a chunk to a specific owner
      *
      * @param chunk - a chunk to be locked
-     * @param owner - an identifier of an owner claiming thr chunk
+     * @param owner - an identifier of an owner claiming the chunk
      *
      * @return 'true' of the operation was successful or if the specified
      * owner already owns it, or 'false' if there is outstanding lock on
-     * a chunk made earlier by aother owner.
+     * a chunk made earlier by another owner.
      *
      * @throw std::invalid_argument - if the owner 'id' is an empty string
      */
@@ -146,12 +146,12 @@ public:
      *
      * @param chunk - a chunk to be released
      *
-     * @return 'true' if the operation was successfull
+     * @return 'true' if the operation was successful
      */
     bool release(Chunk const& chunk);
 
     /**
-     * Release a chunk and, if succesful, set an identifier of an owner which
+     * Release a chunk and, if successful, set an identifier of an owner which
      * previously 'claimed' the chunk.
      *
      * @param chunk - chunk to be released
@@ -175,7 +175,7 @@ public:
 private:
 
     /**
-     * Find chunks which are loacked by a particular owner (if provided),
+     * Find chunks which are locked by a particular owner (if provided),
      * or by all owners.
      *
      * @param mLock  - a lock on a mutex must be made before calling this method
@@ -183,18 +183,18 @@ private:
      *                 all chunks will be returned
      * @owner2chunks - collection of chunks to be initialized
      *
-     * @return a collection of chunks groupped by owners
+     * @return a collection of chunks grouped by owners
      */
     void lockedImpl(util::Lock const& mLock,
                     std::string const& owner,
                     OwnerToChunks& owner2chunks) const;
 
     /**
-     * Actual implememntationof the chubk release operation, which will attempt
-     * to release a chunk and, if succesful, set an identifier of an owner which
+     * Actual implementation of the chunk release operation, which will attempt
+     * to release a chunk and, if successful, set an identifier of an owner which
      * previously 'claimed' the chunk.
      *
-     * NOTE: this metod is not thread-safe. It's up to its callers to ensure
+     * NOTE: this method is not thread-safe. It's up to its callers to ensure
      *       proper synchronization context before invoking the method.
      *
      * @param mLock - a lock on a mutex must be made before calling this method

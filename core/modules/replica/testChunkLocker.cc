@@ -48,7 +48,7 @@ BOOST_AUTO_TEST_CASE(ChunkLockerTest) {
 
     LOGS_INFO("ChunkLocker test begins");
 
-    // Basic tests of struct Chunk
+    // Basic tests of structure Chunk
 
     Chunk chunk{"test", 123UL};
 
@@ -133,7 +133,7 @@ BOOST_AUTO_TEST_CASE(ChunkLockerTest) {
     // Run a limited thread safety test if the hardware concurrency permits so.
     // The test will be attempting to insert the same sequence of chunks from
     // multiple simultaneously running threads and then testing that all chunks
-    // were registed in the locker.
+    // were registered in the locker.
     //
     // ATTENTION: this test is not reliable as it depends on the OS scheduler
     //            of a machine where the test is run
@@ -150,12 +150,12 @@ BOOST_AUTO_TEST_CASE(ChunkLockerTest) {
         unsigned int const num = 200000UL;
         std::map<std::string, size_t> numTestsFailedByOwner;
     
-        // This function will attempt to ingets 'num' locks on behalf
+        // This function will attempt to ingest 'num' locks on behalf
         // of 'thisOwner'. In case if that's not possible for a particular
-        // chunk a further test will be made to ensurr that the chunk was already
+        // chunk a further test will be made to ensure that the chunk was already
         // locked by 'otherOwner'.
         //
-        // Any devitations will be accounted for and returned into the main thread
+        // Any deviations will be accounted for and returned into the main thread
         // via dictionary 'numTestsFailedByOwner'.
 
         auto ingest = [&locker,&numTestsFailedByOwner](std::string const& thisOwner,

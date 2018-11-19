@@ -78,7 +78,7 @@ typedef std::shared_ptr<EchoRequest> EchoRequestPtr;
 typedef std::function<void(EchoRequestPtr)> EchoRequestCallbackType;
 
 ////////////////////////////////////
-// Replication request managememt //
+// Replication request management //
 ////////////////////////////////////
 
 class StopReplicationRequestPolicy;

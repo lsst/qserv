@@ -88,15 +88,15 @@ public:
     /**
      * Initiate sending a message
      *
-     * The response message will be initialized only in case of successfull completion
+     * The response message will be initialized only in case of successful completion
      * of the transaction. The method may throw exception std::invalid_argument if
-     * the worker name is not valid, and std::logic_error if the Messanger already
+     * the worker name is not valid, and std::logic_error if the Messenger already
      * has another transaction registered with the same transaction 'id'.
      * 
      * @param worker            - the name of a worker
      * @param id                - a unique identifier of a request
-     * @param requestBufferPtr  - a request serielized into a network buffer
-     * @param onFinish          - an asynchronious callback function called upon a completion
+     * @param requestBufferPtr  - a request serialized into a network buffer
+     * @param onFinish          - an asynchronous callback function called upon a completion
      *                            or failure of the operation
      */
     template <class RESPONSE_TYPE>
@@ -107,7 +107,7 @@ public:
                                  bool,
                                  RESPONSE_TYPE const&)> onFinish) {
 
-        // Forward the request to the corresponidng worker
+        // Forward the request to the corresponding worker
         connector(worker)->send<RESPONSE_TYPE>(id,
                                                requestBufferPtr,
                                                onFinish);
@@ -120,7 +120,7 @@ public:
      * as provided to the 'onFinish' method in method 'send'.
      *
      * For unknown worker names exception std::invalid_argument will be
-     * thrown. The method may also throw std::logic_error if the Messanger
+     * thrown. The method may also throw std::logic_error if the Messenger
      * doesn't have a transaction registered with the specified transaction 'id'.
      *
      * @param worker - the name of a worker
@@ -132,7 +132,7 @@ public:
                 std::string const& id);
 
     /**
-     * Return 'true' if the specified requst is known to the Messenger
+     * Return 'true' if the specified request is known to the Messenger
      *
      * @param worker - the name of a worker
      * @param id     - a unique identifier of a request

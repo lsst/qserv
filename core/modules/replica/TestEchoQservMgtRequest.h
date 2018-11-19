@@ -52,7 +52,7 @@ public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<TestEchoQservMgtRequest> Ptr;
 
-    /// The function type for notifications on the completon of the request
+    /// The function type for notifications on the completion of the request
     typedef std::function<void(Ptr)> CallbackType;
 
     // Default construction and copy semantics are prohibited
@@ -68,12 +68,11 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider - reference to a provider of services
-     * @param worker          - the name of a worker
-     * @param data            - the data string to be eachoed back by the worker (if successful)
-     * @param onFinish        - (optional) callback function to be called upon request completion
-     * 
-     * @return pointer to the created object
+     * @param serviceProvider  reference to a provider of services
+     * @param worker           the name of a worker
+     * @param data             the data string to be echoed back by the worker (if successful)
+     * @param onFinish         (optional) callback function to be called upon request completion
+     * @return                 pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& worker,
@@ -84,11 +83,13 @@ public:
     std::string const& data() const { return _data; }
 
     /**
-     * @return data string echoed back by the worker
+     * @return
+     *   data string echoed back by the worker
      *
-     * ATTENTION: the method will throw exception std::logic_error if called
-     *            before the request finishes or if it's finished with any
-     *            status but SUCCESS.
+     * @note
+     *   the method will throw exception std::logic_error if called
+     *   before the request finishes or if it's finished with any
+     *   status but SUCCESS.
      */
     std::string const& dataEcho() const;
 
@@ -127,8 +128,8 @@ private:
     /**
      * Carry over results of the request into a local storage.
      * 
-     * @param lock - lock must be acquired by a caller of the method
-     * @param data - data string returned by a worker
+     * @param lock  lock must be acquired by a caller of the method
+     * @param data  data string returned by a worker
      */
      void setData(util::Lock const& lock,
                   std::string const& data);

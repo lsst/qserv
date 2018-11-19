@@ -79,7 +79,7 @@ int main(int argc, const char *argv[]) {
             "  <file>  - the name of a file to read. Multiple files can be specified\n"
             "\n"
             "Flags and options\n"
-            "  --incremental  -- use the incremental ile reader instead\n");
+            "  --incremental  -- use the incremental file reader\n");
 
         parser.parameters<std::string>(::fileNames);
         ::incremental = parser.flag("incremental");

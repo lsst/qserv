@@ -114,7 +114,7 @@ void readInFile(replica::QservReplicaCollection& replicas) {
 }
 
 /**
-  * Print a colletion of replicas
+  * Print a collection of replicas
   * @param collection
   */
 void dump(replica::QservReplicaCollection const& collection) {
@@ -152,10 +152,10 @@ void test() {
 
         provider->run();
 
-        // Launch the requst and wait for its completion
+        // Launch the request and wait for its completion
         //
         // Note that omFinish callbacks which are activated upon a completion
-        // of the requsts will be run in a different thread.
+        // of the requests will be run in a different thread.
 
         std::atomic<bool> finished(false);
 
@@ -235,7 +235,7 @@ void test() {
         }
 
         //////////////////////////////////////////////////
-        // Shutdown the privider and join with its threads        
+        // Shutdown the provider and join with its threads        
 
         provider->stop();
 

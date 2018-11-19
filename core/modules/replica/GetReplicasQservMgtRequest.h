@@ -42,7 +42,7 @@ namespace qserv {
 namespace replica {
 
 /**
-  * Class GetReplicasQservMgtRequest implements a request retreiving a list of
+  * Class GetReplicasQservMgtRequest implements a request retrieving a list of
   * replicas known to Qserv workers.
   */
 class GetReplicasQservMgtRequest
@@ -53,7 +53,7 @@ public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<GetReplicasQservMgtRequest> Ptr;
 
-    /// The function type for notifications on the completon of the request
+    /// The function type for notifications on the completion of the request
     typedef std::function<void(Ptr)> CallbackType;
 
     // Default construction and copy semantics are prohibited
@@ -72,7 +72,7 @@ public:
      * @param serviceProvider - reference to a provider of services
      * @param worker          - the name of a worker
      * @param databaseFamily  - the name of a database family
-     * @param inUseOnly       - (optional) return replicas which're presently in use
+     * @param inUseOnly       - (optional) return replicas which are presently in use
      * @param onFinish        - (optional) callback function to be called upon request completion
      * 
      * @return pointer to the created object
@@ -90,7 +90,7 @@ public:
     bool inUseOnly() const { return _inUseOnly; }
 
     /**
-     * @return collection of replicas repored from the corresponding Qserv worker
+     * @return collection of replicas reported from the corresponding Qserv worker
      *
      * ATTENTION: the method will throw exception std::logic_error if called
      *            before the request finishes or if it's finished with any
@@ -120,7 +120,7 @@ private:
      * Carry over results of the request into a local collection. Filter results
      * by databases participating in the family.
      * 
-     * @param lock       - lock must be acquired by a caller of the metod
+     * @param lock       - lock must be acquired by a caller of the method
      * @param collection - input collection of replicas
      */
      void setReplicas(util::Lock const& lock,
@@ -155,7 +155,7 @@ private:
     /// A request to the remote services
     wpublish::GetChunkListQservRequest::Ptr _qservRequest;
 
-    /// A collection of replicas reported by the Qservr worker
+    /// A collection of replicas reported by the Qserr worker
     QservReplicaCollection _replicas;
 };
 

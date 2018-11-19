@@ -54,7 +54,7 @@ public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<FindAllRequest> Ptr;
 
-    /// The function type for notifications on the completon of the request
+    /// The function type for notifications on the completion of the request
     typedef std::function<void(Ptr)> CallbackType;
 
     // Default construction and copy semantics are prohibited
@@ -65,7 +65,7 @@ public:
 
     ~FindAllRequest() final = default;
 
-    // Trivial acccessors
+    // Trivial get methods
 
     std::string const& database() const { return _database; }
 
@@ -75,7 +75,7 @@ public:
     FindAllRequestParams const& targetRequestParams() const { return _targetRequestParams; }
 
     /**
-     * Return a refernce to a result of the completed request.
+     * Return a reference to a result of the completed request.
      *
      * Note that this operation will return a sensible result only if the operation
      * finishes with status FINISHED::SUCCESS
@@ -135,14 +135,14 @@ private:
 
     /**
      * Start the timer before attempting the previously failed
-     * or successfull (if a status check is needed) step.
+     * or successful (if a status check is needed) step.
      *
      * @param lock - a lock on a mutex must be acquired before calling this method
      */
     void wait(util::Lock const& lock);
 
     /**
-     * Callback handler for the asynchronious operation
+     * Callback handler for the asynchronous operation
      *
      * @param ec - error code to be checked
      */

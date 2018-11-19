@@ -24,7 +24,7 @@
 
 /**
  * This header declares tools for constructing the header-only views for nested
- * Standard Libraries's maps. Also a few ready to use algorithms are provided
+ * Standard Library's maps. Also a few ready to use algorithms are provided
  * for some most commonly used map.
  */
 
@@ -78,7 +78,7 @@ public:
         return coll.begin();
     }
 
-    /// @return const iterator to the beginning of the container
+    /// @return constant iterator to the beginning of the container
     decltype(coll.cbegin()) begin() const {
         return coll.cbegin();
     }
@@ -88,7 +88,7 @@ public:
         return coll.end();
     }
 
-    /// @return const iterator to the end of the container
+    /// @return constant iterator to the end of the container
     decltype(coll.cend()) end() const {
         return coll.cend();
     }
@@ -96,11 +96,17 @@ public:
     /**
      * Merge the content of another collection of the same type
      *
-     * @param coll - collection whose content is to be merged
-     * @param ignoreDuplicateKeys - ignore duplicate keys if 'true'
+     * @param coll
+     *   collection whose content is to be merged
+     * 
+     * @param ignoreDuplicateKeys
+     *   ignore duplicate keys if 'true'
      *
-     * @throws std::invalid_argument - on atempts to merge a collection with itself
-     * @throws std::range_error - on duplicate keys if ignoreDuplicateKeys is 'false'
+     * @throws std::invalid_argument
+     *   on attempts to merge a collection with itself
+     * 
+     * @throws std::range_error
+     *   on duplicate keys if ignoreDuplicateKeys is 'false'
      */
     void merge(SemanticMap<K,V> const& coll, bool ignoreDuplicateKeys = false) {
 
@@ -131,10 +137,9 @@ protected:
     /**
      * Insert a copy of an existing object
      *
-     * @param k - its key
-     * @param v - object to be insert
-     *
-     * @return reference to the object within the collection
+     * @param k  its key
+     * @param v  object to be insert
+     * @return   reference to the object within the collection
      */
     V& insert(K const& k, V const& v) {
         coll[k] = v;
@@ -144,10 +149,9 @@ protected:
     /**
      * Insert a copy of an existing object
      *
-     * @param k - its key
-     * @param v - object to be insert
-     *
-     * @return reference to the object within the collection
+     * @param k  its key
+     * @param v  object to be insert
+     * @return   reference to the object within the collection
      */
     V& insertIfNotExists(K const& k, V const& v) {
         if (not exists(k)) coll[k] = v;
@@ -155,8 +159,8 @@ protected:
     }
 
     /**
-     * @param k - object's key
-     * @return read-only reference to an object for a key
+     * @param k  object's key
+     * @return   read-only reference to an object for a key
      */
     V const& get(K const& k) const { return coll.at(k); }
 
@@ -201,33 +205,34 @@ public:
      * If no object exists for the specified key then create the one using
      * the default constructor of the value type and insert it into the collection.
      *
-     * @param k - key for an object
+     * @param k
+     *   key for an object
      *
-     * @return writeable references to an object (existing or newely created one)
-     * at the key
+     * @return
+     *   writeable references to an object (existing or newly created one)
+     *   at the key
      */
     V& atWorker(KeyType const& k) { return MapType::insertIfNotExists(k, V()); }
 
     /**
      * Insert a copy of an existing worker object
      *
-     * @param k - key for the object
-     * @param v - reference to an object to be copied into the collection
-     *
-     * @return writeable references to the object within the collection
+     * @param k  key for the object
+     * @param v  reference to an object to be copied into the collection
+     * @return   writeable references to the object within the collection
      */
     V& insertWorker(KeyType const& k, V const& v) { return MapType::insert(k, v); }
 
     /**
-     * @param k - object's key
-     * @return 'true' if  with the specifid key already exists
+     * @param k  object's key
+     * @return   'true' if  with the specified key already exists
      */
     bool workerExists(KeyType const& k) const { return MapType::exists(k); }
 
     /**
-     * @param k - object's key
-     * @return read-only reference to a worker object for a key
-     * @throws std::out_of_range if no such key is found in the collection
+     * @param k  object's key
+     * @return   read-only reference to a worker object for a key
+     * @throws   std::out_of_range if no such key is found in the collection
      */
     V const& worker(KeyType const& k) const { return MapType::get(k); }
 
@@ -265,33 +270,34 @@ public:
      * If no object exists for the specified key then create the one using
      * the default constructor of the value type and insert it into to the collection.
      *
-     * @param k - key for an object
+     * @param k
+     *   key for an object
      *
-     * @return writeable references to an object (existing or newely created one)
-     * at the key
+     * @return
+     *   writeable references to an object (existing or newly created one)
+     *   at the key
      */
     V& atDatabase(KeyType const& k) { return MapType::insertIfNotExists(k, V()); }
 
     /**
      * Insert a copy of an existing database object
      *
-     * @param k - key for the object
-     * @param v - reference to an object to be copied into the collection
-     *
-     * @return writeable references to the object within the collection
+     * @param k  key for the object
+     * @param v  reference to an object to be copied into the collection
+     * @return   writeable references to the object within the collection
      */
     V& insertDatabase(KeyType const& k, V const& v) { return MapType::insert(k, v); }
 
     /**
-     * @param k - object's key
-     * @return 'true' if  with the specifid key already exists
+     * @param k  object's key
+     * @return   'true' if  with the specified key already exists
      */
     bool databaseExists(KeyType const& k) const { return MapType::exists(k); }
 
     /**
-     * @param k - object's key
-     * @return read-only refeence to a database object for a key
-     * @throws std::out_of_range if no such key is found in the collection
+     * @param k  object's key
+     * @return   read-only reference to a database object for a key
+     * @throws   std::out_of_range if no such key is found in the collection
      */
     V const& database(KeyType const& k) const { return MapType::get(k); }
 
@@ -329,32 +335,33 @@ public:
      * If no object exists for the specified key then create the one using
      * the default constructor of the value type and insert it into the collection.
      *
-     * @param k - key for an object
+     * @param k
+     *   key for an object
      *
-     * @return writeable references to an object (existing or newely created one)
-     * at the key
+     * @return
+     *   writeable references to an object (existing or newly created one)
+     *   at the key
      */
     V& atChunk(KeyType const& k) { return MapType::insertIfNotExists(k, V()); }
 
     /**
      * Insert a copy of an existing chunk object
      *
-     * @param k - key for the object
-     * @param v - reference to an object to be copied into the collection
-     *
-     * @return writeable references to the object within the collection
+     * @param k  key for the object
+     * @param v  reference to an object to be copied into the collection
+     * @return   writeable references to the object within the collection
      */
     V& insertChunk(KeyType const& k, V const& v) { return MapType::insert(k, v); }
 
     /**
-     * @param k - object's key
-     * @return 'true' if  with the specifid key already exists
+     * @param k  object's key
+     * @return   'true' if  with the specified key already exists
      */
     bool chunkExists(KeyType const& k) const { return MapType::exists(k); }
 
     /**
-     * @param k - object's key
-     * @return read-only reference to a chunk object for a key
+     * @param k  object's key
+     * @return   read-only reference to a chunk object for a key
      */
     V const& chunk(KeyType const& k) const { return MapType::get(k); }
 
@@ -403,15 +410,22 @@ namespace SemanticMaps {
 /**
  * Merge algorithm for dictionaries of: chunk-database-worker
  *
- * @param dst - destination collection to be extended
- * @param src - input collection whose content is to be merged
- *              into the destinaton
- * @param ignoreDuplicateKeys - ignore duplicate keys if 'true'.
- *              NOTE: the 'key' in this context is a composite
- *              key of all levels of a map.
+ * @param dst
+ *   destination collection to be extended
  *
- * @throws std::invalid_argument - on attempts to merge a collection with itself
- * @throws std::range_error - on duplicate keys if ignoreDuplicateKeys is 'false'
+ * @param src
+ *   input collection whose content is to be merged
+ *   into the destination
+ *
+ * @param ignoreDuplicateKeys
+ *   ignore duplicate keys if 'true'. Note that the 'key' in this context
+ *   is a composite key of all levels of a map.
+ *
+ * @throws std::invalid_argument
+ *   on attempts to merge a collection with itself
+ * 
+ * @throws std::range_error
+ *   on duplicate keys if ignoreDuplicateKeys is 'false'
  */
  template<typename T>
  void merge(ChunkDatabaseWorkerMap<T>& dst,
@@ -433,8 +447,9 @@ namespace SemanticMaps {
  *
  * The method will also report keys which aren't found in second dictionary.
  *
- * NOTE: the output dictionary will be modified even if the method
- *       will not find any differences.
+ * @note
+ *   the output dictionary will be modified even if the method
+ *   will not find any differences.
  *
  * @param one
  *   input dictionary to be compared with the second one
@@ -486,8 +501,9 @@ namespace SemanticMaps {
  * The method will also report keys which aren't found in opposite
  * dictionaries.
  *
- * NOTE: the output dictionaries will be modified even if the method
- *       will not find any differences.
+ * @note
+ *   The output dictionaries will be modified even if the method
+ *   will not find any differences.
  *
  * @param one
  *   input dictionary to be compared with the second one
@@ -522,13 +538,19 @@ namespace SemanticMaps {
  *
  * The method will report keys which are found in both dictionaries.
  *
- * NOTE: the output dictionary will be modified even if the method
- *       will not find any differences.
+ * @note
+ *   The output dictionary will be modified even if the method
+ *   will not find any differences.
  *
- * @param one    - input dictionary to be compared with the second one
- * @param two    - input dictionary to be compared with the first one
- * @param inBoth - output dictionary with elements of the first map which
- *                 are not found in the second map
+ * @param one
+ *   input dictionary to be compared with the second one
+ * 
+ * @param two
+ *   input dictionary to be compared with the first one
+ * 
+ * @param inBoth
+ *   output dictionary with elements of the first map which
+ *   are not found in the second map
  */
  template<typename T>
  void intersect(WorkerDatabaseChunkMap<T> const& one,
@@ -555,9 +577,9 @@ namespace SemanticMaps {
 }
 
 /**
- * @return a total number of keys accross all leaf nodes
- *
- * @param d - input dictionary to be tested
+ * Count the keys in all leaf nodes
+ * @param d input dictionary to be tested
+ * @return  the total number of keys across all leaf nodes
  */
 template<typename T>
 size_t count(WorkerDatabaseChunkMap<T> const& d) {

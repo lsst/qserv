@@ -23,7 +23,7 @@
 #define LSST_QSERV_REPLICA_DATABASESERVICESMYSQL_H
 
 /**
- * This hedear represents a MyQL-backed implementation of the
+ * This header represents a MyQL-backed implementation of the
  * persistent database services of the Replication Framework.
  *
  * @see class DatabaseServices
@@ -155,8 +155,8 @@ public:
 private:
 
     /**
-     * Thread unsafe implementation of the corresponiding public method.
-     * This operation is supposed to be invoken in a context where proper
+     * Thread unsafe implementation of the corresponding public method.
+     * This operation is supposed to be invoked in a context where proper
      * thread safety synchronization has been taken care of.
      *
      * @param lock      - lock on a mutex must be acquired before calling this method

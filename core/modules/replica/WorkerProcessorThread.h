@@ -39,7 +39,7 @@ class WorkerProcessor;
 
 /**
   * Class WorkerProcessorThread is a thread-based request processing engine
-  * for replication requests witgin worker-side services.
+  * for replication requests within worker-side services.
   */
 class WorkerProcessorThread
     : public std::enable_shared_from_this<WorkerProcessorThread> {
@@ -57,8 +57,11 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      * 
-     * @param processor - pointer to the processor
-     * @return pointer to the created object 
+     * @param processor
+     *   pointer to the processor
+     *
+     * @return
+     *   pointer to the created object 
      */
     static Ptr create(WorkerProcessorPtr const& processor);
 
@@ -83,7 +86,7 @@ public:
     void run();
 
     /**
-     * Tell the running thread to abort proccessing the current
+     * Tell the running thread to abort processing the current
      * request (if any), put that request back into the input queue,
      * stop fetching new requests and finish. The thread can be resumed
      * later by calling method run().
@@ -100,8 +103,8 @@ private:
     /**
      * The constructor of the class.
      *
-     * @param processor - pointer to the processor
-     * @param id        - a unique identifier of this object
+     * @param processor  pointer to the processor
+     * @param id         a unique identifier of this object
      */
     WorkerProcessorThread(WorkerProcessorPtr const& processor,
                           unsigned int id);

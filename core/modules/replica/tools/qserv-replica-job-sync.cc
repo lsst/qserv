@@ -72,8 +72,8 @@ bool test() {
 
         provider->run();
 
-        ////////////////////////////////////////
-        // Find all replicas accross all workers
+        ///////////////////////////////////////
+        // Find all replicas across all workers
 
         std::atomic<bool> finished{false};
         auto job = replica::QservSyncJob::create(
@@ -94,7 +94,7 @@ bool test() {
         }
 
         //////////////////////////////
-        // Analyse and display results
+        // Analyze and display results
 
         replica::QservSyncJobResult const& replicaData = job->getReplicaData();
 

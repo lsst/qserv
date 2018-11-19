@@ -150,6 +150,8 @@ void ClusterHealthJob::startImpl(util::Lock const& lock) {
 
     auto self = shared_from_base<ClusterHealthJob>();
 
+    // There is nothing special about this value. This is just an arbitrary
+    // string to be sent to a worker.
     std::string const testData = "123";
 
     for (auto const& worker: controller()->serviceProvider()->config()->workers()) {
@@ -178,7 +180,7 @@ void ClusterHealthJob::startImpl(util::Lock const& lock) {
         ++_numStarted;
     }
     
-    // Finish right away if no workers were configuted yet
+    // Finish right away if no workers were configured yet
 
     if (0 == _numStarted) setState(lock, State::FINISHED, ExtendedState::SUCCESS);
     else                  setState(lock, State::IN_PROGRESS);
@@ -216,8 +218,8 @@ void ClusterHealthJob::onRequestFinish(ServiceStatusRequest::Ptr const& request)
     // IMPORTANT: the final state is required to be tested twice. The first time
     // it's done in order to avoid deadlock on the "in-flight" requests reporting
     // their completion while the job termination is in a progress. And the second
-    // test is made after acquering the lock to recheck the state in case if it
-    // has transitioned while acquering the lock.
+    // test is made after acquiring the lock to recheck the state in case if it
+    // has transitioned while acquiring the lock.
 
     if (state() == State::FINISHED) return;
 
@@ -239,8 +241,8 @@ void ClusterHealthJob::onRequestFinish(TestEchoQservMgtRequest::Ptr const& reque
     // IMPORTANT: the final state is required to be tested twice. The first time
     // it's done in order to avoid deadlock on the "in-flight" requests reporting
     // their completion while the job termination is in a progress. And the second
-    // test is made after acquering the lock to recheck the state in case if it
-    // has transitioned while acquering the lock.
+    // test is made after acquiring the lock to recheck the state in case if it
+    // has transitioned while acquiring the lock.
 
     if (state() == State::FINISHED) return;
 

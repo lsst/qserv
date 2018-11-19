@@ -387,7 +387,7 @@ void QservMgtServices::finish(std::string const& id) {
         if (itr == _registry.end()) {
             throw std::logic_error(
                         "QservMgtServices::finish: request identifier " + id +
-                        " is no longer valid. Check the loginc of the application.");
+                        " is no longer valid. Check the logic of the application.");
         }
         requestWrapper = itr->second;
         _registry.erase(id);

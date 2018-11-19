@@ -49,12 +49,12 @@ struct QservSyncJobResult {
     /// to the corresponding worker has succeeded.
     std::map<std::string, bool> workers;
 
-    /// Previous replica disposition as reported by workers upon the successfull
-    /// completion of the corresponidng requests
+    /// Previous replica disposition as reported by workers upon the successful
+    /// completion of the corresponding requests
     std::map<std::string, QservReplicaCollection> prevReplicas;
 
-    /// New replica disposition pushed to workers upon the successfull completion
-    /// of the corresponidng requests
+    /// New replica disposition pushed to workers upon the successful completion
+    /// of the corresponding requests
     std::map<std::string, QservReplicaCollection> newReplicas;
 };
 
@@ -76,7 +76,7 @@ public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<QservSyncJob> Ptr;
 
-    /// The function type for notifications on the completon of the request
+    /// The function type for notifications on the completion of the request
     typedef std::function<void(Ptr)> CallbackType;
 
     /// @return default options object for this type of a request
@@ -133,9 +133,9 @@ public:
      *   finished. Please, verify the primary and extended status of the object
      *   to ensure that all requests have finished.
      *
-     * @return the data structure to be filled upon the completin of the job.
+     * @return the data structure to be filled upon the completion of the job.
      *
-     * @throws std::logic_error - if the job dodn't finished at a time
+     * @throws std::logic_error - if the job didn't finished at a time
      *                            when the method was called
      */
     QservSyncJobResult const& getReplicaData() const;
@@ -176,7 +176,7 @@ protected:
     void notify(util::Lock const& lock) final;
 
     /**
-     * The calback function to be invoked on a completion of each request.
+     * The callback function to be invoked on a completion of each request.
      *
      * @param request - a pointer to a request
      */

@@ -71,8 +71,8 @@ bool test() {
         //////////////////////////////////////
         // Launch requests against all workers
         //
-        // ATTENTION: calbacks on the request completion callbacks of the requests will
-        //            be executed within the Contoller's thread. Watch for proper
+        // ATTENTION: callbacks on the request completion callbacks of the requests will
+        //            be executed within the Controller's thread. Watch for proper
         //            synchronization when inspecting/updating shared variables.
 
         replica::CommonRequestTracker<replica::ServiceManagementRequestBase>
@@ -125,7 +125,7 @@ bool test() {
         tracker.track();
 
         //////////////////////////////
-        // Analyse and display results
+        // Analyze and display results
 
         std::cout
             << "\n"

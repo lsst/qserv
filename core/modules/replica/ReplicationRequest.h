@@ -47,7 +47,7 @@ class Messenger;
 
 /**
   * Class ReplicationRequest represents a transient state of requests
-  * within the master controller for creating reolicas.
+  * within the master controller for creating replicas.
   */
 class ReplicationRequest
     :   public RequestMessenger  {
@@ -57,7 +57,7 @@ public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<ReplicationRequest> Ptr;
 
-    /// The function type for notifications on the completon of the request
+    /// The function type for notifications on the completion of the request
     typedef std::function<void(Ptr)> CallbackType;
 
     // Default construction and copy semantics are prohibited
@@ -68,7 +68,7 @@ public:
 
     ~ReplicationRequest() final = default;
 
-    // Trivial acccessors
+    // Trivial get methods
 
     std::string const& database()     const { return _database; }
     unsigned int       chunk()        const { return _chunk; }
@@ -93,7 +93,7 @@ public:
      *
      * @param serviceProvider - a host of services for various communications
      * @param io_service      - BOOST ASIO API
-     * @param worker          - the identifier of a worker node (the one to be affectd by the replication)
+     * @param worker          - the identifier of a worker node (the one to be affected by the replication)
      *                          at a destination of the chunk
      * @param sourceWorker    - the identifier of a worker node at a source of the chunk
      * @param database        - the name of a database
@@ -102,7 +102,7 @@ public:
      * @param priority        - a priority level of the request
      * @param keepTracking    - keep tracking the request before it finishes or fails
      * @param allowDuplicate  - follow a previously made request if the current one duplicates it
-     * @param messenger       - worker messenging service
+     * @param messenger       - worker messaging service
      *
      * @return pointer to the created object
      */
@@ -144,13 +144,13 @@ private:
 
     /**
      * Start the timer before attempting the previously failed
-     * or successfull (if a status check is needed) step.
+     * or successful (if a status check is needed) step.
      *
      * @param lock - a lock on a mutex must be acquired before calling this method
      */
     void wait(util::Lock const& lock);
 
-    /// Callback handler for the asynchronious operation
+    /// Callback handler for the asynchronous operation
     void awaken(boost::system::error_code const& ec);
 
     /**

@@ -77,7 +77,7 @@ bool test() {
         provider->run();
 
         ////////////////////////////////////////
-        // Find all replicas accross all workers
+        // Find all replicas across all workers
 
         replica::ReplicaFinder finder(controller,
                                       databaseName,
@@ -87,8 +87,8 @@ bool test() {
                                       errorReport);
 
         /////////////////////////////////////////////////////////////////
-        // Analyse results and prepare a replication plan to create extra
-        // replocas for under-represented chunks 
+        // Analyze results and prepare a replication plan to create extra
+        // replicas for under-represented chunks 
             
         // All workers which have a chunk
         std::map<unsigned int, std::list<std::string>> chunk2workers;
@@ -163,7 +163,7 @@ bool test() {
                     if (failedWorkers.count(worker)) { continue; }
 
                     // Exclude workers which already have this chunk, or for which
-                    // there is an outstanding replication requsts. Both kinds of
+                    // there is an outstanding replication requests. Both kinds of
                     // replicas are registered in chunk2workers[chunk]
 
                     if (chunk2workers[chunk].end() == std::find(chunk2workers[chunk].begin(),

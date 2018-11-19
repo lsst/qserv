@@ -41,16 +41,16 @@ namespace qserv {
 namespace replica {
 
 /**
- * The struct CreateReplicaJobResult represents a combined result received
+ * The structure CreateReplicaJobResult represents a combined result received
  * from worker services upon a completion of the job.
  */
 struct CreateReplicaJobResult {
 
-    /// Results reported by workers upon the successfull completion
+    /// Results reported by workers upon the successful completion
     /// of the new replica creation requests
     std::list<ReplicaInfo> replicas;
 
-    /// New replica creation results groupped by: chunk number, database, worker
+    /// New replica creation results grouped by: chunk number, database, worker
     std::map<unsigned int,                  // chunk
              std::map<std::string,          // database
                       std::map<std::string, // destination worker
@@ -69,7 +69,7 @@ public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<CreateReplicaJob> Ptr;
 
-    /// The function type for notifications on the completon of the request
+    /// The function type for notifications on the completion of the request
     typedef std::function<void(Ptr)> CallbackType;
 
     /// @return default options object for this type of a request
@@ -130,9 +130,9 @@ public:
      *   finished. Please, verify the primary and extended status of the object
      *   to ensure that all requests have finished.
      *
-     * @return the data structure to be filled upon the completin of the job.
+     * @return the data structure to be filled upon the completion of the job.
      *
-     * @throws std::logic_error - if the job dodn't finished at a time
+     * @throws std::logic_error - if the job didn't finished at a time
      *                            when the method was called
      */
     CreateReplicaJobResult const& getReplicaData() const;

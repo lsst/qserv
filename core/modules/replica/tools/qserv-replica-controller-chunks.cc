@@ -21,7 +21,7 @@
  */
 
 /// qserv-replica-controller-chunks.cc is a simple Controller for
-/// testing the corresponidng request.
+/// testing the corresponding request.
 
 // System headers
 #include <atomic>
@@ -62,8 +62,8 @@ bool test() {
 
         ///////////////////////////////////////////////////////////////////////
         // Start the provider in its own threads before injecting any requests
-        // Note that omFinish callbak which are activated upon a completion
-        // of the requsts will be run in that Controller's thread.
+        // Note that omFinish callback which are activated upon a completion
+        // of the requests will be run in that Controller's thread.
 
         replica::ServiceProvider::Ptr const provider   = replica::ServiceProvider::create(configUrl);
         replica::Controller::Ptr      const controller = replica::Controller::create(provider);
@@ -71,7 +71,7 @@ bool test() {
         provider->run();
 
         ////////////////////////////////////////
-        // Find all replicas accross all workers
+        // Find all replicas across all workers
 
         replica::ReplicaFinder finder(controller,
                                       databaseName,
@@ -81,7 +81,7 @@ bool test() {
                                       errorReport);
 
         //////////////////////////////
-        // Analyse and display results
+        // Analyze and display results
 
         std::cout
             << "\n"

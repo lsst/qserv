@@ -75,7 +75,7 @@ bool readIntoBuffer(boost::asio::ip::tcp::socket& socket,
                     ProtocolBufferPtr const& ptr,
                     size_t bytes) {
 
-    ptr->resize(bytes);     // make sure the buffer has enough space to accomodate
+    ptr->resize(bytes);     // make sure the buffer has enough space to accommodate
                             // the data of the message.
     boost::system::error_code ec;
     boost::asio::read(
@@ -167,7 +167,7 @@ void FileServerConnection::receiveRequest() {
     // The message itself will be read from the handler using
     // the synchronous read method. This is based on an assumption
     // that a client sends the whole message (its frame and
-    // the message itsef) at once.
+    // the message itself) at once.
 
     const size_t bytes = sizeof(uint32_t);
 

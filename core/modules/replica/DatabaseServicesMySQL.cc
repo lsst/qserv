@@ -616,7 +616,7 @@ void DatabaseServicesMySQL::saveReplicaInfoCollectionImpl(util::Lock const& lock
                         inNewReplicasOnly,
                         inOldReplicasOnly);
 
-    LOGS(_log, LOG_LVL_DEBUG, context << "*** replicas comparision summary *** "
+    LOGS(_log, LOG_LVL_DEBUG, context << "*** replicas comparison summary *** "
          << " #new: " << newReplicaInfoCollection.size()
          << " #old: " << oldReplicaInfoCollection.size()
          << " #in-both: " << SemanticMaps::count(inBoth)
@@ -742,7 +742,7 @@ void DatabaseServicesMySQL::findReplicas(std::vector<ReplicaInfo>& replicas,
     util::Lock lock(_mtx, context);
 
     if (not _configuration->isKnownDatabase(database)) {
-        throw std::invalid_argument(context + "unknow database");
+        throw std::invalid_argument(context + "unknown database");
     }
     try {
         _conn->execute(
@@ -806,11 +806,11 @@ void DatabaseServicesMySQL::findWorkerReplicasImpl(util::Lock const& lock,
     LOGS(_log, LOG_LVL_DEBUG, context);
 
     if (not _configuration->isKnownWorker(worker)) {
-        throw std::invalid_argument(context + "unknow worker");
+        throw std::invalid_argument(context + "unknown worker");
     }
     if (not database.empty()) {
         if (not _configuration->isKnownDatabase(database)) {
-            throw std::invalid_argument(context + "unknow database");
+            throw std::invalid_argument(context + "unknown database");
         }
     }
     findReplicasImpl(
@@ -837,10 +837,10 @@ void DatabaseServicesMySQL::findWorkerReplicas(std::vector<ReplicaInfo>& replica
     util::Lock lock(_mtx, context);
 
     if (not _configuration->isKnownWorker(worker)) {
-        throw std::invalid_argument(context + "unknow worker");
+        throw std::invalid_argument(context + "unknown worker");
     }
     if (not databaseFamily.empty() and not _configuration->isKnownDatabaseFamily(databaseFamily)) {
-        throw std::invalid_argument(context + "unknow databaseFamily");
+        throw std::invalid_argument(context + "unknown databaseFamily");
     }
     try {
         _conn->execute(
@@ -925,9 +925,9 @@ void DatabaseServicesMySQL::findReplicaFilesImpl(util::Lock const& lock,
 
     if (0 == id2replica.size()) return;
 
-    // The collection of replica identifirs will be split into batches to ensure
+    // The collection of replica identifiers will be split into batches to ensure
     // that a length of the query string (for pulling files for each batch) would
-    // not exceed the corresponidng MySQL limit.
+    // not exceed the corresponding MySQL limit.
 
     std::vector<uint64_t> ids;
     for (auto&& entry: id2replica) {
@@ -963,7 +963,7 @@ void DatabaseServicesMySQL::findReplicaFilesImpl(util::Lock const& lock,
     // results.
     //
     // IMPORTANT: the algorithm assumes that there will be at least one file
-    // per replica. This assumprion will be enfoced wyen the loop will end.
+    // per replica. This assumption will be enforced when the loop will end.
 
     auto itr = ids.begin();         // points to the first replica identifier of a batch
     for (size_t size: batches) {
@@ -1024,7 +1024,7 @@ void DatabaseServicesMySQL::findReplicaFilesImpl(util::Lock const& lock,
                     currentReplicaId = replicaId;
                 }
 
-                // Adding this file to the curent replica
+                // Adding this file to the current replica
 
                 files.push_back(
                     ReplicaInfo::FileInfo{
@@ -1055,7 +1055,7 @@ void DatabaseServicesMySQL::findReplicaFilesImpl(util::Lock const& lock,
     
     // Sanity check to ensure a collection of files has been found for each input
     // replica. Note that this is a requirements for a persistent collection
-    // of reolicas stored by the Replication system.
+    // of replicas stored by the Replication system.
 
     if (replicas.size() != id2replica.size()) {
         throw std::runtime_error(context + "database content may be corrupt");

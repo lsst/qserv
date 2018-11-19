@@ -101,8 +101,8 @@ void WorkerFindRequest::setInfo(proto::ReplicationResponseFind& response) const 
 
     response.set_allocated_target_performance(performance().info());
 
-    // Note the ownership transfer of an intermediate protobuf object obtained
-    // from ReplicaInfo object in the call below. The protobuf runtime will take
+    // Note the ownership transfer of an intermediate Protobuf object obtained
+    // from ReplicaInfo object in the call below. The Protobuf run-time will take
     // care of deleting the intermediate object.
 
     response.set_allocated_replica_info(_replicaInfo.info());
@@ -202,12 +202,12 @@ bool WorkerFindRequestPOSIX::execute() {
     // for the found files.
     //
     // - if the control/check sum is NOT requested then the request will
-    //   be executed immediattely within this call.
+    //   be executed immediately within this call.
     //
     // - otherwise the incremental approach will be used (which will require
     //   setting up the incremental engine if this is the first call to the method)
     //
-    // Both methods are combined witghin the same code block to avoid
+    // Both methods are combined within the same code block to avoid
     // code duplication.
 
     WorkerRequest::ErrorContext errorContext;
@@ -243,12 +243,12 @@ bool WorkerFindRequestPOSIX::execute() {
         // For each file associated with the chunk check if the file is present in
         // the data directory.
         //
-        // - not finding a file is not a failrure for this operation. Just reporting
+        // - not finding a file is not a failure for this operation. Just reporting
         //   those files which are present.
         //
         // - assume the request failure for any file system operation failure
         //
-        // - assume the successfull completion otherwise and adjust the replica
+        // - assume the successful completion otherwise and adjust the replica
         //   information record accordingly, depending on the findings.
 
 

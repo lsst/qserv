@@ -46,11 +46,11 @@ namespace qserv {
 namespace replica {
 
 /**
- * Struct QservMgtRequestWrapper is an abstract base for implementing requests
+ * Structure QservMgtRequestWrapper is an abstract base for implementing requests
  * registry as a polymorphic collection to store active requests. Pure virtual
- * methods of the class will be overriden by request-type-specific implementations
- * (see struct RequestWrappeImplr<REQUEST_TYPE> in the .cc file) capturing
- * type-dependant pointer and a callback function.
+ * methods of the class will be overridden by request-type-specific implementations
+ * (see structure RequestWrappeImplr<REQUEST_TYPE> in the .cc file) capturing
+ * type-dependent pointer and a callback function.
  */
 struct QservMgtRequestWrapper {
 
@@ -60,7 +60,7 @@ struct QservMgtRequestWrapper {
     virtual ~QservMgtRequestWrapper() = default;
 
     /**
-     * This method (to be inplemented by subclasses) will be called upon
+     * This method (to be implemented by subclasses) will be called upon
      * a completion of a request to notify a subscriber on the event.
      */
     virtual void notify() const=0;
@@ -82,7 +82,7 @@ public:
     typedef std::shared_ptr<QservMgtServices> Ptr;
 
     /**
-     * The factory method for instamtiating a proper service object based
+     * The factory method for instantiating a proper service object based
      * on an application configuration.
      *
      * @param configuration - the configuration service
@@ -158,7 +158,7 @@ public:
      *
      * @param databaseFamily  - the name of a database family
      * @param worker          - the name of a worker
-     * @param inUseOnly       - return replicas which're presently in use
+     * @param inUseOnly       - return replicas which are presently in use
      * @param onFinish        - callback function to be called upon request completion
      * @param jobId           - an optional identifier of a job specifying a context
      *                          in which a request will be executed.
@@ -184,7 +184,7 @@ public:
      *
      * @param worker          - the name of a worker
      * @param newReplicas     - collection of new replicas (NOTE: useCount field is ignored)
-     * @param force           - proceed with the operation even if some replicas affceted by
+     * @param force           - proceed with the operation even if some replicas affected by
      *                          the operation are in use.
      * @param onFinish        - callback function to be called upon request completion
      * @param jobId           - an optional identifier of a job specifying a context
@@ -205,7 +205,7 @@ public:
                                             unsigned int requestExpirationIvalSec=0);
 
     /**
-     * Send a data string to a Qwserv worker and get the same string in response
+     * Send a data string to a Qserv worker and get the same string in response
      *
      * @param worker   - the name of a worker
      * @param data     - data to be sent to a worker
@@ -236,7 +236,7 @@ private:
 
     /**
      * Finalize the completion of the request. This method will notify
-     * a requestor on the completion of the operation and it will also
+     * a requester on the completion of the operation and it will also
      * remove the request from the server's registry.
      *
      * @param id - a unique identifier of a completed request

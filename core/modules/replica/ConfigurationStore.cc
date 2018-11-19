@@ -61,7 +61,7 @@ void parseKeyVal(util::ConfigStore const& configStore,
 }
 
 /**
- * Function specialization for the boolean type
+ * Function specialization for type 'bool'
  */
 template<>
 void parseKeyVal<bool,bool>(util::ConfigStore const& configStore,
@@ -212,8 +212,8 @@ void ConfigurationStore::loadConfiguration(util::ConfigStore const& configStore)
 
     ::parseKeyVal(configStore, "worker.data_dir",  commonDataDir, defaultDataDir);
 
-    // Parse optional worker-specific configuraton sections. Assume default
-    // or (previously parsed) common values if a whole secton or individual
+    // Parse optional worker-specific configuration sections. Assume default
+    // or (previously parsed) common values if a whole section or individual
     // parameters are missing.
 
     for (std::string const& name: workers) {
@@ -238,7 +238,7 @@ void ConfigurationStore::loadConfiguration(util::ConfigStore const& configStore)
         Configuration::translateDataDir(workerInfo.dataDir, name);
     }
 
-    // Parse mandatory database family-specific configuraton sections
+    // Parse mandatory database family-specific configuration sections
 
     for (std::string const& name: databaseFamilies) {
         std::string const section = "database_family:" + name;
@@ -266,7 +266,7 @@ void ConfigurationStore::loadConfiguration(util::ConfigStore const& configStore)
                     static_cast<int32_t>(_databaseFamilyInfo[name].numSubStripes));
     }
 
-    // Parse mandatory database-specific configuraton sections
+    // Parse mandatory database-specific configuration sections
 
     for (std::string const& name: databases) {
 

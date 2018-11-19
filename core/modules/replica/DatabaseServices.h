@@ -52,7 +52,7 @@ class Request;
   * of the service.
   *
   * Methods of this class may through database-specific exceptions, as well
-  * as general purpose exceptions explained in the methods' documentation
+  * as general purpose exceptions explained in their documentation
   * below.
   */
 class DatabaseServices
@@ -87,11 +87,11 @@ public:
      * just once for a particular instance of the Controller.
      *
      * @param identity  - a data structure encapsulating a unique identity of
-     *                    the Contriller instance.
+     *                    the Controller instance.
      * @param startTime - a time (milliseconds since UNIX Epoch) when an instance of
      *                    the Controller was created.
      *
-     * @throws std::logic_error - if this Contoller's state is already found in a database
+     * @throws std::logic_error - if this Controller's state is already found in a database
      */
     virtual void saveState(ControllerIdentity const& identity,
                            uint64_t startTime) = 0;
@@ -102,7 +102,7 @@ public:
      *
      * The Job::Option object is explicitly passed as a parameter to avoid
      * making a call back to the job which may create a deadlock because
-     * method saveState() is meant to be called by the jobs' implementations.
+     * method saveState() is meant to be called by the job's implementations.
      *
      * @param job     - reference to a Job object
      * @param options - reference to a Job options object
@@ -123,7 +123,7 @@ public:
      *
      * The Performance object is explicitly passed as a parameter to avoid
      * making a call back to the request which may create a deadlock because
-     * method saveState() is meant to be called by the requests' implementations.
+     * method saveState() is meant to be called by the request's implementations.
      *
      * @param request     - reference to a QservMgtRequest object
      * @param performance - reference to a Performance object
@@ -139,7 +139,7 @@ public:
      *
      * The Performance object is explicitly passed as a parameter to avoid
      * making a call back to the request which may create a deadlock because
-     * method saveState() is meant to be called by the requests' implementations.
+     * method saveState() is meant to be called by the request's implementations.
      *
      * @param request     - reference to a Request object
      * @param performance - reference to a Performance object
@@ -151,7 +151,7 @@ public:
      * Update a state of a target request.
      *
      * This method is supposed to be called by monitoring requests (State* and Stop*)
-     * to update state of the corresponidng target requests.
+     * to update state of the corresponding target requests.
      *
      * @param request                  - reference to the monitoring Request object
      * @param targetRequestId          - identifier of a target request
@@ -163,7 +163,7 @@ public:
                                     Performance const& targetRequestPerformance) = 0;
 
     /**
-     * Update the status of replica in the corresponidng tables.
+     * Update the status of replica in the corresponding tables.
      *
      * @param info - a replica to be added/updated or deleted
      */
@@ -176,7 +176,7 @@ public:
      * the database state in this context. Specifically, this means
      * the following:
      *
-     * - replicas not present in the colleciton will be deleted from the database
+     * - replicas not present in the collection will be deleted from the database
      * - new replicas not present in the database will be registered in there
      * - existing replicas will be updated in the database
      *
@@ -236,7 +236,7 @@ public:
      *
      * @param replicas - collection of replicas (if any found)
      * @param worker   - worker name
-     * @param database - (optional) atabase name
+     * @param database - (optional) database name
      *
      * @throw std::invalid_argument - if the worker is unknown or its name
      *                                is empty, or if the database family is

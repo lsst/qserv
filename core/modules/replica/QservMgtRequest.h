@@ -62,7 +62,7 @@ public:
     /// The lock type used by the implementations
     typedef std::lock_guard<util::Mutex> LockType;
 
-    /// Tye State represents the primary public state of the request
+    /// The type which represents the primary public state of the request
     enum State {
 
         /// The request has been constructed, and no attempt to execute it has
@@ -72,7 +72,7 @@ public:
         /// The request is in a progress
         IN_PROGRESS,
 
-        /// The request is finihed. See extended status for more details
+        /// The request is finished. See extended status for more details
         /// (the completion status, etc.)
         FINISHED
     };
@@ -80,7 +80,7 @@ public:
     /// @return the string representation of the primary state
     static std::string state2string(State state);
 
-    /// Type ExtendedState represebts the refined public sub-state of the requiest
+    /// Type ExtendedState represents the refined public sub-state of the request
     /// once it's FINISHED as per the above defined primary state.
     enum ExtendedState {
 
@@ -115,7 +115,7 @@ public:
     /// @return the string representation of the extended state
     static std::string state2string(ExtendedState state);
 
-    /// @return the string representation of the compbined state
+    /// @return the string representation of the combined state
     static std::string state2string(State state,
                                     ExtendedState extendedState) {
         return state2string(state) + "::" +state2string(extendedState);
@@ -168,10 +168,10 @@ public:
      *
      * This is supposed to be the first operation to be called upon a creation
      * of the request. A caller is expected to provide a pointer to an instance
-     * of the XrdSsiService class for communications with the rempte services.
+     * of the XrdSsiService class for communications with the remote services.
      *
      * @param service  - a pointer to an instance of the API object for
-     *                   submititng requests to remote services
+     *                   submitting requests to remote services
      * @param jobId    - an optional identifier of a job specifying a context
      *                   in which a request will be executed.
      * @param requestExpirationIvalSec - an optional parameter (if differs from 0)
@@ -232,7 +232,7 @@ protected:
 
     /**
      * Request expiration timer's handler. The expiration interval (if any)
-     * is configured via the configuraton service. When the request expires
+     * is configured via the configuration service. When the request expires
      * it finishes with completion status FINISHED::TIMEOUT_EXPIRED.
      *
      * @param ec - error code to be checked
@@ -289,10 +289,10 @@ protected:
      * object will get reset to 'nullptr'.
      *
      * Note, this default implementation works for callback functions which
-     * accept a single parameter - a smart refernce onto an object of
-     * the corresponidng subclass. Subclasses with more complex signatures of
+     * accept a single parameter - a smart reference onto an object of
+     * the corresponding subclass. Subclasses with more complex signatures of
      * their callbacks should have their own implementations which may look
-     * similarily to this one.
+     * similarly to this one.
      *
      * @param lock     - the lock must be acquired by a caller of the method
      * @param onFinish - callback function (if set) to be called
@@ -321,7 +321,7 @@ protected:
     }
 
     /**
-     * Ensure the object is in the deseride internal state. Throw an
+     * Ensure the object is in the desired internal state. Throw an
      * exception otherwise.
      *
      * NOTES: normally this condition should never been seen unless
@@ -360,7 +360,7 @@ protected:
     std::string serverError(util::Lock const& lock) const;
 
     /**
-      * @return sperformance info
+      * @return performance info
       * @param lock - the lock must be acquired by a caller of the method
       */
     Performance performance(util::Lock const& lock) const;

@@ -42,7 +42,7 @@ namespace qserv {
 namespace replica {
 
 /**
- * Struct WorkerRequestCancelled represent an exception thrown when
+ * Structure WorkerRequestCancelled represent an exception thrown when
  * a replication request is cancelled
  */
 struct WorkerRequestCancelled
@@ -56,9 +56,9 @@ struct WorkerRequestCancelled
 
 /**
   * Class WorkerRequest is the base class for a family of the worker-side
-  * requsts which require non-deterministic interactions with the server's
+  * requests which require non-deterministic interactions with the server's
   * environment (network, disk I/O, etc.). Generally speaking, all requests
-  * which can't be implemented instanteneously fall into this category.
+  * which can't be implemented instantaneously fall into this category.
   */
 class WorkerRequest
     :   public std::enable_shared_from_this<WorkerRequest> {
@@ -94,7 +94,7 @@ public:
     /// Destructor (can't 'override' because the base class's one is not virtual)
     virtual ~WorkerRequest() = default;
 
-    // Trivial accessors
+    // Trivial et methods
 
     ServiceProvider::Ptr const& serviceProvider() { return _serviceProvider; }
 
@@ -124,7 +124,7 @@ public:
     /**
      * This method should be invoked (repeatedly) to execute the request until
      * it returns 'true' or throws an exception. Note that returning 'true'
-     * may mean both success or failure, depeniding on the completion status
+     * may mean both success or failure, depending on the completion status
      * of the request.
      *
      * This method is required to be called while the request state is STATUS_IN_PROGRESS.
@@ -210,7 +210,7 @@ protected:
                    ExtendedCompletionStatus extendedStatus = ExtendedCompletionStatus::EXT_STATUS_NONE);
 
     /**
-     * Struct ErrorContext is used for tracking errors reported by
+     * Structure ErrorContext is used for tracking errors reported by
      * method 'reportErrorIf
      */
     struct ErrorContext {
@@ -256,7 +256,7 @@ protected:
      *                         (will be ignored if no error condition is present)
      * @param errorMsg       - a message to be reported into the log stream
      *
-     * @return the context object encapculating values passed in parameters
+     * @return the context object encapsulating values passed in parameters
      * 'condition' and 'extendedStatus'
      */
     ErrorContext reportErrorIf(bool condition,
@@ -301,18 +301,17 @@ protected:
 
 
 /**
- * Struct WorkerRequestCompare is a functor representing a comparision type
- * for strict weak ordering reaquired by std::priority_queue
+ * Structure WorkerRequestCompare is a functor representing a comparison type
+ * for strict weak ordering required by std::priority_queue
  */
 struct WorkerRequestCompare {
 
     /**
      * Sort requests by their priorities
      *
-     * @param lhs - pointer to a request on the left side of a logical comparision
-     * @param rhs - pointer to a request on the right side of a logical comparision
-     *
-     * @return 'true' if the priority of 'lhs' is strictly less than the one of 'rhs'
+     * @param  lhs  pointer to a request on the left side of a logical comparison
+     * @param  rhs  pointer to a request on the right side of a logical comparison
+     * @return      'true' if the priority of 'lhs' is strictly less than the one of 'rhs'
      */
     bool operator()(WorkerRequest::Ptr const& lhs,
                     WorkerRequest::Ptr const& rhs) const {
