@@ -21,8 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  *
  */
-#ifndef LSST_QSERV_LOADER_DOLIST_H_
-#define LSST_QSERV_LOADER_DOLIST_H_
+#ifndef LSST_QSERV_LOADER_DOLIST_H
+#define LSST_QSERV_LOADER_DOLIST_H
 
 // system headers
 #include <chrono>
@@ -44,7 +44,7 @@ public:
     using TimePoint = std::chrono::system_clock::time_point;
     using Clock = std::chrono::system_clock;
 
-    TimeOut(std::chrono::milliseconds timeOut) : _timeOut(timeOut) {}
+    explicit TimeOut(std::chrono::milliseconds timeOut) : _timeOut(timeOut) {}
 
     bool due() { return due(Clock::now()); }
     bool due(TimePoint now) {
@@ -97,14 +97,15 @@ public:
         return nullptr;
     }
 
-    bool isAlreadyOnList() { return _addedToList; }
+    bool isAlreadyOnList() { return addedToList; }
 
     /// Returns original value of _addedToList.
     bool setAddedToList(bool value) {
-        return _addedToList.exchange(value);
+        return addedToList.exchange(value);
     }
 
-    bool removeFromList() {
+    /// @return true if this item should be removed from the list.
+    bool shouldRemoveFromList() {
         std::lock_guard<std::mutex> lock(_mtx);
         return (_isOneShotDone() || _remove);
     }
@@ -130,7 +131,7 @@ public:
     virtual util::CommandTracked::Ptr createCommand()=0;
 
 protected:
-    std::atomic<bool>    _addedToList{false}; ///< True when added to a DoList
+    std::atomic<bool>    addedToList{false}; ///< True when added to a DoList
 
     bool    _oneShot{false}; ///< True if after the needed information is gathered, this item can be dropped.
     bool    _needInfo{true}; ///< True if information is needed.
@@ -192,4 +193,4 @@ private:
 }}} // namespace lsst:qserv:loader
 
 
-#endif
+#endif // LSST_QSERV_LOADER_DOLIST_H

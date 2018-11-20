@@ -105,7 +105,7 @@ public:
 
     /// Provides a method for identifying different Central classes and
     /// CentralWorkers in the log file.
-    virtual std::string getOurLogId() const { return "baseclass"; }
+    virtual std::string getOurLogId() const { return "Central baseclass"; }
 
 protected:
     /// All Central objects need an ioService and a way to contact the master.

@@ -91,6 +91,8 @@ void ServerUdpBase::sendBufferTo(std::string const& hostName, int port, BufferUd
     std::condition_variable cv;
     bool done = false;
 
+    // This function will wait until callbackFunc is called before returning, so the references will be
+    // valid for the life of callbackFunc.
     auto callbackFunc = [&mtx, &cv, &done](const boost::system::error_code& error, std::size_t bytesTransferred) {
         {
             std::lock_guard<std::mutex> lock(mtx);
