@@ -62,7 +62,8 @@ Server::Server(asio::io_service& io_service, unsigned short port)
 :
     _io_service(io_service),
     _acceptor(io_service, ip::tcp::endpoint(ip::tcp::v4(), port)),
-    _requestTimeout(std::chrono::milliseconds(DEFAULT_REQUEST_TIMEOUT_MSECS))
+    _requestTimeout(std::chrono::milliseconds(DEFAULT_REQUEST_TIMEOUT_MSECS)),
+    _stopRequested(false)
 {
 }
 
@@ -105,6 +106,12 @@ void Server::setRequestTimeout(std::chrono::milliseconds const& timeout)
 
 void Server::accept()
 {
+    // Stop accepting new requests if the server has to be stopped
+
+    if (_stopRequested.exchange(false)) {
+        return;
+    }
+
     auto socket = std::make_shared<ip::tcp::socket>(_io_service);
     _acceptor.async_accept(
         *socket,
@@ -119,6 +126,15 @@ void Server::accept()
     );
 }
 
+void Server::start()
+{
+    accept();
+}
+
+void Server::stop()
+{
+    _stopRequested = true;
+}
 
 void Server::_readRequest(std::shared_ptr<ip::tcp::socket> socket)
 {
