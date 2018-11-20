@@ -21,14 +21,16 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  *
  */
-#ifndef LSST_QSERV_LOADER_CLIENTSERVER_H_
-#define LSST_QSERV_LOADER_CLIENTSERVER_H_
+#ifndef LSST_QSERV_LOADER_CLIENTSERVER_H
+#define LSST_QSERV_LOADER_CLIENTSERVER_H
 
 // system headers
 #include <cstdlib>
 #include <iostream>
-#include <boost/bind.hpp>
+
+// third party headers
 #include <boost/asio.hpp>
+#include <boost/bind.hpp>
 
 // Qserv headers
 #include "loader/LoaderMsg.h"
@@ -41,26 +43,36 @@ namespace loader {
 
 class CentralClient;
 
-
+/// This class implements a UDP server for the client so that message replies can be
+/// sent directly to the client instead of passed back through the chain of workers
+/// that were queried when looking for the worker that could handle this client's
+/// request.
+/// TODO This class should also be able to handle list of workers and their ranges from
+/// the master.
 class ClientServer : public ServerUdpBase {
 public:
-    ClientServer(boost::asio::io_service& ioService, std::string const& host, int port, CentralClient* centralClient)
+    // The base class default constructor, copy constructor, and operator= have been set to delete.
+    ClientServer(boost::asio::io_service& ioService, std::string const& host, int port,
+                 CentralClient* centralClient)
         : ServerUdpBase(ioService, host, port), _centralClient(centralClient) {}
-
-    ClientServer() = delete;
 
     ~ClientServer() override = default;
 
+    /// Parse enough of an incoming message so it can be passed to the proper handler.
     BufferUdp::Ptr parseMsg(BufferUdp::Ptr const& data,
                             boost::asio::ip::udp::endpoint const& endpoint) override;
 
-    BufferUdp::Ptr replyMsgReceived(boost::asio::ip::udp::endpoint const& senderEndpoint,
-                                    LoaderMsg const& inMsg,
-                                    int status, std::string const& msgTxt); // TODO shows up in both MasterServer and WorkerServer
+    /// Build a reply to a message that was received, usually used to handle unknown or unexpected messages.
+    /// @return a pointer to a buffer with the constructed message.
+    // TODO shows up in both MasterServer and WorkerServer
+    BufferUdp::Ptr prepareReplyToMsg(boost::asio::ip::udp::endpoint const& senderEndpoint,
+                                     LoaderMsg const& inMsg,
+                                     int status, std::string const& msgTxt);
 
 private:
-    void _msgRecieved(LoaderMsg const& inMsg, BufferUdp::Ptr const& data,
-                      boost::asio::ip::udp::endpoint const& senderEndpoint);
+    /// Construct basic replies to unknown and unexpected messages.
+    void _msgRecievedHandler(LoaderMsg const& inMsg, BufferUdp::Ptr const& data,
+                             boost::asio::ip::udp::endpoint const& senderEndpoint);
 
 
     CentralClient* _centralClient;
@@ -69,4 +81,4 @@ private:
 
 }}} // namespace lsst::qserv::loader
 
-#endif // LSST_QSERV_LOADER_CLIENTSERVER_H_
+#endif // LSST_QSERV_LOADER_CLIENTSERVER_H
