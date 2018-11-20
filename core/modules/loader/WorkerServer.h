@@ -52,7 +52,7 @@ public:
     BufferUdp::Ptr parseMsg(BufferUdp::Ptr const& data,
                             boost::asio::ip::udp::endpoint const& endpoint) override;
 
-    BufferUdp::Ptr replyMsgReceived(boost::asio::ip::udp::endpoint const& senderEndpoint,
+    BufferUdp::Ptr prepareReplyMsg(boost::asio::ip::udp::endpoint const& senderEndpoint,
                                     LoaderMsg const& inMsg,
                                     int status, std::string const& msgTxt); // TODO shows up in both MasterServer and WorkerServer
 

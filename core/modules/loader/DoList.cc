@@ -28,8 +28,6 @@
 // System headers
 #include <iostream>
 
-// Third-party headers
-
 // Qserv headers
 #include "loader/Central.h"
 #include "loader/LoaderMsg.h"
@@ -62,7 +60,7 @@ void DoList::checkList() {
             LOGS(_log, LOG_LVL_DEBUG, "queuing command");
             _central.queueCmd(cmd);
         } else {
-            if (item->removeFromList()) {
+            if (item->shouldRemoveFromList()) {
                 LOGS(_log, LOG_LVL_INFO, "removing item");
                 item->setAddedToList(false);
                 iter = _list.erase(iter);

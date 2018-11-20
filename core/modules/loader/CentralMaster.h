@@ -50,15 +50,12 @@ namespace loader {
 /// covering all possible keys.
 class CentralMaster : public Central {
 public:
+    /// Base class basic constructor, copy constructor, and operator= set to delete.
     CentralMaster(boost::asio::io_service& ioService_,
                   std::string const& masterHostName_, int masterPort_)
         : Central(ioService_, masterHostName_, masterPort_) {
         _server = std::make_shared<MasterServer>(ioService, masterHostName_, masterPort_, this);
     }
-
-    CentralMaster() = delete;
-    CentralMaster(CentralMaster const&) = delete;
-    CentralMaster& operator=(CentralMaster const&) = delete;
 
     ~CentralMaster() override { _mWorkerList.reset(); }
 
@@ -67,7 +64,6 @@ public:
 
     void addWorker(std::string const& ip, int udpPort, int tcpPort); ///< Add a new worker to the system.
     void updateWorkerInfo(uint32_t workerId, NeighborsInfo const& nInfo, StringRange const& strRange);
-
 
     MWorkerListItem::Ptr getWorkerWithId(uint32_t id);
 

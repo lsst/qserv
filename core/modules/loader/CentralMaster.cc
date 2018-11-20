@@ -101,7 +101,6 @@ void CentralMaster::_assignNeighborIfNeeded(uint32_t workerId, MWorkerListItem::
     // If they are, assign a worker to the end (rightmost) worker
     // and increase the maximum by an order of magnitude, max 10 million.
     // TODO Make a better algorithm, insert workers at busiest worker.
-    // TODO maybe rate limit this check.
     std::string funcName("_assignNeighborIfNeeded");
     LOGS(_log, LOG_LVL_DEBUG, funcName);
     if (_addingWorkerId != 0 && _addingWorkerId != workerId) {
@@ -123,6 +122,7 @@ void CentralMaster::_assignNeighborIfNeeded(uint32_t workerId, MWorkerListItem::
             }
         }
     }
+
     auto pair = _mWorkerList->getActiveInactiveWorkerLists();
     std::vector<MWorkerListItem::Ptr>& activeList = pair.first;
     std::vector<MWorkerListItem::Ptr>& inactiveList = pair.second;

@@ -66,9 +66,9 @@ public:
 
     // Replies should only be sent on errors and always be sent to the server port. A reply
     // that gets lost in transmission is going to be a nuisance, requiring extra timeouts.
-    BufferUdp::Ptr replyMsgReceived(boost::asio::ip::udp::endpoint const& senderEndpoint,
-                                    LoaderMsg const& inMsg,
-                                    int status, std::string const& msgTxt); // TODO shows up in both MasterServer and WorkerServer
+    BufferUdp::Ptr prepareReplyMsg(boost::asio::ip::udp::endpoint const& senderEndpoint,
+                                   LoaderMsg const& inMsg,
+                                   int status, std::string const& msgTxt); // TODO shows up in both MasterServer and WorkerServer
 
 private:
     CentralMaster* _centralMaster;
