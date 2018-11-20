@@ -21,11 +21,10 @@
  */
 
 /**
- * qserv-replica-master.cc is a latest version of a fixed-logic Replication
- * Controller executing a sequence of jobs in an infinite loop.
- * The application is not meant to respond to any external communications (commands,
- * etc.). Also, it doesn't have a state (checkpoints)  which would allow resuming
- * unfinished tasks in case of restarts.
+ * qserv-replica-master-http.cc is a latest version of the Replication Controller
+ * which allows interactions via the REST API. When it starts the controller launches
+ * two threads: Linear Replication thread and the Health Monitoring thread.
+ * These threads can be suspended/resumed via the REST API.
  */
 
 // System headers
@@ -44,6 +43,7 @@
 #include "replica/Configuration.h"
 #include "replica/DeleteWorkerThread.h"
 #include "replica/HealthMonitorThread.h"
+#include "replica/HttpThread.h"
 #include "replica/ReplicationThread.h"
 #include "util/BlockPost.h"
 
@@ -62,18 +62,19 @@ std::string const description =
     " And it also has some built-in default value."
     " Also, note that only a single node failure can trigger the worker"
     " exclusion sequence."
-    " The controller has a fixed logic, and can't accept any external commands.";
+    " The controller has the built-in REST API which accepts external commands"
+    " or request for information.";
 
 std::string const logger =
-    "lsst.qserv.replica.qserv-replica-master";
+    "lsst.qserv.replica.qserv-replica-master-http";
 
-class MasterControllerApp
+class MasterControllerHttpApp
     :   public Application {
 
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<MasterControllerApp> Ptr;
+    typedef std::shared_ptr<MasterControllerHttpApp> Ptr;
 
     /**
      * The factory method is the only way of creating objects of this class
@@ -97,7 +98,7 @@ public:
                       std::string const& description,
                       std::string const& logger) {
         return Ptr(
-            new MasterControllerApp(
+            new MasterControllerHttpApp(
                 argc,
                 argv,
                 description,
@@ -108,21 +109,21 @@ public:
 
     // Default construction and copy semantics are prohibited
 
-    MasterControllerApp() = delete;
-    MasterControllerApp(MasterControllerApp const&) = delete;
-    MasterControllerApp& operator=(MasterControllerApp const&) = delete;
+    MasterControllerHttpApp() = delete;
+    MasterControllerHttpApp(MasterControllerHttpApp const&) = delete;
+    MasterControllerHttpApp& operator=(MasterControllerHttpApp const&) = delete;
 
-    ~MasterControllerApp() override = default;
+    ~MasterControllerHttpApp() override = default;
 
 protected:
 
     /**
-     * @see MasterControllerApp::create()
+     * @see MasterControllerHttpApp::create()
      */
-    MasterControllerApp(int argc,
-                        const char* const argv[],
-                        std::string const& description,
-                        std::string const& logger)
+    MasterControllerHttpApp(int argc,
+                            const char* const argv[],
+                            std::string const& description,
+                            std::string const& logger)
         :   Application(
                 argc,
                 argv,
@@ -217,7 +218,7 @@ protected:
 
         // These threads should be running simultaneously
 
-        auto self = shared_from_base<MasterControllerApp>();
+        auto self = shared_from_base<MasterControllerHttpApp>();
 
         _replicationThread = ReplicationThread::create(
             _controller,
@@ -245,6 +246,20 @@ protected:
             _healthProbeIntervalSec
         );
         _healthMonitorThread->start();
+
+        _httpThread = HttpThread::create(
+            _controller,
+            [self] (ControlThread::Ptr const& ptr) {
+                self->_failed = true;
+            },
+            [self] (std::string const& worker2evict) {
+                self->_evict(worker2evict);
+            },
+            _healthMonitorThread,
+            _replicationThread,
+            _deleteWorkerThread
+        );
+        _httpThread->start();
 
         // Keep running before a catastrophic failure is reported by any
         // above initiated activity
@@ -286,7 +301,7 @@ private:
         // or until a catastrophic failure occurs within any control thread (including
         // this one).
 
-        auto self = shared_from_base<MasterControllerApp>();
+        auto self = shared_from_base<MasterControllerHttpApp>();
 
         _deleteWorkerThread = DeleteWorkerThread::create(
             _controller,
@@ -303,6 +318,9 @@ private:
         );
         _deleteWorkerThread->stop();    // it's safe to call this method even if the thread is
                                         // no longer running.
+
+        _deleteWorkerThread = nullptr;  // the object is no longer needed because it was
+                                        // created for a specific worker.
 
         // Resume the normal replication sequence unless a catastrophic failure
         // in the system has been detected
@@ -337,6 +355,7 @@ private:
 
     HealthMonitorThread::Ptr _healthMonitorThread;
     ReplicationThread::Ptr   _replicationThread;
+    HttpThread::Ptr          _httpThread;
     DeleteWorkerThread::Ptr  _deleteWorkerThread;
 
     /// Logger stream
@@ -347,7 +366,7 @@ private:
 
 int main(int argc, const char* const argv[]) {
     try {
-        auto app = ::MasterControllerApp::create(
+        auto app = ::MasterControllerHttpApp::create(
             argc,
             argv,
             description,

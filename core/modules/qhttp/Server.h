@@ -24,6 +24,7 @@
 #define LSST_QSERV_QHTTP_SERVER_H
 
 // System headers
+#include <atomic>
 #include <chrono>
 #include <functional>
 #include <initializer_list>
@@ -101,6 +102,16 @@ public:
 
     void accept();
 
+    //----- start() starts/resumes the server. The server can be stopped by calling method stop().
+    //      Please, do not use method accept() to start/stop teh server!
+
+    void start();
+
+    //----- stop() suspends the server. The server will stop accepting new requests. A call to start()
+    //      will be needed to resume server's operation.
+
+    void stop();
+
 private:
 
     Server(Server const&) = delete;
@@ -122,7 +133,9 @@ private:
     boost::asio::ip::tcp::acceptor _acceptor;
 
     std::chrono::milliseconds _requestTimeout;
-
+    
+    /// The flag to be risen should the server be stopped. 
+    std::atomic<bool> _stopRequested;
 };
 
 }}} // namespace lsst::qserv::qhttp

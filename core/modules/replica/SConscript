@@ -19,6 +19,7 @@ for f in env.Glob(os.path.join(path, "qserv-*.cc"), source=True, strings=True):
         "replica",
         "qserv_common",
         "xrdsvc",
+        "qhttp",
         "util",
         "protobuf",
         "boost_filesystem",
