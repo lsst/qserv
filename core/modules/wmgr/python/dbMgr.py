@@ -466,7 +466,15 @@ def tableSchema(dbName, tblName):
         query = "SHOW CREATE TABLE `%s`.`%s`" % (dbName, tblName)
         rows = dbConn.execute(query)
 
-    return json.jsonify(result=rows.first()[1])
+    schema = rows.first()[1]
+    # Apparently mariadb (and probably mysql) can return BLOB instead of
+    # string for this query in some conditions (related to size of the
+    # returned string). BLOB is turned into Python bytes and JSON can't do
+    # bytes, so here we have to decode bytes. Potential issue is encoding
+    # of the BLOB, we use UTF-8 and expect it to be safe in all cases.
+    if isinstance(schema, bytes):
+        schema = schema.decode()
+    return json.jsonify(result=schema)
 
 
 @dbService.route('/<dbName>/tables/<tblName>/columns', methods=['GET'])
