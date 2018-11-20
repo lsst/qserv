@@ -31,6 +31,7 @@
 
 // qserv headers
 #include "loader/BufferUdp.h"
+#include "loader/CentralWorkerDoListItem.h"
 #include "loader/LoaderMsg.h"
 #include "proto/loader.pb.h"
 #include "proto/ProtoImporter.h"
@@ -104,7 +105,7 @@ void CentralWorker::_monitor() {
         // Check the right neighbor connection, kill and restart if needed.
         // Check if data needs to be shifted with the right node
         // This mutex is locked for a long time  TODO break this up?
-        std::lock_guard<std::mutex> lck(_rightMtx);
+        std::lock_guard<std::mutex> rMtxLG(_rightMtx);
         LOGS(_log, LOG_LVL_INFO, "_monitor " << _ourId <<
                                  " checking right neighbor " << _neighborRight.getId());
         if (_neighborRight.getId() != 0) {
@@ -128,21 +129,21 @@ void CentralWorker::_monitor() {
 
                     LOGS(_log, LOG_LVL_INFO, "_monitor trying to establish TCP connection with " <<
                             _neighborRight.getId() << " " << _neighborRight.getAddressTcp());
-                    _rightConnect(); // calls _determineRange() while establishing connection
+                    _rightConnect(rMtxLG); // calls _determineRange() while establishing connection
                 } else {
                     LOGS(_log, LOG_LVL_INFO, "_monitor " << _ourId << " getting range info");
                     if (_determineRange()) {
                         _rangeChanged = true;
                     }
                 }
-                dataShifted = _shiftIfNeeded();
+                dataShifted = _shiftIfNeeded(rMtxLG);
             } catch (LoaderMsgErr const& ex) {
                 LOGS(_log, LOG_LVL_WARN, "_monitor() catching exception " << ex.what());
-                _rightDisconnect();
+                _rightDisconnect(rMtxLG);
             }
         } else {
             // If there is a connection, close it.
-            _rightDisconnect();
+            _rightDisconnect(rMtxLG);
         }
         if (_rangeChanged) {
             // Send new range to master so all clients and workers can be updated.
@@ -180,8 +181,8 @@ void CentralWorker::_masterDisable() {
     _ourIdInvalid = true;
     // Disconnect from right neighbor.
     {
-        std::lock_guard<std::mutex> lck(_rightMtx);
-        _rightDisconnect();
+        std::lock_guard<std::mutex> rMtxLG(_rightMtx);
+        _rightDisconnect(rMtxLG);
         _neighborRight.setId(0);
     }
     // Disconnect from left neighbor. TODO actively kill the left connection.
@@ -265,7 +266,7 @@ bool CentralWorker::_determineRange() {
 
 
 // must hold _rightMtx before calling
-bool CentralWorker::_shiftIfNeeded() {
+bool CentralWorker::_shiftIfNeeded(std::lock_guard<std::mutex> const& rightMtxLG) {
     // There should be reasonably recent information from our neighbors. Use that
     // and our status to ask the right neighbor to give us entries or we send entries
     // to the right neighbor.
@@ -495,7 +496,7 @@ StringElement::UPtr CentralWorker::buildKeyList(int keysToShift) {
 
 
 /// Must hold _rightMtx before calling
-void CentralWorker::_rightConnect() {
+void CentralWorker::_rightConnect(std::lock_guard<std::mutex> const& rightMtxLG) {
     std::string const funcName("CentralWorker::_rightConnect");
     if(_rightConnectStatus == VOID0) {
         _rightConnectStatus = STARTING1;
@@ -555,7 +556,7 @@ void CentralWorker::setNeighborInfoLeft(uint32_t wId, int keyCount, StringRange 
 
 
 /// Must hold _rightMtx before calling
-void CentralWorker::_rightDisconnect() {
+void CentralWorker::_rightDisconnect(std::lock_guard<std::mutex> const& lg) {
     LOGS(_log, LOG_LVL_DEBUG, "CentralWorker::_rightDisconnect");
     if (_rightSocket != nullptr) {
         LOGS(_log, LOG_LVL_WARN, "CentralWorker::_rightDisconnect disconnecting");
@@ -569,8 +570,9 @@ void CentralWorker::_rightDisconnect() {
 
 
 void CentralWorker::_cancelShiftsWithRightNeighbor() {
-    // Client side of connection. Was sending largest keys right.
-    LOGS(_log, LOG_LVL_DEBUG, "_cancelShiftsToRightNeighbor");
+    // Client side of connection, was sending largest keys right.
+    // If keys were being shifted from right, this node's map is still intact.
+    LOGS(_log, LOG_LVL_DEBUG, "_cancelShiftsWithRightNeighbor");
     std::lock_guard<std::mutex> lck(_idMapMtx);
     if (_shiftAsClientInProgress.exchange(false)) {
         LOGS(_log, LOG_LVL_WARN, "Canceling shiftToRight neighbor");
@@ -579,7 +581,7 @@ void CentralWorker::_cancelShiftsWithRightNeighbor() {
             auto res = _keyValueMap.insert(std::make_pair(elem.first, elem.second));
             if (not res.second) {
                 LOGS(_log, LOG_LVL_WARN, "_cancelShiftsRightNeighbor Possible duplicate " <<
-                        elem.first << ":" << elem.second);
+                                         elem.first << ":" << elem.second);
             }
         }
         _transferListToRight.clear();
@@ -589,7 +591,8 @@ void CentralWorker::_cancelShiftsWithRightNeighbor() {
 
 
 void CentralWorker::cancelShiftsWithLeftNeighbor() {
-    // Server side of connection. Was sending smallest keys left.
+    // Server side of connection, was sending smallest keys left.
+    // If keys were being transfered from the left node, this node's map is still intact.
     LOGS(_log, LOG_LVL_WARN, "cancelShiftsWithLeftNeighbor");
     std::lock_guard<std::mutex> lck(_idMapMtx);
     if (not _transferListWithLeft.empty()) {
@@ -598,7 +601,7 @@ void CentralWorker::cancelShiftsWithLeftNeighbor() {
             auto res = _keyValueMap.insert(std::make_pair(elem.first, elem.second));
             if (not res.second) {
                 LOGS(_log, LOG_LVL_WARN, "_cancelShiftsRightNeighbor Possible duplicate " <<
-                        elem.first << ":" << elem.second);
+                                         elem.first << ":" << elem.second);
             }
         }
         _transferListWithLeft.clear();
@@ -726,7 +729,7 @@ StringRange CentralWorker::updateRangeWithLeftData(StringRange const& leftNeighb
 bool CentralWorker::workerKeyInsertReq(LoaderMsg const& inMsg, BufferUdp::Ptr const&  data) {
     StringElement::Ptr sData = std::dynamic_pointer_cast<StringElement>(MsgElement::retrieve(*data));
     if (sData == nullptr) {
-        LOGS(_log, LOG_LVL_WARN, "CentralWorker::workerKeyInsertReq Failed to parse list");
+        LOGS(_log, LOG_LVL_WARN, "CentralWorker::workerKeyInsertReq Failed to read list element");
         return false;
     }
     auto protoData = sData->protoParse<proto::KeyInfoInsert>();
@@ -806,7 +809,7 @@ void CentralWorker::_forwardKeyInsertRequest(NetworkAddress const& targetAddr, L
     auto key = protoKeyInfo.key();
     // The proto buffer should be the same, just need a new message.
     int hops = protoData->hops() + 1;
-    if (hops > 4) {
+    if (hops > 4) { // TODO replace magic number with variable set via config file.
         LOGS(_log, LOG_LVL_INFO, "Too many hops, dropping insert request hops=" << hops << " key=" << key);
         return;
     }
@@ -826,7 +829,7 @@ bool CentralWorker::workerKeyInfoReq(LoaderMsg const& inMsg, BufferUdp::Ptr cons
     LOGS(_log, LOG_LVL_DEBUG, "CentralWorker::workerKeyInfoReq");
     StringElement::Ptr sData = std::dynamic_pointer_cast<StringElement>(MsgElement::retrieve(*data));
     if (sData == nullptr) {
-        LOGS(_log, LOG_LVL_WARN, "CentralWorker::workerKeyInfoReq Failed to parse list");
+        LOGS(_log, LOG_LVL_WARN, "CentralWorker::workerKeyInfoReq Failed to read list element");
         return false;
     }
     auto protoData = sData->protoParse<proto::KeyInfoInsert>();

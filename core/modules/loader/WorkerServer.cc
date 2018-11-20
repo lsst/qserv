@@ -93,16 +93,16 @@ BufferUdp::Ptr WorkerServer::parseMsg(BufferUdp::Ptr const& data,
     case LoaderMsg::MAST_WORKER_INFO_REQ:
     case LoaderMsg::MAST_WORKER_ADD_REQ:
         // TODO add response for known but unexpected message.
-        sendData = replyMsgReceived(senderEndpoint, inMsg, LoaderMsg::STATUS_PARSE_ERR, "unexpected Msg Kind");
+        sendData = prepareReplyMsg(senderEndpoint, inMsg, LoaderMsg::STATUS_PARSE_ERR, "unexpected Msg Kind");
     default:
-        sendData = replyMsgReceived(senderEndpoint, inMsg, LoaderMsg::STATUS_PARSE_ERR, "unknownMsgKind");
+        sendData = prepareReplyMsg(senderEndpoint, inMsg, LoaderMsg::STATUS_PARSE_ERR, "unknownMsgKind");
     }
 
     return sendData;
 }
 
 
-BufferUdp::Ptr WorkerServer::replyMsgReceived(boost::asio::ip::udp::endpoint const& senderEndpoint,
+BufferUdp::Ptr WorkerServer::prepareReplyMsg(boost::asio::ip::udp::endpoint const& senderEndpoint,
                                               LoaderMsg const& inMsg,
                                               int status, std::string const& msgTxt) {
 
