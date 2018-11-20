@@ -62,7 +62,7 @@ BufferUdp::Ptr MasterServer::parseMsg(BufferUdp::Ptr const& data,
         std::string errMsg("MasterServer::parseMsg inMsg garbled exception ");
         errMsg += exc.what();
         LOGS(_log, LOG_LVL_ERROR, errMsg);
-        sendData = replyMsgReceived(senderEndpoint, inMsg, LoaderMsg::STATUS_PARSE_ERR, errMsg);
+        sendData = prepareReplyMsg(senderEndpoint, inMsg, LoaderMsg::STATUS_PARSE_ERR, errMsg);
         return sendData;
     }
 
@@ -101,7 +101,7 @@ BufferUdp::Ptr MasterServer::parseMsg(BufferUdp::Ptr const& data,
         default:
             ++_errCount;
             LOGS(_log, LOG_LVL_ERROR, "unknownMsgKind errCount=" << _errCount << " inMsg=" << inMsg);
-            sendData = replyMsgReceived(senderEndpoint, inMsg, LoaderMsg::STATUS_PARSE_ERR, "unknownMsgKind");
+            sendData = prepareReplyMsg(senderEndpoint, inMsg, LoaderMsg::STATUS_PARSE_ERR, "unknownMsgKind");
         }
     } catch (LoaderMsgErr const& exc) {
         ++_errCount;
@@ -109,7 +109,7 @@ BufferUdp::Ptr MasterServer::parseMsg(BufferUdp::Ptr const& data,
         errMsg += exc.what();
         LOGS(_log, LOG_LVL_ERROR, errMsg);
         // Send error back to the server in inMsg
-        auto reply = replyMsgReceived(senderEndpoint, inMsg, LoaderMsg::STATUS_PARSE_ERR, errMsg);
+        auto reply = prepareReplyMsg(senderEndpoint, inMsg, LoaderMsg::STATUS_PARSE_ERR, errMsg);
         sendBufferTo(inMsg.senderHost->element, inMsg.senderPort->element, *reply);
         return nullptr;
     }
@@ -118,7 +118,7 @@ BufferUdp::Ptr MasterServer::parseMsg(BufferUdp::Ptr const& data,
 }
 
 
-BufferUdp::Ptr MasterServer::replyMsgReceived(boost::asio::ip::udp::endpoint const& senderEndpoint,
+BufferUdp::Ptr MasterServer::prepareReplyMsg(boost::asio::ip::udp::endpoint const& senderEndpoint,
                                               LoaderMsg const& inMsg, int status, std::string const& msgTxt) {
 
     if (status != LoaderMsg::STATUS_SUCCESS) {
@@ -153,7 +153,7 @@ BufferUdp::Ptr MasterServer::workerAddRequest(LoaderMsg const& inMsg, BufferUdp:
     int tcpPort = 0;
     auto addReq = NetworkAddress::create(data, tcpPort, "MasterServer::workerAddRequest");
     if (addReq == nullptr) {
-        return replyMsgReceived(senderEndpoint, inMsg, LoaderMsg::STATUS_PARSE_ERR,
+        return prepareReplyMsg(senderEndpoint, inMsg, LoaderMsg::STATUS_PARSE_ERR,
                 "STATUS_PARSE_ERR parse error workerAddRequest ");
     }
 
@@ -177,7 +177,7 @@ BufferUdp::Ptr MasterServer::workerListRequest(LoaderMsg const& inMsg, BufferUdp
     if (addr == nullptr) {
         std::string errStr("STATUS_PARSE_ERR parse error in " + funcName);
         LOGS(_log, LOG_LVL_ERROR, errStr);
-        return replyMsgReceived(senderEndpoint, inMsg, LoaderMsg::STATUS_PARSE_ERR, errStr);
+        return prepareReplyMsg(senderEndpoint, inMsg, LoaderMsg::STATUS_PARSE_ERR, errStr);
     }
 
     // TODO: put this in a separate thread.
@@ -206,7 +206,7 @@ BufferUdp::Ptr MasterServer::workerKeysInfo(LoaderMsg const& inMsg, BufferUdp::P
         _centralMaster->updateWorkerInfo(name, nInfo, strRange);
     } catch (LoaderMsgErr &msgErr) {
         LOGS(_log, LOG_LVL_ERROR, msgErr.what());
-        return replyMsgReceived(senderEndpoint, inMsg, LoaderMsg::STATUS_PARSE_ERR, msgErr.what());
+        return prepareReplyMsg(senderEndpoint, inMsg, LoaderMsg::STATUS_PARSE_ERR, msgErr.what());
     }
     return nullptr;
 }
@@ -267,7 +267,7 @@ BufferUdp::Ptr MasterServer::workerInfoRequest(LoaderMsg const& inMsg, BufferUdp
 
     } catch (LoaderMsgErr &msgErr) {
         LOGS(_log, LOG_LVL_ERROR, msgErr.what());
-        return replyMsgReceived(senderEndpoint, inMsg, LoaderMsg::STATUS_PARSE_ERR, msgErr.what());
+        return prepareReplyMsg(senderEndpoint, inMsg, LoaderMsg::STATUS_PARSE_ERR, msgErr.what());
     }
     return nullptr;
 }

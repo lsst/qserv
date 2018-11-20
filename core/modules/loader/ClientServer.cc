@@ -28,8 +28,6 @@
 // System headers
 #include <iostream>
 
-// Third-party headers
-
 // Qserv headers
 #include "loader/CentralClient.h"
 #include "loader/LoaderMsg.h"
@@ -43,9 +41,11 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.loader.ClientServer");
 }
 
+
 namespace lsst {
 namespace qserv {
 namespace loader {
+
 
 BufferUdp::Ptr ClientServer::parseMsg(BufferUdp::Ptr const& data,
                                       boost::asio::ip::udp::endpoint const& senderEndpoint) {
@@ -59,7 +59,7 @@ BufferUdp::Ptr ClientServer::parseMsg(BufferUdp::Ptr const& data,
     switch (inMsg.msgKind->element) {
     case LoaderMsg::MSG_RECEIVED:
         LOGS(_log, LOG_LVL_WARN, "ClientServer::parseMsg MSG_RECEIVED");
-        _msgRecieved(inMsg, data, senderEndpoint);
+        _msgRecievedHandler(inMsg, data, senderEndpoint);
         sendData.reset(); // Never send a response back for one of these, infinite loop.
         break;
 
@@ -84,19 +84,20 @@ BufferUdp::Ptr ClientServer::parseMsg(BufferUdp::Ptr const& data,
     case LoaderMsg::MAST_WORKER_INFO_REQ:
     case LoaderMsg::MAST_WORKER_ADD_REQ:
         // TODO add response for known but unexpected message.
-        sendData = replyMsgReceived(senderEndpoint, inMsg, LoaderMsg::STATUS_PARSE_ERR, "unexpected Msg Kind");
+        sendData = prepareReplyToMsg(senderEndpoint, inMsg, LoaderMsg::STATUS_PARSE_ERR,
+                                     "unexpected Msg Kind");
         break;
     default:
-        sendData = replyMsgReceived(senderEndpoint, inMsg, LoaderMsg::STATUS_PARSE_ERR, "unknownMsgKind");
+        sendData = prepareReplyToMsg(senderEndpoint, inMsg, LoaderMsg::STATUS_PARSE_ERR, "unknownMsgKind");
     }
 
     return sendData;
 }
 
 
-BufferUdp::Ptr ClientServer::replyMsgReceived(boost::asio::ip::udp::endpoint const& senderEndpoint,
-                                              LoaderMsg const& inMsg,
-                                              int status, std::string const& msgTxt) {
+BufferUdp::Ptr ClientServer::prepareReplyToMsg(boost::asio::ip::udp::endpoint const& senderEndpoint,
+                                               LoaderMsg const& inMsg,
+                                               int status, std::string const& msgTxt) {
 
     if (status != LoaderMsg::STATUS_SUCCESS) {
         LOGS(_log,LOG_LVL_WARN, "Error response Original from " << senderEndpoint <<
@@ -123,8 +124,8 @@ BufferUdp::Ptr ClientServer::replyMsgReceived(boost::asio::ip::udp::endpoint con
 }
 
 
-void ClientServer::_msgRecieved(LoaderMsg const& inMsg, BufferUdp::Ptr const& data,
-                                boost::asio::ip::udp::endpoint const& senderEndpoint) {
+void ClientServer::_msgRecievedHandler(LoaderMsg const& inMsg, BufferUdp::Ptr const& data,
+                                       boost::asio::ip::udp::endpoint const& senderEndpoint) {
     bool success = true;
     // This is only really expected for parsing errors. Most responses to
     // requests come in as normal messages.
@@ -136,7 +137,7 @@ void ClientServer::_msgRecieved(LoaderMsg const& inMsg, BufferUdp::Ptr const& da
     std::unique_ptr<proto::LdrMsgReceived> protoBuf;
     if (success) {
         protoBuf = seData->protoParse<proto::LdrMsgReceived>();
-        if (protoBuf == nullptr) { success = false; }
+        if (protoBuf == nullptr) success = false;
     }
 
     std::stringstream os;
@@ -166,10 +167,4 @@ void ClientServer::_msgRecieved(LoaderMsg const& inMsg, BufferUdp::Ptr const& da
 
 
 }}} // namespace lsst:qserv::loader
-
-
-
-
-
-
 

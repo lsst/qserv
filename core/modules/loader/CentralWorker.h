@@ -185,7 +185,7 @@ private:
     /// If this worker has significantly more or fewer keys than its right neighbor,
     /// shift keys between them to make a more even distribution.
     /// @Return true if data was shifted with the right neighbor.
-    bool _shiftIfNeeded();
+    bool _shiftIfNeeded(std::lock_guard<std::mutex> const& rightMtxLG);
 
     /// Attempt to shift keys to or from the right neighbor.
     /// @parameter keysToShift is number of keys to shift.
@@ -213,8 +213,10 @@ private:
 
     void _removeOldEntries(); ///< remove old entries from _recentAdds
 
-    void _rightConnect(); ///< Connect to the right neighbor
-    void _rightDisconnect(); ///< Disconnect from the right neighbor.
+    /// Connect to the right neighbor. Must hold _rightMtx in the lock.
+    void _rightConnect(std::lock_guard<std::mutex> const& rightMtxLG);
+    ///< Disconnect from the right neighbor. Must hold _rightMtx in the lock.
+    void _rightDisconnect(std::lock_guard<std::mutex> const& rightMtxLG);
 
     void _cancelShiftsWithRightNeighbor(); ///< Cancel shifts to/from the right neighbor.
     void _finishShiftToRight(); ///< The shift to the right neighbor is complete, cleanup.
@@ -260,30 +262,7 @@ private:
 };
 
 
-/// This class exists to regularly call the CentralWorker::_monitor() function, which
-/// does things like monitor TCP connections and control shifting with the right neighbor.
-class CentralWorkerDoListItem : public DoListItem {
-public:
-    CentralWorkerDoListItem() = delete;
-    explicit CentralWorkerDoListItem(CentralWorker* centralWorker) : _centralWorker(centralWorker) {
-        setTimeOut(std::chrono::seconds(7));
-    }
 
-    util::CommandTracked::Ptr createCommand() override {
-        struct CWMonitorCmd : public util::CommandTracked {
-            CWMonitorCmd(CentralWorker* centralW) : centralWorker(centralW) {}
-            void action(util::CmdData*) override {
-                centralWorker->_monitor();
-            }
-            CentralWorker* centralWorker;
-        };
-        util::CommandTracked::Ptr cmd(new CWMonitorCmd(_centralWorker));
-        return cmd;
-    }
-
-private:
-    CentralWorker* _centralWorker;
-};
 
 
 }}} // namespace lsst::qserv::loader
