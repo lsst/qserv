@@ -119,7 +119,7 @@ private:
         using Ptr = std::shared_ptr<KeyInsertReqOneShot>;
 
         KeyInsertReqOneShot(CentralClient* central_, std::string const& key_, int chunk_, int subchunk_) :
-            cmdData(new KeyInfoData(key_, chunk_, subchunk_)), central(central_) { _oneShot = true; }
+            cmdData(new KeyInfoData(key_, chunk_, subchunk_)), central(central_) { setOneShot(true); }
 
         util::CommandTracked::Ptr createCommand() override;
 
@@ -137,7 +137,7 @@ private:
         using Ptr = std::shared_ptr<KeyInfoReqOneShot>;
 
         KeyInfoReqOneShot(CentralClient* central_, std::string const& key_) :
-            cmdData(new KeyInfoData(key_, -1, -1)), central(central_) { _oneShot = true; }
+            cmdData(new KeyInfoData(key_, -1, -1)), central(central_) { setOneShot(true); }
 
         util::CommandTracked::Ptr createCommand() override;
 
