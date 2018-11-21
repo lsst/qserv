@@ -96,8 +96,8 @@ private:
                        NeighborsInfo::NeighborPtr const& neighborPtr_) :
                     central(central_), target(target_), message(msg_), neighborName(neighborName_),
                     neighborPtr(neighborPtr_) {
-            _oneShot = true;
-        }
+        setOneShot(true);
+    }
 };
 
 
