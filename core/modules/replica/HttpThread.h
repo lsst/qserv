@@ -167,6 +167,24 @@ private:
     void _delete(qhttp::Request::Ptr req,
                  qhttp::Response::Ptr resp);
 
+    /**
+     * Process a request which return status of all workers.
+     *
+     * @param req   request received from a client
+     * @param resp  response to be sent back
+     */
+    void _listWorkerStatuses(qhttp::Request::Ptr req,
+                             qhttp::Response::Ptr resp);
+
+    /**
+     * Process a request which return status of one worker.
+     *
+     * @param req   request received from a client
+     * @param resp  response to be sent back
+     */
+    void _getWorkerStatus(qhttp::Request::Ptr req,
+                          qhttp::Response::Ptr resp);
+
 private:
 
     /// The callback to be called when there is a request to evict one

@@ -27,6 +27,10 @@
 #include <atomic>
 #include <map>
 
+// Third party headers
+#include "nlohmann/json.hpp"
+using json = nlohmann::json;
+
 // Qserv headers
 #include "util/BlockPost.h"
 #include "Controller.h"
@@ -65,11 +69,17 @@ void HttpThread::run() {
         auto self = shared_from_base<HttpThread>();
 
         _httpServer->addHandlers({
+
+            // Trivial tests of the API
             {"POST",   "/replication/test",     std::bind(&HttpThread::_create, self, _1, _2)},
             {"GET",    "/replication/test",     std::bind(&HttpThread::_list,   self, _1, _2)},
             {"GET",    "/replication/test/:id", std::bind(&HttpThread::_get,    self, _1, _2)},
             {"PUT",    "/replication/test/:id", std::bind(&HttpThread::_update, self, _1, _2)},
-            {"DELETE", "/replication/test/:id", std::bind(&HttpThread::_delete, self, _1, _2)}
+            {"DELETE", "/replication/test/:id", std::bind(&HttpThread::_delete, self, _1, _2)},
+
+            // Status of the 
+            {"GET",    "/replication/v1/worker",       std::bind(&HttpThread::_listWorkerStatuses, self, _1, _2)},
+            {"GET",    "/replication/v1/worker/:name", std::bind(&HttpThread::_getWorkerStatus,    self, _1, _2)},
         });
     }
 
@@ -141,5 +151,25 @@ void HttpThread::_delete(qhttp::Request::Ptr req,
     resp->send("_delete", "application/json");
 }
 
+void HttpThread::_listWorkerStatuses(qhttp::Request::Ptr req,
+                                     qhttp::Response::Ptr resp) {
+    debug("_listWorkerStatuses");
 
+    json workers = json::array();
+    for (auto&& worker: controller()->serviceProvider()->config()->workers()) {
+        workers.push_back({
+            {"worker", worker},
+            {"replica_probe_delay_s", 10},
+            {"qserv_probe_delay_s", 10}
+        });
+    }
+    resp->send(workers.dump(), "application/json");
+}
+
+void HttpThread::_getWorkerStatus(qhttp::Request::Ptr req,
+                                  qhttp::Response::Ptr resp) {
+    debug("_getWorkerStatus");
+    resp->send(json::array(), "application/json");
+}
+        
 }}} // namespace lsst::qserv::replica

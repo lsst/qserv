@@ -26,7 +26,7 @@
 // System headers
 #include <iostream>
 
-// Tnird party headers
+// Third party headers
 #include "nlohmann/json.hpp"
 using json = nlohmann::json;
 
