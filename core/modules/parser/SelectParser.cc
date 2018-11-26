@@ -366,6 +366,13 @@ SelectParser::Ptr SelectParser::newInstance(std::string const& statement, AntlrV
     return std::shared_ptr<SelectParser>(new SelectParser(statement, v));
 }
 
+std::shared_ptr<query::SelectStmt> SelectParser::makeSelectStmt(
+        std::string const& statement, AntlrVersion v) {
+    auto parser = newInstance(statement, v);
+    parser->setup();
+    return parser->getSelectStmt();
+}
+
 
 SelectParser::SelectParser(std::string const& statement, AntlrVersion v)
     :_statement(statement) {
