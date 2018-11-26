@@ -2795,14 +2795,14 @@ public:
     }
 
     void checkContext() const override {
-        // not supported:
-        assertNotSupported(__FUNCTION__, _ctx->NOT() == nullptr, "NOT is not supported.", _ctx);
+        // optional:
+        // NOT()
     }
 
     void onExit() override {
         assertExecutionCondition(__FUNCTION__, nullptr != _val && nullptr != _min && nullptr != _max,
                 "val, min, and max must all be set.", _ctx);
-        auto betweenPredicate = make_shared<query::BetweenPredicate>(_val, _min, _max);
+        auto betweenPredicate = make_shared<query::BetweenPredicate>(_val, _min, _max, _ctx->NOT() != nullptr);
         lockedParent()->handleBetweenPredicate(betweenPredicate);
     }
 

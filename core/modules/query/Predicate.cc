@@ -128,6 +128,7 @@ void InPredicate::renderTo(QueryTemplate& qt) const {
 void BetweenPredicate::renderTo(QueryTemplate& qt) const {
     ValueExpr::render r(qt, false);
     r.applyToQT(value);
+    if (hasNot) qt.append("NOT");
     qt.append("BETWEEN");
     r.applyToQT(minValue);
     qt.append("AND");
@@ -258,6 +259,7 @@ bool InPredicate::operator==(const BoolFactorTerm& rhs) const {
 BoolFactorTerm::Ptr BetweenPredicate::clone() const {
     BetweenPredicate::Ptr p = std::make_shared<BetweenPredicate>();
     if (value) p->value = value->clone();
+    p->hasNot = hasNot;
     if (minValue) p->minValue = minValue->clone();
     if (maxValue) p->maxValue = maxValue->clone();
     return BoolFactorTerm::Ptr(p);
@@ -265,6 +267,7 @@ BoolFactorTerm::Ptr BetweenPredicate::clone() const {
 
 void BetweenPredicate::dbgPrint(std::ostream& os) const {
     os << "BetweenPredicate(value:" << value;
+    os << ", NOT:" << (hasNot ? "true" : "false");
     os << ", minValue:" << minValue;
     os << ", maxValue:" << maxValue;
     os << ")";
@@ -276,6 +279,7 @@ bool BetweenPredicate::operator==(const BoolFactorTerm& rhs) const {
         return false;
     }
     return util::ptrCompare<ValueExpr>(value, rhsBetweenPredicate->value) &&
+           hasNot == rhsBetweenPredicate->hasNot &&
            util::ptrCompare<ValueExpr>(minValue, rhsBetweenPredicate->minValue) &&
            util::ptrCompare<ValueExpr>(maxValue, rhsBetweenPredicate->maxValue);
 }

@@ -156,9 +156,9 @@ protected:
 /// BetweenPredicate is a Predicate comparing a row value to a range
 class BetweenPredicate : public Predicate {
 public:
-    BetweenPredicate() {}
-    BetweenPredicate(ValueExprPtr iValue, ValueExprPtr iMinValue, ValueExprPtr iMaxValue)
-    : value(iValue), minValue(iMinValue), maxValue(iMaxValue) {}
+    BetweenPredicate() : hasNot(false) {}
+    BetweenPredicate(ValueExprPtr iValue, ValueExprPtr iMinValue, ValueExprPtr iMaxValue, bool iHasNot)
+    : value(iValue), minValue(iMinValue), maxValue(iMaxValue), hasNot(iHasNot) {}
     typedef std::shared_ptr<BetweenPredicate> Ptr;
 
     virtual ~BetweenPredicate() = default;
@@ -178,6 +178,7 @@ public:
     ValueExprPtr value;
     ValueExprPtr minValue;
     ValueExprPtr maxValue;
+    bool hasNot;
 
 protected:
     void dbgPrint(std::ostream& os) const override;

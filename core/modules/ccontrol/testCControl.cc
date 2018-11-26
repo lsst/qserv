@@ -730,6 +730,38 @@ BOOST_AUTO_TEST_CASE(null_safe_equals_op) {
 }
 
 
+BOOST_AUTO_TEST_CASE(not_between_op) {
+    std::string query = "SELECT objectId,ra_PS "
+                        "FROM Object "
+                        "WHERE objectId NOT BETWEEN 417857368235490 AND 420949744686724";
+    query::SelectStmt::Ptr selectStatement;
+    BOOST_REQUIRE_NO_THROW(
+            selectStatement = parser::SelectParser::makeSelectStmt(query, parser::SelectParser::ANTLR4));
+    BOOST_REQUIRE(selectStatement != nullptr);
+
+    std::string compQuery = "SELECT objectId, ra_PS "
+                            "FROM Object "
+                            "WHERE objectId BETWEEN 417857368235490 AND 420949744686724;";
+    query::SelectStmt::Ptr compSelectStatement;
+    BOOST_REQUIRE_NO_THROW(
+            compSelectStatement = parser::SelectParser::makeSelectStmt(compQuery, parser::SelectParser::ANTLR4));
+    BOOST_REQUIRE(compSelectStatement != nullptr);
+
+    // change the equals op to be the null safe equals op
+    auto whereClauseRef = compSelectStatement->getWhereClause();
+    auto orTerm = std::dynamic_pointer_cast<query::OrTerm>(whereClauseRef.getRootTerm());
+    auto andTerm = std::dynamic_pointer_cast<query::AndTerm>(orTerm->_terms[0]);
+    auto boolFactor = std::dynamic_pointer_cast<query::BoolFactor>(andTerm->_terms[0]);
+    auto betweenPredicate = std::dynamic_pointer_cast<query::BetweenPredicate>(boolFactor->_terms[0]);
+    betweenPredicate->hasNot = true;
+
+    // verify the selectStatements are now the same:
+    BOOST_REQUIRE_EQUAL(*selectStatement, *compSelectStatement);
+    // verify the selectStatement converted back to sql is the same as the original query:
+    BOOST_REQUIRE_EQUAL(selectStatement->getQueryTemplate().sqlFragment(), query);
+}
+
+
 BOOST_DATA_TEST_CASE(antlr4_compare, ANTLR4_COMPARE_QUERIES, queryInfo) {
     query::SelectStmt::Ptr selectStatement;
     BOOST_REQUIRE_NO_THROW(
