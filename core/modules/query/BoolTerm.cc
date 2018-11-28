@@ -66,10 +66,7 @@ std::ostream& operator<<(std::ostream& os, BoolTerm const* bt) {
     (nullptr == bt) ? os << "nullptr" : os << *bt;
     return os;
 }
-std::ostream& OrTerm::putStream(std::ostream& os) const {
-    return QueryTemplate::renderDbg(os, *this);
-}
-std::ostream& AndTerm::putStream(std::ostream& os) const {
+std::ostream& LogicalTerm::putStream(std::ostream& os) const {
     return QueryTemplate::renderDbg(os, *this);
 }
 std::ostream& BoolFactor::putStream(std::ostream& os) const {
@@ -147,7 +144,7 @@ void BoolTermFactor::renderTo(QueryTemplate& qt) const {
     if (_term) { _term->renderTo(qt); }
 }
 
-std::shared_ptr<BoolTerm> OrTerm::getReduced() {
+std::shared_ptr<BoolTerm> LogicalTerm::getReduced() {
     // Can I eliminate myself?
     if (_terms.size() == 1) {
         std::shared_ptr<BoolTerm> reduced = _terms.front()->getReduced();
@@ -155,20 +152,8 @@ std::shared_ptr<BoolTerm> OrTerm::getReduced() {
         else { return _terms.front(); }
     } else { // Get reduced versions of my children.
         // FIXME: Apply reduction on each term.
-        // If reduction was successful on any child, construct a new or-term.
-    }
-    return std::shared_ptr<BoolTerm>();
-}
-
-std::shared_ptr<BoolTerm> AndTerm::getReduced() {
-    // Can I eliminate myself?
-    if (_terms.size() == 1) {
-        std::shared_ptr<BoolTerm> reduced = _terms.front()->getReduced();
-        if (reduced) { return reduced; }
-        else { return _terms.front(); }
-    } else { // Get reduced versions of my children.
-        // FIXME: Apply reduction on each term.
-        // If reduction was successful on any child, construct a new and-term.
+        // If reduction was successful on any child, construct a new LogicalTerm of the same subclass type
+        // (AndTerm, OrTerm, etc).
     }
     return std::shared_ptr<BoolTerm>();
 }

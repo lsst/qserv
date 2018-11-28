@@ -149,6 +149,9 @@ public:
     LogicalTerm(BoolTerm::PtrVector const & terms) : _terms(terms) {}
     LogicalTerm(BoolTerm::Ptr const & term) : _terms(BoolTerm::PtrVector{term}) {}
 
+    virtual PtrVector::iterator iterBegin() { return _terms.begin(); }
+    virtual PtrVector::iterator iterEnd() { return _terms.end(); }
+
     void addBoolTerm(BoolTerm::Ptr boolTerm) {
         _terms.push_back(boolTerm);
     }
@@ -177,6 +180,10 @@ public:
         }
     }
 
+    virtual std::shared_ptr<BoolTerm> getReduced();
+
+    virtual std::ostream& putStream(std::ostream& os) const;
+
     BoolTerm::PtrVector _terms;
 };
 
@@ -191,12 +198,6 @@ public:
     virtual char const* getName() const { return "OrTerm"; }
     virtual OpPrecedence getOpPrecedence() const { return OR_PRECEDENCE; }
 
-    virtual PtrVector::iterator iterBegin() { return _terms.begin(); }
-    virtual PtrVector::iterator iterEnd() { return _terms.end(); }
-
-    virtual std::shared_ptr<BoolTerm> getReduced();
-
-    virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
     virtual std::shared_ptr<BoolTerm> clone() const;
     virtual std::shared_ptr<BoolTerm> copySyntax() const;
@@ -220,12 +221,6 @@ public:
     virtual char const* getName() const { return "AndTerm"; }
     virtual OpPrecedence getOpPrecedence() const { return AND_PRECEDENCE; }
 
-    virtual PtrVector::iterator iterBegin() { return _terms.begin(); }
-    virtual PtrVector::iterator iterEnd() { return _terms.end(); }
-
-    virtual std::shared_ptr<BoolTerm> getReduced();
-
-    virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
 
     virtual std::shared_ptr<BoolTerm> clone() const;
