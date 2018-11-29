@@ -32,6 +32,7 @@
 #include "replica/DeleteWorkerThread.h"
 #include "replica/HealthMonitorThread.h"
 #include "replica/ReplicationThread.h"
+#include "util/Mutex.h"
 
 // This header declarations
 
@@ -122,14 +123,18 @@ private:
                DeleteWorkerThread::Ptr const& deleteWorkerThread);
 
 
+    // -------------------------------------
+    // Callback for processing test requests
+    // -------------------------------------
+
     /**
      * Process "POST" requests
      *
      * @param req   request received from a client
      * @param resp  response to be sent back
      */
-    void _create(qhttp::Request::Ptr req,
-                 qhttp::Response::Ptr resp);
+    void _testCreate(qhttp::Request::Ptr req,
+                     qhttp::Response::Ptr resp);
 
     /**
      * Process "GET" requests for a list of resources of the given type
@@ -137,8 +142,8 @@ private:
      * @param req   request received from a client
      * @param resp  response to be sent back
      */
-    void _list(qhttp::Request::Ptr req,
-               qhttp::Response::Ptr resp);
+    void _testList(qhttp::Request::Ptr req,
+                   qhttp::Response::Ptr resp);
 
     /**
      * Process "GET" requests for a specific resource
@@ -146,8 +151,8 @@ private:
      * @param req   request received from a client
      * @param resp  response to be sent back
      */
-    void _get(qhttp::Request::Ptr req,
-              qhttp::Response::Ptr resp);
+    void _testGet(qhttp::Request::Ptr req,
+                  qhttp::Response::Ptr resp);
 
     /**
      * Process "PUT" requests for a specific resource
@@ -155,8 +160,8 @@ private:
      * @param req   request received from a client
      * @param resp  response to be sent back
      */
-    void _update(qhttp::Request::Ptr req,
-                 qhttp::Response::Ptr resp);
+    void _testUpdate(qhttp::Request::Ptr req,
+                     qhttp::Response::Ptr resp);
 
     /**
      * Process "DELETE" requests for a specific resource
@@ -164,17 +169,13 @@ private:
      * @param req   request received from a client
      * @param resp  response to be sent back
      */
-    void _delete(qhttp::Request::Ptr req,
-                 qhttp::Response::Ptr resp);
+    void _testDelete(qhttp::Request::Ptr req,
+                     qhttp::Response::Ptr resp);
 
-    /**
-     * Process a request which return status of all workers.
-     *
-     * @param req   request received from a client
-     * @param resp  response to be sent back
-     */
-    void _listWorkerStatuses(qhttp::Request::Ptr req,
-                             qhttp::Response::Ptr resp);
+
+    // ---------------------------------------
+    // Callback for processing actual requests
+    // ---------------------------------------
 
     /**
      * Process a request which return status of one worker.
@@ -184,6 +185,24 @@ private:
      */
     void _getWorkerStatus(qhttp::Request::Ptr req,
                           qhttp::Response::Ptr resp);
+
+    /**
+     * Process a request which return the status of the replicas.
+     *
+     * @param req   request received from a client
+     * @param resp  response to be sent back
+     */
+    void _getReplicationLevel(qhttp::Request::Ptr req,
+                              qhttp::Response::Ptr resp);
+
+    /**
+     * Process a request which return status of all workers.
+     *
+     * @param req   request received from a client
+     * @param resp  response to be sent back
+     */
+    void _listWorkerStatuses(qhttp::Request::Ptr req,
+                             qhttp::Response::Ptr resp);
 
 private:
 
@@ -208,6 +227,15 @@ private:
     /// The flag used for lazy initialization of the Web server the first time
     /// this thread runs.
     bool _isInitialized;
+
+    /// The latest state of the replication levels report
+    std::string _replicationLevelReport;
+    
+    /// The timestamp for when the last report was made
+    uint64_t _replicationLevelReportTimeMs;
+
+    /// Mutex guarding the cache with the replication levels report
+    util::Mutex _replicationLevelMtx;
 };
     
 }}} // namespace lsst::qserv::replica

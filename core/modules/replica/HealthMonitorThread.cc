@@ -53,18 +53,21 @@ HealthMonitorThread::Ptr HealthMonitorThread::create(Controller::Ptr const& cont
     );
 }
 
+HealthMonitorThread::WorkerResponseDelay HealthMonitorThread::workerResponseDelay() const {
+    util::Lock lock(_mtx, "HealthMonitorThread::workerResponseDelay()");
+    return _workerServiceNoResponseSec;
+}
+
 void HealthMonitorThread::run() {
+ 
+    std::string const context = "HealthMonitorThread::run()";
+    {
+        util::Lock lock(_mtx, context);
 
-    // Accumulate here non-response intervals for each workers until either will
-    // reach the "eviction" threshold. Then trigger worker eviction sequence.
-
-    std::map<std::string,           // worker
-             std::map<std::string,  // service
-                      unsigned int>> workerServiceNoResponseSec;
-
-    for (auto&& worker: serviceProvider()->config()->workers()) {
-        workerServiceNoResponseSec[worker]["qserv"] = 0;
-        workerServiceNoResponseSec[worker]["replication"] = 0;
+        for (auto&& worker: serviceProvider()->config()->workers()) {
+            _workerServiceNoResponseSec[worker]["qserv"] = 0;
+            _workerServiceNoResponseSec[worker]["replication"] = 0;
+        }
     }
 
     std::string const parentJobId;  // no parent jobs
@@ -93,31 +96,34 @@ void HealthMonitorThread::run() {
         track<ClusterHealthJob>("ClusterHealthJob", jobs, numFinishedJobs);
  
         // Update non-response intervals for both services
+        {
+            util::Lock lock(_mtx, context);
 
-        for (auto&& entry: jobs[0]->clusterHealth().qserv()) {
+            for (auto&& entry: jobs[0]->clusterHealth().qserv()) {
 
-            auto worker = entry.first;
-            auto responded = entry.second;
+                auto worker = entry.first;
+                auto responded = entry.second;
 
-            if (responded) {
-                workerServiceNoResponseSec[worker]["qserv"] = 0;
-            } else {
-                workerServiceNoResponseSec[worker]["qserv"] += _workerResponseTimeoutSec;
-                info("no response from Qserv at worker '" +worker + "' for " +
-                     std::to_string(workerServiceNoResponseSec[worker]["qserv"]) + " seconds");
+                if (responded) {
+                    _workerServiceNoResponseSec[worker]["qserv"] = 0;
+                } else {
+                    _workerServiceNoResponseSec[worker]["qserv"] += _workerResponseTimeoutSec;
+                    info("no response from Qserv at worker '" +worker + "' for " +
+                         std::to_string(_workerServiceNoResponseSec[worker]["qserv"]) + " seconds");
+                }
             }
-        }
-        for (auto&& entry: jobs[0]->clusterHealth().replication()) {
+            for (auto&& entry: jobs[0]->clusterHealth().replication()) {
 
-            auto worker = entry.first;
-            auto responded = entry.second;
+                auto worker = entry.first;
+                auto responded = entry.second;
 
-            if (responded) {
-                workerServiceNoResponseSec[worker]["replication"] = 0;
-            } else {
-                workerServiceNoResponseSec[worker]["replication"] += _workerResponseTimeoutSec;
-                info("no response from Replication at worker '" + worker + "' for " +
-                     std::to_string(workerServiceNoResponseSec[worker]["replication"]) + " seconds");
+                if (responded) {
+                    _workerServiceNoResponseSec[worker]["replication"] = 0;
+                } else {
+                    _workerServiceNoResponseSec[worker]["replication"] += _workerResponseTimeoutSec;
+                    info("no response from Replication at worker '" + worker + "' for " +
+                         std::to_string(_workerServiceNoResponseSec[worker]["replication"]) + " seconds");
+                }
             }
         }
 
@@ -129,7 +135,7 @@ void HealthMonitorThread::run() {
 
         size_t numReplicationWorkersOffline = 0;
 
-        for (auto&& entry: workerServiceNoResponseSec) {
+        for (auto&& entry: _workerServiceNoResponseSec) {
 
             auto worker = entry.first;
 
@@ -174,12 +180,15 @@ void HealthMonitorThread::run() {
                     //
                     // ATTENTION: the map needs to be rebuild from scratch because one worker
                     // has been evicted from the Configuration.
+                    {
+                        util::Lock lock(_mtx, context);
 
-                    workerServiceNoResponseSec.clear();
+                        _workerServiceNoResponseSec.clear();
 
-                    for (auto&& worker: serviceProvider()->config()->workers()) {
-                        workerServiceNoResponseSec[worker]["qserv"] = 0;
-                        workerServiceNoResponseSec[worker]["replication"] = 0;
+                        for (auto&& worker: serviceProvider()->config()->workers()) {
+                            _workerServiceNoResponseSec[worker]["qserv"] = 0;
+                            _workerServiceNoResponseSec[worker]["replication"] = 0;
+                        }
                     }
                     break;
                 }

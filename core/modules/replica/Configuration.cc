@@ -218,6 +218,18 @@ std::vector<std::string> Configuration::workers(bool isEnabled,
     return names;
 }
 
+
+std::vector<std::string> Configuration::allWorkers() const {
+    util::Lock lock(_mtx, context() + "allWorkers");
+    std::vector<std::string> names;
+    for (auto&& entry: _workerInfo) {
+        auto const& name = entry.first;
+        names.push_back(name);
+    }
+    return names;
+}
+
+
 std::vector<std::string> Configuration::databaseFamilies() const {
 
     util::Lock lock(_mtx, context() + "databaseFamilies");

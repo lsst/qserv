@@ -28,6 +28,7 @@
 
 // Qserv headers
 #include "replica/ControlThread.h"
+#include "util/Mutex.h"
 
 // This header declarations
 
@@ -44,6 +45,12 @@ class HealthMonitorThread
     :   public ControlThread {
 
 public:
+
+    /// Delays (seconds) in getting responses from the worker services (both Qserv and
+    /// the Replication system)
+    typedef std::map<std::string,           // worker
+                     std::map<std::string,  // service ('qserv', 'replication')
+                              unsigned int>> WorkerResponseDelay;
 
     /// The pointer type for instances of the class
     typedef std::shared_ptr<HealthMonitorThread> Ptr;
@@ -106,6 +113,11 @@ public:
                       unsigned int workerResponseTimeoutSec,
                       unsigned int healthProbeIntervalSec);
 
+    /**
+     * @return delays (seconds) in getting responses from the worker services
+     */
+    WorkerResponseDelay workerResponseDelay() const;
+
 protected:
 
     /**
@@ -146,6 +158,15 @@ private:
     /// The number of seconds to wait in the end of each iteration loop before
     /// to begin the new one.
     unsigned int _healthProbeIntervalSec;
+
+    /// Mutex guarding internal state. This object is made protected
+    /// to allow subclasses use it.
+    mutable util::Mutex _mtx;
+
+    /// Accumulate here non-response intervals for each workers until either will
+    /// reach the "eviction" threshold. Then trigger worker eviction sequence.
+    WorkerResponseDelay _workerServiceNoResponseSec;
+
 };
     
 }}} // namespace lsst::qserv::replica

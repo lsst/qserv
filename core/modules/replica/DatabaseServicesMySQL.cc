@@ -795,6 +795,39 @@ void DatabaseServicesMySQL::findWorkerReplicas(std::vector<ReplicaInfo>& replica
     LOGS(_log, LOG_LVL_DEBUG, context << "** DONE ** replicas.size(): " << replicas.size());
 }
 
+uint64_t DatabaseServicesMySQL::numWorkerReplicas(std::string const& worker,
+                                                  std::string const& database) {
+
+    std::string const context = "DatabaseServicesMySQL::numWorkerReplicas  ";
+
+    util::Lock lock(_mtx, context);
+
+    uint64_t num;
+    try {
+        _conn->execute(
+            [&](decltype(_conn) conn) {
+                conn->begin();
+                conn->executeSingleValueSelect<uint64_t>(
+                    "SELECT COUNT(*) AS num FROM " + _conn->sqlId("replica") +
+                    "  WHERE "       + _conn->sqlEqual("worker", worker) +
+                    (database.empty() ? "" :
+                    "  AND "         + _conn->sqlEqual("database", database)),
+                    "num",
+                    num,
+                    false
+                );
+                conn->rollback();
+            }
+        );
+    } catch (database::mysql::Error const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
+        if (_conn->inTransaction()) _conn->rollback();
+        throw;
+    }
+    LOGS(_log, LOG_LVL_DEBUG, context << "** DONE ** num: " << num);
+    return num;
+}
+
 void DatabaseServicesMySQL::findWorkerReplicasImpl(util::Lock const& lock,
                                                    std::vector<ReplicaInfo>& replicas,
                                                    std::string const& worker,
@@ -865,6 +898,143 @@ void DatabaseServicesMySQL::findWorkerReplicas(std::vector<ReplicaInfo>& replica
     LOGS(_log, LOG_LVL_DEBUG, context << "** DONE ** replicas.size(): " << replicas.size());
 }
 
+std::map<unsigned int, size_t> DatabaseServicesMySQL::actualReplicationLevel(
+                                    std::string const& database,
+                                    std::vector<std::string> const& workersToExclude) {
+    std::string const context =
+         "DatabaseServicesMySQL::actualReplicationLevel  database: " + database;
+
+    LOGS(_log, LOG_LVL_DEBUG, context);
+
+    util::Lock lock(_mtx, context);
+
+    if (not _configuration->isKnownDatabase(database)) {
+        throw std::invalid_argument(context + "unknown database");
+    }
+    if (not workersToExclude.empty()) {
+        for (auto&& worker: workersToExclude) {
+            if (not _configuration->isKnownWorker(worker)) {
+                throw std::invalid_argument(context + "unknown worker: " + worker);
+            }
+        }
+    }
+    try {
+        std::map<unsigned int, size_t> result;
+
+        std::string const query =
+            "SELECT " + _conn->sqlId("level") + ",COUNT(*) AS " + _conn->sqlId("num_chunks") +
+            "  FROM (" +
+            "    SELECT  "     + _conn->sqlId("chunk")   + ",COUNT(*) AS " + _conn->sqlId("level") +
+            "      FROM  "     + _conn->sqlId("replica") +
+            "      WHERE "     + _conn->sqlEqual("database", database) +
+                   (workersToExclude.empty() ? "" :
+            "        AND NOT " + _conn->sqlIn("worker", workersToExclude)) +
+            "        AND     " + _conn->sqlId("chunk") + " != 1234567890" +
+            "      GROUP BY  " + _conn->sqlId("chunk") +
+            "  )"              + _conn->sqlId("chunks") +
+            "  GROUP BY "      + _conn->sqlId("level");
+
+        LOGS(_log, LOG_LVL_DEBUG, context + "query: " + query);
+
+        _conn->execute(
+            [&](decltype(_conn) conn) {
+                conn->begin();
+                conn->execute(query);
+
+                // Always do this before extracting results in case of this lambda
+                // function gets executed more than once due to reconnects.
+                result.clear();
+        
+                database::mysql::Row row;
+                while (conn->next(row)) {
+
+                    unsigned int level;
+                    size_t numChunks;
+
+                    row.get("level", level);
+                    row.get("num_chunks", numChunks);
+
+                    result[level] = numChunks;
+                }
+                conn->rollback();
+            }
+        );
+        LOGS(_log, LOG_LVL_DEBUG, context << "** DONE **");
+        return result;
+    } catch (database::mysql::Error const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
+        if (_conn->inTransaction()) _conn->rollback();
+        throw;
+    }
+}
+
+size_t DatabaseServicesMySQL::numOrphanChunks(std::string const& database,
+                                              std::vector<std::string> const& uniqueOnWorkers) {
+
+    std::string const context =
+         "DatabaseServicesMySQL::numOrphanChunks  database: " + database;
+
+    LOGS(_log, LOG_LVL_DEBUG, context);
+
+    util::Lock lock(_mtx, context);
+    if (not _configuration->isKnownDatabase(database)) {
+        throw std::invalid_argument(context + "unknown database");
+    }
+    if (not uniqueOnWorkers.empty()) {
+        for (auto&& worker: uniqueOnWorkers) {
+            if (not _configuration->isKnownWorker(worker)) {
+                throw std::invalid_argument(context + "unknown worker: " + worker);
+            }
+        }
+    }
+    try {
+        size_t result = 0;
+
+        if (not uniqueOnWorkers.empty()) {
+
+            std::vector<std::string> workersToExclude;
+            for (auto&& worker: _configuration->allWorkers()) {
+                if (uniqueOnWorkers.end() == std::find(uniqueOnWorkers.begin(),
+                                                       uniqueOnWorkers.end(),
+                                                       worker)) {
+                    workersToExclude.push_back(worker);
+                }
+            }
+            std::string const query =
+                "SELECT COUNT(*) AS " + _conn->sqlId("num_chunks") +
+                "  FROM "             + _conn->sqlId("replica") +
+                "  WHERE "            + _conn->sqlEqual("database", database) +
+                "    AND "            + _conn->sqlIn("worker", uniqueOnWorkers) +
+                "    AND "            + _conn->sqlId("chunk") + " != 1234567890" +
+                "    AND "            + _conn->sqlId("chunk") + " NOT IN" +
+                "    (SELECT  "       + _conn->sqlId("chunk")   +
+                "       FROM  "       + _conn->sqlId("replica") +
+                "       WHERE "       + _conn->sqlEqual("database", database) +
+                "         AND "       + _conn->sqlIn("worker", workersToExclude) +
+                "    )";
+
+            LOGS(_log, LOG_LVL_DEBUG, context + "query: " + query);
+
+            _conn->execute(
+                [&](decltype(_conn) conn) {
+                    conn->begin();
+                    conn->executeSingleValueSelect(
+                        query,
+                        "num_chunks",
+                        result);
+                    conn->rollback();
+                }
+            );
+        }
+        LOGS(_log, LOG_LVL_DEBUG, context << "** DONE **");
+        return result;
+    } catch (database::mysql::Error const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
+        if (_conn->inTransaction()) _conn->rollback();
+        throw;
+    }
+
+}
 
 void DatabaseServicesMySQL::findReplicasImpl(util::Lock const& lock,
                                              std::vector<ReplicaInfo>& replicas,

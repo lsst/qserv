@@ -145,12 +145,31 @@ public:
                             std::string const& database) final;
 
     /**
+     * @see DatabaseServices::numWorkerReplicas()
+     */
+    uint64_t numWorkerReplicas(std::string const& worker,
+                               std::string const& database=std::string()) final;
+
+    /**
      * @see DatabaseServices::findWorkerReplicas()
      */
     void findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
                             unsigned int chunk,
                             std::string const& worker,
                             std::string const& databaseFamily) final;
+
+    /**
+     * @see DatabaseServices::actualReplicationLevel()
+     */
+    std::map<unsigned int, size_t> actualReplicationLevel(
+                                        std::string const& database,
+                                        std::vector<std::string> const& workersToExclude) final;
+
+    /**
+     * @see DatabaseServices::numOrphanChunks()
+     */
+    size_t numOrphanChunks(std::string const& database,
+                           std::vector<std::string> const& uniqueOnWorkers) final;
 
 private:
 
