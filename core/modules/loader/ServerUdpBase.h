@@ -75,7 +75,7 @@ private:
     boost::asio::io_service& _ioService;
     boost::asio::ip::udp::socket _socket;
     boost::asio::ip::udp::endpoint _senderEndpoint;
-    // char _data[MAX_MSG_SIZE];
+
     BufferUdp::Ptr _data; ///< data buffer for receiving
     BufferUdp::Ptr _sendData; ///< data buffer for sending.
     std::string _hostName;

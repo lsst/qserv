@@ -38,6 +38,8 @@ namespace loader {
 /// If it is a single use item, it is deleted after successful completion.
 class DoList {
 public:
+    typedef std::shared_ptr<DoList> Ptr;
+
     DoList(Central& central) : _central(central) {}
     DoList() = delete;
     DoList(DoList const&) = delete;

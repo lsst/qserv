@@ -231,8 +231,10 @@ int main(int argc, char* argv[]) {
     int client2APort = 10053;
     boost::asio::io_service ioServiceClient2A;
 
+    int threadpoolSize = 10;
+    int sleepTime = 100000; /// microseconds -> 0.1 seconds
 
-    CentralMaster cMaster(ioServiceMaster, masterIP, masterPort);
+    CentralMaster cMaster(ioServiceMaster, masterIP, masterPort, threadpoolSize, sleepTime);
     cMaster.setMaxKeysPerWorker(4);
     // Need to start several threads so messages aren't dropped while being processed.
     cMaster.run();
@@ -242,26 +244,41 @@ int main(int argc, char* argv[]) {
     cMaster.run();
 
     /// Start worker server 1
-    CentralWorker wCentral1(ioServiceWorker1, masterIP, masterPort, worker1IP, worker1Port, ioContext1, worker1TcpPort);
+    CentralWorker wCentral1(ioServiceWorker1, masterIP, masterPort,
+                            threadpoolSize, sleepTime,
+                            worker1IP, worker1Port,
+                            ioContext1, worker1TcpPort);
     wCentral1.run();
     wCentral1.run();
     wCentral1.run();
 
 
     /// Start worker server 2
-    CentralWorker wCentral2(ioServiceWorker2, masterIP, masterPort, worker2IP, worker2Port, ioContext2, worker2TcpPort);
+    CentralWorker wCentral2(ioServiceWorker2, masterIP, masterPort,
+                            threadpoolSize, sleepTime,
+                            worker2IP, worker2Port,
+                            ioContext2, worker2TcpPort);
     wCentral2.run();
     wCentral2.run();
     wCentral2.run();
 
 
-    CentralClient cCentral1A(ioServiceClient1A, masterIP, masterPort, worker1IP, worker1Port, client1AIP, client1APort);
+    CentralClient cCentral1A(ioServiceClient1A, masterIP, masterPort,
+                             threadpoolSize, sleepTime,
+                             worker1IP, worker1Port,
+                             client1AIP, client1APort);
     cCentral1A.run();
 
-    CentralClient cCentral1B(ioServiceClient1B, masterIP, masterPort, worker1IP, worker1Port, client1BIP, client1BPort);
+    CentralClient cCentral1B(ioServiceClient1B, masterIP, masterPort,
+                             threadpoolSize, sleepTime,
+                             worker1IP, worker1Port,
+                             client1BIP, client1BPort);
     cCentral1B.run();
 
-    CentralClient cCentral2A(ioServiceClient1A, masterIP, masterPort, worker2IP, worker2Port, client2AIP, client2APort);
+    CentralClient cCentral2A(ioServiceClient1A, masterIP, masterPort,
+                             threadpoolSize, sleepTime,
+                             worker2IP, worker2Port,
+                             client2AIP, client2APort);
     cCentral2A.run();
 
 

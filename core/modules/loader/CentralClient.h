@@ -72,9 +72,10 @@ public:
     ///      that information from the master in the future.
     CentralClient(boost::asio::io_service& ioService_,
                   std::string const& masterHostName, int masterPort,
+                  int threadPoolSize, int loopSleepTime,
                   std::string const& workerHostName, int workerPort,
                   std::string const& hostName, int port)
-        : Central(ioService_, masterHostName, masterPort),
+        : Central(ioService_, masterHostName, masterPort, threadPoolSize, loopSleepTime),
           _workerHostName(workerHostName), _workerPort(workerPort),
           _hostName(hostName), _udpPort(port) {
         _server = std::make_shared<ClientServer>(ioService, _hostName, _udpPort, this);
