@@ -52,16 +52,16 @@ namespace loader {
 
 CentralWorker::CentralWorker(boost::asio::io_service& ioService_,
     std::string const& masterHostName_,   int masterPort_,
+    int threadpoolSize_, int sleepTime_,
     std::string const& hostName_,         int udpPort_,
     boost::asio::io_context& io_context_, int tcpPort_)
-    : Central(ioService_, masterHostName_, masterPort_),
+    : Central(ioService_, masterHostName_, masterPort_, threadpoolSize_, sleepTime_),
       _hostName(hostName_), _udpPort(udpPort_),
       _tcpPort(tcpPort_), _ioContext(io_context_) {
-
     _server = std::make_shared<WorkerServer>(ioService, _hostName, _udpPort, this);
     _tcpServer = std::make_shared<ServerTcpBase>(_ioContext, _tcpPort, this);
     _tcpServer->runThread();
-    _startMonitoring();
+    _startMonitoring(); // This must be the last item in the constructor.
 }
 
 CentralWorker::~CentralWorker() {
@@ -80,8 +80,8 @@ std::string CentralWorker::getOurLogId() const {
 void CentralWorker::_startMonitoring() {
     // Add _workerList to _doList so it starts checking new entries.
     _centralWorkerDoListItem = std::make_shared<CentralWorkerDoListItem>(this);
-    doList.addItem(_wWorkerList);
-    doList.addItem(_centralWorkerDoListItem);
+    doList->addItem(_wWorkerList);
+    doList->addItem(_centralWorkerDoListItem);
 }
 
 

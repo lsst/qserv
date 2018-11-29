@@ -67,9 +67,10 @@ public:
     };
 
     CentralWorker(boost::asio::io_service& ioService,
-                  std::string const& masterHostName,   int masterPort,
-                  std::string const& hostName,         int port,
-                  boost::asio::io_context& io_context, int tcpPort);
+                  std::string const& masterHostName_, int masterPort_,
+                  int threadpoolSize_, int sleepTime_,
+                  std::string const& hostName_, int port_,
+                  boost::asio::io_context& io_context_, int tcpPort_);
 
     ~CentralWorker() override;
 

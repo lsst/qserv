@@ -94,13 +94,13 @@ public:
     /// Add a DoListItem to the _doList which will run and
     /// rerun the item until it is no longer needed.
     bool addDoListItem(DoListItem::Ptr const& item) {
-        return doList.addItem(item);
+        return doList->addItem(item);
     }
 
     /// Run the item immediately before adding it to _doList.
     bool runAndAddDoListItem(DoListItem::Ptr const& item) {
-        doList.runItemNow(item);
-        return doList.addItem(item);
+        doList->runItemNow(item);
+        return doList->addItem(item);
     }
 
     /// Provides a method for identifying different Central classes and
@@ -108,16 +108,17 @@ public:
     virtual std::string getOurLogId() const { return "Central baseclass"; }
 
 protected:
-    /// All Central objects need an ioService and a way to contact the master.
     Central(boost::asio::io_service& ioService_,
-            std::string const& masterHostName, int masterPort)
-            : ioService(ioService_), _masterAddr(masterHostName, masterPort),
-              _checkDoListThread([this](){ _checkDoList(); }) {}
+                std::string const& masterHostName, int masterPort,
+                int threadPoolSize, int loopSleepTime)
+                : ioService(ioService_), _masterAddr(masterHostName, masterPort),
+                  _threadPoolSize(threadPoolSize), _loopSleepTime(loopSleepTime) {
+        _initialize();
+    }
 
     boost::asio::io_service& ioService;
 
-    /// Initialization order is important.
-    DoList doList{*this}; ///< List of items to be checked at regular intervals.
+    DoList::Ptr doList; ///< List of items to be checked at regular intervals.
 
     ServerUdpBase::Ptr _server;
 
@@ -125,20 +126,23 @@ private:
     /// Repeatedly check the items on the _doList.
     void _checkDoList();
 
+    void _initialize();///< Finish construction.
+
     NetworkAddress _masterAddr; ///< Network address of the master node.
 
     std::atomic<uint64_t> _sequence{1};
 
-
     util::CommandQueue::Ptr _queue{std::make_shared<util::CommandQueue>()}; // Must be defined before _pool
-    util::ThreadPool::Ptr _pool{util::ThreadPool::newThreadPool(10, _queue)}; // TODO set via config file
+
+    int _threadPoolSize{10}; ///< Number of threads _pool.
+    util::ThreadPool::Ptr _pool; ///< Thread pool.
 
     bool _loop{true}; ///< continue looping through _checkDolList() while this is true.
+    int _loopSleepTime{100000}; ///< microseconds to sleep between each check of all list items.
 
     std::vector<std::thread> _ioServiceThreads; ///< List of asio io threads created by this
 
-    /// This must be the last member defined in this class to avoid race conditions.
-    std::thread _checkDoListThread;
+    std::thread _checkDoListThread; ///< Thread for running doList checks on DoListItems.
 };
 
 }}} // namespace lsst::qserv::loader
