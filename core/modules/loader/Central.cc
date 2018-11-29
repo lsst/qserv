@@ -48,6 +48,15 @@ namespace lsst {
 namespace qserv {
 namespace loader {
 
+void Central::_initialize() {
+    // Order is important here.
+    _pool = util::ThreadPool::newThreadPool(_threadPoolSize, _queue);
+
+    doList = std::make_shared<DoList>(*this);
+
+    std::thread t([this](){ _checkDoList(); });
+    _checkDoListThread = std::move(t);
+}
 
 Central::~Central() {
     _loop = false;
@@ -67,8 +76,8 @@ void Central::run() {
 void Central::_checkDoList() {
     while(_loop) {
         // Run and then sleep for a second. TODO A more advanced timer should be used
-        doList.checkList();
-        usleep(100000);
+        doList->checkList();
+        usleep(_loopSleepTime);
     }
 }
 

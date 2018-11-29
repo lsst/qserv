@@ -162,13 +162,12 @@ bool BufferUdp::retrieveString(std::string& out, size_t len) {
 std::string BufferUdp::dumpStr(bool hexDump, bool charDump) const {
         std::stringstream os;
         os << "maxLength=" << _length;
-
-        os <<   " buffer=" << (void*)_buffer;
-        os <<  " wCurLen=" << getAvailableWriteLength();
-        os <<  " wCursor=" << (void*)_wCursor;
-        os <<  " rCurLen=" << getBytesLeftToRead();
-        os <<  " rCursor=" << (void*)_rCursor;
-        os <<      " end=" << (void*)_end;
+        os << " buffer=" << (void*)_buffer;
+        os << " wCurLen=" << getAvailableWriteLength();
+        os << " wCursor=" << (void*)_wCursor;
+        os << " rCurLen=" << getBytesLeftToRead();
+        os << " rCursor=" << (void*)_rCursor;
+        os << " end=" << (void*)_end;
 
         // hex dump
         if (hexDump) {

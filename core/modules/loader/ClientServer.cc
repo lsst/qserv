@@ -57,38 +57,40 @@ BufferUdp::Ptr ClientServer::parseMsg(BufferUdp::Ptr const& data,
     LOGS(_log, LOG_LVL_INFO, "ClientServer::parseMsg sender " << senderEndpoint <<
             " kind=" << inMsg.msgKind->element << " data length=" << data->getAvailableWriteLength());
     switch (inMsg.msgKind->element) {
-    case LoaderMsg::MSG_RECEIVED:
-        LOGS(_log, LOG_LVL_WARN, "ClientServer::parseMsg MSG_RECEIVED");
-        _msgRecievedHandler(inMsg, data, senderEndpoint);
-        sendData.reset(); // Never send a response back for one of these, infinite loop.
-        break;
+        case LoaderMsg::MSG_RECEIVED:
+            LOGS(_log, LOG_LVL_WARN, "ClientServer::parseMsg MSG_RECEIVED");
+            _msgRecievedHandler(inMsg, data, senderEndpoint);
+            sendData.reset(); // Never send a response back for one of these, infinite loop.
+            break;
 
-    case LoaderMsg::KEY_INFO:
-        LOGS(_log, LOG_LVL_INFO, "KEY_INFO");
-        _centralClient->handleKeyInfo(inMsg, data);
-        break;
+        case LoaderMsg::KEY_INFO:
+            LOGS(_log, LOG_LVL_INFO, "KEY_INFO");
+            _centralClient->handleKeyInfo(inMsg, data);
+            break;
 
-    case LoaderMsg::KEY_INSERT_COMPLETE:
-        LOGS(_log, LOG_LVL_INFO, "KEY_INSERT_COMPLETE");
-        _centralClient->handleKeyInsertComplete(inMsg, data);
-        break;
+        case LoaderMsg::KEY_INSERT_COMPLETE:
+            LOGS(_log, LOG_LVL_INFO, "KEY_INSERT_COMPLETE");
+            _centralClient->handleKeyInsertComplete(inMsg, data);
+            break;
 
-    // following not expected by client
-    case LoaderMsg::KEY_INSERT_REQ: //  This is what this client should send out
-    case LoaderMsg::KEY_INFO_REQ: //  This is what this client should send out
-    case LoaderMsg::MAST_WORKER_INFO:
-    case LoaderMsg::MAST_WORKER_LIST: // TODO having the client know would be useful.
-    case LoaderMsg::MAST_INFO:
-    case LoaderMsg::MAST_INFO_REQ:
-    case LoaderMsg::MAST_WORKER_LIST_REQ:
-    case LoaderMsg::MAST_WORKER_INFO_REQ:
-    case LoaderMsg::MAST_WORKER_ADD_REQ:
-        // TODO add response for known but unexpected message.
-        sendData = prepareReplyToMsg(senderEndpoint, inMsg, LoaderMsg::STATUS_PARSE_ERR,
-                                     "unexpected Msg Kind");
-        break;
-    default:
-        sendData = prepareReplyToMsg(senderEndpoint, inMsg, LoaderMsg::STATUS_PARSE_ERR, "unknownMsgKind");
+            // following not expected by client
+        case LoaderMsg::KEY_INSERT_REQ: //  This is what this client should send out
+        case LoaderMsg::KEY_INFO_REQ: //  This is what this client should send out
+        case LoaderMsg::MAST_WORKER_INFO:
+        case LoaderMsg::MAST_WORKER_LIST: // TODO having the client know would be useful.
+        case LoaderMsg::MAST_INFO:
+        case LoaderMsg::MAST_INFO_REQ:
+        case LoaderMsg::MAST_WORKER_LIST_REQ:
+        case LoaderMsg::MAST_WORKER_INFO_REQ:
+        case LoaderMsg::MAST_WORKER_ADD_REQ:
+            // TODO add response for known but unexpected message.
+            sendData = prepareReplyToMsg(senderEndpoint, inMsg, LoaderMsg::STATUS_PARSE_ERR,
+                                         "unexpected Msg Kind");
+            break;
+
+        default:
+            sendData = prepareReplyToMsg(senderEndpoint, inMsg, LoaderMsg::STATUS_PARSE_ERR,
+                                         "unknownMsgKind");
     }
 
     return sendData;
@@ -117,7 +119,7 @@ BufferUdp::Ptr ClientServer::prepareReplyToMsg(boost::asio::ip::udp::endpoint co
     StringElement respBuf;
     protoBuf.SerializeToString(&(respBuf.element));
 
-    auto sendData = std::make_shared<BufferUdp>(1000); // this message should be fairly small.
+    auto sendData = std::make_shared<BufferUdp>();
     outMsg.appendToData(*sendData);
     respBuf.appendToData(*sendData);
     return sendData;
