@@ -70,11 +70,32 @@ private:
 };
 
 
-/// Children of this class must be created with shared pointers.
+/// Children of this class *MUST* be created with shared pointers.
+///
+/// A DoListItem is meant to checked periodically by the DoList
+/// at a low frequency (a couple of times a second to once every
+/// few hours or even days).
+/// The DoListItems can cycle forever by just remaining on the
+/// DoList where it will run their actions when the timer run out,
+/// which is useful for monitoring status.
+/// Or they can be setup to run until they have completed once,
+/// a oneShot, which is useful for looking up or inserting keys.
+///
+/// A typical action would be sending out a UDP request for status
+/// every few seconds until a response is received. Then, after a
+/// few minutes with no updates, repeating that request to make sure
+/// the status hasn't changed.
+/// The system is supposed to notify others on changes, but these
+/// notifications can lost, so it makes sense to ask for one if
+/// nothing has been received for a while.
 class DoListItem : public std::enable_shared_from_this<DoListItem> {
 public:
     using Ptr = std::shared_ptr<DoListItem>;
 
+    /// Children of this class *MUST* be created with shared pointers.
+    /// A factory function to enforce this is not practical since
+    /// this class is meant to serve as a base class for unknown
+    /// future purposes. Sadly, the compiler doesn't enforce the rule.
     DoListItem() = default;
 
     DoListItem(DoListItem const&) = delete;
@@ -130,7 +151,8 @@ public:
 
     virtual util::CommandTracked::Ptr createCommand()=0;
 
-    friend class DoList; // &&& probably delete this line
+    /// The only class that needs access to most of the is DoList.
+    friend class DoList;
 
 protected:
     /// Set true if this item only needs to be successfully completed once.
@@ -143,7 +165,6 @@ private:
     }
 
     std::atomic<bool>    _addedToList{false}; ///< True when added to a DoList
-
     bool    _oneShot{false}; ///< True if after the needed information is gathered, this item can be dropped.
     bool    _needInfo{true}; ///< True if information is needed.
     bool    _remove{false}; ///< set to true if this item should no longer be checked.
@@ -152,6 +173,7 @@ private:
     util::CommandTracked::Ptr _command;
     std::mutex _mtx; ///< protects _timeOut, _timeRequest, _command, _oneShot, _needInfo
 };
+
 
 }}} // namespace lsst::qserv::loader
 
