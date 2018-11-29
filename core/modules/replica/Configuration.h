@@ -206,6 +206,11 @@ public:
     std::vector<std::string> workers(bool isEnabled=true,
                                      bool isReadOnly=false) const;
 
+    /**
+     * @return names of all known workers regardless of their statuses
+     */
+    std::vector<std::string> allWorkers() const;
+
     /// @return maximum size of the request buffers in bytes
     size_t requestBufferSizeBytes() const { return _requestBufferSizeBytes; }
 

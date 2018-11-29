@@ -187,6 +187,13 @@ void DatabaseServicesPool::findWorkerReplicas(std::vector<ReplicaInfo>& replicas
                                   database);
 }
 
+uint64_t DatabaseServicesPool::numWorkerReplicas(std::string const& worker,
+                                                 std::string const& database) {
+    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
+    return service()->numWorkerReplicas(worker,
+                                        database);
+}
+
 void DatabaseServicesPool::findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
                                               unsigned int chunk,
                                               std::string const& worker,
@@ -198,6 +205,25 @@ void DatabaseServicesPool::findWorkerReplicas(std::vector<ReplicaInfo>& replicas
                                   worker,
                                   databaseFamily);
 }
+
+std::map<unsigned int, size_t> DatabaseServicesPool::actualReplicationLevel(
+                                    std::string const& database,
+                                    std::vector<std::string> const& workersToExclude) {
+
+    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
+    return service()->actualReplicationLevel(database,
+                                             workersToExclude);
+}
+
+
+size_t DatabaseServicesPool::numOrphanChunks(std::string const& database,
+                                             std::vector<std::string> const& uniqueOnWorkers) {
+
+    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
+    return service()->numOrphanChunks(database,
+                                      uniqueOnWorkers);
+}
+
 
 DatabaseServices::Ptr DatabaseServicesPool::allocateService() {
 

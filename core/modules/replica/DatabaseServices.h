@@ -23,6 +23,7 @@
 #define LSST_QSERV_REPLICA_DATABASESERVICES_H
 
 // System headers
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -231,8 +232,7 @@ public:
      * databases if no specific one is requested).
      *
      * ATTENTION: no assumption on a new status of the replica collection
-     * passed into the method should be made if the operation fails
-     * (returns 'false').
+     * passed into the method should be made if the operation fails.
      *
      * @param replicas - collection of replicas (if any found)
      * @param worker   - worker name
@@ -245,6 +245,25 @@ public:
     virtual void findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
                                     std::string const& worker,
                                     std::string const& database=std::string()) = 0;
+
+    /**
+     * Find the number of replicas for the specified worker and a database (or all
+     * databases if no specific one is requested).
+     *
+     * ATTENTION: no assumption on a new status of the replica collection
+     * passed into the method should be made if the operation fails.
+     *
+     * @param worker   - worker name
+     * @param database - (optional) database name
+     *
+     * @return the number of replicas
+     *
+     * @throw std::invalid_argument - if the worker is unknown or its name
+     *                                is empty, or if the database family is
+     *                                unknown (if provided)
+     */
+    virtual uint64_t numWorkerReplicas(std::string const& worker,
+                                       std::string const& database=std::string()) = 0;
 
     /**
      * Find all replicas for the specified chunk on a worker.
@@ -265,6 +284,57 @@ public:
                                     unsigned int chunk,
                                     std::string const& worker,
                                     std::string const& databaseFamily=std::string()) = 0;
+
+    /**
+     * @return a map (a histogram) of representing the actual replication level
+     * for a database. The key of the map is the replication level (the number of
+     * replicas found for chunks in the group), and the key is the number of
+     * chunks at this replication level.
+     * 
+     * @note
+     *   the so called 'overflow' chunks will be implicitly excluded
+     *   from the report.
+     *
+     * @param database
+     *   the name of a database
+     *
+     * @param workersToExclude
+     *   a collection of workers to be excluded from the consideration. If the empty
+     *   collection is passed as a value of the parameter then ALL known (regardless
+     *   of their 'read-only or 'disabled' status) workers will be considered.
+     *
+     * @throw std::invalid_argument
+     *   if the specified database or any of the workers in the optional collection
+     *   was not found in the configuration.
+     */
+    virtual std::map<unsigned int, size_t> actualReplicationLevel(
+                                                std::string const& database,
+                                                std::vector<std::string> const& workersToExclude =
+                                                    std::vector<std::string>()) = 0;
+
+    /**
+     * @return a total number of chunks which only exist on any worker of
+     * the specified collection of unique workers, and not any other worker
+     * which is not in this collection. The method will always return 0 if
+     * the collection of workers passed into the method is empty.
+     *
+     * @note
+     *   this operation is meant to locate so called 'orphan' chunks which only
+     *   exist on a specific set of workers which are supposed to be offline
+     *   (or in some other unusable state).
+     *
+     * @param database
+     *   the name of a database
+     *
+     * @param uniqueOnWorkers
+     *   a collection of workers where to look for the chunks in question
+     *
+     * @throw std::invalid_argument
+     *   if the specified database or any of the workers in the collection
+     *   was not found in the configuration.
+     */
+    virtual size_t numOrphanChunks(std::string const& database,
+                           std::vector<std::string> const& uniqueOnWorkers) = 0;
 
 protected:
 
