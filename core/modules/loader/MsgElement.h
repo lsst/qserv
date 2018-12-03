@@ -246,12 +246,13 @@ public:
 
 
 
-// Using uint16_t for length in all cases.
+// Using uint32_t (LEN_TYPE) for length in all cases.
 class StringElement : public MsgElement {
 public:
     using Ptr = std::shared_ptr<StringElement>;
     using UPtr = std::unique_ptr<StringElement>;
     static const int MYTYPE = STRING_ELEM;
+    typedef uint32_t S_LEN_TYPE; // If this type changes, so must associated htonl and ntohl calls.
 
     StringElement(std::string const& element_) : MsgElement(MYTYPE), element(element_) {}
     StringElement() : MsgElement(MYTYPE) {}
@@ -272,10 +273,14 @@ public:
         return (ptr->element == ptr->element);
     }
 
+    /// @return true if this element is equal to other.
+    /// 'os' is filled with a description of the comparison.
+    bool compare(StringElement* other, std::ostream& os);
+
     /// The size of StringElement changes!
     size_t transmitSize() const override {
         // char in string, variable to transmit string length, size of base class.
-        return element.size()+ sizeof(uint16_t) + sizeOfBase();
+        return element.size()+ sizeof(S_LEN_TYPE) + sizeOfBase();
     }
 
     template<typename T>

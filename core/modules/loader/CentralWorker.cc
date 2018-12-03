@@ -33,6 +33,7 @@
 #include "loader/BufferUdp.h"
 #include "loader/CentralWorkerDoListItem.h"
 #include "loader/LoaderMsg.h"
+#include "loader/WorkerConfig.h"
 #include "proto/loader.pb.h"
 #include "proto/ProtoImporter.h"
 
@@ -50,19 +51,27 @@ namespace qserv {
 namespace loader {
 
 
-CentralWorker::CentralWorker(boost::asio::io_service& ioService_,
-    std::string const& masterHostName_,   int masterPort_,
-    int threadpoolSize_, int sleepTime_,
-    std::string const& hostName_,         int udpPort_,
-    boost::asio::io_context& io_context_, int tcpPort_)
-    : Central(ioService_, masterHostName_, masterPort_, threadpoolSize_, sleepTime_),
-      _hostName(hostName_), _udpPort(udpPort_),
-      _tcpPort(tcpPort_), _ioContext(io_context_) {
+CentralWorker::CentralWorker(boost::asio::io_service& ioService_, boost::asio::io_context& io_context_,
+                             std::string const& hostName_, WorkerConfig const& cfg)
+    : Central(ioService_, cfg.getMasterHost(), cfg.getMasterPortUdp(),
+              cfg.getThreadPoolSize(), cfg.getLoopSleepTime()),
+      _hostName(hostName_),
+      _udpPort(cfg.getWPortUdp()),
+      _tcpPort(cfg.getWPortTcp()),
+      _ioContext(io_context_),
+      _recentAddLimit(cfg.getRecentAddLimit()),
+      _thresholdNeighborShift(cfg.getThresholdNeighborShift()),
+      _maxKeysToShift(cfg.getMaxKeysToShift()) {
+}
+
+
+void CentralWorker::start() {
     _server = std::make_shared<WorkerServer>(ioService, _hostName, _udpPort, this);
     _tcpServer = std::make_shared<ServerTcpBase>(_ioContext, _tcpPort, this);
     _tcpServer->runThread();
-    _startMonitoring(); // This must be the last item in the constructor.
+    _startMonitoring();
 }
+
 
 CentralWorker::~CentralWorker() {
     _wWorkerList.reset();
@@ -116,13 +125,17 @@ void CentralWorker::_monitor() {
                     if (nAddr.ip == "") {
                         // look up the network address for the rightNeighbor
                         WWorkerListItem::Ptr nWorker =
-                            _wWorkerList->getWorkerNamed(_neighborRight.getId());
+                            _wWorkerList->getWorkerWithId(_neighborRight.getId());
                         if (nWorker != nullptr) {
-                            auto addr = nWorker->getAddressTcp();
-                            auto addrUdp = nWorker->getAddressUdp();
+                            auto addrTcp = nWorker->getTcpAddress();
+                            auto addrUdp = nWorker->getUdpAddress();
+                            if (addrTcp.ip.empty() || addrUdp.ip.empty()) {
+                                throw LoaderMsgErr(ERR_LOC, "Missing valid address for neighbor=" +
+                                                   std::to_string(_neighborRight.getId()));
+                            }
                             LOGS(_log, LOG_LVL_INFO, "_monitor neighbor right " <<
-                                 _neighborRight.getId() << " T=" << addr << " U=" << addrUdp);
-                            _neighborRight.setAddressTcp(addr);
+                                 _neighborRight.getId() << " T=" << addrTcp << " U=" << addrUdp);
+                            _neighborRight.setAddressTcp(addrTcp);
                             _neighborRight.setAddressUdp(addrUdp);
                         }
                     }
@@ -138,7 +151,10 @@ void CentralWorker::_monitor() {
                 }
                 dataShifted = _shiftIfNeeded(rMtxLG);
             } catch (LoaderMsgErr const& ex) {
-                LOGS(_log, LOG_LVL_WARN, "_monitor() catching exception " << ex.what());
+                LOGS(_log, LOG_LVL_ERROR, "_monitor() catching exception " << ex.what());
+                _rightDisconnect(rMtxLG);
+            } catch (boost::system::system_error const& ex) {
+                LOGS(_log, LOG_LVL_ERROR, "_monitor() catching boost exception " << ex.what());
                 _rightDisconnect(rMtxLG);
             }
         } else {
@@ -351,6 +367,7 @@ void CentralWorker::_shift(Direction direction, int keysToShift) {
         }
         // Wait for the KeyList response
         {
+            data.reset();
             auto msgElem = data.readFromSocket(*_rightSocket,
                                                "CentralWorker::_shift waiting for FROMRIGHT KeyList");
             auto keyListElem = std::dynamic_pointer_cast<StringElement>(msgElem);
@@ -359,7 +376,8 @@ void CentralWorker::_shift(Direction direction, int keysToShift) {
             }
             auto protoKeyList = keyListElem->protoParse<proto::KeyList>();
             if (protoKeyList == nullptr) {
-                throw LoaderMsgErr(ERR_LOC, "_shift FROMRIGHT failure to parse KeyList");
+                throw LoaderMsgErr(ERR_LOC, "_shift FROMRIGHT failure to parse KeyList size=" +
+                                   std::to_string(keyListElem->element.size()));
             }
 
             // TODO This is very similar to code in TcpBaseConnection::_handleShiftToRight and they should be merged.
@@ -788,8 +806,8 @@ void CentralWorker::_workerKeyInsertReq(LoaderMsg const& inMsg, std::unique_ptr<
         lck.unlock();
         // Find the target range in the list and send the request there
         auto targetWorker = _wWorkerList->findWorkerForKey(key);
-        if (targetWorker != nullptr && targetWorker->getName() != _ourId) {
-            _forwardKeyInsertRequest(targetWorker->getAddressUdp(), inMsg, protoData);
+        if (targetWorker != nullptr && targetWorker->getId() != _ourId) {
+            _forwardKeyInsertRequest(targetWorker->getUdpAddress(), inMsg, protoData);
         } else {
             // Send request to left or right neighbor
             if (key < min && leftAddress.ip != "") {
@@ -982,7 +1000,7 @@ std::unique_ptr<proto::WorkerKeysInfo> CentralWorker::_workerKeysInfoBuilder() {
         _removeOldEntries();
         recentAdds = _recentAdds.size();
     }
-    LOGS(_log, LOG_LVL_INFO, "CentralWorker WorkerKeysInfo aaaaa name=" << _ourId <<
+    LOGS(_log, LOG_LVL_INFO, "CentralWorker WorkerKeysInfo a name=" << _ourId <<
                              " keyCount=" << mapSize << " recentAdds=" << recentAdds);
     protoWKI->set_wid(_ourId);
     protoWKI->set_mapsize(mapSize);
@@ -997,6 +1015,8 @@ std::unique_ptr<proto::WorkerKeysInfo> CentralWorker::_workerKeysInfoBuilder() {
     protoLeft->set_wid(_neighborLeft.getId());
     proto::Neighbor *protoRight = protoWKI->mutable_right();
     protoRight->set_wid(_neighborRight.getId());
+    LOGS(_log, LOG_LVL_INFO, "CentralWorker WorkerKeysInfo b name=" << _ourId <<
+                             " keyCount=" << mapSize << " recentAdds=" << recentAdds);
     return protoWKI;
 }
 
@@ -1013,7 +1033,7 @@ void CentralWorker::_forwardKeyInfoRequest(WWorkerListItem::Ptr const& target, L
     protoData->SerializeToString(&(strElem.element));
     strElem.appendToData(msgData);
 
-    auto nAddr = target->getAddressUdp();
+    auto nAddr = target->getUdpAddress();
     sendBufferTo(nAddr.ip, nAddr.port, msgData);
 }
 
@@ -1049,7 +1069,7 @@ void CentralWorker::testSendBadMessage() {
 void CentralWorker::_removeOldEntries() {
     // _idMapMtx must be held when this is called.
     auto now = std::chrono::system_clock::now();
-    auto then = now - _recent;
+    auto then = now - _recentAddLimit;
     while (_recentAdds.size() > 0 && _recentAdds.front() < then) {
         _recentAdds.pop_front();
     }

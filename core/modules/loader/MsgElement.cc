@@ -83,7 +83,7 @@ MsgElement::Ptr MsgElement::create(char elementType) {
 // Returns data pointer after inserted string.
 bool StringElement::appendToData(BufferUdp& data) {
      auto len = element.length();
-     auto sz = sizeof(uint16_t);
+     auto sz = sizeof(S_LEN_TYPE);
      auto totalLength = len + sz + 1; // string, length of string, data type.
      if (not data.isAppendSafe(totalLength)) {
          LOGS(_log, LOG_LVL_INFO, "StringElement append makes data too long total=" << totalLength <<
@@ -96,8 +96,8 @@ bool StringElement::appendToData(BufferUdp& data) {
      _appendType(data);
 
      // Insert the length
-     uint16_t lenU16 = len;
-     uint16_t netLen = htons(lenU16);
+     S_LEN_TYPE lenLT = len;
+     S_LEN_TYPE netLen = htonl(lenLT);
 
      data.append(&netLen, sz);
 
@@ -113,17 +113,65 @@ bool StringElement::appendToData(BufferUdp& data) {
 
 bool StringElement::retrieveFromData(BufferUdp& data) {
     // Get the length.
-    uint16_t netLen;
-    if (not data.retrieve(&netLen, sizeof(uint16_t))) {
+    S_LEN_TYPE netLen;
+    if (not data.retrieve(&netLen, sizeof(S_LEN_TYPE))) {
         LOGS(_log, LOG_LVL_WARN, "retrieveFromData failed to retrieve length");
         return false;
     }
-
-    uint16_t len = ntohs(netLen);
+    S_LEN_TYPE len = ntohl(netLen);
 
     // Get the string.
     bool res =  data.retrieveString(element, len);
     return res;
+}
+
+
+bool StringElement::compare(StringElement* other, std::ostream& os) {
+    bool equal = true;
+    os << "compare ";
+    if (other == nullptr) {
+        os << "other is nullptr";
+        return false;
+    }
+
+    os << "len(";
+    if (element.length() == other->element.length()) {
+        os << "eq " << element.length();
+    } else {
+        os << "!! " << element.length() << "<>" << other->element.length();
+        equal = false;
+    }
+    os << ")";
+
+    auto iterT = element.begin();
+    auto endT = element.end();
+    auto iterO = other->element.begin();
+    auto endO = other->element.end();
+    int pos = 0;
+    int errCount = 0;
+    for (;iterT != endT && iterO != endO; iterT++, iterO++) {
+        if (*iterT != *iterO) {
+            os << "\n !! pos=" << pos << " T=" << std::hex << (int)*iterT;
+            os << " O=" << std::hex << (int)*iterO;
+            if (++errCount > 5) {
+                os << "\n stopping after 5 errors";
+                break;
+            }
+        }
+        ++pos;
+    }
+    os << "\n pos=" << pos;
+    if (iterT != endT) {
+        os << "\n this did not reach the end.";
+        equal = false;
+    }
+    if (iterO != endO) {
+        os << "\n other did not reach the end.";
+        equal = false;
+    }
+
+    os << "\n equal=" << equal;
+    return equal;
 }
 
 

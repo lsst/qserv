@@ -22,8 +22,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  *
  */
-#ifndef LSST_QSERV_LOADER_NETWORKADDRESS_H_
-#define LSST_QSERV_LOADER_NETWORKADDRESS_H_
+#ifndef LSST_QSERV_LOADER_NETWORKADDRESS_H
+#define LSST_QSERV_LOADER_NETWORKADDRESS_H
 
 // system headers
 #include <chrono>
@@ -40,7 +40,7 @@ namespace loader {
 class StringElement;
 
 /// Comparable network addresses.
-/// Since these will be used as keys in std::map, the values are immutable.
+/// The member variables are immutable as these will be used as keys in std::map.
 struct NetworkAddress {
     using Ptr = std::shared_ptr<NetworkAddress>;
     using UPtr = std::unique_ptr<NetworkAddress>;
@@ -77,7 +77,38 @@ struct NetworkAddress {
 };
 
 
+/// This class is used to create latched NetworkAddress's. These are addresses
+/// that will never change after they have been set and are thread safe.
+class NetworkAddressLatch {
+public:
+    NetworkAddressLatch() = default;
+    NetworkAddressLatch(NetworkAddressLatch const&) = delete;
+    NetworkAddressLatch& operator=(NetworkAddressLatch const&) = delete;
+
+    ~NetworkAddressLatch() = default;
+
+    NetworkAddress getAddress() const {
+        if (_valid) return *_address;
+        return NetworkAddress("", 0);
+    }
+
+    /// Set the address to 'addr'. This can only be done once,
+    /// so 'addr' needs to be correct.
+    /// @return true if the address was set to 'addr' and 'addr' was valid.
+    bool setAddress(NetworkAddress const& addr) {
+        if (addr.ip.empty()) return false;
+        if (_valid) return false;
+        _address.reset(new NetworkAddress(addr));
+        _valid = true; // must be set after address is set.
+        return true;
+    }
+
+private:
+    std::atomic<bool> _valid{false}; ///< Indicates the _address is valid for use when true.
+    NetworkAddress::UPtr _address{new NetworkAddress("",0)}; ///< empty string indicates address invalid.
+};
+
 }}} // namespace lsst::qserv::loader
 
 
-#endif // LSST_QSERV_LOADER_NETWORKADDRESS_H_
+#endif // LSST_QSERV_LOADER_NETWORKADDRESS_H

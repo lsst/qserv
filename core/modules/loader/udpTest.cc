@@ -29,10 +29,12 @@
 #include "loader/CentralClient.h"
 #include "loader/CentralMaster.h"
 #include "loader/CentralWorker.h"
+#include "loader/ClientConfig.h"
 #include "loader/LoaderMsg.h"
 #include "loader/MasterServer.h"
-#include "loader/WorkerServer.h"
 #include "loader/ServerTcpBase.h"
+#include "loader/WorkerConfig.h"
+#include "loader/WorkerServer.h"
 #include "proto/loader.pb.h"
 
 // LSST headers
@@ -40,6 +42,12 @@
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.loader.test");
+
+
+void initMDC() {
+    LOG_MDC("LWP", std::to_string(lsst::log::lwpID()));
+}
+
 }
 
 using namespace lsst::qserv::loader;
@@ -53,7 +61,16 @@ struct KeyChSch {
 };
 
 
+std::ostream& operator<<(std::ostream& os, KeyChSch const& kcs) {
+    os << "key=" << kcs.key << " chunk=" << kcs.chunk << " subchunk=" << kcs.subchunk;
+    return os;
+}
+
+
 int main(int argc, char* argv[]) {
+
+    LOG_MDC_INIT(initMDC);
+
     UInt16Element num16(1 | 2 << 8);
     uint16_t origin16 = num16.element;
     uint16_t net16  = num16.changeEndianessOnLittleEndianOnly(num16.element);
@@ -110,8 +127,19 @@ int main(int argc, char* argv[]) {
     elements.push_back(std::make_shared<UInt32Element>(338999));
     elements.push_back(std::make_shared<UInt64Element>(1234567));
     elements.push_back(std::make_shared<StringElement>("One last string."));
+    /// Add one really long string, which can happen when using this for TCP. Something
+    /// where the size would not fit in an uint16_t.
+    std::string reallyLongStr;
+    {
+        for(int j=0; j<100000; ++j) {
+            reallyLongStr += std::to_string(j%10);
+        }
+    }
+    elements.push_back(std::make_shared<StringElement>(reallyLongStr));
 
-    BufferUdp data;
+    /// An exceptionally large buffer is needed as the sample data in 'elements' is far greater
+    /// than anything that should be sent in a UDP packet.
+    BufferUdp data(200000);
 
     // Write to the buffer.
     try {
@@ -201,40 +229,84 @@ int main(int argc, char* argv[]) {
 
 
     ////////////////////////////////////////////////////////////////////////////
+    {
+        bool threw = false;
+        try {
+            MasterConfig masterCfg("core/modules/loader/config/masterBad.cnf");
+        } catch (ConfigErr const& e) {
+            threw = true;
+            LOGS(_log, LOG_LVL_INFO, "MasterConfig masterBad threw " << e.what());
+        }
+        if (not threw) {
+            LOGS(_log, LOG_LVL_ERROR, "MasterConfig masterBad.cnf should have thrown!!");
+            exit(-1);
+        }
+    }
+
+    {
+        bool threw = false;
+        try {
+            WorkerConfig workerCfg("core/modules/loader/config/workerBad.cnf");
+        } catch (ConfigErr const& e) {
+            threw = true;
+            LOGS(_log, LOG_LVL_INFO, "WorkerConfig workerBad threw " << e.what());
+        }
+        if (not threw) {
+            LOGS(_log, LOG_LVL_ERROR, "WorkerConfig workerBad.cnf should have thrown!!");
+            exit(-1);
+        }
+    }
+
+    {
+        bool threw = false;
+        try {
+            ClientConfig workerCfg("core/modules/loader/config/clientBad.cnf");
+        } catch (ConfigErr const& e) {
+            threw = true;
+            LOGS(_log, LOG_LVL_INFO, "ClientConfig clientBad threw " << e.what());
+        }
+        if (not threw) {
+            LOGS(_log, LOG_LVL_ERROR, "ClientConfig workerBad.cnf should have thrown!!");
+            exit(-1);
+        }
+    }
+
+    MasterConfig masterCfg("core/modules/loader/config/master.cnf");
+    LOGS(_log, LOG_LVL_INFO, "masterCfg=" << masterCfg);
+
+    WorkerConfig workerCfg1("core/modules/loader/config/worker1.cnf");
+    LOGS(_log, LOG_LVL_INFO, "workerCfg1=" << workerCfg1);
+    WorkerConfig workerCfg2("core/modules/loader/config/worker2.cnf");
+    LOGS(_log, LOG_LVL_INFO, "workerCfg2=" << workerCfg2);
+    WorkerConfig workerCfg3("core/modules/loader/config/worker3.cnf");
+    LOGS(_log, LOG_LVL_INFO, "workerCfg3=" << workerCfg3);
+
 
     /// Start a master server
-    std::string masterIP = "127.0.0.1";
-    int masterPort = 10042;
+    std::string ourHost = "127.0.0.1";
+    std::string masterIP = ourHost; // normally would be get host name
     boost::asio::io_service ioServiceMaster;
 
-    std::string worker1IP = "127.0.0.1";
-    int worker1Port = 10043;
-    int worker1TcpPort = 10143;
     boost::asio::io_service ioServiceWorker1;
     boost::asio::io_context ioContext1;
 
-    std::string worker2IP = "127.0.0.1";
-    int worker2Port = 10044;
-    int worker2TcpPort = 10144;
     boost::asio::io_service ioServiceWorker2;
     boost::asio::io_context ioContext2;
 
-    std::string client1AIP = "127.0.0.1";
-    int client1APort = 10050;
     boost::asio::io_service ioServiceClient1A;
 
-    std::string client1BIP = "127.0.0.1";
-    int client1BPort = 10051;
     boost::asio::io_service ioServiceClient1B;
 
-    std::string client2AIP = "127.0.0.1";
-    int client2APort = 10053;
     boost::asio::io_service ioServiceClient2A;
 
-    int threadpoolSize = 10;
-    int sleepTime = 100000; /// microseconds -> 0.1 seconds
 
-    CentralMaster cMaster(ioServiceMaster, masterIP, masterPort, threadpoolSize, sleepTime);
+    CentralMaster cMaster(ioServiceMaster, masterIP, masterCfg);
+    try {
+        cMaster.start();
+    } catch (boost::system::system_error const& e) {
+        LOGS(_log, LOG_LVL_ERROR, "cMaster.start() failed e=" << e.what());
+        exit(-1);
+    }
     cMaster.setMaxKeysPerWorker(4);
     // Need to start several threads so messages aren't dropped while being processed.
     cMaster.run();
@@ -244,42 +316,65 @@ int main(int argc, char* argv[]) {
     cMaster.run();
 
     /// Start worker server 1
-    CentralWorker wCentral1(ioServiceWorker1, masterIP, masterPort,
-                            threadpoolSize, sleepTime,
-                            worker1IP, worker1Port,
-                            ioContext1, worker1TcpPort);
+    CentralWorker wCentral1(ioServiceWorker1, ioContext1, ourHost, workerCfg1);
+    try {
+        wCentral1.start();
+    } catch (boost::system::system_error const& e) {
+        LOGS(_log, LOG_LVL_ERROR, "wCentral1.start() failed e=" << e.what());
+        exit(-1);
+    }
+
     wCentral1.run();
     wCentral1.run();
     wCentral1.run();
 
 
     /// Start worker server 2
-    CentralWorker wCentral2(ioServiceWorker2, masterIP, masterPort,
-                            threadpoolSize, sleepTime,
-                            worker2IP, worker2Port,
-                            ioContext2, worker2TcpPort);
+    CentralWorker wCentral2(ioServiceWorker2, ioContext2, ourHost, workerCfg2);
+    try {
+        wCentral2.start();
+    } catch (boost::system::system_error const& e) {
+        LOGS(_log, LOG_LVL_ERROR, "wCentral2.start() failed e=" << e.what());
+        exit(-1);
+    }
     wCentral2.run();
     wCentral2.run();
     wCentral2.run();
 
 
-    CentralClient cCentral1A(ioServiceClient1A, masterIP, masterPort,
-                             threadpoolSize, sleepTime,
-                             worker1IP, worker1Port,
-                             client1AIP, client1APort);
+    ClientConfig clientCfg1("core/modules/loader/config/client1.cnf");
+    LOGS(_log, LOG_LVL_INFO, "clientCfg1=" << clientCfg1);
+    CentralClient cCentral1A(ioServiceClient1A, ourHost, clientCfg1);
+    try {
+        cCentral1A.start();
+    } catch (boost::system::system_error const& e) {
+        LOGS(_log, LOG_LVL_ERROR, "cCentral1A.start() failed e=" << e.what());
+        exit(-1);
+    }
     cCentral1A.run();
 
-    CentralClient cCentral1B(ioServiceClient1B, masterIP, masterPort,
-                             threadpoolSize, sleepTime,
-                             worker1IP, worker1Port,
-                             client1BIP, client1BPort);
-    cCentral1B.run();
 
-    CentralClient cCentral2A(ioServiceClient1A, masterIP, masterPort,
-                             threadpoolSize, sleepTime,
-                             worker2IP, worker2Port,
-                             client2AIP, client2APort);
+    ClientConfig clientCfg2("core/modules/loader/config/client2.cnf");
+    LOGS(_log, LOG_LVL_INFO, "clientCfg2=" << clientCfg2);
+    CentralClient cCentral2A(ioServiceClient2A, ourHost, clientCfg2);
+    try {
+        cCentral2A.start();
+    } catch (boost::system::system_error const& e) {
+        LOGS(_log, LOG_LVL_ERROR, "cCentral2A.start() failed e=" << e.what());
+        exit(-1);
+    }
     cCentral2A.run();
+
+    ClientConfig clientCfg3("core/modules/loader/config/client3.cnf");
+    LOGS(_log, LOG_LVL_INFO, "clientCfg3=" << clientCfg3);
+    CentralClient cCentral1B(ioServiceClient1A, ourHost, clientCfg3);
+    try {
+        cCentral1B.start();
+    } catch (boost::system::system_error const& e) {
+        LOGS(_log, LOG_LVL_ERROR, "cCentral1B.start() failed e=" << e.what());
+        exit(-1);
+    }
+    cCentral1B.run();
 
 
     /// Unknown message kind test. Pretending to be worker1.
@@ -298,7 +393,7 @@ int main(int argc, char* argv[]) {
     LOGS(_log, LOG_LVL_INFO, "sleeping");
     sleep(5); // TODO change to 20 second timeout with a check every 0.1 seconds.
     // The workers should agree on the worker list, and it should have 2 elements.
-    if (wCentral1.getWorkerList()->getNameMapSize() == 0) {
+    if (wCentral1.getWorkerList()->getIdMapSize() == 0) {
         LOGS(_log, LOG_LVL_ERROR, "ERROR Worker list is empty!!!");
         exit(-1);
     }
@@ -317,10 +412,18 @@ int main(int argc, char* argv[]) {
     LOGS(_log, LOG_LVL_INFO, "3TSTAGE client register key A");
     KeyChSch keyA("asdf_1", 4001, 200001);
     auto keyAInsert = cCentral1A.keyInsertReq(keyA.key, keyA.chunk, keyA.subchunk);
+    if (keyAInsert == nullptr) {
+        LOGS(_log, LOG_LVL_ERROR, "ERROR failed insert keyA !!! "  << keyA);
+        exit(-1);
+    }
 
     LOGS(_log, LOG_LVL_INFO, "4TSTAGE client register key B");;
     KeyChSch keyB("ndjes_bob", 9871, 65008);
     auto keyBInsert = cCentral1B.keyInsertReq(keyB.key, keyB.chunk, keyB.subchunk);
+    if (keyBInsert == nullptr) {
+        LOGS(_log, LOG_LVL_ERROR, "ERROR failed insert keyB !!! " << keyB);
+        exit(-1);
+    }
 
     KeyChSch keyC("asl_diebb", 422001, 7373721);
 
@@ -390,6 +493,11 @@ int main(int argc, char* argv[]) {
     {
         LOGS(_log, LOG_LVL_INFO, "6TSTAGE client insert keyC lookup all keys");
         auto keyCInsert = cCentral2A.keyInsertReq(keyC.key, keyC.chunk, keyC.subchunk);
+        if (keyCInsert == nullptr) {
+            LOGS(_log, LOG_LVL_ERROR, "ERROR failed insert keyC !!!" << keyC);
+            exit(-1);
+        }
+
         sleep(2); // need to sleep as it never gives up on inserts.
         if (keyCInsert->isFinished()) {
             LOGS(_log, LOG_LVL_INFO, "keyC inserted.");
@@ -430,7 +538,12 @@ int main(int argc, char* argv[]) {
 
         for (; kPos<10; ++kPos) {
             auto& elem = keyList[kPos];
-            keyInfoDataList.push_back(cCentral1A.keyInsertReq(elem.key, elem.chunk, elem.subchunk));
+            auto keyInsertR = cCentral1A.keyInsertReq(elem.key, elem.chunk, elem.subchunk);
+            if (keyInsertR == nullptr) {
+                LOGS(_log, LOG_LVL_ERROR, "ERROR failed insert a keyInsertR!!! " << elem);
+                exit(-1);
+            }
+            keyInfoDataList.push_back(keyInsertR);
         }
 
         sleep(2); // need to sleep as it never gives up on inserts.
@@ -459,7 +572,12 @@ int main(int argc, char* argv[]) {
 
         for (; kPos<keyList.size(); ++kPos) {
             auto& elem = keyList[kPos];
-            keyInfoDataList.push_back(cCentral1A.keyInsertReq(elem.key, elem.chunk, elem.subchunk));
+            auto keyInsertR = cCentral1A.keyInsertReq(elem.key, elem.chunk, elem.subchunk);
+            if (keyInsertR == nullptr) {
+                LOGS(_log, LOG_LVL_ERROR, "ERROR failed insert b keyInsertR!!! " << elem);
+                exit(-1);
+            }
+            keyInfoDataList.push_back(keyInsertR);
         }
 
         bool insertSuccess = true;
@@ -500,7 +618,12 @@ int main(int argc, char* argv[]) {
         size_t pos = 0;
         for (; pos<keyListB.size(); ++pos) {
             auto& elem = keyListB[pos];
-            keyInfoDataList.push_back(cCentral1A.keyInsertReq(elem.key, elem.chunk, elem.subchunk));
+            auto keyInsertR = cCentral1A.keyInsertReq(elem.key, elem.chunk, elem.subchunk);
+            if (keyInsertR == nullptr) {
+                LOGS(_log, LOG_LVL_ERROR, "ERROR failed insert c keyInsertR!!! " << elem);
+                exit(-1);
+            }
+            keyInfoDataList.push_back(keyInsertR);
         }
 
         bool insertSuccess = true;

@@ -16,10 +16,7 @@ for f in env.Glob(os.path.join(path, "udp*.cc"), source=True, strings=True):
     print(f)
     bin_cc_files[f] = [
         "loader",
-#        "XrdCl",
-#        "XrdSsiLib",
         "qserv_common",
-#        "xrdsvc",
         "util",
         "protobuf",
         "boost_filesystem",
@@ -31,5 +28,4 @@ for f in env.Glob(os.path.join(path, "udp*.cc"), source=True, strings=True):
 # the above discovered binary sources
 
 standardModule(env, bin_cc_files=bin_cc_files, unit_tests="")
-
 

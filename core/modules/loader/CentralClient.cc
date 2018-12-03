@@ -23,6 +23,7 @@
 
 // Class header
 #include "CentralClient.h"
+#include "ClientConfig.h"
 
 // system headers
 #include <iostream>
@@ -46,6 +47,21 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.loader.CentralClient");
 namespace lsst {
 namespace qserv {
 namespace loader {
+
+CentralClient::CentralClient(boost::asio::io_service& ioService_,
+                             std::string const& hostName, ClientConfig const& cfg)
+    : Central(ioService_, cfg.getMasterHost(), cfg.getMasterPortUdp(), cfg.getThreadPoolSize(), cfg.getLoopSleepTime()),
+      _hostName(hostName), _udpPort(cfg.getClientPortUdp()),
+      _defWorkerHost(cfg.getDefWorkerHost()),
+      _defWorkerPortUdp(cfg.getDefWorkerPortUdp()),
+      _doListMaxLookups(cfg.getMaxLookups()),
+      _doListMaxInserts(cfg.getMaxInserts()) {
+}
+
+
+void CentralClient::start() {
+    _server = std::make_shared<ClientServer>(ioService, _hostName, _udpPort, this);
+}
 
 
 void CentralClient::handleKeyInfo(LoaderMsg const& inMsg, BufferUdp::Ptr const& data) {
@@ -148,23 +164,22 @@ KeyInfoData::Ptr CentralClient::keyInsertReq(std::string const& key, int chunk, 
         std::lock_guard<std::mutex> lck(_waitingKeyInsertMtx);
         auto iter = _waitingKeyInsertMap.find(key);
         if (iter != _waitingKeyInsertMap.end()) {
-            // There is already an entry in the table and we can just use the existing entry
-            // as long as it has the same chunk and subchunk numbers
+            // There is already an entry in the table and we can just use the existing entry,
+            // as long as it has the same chunk and subchunk numbers.
             auto cData = iter->second->cmdData;
             if (cData->chunk == chunk && cData->subchunk == subchunk) {
-                return iter->second;
+                return cData;
             } else {
                 // TODO This MUST go to some form of output for the end user as it is an input data error
                 //      either here or when the caller gets a nullptr response
                 LOGS(_log, LOG_LVL_ERROR, "key:value does not match existing key:value key=" << key <<
                                           " orignal(" << cData->chunk << "," << cData->subchunk <<
-                                          ") new(" chunk << "," << subchunk << ")");
+                                          ") new(" << chunk << "," << subchunk << ")");
                 return nullptr;
             }
         }
-        // key wasn't found and needs to be inseted
-        _waitingKeyInsertMap[key] = keyInsertOneShot; // &&& make the map have a list of these, keyInsertOneShot needs to check that what it was adding is reasonable.
-                                                      // &&& or just return nullptr if something is already there (this may prevent repeat attempts
+        // The key wasn't found and needs to be inserted.
+        _waitingKeyInsertMap[key] = keyInsertOneShot;
     }
     runAndAddDoListItem(keyInsertOneShot);
     return keyInsertOneShot->cmdData;
@@ -192,7 +207,7 @@ void CentralClient::_keyInsertReq(std::string const& key, int chunk, int subchun
     protoKeyInsert.SerializeToString(&(strElem.element));
     strElem.appendToData(msgData);
 
-    sendBufferTo(getWorkerHostName(), getWorkerPort(), msgData);
+    sendBufferTo(getDefWorkerHost(), getDefWorkerPortUdp(), msgData);
 }
 
 
@@ -235,7 +250,7 @@ void CentralClient::_keyInfoReq(std::string const& key) {
      protoKeyInsert.SerializeToString(&(strElem.element));
      strElem.appendToData(msgData);
 
-     sendBufferTo(getWorkerHostName(), getWorkerPort(), msgData);
+     sendBufferTo(getDefWorkerHost(), getDefWorkerPortUdp(), msgData);
 }
 
 

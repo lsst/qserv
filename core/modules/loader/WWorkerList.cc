@@ -51,9 +51,6 @@ namespace qserv {
 namespace loader {
 
 
-
-
-
 util::CommandTracked::Ptr WWorkerList::createCommand() {
     return createCommandWorker(_central);
 }
@@ -156,7 +153,7 @@ void WWorkerList::_flagListChange() {
 }
 
 
-bool WWorkerList::equal(WWorkerList& other) {
+bool WWorkerList::equal(WWorkerList& other) const {
     std::string const funcName("WWorkerList::equal");
     // Have to lock it this way as 'other' could call it's own equal function which
     // would try to lock in reverse order.
@@ -221,12 +218,12 @@ void WWorkerList::updateEntry(uint32_t wId,
     }
     WWorkerListItem::Ptr const& item = iter->second;
     if (ip != "") {
-        if (item->getAddressUdp().ip == "" ) {
-            item->setUdpAddress(ip, portUdp);
-            item->setTcpAddress(ip, portTcp);
+        if (item->getUdpAddress().ip == "" ) {
             NetworkAddress nAddr(ip, portUdp);
+            item->setUdpAddress(nAddr);
+            item->setTcpAddress(NetworkAddress(ip, portTcp));
             auto res = _ipMap.insert(std::make_pair(nAddr, item));
-            LOGS(_log, LOG_LVL_INFO, "updateEntry set name=" << wId << " Udp=" << nAddr <<
+            LOGS(_log, LOG_LVL_INFO, "updateEntry set wId=" << wId << " Udp=" << nAddr <<
                                      " res=" << res.second);
         }
     }
@@ -236,7 +233,7 @@ void WWorkerList::updateEntry(uint32_t wId,
     LOGS(_log, LOG_LVL_INFO, "updateEntry strRange=" << strRange);
     if (strRange.getValid()) {
         // Does the new range match the old range?
-        auto oldRange = item->setRangeStr(strRange);
+        auto oldRange = item->setRangeString(strRange);
         LOGS(_log, LOG_LVL_INFO, "updateEntry set name=" << wId << " range=" << strRange);
         if (not oldRange.equal(strRange)) {
             // Since the value changed, it needs to be removed and reinserted.
@@ -275,60 +272,35 @@ WWorkerListItem::Ptr WWorkerList::findWorkerForKey(std::string const& key) {
 void WWorkerListItem::addDoListItems(Central *central) {
     std::lock_guard<std::mutex> lck(_mtx);
     if (_workerUpdateNeedsMasterData == nullptr) {
-        _workerUpdateNeedsMasterData.reset(new WorkerNeedsMasterData(shared_from_this(), _central));
+        _workerUpdateNeedsMasterData.reset(new WorkerNeedsMasterData(getThis(), _central));
         central->addDoListItem(_workerUpdateNeedsMasterData);
     }
 }
 
 
-bool WWorkerListItem::equal(WWorkerListItem& other) {
+bool WWorkerListItem::equal(WWorkerListItem& other) const {
     std::string const funcName("WWorkerListItem::equal");
+
+    if (_wId != other._wId) {
+        LOGS(_log, LOG_LVL_INFO, funcName << " item name not equal t=" << _wId << " o=" << other._wId);
+        return false;
+    }
+    auto thisUdp = getUdpAddress();
+    auto otherUdp = other.getUdpAddress();
+    if (thisUdp != otherUdp) {
+        LOGS(_log, LOG_LVL_INFO, funcName << " item addr != name=" << _wId <<
+                " t=" << thisUdp << " o=" << otherUdp);
+        return false;
+    }
+
     std::lock(_mtx, other._mtx);
     std::lock_guard<std::mutex> lck1(_mtx,       std::adopt_lock);
     std::lock_guard<std::mutex> lck2(other._mtx, std::adopt_lock);
-    if (_name != other._name) {
-        LOGS(_log, LOG_LVL_INFO, funcName << " item name not equal t=" << _name << " o=" << other._name);
-        return false;
-    }
-    if (*_udpAddress != *other._udpAddress) {
-        LOGS(_log, LOG_LVL_INFO, funcName << " item addr != name=" << _name <<
-                                 " t=" << *_udpAddress << " o=" << *other._udpAddress);
-        return false;
-    }
-
     if (not _range.equal(other._range)) {
-        LOGS(_log, LOG_LVL_INFO, funcName << " item range != name=" << _name <<
+        LOGS(_log, LOG_LVL_INFO, funcName << " item range != name=" << _wId <<
                                  " t=" << _range << " o=" << other._range);
     }
     return true;
-}
-
-
-void WWorkerListItem::setUdpAddress(std::string const& ip, int port) {
-    std::lock_guard<std::mutex> lck(_mtx);
-    _udpAddress.reset(new NetworkAddress(ip, port));
-    LOGS(_log, LOG_LVL_INFO, "set udpAddress name=" << _name << " addr=" << *_udpAddress);
-}
-
-
-void WWorkerListItem::setTcpAddress(std::string const& ip, int port) {
-    std::lock_guard<std::mutex> lck(_mtx);
-    _tcpAddress.reset(new NetworkAddress(ip, port));
-    LOGS(_log, LOG_LVL_INFO, "set tcpAddress name=" << _name << " addr=" << *_tcpAddress);
-}
-
-StringRange WWorkerListItem::setRangeStr(StringRange const& strRange) {
-    std::lock_guard<std::mutex> lck(_mtx);
-    auto oldRange = _range;
-    _range = strRange;
-    LOGS(_log, LOG_LVL_INFO, "setRangeStr name=" << _name << " range=" << _range <<
-                             " oldRange=" << oldRange);
-    return oldRange;
-}
-
-StringRange WWorkerListItem::getRange() const {
-    std::lock_guard<std::mutex> lck(_mtx);
-    return _range;
 }
 
 
@@ -384,19 +356,14 @@ util::CommandTracked::Ptr WWorkerListItem::createCommandWorkerInfoReq(CentralWor
     };
 
     LOGS(_log, LOG_LVL_INFO, "WWorkerListItem::createCommandWorker this=" <<
-                             centralW->getOurLogId() << " name=" << _name);
-    return std::make_shared<WorkerReqCmd>(centralW, _name);
+                             centralW->getOurLogId() << " name=" << _wId);
+    return std::make_shared<WorkerReqCmd>(centralW, _wId);
 }
+
 
 bool WWorkerListItem::containsKey(std::string const& key) const {
     std::lock_guard<std::mutex> lck(_mtx);
     return _range.isInRange(key);
-}
-
-
-std::ostream& operator<<(std::ostream& os, WWorkerListItem const& item) {
-    os << "name=" << item._name << " address=" << *(item._udpAddress) << " range(" << item._range << ")";
-    return os;
 }
 
 

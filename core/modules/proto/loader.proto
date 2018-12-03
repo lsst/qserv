@@ -111,7 +111,7 @@ message WorkerImNeighbor {
     required uint32            wid      = 1;
     required uint64            keycount = 2;
     required WorkerRangeString range    = 4; // TODO replace with WorkerRange
- }
+}
  
  
 message KeyList {

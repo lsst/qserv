@@ -42,6 +42,7 @@ namespace lsst {
 namespace qserv {
 namespace loader {
 
+class ClientConfig;
 
 /// This class is used to track the status and value of jobs inserting
 /// key-value pairs to the system or looking up key-value pairs. The
@@ -68,18 +69,11 @@ public:
 class CentralClient : public Central {
 public:
     /// The client needs to know the master's IP and its own IP.
-    /// TODO The worker IP is temporary as it should be able to get
-    ///      that information from the master in the future. DM-16555
     CentralClient(boost::asio::io_service& ioService_,
-                  std::string const& masterHostName, int masterPort,
-                  int threadPoolSize, int loopSleepTime,
-                  std::string const& workerHostName, int workerPort,
-                  std::string const& hostName, int port)
-        : Central(ioService_, masterHostName, masterPort, threadPoolSize, loopSleepTime),
-          _workerHostName(workerHostName), _workerPort(workerPort),
-          _hostName(hostName), _udpPort(port) {
-        _server = std::make_shared<ClientServer>(ioService, _hostName, _udpPort, this);
-    }
+                  std::string const& hostName, ClientConfig const& cfg);
+
+    void start();
+
 
     ~CentralClient() override = default;
 
@@ -87,8 +81,10 @@ public:
     int getUdpPort() const { return _udpPort; }
     int getTcpPort() const { return 0; } ///< No tcp port at this time.
 
-    std::string getWorkerHostName() const { return _workerHostName; }
-    int getWorkerPort() const { return _workerPort; }
+    /// @return the default worker's host name.
+    std::string getDefWorkerHost() const { return _defWorkerHost; }
+    /// @return the default worker's UDP port
+    int getDefWorkerPortUdp() const { return _defWorkerPortUdp; }
 
 
 
@@ -155,10 +151,19 @@ private:
         CentralClient* central;
     };
 
-    const std::string _workerHostName;
-    const int         _workerPort;
+
+    /// TODO The worker IP becomes default worker as it should be able to get
+    ///      that information from the master in the future. DM-16555
     const std::string _hostName;
     const int         _udpPort;
+
+    // If const is removed, these will need mutex protection.
+    const std::string _defWorkerHost;    ///< Default worker host
+    const int         _defWorkerPortUdp; ///< Default worker UDP port
+
+
+    int _doListMaxLookups; ///< Maximum number of concurrent lookups in DoList  DM-16555
+    int _doListMaxInserts; ///< Maximum number of concurrent inserts in DoList  DM-16555
 
     std::map<std::string, KeyInsertReqOneShot::Ptr> _waitingKeyInsertMap;
     std::mutex _waitingKeyInsertMtx; ///< protects _waitingKeyInsertMap

@@ -44,6 +44,11 @@ namespace qserv {
 namespace loader {
 
 
+void CentralMaster::start() {
+    _server = std::make_shared<MasterServer>(ioService, getMasterHostName(), getMasterPort(), this);
+}
+
+
 void CentralMaster::addWorker(std::string const& ip, int udpPort, int tcpPort) {
     auto item = _mWorkerList->addWorker(ip, udpPort, tcpPort);
 
@@ -71,7 +76,7 @@ void CentralMaster::updateWorkerInfo(uint32_t workerId, NeighborsInfo const& nIn
     }
     // TODO setting nInfo and strRange can be done in one call to reduce mutex locking.
     item->setNeighborsInfo(nInfo);
-    item->setRangeStr(strRange);
+    item->setRangeString(strRange);
     _assignNeighborIfNeeded(workerId, item);
 }
 

@@ -21,8 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  *
  */
-#ifndef LSST_QSERV_LOADER_WWORKERLIST_H_
-#define LSST_QSERV_LOADER_WWORKERLIST_H_
+#ifndef LSST_QSERV_LOADER_WWORKERLIST_H
+#define LSST_QSERV_LOADER_WWORKERLIST_H
 
 // system headers
 #include <atomic>
@@ -33,33 +33,26 @@
 // Qserv headers
 #include "loader/BufferUdp.h"
 #include "loader/DoList.h"
-#include "loader/NetworkAddress.h"
-#include "loader/StringRange.h"
+#include "loader/WorkerListItemBase.h"
 
 
 namespace lsst {
 namespace qserv {
 namespace loader {
 
-class Central;
 class CentralWorker;
-class CentralMaster;
 class LoaderMsg;
 
 
 /// Standard information for a single worker, IP address, key range, timeouts.
-class WWorkerListItem : public std::enable_shared_from_this<WWorkerListItem> {
+class WWorkerListItem : public WorkerListItemBase {
 public:
     using Ptr = std::shared_ptr<WWorkerListItem>;
     using WPtr = std::weak_ptr<WWorkerListItem>;
 
-    static WWorkerListItem::Ptr create(uint32_t name, CentralWorker *central) {
-        return WWorkerListItem::Ptr(new WWorkerListItem(name, central));
+    static WWorkerListItem::Ptr create(uint32_t wId, CentralWorker *central) {
+        return WWorkerListItem::Ptr(new WWorkerListItem(wId, central));
     }
-    static WWorkerListItem::Ptr create(uint32_t name, NetworkAddress const& address, CentralWorker *central) {
-        return WWorkerListItem::Ptr(new WWorkerListItem(name, address, central));
-    }
-
 
     WWorkerListItem() = delete;
     WWorkerListItem(WWorkerListItem const&) = delete;
@@ -67,57 +60,26 @@ public:
 
     virtual ~WWorkerListItem() = default;
 
-    void setUdpAddress(std::string const& ip, int port);
-    void setTcpAddress(std::string const& ip, int port);
-
-    /// @Return return the previous range value.
-    StringRange setRangeStr(StringRange const& strRange);
-
-    StringRange getRange() const;
-
-    NetworkAddress getAddressUdp() const {
-        std::lock_guard<std::mutex> lck(_mtx);
-        return *_udpAddress;
+    /// @return a properly typed shared pointer to this object.
+    Ptr getThis() {
+        Ptr ptr = std::static_pointer_cast<WWorkerListItem>(shared_from_this());
+        return ptr;
     }
 
-    NetworkAddress getAddressTcp() const {
-           std::lock_guard<std::mutex> lck(_mtx);
-           return *_tcpAddress;
-       }
-
-    uint32_t getName() const {
-        std::lock_guard<std::mutex> lck(_mtx);
-        return _name;
-    }
-
-    StringRange getRangeString() const {
-        std::lock_guard<std::mutex> lck(_mtx);
-        return _range;
-    }
-
-    void addDoListItems(Central *central);
+    void addDoListItems(Central *central) override;
 
     util::CommandTracked::Ptr createCommandWorkerInfoReq(CentralWorker* centralW);
 
-    bool equal(WWorkerListItem &other);
+    /// @return true if this item is equal to other.
+    bool equal(WWorkerListItem &other) const;
 
-    bool containsKey(std::string const&) const;
+    /// @return true if 'key' can be found in this item's map.
+    bool containsKey(std::string const& key) const;
 
-    friend std::ostream& operator<<(std::ostream& os, WWorkerListItem const& item);
 private:
-    WWorkerListItem(uint32_t name, CentralWorker* central) : _name(name), _central(central) {}
-    WWorkerListItem(uint32_t name, NetworkAddress const& address, CentralWorker* central)
-         : _name(name), _udpAddress(new NetworkAddress(address)), _central(central) {}
-
-    uint32_t _name;
-    NetworkAddress::UPtr _udpAddress{new NetworkAddress("",0)}; ///< empty string indicates address is not valid.
-    NetworkAddress::UPtr _tcpAddress{new NetworkAddress("",0)}; ///< empty string indicates address is not valid.
-    StringRange _range;      ///< min and max range for this worker.
-    mutable std::mutex _mtx; ///< protects _name, _address, _range, _workerUpdateNeedsMasterData
+    WWorkerListItem(uint32_t wId, CentralWorker* central) : WorkerListItemBase(wId), _central(central) {}
 
     CentralWorker* _central;
-
-    TimeOut _lastContact{std::chrono::minutes(10)};  ///< Last time information was received from this worker
 
     struct WorkerNeedsMasterData : public DoListItem {
         WorkerNeedsMasterData(WWorkerListItem::Ptr const& wWorkerListItem_, CentralWorker* central_) :
@@ -142,29 +104,28 @@ public:
 
     virtual ~WWorkerList() = default;
 
-    //// Worker only ////////////////////////
-    // Receive a list of workers from the master.
+    /// Receive a list of workers from the master.
     bool workerListReceive(BufferUdp::Ptr const& data);
 
-    bool equal(WWorkerList& other);
+    bool equal(WWorkerList& other) const;
 
     util::CommandTracked::Ptr createCommand() override;
     util::CommandTracked::Ptr createCommandWorker(CentralWorker* centralW);
 
     ////////////////////////////////////////////
     /// Nearly the same on Worker and Master
-    size_t getNameMapSize() {
+    size_t getIdMapSize() {
         std::lock_guard<std::mutex> lck(_mapMtx);
         return _wIdMap.size();
     }
-    WWorkerListItem::Ptr getWorkerNamed(uint32_t name) {
+    WWorkerListItem::Ptr getWorkerWithId(uint32_t id) {
         std::lock_guard<std::mutex> lck(_mapMtx);
-        auto iter = _wIdMap.find(name);
+        auto iter = _wIdMap.find(id);
         if (iter == _wIdMap.end()) { return nullptr; }
         return iter->second;
     }
 
-    void updateEntry(uint32_t name,
+    void updateEntry(uint32_t wId,
                      std::string const& ipUdp, int portUdp, int portTcp,
                      StringRange& strRange);
     WWorkerListItem::Ptr findWorkerForKey(std::string const& key);
@@ -180,12 +141,10 @@ protected:
     std::map<StringRange, WWorkerListItem::Ptr> _rangeMap;
     bool _wListChanged{false}; ///< true if the list has changed
     uint32_t _totalNumberOfWorkers{0}; ///< total number of workers according to the master.
-    mutable std::mutex _mapMtx; ///< protects _nameMap, _ipMap, _rangeMap, _wListChanged
-
-    std::atomic<uint32_t> _sequence{1};
+    mutable std::mutex _mapMtx; ///< protects _wIdMap, _ipMap, _rangeMap, _wListChanged
 };
 
 
 }}} // namespace lsst::qserv::loader
 
-#endif // LSST_QSERV_LOADER_WWORKERLIST_H_
+#endif // LSST_QSERV_LOADER_WWORKERLIST_H
