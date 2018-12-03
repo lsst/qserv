@@ -70,17 +70,14 @@ public:
     virtual ~MWorkerListItem() = default;
 
     NetworkAddress getUdpAddress() const {
-        std::lock_guard<std::mutex> lck(_mtx);
         return *_udpAddress;
     }
 
     NetworkAddress getTcpAddress() const {
-        std::lock_guard<std::mutex> lck(_mtx);
         return *_tcpAddress;
     }
 
     uint32_t getId() const {
-        std::lock_guard<std::mutex> lck(_mtx);
         return _wId;
     }
 
@@ -92,6 +89,8 @@ public:
     bool isActive() const { return _active; }
     void setActive(bool val) { _active = val; }
 
+    /// Add permanent items to the DoList for this worker.
+    /// They should only be removed if this object is being destroyed.
     void addDoListItems(Central *central);
 
     void setRangeStr(StringRange const& strRange);
@@ -119,13 +118,13 @@ private:
            _tcpAddress(new NetworkAddress(tcpAddress)),
            _central(central) {}
 
-    uint32_t _wId; ///< Worker Id
+    uint32_t const _wId; ///< Worker Id
     NetworkAddress::UPtr _udpAddress{new NetworkAddress("", 0)}; ///< empty string indicates address is not valid.
     NetworkAddress::UPtr _tcpAddress{new NetworkAddress("", 0)}; ///< empty string indicates address is not valid.
     TimeOut _lastContact{std::chrono::minutes(10)};  ///< Last time information was received from this worker
-    StringRange _range;       ///< min and max range for this worker.
+    StringRange _range;           ///< min and max range for this worker.
     NeighborsInfo _neighborsInfo; ///< information used to set neighbors.
-    mutable std::mutex _mtx;  ///< protects _name, _address, _range
+    mutable std::mutex _mtx;      ///< protects _range
 
     std::atomic<bool> _active{false}; ///< true when worker has been given a valid range, or a neighbor.
 
@@ -139,6 +138,11 @@ private:
         CentralMaster *central;
         util::CommandTracked::Ptr createCommand() override;
     };
+
+    // This is a DoListItem to try to keep the worker up to date about what
+    // other workers are in the system.
+    // Once _sendListToWorker has been set, it should be valid until this
+    // instance is being destroyed.
     DoListItem::Ptr _sendListToWorker;
 
     // Occasionally ask this worker for information about its list of keys, if it hasn't
@@ -207,7 +211,11 @@ protected:
     std::map<uint32_t, MWorkerListItem::Ptr> _wIdMap;
     std::map<NetworkAddress, MWorkerListItem::Ptr> _ipMap;
     bool _wListChanged{false}; ///< true if the list has changed
-    BufferUdp::Ptr _stateListData; ///< message
+    BufferUdp::Ptr _stateListData; ///< message object for sendListTo(...)
+
+    /// Protects _stateListData. It must be locked before _wIdMap and never
+    /// locked in conjunction with _ipMap.
+    std::mutex _statListMtx;
     uint32_t _totalNumberOfWorkers{0}; ///< total number of workers according to the master.
     mutable std::mutex _mapMtx; ///< protects _nameMap, _ipMap, _wListChanged
 

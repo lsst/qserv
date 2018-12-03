@@ -69,7 +69,7 @@ class CentralClient : public Central {
 public:
     /// The client needs to know the master's IP and its own IP.
     /// TODO The worker IP is temporary as it should be able to get
-    ///      that information from the master in the future.
+    ///      that information from the master in the future. DM-16555
     CentralClient(boost::asio::io_service& ioService_,
                   std::string const& masterHostName, int masterPort,
                   int threadPoolSize, int loopSleepTime,
@@ -91,8 +91,12 @@ public:
     int getWorkerPort() const { return _workerPort; }
 
 
-    /// Asynchronously request a key value insert to the workers. It returns a
-    /// KeyInfoData object for checking the job's status.
+
+    /// Asynchronously request a key value insert to the workers.
+    /// @return - a KeyInfoData object for checking the job's status or
+    ///           nullptr if CentralClient is already trying to insert the key
+    ///           but value doesn't match the existing value. This indicates
+    ///           there is an input data error.
     KeyInfoData::Ptr keyInsertReq(std::string const& key, int chunk, int subchunk);
     /// Handle a workers response to the keyInserReq call
     void handleKeyInsertComplete(LoaderMsg const& inMsg, BufferUdp::Ptr const& data);
@@ -120,7 +124,9 @@ private:
         using Ptr = std::shared_ptr<KeyInsertReqOneShot>;
 
         KeyInsertReqOneShot(CentralClient* central_, std::string const& key_, int chunk_, int subchunk_) :
-            cmdData(new KeyInfoData(key_, chunk_, subchunk_)), central(central_) { setOneShot(true); }
+            cmdData(std::make_shared<KeyInfoData>(key_, chunk_, subchunk_)), central(central_) {
+            setOneShot(true);
+        }
 
         util::CommandTracked::Ptr createCommand() override;
 
@@ -138,7 +144,7 @@ private:
         using Ptr = std::shared_ptr<KeyInfoReqOneShot>;
 
         KeyInfoReqOneShot(CentralClient* central_, std::string const& key_) :
-            cmdData(new KeyInfoData(key_, -1, -1)), central(central_) { setOneShot(true); }
+            cmdData(std::make_shared<KeyInfoData>(key_, -1, -1)), central(central_) { setOneShot(true); }
 
         util::CommandTracked::Ptr createCommand() override;
 

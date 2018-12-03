@@ -70,7 +70,8 @@ private:
 };
 
 
-/// Children of this class *MUST* be created with shared pointers.
+/// This is a base class for other classes to be put on a DoList.
+/// Child classes of this class *MUST* be created with shared pointers.
 ///
 /// A DoListItem is meant to checked periodically by the DoList
 /// at a low frequency (a couple of times a second to once every
@@ -86,17 +87,11 @@ private:
 /// few minutes with no updates, repeating that request to make sure
 /// the status hasn't changed.
 /// The system is supposed to notify others on changes, but these
-/// notifications can lost, so it makes sense to ask for one if
+/// notifications can get lost, so it makes sense to ask again if
 /// nothing has been received for a while.
 class DoListItem : public std::enable_shared_from_this<DoListItem> {
 public:
     using Ptr = std::shared_ptr<DoListItem>;
-
-    /// Children of this class *MUST* be created with shared pointers.
-    /// A factory function to enforce this is not practical since
-    /// this class is meant to serve as a base class for unknown
-    /// future purposes. Sadly, the compiler doesn't enforce the rule.
-    DoListItem() = default;
 
     DoListItem(DoListItem const&) = delete;
     DoListItem& operator=(DoListItem const&) = delete;
@@ -151,10 +146,13 @@ public:
 
     virtual util::CommandTracked::Ptr createCommand()=0;
 
-    /// The only class that needs access to most of the is DoList.
-    friend class DoList;
-
 protected:
+    /// All derived instances of this class *MUST* be created with shared pointers.
+    /// A factory function to enforce this is not practical since
+    /// this class is meant to serve as a base class for unknown
+    /// future purposes. Sadly, the compiler doesn't enforce the rule.
+    DoListItem() = default;
+
     /// Set true if this item only needs to be successfully completed once.
     void setOneShot(bool val) { _oneShot = val; }
 
