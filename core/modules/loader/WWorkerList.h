@@ -181,8 +181,6 @@ protected:
     bool _wListChanged{false}; ///< true if the list has changed
     uint32_t _totalNumberOfWorkers{0}; ///< total number of workers according to the master.
     mutable std::mutex _mapMtx; ///< protects _nameMap, _ipMap, _rangeMap, _wListChanged
-
-    std::atomic<uint32_t> _sequence{1};
 };
 
 
