@@ -61,10 +61,16 @@ unsigned short Server::getPort()
 Server::Server(asio::io_service& io_service, unsigned short port)
 :
     _io_service(io_service),
-    _acceptor(io_service, ip::tcp::endpoint(ip::tcp::v4(), port)),
-    _requestTimeout(std::chrono::milliseconds(DEFAULT_REQUEST_TIMEOUT_MSECS)),
-    _stopRequested(false)
+    _acceptorEndpoint(ip::tcp::v4(), port),
+    _acceptor(io_service),
+    _requestTimeout(std::chrono::milliseconds(DEFAULT_REQUEST_TIMEOUT_MSECS))
 {
+}
+
+
+Server::~Server()
+{
+    stop();
 }
 
 
@@ -104,37 +110,62 @@ void Server::setRequestTimeout(std::chrono::milliseconds const& timeout)
 }
 
 
-void Server::accept()
+void Server::_accept()
 {
-    // Stop accepting new requests if the server has to be stopped
-
-    if (_stopRequested.exchange(false)) {
-        return;
-    }
-
     auto socket = std::make_shared<ip::tcp::socket>(_io_service);
+    {
+        std::lock_guard<std::mutex> lock(_activeSocketsMutex);
+        auto removed = std::remove_if(
+            _activeSockets.begin(),
+            _activeSockets.end(),
+            [](auto& weakSocket) {
+                return weakSocket.expired();
+            }
+        );
+        _activeSockets.erase(removed, _activeSockets.end());
+        _activeSockets.push_back(socket);
+    }
+    auto self = shared_from_this();
     _acceptor.async_accept(
         *socket,
-        [this, socket](boost::system::error_code const& ec) {
-            accept(); // start accept for the next incoming connection
+        [self, socket](boost::system::error_code const& ec) {
+            self->_accept(); // start accept for the next incoming connection
             if (!ec) {
-                ip::tcp::no_delay option(true);
-                socket->set_option(option);
-                _readRequest(socket);
+                boost::system::error_code ignore;
+                socket->set_option(ip::tcp::no_delay(true), ignore);
+                self->_readRequest(socket);
             }
         }
     );
 }
 
+
 void Server::start()
 {
-    accept();
+    _acceptor.open(_acceptorEndpoint.protocol());
+    _acceptor.set_option(ip::tcp::acceptor::reuse_address(true));
+    _acceptor.bind(_acceptorEndpoint);
+    _acceptorEndpoint.port(_acceptor.local_endpoint().port()); // preserve assigned port
+    _acceptor.listen();
+    _accept();
 }
+
 
 void Server::stop()
 {
-    _stopRequested = true;
+    boost::system::error_code ignore;
+    _acceptor.close(ignore);
+    std::lock_guard<std::mutex> lock(_activeSocketsMutex);
+    for(auto& weakSocket : _activeSockets) {
+        auto socket = weakSocket.lock();
+        if (socket) {
+            socket->lowest_layer().shutdown(ip::tcp::socket::shutdown_both, ignore);
+            socket->lowest_layer().close(ignore);
+        }
+    }
+    _activeSockets.clear();
 }
+
 
 void Server::_readRequest(std::shared_ptr<ip::tcp::socket> socket)
 {
@@ -143,9 +174,9 @@ void Server::_readRequest(std::shared_ptr<ip::tcp::socket> socket)
     timer->async_wait(
         [socket](boost::system::error_code const& ec) {
             if (!ec) {
-                boost::system::error_code ec;
-                socket->lowest_layer().shutdown(ip::tcp::socket::shutdown_both, ec);
-                socket->lowest_layer().close();
+                boost::system::error_code ignore;
+                socket->lowest_layer().shutdown(ip::tcp::socket::shutdown_both, ignore);
+                socket->lowest_layer().close(ignore);
             }
         }
     );
