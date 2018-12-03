@@ -158,28 +158,31 @@ bool MWorkerList::sendListTo(uint64_t msgId, std::string const& ip, short port,
     NetworkAddress address(ip, port);
     StringElement workerList;
     {
-        std::lock_guard<std::mutex> lock(_mapMtx);
-        if (_wListChanged || _stateListData == nullptr) {
-            _wListChanged = false;
-            /// At this time, all workers should easily fit in a single message.
-            /// TODO send multiple messages (if needed) with each having the address and range of 100 workers.
-            ///      This version is useful for testing. _stateListData becomes a vector.
-            proto::LdrMastWorkerList protoList;
-            protoList.set_workercount(_wIdMap.size());
-            for (auto const& item : _wIdMap ) {
-                proto::WorkerListItem* protoItem = protoList.add_worker();
-                MWorkerListItem::Ptr const& wListItem = item.second;
-                protoItem->set_wid(wListItem->getId());
+        std::lock_guard<std::mutex> lockStatList(_statListMtx);
+        {
+            std::lock_guard<std::mutex> lockMap(_mapMtx);
+            if (_wListChanged || _stateListData == nullptr) {
+                _wListChanged = false;
+                /// At this time, all workers should easily fit in a single message.
+                /// TODO send multiple messages (if needed) with each having the address and
+                ///      range of 100 workers.
+                ///      This version is useful for testing. _stateListData becomes a vector.
+                proto::LdrMastWorkerList protoList;
+                protoList.set_workercount(_wIdMap.size());
+                for (auto const& item : _wIdMap ) {
+                    proto::WorkerListItem* protoItem = protoList.add_worker();
+                    MWorkerListItem::Ptr const& wListItem = item.second;
+                    protoItem->set_wid(wListItem->getId());
+                }
+                protoList.SerializeToString(&(workerList.element));
+                LoaderMsg workerListMsg(LoaderMsg::MAST_WORKER_LIST, msgId, ourHostName, ourPort);
+                _stateListData = std::make_shared<BufferUdp>();
+                workerListMsg.appendToData(*_stateListData);
+                workerList.appendToData(*_stateListData);
             }
-            protoList.SerializeToString(&(workerList.element));
-            LoaderMsg workerListMsg(LoaderMsg::MAST_WORKER_LIST, msgId, ourHostName, ourPort);
-            _stateListData = std::make_shared<BufferUdp>();
-            workerListMsg.appendToData(*_stateListData);
-            workerList.appendToData(*_stateListData);
         }
+        _central->sendBufferTo(ip, port, *_stateListData);
     }
-
-    _central->sendBufferTo(ip, port, *_stateListData);
 
     // See if this worker is know.
     MWorkerListItem::Ptr workerItem;
@@ -272,6 +275,7 @@ void MWorkerListItem::sendListToWorkerInfoReceived() {
         // _sendListToWorker is a tough one to tell if the worker got the info, so
         // it is assumed that this worked when the list is sent. The worker
         // will either ask for it or it will be sent again later.
+        // TODO find a reasonable way to tell that the worker got the list.
         slw->infoReceived();
     }
 }
@@ -329,6 +333,7 @@ int MWorkerListItem::getKeyCount() const {
 
 
 std::ostream& operator<<(std::ostream& os, MWorkerListItem const& item) {
+    std::lock_guard<std::mutex> lck(item._mtx);
     os << "name=" << item._wId << " address=" << *item._udpAddress << " range(" << item._range << ")";
     return os;
 }

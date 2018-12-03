@@ -179,7 +179,6 @@ protected:
     std::map<NetworkAddress, WWorkerListItem::Ptr> _ipMap;
     std::map<StringRange, WWorkerListItem::Ptr> _rangeMap;
     bool _wListChanged{false}; ///< true if the list has changed
-    BufferUdp::Ptr _stateListData; ///< message
     uint32_t _totalNumberOfWorkers{0}; ///< total number of workers according to the master.
     mutable std::mutex _mapMtx; ///< protects _nameMap, _ipMap, _rangeMap, _wListChanged
 

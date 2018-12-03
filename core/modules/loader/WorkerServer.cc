@@ -57,45 +57,46 @@ BufferUdp::Ptr WorkerServer::parseMsg(BufferUdp::Ptr const& data,
                              " kind=" << inMsg.msgKind->element <<
                              " data length=" << data->getAvailableWriteLength());
     switch (inMsg.msgKind->element) {
-    case LoaderMsg::MAST_INFO:
-        // TODO handle a message with information about the master
-        break;
-    case LoaderMsg::MAST_WORKER_LIST:
-        _centralWorker->getWorkerList()->workerListReceive(data);
-        break;
-    case LoaderMsg::MSG_RECEIVED:
-        _msgRecieved(inMsg, data, senderEndpoint);
-        sendData.reset(); // never send a response back for one of these, infinite loop.
-        break;
-    case LoaderMsg::MAST_WORKER_INFO:
-        _centralWorker->workerInfoReceive(data);
-        break;
-    case LoaderMsg::KEY_INSERT_REQ:
-        _centralWorker->workerKeyInsertReq(inMsg, data);
-        break;
-    case LoaderMsg::KEY_INFO_REQ:
-        _centralWorker->workerKeyInfoReq(inMsg, data);
-        break;
-    case LoaderMsg::WORKER_KEYS_INFO_REQ:
-        _centralWorker->workerWorkerKeysInfoReq(inMsg, data);
-        break;
-    case LoaderMsg::WORKER_RIGHT_NEIGHBOR:
-        _centralWorker->workerWorkerSetRightNeighbor(inMsg, data);
-        break;
-    case LoaderMsg::WORKER_LEFT_NEIGHBOR:
-        _centralWorker->workerWorkerSetLeftNeighbor(inMsg, data);
-        break;
+        case LoaderMsg::MAST_INFO:
+            // TODO handle a message with information about the master
+            break;
+        case LoaderMsg::MAST_WORKER_LIST:
+            _centralWorker->getWorkerList()->workerListReceive(data);
+            break;
+        case LoaderMsg::MSG_RECEIVED:
+            _msgRecieved(inMsg, data, senderEndpoint);
+            sendData.reset(); // never send a response back for one of these, infinite loop.
+            break;
+        case LoaderMsg::MAST_WORKER_INFO:
+            _centralWorker->workerInfoReceive(data);
+            break;
+        case LoaderMsg::KEY_INSERT_REQ:
+            _centralWorker->workerKeyInsertReq(inMsg, data);
+            break;
+        case LoaderMsg::KEY_INFO_REQ:
+            _centralWorker->workerKeyInfoReq(inMsg, data);
+            break;
+        case LoaderMsg::WORKER_KEYS_INFO_REQ:
+            _centralWorker->workerWorkerKeysInfoReq(inMsg, data);
+            break;
+        case LoaderMsg::WORKER_RIGHT_NEIGHBOR:
+            _centralWorker->workerWorkerSetRightNeighbor(inMsg, data);
+            break;
+        case LoaderMsg::WORKER_LEFT_NEIGHBOR:
+            _centralWorker->workerWorkerSetLeftNeighbor(inMsg, data);
+            break;
 
-    // following not expected by worker
-    case LoaderMsg::KEY_INFO:
-    case LoaderMsg::MAST_INFO_REQ:
-    case LoaderMsg::MAST_WORKER_LIST_REQ:
-    case LoaderMsg::MAST_WORKER_INFO_REQ:
-    case LoaderMsg::MAST_WORKER_ADD_REQ:
-        // TODO add response for known but unexpected message.
-        sendData = prepareReplyMsg(senderEndpoint, inMsg, LoaderMsg::STATUS_PARSE_ERR, "unexpected Msg Kind");
-    default:
-        sendData = prepareReplyMsg(senderEndpoint, inMsg, LoaderMsg::STATUS_PARSE_ERR, "unknownMsgKind");
+        // Following not expected by worker
+        case LoaderMsg::KEY_INFO:
+        case LoaderMsg::MAST_INFO_REQ:
+        case LoaderMsg::MAST_WORKER_LIST_REQ:
+        case LoaderMsg::MAST_WORKER_INFO_REQ:
+        case LoaderMsg::MAST_WORKER_ADD_REQ:
+            // Response for known but unexpected message.
+            sendData = prepareReplyMsg(senderEndpoint, inMsg, LoaderMsg::STATUS_PARSE_ERR, "unexpected Msg Kind");
+            // Fallthrough
+        default:
+            sendData = prepareReplyMsg(senderEndpoint, inMsg, LoaderMsg::STATUS_PARSE_ERR, "unknownMsgKind");
     }
 
     return sendData;

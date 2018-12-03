@@ -78,8 +78,8 @@ std::string StringRange::incrementString(std::string const& str, char appendChar
 
 
 std::string StringRange::decrementString(std::string const& str, char minChar) {
-    if (str == "") {
-        return "";
+    if (str.empty()) {
+        return std::string();
     }
     std::string output(str);
     size_t pos = output.size() - 1;
