@@ -49,7 +49,7 @@ public:
             }
             CentralWorker* centralWorker;
         };
-        util::CommandTracked::Ptr cmd(new CWMonitorCmd(_centralWorker));
+        util::CommandTracked::Ptr cmd(std::make_shared<CWMonitorCmd>(_centralWorker));
         return cmd;
     }
 

@@ -167,9 +167,9 @@ void TcpBaseConnection::start() {
     UInt32Element name(ourName);
     name.appendToData(_buf);
     boost::asio::async_write(_socket, boost::asio::buffer(_buf.getReadCursor(), _buf.getBytesLeftToRead()),
-                    boost::bind(&TcpBaseConnection::_readKind, shared_from_this(),
-                            boost::asio::placeholders::error,
-                            boost::asio::placeholders::bytes_transferred));
+                             boost::bind(&TcpBaseConnection::_readKind, shared_from_this(),
+                             boost::asio::placeholders::error,
+                             boost::asio::placeholders::bytes_transferred));
 }
 
 
@@ -239,25 +239,26 @@ void TcpBaseConnection::_recvKind(const boost::system::error_code& ec, size_t by
     }
     LOGS(_log, LOG_LVL_INFO, "_recvKind kind=" << msgKind->element << " bytes=" << msgBytes->element);
     switch (msgKind->element) {
-    case LoaderMsg::IM_YOUR_L_NEIGHBOR:
-        LOGS(_log, LOG_LVL_INFO, "_recvKind IM_YOUR_L_NEIGHBOR");
-        _handleImYourLNeighbor(msgBytes->element);
-        break;
-    case LoaderMsg::SHIFT_TO_RIGHT:
-        LOGS(_log, LOG_LVL_INFO, "_recvKind SHIFT_TO_RIGHT our left neighbor is shifting to us");
-        _handleShiftToRight(msgBytes->element);
-        break;
-    case LoaderMsg::SHIFT_FROM_RIGHT:
-        LOGS(_log, LOG_LVL_INFO, "_recvKind SHIFT_FROM_RIGHT our left neighbor needs keys shifted from this");
-        _handleShiftFromRight(msgBytes->element);
-        break;
-    case LoaderMsg::TEST:
-        LOGS(_log, LOG_LVL_INFO, "_recvKind TEST");
-        _handleTest();
-        break;
-    default:
-        LOGS(_log, LOG_LVL_ERROR, "_recvKind unexpected kind=" << msgKind->element);
-        _freeConnect();
+        case LoaderMsg::IM_YOUR_L_NEIGHBOR:
+            LOGS(_log, LOG_LVL_INFO, "_recvKind IM_YOUR_L_NEIGHBOR");
+            _handleImYourLNeighbor(msgBytes->element);
+            break;
+        case LoaderMsg::SHIFT_TO_RIGHT:
+            LOGS(_log, LOG_LVL_INFO, "_recvKind SHIFT_TO_RIGHT our left neighbor is shifting to us");
+            _handleShiftToRight(msgBytes->element);
+            break;
+        case LoaderMsg::SHIFT_FROM_RIGHT:
+            LOGS(_log, LOG_LVL_INFO,
+                 "_recvKind SHIFT_FROM_RIGHT our left neighbor needs keys shifted from this");
+            _handleShiftFromRight(msgBytes->element);
+            break;
+        case LoaderMsg::TEST:
+            LOGS(_log, LOG_LVL_INFO, "_recvKind TEST");
+            _handleTest();
+            break;
+        default:
+            LOGS(_log, LOG_LVL_ERROR, "_recvKind unexpected kind=" << msgKind->element);
+            _freeConnect();
     }
 }
 
@@ -462,7 +463,7 @@ void TcpBaseConnection::_handleImYourLNeighbor1(boost::system::error_code const&
         return;
     }
     boost::system::error_code ecode;
-    _readKind(ecode, 0); // get next message
+    _readKind(ecode, 0); // get next message TODO cleaner way to make this call?
 }
 
 
@@ -535,7 +536,7 @@ void TcpBaseConnection::_handleShiftToRight1(boost::system::error_code const& ec
         return;
     }
     boost::system::error_code ecode;
-    _readKind(ecode, 0); // get next message
+    _readKind(ecode, 0); // get next message TODO cleaner way to make this call?
 }
 
 // Our left neighbor wants this node to shift key value pairs to it.
@@ -608,7 +609,7 @@ void TcpBaseConnection::_handleShiftFromRight1(boost::system::error_code const& 
         return;
     }
     boost::system::error_code ecode;
-    _readKind(ecode, 0); // get next message
+    _readKind(ecode, 0); // get next message TODO cleaner way to make this call?
 }
 
 

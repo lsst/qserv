@@ -70,38 +70,39 @@ BufferUdp::Ptr MasterServer::parseMsg(BufferUdp::Ptr const& data,
         LOGS(_log, LOG_LVL_INFO, "MasterServer::parseMsg sender " << senderEndpoint <<
                 " kind=" << inMsg.msgKind->element << " data length=" << data->getAvailableWriteLength());
         switch (inMsg.msgKind->element) {
-        case LoaderMsg::MSG_RECEIVED:
-            // TODO: locate msg id in send messages and take appropriate action
-            break;
-        case LoaderMsg::MAST_INFO_REQ:
-            // TODO: provide performance information about the master via MAST_INFO
-            break;
-        case LoaderMsg::MAST_WORKER_LIST_REQ:
-            sendData = workerListRequest(inMsg, data, senderEndpoint);
-            break;
-        case LoaderMsg::MAST_WORKER_INFO_REQ:
-            // Request information about a specific worker via MAST_WORKER_INFO
-            sendData = workerInfoRequest(inMsg, data, senderEndpoint);
-            break;
-        case LoaderMsg::MAST_WORKER_ADD_REQ:
-            sendData = workerAddRequest(inMsg, data, senderEndpoint);
-            break;
-        case LoaderMsg::WORKER_KEYS_INFO:
-            sendData = workerKeysInfo(inMsg, data, senderEndpoint);
-            break;
-            // following not expected by master
-        case LoaderMsg::MAST_INFO:
-        case LoaderMsg::MAST_WORKER_LIST:
-        case LoaderMsg::MAST_WORKER_INFO:
-        case LoaderMsg::KEY_INSERT_REQ:
-        case LoaderMsg::KEY_INFO_REQ:
-        case LoaderMsg::KEY_INFO:
-            /// TODO add msg unexpected by master response.
-            break;
-        default:
-            ++_errCount;
-            LOGS(_log, LOG_LVL_ERROR, "unknownMsgKind errCount=" << _errCount << " inMsg=" << inMsg);
-            sendData = prepareReplyMsg(senderEndpoint, inMsg, LoaderMsg::STATUS_PARSE_ERR, "unknownMsgKind");
+            case LoaderMsg::MSG_RECEIVED:
+                // TODO: locate msg id in send messages and take appropriate action
+                break;
+            case LoaderMsg::MAST_INFO_REQ:
+                // TODO: provide performance information about the master via MAST_INFO
+                break;
+            case LoaderMsg::MAST_WORKER_LIST_REQ:
+                sendData = workerListRequest(inMsg, data, senderEndpoint);
+                break;
+            case LoaderMsg::MAST_WORKER_INFO_REQ:
+                // Request information about a specific worker via MAST_WORKER_INFO
+                sendData = workerInfoRequest(inMsg, data, senderEndpoint);
+                break;
+            case LoaderMsg::MAST_WORKER_ADD_REQ:
+                sendData = workerAddRequest(inMsg, data, senderEndpoint);
+                break;
+            case LoaderMsg::WORKER_KEYS_INFO:
+                sendData = workerKeysInfo(inMsg, data, senderEndpoint);
+                break;
+                // following not expected by master
+            case LoaderMsg::MAST_INFO:
+            case LoaderMsg::MAST_WORKER_LIST:
+            case LoaderMsg::MAST_WORKER_INFO:
+            case LoaderMsg::KEY_INSERT_REQ:
+            case LoaderMsg::KEY_INFO_REQ:
+            case LoaderMsg::KEY_INFO:
+                /// TODO add msg unexpected by master response.
+                break;
+            default:
+                ++_errCount;
+                LOGS(_log, LOG_LVL_ERROR, "unknownMsgKind errCount=" << _errCount << " inMsg=" << inMsg);
+                sendData = prepareReplyMsg(senderEndpoint, inMsg, LoaderMsg::STATUS_PARSE_ERR,
+                                           "unknownMsgKind");
         }
     } catch (LoaderMsgErr const& exc) {
         ++_errCount;

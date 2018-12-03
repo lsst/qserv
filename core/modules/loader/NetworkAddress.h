@@ -40,18 +40,19 @@ namespace loader {
 class StringElement;
 
 /// Comparable network addresses.
+/// Since these will be used as keys in std::map, the values are immutable.
 struct NetworkAddress {
     using Ptr = std::shared_ptr<NetworkAddress>;
     using UPtr = std::unique_ptr<NetworkAddress>;
+
+    const std::string ip;
+    const int port;
 
     NetworkAddress(std::string const& ip_, int port_) : ip(ip_), port(port_) {}
     NetworkAddress() = delete;
     NetworkAddress(NetworkAddress const&) = default;
 
     static UPtr create(BufferUdp::Ptr const& bufData, int& tcpPort, std::string const& note);
-
-    const std::string ip;
-    const int port; // Most of the workers will have the same port number.
 
     bool operator==(NetworkAddress const& other) const {
         return (port == other.port && ip == other.ip);
@@ -71,9 +72,6 @@ struct NetworkAddress {
     bool operator>(NetworkAddress const& other) const {
         return (other < *this);
     }
-
-
-
 
     friend std::ostream& operator<<(std::ostream& os, NetworkAddress const& adr);
 };

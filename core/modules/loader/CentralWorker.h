@@ -76,7 +76,7 @@ public:
 
     WWorkerList::Ptr getWorkerList() const { return _wWorkerList; }
 
-    std::string getHostName() const { return _hostName; }
+    std::string const& getHostName() const { return _hostName; }
     int getUdpPort() const { return _udpPort; }
     int getTcpPort() const { return _tcpPort; }
 
@@ -227,7 +227,7 @@ private:
     const int                _tcpPort;
     boost::asio::io_context& _ioContext;
 
-    WWorkerList::Ptr _wWorkerList{new WWorkerList(this)}; ///< Maps of workers.
+    WWorkerList::Ptr _wWorkerList{std::make_shared<WWorkerList>(this)}; ///< Maps of workers.
 
     bool _ourIdInvalid{true}; ///< true until our id has been set by the master.
     std::atomic<uint32_t> _ourId{0}; ///< id given by the master, 0 is invalid id.
@@ -238,7 +238,7 @@ private:
     std::atomic<bool> _rangeChanged{false};
     std::map<std::string, ChunkSubchunk> _keyValueMap;
     std::deque<std::chrono::system_clock::time_point> _recentAdds; ///< track how many keys added recently.
-    std::chrono::milliseconds _recent{60 * 1000};
+    std::chrono::milliseconds _recent{60 * 1000}; ///< default to 1 minute TODO config file DM-16652
     std::mutex _idMapMtx; ///< protects _strRange, _keyValueMap,
                           ///< _recentAdds, _transferListToRight, _transferListFromRight
 
@@ -252,7 +252,14 @@ private:
     std::shared_ptr<AsioTcp::socket>  _rightSocket;
 
     std::atomic<bool> _shiftAsClientInProgress{false}; ///< True when shifting to or from right neighbor.
-    double _thresholdNeighborShift{1.10}; ///< Shift if 10% more than neighbor TODO put in config file.
+
+    /// Shift if a node has 10% more than it's neighbor TODO config file DM-16652
+    double _thresholdNeighborShift{1.10};
+
+    /// Maximum number of keys to shift in one iteration.
+    /// An iteration would be transfer, insert, verify range. TODO config file  DM-16652
+    /// Too big a value, and the maps will be paralyzed for a long time during inserts.
+    /// Too small and shift operations will take significantly longer.
     int _maxKeysToShift{10000};
     std::vector<StringKeyPair> _transferListToRight; ///< List of items being transfered to right
     /// List of items being transfered to our left neighbor. (answering neighbor's FromRight request)
