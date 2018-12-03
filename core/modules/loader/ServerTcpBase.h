@@ -74,16 +74,20 @@ private:
     ServerTcpBase* _serverTcpBase; // _serverTcpBase controls this class' lifetime.
     BufferUdp _buf{1000000};
 
+    /// Handle the series of messages where another worker is claiming to be our left neighbor.
     void _handleImYourLNeighbor(uint32_t bytes);
     void _handleImYourLNeighbor1(boost::system::error_code const& ec, size_t bytesTrans);
     void _handleImYourLNeighbor2(boost::system::error_code const& ec, size_t bytesTrans);
 
+    /// Handle the series of messages for shifting to our right neighbor.
     void _handleShiftToRight(uint32_t bytes);
     void _handleShiftToRight1(boost::system::error_code const& ec, size_t bytesTrans);
 
+    /// Handle the series of messages for shifting from our right neighbor.
     void _handleShiftFromRight(uint32_t bytesInMsg);
     void _handleShiftFromRight1(boost::system::error_code const& ec, size_t bytesTrans);
 
+    /// Handle TCP functionality test messages.
     void _handleTest();
     void _handleTest2(boost::system::error_code const& ec, size_t bytesTrans);
     void _handleTest2b(boost::system::error_code const& ec, size_t bytesTrans);
