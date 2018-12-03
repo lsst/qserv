@@ -267,18 +267,19 @@ struct QhttpFixture
     QhttpFixture()
     {
         server = qhttp::Server::create(service, 0);
-        urlPrefix = "http://localhost:" + std::to_string(server->getPort()) + "/";
         BOOST_TEST(curl_global_init(CURL_GLOBAL_DEFAULT) == CURLE_OK);
     }
 
     void start()
     {
-        server->accept();
+        server->start();
+        urlPrefix = "http://localhost:" + std::to_string(server->getPort()) + "/";
         serviceThread = std::move(std::thread([this](){ service.run(); }));
     }
 
     ~QhttpFixture()
     {
+        server->stop();
         service.stop();
         serviceThread.join();
         curl_global_cleanup();
@@ -353,7 +354,6 @@ BOOST_FIXTURE_TEST_CASE(request_timeout, QhttpFixture)
     });
 
     server->setRequestTimeout(std::chrono::milliseconds(20));
-
     start();
 
     //----- verify able to connect to the server
@@ -384,6 +384,44 @@ BOOST_FIXTURE_TEST_CASE(request_timeout, QhttpFixture)
     asio::streambuf respbuf;
     size_t num_read_after_timeout = asio::read_until(socket, respbuf, "\r\n\r\n", ec);
     BOOST_TEST(num_read_after_timeout == (size_t)0);
+}
+
+
+BOOST_FIXTURE_TEST_CASE(shutdown, QhttpFixture)
+{
+    //----- set up server with a handler on "/" that counts invocations
+
+    int invocations = 0;
+
+    server->addHandler("GET", "/", [&invocations](qhttp::Request::Ptr req, qhttp::Response::Ptr resp){
+        ++invocations;
+        resp->sendStatus(200);
+    });
+
+    //----- start, and verify handler invoked
+
+    start();
+    CurlEasy curl1;
+    curl1.setup("GET", urlPrefix, "").perform().validate(200, "text/html");
+    BOOST_TEST(invocations == 1);
+
+    //----- shutdown, and verify cannot connect.  Check on both existing curl object (already open
+    //      HTTP 1.1 connection) and new curl object (fresh connection)
+
+    server->stop();
+    curl1.setup("GET", urlPrefix, "");
+    BOOST_TEST(curl_easy_perform(curl1.hcurl) == CURLE_COULDNT_CONNECT);
+    CurlEasy curl2;
+    curl2.setup("GET", urlPrefix, "");
+    BOOST_TEST(curl_easy_perform(curl2.hcurl) == CURLE_COULDNT_CONNECT);
+
+    //----- restart, and verify handler in invoked again
+
+    server->start();
+    curl1.setup("GET", urlPrefix, "").perform().validate(200, "text/html");
+    BOOST_TEST(invocations == 2);
+    curl2.setup("GET", urlPrefix, "").perform().validate(200, "text/html");
+    BOOST_TEST(invocations == 3);
 }
 
 

@@ -40,7 +40,8 @@ Request::Request(std::shared_ptr<ip::tcp::socket> socket)
     content(&_requestbuf),
     _socket(socket)
 {
-    localAddr = _socket->local_endpoint();
+    boost::system::error_code ignore;
+    localAddr = _socket->local_endpoint(ignore);
 }
 
 
