@@ -53,6 +53,12 @@ struct KeyChSch {
 };
 
 
+std::ostream& operator<<(std::ostream& os, KeyChSch const& kcs) {
+    os << "key=" << kcs.key << " chunk=" << kcs.chunk << " subchunk=" << kcs.subchunk;
+    return os;
+}
+
+
 int main(int argc, char* argv[]) {
     UInt16Element num16(1 | 2 << 8);
     uint16_t origin16 = num16.element;
@@ -317,10 +323,18 @@ int main(int argc, char* argv[]) {
     LOGS(_log, LOG_LVL_INFO, "3TSTAGE client register key A");
     KeyChSch keyA("asdf_1", 4001, 200001);
     auto keyAInsert = cCentral1A.keyInsertReq(keyA.key, keyA.chunk, keyA.subchunk);
+    if (keyAInsert == nullptr) {
+        LOGS(_log, LOG_LVL_ERROR, "ERROR failed insert keyA !!! "  << keyA);
+        exit(-1);
+    }
 
     LOGS(_log, LOG_LVL_INFO, "4TSTAGE client register key B");;
     KeyChSch keyB("ndjes_bob", 9871, 65008);
     auto keyBInsert = cCentral1B.keyInsertReq(keyB.key, keyB.chunk, keyB.subchunk);
+    if (keyBInsert == nullptr) {
+        LOGS(_log, LOG_LVL_ERROR, "ERROR failed insert keyB !!! " << keyB);
+        exit(-1);
+    }
 
     KeyChSch keyC("asl_diebb", 422001, 7373721);
 
@@ -390,6 +404,11 @@ int main(int argc, char* argv[]) {
     {
         LOGS(_log, LOG_LVL_INFO, "6TSTAGE client insert keyC lookup all keys");
         auto keyCInsert = cCentral2A.keyInsertReq(keyC.key, keyC.chunk, keyC.subchunk);
+        if (keyCInsert == nullptr) {
+            LOGS(_log, LOG_LVL_ERROR, "ERROR failed insert keyC !!!" << keyC);
+            exit(-1);
+        }
+
         sleep(2); // need to sleep as it never gives up on inserts.
         if (keyCInsert->isFinished()) {
             LOGS(_log, LOG_LVL_INFO, "keyC inserted.");
@@ -430,7 +449,12 @@ int main(int argc, char* argv[]) {
 
         for (; kPos<10; ++kPos) {
             auto& elem = keyList[kPos];
-            keyInfoDataList.push_back(cCentral1A.keyInsertReq(elem.key, elem.chunk, elem.subchunk));
+            auto keyInsertR = cCentral1A.keyInsertReq(elem.key, elem.chunk, elem.subchunk);
+            if (keyInsertR == nullptr) {
+                LOGS(_log, LOG_LVL_ERROR, "ERROR failed insert a keyInsertR!!! " << elem);
+                exit(-1);
+            }
+            keyInfoDataList.push_back(keyInsertR);
         }
 
         sleep(2); // need to sleep as it never gives up on inserts.
@@ -459,7 +483,12 @@ int main(int argc, char* argv[]) {
 
         for (; kPos<keyList.size(); ++kPos) {
             auto& elem = keyList[kPos];
-            keyInfoDataList.push_back(cCentral1A.keyInsertReq(elem.key, elem.chunk, elem.subchunk));
+            auto keyInsertR = cCentral1A.keyInsertReq(elem.key, elem.chunk, elem.subchunk);
+            if (keyInsertR == nullptr) {
+                LOGS(_log, LOG_LVL_ERROR, "ERROR failed insert b keyInsertR!!! " << elem);
+                exit(-1);
+            }
+            keyInfoDataList.push_back(keyInsertR);
         }
 
         bool insertSuccess = true;
@@ -500,7 +529,12 @@ int main(int argc, char* argv[]) {
         size_t pos = 0;
         for (; pos<keyListB.size(); ++pos) {
             auto& elem = keyListB[pos];
-            keyInfoDataList.push_back(cCentral1A.keyInsertReq(elem.key, elem.chunk, elem.subchunk));
+            auto keyInsertR = cCentral1A.keyInsertReq(elem.key, elem.chunk, elem.subchunk);
+            if (keyInsertR == nullptr) {
+                LOGS(_log, LOG_LVL_ERROR, "ERROR failed insert c keyInsertR!!! " << elem);
+                exit(-1);
+            }
+            keyInfoDataList.push_back(keyInsertR);
         }
 
         bool insertSuccess = true;
