@@ -116,13 +116,17 @@ void CentralWorker::_monitor() {
                     if (nAddr.ip == "") {
                         // look up the network address for the rightNeighbor
                         WWorkerListItem::Ptr nWorker =
-                            _wWorkerList->getWorkerNamed(_neighborRight.getId());
+                            _wWorkerList->getWorkerWithId(_neighborRight.getId());
                         if (nWorker != nullptr) {
-                            auto addr = nWorker->getAddressTcp();
-                            auto addrUdp = nWorker->getAddressUdp();
+                            auto addrTcp = nWorker->getTcpAddress();
+                            auto addrUdp = nWorker->getUdpAddress();
+                            if (addrTcp.ip.empty() || addrUdp.ip.empty()) {
+                                throw LoaderMsgErr(ERR_LOC, "Missing valid address for neighbor=" +
+                                                   std::to_string(_neighborRight.getId()));
+                            }
                             LOGS(_log, LOG_LVL_INFO, "_monitor neighbor right " <<
-                                 _neighborRight.getId() << " T=" << addr << " U=" << addrUdp);
-                            _neighborRight.setAddressTcp(addr);
+                                 _neighborRight.getId() << " T=" << addrTcp << " U=" << addrUdp);
+                            _neighborRight.setAddressTcp(addrTcp);
                             _neighborRight.setAddressUdp(addrUdp);
                         }
                     }
@@ -788,8 +792,8 @@ void CentralWorker::_workerKeyInsertReq(LoaderMsg const& inMsg, std::unique_ptr<
         lck.unlock();
         // Find the target range in the list and send the request there
         auto targetWorker = _wWorkerList->findWorkerForKey(key);
-        if (targetWorker != nullptr && targetWorker->getName() != _ourId) {
-            _forwardKeyInsertRequest(targetWorker->getAddressUdp(), inMsg, protoData);
+        if (targetWorker != nullptr && targetWorker->getId() != _ourId) {
+            _forwardKeyInsertRequest(targetWorker->getUdpAddress(), inMsg, protoData);
         } else {
             // Send request to left or right neighbor
             if (key < min && leftAddress.ip != "") {
@@ -1013,7 +1017,7 @@ void CentralWorker::_forwardKeyInfoRequest(WWorkerListItem::Ptr const& target, L
     protoData->SerializeToString(&(strElem.element));
     strElem.appendToData(msgData);
 
-    auto nAddr = target->getAddressUdp();
+    auto nAddr = target->getUdpAddress();
     sendBufferTo(nAddr.ip, nAddr.port, msgData);
 }
 
