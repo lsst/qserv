@@ -21,8 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  *
  */
-#ifndef LSST_QSERV_LOADER_MWORKERLIST_H_
-#define LSST_QSERV_LOADER_MWORKERLIST_H_
+#ifndef LSST_QSERV_LOADER_MWORKERLIST_H
+#define LSST_QSERV_LOADER_MWORKERLIST_H
 
 // system headers
 #include <atomic>
@@ -36,32 +36,26 @@
 #include "loader/DoList.h"
 #include "loader/NetworkAddress.h"
 #include "loader/StringRange.h"
+#include "loader/WorkerListItemBase.h"
 
 
 namespace lsst {
 namespace qserv {
 namespace loader {
 
-class Central;
-class CentralWorker;
 class CentralMaster;
 class LoaderMsg;
 
-
 /// Standard information for a single worker, IP address, key range, timeouts.
-class MWorkerListItem : public std::enable_shared_from_this<MWorkerListItem> {
+class MWorkerListItem : public WorkerListItemBase {
 public:
     using Ptr = std::shared_ptr<MWorkerListItem>;
     using WPtr = std::weak_ptr<MWorkerListItem>;
 
-    static MWorkerListItem::Ptr create(uint32_t name, CentralMaster *central) {
-        return MWorkerListItem::Ptr(new MWorkerListItem(name, central));
-    }
     static MWorkerListItem::Ptr create(uint32_t name, NetworkAddress const& udpAddress,
                                        NetworkAddress const& tcpAddress, CentralMaster *central) {
         return MWorkerListItem::Ptr(new MWorkerListItem(name, udpAddress, tcpAddress, central));
     }
-
 
     MWorkerListItem() = delete;
     MWorkerListItem(MWorkerListItem const&) = delete;
@@ -69,21 +63,10 @@ public:
 
     virtual ~MWorkerListItem() = default;
 
-    NetworkAddress getUdpAddress() const {
-        return *_udpAddress;
-    }
-
-    NetworkAddress getTcpAddress() const {
-        return *_tcpAddress;
-    }
-
-    uint32_t getId() const {
-        return _wId;
-    }
-
-    StringRange getRangeString() const {
-        std::lock_guard<std::mutex> lck(_mtx);
-        return _range;
+    /// @return a properly typed shared pointer to this object.
+    Ptr getThis() {
+        Ptr ptr = std::static_pointer_cast<MWorkerListItem>(shared_from_this());
+        return ptr;
     }
 
     bool isActive() const { return _active; }
@@ -91,9 +74,8 @@ public:
 
     /// Add permanent items to the DoList for this worker.
     /// They should only be removed if this object is being destroyed.
-    void addDoListItems(Central *central);
+    void addDoListItems(Central *central) override;
 
-    void setRangeStr(StringRange const& strRange);
     void setAllInclusiveRange();
 
     void setNeighborsInfo(NeighborsInfo const& nInfo);
@@ -106,25 +88,19 @@ public:
 
     void sendListToWorkerInfoReceived();
 
-    friend std::ostream& operator<<(std::ostream& os, MWorkerListItem const& item);
+    std::ostream& dump(std::ostream& os) const override;
 private:
-    MWorkerListItem(uint32_t wId, CentralMaster* central) : _wId(wId), _central(central) {}
     MWorkerListItem(uint32_t wId,
                     NetworkAddress const& udpAddress,
                     NetworkAddress const& tcpAddress,
                     CentralMaster* central)
-         : _wId(wId),
-           _udpAddress(new NetworkAddress(udpAddress)),
-           _tcpAddress(new NetworkAddress(tcpAddress)),
-           _central(central) {}
+         : WorkerListItemBase(wId), _central(central) {
+        setUdpAddress(udpAddress);
+        setTcpAddress(tcpAddress);
+    }
 
-    uint32_t const _wId; ///< Worker Id
-    NetworkAddress::UPtr _udpAddress{new NetworkAddress("", 0)}; ///< empty string indicates address is not valid.
-    NetworkAddress::UPtr _tcpAddress{new NetworkAddress("", 0)}; ///< empty string indicates address is not valid.
     TimeOut _lastContact{std::chrono::minutes(10)};  ///< Last time information was received from this worker
-    StringRange _range;           ///< min and max range for this worker.
     NeighborsInfo _neighborsInfo; ///< information used to set neighbors.
-    mutable std::mutex _mtx;      ///< protects _range
 
     std::atomic<bool> _active{false}; ///< true when worker has been given a valid range, or a neighbor.
 
@@ -156,8 +132,9 @@ private:
     };
     DoListItem::Ptr _reqWorkerKeyInfo;
     std::mutex _doListItemsMtx; ///< protects _sendListToWorker
-
 };
+
+
 
 
 class MWorkerList : public DoListItem {
@@ -176,7 +153,7 @@ public:
     MWorkerListItem::Ptr addWorker(std::string const& ip, int udpPort, int tcpPort);
 
     /// Returns true of message could be parsed and a send will be attempted.
-    /// It sends a list of worker names. The worker then asks for each name individually
+    /// It sends a list of worker ids. The worker then asks for each id individually
     ///  to get ips, ports, and ranges.
     bool sendListTo(uint64_t msgId, std::string const& ip, short port,
                     std::string const& outHostName, short ourPort);
@@ -186,7 +163,7 @@ public:
 
     //////////////////////////////////////////
     /// Nearly the same on Worker and Master
-    size_t getNameMapSize() {
+    size_t getIdMapSize() {
         std::lock_guard<std::mutex> lck(_mapMtx);
         return _wIdMap.size();
     }
@@ -217,13 +194,13 @@ protected:
     /// locked in conjunction with _ipMap.
     std::mutex _statListMtx;
     uint32_t _totalNumberOfWorkers{0}; ///< total number of workers according to the master.
-    mutable std::mutex _mapMtx; ///< protects _nameMap, _ipMap, _wListChanged
+    mutable std::mutex _mapMtx; ///< protects _wIdMap, _ipMap, _wListChanged
 
-    std::atomic<uint32_t> _sequenceName{1}; ///< Source of names for workers. 0 is invalid name.
+    std::atomic<uint32_t> _sequenceId{1}; ///< Source of ids for workers. 0 is invalid name.
 
 };
 
 
 }}} // namespace lsst::qserv::loader
 
-#endif // LSST_QSERV_LOADER_MWORKERLIST_H_
+#endif // LSST_QSERV_LOADER_MWORKERLIST_H

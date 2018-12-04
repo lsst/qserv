@@ -304,7 +304,7 @@ int main(int argc, char* argv[]) {
     LOGS(_log, LOG_LVL_INFO, "sleeping");
     sleep(5); // TODO change to 20 second timeout with a check every 0.1 seconds.
     // The workers should agree on the worker list, and it should have 2 elements.
-    if (wCentral1.getWorkerList()->getNameMapSize() == 0) {
+    if (wCentral1.getWorkerList()->getIdMapSize() == 0) {
         LOGS(_log, LOG_LVL_ERROR, "ERROR Worker list is empty!!!");
         exit(-1);
     }
