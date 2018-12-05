@@ -45,7 +45,7 @@ namespace qserv {
 namespace replica {
 
 HttpThread::Ptr HttpThread::create(Controller::Ptr const& controller,
-                                   ControlThread::CallbackType const& onTerminated,
+                                   ControlThread::AbnormalTerminationCallbackType const& onTerminated,
                                    HealthMonitorThread::WorkerEvictCallbackType const& onWorkerEvict,
                                    HealthMonitorThread::Ptr const& healthMonitorThread,
                                    ReplicationThread::Ptr const& replicationThread,
@@ -104,7 +104,7 @@ void HttpThread::run() {
 }
 
 HttpThread::HttpThread(Controller::Ptr const& controller,
-                       ControlThread::CallbackType const& onTerminated,
+                       ControlThread::AbnormalTerminationCallbackType const& onTerminated,
                        HealthMonitorThread::WorkerEvictCallbackType const& onWorkerEvict,
                        HealthMonitorThread::Ptr const& healthMonitorThread,
                        ReplicationThread::Ptr const& replicationThread,

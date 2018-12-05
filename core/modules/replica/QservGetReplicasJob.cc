@@ -53,6 +53,10 @@ Job::Options const& QservGetReplicasJob::defaultOptions() {
     return options;
 }
 
+
+std::string QservGetReplicasJob::typeName() { return "QservGetReplicasJob"; }
+
+
 QservGetReplicasJob::Ptr QservGetReplicasJob::create(
                                     std::string const& databaseFamily,
                                     bool inUseOnly,

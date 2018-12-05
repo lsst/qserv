@@ -95,7 +95,7 @@ public:
      *   the smart pointer to a new object
      */
     static Ptr create(Controller::Ptr const& controller,
-                      ControlThread::CallbackType const& onTerminated,
+                      ControlThread::AbnormalTerminationCallbackType const& onTerminated,
                       HealthMonitorThread::WorkerEvictCallbackType const& onWorkerEvict,
                       HealthMonitorThread::Ptr const& healthMonitorThread,
                       ReplicationThread::Ptr const& replicationThread,
@@ -116,7 +116,7 @@ private:
      * @see HttpThread::create()
      */
     HttpThread(Controller::Ptr const& controller,
-               CallbackType const& onTerminated,
+               ControlThread::AbnormalTerminationCallbackType const& onTerminated,
                HealthMonitorThread::WorkerEvictCallbackType const& onWorkerEvict,
                HealthMonitorThread::Ptr const& healthMonitorThread,
                ReplicationThread::Ptr const& replicationThread,

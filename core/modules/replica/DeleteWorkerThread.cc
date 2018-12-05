@@ -35,10 +35,11 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-DeleteWorkerThread::Ptr DeleteWorkerThread::create(Controller::Ptr const& controller,
-                                                   ControlThread::CallbackType const& onTerminated,
-                                                   std::string const& worker,
-                                                   bool permanentDelete) {
+DeleteWorkerThread::Ptr DeleteWorkerThread::create(
+        Controller::Ptr const& controller,
+        ControlThread::AbnormalTerminationCallbackType const& onTerminated,
+        std::string const& worker,
+        bool permanentDelete) {
     return Ptr(
         new DeleteWorkerThread(
             controller,
@@ -51,7 +52,7 @@ DeleteWorkerThread::Ptr DeleteWorkerThread::create(Controller::Ptr const& contro
 
 
 DeleteWorkerThread::DeleteWorkerThread(Controller::Ptr const& controller,
-                                       ControlThread::CallbackType const& onTerminated,
+                                       ControlThread::AbnormalTerminationCallbackType const& onTerminated,
                                        std::string const& worker,
                                        bool permanentDelete)
     :   ControlThread(controller,

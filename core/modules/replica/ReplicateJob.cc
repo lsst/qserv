@@ -55,6 +55,10 @@ Job::Options const& ReplicateJob::defaultOptions() {
     return options;
 }
 
+
+std::string ReplicateJob::typeName() { return "ReplicateJob"; }
+
+
 ReplicateJob::Ptr ReplicateJob::create(
                             std::string const& databaseFamily,
                             unsigned int numReplicas,

@@ -83,7 +83,7 @@ public:
      *   the smart pointer to a new object
      */
     static Ptr create(Controller::Ptr const& controller,
-                      ControlThread::CallbackType const& onTerminated,
+                      ControlThread::AbnormalTerminationCallbackType const& onTerminated,
                       std::string const& worker,
                       bool permanentDelete);
 
@@ -95,7 +95,7 @@ protected:
      * @see DeleteWorkerThread::create()
      */
     DeleteWorkerThread(Controller::Ptr const& controller,
-                       CallbackType const& onTerminated,
+                       ControlThread::AbnormalTerminationCallbackType const& onTerminated,
                        std::string const& worker,
                        bool permanentDelete);
 

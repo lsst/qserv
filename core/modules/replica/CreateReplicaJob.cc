@@ -69,6 +69,9 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
+std::string CreateReplicaJob::typeName() { return "CreateReplicaJob"; }
+
+
 Job::Options const& CreateReplicaJob::defaultOptions() {
     static Job::Options const options{
         -2,     /* priority */

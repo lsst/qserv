@@ -51,6 +51,10 @@ Job::Options const& FindAllJob::defaultOptions() {
     return options;
 }
 
+
+std::string FindAllJob::typeName() { return "FindAllJob"; }
+
+
 FindAllJob::Ptr FindAllJob::create(std::string const& databaseFamily,
                                    bool saveReplicaInfo,
                                    Controller::Ptr const& controller,

@@ -55,6 +55,10 @@ Job::Options const& RebalanceJob::defaultOptions() {
     return options;
 }
 
+
+std::string RebalanceJob::typeName() { return "RebalanceJob"; }
+
+
 RebalanceJob::Ptr RebalanceJob::create(
                             std::string const& databaseFamily,
                             bool estimateOnly,

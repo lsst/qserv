@@ -102,8 +102,7 @@ public:
      * a particular instance of the Job.
      *
      * The Job::Option object is explicitly passed as a parameter to avoid
-     * making a call back to the job which may create a deadlock because
-     * method saveState() is meant to be called by the job's implementations.
+     * making a blocked call back to the job which may create a deadlock.
      *
      * @param job     - reference to a Job object
      * @param options - reference to a Job options object
@@ -123,8 +122,7 @@ public:
      * a particular instance of the QservMgtRequest.
      *
      * The Performance object is explicitly passed as a parameter to avoid
-     * making a call back to the request which may create a deadlock because
-     * method saveState() is meant to be called by the request's implementations.
+     * making a blocked call back to the request which may create a deadlock.
      *
      * @param request     - reference to a QservMgtRequest object
      * @param performance - reference to a Performance object
@@ -139,8 +137,7 @@ public:
      * a particular instance of the Request.
      *
      * The Performance object is explicitly passed as a parameter to avoid
-     * making a call back to the request which may create a deadlock because
-     * method saveState() is meant to be called by the request's implementations.
+     * making a blocked call back to the request which may create a deadlock.
      *
      * @param request     - reference to a Request object
      * @param performance - reference to a Performance object

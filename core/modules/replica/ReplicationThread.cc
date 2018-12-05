@@ -35,13 +35,14 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-ReplicationThread::Ptr ReplicationThread::create(Controller::Ptr const& controller,
-                                                 ControlThread::CallbackType const& onTerminated,
-                                                 unsigned int qservSyncTimeoutSec,
-                                                 unsigned int replicationIntervalSec,
-                                                 unsigned int numReplicas,
-                                                 unsigned int numIter,
-                                                 bool purge) {
+ReplicationThread::Ptr ReplicationThread::create(
+        Controller::Ptr const& controller,
+        ControlThread::AbnormalTerminationCallbackType const& onTerminated,
+        unsigned int qservSyncTimeoutSec,
+        unsigned int replicationIntervalSec,
+        unsigned int numReplicas,
+        unsigned int numIter,
+        bool purge) {
     return Ptr(
         new ReplicationThread(
             controller,
@@ -63,21 +64,21 @@ void ReplicationThread::run() {
 
         bool const saveReplicaInfo = true;
 
-        launch<FindAllJob>("FindAllJob", saveReplicaInfo);
+        launch<FindAllJob>(saveReplicaInfo);
         sync(_qservSyncTimeoutSec);
 
-        launch<FixUpJob>("FixUpJob");
+        launch<FixUpJob>();
         sync(_qservSyncTimeoutSec);
 
-        launch<ReplicateJob>("ReplicateJob", _numReplicas);
+        launch<ReplicateJob>(_numReplicas);
         sync(_qservSyncTimeoutSec);
 
         bool const estimateOnly = false;
-        launch<RebalanceJob>("RebalanceJob", estimateOnly);
+        launch<RebalanceJob>(estimateOnly);
         sync(_qservSyncTimeoutSec);
 
         if (_purge) {
-            launch<PurgeJob>("PurgeJob", _numReplicas);
+            launch<PurgeJob>(_numReplicas);
             sync(_qservSyncTimeoutSec);
         }
 
@@ -101,7 +102,7 @@ void ReplicationThread::run() {
 }
 
 ReplicationThread::ReplicationThread(Controller::Ptr const& controller,
-                                     CallbackType const& onTerminated,
+                                     ControlThread::AbnormalTerminationCallbackType const& onTerminated,
                                      unsigned int qservSyncTimeoutSec,
                                      unsigned int replicationIntervalSec,
                                      unsigned int numReplicas,
