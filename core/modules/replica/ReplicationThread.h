@@ -81,7 +81,7 @@ public:
      *   the smart pointer to a new object
      */
     static Ptr create(Controller::Ptr const& controller,
-                      ControlThread::CallbackType const& onTerminated,
+                      ControlThread::AbnormalTerminationCallbackType const& onTerminated,
                       unsigned int qservSyncTimeoutSec,
                       unsigned int replicationIntervalSec,
                       unsigned int numReplicas,
@@ -103,7 +103,7 @@ private:
      * @see ReplicationThread::create()
      */
     ReplicationThread(Controller::Ptr const& controller,
-                      CallbackType const& onTerminated,
+                      AbnormalTerminationCallbackType const& onTerminated,
                       unsigned int qservSyncTimeoutSec,
                       unsigned int replicationIntervalSec,
                       unsigned int numReplicas,

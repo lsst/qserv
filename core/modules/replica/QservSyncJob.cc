@@ -54,6 +54,10 @@ Job::Options const& QservSyncJob::defaultOptions() {
     return options;
 }
 
+
+std::string QservSyncJob::typeName() { return "QservSyncJob"; }
+
+
 QservSyncJob::Ptr QservSyncJob::create(std::string const& databaseFamily,
                                        unsigned int requestExpirationIvalSec,
                                        bool force,

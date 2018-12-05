@@ -51,6 +51,10 @@ Job::Options const& MoveReplicaJob::defaultOptions() {
     return options;
 }
 
+
+std::string MoveReplicaJob::typeName() { return "MoveReplicaJob"; }
+
+
 MoveReplicaJob::Ptr MoveReplicaJob::create(std::string const& databaseFamily,
                                            unsigned int chunk,
                                            std::string const& sourceWorker,

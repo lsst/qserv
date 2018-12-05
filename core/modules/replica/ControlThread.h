@@ -86,7 +86,7 @@ public:
     typedef std::shared_ptr<ControlThread> Ptr;
 
     /// The function type for notifications on the abnormal termination of the threads
-    typedef std::function<void(Ptr)> CallbackType;
+    typedef std::function<void(Ptr)> AbnormalTerminationCallbackType;
 
     /// The function type for functions used in evaluating user-defined early-termination
     /// conditions for aborting thread completion tracking
@@ -114,8 +114,8 @@ public:
     /**
      * Start a subclass-supplied sequence of actions (virtual method 'run')
      * within a new thread if it's not running. Note that the lifetime of
-     * the current object is guaranteed to be extended for the duration of
-     * the thread.
+     * an control thread object is guaranteed to be extended for the duration of
+     * the thread. This allows the thread to communicate with the object if needed.
      *
      * @return
      *   'true' if the thread was already running at a time when this
@@ -160,7 +160,7 @@ protected:
      */
     ControlThread(Controller::Ptr const& controller,
                   std::string const& name,
-                  CallbackType const& onTerminated);
+                  AbnormalTerminationCallbackType const& onTerminated);
 
     /// @return a shared pointer of the desired subclass (no dynamic type checking)
     template <class T>
@@ -232,9 +232,6 @@ protected:
      * family. Note that parameters of the job are passed as variadic arguments
      * to the method.
      *
-     * @param jobName
-     *   the name of a job
-     *
      * @param Fargs
      *   job-specific variadic parameters
      * 
@@ -242,15 +239,16 @@ protected:
      *   ControlThreadStopped when the thread cancellation request was detected
      */
     template <class T, typename...Targs>
-    void launch(std::string const& jobName,
-                Targs... Fargs) {
+    void launch(Targs... Fargs) {
 
-        info(jobName);
+        info(T::typeName());
 
         // Launch the jobs
 
+        auto self = shared_from_this();
+
         std::vector<Job::Ptr> jobs;
-        std::atomic<size_t> numFinishedJobs{0};
+        _numFinishedJobs = 0;
 
         std::string const parentJobId;  // no parent for these jobs
 
@@ -260,8 +258,8 @@ protected:
                 Fargs...,
                 controller(),
                 parentJobId,
-                [&numFinishedJobs](typename T::Ptr const& job) {
-                    ++numFinishedJobs;
+                [self](typename T::Ptr const& job) {
+                    self->_numFinishedJobs++;
                     // FIXME: analyze job status and report it here
                 }
             );
@@ -271,9 +269,9 @@ protected:
 
         // Track the completion of all jobs
 
-        track<Job>(jobName,
+        track<Job>(T::typeName(),
                    jobs,
-                   numFinishedJobs);
+                   _numFinishedJobs);
     }
 
    /**
@@ -300,7 +298,7 @@ protected:
      * all jobs will be canceled. The tracking will be done with an interval
      * of 1 second.
      *
-     * @param jobName
+     * @param typeName
      *   the name of a job
      *
      * @param jobs
@@ -310,11 +308,11 @@ protected:
      *   the counter of completed jobs
      */
     template <class T>
-    void track(std::string const& jobName,
+    void track(std::string const& typeName,
                std::vector<typename T::Ptr> const& jobs,
                std::atomic<size_t> const& numFinishedJobs) {
 
-        info(jobName + ": tracking started");
+        info(typeName + ": tracking started");
     
         util::BlockPost blockPost(1000, 1001);  // ~1 second wait time between iterations
     
@@ -323,12 +321,12 @@ protected:
                 for (auto&& job: jobs) {
                     job->cancel();
                 }
-                info(jobName + ": tracking aborted");
+                info(typeName + ": tracking aborted");
                 throw ControlThreadStopped();
             }
             blockPost.wait();
         }
-        info(jobName + ": tracking finished");
+        info(typeName + ": tracking finished");
     }
 
 private:
@@ -348,13 +346,16 @@ private:
 
     /// The callback (if provided) to be called upon an abnormal termination
     /// of the user-supplied algorithm run in a context of the thread.
-    CallbackType _onTerminated;
+    AbnormalTerminationCallbackType _onTerminated;
 
     /// The flag indicating if it's already running
     std::atomic<bool> _isRunning;
 
     /// The flag to be raised when the thread needs to be stopped
     std::atomic<bool> _stopRequested;
+
+    /// The thread-safe counter of the finished jobs
+    std::atomic<size_t> _numFinishedJobs;
 
     /// Message logger
     LOG_LOGGER _log;

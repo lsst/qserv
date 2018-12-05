@@ -23,6 +23,7 @@
 #define LSST_QSERV_HEALTHMONITORTHREAD_H
 
 // System headers
+#include <atomic>
 #include <functional>
 #include <set>
 
@@ -107,7 +108,7 @@ public:
      *   the smart pointer to a new object
      */
     static Ptr create(Controller::Ptr const& controller,
-                      ControlThread::CallbackType const& onTerminated,
+                      ControlThread::AbnormalTerminationCallbackType const& onTerminated,
                       WorkerEvictCallbackType const& onWorkerEvictTimeout,
                       unsigned int workerEvictTimeoutSec,
                       unsigned int workerResponseTimeoutSec,
@@ -133,7 +134,7 @@ private:
      * @see HealthMonitorThread::create()
      */
     HealthMonitorThread(Controller::Ptr const& controller,
-                        CallbackType const& onTerminated,
+                        ControlThread::AbnormalTerminationCallbackType const& onTerminated,
                         WorkerEvictCallbackType const& onWorkerEvictTimeout,
                         unsigned int workerEvictTimeoutSec,
                         unsigned int workerResponseTimeoutSec,
@@ -158,6 +159,9 @@ private:
     /// The number of seconds to wait in the end of each iteration loop before
     /// to begin the new one.
     unsigned int _healthProbeIntervalSec;
+
+    /// The thread-safe counter of the finished jobs
+    std::atomic<size_t> _numFinishedJobs;
 
     /// Mutex guarding internal state. This object is made protected
     /// to allow subclasses use it.

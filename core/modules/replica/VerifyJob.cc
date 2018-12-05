@@ -176,6 +176,10 @@ Job::Options const& VerifyJob::defaultOptions() {
     return options;
 }
 
+
+std::string VerifyJob::typeName() { return "VerifyJob"; }
+
+
 VerifyJob::Ptr VerifyJob::create(size_t maxReplicas,
                                  bool computeCheckSum,
                                  CallbackTypeOnDiff const& onReplicaDifference,

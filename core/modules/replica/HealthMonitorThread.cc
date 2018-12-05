@@ -24,7 +24,6 @@
 #include "replica/HealthMonitorThread.h"
 
 // System headers
-#include <atomic>
 #include <map>
 
 // Qserv headers
@@ -35,12 +34,13 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-HealthMonitorThread::Ptr HealthMonitorThread::create(Controller::Ptr const& controller,
-                                                     ControlThread::CallbackType const& onTerminated,
-                                                     WorkerEvictCallbackType const& onWorkerEvictTimeout,
-                                                     unsigned int workerEvictTimeoutSec,
-                                                     unsigned int workerResponseTimeoutSec,
-                                                     unsigned int healthProbeIntervalSec) {
+HealthMonitorThread::Ptr HealthMonitorThread::create(
+        Controller::Ptr const& controller,
+        ControlThread::AbnormalTerminationCallbackType const& onTerminated,
+        WorkerEvictCallbackType const& onWorkerEvictTimeout,
+        unsigned int workerEvictTimeoutSec,
+        unsigned int workerResponseTimeoutSec,
+        unsigned int healthProbeIntervalSec) {
     return Ptr(
         new HealthMonitorThread(
             controller,
@@ -79,21 +79,24 @@ void HealthMonitorThread::run() {
 
         info("ClusterHealthJob");
 
-        std::atomic<size_t> numFinishedJobs{0};
+        _numFinishedJobs = 0;
+
+        auto self = shared_from_base<HealthMonitorThread>();
+
         std::vector<ClusterHealthJob::Ptr> jobs;
         jobs.emplace_back(
             ClusterHealthJob::create(
                 _workerResponseTimeoutSec,
                 controller(),
                 parentJobId,
-                [&numFinishedJobs](ClusterHealthJob::Ptr const& job) {
-                    ++numFinishedJobs;
+                [self](ClusterHealthJob::Ptr const& job) {
+                    self->_numFinishedJobs++;
                 }
             )
         );
         jobs[0]->start();
 
-        track<ClusterHealthJob>("ClusterHealthJob", jobs, numFinishedJobs);
+        track<ClusterHealthJob>(ClusterHealthJob::typeName(), jobs, _numFinishedJobs);
  
         // Update non-response intervals for both services
         {
@@ -216,7 +219,7 @@ void HealthMonitorThread::run() {
 }
 
 HealthMonitorThread::HealthMonitorThread(Controller::Ptr const& controller,
-                                         ControlThread::CallbackType const& onTerminated,
+                                         ControlThread::AbnormalTerminationCallbackType const& onTerminated,
                                          WorkerEvictCallbackType const& onWorkerEvictTimeout,
                                          unsigned int workerEvictTimeoutSec,
                                          unsigned int workerResponseTimeoutSec,
@@ -227,7 +230,8 @@ HealthMonitorThread::HealthMonitorThread(Controller::Ptr const& controller,
         _onWorkerEvictTimeout(onWorkerEvictTimeout),
         _workerEvictTimeoutSec(workerEvictTimeoutSec),
         _workerResponseTimeoutSec(workerResponseTimeoutSec),
-        _healthProbeIntervalSec(healthProbeIntervalSec) {
+        _healthProbeIntervalSec(healthProbeIntervalSec),
+        _numFinishedJobs(0) {
 }
 
 }}} // namespace lsst::qserv::replica

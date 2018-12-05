@@ -77,6 +77,9 @@ public:
     /// @return default options object for this type of a request
     static Job::Options const& defaultOptions();
 
+    /// @return the unique name distinguishing this class from other types of jobs
+    static std::string typeName();
+
     /**
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via

@@ -97,6 +97,9 @@ Job::Options const& ClusterHealthJob::defaultOptions() {
 //  Class: ClusterHealthJob
 // -------------------------
 
+std::string ClusterHealthJob::typeName() { return "ClusterHealthJob"; }
+
+
 ClusterHealthJob::Ptr ClusterHealthJob::create(unsigned int timeoutSec,
                                                Controller::Ptr const& controller,
                                                std::string const& parentJobId,

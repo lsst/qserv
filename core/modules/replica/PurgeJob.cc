@@ -55,6 +55,10 @@ Job::Options const& PurgeJob::defaultOptions() {
     return options;
 }
 
+
+std::string PurgeJob::typeName() { return "PurgeJob"; }
+
+
 PurgeJob::Ptr PurgeJob::create(
                         std::string const& databaseFamily,
                         unsigned int numReplicas,

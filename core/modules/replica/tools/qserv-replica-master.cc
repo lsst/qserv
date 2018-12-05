@@ -43,6 +43,7 @@
 #include "replica/Application.h"
 #include "replica/Configuration.h"
 #include "replica/DeleteWorkerThread.h"
+#include "replica/OneWayFailer.h"
 #include "replica/HealthMonitorThread.h"
 #include "replica/ReplicationThread.h"
 #include "util/BlockPost.h"
@@ -66,6 +67,25 @@ std::string const description =
 
 std::string const logger =
     "lsst.qserv.replica.qserv-replica-master";
+
+/**
+ * This structure encapsulates default values for the MasterControllerApp.
+ * These values may be overridden by specifying the corresponding command
+ * line options. See the constructor of the application class for further details.
+ */
+struct DefaultOptions {
+    unsigned int const healthProbeIntervalSec{60};
+    unsigned int const replicationIntervalSec{60};
+    unsigned int const workerResponseTimeoutSec{60};
+    unsigned int const workerEvictTimeoutSec{3600};
+    unsigned int const qservSyncTimeoutSec{60};
+    unsigned int const numReplicas{0};
+    unsigned int const numIter{0};
+
+    bool const purge{false};
+    bool const forceQservSync{false};
+    bool const permanentDelete{false};
+};
 
 class MasterControllerApp
     :   public Application {
@@ -91,17 +111,22 @@ public:
      *
      * @param logger
      *   the name of a logger
+     * 
+     * @param defaultOptions
+     *   default values of the application's parameters
      */
     static Ptr create(int argc,
                       const char* const argv[],
                       std::string const& description,
-                      std::string const& logger) {
+                      std::string const& logger,
+                      DefaultOptions const& defaultOptions) {
         return Ptr(
             new MasterControllerApp(
                 argc,
                 argv,
                 description,
-                logger
+                logger,
+                defaultOptions
             )
         );
     }
@@ -122,7 +147,8 @@ protected:
     MasterControllerApp(int argc,
                         const char* const argv[],
                         std::string const& description,
-                        std::string const& logger)
+                        std::string const& logger,
+                        DefaultOptions const& defaultOptions)
         :   Application(
                 argc,
                 argv,
@@ -131,17 +157,16 @@ protected:
                 true /* boostProtobufVersionCheck */,
                 true /* enableServiceProvider */
             ),
-            _healthProbeIntervalSec  (60),
-            _replicationIntervalSec  (60),
-            _workerResponseTimeoutSec(60),
-            _workerEvictTimeoutSec   (3600),
-            _qservSyncTimeoutSec     (60),
-            _numReplicas             (0),
-            _numIter                 (0),
-            _purge          (false),
-            _forceQservSync (false),
-            _permanentDelete(false),
-            _failed         (false),
+            _healthProbeIntervalSec  (defaultOptions.healthProbeIntervalSec),
+            _replicationIntervalSec  (defaultOptions.replicationIntervalSec),
+            _workerResponseTimeoutSec(defaultOptions.workerResponseTimeoutSec),
+            _workerEvictTimeoutSec   (defaultOptions.workerEvictTimeoutSec),
+            _qservSyncTimeoutSec     (defaultOptions.qservSyncTimeoutSec),
+            _numReplicas             (defaultOptions.numReplicas),
+            _numIter                 (defaultOptions.numIter),
+            _purge                   (defaultOptions.purge),
+            _forceQservSync          (defaultOptions.forceQservSync),
+            _permanentDelete         (defaultOptions.permanentDelete),
             _log(LOG_GET(logger)) {
 
         // Configure the command line parser
@@ -162,7 +187,7 @@ protected:
             _workerResponseTimeoutSec
         ).option(
             "worker-evict-timeout",
-            "the maximum number of seconds to allow troubles workers to recover"
+            "the maximum number of seconds to allow troubled workers to recover"
             " from the last catastrophic event before evicting them from a cluster",
             _workerEvictTimeoutSec
         ).option(
@@ -170,7 +195,8 @@ protected:
             "the maximum number of seconds to wait before Qserv workers respond"
             " to the synchronization requests before bailing out and proceeding"
             " to the next step in the normal replication sequence. A value which"
-            " differs from 0 would override the corresponding parameter specified"
+            " differs from " + std::to_string(defaultOptions.qservSyncTimeoutSec) +
+            " would override the corresponding parameter specified"
             " in the Configuration.",
             _qservSyncTimeoutSec
         ).flag(
@@ -183,25 +209,27 @@ protected:
         ).option(
             "replicas",
             "the minimal number of replicas when running the replication phase"
-            " This number if provided and if it's not 0 will override the corresponding value found"
+            " This number if provided and if it's not " + std::to_string(defaultOptions.numReplicas) +
+            " will override the corresponding value found"
             " in the Configuration.",
             _numReplicas
         ).option(
             "iter",
-            "the number of iterations (a value of 0 means running indefinitely)",
+            "the number of iterations (a value of " + std::to_string(defaultOptions.numIter) +
+            " means running indefinitely)",
             _numIter
         ).flag(
             "purge",
-            "The binary flag which if provided would enable the optional purge algorithm in"
-            " the end of each replication cycle in order to eliminate excess replicas which"
-            " might get created by algorithm ran earlier in the cycle.",
+            "The binary flag which, if provided, enables the 'purge' algorithm in"
+            " the end of each replication cycle that eliminates excess replicas which"
+            " may have been created by algorithms ran earlier in the cycle.",
             _purge
         ).flag(
             "permanent-worker-delete",
             "The flag would trigger the permanent removal of the evicted workers"
             " from the configuration of the Replication system. Please, use"
-            " this option with caution as it may result in loosing some Configuration"
-            " data for the deleted workers",
+            " this option with caution as it will result in losing all records"
+            " associated with the deleted workers",
             _permanentDelete
         );
     }
@@ -222,7 +250,7 @@ protected:
         _replicationThread = ReplicationThread::create(
             _controller,
             [self] (ControlThread::Ptr const& ptr) {
-                self->_failed = true;
+                self->_isFailed.fail();
             },
             _qservSyncTimeoutSec,
             _replicationIntervalSec,
@@ -235,7 +263,7 @@ protected:
         _healthMonitorThread = HealthMonitorThread::create(
             _controller,
             [self] (ControlThread::Ptr const& ptr) {
-                self->_failed = true;
+                self->_isFailed.fail();
             },
             [self] (std::string const& worker2evict) {
                 self->_evict(worker2evict);
@@ -250,7 +278,7 @@ protected:
         // above initiated activity
 
         util::BlockPost blockPost(1000, 2000);
-        while (not _failed) {
+        while (not _isFailed()) {
             blockPost.wait();
         }
 
@@ -291,14 +319,14 @@ private:
         _deleteWorkerThread = DeleteWorkerThread::create(
             _controller,
             [self] (ControlThread::Ptr const& ptr) {
-                self->_failed = true;
+                self->_isFailed.fail();
             },
             worker,
             _permanentDelete
         );
         _deleteWorkerThread->startAndWait(
             [self] (ControlThread::Ptr const& ptr) -> bool {
-                return self->_failed;
+                return self->_isFailed();
             }
         );
         _deleteWorkerThread->stop();    // it's safe to call this method even if the thread is
@@ -307,7 +335,7 @@ private:
         // Resume the normal replication sequence unless a catastrophic failure
         // in the system has been detected
         
-        if (not _failed) _replicationThread->start();
+        if (not _isFailed()) _replicationThread->start();
     }
 
 private:
@@ -328,7 +356,7 @@ private:
 
     /// This flag will be raised by any thread if a non-recoverable
     /// catastrophic failure will be detected.
-    std::atomic<bool> _failed;
+    OneWayFailer _isFailed;
 
     /// The controller for launching operations with the Replication system services
     Controller::Ptr _controller;
@@ -347,11 +375,13 @@ private:
 
 int main(int argc, const char* const argv[]) {
     try {
+        ::DefaultOptions const defaultOptions;
         auto app = ::MasterControllerApp::create(
             argc,
             argv,
             description,
-            logger
+            logger,
+            defaultOptions
         );
         return app->run();
     } catch (std::exception const& ex) {

@@ -69,6 +69,9 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
+std::string DeleteReplicaJob::typeName() { return "DeleteReplicaJob"; }
+
+
 Job::Options const& DeleteReplicaJob::defaultOptions() {
     static Job::Options const options{
         -2,     /* priority */

@@ -129,8 +129,11 @@ public:
     /// The function type for notifications on the completion of the request
     typedef std::function<void(Ptr)> CallbackType;
 
-   /// @return default options object for this type of a request
-   static Job::Options const& defaultOptions();
+    /// @return default options object for this type of a request
+    static Job::Options const& defaultOptions();
+
+    /// @return the unique name distinguishing this class from other types of jobs
+    static std::string typeName();
 
     /**
      * Static factory method is needed to prevent issue with the lifespan

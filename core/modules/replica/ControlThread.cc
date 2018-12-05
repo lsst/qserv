@@ -92,14 +92,16 @@ bool ControlThread::startAndWait(WaitEvaluatorType const& abortWait) {
 }
 
 
-ControlThread::ControlThread(Controller::Ptr const& controller,
-                             std::string const& name,
-                             CallbackType const& onTerminated)
+ControlThread::ControlThread(
+        Controller::Ptr const& controller,
+        std::string const& name,
+        ControlThread::AbnormalTerminationCallbackType const& onTerminated)
     :   _controller(controller),
         _name(name),
         _onTerminated(onTerminated),
         _isRunning(false),
         _stopRequested(false),
+        _numFinishedJobs(0),
         _log(LOG_GET("lsst.qserv.replica.ControlThread")) {
 
     debug("created");
@@ -113,8 +115,7 @@ std::string ControlThread::context() const {
 
 void ControlThread::sync(unsigned int qservSyncTimeoutSec,
                          bool forceQservSync) {
-    launch<QservSyncJob>("QservSyncJob",
-                         qservSyncTimeoutSec,
+    launch<QservSyncJob>(qservSyncTimeoutSec,
                          forceQservSync);
 }
 

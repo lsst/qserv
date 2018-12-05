@@ -53,6 +53,10 @@ Job::Options const& FixUpJob::defaultOptions() {
     return options;
 }
 
+
+std::string FixUpJob::typeName() { return "FixUpJob"; }
+
+
 FixUpJob::Ptr FixUpJob::create(std::string const& databaseFamily,
                                Controller::Ptr const& controller,
                                std::string const& parentJobId,
