@@ -47,7 +47,11 @@ std::atomic<uint64_t> ServerUdpBase::_msgIdSeq{1};
 
 ServerUdpBase::ServerUdpBase(boost::asio::io_service& io_service, std::string const& host, int port)
     : _ioService(io_service),
-      _socket(io_service, boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), port)),
+      // TODO DM-16652 as configuration files will have a direct effect on what best to do here.
+      //      _socket can throw, so either constructors need to be wrapped or this needs to be broken
+      //      out into another function. The program is basically sunk if this fails, so logging
+      //      and exiting is a reasonably valid course of action.
+      _socket(io_service, boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), port)), // &&& need to handle this throwing or move
       _hostName(host), _port(port) {
     _receivePrepare(); // Prime the server for an incoming message.
 }
@@ -75,14 +79,16 @@ void ServerUdpBase::_receiveCallback(boost::system::error_code const& error, siz
 
 void ServerUdpBase::_sendResponse() {
     _socket.async_send_to(boost::asio::buffer(_sendData->getReadCursor(), _sendData->getBytesLeftToRead()),
-                                              _senderEndpoint,
-                          boost::bind(&ServerUdpBase::_sendCallback, this,
-                                      boost::asio::placeholders::error,
-                                      boost::asio::placeholders::bytes_transferred));
+                          _senderEndpoint,
+                          [this](boost::system::error_code const& ec, std::size_t bytes_transferred) {
+                              _sendCallback(ec, bytes_transferred);
+                          }
+    );
 }
 
 
 void ServerUdpBase::sendBufferTo(std::string const& hostName, int port, BufferUdp& sendBuf) {
+#if 0 // TODO Delete this if send_to proves to be safe.
     // The socket is not thread safe. To send on "_socket", it needs to be an async send
     // and then it needs to know when the message was sent so it can return and free the buffer.
     using namespace boost::asio;
@@ -107,6 +113,11 @@ void ServerUdpBase::sendBufferTo(std::string const& hostName, int port, BufferUd
 
     std::unique_lock<std::mutex> uLock(mtx);
     cv.wait(uLock, [&done](){return done;});
+#else
+    using namespace boost::asio;
+    ip::udp::endpoint dest(boost::asio::ip::address::from_string(hostName), port);
+    _socket.send_to(buffer(sendBuf.getReadCursor(), sendBuf.getBytesLeftToRead()), dest);
+#endif
 }
 
 
@@ -129,10 +140,12 @@ void ServerUdpBase::_sendCallback(const boost::system::error_code& error, size_t
 void ServerUdpBase::_receivePrepare() {
     _data = std::make_shared<BufferUdp>(); // New buffer for next response, the old buffer
                                            // may still be in use elsewhere.
-    _socket.async_receive_from(boost::asio::buffer(_data->getWriteCursor(), _data->getAvailableWriteLength()), _senderEndpoint,
-                                   boost::bind(&ServerUdpBase::_receiveCallback, this,
-                                               boost::asio::placeholders::error,
-                                               boost::asio::placeholders::bytes_transferred));
+    _socket.async_receive_from(boost::asio::buffer(_data->getWriteCursor(),
+        _data->getAvailableWriteLength()), _senderEndpoint,
+        [this](boost::system::error_code const& ec, std::size_t bytes_transferred) {
+            _receiveCallback(ec, bytes_transferred);
+        }
+    );
 }
 
 
