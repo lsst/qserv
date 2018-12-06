@@ -140,18 +140,32 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param timeoutSec  - maximum number of seconds that (all) requests are allowed to wait
-     *                      before finish or expire. If the parameter is set to 0 then
-     *                      the corresponding timeout (for requests) from the Configuration service
-     *                      will be assumed. ARTTENTION: this timeout could be quite lengthy.
-     * @param controller  - for launching requests
-     * @param parentJobId - (optional) identifier of a parent job
-     * @param onFinish    - (optional) callback function to be called upon a completion of the job
-     * @param options     - (optional) job options
+     * @param timeoutSec
+     *   maximum number of seconds that (all) requests are allowed to wait
+     *   before finish or expire. If the parameter is set to 0 then
+     *   the corresponding timeout (for requests) from the Configuration service
+     *   will be assumed. ARTTENTION: this timeout could be quite lengthy.
+     *
+     * @param allWorkers
+     *   if 'true' then send probes to all workers, otherwise the enabled workers
+     *   will be considered only
+     *
+     * @param controller
+     *   for launching requests
+     *
+     * @param parentJobId
+     *   (optional) identifier of a parent job
+     *
+     * @param onFinish
+     *   (optional) callback function to be called upon a completion of the job
+     *
+     * @param options
+     *   (optional) job options
      *
      * @return pointer to the created object
      */
     static Ptr create(unsigned int timeoutSec,
+                      bool allWorkers,
                       Controller::Ptr const& controller,
                       std::string const& parentJobId=std::string(),
                       CallbackType const& onFinish=nullptr,
@@ -168,6 +182,9 @@ public:
     /// @return maximum number of seconds that (all) requests are allowed to wait
     /// before finish or expire
     unsigned int timeoutSec() const { return _timeoutSec; }
+
+    /// @return 'true' if the job probes all known workers
+    bool allWorkers() const { return _allWorkers; }
 
     /**
      * @return summary report
@@ -189,6 +206,7 @@ protected:
      * @see ClusterHealthJob::create()
      */
     ClusterHealthJob(unsigned int timeoutSec,
+                     bool allWorkers,
                      Controller::Ptr const& controller,
                      std::string const& parentJobId,
                      CallbackType const& onFinish,
@@ -229,6 +247,9 @@ protected:
 
     /// The maximum number life span (seconds) of requests
     unsigned int const _timeoutSec;
+
+    /// The worker selector
+    bool _allWorkers;
 
     /// Client-defined function to be called upon the completion of the job
     CallbackType _onFinish;
