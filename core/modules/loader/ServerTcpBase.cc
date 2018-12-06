@@ -53,6 +53,21 @@ namespace qserv {
 namespace loader {
 
 
+void ServerTcpBase::_startAccept() {
+    TcpBaseConnection::Ptr newConnection =
+        TcpBaseConnection::create(_acceptor.get_executor().context(), this);
+
+    auto handleAcceptFunc = [this, newConnection](const boost::system::error_code& error) {
+        if (!error) {
+            _connections.insert(newConnection);
+            newConnection->start();
+        }
+        _startAccept();
+    };
+    _acceptor.async_accept(newConnection->socket(), handleAcceptFunc);
+}
+
+
 bool ServerTcpBase::writeData(AsioTcp::socket& socket, BufferUdp& data) {
     while (data.getBytesLeftToRead() > 0) {
         // Read cursor advances (manually in this case) as data is read from the buffer.
@@ -166,10 +181,12 @@ void TcpBaseConnection::start() {
     uint32_t ourName = _serverTcpBase->getOurName();
     UInt32Element name(ourName);
     name.appendToData(_buf);
+    auto self = shared_from_this();
     boost::asio::async_write(_socket, boost::asio::buffer(_buf.getReadCursor(), _buf.getBytesLeftToRead()),
-                             boost::bind(&TcpBaseConnection::_readKind, shared_from_this(),
-                             boost::asio::placeholders::error,
-                             boost::asio::placeholders::bytes_transferred));
+                             [self](boost::system::error_code const& error, size_t bytesTransferred) {
+                                 self->_readKind(error, bytesTransferred);
+                             }
+    );
 }
 
 
@@ -203,14 +220,12 @@ void TcpBaseConnection::_readKind(boost::system::error_code const&, size_t /*byt
     }
 
     LOGS(_log, LOG_LVL_DEBUG, "TcpBaseConnection::_readKind _recvKind reset _buf=" << _buf.dumpStr());
+    auto self = shared_from_this();
     boost::asio::async_read(_socket, boost::asio::buffer(_buf.getWriteCursor(), bytes),
-            boost::asio::transfer_at_least(bytes),
-            boost::bind(
-                    &TcpBaseConnection::_recvKind,
-                    shared_from_this(),
-                    boost::asio::placeholders::error,
-                    boost::asio::placeholders::bytes_transferred
-            )
+                            boost::asio::transfer_at_least(bytes),
+                            [self](const boost::system::error_code& ec, size_t bytesTrans) {
+                                self->_recvKind(ec, bytesTrans);
+                            }
     );
 }
 
@@ -276,14 +291,12 @@ void TcpBaseConnection::_handleTest() {
         _freeConnect();
         return;
     }
+    auto self = shared_from_this();
     boost::asio::async_read(_socket, boost::asio::buffer(_buf.getWriteCursor(), bytes),
-            boost::asio::transfer_at_least(bytes),
-            boost::bind(
-                    &TcpBaseConnection::_handleTest2,
-                    shared_from_this(),
-                    boost::asio::placeholders::error,
-                    boost::asio::placeholders::bytes_transferred
-            )
+                            boost::asio::transfer_at_least(bytes),
+                            [self](const boost::system::error_code& ec, size_t bytesTrans) {
+                                self->_handleTest2(ec, bytesTrans);
+                            }
     );
 }
 
@@ -328,11 +341,12 @@ void TcpBaseConnection::_handleTest2(const boost::system::error_code& ec, size_t
      ourName.appendToData(_buf);
      UInt64Element keyCount(testOldNodeKeyCount);
      keyCount.appendToData(_buf);
+     auto self = shared_from_this();
      boost::asio::async_write(_socket, boost::asio::buffer(_buf.getReadCursor(), _buf.getBytesLeftToRead()),
-            boost::bind(&TcpBaseConnection::_handleTest2b, shared_from_this(),
-              boost::asio::placeholders::error,
-              boost::asio::placeholders::bytes_transferred));
-
+                              [self](const boost::system::error_code& ec, size_t bytesTrans) {
+                                  self->_handleTest2b(ec, bytesTrans);
+                              }
+     );
 }
 
 
@@ -340,14 +354,12 @@ void TcpBaseConnection::_handleTest2b(const boost::system::error_code& ec, size_
     UInt32Element kind;
     size_t bytes = kind.transmitSize();
     _buf.reset();
+    auto self = shared_from_this();
     boost::asio::async_read(_socket, boost::asio::buffer(_buf.getWriteCursor(), bytes),
-            boost::asio::transfer_at_least(bytes),
-            boost::bind(
-                    &TcpBaseConnection::_handleTest2c,
-                    shared_from_this(),
-                    boost::asio::placeholders::error,
-                    boost::asio::placeholders::bytes_transferred
-            )
+                            boost::asio::transfer_at_least(bytes),
+                            [self](const boost::system::error_code& ec, size_t bytesTrans) {
+                                self->_handleTest2c(ec, bytesTrans);
+                            }
     );
 }
 
@@ -387,14 +399,12 @@ void TcpBaseConnection::_handleImYourLNeighbor(uint32_t bytesInMsg) {
     }
     LOGS(_log, LOG_LVL_INFO, "_handleImYourLNeighbor bytes=" << bytesInMsg <<
                              " buf=" << _buf.dumpStr(false));
+    auto self = shared_from_this();
     boost::asio::async_read(_socket, boost::asio::buffer(_buf.getWriteCursor(), bytesInMsg),
-            boost::asio::transfer_at_least(bytesInMsg),
-            boost::bind(
-                    &TcpBaseConnection::_handleImYourLNeighbor1,
-                    shared_from_this(),
-                    boost::asio::placeholders::error,
-                    boost::asio::placeholders::bytes_transferred
-            )
+                            boost::asio::transfer_at_least(bytesInMsg),
+                            [self](boost::system::error_code const& ec, size_t bytesTrans) {
+                                self->_handleImYourLNeighbor1(ec, bytesTrans);
+                            }
     );
 }
 
@@ -476,14 +486,12 @@ void TcpBaseConnection::_handleShiftToRight(uint32_t bytesInMsg) {
         return;
     }
     LOGS(_log, LOG_LVL_INFO, " _handleShiftToRight bytes=" << bytesInMsg << " buf=" << _buf.dumpStr(false));
+    auto self = shared_from_this();
     boost::asio::async_read(_socket, boost::asio::buffer(_buf.getWriteCursor(), bytesInMsg),
-            boost::asio::transfer_at_least(bytesInMsg),
-            boost::bind(
-                    &TcpBaseConnection::_handleShiftToRight1,
-                    shared_from_this(),
-                    boost::asio::placeholders::error,
-                    boost::asio::placeholders::bytes_transferred
-            )
+                boost::asio::transfer_at_least(bytesInMsg),
+                [self](boost::system::error_code const& ec, size_t bytesTrans) {
+                    self->_handleShiftToRight1(ec, bytesTrans);
+                }
     );
 }
 
@@ -549,14 +557,12 @@ void TcpBaseConnection::_handleShiftFromRight(uint32_t bytesInMsg) {
         return;
     }
     LOGS(_log, LOG_LVL_INFO, funcName << " bytes=" << bytesInMsg << " buf=" << _buf.dumpStr(false));
+    auto self = shared_from_this();
     boost::asio::async_read(_socket, boost::asio::buffer(_buf.getWriteCursor(), bytesInMsg),
-            boost::asio::transfer_at_least(bytesInMsg),
-            boost::bind(
-                    &TcpBaseConnection::_handleShiftFromRight1,
-                    shared_from_this(),
-                    boost::asio::placeholders::error,
-                    boost::asio::placeholders::bytes_transferred
-            )
+                            boost::asio::transfer_at_least(bytesInMsg),
+                            [self](boost::system::error_code const& ec, size_t bytesTrans) {
+                                self->_handleShiftFromRight1(ec, bytesTrans);
+                            }
     );
 }
 
