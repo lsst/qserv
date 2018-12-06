@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_HTTPTHREAD_H
-#define LSST_QSERV_HTTPTHREAD_H
+#ifndef LSST_QSERV_HTTPTASK_H
+#define LSST_QSERV_HTTPTASK_H
 
 // System headers
 #include <functional>
@@ -28,10 +28,10 @@
 
 // Qserv headers
 #include "qhttp/Server.h"
-#include "replica/ControlThread.h"
-#include "replica/DeleteWorkerThread.h"
-#include "replica/HealthMonitorThread.h"
-#include "replica/ReplicationThread.h"
+#include "replica/Task.h"
+#include "replica/DeleteWorkerTask.h"
+#include "replica/HealthMonitorTask.h"
+#include "replica/ReplicationTask.h"
 #include "util/Mutex.h"
 
 // This header declarations
@@ -41,28 +41,28 @@ namespace qserv {
 namespace replica {
 
 /**
- * Class HttpThread represents a thread which runs the built-in HTTP server
+ * Class HttpTask represents a task which runs the built-in HTTP server
  * responding to the REST API for managing the Replication Controller
  * and responding to various information retrieval requests.
  */
-class HttpThread
-    :   public ControlThread {
+class HttpTask
+    :   public Task {
 
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<HttpThread> Ptr;
+    typedef std::shared_ptr<HttpTask> Ptr;
 
     // Default construction and copy semantics are prohibited
 
-    HttpThread() = delete;
-    HttpThread(HttpThread const&) = delete;
-    HttpThread& operator=(HttpThread const&) = delete;
+    HttpTask() = delete;
+    HttpTask(HttpTask const&) = delete;
+    HttpTask& operator=(HttpTask const&) = delete;
 
-    ~HttpThread() final = default;
+    ~HttpTask() final = default;
 
     /**
-     * Create a new thread with specified parameters.
+     * Create a new task with specified parameters.
      *
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
@@ -73,38 +73,38 @@ public:
      *
      * @param onTerminated
      *   callback function to be called upon abnormal termination
-     *   of the thread. Set it to 'nullptr' if no call back should be made.
+     *   of the task. Set it to 'nullptr' if no call back should be made.
      *
      * @param onWorkerEvict
      *   callback function to be called when one or more workers
      *   were requested to be explicitly evicted from the cluster.
      *
-     * @param healthMonitorThread
-     *   a reference to the Cluster Health Monitoring thread is made visible
+     * @param healthMonitorTask
+     *   a reference to the Cluster Health Monitoring task is made visible
      *   in a context of this lass to allow suspending/resuming it as needed.
      *
-     * @param replicationThread
-     *   a reference to the Linear Replication Loop thread is made visible
+     * @param replicationTask
+     *   a reference to the Linear Replication Loop task is made visible
      *   in a context of this lass to allow suspending/resuming it as needed.
      *
-     * @param deleteWorkerThread
-     *   a reference to the Worker Eviction thread is made visible
+     * @param deleteWorkerTask
+     *   a reference to the Worker Eviction task is made visible
      *   in a context of this lass to allow suspending/resuming it as needed.
      *
      * @return
      *   the smart pointer to a new object
      */
     static Ptr create(Controller::Ptr const& controller,
-                      ControlThread::AbnormalTerminationCallbackType const& onTerminated,
-                      HealthMonitorThread::WorkerEvictCallbackType const& onWorkerEvict,
-                      HealthMonitorThread::Ptr const& healthMonitorThread,
-                      ReplicationThread::Ptr const& replicationThread,
-                      DeleteWorkerThread::Ptr const& deleteWorkerThread);
+                      Task::AbnormalTerminationCallbackType const& onTerminated,
+                      HealthMonitorTask::WorkerEvictCallbackType const& onWorkerEvict,
+                      HealthMonitorTask::Ptr const& healthMonitorTask,
+                      ReplicationTask::Ptr const& replicationTask,
+                      DeleteWorkerTask::Ptr const& deleteWorkerTask);
 
 protected:
 
     /**
-     * @see ControlThread::run()
+     * @see Task::run()
      */
     void run() final;
 
@@ -113,15 +113,14 @@ private:
     /**
      * The constructor is available to the class's factory method
      *
-     * @see HttpThread::create()
+     * @see HttpTask::create()
      */
-    HttpThread(Controller::Ptr const& controller,
-               ControlThread::AbnormalTerminationCallbackType const& onTerminated,
-               HealthMonitorThread::WorkerEvictCallbackType const& onWorkerEvict,
-               HealthMonitorThread::Ptr const& healthMonitorThread,
-               ReplicationThread::Ptr const& replicationThread,
-               DeleteWorkerThread::Ptr const& deleteWorkerThread);
-
+    HttpTask(Controller::Ptr const& controller,
+             Task::AbnormalTerminationCallbackType const& onTerminated,
+             HealthMonitorTask::WorkerEvictCallbackType const& onWorkerEvict,
+             HealthMonitorTask::Ptr const& healthMonitorTask,
+             ReplicationTask::Ptr const& replicationTask,
+             DeleteWorkerTask::Ptr const& deleteWorkerTask);
 
     // -------------------------------------
     // Callback for processing test requests
@@ -208,24 +207,24 @@ private:
 
     /// The callback to be called when there is a request to evict one
     // or many workers from the cluster.
-    HealthMonitorThread::WorkerEvictCallbackType const _onWorkerEvict;
+    HealthMonitorTask::WorkerEvictCallbackType const _onWorkerEvict;
 
-    // References(!) to smart pointers to other threads which can be managed
+    // References(!) to smart pointers to other tasks which can be managed
     // by this class.
     //
     // @note
     //   References to the pointers are used to avoid increasing the reference
     //   counters to the objects.
 
-    HealthMonitorThread::Ptr const& _healthMonitorThread;
-    ReplicationThread::Ptr   const& _replicationThread;
-    DeleteWorkerThread::Ptr  const& _deleteWorkerThread;
+    HealthMonitorTask::Ptr const& _healthMonitorTask;
+    ReplicationTask::Ptr   const& _replicationTask;
+    DeleteWorkerTask::Ptr  const& _deleteWorkerTask;
 
     /// The server for processing REST requests
     qhttp::Server::Ptr const _httpServer;
 
     /// The flag used for lazy initialization of the Web server the first time
-    /// this thread runs.
+    /// this task runs.
     bool _isInitialized;
 
     /// The latest state of the replication levels report
@@ -240,4 +239,4 @@ private:
     
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_HTTPTHREAD_H
+#endif // LSST_QSERV_HTTPTASK_H

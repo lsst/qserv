@@ -21,7 +21,7 @@
  */
 
 // Class header
-#include "replica/DeleteWorkerThread.h"
+#include "replica/DeleteWorkerTask.h"
 
 // System headers
 #include <atomic>
@@ -35,13 +35,13 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-DeleteWorkerThread::Ptr DeleteWorkerThread::create(
+DeleteWorkerTask::Ptr DeleteWorkerTask::create(
         Controller::Ptr const& controller,
-        ControlThread::AbnormalTerminationCallbackType const& onTerminated,
+        Task::AbnormalTerminationCallbackType const& onTerminated,
         std::string const& worker,
         bool permanentDelete) {
     return Ptr(
-        new DeleteWorkerThread(
+        new DeleteWorkerTask(
             controller,
             onTerminated,
             worker,
@@ -51,19 +51,19 @@ DeleteWorkerThread::Ptr DeleteWorkerThread::create(
 }
 
 
-DeleteWorkerThread::DeleteWorkerThread(Controller::Ptr const& controller,
-                                       ControlThread::AbnormalTerminationCallbackType const& onTerminated,
-                                       std::string const& worker,
-                                       bool permanentDelete)
-    :   ControlThread(controller,
-                      "EVICT-WORKER  ",
-                      onTerminated),
+DeleteWorkerTask::DeleteWorkerTask(Controller::Ptr const& controller,
+                                   Task::AbnormalTerminationCallbackType const& onTerminated,
+                                   std::string const& worker,
+                                   bool permanentDelete)
+    :   Task(controller,
+             "EVICT-WORKER  ",
+             onTerminated),
         _worker(worker),
         _permanentDelete(permanentDelete) {
 }
 
 
-void DeleteWorkerThread::run() {
+void DeleteWorkerTask::run() {
 
     std::string const parentJobId;  // no parent jobs
 
@@ -84,7 +84,9 @@ void DeleteWorkerThread::run() {
     );
     jobs[0]->start();
 
-    track<DeleteWorkerJob>("DeleteWorkerJob", jobs, numFinishedJobs);
+    track<DeleteWorkerJob>(DeleteWorkerJob::typeName(),
+                          jobs,
+                          numFinishedJobs);
 }
 
 

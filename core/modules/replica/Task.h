@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_CONTROLTHREAD_H
-#define LSST_QSERV_REPLICA_CONTROLTHREAD_H
+#ifndef LSST_QSERV_REPLICA_TASK_H
+#define LSST_QSERV_REPLICA_TASK_H
 
 // System headers
 #include <atomic>
@@ -47,57 +47,57 @@ namespace qserv {
 namespace replica {
 
 /**
- * Class ControlThreadError represents exceptions throw by the method
- * of class ControlThread on various error conditions.
+ * Class TaskError represents exceptions throw by the method
+ * of class Task on various error conditions.
  */
-class ControlThreadError
+class TaskError
     :   public util::Issue {
 public:
-    ControlThreadError(util::Issue::Context const& ctx,
-                       std::string const& message);
+    TaskError(util::Issue::Context const& ctx,
+              std::string const& message);
 };
 
 /**
- * Class ControlThreadStopped represents exceptions throw by subclasses
+ * Class TaskStopped represents exceptions throw by subclasses
  * (or method invoked by subclasses) when running subclass-specific
  * activities as a response to activity cancellation requests. Note, that
  * this kind of exception is not considered an error.
  */
-class ControlThreadStopped
+class TaskStopped
     :   public std::runtime_error {
 public:
-    ControlThreadStopped()
-        :   std::runtime_error("thread stopped") {
+    TaskStopped()
+        :   std::runtime_error("task stopped") {
     }
 };
 
 /**
- * Class ControlThread is the base class for the Controller-side activities run within
+ * Class Task is the base class for the Controller-side activities run within
  * dedicated threads. The class provides a public interface for starting and stopping
  * the activities, notifying clients on abnormal termination of the activities,
  * as well as an infrastructure supporting an implementation of these activities.
  */
-class ControlThread
-    :   public std::enable_shared_from_this<ControlThread> {
+class Task
+    :   public std::enable_shared_from_this<Task> {
 
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<ControlThread> Ptr;
+    typedef std::shared_ptr<Task> Ptr;
 
-    /// The function type for notifications on the abnormal termination of the threads
+    /// The function type for notifications on the abnormal termination of the tasks
     typedef std::function<void(Ptr)> AbnormalTerminationCallbackType;
 
     /// The function type for functions used in evaluating user-defined early-termination
-    /// conditions for aborting thread completion tracking
+    /// conditions for aborting task completion tracking
     typedef std::function<bool(Ptr)> WaitEvaluatorType;
 
     // Copy semantics is prohibited
 
-    ControlThread(ControlThread const&) = delete;
-    ControlThread& operator=(ControlThread const&) = delete;
+    Task(Task const&) = delete;
+    Task& operator=(Task const&) = delete;
 
-    virtual ~ControlThread() = default;
+    virtual ~Task() = default;
 
     /// @return a reference to a provider of services
     ServiceProvider::Ptr const& serviceProvider() const { return _controller->serviceProvider(); }
@@ -105,41 +105,41 @@ public:
     /// @return a reference to the Controller
     Controller::Ptr const& controller() const { return _controller; }
 
-    /// @return the name of the thread
+    /// @return the name of the task
     std::string name() const { return _name; }
 
-    // @return 'true' if the thread is running
+    // @return 'true' if the task is running
     bool isRunning() const { return _isRunning.load(); }
 
     /**
      * Start a subclass-supplied sequence of actions (virtual method 'run')
      * within a new thread if it's not running. Note that the lifetime of
-     * an control thread object is guaranteed to be extended for the duration of
+     * a task object is guaranteed to be extended for the duration of
      * the thread. This allows the thread to communicate with the object if needed.
      *
      * @return
-     *   'true' if the thread was already running at a time when this
+     *   'true' if the task was already running at a time when this
      *   method was called
      */
     bool start();
 
     /**
-     * Stop the thread if it's still running
+     * Stop the task if it's still running
      *
      * @return
-     *   'true' if the thread was already stopped at a time when this
+     *   'true' if the task was already stopped at a time when this
      *   method was called
      */
     bool stop();
 
     /**
-     * Start the thread (if it's not running yet) and then keep tracking
+     * Start the task (if it's not running yet) and then keep tracking
      * its status before it stops or before the optional early-termination
      * evaluator returns 'true'.
      *
      * @param abortWait
      *   (optional) this functional will be repeatedly (once a second) called
-     *   while tracking the thread's status
+     *   while tracking the task's status
      */
     bool startAndWait(WaitEvaluatorType const& abortWait = nullptr);
 
@@ -152,13 +152,13 @@ protected:
      *   a reference to the Controller for launching requests, jobs, etc.
      *
      * @param name
-     *   the name of a thread
+     *   the name of a task
      *
      * @param onTerminated
      *   callback function to be called upon abnormal termination
-     *   of the thread
+     *   of the task
      */
-    ControlThread(Controller::Ptr const& controller,
+    Task(Controller::Ptr const& controller,
                   std::string const& name,
                   AbnormalTerminationCallbackType const& onTerminated);
 
@@ -170,25 +170,25 @@ protected:
 
     /**
      * This method implements subclass-specific sequence of actions to be
-     * run within the thread.
+     * run by the task.
      *
      * @note
-     *   any but ControlThreadStopped exceptions thrown by this method will
-     *   be interpreted as abnormal termination of the thread. Eventually this will
+     *   any but TaskStopped exceptions thrown by this method will
+     *   be interpreted as abnormal termination of the task. Eventually this will
      *   also result in calling the 'onTerminated' callback if the one was provided
      *   to the constructor of the class.
      *
      * @note
      *   the method may also return normally w/o throwing any exception. This scenario
      *   will be treated the same way as above mentioned case of throwing exception
-     *   ControlThreadStopped.
+     *   TaskStopped.
      * 
      * @throws
-     *   ControlThreadStopped when the thread cancellation request was detected
+     *   TaskStopped when the task cancellation request was detected
      */
     virtual void run() = 0;
 
-    /// @return a flag indicating if the thread needs to be stopped
+    /// @return a flag indicating if the task needs to be stopped
     bool stopRequested() const { return _stopRequested.load(); }
 
     /**
@@ -236,7 +236,7 @@ protected:
      *   job-specific variadic parameters
      * 
      * @throws
-     *   ControlThreadStopped when the thread cancellation request was detected
+     *   TaskStopped when the task cancellation request was detected
      */
     template <class T, typename...Targs>
     void launch(Targs... Fargs) {
@@ -285,7 +285,7 @@ protected:
      *   (optional) force Qserv synchronization if 'true'
      * 
      * @throws
-     *   ControlThreadStopped when the thread cancellation request was detected
+     *   TaskStopped when the task cancellation request was detected
      *
      * @see QservSyncJob
      */
@@ -293,7 +293,7 @@ protected:
               bool forceQservSync=false);
 
     /**
-     * Track the completion of all jobs. Also monitor the thread cancellation
+     * Track the completion of all jobs. Also monitor the task cancellation
      * condition while tracking the jobs. When such condition will be seen
      * all jobs will be canceled. The tracking will be done with an interval
      * of 1 second.
@@ -322,7 +322,7 @@ protected:
                     job->cancel();
                 }
                 info(typeName + ": tracking aborted");
-                throw ControlThreadStopped();
+                throw TaskStopped();
             }
             blockPost.wait();
         }
@@ -332,7 +332,7 @@ protected:
 private:
 
     /**
-     * This method is launched by the thread when it starts
+     * This method is launched by the task when it starts
      */
     void _startImpl();
 
@@ -341,17 +341,17 @@ private:
     /// The Controller for launching requests, jobs, etc.
     Controller::Ptr const _controller;
 
-    /// The name of the thread (used for logging messages)
+    /// The name of the task (used for logging messages)
     std::string const _name;
 
     /// The callback (if provided) to be called upon an abnormal termination
-    /// of the user-supplied algorithm run in a context of the thread.
+    /// of the user-supplied algorithm run in a context of the task.
     AbnormalTerminationCallbackType _onTerminated;
 
     /// The flag indicating if it's already running
     std::atomic<bool> _isRunning;
 
-    /// The flag to be raised when the thread needs to be stopped
+    /// The flag to be raised when the task needs to be stopped
     std::atomic<bool> _stopRequested;
 
     /// The thread-safe counter of the finished jobs
@@ -366,4 +366,4 @@ private:
     
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_CONTROLTHREAD_H
+#endif // LSST_QSERV_REPLICA_TASK_H

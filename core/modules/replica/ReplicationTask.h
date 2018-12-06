@@ -19,11 +19,11 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICATIONTHREAD_H
-#define LSST_QSERV_REPLICATIONTHREAD_H
+#ifndef LSST_QSERV_REPLICATIONTASK_H
+#define LSST_QSERV_REPLICATIONTASK_H
 
 // Qserv headers
-#include "replica/ControlThread.h"
+#include "replica/Task.h"
 
 // This header declarations
 
@@ -34,24 +34,24 @@ namespace replica {
 /**
  * Class 
  */
-class ReplicationThread
-    :   public ControlThread {
+class ReplicationTask
+    :   public Task {
 
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<ReplicationThread> Ptr;
+    typedef std::shared_ptr<ReplicationTask> Ptr;
 
     // Default construction and copy semantics are prohibited
 
-    ReplicationThread() = delete;
-    ReplicationThread(ReplicationThread const&) = delete;
-    ReplicationThread& operator=(ReplicationThread const&) = delete;
+    ReplicationTask() = delete;
+    ReplicationTask(ReplicationTask const&) = delete;
+    ReplicationTask& operator=(ReplicationTask const&) = delete;
 
-    ~ReplicationThread() final = default;
+    ~ReplicationTask() final = default;
 
     /**
-     * Create a new thread with specified parameters.
+     * Create a new task with specified parameters.
      *
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
@@ -62,7 +62,7 @@ public:
      *
      * @param onTerminated
      *   callback function to be called upon abnormal termination
-     *   of the thread. Set it to 'nullptr' if no call back should be made.
+     *   of the task. Set it to 'nullptr' if no call back should be made.
      *
      * @param replicationIntervalSec
      *   the number of seconds to wait in the end of each iteration loop before
@@ -81,7 +81,7 @@ public:
      *   the smart pointer to a new object
      */
     static Ptr create(Controller::Ptr const& controller,
-                      ControlThread::AbnormalTerminationCallbackType const& onTerminated,
+                      Task::AbnormalTerminationCallbackType const& onTerminated,
                       unsigned int qservSyncTimeoutSec,
                       unsigned int replicationIntervalSec,
                       unsigned int numReplicas,
@@ -91,7 +91,7 @@ public:
 protected:
 
     /**
-     * @see ControlThread::run()
+     * @see Task::run()
      */
     void run() final;
 
@@ -100,15 +100,15 @@ private:
     /**
      * The constructor is available to the class's factory method
      *
-     * @see ReplicationThread::create()
+     * @see ReplicationTask::create()
      */
-    ReplicationThread(Controller::Ptr const& controller,
-                      AbnormalTerminationCallbackType const& onTerminated,
-                      unsigned int qservSyncTimeoutSec,
-                      unsigned int replicationIntervalSec,
-                      unsigned int numReplicas,
-                      unsigned int numIter,
-                      bool purge);
+    ReplicationTask(Controller::Ptr const& controller,
+                    AbnormalTerminationCallbackType const& onTerminated,
+                    unsigned int qservSyncTimeoutSec,
+                    unsigned int replicationIntervalSec,
+                    unsigned int numReplicas,
+                    unsigned int numIter,
+                    bool purge);
 
 private:
 
@@ -132,4 +132,4 @@ private:
     
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICATIONTHREAD_H
+#endif // LSST_QSERV_REPLICATIONTASK_H

@@ -21,7 +21,7 @@
  */
 
 // Class header
-#include "replica/ControlThread.h"
+#include "replica/Task.h"
 
 // System headers
 #include <stdexcept>
@@ -35,13 +35,13 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-ControlThreadError::ControlThreadError(util::Issue::Context const& ctx,
-                                       std::string const& message)
-    :   util::Issue(ctx, "ControlThread: " + message) {
+TaskError::TaskError(util::Issue::Context const& ctx,
+                     std::string const& message)
+    :   util::Issue(ctx, "Task: " + message) {
 }
 
 
-bool ControlThread::start() {
+bool Task::start() {
 
     debug("starting...");
 
@@ -52,7 +52,7 @@ bool ControlThread::start() {
     }
     std::thread t(
         std::bind(
-            &ControlThread::_startImpl,
+            &Task::_startImpl,
             shared_from_this()
         )
     );
@@ -62,7 +62,7 @@ bool ControlThread::start() {
 }
 
 
-bool ControlThread::stop() {
+bool Task::stop() {
  
     debug("stopping...");
 
@@ -76,7 +76,7 @@ bool ControlThread::stop() {
 }
 
 
-bool ControlThread::startAndWait(WaitEvaluatorType const& abortWait) {
+bool Task::startAndWait(WaitEvaluatorType const& abortWait) {
 
     bool const wasRunning = start();
 
@@ -92,37 +92,37 @@ bool ControlThread::startAndWait(WaitEvaluatorType const& abortWait) {
 }
 
 
-ControlThread::ControlThread(
+Task::Task(
         Controller::Ptr const& controller,
         std::string const& name,
-        ControlThread::AbnormalTerminationCallbackType const& onTerminated)
+        Task::AbnormalTerminationCallbackType const& onTerminated)
     :   _controller(controller),
         _name(name),
         _onTerminated(onTerminated),
         _isRunning(false),
         _stopRequested(false),
         _numFinishedJobs(0),
-        _log(LOG_GET("lsst.qserv.replica.ControlThread")) {
+        _log(LOG_GET("lsst.qserv.replica.Task")) {
 
     debug("created");
 }
 
 
-std::string ControlThread::context() const {
+std::string Task::context() const {
     return _name + " ";
 }
 
 
-void ControlThread::sync(unsigned int qservSyncTimeoutSec,
-                         bool forceQservSync) {
+void Task::sync(unsigned int qservSyncTimeoutSec,
+                bool forceQservSync) {
     launch<QservSyncJob>(qservSyncTimeoutSec,
                          forceQservSync);
 }
 
 
-void ControlThread::_startImpl() {
+void Task::_startImpl() {
 
-    // By design of this class, any but ControlThreadStopped exceptions thrown
+    // By design of this class, any but TaskStopped exceptions thrown
     // by a subclass-specific method called below will be interpreted as
     // the "abnormal" termination condition to be reported via an optional
     // callback.
@@ -133,7 +133,7 @@ void ControlThread::_startImpl() {
         run();
         debug("stopped");
 
-    } catch (ControlThreadStopped const&) {
+    } catch (TaskStopped const&) {
         debug("stopped");
 
     } catch (std::exception const& ex) {
