@@ -104,14 +104,14 @@ public:
     ServerTcpBase(boost::asio::io_context& io_context, int port) :
         _io_context(io_context),
         _acceptor(io_context, AsioTcp::endpoint(AsioTcp::v4(), port)), _port(port) {
-        startAccept();
+        _startAccept();
     }
 
     ServerTcpBase(boost::asio::io_context& io_context, int port, CentralWorker* cw) :
         _io_context(io_context),
         _acceptor(io_context, AsioTcp::endpoint(AsioTcp::v4(), port)), _port(port),
         _centralWorker(cw){
-        startAccept();
+        _startAccept();
     }
 
 
@@ -149,21 +149,7 @@ public:
     static bool writeData(AsioTcp::socket& socket, BufferUdp& data);
 
 private:
-    void startAccept() {
-        TcpBaseConnection::Ptr newConnection = TcpBaseConnection::create(_acceptor.get_executor().context(), this);
-        _acceptor.async_accept(newConnection->socket(),
-                boost::bind(&ServerTcpBase::handleAccept, this, newConnection,
-                        boost::asio::placeholders::error));
-    }
-
-    void handleAccept(TcpBaseConnection::Ptr newConnection,
-            const boost::system::error_code& error) {
-        if (!error) {
-            _connections.insert(newConnection);
-            newConnection->start();
-        }
-        startAccept();
-    }
+    void _startAccept();
 
     boost::asio::io_context& _io_context;
     AsioTcp::acceptor _acceptor;
