@@ -141,6 +141,33 @@ void QSMySqlListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) {\
 LOGS(_log, LOG_LVL_TRACE, name() << __FUNCTION__ << " " << CALLBACK_INFO);
 
 
+// assert that condition is true, otherwise log a message & throw an adapter_execution_error with the
+// text of the query string that the context represents.
+//
+// CONDITION: boolean statement
+//      The condition that is being asserted. True passes, false logs and throws.
+// MESSAGE_STRING: std::string
+//      A message for the log, it is not included in the exception.
+// CTX: an antlr4::ParserRuleContext* (or derived class)
+//      The antlr4 context that is used to get the segment of the query that is currently being
+//      processed.
+#define ASSERT_EXECUTION_CONDITION(CONDITION, MESSAGE_STRING, CTX) \
+if (not (CONDITION)) { \
+    ostringstream msg; \
+    auto queryString = getQueryString(CTX); \
+    msg << "Execution condition assertion failure:"; \
+    msg << getTypeName(this) << "::" << __FUNCTION__; \
+    msg << " messsage:\"" << MESSAGE_STRING << "\""; \
+    msg << ", in query:" << getStatementString(); \
+    msg << ", in or around query segment: '" << queryString << "'"; \
+    msg << ", with adapter stack:" << adapterStackToString(); \
+    msg << ", string tree:" << getStringTree(); \
+    msg << ", tokens:" << getTokens(); \
+    LOGS(_log, LOG_LVL_ERROR, msg.str()); \
+    throw adapter_execution_error("Error parsing query, near \"" + queryString + "\""); \
+} \
+
+
 namespace lsst {
 namespace qserv {
 namespace parser {
@@ -546,8 +573,8 @@ public:
     // child contexts are handled by verifying that their parent context is a handler for the child.
     // In the implementations of child context, tokens and terminal nodes in the associated context should
     // all be mentioned explicitly, those that are handled and required should be named in
-    // assertExecutionCondition calls (because they are required), those that are not handled should be named
-    // in assertNotSupported calls (because they are not supported), and those that are handled but are
+    // ASSERT_EXECUTION_CONDITION calls (because they are required), those that are not handled should be
+    // named in assertNotSupported calls (because they are not supported), and those that are handled but are
     // optional should be named in a comment that notes that the token or terminal node is optional.
     virtual void checkContext() const = 0;
 
@@ -570,35 +597,6 @@ public:
 
     // get the sql statement
     virtual std::string getStatementString() const = 0;
-
-    // assert that condition is true, otherwise log a message & throw an adapter_execution_error with the
-    // text of the query string that the context represents.
-    //
-    // function: usually the name of the function where the assert is being executed, most callers pass
-    //           __FUNCTION__.
-    // condition: the condition that is being asserted. True passes, false logs and throws.
-    // message: a message for the log, it is not included in the exception.
-    // ctx: the antlr4 context that is used to get the segment of the query that is currently being
-    //      processed.
-    void assertExecutionCondition(string const& function, bool condition, string const& message,
-            antlr4::ParserRuleContext* ctx) const {
-        if (true == condition) {
-            return;
-        }
-        ostringstream msg;
-        auto queryString = getQueryString(ctx);
-        msg << "Execution condition assertion failure:";
-        msg << getTypeName(this) << "::" << function;
-        msg << " messsage:\"" << message << "\"";
-        msg << ", in query:" << getStatementString();
-        msg << ", in or around query segment: '" << queryString << "'";
-        msg << ", with adapter stack:" << adapterStackToString();
-        msg << ", string tree:" << getStringTree();
-        msg << ", tokens:" << getTokens();
-        LOGS(_log, LOG_LVL_ERROR, msg.str());
-        throw adapter_execution_error("Error parsing query, near \"" + queryString + "\"");
-    }
-
 
     // A function to fail in the case of a not-supported query segment. This should be called with a helpful
     // user-visible error message, e.g. "qserv does not support column names in select statements" (although
@@ -641,7 +639,7 @@ public:
 protected:
     shared_ptr<CBH> lockedParent() {
         shared_ptr<CBH> parent = _parent.lock();
-        assertExecutionCondition(__FUNCTION__, nullptr != parent,
+        ASSERT_EXECUTION_CONDITION(nullptr != parent,
                 "Locking weak ptr to parent callback handler returned null", _ctx);
         return parent;
     }
@@ -681,7 +679,7 @@ public:
 
     void checkContext() const override {
         // check for required tokens:
-        assertExecutionCondition(__FUNCTION__, _ctx->EOF() != nullptr,
+        ASSERT_EXECUTION_CONDITION(_ctx->EOF() != nullptr,
                 "Missing context condition: EOF is null.", _ctx);
         // optional:
         // MINUSMINUS (ignored, it indicates a comment)
@@ -694,7 +692,7 @@ public:
     }
 
     void onExit() override {
-        assertExecutionCondition(__FUNCTION__, _selectStatement != nullptr, "Could not parse query.", _ctx);
+        ASSERT_EXECUTION_CONDITION(_selectStatement != nullptr, "Could not parse query.", _ctx);
     }
 
     string name() const override { return getTypeName(this); }
@@ -765,7 +763,7 @@ public:
     }
 
     void onExit() override {
-        assertExecutionCondition(__FUNCTION__, _selectList != nullptr, "Failed to create a select list.", _ctx);
+        ASSERT_EXECUTION_CONDITION(_selectList != nullptr, "Failed to create a select list.", _ctx);
         auto selectStatement = make_shared<query::SelectStmt>(_fromList, _selectList, _whereClause,
                 _orderByClause, _groupByClause, _havingClause, _distinct, _limit);
         lockedParent()->handleSelectStatement(selectStatement);
@@ -823,7 +821,7 @@ public:
 
     void checkContext() const override {
         // required:
-        assertExecutionCondition(__FUNCTION__, _ctx->SELECT() != nullptr, "Context check failure.", _ctx);
+        ASSERT_EXECUTION_CONDITION(_ctx->SELECT() != nullptr, "Context check failure.", _ctx);
     }
 
     void onExit() override {
@@ -917,17 +915,17 @@ public:
             }
             rootTerm->addBoolTerm(andTerm);
         } else if (_ctx->havingExpr == childCtx) {
-            assertExecutionCondition(__FUNCTION__, nullptr == _havingClause, "The having clause should only be set once.", _ctx);
+            ASSERT_EXECUTION_CONDITION(nullptr == _havingClause, "The having clause should only be set once.", _ctx);
             auto andTerm = make_shared<query::AndTerm>(boolTerm);
             auto orTerm = make_shared<query::OrTerm>(andTerm);
             _havingClause = std::make_shared<query::HavingClause>(orTerm);
         } else {
-            assertExecutionCondition(__FUNCTION__, false, "This predicate expression is not yet supported.", _ctx);
+            ASSERT_EXECUTION_CONDITION(false, "This predicate expression is not yet supported.", _ctx);
         }
     }
 
     void handlePredicateExpression(shared_ptr<query::ValueExpr> const & valueExpr) override {
-        assertExecutionCondition(__FUNCTION__, false, "Unhandled valueExpr predicateExpression.", _ctx);
+        ASSERT_EXECUTION_CONDITION(false, "Unhandled valueExpr predicateExpression.", _ctx);
     }
 
     void handleLogicalExpression(shared_ptr<query::LogicalTerm> const & logicalTerm,
@@ -935,7 +933,7 @@ public:
         TRACE_CALLBACK_INFO(logicalTerm);
         if (_ctx->whereExpr == childCtx) {
             auto whereClause = _getWhereClause();
-            assertExecutionCondition(__FUNCTION__, nullptr == whereClause->getRootTerm(),
+            ASSERT_EXECUTION_CONDITION(nullptr == whereClause->getRootTerm(),
                     "expected handleLogicalExpression to be called only once.", _ctx);
             // The antlr 2 parser code always put the AndTerm into an OrTerm at the top of the where clause
             // tree. Since I currently don't know what parts of qana and qproc rely on this nesting it is
@@ -949,10 +947,10 @@ public:
                 whereClause->setRootTerm(logicalTerm);
             }
         } else if (_ctx->havingExpr == childCtx) {
-            assertExecutionCondition(__FUNCTION__, false,
+            ASSERT_EXECUTION_CONDITION(false,
                     "The having expression is expected to be handled as a Predicate Expression.", _ctx);
         } else {
-            assertExecutionCondition(__FUNCTION__, false, "This logical expression is not yet supported.", _ctx);
+            ASSERT_EXECUTION_CONDITION(false, "This logical expression is not yet supported.", _ctx);
         }
     }
 
@@ -970,7 +968,7 @@ public:
 
     void checkContext() const override {
         // required:
-        assertExecutionCondition(__FUNCTION__, _ctx->FROM() != nullptr, "Context check failure.", _ctx);
+        ASSERT_EXECUTION_CONDITION(_ctx->FROM() != nullptr, "Context check failure.", _ctx);
         // optional:
         // *WHERE();
         // *GROUP();
@@ -1038,7 +1036,7 @@ public:
     using AdapterT::AdapterT;
 
     void handleAtomTableItem(shared_ptr<query::TableRef> const & tableRef) override {
-        assertExecutionCondition(__FUNCTION__, nullptr == _tableRef, "expeceted one AtomTableItem callback.", _ctx);
+        ASSERT_EXECUTION_CONDITION(nullptr == _tableRef, "expeceted one AtomTableItem callback.", _ctx);
         _tableRef = tableRef;
     }
 
@@ -1055,7 +1053,7 @@ public:
     }
 
     void onExit() override {
-        assertExecutionCondition(__FUNCTION__, _tableRef != nullptr, "tableRef was not populated.", _ctx);
+        ASSERT_EXECUTION_CONDITION(_tableRef != nullptr, "tableRef was not populated.", _ctx);
         _tableRef->addJoins(_joinRefs);
         lockedParent()->handleTableSource(_tableRef);
     }
@@ -1082,7 +1080,7 @@ public:
             _db = uidlist.at(0);
             _table = uidlist.at(1);
         } else {
-            assertExecutionCondition(__FUNCTION__, false, "Illegal number of UIDs in table reference.", _ctx);
+            ASSERT_EXECUTION_CONDITION(false, "Illegal number of UIDs in table reference.", _ctx);
         }
     }
 
@@ -1199,7 +1197,7 @@ public:
             valueFactor = ValueFactorFactory::newColumnColumnFactor(_strings[0], _strings[1], _strings[2]);
             break;
         default:
-            assertExecutionCondition(__FUNCTION__, false, "Unhandled number of strings.", _ctx);
+            ASSERT_EXECUTION_CONDITION(false, "Unhandled number of strings.", _ctx);
         }
         lockedParent()->handleFullColumnName(valueFactor);
     }
@@ -1312,7 +1310,7 @@ public:
     using AdapterT::AdapterT;
 
     void handleConstants(vector<string> const & values) override {
-        assertExecutionCondition(__FUNCTION__, _args.empty(), "args should be set exactly once.", _ctx);
+        ASSERT_EXECUTION_CONDITION(_args.empty(), "args should be set exactly once.", _ctx);
         for (auto&& value : values) {
             _args.push_back(query::ValueFactor::newConstFactor(value));
         }
@@ -1320,7 +1318,7 @@ public:
 
     void checkContext() const override {
         // required:
-        assertExecutionCondition(__FUNCTION__, _ctx->QSERV_AREASPEC_BOX() != nullptr ||
+        ASSERT_EXECUTION_CONDITION(_ctx->QSERV_AREASPEC_BOX() != nullptr ||
             _ctx->QSERV_AREASPEC_CIRCLE() != nullptr ||
             _ctx->QSERV_AREASPEC_ELLIPSE() != nullptr ||
             _ctx->QSERV_AREASPEC_POLY() != nullptr ||
@@ -1350,7 +1348,7 @@ private:
         if (_ctx->QSERV_AREASPEC_HULL() != nullptr){
             return _ctx->QSERV_AREASPEC_HULL()->getSymbol()->getText();
         }
-        assertExecutionCondition(__FUNCTION__, false, "could not get qserv function name.", _ctx);
+        ASSERT_EXECUTION_CONDITION(false, "could not get qserv function name.", _ctx);
         return ""; // prevent warning: "control reaches end of non-void function"
     }
 
@@ -1394,7 +1392,7 @@ public:
     void handleExpressionAtomPredicate(shared_ptr<query::BoolTerm> const & boolTerm,
             antlr4::ParserRuleContext* childCtx) override {
         TRACE_CALLBACK_INFO(boolTerm);
-        assertExecutionCondition(__FUNCTION__, nullptr == _boolTerm && nullptr == _valueExpr, "unexpected", _ctx);
+        ASSERT_EXECUTION_CONDITION(nullptr == _boolTerm && nullptr == _valueExpr, "unexpected", _ctx);
         _boolTerm = boolTerm;
     }
 
@@ -1411,7 +1409,7 @@ public:
     }
 
     void onExit() override {
-        assertExecutionCondition(__FUNCTION__, nullptr != _valueExpr || nullptr != _boolTerm,
+        ASSERT_EXECUTION_CONDITION(nullptr != _valueExpr || nullptr != _boolTerm,
                 "PredicateExpressionAdapter was not populated.", _ctx);
         if (_boolTerm != nullptr) {
             lockedParent()->handlePredicateExpression(_boolTerm, _ctx);
@@ -1424,7 +1422,7 @@ public:
 
 private:
     shared_ptr<query::BoolFactor> _boolFactorInstance() {
-        assertExecutionCondition(__FUNCTION__, nullptr == _valueExpr,
+        ASSERT_EXECUTION_CONDITION(nullptr == _valueExpr,
                 "Can't use PredicateExpressionAdapter for BoolFactor and ValueExpr at the same time.", _ctx);
         if (nullptr == _boolTerm) {
             auto boolFactor = make_shared<query::BoolFactor>();
@@ -1432,14 +1430,14 @@ private:
             return boolFactor;
         }
         auto boolFactor = dynamic_pointer_cast<query::BoolFactor>(_boolTerm);
-        assertExecutionCondition(__FUNCTION__, nullptr != boolFactor, "Can't cast boolTerm to a BoolFactor.", _ctx);
+        ASSERT_EXECUTION_CONDITION(nullptr != boolFactor, "Can't cast boolTerm to a BoolFactor.", _ctx);
         return boolFactor;
     }
 
     void _prepValueExpr() {
-        assertExecutionCondition(__FUNCTION__, nullptr == _boolTerm,
+        ASSERT_EXECUTION_CONDITION(nullptr == _boolTerm,
                 "Can't use PredicateExpressionAdapter for BoolFactor and ValueExpr at the same time.", _ctx);
-        assertExecutionCondition(__FUNCTION__, nullptr == _valueExpr, "Can only set _valueExpr once.", _ctx);
+        ASSERT_EXECUTION_CONDITION(nullptr == _valueExpr, "Can only set _valueExpr once.", _ctx);
     }
 
     shared_ptr<query::BoolTerm> _boolTerm;
@@ -1455,7 +1453,7 @@ public:
     using AdapterT::AdapterT;
 
     void handleComparisonOperator(string const & text) override {
-        assertExecutionCondition(__FUNCTION__, _comparison.empty(), "comparison must be set only once.", _ctx);
+        ASSERT_EXECUTION_CONDITION(_comparison.empty(), "comparison must be set only once.", _ctx);
         _comparison = text;
     }
 
@@ -1466,13 +1464,13 @@ public:
         } else if (_right == nullptr) {
             _right = valueExpr;
         } else {
-            assertExecutionCondition(__FUNCTION__, false, "left and right values must be set only once.", _ctx);
+            ASSERT_EXECUTION_CONDITION(false, "left and right values must be set only once.", _ctx);
         }
     }
 
     void handleExpressionAtomPredicate(shared_ptr<query::BoolTerm> const & boolFactor,
             antlr4::ParserRuleContext* childCtx) override {
-        assertExecutionCondition(__FUNCTION__, false, "unhandled ExpressionAtomPredicate BoolTerm callback.", _ctx);
+        ASSERT_EXECUTION_CONDITION(false, "unhandled ExpressionAtomPredicate BoolTerm callback.", _ctx);
     }
 
     void checkContext() const override {
@@ -1480,7 +1478,7 @@ public:
     }
 
     void onExit() override {
-        assertExecutionCondition(__FUNCTION__, _left != nullptr && _right != nullptr,
+        ASSERT_EXECUTION_CONDITION(_left != nullptr && _right != nullptr,
                 "left and right values must both be populated", _ctx);
 
         auto compPredicate = make_shared<query::CompPredicate>();
@@ -1507,7 +1505,7 @@ public:
         } else if (">=" == _comparison) {
             compPredicate->op = SqlSQL2Tokens::GREATER_THAN_OR_EQUALS_OP;
         } else {
-            assertExecutionCondition(__FUNCTION__, false, "unhandled comparison operator type:" + _comparison, _ctx);
+            ASSERT_EXECUTION_CONDITION(false, "unhandled comparison operator type:" + _comparison, _ctx);
         }
 
         compPredicate->right = _right;
@@ -1558,8 +1556,8 @@ public:
 
     void checkContext() const override {
         // required:
-        assertExecutionCondition(__FUNCTION__, _ctx->ORDER() != nullptr, "Context check failure.", _ctx);
-        assertExecutionCondition(__FUNCTION__, _ctx->BY() != nullptr, "Context check failure.", _ctx);
+        ASSERT_EXECUTION_CONDITION(_ctx->ORDER() != nullptr, "Context check failure.", _ctx);
+        ASSERT_EXECUTION_CONDITION(_ctx->BY() != nullptr, "Context check failure.", _ctx);
     }
 
     void onExit() override {
@@ -1585,18 +1583,18 @@ public:
         } else if (_ctx->ASC() != nullptr && _ctx->DESC() == nullptr) {
             orderBy = query::OrderByTerm::ASC;
         } else if (_ctx->ASC() != nullptr && _ctx->DESC() != nullptr) {
-            assertExecutionCondition(__FUNCTION__, false, "having both ASC and DESC is unhandled.", _ctx);
+            ASSERT_EXECUTION_CONDITION(false, "having both ASC and DESC is unhandled.", _ctx);
         }
         // note that query::OrderByTerm::DEFAULT is the default value of orderBy
     }
 
     void handlePredicateExpression(shared_ptr<query::BoolTerm> const & boolTerm,
             antlr4::ParserRuleContext* childCtx) override {
-        assertExecutionCondition(__FUNCTION__, false, "unexpected BoolFactor callback", _ctx);
+        ASSERT_EXECUTION_CONDITION(false, "unexpected BoolFactor callback", _ctx);
     }
 
     void handlePredicateExpression(shared_ptr<query::ValueExpr> const & valueExpr) override {
-        assertExecutionCondition(__FUNCTION__, nullptr == _valueExpr, "expected exactly one ValueExpr callback", _ctx);
+        ASSERT_EXECUTION_CONDITION(nullptr == _valueExpr, "expected exactly one ValueExpr callback", _ctx);
         assertNotSupported(__FUNCTION__, valueExpr->isFunction() == false,
                 "qserv does not support functions in ORDER BY.", _ctx);
         _valueExpr = valueExpr;
@@ -1632,32 +1630,32 @@ public:
 
     void handleAtomTableItem(shared_ptr<query::TableRef> const & tableRef) override {
         TRACE_CALLBACK_INFO(*tableRef);
-        assertExecutionCondition(__FUNCTION__, nullptr == _tableRef, "expected only one atomTableItem callback.", _ctx);
+        ASSERT_EXECUTION_CONDITION(nullptr == _tableRef, "expected only one atomTableItem callback.", _ctx);
         _tableRef = tableRef;
     }
 
     void handleUidList(vector<string> const & strings) override {
         TRACE_CALLBACK_INFO(util::printable(strings));
-        assertExecutionCondition(__FUNCTION__, strings.size() == 1,
+        ASSERT_EXECUTION_CONDITION(strings.size() == 1,
             "Current intermediate representation can only handle 1 `using` string.", _ctx);
-        assertExecutionCondition(__FUNCTION__, nullptr == _using, "_using should be set exactly once.", _ctx);
+        ASSERT_EXECUTION_CONDITION(nullptr == _using, "_using should be set exactly once.", _ctx);
         _using = make_shared<query::ColumnRef>("", "", strings[0]);
     }
 
     void handlePredicateExpression(shared_ptr<query::BoolTerm> const & boolTerm,
             antlr4::ParserRuleContext* childCtx) override {
         TRACE_CALLBACK_INFO(*boolTerm);
-        assertExecutionCondition(__FUNCTION__, nullptr == _on, "Unexpected second BoolTerm callback.", _ctx);
+        ASSERT_EXECUTION_CONDITION(nullptr == _on, "Unexpected second BoolTerm callback.", _ctx);
         _on = _getNestedBoolTerm(boolTerm);
     }
 
     void handlePredicateExpression(shared_ptr<query::ValueExpr> const & valueExpr) override {
-        assertExecutionCondition(__FUNCTION__, false, "Unexpected PredicateExpression ValueExpr callback.", _ctx);
+        ASSERT_EXECUTION_CONDITION(false, "Unexpected PredicateExpression ValueExpr callback.", _ctx);
     }
 
     void checkContext() const override {
         // required:
-        assertExecutionCondition(__FUNCTION__, _ctx->JOIN() != nullptr, "Context check failure.", _ctx);
+        ASSERT_EXECUTION_CONDITION(_ctx->JOIN() != nullptr, "Context check failure.", _ctx);
         // optional:
         // INNER();
         // CROSS();
@@ -1666,7 +1664,7 @@ public:
     }
 
     void onExit() override {
-        assertExecutionCondition(__FUNCTION__, _tableRef != nullptr, "TableRef was not set.", _ctx);
+        ASSERT_EXECUTION_CONDITION(_tableRef != nullptr, "TableRef was not set.", _ctx);
         query::JoinRef::Type joinType(query::JoinRef::DEFAULT);
         if (_ctx->INNER() != nullptr) {
             joinType = query::JoinRef::INNER;
@@ -1745,14 +1743,14 @@ public:
     using AdapterT::AdapterT;
 
     void handleAtomTableItem(shared_ptr<query::TableRef> const & tableRef) override {
-        assertExecutionCondition(__FUNCTION__, nullptr == _tableRef, "expected only one atomTableItem callback.", _ctx);
+        ASSERT_EXECUTION_CONDITION(nullptr == _tableRef, "expected only one atomTableItem callback.", _ctx);
         _tableRef = tableRef;
     }
 
     void checkContext() const override {
         // required:
-        assertExecutionCondition(__FUNCTION__, _ctx->NATURAL() != nullptr, "Context check failure.", _ctx);
-        assertExecutionCondition(__FUNCTION__, _ctx->JOIN() != nullptr, "Context check failure.", _ctx);
+        ASSERT_EXECUTION_CONDITION(_ctx->NATURAL() != nullptr, "Context check failure.", _ctx);
+        ASSERT_EXECUTION_CONDITION(_ctx->JOIN() != nullptr, "Context check failure.", _ctx);
         // optional:
         // LEFT();
         // RIGHT();
@@ -1761,7 +1759,7 @@ public:
     }
 
     void onExit() override {
-        assertExecutionCondition(__FUNCTION__, _tableRef != nullptr, "TableRef was not set.", _ctx);
+        ASSERT_EXECUTION_CONDITION(_tableRef != nullptr, "TableRef was not set.", _ctx);
         query::JoinRef::Type joinType(query::JoinRef::DEFAULT);
         if (_ctx->LEFT() != nullptr) {
             joinType = query::JoinRef::LEFT;
@@ -1825,8 +1823,8 @@ public:
     using AdapterT::AdapterT;
 
     void handleFullId(vector<string> const & uidlist) override {
-        assertExecutionCondition(__FUNCTION__, nullptr == _valueExpr, "_valueExpr should only be set once.", _ctx);
-        assertExecutionCondition(__FUNCTION__, uidlist.size() == 1, "Star Elements must be 'tableName.*'", _ctx);
+        ASSERT_EXECUTION_CONDITION(nullptr == _valueExpr, "_valueExpr should only be set once.", _ctx);
+        ASSERT_EXECUTION_CONDITION(uidlist.size() == 1, "Star Elements must be 'tableName.*'", _ctx);
         _valueExpr = make_shared<query::ValueExpr>();
         ValueExprFactory::addValueFactor(_valueExpr, query::ValueFactor::newStarFactor(uidlist[0]));
     }
@@ -1857,24 +1855,24 @@ public:
 
     void handleUid(string const & string) override {
         // Uid is expected to be the aliasName in `functionCall AS aliasName` or `functionCall aliasName`
-        assertExecutionCondition(__FUNCTION__, _asName.empty(), "Second call to handleUid.", _ctx);
+        ASSERT_EXECUTION_CONDITION(_asName.empty(), "Second call to handleUid.", _ctx);
         _asName = string;
     }
 
     void handleAggregateFunctionCall(shared_ptr<query::ValueFactor> const & valueFactor) override {
-        assertExecutionCondition(__FUNCTION__, nullptr == _functionValueFactor, "should only be called once.",
+        ASSERT_EXECUTION_CONDITION(nullptr == _functionValueFactor, "should only be called once.",
                 _ctx);
         _functionValueFactor = valueFactor;
     }
 
     void handleUdfFunctionCall(shared_ptr<query::ValueFactor> const & valueFactor) override {
-        assertExecutionCondition(__FUNCTION__, nullptr == _functionValueFactor, "should only be set once.",
+        ASSERT_EXECUTION_CONDITION(nullptr == _functionValueFactor, "should only be set once.",
                 _ctx);
         _functionValueFactor = valueFactor;
     }
 
     void handleScalarFunctionCall(shared_ptr<query::ValueFactor> const & valueFactor) override {
-        assertExecutionCondition(__FUNCTION__, nullptr == _functionValueFactor, "should only be set once.",
+        ASSERT_EXECUTION_CONDITION(nullptr == _functionValueFactor, "should only be set once.",
                 _ctx);
         _functionValueFactor = valueFactor;
     }
@@ -1885,7 +1883,7 @@ public:
     }
 
     void onExit() override {
-        assertExecutionCondition(__FUNCTION__, nullptr != _functionValueFactor,
+        ASSERT_EXECUTION_CONDITION(nullptr != _functionValueFactor,
                 "function value factor not populated.", _ctx);
         auto valueExpr = std::make_shared<query::ValueExpr>();
         ValueExprFactory::addValueFactor(valueExpr, _functionValueFactor);
@@ -1910,11 +1908,11 @@ public:
     void handlePredicateExpression(shared_ptr<query::BoolTerm> const & boolTerm,
             antlr4::ParserRuleContext* childCtx) override {
         LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << boolTerm);
-        assertExecutionCondition(__FUNCTION__, false, "unexpected call to handlePredicateExpression(BoolTerm).", _ctx);
+        ASSERT_EXECUTION_CONDITION(false, "unexpected call to handlePredicateExpression(BoolTerm).", _ctx);
     }
 
     void handlePredicateExpression(shared_ptr<query::ValueExpr> const & valueExpr) override {
-        assertExecutionCondition(__FUNCTION__, nullptr == _valueExpr, "valueExpr must be set only once in SelectExpressionElementAdapter.", _ctx);
+        ASSERT_EXECUTION_CONDITION(nullptr == _valueExpr, "valueExpr must be set only once in SelectExpressionElementAdapter.", _ctx);
         _valueExpr = valueExpr;
     }
 
@@ -1927,7 +1925,7 @@ public:
     }
 
     void onExit() override {
-        assertExecutionCondition(__FUNCTION__, nullptr != _valueExpr, "valueExpr must be set in SelectExpressionElementAdapter.", _ctx);
+        ASSERT_EXECUTION_CONDITION(nullptr != _valueExpr, "valueExpr must be set in SelectExpressionElementAdapter.", _ctx);
         lockedParent()->handleSelectExpressionElement(_valueExpr);
     }
 
@@ -1946,7 +1944,7 @@ public:
 
     void handlePredicateExpression(shared_ptr<query::BoolTerm> const & boolTerm,
             antlr4::ParserRuleContext* childCtx) override {
-        assertExecutionCondition(__FUNCTION__, false, "Unexpected PredicateExpression BoolTerm callback.", _ctx);
+        ASSERT_EXECUTION_CONDITION(false, "Unexpected PredicateExpression BoolTerm callback.", _ctx);
     }
 
     void handlePredicateExpression(shared_ptr<query::ValueExpr> const & valueExpr) override {
@@ -1960,7 +1958,7 @@ public:
     }
 
     void onExit() override {
-        assertExecutionCondition(__FUNCTION__, _valueExpr != nullptr, "GroupByItemAdapter not populated.", _ctx);
+        ASSERT_EXECUTION_CONDITION(_valueExpr != nullptr, "GroupByItemAdapter not populated.", _ctx);
         lockedParent()->handleGroupByItem(_valueExpr);
     }
 
@@ -1983,15 +1981,15 @@ public:
         // one.
 
         // required:
-        assertExecutionCondition(__FUNCTION__, _ctx->LIMIT() != nullptr, "Context check failure.", _ctx);
-        assertExecutionCondition(__FUNCTION__, _ctx->limit != nullptr, "Context check failure.", _ctx);
+        ASSERT_EXECUTION_CONDITION(_ctx->LIMIT() != nullptr, "Context check failure.", _ctx);
+        ASSERT_EXECUTION_CONDITION(_ctx->limit != nullptr, "Context check failure.", _ctx);
         // not supported:
         assertNotSupported(__FUNCTION__, _ctx->offset == nullptr && _ctx->OFFSET() == nullptr,
                 "offset is not supported", _ctx);
     }
 
     void onExit() override {
-        assertExecutionCondition(__FUNCTION__, _ctx->limit != nullptr,
+        ASSERT_EXECUTION_CONDITION(_ctx->limit != nullptr,
                 "Could not get a decimalLiteral context to read limit.", _ctx);
         lockedParent()->handleLimitClause(atoi(_ctx->limit->getText().c_str()));
     }
@@ -2041,7 +2039,7 @@ public:
     using AdapterT::AdapterT;
 
     void checkContext() const override {
-        assertExecutionCondition(__FUNCTION__, (_ctx->DOT_ID() != nullptr) != (_ctx->uid() != nullptr),
+        ASSERT_EXECUTION_CONDITION((_ctx->DOT_ID() != nullptr) != (_ctx->uid() != nullptr),
                 "Context check failure: exactly one of DOT_ID and uid should be non-null.", _ctx);
     }
 
@@ -2052,7 +2050,7 @@ public:
     void onExit() override {
         if (_id.empty()) {
             _id = _ctx->getText();
-            assertExecutionCondition(__FUNCTION__, _id.find('.') == 0, "DOT_ID text is expected to start with a dot", _ctx);
+            ASSERT_EXECUTION_CONDITION(_id.find('.') == 0, "DOT_ID text is expected to start with a dot", _ctx);
             _id.erase(0, 1);
         }
         lockedParent()->handleDottedId(_id);
@@ -2072,7 +2070,9 @@ public:
 
     void checkContext() const override {
         // required:
-        assertExecutionCondition(__FUNCTION__, _ctx->NULL_LITERAL() != nullptr || _ctx->NULL_SPEC_LITERAL() != nullptr, "Context check failure.", _ctx);
+        ASSERT_EXECUTION_CONDITION(
+                _ctx->NULL_LITERAL() != nullptr || _ctx->NULL_SPEC_LITERAL() != nullptr,
+                "Context check failure.", _ctx);
         // optional:
         // NOT();
     }
@@ -2093,13 +2093,13 @@ public:
     using AdapterT::AdapterT;
 
     void handleFullColumnName(shared_ptr<query::ValueFactor> const & valueFactor) override {
-        assertExecutionCondition(__FUNCTION__, nullptr == _valueFactor,
+        ASSERT_EXECUTION_CONDITION(nullptr == _valueFactor,
                 "handleFullColumnName should be called once.", _ctx);
         _valueFactor = valueFactor;
     }
 
     void handleUid(string const & string) override {
-        assertExecutionCondition(__FUNCTION__, _alias.empty(), "handleUid should be called once.", _ctx);
+        ASSERT_EXECUTION_CONDITION(_alias.empty(), "handleUid should be called once.", _ctx);
         _alias = string;
     }
 
@@ -2142,12 +2142,12 @@ public:
         // (see QSMySqlParser.g4). If Adapters for any nodes in the tree below Uid are implemented then
         // it will have to be handled and this shortcut may not be taken.
         if (_val.empty()) {
-            assertExecutionCondition(__FUNCTION__, _ctx->REVERSE_QUOTE_ID() != nullptr ||
+            ASSERT_EXECUTION_CONDITION(_ctx->REVERSE_QUOTE_ID() != nullptr ||
                     _ctx->CHARSET_REVERSE_QOUTE_STRING() != nullptr,
                    "If value is not set by callback then one of the terminal nodes should be populated.",
                     _ctx);
             _val = _ctx->getText();
-            assertExecutionCondition(__FUNCTION__, (_val.find('`') == 0) && (_val.rfind('`') == _val.size()-1),
+            ASSERT_EXECUTION_CONDITION((_val.find('`') == 0) && (_val.rfind('`') == _val.size()-1),
                     "REVERSE QUOTE values should begin and end with a backtick(`).", _ctx);
             _val.erase(_val.begin());
             _val.erase(--(_val.end()));
@@ -2217,7 +2217,7 @@ public:
 
     void handlePredicateExpression(shared_ptr<query::BoolTerm> const & boolTerm,
             antlr4::ParserRuleContext* childCtx) override {
-        assertExecutionCondition(__FUNCTION__, false, "Unhandled PredicateExpression with BoolTerm.", _ctx);
+        ASSERT_EXECUTION_CONDITION(false, "Unhandled PredicateExpression with BoolTerm.", _ctx);
     }
 
     void handlePredicateExpression(shared_ptr<query::ValueExpr> const & valueExpr) override {
@@ -2292,12 +2292,12 @@ public:
     using AdapterT::AdapterT;
 
     void handleScalarFunctionName(string const & name) override {
-        assertExecutionCondition(__FUNCTION__, _name.empty(), "name should be set once.", _ctx);
+        ASSERT_EXECUTION_CONDITION(_name.empty(), "name should be set once.", _ctx);
         _name = name;
     }
 
     void handleFunctionArgs(vector<shared_ptr<query::ValueExpr>> const & valueExprs) override {
-        assertExecutionCondition(__FUNCTION__, _valueExprs.empty(), "FunctionArgs should be set once.", _ctx);
+        ASSERT_EXECUTION_CONDITION(_valueExprs.empty(), "FunctionArgs should be set once.", _ctx);
         _valueExprs = valueExprs;
     }
 
@@ -2306,7 +2306,7 @@ public:
     }
 
     void onExit() override {
-        assertExecutionCondition(__FUNCTION__, _valueExprs.empty() == false && _name.empty() == false,
+        ASSERT_EXECUTION_CONDITION(_valueExprs.empty() == false && _name.empty() == false,
                 "valueExprs or name is not populated.", _ctx);
         auto funcExpr = query::FuncExpr::newWithArgs(_name, _valueExprs);
         auto valueFactor = query::ValueFactor::newFuncFactor(funcExpr);
@@ -2331,14 +2331,14 @@ public:
     void handleFunctionArgs(vector<shared_ptr<query::ValueExpr>> const & valueExprs) override {
         // This is only expected to be called once.
         // Of course the valueExpr may have more than one valueFactor.
-        assertExecutionCondition(__FUNCTION__, _args.empty(), "Args already assigned.", _ctx);
+        ASSERT_EXECUTION_CONDITION(_args.empty(), "Args already assigned.", _ctx);
         _args = valueExprs;
     }
 
     // FullIdCBH
     void handleFullId(vector<string> const & uidlist) override {
-        assertExecutionCondition(__FUNCTION__, _functionName.empty(), "Function name already assigned.", _ctx);
-        assertExecutionCondition(__FUNCTION__, uidlist.size() == 1, "Function name invalid", _ctx);
+        ASSERT_EXECUTION_CONDITION(_functionName.empty(), "Function name already assigned.", _ctx);
+        ASSERT_EXECUTION_CONDITION(uidlist.size() == 1, "Function name invalid", _ctx);
         _functionName = uidlist.at(0);
     }
 
@@ -2347,8 +2347,8 @@ public:
     }
 
     void onExit() override {
-        assertExecutionCondition(__FUNCTION__, !_functionName.empty(), "Function name unpopulated", _ctx);
-        assertExecutionCondition(__FUNCTION__, !_args.empty(), "Function arguments unpopulated", _ctx);
+        ASSERT_EXECUTION_CONDITION(!_functionName.empty(), "Function name unpopulated", _ctx);
+        ASSERT_EXECUTION_CONDITION(!_args.empty(), "Function arguments unpopulated", _ctx);
         auto funcExpr = query::FuncExpr::newWithArgs(_functionName, _args);
         auto valueFactor = query::ValueFactor::newFuncFactor(funcExpr);
         lockedParent()->handleUdfFunctionCall(valueFactor);
@@ -2369,7 +2369,7 @@ public:
     using AdapterT::AdapterT;
 
     void handleFunctionArg(shared_ptr<query::ValueFactor> const & valueFactor) override {
-        assertExecutionCondition(__FUNCTION__, nullptr == _valueFactor,
+        ASSERT_EXECUTION_CONDITION(nullptr == _valueFactor,
                 "currently ValueFactor can only be set once.", _ctx);
         _valueFactor = valueFactor;
     }
@@ -2419,7 +2419,7 @@ public:
             funcExpr = query::FuncExpr::newArg1(_ctx->COUNT()->getText(), starParExpr);
         } else if (_ctx->AVG() || _ctx->MAX() || _ctx->MIN() || _ctx->SUM() || _ctx->COUNT() ) {
             auto param = std::make_shared<query::ValueExpr>();
-            assertExecutionCondition(__FUNCTION__, nullptr != _valueFactor, "ValueFactor must be populated.", _ctx);
+            ASSERT_EXECUTION_CONDITION(nullptr != _valueFactor, "ValueFactor must be populated.", _ctx);
             ValueExprFactory::addValueFactor(param, _valueFactor);
             antlr4::tree::TerminalNode * terminalNode;
             if (_ctx->AVG()) {
@@ -2433,11 +2433,11 @@ public:
             } else if (_ctx->COUNT()) {
                 terminalNode = _ctx->COUNT();
             } else {
-                assertExecutionCondition(__FUNCTION__, false, "Unhandled function type", _ctx);
+                ASSERT_EXECUTION_CONDITION(false, "Unhandled function type", _ctx);
             }
             funcExpr = query::FuncExpr::newArg1(terminalNode->getText(), param);
         } else {
-            assertExecutionCondition(__FUNCTION__, false, "Unhandled exit", _ctx);
+            ASSERT_EXECUTION_CONDITION(false, "Unhandled exit", _ctx);
         }
         auto aggValueFactor = query::ValueFactor::newAggFactor(funcExpr);
         lockedParent()->handleAggregateWindowedFunction(aggValueFactor);
@@ -2462,7 +2462,7 @@ public:
 
     void checkContext() const override {
         // required:
-        assertExecutionCondition(__FUNCTION__, _ctx->functionNameBase() != nullptr, "Context check failure.", _ctx);
+        ASSERT_EXECUTION_CONDITION(_ctx->functionNameBase() != nullptr, "Context check failure.", _ctx);
         // not supported:
         assertNotSupported(__FUNCTION__, _ctx->ASCII() == nullptr, "ASCII is not supported", _ctx);
         assertNotSupported(__FUNCTION__, _ctx->CURDATE() == nullptr, "CURDATE is not supported", _ctx);
@@ -2493,7 +2493,7 @@ public:
         if (_name.empty()) {
             _name = _ctx->getText();
         }
-        assertExecutionCondition(__FUNCTION__, _name.empty() == false,
+        ASSERT_EXECUTION_CONDITION(_name.empty() == false,
                 "not populated; expected a callback from functionNameBase", _ctx);
         lockedParent()->handleScalarFunctionName(_name);
     }
@@ -2534,7 +2534,7 @@ public:
 
     void handlePredicateExpression(shared_ptr<query::BoolTerm> const & boolTerm,
             antlr4::ParserRuleContext* childCtx) override {
-        assertExecutionCondition(__FUNCTION__, false, "Unhandled PredicateExpression with BoolTerm.", _ctx);
+        ASSERT_EXECUTION_CONDITION(false, "Unhandled PredicateExpression with BoolTerm.", _ctx);
     }
 
     void handlePredicateExpression(shared_ptr<query::ValueExpr> const & valueExpr) override {
@@ -2563,7 +2563,7 @@ public:
     using AdapterT::AdapterT;
 
     void handleFullColumnName(shared_ptr<query::ValueFactor> const & columnName) override {
-        assertExecutionCondition(__FUNCTION__, nullptr == _valueFactor,
+        ASSERT_EXECUTION_CONDITION(nullptr == _valueFactor,
                 "Expected exactly one callback; valueFactor should be NULL.", _ctx);
         _valueFactor = columnName;
     }
@@ -2600,7 +2600,7 @@ public:
 
     void handlePredicateExpression(shared_ptr<query::ValueExpr> const & valueExpr) override {
         TRACE_CALLBACK_INFO(*valueExpr);
-        assertExecutionCondition(__FUNCTION__, false, "Unhandled PredicateExpression with ValueExpr.", _ctx);
+        ASSERT_EXECUTION_CONDITION(false, "Unhandled PredicateExpression with ValueExpr.", _ctx);
     }
 
     void handleQservFunctionSpec(string const & functionName,
@@ -2615,7 +2615,7 @@ public:
         TRACE_CALLBACK_INFO(LogicalOperatorCBH::OperatorTypeToStr(operatorType));
         switch (operatorType) {
         default:
-            assertExecutionCondition(__FUNCTION__, false, "unhandled operator type", _ctx);
+            ASSERT_EXECUTION_CONDITION(false, "unhandled operator type", _ctx);
             break;
 
         case LogicalOperatorCBH::AND:
@@ -2644,7 +2644,7 @@ public:
     }
 
     void onExit() override {
-        assertExecutionCondition(__FUNCTION__, _logicalOperator != nullptr, "logicalOperator is not set.", _ctx);
+        ASSERT_EXECUTION_CONDITION(_logicalOperator != nullptr, "logicalOperator is not set.", _ctx);
 
         bool isOr = dynamic_pointer_cast<query::OrTerm>(_logicalOperator) != nullptr;
         for (auto term : _terms) {
@@ -2663,7 +2663,7 @@ public:
 
 private:
     void _setLogicalOperator(shared_ptr<query::LogicalTerm> const & logicalTerm) {
-        assertExecutionCondition(__FUNCTION__, nullptr == _logicalOperator,
+        ASSERT_EXECUTION_CONDITION(nullptr == _logicalOperator,
                 "logical operator must be set only once.", _ctx);
         _logicalOperator = logicalTerm;
     }
@@ -2698,18 +2698,18 @@ public:
 
     void handleExpressionAtomPredicate(shared_ptr<query::ValueExpr> const & valueExpr,
             antlr4::ParserRuleContext* childCtx) override {
-        assertExecutionCondition(__FUNCTION__, _ctx->predicate() == childCtx, "callback from unexpected element.", _ctx);
-        assertExecutionCondition(__FUNCTION__, nullptr == _predicate, "Predicate should be set exactly once.", _ctx);
+        ASSERT_EXECUTION_CONDITION(_ctx->predicate() == childCtx, "callback from unexpected element.", _ctx);
+        ASSERT_EXECUTION_CONDITION(nullptr == _predicate, "Predicate should be set exactly once.", _ctx);
         _predicate = valueExpr;
     }
 
     void handleExpressionAtomPredicate(shared_ptr<query::BoolTerm> const & boolFactor,
             antlr4::ParserRuleContext* childCtx) override {
-        assertExecutionCondition(__FUNCTION__, false, "unhandled ExpressionAtomPredicate BoolTerm callback.", _ctx);
+        ASSERT_EXECUTION_CONDITION(false, "unhandled ExpressionAtomPredicate BoolTerm callback.", _ctx);
     }
 
     void handleExpressions(vector<shared_ptr<query::ValueExpr>> const& valueExprs) override {
-        assertExecutionCondition(__FUNCTION__, _expressions.empty(), "expressions should be set exactly once.", _ctx);
+        ASSERT_EXECUTION_CONDITION(_expressions.empty(), "expressions should be set exactly once.", _ctx);
         _expressions = valueExprs;
     }
 
@@ -2719,7 +2719,7 @@ public:
     }
 
     void onExit() override {
-        assertExecutionCondition(__FUNCTION__, false == _expressions.empty() && _predicate != nullptr,
+        ASSERT_EXECUTION_CONDITION(false == _expressions.empty() && _predicate != nullptr,
                 "InPredicateAdapter was not fully populated.", _ctx);
         auto inPredicate = std::make_shared<query::InPredicate>(_predicate, _expressions, _ctx->NOT() != nullptr);
         lockedParent()->handleInPredicate(inPredicate);
@@ -2749,17 +2749,17 @@ public:
     void handleExpressionAtomPredicate(shared_ptr<query::ValueExpr> const & valueExpr,
             antlr4::ParserRuleContext* childCtx) override {
         if (childCtx == _ctx->val) {
-            assertExecutionCondition(__FUNCTION__, nullptr == _val, "val should be set exactly once.", _ctx);
+            ASSERT_EXECUTION_CONDITION(nullptr == _val, "val should be set exactly once.", _ctx);
             _val = valueExpr;
             return;
         }
         if (childCtx == _ctx->min) {
-            assertExecutionCondition(__FUNCTION__, nullptr == _min, "min should be set exactly once.", _ctx);
+            ASSERT_EXECUTION_CONDITION(nullptr == _min, "min should be set exactly once.", _ctx);
             _min = valueExpr;
             return;
         }
         if (childCtx == _ctx->max) {
-            assertExecutionCondition(__FUNCTION__, nullptr == _max, "max should be set exactly once.", _ctx);
+            ASSERT_EXECUTION_CONDITION(nullptr == _max, "max should be set exactly once.", _ctx);
             _max = valueExpr;
             return;
         }
@@ -2767,7 +2767,7 @@ public:
 
     void handleExpressionAtomPredicate(shared_ptr<query::BoolTerm> const & boolFactor,
             antlr4::ParserRuleContext* childCtx) override {
-        assertExecutionCondition(__FUNCTION__, false, "unhandled ExpressionAtomPredicate BoolTerm callback.", _ctx);
+        ASSERT_EXECUTION_CONDITION(false, "unhandled ExpressionAtomPredicate BoolTerm callback.", _ctx);
     }
 
     void checkContext() const override {
@@ -2776,7 +2776,7 @@ public:
     }
 
     void onExit() override {
-        assertExecutionCondition(__FUNCTION__, nullptr != _val && nullptr != _min && nullptr != _max,
+        ASSERT_EXECUTION_CONDITION(nullptr != _val && nullptr != _min && nullptr != _max,
                 "val, min, and max must all be set.", _ctx);
         auto betweenPredicate = make_shared<query::BetweenPredicate>(_val, _min, _max, _ctx->NOT() != nullptr);
         lockedParent()->handleBetweenPredicate(betweenPredicate);
@@ -2800,14 +2800,14 @@ public:
 
     void handleExpressionAtomPredicate(shared_ptr<query::ValueExpr> const & valueExpr,
             antlr4::ParserRuleContext* childCtx) override {
-        assertExecutionCondition(__FUNCTION__, nullptr == _valueExpr,
+        ASSERT_EXECUTION_CONDITION(nullptr == _valueExpr,
                 "Expected the ValueExpr to be set once.", _ctx);
         _valueExpr = valueExpr;
     }
 
     void handleExpressionAtomPredicate(shared_ptr<query::BoolTerm> const & boolFactor,
             antlr4::ParserRuleContext* childCtx) override {
-        assertExecutionCondition(__FUNCTION__, false,
+        ASSERT_EXECUTION_CONDITION(false,
                 "unexpected call to handleExpressionAtomPredicate.", _ctx);
     }
 
@@ -2820,7 +2820,7 @@ public:
     }
 
     void onExit() override {
-        assertExecutionCondition(__FUNCTION__, _valueExpr != nullptr, "IsNullPredicateAdapter was not populated.", _ctx);
+        ASSERT_EXECUTION_CONDITION(_valueExpr != nullptr, "IsNullPredicateAdapter was not populated.", _ctx);
         auto np = make_shared<query::NullPredicate>(_valueExpr, _isNotNull);
         lockedParent()->handleIsNullPredicate(np);
     }
@@ -2846,13 +2846,13 @@ public:
         } else if (nullptr == _valueExprB) {
             _valueExprB = valueExpr;
         } else {
-            assertExecutionCondition(__FUNCTION__, false, "Expected to be called back exactly twice.", _ctx);
+            ASSERT_EXECUTION_CONDITION(false, "Expected to be called back exactly twice.", _ctx);
         }
     }
 
     void handleExpressionAtomPredicate(shared_ptr<query::BoolTerm> const & boolFactor,
             antlr4::ParserRuleContext* childCtx) override {
-        assertExecutionCondition(__FUNCTION__, false, "Unhandled BoolTerm callback.", _ctx);
+        ASSERT_EXECUTION_CONDITION(false, "Unhandled BoolTerm callback.", _ctx);
     }
 
     void checkContext() const override {
@@ -2862,7 +2862,7 @@ public:
     }
 
     void onExit() override {
-        assertExecutionCondition(__FUNCTION__, _valueExprA != nullptr && _valueExprB != nullptr,
+        ASSERT_EXECUTION_CONDITION(_valueExprA != nullptr && _valueExprB != nullptr,
                 "LikePredicateAdapter was not fully populated.", _ctx);
         auto likePredicate = make_shared<query::LikePredicate>();
         likePredicate->value = _valueExprA;
@@ -2889,10 +2889,10 @@ public:
     void handlePredicateExpression(shared_ptr<query::BoolTerm> const & boolTerm,
             antlr4::ParserRuleContext* childCtx) override {
         TRACE_CALLBACK_INFO(*boolTerm);
-        assertExecutionCondition(__FUNCTION__, nullptr == _valueExpr && nullptr == _boolTerm,
+        ASSERT_EXECUTION_CONDITION(nullptr == _valueExpr && nullptr == _boolTerm,
                 "unexpected boolTerm callback.", _ctx);
         auto boolFactor = dynamic_pointer_cast<query::BoolFactor>(boolTerm);
-        assertExecutionCondition(__FUNCTION__, nullptr != boolFactor, "could not cast boolTerm to a BoolFactor.", _ctx);
+        ASSERT_EXECUTION_CONDITION(nullptr != boolFactor, "could not cast boolTerm to a BoolFactor.", _ctx);
         auto orBoolFactor = make_shared<query::BoolFactor>(
                 make_shared<query::BoolTermFactor>(
                     make_shared<query::OrTerm>(
@@ -2903,7 +2903,7 @@ public:
 
     void handlePredicateExpression(shared_ptr<query::ValueExpr> const & valueExpr) override {
         TRACE_CALLBACK_INFO(*valueExpr);
-        assertExecutionCondition(__FUNCTION__, nullptr == _valueExpr && nullptr == _boolTerm,
+        ASSERT_EXECUTION_CONDITION(nullptr == _valueExpr && nullptr == _boolTerm,
                 "unexpected ValueExpr callback.", _ctx);
         _valueExpr = valueExpr;
     }
@@ -2911,7 +2911,7 @@ public:
     void handleLogicalExpression(shared_ptr<query::LogicalTerm> const & logicalTerm,
             antlr4::ParserRuleContext* childCtx) override {
         TRACE_CALLBACK_INFO(*logicalTerm);
-        assertExecutionCondition(__FUNCTION__, nullptr == _valueExpr && nullptr == _boolTerm,
+        ASSERT_EXECUTION_CONDITION(nullptr == _valueExpr && nullptr == _boolTerm,
                 "unexpected LogicalTerm callback.", _ctx);
         auto boolFactor = make_shared<query::BoolFactor>(make_shared<query::BoolTermFactor>(logicalTerm));
         boolFactor->addParenthesis();
@@ -2963,54 +2963,54 @@ public:
     void handleMathOperator(MathOperatorCBH::OperatorType operatorType) override {
         switch (operatorType) {
         default:
-            assertExecutionCondition(__FUNCTION__, false, "Unhandled operatorType.", _ctx);
+            ASSERT_EXECUTION_CONDITION(false, "Unhandled operatorType.", _ctx);
             break;
 
         case MathOperatorCBH::SUBTRACT: {
             bool success = ValueExprFactory::addOp(_getValueExpr(), query::ValueExpr::MINUS);
-            assertExecutionCondition(__FUNCTION__, success,
+            ASSERT_EXECUTION_CONDITION(success,
                     "Failed to add an operator to valueExpr.", _ctx);
             break;
         }
 
         case MathOperatorCBH::ADD: {
             bool success = ValueExprFactory::addOp(_getValueExpr(), query::ValueExpr::PLUS);
-            assertExecutionCondition(__FUNCTION__, success,
+            ASSERT_EXECUTION_CONDITION(success,
                     "Failed to add an operator to valueExpr.", _ctx);
             break;
         }
 
         case MathOperatorCBH::DIVIDE: {
             bool success = ValueExprFactory::addOp(_getValueExpr(), query::ValueExpr::DIVIDE);
-            assertExecutionCondition(__FUNCTION__, success,
+            ASSERT_EXECUTION_CONDITION(success,
                     "Failed to add an operator to valueExpr.", _ctx);
             break;
         }
 
         case MathOperatorCBH::MULTIPLY: {
             bool success = ValueExprFactory::addOp(_getValueExpr(), query::ValueExpr::MULTIPLY);
-            assertExecutionCondition(__FUNCTION__, success,
+            ASSERT_EXECUTION_CONDITION(success,
                     "Failed to add an operator to valueExpr.", _ctx);
             break;
         }
 
         case MathOperatorCBH::DIV: {
             bool success = ValueExprFactory::addOp(_getValueExpr(), query::ValueExpr::DIV);
-            assertExecutionCondition(__FUNCTION__, success,
+            ASSERT_EXECUTION_CONDITION(success,
                     "Failed to add an operator to valueExpr.", _ctx);
             break;
         }
 
         case MathOperatorCBH::MOD: {
             bool success = ValueExprFactory::addOp(_getValueExpr(), query::ValueExpr::MOD);
-            assertExecutionCondition(__FUNCTION__, success,
+            ASSERT_EXECUTION_CONDITION(success,
                     "Failed to add an operator to valueExpr.", _ctx);
             break;
         }
 
         case MathOperatorCBH::MODULO: {
             bool success = ValueExprFactory::addOp(_getValueExpr(), query::ValueExpr::MODULO);
-            assertExecutionCondition(__FUNCTION__, success,
+            ASSERT_EXECUTION_CONDITION(success,
                     "Failed to add an operator to valueExpr.", _ctx);
             break;
         }
@@ -3026,7 +3026,7 @@ public:
     }
 
     void handleNestedExpressionAtom(shared_ptr<query::BoolTerm> const & boolTerm) override {
-        assertExecutionCondition(__FUNCTION__, false, "unexpected boolTerm callback.", _ctx);
+        ASSERT_EXECUTION_CONDITION(false, "unexpected boolTerm callback.", _ctx);
     }
 
     void handleNestedExpressionAtom(shared_ptr<query::ValueExpr> const & valueExpr) override {
@@ -3041,7 +3041,7 @@ public:
         // might happen, or a ValueFactor callback might happen before a MathExpressionAtom callback then
         // this algorithm may have to be rewritten; this funciton may need to pass a vector of ValueFactors
         // as the callback argument, instead of a ValueExpr that contains a vector of ValueFactors.
-        assertExecutionCondition(__FUNCTION__, nullptr == _valueExpr, "expected _valueExpr to be null.", _ctx);
+        ASSERT_EXECUTION_CONDITION(nullptr == _valueExpr, "expected _valueExpr to be null.", _ctx);
         _valueExpr = valueExpr;
     }
 
@@ -3050,7 +3050,7 @@ public:
     }
 
     void onExit() override {
-        assertExecutionCondition(__FUNCTION__, _valueExpr != nullptr, "valueExpr not populated.", _ctx);
+        ASSERT_EXECUTION_CONDITION(_valueExpr != nullptr, "valueExpr not populated.", _ctx);
         lockedParent()->handleMathExpressionAtom(_valueExpr);
     }
 
@@ -3078,17 +3078,17 @@ public:
     using AdapterT::AdapterT;
 
     void handleUdfFunctionCall(shared_ptr<query::ValueFactor> const & valueFactor) override {
-        assertExecutionCondition(__FUNCTION__, _valueFactor == nullptr, "the valueFactor must be set only once.", _ctx);
+        ASSERT_EXECUTION_CONDITION(_valueFactor == nullptr, "the valueFactor must be set only once.", _ctx);
         _valueFactor = valueFactor;
     }
 
     void handleScalarFunctionCall(shared_ptr<query::ValueFactor> const & valueFactor) override {
-        assertExecutionCondition(__FUNCTION__, _valueFactor == nullptr, "the valueFactor must be set only once.", _ctx);
+        ASSERT_EXECUTION_CONDITION(_valueFactor == nullptr, "the valueFactor must be set only once.", _ctx);
         _valueFactor = valueFactor;
     }
 
     void handleAggregateFunctionCall(shared_ptr<query::ValueFactor> const & valueFactor) override {
-        assertExecutionCondition(__FUNCTION__, _valueFactor == nullptr, "the valueFactor must be set only once.", _ctx);
+        ASSERT_EXECUTION_CONDITION(_valueFactor == nullptr, "the valueFactor must be set only once.", _ctx);
         _valueFactor = valueFactor;
     }
 
@@ -3127,7 +3127,7 @@ public:
         } else if (_ctx->OR() != nullptr || _ctx->getText() == "||") {
             lockedParent()->handleLogicalOperator(LogicalOperatorCBH::OR);
         } else {
-            assertExecutionCondition(__FUNCTION__, false, "unhandled logical operator", _ctx);
+            ASSERT_EXECUTION_CONDITION(false, "unhandled logical operator", _ctx);
         }
     }
 
@@ -3209,7 +3209,7 @@ shared_ptr<query::SelectStmt> QSMySqlListener::getSelectStatement() const {
 template<typename ParentCBH, typename ChildAdapter, typename Context>
 shared_ptr<ChildAdapter> QSMySqlListener::pushAdapterStack(Context* ctx) {
     auto p = dynamic_pointer_cast<ParentCBH>(_adapterStack.back());
-    assertExecutionCondition(__FUNCTION__, p != nullptr,
+    ASSERT_EXECUTION_CONDITION(p != nullptr,
             "can't acquire expected Adapter `" +
             getTypeName<ParentCBH>() +
             "` from top of listenerStack.",
@@ -3232,7 +3232,7 @@ void QSMySqlListener::popAdapterStack(antlr4::ParserRuleContext* ctx) {
     // this code could be optionally disabled or removed entirely if the check is found to be unnecesary or
     // adds too much of a performance penalty.
     shared_ptr<ChildAdapter> derivedPtr = dynamic_pointer_cast<ChildAdapter>(adapterPtr);
-    assertExecutionCondition(__FUNCTION__, derivedPtr != nullptr,
+    ASSERT_EXECUTION_CONDITION(derivedPtr != nullptr,
         "Top of listenerStack was not of expected type. "
         "Expected: " + getTypeName<ChildAdapter>() +
         ", Actual: " + getTypeName(adapterPtr) +
@@ -3253,7 +3253,7 @@ string QSMySqlListener::adapterStackToString() const {
 
 
 void QSMySqlListener::enterRoot(QSMySqlParser::RootContext* ctx) {
-    assertExecutionCondition(__FUNCTION__, _adapterStack.empty(),
+    ASSERT_EXECUTION_CONDITION(_adapterStack.empty(),
             "RootAdatper should be the first entry on the stack.", ctx);
     _rootAdapter = make_shared<RootAdapter>();
     _adapterStack.push_back(_rootAdapter);
