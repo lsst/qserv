@@ -19,15 +19,15 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_DELETEWORKERTHREAD_H
-#define LSST_QSERV_DELETEWORKERTHREAD_H
+#ifndef LSST_QSERV_DELETEWORKERTASK_H
+#define LSST_QSERV_DELETEWORKERTASK_H
 
 // System headers
 #include <functional>
 #include <set>
 
 // Qserv headers
-#include "replica/ControlThread.h"
+#include "replica/Task.h"
 
 // This header declarations
 
@@ -36,29 +36,29 @@ namespace qserv {
 namespace replica {
 
 /**
- * Class DeleteWorkerThread represents a thread which evicts a single worker
+ * Class DeleteWorkerTask represents a task which evicts a single worker
  * from a cluster. Note, that depending on the amount of data in catalogs served
  * by the cluster, a desired replication level, and existing replica disposition,
  * removal of a worker could be a lengthy process.
  */
-class DeleteWorkerThread
-    :   public ControlThread {
+class DeleteWorkerTask
+    :   public Task {
 
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<DeleteWorkerThread> Ptr;
+    typedef std::shared_ptr<DeleteWorkerTask> Ptr;
 
     // Default construction and copy semantics are prohibited
 
-    DeleteWorkerThread() = delete;
-    DeleteWorkerThread(DeleteWorkerThread const&) = delete;
-    DeleteWorkerThread& operator=(DeleteWorkerThread const&) = delete;
+    DeleteWorkerTask() = delete;
+    DeleteWorkerTask(DeleteWorkerTask const&) = delete;
+    DeleteWorkerTask& operator=(DeleteWorkerTask const&) = delete;
 
-    ~DeleteWorkerThread() override = default;
+    ~DeleteWorkerTask() override = default;
 
     /**
-     * Create a new thread with specified parameters.
+     * Create a new task with specified parameters.
      *
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
@@ -69,7 +69,7 @@ public:
      *
      * @param onTerminated
      *   callback function to be called upon abnormal termination
-     *   of the thread. Set it to 'nullptr' if no call back should be made.
+     *   of the task. Set it to 'nullptr' if no call back should be made.
      *
      * @param worker
      *   the name of a worker to be evicted.
@@ -83,7 +83,7 @@ public:
      *   the smart pointer to a new object
      */
     static Ptr create(Controller::Ptr const& controller,
-                      ControlThread::AbnormalTerminationCallbackType const& onTerminated,
+                      Task::AbnormalTerminationCallbackType const& onTerminated,
                       std::string const& worker,
                       bool permanentDelete);
 
@@ -92,15 +92,15 @@ protected:
     /**
      * The constructor is available to the class's factory method
      *
-     * @see DeleteWorkerThread::create()
+     * @see DeleteWorkerTask::create()
      */
-    DeleteWorkerThread(Controller::Ptr const& controller,
-                       ControlThread::AbnormalTerminationCallbackType const& onTerminated,
-                       std::string const& worker,
-                       bool permanentDelete);
+    DeleteWorkerTask(Controller::Ptr const& controller,
+                     Task::AbnormalTerminationCallbackType const& onTerminated,
+                     std::string const& worker,
+                     bool permanentDelete);
 
     /**
-     * @see ControlThread::run()
+     * @see Task::run()
      */
     void run() override;
 
@@ -116,4 +116,4 @@ private:
     
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_DELETEWORKERTHREAD_H
+#endif // LSST_QSERV_DELETEWORKERTASK_H

@@ -21,7 +21,7 @@
  */
 
 // Class header
-#include "replica/HealthMonitorThread.h"
+#include "replica/HealthMonitorTask.h"
 
 // System headers
 #include <map>
@@ -34,15 +34,15 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-HealthMonitorThread::Ptr HealthMonitorThread::create(
+HealthMonitorTask::Ptr HealthMonitorTask::create(
         Controller::Ptr const& controller,
-        ControlThread::AbnormalTerminationCallbackType const& onTerminated,
+        Task::AbnormalTerminationCallbackType const& onTerminated,
         WorkerEvictCallbackType const& onWorkerEvictTimeout,
         unsigned int workerEvictTimeoutSec,
         unsigned int workerResponseTimeoutSec,
         unsigned int healthProbeIntervalSec) {
     return Ptr(
-        new HealthMonitorThread(
+        new HealthMonitorTask(
             controller,
             onTerminated,
             onWorkerEvictTimeout,
@@ -53,14 +53,14 @@ HealthMonitorThread::Ptr HealthMonitorThread::create(
     );
 }
 
-HealthMonitorThread::WorkerResponseDelay HealthMonitorThread::workerResponseDelay() const {
-    util::Lock lock(_mtx, "HealthMonitorThread::workerResponseDelay()");
+HealthMonitorTask::WorkerResponseDelay HealthMonitorTask::workerResponseDelay() const {
+    util::Lock lock(_mtx, "HealthMonitorTask::workerResponseDelay()");
     return _workerServiceNoResponseSec;
 }
 
-void HealthMonitorThread::run() {
+void HealthMonitorTask::run() {
  
-    std::string const context = "HealthMonitorThread::run()";
+    std::string const context = "HealthMonitorTask::run()";
     {
         util::Lock lock(_mtx, context);
 
@@ -81,7 +81,7 @@ void HealthMonitorThread::run() {
 
         _numFinishedJobs = 0;
 
-        auto self = shared_from_base<HealthMonitorThread>();
+        auto self = shared_from_base<HealthMonitorTask>();
 
         std::vector<ClusterHealthJob::Ptr> jobs;
         jobs.emplace_back(
@@ -179,7 +179,7 @@ void HealthMonitorThread::run() {
                     // Upstream notification on the evicted worker
                     _onWorkerEvictTimeout(workers2evict[0]);
 
-                    // Reset worker-non-response intervals before resuming this thread
+                    // Reset worker-non-response intervals before resuming this task
                     //
                     // ATTENTION: the map needs to be rebuild from scratch because one worker
                     // has been evicted from the Configuration.
@@ -218,15 +218,16 @@ void HealthMonitorThread::run() {
     }
 }
 
-HealthMonitorThread::HealthMonitorThread(Controller::Ptr const& controller,
-                                         ControlThread::AbnormalTerminationCallbackType const& onTerminated,
-                                         WorkerEvictCallbackType const& onWorkerEvictTimeout,
-                                         unsigned int workerEvictTimeoutSec,
-                                         unsigned int workerResponseTimeoutSec,
-                                         unsigned int healthProbeIntervalSec)
-    :   ControlThread(controller,
-                      "HEALTH-MONITOR  ",
-                      onTerminated),
+HealthMonitorTask::HealthMonitorTask(
+        Controller::Ptr const& controller,
+        Task::AbnormalTerminationCallbackType const& onTerminated,
+        WorkerEvictCallbackType const& onWorkerEvictTimeout,
+        unsigned int workerEvictTimeoutSec,
+        unsigned int workerResponseTimeoutSec,
+        unsigned int healthProbeIntervalSec)
+    :   Task(controller,
+             "HEALTH-MONITOR  ",
+             onTerminated),
         _onWorkerEvictTimeout(onWorkerEvictTimeout),
         _workerEvictTimeoutSec(workerEvictTimeoutSec),
         _workerResponseTimeoutSec(workerResponseTimeoutSec),

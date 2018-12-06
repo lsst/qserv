@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_HEALTHMONITORTHREAD_H
-#define LSST_QSERV_HEALTHMONITORTHREAD_H
+#ifndef LSST_QSERV_HEALTHMONITORTASK_H
+#define LSST_QSERV_HEALTHMONITORTASK_H
 
 // System headers
 #include <atomic>
@@ -28,7 +28,7 @@
 #include <set>
 
 // Qserv headers
-#include "replica/ControlThread.h"
+#include "replica/Task.h"
 #include "util/Mutex.h"
 
 // This header declarations
@@ -38,12 +38,12 @@ namespace qserv {
 namespace replica {
 
 /**
- * Class HealthMonitorThread represents a thread which monitors a status of
+ * Class HealthMonitorTask represents a task which monitors a status of
  * the Replication and Qserv worker services and report worker(s) eligible
  * for eviction if they're not responding within the specified timeout.
  */
-class HealthMonitorThread
-    :   public ControlThread {
+class HealthMonitorTask
+    :   public Task {
 
 public:
 
@@ -54,21 +54,21 @@ public:
                               unsigned int>> WorkerResponseDelay;
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<HealthMonitorThread> Ptr;
+    typedef std::shared_ptr<HealthMonitorTask> Ptr;
 
     /// The function type for notifications on the worker eviction events
     typedef std::function<void(std::string const&)> WorkerEvictCallbackType;
 
     // Default construction and copy semantics are prohibited
 
-    HealthMonitorThread() = delete;
-    HealthMonitorThread(HealthMonitorThread const&) = delete;
-    HealthMonitorThread& operator=(HealthMonitorThread const&) = delete;
+    HealthMonitorTask() = delete;
+    HealthMonitorTask(HealthMonitorTask const&) = delete;
+    HealthMonitorTask& operator=(HealthMonitorTask const&) = delete;
 
-    ~HealthMonitorThread() final = default;
+    ~HealthMonitorTask() final = default;
 
     /**
-     * Create a new thread with specified parameters.
+     * Create a new task with specified parameters.
      *
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
@@ -79,7 +79,7 @@ public:
      *
      * @param onTerminated
      *   callback function to be called upon abnormal termination
-     *   of the thread. Set it to 'nullptr' if no call back should be made.
+     *   of the task. Set it to 'nullptr' if no call back should be made.
      *
      * @param onWorkerEvictTimeout
      *   callback function to be called when one or more workers
@@ -108,7 +108,7 @@ public:
      *   the smart pointer to a new object
      */
     static Ptr create(Controller::Ptr const& controller,
-                      ControlThread::AbnormalTerminationCallbackType const& onTerminated,
+                      Task::AbnormalTerminationCallbackType const& onTerminated,
                       WorkerEvictCallbackType const& onWorkerEvictTimeout,
                       unsigned int workerEvictTimeoutSec,
                       unsigned int workerResponseTimeoutSec,
@@ -122,7 +122,7 @@ public:
 protected:
 
     /**
-     * @see ControlThread::run()
+     * @see Task::run()
      */
     void run() final;
 
@@ -131,10 +131,10 @@ private:
     /**
      * The constructor is available to the class's factory method
      *
-     * @see HealthMonitorThread::create()
+     * @see HealthMonitorTask::create()
      */
-    HealthMonitorThread(Controller::Ptr const& controller,
-                        ControlThread::AbnormalTerminationCallbackType const& onTerminated,
+    HealthMonitorTask(Controller::Ptr const& controller,
+                        Task::AbnormalTerminationCallbackType const& onTerminated,
                         WorkerEvictCallbackType const& onWorkerEvictTimeout,
                         unsigned int workerEvictTimeoutSec,
                         unsigned int workerResponseTimeoutSec,
@@ -175,4 +175,4 @@ private:
     
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_HEALTHMONITORTHREAD_H
+#endif // LSST_QSERV_HEALTHMONITORTASK_H

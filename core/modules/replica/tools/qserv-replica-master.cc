@@ -42,10 +42,10 @@
 // Qserv headers
 #include "replica/Application.h"
 #include "replica/Configuration.h"
-#include "replica/DeleteWorkerThread.h"
+#include "replica/DeleteWorkerTask.h"
 #include "replica/OneWayFailer.h"
-#include "replica/HealthMonitorThread.h"
-#include "replica/ReplicationThread.h"
+#include "replica/HealthMonitorTask.h"
+#include "replica/ReplicationTask.h"
 #include "util/BlockPost.h"
 
 using namespace lsst::qserv::replica;
@@ -247,9 +247,9 @@ protected:
 
         auto self = shared_from_base<MasterControllerApp>();
 
-        _replicationThread = ReplicationThread::create(
+        _replicationTask = ReplicationTask::create(
             _controller,
-            [self] (ControlThread::Ptr const& ptr) {
+            [self] (Task::Ptr const& ptr) {
                 self->_isFailed.fail();
             },
             _qservSyncTimeoutSec,
@@ -258,11 +258,11 @@ protected:
             _numIter,
             _purge
         );
-        _replicationThread->start();
+        _replicationTask->start();
 
-        _healthMonitorThread = HealthMonitorThread::create(
+        _healthMonitorTask = HealthMonitorTask::create(
             _controller,
-            [self] (ControlThread::Ptr const& ptr) {
+            [self] (Task::Ptr const& ptr) {
                 self->_isFailed.fail();
             },
             [self] (std::string const& worker2evict) {
@@ -272,7 +272,7 @@ protected:
             _workerResponseTimeoutSec,
             _healthProbeIntervalSec
         );
-        _healthMonitorThread->start();
+        _healthMonitorTask->start();
 
         // Keep running before a catastrophic failure is reported by any
         // above initiated activity
@@ -284,8 +284,8 @@ protected:
 
         // Stop all threads if any are still running
 
-        _healthMonitorThread->stop();
-        _replicationThread->stop();
+        _healthMonitorTask->stop();
+        _replicationTask->stop();
 
         return 1;
     }
@@ -307,7 +307,7 @@ private:
         // This thread needs to be stopped to avoid any interference with
         // the worker exclusion protocol.
 
-        _replicationThread->stop();
+        _replicationTask->stop();
 
         // This thread will be allowed to run for as long as it's permitted by
         // the corresponding timeouts set for Requests and Jobs in the Configuration,
@@ -316,26 +316,26 @@ private:
 
         auto self = shared_from_base<MasterControllerApp>();
 
-        _deleteWorkerThread = DeleteWorkerThread::create(
+        _deleteWorkerTask = DeleteWorkerTask::create(
             _controller,
-            [self] (ControlThread::Ptr const& ptr) {
+            [self] (Task::Ptr const& ptr) {
                 self->_isFailed.fail();
             },
             worker,
             _permanentDelete
         );
-        _deleteWorkerThread->startAndWait(
-            [self] (ControlThread::Ptr const& ptr) -> bool {
+        _deleteWorkerTask->startAndWait(
+            [self] (Task::Ptr const& ptr) -> bool {
                 return self->_isFailed();
             }
         );
-        _deleteWorkerThread->stop();    // it's safe to call this method even if the thread is
-                                        // no longer running.
+        _deleteWorkerTask->stop();  // it's safe to call this method even if the thread is
+                                    // no longer running.
 
         // Resume the normal replication sequence unless a catastrophic failure
         // in the system has been detected
         
-        if (not _isFailed()) _replicationThread->start();
+        if (not _isFailed()) _replicationTask->start();
     }
 
 private:
@@ -363,9 +363,9 @@ private:
 
     // Control threads
 
-    HealthMonitorThread::Ptr _healthMonitorThread;
-    ReplicationThread::Ptr   _replicationThread;
-    DeleteWorkerThread::Ptr  _deleteWorkerThread;
+    HealthMonitorTask::Ptr _healthMonitorTask;
+    ReplicationTask::Ptr   _replicationTask;
+    DeleteWorkerTask::Ptr  _deleteWorkerTask;
 
     /// Logger stream
     LOG_LOGGER _log;

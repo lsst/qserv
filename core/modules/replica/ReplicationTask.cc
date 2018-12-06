@@ -21,7 +21,7 @@
  */
 
 // Class header
-#include "replica/ReplicationThread.h"
+#include "replica/ReplicationTask.h"
 
 // Qserv headers
 #include "replica/FindAllJob.h"
@@ -35,16 +35,16 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-ReplicationThread::Ptr ReplicationThread::create(
+ReplicationTask::Ptr ReplicationTask::create(
         Controller::Ptr const& controller,
-        ControlThread::AbnormalTerminationCallbackType const& onTerminated,
+        Task::AbnormalTerminationCallbackType const& onTerminated,
         unsigned int qservSyncTimeoutSec,
         unsigned int replicationIntervalSec,
         unsigned int numReplicas,
         unsigned int numIter,
         bool purge) {
     return Ptr(
-        new ReplicationThread(
+        new ReplicationTask(
             controller,
             onTerminated,
             qservSyncTimeoutSec,
@@ -56,7 +56,7 @@ ReplicationThread::Ptr ReplicationThread::create(
     );
 }
 
-void ReplicationThread::run() {
+void ReplicationTask::run() {
 
     unsigned int numIterCompleted = 0;
 
@@ -101,16 +101,16 @@ void ReplicationThread::run() {
     }
 }
 
-ReplicationThread::ReplicationThread(Controller::Ptr const& controller,
-                                     ControlThread::AbnormalTerminationCallbackType const& onTerminated,
-                                     unsigned int qservSyncTimeoutSec,
-                                     unsigned int replicationIntervalSec,
-                                     unsigned int numReplicas,
-                                     unsigned int numIter,
-                                     bool purge)
-    :   ControlThread(controller,
-                      "REPLICATION-THREAD  ",
-                      onTerminated),
+ReplicationTask::ReplicationTask(Controller::Ptr const& controller,
+                                 Task::AbnormalTerminationCallbackType const& onTerminated,
+                                 unsigned int qservSyncTimeoutSec,
+                                 unsigned int replicationIntervalSec,
+                                 unsigned int numReplicas,
+                                 unsigned int numIter,
+                                 bool purge)
+    :   Task(controller,
+             "REPLICATION-THREAD  ",
+             onTerminated),
         _qservSyncTimeoutSec(qservSyncTimeoutSec),
         _replicationIntervalSec(replicationIntervalSec),
         _numReplicas(numReplicas),
