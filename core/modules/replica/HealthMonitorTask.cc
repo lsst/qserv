@@ -64,7 +64,7 @@ void HealthMonitorTask::run() {
     {
         util::Lock lock(_mtx, context);
 
-        for (auto&& worker: serviceProvider()->config()->workers()) {
+        for (auto&& worker: serviceProvider()->config()->allWorkers()) {
             _workerServiceNoResponseSec[worker]["qserv"] = 0;
             _workerServiceNoResponseSec[worker]["replication"] = 0;
         }
@@ -87,6 +87,7 @@ void HealthMonitorTask::run() {
         jobs.emplace_back(
             ClusterHealthJob::create(
                 _workerResponseTimeoutSec,
+                true, /* allWorkers */
                 controller(),
                 parentJobId,
                 [self](ClusterHealthJob::Ptr const& job) {
@@ -132,7 +133,7 @@ void HealthMonitorTask::run() {
 
         // Analyze the intervals to see which workers have reached the eviction
         // threshold. Also count the total number of Replication workers (including
-        // the evicted ones) which ae offline.
+        // the evicted ones) which are offline.
 
         std::vector<std::string> workers2evict;
 
@@ -147,6 +148,11 @@ void HealthMonitorTask::run() {
 
             if (entry.second.at("replication") >= _workerEvictTimeoutSec) {
                 if (entry.second.at("qserv") >= _workerEvictTimeoutSec) {
+
+                    // Skip workers which are already evicted
+                    auto workerInfo = serviceProvider()->config()->workerInfo(worker);
+                    if (not workerInfo.isEnabled) continue;
+
                     workers2evict.push_back(worker);
                     info("worker '" + worker + "' has reached eviction timeout of " +
                          std::to_string(_workerEvictTimeoutSec) + " seconds");
@@ -188,7 +194,7 @@ void HealthMonitorTask::run() {
 
                         _workerServiceNoResponseSec.clear();
 
-                        for (auto&& worker: serviceProvider()->config()->workers()) {
+                        for (auto&& worker: serviceProvider()->config()->allWorkers()) {
                             _workerServiceNoResponseSec[worker]["qserv"] = 0;
                             _workerServiceNoResponseSec[worker]["replication"] = 0;
                         }

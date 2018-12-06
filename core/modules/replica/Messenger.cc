@@ -51,7 +51,7 @@ Messenger::Ptr Messenger::create(ServiceProvider::Ptr const& serviceProvider,
 Messenger::Messenger(ServiceProvider::Ptr const& serviceProvider,
                      boost::asio::io_service& io_service) {
 
-    for (auto&& worker: serviceProvider->config()->workers()){
+    for (auto&& worker: serviceProvider->config()->allWorkers()) {
         _connector[worker] = MessengerConnector::create(serviceProvider,
                                                         io_service,
                                                         worker);

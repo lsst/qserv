@@ -101,12 +101,14 @@ std::string ClusterHealthJob::typeName() { return "ClusterHealthJob"; }
 
 
 ClusterHealthJob::Ptr ClusterHealthJob::create(unsigned int timeoutSec,
+                                               bool allWorkers,
                                                Controller::Ptr const& controller,
                                                std::string const& parentJobId,
                                                CallbackType const& onFinish,
                                                Job::Options const& options) {
     return ClusterHealthJob::Ptr(
         new ClusterHealthJob(timeoutSec,
+                             allWorkers,
                              controller,
                              parentJobId,
                              onFinish,
@@ -114,6 +116,7 @@ ClusterHealthJob::Ptr ClusterHealthJob::create(unsigned int timeoutSec,
 }
 
 ClusterHealthJob::ClusterHealthJob(unsigned int timeoutSec,
+                                   bool allWorkers,
                                    Controller::Ptr const& controller,
                                    std::string const& parentJobId,
                                    CallbackType const& onFinish,
@@ -125,8 +128,11 @@ ClusterHealthJob::ClusterHealthJob(unsigned int timeoutSec,
         _timeoutSec(timeoutSec == 0
                     ? controller->serviceProvider()->config()->controllerRequestTimeoutSec()
                     : timeoutSec),
+        _allWorkers(allWorkers),
         _onFinish(onFinish),
-        _health(controller->serviceProvider()->config()->workers()),
+        _health(allWorkers
+                ? controller->serviceProvider()->config()->allWorkers()
+                : controller->serviceProvider()->config()->workers()),
         _numStarted(0),
         _numFinished(0) {
 }
@@ -143,7 +149,8 @@ ClusterHealth const& ClusterHealthJob::clusterHealth() const {
 
 std::list<std::pair<std::string,std::string>> ClusterHealthJob::extendedPersistentState() const {
     std::list<std::pair<std::string,std::string>> result;
-    result.emplace_back("timeout_sec",std::to_string(timeoutSec()));
+    result.emplace_back("timeout_sec", std::to_string(timeoutSec()));
+    result.emplace_back("all_workers", allWorkers() ? "1" : "0");
     return result;
 }
 
@@ -157,7 +164,11 @@ void ClusterHealthJob::startImpl(util::Lock const& lock) {
     // string to be sent to a worker.
     std::string const testData = "123";
 
-    for (auto const& worker: controller()->serviceProvider()->config()->workers()) {
+    auto workers = allWorkers()
+        ? controller()->serviceProvider()->config()->allWorkers()
+        : controller()->serviceProvider()->config()->workers();
+
+    for (auto const& worker: workers) {
 
         auto const replicationRequest = controller()->statusOfWorkerService(
             worker,
