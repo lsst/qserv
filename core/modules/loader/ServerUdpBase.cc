@@ -51,7 +51,7 @@ ServerUdpBase::ServerUdpBase(boost::asio::io_service& io_service, std::string co
       //      _socket can throw, so either constructors need to be wrapped or this needs to be broken
       //      out into another function. The program is basically sunk if this fails, so logging
       //      and exiting is a reasonably valid course of action.
-      _socket(io_service, boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), port)), // &&& need to handle this throwing or move
+      _socket(io_service, boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), port)),
       _hostName(host), _port(port) {
     _receivePrepare(); // Prime the server for an incoming message.
 }
