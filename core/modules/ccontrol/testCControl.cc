@@ -840,6 +840,82 @@ static const std::vector<Antlr4CompareQueries> ANTLR4_COMPARE_QUERIES = {
         },
         "SELECT objectId FROM Object WHERE (objectID&1)=1"
     ),
+
+    // tests the | operator
+    Antlr4CompareQueries(
+        "SELECT objectId from Object where objectID | 1 = 1",
+        "SELECT objectId from Object where objectID = 1",
+        [](query::SelectStmt::Ptr const & selectStatement) {
+              auto orTerm = std::dynamic_pointer_cast<query::OrTerm>(selectStatement->getWhereClause().getRootTerm());
+              auto andTerm = std::dynamic_pointer_cast<query::AndTerm>(orTerm->_terms[0]);
+              auto boolFactor = std::dynamic_pointer_cast<query::BoolFactor>(andTerm->_terms[0]);
+              auto compPredicate = std::dynamic_pointer_cast<query::CompPredicate>(boolFactor->_terms[0]);
+              compPredicate->left = std::make_shared<query::ValueExpr>(query::ValueExpr::FactorOpVector({
+                  query::ValueExpr::FactorOp(
+                          query::ValueFactor::newColumnRefFactor(query::ColumnRef::newShared("", "", "objectID")),
+                          query::ValueExpr::BIT_OR),
+                  query::ValueExpr::FactorOp(query::ValueFactor::newConstFactor("1"))
+              }));
+        },
+        "SELECT objectId FROM Object WHERE (objectID|1)=1"
+    ),
+
+    // tests the >> operator
+    Antlr4CompareQueries(
+        "SELECT objectId from Object where objectID << 10 = 1",
+        "SELECT objectId from Object where objectID = 1",
+        [](query::SelectStmt::Ptr const & selectStatement) {
+              auto orTerm = std::dynamic_pointer_cast<query::OrTerm>(selectStatement->getWhereClause().getRootTerm());
+              auto andTerm = std::dynamic_pointer_cast<query::AndTerm>(orTerm->_terms[0]);
+              auto boolFactor = std::dynamic_pointer_cast<query::BoolFactor>(andTerm->_terms[0]);
+              auto compPredicate = std::dynamic_pointer_cast<query::CompPredicate>(boolFactor->_terms[0]);
+              compPredicate->left = std::make_shared<query::ValueExpr>(query::ValueExpr::FactorOpVector({
+                  query::ValueExpr::FactorOp(
+                          query::ValueFactor::newColumnRefFactor(query::ColumnRef::newShared("", "", "objectID")),
+                          query::ValueExpr::BIT_SHIFT_LEFT),
+                  query::ValueExpr::FactorOp(query::ValueFactor::newConstFactor("10"))
+              }));
+        },
+        "SELECT objectId FROM Object WHERE (objectID<<10)=1"
+    ),
+
+    // tests the << operator
+    Antlr4CompareQueries(
+        "SELECT objectId from Object where objectID >> 10 = 1",
+        "SELECT objectId from Object where objectID = 1",
+        [](query::SelectStmt::Ptr const & selectStatement) {
+              auto orTerm = std::dynamic_pointer_cast<query::OrTerm>(selectStatement->getWhereClause().getRootTerm());
+              auto andTerm = std::dynamic_pointer_cast<query::AndTerm>(orTerm->_terms[0]);
+              auto boolFactor = std::dynamic_pointer_cast<query::BoolFactor>(andTerm->_terms[0]);
+              auto compPredicate = std::dynamic_pointer_cast<query::CompPredicate>(boolFactor->_terms[0]);
+              compPredicate->left = std::make_shared<query::ValueExpr>(query::ValueExpr::FactorOpVector({
+                  query::ValueExpr::FactorOp(
+                          query::ValueFactor::newColumnRefFactor(query::ColumnRef::newShared("", "", "objectID")),
+                          query::ValueExpr::BIT_SHIFT_RIGHT),
+                  query::ValueExpr::FactorOp(query::ValueFactor::newConstFactor("10"))
+              }));
+        },
+        "SELECT objectId FROM Object WHERE (objectID>>10)=1"
+    ),
+
+    // tests the ^ operator
+    Antlr4CompareQueries(
+        "SELECT objectId from Object where objectID ^ 1 = 1",
+        "SELECT objectId from Object where objectID = 1",
+        [](query::SelectStmt::Ptr const & selectStatement) {
+              auto orTerm = std::dynamic_pointer_cast<query::OrTerm>(selectStatement->getWhereClause().getRootTerm());
+              auto andTerm = std::dynamic_pointer_cast<query::AndTerm>(orTerm->_terms[0]);
+              auto boolFactor = std::dynamic_pointer_cast<query::BoolFactor>(andTerm->_terms[0]);
+              auto compPredicate = std::dynamic_pointer_cast<query::CompPredicate>(boolFactor->_terms[0]);
+              compPredicate->left = std::make_shared<query::ValueExpr>(query::ValueExpr::FactorOpVector({
+                  query::ValueExpr::FactorOp(
+                          query::ValueFactor::newColumnRefFactor(query::ColumnRef::newShared("", "", "objectID")),
+                          query::ValueExpr::BIT_XOR),
+                  query::ValueExpr::FactorOp(query::ValueFactor::newConstFactor("1"))
+              }));
+        },
+        "SELECT objectId FROM Object WHERE (objectID^1)=1"
+    ),
 };
 
 
