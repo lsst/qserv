@@ -62,10 +62,12 @@ class ValueFactor;
 /// operators. No nesting is allowed yet.
 class ValueExpr {
 public:
-    ValueExpr();
     // in Op: DIVIDE is the `/` operator, "Division; quotient of operands" as specified by MySQL.
     //        DIV is the `DIV` operator, "Division; integer quotient of operands" as specified by MySQL.
-    enum Op {NONE=200, UNKNOWN, PLUS, MINUS, MULTIPLY, DIVIDE, DIV, MOD, MODULO};
+    //        THE BIT_ values are bitwise operators: BIT_SHIFT_LEFT is <<, BIT_SHIFT_RIGHT is >>,
+    //        BIT_AND is &, BIT_OR is |, BIT_XOR is ^.
+    enum Op {NONE=200, UNKNOWN, PLUS, MINUS, MULTIPLY, DIVIDE, DIV, MOD, MODULO,
+        BIT_SHIFT_LEFT, BIT_SHIFT_RIGHT, BIT_AND, BIT_OR, BIT_XOR};
     struct FactorOp {
         explicit FactorOp(std::shared_ptr<ValueFactor> factor_, Op op_=NONE)
             : factor(factor_), op(op_) {}
@@ -76,6 +78,9 @@ public:
     };
     typedef std::vector<FactorOp> FactorOpVector;
     friend std::ostream& operator<<(std::ostream& os, FactorOp const& fo);
+
+    ValueExpr();
+    ValueExpr(FactorOpVector factorOpVec);
 
     std::string const& getAlias() const { return _alias; }
     void setAlias(std::string const& a) { _alias = a; }

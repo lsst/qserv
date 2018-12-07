@@ -518,6 +518,12 @@ public:
 };
 
 
+class BitExpressionAtomCBH : public BaseCBH {
+public:
+    virtual void handleBitExpressionAtom(shared_ptr<query::ValueExpr> const & valueExpr) = 0;
+};
+
+
 class LogicalOperatorCBH : public BaseCBH {
 public:
     enum OperatorType {
@@ -529,6 +535,20 @@ public:
     static string OperatorTypeToStr(OperatorType operatorType) {
         return operatorType == AND ? "AND" : "OR";
     }
+};
+
+
+class BitOperatorCBH : public BaseCBH {
+public:
+    enum OperatorType {
+        LEFT_SHIFT,
+        RIGHT_SHIFT,
+        AND,
+        XOR,
+        OR,
+    };
+
+    virtual void handleBitOperator(OperatorType operatorType) = 0;
 };
 
 
@@ -1257,7 +1277,8 @@ class ExpressionAtomPredicateAdapter :
         public FullColumnNameExpressionAtomCBH,
         public FunctionCallExpressionAtomCBH,
         public NestedExpressionAtomCBH,
-        public MathExpressionAtomCBH {
+        public MathExpressionAtomCBH,
+        public BitExpressionAtomCBH {
 public:
     using AdapterT::AdapterT;
 
@@ -1288,6 +1309,10 @@ public:
     }
 
     void handleNestedExpressionAtom(shared_ptr<query::ValueExpr> const & valueExpr) override {
+        lockedParent()->handleExpressionAtomPredicate(valueExpr, _ctx);
+    }
+
+    void handleBitExpressionAtom(shared_ptr<query::ValueExpr> const & valueExpr) override {
         lockedParent()->handleExpressionAtomPredicate(valueExpr, _ctx);
     }
 
@@ -3107,6 +3132,76 @@ private:
 };
 
 
+class BitExpressionAtomAdapter :
+        public AdapterT<BitExpressionAtomCBH, QSMySqlParser::BitExpressionAtomContext>,
+        public FullColumnNameExpressionAtomCBH,
+        public BitOperatorCBH,
+        public ConstantExpressionAtomCBH {
+public:
+    using AdapterT::AdapterT;
+
+    void HandleFullColumnNameExpressionAtom(shared_ptr<query::ValueFactor> const & valueFactor) override {
+        _setValueFactor(valueFactor);
+    }
+
+    void handleBitOperator(BitOperatorCBH::OperatorType operatorType) override {
+        ASSERT_EXECUTION_CONDITION(false == _didSetOp, "op is already set.", _ctx);
+        _operator = operatorType;
+        _didSetOp = true;
+    }
+
+    void handleConstantExpressionAtom(shared_ptr<query::ValueFactor> const & valueFactor) override {
+        _setValueFactor(valueFactor);
+    }
+
+    void checkContext() const override {
+        // nothing to check
+    }
+
+    void onExit() override {
+        ASSERT_EXECUTION_CONDITION(nullptr != _left && nullptr != _right && true == _didSetOp,
+                "Not all values were populated, left:" << _left << ", right:" << right << ", didSetOp:" <<
+                _didSetOp, _ctx);
+        auto valueExpr = std::make_shared<query::ValueExpr>();
+        ValueExprFactory::addValueFactor(valueExpr, _left);
+        auto valueExprOp = _translateOperator(_operator);
+        ValueExprFactory::addOp(valueExpr, valueExprOp);
+        ValueExprFactory::addValueFactor(valueExpr, _right);
+        lockedParent()->handleBitExpressionAtom(valueExpr);
+    }
+
+    string name() const override { return getTypeName(this); }
+
+private:
+    query::ValueExpr::Op _translateOperator(BitOperatorCBH::OperatorType op) {
+        switch(op) {
+            case BitOperatorCBH::LEFT_SHIFT: return query::ValueExpr::BIT_SHIFT_LEFT;
+            case BitOperatorCBH::RIGHT_SHIFT: return query::ValueExpr::BIT_SHIFT_RIGHT;
+            case BitOperatorCBH::AND: return query::ValueExpr::BIT_AND;
+            case BitOperatorCBH::XOR: return query::ValueExpr::BIT_XOR;
+            case BitOperatorCBH::OR: return query::ValueExpr::BIT_OR;
+        }
+        ASSERT_EXECUTION_CONDITION(false, "Failed to translate token from BitOperatorCBH to ValueExpr.", _ctx);
+        return query::ValueExpr::NONE;
+    }
+
+    void _setValueFactor(shared_ptr<query::ValueFactor> const & valueFactor) {
+        if (nullptr == _left) {
+            _left = valueFactor;
+        } else if (nullptr == _right) {
+            _right = valueFactor;
+        } else {
+            ASSERT_EXECUTION_CONDITION(false, "Left and Right are already set.", _ctx);
+        }
+    }
+
+    shared_ptr<query::ValueFactor> _left;
+    shared_ptr<query::ValueFactor> _right;
+    bool _didSetOp{false};
+    BitOperatorCBH::OperatorType _operator;
+};
+
+
 class LogicalOperatorAdapter :
         public AdapterT<LogicalOperatorCBH, QSMySqlParser::LogicalOperatorContext> {
 public:
@@ -3129,6 +3224,37 @@ public:
         } else {
             ASSERT_EXECUTION_CONDITION(false, "unhandled logical operator", _ctx);
         }
+    }
+
+    string name() const override { return getTypeName(this); }
+};
+
+
+class BitOperatorAdapter :
+        public AdapterT<BitOperatorCBH, QSMySqlParser::BitOperatorContext> {
+public:
+    using AdapterT::AdapterT;
+
+    void checkContext() const override {
+        // all cases are handled in onExit
+    }
+
+    void onExit() override {
+        BitOperatorCBH::OperatorType op;
+        if (_ctx->getText() == "<<") {
+            op = BitOperatorCBH::LEFT_SHIFT;
+        } else if (_ctx->getText() == ">>") {
+            op = BitOperatorCBH::RIGHT_SHIFT;
+        } else if (_ctx->getText() == "&") {
+            op = BitOperatorCBH::AND;
+        } else if (_ctx->getText() == "|") {
+            op = BitOperatorCBH::OR;
+        } else if (_ctx->getText() == "^") {
+            op = BitOperatorCBH::XOR;
+        } else {
+            ASSERT_EXECUTION_CONDITION(false, "unhandled bit operator", _ctx);
+        }
+        lockedParent()->handleBitOperator(op);
     }
 
     string name() const override { return getTypeName(this); }
@@ -3826,10 +3952,10 @@ UNHANDLED(IntervalExpressionAtom)
 UNHANDLED(ExistsExpessionAtom)
 ENTER_EXIT_PARENT(FunctionCallExpressionAtom)
 UNHANDLED(BinaryExpressionAtom)
-UNHANDLED(BitExpressionAtom)
+ENTER_EXIT_PARENT(BitExpressionAtom)
 UNHANDLED(UnaryOperator)
 ENTER_EXIT_PARENT(LogicalOperator)
-UNHANDLED(BitOperator)
+ENTER_EXIT_PARENT(BitOperator)
 ENTER_EXIT_PARENT(MathOperator)
 UNHANDLED(CharsetNameBase)
 UNHANDLED(TransactionLevelBase)
