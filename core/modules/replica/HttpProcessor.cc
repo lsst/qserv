@@ -21,7 +21,7 @@
  */
 
 // Class header
-#include "replica/HttpTask.h"
+#include "replica/HttpProcessor.h"
 
 // System headers
 #include <atomic>
@@ -32,7 +32,6 @@
 
 // Third party headers
 #include "nlohmann/json.hpp"
-using json = nlohmann::json;
 
 // Qserv headers
 #include "util/BlockPost.h"
@@ -40,132 +39,122 @@ using json = nlohmann::json;
 #include "replica/DatabaseServices.h"
 #include "replica/Performance.h"
 
+
+using namespace std::placeholders;
+using json = nlohmann::json;
+
 namespace lsst {
 namespace qserv {
 namespace replica {
 
-HttpTask::Ptr HttpTask::create(Controller::Ptr const& controller,
-                               Task::AbnormalTerminationCallbackType const& onTerminated,
-                               HealthMonitorTask::WorkerEvictCallbackType const& onWorkerEvict,
-                               HealthMonitorTask::Ptr const& healthMonitorTask,
-                               ReplicationTask::Ptr const& replicationTask,
-                               DeleteWorkerTask::Ptr const& deleteWorkerTask) {
-    return Ptr(
-        new HttpTask(
-            controller,
-            onTerminated,
-            onWorkerEvict,
-            healthMonitorTask,
-            replicationTask,
-            deleteWorkerTask
-        )
-    );
+HttpProcessor::Ptr HttpProcessor::create(
+                        Controller::Ptr const& controller,
+                        HealthMonitorTask::WorkerEvictCallbackType const& onWorkerEvict,
+                        HealthMonitorTask::Ptr const& healthMonitorTask,
+                        ReplicationTask::Ptr const& replicationTask,
+                        DeleteWorkerTask::Ptr const& deleteWorkerTask) {
+
+    auto ptr = Ptr(new HttpProcessor(
+        controller,
+        onWorkerEvict,
+        healthMonitorTask,
+        replicationTask,
+        deleteWorkerTask
+    ));
+    ptr->_initialize();
+    return ptr;
 }
 
-void HttpTask::run() {
 
-    // Finish initializing the server
-
-    if (not _isInitialized) {
-        _isInitialized = true;
-
-        using namespace std::placeholders;
-
-        auto self = shared_from_base<HttpTask>();
-
-        _httpServer->addHandlers({
-
-            // Trivial tests of the API
-            {"POST",   "/replication/test",     std::bind(&HttpTask::_testCreate, self, _1, _2)},
-            {"GET",    "/replication/test",     std::bind(&HttpTask::_testList,   self, _1, _2)},
-            {"GET",    "/replication/test/:id", std::bind(&HttpTask::_testGet,    self, _1, _2)},
-            {"PUT",    "/replication/test/:id", std::bind(&HttpTask::_testUpdate, self, _1, _2)},
-            {"DELETE", "/replication/test/:id", std::bind(&HttpTask::_testDelete, self, _1, _2)},
-
-            // Replication level summary
-            {"GET",    "/replication/v1/level", std::bind(&HttpTask::_getReplicationLevel, self, _1, _2)},
-
-            // Status of all workers or a particular worker
-            {"GET",    "/replication/v1/worker",       std::bind(&HttpTask::_listWorkerStatuses, self, _1, _2)},
-            {"GET",    "/replication/v1/worker/:name", std::bind(&HttpTask::_getWorkerStatus,    self, _1, _2)},
-
-        });
-    }
-
-    // Keep running before stopped
-
-    _httpServer->start();
-
-    util::BlockPost blockPost(1000, 2000);
-    while (not stopRequested()) {
-        blockPost.wait();
-    }
-    _httpServer->stop();
-}
-
-HttpTask::HttpTask(Controller::Ptr const& controller,
-                   Task::AbnormalTerminationCallbackType const& onTerminated,
-                   HealthMonitorTask::WorkerEvictCallbackType const& onWorkerEvict,
-                   HealthMonitorTask::Ptr const& healthMonitorTask,
-                   ReplicationTask::Ptr const& replicationTask,
-                   DeleteWorkerTask::Ptr const& deleteWorkerTask)
-    :   Task(controller,
-             "HTTP-SERVER  ",
-             onTerminated),
+HttpProcessor::HttpProcessor(Controller::Ptr const& controller,
+                             HealthMonitorTask::WorkerEvictCallbackType const& onWorkerEvict,
+                             HealthMonitorTask::Ptr const& healthMonitorTask,
+                             ReplicationTask::Ptr const& replicationTask,
+                             DeleteWorkerTask::Ptr const& deleteWorkerTask)
+    :   _controller(controller),
         _onWorkerEvict(onWorkerEvict),
         _healthMonitorTask(healthMonitorTask),
         _replicationTask(replicationTask),
         _deleteWorkerTask(deleteWorkerTask),
-        _httpServer(
-            qhttp::Server::create(
-                controller->serviceProvider()->io_service(),
-                controller->serviceProvider()->config()->controllerHttpPort()
-            )
-        ),
-        _isInitialized(false) {
+        _log(LOG_GET("lsst.qserv.replica.HttpProcessor")) {
 }
 
 
-void HttpTask::_testCreate(qhttp::Request::Ptr req,
-                             qhttp::Response::Ptr resp) {
+HttpProcessor::~HttpProcessor() {
+    controller()->serviceProvider()->httpServer()->stop();
+}
+
+
+void HttpProcessor::_initialize() {
+
+    auto self = shared_from_this();
+
+    controller()->serviceProvider()->httpServer()->addHandlers({
+
+        // Trivial tests of the API
+        {"POST",   "/replication/test",     std::bind(&HttpProcessor::_testCreate, self, _1, _2)},
+        {"GET",    "/replication/test",     std::bind(&HttpProcessor::_testList,   self, _1, _2)},
+        {"GET",    "/replication/test/:id", std::bind(&HttpProcessor::_testGet,    self, _1, _2)},
+        {"PUT",    "/replication/test/:id", std::bind(&HttpProcessor::_testUpdate, self, _1, _2)},
+        {"DELETE", "/replication/test/:id", std::bind(&HttpProcessor::_testDelete, self, _1, _2)},
+
+        // Replication level summary
+        {"GET",    "/replication/v1/level", std::bind(&HttpProcessor::_getReplicationLevel, self, _1, _2)},
+
+        // Status of all workers or a particular worker
+        {"GET",    "/replication/v1/worker",       std::bind(&HttpProcessor::_listWorkerStatuses, self, _1, _2)},
+        {"GET",    "/replication/v1/worker/:name", std::bind(&HttpProcessor::_getWorkerStatus,    self, _1, _2)},
+
+    });
+    controller()->serviceProvider()->httpServer()->start();
+}
+
+
+std::string HttpProcessor::context() const {
+    return "HTTP-PROCESSOR ";
+}
+
+
+void HttpProcessor::_testCreate(qhttp::Request::Ptr req,
+                                qhttp::Response::Ptr resp) {
     debug("_testCreate");
     resp->send("_testCreate", "application/json");
 }
 
 
-void HttpTask::_testList(qhttp::Request::Ptr req,
-                           qhttp::Response::Ptr resp) {
+void HttpProcessor::_testList(qhttp::Request::Ptr req,
+                              qhttp::Response::Ptr resp) {
     debug("_testList");
     resp->send("_testList", "application/json");
 }
 
 
-void HttpTask::_testGet(qhttp::Request::Ptr req,
-                          qhttp::Response::Ptr resp) {
+void HttpProcessor::_testGet(qhttp::Request::Ptr req,
+                             qhttp::Response::Ptr resp) {
     debug("_testGet");
     resp->send("_testGet", "application/json");
 }
 
 
-void HttpTask::_testUpdate(qhttp::Request::Ptr req,
-                             qhttp::Response::Ptr resp) {
+void HttpProcessor::_testUpdate(qhttp::Request::Ptr req,
+                                qhttp::Response::Ptr resp) {
     debug("_testUpdate");
     resp->send("_testUpdate", "application/json");
 }
 
 
-void HttpTask::_testDelete(qhttp::Request::Ptr req,
-                             qhttp::Response::Ptr resp) {
+void HttpProcessor::_testDelete(qhttp::Request::Ptr req,
+                                qhttp::Response::Ptr resp) {
     debug("_testDelete");
     resp->send("_testDelete", "application/json");
 }
 
 
-void HttpTask::_getReplicationLevel(qhttp::Request::Ptr req,
-                                      qhttp::Response::Ptr resp) {
+void HttpProcessor::_getReplicationLevel(qhttp::Request::Ptr req,
+                                         qhttp::Response::Ptr resp) {
     debug("_getReplicationLevel");
 
-    util::Lock lock(_replicationLevelMtx, "HttpTask::_getReplicationLevel");
+    util::Lock lock(_replicationLevelMtx, "HttpProcessor::_getReplicationLevel");
 
     // Check if a cached report can be used
     //
@@ -302,15 +291,15 @@ void HttpTask::_getReplicationLevel(qhttp::Request::Ptr req,
                 unsigned int const level = entry.first;
                 size_t const numChunks   = entry.second;
                 double const percent     = 100. * numChunks / numOnlineQservChunks;
-                databaseJson["levels"][level]["qserv"      ]["online"]["num_chunks"] = numChunks;
-                databaseJson["levels"][level]["qserv"      ]["online"]["percent"   ] = percent;
+                databaseJson["levels"][level]["qserv"]["online"]["num_chunks"] = numChunks;
+                databaseJson["levels"][level]["qserv"]["online"]["percent"   ] = percent;
             }
             for (auto&& entry: allQservLevels) {
                 unsigned int const level = entry.first;
                 size_t const numChunks   = entry.second;
                 double const percent     = 100. * numChunks / numAllQservChunks;
-                databaseJson["levels"][level]["qserv"      ]["all"   ]["num_chunks"] = numChunks;
-                databaseJson["levels"][level]["qserv"      ]["all"   ]["percent"   ] = percent;
+                databaseJson["levels"][level]["qserv"]["all"]["num_chunks"] = numChunks;
+                databaseJson["levels"][level]["qserv"]["all"]["percent"   ] = percent;
             }
             for (auto&& entry: onLineReplicationSystemLevels) {
                 unsigned int const level = entry.first;
@@ -323,18 +312,18 @@ void HttpTask::_getReplicationLevel(qhttp::Request::Ptr req,
                 unsigned int const level = entry.first;
                 size_t const numChunks   = entry.second;
                 double const percent     = 100. * numChunks / numAllReplicationSystemChunks;
-                databaseJson["levels"][level]["replication"]["all"   ]["num_chunks"] = numChunks;
-                databaseJson["levels"][level]["replication"]["all"   ]["percent"   ] = percent;
+                databaseJson["levels"][level]["replication"]["all"]["num_chunks"] = numChunks;
+                databaseJson["levels"][level]["replication"]["all"]["percent"   ] = percent;
             }
             {
                 double const percent = 100. * numOrphanQservChunks / numAllQservChunks;
-                databaseJson["levels"][0]["qserv"      ]["all"   ]["num_chunks"] = numOrphanQservChunks;
-                databaseJson["levels"][0]["qserv"      ]["all"   ]["percent"   ] = percent;
+                databaseJson["levels"][0]["qserv"]["online"]["num_chunks"] = numOrphanQservChunks;
+                databaseJson["levels"][0]["qserv"]["online"]["percent"   ] = percent;
             }
             {
                 double const percent     = 100. * numOrphanReplicationSystemChunks / numAllReplicationSystemChunks;
-                databaseJson["levels"][0]["replication"]["all"   ]["num_chunks"] = numOrphanReplicationSystemChunks;
-                databaseJson["levels"][0]["replication"]["all"   ]["percent"   ] = percent;
+                databaseJson["levels"][0]["replication"]["online"]["num_chunks"] = numOrphanReplicationSystemChunks;
+                databaseJson["levels"][0]["replication"]["online"]["percent"   ] = percent;
             }
             resultJson["families"][family]["databases"][database] = databaseJson;
         }
@@ -348,8 +337,8 @@ void HttpTask::_getReplicationLevel(qhttp::Request::Ptr req,
 }
 
 
-void HttpTask::_listWorkerStatuses(qhttp::Request::Ptr req,
-                                     qhttp::Response::Ptr resp) {
+void HttpProcessor::_listWorkerStatuses(qhttp::Request::Ptr req,
+                                        qhttp::Response::Ptr resp) {
     debug("_listWorkerStatuses");
 
     HealthMonitorTask::WorkerResponseDelay delays =
@@ -386,8 +375,8 @@ void HttpTask::_listWorkerStatuses(qhttp::Request::Ptr req,
 }
 
 
-void HttpTask::_getWorkerStatus(qhttp::Request::Ptr req,
-                                  qhttp::Response::Ptr resp) {
+void HttpProcessor::_getWorkerStatus(qhttp::Request::Ptr req,
+                                     qhttp::Response::Ptr resp) {
     debug("_getWorkerStatus");
     resp->send(json::array(), "application/json");
 }

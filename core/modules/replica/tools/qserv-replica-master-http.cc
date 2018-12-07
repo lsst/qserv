@@ -44,7 +44,7 @@
 #include "replica/DeleteWorkerTask.h"
 #include "replica/OneWayFailer.h"
 #include "replica/HealthMonitorTask.h"
-#include "replica/HttpTask.h"
+#include "replica/HttpProcessor.h"
 #include "replica/ReplicationTask.h"
 #include "util/BlockPost.h"
 
@@ -275,11 +275,8 @@ protected:
         );
         _healthMonitorTask->start();
 
-        _httpTask = HttpTask::create(
+        _httpProcessor = HttpProcessor::create(
             _controller,
-            [self] (Task::Ptr const& ptr) {
-                self->_isFailed.fail();
-            },
             [self] (std::string const& worker2evict) {
                 self->_evict(worker2evict);
             },
@@ -287,7 +284,6 @@ protected:
             _replicationTask,
             _deleteWorkerTask
         );
-        _httpTask->start();
 
         // Keep running before a catastrophic failure is reported by any
         // above initiated activity
@@ -301,6 +297,9 @@ protected:
 
         _healthMonitorTask->stop();
         _replicationTask->stop();
+
+        if ((_replicationTask != nullptr) and
+             _replicationTask->isRunning()) _replicationTask->stop();
 
         return 1;
     }
@@ -383,8 +382,9 @@ private:
 
     HealthMonitorTask::Ptr _healthMonitorTask;
     ReplicationTask::Ptr   _replicationTask;
-    HttpTask::Ptr          _httpTask;
     DeleteWorkerTask::Ptr  _deleteWorkerTask;
+
+    HttpProcessor::Ptr _httpProcessor;
 
     /// Logger stream
     LOG_LOGGER _log;

@@ -32,6 +32,7 @@
 #include <boost/asio.hpp>
 
 // Qserv headers
+#include "qhttp/Server.h"
 #include "replica/ChunkLocker.h"
 #include "util/Mutex.h"
 
@@ -122,6 +123,9 @@ public:
     /// @return a reference to worker messenger service
     std::shared_ptr<Messenger> const& messenger() const { return _messenger; }
 
+    /// @return a reference to the built-in HTTP server
+    qhttp::Server::Ptr const& httpServer() const { return _httpServer; }
+
     /**
      * Make sure this worker is known in the configuration
      *
@@ -186,6 +190,9 @@ private:
 
     /// Worker messenger service
     std::shared_ptr<Messenger> _messenger;
+
+    /// The server for processing REST requests
+    qhttp::Server::Ptr _httpServer;
 
     /// The mutex for enforcing thread safety of the class's public API
     /// and internal operations.
