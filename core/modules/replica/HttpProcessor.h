@@ -19,20 +19,23 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_HTTPTASK_H
-#define LSST_QSERV_HTTPTASK_H
+#ifndef LSST_QSERV_HTTPPROCESSOR_H
+#define LSST_QSERV_HTTPPROCESSOR_H
 
 // System headers
 #include <functional>
+#include <memory>
 #include <set>
 
 // Qserv headers
 #include "qhttp/Server.h"
-#include "replica/Task.h"
 #include "replica/DeleteWorkerTask.h"
 #include "replica/HealthMonitorTask.h"
 #include "replica/ReplicationTask.h"
 #include "util/Mutex.h"
+
+// LSST headers
+#include "lsst/log/Log.h"
 
 // This header declarations
 
@@ -41,28 +44,29 @@ namespace qserv {
 namespace replica {
 
 /**
- * Class HttpTask represents a task which runs the built-in HTTP server
- * responding to the REST API for managing the Replication Controller
- * and responding to various information retrieval requests.
+ * Class HttpProcessor processes requests from the built-in HTTP server.
+ * The constructor of the class will register requests handlers an start
+ * the server.
  */
-class HttpTask
-    :   public Task {
+class HttpProcessor
+    :   public std::enable_shared_from_this<HttpProcessor> {
 
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<HttpTask> Ptr;
+    typedef std::shared_ptr<HttpProcessor> Ptr;
 
     // Default construction and copy semantics are prohibited
 
-    HttpTask() = delete;
-    HttpTask(HttpTask const&) = delete;
-    HttpTask& operator=(HttpTask const&) = delete;
+    HttpProcessor() = delete;
+    HttpProcessor(HttpProcessor const&) = delete;
+    HttpProcessor& operator=(HttpProcessor const&) = delete;
 
-    ~HttpTask() final = default;
+    /// The non-trivial destructor is needed to shut down the HTTP server
+    ~HttpProcessor();
 
     /**
-     * Create a new task with specified parameters.
+     * Create a new object with specified parameters.
      *
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
@@ -95,36 +99,73 @@ public:
      *   the smart pointer to a new object
      */
     static Ptr create(Controller::Ptr const& controller,
-                      Task::AbnormalTerminationCallbackType const& onTerminated,
                       HealthMonitorTask::WorkerEvictCallbackType const& onWorkerEvict,
                       HealthMonitorTask::Ptr const& healthMonitorTask,
                       ReplicationTask::Ptr const& replicationTask,
                       DeleteWorkerTask::Ptr const& deleteWorkerTask);
 
-protected:
-
-    /**
-     * @see Task::run()
-     */
-    void run() final;
+    
+    /// @return reference to the Replication Framework's Controller
+    Controller::Ptr const controller() const { return _controller; }
 
 private:
 
     /**
      * The constructor is available to the class's factory method
      *
-     * @see HttpTask::create()
+     * @see HttpProcessor::create()
      */
-    HttpTask(Controller::Ptr const& controller,
-             Task::AbnormalTerminationCallbackType const& onTerminated,
-             HealthMonitorTask::WorkerEvictCallbackType const& onWorkerEvict,
-             HealthMonitorTask::Ptr const& healthMonitorTask,
-             ReplicationTask::Ptr const& replicationTask,
-             DeleteWorkerTask::Ptr const& deleteWorkerTask);
+    HttpProcessor(Controller::Ptr const& controller,
+                  HealthMonitorTask::WorkerEvictCallbackType const& onWorkerEvict,
+                  HealthMonitorTask::Ptr const& healthMonitorTask,
+                  ReplicationTask::Ptr const& replicationTask,
+                  DeleteWorkerTask::Ptr const& deleteWorkerTask);
 
-    // -------------------------------------
-    // Callback for processing test requests
-    // -------------------------------------
+
+    /**
+     * Delayed initialization.
+     */
+    void _initialize();
+
+    /**
+     * @return the context string to be used when logging messages into
+     * a log stream.
+     */
+    std::string context() const;
+
+    /**
+     * Log a message into the Logger's LOG_LVL_INFO stream
+     *
+     * @param msg
+     *   a message to be logged
+     */
+    void info(std::string const& msg) {
+        LOGS(_log, LOG_LVL_INFO, context() << msg);
+    }
+
+    /**
+     * Log a message into the Logger's LOG_LVL_DEBUG stream
+     *
+     * @param msg
+     *   a message to be logged
+     */
+    void debug(std::string const& msg) {
+        LOGS(_log, LOG_LVL_DEBUG, context() << msg);
+    }
+
+    /**
+     * Log a message into the Logger's LOG_LVL_ERROR stream
+     *
+     * @param msg
+     *   a message to be logged
+     */
+    void error(std::string const& msg) {
+        LOGS(_log, LOG_LVL_ERROR, context() << msg);
+    }
+
+    // --------------------------------------
+    // Callbacks for processing test requests
+    // --------------------------------------
 
     /**
      * Process "POST" requests
@@ -205,11 +246,14 @@ private:
 
 private:
 
+    /// The reference to the Replication Framework's Controller
+    Controller::Ptr const _controller;
+
     /// The callback to be called when there is a request to evict one
     // or many workers from the cluster.
     HealthMonitorTask::WorkerEvictCallbackType const _onWorkerEvict;
 
-    // References(!) to smart pointers to other tasks which can be managed
+    // References(!) to smart pointers to the tasks which can be managed
     // by this class.
     //
     // @note
@@ -220,14 +264,7 @@ private:
     ReplicationTask::Ptr   const& _replicationTask;
     DeleteWorkerTask::Ptr  const& _deleteWorkerTask;
 
-    /// The server for processing REST requests
-    qhttp::Server::Ptr const _httpServer;
-
-    /// The flag used for lazy initialization of the Web server the first time
-    /// this task runs.
-    bool _isInitialized;
-
-    /// The latest state of the replication levels report
+    /// The cache for the latest state of the replication levels report
     std::string _replicationLevelReport;
     
     /// The timestamp for when the last report was made
@@ -235,8 +272,12 @@ private:
 
     /// Mutex guarding the cache with the replication levels report
     util::Mutex _replicationLevelMtx;
+
+    /// Message logger
+    LOG_LOGGER _log;
+
 };
     
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_HTTPTASK_H
+#endif // LSST_QSERV_HTTPPROCESSOR_H

@@ -28,12 +28,14 @@
 #include <stdexcept>
 
 // Qserv headers
-#include "lsst/log/Log.h"
 #include "replica/ChunkLocker.h"
 #include "replica/Configuration.h"
 #include "replica/DatabaseServicesPool.h"
 #include "replica/Messenger.h"
 #include "replica/QservMgtServices.h"
+
+// LSST headers
+#include "lsst/log/Log.h"
 
 namespace {
 
@@ -55,6 +57,7 @@ ServiceProvider::Ptr ServiceProvider::create(std::string const& configUrl) {
 
     ptr->_qservMgtServices = QservMgtServices::create(ptr);
     ptr->_messenger        = Messenger::create(ptr, ptr->_io_service);
+    ptr->_httpServer       = qhttp::Server::create(ptr->_io_service, ptr->config()->controllerHttpPort());
 
     return ptr;
 }
