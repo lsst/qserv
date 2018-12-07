@@ -795,8 +795,7 @@ static const std::vector<Antlr4CompareQueries> ANTLR4_COMPARE_QUERIES = {
         [](query::SelectStmt::Ptr const & selectStatement) {
             // change the subtraction values expr to modulo:
             query::SelectList& selectList = selectStatement->getSelectList();
-            auto valueExprList = (*selectList.getValueExprList())[1]->getFactorOpsRef()[0].op =
-                    query::ValueExpr::MOD;
+            (*selectList.getValueExprList())[1]->getFactorOpsRef()[0].op = query::ValueExpr::MOD;
             auto whereClauseRef = selectStatement->getWhereClause();
             auto orTerm = std::dynamic_pointer_cast<query::OrTerm>(whereClauseRef.getRootTerm());
             auto andTerm = std::dynamic_pointer_cast<query::AndTerm>(orTerm->_terms[0]);
