@@ -100,9 +100,9 @@ protected:
                      bool permanentDelete);
 
     /**
-     * @see Task::run()
+     * @see Task::onStart()
      */
-    void run() override;
+    void onStart() override;
 
 private:
 

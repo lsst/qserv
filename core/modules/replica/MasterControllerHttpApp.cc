@@ -42,7 +42,6 @@ struct {
     unsigned int const workerEvictTimeoutSec{3600};
     unsigned int const qservSyncTimeoutSec{60};
     unsigned int const numReplicas{0};
-    unsigned int const numIter{0};
 
     bool const purge{false};
     bool const forceQservSync{false};
@@ -98,7 +97,6 @@ MasterControllerHttpApp::MasterControllerHttpApp(int argc,
         _workerEvictTimeoutSec   (::defaultOptions.workerEvictTimeoutSec),
         _qservSyncTimeoutSec     (::defaultOptions.qservSyncTimeoutSec),
         _numReplicas             (::defaultOptions.numReplicas),
-        _numIter                 (::defaultOptions.numIter),
         _purge                   (::defaultOptions.purge),
         _forceQservSync          (::defaultOptions.forceQservSync),
         _permanentDelete         (::defaultOptions.permanentDelete),
@@ -148,11 +146,6 @@ MasterControllerHttpApp::MasterControllerHttpApp(int argc,
         " will override the corresponding value found"
         " in the Configuration.",
         _numReplicas
-    ).option(
-        "iter",
-        "the number of iterations (a value of " + std::to_string(defaultOptions.numIter) +
-        " means running indefinitely)",
-        _numIter
     ).flag(
         "purge",
         "The binary flag which, if provided, enables the 'purge' algorithm in"
@@ -188,7 +181,6 @@ int MasterControllerHttpApp::runImpl() {
         _qservSyncTimeoutSec,
         _replicationIntervalSec,
         _numReplicas,
-        _numIter,
         _purge
     );
     _replicationTask->start();

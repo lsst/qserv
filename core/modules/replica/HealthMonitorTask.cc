@@ -28,7 +28,7 @@
 
 // Qserv headers
 #include "replica/ClusterHealthJob.h"
-#include "util/BlockPost.h"
+#include "replica/Performance.h"
 
 namespace lsst {
 namespace qserv {
@@ -58,170 +58,165 @@ HealthMonitorTask::WorkerResponseDelay HealthMonitorTask::workerResponseDelay() 
     return _workerServiceNoResponseSec;
 }
 
-void HealthMonitorTask::run() {
+void HealthMonitorTask::onStart() {
  
-    std::string const context = "HealthMonitorTask::run()";
-    {
-        util::Lock lock(_mtx, context);
+    std::string const context = "HealthMonitorTask::onStart()";
 
-        for (auto&& worker: serviceProvider()->config()->allWorkers()) {
-            _workerServiceNoResponseSec[worker]["qserv"] = 0;
-            _workerServiceNoResponseSec[worker]["replication"] = 0;
-        }
+    util::Lock lock(_mtx, context);
+
+    for (auto&& worker: serviceProvider()->config()->allWorkers()) {
+        _workerServiceNoResponseSec[worker]["qserv"] = 0;
+        _workerServiceNoResponseSec[worker]["replication"] = 0;
     }
+    _prevUpdateTimeMs = PerformanceUtils::now();
+}
+
+
+bool HealthMonitorTask::onRun() {
+ 
+    std::string const context = "HealthMonitorTask::onRun()";
 
     std::string const parentJobId;  // no parent jobs
 
-    while (not stopRequested()) {
+    // Probe hosts. Wait for completion or expiration of the job
+    // before analyzing its findings.
 
-        // Probe hosts. Wait for completion or expiration of the job
-        // before analyzing its findings.
+    info("ClusterHealthJob");
 
-        info("ClusterHealthJob");
+    _numFinishedJobs = 0;
 
-        _numFinishedJobs = 0;
+    auto self = shared_from_base<HealthMonitorTask>();
 
-        auto self = shared_from_base<HealthMonitorTask>();
-
-        std::vector<ClusterHealthJob::Ptr> jobs;
-        jobs.emplace_back(
-            ClusterHealthJob::create(
-                _workerResponseTimeoutSec,
-                true, /* allWorkers */
-                controller(),
-                parentJobId,
-                [self](ClusterHealthJob::Ptr const& job) {
-                    self->_numFinishedJobs++;
-                }
-            )
-        );
-        jobs[0]->start();
-
-        track<ClusterHealthJob>(ClusterHealthJob::typeName(), jobs, _numFinishedJobs);
- 
-        // Update non-response intervals for both services
-        {
-            util::Lock lock(_mtx, context);
-
-            for (auto&& entry: jobs[0]->clusterHealth().qserv()) {
-
-                auto worker = entry.first;
-                auto responded = entry.second;
-
-                if (responded) {
-                    _workerServiceNoResponseSec[worker]["qserv"] = 0;
-                } else {
-                    _workerServiceNoResponseSec[worker]["qserv"] += _workerResponseTimeoutSec;
-                    info("no response from Qserv at worker '" +worker + "' for " +
-                         std::to_string(_workerServiceNoResponseSec[worker]["qserv"]) + " seconds");
-                }
+    std::vector<ClusterHealthJob::Ptr> jobs;
+    jobs.emplace_back(
+        ClusterHealthJob::create(
+            _workerResponseTimeoutSec,
+            true, /* allWorkers */
+            controller(),
+            parentJobId,
+            [self](ClusterHealthJob::Ptr const& job) {
+                self->_numFinishedJobs++;
             }
-            for (auto&& entry: jobs[0]->clusterHealth().replication()) {
+        )
+    );
+    jobs[0]->start();
 
-                auto worker = entry.first;
-                auto responded = entry.second;
+    track<ClusterHealthJob>(ClusterHealthJob::typeName(), jobs, _numFinishedJobs);
 
-                if (responded) {
-                    _workerServiceNoResponseSec[worker]["replication"] = 0;
-                } else {
-                    _workerServiceNoResponseSec[worker]["replication"] += _workerResponseTimeoutSec;
-                    info("no response from Replication at worker '" + worker + "' for " +
-                         std::to_string(_workerServiceNoResponseSec[worker]["replication"]) + " seconds");
-                }
-            }
-        }
+    // Compute the actual delay which will also include the wait time since
+    // the previous invocation of this method (onRun()).
 
-        // Analyze the intervals to see which workers have reached the eviction
-        // threshold. Also count the total number of Replication workers (including
-        // the evicted ones) which are offline.
+    auto newUpdateTimeMs = PerformanceUtils::now();
+    unsigned int workerResponseDelaySec = (newUpdateTimeMs - _prevUpdateTimeMs) / 1000;
+    _prevUpdateTimeMs = newUpdateTimeMs;
 
-        std::vector<std::string> workers2evict;
+    // Update non-response intervals for both services
+    {
+        util::Lock lock(_mtx, context);
 
-        size_t numReplicationWorkersOffline = 0;
-
-        for (auto&& entry: _workerServiceNoResponseSec) {
+        for (auto&& entry: jobs[0]->clusterHealth().qserv()) {
 
             auto worker = entry.first;
+            auto responded = entry.second;
 
-            // Both services on the worker must be offline for a duration of
-            // the eviction interval before electing the worker for eviction.
+            if (responded) {
+                _workerServiceNoResponseSec[worker]["qserv"] = 0;
+            } else {
+                _workerServiceNoResponseSec[worker]["qserv"] += workerResponseDelaySec;
+                info("no response from Qserv at worker '" +worker + "' for " +
+                     std::to_string(_workerServiceNoResponseSec[worker]["qserv"]) + " seconds");
+            }
+        }
+        for (auto&& entry: jobs[0]->clusterHealth().replication()) {
 
-            if (entry.second.at("replication") >= _workerEvictTimeoutSec) {
-                if (entry.second.at("qserv") >= _workerEvictTimeoutSec) {
+            auto worker = entry.first;
+            auto responded = entry.second;
 
-                    // Skip workers which are already evicted
-                    auto workerInfo = serviceProvider()->config()->workerInfo(worker);
-                    if (not workerInfo.isEnabled) continue;
+            if (responded) {
+                _workerServiceNoResponseSec[worker]["replication"] = 0;
+            } else {
+                _workerServiceNoResponseSec[worker]["replication"] += workerResponseDelaySec;
+                info("no response from Replication at worker '" + worker + "' for " +
+                     std::to_string(_workerServiceNoResponseSec[worker]["replication"]) + " seconds");
+            }
+        }
+    }
 
+    // Analyze the intervals to see which workers have reached the eviction
+    // threshold.
+    std::vector<std::string> workers2evict;
+
+    // Also count the total number of the ENABLED Replication workers
+    // (including the evicted ones) which are offline.
+    size_t numEnabledWorkersOffline = 0;
+
+    for (auto&& entry: _workerServiceNoResponseSec) {
+
+        auto worker     = entry.first;
+        auto workerInfo = serviceProvider()->config()->workerInfo(worker);
+
+        // Both services on the worker must be offline for a duration of
+        // the eviction interval before electing the worker for eviction.
+
+        if (entry.second.at("replication") >= _workerEvictTimeoutSec) {
+            if (entry.second.at("qserv") >= _workerEvictTimeoutSec) {
+
+                // Only the ENABLED workers are considered for eviction
+
+                if (workerInfo.isEnabled) {
                     workers2evict.push_back(worker);
                     info("worker '" + worker + "' has reached eviction timeout of " +
                          std::to_string(_workerEvictTimeoutSec) + " seconds");
                 }
-                numReplicationWorkersOffline++;
+            }
+
+            // Only count the ENABLED workers
+            if (workerInfo.isEnabled) {
+                numEnabledWorkersOffline++;
             }
         }
-        switch (workers2evict.size()) {
-
-            case 0:
-                
-                // Pause before going for another iteration only if all services on all
-                // workers are up. Otherwise we would skew (extend) the "no-response"
-                // intervals.
-
-                if (0 == numReplicationWorkersOffline) {
-                    util::BlockPost blockPost(1000 * _healthProbeIntervalSec,
-                                              1000 * _healthProbeIntervalSec + 1);
-                    blockPost.wait();
-                }
-                break;
-
-            case 1:
-                
-                // An important requirement for evicting a worker is that the Replication
-                // services on the remaining workers must be up and running.
-
-                if (1 == numReplicationWorkersOffline) {
-
-                    // Upstream notification on the evicted worker
-                    _onWorkerEvictTimeout(workers2evict[0]);
-
-                    // Reset worker-non-response intervals before resuming this task
-                    //
-                    // ATTENTION: the map needs to be rebuild from scratch because one worker
-                    // has been evicted from the Configuration.
-                    {
-                        util::Lock lock(_mtx, context);
-
-                        _workerServiceNoResponseSec.clear();
-
-                        for (auto&& worker: serviceProvider()->config()->allWorkers()) {
-                            _workerServiceNoResponseSec[worker]["qserv"] = 0;
-                            _workerServiceNoResponseSec[worker]["replication"] = 0;
-                        }
-                    }
-                    break;
-                }
-                
-                // Otherwise, proceed down to the default scenario.
-
-            default:
-
-                // Any successful replication effort is not possible at this stage due
-                // to one of the following reasons (among other possibilities):
-                //
-                //   1) multiple nodes failed simultaneously
-                //   2) all services on the worker nodes are down (typically after site outage)
-                //   3) network problems
-                //
-                // So, we just keep monitoring the status of the system. The problem (unless it's
-                // cases 2 or 3) should require a manual repair.
-
-                error("automated workers eviction is not possible if multiple workers " +
-                      std::to_string(workers2evict.size()) + " are offline");
-
-                break;
-        }
     }
+    switch (workers2evict.size()) {
+
+        case 0:
+
+            break;
+
+        case 1:
+
+            // An important requirement for evicting a worker is that the Replication
+            // services on the remaining ENABLED workers must be up and running.
+
+            if (1 == numEnabledWorkersOffline) {
+
+                // Upstream notification on the evicted worker
+                _onWorkerEvictTimeout(workers2evict[0]);
+
+                break;
+            }
+
+            // Otherwise, proceed down to the default scenario.
+
+        default:
+
+            // Any successful replication effort is not possible at this stage due
+            // to one of the following reasons (among other possibilities):
+            //
+            //   1) multiple nodes failed simultaneously
+            //   2) all services on the worker nodes are down (typically after site outage)
+            //   3) network problems
+            //
+            // So, we just keep monitoring the status of the system. The problem (unless it's
+            // cases 2 or 3) should require a manual repair.
+
+            error("automated workers eviction is not possible if multiple workers " +
+                  std::to_string(workers2evict.size()) + " are offline");
+
+            break;
+    }
+
+    // Keep on getting calls on this method after a wait time
+    return true;
 }
 
 HealthMonitorTask::HealthMonitorTask(
@@ -233,11 +228,12 @@ HealthMonitorTask::HealthMonitorTask(
         unsigned int healthProbeIntervalSec)
     :   Task(controller,
              "HEALTH-MONITOR  ",
-             onTerminated),
+             onTerminated,
+             healthProbeIntervalSec
+        ),
         _onWorkerEvictTimeout(onWorkerEvictTimeout),
         _workerEvictTimeoutSec(workerEvictTimeoutSec),
         _workerResponseTimeoutSec(workerResponseTimeoutSec),
-        _healthProbeIntervalSec(healthProbeIntervalSec),
         _numFinishedJobs(0) {
 }
 

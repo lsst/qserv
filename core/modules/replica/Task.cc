@@ -95,10 +95,12 @@ bool Task::startAndWait(WaitEvaluatorType const& abortWait) {
 Task::Task(
         Controller::Ptr const& controller,
         std::string const& name,
-        Task::AbnormalTerminationCallbackType const& onTerminated)
+        Task::AbnormalTerminationCallbackType const& onTerminated,
+        unsigned int const waitIntervalSec)
     :   _controller(controller),
         _name(name),
         _onTerminated(onTerminated),
+        _waitIntervalSec(waitIntervalSec),
         _isRunning(false),
         _stopRequested(false),
         _numFinishedJobs(0),
@@ -130,11 +132,20 @@ void Task::_startImpl() {
     bool terminated = false;
     try {
         debug("started");
-        run();
+        onStart();
+
+        util::BlockPost blockPost(1000 * _waitIntervalSec,
+                                  1000 * _waitIntervalSec + 1);
+
+        while (not stopRequested() and onRun()) {
+            blockPost.wait();
+        }
         debug("stopped");
+        onStop();
 
     } catch (TaskStopped const&) {
         debug("stopped");
+        onStop();
 
     } catch (std::exception const& ex) {
         error("terminated, exception: " + std::string(ex.what()));

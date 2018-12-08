@@ -71,9 +71,6 @@ public:
      * @param numReplicas
      *   the desired number of replicas
      *
-     * @param numIter
-     *   the limit for the maximum number of iteration of the replication loop
-     *
      * @param purge
      *   purge excess replicas if 'true'
      *
@@ -85,15 +82,14 @@ public:
                       unsigned int qservSyncTimeoutSec,
                       unsigned int replicationIntervalSec,
                       unsigned int numReplicas,
-                      unsigned int numIter,
                       bool purge);
 
 protected:
 
     /**
-     * @see Task::run()
+     * @see Task::onRun()
      */
-    void run() final;
+    bool onRun() final;
 
 private:
 
@@ -107,7 +103,6 @@ private:
                     unsigned int qservSyncTimeoutSec,
                     unsigned int replicationIntervalSec,
                     unsigned int numReplicas,
-                    unsigned int numIter,
                     bool purge);
 
 private:
@@ -122,9 +117,6 @@ private:
 
     /// The desired number of replicas
     unsigned int _numReplicas;
-
-    /// The limit for the maximum number of iteration of the replication loop
-    unsigned int _numIter;
 
     /// Purge excess replicas if 'true'
     bool _purge;
