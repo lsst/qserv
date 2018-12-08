@@ -20,28 +20,18 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-/**
- * qserv-replica-master-http.cc is a latest version of the Replication Controller
- * which allows interactions via the REST API. When it starts the controller launches
- * two tasks running in parallel (in dedicated threads): Linear Replication one and
- * the Health Monitoring one. These tasks can be suspended/resumed via the REST API.
- */
+// Class header
+#include "replica/ApplicationTypes.h"
 
-// System headers
-#include <iostream>
-#include <stdexcept>
 
-// Qserv headers
-#include "replica/MasterControllerHttpApp.h"
+namespace lsst {
+namespace qserv {
+namespace replica {
+namespace detail {
 
-using namespace lsst::qserv::replica;
-
-int main(int argc, const char* const argv[]) {
-    try {
-        auto app = MasterControllerHttpApp::create(argc, argv);
-        return app->run();
-    } catch (std::exception const& ex) {
-        std::cerr << "main()  the application failed, exception: " << ex.what() << std::endl;
-    }
-    return 1;
+std::ostream& operator<<(std::ostream& os, ArgumentParser const& arg) {
+    arg.dumpNameValue(os);
+    return os;
 }
+
+}}}} // namespace lsst::qserv::replica::detail

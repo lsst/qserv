@@ -155,10 +155,7 @@ private:
  * Dump a string representation of the argument name and its value
  * to the stream.
  */
-std::ostream& operator<<(std::ostream& os, ArgumentParser const& arg) {
-    arg.dumpNameValue(os);
-    return os;
-}
+std::ostream& operator<<(std::ostream& os, ArgumentParser const& arg);
 
 /**
  * The class representing (mandatory or optional) parameters

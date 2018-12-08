@@ -39,7 +39,7 @@ namespace replica {
 
 /**
   * Class Application is a utility base class for building command-line
-  * tools. The class is meant to take care of mudane tasks such as handling
+  * tools. The class is meant to take care of mundane tasks such as handling
   * command-line parameters, initializing application environment, etc.
   */
 class Application
