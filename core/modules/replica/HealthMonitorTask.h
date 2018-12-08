@@ -122,9 +122,14 @@ public:
 protected:
 
     /**
-     * @see Task::run()
+     * @see Task::onStart()
      */
-    void run() final;
+    void onStart() final;
+
+    /**
+     * @see Task::onRun()
+     */
+    bool onRun() final;
 
 private:
 
@@ -171,6 +176,8 @@ private:
     /// reach the "eviction" threshold. Then trigger worker eviction sequence.
     WorkerResponseDelay _workerServiceNoResponseSec;
 
+    /// LAast time the workers response delays were updated
+    uint64_t _prevUpdateTimeMs;
 };
     
 }}} // namespace lsst::qserv::replica

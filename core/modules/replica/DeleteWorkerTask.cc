@@ -57,13 +57,15 @@ DeleteWorkerTask::DeleteWorkerTask(Controller::Ptr const& controller,
                                    bool permanentDelete)
     :   Task(controller,
              "EVICT-WORKER  ",
-             onTerminated),
+             onTerminated,
+             0
+        ),
         _worker(worker),
         _permanentDelete(permanentDelete) {
 }
 
 
-void DeleteWorkerTask::run() {
+void DeleteWorkerTask::onStart() {
 
     std::string const parentJobId;  // no parent jobs
 

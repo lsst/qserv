@@ -157,10 +157,15 @@ protected:
      * @param onTerminated
      *   callback function to be called upon abnormal termination
      *   of the task
+     * 
+     * @param waitIntervalSec
+     *   the number of seconds to wait before calling subclass-specific
+     *   method onRun.
      */
     Task(Controller::Ptr const& controller,
                   std::string const& name,
-                  AbnormalTerminationCallbackType const& onTerminated);
+                  AbnormalTerminationCallbackType const& onTerminated,
+                  unsigned int waitIntervalSec);
 
     /// @return a shared pointer of the desired subclass (no dynamic type checking)
     template <class T>
@@ -169,8 +174,23 @@ protected:
     }
 
     /**
-     * This method implements subclass-specific sequence of actions to be
-     * run by the task.
+     * This optional method implements subclass-specific sequence of actions
+     * to be executed when the tasks starts running.
+     *
+     * @note
+     *   any but TaskStopped exceptions thrown by this method will
+     *   be interpreted as abnormal termination of the task. Eventually this will
+     *   also result in calling the 'onTerminated' callback if the one was provided
+     *   to the constructor of the class.
+     * 
+     * @throws
+     *   TaskStopped when the task cancellation request was detected
+     */
+    virtual void onStart() {}
+
+    /**
+     * This optional method implements subclass-specific sequence of actions
+     * to be run by the task.
      *
      * @note
      *   any but TaskStopped exceptions thrown by this method will
@@ -178,15 +198,21 @@ protected:
      *   also result in calling the 'onTerminated' callback if the one was provided
      *   to the constructor of the class.
      *
-     * @note
-     *   the method may also return normally w/o throwing any exception. This scenario
-     *   will be treated the same way as above mentioned case of throwing exception
-     *   TaskStopped.
-     * 
+     * @return
+     *   'true' to schedule next invocation of the method after waiting
+     *   for a interval configured in this class's constructor. Otherwise
+     *   stop as if exception TaskStopped was thrown.
+     *
      * @throws
      *   TaskStopped when the task cancellation request was detected
      */
-    virtual void run() = 0;
+    virtual bool onRun() { return false; }
+
+    /**
+     * This optional method implements subclass-specific sequence of actions
+     * to be executed when the tasks stops running.
+     */
+    virtual void onStop() {}
 
     /// @return a flag indicating if the task needs to be stopped
     bool stopRequested() const { return _stopRequested.load(); }
@@ -347,6 +373,10 @@ private:
     /// The callback (if provided) to be called upon an abnormal termination
     /// of the user-supplied algorithm run in a context of the task.
     AbnormalTerminationCallbackType _onTerminated;
+
+    /// The number of seconds to wait before calling subclass-specific
+    /// method onRun 
+    unsigned int const _waitIntervalSec;
 
     /// The flag indicating if it's already running
     std::atomic<bool> _isRunning;

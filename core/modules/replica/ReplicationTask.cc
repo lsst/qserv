@@ -41,7 +41,6 @@ ReplicationTask::Ptr ReplicationTask::create(
         unsigned int qservSyncTimeoutSec,
         unsigned int replicationIntervalSec,
         unsigned int numReplicas,
-        unsigned int numIter,
         bool purge) {
     return Ptr(
         new ReplicationTask(
@@ -50,55 +49,35 @@ ReplicationTask::Ptr ReplicationTask::create(
             qservSyncTimeoutSec,
             replicationIntervalSec,
             numReplicas,
-            numIter,
             purge
         )
     );
 }
 
-void ReplicationTask::run() {
+bool ReplicationTask::onRun() {
 
-    unsigned int numIterCompleted = 0;
+    bool const saveReplicaInfo = true;
 
-    while (not stopRequested()) {
+    launch<FindAllJob>(saveReplicaInfo);
+    sync(_qservSyncTimeoutSec);
 
-        bool const saveReplicaInfo = true;
+    launch<FixUpJob>();
+    sync(_qservSyncTimeoutSec);
 
-        launch<FindAllJob>(saveReplicaInfo);
+    launch<ReplicateJob>(_numReplicas);
+    sync(_qservSyncTimeoutSec);
+
+    bool const estimateOnly = false;
+    launch<RebalanceJob>(estimateOnly);
+    sync(_qservSyncTimeoutSec);
+
+    if (_purge) {
+        launch<PurgeJob>(_numReplicas);
         sync(_qservSyncTimeoutSec);
-
-        launch<FixUpJob>();
-        sync(_qservSyncTimeoutSec);
-
-        launch<ReplicateJob>(_numReplicas);
-        sync(_qservSyncTimeoutSec);
-
-        bool const estimateOnly = false;
-        launch<RebalanceJob>(estimateOnly);
-        sync(_qservSyncTimeoutSec);
-
-        if (_purge) {
-            launch<PurgeJob>(_numReplicas);
-            sync(_qservSyncTimeoutSec);
-        }
-
-        // Wait before going for another iteration
-
-        util::BlockPost blockPost(1000 * _replicationIntervalSec,
-                                  1000 * _replicationIntervalSec + 1);
-        blockPost.wait();
-
-        // Stop the application if running in the iteration restricted mode
-        // and a desired number of iterations has been reached.
-
-        ++numIterCompleted;
-        if (0 != _numIter) {
-            if (numIterCompleted >= _numIter) {
-                info("desired number of iterations has been reached");
-                break;
-            }
-        }
     }
+
+    // Keep on getting calls on this method after a wait time
+    return true;
 }
 
 ReplicationTask::ReplicationTask(Controller::Ptr const& controller,
@@ -106,15 +85,14 @@ ReplicationTask::ReplicationTask(Controller::Ptr const& controller,
                                  unsigned int qservSyncTimeoutSec,
                                  unsigned int replicationIntervalSec,
                                  unsigned int numReplicas,
-                                 unsigned int numIter,
                                  bool purge)
     :   Task(controller,
              "REPLICATION-THREAD  ",
-             onTerminated),
+             onTerminated,
+            replicationIntervalSec
+        ),
         _qservSyncTimeoutSec(qservSyncTimeoutSec),
-        _replicationIntervalSec(replicationIntervalSec),
         _numReplicas(numReplicas),
-        _numIter(numIter),
         _purge(purge) {
 }
 
