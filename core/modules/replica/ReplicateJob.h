@@ -47,17 +47,17 @@ namespace replica {
  */
 struct ReplicateJobResult {
 
-    /// Results reported by workers upon the successfull completion
-    /// of the corresponidng replica creation jobs
+    /// Results reported by workers upon the successful completion
+    /// of the corresponding replica creation jobs
     std::list<ReplicaInfo> replicas;
 
-    /// Results groupped by: chunk number, database, worker
+    /// Results grouped by: chunk number, database, worker
     std::map<unsigned int,                  // chunk
              std::map<std::string,          // database
                       std::map<std::string, // worker
                                ReplicaInfo>>> chunks;
 
-    /// Per-worker flags indicating if the corresponidng replica creation
+    /// Per-worker flags indicating if the corresponding replica creation
     /// job succeeded.
     std::map<std::string, bool> workers;
 };
@@ -74,11 +74,14 @@ public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<ReplicateJob> Ptr;
 
-    /// The function type for notifications on the completon of the job
+    /// The function type for notifications on the completion of the job
     typedef std::function<void(Ptr)> CallbackType;
 
     /// @return default options object for this type of a job
     static Job::Options const& defaultOptions();
+
+    /// @return the unique name distinguishing this class from other types of jobs
+    static std::string typeName();
 
     /**
      * Static factory method is needed to prevent issue with the lifespan
@@ -132,9 +135,9 @@ public:
      *   finished. Please, verify the primary and extended status of the object
      *   to ensure that all jobs have finished.
      *
-     * @return the data structure to be filled upon the completin of the job.
+     * @return the data structure to be filled upon the completion of the job.
      *
-     * @throws std::logic_error - if the job dodn't finished at a time
+     * @throws std::logic_error - if the job didn't finished at a time
      *                            when the method was called
      */
     ReplicateJobResult const& getReplicaData() const;
@@ -174,13 +177,13 @@ protected:
     void notify(util::Lock const& lock) final;
 
     /**
-     * The calback function to be invoked on a completion of the precursor job
-     * which harvests chunk disposition accross relevant worker nodes.
+     * The callback function to be invoked on a completion of the precursor job
+     * which harvests chunk disposition across relevant worker nodes.
      */
     void onPrecursorJobFinish();
 
     /**
-     * The calback function to be invoked on a completion of each replication job
+     * The callback function to be invoked on a completion of each replication job
      *
      * @param job - pointer to a job
      */
@@ -191,7 +194,7 @@ protected:
      *
      * This method implements a load balancing algorithm which tries to
      * prevent excessive use of resources by controllers and to avoid
-     * "hot spots" or underutilization at workers.
+     * "hot spots" or under-utilization at workers.
      *
      * @param lock    - the lock must be acquired by a caller of the method
      * @param numJobs - desired number of jobs to submit

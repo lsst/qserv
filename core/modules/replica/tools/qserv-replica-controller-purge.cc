@@ -85,8 +85,8 @@ bool test() {
                                       errorReport);
 
         //////////////////////////////////////////////////////////////
-        // Analyse results and prepare a purge plan to shave off extra
-        // replocas while trying to keep all nodes equally loaded
+        // Analyze results and prepare a purge plan to shave off extra
+        // replicas while trying to keep all nodes equally loaded
             
         // Workers hosting a chunk
         std::map<unsigned int, std::list<std::string>> chunk2workers;
@@ -111,7 +111,7 @@ bool test() {
         // loaded worker holding the chunk and launch a delete request.
         //
         // TODO: this algorithm is way to simplistic as it won't take into
-        //       an account other chunks. Ideally, it neees to be a two-pass
+        //       an account other chunks. Ideally, it needs to be a two-pass
         //       scan.
 
         replica::CommonRequestTracker<replica::DeleteRequest>

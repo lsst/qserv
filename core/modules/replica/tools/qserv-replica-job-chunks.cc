@@ -95,7 +95,7 @@ void dump(replica::FindAllJobResult const& replicaData) {
  *   'Q' - the worker is known to Qserv only
  *   'B' - the worker is known to both the Replication system and Qserv
  *
- * @param worker2idx - index map for workers (worker name to its 0-basd index)
+ * @param worker2idx - index map for workers (worker name to its 0-based index)
  * @param workers    - collection of worker names participating in the operation
  */
 std::string workers2str(std::map<std::string, size_t> const& worker2idx,
@@ -143,7 +143,7 @@ bool test() {
 
             ///////////////////////////////////////////////////////////////////
             // Start two parallel jobs, the first one getting the latest state
-            // of replicas accross the Replication cluster, and the second one
+            // of replicas across the Replication cluster, and the second one
             // getting a list of replicas known to Qserv workers.
     
             std::atomic<bool> replicaJobFinished{false};
@@ -176,7 +176,7 @@ bool test() {
                 while (not (replicaJobFinished and qservJobFinished)) {
                     blockPost.wait();
                 }
-                OUT << "qserv-replica-job-cunks:\n"
+                OUT << "qserv-replica-job-chunks:\n"
                     << "   FindAllJob          finished: " << findAllJob->state2string() << "\n"
                     << "   QservGetReplicasJob finished: " << qservGetReplicasJob->state2string() << "\n"
                     << std::endl;
@@ -184,13 +184,13 @@ bool test() {
                 while (not replicaJobFinished) {
                     blockPost.wait();
                 }
-                OUT << "qserv-replica-job-cunks:\n"
+                OUT << "qserv-replica-job-chunks:\n"
                     << "   FindAllJob          finished: " << findAllJob->state2string() << "\n"
                     << std::endl;
             }
     
             //////////////////////////////
-            // Analyse and display results
+            // Analyze and display results
     
             replica::FindAllJobResult const& replicaData = findAllJob->getReplicaData();
             if (detailedReport) {

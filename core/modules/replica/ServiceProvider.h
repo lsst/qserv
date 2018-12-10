@@ -32,6 +32,7 @@
 #include <boost/asio.hpp>
 
 // Qserv headers
+#include "qhttp/Server.h"
 #include "replica/ChunkLocker.h"
 #include "util/Mutex.h"
 
@@ -48,7 +49,8 @@ class Messenger;
 class QservMgtServices;
 
 /**
-  * Class ServiceProvider hosts various serviceses for the master server.
+  * Class ServiceProvider hosts various services used by both workers
+  * and controllers.
   */
 class ServiceProvider
     :   public std::enable_shared_from_this<ServiceProvider> {
@@ -99,7 +101,7 @@ public:
 
     /**
      * Stop the services. This method will guarantee that all outstanding
-     * opeations will finish and not aborted.
+     * operations will finish and not aborted.
      *
      * This operation will also result in stopping the internal threads
      * in which the server is being run and joining with these threads.
@@ -121,6 +123,9 @@ public:
     /// @return a reference to worker messenger service
     std::shared_ptr<Messenger> const& messenger() const { return _messenger; }
 
+    /// @return a reference to the built-in HTTP server
+    qhttp::Server::Ptr const& httpServer() const { return _httpServer; }
+
     /**
      * Make sure this worker is known in the configuration
      *
@@ -133,8 +138,8 @@ public:
     /**
      * Make sure workers are now known in the configuration and they're different
      *
-     * @param workerOneName - name of the first worker in the comparision
-     * @param workerTwoName - name of the second worker in the comparision
+     * @param workerOneName - name of the first worker in the comparison
+     * @param workerTwoName - name of the second worker in the comparison
      *
      * @throws std::invalid_argument if either worker is unknown
      */
@@ -146,7 +151,7 @@ public:
      *
      * @param name - the name of a database
      * 
-     * @throws std::invalid_argument if the database is uknown
+     * @throws std::invalid_argument if the database is unknown
      */
     void assertDatabaseIsValid(std::string const& name);
 
@@ -185,6 +190,9 @@ private:
 
     /// Worker messenger service
     std::shared_ptr<Messenger> _messenger;
+
+    /// The server for processing REST requests
+    qhttp::Server::Ptr _httpServer;
 
     /// The mutex for enforcing thread safety of the class's public API
     /// and internal operations.

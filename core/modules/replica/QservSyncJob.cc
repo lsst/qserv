@@ -54,6 +54,10 @@ Job::Options const& QservSyncJob::defaultOptions() {
     return options;
 }
 
+
+std::string QservSyncJob::typeName() { return "QservSyncJob"; }
+
+
 QservSyncJob::Ptr QservSyncJob::create(std::string const& databaseFamily,
                                        unsigned int requestExpirationIvalSec,
                                        bool force,
@@ -207,8 +211,8 @@ void QservSyncJob::onRequestFinish(SetReplicasQservMgtRequest::Ptr const& reques
     // IMPORTANT: the final state is required to be tested twice. The first time
     // it's done in order to avoid deadlock on the "in-flight" requests reporting
     // their completion while the job termination is in a progress. And the second
-    // test is made after acquering the lock to recheck the state in case if it
-    // has transitioned while acquering the lock.
+    // test is made after acquiring the lock to recheck the state in case if it
+    // has transitioned while acquiring the lock.
 
     if (state() == State::FINISHED) return;
 

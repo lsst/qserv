@@ -47,12 +47,12 @@ namespace replica {
 struct DeleteReplicaJobResult {
 
     /**
-     * Results reported by workers upon the successfull completion
+     * Results reported by workers upon the successful completion
      * of the replica deletion requests
      */
     std::list<ReplicaInfo> replicas;
 
-    /// Replica deletion results groupped by: chunk number, database, worker
+    /// Replica deletion results grouped by: chunk number, database, worker
     std::map<unsigned int,                  // chunk
              std::map<std::string,          // database
                       std::map<std::string, // source worker
@@ -71,11 +71,14 @@ public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<DeleteReplicaJob> Ptr;
 
-    /// The function type for notifications on the completon of the request
+    /// The function type for notifications on the completion of the request
     typedef std::function<void(Ptr)> CallbackType;
 
     /// @return default options object for this type of a request
     static Job::Options const& defaultOptions();
+
+    /// @return the unique name distinguishing this class from other types of jobs
+    static std::string typeName();
 
     /**
      * Static factory method is needed to prevent issue with the lifespan
@@ -129,9 +132,9 @@ public:
      *   finished. Please, verify the primary and extended status of the object
      *   to ensure that all requests have finished.
      *
-     * @return the data structure to be filled upon the completin of the job.
+     * @return the data structure to be filled upon the completion of the job.
      *
-     * @throws std::logic_error - if the job dodn't finished at a time
+     * @throws std::logic_error - if the job didn't finished at a time
      *                            when the method was called
      */
     DeleteReplicaJobResult const& getReplicaData() const;
@@ -179,7 +182,7 @@ protected:
     void beginDeleteReplica(util::Lock const& lock);
 
     /**
-     * The calback function to be invoked on a completion of each replica
+     * The callback function to be invoked on a completion of each replica
      * deletion request.
      *
      * @param request - a pointer to a request
@@ -200,7 +203,7 @@ protected:
     /// Client-defined function to be called upon the completion of the job
     CallbackType _onFinish;
 
-    /// Cached replicas for determining wich databases have contrinutions in the chunk
+    /// Cached replicas for determining which databases have contributions in the chunk
     std::vector<ReplicaInfo> _replicas;
 
     /// A collection of the replica deletion requests implementing the operation

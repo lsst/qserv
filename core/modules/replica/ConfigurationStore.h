@@ -50,7 +50,7 @@ namespace replica {
 /**
   * Class ConfigurationStore is a base class for a family of configuration
   * classes which are designed to load configuration parameters from a transient
-  * configuraton store. 
+  * configuration store. 
   *
   * This class also:
   *
@@ -99,7 +99,7 @@ protected:
      * Construct an object by reading the configuration from the input
      * configuration store.
      *
-     * @param configStore - reference to a configuraiton store object
+     * @param configStore - reference to a configuration store object
      *
      * @throw std::runtime_error if the input configuration is not consistent
      * with expectations of the application
@@ -109,10 +109,10 @@ protected:
 private:
 
     /**
-     * Read and validae input configuration parameters from the specified 
+     * Read and validate input configuration parameters from the specified 
      * store and initialize the object.
      *
-     * @param configStore - reference to a configuraiton store object
+     * @param configStore - reference to a configuration store object
      *
      * @throw std::runtime_error if the input configuration is not consistent
      * with expectations of the application

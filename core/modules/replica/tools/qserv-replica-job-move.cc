@@ -146,7 +146,7 @@ bool test() {
         }
 
         //////////////////////////////
-        // Analyse and display results
+        // Analyze and display results
 
         replica::MoveReplicaJobResult const& replicaData = job->getReplicaData();
 

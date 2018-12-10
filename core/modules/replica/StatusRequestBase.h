@@ -70,15 +70,30 @@ protected:
     /**
      * Construct the request
      *
-     * @param serviceProvider    - a host of services for various communications
-     * @param io_service         - network communication service
-     * @param requestName        - the name of a request
-     * @param worker             - the name of a worker node (the one to be affected by the request)
-     * @param targetRequestId    - an identifier of the target request whose remote status
-     *                             is going to be inspected
-     * @param replicaRequestType - type of a request affected by the operation
-     * @param keepTracking       - keep tracking the request before it finishes or fails
-     * @param messenger          - an interface for communicating with workers
+     * @param serviceProvider
+     *   a host of services for various communications
+     * 
+     * @param io_service
+     *   network communication service
+     * 
+     * @param requestName
+     *   the name of a request
+     * 
+     * @param worker
+     *   the name of a worker node (the one to be affected by the request)
+     * 
+     * @param targetRequestId
+     *   an identifier of the target request whose remote status
+     *   is going to be inspected
+     *
+     * @param replicaRequestType
+     *   type of a request affected by the operation
+     *
+     * @param keepTracking
+     *   keep tracking the request before it finishes or fails
+     * 
+     * @param messenger
+     *   an interface for communicating with workers
      */
     StatusRequestBase(ServiceProvider::Ptr const& serviceProvider,
                       boost::asio::io_service& io_service,
@@ -96,16 +111,18 @@ protected:
 
     /**
      * Start the timer before attempting the previously failed
-     * or successfull (if a status check is needed) step.
+     * or successful (if a status check is needed) step.
      *
-     * @param lock - a lock on a mutex must be acquired before calling this method
+     * @param lock
+     *   a lock on a mutex must be acquired before calling this method
      */
     void wait(util::Lock const& lock);
 
     /**
-     * Callback handler for the asynchronious operation
+     * Callback handler for the asynchronous operation
      *
-     * @param ec - error condition to check
+     * @param ec
+     *   error condition to check
      */
     void awaken(boost::system::error_code const& ec);
 
@@ -113,15 +130,19 @@ protected:
      * Initiate request-specific send. This method must be implemented
      * by subclasses.
      *
-     * @param lock - a lock on a mutex must be acquired before calling this method
+     * @param lock
+     *   a lock on a mutex must be acquired before calling this method
      */
     virtual void send(util::Lock const& lock) = 0;
 
     /**
      * Process the worker response to the requested operation.
      *
-     * @param success - the flag indicating if the operation was successfull
-     * @param status  - a response from the worker service (only valid if success is 'true')
+     * @param success
+     *   the flag indicating if the operation was successful
+     * 
+     * @param status
+     *   a response from the worker service (only valid if success is 'true')
      */
     void analyze(bool success,
                  proto::ReplicationStatus status = proto::ReplicationStatus::FAILED);
@@ -150,7 +171,7 @@ protected:
 
 private:
 
-    /// An identifier of the targer request whose state is to be queried
+    /// An identifier of the target request whose state is to be queried
     std::string const _targetRequestId;
 
     /// Request type to be affected by the operation (must match an identifier

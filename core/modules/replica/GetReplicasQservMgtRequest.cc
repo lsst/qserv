@@ -96,7 +96,7 @@ void GetReplicasQservMgtRequest::setReplicas(
             util::Lock const& lock,
             wpublish::GetChunkListQservRequest::ChunkCollection const& collection) {
 
-    // Filter resuls by databases participating in the family
+    // Filter results by databases participating in the family
 
     std::set<std::string> databases;
     for (auto&& database: serviceProvider()->config()->databases(databaseFamily())) {
@@ -138,8 +138,8 @@ void GetReplicasQservMgtRequest::startImpl(util::Lock const& lock) {
             // IMPORTANT: the final state is required to be tested twice. The first time
             // it's done in order to avoid deadlock on the "in-flight" callbacks reporting
             // their completion while the request termination is in a progress. And the second
-            // test is made after acquering the lock to recheck the state in case if it
-            // has transitioned while acquering the lock.
+            // test is made after acquiring the lock to recheck the state in case if it
+            // has transitioned while acquiring the lock.
 
             if (request->state() == State::FINISHED) return;
         

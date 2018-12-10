@@ -25,7 +25,7 @@
 /**
  * This header is for a class which implements the DatabaseServices
  * service of the controller-side Replication Framework. The header
- * is not supposed to be include directly into users' code.
+ * is not supposed to be include directly into the user's code.
  */
 
 // System headers
@@ -51,7 +51,7 @@ class DatabaseServicesPool
     :   public DatabaseServices {
 
 public:
-    /// This class wich implements the RAII paradigm is used by
+    /// This class which implements the RAII paradigm is used by
     /// the implementation of the pool.
     friend class ServiceAllocator;
 
@@ -147,12 +147,31 @@ public:
                             std::string const& database) final;
 
     /**
+     * @see DatabaseServices::numWorkerReplicas()
+     */
+    uint64_t numWorkerReplicas(std::string const& worker,
+                               std::string const& database=std::string()) final;
+
+    /**
      * @see DatabaseServices::findWorkerReplicas()
      */
     void findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
                             unsigned int chunk,
                             std::string const& worker,
                             std::string const& databaseFamily) final;
+
+    /**
+     * @see DatabaseServices::actualReplicationLevel()
+     */
+    std::map<unsigned int, size_t> actualReplicationLevel(
+                                        std::string const& database,
+                                        std::vector<std::string> const& workersToExclude) final;
+
+    /**
+     * @see DatabaseServices::numOrphanChunks()
+     */
+    size_t numOrphanChunks(std::string const& database,
+                           std::vector<std::string> const& uniqueOnWorkers) final;
 
 private:
     /**
@@ -165,7 +184,7 @@ private:
     /**
      * Allocate the next available service object.
      *
-     * NOTE: the requestor must return the service back after it's no longer needed.
+     * NOTE: the requester must return the service back after it's no longer needed.
      *
      * @return pointer to a service
      *

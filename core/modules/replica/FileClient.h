@@ -60,7 +60,7 @@ class FileClientError
 public:
     
     /**
-     * Construvct an object
+     * Construct an object
      *
      * @param what - reason for the exception
      */
@@ -89,7 +89,7 @@ public:
      *
      * @param serviceProvider - for configuration, etc. services
      * @param workerName      - the name of a worker where the file resides
-     * @param databaseName    - the name of a atabase the file belongs to
+     * @param databaseName    - the name of a database the file belongs to
      * @param fileName        - the file to read or examine
      */
     static Ptr open(ServiceProvider::Ptr const& serviceProvider,
@@ -107,7 +107,7 @@ public:
     /**
      * Open a file and return a smart pointer to an object of this class.
      * If the operation is successful then a valid pointer will be returned.
-     * If the operation failes the method will return the null pointer.
+     * If the operation fails the method will return the null pointer.
      *
      * ATTENTION:
      *   Unlike the previous method FileClient::open() the returned file object
@@ -119,7 +119,7 @@ public:
      *
      * @param serviceProvider - for configuration, etc. services
      * @param workerName      - the name of a worker where the file resides
-     * @param databaseName    - the name of a atabase the file belongs to
+     * @param databaseName    - the name of a database the file belongs to
      * @param fileName        - the file to read or examine
      */
     static Ptr stat(ServiceProvider::Ptr const& serviceProvider,
@@ -142,7 +142,7 @@ public:
 
     ~FileClient() = default;
 
-    // Trivial accessors
+    // Trivial get methods
 
     std::string const& worker() const;
     std::string const& database() const;
@@ -158,7 +158,7 @@ public:
      * Read (up to, but not exceeding) the specified number of bytes into a buffer.
      *
      * The method will throw the FileClientError exception should any error
-     * occured during the operation. Illegal parameters (zero buffer pointer
+     * occurs during the operation. Illegal parameters (zero buffer pointer
      * or the buffer size of 0) will be reported by std::invalid_argument exception.
      *
      * @param buf     - a pointer to a valid buffer where the data will be placed
@@ -178,7 +178,7 @@ private:
      *
      * @param serviceProvider - for configuration, etc. services
      * @param workerName      - the name of a worker where the file resides
-     * @param databaseName    - the name of a atabase the file belongs to
+     * @param databaseName    - the name of a database the file belongs to
      * @param fileName        - the file to read or examine
      * @param readContent     - the mode in which the file will be used
      */
@@ -196,7 +196,7 @@ private:
      *
      * @param serviceProvider - for configuration, etc. services
      * @param workerName      - the name of a worker where the file resides
-     * @param databaseName    - the name of a atabase the file belongs to
+     * @param databaseName    - the name of a database the file belongs to
      * @param fileName        - the file to read or examine
      * @param readContent     - indicates if a file is open for reading its content
      */
@@ -242,7 +242,7 @@ private:
     /// The last modification time (mtime) of the file
     std::time_t _mtime;
 
-    /// The flag which wil be set after hitting the end of the input stream
+    /// The flag which will be set after hitting the end of the input stream
     bool _eof;
 };
 

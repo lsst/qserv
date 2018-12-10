@@ -49,6 +49,7 @@ namespace {
 
 std::string  configUrl;
 unsigned int timeoutSec;
+bool         allWorkers;
 
 
 /// Run the test
@@ -77,6 +78,7 @@ bool test() {
  
         auto const job = ClusterHealthJob::create(
             timeoutSec,
+            allWorkers,
             controller,
             jobId,
             [&finished] (ClusterHealthJob::Ptr const& job) {
@@ -93,7 +95,7 @@ bool test() {
         };
 
         //////////////////////////////
-        // Analyse and display results
+        // Analyze and display results
 
         std::cout
             << "ClusterHealth job finished: " << job->state2string() << std::endl;
@@ -142,15 +144,25 @@ int main(int argc, const char* const argv[]) {
             argv,
             "\n"
             "Usage:\n"
-            "  [--config=<url>] [--timeout=<seconds>]\n"
+            "\n"
+            "  [--config=<url>] [--timeout=<seconds>] [--all-workers]\n"
             "\n"
             "Flags and options:\n"
-            "  --config  - configuration URL [ DEFAULT: file:replication.cfg ]\n"
-            "  --timeout - timeout (seconds) for status requests sent to\n"
-            "              the Replication system and Qserv wokers [DEFAULT: 10]\n");
+            "\n"
+            "  --config\n"
+            "      configuration URL [ DEFAULT: file:replication.cfg ]\n"
+            "\n"
+            "  --timeout\n"
+            "      timeout (seconds) for status requests sent to\n"
+            "      the Replication system and Qserv workers [DEFAULT: 10]\n"
+            "\n"
+            "  --all-workers\n"
+            "      send probes to all known workers instead of the active ones\n"
+            "      (those which are both enabled and not in the read-only state\n");
 
         ::configUrl  = parser.option<std::string>("config", "file:replication.cfg");
         ::timeoutSec = parser.option<unsigned int>("timeout", 10);
+        ::allWorkers = parser.flag("all-workers");
 
     } catch (std::exception const& ex) {
         return 1;

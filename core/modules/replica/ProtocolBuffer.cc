@@ -56,7 +56,7 @@ ProtocolBuffer::~ProtocolBuffer() {
 
 void ProtocolBuffer::resize(size_t newSizeBytes) {
 
-    // Make sure there is enough space in the buffer to accomodate
+    // Make sure there is enough space in the buffer to accommodate
     // the request.
 
     extend(newSizeBytes);
@@ -73,7 +73,7 @@ void ProtocolBuffer::extend(size_t newCapacityBytes) {
     if (newCapacityBytes > HARD_LIMIT) {
         throw std::overflow_error(
                     "ProtocolBuffer::extend() requested capacity " + std::to_string(newCapacityBytes) +
-                    " exceeds the hard limit of Google protobuf " + std::to_string(HARD_LIMIT));
+                    " exceeds the hard limit of Google Protobuf " + std::to_string(HARD_LIMIT));
     }
 
     char* ptr = new char[newCapacityBytes];

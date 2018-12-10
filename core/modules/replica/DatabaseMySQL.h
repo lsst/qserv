@@ -75,7 +75,7 @@ public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<Connection> Ptr;
 
-    /// @return value of the corresponidng MySQL variable set for a session
+    /// @return value of the corresponding MySQL variable set for a session
     static unsigned long max_allowed_packet();
 
     /**
@@ -127,6 +127,7 @@ public:
      * @code
      *
      * @param connectionParams
+     *    parameters of a connection
      *
      * @return
      *    a valid object if the connection attempt succeeded (no nullptr
@@ -156,7 +157,7 @@ public:
      * @note
      *    if the timeout is set to 0 (the default value) and if reconnects are
      *    allowed then the method will assume a global value defined by
-     *    the Configuraton parameter: Configuration::databaseConnectTimeoutSec()
+     *    the Configuration parameter: Configuration::databaseConnectTimeoutSec()
      *
      * @note
      *    the same value of the timeout would be also assumed if the connection
@@ -168,7 +169,7 @@ public:
      *    if set to 'true' then multiple reconnection attempts will be allowed
      *   
      * @param connectTimeoutSec
-     *    maximum number of seconds to wait before a connecton with a database
+     *    maximum number of seconds to wait before a connection with a database
      *    server is established.
       *
      * @return
@@ -251,7 +252,7 @@ public:
     }
 
     /**
-     * Turn values of variadic argumenst into a valid SQL representing a set of
+     * Turn values of variadic arguments into a valid SQL representing a set of
      * values to be insert into a table row. Values of string types 'std::string const&'
      * and 'char const*' will be also escaped and surrounded by single quote.
      *
@@ -274,7 +275,7 @@ public:
     /**
      * Generate an SQL statement for inserting a single row into the specified
      * table based on a variadic list of values to be inserted. The method allows
-     * any number of arguments and any types of argument values. rguments of
+     * any number of arguments and any types of argument values. Arguments of
      * types 'std::string' and 'char*' will be additionally escaped and surrounded by
      * single quotes as required by the SQL standard.
      *
@@ -309,7 +310,7 @@ public:
      *
      * Where:
      * - the column name will be surrounded by back ticks
-     * - values of string types will be escped and surrounded by single quotes
+     * - values of string types will be escaped and surrounded by single quotes
      */
     template <typename T>
     std::string sqlEqual(std::string const& col,
@@ -322,7 +323,7 @@ public:
     /// The base (the final function) to be called
     void sqlPackPair(std::string&) const {}
 
-    /// Recursive variadic function (overloaded for column names gived as std::string)
+    /// Recursive variadic function (overloaded for column names given as std::string)
     template <typename T, typename...Targs>
     void sqlPackPair(std::string&             sql,
                      std::pair<std::string,T> colVal,
@@ -338,7 +339,7 @@ public:
     }
 
 
-    /// Recursive variadic function (overloaded for column names gived as char const*)
+    /// Recursive variadic function (overloaded for column names given as char const*)
     template <typename T, typename...Targs>
     void sqlPackPair(std::string&             sql,
                      std::pair<char const*,T> colVal,
@@ -487,7 +488,7 @@ public:
     /**
      * Rollback the transaction
      *
-     * @return smart pointer to self to allow chaned calles
+     * @return smart pointer to self to allow chained calls
      * 
      * @throws std::logic_error - if the transaction was not started
      * @throws Error            - for any other MySQL specific errors
@@ -579,7 +580,7 @@ public:
      * Execute a user-supplied algorithm which could be retried the specified
      * number of times (or until a given timeout expires) if a connection to
      * a server is lost and re-established before the completion of the algorithm.
-     * The numnber of allowed auto-reconnects and the timeout are controlled by
+     * The number of allowed auto-reconnects and the timeout are controlled by
      * the corresponding parameters of the method.
      *
      * Notes:
@@ -660,7 +661,7 @@ public:
     /**
      * This is just a convenience method for a typical use case
      *
-     * NOTE: it'sup to the 'updateScript' to rollback a previous transaction
+     * NOTE: it's up to the 'updateScript' to rollback a previous transaction
      * if needed.
      */
     Connection::Ptr executeInsertOrUpdate(std::function<void(Ptr)> const& insertScript,
@@ -675,7 +676,7 @@ public:
     }
 
     /**
-     * @return 'true' if the last successfull query returned a result set
+     * @return 'true' if the last successful query returned a result set
      * (even though it may be empty)
      */
     bool hasResult() const;
@@ -693,7 +694,7 @@ public:
 
     /**
      * Move the iterator to the next (first) row of the current result set
-     * and if the iterator is not beyond the last row then nnitialize an object
+     * and if the iterator is not beyond the last row then initialize an object
      * passed as a parameter.
      *
      * ATTENTION: objects initialized upon the successful completion
@@ -741,7 +742,7 @@ public:
      *   throw InvalidTypeError
      *
      * @param query         - a query to be executed
-     * @param col           - the name of a columnt from which to exctract a value
+     * @param col           - the name of a column from which to extract a value
      * @param val           - a value to be set (unless the field contains NULL)
      * @param noMoreThanOne - flag (if set) forcing the above explained behavior
      *
@@ -765,7 +766,7 @@ public:
         while (next(row)) {
 
             // Only the very first row matters
-            if (not numRows) isNotNull = row.get (col, val);
+            if (not numRows) isNotNull = row.get(col, val);
 
             // have to read the rest of the result set to avoid problems with the MySQL
             // protocol
@@ -815,7 +816,7 @@ private:
      * @throws Reconnected       - after a successful reconnection has happened
      * @throws ConnectError      - connection to a server failed
      * @throws DuplicateKeyError - after the last statement attempted to violate
-     *                             the corresponding key constaint
+     *                             the corresponding key constraint
      * @throws Error             - for some other error not listed above
      */
     void processLastError(std::string const& context,

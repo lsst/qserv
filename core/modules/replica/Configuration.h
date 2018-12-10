@@ -23,10 +23,10 @@
 #define LSST_QSERV_REPLICA_CONFIGURATION_H
 
 /**
- * This header definesan abstract class Configuration and a number of
+ * This header defines an abstract class Configuration and a number of
  * other relevant classes, which represent a public interface to
  * the Configuration service of the Replication System. Specific implementations
- * of the service's interface are found in separate hedeares and source files.
+ * of the service's interface are found in separate headers and source files.
  */
 
 // System headers
@@ -49,7 +49,7 @@ namespace replica {
 class ChunkNumberValidator;
 
 /**
- * Struct WorkerInfo encapsulates various parameters describing a worker.
+ * Structure WorkerInfo encapsulates various parameters describing a worker.
  */
 struct WorkerInfo {
 
@@ -84,7 +84,7 @@ struct WorkerInfo {
 std::ostream& operator <<(std::ostream& os, WorkerInfo const& info);
 
 /**
- * Struct DatabaseInfo encapsulates various parameters describing databases.
+ * Structure DatabaseInfo encapsulates various parameters describing databases.
  */
 struct DatabaseInfo {
 
@@ -105,7 +105,7 @@ struct DatabaseInfo {
 std::ostream& operator <<(std::ostream& os, DatabaseInfo const& info);
 
 /**
- * Struct DatabaseFamilyInfo encapsulates various parameters describing
+ * Structure DatabaseFamilyInfo encapsulates various parameters describing
  * database families.
  */
 struct DatabaseFamilyInfo {
@@ -206,6 +206,11 @@ public:
     std::vector<std::string> workers(bool isEnabled=true,
                                      bool isReadOnly=false) const;
 
+    /**
+     * @return names of all known workers regardless of their statuses
+     */
+    std::vector<std::string> allWorkers() const;
+
     /// @return maximum size of the request buffers in bytes
     size_t requestBufferSizeBytes() const { return _requestBufferSizeBytes; }
 
@@ -231,7 +236,7 @@ public:
     // @return expiration timeout for jobs
     unsigned int jobTimeoutSec() const { return _jobTimeoutSec; }
 
-    /// @return timeout in seconds for the jobs' heartbeats
+    /// @return timeout in seconds for the job's heartbeats
     unsigned int jobHeartbeatTimeoutSec() const { return _jobHeartbeatTimeoutSec; }
 
     // --------------------------------------------------------
@@ -357,7 +362,7 @@ public:
     std::vector<std::string> databaseFamilies() const;
 
     /**
-     * Return 'true' if the specified database family is known to the configuraion
+     * Return 'true' if the specified database family is known to the configuration
      *
      * @param name - the name of a family
      */
@@ -385,7 +390,7 @@ public:
 
     /**
      * Return the names of known databases. A result of the method may be
-     * limited to a subset of databases belonging ot the specified family.
+     * limited to a subset of databases belonging to the specified family.
      *
      * @param family - the optional name of a database family
      *
@@ -395,7 +400,7 @@ public:
     std::vector<std::string> databases(std::string const& family=std::string()) const;
 
     /**
-     * Return 'true' if the specified database is known in the configuraion
+     * Return 'true' if the specified database is known in the configuration
      *
      * @param name - the name of a database
      */
@@ -416,7 +421,7 @@ public:
     // -----------------------------------------------------
 
     /**
-     * Return 'true' if the specified worker is known to the configuraion
+     * Return 'true' if the specified worker is known to the configuration
      *
      * @param name - the name of a worker
      */
@@ -460,7 +465,7 @@ public:
     virtual WorkerInfo const disableWorker(std::string const& name)=0;
 
     /**
-     * Completelly remove the specified worker from the Configuration.
+     * Completely remove the specified worker from the Configuration.
      *
      * @param name - the name of a worker
      *
@@ -580,7 +585,7 @@ protected:
      * Construct the object
      *
      * The constructor will initialize the configuration parameters with
-     * some default states, some of which are probably meaninless.
+     * some default states, some of which are probably meaningless.
      */
     Configuration();
 

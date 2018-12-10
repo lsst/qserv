@@ -241,7 +241,7 @@ void WorkerRequest::setStatus(util::Lock const& lock,
 
         case STATUS_CANCELLED:
 
-            // Set the start time to some meaninful value in case if the request was
+            // Set the start time to some meaningful value in case if the request was
             // cancelled while sitting in the input queue
 
             if (0 == _performance.start_time) _performance.setUpdateStart();

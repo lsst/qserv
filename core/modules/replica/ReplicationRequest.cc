@@ -51,18 +51,17 @@ namespace qserv {
 namespace replica {
 
 ReplicationRequest::Ptr ReplicationRequest::create(
-                                    ServiceProvider::Ptr const& serviceProvider,
-                                    boost::asio::io_service& io_service,
-                                    std::string const& worker,
-                                    std::string const& sourceWorker,
-                                    std::string const& database,
-                                    unsigned int  chunk,
-                                    CallbackType const& onFinish,
-                                    int  priority,
-                                    bool keepTracking,
-                                    bool allowDuplicate,
-                                    std::shared_ptr<Messenger> const& messenger) {
-
+                            ServiceProvider::Ptr const& serviceProvider,
+                            boost::asio::io_service& io_service,
+                            std::string const& worker,
+                            std::string const& sourceWorker,
+                            std::string const& database,
+                            unsigned int  chunk,
+                            CallbackType const& onFinish,
+                            int  priority,
+                            bool keepTracking,
+                            bool allowDuplicate,
+                            std::shared_ptr<Messenger> const& messenger) {
     return ReplicationRequest::Ptr(
         new ReplicationRequest(
             serviceProvider,
@@ -79,25 +78,26 @@ ReplicationRequest::Ptr ReplicationRequest::create(
 }
 
 ReplicationRequest::ReplicationRequest(
-                                    ServiceProvider::Ptr const& serviceProvider,
-                                    boost::asio::io_service& io_service,
-                                    std::string const& worker,
-                                    std::string const& sourceWorker,
-                                    std::string const& database,
-                                    unsigned int  chunk,
-                                    CallbackType const& onFinish,
-                                    int  priority,
-                                    bool keepTracking,
-                                    bool allowDuplicate,
-                                    std::shared_ptr<Messenger> const& messenger)
-    :   RequestMessenger(serviceProvider,
-                         io_service,
-                         "REPLICA_CREATE",
-                         worker,
-                         priority,
-                         keepTracking,
-                         allowDuplicate,
-                         messenger),
+                        ServiceProvider::Ptr const& serviceProvider,
+                        boost::asio::io_service& io_service,
+                        std::string const& worker,
+                        std::string const& sourceWorker,
+                        std::string const& database,
+                        unsigned int  chunk,
+                        CallbackType const& onFinish,
+                        int  priority,
+                        bool keepTracking,
+                        bool allowDuplicate,
+                        std::shared_ptr<Messenger> const& messenger)
+    :   RequestMessenger(
+            serviceProvider,
+            io_service,
+            "REPLICA_CREATE",
+            worker,
+            priority,
+            keepTracking,
+            allowDuplicate,
+            messenger),
         _database(database),
         _chunk(chunk),
         _sourceWorker(sourceWorker),
@@ -140,7 +140,7 @@ void ReplicationRequest::wait(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "wait");
 
-    // Allways need to set the interval before launching the timer.
+    // Always need to set the interval before launching the timer.
 
     timer().expires_from_now(boost::posix_time::seconds(timerIvalSec()));
     timer().async_wait(
@@ -161,8 +161,8 @@ void ReplicationRequest::awaken(boost::system::error_code const& ec) {
     // IMPORTANT: the final state is required to be tested twice. The first time
     // it's done in order to avoid deadlock on the "in-flight" callbacks reporting
     // their completion while the request termination is in a progress. And the second
-    // test is made after acquering the lock to recheck the state in case if it
-    // has transitioned while acquering the lock.
+    // test is made after acquiring the lock to recheck the state in case if it
+    // has transitioned while acquiring the lock.
 
     if (state() == State::FINISHED) return;
 
@@ -214,17 +214,17 @@ void ReplicationRequest::analyze(bool success,
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "analyze  success=" << (success ? "true" : "false"));
 
-    // This method is called on behalf of an asynchronious callback fired
+    // This method is called on behalf of an asynchronous callback fired
     // upon a completion of the request within method send() - the only
     // client of analyze(). So, we should take care of proper locking and watch
-    // for possible state transition which might occure while the async I/O was
+    // for possible state transition which might occur while the async I/O was
     // still in a progress.
 
     // IMPORTANT: the final state is required to be tested twice. The first time
     // it's done in order to avoid deadlock on the "in-flight" callbacks reporting
     // their completion while the request termination is in a progress. And the second
-    // test is made after acquering the lock to recheck the state in case if it
-    // has transitioned while acquering the lock.
+    // test is made after acquiring the lock to recheck the state in case if it
+    // has transitioned while acquiring the lock.
 
     if (state() == State::FINISHED) return;
 
@@ -237,7 +237,7 @@ void ReplicationRequest::analyze(bool success,
         return;
     }
 
-    // Allways get the latest status reported by the remote server
+    // Always get the latest status reported by the remote server
 
     setExtendedServerStatus(lock, replica::translate(message.status_ext()));
 

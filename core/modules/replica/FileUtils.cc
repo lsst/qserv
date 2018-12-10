@@ -38,15 +38,15 @@
 
 namespace {
 
-/// Standard file extention of the MyISAM (and derived) engine's table files
+/// Standard file extension of the MyISAM (and derived) engine's table files
 std::vector<std::string> const extensions{"frm", "MYD", "MYI"};
 
 /**
- * Evaluate if an input string corresponds to a valid file extention
+ * Evaluate if an input string corresponds to a valid file extension
  *
  * @param str - the candidate string to be tested
  *
- * @return 'true' if this is a valid file extention
+ * @return 'true' if this is a valid file extension
  */
 bool isValidExtention(std::string const& str) {
     return extensions.end() != std::find(extensions.begin(), extensions.end(), str);
@@ -120,13 +120,13 @@ bool FileUtils::parsePartitionedFile(std::tuple<std::string, unsigned int, std::
                                      std::string  const& fileName,
                                      DatabaseInfo const& databaseInfo) {
 
-    // Find the extention of the file and evaluate it if found
+    // Find the extension of the file and evaluate it if found
 
     std::string::size_type const posBeforeExention = fileName.rfind('.');
     if (posBeforeExention == std::string::npos) return false;               // not found
 
     std::string const extention = fileName.substr(posBeforeExention + 1);   // excluding '.'
-    if (!::isValidExtention(extention)) return false;                       // unknow file extenton
+    if (!::isValidExtention(extention)) return false;                       // unknown file extension
 
     // Find and parse the chunk number
 
@@ -310,7 +310,7 @@ bool MultiFileCsComputeEngine::processed(std::string const& fileName) const {
 size_t  MultiFileCsComputeEngine::bytes(std::string const& fileName) const {
     if (not processed(fileName)) {
         throw std::logic_error(
-            "MultiFileCsComputeEngine::bytes()  the file hasn't been proccessed: " + fileName);
+            "MultiFileCsComputeEngine::bytes()  the file hasn't been processed: " + fileName);
     }
     return _processed.at(fileName)->bytes();
 }
@@ -318,14 +318,14 @@ size_t  MultiFileCsComputeEngine::bytes(std::string const& fileName) const {
 uint64_t MultiFileCsComputeEngine::cs(std::string const& fileName) const {
     if (not processed(fileName)) {
         throw std::logic_error(
-            "MultiFileCsComputeEngine::cs()  the file hasn't been proccessed: " + fileName);
+            "MultiFileCsComputeEngine::cs()  the file hasn't been processed: " + fileName);
     }
     return _processed.at(fileName)->cs();
 }
 
 bool MultiFileCsComputeEngine::execute() {
 
-    // All files have been proccessed
+    // All files have been processed
     if (_fileNames.end() == _currentFileItr) return true;
 
     // Process possible EOF of the current or any subsequent files

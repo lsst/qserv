@@ -28,6 +28,7 @@
 #include <functional>
 #include <initializer_list>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -72,12 +73,15 @@ public:
     //      constructed server will install asynchronous event handlers as necessary.  Optionally pass a TCP
     //      port on which the server should listen for incoming requests; if 0 is passed as the port, a free
     //      port will be selected by the operating system (in which case getPort() may subsequently be called
-    //      to discover the assigned port).
+    //      after start() to discover the assigned port).
 
     static Ptr create(boost::asio::io_service& io_service, unsigned short port);
     unsigned short getPort();
 
-    //----- Methods to install Handlers on a Server
+    ~Server();
+
+    //----- Methods to install Handlers on a Server.  These must be called before start(), or between calls
+    //      to stop() and start().
 
     void addHandler(std::string const& method, std::string const& pattern, Handler handler);
     void addHandlers(std::initializer_list<HandlerSpec> handlers);
@@ -91,15 +95,23 @@ public:
     AjaxEndpoint::Ptr addAjaxEndpoint(std::string const& path);
 
     //----- setRequestTimeout() allows the user to override the default 5 minute start-of-request to
-    //      end-of-response timeout.  Must be called before accept().
+    //      end-of-response timeout.  Must be called before start(), or between calls to stop() and start().
 
     void setRequestTimeout(std::chrono::milliseconds const& timeout);
 
-    //----- accept() installs the head of the asynchronous even handler chain onto the asio::io_service
-    //      provided when the Server instance was constructed.  Event handlers for the Server tail out when
-    //      asio::io_service::stop() is subsquently called to shutdown that io_service.
+    //----- start() opens the server listening socket and installs the head of the asynchronous event
+    //      handler chain onto the asio::io_service provided when the Server instance was constructed.
+    //      Server execution may be halted either calling stop(), or by calling asio::io_service::stop()
+    //      on the associated asio::io_service.
 
-    void accept();
+    void start();
+
+    //----- stop() shuts down the server by closing all active sockets, including the server listening
+    //      socket.  No new connections will be accepted, and handlers in progress will err out the next
+    //      time they try to read/write from/to their client sockets.  A call to start() will be needed to
+    //      resume server operation.
+
+    void stop();
 
 private:
 
@@ -107,6 +119,8 @@ private:
     Server& operator=(Server const&) = delete;
 
     Server(boost::asio::io_service& io_service, unsigned short port);
+
+    void _accept();
 
     void _readRequest(std::shared_ptr<boost::asio::ip::tcp::socket> socket);
     void _dispatchRequest(Request::Ptr request, Response::Ptr response);
@@ -119,9 +133,13 @@ private:
     std::unordered_map<std::string, std::vector<PathHandler>> _pathHandlersByMethod;
 
     boost::asio::io_service& _io_service;
+    boost::asio::ip::tcp::endpoint _acceptorEndpoint;
     boost::asio::ip::tcp::acceptor _acceptor;
 
     std::chrono::milliseconds _requestTimeout;
+    
+    std::vector<std::weak_ptr<boost::asio::ip::tcp::socket>> _activeSockets;
+    std::mutex _activeSocketsMutex;
 
 };
 

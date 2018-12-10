@@ -195,7 +195,7 @@ std::map<std::string, ReplicaInfo::FileInfo> ReplicaInfo::fileInfoMap() const {
 
 bool ReplicaInfo::equalFileCollections(ReplicaInfo const& other) const {
 
-    // Files of both comllection needs to be map-sorted because objects may
+    // Files of both collections needs to be map-sorted because objects may
     // have them stored in different order.
 
     std::map<std::string, ReplicaInfo::FileInfo> thisFileInfo  = this->fileInfoMap();

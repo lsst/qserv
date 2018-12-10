@@ -55,6 +55,10 @@ Job::Options const& PurgeJob::defaultOptions() {
     return options;
 }
 
+
+std::string PurgeJob::typeName() { return "PurgeJob"; }
+
+
 PurgeJob::Ptr PurgeJob::create(
                         std::string const& databaseFamily,
                         unsigned int numReplicas,
@@ -99,7 +103,7 @@ PurgeJob::PurgeJob(std::string const& databaseFamily,
 }
 
 PurgeJob::~PurgeJob() {
-    // Make sure all chuks locked by this job are released
+    // Make sure all chunks locked by this job are released
     controller()->serviceProvider()->chunkLocker().release(id());
 }
 
@@ -202,8 +206,8 @@ void PurgeJob::onPrecursorJobFinish() {
     // IMPORTANT: the final state is required to be tested twice. The first time
     // it's done in order to avoid deadlock on the "in-flight" requests reporting
     // their completion while the job termination is in a progress. And the second
-    // test is made after acquering the lock to recheck the state in case if it
-    // has transitioned while acquering the lock.
+    // test is made after acquiring the lock to recheck the state in case if it
+    // has transitioned while acquiring the lock.
 
     if (state() == State::FINISHED) return;
 
@@ -221,8 +225,8 @@ void PurgeJob::onPrecursorJobFinish() {
     }
 
     /////////////////////////////////////////////////////////////////
-    // Analyse results and prepare a deletion plan to remove extra
-    // replocas for over-represented chunks
+    // Analyze results and prepare a deletion plan to remove extra
+    // replicas for over-represented chunks
     //
     // IMPORTANT:
     //
@@ -232,7 +236,7 @@ void PurgeJob::onPrecursorJobFinish() {
     //   will only consider 'good' chunks (the ones which meet the 'colocation'
     //   requirement and which has good chunks only.
     //
-    // - at a presense of more than one candidate for deletion, a worker with
+    // - at a presence of more than one candidate for deletion, a worker with
     //   more chunks will be chosen.
     //
     // - the statistics for the number of chunks on each worker will be
@@ -341,7 +345,8 @@ void PurgeJob::onPrecursorJobFinish() {
             // which are still available.
 
             size_t      maxNumChunks = 0;   // will get updated within the next loop
-            std::string targetWorker;       // will be set to the best worker inwhen the loop is over
+            std::string targetWorker;       // will be set to the best worker when the loop
+                                            // is over.
 
             for (auto&& worker: goodWorkersOfThisChunk) {
                 if (targetWorker.empty() or (worker2occupancy[worker] > maxNumChunks)) {
@@ -407,7 +412,7 @@ void PurgeJob::onPrecursorJobFinish() {
 
             } else {
 
-                // Some of the chuks were locked and yet, no sigle job was
+                // Some of the chunks were locked and yet, no single job was
                 // lunched. Hence we should start another iteration by requesting
                 // the fresh state of the chunks within the family.
 
@@ -429,8 +434,8 @@ void PurgeJob::onDeleteJobFinish(DeleteReplicaJob::Ptr const& job) {
     // IMPORTANT: the final state is required to be tested twice. The first time
     // it's done in order to avoid deadlock on the "in-flight" requests reporting
     // their completion while the job termination is in a progress. And the second
-    // test is made after acquering the lock to recheck the state in case if it
-    // has transitioned while acquering the lock.
+    // test is made after acquiring the lock to recheck the state in case if it
+    // has transitioned while acquiring the lock.
 
     if (state() == State::FINISHED) {
         release(job->chunk());
@@ -455,13 +460,13 @@ void PurgeJob::onDeleteJobFinish(DeleteReplicaJob::Ptr const& job) {
 
         DeleteReplicaJobResult const& jobReplicaData = job->getReplicaData();
 
-        // Append replicas infos by the end of the list
+        // Append replicas info by the end of the list
 
         _replicaData.replicas.insert(_replicaData.replicas.end(),
                                      jobReplicaData.replicas.begin(),
                                      jobReplicaData.replicas.end());
 
-        // Merge the replica infos into the dictionary
+        // Merge the replica info into the dictionary
 
         for (auto&& databaseEntry: jobReplicaData.chunks.at(job->chunk())) {
             std::string const& database = databaseEntry.first;

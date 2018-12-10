@@ -23,7 +23,7 @@
 #define LSST_QSERV_REPLICA_CONFIGURATIONMYSQL_H
 
 /**
- * This header defines a class which provides a MySQL backend
+ * This header defines a class which provides a MySQL back-end
  * for the Configuration service.
  */
 
@@ -117,7 +117,7 @@ private:
      *   the lock on a mutex required for the thread safety
      *
      * @param conn
-     *   the refernce to the database connector
+     *   the reference to the database connector
      */
     void loadConfigurationImpl(util::Lock const& lock,
                                database::mysql::Connection::Ptr const& conn);

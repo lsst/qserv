@@ -55,6 +55,10 @@ Job::Options const& ReplicateJob::defaultOptions() {
     return options;
 }
 
+
+std::string ReplicateJob::typeName() { return "ReplicateJob"; }
+
+
 ReplicateJob::Ptr ReplicateJob::create(
                             std::string const& databaseFamily,
                             unsigned int numReplicas,
@@ -168,8 +172,8 @@ void ReplicateJob::onPrecursorJobFinish() {
     // IMPORTANT: the final state is required to be tested twice. The first time
     // it's done in order to avoid deadlock on the "in-flight" requests reporting
     // their completion while the job termination is in a progress. And the second
-    // test is made after acquering the lock to recheck the state in case if it
-    // has transitioned while acquering the lock.
+    // test is made after acquiring the lock to recheck the state in case if it
+    // has transitioned while acquiring the lock.
 
     if (state() == State::FINISHED) return;
 
@@ -187,7 +191,7 @@ void ReplicateJob::onPrecursorJobFinish() {
     }
 
     /////////////////////////////////////////////////////////////////
-    // Analyse results and prepare a replication plan to create extra
+    // Analyze results and prepare a replication plan to create extra
     // replicas for under-represented chunks
     //
     // IMPORTANT:
@@ -248,7 +252,7 @@ void ReplicateJob::onPrecursorJobFinish() {
         }
     }
 
-    // The 'black list' of workers to be avoided as new replica destinations
+    // The "black list" of workers to be avoided as new replica destinations
     // for specific chunks because they already have a replica (regardless of
     // its status) of that chunk for any database of the family
     //
@@ -293,8 +297,8 @@ void ReplicateJob::onPrecursorJobFinish() {
     // worker and launch a replica creation job.
 
     // The number of times each source worker is allocated is computed and used
-    // by the replication planner in order to spread the load accross as many
-    // source workes as possible.
+    // by the replication planner in order to spread the load across as many
+    // source workers as possible.
     std::map<std::string,size_t> sourceWorkerAllocations;
     for (auto&& worker: controller()->serviceProvider()->config()->workers()) {
         sourceWorkerAllocations[worker] = 0;
@@ -326,7 +330,7 @@ void ReplicateJob::onPrecursorJobFinish() {
         }
         if (sourceWorker.empty()) {
             LOGS(_log, LOG_LVL_ERROR, context()
-                 << "onPrecursorJobFinish  no suitable soure worker found for chunk: "
+                 << "onPrecursorJobFinish  no suitable source worker found for chunk: "
                  << chunk);
             finish(lock, ExtendedState::FAILED);
             return;
@@ -335,9 +339,9 @@ void ReplicateJob::onPrecursorJobFinish() {
         // Iterate over the number of replicas to be created and create
         // a new one on each step.
         //
-        // NOTE: the worker ocupancy map worker2occupancy will get
+        // NOTE: the worker occupancy map worker2occupancy will get
         // updated on each successful iteration of the loop, so that
-        // the corresponidng destination worker will also be accounted
+        // the corresponding destination worker will also be accounted
         // for when deciding on a placement of other replicas.
 
         for (int i=0; i < numReplicas2create; ++i) {
@@ -439,8 +443,8 @@ void ReplicateJob::onCreateJobFinish(CreateReplicaJob::Ptr const& job) {
     // IMPORTANT: the final state is required to be tested twice. The first time
     // it's done in order to avoid deadlock on the "in-flight" requests reporting
     // their completion while the job termination is in a progress. And the second
-    // test is made after acquering the lock to recheck the state in case if it
-    // has transitioned while acquering the lock.
+    // test is made after acquiring the lock to recheck the state in case if it
+    // has transitioned while acquiring the lock.
 
     if (state() == State::FINISHED) {
         _activeJobs.remove(job);

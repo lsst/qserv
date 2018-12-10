@@ -51,7 +51,7 @@ QSERV_DATA_DIR="/qserv/data"
 REPLICATION_DATA_DIR="/qserv/replication"
 
 # Base directory where the Replication system's MariaDB/MySQL service
-# of the master node wil create its folder 'mysql'
+# of the master node will create its folder 'mysql'
 DB_DATA_DIR="${REPLICATION_DATA_DIR}"
 
 # Configuration files of the Replication system's processes on both master

@@ -28,12 +28,14 @@
 #include <stdexcept>
 
 // Qserv headers
-#include "lsst/log/Log.h"
 #include "replica/ChunkLocker.h"
 #include "replica/Configuration.h"
 #include "replica/DatabaseServicesPool.h"
 #include "replica/Messenger.h"
 #include "replica/QservMgtServices.h"
+
+// LSST headers
+#include "lsst/log/Log.h"
 
 namespace {
 
@@ -49,12 +51,13 @@ ServiceProvider::Ptr ServiceProvider::create(std::string const& configUrl) {
 
     auto ptr = ServiceProvider::Ptr(new ServiceProvider(configUrl));
 
-    // This initialization is made a posteriori because the shared pointer
+    // This initialization is made "a posteriori" because the shared pointer
     // onto the object can't be accessed via the usual call to shared_from_this()
-    // inside the contsructor.
+    // inside the constructor.
 
     ptr->_qservMgtServices = QservMgtServices::create(ptr);
     ptr->_messenger        = Messenger::create(ptr, ptr->_io_service);
+    ptr->_httpServer       = qhttp::Server::create(ptr->_io_service, ptr->config()->controllerHttpPort());
 
     return ptr;
 }
@@ -74,7 +77,7 @@ void ServiceProvider::run() {
 
     if (not _threads.empty()) return;
 
-    // Initialize BOOST ASIO servces
+    // Initialize BOOST ASIO services
 
     _work.reset(new boost::asio::io_service::work(_io_service));
 
@@ -115,7 +118,7 @@ void ServiceProvider::stop() {
 
     if (_threads.empty()) return;
 
-    // These steps will cancel all oustanding requests to workers (if any)
+    // These steps will cancel all outstanding requests to workers (if any)
 
     _messenger->stop();
 
@@ -123,7 +126,7 @@ void ServiceProvider::stop() {
     // all on-going work and shut down all service threads. In that case there
     // is no need to stop the service explicitly (which is not a good idea anyway
     // because there may be outstanding synchronous requests, in which case the service
-    // would get into an unpredictanle state.)
+    // would get into an unpredictable state.)
 
     _work.reset();
 

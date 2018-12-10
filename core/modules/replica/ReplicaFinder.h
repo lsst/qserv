@@ -40,12 +40,12 @@ namespace qserv {
 namespace replica {
 
 /**
- * Class ReplicaFinder implements replica lookup requsts in a scope of a database
- * accross all worker nodes of a replication cluster.
+ * Class ReplicaFinder implements replica lookup requests in a scope of a database
+ * across all worker nodes of a replication cluster.
  *
  * TODO: this is a pilot implementation of a special kind of requests
  *       which will be implemented in the future. These requests will
- *       be initited via the Controller.
+ *       be initiated via the Controller.
  */
 class ReplicaFinder
     :   public CommonRequestTracker<FindAllRequest> {
@@ -61,7 +61,7 @@ public:
     /**
      * The constructor is a blocking operation which will launch the requests
      * and wait until they're complete. Exceptions may be thrown in case
-     * of errors. When the contructor unblocks a list of requests in the base class
+     * of errors. When the constructor unblocks a list of requests in the base class
      * should be inspected to see what's been found.
      *
      * @param controller      - a reference to the Controller for launching requests

@@ -83,7 +83,7 @@ for WORKER in $WORKERS; do
         -e "CONFIG=${CONFIG}" \
         -e "WORKER=${WORKER}" \
         "${REPLICATION_IMAGE_TAG}" \
-        bash -c \''/qserv/bin/qserv-replica-worker ${WORKER} --config=${CONFIG} >& ${LOG_DIR}/${WORKER_CONTAINER_NAME}.log'\'
+        bash -c \''/qserv/bin/qserv-replica-worker ${WORKER} --config=${CONFIG} --debug >& ${LOG_DIR}/${WORKER_CONTAINER_NAME}.log'\'
 done
 
 # Start master controller
@@ -115,5 +115,5 @@ if [ -n "${MASTER_CONTROLLER}" ]; then
         -e "OPT_LD_PRELOAD=${OPT_LD_PRELOAD}" \
         --name "${MASTER_CONTAINER_NAME}" \
         "${REPLICATION_IMAGE_TAG}" \
-        bash -c \''cd ${WORK_DIR}; MALLOC_CONF=${OPT_MALLOC_CONF} LD_PRELOAD=${OPT_LD_PRELOAD} /qserv/bin/${TOOL} ${PARAMETERS} --config=${CONFIG} >& ${LOG_DIR}/${TOOL}.log'\'
+        bash -c \''cd ${WORK_DIR}; MALLOC_CONF=${OPT_MALLOC_CONF} LD_PRELOAD=${OPT_LD_PRELOAD} /qserv/bin/${TOOL} ${PARAMETERS} --config=${CONFIG} --debug >& ${LOG_DIR}/${TOOL}.log'\'
 fi

@@ -23,7 +23,7 @@
 #define LSST_QSERV_REPLICA_DATABASESERVICESMYSQL_H
 
 /**
- * This hedear represents a MyQL-backed implementation of the
+ * This header represents a MyQL-backed implementation of the
  * persistent database services of the Replication Framework.
  *
  * @see class DatabaseServices
@@ -145,6 +145,12 @@ public:
                             std::string const& database) final;
 
     /**
+     * @see DatabaseServices::numWorkerReplicas()
+     */
+    uint64_t numWorkerReplicas(std::string const& worker,
+                               std::string const& database=std::string()) final;
+
+    /**
      * @see DatabaseServices::findWorkerReplicas()
      */
     void findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
@@ -152,11 +158,24 @@ public:
                             std::string const& worker,
                             std::string const& databaseFamily) final;
 
+    /**
+     * @see DatabaseServices::actualReplicationLevel()
+     */
+    std::map<unsigned int, size_t> actualReplicationLevel(
+                                        std::string const& database,
+                                        std::vector<std::string> const& workersToExclude) final;
+
+    /**
+     * @see DatabaseServices::numOrphanChunks()
+     */
+    size_t numOrphanChunks(std::string const& database,
+                           std::vector<std::string> const& uniqueOnWorkers) final;
+
 private:
 
     /**
-     * Thread unsafe implementation of the corresponiding public method.
-     * This operation is supposed to be invoken in a context where proper
+     * Thread unsafe implementation of the corresponding public method.
+     * This operation is supposed to be invoked in a context where proper
      * thread safety synchronization has been taken care of.
      *
      * @param lock      - lock on a mutex must be acquired before calling this method

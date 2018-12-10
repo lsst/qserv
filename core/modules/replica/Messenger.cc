@@ -51,7 +51,7 @@ Messenger::Ptr Messenger::create(ServiceProvider::Ptr const& serviceProvider,
 Messenger::Messenger(ServiceProvider::Ptr const& serviceProvider,
                      boost::asio::io_service& io_service) {
 
-    for (auto&& worker: serviceProvider->config()->workers()){
+    for (auto&& worker: serviceProvider->config()->allWorkers()) {
         _connector[worker] = MessengerConnector::create(serviceProvider,
                                                         io_service,
                                                         worker);
@@ -67,14 +67,14 @@ void Messenger::stop() {
 void Messenger::cancel(std::string const& worker,
                        std::string const& id) {
 
-    // Forward the request to the corresponidng worker
+    // Forward the request to the corresponding worker
     connector(worker)->cancel(id);
 }
 
 bool Messenger::exists(std::string const& worker,
                        std::string const& id) const {
 
-    // Forward the request to the corresponidng worker
+    // Forward the request to the corresponding worker
     return connector(worker)->exists(id);
 }
 

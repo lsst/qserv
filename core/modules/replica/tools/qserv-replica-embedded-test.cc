@@ -65,7 +65,7 @@ void runAllWorkers(replica::ServiceProvider::Ptr const& provider,
 
     for (std::string const& workerName : provider->config()->workers()) {
         
-        // Create the request pocessing server and run it within a dedicated thread
+        // Create the request processing server and run it within a dedicated thread
         // because it's the blocking operation for the launching thread.
 
         replica::WorkerServer::Ptr const reqProcSrv =
@@ -121,7 +121,7 @@ void run() {
 
         runAllWorkers(provider, requestFactory);
 
-        // Then block the calling thread foreever.
+        // Then block the calling thread forever.
         util::BlockPost blockPost(1000, 5000);
         while (true) {
             blockPost.wait();  

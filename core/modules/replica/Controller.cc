@@ -111,7 +111,7 @@ private:
 //////////////////////////////////////////////////////////////////////
 
 /**
- * The utiliy class implementing operations on behalf of certain
+ * The utility class implementing operations on behalf of certain
  * methods of class Controller.
  *
  * THREAD SAFETY NOTE: Methods implemented within the class are NOT thread-safe.
@@ -134,7 +134,7 @@ public:
 
     /**
      * Generic method for managing requests such as stopping an outstanding
-     * request or inquering a status of a request.
+     * request or obtaining an updated status of a request.
      *
      * @param workerName      - the name of a worker node where the request was launched
      * @param targetRequestId - an identifier of a request to be affected

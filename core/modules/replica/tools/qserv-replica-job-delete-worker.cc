@@ -20,7 +20,7 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-/// qserv-replica-job-delete-worker.cc is a Controlller application
+/// qserv-replica-job-delete-worker.cc is a Controller application
 /// for testing the corresponding job.
 
 // System headers
@@ -126,8 +126,8 @@ bool test() {
             << "----------+----------+-----------------------------------------\n"
             << std::endl;
 
-        /////////////////////////////////////////////////
-        // Orpah chunks left as a result of the operation
+        //////////////////////////////////////////////////
+        // Orphan chunks left as a result of the operation
 
         std::cout
             << "ORPHAN CHUNKS\n"

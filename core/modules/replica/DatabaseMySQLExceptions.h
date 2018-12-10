@@ -63,7 +63,7 @@ public:
     /**
      * The normal constructor
      *
-     * @param what - reason for the exceptioon
+     * @param what - reason for the exception
      */
     explicit Error(std::string const& what)
         :   std::runtime_error(what) {
@@ -81,7 +81,7 @@ public:
     /**
      * The normal constructor
      *
-     * @param what - reason for the exceptioon
+     * @param what - reason for the exception
      */
     explicit ConnectError(std::string const& what)
         :   Error(what) {
@@ -100,7 +100,7 @@ public:
     /**
      * The normal constructor
      *
-     * @param what       - reason for the exceptioon
+     * @param what       - reason for the exception
      * @param timeoutSec - a value of the timeout which expired
      */
     ConnectTimeout(std::string const& what,
@@ -128,7 +128,7 @@ public:
     /**
      * The normal constructor
      *
-     * @param what          - reason for the exceptioon
+     * @param what          - reason for the exception
      * @param maxReconnects - number of reconnects which was set as a limit
      */
     MaxReconnectsExceeded(std::string const& what,
@@ -158,7 +158,7 @@ public:
     /**
      * The normal constructor
      *
-     * @param what - reason for the exceptioon
+     * @param what - reason for the exception
      */
     explicit Reconnected(std::string const& what)
         :   Error(what) {
@@ -196,7 +196,7 @@ public:
     /**
      * The normal constructor
      *
-     * @param what - reason for the exceptioon
+     * @param what - reason for the exception
      */
     explicit InvalidTypeError(std::string const& what)
         :   Error(what) {
@@ -215,7 +215,7 @@ public:
     /**
      * The normal constructor
      *
-     * @param what - reason for the exceptioon
+     * @param what - reason for the exception
      */
     explicit EmptyResultSetError(std::string const& what)
         :   Error(what) {

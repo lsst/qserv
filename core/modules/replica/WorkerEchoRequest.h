@@ -54,14 +54,26 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider  - a host of services for various communications
-     * @param worker           - the name of a worker
-     * @param id               - an identifier of a client request
-     * @param priority         - indicates the importance of the request
-     * @param data             - the data string to be echoed back
-     * @param delay            - the desired minimum execution time (milliseconds) of a request
+     * @param serviceProvider
+     *   a host of services for various communications
      *
-     * @return pointer to the created object
+     * @param worker
+     *   the name of a worker
+     * 
+     * @param id
+     *   an identifier of a client request
+     *
+     * @param priority
+     *   indicates the importance of the request
+     *
+     * @param data
+     *   the data string to be echoed back
+     *
+     * @param delay
+     *   the desired minimum execution time (milliseconds) of a request
+     *
+     * @return
+     *   pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& worker,
@@ -78,7 +90,7 @@ public:
 
     ~WorkerEchoRequest() override = default;
 
-    // Trivial accessors
+    // Trivial get methods
 
     std::string const& data() const { return _data; }
 
@@ -87,7 +99,8 @@ public:
     /**
      * Extract request status into the Protobuf response object.
      *
-     * @param response - Protobuf response to be initialized
+     * @param response
+     *   Protobuf response to be initialized
      */
     void setInfo(proto::ReplicationResponseEcho& response) const;
 

@@ -65,7 +65,7 @@ bool readIntoBuffer(boost::asio::ip::tcp::socket& socket,
                     ProtocolBufferPtr const& ptr,
                     size_t bytes) {
 
-    ptr->resize(bytes);     // make sure the buffer has enough space to accomodate
+    ptr->resize(bytes);     // make sure the buffer has enough space to accommodate
                             // the data of the message.
 
     boost::system::error_code ec;
@@ -151,8 +151,8 @@ void WorkerServerConnection::receive() {
     //
     // The message itself will be read from the handler using
     // the synchronous read method. This is based on an assumption
-    // that the worker server sends the whol emessage (its frame and
-    // the message itsef) at once.
+    // that the worker server sends the whole message (its frame and
+    // the message itself) at once.
 
     const size_t bytes = sizeof(uint32_t);
 
@@ -186,7 +186,7 @@ void WorkerServerConnection::received(boost::system::error_code const& ec,
     if (not ::readMessage(_socket, _bufferPtr, _bufferPtr->parseLength(), hdr)) return;
 
 
-    // Analyse the header of the request. Note that the header message categorizes
+    // Analyze the header of the request. Note that the header message categorizes
     // requests in two layers:
     // - first goes the class of requests as defined by member 'type'
     // - then  goes a choice of a specific request within its class. Those specific
@@ -388,7 +388,7 @@ void WorkerServerConnection::processServiceRequest(proto::ReplicationRequestHead
     proto::ReplicationServiceResponse response;
 
     // All performance counters for this type of requests should be
-    // equal because this is the instantenous request
+    // equal because this is the instantaneous request
 
     WorkerPerformance performance;
     performance.setUpdateStart();
@@ -399,7 +399,7 @@ void WorkerServerConnection::processServiceRequest(proto::ReplicationRequestHead
 
         case proto::ReplicationServiceRequestType::SERVICE_SUSPEND: {
 
-            // This operation is allowed to be asynchronious as it may take
+            // This operation is allowed to be asynchronous as it may take
             // extra time for the processor's threads to finish on-going processing
 
             _processor->stop();
@@ -415,7 +415,7 @@ void WorkerServerConnection::processServiceRequest(proto::ReplicationRequestHead
         }
         case proto::ReplicationServiceRequestType::SERVICE_RESUME: {
 
-            // This is a synchronus operation. The state transition request should happen
+            // This is a synchronous operation. The state transition request should happen
             // (or be denied) instantaneously.
 
             _processor->run();

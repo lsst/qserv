@@ -28,7 +28,7 @@
  *
  * @see class Connection
  *
- * This class is not normaly included dircetly by user's code.
+ * This class is not normally included directly by user's code.
  */
 
 // System headers
@@ -50,8 +50,8 @@ namespace mysql {
 class Connection;
 
 /**
- * Class Row represens the current row obtained from the last result set.
- * It provides an interface for obtainig values of fields and translating
+ * Class Row represents the current row obtained from the last result set.
+ * It provides an interface for obtaining values of fields and translating
  * them from the internal MySQL representation into the proposed C++ type
  * system.
  *
@@ -61,7 +61,7 @@ class Connection;
  *
  *   columnName - the name of a column
  *   value      - the value (of a type which depends on the method signature)
- *                to be initialized upon the succesful completion of a method
+ *                to be initialized upon the successful completion of a method
  *
  * Methods may also throw the following exceptions:
  *
@@ -95,7 +95,7 @@ public:
      * The default constructor will initialize invalid instances of the class.
      *
      * @note any attempts to call most (but 'isValid', copy constructor,
-     * assignment operator and desturctor) methods of objects constracted
+     * assignment operator and destructor) methods of objects constructed
      * with this state will throw exception std::logic_error. So, make sure
      * the object is properly set by passing it for initialization to method
      * Connection::next() when iterating over a result set.

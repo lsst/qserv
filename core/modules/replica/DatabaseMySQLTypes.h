@@ -23,9 +23,9 @@
 #define LSST_QSERV_REPLICA_DATABASEMYSQLTYPES_H
 
 /**
- * This header defines public classesused in the implementation of
+ * This header defines public classes used in the implementation of
  * the C++ wrapper of the MySQL C language library. This header is
- * not supposed to be included dircetly by user's code.
+ * not supposed to be included directly by user's code.
  *
  * @see class Connection
  */
@@ -45,7 +45,7 @@ namespace database {
 namespace mysql {
 
 /**
- * Struct ConnectionParams encapsulates connection parameters to
+ * Structure ConnectionParams encapsulates connection parameters to
  * a MySQL server. If constructed using the default constructor
  * the parameters will be initialized with some reasonable defaults:
  *
@@ -84,7 +84,7 @@ struct ConnectionParams {
      *   mysql://[user][:password]@[host][:port][/database]
      *
      * NOTES ON THE SYNTAX:
-     * 1) all keywords are madatory
+     * 1) all keywords are mandatory
      * 2) the corresponding values for for all but the database are optional
      * 3) default values for other parameters (if missing in the string) will be assumed.
      *
@@ -115,7 +115,7 @@ struct ConnectionParams {
 
     /**
      * Return a string representation of all (but the password) parameters.
-     * The result will be formatted similarily to the one expected by
+     * The result will be formatted similarly to the one expected by
      * the non-default constructor of the class.
      */
     std::string toString() const;
@@ -127,7 +127,7 @@ std::ostream& operator<<(std::ostream&, ConnectionParams const&);
 /**
  * Class DoNotProcess is an abstraction for SQL strings which than ordinary
  * values of string types needs to be injected into SQL statements without
- * being processed (excaped and quoted) as regular string values.
+ * being processed (escaped and quoted) as regular string values.
  */
 class DoNotProcess {
 

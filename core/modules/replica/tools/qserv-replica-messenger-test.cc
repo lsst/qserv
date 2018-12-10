@@ -21,7 +21,7 @@
  */
 
 /// qserv-replica-messenger-test.cc is a command line tool for testing
-/// the Messengeer Network
+/// the Messenger Network
 
 // System headers
 #include <atomic>

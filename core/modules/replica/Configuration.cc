@@ -157,7 +157,7 @@ void Configuration::translateDataDir(std::string&       dataDir,
 
     if (rightPos <= leftPos) {
         throw std::invalid_argument(
-                "Configuration::translateDataDir  misformed template in the data directory path: '" +
+                "Configuration::translateDataDir  invalid template in the data directory path: '" +
                 dataDir + "'");
     }
     if (dataDir.substr (leftPos, rightPos - leftPos + 1) == "{worker}") {
@@ -218,6 +218,18 @@ std::vector<std::string> Configuration::workers(bool isEnabled,
     return names;
 }
 
+
+std::vector<std::string> Configuration::allWorkers() const {
+    util::Lock lock(_mtx, context() + "allWorkers");
+    std::vector<std::string> names;
+    for (auto&& entry: _workerInfo) {
+        auto const& name = entry.first;
+        names.push_back(name);
+    }
+    return names;
+}
+
+
 std::vector<std::string> Configuration::databaseFamilies() const {
 
     util::Lock lock(_mtx, context() + "databaseFamilies");
@@ -260,7 +272,7 @@ DatabaseFamilyInfo const Configuration::databaseFamilyInfo(std::string const& na
     auto&& itr = _databaseFamilyInfo.find(name);
     if (itr == _databaseFamilyInfo.end()) {
         throw std::invalid_argument(
-                "Configuration::databaseFamilyInfo  uknown database family: '" + name + "'");
+                "Configuration::databaseFamilyInfo  unknown database family: '" + name + "'");
     }
     return itr->second;
 }
@@ -298,7 +310,7 @@ WorkerInfo const Configuration::workerInfo(std::string const& name) const {
     auto const itr = _workerInfo.find(name);
     if (itr == _workerInfo.end()) {
         throw std::invalid_argument(
-                "Configuration::workerInfo() uknown worker: '" + name + "'");
+                "Configuration::workerInfo() unknown worker: '" + name + "'");
     }
     return itr->second;
 }
@@ -317,7 +329,7 @@ DatabaseInfo const Configuration::databaseInfo(std::string const& name) const {
     auto&& itr = _databaseInfo.find(name);
     if (itr == _databaseInfo.end()) {
         throw std::invalid_argument(
-                "Configuration::databaseInfo() uknown database: '" + name + "'");
+                "Configuration::databaseInfo() unknown database: '" + name + "'");
     }
     return itr->second;
 }

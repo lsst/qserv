@@ -69,8 +69,8 @@ bool run() {
 
         provider->run();
 
-        ////////////////////////////////////////
-        // Find all replicas accross all workers
+        ///////////////////////////////////////
+        // Find all replicas across all workers
 
         std::atomic<bool> finished{false};
         auto job = replica::VerifyJob::create (

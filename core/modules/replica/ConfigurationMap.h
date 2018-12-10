@@ -59,7 +59,7 @@ public:
      * Construct the object by reading the configuration
      * from the specified file.
      *
-     * @param kvMap - the key-value map with configuraiton parameters
+     * @param kvMap - the key-value map with configuration parameters
      */
     explicit ConfigurationMap(std::map<std::string, std::string> const& kvMap);
 

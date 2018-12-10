@@ -23,6 +23,7 @@
 #define LSST_QSERV_REPLICA_DATABASESERVICES_H
 
 // System headers
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -52,7 +53,7 @@ class Request;
   * of the service.
   *
   * Methods of this class may through database-specific exceptions, as well
-  * as general purpose exceptions explained in the methods' documentation
+  * as general purpose exceptions explained in their documentation
   * below.
   */
 class DatabaseServices
@@ -87,11 +88,11 @@ public:
      * just once for a particular instance of the Controller.
      *
      * @param identity  - a data structure encapsulating a unique identity of
-     *                    the Contriller instance.
+     *                    the Controller instance.
      * @param startTime - a time (milliseconds since UNIX Epoch) when an instance of
      *                    the Controller was created.
      *
-     * @throws std::logic_error - if this Contoller's state is already found in a database
+     * @throws std::logic_error - if this Controller's state is already found in a database
      */
     virtual void saveState(ControllerIdentity const& identity,
                            uint64_t startTime) = 0;
@@ -101,8 +102,7 @@ public:
      * a particular instance of the Job.
      *
      * The Job::Option object is explicitly passed as a parameter to avoid
-     * making a call back to the job which may create a deadlock because
-     * method saveState() is meant to be called by the jobs' implementations.
+     * making a blocked call back to the job which may create a deadlock.
      *
      * @param job     - reference to a Job object
      * @param options - reference to a Job options object
@@ -122,8 +122,7 @@ public:
      * a particular instance of the QservMgtRequest.
      *
      * The Performance object is explicitly passed as a parameter to avoid
-     * making a call back to the request which may create a deadlock because
-     * method saveState() is meant to be called by the requests' implementations.
+     * making a blocked call back to the request which may create a deadlock.
      *
      * @param request     - reference to a QservMgtRequest object
      * @param performance - reference to a Performance object
@@ -138,8 +137,7 @@ public:
      * a particular instance of the Request.
      *
      * The Performance object is explicitly passed as a parameter to avoid
-     * making a call back to the request which may create a deadlock because
-     * method saveState() is meant to be called by the requests' implementations.
+     * making a blocked call back to the request which may create a deadlock.
      *
      * @param request     - reference to a Request object
      * @param performance - reference to a Performance object
@@ -151,7 +149,7 @@ public:
      * Update a state of a target request.
      *
      * This method is supposed to be called by monitoring requests (State* and Stop*)
-     * to update state of the corresponidng target requests.
+     * to update state of the corresponding target requests.
      *
      * @param request                  - reference to the monitoring Request object
      * @param targetRequestId          - identifier of a target request
@@ -163,7 +161,7 @@ public:
                                     Performance const& targetRequestPerformance) = 0;
 
     /**
-     * Update the status of replica in the corresponidng tables.
+     * Update the status of replica in the corresponding tables.
      *
      * @param info - a replica to be added/updated or deleted
      */
@@ -176,7 +174,7 @@ public:
      * the database state in this context. Specifically, this means
      * the following:
      *
-     * - replicas not present in the colleciton will be deleted from the database
+     * - replicas not present in the collection will be deleted from the database
      * - new replicas not present in the database will be registered in there
      * - existing replicas will be updated in the database
      *
@@ -231,12 +229,11 @@ public:
      * databases if no specific one is requested).
      *
      * ATTENTION: no assumption on a new status of the replica collection
-     * passed into the method should be made if the operation fails
-     * (returns 'false').
+     * passed into the method should be made if the operation fails.
      *
      * @param replicas - collection of replicas (if any found)
      * @param worker   - worker name
-     * @param database - (optional) atabase name
+     * @param database - (optional) database name
      *
      * @throw std::invalid_argument - if the worker is unknown or its name
      *                                is empty, or if the database family is
@@ -245,6 +242,25 @@ public:
     virtual void findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
                                     std::string const& worker,
                                     std::string const& database=std::string()) = 0;
+
+    /**
+     * Find the number of replicas for the specified worker and a database (or all
+     * databases if no specific one is requested).
+     *
+     * ATTENTION: no assumption on a new status of the replica collection
+     * passed into the method should be made if the operation fails.
+     *
+     * @param worker   - worker name
+     * @param database - (optional) database name
+     *
+     * @return the number of replicas
+     *
+     * @throw std::invalid_argument - if the worker is unknown or its name
+     *                                is empty, or if the database family is
+     *                                unknown (if provided)
+     */
+    virtual uint64_t numWorkerReplicas(std::string const& worker,
+                                       std::string const& database=std::string()) = 0;
 
     /**
      * Find all replicas for the specified chunk on a worker.
@@ -265,6 +281,57 @@ public:
                                     unsigned int chunk,
                                     std::string const& worker,
                                     std::string const& databaseFamily=std::string()) = 0;
+
+    /**
+     * @return a map (a histogram) of representing the actual replication level
+     * for a database. The key of the map is the replication level (the number of
+     * replicas found for chunks in the group), and the key is the number of
+     * chunks at this replication level.
+     * 
+     * @note
+     *   the so called 'overflow' chunks will be implicitly excluded
+     *   from the report.
+     *
+     * @param database
+     *   the name of a database
+     *
+     * @param workersToExclude
+     *   a collection of workers to be excluded from the consideration. If the empty
+     *   collection is passed as a value of the parameter then ALL known (regardless
+     *   of their 'read-only or 'disabled' status) workers will be considered.
+     *
+     * @throw std::invalid_argument
+     *   if the specified database or any of the workers in the optional collection
+     *   was not found in the configuration.
+     */
+    virtual std::map<unsigned int, size_t> actualReplicationLevel(
+                                                std::string const& database,
+                                                std::vector<std::string> const& workersToExclude =
+                                                    std::vector<std::string>()) = 0;
+
+    /**
+     * @return a total number of chunks which only exist on any worker of
+     * the specified collection of unique workers, and not any other worker
+     * which is not in this collection. The method will always return 0 if
+     * the collection of workers passed into the method is empty.
+     *
+     * @note
+     *   this operation is meant to locate so called 'orphan' chunks which only
+     *   exist on a specific set of workers which are supposed to be offline
+     *   (or in some other unusable state).
+     *
+     * @param database
+     *   the name of a database
+     *
+     * @param uniqueOnWorkers
+     *   a collection of workers where to look for the chunks in question
+     *
+     * @throw std::invalid_argument
+     *   if the specified database or any of the workers in the collection
+     *   was not found in the configuration.
+     */
+    virtual size_t numOrphanChunks(std::string const& database,
+                           std::vector<std::string> const& uniqueOnWorkers) = 0;
 
 protected:
 

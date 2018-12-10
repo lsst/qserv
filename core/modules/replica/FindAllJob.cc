@@ -51,6 +51,10 @@ Job::Options const& FindAllJob::defaultOptions() {
     return options;
 }
 
+
+std::string FindAllJob::typeName() { return "FindAllJob"; }
+
+
 FindAllJob::Ptr FindAllJob::create(std::string const& databaseFamily,
                                    bool saveReplicaInfo,
                                    Controller::Ptr const& controller,
@@ -176,8 +180,8 @@ void FindAllJob::onRequestFinish(FindAllRequest::Ptr const& request) {
     // IMPORTANT: the final state is required to be tested twice. The first time
     // it's done in order to avoid deadlock on the "in-flight" requests reporting
     // their completion while the job termination is in a progress. And the second
-    // test is made after acquering the lock to recheck the state in case if it
-    // has transitioned while acquering the lock.
+    // test is made after acquiring the lock to recheck the state in case if it
+    // has transitioned while acquiring the lock.
     
     if (state() == State::FINISHED) return;
 
@@ -208,7 +212,7 @@ void FindAllJob::onRequestFinish(FindAllRequest::Ptr const& request) {
          << " _numFinished=" << _numFinished
          << " _numSuccess=" << _numSuccess);
 
-     // Recompute the final state if this was the last requst
+     // Recompute the final state if this was the last request
      // before finalizing the object state and notifying clients.
 
      if (_numFinished == _numLaunched) {
@@ -239,9 +243,9 @@ void FindAllJob::onRequestFinish(FindAllRequest::Ptr const& request) {
              }
          }
 
-         // Compute the 'co-location' status of chunks on all participating workers
+         // Compute the 'collocation' status of chunks on all participating workers
          //
-         // ATTENTION: this algorithm won't conider the actual status of
+         // ATTENTION: this algorithm won't consider the actual status of
          //            chunk replicas (if they're complete, corrupts, etc.).
 
          for (auto chunk: _replicaData.chunks.chunkNumbers()) {
@@ -251,7 +255,7 @@ void FindAllJob::onRequestFinish(FindAllRequest::Ptr const& request) {
              // and build a list of databases for each worker where the chunk
              // is present.
              //
-             // NOTE: Single-database chunks are always colocated. Note that
+             // NOTE: Single-database chunks are always collocated. Note that
              //       the loop over databases below has exactly one iteration.
 
              std::map<std::string, size_t> worker2numDatabases;
@@ -287,12 +291,12 @@ void FindAllJob::onRequestFinish(FindAllRequest::Ptr const& request) {
                 std::string const& worker = worker2collocated.first;
                 bool        const  isColocated = worker2collocated.second;
 
-                // Start with the "as good as colocated" assumption, then drill down
+                // Start with the "as good as collocated" assumption, then drill down
                 // into chunk participation in all databases on that worker to see
                 // if this will change.
                 //
                 // NOTE: watch for a little optimization if the replica is not
-                //       colocated.
+                //       collocated.
 
                 bool isGood = isColocated;
                 if (isGood) {

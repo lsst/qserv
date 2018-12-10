@@ -46,17 +46,17 @@ namespace replica {
  */
 struct PurgeJobResult {
 
-    /// Results reported by workers upon the successfull completion
-    /// of the corresponidng jobs
+    /// Results reported by workers upon the successful completion
+    /// of the corresponding jobs
     std::list<ReplicaInfo> replicas;
 
-    /// Results groupped by: chunk number, database, worker
+    /// Results grouped by: chunk number, database, worker
     std::map<unsigned int,                  // chunk
              std::map<std::string,          // database
                       std::map<std::string, // worker
                                ReplicaInfo>>> chunks;
 
-    /// Per-worker flags indicating if the corresponidng replica retreival
+    /// Per-worker flags indicating if the corresponding replica retrieval
     /// jobs succeeded.
     std::map<std::string, bool> workers;
 };
@@ -73,11 +73,14 @@ public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<PurgeJob> Ptr;
 
-    /// The function type for notifications on the completon of the job
+    /// The function type for notifications on the completion of the job
     typedef std::function<void(Ptr)> CallbackType;
 
     /// @return default options object for this type of a job
     static Job::Options const& defaultOptions();
+
+    /// @return the unique name distinguishing this class from other types of jobs
+    static std::string typeName();
 
     /**
      * Static factory method is needed to prevent issue with the lifespan
@@ -132,9 +135,9 @@ public:
      *   finished. Please, verify the primary and extended status of the object
      *   to ensure that all jobs have finished.
      *
-     * @return the data structure to be filled upon the completin of the job.
+     * @return the data structure to be filled upon the completion of the job.
      *
-     * @throws std::logic_error - if the job dodn't finished at a time
+     * @throws std::logic_error - if the job didn't finished at a time
      *                            when the method was called
      */
     PurgeJobResult const& getReplicaData() const;
@@ -174,13 +177,13 @@ protected:
     void notify(util::Lock const& lock) final;
 
     /**
-     * The calback function to be invoked on a completion of the precursor job
-     * which harvests chunk disposition accross relevant worker nodes.
+     * The callback function to be invoked on a completion of the precursor job
+     * which harvests chunk disposition across relevant worker nodes.
      */
     void onPrecursorJobFinish();
 
     /**
-     * The calback function to be invoked on a completion of each job
+     * The callback function to be invoked on a completion of each job
      *
      * @param job - pointer to a job
      */
@@ -222,11 +225,11 @@ protected:
 
     /// The number of chunks which require the deletion but couldn't be locked
     /// in the exclusive mode. The counter will be analyzed upon a completion
-    /// of the last job, and if it were found not empty another iteraton
+    /// of the last job, and if it were found not empty another iteration
     /// of the job will be undertaken
     size_t _numFailedLocks;
 
-    /// A collection of jobs groupped by the corresponidng chunk
+    /// A collection of jobs grouped by the corresponding chunk
     /// number. The main idea is simplify tracking the completion status
     /// of the operation on each chunk. Requests will be added to the
     /// corresponding group as they're launched, and removed when they
