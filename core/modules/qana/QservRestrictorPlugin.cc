@@ -66,7 +66,8 @@ std::string const UDF_PREFIX = "scisql_";
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qana.QservRestrictorPlugin");
 
-enum RestrictorType { SECONDARY_INDEX_IN =1, SECONDARY_INDEX_BETWEEN };
+enum RestrictorType { SECONDARY_INDEX_IN =1, SECONDARY_INDEX_BETWEEN,
+    SECONDARY_INDEX_NOT_BETWEEN};
 
 } // anonymous namespace
 
@@ -163,6 +164,9 @@ query::QsRestrictor::Ptr newRestrictor(
     }
     else if (restrictorType==SECONDARY_INDEX_BETWEEN) {
         restrictor->_name = "sIndexBetween";
+    }
+    else if (restrictorType==SECONDARY_INDEX_NOT_BETWEEN) {
+        restrictor->_name = "sIndexNotBetween";
     }
     // sIndex and sIndexBetween have parameters as follows:
     // db, table, column, val1, val2, ...
@@ -284,8 +288,10 @@ query::QsRestrictor::PtrVector getSecIndexRestrictors(query::QueryContext& conte
                         query::ValueExprPtrVector cands;
                         cands.push_back(betweenPredicate->minValue);
                         cands.push_back(betweenPredicate->maxValue);
-                        restrictor = newRestrictor(
-                            RestrictorType::SECONDARY_INDEX_BETWEEN, context, column_ref, cands);
+                        auto restrictorType(RestrictorType::SECONDARY_INDEX_BETWEEN);
+                        if (betweenPredicate->hasNot) 
+                            restrictorType = RestrictorType::SECONDARY_INDEX_NOT_BETWEEN;
+                        restrictor = newRestrictor(restrictorType, context, column_ref, cands);
                         if (restrictor) {
                             LOGS(_log, LOG_LVL_DEBUG, "Add SECONDARY_INDEX_BETWEEN restrictor: "
                                                       << *restrictor);

@@ -54,7 +54,7 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qproc.SecondaryIndex");
 
-enum QueryType { IN, BETWEEN };
+enum QueryType { IN, BETWEEN, NOT_BETWEEN };
 
 } // anonymous namespace
 
@@ -85,10 +85,12 @@ public:
             if (i->name == "sIndex"){
                 hasIndex = true;
                 _sqlLookup(output, i->params, IN);
-            }
-            else if (i->name == "sIndexBetween") {
+            } else if (i->name == "sIndexBetween") {
                 hasIndex = true;
                 _sqlLookup(output, i->params, BETWEEN);
+            } else if (i->name == "sIndexNotBetween") {
+                hasIndex = true;
+                _sqlLookup(output, i->params, NOT_BETWEEN);
             }
         }
         if (!hasIndex) {
@@ -161,6 +163,13 @@ private:
             std::string const& par3 = *(iter++);
             std::string const& par4 = *iter;
             sql += " BETWEEN " + par3 + " AND " + par4;
+        } else if (query_type == QueryType::NOT_BETWEEN) {
+            if (params.size() != 5) {
+                throw Bug("Incorrect parameters for bounded secondary index lookup ");
+            }
+            std::string const& par3 = *(iter++);
+            std::string const& par4 = *iter;
+            sql += " NOT BETWEEN " + par3 + " AND " + par4;
         }
 
         LOGS(_log, LOG_LVL_DEBUG, "secondary lookup sql:" << sql);
