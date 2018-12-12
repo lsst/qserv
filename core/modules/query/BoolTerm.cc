@@ -119,6 +119,9 @@ void AndTerm::renderTo(QueryTemplate& qt) const {
 }
 void BoolFactor::renderTo(QueryTemplate& qt) const {
     std::string s;
+    if (_hasNot) {
+        qt.append("NOT");
+    }
     renderList(qt, _terms, getOpPrecedence(), s);
 }
 void UnknownTerm::renderTo(QueryTemplate& qt) const {
@@ -231,14 +234,7 @@ std::shared_ptr<BoolTerm> BoolFactor::getReduced() {
         hasReduction = true;
     }
     if (hasReduction) {
-        BoolFactor* bf = new BoolFactor();
-        bf->_terms = newTerms;
-#if 0
-        QueryTemplate qt;
-        bf->renderTo(qt);
-        LOGS(_log, LOG_LVL_DEBUG, "reduced. " << qt.generate());
-#endif
-        return std::shared_ptr<BoolFactor>(bf);
+        return std::make_shared<BoolFactor>(newTerms, _hasNot);
     } else {
         return std::shared_ptr<BoolTerm>();
     }
@@ -281,6 +277,7 @@ std::shared_ptr<BoolTerm> AndTerm::clone() const {
 }
 std::shared_ptr<BoolTerm> BoolFactor::clone() const {
     std::shared_ptr<BoolFactor> t = std::make_shared<BoolFactor>();
+    t->_hasNot = _hasNot;
     copyTerms<BoolFactorTerm::PtrVector, deepCopy>(t->_terms, _terms);
     return t;
 }
@@ -346,11 +343,12 @@ bool AndTerm::operator==(const BoolTerm& rhs) const {
 }
 std::shared_ptr<BoolTerm> BoolFactor::copySyntax() const {
     std::shared_ptr<BoolFactor> bf = std::make_shared<BoolFactor>();
+    bf->_hasNot = _hasNot;
     copyTerms<BoolFactorTerm::PtrVector, syntaxCopy>(bf->_terms, _terms);
     return bf;
 }
 void BoolFactor::dbgPrint(std::ostream& os) const {
-    os << "BoolFactor(terms:" << util::printable(_terms) << ")";
+    os << "BoolFactor(terms:" << util::printable(_terms) << ", hasNot:" << _hasNot << ")";
 }
 void UnknownTerm::dbgPrint(std::ostream& os) const {
     os << "UnknownTerm()";

@@ -464,6 +464,13 @@ public:
 };
 
 
+class NotExpressionCBH : public BaseCBH {
+public:
+    virtual void handleNotExpression(shared_ptr<query::BoolTerm> const & boolTerm,
+            antlr4::ParserRuleContext* childCtx) = 0;
+};
+
+
 class LogicalExpressionCBH : public BaseCBH {
 public:
     // pass thru to parent for qserv function spec
@@ -916,7 +923,8 @@ class FromClauseAdapter :
         public PredicateExpressionCBH,
         public LogicalExpressionCBH,
         public QservFunctionSpecCBH,
-        public GroupByItemCBH {
+        public GroupByItemCBH,
+        public NotExpressionCBH {
 public:
     using AdapterT::AdapterT;
 
@@ -926,22 +934,7 @@ public:
 
     void handlePredicateExpression(shared_ptr<query::BoolTerm> const & boolTerm,
             antlr4::ParserRuleContext* childCtx) override {
-        if (_ctx->whereExpr == childCtx) {
-            shared_ptr<query::AndTerm> andTerm = make_shared<query::AndTerm>(boolTerm);
-            auto rootTerm = dynamic_pointer_cast<query::LogicalTerm>(_getWhereClause()->getRootTerm());
-            if (nullptr == rootTerm) {
-                rootTerm = make_shared<query::OrTerm>();
-                _getWhereClause()->setRootTerm(rootTerm);
-            }
-            rootTerm->addBoolTerm(andTerm);
-        } else if (_ctx->havingExpr == childCtx) {
-            ASSERT_EXECUTION_CONDITION(nullptr == _havingClause, "The having clause should only be set once.", _ctx);
-            auto andTerm = make_shared<query::AndTerm>(boolTerm);
-            auto orTerm = make_shared<query::OrTerm>(andTerm);
-            _havingClause = std::make_shared<query::HavingClause>(orTerm);
-        } else {
-            ASSERT_EXECUTION_CONDITION(false, "This predicate expression is not yet supported.", _ctx);
-        }
+        _addBoolTerm(boolTerm, childCtx);
     }
 
     void handlePredicateExpression(shared_ptr<query::ValueExpr> const & valueExpr) override {
@@ -975,15 +968,20 @@ public:
     }
 
     void handleQservFunctionSpec(string const & functionName,
-            vector<shared_ptr<query::ValueFactor>> const & args) {
+            vector<shared_ptr<query::ValueFactor>> const & args) override {
         WhereFactory::addQservRestrictor(_getWhereClause(), functionName, args);
     }
 
-    void handleGroupByItem(shared_ptr<query::ValueExpr> const & valueExpr) {
+    void handleGroupByItem(shared_ptr<query::ValueExpr> const & valueExpr) override {
         if (nullptr == _groupByClause) {
             _groupByClause = make_shared<query::GroupByClause>();
         }
         _groupByClause->addTerm(query::GroupByTerm(valueExpr, ""));
+    }
+
+    void handleNotExpression(shared_ptr<query::BoolTerm> const & boolTerm,
+            antlr4::ParserRuleContext* childCtx) override {
+        _addBoolTerm(boolTerm, childCtx);
     }
 
     void checkContext() const override {
@@ -1007,6 +1005,25 @@ public:
     string name() const override { return getTypeName(this); }
 
 private:
+    void _addBoolTerm(shared_ptr<query::BoolTerm> const & boolTerm, antlr4::ParserRuleContext* childCtx) {
+        if (_ctx->whereExpr == childCtx) {
+            shared_ptr<query::AndTerm> andTerm = make_shared<query::AndTerm>(boolTerm);
+            auto rootTerm = dynamic_pointer_cast<query::LogicalTerm>(_getWhereClause()->getRootTerm());
+            if (nullptr == rootTerm) {
+                rootTerm = make_shared<query::OrTerm>();
+                _getWhereClause()->setRootTerm(rootTerm);
+            }
+            rootTerm->addBoolTerm(andTerm);
+        } else if (_ctx->havingExpr == childCtx) {
+            ASSERT_EXECUTION_CONDITION(nullptr == _havingClause, "The having clause should only be set once.", _ctx);
+            auto andTerm = make_shared<query::AndTerm>(boolTerm);
+            auto orTerm = make_shared<query::OrTerm>(andTerm);
+            _havingClause = std::make_shared<query::HavingClause>(orTerm);
+        } else {
+            ASSERT_EXECUTION_CONDITION(false, "This predicate expression is not yet supported.", _ctx);
+        }
+    }
+
     shared_ptr<query::WhereClause> & _getWhereClause() {
         if (nullptr == _whereClause) {
             _whereClause = make_shared<query::WhereClause>();
@@ -2608,12 +2625,46 @@ private:
 };
 
 
+class NotExpressionAdapter :
+        public AdapterT<NotExpressionCBH, QSMySqlParser::NotExpressionContext>,
+        public PredicateExpressionCBH {
+public:
+    using AdapterT::AdapterT;
+
+    virtual void handlePredicateExpression(shared_ptr<query::BoolTerm> const & boolTerm,
+            antlr4::ParserRuleContext* childCtx) {
+        ASSERT_EXECUTION_CONDITION(nullptr == _boolFactor, "BoolFactor already set.", _ctx);
+        _boolFactor = dynamic_pointer_cast<query::BoolFactor>(boolTerm);
+        ASSERT_EXECUTION_CONDITION(nullptr != _boolFactor, "Could not cast BoolTerm to a BoolFactor:" << *boolTerm, _ctx);
+    }
+
+    virtual void handlePredicateExpression(shared_ptr<query::ValueExpr> const & valueExpr) {
+        ASSERT_EXECUTION_CONDITION(false, "Unhandled PredicateExpression with ValueExpr.", _ctx);
+    }
+
+    void checkContext() const override {
+        // testing notOperator includes testing NotExpressionContext::NOT(), this is done in onExit.
+    }
+
+    void onExit() override {
+        _boolFactor->setHasNot(nullptr != _ctx->notOperator);
+        lockedParent()->handleNotExpression(_boolFactor, _ctx);
+    }
+
+    string name() const override { return getTypeName(this); }
+
+private:
+    shared_ptr<query::BoolFactor> _boolFactor;
+};
+
+
 class LogicalExpressionAdapter :
         public AdapterT<LogicalExpressionCBH, QSMySqlParser::LogicalExpressionContext>,
         public LogicalExpressionCBH,
         public PredicateExpressionCBH,
         public LogicalOperatorCBH,
-        public QservFunctionSpecCBH {
+        public QservFunctionSpecCBH,
+        public NotExpressionCBH {
 public:
     using AdapterT::AdapterT;
 
@@ -2662,6 +2713,11 @@ public:
             return;
         }
         _terms.push_back(logicalTerm);
+    }
+
+    void handleNotExpression(shared_ptr<query::BoolTerm> const & boolTerm,
+            antlr4::ParserRuleContext* childCtx) {
+        _terms.push_back(boolTerm);
     }
 
     void checkContext() const override {
@@ -3931,7 +3987,7 @@ UNHANDLED(PasswordFunctionClause)
 ENTER_EXIT_PARENT(FunctionArgs)
 ENTER_EXIT_PARENT(FunctionArg)
 UNHANDLED(IsExpression)
-UNHANDLED(NotExpression)
+ENTER_EXIT_PARENT(NotExpression)
 IGNORED(QservFunctionSpecExpression)
 ENTER_EXIT_PARENT(LogicalExpression)
 UNHANDLED(SoundsLikePredicate)

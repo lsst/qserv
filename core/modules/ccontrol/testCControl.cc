@@ -637,6 +637,7 @@ BOOST_DATA_TEST_CASE(antlr_compare, QUERIES, query) {
     }
 
     BOOST_REQUIRE_MESSAGE(*a2SelectStatement == *a4SelectStatement, "Query IR is different for " << query <<
+        ", antlr2 selectStmt structure:" << *a2SelectStatement <<
         ", antlr4 selectStmt structure:" << *a4SelectStatement);
     BOOST_REQUIRE(a2QueryStr.str() == a4QueryStr.str());
 }
@@ -683,7 +684,7 @@ std::ostream& operator<<(std::ostream& os, Antlr4CompareQueries const& i) {
 }
 
 static const std::vector<Antlr4CompareQueries> ANTLR4_COMPARE_QUERIES = {
-    // tests NOT LIKE
+    // tests NOT LIKE (which is 'NOT LIKE', different than 'NOT' and 'LIKE' operators separately)
     Antlr4CompareQueries(
         "SELECT shortName FROM Filter WHERE shortName NOT LIKE 'Z'",
         "select shortName from Filter where shortName LIKE 'Z'",
@@ -916,6 +917,36 @@ static const std::vector<Antlr4CompareQueries> ANTLR4_COMPARE_QUERIES = {
         },
         "SELECT objectId FROM Object WHERE (objectID^1)=1"
     ),
+
+    // tests NOT with a BoolFactor
+    Antlr4CompareQueries(
+        "select * from Filter where NOT filterId > 1 AND filterId < 6",
+        "select * from Filter where filterId > 1 AND filterId < 6",
+        [](query::SelectStmt::Ptr const & selectStatement) {
+            // flip the 'not' on the filterId boolFactor to make it 'not'
+            auto whereClauseRef = selectStatement->getWhereClause();
+            auto orTerm = std::dynamic_pointer_cast<query::OrTerm>(whereClauseRef.getRootTerm());
+            auto andTerm = std::dynamic_pointer_cast<query::AndTerm>(orTerm->_terms[0]);
+            auto boolFactor = std::dynamic_pointer_cast<query::BoolFactor>(andTerm->_terms[0]);
+            boolFactor->setHasNot(true);
+        },
+        "SELECT * FROM Filter WHERE NOT filterId>1 AND filterId<6"
+    ),
+
+    // tests NOT with an AND term
+    Antlr4CompareQueries(
+        "select * from Filter where NOT (filterId > 1 AND filterId < 6)",
+        "select * from Filter where (filterId > 1 AND filterId < 6)",
+        [](query::SelectStmt::Ptr const & selectStatement) {
+            // flip the 'not' on the AndTerm to make it 'not'
+            auto whereClauseRef = selectStatement->getWhereClause();
+            auto orTerm = std::dynamic_pointer_cast<query::OrTerm>(whereClauseRef.getRootTerm());
+            auto andTerm = std::dynamic_pointer_cast<query::AndTerm>(orTerm->_terms[0]);
+            auto boolFactor = std::dynamic_pointer_cast<query::BoolFactor>(andTerm->_terms[0]);
+            boolFactor->setHasNot(true);
+        },
+        "SELECT * FROM Filter WHERE NOT(filterId>1 AND filterId<6)"
+    ),
 };
 
 
@@ -936,11 +967,11 @@ BOOST_DATA_TEST_CASE(antlr4_compare, ANTLR4_COMPARE_QUERIES, queryInfo) {
 
     // verify the selectStatements are now the same:
     BOOST_REQUIRE_EQUAL(*selectStatement, *compSelectStatement);
+    BOOST_TEST_MESSAGE("antlr4 selectStmt structure:" << *selectStatement);
     // verify the selectStatement converted back to sql is the same as the original query:
     BOOST_REQUIRE_EQUAL(selectStatement->getQueryTemplate().sqlFragment(),
             (queryInfo.serializedQuery != "" ? queryInfo.serializedQuery : queryInfo.query));
 
-    BOOST_TEST_MESSAGE("antlr4 selectStmt structure:" << *selectStatement);
 }
 
 

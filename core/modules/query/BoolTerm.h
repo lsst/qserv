@@ -263,11 +263,11 @@ class BoolFactor : public BoolTerm {
 public:
     BoolFactor() = default;
 
-    BoolFactor(BoolFactorTerm::PtrVector const & terms)
-        : _terms(terms) {}
+    BoolFactor(BoolFactorTerm::PtrVector const & terms, bool hasNot=false)
+        : _terms(terms), _hasNot(hasNot) {}
 
-    BoolFactor(BoolFactorTerm::Ptr const & term)
-        : _terms({term}) {}
+    BoolFactor(BoolFactorTerm::Ptr const & term, bool hasNot=false)
+        : _terms({term}), _hasNot(hasNot) {}
 
     typedef std::shared_ptr<BoolFactor> Ptr;
     virtual char const* getName() const { return "BoolFactor"; }
@@ -293,6 +293,8 @@ public:
         }
     }
 
+    void setHasNot(bool hasNot) { _hasNot = hasNot; }
+
     virtual std::shared_ptr<BoolTerm> getReduced();
 
     virtual std::ostream& putStream(std::ostream& os) const;
@@ -303,6 +305,9 @@ public:
     bool operator==(const BoolTerm& rhs) const {
         auto rhsBoolFactor = dynamic_cast<const BoolFactor*>(&rhs);
         if (nullptr == rhsBoolFactor) {
+            return false;
+        }
+        if (_hasNot != rhsBoolFactor->_hasNot) {
             return false;
         }
         return util::vectorPtrCompare<BoolFactorTerm>(_terms, rhsBoolFactor->_terms);
@@ -317,6 +322,7 @@ public:
     }
 
     BoolFactorTerm::PtrVector _terms;
+    bool _hasNot;
 
 protected:
     void dbgPrint(std::ostream& os) const override;
