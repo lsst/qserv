@@ -88,6 +88,7 @@ void ServerUdpBase::_sendResponse() {
 
 
 void ServerUdpBase::sendBufferTo(std::string const& hostName, int port, BufferUdp& sendBuf) {
+    LOGS(_log, LOG_LVL_INFO, "&&& ServerUdpBase::sendBufferTo a");
 #if 0 // TODO Delete this if send_to proves to be safe.
     // The socket is not thread safe. To send on "_socket", it needs to be an async send
     // and then it needs to know when the message was sent so it can return and free the buffer.
@@ -118,6 +119,7 @@ void ServerUdpBase::sendBufferTo(std::string const& hostName, int port, BufferUd
     ip::udp::endpoint dest(boost::asio::ip::address::from_string(hostName), port);
     _socket.send_to(buffer(sendBuf.getReadCursor(), sendBuf.getBytesLeftToRead()), dest);
 #endif
+    LOGS(_log, LOG_LVL_INFO, "&&& ServerUdpBase::sendBufferTo b");
 }
 
 

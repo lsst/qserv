@@ -29,10 +29,12 @@
 #include "loader/CentralClient.h"
 #include "loader/CentralMaster.h"
 #include "loader/CentralWorker.h"
+#include "loader/ClientConfig.h"
 #include "loader/LoaderMsg.h"
 #include "loader/MasterServer.h"
-#include "loader/WorkerServer.h"
 #include "loader/ServerTcpBase.h"
+#include "loader/WorkerConfig.h"
+#include "loader/WorkerServer.h"
 #include "proto/loader.pb.h"
 
 // LSST headers
@@ -40,6 +42,12 @@
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.loader.test");
+
+
+void initMDC() {
+    LOG_MDC("LWP", std::to_string(lsst::log::lwpID()));
+}
+
 }
 
 using namespace lsst::qserv::loader;
@@ -60,6 +68,9 @@ std::ostream& operator<<(std::ostream& os, KeyChSch const& kcs) {
 
 
 int main(int argc, char* argv[]) {
+
+    LOG_MDC_INIT(initMDC);
+
     UInt16Element num16(1 | 2 << 8);
     uint16_t origin16 = num16.element;
     uint16_t net16  = num16.changeEndianessOnLittleEndianOnly(num16.element);
@@ -207,10 +218,54 @@ int main(int argc, char* argv[]) {
 
 
     ////////////////////////////////////////////////////////////////////////////
+    {
+        bool threw = false;
+        try {
+            MasterConfig masterCfg("core/modules/loader/masterBad.cnf");
+        } catch (ConfigErr const& e) {
+            threw = true;
+            LOGS(_log, LOG_LVL_INFO, "MasterConfig threw " << e.what());
+        }
+        if (not threw) {
+            LOGS(_log, LOG_LVL_ERROR, "MasterConfig should have thrown!! masterBad.cnf");
+            exit(-1);
+        }
+    }
+
+    {
+        bool threw = false;
+        try {
+            WorkerConfig workerCfg("core/modules/loader/workerBad.cnf");
+        } catch (ConfigErr const& e) {
+            threw = true;
+            LOGS(_log, LOG_LVL_INFO, "WorkerConfig threw " << e.what());
+        }
+        if (not threw) {
+            LOGS(_log, LOG_LVL_ERROR, "WorkerConfig should have thrown!! workerBad.cnf");
+            exit(-1);
+        }
+    }
+
+    MasterConfig masterCfg("core/modules/loader/master.cnf");
+    WorkerConfig workerCfg1("core/modules/loader/worker1.cnf");
+    WorkerConfig workerCfg2("core/modules/loader/worker2.cnf");
+    WorkerConfig workerCfg3("core/modules/loader/worker3.cnf");
+    ClientConfig clientCfg1("core/modules/loader/client1.cnf");
+    ClientConfig clientCfg2("core/modules/loader/client2.cnf");
+    ClientConfig clientCfg3("core/modules/loader/client3.cnf");
+
+    LOGS(_log, LOG_LVL_INFO, "masterCfg=" << masterCfg);
+    LOGS(_log, LOG_LVL_INFO, "workerCfg1=" << workerCfg1);
+    LOGS(_log, LOG_LVL_INFO, "workerCfg2=" << workerCfg2);
+    LOGS(_log, LOG_LVL_INFO, "workerCfg3=" << workerCfg3);
+    LOGS(_log, LOG_LVL_INFO, "clientCfg1=" << clientCfg1);
+    LOGS(_log, LOG_LVL_INFO, "clientCfg2=" << clientCfg2);
+    LOGS(_log, LOG_LVL_INFO, "clientCfg3=" << clientCfg3);
+
 
     /// Start a master server
-    std::string masterIP = "127.0.0.1";
-    int masterPort = 10042;
+    std::string masterIP = "127.0.0.1"; // normally would be get host name
+    //int masterPort = 10042;
     boost::asio::io_service ioServiceMaster;
 
     std::string worker1IP = "127.0.0.1";
@@ -240,7 +295,14 @@ int main(int argc, char* argv[]) {
     int threadpoolSize = 10;
     int sleepTime = 100000; /// microseconds -> 0.1 seconds
 
-    CentralMaster cMaster(ioServiceMaster, masterIP, masterPort, threadpoolSize, sleepTime);
+    // CentralMaster cMaster(ioServiceMaster, masterIP, masterPort, threadpoolSize, sleepTime); &&&
+    CentralMaster cMaster(ioServiceMaster, masterIP, masterCfg);
+    try {
+        cMaster.start();
+    } catch (boost::system::system_error const& e) {
+        LOGS(_log, LOG_LVL_ERROR, "cMaster.start() failed e=" << e.what());
+        exit(-1);
+    }
     cMaster.setMaxKeysPerWorker(4);
     // Need to start several threads so messages aren't dropped while being processed.
     cMaster.run();

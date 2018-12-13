@@ -21,8 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  *
  */
-#ifndef LSST_QSERV_LOADER_MASTERSERVER_H_
-#define LSST_QSERV_LOADER_MASTERSERVER_H_
+#ifndef LSST_QSERV_LOADER_MASTERSERVER_H
+#define LSST_QSERV_LOADER_MASTERSERVER_H
 
 // system headers
 #include <cstdlib>
@@ -77,4 +77,4 @@ private:
 
 }}} // namespace lsst::qserv::loader
 
-#endif // LSST_QSERV_LOADER_MASTERSERVER_H_
+#endif // LSST_QSERV_LOADER_MASTERSERVER_H

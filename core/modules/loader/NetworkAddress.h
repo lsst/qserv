@@ -22,8 +22,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  *
  */
-#ifndef LSST_QSERV_LOADER_NETWORKADDRESS_H_
-#define LSST_QSERV_LOADER_NETWORKADDRESS_H_
+#ifndef LSST_QSERV_LOADER_NETWORKADDRESS_H
+#define LSST_QSERV_LOADER_NETWORKADDRESS_H
 
 // system headers
 #include <chrono>
@@ -111,4 +111,4 @@ private:
 }}} // namespace lsst::qserv::loader
 
 
-#endif // LSST_QSERV_LOADER_NETWORKADDRESS_H_
+#endif // LSST_QSERV_LOADER_NETWORKADDRESS_H
