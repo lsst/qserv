@@ -87,6 +87,12 @@ ConfigurationMySQL::ConfigurationMySQL(database::mysql::ConnectionParams const& 
     loadConfiguration();
 }
 
+
+std::string ConfigurationMySQL::prefix() const {
+    return _databaseTechnology;
+}
+
+
 std::string ConfigurationMySQL::configUrl() const {
     return  _databaseTechnology + ":" + _connectionParams.toString();
 }

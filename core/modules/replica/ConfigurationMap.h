@@ -66,10 +66,15 @@ public:
     ~ConfigurationMap() final = default;
 
     /**
+     * @see Configuration::prefix()
+     */
+    virtual std::string prefix() const final { return "map"; }
+
+    /**
      * @see Configuration::configUrl()
      */
     std::string configUrl() const final {
-        return "map:";
+        return prefix() + ":";
     }
 };
 

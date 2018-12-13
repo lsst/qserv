@@ -62,10 +62,15 @@ public:
     ~ConfigurationFile() final = default;
 
     /**
+     * @see Configuration::prefix()
+     */
+    virtual std::string prefix() const final { return "file"; }
+
+    /**
      * @see Configuration::configUrl()
      */
     std::string configUrl() const final {
-        return "file:" + _configFile;
+        return prefix() + ":" + _configFile;
     }
 
 private:

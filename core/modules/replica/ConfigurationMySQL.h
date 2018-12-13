@@ -72,6 +72,11 @@ public:
     ~ConfigurationMySQL() override = default;
 
     /**
+     * @see Configuration::prefix()
+     */
+    virtual std::string prefix() const final;
+
+    /**
      * @see Configuration::configUrl()
      */
     std::string configUrl() const override;

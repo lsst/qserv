@@ -4,7 +4,7 @@
 #   packed with the Replication System's binaries and their dependent libraries
 #
 #   NOTES: these instructions assume you're building a container under
-#          the following name: 'qserv/replica:tools'
+#          the following name: 'qserv/replica:tools-<git-hash>'
 #          This name can be obviously changed to some other name as needed
 
 # Go into a development folder where you normally build Qserv (by running
@@ -23,22 +23,24 @@ docker run \
     -v /etc/group:/etc/group:ro \
     -v $PWD:$PWD \
     qserv/replica:dev \
-    bash -c '$SOURCE/admin/tools/docker/replication/container/tools/collect.bash $SOURCE'
+    bash -c '$SOURCE/admin/tools/docker/replication/container/tools/gke/collect.bash $SOURCE'
+
 
 # Build the runnable container from the previously prepared area
 
-docker build -t qserv/replica:tools tmp/replication/container/build
+export GIT_HASH="$(git describe --dirty --always)"
+docker build -t qserv/replica:tools-${GIT_HASH} tmp/replication/container/build
 
 # (optional) run a few tests to inspect if container content is well formed
 # and applications' dependencies are satisfied.
 
-docker run --rm qserv/replica:tools ls -al /qserv/lib
-docker run --rm qserv/replica:tools ls -al /qserv/bin
-docker run --rm qserv/replica:tools ldd /qserv/bin/qserv-replica-job-chunks
-docker run --rm qserv/replica:tools /qserv/bin/qserv-replica-job-chunks
+docker run --rm qserv/replica:tools-${GIT_HASH} ls -al /qserv/lib
+docker run --rm qserv/replica:tools-${GIT_HASH} ls -al /qserv/bin
+docker run --rm qserv/replica:tools-${GIT_HASH} ldd /qserv/bin/qserv-replica-job-chunks
+docker run --rm qserv/replica:tools-${GIT_HASH} /qserv/bin/qserv-replica-job-chunks
 
 
 # And, finally - publish the container (provided a proper login into DockerHub was
 # made earlier)
 
-docker push qserv/replica:tools
+docker push qserv/replica:tools-${GIT_HASH}

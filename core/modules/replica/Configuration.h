@@ -180,6 +180,9 @@ public:
 
     virtual ~Configuration() = default;
 
+    /// @return the configuration prefix
+    virtual std::string prefix() const=0;
+
     /**
      * Construct the original (minus security-related info) path to
      * the configuration source.

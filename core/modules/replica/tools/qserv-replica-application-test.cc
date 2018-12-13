@@ -91,7 +91,7 @@ protected:
 
         // Configure the parser of the command-line arguments. Note that
         // the parser is guaranteed to run before invoking method "runImpl()".
-
+#if 0
         parser().required(
             "p1",
             "The first positional parameter description",
@@ -116,29 +116,53 @@ protected:
             "verbose mode",
             _verbose
         );
-
-#if 0
+#endif
         /* The proposed extension to the command line parser to allow
          * the following syntax (as per code example)
          *
-         * COMMAND1 <p1> <p11> [<o1>] [<o11>] [--o11=<v>] [--f1]
-         * COMMAND2 <p1>       [<o1>]                     [--f1] [--f21]
-         * COMMAND2 <p3>       [<o1>]                     [--f1]
+         * COMMAND1 <p1> <p11> [<o1>] [<o11>] [--o12=<v>] [--verbose]
+         * COMMAND2 <p1>       [<o1>]                     [--verbose] [--f21]
+         * COMMAND2 <p1>       [<o1>]                     [--verbose]
          */
-        std::string cmd;
-        parser({"COMMAND1","COMMAND2","COMMAND3"}, cmd)
-            .required("p1", "description of the required parameter p1 for all commands", p1)
-            .optional("o1", "description of the optional parameter o1 for all commands", o1)
-            .flag("f1", "description of f1", f1);
-
-        command("COMMAND1")
-            .required("p11", "description of the additional required parameter specific for the command", p11)
-            .optional("o11", "description of the additional optional parameter specific for the command", o11)
-            .option("o11", "description of the additional option specific to the command", o11);
-
-        command("COMMAND2")
-            .flag("f21", "description of the additional flag specific to the command", f21);
-#endif
+        parser().commands(
+            "command",
+            {"COMMAND1", "COMMAND2", "COMMAND3"},
+            _cmd
+        ).required(
+            "p1",
+            "description of the required parameter p1 for all commands",
+            _p1
+        ).optional(
+            "o1",
+            "description of the optional parameter o1 for all commands",
+            _o1
+        ).flag(
+            "verbose",
+            "verbose mode",
+            _verbose
+        );
+        parser().command(
+            "COMMAND1"
+        ).required(
+            "p11",
+            "description of the additional required parameter specific for the command",
+            _p11
+        ).optional(
+            "o11",
+            "description of the additional optional parameter specific for the command",
+            _o11
+        ).option(
+            "o12",
+            "description of the additional option specific to the command",
+            _o12
+        );
+        parser().command(
+            "COMMAND2"
+        ).flag(
+           "f21",
+           "description of the additional flag specific to the command",
+           _f21
+        );
     }
 
     /**
@@ -149,10 +173,15 @@ protected:
     int runImpl() final {
         std::cout
             << "Hello from TestApplication:\n"
-            << "       p1: " << _p1 << "\n"
-            << "       p2: " << _p2 << "\n"
-            << "       o1: " << _o1 << "\n"
+            << "      cmd: " << _cmd << "\n"
+            << "      p11: " << _p11 << "\n"
+            << "       p1: " << _p1  << "\n"
+            << "       p2: " << _p2  << "\n"
+            << "       o1: " << _o1  << "\n"
             << "       o2: " << (_o2      ? "true" : "false") << "\n"
+            << "      o11: " << _o11 << "\n"
+            << "      o12: " << _o12 << "\n"
+            << "      f21: " << (_f21     ? "true" : "false") << "\n"
             << "  verbose: " << (_verbose ? "true" : "false") << std::endl;
         return 0;
     }
@@ -161,11 +190,16 @@ private:
 
     // Values of the command line parameters
 
-    int _p1;
-    std::string _p2;
+    std::string  _cmd;
+    int          _p1;
+    std::string  _p11;
+    std::string  _p2;
     unsigned int _o1;
-    bool _o2;
-    bool _verbose;
+    unsigned int _o2;
+    unsigned int _o11;
+    std::string  _o12;
+    bool         _verbose;
+    bool         _f21;
 };
 } /// namespace
 
