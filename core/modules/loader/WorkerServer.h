@@ -21,8 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  *
  */
-#ifndef LSST_QSERV_LOADER_WORKERSERVER_H_
-#define LSST_QSERV_LOADER_WORKERSERVER_H_
+#ifndef LSST_QSERV_LOADER_WORKERSERVER_H
+#define LSST_QSERV_LOADER_WORKERSERVER_H
 
 // system headers
 #include <cstdlib>
@@ -67,4 +67,4 @@ private:
 
 }}} // namespace lsst::qserv::loader
 
-#endif // LSST_QSERV_LOADER_WORKERSERVER_H_
+#endif // LSST_QSERV_LOADER_WORKERSERVER_H
