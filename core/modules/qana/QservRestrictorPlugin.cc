@@ -66,8 +66,8 @@ std::string const UDF_PREFIX = "scisql_";
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qana.QservRestrictorPlugin");
 
-enum RestrictorType { SECONDARY_INDEX_IN =1, SECONDARY_INDEX_BETWEEN,
-    SECONDARY_INDEX_NOT_BETWEEN};
+enum RestrictorType { SECONDARY_INDEX_IN =1, SECONDARY_INDEX_NOT_IN,
+    SECONDARY_INDEX_BETWEEN, SECONDARY_INDEX_NOT_BETWEEN};
 
 } // anonymous namespace
 
@@ -162,6 +162,9 @@ query::QsRestrictor::Ptr newRestrictor(
     if (restrictorType==SECONDARY_INDEX_IN) {
         restrictor->_name = "sIndex";
     }
+    if (restrictorType==SECONDARY_INDEX_NOT_IN) {
+        restrictor->_name = "sIndexNotIn";
+    }
     else if (restrictorType==SECONDARY_INDEX_BETWEEN) {
         restrictor->_name = "sIndexBetween";
     }
@@ -247,8 +250,8 @@ query::QsRestrictor::PtrVector getSecIndexRestrictors(query::QueryContext& conte
                 columnRefs = resolveAsColumnRef(context, inPredicate->value);
                 for (query::ColumnRef::Ptr const& column_ref : columnRefs) {
                     if (lookupSecIndex(context, column_ref)) {
-                        restrictor = newRestrictor(
-                                     SECONDARY_INDEX_IN, context, column_ref, inPredicate->cands);
+                        auto restrictorType = inPredicate->hasNot ? SECONDARY_INDEX_NOT_IN : SECONDARY_INDEX_IN;
+                        restrictor = newRestrictor(restrictorType, context, column_ref, inPredicate->cands);
                         LOGS(_log, LOG_LVL_DEBUG, "Add SECONDARY_INDEX_IN restrictor: " << *restrictor);
                         break; // Only want one per column.
                     }
@@ -288,9 +291,7 @@ query::QsRestrictor::PtrVector getSecIndexRestrictors(query::QueryContext& conte
                         query::ValueExprPtrVector cands;
                         cands.push_back(betweenPredicate->minValue);
                         cands.push_back(betweenPredicate->maxValue);
-                        auto restrictorType(RestrictorType::SECONDARY_INDEX_BETWEEN);
-                        if (betweenPredicate->hasNot) 
-                            restrictorType = RestrictorType::SECONDARY_INDEX_NOT_BETWEEN;
+                        auto restrictorType = betweenPredicate->hasNot ? SECONDARY_INDEX_NOT_BETWEEN : SECONDARY_INDEX_BETWEEN;
                         restrictor = newRestrictor(restrictorType, context, column_ref, cands);
                         if (restrictor) {
                             LOGS(_log, LOG_LVL_DEBUG, "Add SECONDARY_INDEX_BETWEEN restrictor: "
