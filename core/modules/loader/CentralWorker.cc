@@ -33,6 +33,7 @@
 #include "loader/BufferUdp.h"
 #include "loader/CentralWorkerDoListItem.h"
 #include "loader/LoaderMsg.h"
+#include "loader/WorkerConfig.h"
 #include "proto/loader.pb.h"
 #include "proto/ProtoImporter.h"
 
@@ -49,7 +50,7 @@ namespace lsst {
 namespace qserv {
 namespace loader {
 
-
+/* &&&
 CentralWorker::CentralWorker(boost::asio::io_service& ioService_,
     std::string const& masterHostName_,   int masterPort_,
     int threadpoolSize_, int sleepTime_,
@@ -63,6 +64,25 @@ CentralWorker::CentralWorker(boost::asio::io_service& ioService_,
     _tcpServer->runThread();
     _startMonitoring(); // This must be the last item in the constructor.
 }
+*/
+
+
+CentralWorker(boost::asio::io_service& ioService, boost::asio::io_context& io_context_,
+                      std::string const& hostName_, WorkerConfig const& cfg)
+    : Central(ioService_, cfg.getMasterHostName(), cfg.getMasterPortUdp(),
+              cfg.getThreadpoolSize(), cfg.getLoopSleepTime()),
+      _hostName(hostName_), _udpPort(cfg.getWPortUdp()),
+      _tcpPort(cfg.getWPortTcp()), _ioContext(io_context_) {
+}
+
+
+void CentralWorker::start() {
+    _server = std::make_shared<WorkerServer>(ioService, _hostName, _udpPort, this);
+    _tcpServer = std::make_shared<ServerTcpBase>(_ioContext, _tcpPort, this);
+    _tcpServer->runThread();
+    _startMonitoring();
+}
+
 
 CentralWorker::~CentralWorker() {
     _wWorkerList.reset();
@@ -1053,7 +1073,7 @@ void CentralWorker::testSendBadMessage() {
 void CentralWorker::_removeOldEntries() {
     // _idMapMtx must be held when this is called.
     auto now = std::chrono::system_clock::now();
-    auto then = now - _recent;
+    auto then = now - _recentAddLimit;
     while (_recentAdds.size() > 0 && _recentAdds.front() < then) {
         _recentAdds.pop_front();
     }

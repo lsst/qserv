@@ -44,6 +44,11 @@ namespace qserv {
 namespace loader {
 
 
+void CentralMaster::start() {
+    _server = std::make_shared<MasterServer>(ioService, getMasterHostName(), getMasterPort(), this);
+}
+
+
 void CentralMaster::addWorker(std::string const& ip, int udpPort, int tcpPort) {
     auto item = _mWorkerList->addWorker(ip, udpPort, tcpPort);
 

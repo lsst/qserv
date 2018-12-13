@@ -21,8 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  *
  */
-#ifndef LSST_QSERV_LOADER_SERVER_TCP_BASE_H_
-#define LSST_QSERV_LOADER_SERVER_TCP_BASE_H_
+#ifndef LSST_QSERV_LOADER_SERVER_TCP_BASE_H
+#define LSST_QSERV_LOADER_SERVER_TCP_BASE_H
 
 // system headers
 #include <boost/asio.hpp>
@@ -165,4 +165,4 @@ private:
 
 }}} // namespace lsst:qserv:loader
 
-#endif // LSST_QSERV_LOADER_SERVER_TCP_BASE_H_
+#endif // LSST_QSERV_LOADER_SERVER_TCP_BASE_H

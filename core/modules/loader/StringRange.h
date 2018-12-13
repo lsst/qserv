@@ -21,8 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  *
  */
-#ifndef LSST_QSERV_LOADER_STRINGRANGE_H_
-#define LSST_QSERV_LOADER_STRINGRANGE_H_
+#ifndef LSST_QSERV_LOADER_STRINGRANGE_H
+#define LSST_QSERV_LOADER_STRINGRANGE_H
 
 // system headers
 #include <memory>
@@ -184,5 +184,5 @@ public:
 
 }}} // namespace lsst::qserv::loader
 
-#endif // LSST_QSERV_LOADER_STRINGRANGE_H_
+#endif // LSST_QSERV_LOADER_STRINGRANGE_H
 

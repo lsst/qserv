@@ -72,6 +72,12 @@ public:
                   std::string const& hostName_, int port_,
                   boost::asio::io_context& io_context_, int tcpPort_);
 
+    CentralWorker(boost::asio::io_service& ioService, boost::asio::io_context& io_context_,
+                      std::string const& hostName_, WorkerConfig const& cfg);
+
+    /// Open the UDP and TCP ports and start monitoring. This can throw boost::system::system_error.
+    void CentralWorker::start();
+
     ~CentralWorker() override;
 
     WWorkerList::Ptr getWorkerList() const { return _wWorkerList; }
@@ -238,7 +244,7 @@ private:
     std::atomic<bool> _rangeChanged{false};
     std::map<std::string, ChunkSubchunk> _keyValueMap;
     std::deque<std::chrono::system_clock::time_point> _recentAdds; ///< track how many keys added recently.
-    std::chrono::milliseconds _recent{60 * 1000}; ///< default to 1 minute TODO config file DM-16652
+    std::chrono::milliseconds _recentAddLimit{60 * 1000}; ///< default to 1 minute TODO config file DM-16652
     std::mutex _idMapMtx; ///< protects _strRange, _keyValueMap,
                           ///< _recentAdds, _transferListToRight, _transferListFromRight
 
