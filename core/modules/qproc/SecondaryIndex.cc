@@ -157,26 +157,16 @@ private:
                 }
                 secondaryVals += *iter;
             }
-            if (query_type == QueryType::IN) {
-                sql += " IN";
-            } else if (query_type == QueryType::NOT_IN) {
-                sql += " NOT IN";
-            }
+            sql += (query_type == QueryType::IN ? " IN" : " NOT IN");
             sql += "(" + secondaryVals + ")";
-        } else if (query_type == QueryType::BETWEEN) {
+        } else if (query_type == QueryType::BETWEEN || query_type == QueryType::NOT_BETWEEN) {
             if (params.size() != 5) {
                 throw Bug("Incorrect parameters for bounded secondary index lookup ");
             }
             std::string const& par3 = *(iter++);
             std::string const& par4 = *iter;
-            sql += " BETWEEN " + par3 + " AND " + par4;
-        } else if (query_type == QueryType::NOT_BETWEEN) {
-            if (params.size() != 5) {
-                throw Bug("Incorrect parameters for bounded secondary index lookup ");
-            }
-            std::string const& par3 = *(iter++);
-            std::string const& par4 = *iter;
-            sql += " NOT BETWEEN " + par3 + " AND " + par4;
+            sql += (query_type == QueryType::BETWEEN ? " BETWEEN " : " NOT BETWEEN "); 
+            sql += par3 + " AND " + par4;
         }
 
         LOGS(_log, LOG_LVL_DEBUG, "secondary lookup sql:" << sql);
