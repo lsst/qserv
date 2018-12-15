@@ -31,6 +31,10 @@
 #include "replica/ApplicationTypes.h"
 #include "replica/ServiceProvider.h"
 
+// LSST headers
+#include "lsst/log/Log.h"
+
+
 // This header declarations
 
 namespace lsst {
@@ -167,9 +171,12 @@ private:
     unsigned int _databaseConnectTimeoutSec;
     unsigned int _databaseMaxReconnects;
     unsigned int _databaseTransactionTimeoutSec;
-    
+
     /// The provider of the Configuration and other services
     ServiceProvider::Ptr _serviceProvider;
+
+    /// Message logger
+    LOG_LOGGER _log;
 };
 
 }}} // namespace lsst::qserv::replica

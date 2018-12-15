@@ -776,7 +776,7 @@ public:
                               std::string const& description,
                               T& var,
                               std::vector<T> const& allowedValues = std::vector<T>()) {
-        verifyArgument(name);
+        _verifyArgument(name);
         _required.push_back(
             std::move(
                 std::make_unique<ParameterParser<T>>(
@@ -806,7 +806,7 @@ public:
                               std::string const& description ,
                               T& var,
                               std::vector<T> const& allowedValues = std::vector<T>()) {
-        verifyArgument(name);
+        _verifyArgument(name);
         _optional.push_back(
             std::move(
                 std::make_unique<ParameterParser<T>>(
@@ -833,7 +833,7 @@ public:
     Parser& option(std::string const& name,
                    std::string const& description,
                    T& var) {
-        verifyArgument(name);
+        _verifyArgument(name);
         _options.emplace(
             std::make_pair(
                 name,
@@ -904,7 +904,59 @@ private:
      * @throws std::invalid_argument 
      *   if the name is not allowed or it's empty
      */
-    void verifyArgument(std::string const& name);
+    void _verifyArgument(std::string const& name);
+
+    /**
+     * Parse and store a value of an option in a collection if it's a valid option
+     * 
+     * @param options
+     *   a collection of options to be updated
+     *
+     * @param name
+     *   the name of an option
+     *
+     * @param value
+     *   its value
+     *
+     * @return
+     *   'true' of this is a valid option, and it's been successfully parsed
+     */
+    bool _parseOption(std::map<std::string, std::unique_ptr<ArgumentParser>>& options,
+                      std::string const& name,
+                      std::string const& value);
+
+    /**
+     * Parse and store a value of a flag in a collection if it's a valid flag
+     * 
+     * @param options
+     *   a collection of flags to be updated
+     *
+     * @param name
+     *   the name of a flag
+     *
+     * @return
+     *   'true' of this is a valid flag, and it's been successfully parsed
+     */
+    bool _parseFlag(std::map<std::string, std::unique_ptr<ArgumentParser>>& flags,
+                    std::string const& name);
+
+   /**
+    * Parse and store values of the positional parameters
+    * 
+    * @param out
+    *   the output collection of parameters to be populated from the input one
+    *
+    * @param inItr
+    *   the current position of a modifiable iterator pointing to the input
+    *   collection of parameters to be analyzed and parsed
+    * 
+    * @param inItrEnd
+    *   the end iterator for the input collection of parameters to be analyzed
+    *   and parsed
+    */ 
+    void _parseParameters(std::vector<std::unique_ptr<ArgumentParser>>& out,
+                          std::vector<std::string>::const_iterator& inItr,
+                          std::vector<std::string>::const_iterator const& inItrEnd);
 
     /**
      * @return the "Usage" string to be reported in case if any problem

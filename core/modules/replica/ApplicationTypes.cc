@@ -114,7 +114,7 @@ Parser& Parser::commands(std::string const& name,
     if (_commands != nullptr) {
         throw std::logic_error("Parser::commands  the parser is already configured in this way");
     }
-    verifyArgument(name);
+    _verifyArgument(name);
     _commands = std::make_unique<CommandsSet>(commandNames, var);    
     return *this;
 }
@@ -131,7 +131,7 @@ Command& Parser::command(std::string const& name) {
 Parser& Parser::flag(std::string const& name,
                      std::string const& description,
                      bool& var) {
-    verifyArgument(name);
+    _verifyArgument(name);
     _flags.emplace(
         std::make_pair(
             name,
@@ -165,6 +165,8 @@ int Parser::parse() {
         }
     }
 
+    bool const commandMode = (_commands != nullptr);
+
     try {
 
         // Split input arguments into the following 3 categories, assuming
@@ -174,11 +176,11 @@ int Parser::parse() {
         //   flag:      --<flag>
         //   parameter: <value>
 
-        std::map<std::string, std::string> options;    
-        std::set<std::string> flags;
-        std::vector<std::string> parameters;
+        std::map<std::string, std::string> inOptions;    
+        std::set<std::string>              inFlags;
+        std::vector<std::string>           inParameters;
 
-        if (_commands != nullptr) _commands->_var = "";
+        if (commandMode) _commands->_var = "";
 
         for (int i = 1; i < _argc; ++i) {
 
@@ -189,13 +191,13 @@ int Parser::parse() {
 
                 // Analyze and store  value of the very first positional parameter if
                 // the Parser was configured for the 'commands' mode.
-                if (_commands != nullptr and _commands->_var.empty()) {
+                if (commandMode and _commands->_var.empty()) {
                     if (_commands->_commands.end() == _commands->_commands.find(arg)) {
                         throw ParserError(ERR_LOC, "unknown command name: '" + arg + "'");
                     }
                     _commands->_var = arg;
                 } else {
-                    parameters.push_back(arg);
+                    inParameters.push_back(arg);
                 }
                 continue;
             }
@@ -208,139 +210,82 @@ int Parser::parse() {
             std::string::size_type const pos = nameVal.find('=');
             if (std::string::npos != pos) {
                 std::string const name = nameVal.substr(0, pos);
-                options[name] = nameVal.substr(pos+1);
+                inOptions[name] = nameVal.substr(pos+1);
                 continue;
             }
 
             // Then, it's a flag
-            flags.insert(nameVal);
+            inFlags.insert(nameVal);
         }
-        if (_commands != nullptr and _commands->_var.empty()) {
+        if (commandMode and _commands->_var.empty()) {
             throw ParserError(ERR_LOC, "the command name is missing");
         }
+        std::string const commandName = commandMode ? _commands->_var : std::string();
  
         // Parse values of options
-        for (auto&& entry: options) {
+        for (auto&& entry: inOptions) {
 
             auto const& name  = entry.first;
             auto const& value = entry.second;
 
-            if (0 != _options.count(name)) {
-                _options[name]->parse(value);
-                continue;
-            }
-            if (_commands != nullptr) {
-                auto& commandOptions = _commands->_commands[_commands->_var]->_options;
-                if (0 != commandOptions.count(name)) {
-                    commandOptions[name]->parse(value);
-                    continue;
-                }
+            if (_parseOption(_options, name, value)) continue;
+            if (commandMode) {
+                if (_parseOption(_commands->_commands[commandName]->_options, name, value)) continue;
             }
             throw ParserError(ERR_LOC, "'" + name+ "' is not an option");
         }
         
         // Parse flags
-        for (auto&& name: flags) {
-            if (0 != _flags.count(name)) {
-                _flags[name]->parse();
-            }
-            if (_commands != nullptr) {
-                auto& commandFlags = _commands->_commands[_commands->_var]->_flags;
-                if (0 != commandFlags.count(name)) {
-                    commandFlags[name]->parse();
-                    continue;
-                }
+        for (auto&& name: inFlags) {
+            if (_parseFlag(_flags, name)) continue;
+            if (commandMode) {
+                if (_parseFlag(_commands->_commands[commandName]->_flags, name)) continue;
             }
             throw ParserError(ERR_LOC, "'" + name+ "' is not a flag");
         }
 
         // Verify that the number and a category (mandatory and optional)
-        // of the positional parameters match expectations
+        // of the positional inParameters match expectations
 
-        if (_commands != nullptr) {
-            if (parameters.size() > _required.size() +
-                                    _commands->_commands[_commands->_var]->_required.size() +
-                                    _optional.size() +
-                                    _commands->_commands[_commands->_var]->_optional.size()) {
+        size_t const inNumParameters = inParameters.size();
 
-                throw ParserError(ERR_LOC, "too many positional parameters");
-            }
-            if (parameters.size() < _required.size() +
-                                    _commands->_commands[_commands->_var]->_required.size()) {
+        size_t const maxNumParameters =
+            _required.size() +
+            _optional.size() + (commandMode ? 
+            _commands->_commands[commandName]->_required.size() +
+            _commands->_commands[commandName]->_optional.size() : 0);
 
-                throw ParserError(ERR_LOC, "insufficient number of positional parameters");
-            }
-        } else {
-            if (parameters.size() > _required.size() + _optional.size()) {
-                throw ParserError(ERR_LOC, "too many positional parameters");
-            }
-            if (parameters.size() < _required.size()) {
-                throw ParserError(ERR_LOC, "insufficient number of positional parameters");
-            }
+        if (inNumParameters > maxNumParameters) {
+            throw ParserError(
+                    ERR_LOC,
+                    "too many positional parameters " + std::to_string(inNumParameters) +
+                    ", expected no more than " + std::to_string(maxNumParameters));
+        }
+
+        size_t const minNumParameters =
+            _required.size() + (commandMode ?
+             _commands->_commands[commandName]->_required.size() : 0);
+ 
+        if (inNumParameters < minNumParameters) {
+            throw ParserError(
+                    ERR_LOC,
+                    "insufficient number " + std::to_string(inNumParameters) +
+                    " of positional parameters, expected at least " + std::to_string(minNumParameters));
         }
 
         // Then parse values of parameters
+        
+        auto       inItr    = inParameters.cbegin();
+        auto const inItrEnd = inParameters.cend();
 
-        if (_commands != nullptr) {
-
-            size_t inIdxBegin = 0,
-                   inIdxEnd   = 0;
-
-            inIdxBegin  = inIdxEnd,
-            inIdxEnd   += _required.size();
-
-            for (size_t inIdx = inIdxBegin, outIdx = 0;
-                        inIdx < inIdxEnd;
-                      ++inIdx, ++outIdx) {
-                _required[outIdx]->parse(parameters[inIdx]);
-            }
-
-            inIdxBegin  = inIdxEnd;
-            inIdxEnd   += _commands->_commands[_commands->_var]->_required.size();
-
-            for (size_t inIdx = inIdxBegin, outIdx = 0;
-                        inIdx < inIdxEnd;
-                      ++inIdx, ++outIdx) {
-                _commands->_commands[_commands->_var]->_required[outIdx]->parse(parameters[inIdx]);
-            }
-
-            inIdxBegin = inIdxEnd;
-            inIdxEnd   = std::min(inIdxEnd + _optional.size(),
-                                  parameters.size());
-
-            for (size_t inIdx = inIdxBegin, outIdx = 0;
-                        inIdx < inIdxEnd;
-                      ++inIdx, ++outIdx) {
-                _optional[outIdx]->parse(parameters[inIdx]);
-            }
-
-            inIdxBegin = inIdxEnd;
-            inIdxEnd   = std::min(inIdxEnd + _commands->_commands[_commands->_var]->_optional.size(),
-                                  parameters.size());
-
-            for (size_t inIdx = inIdxBegin, outIdx = 0;
-                        inIdx < inIdxEnd;
-                      ++inIdx, ++outIdx) {
-                _commands->_commands[_commands->_var]->_optional[outIdx]->parse(parameters[inIdx]);
-            }
-
+        if (commandMode) {
+            _parseParameters(_required,                                    inItr, inItrEnd);
+            _parseParameters(_commands->_commands[commandName]->_required, inItr, inItrEnd);
+            _parseParameters(_optional,                                    inItr, inItrEnd);
+            _parseParameters(_commands->_commands[commandName]->_optional, inItr, inItrEnd);
         } else {
-            for (size_t inIdx = 0,
-                       outIdx = 0;
-                 inIdx < _required.size();
-                 ++inIdx,
-                 ++outIdx) {
-
-                _required[outIdx]->parse(parameters[inIdx]);
-            }
-            for (size_t  inIdx = _required.size(),
-                        outIdx = 0;
-                 inIdx < parameters.size();
-                 ++inIdx,
-                 ++outIdx) {
-
-                _optional[outIdx]->parse(parameters[inIdx]);
-            }
+            _parseParameters(_required,                                    inItr, inItrEnd);
+            _parseParameters(_optional,                                    inItr, inItrEnd);
         }
         _code = Status::SUCCESS;
 
@@ -352,7 +297,40 @@ int Parser::parse() {
 }
 
 
-void Parser::verifyArgument(std::string const& name) {
+bool Parser::_parseOption(std::map<std::string, std::unique_ptr<ArgumentParser>>& options,
+                          std::string const& name,
+                          std::string const& value) {
+    if (0 != options.count(name)) {
+        options[name]->parse(value);
+        return true;
+    }
+    return false;
+}
+
+
+bool Parser::_parseFlag(std::map<std::string, std::unique_ptr<ArgumentParser>>& flags,
+                        std::string const& name) {
+    if (0 != flags.count(name)) {
+        flags[name]->parse();
+        return true;
+    }
+    return false;    
+}
+
+
+void Parser::_parseParameters(std::vector<std::unique_ptr<ArgumentParser>>& out,
+                              std::vector<std::string>::const_iterator& inItr,
+                              std::vector<std::string>::const_iterator const& inItrEnd) {
+
+    auto outItr = out.begin();
+    while (outItr != out.cend() and inItr != inItrEnd) {
+        (*(outItr++))->parse(*(inItr++));
+    }
+
+}
+
+
+void Parser::_verifyArgument(std::string const& name) {
 
     if (name.empty()) {
         throw std::invalid_argument(
@@ -410,14 +388,15 @@ std::string const& Parser::help() {
 
     if (_help.empty()) {
 
-        _help += "DESCRIPTION:\n\n" + wrap(_description, "  ") + "\n\n" + usage();
+        bool const commandMode = (_commands != nullptr);
 
+        _help += "DESCRIPTION:\n\n" + wrap(_description, "  ") + "\n\n" + usage();
         _help += "\nPARAMETERS:\n";
 
         for (auto&& arg: _required) {
             _help += "\n  <" + arg->name() + ">\n" + wrap(arg->description()) + "\n";
         }
-        if (_commands != nullptr) {
+        if (commandMode) {
             for (auto const& entry: _commands->_commands) {
 
                 auto const& name    = entry.first;
@@ -432,7 +411,7 @@ std::string const& Parser::help() {
             _help += "\n  <" + arg->name() + ">\n" + wrap(arg->description()) + "\n";
             _help += "\n        DEFAULT: " + arg->defaultValue() + "\n";
         }
-        if (_commands != nullptr) {
+        if (commandMode) {
             for (auto const& entry: _commands->_commands) {
 
                 auto const& name    = entry.first;
@@ -452,7 +431,7 @@ std::string const& Parser::help() {
             _help += "\n  --" + arg->name() + "\n" + wrap(arg->description()) + "\n";
             _help += "\n        DEFAULT: " + arg->defaultValue() + "\n";
         }
-        if (_commands != nullptr) {
+        if (commandMode) {
             for (auto const& entry: _commands->_commands) {
 
                 auto const& name    = entry.first;
@@ -473,7 +452,7 @@ std::string const& Parser::help() {
             auto&& arg = entry.second;
             _help += "\n  --" + arg->name() + "\n" + wrap(arg->description()) + "\n";
         }
-        if (_commands != nullptr) {
+        if (commandMode) {
             for (auto const& entry: _commands->_commands) {
 
                 auto const& name    = entry.first;

@@ -27,24 +27,14 @@
 #include <stdexcept>
 
 // Qserv headers
-#include "lsst/log/Log.h"
 #include "proto/replication.pb.h"
 #include "replica/Configuration.h"
 #include "util/Issue.h"
 
-namespace {
-
-LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.Application");
-
-}   // namespace
 
 namespace lsst {
 namespace qserv {
 namespace replica {
-namespace detail {
-
-
-} // namespace detail
 
 Application::Application(int argc,
                          const char* const argv[],
@@ -65,7 +55,8 @@ Application::Application(int argc,
         _databaseAllowReconnect       (Configuration::databaseAllowReconnect() ? 1 : 0),
         _databaseConnectTimeoutSec    (Configuration::databaseConnectTimeoutSec()),
         _databaseMaxReconnects        (Configuration::databaseMaxReconnects()),
-        _databaseTransactionTimeoutSec(Configuration::databaseTransactionTimeoutSec()) {
+        _databaseTransactionTimeoutSec(Configuration::databaseTransactionTimeoutSec()),
+        _log(LOG_GET("lsst.qserv.replica.Application")) {
 
     if (_boostProtobufVersionCheck) {
 
@@ -78,7 +69,7 @@ Application::Application(int argc,
 
 int Application::run() {
 
-    // Add extra options to the parser's configuration
+    // Add extra options to the parser configuration
 
     parser().flag(
         "debug",
@@ -119,9 +110,13 @@ int Application::run() {
             _config
         );
     }
-    
-    int const code = parser().parse();
-    if (Parser::SUCCESS != code) return code;
+    try {
+        int const code = parser().parse();
+        if (Parser::SUCCESS != code) return code;
+    } catch (std::exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, "Application::run  command-line parser error: " << ex.what());
+        return Parser::PARSING_FAILED;
+    }
 
     // Change the default logging level if requested
 
@@ -138,9 +133,9 @@ int Application::run() {
     // Change default parameters of the database connectors
     if (_injectDatabaseOptions) {
 
-        Configuration::setDatabaseAllowReconnect(0 != _databaseAllowReconnect);
-        Configuration::setDatabaseConnectTimeoutSec(_databaseConnectTimeoutSec);
-        Configuration::setDatabaseMaxReconnects(_databaseMaxReconnects);
+        Configuration::setDatabaseAllowReconnect(       _databaseAllowReconnect != 0);
+        Configuration::setDatabaseConnectTimeoutSec(    _databaseConnectTimeoutSec);
+        Configuration::setDatabaseMaxReconnects(        _databaseMaxReconnects);
         Configuration::setDatabaseTransactionTimeoutSec(_databaseTransactionTimeoutSec);
     }
     if (_enableServiceProvider) {
