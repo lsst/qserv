@@ -29,8 +29,6 @@
 #include <stdexcept>
 #include <thread>
 
-// Qserv headers
-
 namespace lsst {
 namespace qserv {
 namespace util {
