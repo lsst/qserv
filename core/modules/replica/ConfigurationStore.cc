@@ -85,9 +85,11 @@ ConfigurationStore::ConfigurationStore(util::ConfigStore const& configStore)
     loadConfiguration(configStore);
 }
 
-WorkerInfo const ConfigurationStore::disableWorker(std::string const& name) {
+WorkerInfo const ConfigurationStore::disableWorker(std::string const& name,
+                                                   bool disable) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "disableWorker  name=" << name);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "disableWorker  name=" << name
+         << " disable=" << (disable ? "true" : "false"));
 
     util::Lock lock(_mtx, context() + "disableWorker");
 
@@ -95,7 +97,24 @@ WorkerInfo const ConfigurationStore::disableWorker(std::string const& name) {
     if (_workerInfo.end() == itr) {
         throw std::invalid_argument("ConfigurationStore::disableWorker  no such worker: " + name);
     }
-    itr->second.isEnabled = false;
+    itr->second.isEnabled = not disable;
+
+    return itr->second;
+}
+
+WorkerInfo const ConfigurationStore::setWorkerReadOnly(std::string const& name,
+                                                       bool readOnly) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << "setWorkerReadOnly  name=" << name
+         << " readOnly=" << (readOnly ? "true" : "false"));
+
+    util::Lock lock(_mtx, context() + "setWorkerReadOnly");
+
+    auto&& itr = _workerInfo.find(name);
+    if (_workerInfo.end() == itr) {
+        throw std::invalid_argument("ConfigurationStore::setWorkerReadOnly  no such worker: " + name);
+    }
+    itr->second.isReadOnly = readOnly;
 
     return itr->second;
 }
@@ -113,6 +132,24 @@ void ConfigurationStore::deleteWorker(std::string const& name) {
     _workerInfo.erase(itr);
 }
 
+
+WorkerInfo const ConfigurationStore::setWorkerSvcHost(std::string const& name,
+                                                      std::string const& host) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << "setWorkerSvcHost  name=" << name << " host=" << host);
+
+    util::Lock lock(_mtx, context() + "setWorkerSvcHost");
+
+    auto&& itr = _workerInfo.find(name);
+    if (_workerInfo.end() == itr) {
+        throw std::invalid_argument("ConfigurationStore::setWorkerSvcHost  no such worker: " + name);
+    }
+    itr->second.svcHost = host;
+
+    return itr->second;
+}
+
+
 WorkerInfo const ConfigurationStore::setWorkerSvcPort(std::string const& name,
                                                       uint16_t port) {
 
@@ -129,6 +166,24 @@ WorkerInfo const ConfigurationStore::setWorkerSvcPort(std::string const& name,
     return itr->second;
 }
 
+
+WorkerInfo const ConfigurationStore::setWorkerFsHost(std::string const& name,
+                                                     std::string const& host) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << "setWorkerFsHost  name=" << name << " host=" << host);
+
+    util::Lock lock(_mtx, context() + "setWorkerFsHost");
+
+    auto&& itr = _workerInfo.find(name);
+    if (_workerInfo.end() == itr) {
+        throw std::invalid_argument("ConfigurationStore::setWorkerFsHost  no such worker: " + name);
+    }
+    itr->second.fsHost = host;
+
+    return itr->second;
+}
+
+
 WorkerInfo const ConfigurationStore::setWorkerFsPort(std::string const& name,
                                                      uint16_t port) {
 
@@ -142,7 +197,27 @@ WorkerInfo const ConfigurationStore::setWorkerFsPort(std::string const& name,
     }
     itr->second.fsPort = port;
 
-    return itr->second;}
+    return itr->second;
+}
+
+
+WorkerInfo const ConfigurationStore::setWorkerDataDir(std::string const& name,
+                                                      std::string const& dataDir) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << "setWorkerDataDir  name=" << name << " dataDir=" << dataDir);
+
+    util::Lock lock(_mtx, context() + "setWorkerDataDir");
+
+    auto&& itr = _workerInfo.find(name);
+    if (_workerInfo.end() == itr) {
+        throw std::invalid_argument("ConfigurationStore::setWorkerDataDir  no such worker: " + name);
+    }
+    itr->second.dataDir = dataDir;
+
+    return itr->second;
+
+}
+
 
 void ConfigurationStore::loadConfiguration(util::ConfigStore const& configStore) {
 

@@ -75,12 +75,25 @@ public:
     /**
      * @see Configuration::disableWorker()
      */
-    WorkerInfo const disableWorker(std::string const& name) final;
+    WorkerInfo const disableWorker(std::string const& name,
+                                   bool disable) final;
+
+    /**
+     * @see Configuration::setWorkerReadOnly()
+     */
+    WorkerInfo const setWorkerReadOnly(std::string const& name,
+                                       bool readOnly) final;
 
     /**
      * @see Configuration::deleteWorker()
      */
     void deleteWorker(std::string const& name) final;
+
+    /**
+     * @see Configuration::setWorkerSvcHost()
+     */
+    WorkerInfo const setWorkerSvcHost(std::string const& name,
+                                      std::string const& host) final;
 
     /**
      * @see Configuration::setWorkerSvcPort()
@@ -89,10 +102,23 @@ public:
                                       uint16_t port) final;
 
     /**
+     * @see Configuration::setWorkerFsHost()
+     */
+    WorkerInfo const setWorkerFsHost(std::string const& name,
+                                     std::string const& host) final;
+
+    /**
      * @see Configuration::setWorkerFsPort()
      */
     WorkerInfo const setWorkerFsPort(std::string const& name,
                                      uint16_t port) final;
+
+    /**
+     * @see Configuration::setWorkerDataDir()
+     */
+    WorkerInfo const setWorkerDataDir(std::string const& name,
+                                      std::string const& dataDir) final;
+
 protected:
 
     /**

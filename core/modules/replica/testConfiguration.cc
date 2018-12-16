@@ -379,18 +379,33 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         BOOST_CHECK(disabledWorker.name == "worker-B");
         BOOST_CHECK(not disabledWorker.isEnabled);
 
+        WorkerInfo const enabledWorker = config->disableWorker("worker-B", false);
+        BOOST_CHECK(enabledWorker.name == "worker-B");
+        BOOST_CHECK(enabledWorker.isEnabled);
+
+        WorkerInfo const readOnlyWorker = config->setWorkerReadOnly("worker-B");
+        BOOST_CHECK(readOnlyWorker.name == "worker-B");
+        BOOST_CHECK(readOnlyWorker.isReadOnly);
+
+        WorkerInfo const readWriteWorker = config->setWorkerReadOnly("worker-B", false);
+        BOOST_CHECK(readWriteWorker.name == "worker-B");
+        BOOST_CHECK(not readWriteWorker.isReadOnly);
+
         config->deleteWorker("worker-C");
         BOOST_CHECK(not config->isKnownWorker("worker-C"));
+
+        BOOST_CHECK(config->setWorkerSvcHost("worker-A", "host-A1").svcHost == "host-A1");
+        BOOST_CHECK(config->setWorkerSvcPort("worker-A", 1).svcPort == 1);
+
+        BOOST_CHECK(config->setWorkerFsHost("worker-A", "host-A1").fsHost == "host-A1");
+        BOOST_CHECK(config->setWorkerFsPort("worker-A", 2).fsPort == 2);
+
+        BOOST_CHECK(config->setWorkerDataDir("worker-A", "/test").dataDir == "/test");
 
         BOOST_CHECK(config->workerTechnology()           == "POSIX");
         BOOST_CHECK(config->workerNumProcessingThreads() == 4);
         BOOST_CHECK(config->fsNumProcessingThreads()     == 5);
         BOOST_CHECK(config->workerFsBufferSizeBytes()    == 1024);
-
-
-        BOOST_CHECK(config->setWorkerSvcPort("worker-A", 1).svcPort == 1);
-
-        BOOST_CHECK(config->setWorkerFsPort("worker-A", 2).fsPort == 2);
     });
 
     BOOST_CHECK_THROW(kvMap.at("non-existing-key"), std::out_of_range);

@@ -441,34 +441,65 @@ public:
     WorkerInfo const workerInfo(std::string const& name) const;
 
     /**
-     * Change the status of the worker node to 'disabled' thus disallowing
-     * its use for any replication activities. Return the updated descriptor
-     * of the worker service. Note that if the operation fails to update
-     * the configuration then it won't throw any exceptions. In that case it will
-     * just a post a complain into the corresponding log stream. It's up
-     * to caller of this method to check the new status of the worker in
-     * the returned descriptor.:
-     * @code
-     *   try {
-     *       if (config.disableWorker("worker-name").is_enabled) {
-     *           std::cerr << "failed to disable the worker" << std::endl;
-     *       }
-     *   } catch (std::invalid_argument const& ex) {
-     *       std::cerr << "the worker is unknown" << std::endl;
-     *   }
-     * @code
+     * Change the status of the worker node to 'disabled' or 'enabled'
+     * depending on a value of the optional parameter 'disable'.
+     * Note that disabled workers will be disallowed in any replication
+     * activities.
      *
-     * @param name - the name of a worker
+     * @note
+     *   This operation may throw implementation-specific exceptions
+     *   which are not covered by this technology-neutral interface.
+     * @note
      *
-     * @return updated worker descriptor
+     * @param name
+     *   the name of a worker
      *
-     * @throw std::invalid_argument - if the specified worker was not found in
-     *                                the configuration.
+     * @param disable
+     *   (optional) disable if 'true', enable otherwise
+     *
+     * @return
+     *   updated worker descriptor
+     *
+     * @throw std::invalid_argument
+     *   if the specified worker was not found in the configuration.
      */
-    virtual WorkerInfo const disableWorker(std::string const& name)=0;
+    virtual WorkerInfo const disableWorker(std::string const& name,
+                                           bool disable=true)=0;
+
+    /**
+     * Change the status of the worker node to 'read-only' or 'read-write'
+     * depending on a value of the optional parameter 'readOnly'.
+     * Note that read-only workers will be disallowed as replica destinations
+     * in any replication activities.
+     *
+     * @note
+     *   This operation may throw implementation-specific exceptions
+     *   which are not covered by this technology-neutral interface.
+     * @note
+     *
+     * @param name
+     *   the name of a worker
+     *
+     * @param readOnly
+     *   (optional) turn into the read-only mode if 'true', or into read-write
+     *   mode otherwise
+     *
+     * @return
+     *   updated worker descriptor
+     *
+     * @throw std::invalid_argument
+     *   if the specified worker was not found in the configuration.
+     */
+    virtual WorkerInfo const setWorkerReadOnly(std::string const& name,
+                                               bool readOnly=true)=0;
 
     /**
      * Completely remove the specified worker from the Configuration.
+     *
+     * @note
+     *   This operation may throw implementation-specific exceptions
+     *   which are not covered by this technology-neutral interface.
+     * @note
      *
      * @param name - the name of a worker
      *
@@ -478,7 +509,31 @@ public:
     virtual void deleteWorker(std::string const& name)=0;
 
     /**
+     * Change the host name of the worker's service
+     *
+     * @note
+     *   This operation may throw implementation-specific exceptions
+     *   which are not covered by this technology-neutral interface.
+     * @note
+     *
+     * @param name - the name of a worker
+     * @param host - the name of a host
+     *
+     * @return updated worker descriptor
+     *
+     * @throw std::invalid_argument - if the specified worker was not found in
+     *                                the configuration.
+     */
+    virtual WorkerInfo const setWorkerSvcHost(std::string const& name,
+                                              std::string const& host)=0;
+
+    /**
      * Change the port number of the worker's service
+     *
+     * @note
+     *   This operation may throw implementation-specific exceptions
+     *   which are not covered by this technology-neutral interface.
+     * @note
      *
      * @param name - the name of a worker
      * @param port - the number of a port
@@ -492,7 +547,31 @@ public:
                                               uint16_t port)=0;
 
     /**
+     * Change the host name of the worker's file service
+     *
+     * @note
+     *   This operation may throw implementation-specific exceptions
+     *   which are not covered by this technology-neutral interface.
+     * @note
+     *
+     * @param name - the name of a worker
+     * @param host - the name of a host
+     *
+     * @return updated worker descriptor
+     *
+     * @throw std::invalid_argument - if the specified worker was not found in
+     *                                the configuration.
+     */
+    virtual WorkerInfo const setWorkerFsHost(std::string const& name,
+                                             std::string const& host)=0;
+
+    /**
      * Change the port number of the worker's file service
+     *
+     * @note
+     *   This operation may throw implementation-specific exceptions
+     *   which are not covered by this technology-neutral interface.
+     * @note
      *
      * @param name - the name of a worker
      * @param port - the number of a port
@@ -504,6 +583,26 @@ public:
      */
     virtual WorkerInfo const setWorkerFsPort(std::string const& name,
                                              uint16_t port)=0;
+
+    /**
+     * Change the data directory of the worker
+     *
+     * @note
+     *   This operation may throw implementation-specific exceptions
+     *   which are not covered by this technology-neutral interface.
+     * @note
+     *
+     * @param name    - the name of a worker
+     * @param dataDir - the new file system path
+     *
+     * @return updated worker descriptor
+     *
+     * @throw std::invalid_argument - if the specified worker was not found in
+     *                                the configuration.
+     */
+    virtual WorkerInfo const setWorkerDataDir(std::string const& name,
+                                              std::string const& dataDir)=0;
+
 
     /// @return the name of the default technology for implementing requests
     std::string const& workerTechnology() const { return _workerTechnology; }

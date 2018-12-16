@@ -69,7 +69,7 @@ public:
      */
     ConfigurationMySQL(database::mysql::ConnectionParams const& connectionParams);
 
-    ~ConfigurationMySQL() override = default;
+    ~ConfigurationMySQL() final = default;
 
     /**
      * @see Configuration::prefix()
@@ -79,17 +79,30 @@ public:
     /**
      * @see Configuration::configUrl()
      */
-    std::string configUrl() const override;
+    std::string configUrl() const final;
 
     /**
      * @see Configuration::disableWorker()
      */
-    WorkerInfo const disableWorker(std::string const& name) override;
+    WorkerInfo const disableWorker(std::string const& name,
+                                   bool disable) final;
+
+    /**
+     * @see Configuration::setWorkerReadOnly()
+     */
+    WorkerInfo const setWorkerReadOnly(std::string const& name,
+                                       bool readOnly) final;
 
     /**
      * @see Configuration::deleteWorker()
      */
-    void deleteWorker(std::string const& name) override;
+    void deleteWorker(std::string const& name) final;
+
+    /**
+     * @see Configuration::setWorkerSvcHost()
+     */
+    WorkerInfo const setWorkerSvcHost(std::string const& name,
+                                      std::string const& host) final;
 
     /**
      * @see Configuration::setWorkerSvcPort()
@@ -102,6 +115,18 @@ public:
      */
     WorkerInfo const setWorkerFsPort(std::string const& name,
                                      uint16_t port) final;
+
+    /**
+     * @see Configuration::setWorkerFsHost()
+     */
+    WorkerInfo const setWorkerFsHost(std::string const& name,
+                                     std::string const& host) final;
+
+    /**
+     * @see Configuration::setWorkerDataDir()
+     */
+    WorkerInfo const setWorkerDataDir(std::string const& name,
+                                      std::string const& dataDir) final;
 
 private:
 
