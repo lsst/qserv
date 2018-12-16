@@ -23,23 +23,23 @@
 // Class header
 #include "replica/ConfigApp.h"
 
+// System headers
+#include <stdexcept>
+#include <iomanip>
+#include <iostream>
+#include <vector>
+
 // Qserv headers
-#include "replica/Configuration.h"
+#include "util/TablePrinter.h"
+
+
+using namespace std;
 
 namespace {
 
-std::string const description {
-    "This application is the Master Replication Controller which has"
-    " a built-in Cluster Health Monitor and a linear Replication loop."
-    " The Monitor would track a status of both Qserv and Replication workers"
-    " and trigger the worker exclusion sequence if both services were found"
-    " non-responsive within a configured interval."
-    " The interval is specified via the corresponding command-line option."
-    " And it also has some built-in default value."
-    " Also, note that only a single node failure can trigger the worker"
-    " exclusion sequence."
-    " The controller has the built-in REST API which accepts external commands"
-    " or request for information."
+string const description {
+    "This application is the tool for viewing and manipulating"
+    " the configuration data of the Replication system stored in the MySQL/MariaDB"
 };
 
 } /// namespace
@@ -70,15 +70,30 @@ ConfigApp::ConfigApp(int argc,
             false /* boostProtobufVersionCheck */,
             false /* enableServiceProvider */
         ),
-        _config("file:replication.cfg"),
+        _configUrl("file:replication.cfg"),
         _log(LOG_GET("lsst.qserv.replica.ConfigApp")) {
 
     // Configure the command line parser
 
-    parser().option(
+    parser().commands(
+        "command",
+        {"DUMP"},
+        _command
+    ).option(
         "config",
         "Configuration URL (a configuration file or a set of database connection parameters).",
-        _config
+        _configUrl
+    );
+    parser().command("DUMP").optional(
+        "scope",
+        "This optional parameter narrows a scope of the operation down to a specific"
+        " context. If no scope is specified then everything will be dumped.",
+        _dumpScope,
+        vector<string>({"GENERAL", "WORKERS", "FAMILIES", "DATABASES"})
+    ).flag(
+        "db-show-password",
+        "show the actual database password when making the dump of the GENERAL parameters",
+        _dumpDbShowPassword
     );
 }
 
@@ -87,15 +102,250 @@ int ConfigApp::runImpl() {
 
     char const* context = "CONFIGURATION-APP  ";
 
-    LOGS(_log, LOG_LVL_INFO, context << parser().serializeArguments());
-
-    auto const config = Configuration::load(_config);
-    if (config->prefix() != "mysql") {
-        LOGS(_log, LOG_LVL_ERROR, context << "file-base configuration is not allowed by this application");
+    _config = Configuration::load(_configUrl);
+    if (_config->prefix() != "mysql") {
+        LOGS(_log, LOG_LVL_ERROR, context << "configuration with prefix '" << _config->prefix()
+             << "' is not allowed by this application");
         return 1;
     }
-    
+    if (_command == "DUMP") {
+        return _dump();
+    }
+    LOGS(_log, LOG_LVL_ERROR, context << "unsupported command: '" + _command + "'");
+    return 1;
+}
+
+
+int ConfigApp::_dump() const {
+
+    string const indent = "  ";
+
+    cout << "\n"
+         << indent << "CONFIG_URL: " << _config->configUrl() << "\n";
+
+    if (_dumpScope.empty() or _dumpScope == "GENERAL") {
+        cout << "\n";
+        _dumpGeneralAsTable(indent);
+    }
+    if (_dumpScope.empty() or _dumpScope == "WORKERS") {
+        cout << "\n";
+        _dumpWorkersAsTable(indent);
+    }
+    if (_dumpScope.empty() or _dumpScope == "FAMILIES") {
+        cout << "\n";
+        _dumpFamiliesAsTable(indent);
+    }
+    if (_dumpScope.empty() or _dumpScope == "DATABASES") {
+        cout << "\n";
+        _dumpDatabasesAsTable(indent);
+    }
+    cout << endl;
+
     return 0;
 }
+
+void ConfigApp::_dumpGeneralAsTable(string const indent) const {
+
+    // Extract general attributes and put them into the corresponding
+    // columns. Translate tables cell values into strings when required.
+
+    vector<string> parameter;
+    vector<string> value;
+    vector<string> description;
+
+    parameter.  push_back("NET_BUF_SIZE_BYTES");
+    value.      push_back(to_string(_config->requestBufferSizeBytes()));
+    description.push_back("default buffer size for network communications");
+
+    parameter.  push_back("NET_RETRY_TIMEOUT_SEC");
+    value.      push_back(to_string(_config->retryTimeoutSec()));
+    description.push_back("default retry timeout for network communications");
+
+    parameter.  push_back("CONTR_NUM_THREADS");
+    value.      push_back(to_string(_config->controllerThreads()));
+    description.push_back("number of threads managed by BOOST ASIO");
+
+    parameter.  push_back("CONTR_HTTP_PORT");
+    value.      push_back(to_string(_config->controllerHttpPort()));
+    description.push_back("port number for the controller's HTTP server");
+
+    parameter.  push_back("CONTR_NUM_HTTP_THREADS");
+    value.      push_back(to_string(_config->controllerHttpThreads()));
+    description.push_back("number of threads managed by BOOST ASIO for the HTTP server");
+
+    parameter.  push_back("CONTR_REQUEST_TIMEOUT_SEC");
+    value.      push_back(to_string(_config->controllerRequestTimeoutSec()));
+    description.push_back("default timeout for completing worker requests");
+
+    parameter.  push_back("CONTR_JOB_TIMEOUT_SEC");
+    value.      push_back(to_string(_config->jobTimeoutSec()));
+    description.push_back("default timeout for completing jobs");
+
+    parameter.  push_back("CONTR_JOB_HEARTBEAT_SEC");
+    value.      push_back(to_string(_config->jobHeartbeatTimeoutSec()));
+    description.push_back("heartbeat interval for jobs");
+
+    parameter.  push_back("QSERV_AUTO_NOTIFY");
+    value.      push_back(_config->xrootdAutoNotify() ? "yes" : "no");
+    description.push_back("automatically notify Qserv on changes in replica disposition");
+
+    parameter.  push_back("XROOTD_HOST_PORT");
+    value.      push_back(_config->xrootdHost() + ":" + to_string(_config->xrootdPort()));
+    description.push_back("service location of XRootD/SSI for communications with Qserv");
+
+    parameter.  push_back("XROOT_COMM_TIMEOUT_SEC");
+    value.      push_back(to_string(_config->xrootdTimeoutSec()));
+    description.push_back("default timeout for communications with Qserv over XRootD/SSI");
+
+    parameter.  push_back("DB_TECHNOLOGY");
+    value.      push_back(_config->databaseTechnology());
+    description.push_back("name of a database technology for the persistent state");
+
+    parameter.  push_back("DB_HOST_PORT");
+    value.      push_back(_config->databaseHost() + ":" + to_string(_config->databasePort()));
+    description.push_back("database service location");
+
+    parameter.  push_back("DB_USER");
+    value.      push_back(_config->databaseUser());
+    description.push_back("user name for connecting to the database service");
+
+    parameter.  push_back("DB_PASSWORD");
+    value.      push_back(_dumpDbShowPassword ? _config->databasePassword() : "xxxxxx");
+    description.push_back("password for connecting to the database service");
+
+    parameter.  push_back("DB_NAME");
+    value.      push_back(_config->databaseName());
+    description.push_back("the name of the default database schema");
+
+    parameter.  push_back("DB_SVC_POOL_SIZE");
+    value.      push_back(to_string(_config->databaseServicesPoolSize()));
+    description.push_back("the pool size at the client database services connector");
+
+    parameter.  push_back("WORKER_TECHNOLOGY");
+    value.      push_back(_config->workerTechnology());
+    description.push_back("name of a technology for implementing requests");
+
+    parameter.  push_back("WORKER_NUM_PROC_THREADS");
+    value.      push_back(to_string(_config->workerNumProcessingThreads()));
+    description.push_back("number of request processing threads in each worker service");
+
+    parameter.  push_back("WORKER_FS_NUM_PROC_THREADS");
+    value.      push_back(to_string(_config->fsNumProcessingThreads()));
+    description.push_back("number of request processing threads in each worker's file server");
+
+    parameter.  push_back("WORKER_FS_BUF_SIZE_BYTES");
+    value.      push_back(to_string(_config->workerFsBufferSizeBytes()));
+    description.push_back("buffer size for file and network operations at worker's file server");
+
+    util::ColumnTablePrinter table("GENERAL PARAMETERS:", indent);
+
+    table.addColumn("parameter",   parameter,   util::ColumnTablePrinter::Alignment::LEFT);
+    table.addColumn("value",       value);
+    table.addColumn("description", description, util::ColumnTablePrinter::Alignment::LEFT);
+
+    table.print(cout, false, false);
+}
+
+
+void ConfigApp::_dumpWorkersAsTable(string const indent) const {
+
+    // Extract attributes of each worker and put them into the corresponding
+    // columns. Translate tables cell values into strings when required.
+
+    vector<string> name;
+    vector<string> isEnabled;
+    vector<string> isReadOnly;
+    vector<string> svcHostPort;
+    vector<string> fsHostPort;
+    vector<string> dataDir;
+
+    for (auto&& worker: _config->allWorkers()) {
+        auto const wi = _config->workerInfo(worker);
+        name       .push_back(wi.name);
+        isEnabled  .push_back(wi.isEnabled  ? "yes" : "no");
+        isReadOnly .push_back(wi.isReadOnly ? "yes" : "no");
+        svcHostPort.push_back(wi.svcHost + ":" + to_string(wi.svcPort));
+        fsHostPort .push_back(wi.fsHost  + ":" + to_string(wi.fsPort));
+        dataDir    .push_back(wi.dataDir);
+    }
+
+    util::ColumnTablePrinter table("WORKERS:", indent);
+
+    table.addColumn("name",                name,        util::ColumnTablePrinter::Alignment::LEFT);
+    table.addColumn("enabled",             isEnabled);
+    table.addColumn("read-only",           isReadOnly);
+    table.addColumn("replication service", svcHostPort, util::ColumnTablePrinter::Alignment::LEFT);
+    table.addColumn("file service",        fsHostPort,  util::ColumnTablePrinter::Alignment::LEFT);
+    table.addColumn("MySQL directory",     dataDir,     util::ColumnTablePrinter::Alignment::LEFT);
+
+    table.print(cout, false, false);
+}
+
+
+void ConfigApp::_dumpFamiliesAsTable(string const indent) const {
+
+    // Extract attributes of each family and put them into the corresponding
+    // columns.
+
+    vector<string>       name;
+    vector<size_t>       replicationLevel;
+    vector<unsigned int> numStripes;
+    vector<unsigned int> numSubStripes;
+
+    for (auto&& family: _config->databaseFamilies()) {
+        auto const fi = _config->databaseFamilyInfo(family);
+        name            .push_back(fi.name);
+        replicationLevel.push_back(fi.replicationLevel);
+        numStripes      .push_back(fi.numStripes);
+        numSubStripes   .push_back(fi.numSubStripes);
+    }
+
+    util::ColumnTablePrinter table("DATABASE FAMILIES:", indent);
+
+    table.addColumn("name", name, util::ColumnTablePrinter::Alignment::LEFT);
+    table.addColumn("replication level", replicationLevel);
+    table.addColumn("stripes", numStripes);
+    table.addColumn("sub-stripes", numSubStripes);
+
+    table.print(cout, false, false);
+}
+
+
+void ConfigApp::_dumpDatabasesAsTable(string const indent) const {
+
+    // Extract attributes of each database and put them into the corresponding
+    // columns.
+
+    vector<string> familyName;
+    vector<string> databaseName;
+    vector<string> tableName;
+    vector<string> isPartitionable;
+
+    for (auto&& database: _config->databases()) {
+        auto const di = _config->databaseInfo(database);
+        for (auto& table: di.partitionedTables) {
+            familyName     .push_back(di.family);
+            databaseName   .push_back(di.name);
+            tableName      .push_back(table);
+            isPartitionable.push_back("yes");
+        }
+        for (auto& table: di.regularTables) {
+            familyName     .push_back(di.family);
+            databaseName   .push_back(di.name);
+            tableName      .push_back(table);
+            isPartitionable.push_back("no");
+        }
+    }
+
+    util::ColumnTablePrinter table("DATABASES & TABLES:", indent);
+
+    table.addColumn("family",        familyName,   util::ColumnTablePrinter::Alignment::LEFT);
+    table.addColumn("database",      databaseName, util::ColumnTablePrinter::Alignment::LEFT);
+    table.addColumn("table",         tableName,    util::ColumnTablePrinter::Alignment::LEFT);
+    table.addColumn("partitionable", isPartitionable);
+
+    table.print(cout, false, false);
+}
+
 
 }}} // namespace lsst::qserv::replica

@@ -27,6 +27,7 @@
 
 // Qserv headers
 #include "replica/Application.h"
+#include "replica/Configuration.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -85,11 +86,66 @@ protected:
 
 private:
 
+    /**
+     * Dump the Configuration into the Standard output stream
+     * 
+     * @return
+     *   a status code to be returned to the shell
+     */
+    int _dump() const;
+
+    /**
+     * Dump general configuration parameters into the Standard output
+     * stream as a table.
+     * 
+     * @param indent
+     *   the indentation for the table
+     */
+    void _dumpGeneralAsTable(std::string const indent) const;
+
+    /**
+     * Dump workers into the Standard output stream as a table 
+     * 
+     * @param indent
+     *   the indentation for the table
+     */
+    void _dumpWorkersAsTable(std::string const indent) const;
+
+    /**
+     * Dump database families into the Standard output stream as a table 
+     * 
+     * @param indent
+     *   the indentation for the table
+     */
+    void _dumpFamiliesAsTable(std::string const indent) const;
+
+    /**
+     * Dump databases into the Standard output stream as a table 
+     * 
+     * @param indent
+     *   the indentation for the table
+     */
+    void _dumpDatabasesAsTable(std::string const indent) const;
+
+private:
+
+    /// The command
+    std::string _command;
+
     /// Configuration URL
-    std::string _config;
+    std::string _configUrl;
+
+    /// An optional scope of the command "DUMP"
+    std::string _dumpScope;
+
+    /// Show the actual database password when dumping the Configuration
+    bool _dumpDbShowPassword{false};
 
     /// Logger stream
     LOG_LOGGER _log;
+    
+    /// The input Configuration
+    Configuration::Ptr _config;
 };
 
 }}} // namespace lsst::qserv::replica
