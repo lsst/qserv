@@ -127,6 +127,14 @@ private:
      */
     void _dumpDatabasesAsTable(std::string const indent) const;
 
+    /**
+     * Update parameters of a worker
+     *
+     * @return
+     *   a status code to be returned to the shell
+     */
+    int _updateWorker() const;
+
 private:
 
     /// The command
@@ -140,6 +148,21 @@ private:
 
     /// Show the actual database password when dumping the Configuration
     bool _dumpDbShowPassword{false};
+
+    /// Parameters of a worker to be updated
+    WorkerInfo _workerInfo;
+
+    /// The flag for enabling a select worker
+    bool _workerEnable;
+
+    /// The flag for disabling a select worker
+    bool _workerDisable;
+
+    /// The flag for turning a worker into the read-only mode
+    bool _workerReadOnly;
+
+    /// The flag for turning a worker into the read-write mode
+    bool _workerReadWrite;
 
     /// Logger stream
     LOG_LOGGER _log;

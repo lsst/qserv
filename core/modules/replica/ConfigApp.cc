@@ -77,7 +77,7 @@ ConfigApp::ConfigApp(int argc,
 
     parser().commands(
         "command",
-        {"DUMP"},
+        {"DUMP", "UPDATE_WORKER"},
         _command
     ).option(
         "config",
@@ -95,12 +95,55 @@ ConfigApp::ConfigApp(int argc,
         "show the actual database password when making the dump of the GENERAL parameters",
         _dumpDbShowPassword
     );
+    parser().command("UPDATE_WORKER").required(
+        "worker",
+        "The name of a worker to be updated",
+        _workerInfo.name
+    ).option(
+        "worker-service-host",
+        "The new DNS name or an IP address where the worker runs",
+        _workerInfo.svcHost
+    ).option(
+        "worker-service-port",
+        "The port number of the worker service",
+        _workerInfo.svcPort
+    ).option(
+        "worker-fs-host",
+        "The new DNS name or an IP address where the worker's File Server runs",
+        _workerInfo.fsHost
+    ).option(
+        "worker-fs-port",
+        "The port number of the worker's File Server",
+        _workerInfo.fsPort
+    ).option(
+        "worker-data-dir",
+        "The data directory of the worker",
+        _workerInfo.dataDir
+    ).flag(
+        "worker-enable",
+        "Enable the worker. ATTENTION: this flag can't be used together with flag --worker-disable",
+        _workerEnable
+    ).flag(
+        "worker-disable",
+        "Disable the worker. ATTENTION: this flag can't be used together with flag --worker-enable",
+        _workerDisable
+    ).flag(
+        "worker-read-only",
+        "Turn the worker into the read-only mode. ATTENTION: this flag can't be"
+        " used together with flag --worker-read-write",
+        _workerReadOnly
+    ).flag(
+        "worker-read-write",
+        "Turn the worker into the read-write mode. ATTENTION: this flag can't be"
+        " used together with flag --worker-read-only",
+        _workerReadWrite
+    );
 }
 
 
 int ConfigApp::runImpl() {
 
-    char const* context = "CONFIGURATION-APP  ";
+    char const* context = "ConfigApp::runImpl  ";
 
     _config = Configuration::load(_configUrl);
     if (_config->prefix() != "mysql") {
@@ -108,9 +151,9 @@ int ConfigApp::runImpl() {
              << "' is not allowed by this application");
         return 1;
     }
-    if (_command == "DUMP") {
-        return _dump();
-    }
+    if (_command == "DUMP")          return _dump();
+    if (_command == "UPDATE_WORKER") return _updateWorker();
+
     LOGS(_log, LOG_LVL_ERROR, context << "unsupported command: '" + _command + "'");
     return 1;
 }
@@ -345,6 +388,78 @@ void ConfigApp::_dumpDatabasesAsTable(string const indent) const {
     table.addColumn("partitionable", isPartitionable);
 
     table.print(cout, false, false);
+}
+
+
+int ConfigApp::_updateWorker() const {
+
+    char const* context = "ConfigApp::_updateWorker  ";
+
+    if (_workerEnable and _workerDisable) {
+        LOGS(_log, LOG_LVL_ERROR, context << "flags --worker-enable and --worker-disable"
+             << " can't be used simultaneously");
+        return 1;
+    }
+    if (_workerReadOnly and _workerReadWrite) {
+        LOGS(_log, LOG_LVL_ERROR, context << "flags --worker-read-only and --worker-read-write"
+             << " can't be used simultaneously");
+        return 1;
+    }
+    if (not _config->isKnownWorker(_workerInfo.name)) {
+        LOGS(_log, LOG_LVL_ERROR, context << "unknown worker: '" << _workerInfo.name << "'");
+        return 1;
+    }
+    auto const info = _config->workerInfo(_workerInfo.name);
+
+    try {
+        if (not _workerInfo.svcHost.empty()
+            and _workerInfo.svcHost != info.svcHost) {
+
+            _config->setWorkerSvcHost(_workerInfo.name,
+                                      _workerInfo.svcHost);
+        }
+        if (_workerInfo.svcPort != 0 and
+            _workerInfo.svcPort != info.svcPort) {
+
+            _config->setWorkerSvcPort(_workerInfo.name,
+                                      _workerInfo.svcPort);
+        }
+        if (not _workerInfo.fsHost.empty()
+            and _workerInfo.fsHost != info.fsHost) {
+
+            _config->setWorkerFsHost(_workerInfo.name,
+                                     _workerInfo.fsHost);
+        }
+        if (_workerInfo.fsPort != 0 and
+            _workerInfo.fsPort != info.fsPort) {
+
+            _config->setWorkerFsPort(_workerInfo.name,
+                                     _workerInfo.fsPort);
+        }
+        if (not _workerInfo.dataDir.empty()
+            and _workerInfo.dataDir != info.dataDir) {
+
+            _config->setWorkerDataDir(_workerInfo.name,
+                                      _workerInfo.dataDir);
+        }
+        if (_workerEnable and not info.isEnabled) {
+            _config->disableWorker(_workerInfo.name, false);
+        }
+        if (_workerDisable and info.isEnabled) {
+            _config->disableWorker(_workerInfo.name);
+        }
+        if (_workerReadOnly and not info.isReadOnly) {
+            _config->setWorkerReadOnly(_workerInfo.name);
+        }
+        if (_workerReadWrite and info.isReadOnly) {
+            _config->setWorkerReadOnly(_workerInfo.name, false);
+        }
+    } catch (std::exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
+        return 1;
+
+    }
+    return 0;
 }
 
 
