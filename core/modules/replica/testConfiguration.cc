@@ -375,6 +375,42 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         BOOST_CHECK(workerC.fsPort  == 52000);
         BOOST_CHECK(workerC.dataDir == "/tmp/worker-C");
 
+        // Adding a new worker with well formed and unique parameters
+
+        WorkerInfo workerD;
+        workerD.name       = "worker-D";
+        workerD.isEnabled  = true;
+        workerD.isReadOnly = true;
+        workerD.svcHost    = "host-D";
+        workerD.svcPort    = 51001;
+        workerD.fsHost     = "host-D";
+        workerD.fsPort     = 52001;
+        workerD.dataDir    = "/data/D";
+
+        config->addWorker(workerD);
+        BOOST_CHECK_THROW(config->addWorker(workerD), std::invalid_argument);
+
+        workerD = config->workerInfo("worker-D");
+        BOOST_CHECK(workerD.name =="worker-D");
+        BOOST_CHECK(workerD.isEnabled);
+        BOOST_CHECK(workerD.isReadOnly);
+        BOOST_CHECK(workerD.svcHost == "host-D");
+        BOOST_CHECK(workerD.svcPort == 51001);
+        BOOST_CHECK(workerD.fsHost  == "host-D");
+        BOOST_CHECK(workerD.fsPort  == 52001);
+        BOOST_CHECK(workerD.dataDir == "/data/D");
+
+        // Adding a new worker with parameters conflicting with the ones of
+        // some existing worker
+
+        WorkerInfo workerE = workerD;
+        workerE.name = "worker-E";
+        BOOST_CHECK_THROW(config->addWorker(workerE), std::invalid_argument);
+
+        config->deleteWorker("worker-C");
+        BOOST_CHECK(not config->isKnownWorker("worker-C"));
+        BOOST_CHECK_THROW(config->deleteWorker("worker-C"), std::invalid_argument);
+
         WorkerInfo const disabledWorker = config->disableWorker("worker-B");
         BOOST_CHECK(disabledWorker.name == "worker-B");
         BOOST_CHECK(not disabledWorker.isEnabled);
@@ -390,9 +426,6 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         WorkerInfo const readWriteWorker = config->setWorkerReadOnly("worker-B", false);
         BOOST_CHECK(readWriteWorker.name == "worker-B");
         BOOST_CHECK(not readWriteWorker.isReadOnly);
-
-        config->deleteWorker("worker-C");
-        BOOST_CHECK(not config->isKnownWorker("worker-C"));
 
         BOOST_CHECK(config->setWorkerSvcHost("worker-A", "host-A1").svcHost == "host-A1");
         BOOST_CHECK(config->setWorkerSvcPort("worker-A", 1).svcPort == 1);

@@ -441,6 +441,36 @@ public:
     WorkerInfo const workerInfo(std::string const& name) const;
 
     /**
+     * Register a new worker in the Configuration.
+     *
+     * @note
+     *   This operation may throw implementation-specific exceptions
+     *   which are not covered by this technology-neutral interface.
+     * @note
+     *
+     * @param name - the name of a worker
+     *
+     * @throw std::invalid_argument - if the specified worker was not found in
+     *                                the configuration.
+     */
+    virtual void addWorker(WorkerInfo const& workerInfo)=0;
+
+    /**
+     * Completely remove the specified worker from the Configuration.
+     *
+     * @note
+     *   This operation may throw implementation-specific exceptions
+     *   which are not covered by this technology-neutral interface.
+     * @note
+     *
+     * @param name - the name of a worker
+     *
+     * @throw std::invalid_argument - if the specified worker was not found in
+     *                                the configuration.
+     */
+    virtual void deleteWorker(std::string const& name)=0;
+
+    /**
      * Change the status of the worker node to 'disabled' or 'enabled'
      * depending on a value of the optional parameter 'disable'.
      * Note that disabled workers will be disallowed in any replication
@@ -492,21 +522,6 @@ public:
      */
     virtual WorkerInfo const setWorkerReadOnly(std::string const& name,
                                                bool readOnly=true)=0;
-
-    /**
-     * Completely remove the specified worker from the Configuration.
-     *
-     * @note
-     *   This operation may throw implementation-specific exceptions
-     *   which are not covered by this technology-neutral interface.
-     * @note
-     *
-     * @param name - the name of a worker
-     *
-     * @throw std::invalid_argument - if the specified worker was not found in
-     *                                the configuration.
-     */
-    virtual void deleteWorker(std::string const& name)=0;
 
     /**
      * Change the host name of the worker's service

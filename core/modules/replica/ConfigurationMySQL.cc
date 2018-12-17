@@ -98,6 +98,88 @@ std::string ConfigurationMySQL::configUrl() const {
 }
 
 
+void ConfigurationMySQL::addWorker(WorkerInfo const& info) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << "addWorker  name=" << info.name);
+
+    database::mysql::Connection::Ptr conn;
+    try {
+
+        // First update the database
+
+        conn = database::mysql::Connection::open(_connectionParams);
+        conn->execute(
+            [&info](decltype(conn) conn) {
+                conn->begin();
+                conn->executeInsertQuery(
+                    "config_worker",
+                     info.name,
+                     info.isEnabled ? 1 : 0,
+                     info.isReadOnly ? 1 : 0,
+                     info.svcHost,
+                     info.svcPort,
+                     info.fsHost,
+                     info.fsPort,
+                     info.dataDir
+                );
+                conn->commit();
+            }
+        );
+
+        // Then update the transient state
+
+        util::Lock lock(_mtx, context() + "addWorker");
+
+        _workerInfo[info.name] = info;
+
+    } catch (database::mysql::Error const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context ()<< ex.what());
+        if ((nullptr != conn) and conn->inTransaction()) {
+            conn->rollback();
+        }
+        throw;
+    }
+}
+
+
+void ConfigurationMySQL::deleteWorker(std::string const& name) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << "deleteWorker  name=" << name);
+
+    database::mysql::Connection::Ptr conn;
+    try {
+
+        // First update the database
+
+        conn = database::mysql::Connection::open(_connectionParams);
+        conn->execute(
+            [&name](decltype(conn) conn) {
+                conn->begin();
+                conn->execute("DELETE FROM config_worker WHERE " + conn->sqlEqual("name", name));
+                conn->commit();
+            }
+        );
+
+        // Then update the transient state
+
+        util::Lock lock(_mtx, context() + "deleteWorker");
+
+        auto&& itr = _workerInfo.find(name);
+        if (_workerInfo.end() == itr) {
+            throw std::invalid_argument("ConfigurationMySQL::deleteWorker  no such worker: " + name);
+        }
+        _workerInfo.erase(itr);
+
+    } catch (database::mysql::Error const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context ()<< ex.what());
+        if ((nullptr != conn) and conn->inTransaction()) {
+            conn->rollback();
+        }
+        throw;
+    }
+}
+
+
 WorkerInfo const ConfigurationMySQL::disableWorker(std::string const& name,
                                                    bool disable) {
 
@@ -183,44 +265,6 @@ WorkerInfo const ConfigurationMySQL::setWorkerReadOnly(std::string const& name,
         throw;
     }
     return workerInfo(name);
-}
-
-
-void ConfigurationMySQL::deleteWorker(std::string const& name) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << "deleteWorker  name=" << name);
-
-    database::mysql::Connection::Ptr conn;
-    try {
-
-        // First update the database
-
-        conn = database::mysql::Connection::open(_connectionParams);
-        conn->execute(
-            [&name](decltype(conn) conn) {
-                conn->begin();
-                conn->execute ("DELETE FROM config_worker WHERE " + conn->sqlEqual("name", name));
-                conn->commit();
-            }
-        );
-
-        // Then update the transient state
-
-        util::Lock lock(_mtx, context() + "deleteWorker");
-
-        auto&& itr = _workerInfo.find(name);
-        if (_workerInfo.end() == itr) {
-            throw std::invalid_argument("ConfigurationMySQL::deleteWorker  no such worker: " + name);
-        }
-        _workerInfo.erase(itr);
-
-    } catch (database::mysql::Error const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, context ()<< ex.what());
-        if ((nullptr != conn) and conn->inTransaction()) {
-            conn->rollback();
-        }
-        throw;
-    }
 }
 
 

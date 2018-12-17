@@ -85,6 +85,60 @@ ConfigurationStore::ConfigurationStore(util::ConfigStore const& configStore)
     loadConfiguration(configStore);
 }
 
+
+void ConfigurationStore::addWorker(WorkerInfo const& info) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << "addWorker  name=" << info.name);
+
+    util::Lock lock(_mtx, context() + "addWorker");
+
+    auto&& itr = _workerInfo.find(info.name);
+    if (_workerInfo.end() != itr) {
+        throw std::invalid_argument("ConfigurationStore::addWorker  worker: " + info.name + " already exists");
+    }
+    
+    // Scan existing workers to make sure no conflict on the same combination
+    // of host:port exists
+    
+    for (auto const& itr: _workerInfo) {
+        if (itr.first == info.name) {
+            throw std::invalid_argument(
+                    "ConfigurationStore::addWorker  worker: " + info.name +
+                    " already exists");
+        }
+        if (itr.second.svcHost == info.svcHost and itr.second.svcPort == info.svcPort) {
+            throw std::invalid_argument(
+                    "ConfigurationStore::addWorker  worker: " + itr.first +
+                    " with a conflicting combination of the service host/port " +
+                    itr.second.svcHost + ":" + std::to_string(itr.second.svcPort) +
+                    " already exists");
+        }
+        if (itr.second.fsHost == info.fsHost and itr.second.fsPort == info.fsPort) {
+            throw std::invalid_argument(
+                    "ConfigurationStore::addWorker  worker: " + itr.first +
+                    " with a conflicting combination of the file service host/port " +
+                    itr.second.fsHost + ":" + std::to_string(itr.second.fsPort) +
+                    " already exists");
+        }
+    }
+    _workerInfo[info.name] = info;
+}
+
+
+void ConfigurationStore::deleteWorker(std::string const& name) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << "deleteWorker  name=" << name);
+
+    util::Lock lock(_mtx, context() + "deleteWorker");
+
+    auto&& itr = _workerInfo.find(name);
+    if (_workerInfo.end() == itr) {
+        throw std::invalid_argument("ConfigurationStore::deleteWorker  no such worker: " + name);
+    }
+    _workerInfo.erase(itr);
+}
+
+
 WorkerInfo const ConfigurationStore::disableWorker(std::string const& name,
                                                    bool disable) {
 
@@ -117,19 +171,6 @@ WorkerInfo const ConfigurationStore::setWorkerReadOnly(std::string const& name,
     itr->second.isReadOnly = readOnly;
 
     return itr->second;
-}
-
-void ConfigurationStore::deleteWorker(std::string const& name) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << "deleteWorker  name=" << name);
-
-    util::Lock lock(_mtx, context() + "deleteWorker");
-
-    auto&& itr = _workerInfo.find(name);
-    if (_workerInfo.end() == itr) {
-        throw std::invalid_argument("ConfigurationStore::deleteWorker  no such worker: " + name);
-    }
-    _workerInfo.erase(itr);
 }
 
 

@@ -82,6 +82,16 @@ public:
     std::string configUrl() const final;
 
     /**
+     * @see Configuration::addWorker()
+     */
+    void addWorker(WorkerInfo const& workerInfo) final;
+
+    /**
+     * @see Configuration::deleteWorker()
+     */
+    void deleteWorker(std::string const& name) final;
+
+    /**
      * @see Configuration::disableWorker()
      */
     WorkerInfo const disableWorker(std::string const& name,
@@ -92,11 +102,6 @@ public:
      */
     WorkerInfo const setWorkerReadOnly(std::string const& name,
                                        bool readOnly) final;
-
-    /**
-     * @see Configuration::deleteWorker()
-     */
-    void deleteWorker(std::string const& name) final;
 
     /**
      * @see Configuration::setWorkerSvcHost()
