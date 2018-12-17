@@ -23,7 +23,7 @@ docker run \
     -v /etc/group:/etc/group:ro \
     -v $PWD:$PWD \
     qserv/replica:dev \
-    bash -c '$SOURCE/admin/tools/docker/replication/container/tools/gke/collect.bash $SOURCE'
+    bash -c '$SOURCE/admin/tools/docker/replication/container/tools/gke/collect.sh $SOURCE'
 
 
 # Build the runnable container from the previously prepared area
@@ -44,3 +44,10 @@ docker run --rm qserv/replica:tools-${GIT_HASH} /qserv/bin/qserv-replica-job-chu
 # made earlier)
 
 docker push qserv/replica:tools-${GIT_HASH}
+
+####################################################################
+# An alternative method is run the following script wich will do all
+# explained above
+
+admin/tools/docker/replication/container/tools/gke/build.sh /home/user/development/qserv
+
