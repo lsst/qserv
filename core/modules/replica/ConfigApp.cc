@@ -77,13 +77,14 @@ ConfigApp::ConfigApp(int argc,
 
     parser().commands(
         "command",
-        {"DUMP", "UPDATE_WORKER"},
+        {"DUMP", "UPDATE_WORKER", "ADD_WORKER", "DELETE_WORKER"},
         _command
     ).option(
         "config",
         "Configuration URL (a configuration file or a set of database connection parameters).",
         _configUrl
     );
+
     parser().command("DUMP").optional(
         "scope",
         "This optional parameter narrows a scope of the operation down to a specific"
@@ -95,6 +96,7 @@ ConfigApp::ConfigApp(int argc,
         "show the actual database password when making the dump of the GENERAL parameters",
         _dumpDbShowPassword
     );
+
     parser().command("UPDATE_WORKER").required(
         "worker",
         "The name of a worker to be updated",
@@ -138,6 +140,46 @@ ConfigApp::ConfigApp(int argc,
         " used together with flag --worker-read-only",
         _workerReadWrite
     );
+
+    parser().command("ADD_WORKER").required(
+        "worker",
+        "The name of a worker to be added",
+        _workerInfo.name
+    ).required(
+        "service-host",
+        "The DNS name or an IP address where the worker runs",
+        _workerInfo.svcHost
+    ).required(
+        "service-port",
+        "The port number of the worker service",
+        _workerInfo.svcPort
+    ).required(
+        "fs-host",
+        "The DNS name or an IP address where the worker's File Server runs",
+        _workerInfo.fsHost
+    ).required(
+        "fs-port",
+        "The port number of the worker's File Server",
+        _workerInfo.fsPort
+    ).required(
+        "data-dir",
+        "The data directory of the worker",
+        _workerInfo.dataDir
+    ).required(
+        "enabled",
+        "Set to '0' if the worker is turned into disabled mode upon creation",
+        _workerInfo.isEnabled
+    ).required(
+        "read-only",
+        "Set to '0' if the worker is NOT turned into the read-only mode upon creation",
+        _workerInfo.isReadOnly
+    );
+
+    parser().command("DELETE_WORKER").required(
+        "worker",
+        "The name of a worker to be deleted",
+        _workerInfo.name
+    );
 }
 
 
@@ -153,6 +195,8 @@ int ConfigApp::runImpl() {
     }
     if (_command == "DUMP")          return _dump();
     if (_command == "UPDATE_WORKER") return _updateWorker();
+    if (_command == "ADD_WORKER")    return _addWorker();
+    if (_command == "DELETE_WORKER") return _deleteWorker();
 
     LOGS(_log, LOG_LVL_ERROR, context << "unsupported command: '" + _command + "'");
     return 1;
@@ -457,7 +501,44 @@ int ConfigApp::_updateWorker() const {
     } catch (std::exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
         return 1;
+    }
+    return 0;
+}
 
+
+int ConfigApp::_addWorker() const {
+
+    char const* context = "ConfigApp::_addWorker  ";
+
+    if (_config->isKnownWorker(_workerInfo.name)) {
+        LOGS(_log, LOG_LVL_ERROR, context << "the worker already exists: '" << _workerInfo.name << "'");
+        return 1;
+    }
+    try {
+        _config->addWorker(_workerInfo);
+    } catch (std::exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
+        return 1;
+    }
+    return 0;
+}
+
+
+int ConfigApp::_deleteWorker() const {
+
+    char const* context = "ConfigApp::_deleteWorker  ";
+
+    if (not _config->isKnownWorker(_workerInfo.name)) {
+        LOGS(_log, LOG_LVL_ERROR, context << "the worker doesn't exists: '" << _workerInfo.name << "'");
+        return 1;
+    }
+
+    auto const info = _config->workerInfo(_workerInfo.name);
+    try {
+        _config->deleteWorker(_workerInfo.name);
+    } catch (std::exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
+        return 1;
     }
     return 0;
 }

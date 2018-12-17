@@ -135,6 +135,22 @@ private:
      */
     int _updateWorker() const;
 
+    /**
+     * Add a new worker
+     *
+     * @return
+     *   a status code to be returned to the shell
+     */
+    int _addWorker() const;
+
+    /**
+     * Delete an existing worker and all metadata associated with it
+     *
+     * @return
+     *   a status code to be returned to the shell
+     */
+    int _deleteWorker() const;
+
 private:
 
     /// The command
