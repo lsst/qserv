@@ -750,6 +750,9 @@ static const std::vector<Antlr4CompareQueries> ANTLR4_COMPARE_QUERIES = {
     // tests the || operator.
     // The Qserv IR converts || to OR as a result of the IR structure and how it serializes it to string.
     Antlr4CompareQueries(
+        // The numbers used here; 400000000000000 and 430000000000000 are arbitrary, but do represent values
+        // that one may see for objectId in the lsst qserv database and so are reasonable choices for a unit
+        // test. 
         "select objectId from Object where objectId < 400000000000000 || objectId > 430000000000000 ORDER BY objectId;", // ||
         "select objectId from Object where objectId < 400000000000000 OR objectId > 430000000000000 ORDER BY objectId", // OR
         nullptr,
