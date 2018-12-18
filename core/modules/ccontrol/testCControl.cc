@@ -41,7 +41,10 @@
 #include "parser/SelectParser.h"
 #include "qproc/QuerySession.h"
 #include "query/Predicate.h"
+#include "query/SelectList.h"
 #include "query/SelectStmt.h"
+#include "query/SqlSQL2Tokens.h"
+#include "query/ValueFactor.h"
 #include "query/WhereClause.h"
 
 namespace test = boost::test_tools;
@@ -486,7 +489,24 @@ static const std::vector< std::string > QUERIES = {
     "select shortName from Filter where shortName LIKE 'Z'",
 
     // DM-16532; this verifies that dotted IDs work for table+column ids. quoted dotted IDs are tested in the antlr4 test, below.
-    "SELECT Source.sourceId, Source.objectId From Source WHERE Source.objectId IN (386942193651348) ORDER BY Source.sourceId;"
+    "SELECT Source.sourceId, Source.objectId From Source WHERE Source.objectId IN (386942193651348) ORDER BY Source.sourceId;",
+
+    // tests for comparison operators that can be parsed by antlr2:
+    "SELECT ra_PS FROM Object WHERE objectId = 417857368235490;",   // =
+    "SELECT ra_PS FROM Object WHERE objectId <> 417857368235490;",  // <>
+    "SELECT ra_PS FROM Object WHERE objectId != 417857368235490;",  // !=
+    "SELECT ra_PS FROM Object WHERE objectId < 417857368235490;",   // <
+    "SELECT ra_PS FROM Object WHERE objectId <= 417857368235490;",  // <=
+    "SELECT ra_PS FROM Object WHERE objectId >= 417857368235490;",  // >=
+    "SELECT ra_PS FROM Object WHERE objectId > 417857368235490;",   // >
+    "SELECT objectId, ra_PS FROM Object WHERE objectId IN (417857368235490, 420949744686724, 420954039650823);",    // IN
+    "SELECT objectId, ra_PS FROM Object WHERE objectId BETWEEN 417857368235490 AND 420949744686724;",   // BETWEEN
+    "SELECT * FROM Filter WHERE filterName LIKE 'dd';", // LIKE
+    "select objectId from Object where zFlags is NULL;",    // IS NULL
+    "select objectId from Object where zFlags is NOT NULL;",    // IS NOT NULL
+    "select objectId, iRadius_SG, ra_PS, decl_PS from Object where iRadius_SG > .5 AND ra_PS < 2 AND decl_PS < 3;", // AND
+    "select objectId from Object where objectId < 400000000000000 OR objectId > 430000000000000 ORDER BY objectId", // OR
+    "SELECT objectId from Object where ra_PS/2 > 1", // '/'
 };
 
 
@@ -617,6 +637,7 @@ BOOST_DATA_TEST_CASE(antlr_compare, QUERIES, query) {
     }
 
     BOOST_REQUIRE_MESSAGE(*a2SelectStatement == *a4SelectStatement, "Query IR is different for " << query <<
+        ", antlr2 selectStmt structure:" << *a2SelectStatement <<
         ", antlr4 selectStmt structure:" << *a4SelectStatement);
     BOOST_REQUIRE(a2QueryStr.str() == a4QueryStr.str());
 }
@@ -634,7 +655,7 @@ BOOST_DATA_TEST_CASE(antlr_compare, QUERIES, query) {
 struct Antlr4CompareQueries {
     Antlr4CompareQueries(std::string const & iQuery, std::string const & iCompQuery,
             std::function<void(query::SelectStmt::Ptr const&)> const & iModFunc,
-            std::string const & iSerializedQuery)
+            std::string const & iSerializedQuery=std::string())
         : query(iQuery)
         , compQuery(iCompQuery)
         , serializedQuery(iSerializedQuery)
@@ -663,7 +684,7 @@ std::ostream& operator<<(std::ostream& os, Antlr4CompareQueries const& i) {
 }
 
 static const std::vector<Antlr4CompareQueries> ANTLR4_COMPARE_QUERIES = {
-    // tests NOT LIKE
+    // tests NOT LIKE (which is 'NOT LIKE', different than 'NOT' and 'LIKE' operators separately)
     Antlr4CompareQueries(
         "SELECT shortName FROM Filter WHERE shortName NOT LIKE 'Z'",
         "select shortName from Filter where shortName LIKE 'Z'",
@@ -686,6 +707,249 @@ static const std::vector<Antlr4CompareQueries> ANTLR4_COMPARE_QUERIES = {
         nullptr,
         "SELECT Source.sourceId,Source.objectId FROM Source WHERE Source.objectId IN(386942193651348) ORDER BY Source.sourceId"
     ),
+
+    // tests the null-safe equals operator
+    Antlr4CompareQueries(
+        "SELECT ra_PS FROM Object WHERE objectId<=>417857368235490",
+        "SELECT ra_PS FROM Object WHERE objectId = 417857368235490",
+        [](query::SelectStmt::Ptr const & selectStatement) {
+            // change the equals op to be the null safe equals op
+            auto whereClauseRef = selectStatement->getWhereClause();
+            auto orTerm = std::dynamic_pointer_cast<query::OrTerm>(whereClauseRef.getRootTerm());
+            auto andTerm = std::dynamic_pointer_cast<query::AndTerm>(orTerm->_terms[0]);
+            auto boolFactor = std::dynamic_pointer_cast<query::BoolFactor>(andTerm->_terms[0]);
+            auto compPredicate = std::dynamic_pointer_cast<query::CompPredicate>(boolFactor->_terms[0]);
+            compPredicate->op = SqlSQL2Tokens::NULL_SAFE_EQUALS_OP;
+        }
+    ),
+
+    // tests the NOT BETWEEN operator
+    Antlr4CompareQueries(
+        "SELECT objectId,ra_PS FROM Object WHERE objectId NOT BETWEEN 417857368235490 AND 420949744686724",
+        "SELECT objectId, ra_PS FROM Object WHERE objectId BETWEEN 417857368235490 AND 420949744686724;",
+        [](query::SelectStmt::Ptr const & selectStatement) {
+            // change the BetweenPredicate's hasNot to true
+            auto whereClauseRef = selectStatement->getWhereClause();
+            auto orTerm = std::dynamic_pointer_cast<query::OrTerm>(whereClauseRef.getRootTerm());
+            auto andTerm = std::dynamic_pointer_cast<query::AndTerm>(orTerm->_terms[0]);
+            auto boolFactor = std::dynamic_pointer_cast<query::BoolFactor>(andTerm->_terms[0]);
+            auto betweenPredicate = std::dynamic_pointer_cast<query::BetweenPredicate>(boolFactor->_terms[0]);
+            betweenPredicate->hasNot = true;
+        }
+    ),
+
+    // tests the && operator.
+    // The Qserv IR converts && to AND as a result of the IR structure and how it serializes it to string.
+    Antlr4CompareQueries(
+        "select objectId, iRadius_SG, ra_PS, decl_PS from Object where iRadius_SG > .5 && ra_PS < 2 && decl_PS < 3;", // &&
+        "select objectId, iRadius_SG, ra_PS, decl_PS from Object where iRadius_SG > .5 AND ra_PS < 2 AND decl_PS < 3;", // AND
+        nullptr,
+        "SELECT objectId,iRadius_SG,ra_PS,decl_PS FROM Object WHERE iRadius_SG>.5 AND ra_PS<2 AND decl_PS<3"
+    ),
+
+    // tests the || operator.
+    // The Qserv IR converts || to OR as a result of the IR structure and how it serializes it to string.
+    Antlr4CompareQueries(
+        // The numbers used here; 400000000000000 and 430000000000000 are arbitrary, but do represent values
+        // that one may see for objectId in the lsst qserv database and so are reasonable choices for a unit
+        // test. 
+        "select objectId from Object where objectId < 400000000000000 || objectId > 430000000000000 ORDER BY objectId;", // ||
+        "select objectId from Object where objectId < 400000000000000 OR objectId > 430000000000000 ORDER BY objectId", // OR
+        nullptr,
+        "SELECT objectId FROM Object WHERE objectId<400000000000000 OR objectId>430000000000000 ORDER BY objectId"
+    ),
+
+    // tests NOT IN in the InPredicate
+    Antlr4CompareQueries(
+        "SELECT objectId, ra_PS FROM Object WHERE objectId NOT IN (417857368235490, 420949744686724, 420954039650823);",
+        "SELECT objectId, ra_PS FROM Object WHERE objectId IN (417857368235490, 420949744686724, 420954039650823);",
+        [](query::SelectStmt::Ptr const & selectStatement) {
+            // change the BetweenPredicate's hasNot to true
+            auto whereClauseRef = selectStatement->getWhereClause();
+            auto orTerm = std::dynamic_pointer_cast<query::OrTerm>(whereClauseRef.getRootTerm());
+            auto andTerm = std::dynamic_pointer_cast<query::AndTerm>(orTerm->_terms[0]);
+            auto boolFactor = std::dynamic_pointer_cast<query::BoolFactor>(andTerm->_terms[0]);
+            auto inPredicate = std::dynamic_pointer_cast<query::InPredicate>(boolFactor->_terms[0]);
+            inPredicate->hasNot = true;
+        },
+        "SELECT objectId,ra_PS FROM Object WHERE objectId NOT IN(417857368235490,420949744686724,420954039650823)"
+    ),
+
+    // tests the modulo operator
+    Antlr4CompareQueries(
+        "select objectId, ra_PS % 3, decl_PS from Object where ra_PS % 3 > 1.5",
+        "select objectId, ra_PS % 3, decl_PS from Object where ra_PS - 3 > 1.5",
+        [](query::SelectStmt::Ptr const & selectStatement) {
+            // change the subtraction value expr to modulo:
+            auto whereClauseRef = selectStatement->getWhereClause();
+            auto orTerm = std::dynamic_pointer_cast<query::OrTerm>(whereClauseRef.getRootTerm());
+            auto andTerm = std::dynamic_pointer_cast<query::AndTerm>(orTerm->_terms[0]);
+            auto boolFactor = std::dynamic_pointer_cast<query::BoolFactor>(andTerm->_terms[0]);
+            auto compPredicate = std::dynamic_pointer_cast<query::CompPredicate>(boolFactor->_terms[0]);
+            query::ValueExpr::FactorOp& factorOp = compPredicate->left->getFactorOpsRef()[0];
+            factorOp.op = query::ValueExpr::MODULO;
+        },
+        "SELECT objectId,(ra_PS % 3),decl_PS FROM Object WHERE (ra_PS % 3)>1.5"
+    ),
+
+    // tests the MOD operator
+    Antlr4CompareQueries(
+        "select objectId, ra_PS MOD 3, decl_PS from Object where ra_PS MOD 3 > 1.5",
+        "select objectId, ra_PS - 3, decl_PS from Object where ra_PS - 3 > 1.5",
+        [](query::SelectStmt::Ptr const & selectStatement) {
+            // change the subtraction values expr to modulo:
+            query::SelectList& selectList = selectStatement->getSelectList();
+            (*selectList.getValueExprList())[1]->getFactorOpsRef()[0].op = query::ValueExpr::MOD;
+            auto whereClauseRef = selectStatement->getWhereClause();
+            auto orTerm = std::dynamic_pointer_cast<query::OrTerm>(whereClauseRef.getRootTerm());
+            auto andTerm = std::dynamic_pointer_cast<query::AndTerm>(orTerm->_terms[0]);
+            auto boolFactor = std::dynamic_pointer_cast<query::BoolFactor>(andTerm->_terms[0]);
+            auto compPredicate = std::dynamic_pointer_cast<query::CompPredicate>(boolFactor->_terms[0]);
+            query::ValueExpr::FactorOp& factorOp = compPredicate->left->getFactorOpsRef()[0];
+            factorOp.op = query::ValueExpr::MOD;
+        },
+        "SELECT objectId,(ra_PS MOD 3),decl_PS FROM Object WHERE (ra_PS MOD 3)>1.5"
+    ),
+
+    // tests the DIV operator
+    Antlr4CompareQueries(
+        "SELECT objectId from Object where ra_PS DIV 2 > 1",
+        "SELECT objectId from Object where ra_PS/2 > 1",
+        [](query::SelectStmt::Ptr const & selectStatement) {
+              auto orTerm = std::dynamic_pointer_cast<query::OrTerm>(selectStatement->getWhereClause().getRootTerm());
+              auto andTerm = std::dynamic_pointer_cast<query::AndTerm>(orTerm->_terms[0]);
+              auto boolFactor = std::dynamic_pointer_cast<query::BoolFactor>(andTerm->_terms[0]);
+              auto compPredicate = std::dynamic_pointer_cast<query::CompPredicate>(boolFactor->_terms[0]);
+              query::ValueExpr::FactorOp& factorOp = compPredicate->left->getFactorOpsRef()[0];
+              factorOp.op = query::ValueExpr::DIV;
+        },
+        "SELECT objectId FROM Object WHERE (ra_PS DIV 2)>1"
+    ),
+
+    // tests the & operator
+    Antlr4CompareQueries(
+        "SELECT objectId from Object where objectID & 1 = 1",
+        "SELECT objectId from Object where objectID = 1",
+        [](query::SelectStmt::Ptr const & selectStatement) {
+              auto orTerm = std::dynamic_pointer_cast<query::OrTerm>(selectStatement->getWhereClause().getRootTerm());
+              auto andTerm = std::dynamic_pointer_cast<query::AndTerm>(orTerm->_terms[0]);
+              auto boolFactor = std::dynamic_pointer_cast<query::BoolFactor>(andTerm->_terms[0]);
+              auto compPredicate = std::dynamic_pointer_cast<query::CompPredicate>(boolFactor->_terms[0]);
+              compPredicate->left = std::make_shared<query::ValueExpr>(query::ValueExpr::FactorOpVector({
+                  query::ValueExpr::FactorOp(
+                          query::ValueFactor::newColumnRefFactor(query::ColumnRef::newShared("", "", "objectID")),
+                          query::ValueExpr::BIT_AND),
+                  query::ValueExpr::FactorOp(query::ValueFactor::newConstFactor("1"))
+              }));
+        },
+        "SELECT objectId FROM Object WHERE (objectID&1)=1"
+    ),
+
+    // tests the | operator
+    Antlr4CompareQueries(
+        "SELECT objectId from Object where objectID | 1 = 1",
+        "SELECT objectId from Object where objectID = 1",
+        [](query::SelectStmt::Ptr const & selectStatement) {
+              auto orTerm = std::dynamic_pointer_cast<query::OrTerm>(selectStatement->getWhereClause().getRootTerm());
+              auto andTerm = std::dynamic_pointer_cast<query::AndTerm>(orTerm->_terms[0]);
+              auto boolFactor = std::dynamic_pointer_cast<query::BoolFactor>(andTerm->_terms[0]);
+              auto compPredicate = std::dynamic_pointer_cast<query::CompPredicate>(boolFactor->_terms[0]);
+              compPredicate->left = std::make_shared<query::ValueExpr>(query::ValueExpr::FactorOpVector({
+                  query::ValueExpr::FactorOp(
+                          query::ValueFactor::newColumnRefFactor(query::ColumnRef::newShared("", "", "objectID")),
+                          query::ValueExpr::BIT_OR),
+                  query::ValueExpr::FactorOp(query::ValueFactor::newConstFactor("1"))
+              }));
+        },
+        "SELECT objectId FROM Object WHERE (objectID|1)=1"
+    ),
+
+    // tests the >> operator
+    Antlr4CompareQueries(
+        "SELECT objectId from Object where objectID << 10 = 1",
+        "SELECT objectId from Object where objectID = 1",
+        [](query::SelectStmt::Ptr const & selectStatement) {
+              auto orTerm = std::dynamic_pointer_cast<query::OrTerm>(selectStatement->getWhereClause().getRootTerm());
+              auto andTerm = std::dynamic_pointer_cast<query::AndTerm>(orTerm->_terms[0]);
+              auto boolFactor = std::dynamic_pointer_cast<query::BoolFactor>(andTerm->_terms[0]);
+              auto compPredicate = std::dynamic_pointer_cast<query::CompPredicate>(boolFactor->_terms[0]);
+              compPredicate->left = std::make_shared<query::ValueExpr>(query::ValueExpr::FactorOpVector({
+                  query::ValueExpr::FactorOp(
+                          query::ValueFactor::newColumnRefFactor(query::ColumnRef::newShared("", "", "objectID")),
+                          query::ValueExpr::BIT_SHIFT_LEFT),
+                  query::ValueExpr::FactorOp(query::ValueFactor::newConstFactor("10"))
+              }));
+        },
+        "SELECT objectId FROM Object WHERE (objectID<<10)=1"
+    ),
+
+    // tests the << operator
+    Antlr4CompareQueries(
+        "SELECT objectId from Object where objectID >> 10 = 1",
+        "SELECT objectId from Object where objectID = 1",
+        [](query::SelectStmt::Ptr const & selectStatement) {
+              auto orTerm = std::dynamic_pointer_cast<query::OrTerm>(selectStatement->getWhereClause().getRootTerm());
+              auto andTerm = std::dynamic_pointer_cast<query::AndTerm>(orTerm->_terms[0]);
+              auto boolFactor = std::dynamic_pointer_cast<query::BoolFactor>(andTerm->_terms[0]);
+              auto compPredicate = std::dynamic_pointer_cast<query::CompPredicate>(boolFactor->_terms[0]);
+              compPredicate->left = std::make_shared<query::ValueExpr>(query::ValueExpr::FactorOpVector({
+                  query::ValueExpr::FactorOp(
+                          query::ValueFactor::newColumnRefFactor(query::ColumnRef::newShared("", "", "objectID")),
+                          query::ValueExpr::BIT_SHIFT_RIGHT),
+                  query::ValueExpr::FactorOp(query::ValueFactor::newConstFactor("10"))
+              }));
+        },
+        "SELECT objectId FROM Object WHERE (objectID>>10)=1"
+    ),
+
+    // tests the ^ operator
+    Antlr4CompareQueries(
+        "SELECT objectId from Object where objectID ^ 1 = 1",
+        "SELECT objectId from Object where objectID = 1",
+        [](query::SelectStmt::Ptr const & selectStatement) {
+              auto orTerm = std::dynamic_pointer_cast<query::OrTerm>(selectStatement->getWhereClause().getRootTerm());
+              auto andTerm = std::dynamic_pointer_cast<query::AndTerm>(orTerm->_terms[0]);
+              auto boolFactor = std::dynamic_pointer_cast<query::BoolFactor>(andTerm->_terms[0]);
+              auto compPredicate = std::dynamic_pointer_cast<query::CompPredicate>(boolFactor->_terms[0]);
+              compPredicate->left = std::make_shared<query::ValueExpr>(query::ValueExpr::FactorOpVector({
+                  query::ValueExpr::FactorOp(
+                          query::ValueFactor::newColumnRefFactor(query::ColumnRef::newShared("", "", "objectID")),
+                          query::ValueExpr::BIT_XOR),
+                  query::ValueExpr::FactorOp(query::ValueFactor::newConstFactor("1"))
+              }));
+        },
+        "SELECT objectId FROM Object WHERE (objectID^1)=1"
+    ),
+
+    // tests NOT with a BoolFactor
+    Antlr4CompareQueries(
+        "select * from Filter where NOT filterId > 1 AND filterId < 6",
+        "select * from Filter where filterId > 1 AND filterId < 6",
+        [](query::SelectStmt::Ptr const & selectStatement) {
+            // flip the 'not' on the filterId boolFactor to make it 'not'
+            auto whereClauseRef = selectStatement->getWhereClause();
+            auto orTerm = std::dynamic_pointer_cast<query::OrTerm>(whereClauseRef.getRootTerm());
+            auto andTerm = std::dynamic_pointer_cast<query::AndTerm>(orTerm->_terms[0]);
+            auto boolFactor = std::dynamic_pointer_cast<query::BoolFactor>(andTerm->_terms[0]);
+            boolFactor->setHasNot(true);
+        },
+        "SELECT * FROM Filter WHERE NOT filterId>1 AND filterId<6"
+    ),
+
+    // tests NOT with an AND term
+    Antlr4CompareQueries(
+        "select * from Filter where NOT (filterId > 1 AND filterId < 6)",
+        "select * from Filter where (filterId > 1 AND filterId < 6)",
+        [](query::SelectStmt::Ptr const & selectStatement) {
+            // flip the 'not' on the AndTerm to make it 'not'
+            auto whereClauseRef = selectStatement->getWhereClause();
+            auto orTerm = std::dynamic_pointer_cast<query::OrTerm>(whereClauseRef.getRootTerm());
+            auto andTerm = std::dynamic_pointer_cast<query::AndTerm>(orTerm->_terms[0]);
+            auto boolFactor = std::dynamic_pointer_cast<query::BoolFactor>(andTerm->_terms[0]);
+            boolFactor->setHasNot(true);
+        },
+        "SELECT * FROM Filter WHERE NOT(filterId>1 AND filterId<6)"
+    ),
 };
 
 
@@ -706,8 +970,11 @@ BOOST_DATA_TEST_CASE(antlr4_compare, ANTLR4_COMPARE_QUERIES, queryInfo) {
 
     // verify the selectStatements are now the same:
     BOOST_REQUIRE_EQUAL(*selectStatement, *compSelectStatement);
+    BOOST_TEST_MESSAGE("antlr4 selectStmt structure:" << *selectStatement);
     // verify the selectStatement converted back to sql is the same as the original query:
-    BOOST_REQUIRE_EQUAL(selectStatement->getQueryTemplate().sqlFragment(), queryInfo.serializedQuery);
+    BOOST_REQUIRE_EQUAL(selectStatement->getQueryTemplate().sqlFragment(),
+            (queryInfo.serializedQuery != "" ? queryInfo.serializedQuery : queryInfo.query));
+
 }
 
 
@@ -756,12 +1023,6 @@ static const std::vector< ParseErrorQueryInfo > PARSE_ERROR_QUERIES = {
     ParseErrorQueryInfo(
         "SELECT count(*) AS n, AVG(ra_PS), AVG(decl_PS), _chunkId FROM Object GROUP BY _chunkId;",
         "ParseException:Error parsing query, near \"_chunkId\", Identifiers in Qserv may not start with an underscore."),
-
-    ParseErrorQueryInfo(
-        "select objectId, sro.*, (sro.refObjectId-1)/2%pow(2,10), typeId "
-            "from Source s join RefObjMatch rom using (objectId) "
-            "join SimRefObject sro using (refObjectId) where isStar =1 limit 10;",
-        "ParseException:Error parsing query, near \"%\", Unhandled operator type:%"),
 
     ParseErrorQueryInfo(
         "LECT sce.filterName,sce.field "

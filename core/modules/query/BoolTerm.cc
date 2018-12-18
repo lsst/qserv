@@ -66,10 +66,7 @@ std::ostream& operator<<(std::ostream& os, BoolTerm const* bt) {
     (nullptr == bt) ? os << "nullptr" : os << *bt;
     return os;
 }
-std::ostream& OrTerm::putStream(std::ostream& os) const {
-    return QueryTemplate::renderDbg(os, *this);
-}
-std::ostream& AndTerm::putStream(std::ostream& os) const {
+std::ostream& LogicalTerm::putStream(std::ostream& os) const {
     return QueryTemplate::renderDbg(os, *this);
 }
 std::ostream& BoolFactor::putStream(std::ostream& os) const {
@@ -122,6 +119,9 @@ void AndTerm::renderTo(QueryTemplate& qt) const {
 }
 void BoolFactor::renderTo(QueryTemplate& qt) const {
     std::string s;
+    if (_hasNot) {
+        qt.append("NOT");
+    }
     renderList(qt, _terms, getOpPrecedence(), s);
 }
 void UnknownTerm::renderTo(QueryTemplate& qt) const {
@@ -147,7 +147,7 @@ void BoolTermFactor::renderTo(QueryTemplate& qt) const {
     if (_term) { _term->renderTo(qt); }
 }
 
-std::shared_ptr<BoolTerm> OrTerm::getReduced() {
+std::shared_ptr<BoolTerm> LogicalTerm::getReduced() {
     // Can I eliminate myself?
     if (_terms.size() == 1) {
         std::shared_ptr<BoolTerm> reduced = _terms.front()->getReduced();
@@ -155,20 +155,8 @@ std::shared_ptr<BoolTerm> OrTerm::getReduced() {
         else { return _terms.front(); }
     } else { // Get reduced versions of my children.
         // FIXME: Apply reduction on each term.
-        // If reduction was successful on any child, construct a new or-term.
-    }
-    return std::shared_ptr<BoolTerm>();
-}
-
-std::shared_ptr<BoolTerm> AndTerm::getReduced() {
-    // Can I eliminate myself?
-    if (_terms.size() == 1) {
-        std::shared_ptr<BoolTerm> reduced = _terms.front()->getReduced();
-        if (reduced) { return reduced; }
-        else { return _terms.front(); }
-    } else { // Get reduced versions of my children.
-        // FIXME: Apply reduction on each term.
-        // If reduction was successful on any child, construct a new and-term.
+        // If reduction was successful on any child, construct a new LogicalTerm of the same subclass type
+        // (AndTerm, OrTerm, etc).
     }
     return std::shared_ptr<BoolTerm>();
 }
@@ -246,14 +234,7 @@ std::shared_ptr<BoolTerm> BoolFactor::getReduced() {
         hasReduction = true;
     }
     if (hasReduction) {
-        BoolFactor* bf = new BoolFactor();
-        bf->_terms = newTerms;
-#if 0
-        QueryTemplate qt;
-        bf->renderTo(qt);
-        LOGS(_log, LOG_LVL_DEBUG, "reduced. " << qt.generate());
-#endif
-        return std::shared_ptr<BoolFactor>(bf);
+        return std::make_shared<BoolFactor>(newTerms, _hasNot);
     } else {
         return std::shared_ptr<BoolTerm>();
     }
@@ -296,6 +277,7 @@ std::shared_ptr<BoolTerm> AndTerm::clone() const {
 }
 std::shared_ptr<BoolTerm> BoolFactor::clone() const {
     std::shared_ptr<BoolFactor> t = std::make_shared<BoolFactor>();
+    t->_hasNot = _hasNot;
     copyTerms<BoolFactorTerm::PtrVector, deepCopy>(t->_terms, _terms);
     return t;
 }
@@ -361,11 +343,12 @@ bool AndTerm::operator==(const BoolTerm& rhs) const {
 }
 std::shared_ptr<BoolTerm> BoolFactor::copySyntax() const {
     std::shared_ptr<BoolFactor> bf = std::make_shared<BoolFactor>();
+    bf->_hasNot = _hasNot;
     copyTerms<BoolFactorTerm::PtrVector, syntaxCopy>(bf->_terms, _terms);
     return bf;
 }
 void BoolFactor::dbgPrint(std::ostream& os) const {
-    os << "BoolFactor(terms:" << util::printable(_terms) << ")";
+    os << "BoolFactor(terms:" << util::printable(_terms) << ", hasNot:" << _hasNot << ")";
 }
 void UnknownTerm::dbgPrint(std::ostream& os) const {
     os << "UnknownTerm()";

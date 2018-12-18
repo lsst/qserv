@@ -102,6 +102,7 @@ void CompPredicate::renderTo(QueryTemplate& qt) const {
     r.applyToQT(left);
     switch(op) {
     case SqlSQL2Tokens::EQUALS_OP: qt.append("="); break;
+    case SqlSQL2Tokens::NULL_SAFE_EQUALS_OP: qt.append("<=>"); break;
     case SqlSQL2Tokens::NOT_EQUALS_OP: qt.append("<>"); break;
     case SqlSQL2Tokens::LESS_THAN_OP: qt.append("<"); break;
     case SqlSQL2Tokens::GREATER_THAN_OP: qt.append(">"); break;
@@ -115,6 +116,7 @@ void CompPredicate::renderTo(QueryTemplate& qt) const {
 void InPredicate::renderTo(QueryTemplate& qt) const {
     ValueExpr::render r(qt, false);
     r.applyToQT(value);
+    if (hasNot) qt.append("NOT");
     qt.append("IN");
     ValueExpr::render rComma(qt, true);
     qt.append("(");
@@ -127,6 +129,7 @@ void InPredicate::renderTo(QueryTemplate& qt) const {
 void BetweenPredicate::renderTo(QueryTemplate& qt) const {
     ValueExpr::render r(qt, false);
     r.applyToQT(value);
+    if (hasNot) qt.append("NOT");
     qt.append("BETWEEN");
     r.applyToQT(minValue);
     qt.append("AND");
@@ -236,12 +239,14 @@ BoolFactorTerm::Ptr InPredicate::clone() const {
     std::transform(cands.begin(), cands.end(),
                    std::back_inserter(p->cands),
                    valueExprCopy());
+    p->hasNot = hasNot;
     return BoolFactorTerm::Ptr(p);
 }
 
 void InPredicate::dbgPrint(std::ostream& os) const {
     os << "InPredicate(value:" << value;
     os << ", cands:" << util::printable(cands);
+    os << ", hasNot:" << hasNot;
     os << ")";
 }
 
@@ -251,12 +256,14 @@ bool InPredicate::operator==(const BoolFactorTerm& rhs) const {
         return false;
     }
     return util::ptrCompare<ValueExpr>(value, rhsInPredicate->value) &&
-           util::vectorPtrCompare<ValueExpr>(cands, rhsInPredicate->cands);
+           util::vectorPtrCompare<ValueExpr>(cands, rhsInPredicate->cands) &&
+           hasNot == rhsInPredicate->hasNot;
 }
 
 BoolFactorTerm::Ptr BetweenPredicate::clone() const {
     BetweenPredicate::Ptr p = std::make_shared<BetweenPredicate>();
     if (value) p->value = value->clone();
+    p->hasNot = hasNot;
     if (minValue) p->minValue = minValue->clone();
     if (maxValue) p->maxValue = maxValue->clone();
     return BoolFactorTerm::Ptr(p);
@@ -264,6 +271,7 @@ BoolFactorTerm::Ptr BetweenPredicate::clone() const {
 
 void BetweenPredicate::dbgPrint(std::ostream& os) const {
     os << "BetweenPredicate(value:" << value;
+    os << ", NOT:" << (hasNot ? "true" : "false");
     os << ", minValue:" << minValue;
     os << ", maxValue:" << maxValue;
     os << ")";
@@ -275,6 +283,7 @@ bool BetweenPredicate::operator==(const BoolFactorTerm& rhs) const {
         return false;
     }
     return util::ptrCompare<ValueExpr>(value, rhsBetweenPredicate->value) &&
+           hasNot == rhsBetweenPredicate->hasNot &&
            util::ptrCompare<ValueExpr>(minValue, rhsBetweenPredicate->minValue) &&
            util::ptrCompare<ValueExpr>(maxValue, rhsBetweenPredicate->maxValue);
 }

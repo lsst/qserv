@@ -43,8 +43,10 @@ namespace lsst {
 namespace qserv {
 namespace query {
 
+
 // Forward
 class QueryTemplate;
+
 
 ///  Predicate is a representation of a SQL predicate.
 /// predicate :
@@ -65,19 +67,13 @@ class Predicate : public BoolFactorTerm {
 public:
     typedef std::shared_ptr<Predicate> Ptr;
 
-    virtual ~Predicate() = default;
+    ~Predicate() override = default;
 
-    virtual char const* getName() const { return "Predicate"; }
-
+    virtual char const* getName() const = 0;
     friend std::ostream& operator<<(std::ostream& os, Predicate const& bt);
-    virtual std::ostream& putStream(std::ostream& os) const = 0;
-    virtual void renderTo(QueryTemplate& qt) const = 0;
-
-    virtual BoolFactorTerm::Ptr copySyntax() const { return BoolFactorTerm::Ptr(); }
-
-protected:
-    virtual void dbgPrint(std::ostream& os) const = 0;
+    BoolFactorTerm::Ptr copySyntax() const override { return BoolFactorTerm::Ptr(); }
 };
+
 
 /// GenericPredicate is a Predicate whose structure whose semantic meaning
 /// is unimportant for qserv
@@ -85,15 +81,12 @@ class GenericPredicate : public Predicate {
 public:
     typedef std::shared_ptr<GenericPredicate> Ptr;
 
-    virtual ~GenericPredicate() = default;
+    ~GenericPredicate() override = default;
 
-    virtual char const* getName() const { return "GenericPredicate"; }
-
-    virtual std::ostream& putStream(std::ostream& os) const = 0;
-    virtual void renderTo(QueryTemplate& qt) const = 0;
-    virtual BoolFactorTerm::Ptr clone() const;
-    virtual BoolFactorTerm::Ptr copySyntax() const { return clone(); }
+    BoolFactorTerm::Ptr clone() const override;
+    BoolFactorTerm::Ptr copySyntax() const override { return clone(); }
 };
+
 
 /// CompPredicate is a Predicate involving a row value compared to another row value.
 /// (literals can be row values)
@@ -101,22 +94,18 @@ class CompPredicate : public Predicate {
 public:
     typedef std::shared_ptr<CompPredicate> Ptr;
 
-    virtual ~CompPredicate() = default;
+    ~CompPredicate() override = default;
 
-    virtual char const* getName() const { return "CompPredicate"; }
-
-    virtual void findValueExprs(ValueExprPtrVector& vector) const;
-    virtual void findColumnRefs(ColumnRef::Vector& vector) const;
-
-    virtual std::ostream& putStream(std::ostream& os) const;
-    virtual void renderTo(QueryTemplate& qt) const;
-    /// Deep copy this term.
-    virtual BoolFactorTerm::Ptr clone() const;
-    virtual BoolFactorTerm::Ptr copySyntax() const { return clone(); }
+    char const* getName() const override { return "CompPredicate"; }
+    void findValueExprs(ValueExprPtrVector& vector) const override;
+    void findColumnRefs(ColumnRef::Vector& vector) const override;
+    std::ostream& putStream(std::ostream& os) const override;
+    void renderTo(QueryTemplate& qt) const override;
+    BoolFactorTerm::Ptr clone() const override;
+    BoolFactorTerm::Ptr copySyntax() const override { return clone(); }
+    bool operator==(const BoolFactorTerm& rhs) const override;
 
     static int lookupOp(char const* op);
-
-    bool operator==(const BoolFactorTerm& rhs) const override;
 
     ValueExprPtr left;
     int op; // Parser token type of operator
@@ -126,62 +115,66 @@ protected:
     void dbgPrint(std::ostream& os) const override;
 };
 
+
 /// InPredicate is a Predicate comparing a row value to a set
 class InPredicate : public Predicate {
 public:
     typedef std::shared_ptr<InPredicate> Ptr;
 
-    virtual ~InPredicate() = default;
+    InPredicate(ValueExprPtr const & iValue, ValueExprPtrVector const & iCands, bool iHasNot)
+            : value(iValue), cands(iCands), hasNot(iHasNot)
+    {}
 
-    virtual char const* getName() const { return "InPredicate"; }
+    InPredicate() : hasNot(false) {}
 
-    virtual void findValueExprs(ValueExprPtrVector& vector) const;
-    virtual void findColumnRefs(ColumnRef::Vector& vector) const;
+    ~InPredicate() override = default;
 
-    virtual std::ostream& putStream(std::ostream& os) const;
-    virtual void renderTo(QueryTemplate& qt) const;
-    /// Deep copy this term.
-    virtual BoolFactorTerm::Ptr clone() const;
-    virtual BoolFactorTerm::Ptr copySyntax() const { return clone();}
-
+    char const* getName() const override { return "InPredicate"; }
+    void findValueExprs(ValueExprPtrVector& vector) const override;
+    void findColumnRefs(ColumnRef::Vector& vector) const override;
+    std::ostream& putStream(std::ostream& os) const override;
+    void renderTo(QueryTemplate& qt) const override;
+    BoolFactorTerm::Ptr clone() const override;
+    BoolFactorTerm::Ptr copySyntax() const override { return clone();}
     bool operator==(const BoolFactorTerm& rhs) const override;
 
     ValueExprPtr value;
     ValueExprPtrVector cands;
+    bool hasNot;
 
 protected:
     void dbgPrint(std::ostream& os) const override;
 };
 
+
 /// BetweenPredicate is a Predicate comparing a row value to a range
 class BetweenPredicate : public Predicate {
 public:
-    BetweenPredicate() {}
-    BetweenPredicate(ValueExprPtr iValue, ValueExprPtr iMinValue, ValueExprPtr iMaxValue)
-    : value(iValue), minValue(iMinValue), maxValue(iMaxValue) {}
+    BetweenPredicate() : hasNot(false) {}
+    BetweenPredicate(ValueExprPtr iValue, ValueExprPtr iMinValue, ValueExprPtr iMaxValue, bool iHasNot)
+    : value(iValue), minValue(iMinValue), maxValue(iMaxValue), hasNot(iHasNot) {}
     typedef std::shared_ptr<BetweenPredicate> Ptr;
 
-    virtual ~BetweenPredicate() = default;
+    ~BetweenPredicate() override = default;
 
-    virtual char const* getName() const { return "BetweenPredicate"; }
-
-    virtual void findValueExprs(ValueExprPtrVector& vector) const;
-    virtual void findColumnRefs(ColumnRef::Vector& vector) const;
-    virtual std::ostream& putStream(std::ostream& os) const;
-    virtual void renderTo(QueryTemplate& qt) const;
-    /// Deep copy this term.
-    virtual BoolFactorTerm::Ptr clone() const;
-    virtual BoolFactorTerm::Ptr copySyntax() const { return clone(); }
-
+    char const* getName() const override { return "BetweenPredicate"; }
+    void findValueExprs(ValueExprPtrVector& vector) const override;
+    void findColumnRefs(ColumnRef::Vector& vector) const override;
+    std::ostream& putStream(std::ostream& os) const override;
+    void renderTo(QueryTemplate& qt) const override;
+    BoolFactorTerm::Ptr clone() const override;
+    BoolFactorTerm::Ptr copySyntax() const override { return clone(); }
     bool operator==(const BoolFactorTerm& rhs) const override;
 
     ValueExprPtr value;
     ValueExprPtr minValue;
     ValueExprPtr maxValue;
+    bool hasNot;
 
 protected:
     void dbgPrint(std::ostream& os) const override;
 };
+
 
 /// LikePredicate is a Predicate involving a row value compared to a pattern
 /// (pattern is a char-valued value expression
@@ -189,18 +182,15 @@ class LikePredicate : public Predicate {
 public:
     typedef std::shared_ptr<LikePredicate> Ptr;
 
-    virtual ~LikePredicate() = default;
+    ~LikePredicate()  override = default;
 
-    virtual char const* getName() const { return "LikePredicate"; }
-
-    virtual void findValueExprs(ValueExprPtrVector& vector) const;
-    virtual void findColumnRefs(ColumnRef::Vector& vector) const;
-
-    virtual std::ostream& putStream(std::ostream& os) const;
-    virtual void renderTo(QueryTemplate& qt) const;
-    virtual BoolFactorTerm::Ptr clone() const;
-    virtual BoolFactorTerm::Ptr copySyntax() const { return clone(); }
-
+    char const* getName() const override { return "LikePredicate"; }
+    void findValueExprs(ValueExprPtrVector& vector) const override;
+    void findColumnRefs(ColumnRef::Vector& vector) const override;
+    std::ostream& putStream(std::ostream& os) const override;
+    void renderTo(QueryTemplate& qt) const override;
+    BoolFactorTerm::Ptr clone() const override;
+    BoolFactorTerm::Ptr copySyntax() const override { return clone(); }
     bool operator==(const BoolFactorTerm& rhs) const override;
 
     ValueExprPtr value;
@@ -210,6 +200,7 @@ public:
 protected:
     void dbgPrint(std::ostream& os) const override;
 };
+
 
 /// NullPredicate is a Predicate involving a row value compared to NULL
 class NullPredicate : public Predicate {
@@ -222,21 +213,18 @@ public:
     NullPredicate(ValueExprPtr valueExpr, bool hasNotNull)
     : value(valueExpr), hasNot(hasNotNull) {}
 
-    virtual ~NullPredicate() = default;
+    ~NullPredicate() override = default;
 
-    virtual char const* getName() const { return "NullPredicate"; }
-
-    virtual void findValueExprs(ValueExprPtrVector& vector) const;
-    virtual void findColumnRefs(ColumnRef::Vector& vector) const;
-
-    virtual std::ostream& putStream(std::ostream& os) const;
-    virtual void renderTo(QueryTemplate& qt) const;
-    virtual BoolFactorTerm::Ptr clone() const;
-    virtual BoolFactorTerm::Ptr copySyntax() const { return clone(); }
+    char const* getName() const { return "NullPredicate"; }
+    void findValueExprs(ValueExprPtrVector& vector) const;
+    void findColumnRefs(ColumnRef::Vector& vector) const;
+    std::ostream& putStream(std::ostream& os) const;
+    void renderTo(QueryTemplate& qt) const;
+    BoolFactorTerm::Ptr clone() const;
+    BoolFactorTerm::Ptr copySyntax() const { return clone(); }
+    bool operator==(const BoolFactorTerm& rhs) const override;
 
     static int reverseOp(int op); // Reverses operator token
-
-    bool operator==(const BoolFactorTerm& rhs) const override;
 
     ValueExprPtr value;
     bool hasNot;

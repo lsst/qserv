@@ -366,6 +366,7 @@ SelectParser::Ptr SelectParser::newInstance(std::string const& statement, AntlrV
     return std::shared_ptr<SelectParser>(new SelectParser(statement, v));
 }
 
+
 std::shared_ptr<query::SelectStmt> SelectParser::makeSelectStmt(
         std::string const& statement, AntlrVersion v) {
     auto parser = newInstance(statement, v);
@@ -389,6 +390,7 @@ void SelectParser::setup() {
     _aParser->setup();
     _aParser->run();
     _selectStmt = _aParser->getStatement();
+    LOGS(_log, LOG_LVL_TRACE, "Generated intermediate representation:" << _selectStmt);
 }
 
 }}} // namespace lsst::qserv::parser

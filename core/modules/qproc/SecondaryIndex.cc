@@ -54,7 +54,7 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qproc.SecondaryIndex");
 
-enum QueryType { IN, BETWEEN };
+enum QueryType { IN, NOT_IN, BETWEEN, NOT_BETWEEN };
 
 } // anonymous namespace
 
@@ -85,10 +85,15 @@ public:
             if (i->name == "sIndex"){
                 hasIndex = true;
                 _sqlLookup(output, i->params, IN);
-            }
-            else if (i->name == "sIndexBetween") {
+            } else if (i->name == "sIndexNotIn"){
+                hasIndex = true;
+                _sqlLookup(output, i->params, NOT_IN);
+            } else if (i->name == "sIndexBetween") {
                 hasIndex = true;
                 _sqlLookup(output, i->params, BETWEEN);
+            } else if (i->name == "sIndexNotBetween") {
+                hasIndex = true;
+                _sqlLookup(output, i->params, NOT_BETWEEN);
             }
         }
         if (!hasIndex) {
@@ -140,7 +145,7 @@ private:
         std::string sql = "SELECT " + std::string(CHUNK_COLUMN) + ", " + std::string(SUB_CHUNK_COLUMN) +
                           " FROM " + index_table +
                           " WHERE " + key_column;
-        if (query_type == QueryType::IN) {
+        if (query_type == QueryType::IN || query_type == QueryType::NOT_IN) {
             std::string secondaryVals; // params[3] to end
             bool first = true;
             // Do not use util::printable here. It adds unwanted characters.
@@ -152,15 +157,16 @@ private:
                 }
                 secondaryVals += *iter;
             }
-            sql += " IN (" + secondaryVals + ")";
-
-        } else if (query_type == QueryType::BETWEEN) {
+            sql += (query_type == QueryType::IN ? " IN" : " NOT IN");
+            sql += "(" + secondaryVals + ")";
+        } else if (query_type == QueryType::BETWEEN || query_type == QueryType::NOT_BETWEEN) {
             if (params.size() != 5) {
                 throw Bug("Incorrect parameters for bounded secondary index lookup ");
             }
             std::string const& par3 = *(iter++);
             std::string const& par4 = *iter;
-            sql += " BETWEEN " + par3 + " AND " + par4;
+            sql += (query_type == QueryType::BETWEEN ? " BETWEEN " : " NOT BETWEEN "); 
+            sql += par3 + " AND " + par4;
         }
 
         LOGS(_log, LOG_LVL_DEBUG, "secondary lookup sql:" << sql);

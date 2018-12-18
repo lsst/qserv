@@ -61,13 +61,14 @@ public:
     typedef std::shared_ptr<BoolFactorTerm> Ptr;
     typedef std::vector<Ptr> PtrVector;
     virtual ~BoolFactorTerm() {}
+    
     virtual Ptr clone() const = 0;
     virtual Ptr copySyntax() const = 0;
     virtual std::ostream& putStream(std::ostream& os) const = 0;
     virtual void renderTo(QueryTemplate& qt) const = 0;
 
-    virtual void findValueExprs(ValueExprPtrVector& vector) const {}
-    virtual void findColumnRefs(ColumnRef::Vector& vector) const {}
+    virtual void findValueExprs(ValueExprPtrVector& vector) const = 0;
+    virtual void findColumnRefs(ColumnRef::Vector& vector) const = 0;
 
     virtual bool operator==(const BoolFactorTerm& rhs) const = 0;
 
@@ -149,6 +150,9 @@ public:
     LogicalTerm(BoolTerm::PtrVector const & terms) : _terms(terms) {}
     LogicalTerm(BoolTerm::Ptr const & term) : _terms(BoolTerm::PtrVector{term}) {}
 
+    virtual PtrVector::iterator iterBegin() { return _terms.begin(); }
+    virtual PtrVector::iterator iterEnd() { return _terms.end(); }
+
     void addBoolTerm(BoolTerm::Ptr boolTerm) {
         _terms.push_back(boolTerm);
     }
@@ -177,6 +181,10 @@ public:
         }
     }
 
+    virtual std::shared_ptr<BoolTerm> getReduced();
+
+    virtual std::ostream& putStream(std::ostream& os) const;
+
     BoolTerm::PtrVector _terms;
 };
 
@@ -191,12 +199,6 @@ public:
     virtual char const* getName() const { return "OrTerm"; }
     virtual OpPrecedence getOpPrecedence() const { return OR_PRECEDENCE; }
 
-    virtual PtrVector::iterator iterBegin() { return _terms.begin(); }
-    virtual PtrVector::iterator iterEnd() { return _terms.end(); }
-
-    virtual std::shared_ptr<BoolTerm> getReduced();
-
-    virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
     virtual std::shared_ptr<BoolTerm> clone() const;
     virtual std::shared_ptr<BoolTerm> copySyntax() const;
@@ -220,12 +222,6 @@ public:
     virtual char const* getName() const { return "AndTerm"; }
     virtual OpPrecedence getOpPrecedence() const { return AND_PRECEDENCE; }
 
-    virtual PtrVector::iterator iterBegin() { return _terms.begin(); }
-    virtual PtrVector::iterator iterEnd() { return _terms.end(); }
-
-    virtual std::shared_ptr<BoolTerm> getReduced();
-
-    virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
 
     virtual std::shared_ptr<BoolTerm> clone() const;
@@ -242,12 +238,16 @@ protected:
 
 /// PassTerm is a catch-all boolean factor term that can be safely passed
 /// without further analysis or manipulation.
-class PassTerm : public BoolFactorTerm {
-public: // text
+class PassTerm : public BoolFactorTerm
+{
+  public: // text
     typedef std::shared_ptr<PassTerm> Ptr;
 
     PassTerm() {}
     PassTerm(const std::string& text) : _text(text) {}
+
+    void findValueExprs(ValueExprPtrVector& vector) const override {}
+    void findColumnRefs(ColumnRef::Vector& vector) const override {}
 
     virtual BoolFactorTerm::Ptr clone() const { return copySyntax(); }
     virtual BoolFactorTerm::Ptr copySyntax() const;
@@ -268,11 +268,11 @@ class BoolFactor : public BoolTerm {
 public:
     BoolFactor() = default;
 
-    BoolFactor(BoolFactorTerm::PtrVector const & terms)
-        : _terms(terms) {}
+    BoolFactor(BoolFactorTerm::PtrVector const & terms, bool hasNot=false)
+        : _terms(terms), _hasNot(hasNot) {}
 
-    BoolFactor(BoolFactorTerm::Ptr const & term)
-        : _terms({term}) {}
+    BoolFactor(BoolFactorTerm::Ptr const & term, bool hasNot=false)
+        : _terms({term}), _hasNot(hasNot) {}
 
     typedef std::shared_ptr<BoolFactor> Ptr;
     virtual char const* getName() const { return "BoolFactor"; }
@@ -298,6 +298,8 @@ public:
         }
     }
 
+    void setHasNot(bool hasNot) { _hasNot = hasNot; }
+
     virtual std::shared_ptr<BoolTerm> getReduced();
 
     virtual std::ostream& putStream(std::ostream& os) const;
@@ -308,6 +310,9 @@ public:
     bool operator==(const BoolTerm& rhs) const {
         auto rhsBoolFactor = dynamic_cast<const BoolFactor*>(&rhs);
         if (nullptr == rhsBoolFactor) {
+            return false;
+        }
+        if (_hasNot != rhsBoolFactor->_hasNot) {
             return false;
         }
         return util::vectorPtrCompare<BoolFactorTerm>(_terms, rhsBoolFactor->_terms);
@@ -322,6 +327,7 @@ public:
     }
 
     BoolFactorTerm::PtrVector _terms;
+    bool _hasNot;
 
 protected:
     void dbgPrint(std::ostream& os) const override;
@@ -351,6 +357,9 @@ protected:
 class PassListTerm : public BoolFactorTerm {
 public: // ( term, term, term )
     typedef std::shared_ptr<PassListTerm> Ptr;
+
+    void findValueExprs(ValueExprPtrVector& vector) const override {}
+    void findColumnRefs(ColumnRef::Vector& vector) const override {}
 
     virtual BoolFactorTerm::Ptr clone() const;
     virtual BoolFactorTerm::Ptr copySyntax() const;

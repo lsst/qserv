@@ -82,6 +82,14 @@ std::ostream& operator<<(std::ostream& os, const ValueExpr::FactorOp& factorOp) 
     case ValueExpr::MINUS: os << "MINUS"; break;
     case ValueExpr::MULTIPLY: os << "MULTIPLY"; break;
     case ValueExpr::DIVIDE: os << "DIVIDE"; break;
+    case ValueExpr::DIV: os << "DIV"; break;
+    case ValueExpr::MODULO: os << "MODULO"; break;
+    case ValueExpr::MOD: os << "MOD"; break;
+    case ValueExpr::BIT_SHIFT_LEFT: os << "BIT_SHIFT_LEFT"; break;
+    case ValueExpr::BIT_SHIFT_RIGHT: os << ">BIT_SHIFT_RIGHT>"; break;
+    case ValueExpr::BIT_AND: os << "BIT_AND"; break;
+    case ValueExpr::BIT_OR: os << "BIT_OR"; break;
+    case ValueExpr::BIT_XOR: os << "BIT_XOR"; break;
     default: os << "!!unhandled!!"; break;
     }
     os << ", factor:" << factorOp.factor;
@@ -111,6 +119,10 @@ ValueExprPtr ValueExpr::newSimple(std::shared_ptr<ValueFactor> vt)  {
 ////////////////////////////////////////////////////////////////////////
 ValueExpr::ValueExpr() {
 }
+
+
+ValueExpr::ValueExpr(FactorOpVector factorOpVec) : _factorOps(factorOpVec) {}
+
 
 std::shared_ptr<ColumnRef> ValueExpr::copyAsColumnRef() const {
     std::shared_ptr<ColumnRef> cr;
@@ -296,6 +308,14 @@ void ValueExpr::render::applyToQT(ValueExpr const& ve) {
         case ValueExpr::MINUS: _qt.append("-"); break;
         case ValueExpr::MULTIPLY: _qt.append("*"); break;
         case ValueExpr::DIVIDE: _qt.append("/"); break;
+        case ValueExpr::DIV: _qt.append("DIV"); break;
+        case ValueExpr::MODULO: _qt.append("%"); break;
+        case ValueExpr::MOD: _qt.append("MOD"); break;
+        case ValueExpr::BIT_SHIFT_LEFT: _qt.append("<<"); break;
+        case ValueExpr::BIT_SHIFT_RIGHT: _qt.append(">>"); break;
+        case ValueExpr::BIT_AND: _qt.append("&"); break;
+        case ValueExpr::BIT_OR: _qt.append("|"); break;
+        case ValueExpr::BIT_XOR: _qt.append("^"); break;
         default:
             std::ostringstream ss;
             ss << "Corruption: bad _op in ValueExpr optype=" << i->op;
