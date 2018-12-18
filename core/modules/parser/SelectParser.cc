@@ -308,6 +308,7 @@ public:
         NonRecoveringQSMySqlLexer lexer(&input, _statement);
         CommonTokenStream tokens(&lexer);
         tokens.fill();
+        LOGS(_log, LOG_LVL_TRACE, "Parsed tokens:" << util::printable(getTokenPairs(tokens, lexer)));
         QSMySqlParser parser(&tokens);
         parser.setErrorHandler(std::make_shared<Antlr4ErrorStrategy>(_statement));
         tree::ParseTree *tree = parser.root();
