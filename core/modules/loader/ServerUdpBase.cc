@@ -47,10 +47,6 @@ std::atomic<uint64_t> ServerUdpBase::_msgIdSeq{1};
 
 ServerUdpBase::ServerUdpBase(boost::asio::io_service& io_service, std::string const& host, int port)
     : _ioService(io_service),
-      // TODO DM-16652 as configuration files will have a direct effect on what best to do here.
-      //      _socket can throw, so either constructors need to be wrapped or this needs to be broken
-      //      out into another function. The program is basically sunk if this fails, so logging
-      //      and exiting is a reasonably valid course of action.
       _socket(io_service, boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), port)),
       _hostName(host), _port(port) {
     _receivePrepare(); // Prime the server for an incoming message.
@@ -88,7 +84,6 @@ void ServerUdpBase::_sendResponse() {
 
 
 void ServerUdpBase::sendBufferTo(std::string const& hostName, int port, BufferUdp& sendBuf) {
-    LOGS(_log, LOG_LVL_INFO, "&&& ServerUdpBase::sendBufferTo a");
 #if 0 // TODO Delete this if send_to proves to be safe.
     // The socket is not thread safe. To send on "_socket", it needs to be an async send
     // and then it needs to know when the message was sent so it can return and free the buffer.
@@ -119,7 +114,6 @@ void ServerUdpBase::sendBufferTo(std::string const& hostName, int port, BufferUd
     ip::udp::endpoint dest(boost::asio::ip::address::from_string(hostName), port);
     _socket.send_to(buffer(sendBuf.getReadCursor(), sendBuf.getBytesLeftToRead()), dest);
 #endif
-    LOGS(_log, LOG_LVL_INFO, "&&& ServerUdpBase::sendBufferTo b");
 }
 
 
