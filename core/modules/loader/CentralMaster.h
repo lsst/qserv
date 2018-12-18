@@ -52,14 +52,6 @@ namespace loader {
 class CentralMaster : public Central {
 public:
     /// Base class basic constructor, copy constructor, and operator= set to delete.
-    /* &&&
-    CentralMaster(boost::asio::io_service& ioService_,
-                  std::string const& masterHostName_, int masterPort_,
-                  int threadPoolSize, int loopSleepTime)
-        : Central(ioService_, masterHostName_, masterPort_, threadPoolSize, loopSleepTime) {
-        _server = std::make_shared<MasterServer>(ioService, masterHostName_, masterPort_, this);
-    }
-    */
     CentralMaster(boost::asio::io_service& ioService_, std::string const& masterHostName_,
                   MasterConfig const& cfg)
         : Central(ioService_, masterHostName_, cfg.getMasterPort(),

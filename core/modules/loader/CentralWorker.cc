@@ -50,29 +50,18 @@ namespace lsst {
 namespace qserv {
 namespace loader {
 
-/* &&&
-CentralWorker::CentralWorker(boost::asio::io_service& ioService_,
-    std::string const& masterHostName_,   int masterPort_,
-    int threadpoolSize_, int sleepTime_,
-    std::string const& hostName_,         int udpPort_,
-    boost::asio::io_context& io_context_, int tcpPort_)
-    : Central(ioService_, masterHostName_, masterPort_, threadpoolSize_, sleepTime_),
-      _hostName(hostName_), _udpPort(udpPort_),
-      _tcpPort(tcpPort_), _ioContext(io_context_) {
-    _server = std::make_shared<WorkerServer>(ioService, _hostName, _udpPort, this);
-    _tcpServer = std::make_shared<ServerTcpBase>(_ioContext, _tcpPort, this);
-    _tcpServer->runThread();
-    _startMonitoring(); // This must be the last item in the constructor.
-}
-*/
 
-
-CentralWorker(boost::asio::io_service& ioService, boost::asio::io_context& io_context_,
-                      std::string const& hostName_, WorkerConfig const& cfg)
-    : Central(ioService_, cfg.getMasterHostName(), cfg.getMasterPortUdp(),
-              cfg.getThreadpoolSize(), cfg.getLoopSleepTime()),
-      _hostName(hostName_), _udpPort(cfg.getWPortUdp()),
-      _tcpPort(cfg.getWPortTcp()), _ioContext(io_context_) {
+CentralWorker::CentralWorker(boost::asio::io_service& ioService_, boost::asio::io_context& io_context_,
+                             std::string const& hostName_, WorkerConfig const& cfg)
+    : Central(ioService_, cfg.getMasterHost(), cfg.getMasterPortUdp(),
+              cfg.getThreadPoolSize(), cfg.getLoopSleepTime()),
+      _hostName(hostName_),
+      _udpPort(cfg.getWPortUdp()),
+      _tcpPort(cfg.getWPortTcp()),
+      _ioContext(io_context_),
+      _recentAddLimit(cfg.getRecentAddLimit()),
+      _thresholdNeighborShift(cfg.getThresholdNeighborShift()),
+      _maxKeysToShift(cfg.getMaxKeysToShift()) {
 }
 
 
@@ -162,7 +151,10 @@ void CentralWorker::_monitor() {
                 }
                 dataShifted = _shiftIfNeeded(rMtxLG);
             } catch (LoaderMsgErr const& ex) {
-                LOGS(_log, LOG_LVL_WARN, "_monitor() catching exception " << ex.what());
+                LOGS(_log, LOG_LVL_ERROR, "_monitor() catching exception " << ex.what());
+                _rightDisconnect(rMtxLG);
+            } catch (boost::system::system_error const& ex) {
+                LOGS(_log, LOG_LVL_ERROR, "_monitor() catching boost exception " << ex.what());
                 _rightDisconnect(rMtxLG);
             }
         } else {
@@ -375,6 +367,7 @@ void CentralWorker::_shift(Direction direction, int keysToShift) {
         }
         // Wait for the KeyList response
         {
+            data.reset();
             auto msgElem = data.readFromSocket(*_rightSocket,
                                                "CentralWorker::_shift waiting for FROMRIGHT KeyList");
             auto keyListElem = std::dynamic_pointer_cast<StringElement>(msgElem);
@@ -383,7 +376,8 @@ void CentralWorker::_shift(Direction direction, int keysToShift) {
             }
             auto protoKeyList = keyListElem->protoParse<proto::KeyList>();
             if (protoKeyList == nullptr) {
-                throw LoaderMsgErr(ERR_LOC, "_shift FROMRIGHT failure to parse KeyList");
+                throw LoaderMsgErr(ERR_LOC, "_shift FROMRIGHT failure to parse KeyList size=" +
+                                   std::to_string(keyListElem->element.size()));
             }
 
             // TODO This is very similar to code in TcpBaseConnection::_handleShiftToRight and they should be merged.
@@ -1021,6 +1015,8 @@ std::unique_ptr<proto::WorkerKeysInfo> CentralWorker::_workerKeysInfoBuilder() {
     protoLeft->set_wid(_neighborLeft.getId());
     proto::Neighbor *protoRight = protoWKI->mutable_right();
     protoRight->set_wid(_neighborRight.getId());
+    LOGS(_log, LOG_LVL_INFO, "CentralWorker WorkerKeysInfo bbbbb name=" << _ourId <<
+                                 " keyCount=" << mapSize << " recentAdds=" << recentAdds);
     return protoWKI;
 }
 

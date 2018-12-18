@@ -221,13 +221,13 @@ int main(int argc, char* argv[]) {
     {
         bool threw = false;
         try {
-            MasterConfig masterCfg("core/modules/loader/masterBad.cnf");
+            MasterConfig masterCfg("core/modules/loader/config/masterBad.cnf");
         } catch (ConfigErr const& e) {
             threw = true;
-            LOGS(_log, LOG_LVL_INFO, "MasterConfig threw " << e.what());
+            LOGS(_log, LOG_LVL_INFO, "MasterConfig masterBad threw " << e.what());
         }
         if (not threw) {
-            LOGS(_log, LOG_LVL_ERROR, "MasterConfig should have thrown!! masterBad.cnf");
+            LOGS(_log, LOG_LVL_ERROR, "MasterConfig masterBad.cnf should have thrown!!");
             exit(-1);
         }
     }
@@ -235,67 +235,60 @@ int main(int argc, char* argv[]) {
     {
         bool threw = false;
         try {
-            WorkerConfig workerCfg("core/modules/loader/workerBad.cnf");
+            WorkerConfig workerCfg("core/modules/loader/config/workerBad.cnf");
         } catch (ConfigErr const& e) {
             threw = true;
-            LOGS(_log, LOG_LVL_INFO, "WorkerConfig threw " << e.what());
+            LOGS(_log, LOG_LVL_INFO, "WorkerConfig workerBad threw " << e.what());
         }
         if (not threw) {
-            LOGS(_log, LOG_LVL_ERROR, "WorkerConfig should have thrown!! workerBad.cnf");
+            LOGS(_log, LOG_LVL_ERROR, "WorkerConfig workerBad.cnf should have thrown!!");
             exit(-1);
         }
     }
 
-    MasterConfig masterCfg("core/modules/loader/master.cnf");
-    WorkerConfig workerCfg1("core/modules/loader/worker1.cnf");
-    WorkerConfig workerCfg2("core/modules/loader/worker2.cnf");
-    WorkerConfig workerCfg3("core/modules/loader/worker3.cnf");
-    ClientConfig clientCfg1("core/modules/loader/client1.cnf");
-    ClientConfig clientCfg2("core/modules/loader/client2.cnf");
-    ClientConfig clientCfg3("core/modules/loader/client3.cnf");
+    {
+        bool threw = false;
+        try {
+            ClientConfig workerCfg("core/modules/loader/config/clientBad.cnf");
+        } catch (ConfigErr const& e) {
+            threw = true;
+            LOGS(_log, LOG_LVL_INFO, "ClientConfig clientBad threw " << e.what());
+        }
+        if (not threw) {
+            LOGS(_log, LOG_LVL_ERROR, "ClinetConfig workerBad.cnf should have thrown!!");
+            exit(-1);
+        }
+    }
 
+    MasterConfig masterCfg("core/modules/loader/config/master.cnf");
     LOGS(_log, LOG_LVL_INFO, "masterCfg=" << masterCfg);
+
+    WorkerConfig workerCfg1("core/modules/loader/config/worker1.cnf");
     LOGS(_log, LOG_LVL_INFO, "workerCfg1=" << workerCfg1);
+    WorkerConfig workerCfg2("core/modules/loader/config/worker2.cnf");
     LOGS(_log, LOG_LVL_INFO, "workerCfg2=" << workerCfg2);
+    WorkerConfig workerCfg3("core/modules/loader/config/worker3.cnf");
     LOGS(_log, LOG_LVL_INFO, "workerCfg3=" << workerCfg3);
-    LOGS(_log, LOG_LVL_INFO, "clientCfg1=" << clientCfg1);
-    LOGS(_log, LOG_LVL_INFO, "clientCfg2=" << clientCfg2);
-    LOGS(_log, LOG_LVL_INFO, "clientCfg3=" << clientCfg3);
 
 
     /// Start a master server
-    std::string masterIP = "127.0.0.1"; // normally would be get host name
-    //int masterPort = 10042;
+    std::string ourHost = "127.0.0.1";
+    std::string masterIP = ourHost; // normally would be get host name
     boost::asio::io_service ioServiceMaster;
 
-    std::string worker1IP = "127.0.0.1";
-    int worker1Port = 10043;
-    int worker1TcpPort = 10143;
     boost::asio::io_service ioServiceWorker1;
     boost::asio::io_context ioContext1;
 
-    std::string worker2IP = "127.0.0.1";
-    int worker2Port = 10044;
-    int worker2TcpPort = 10144;
     boost::asio::io_service ioServiceWorker2;
     boost::asio::io_context ioContext2;
 
-    std::string client1AIP = "127.0.0.1";
-    int client1APort = 10050;
     boost::asio::io_service ioServiceClient1A;
 
-    std::string client1BIP = "127.0.0.1";
-    int client1BPort = 10051;
     boost::asio::io_service ioServiceClient1B;
 
-    std::string client2AIP = "127.0.0.1";
-    int client2APort = 10053;
     boost::asio::io_service ioServiceClient2A;
 
-    int threadpoolSize = 10;
-    int sleepTime = 100000; /// microseconds -> 0.1 seconds
 
-    // CentralMaster cMaster(ioServiceMaster, masterIP, masterPort, threadpoolSize, sleepTime); &&&
     CentralMaster cMaster(ioServiceMaster, masterIP, masterCfg);
     try {
         cMaster.start();
@@ -312,42 +305,65 @@ int main(int argc, char* argv[]) {
     cMaster.run();
 
     /// Start worker server 1
-    CentralWorker wCentral1(ioServiceWorker1, masterIP, masterPort,
-                            threadpoolSize, sleepTime,
-                            worker1IP, worker1Port,
-                            ioContext1, worker1TcpPort);
+    CentralWorker wCentral1(ioServiceWorker1, ioContext1, ourHost, workerCfg1);
+    try {
+        wCentral1.start();
+    } catch (boost::system::system_error const& e) {
+        LOGS(_log, LOG_LVL_ERROR, "wCentral1.start() failed e=" << e.what());
+        exit(-1);
+    }
+
     wCentral1.run();
     wCentral1.run();
     wCentral1.run();
 
 
     /// Start worker server 2
-    CentralWorker wCentral2(ioServiceWorker2, masterIP, masterPort,
-                            threadpoolSize, sleepTime,
-                            worker2IP, worker2Port,
-                            ioContext2, worker2TcpPort);
+    CentralWorker wCentral2(ioServiceWorker2, ioContext2, ourHost, workerCfg2);
+    try {
+        wCentral2.start();
+    } catch (boost::system::system_error const& e) {
+        LOGS(_log, LOG_LVL_ERROR, "wCentral2.start() failed e=" << e.what());
+        exit(-1);
+    }
     wCentral2.run();
     wCentral2.run();
     wCentral2.run();
 
 
-    CentralClient cCentral1A(ioServiceClient1A, masterIP, masterPort,
-                             threadpoolSize, sleepTime,
-                             worker1IP, worker1Port,
-                             client1AIP, client1APort);
+    ClientConfig clientCfg1("core/modules/loader/config/client1.cnf");
+    LOGS(_log, LOG_LVL_INFO, "clientCfg1=" << clientCfg1);
+    CentralClient cCentral1A(ioServiceClient1A, ourHost, clientCfg1);
+    try {
+        cCentral1A.start();
+    } catch (boost::system::system_error const& e) {
+        LOGS(_log, LOG_LVL_ERROR, "cCentral1A.start() failed e=" << e.what());
+        exit(-1);
+    }
     cCentral1A.run();
 
-    CentralClient cCentral1B(ioServiceClient1B, masterIP, masterPort,
-                             threadpoolSize, sleepTime,
-                             worker1IP, worker1Port,
-                             client1BIP, client1BPort);
-    cCentral1B.run();
 
-    CentralClient cCentral2A(ioServiceClient1A, masterIP, masterPort,
-                             threadpoolSize, sleepTime,
-                             worker2IP, worker2Port,
-                             client2AIP, client2APort);
+    ClientConfig clientCfg2("core/modules/loader/config/client2.cnf");
+    LOGS(_log, LOG_LVL_INFO, "clientCfg2=" << clientCfg2);
+    CentralClient cCentral2A(ioServiceClient2A, ourHost, clientCfg2);
+    try {
+        cCentral2A.start();
+    } catch (boost::system::system_error const& e) {
+        LOGS(_log, LOG_LVL_ERROR, "cCentral2A.start() failed e=" << e.what());
+        exit(-1);
+    }
     cCentral2A.run();
+
+    ClientConfig clientCfg3("core/modules/loader/config/client3.cnf");
+    LOGS(_log, LOG_LVL_INFO, "clientCfg3=" << clientCfg3);
+    CentralClient cCentral1B(ioServiceClient1A, ourHost, clientCfg3);
+    try {
+        cCentral1B.start();
+    } catch (boost::system::system_error const& e) {
+        LOGS(_log, LOG_LVL_ERROR, "cCentral1B.start() failed e=" << e.what());
+        exit(-1);
+    }
+    cCentral1B.run();
 
 
     /// Unknown message kind test. Pretending to be worker1.

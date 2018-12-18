@@ -43,15 +43,15 @@ public:
     WorkerConfig(WorkerConfig const&) = delete;
     WorkerConfig& operator=(WorkerConfig const&) = delete;
 
-    std::string getMasterHost() { return _masterHost->getValue(); }
-    int getMasterPortUdp() { return std::stoi(_masterPortUdp->getValue()); }
-    int getWPortUdp() { return std::stoi(_wPortUdp->getValue()); }
-    int getWPortTcp() { return std::stoi(_wPortTcp->getValue()); }
-    int getThreadPoolSize() { return std::stoi(_threadPoolSize->getValue()); }
-    int getRecentAddLimit() { return std::stoi(_recentAddLimit->getValue()); }
-    double getThresholdNeighborShift() { return std::stod(_thresholdNeighborShift->getValue()); }
-    int getMaxKeysToShift() { return std::stoi(_maxKeysToShift->getValue()); }
-    int getLoopSleepTime() { return std::stoi(_loopSleepTime->getValue()); }
+    std::string getMasterHost() const { return _masterHost->getValue(); }
+    int getMasterPortUdp() const { return std::stoi(_masterPortUdp->getValue()); }
+    int getWPortUdp() const { return std::stoi(_wPortUdp->getValue()); }
+    int getWPortTcp() const { return std::stoi(_wPortTcp->getValue()); }
+    int getThreadPoolSize() const { return std::stoi(_threadPoolSize->getValue()); }
+    int getRecentAddLimit() const { return std::stoi(_recentAddLimit->getValue()); }
+    double getThresholdNeighborShift() const { return std::stod(_thresholdNeighborShift->getValue()); }
+    int getMaxKeysToShift() const { return std::stoi(_maxKeysToShift->getValue()); }
+    int getLoopSleepTime() const { return std::stoi(_loopSleepTime->getValue()); }
 
     std::ostream& dump(std::ostream &os) const override;
 
@@ -60,27 +60,27 @@ private:
     WorkerConfig(util::ConfigStore const& configStore);
 
     /// Master host name
-    ConfigElement::Ptr _masterHost{ConfigElement::create(_list, header, "masterHost", true)};
+    ConfigElement::Ptr _masterHost{ConfigElement::create(cfgList, header, "masterHost", true)};
     /// Master UDP port
-    ConfigElement::Ptr _masterPortUdp{ConfigElement::create(_list, header, "masterPortUdp", true)};
+    ConfigElement::Ptr _masterPortUdp{ConfigElement::create(cfgList, header, "masterPortUdp", true)};
     /// UDP port for this worker. Reasonable value - 9876
-    ConfigElement::Ptr _wPortUdp{ConfigElement::create(_list, header, "wPortUdp", true)};
+    ConfigElement::Ptr _wPortUdp{ConfigElement::create(cfgList, header, "wPortUdp", true)};
     /// TCP port for this worker. Reasonable value - 9877
-    ConfigElement::Ptr _wPortTcp{ConfigElement::create(_list, header, "wPortTcp", true)};
+    ConfigElement::Ptr _wPortTcp{ConfigElement::create(cfgList, header, "wPortTcp", true)};
     /// Size of the thread pool. Reasonable value - 10
-    ConfigElement::Ptr _threadPoolSize{ConfigElement::create(_list, header, "threadPoolSize", true)};
+    ConfigElement::Ptr _threadPoolSize{ConfigElement::create(cfgList, header, "threadPoolSize", true)};
     /// Time limit for for a key added to the system to be considered recent seconds - 60000 = 1 minute
-    ConfigElement::Ptr _recentAddLimit{ConfigElement::create(_list, header, "recentAddLimit", true)};
+    ConfigElement::Ptr _recentAddLimit{ConfigElement::create(cfgList, header, "recentAddLimit", true)};
     /// If a worker has this many times the number of keys as the neighbor, keys should be shifted to
     /// the neighbor. "1.10" indicates keys should be shifted if one worker has 10% or more keys
     /// than the other.
-    ConfigElement::Ptr _thresholdNeighborShift{ConfigElement::create(_list, header,
+    ConfigElement::Ptr _thresholdNeighborShift{ConfigElement::create(cfgList, header,
                                                                      "thresholdNeighborShift", true)};
     /// The maximum number of keys to shift in a single iteration. During a shift iteration,
     /// there are no new key inserts or lookups. 10000 may be a reasonable value.
-    ConfigElement::Ptr _maxKeysToShift{ConfigElement::create(_list, header, "maxKeysToShift", true)};
+    ConfigElement::Ptr _maxKeysToShift{ConfigElement::create(cfgList, header, "maxKeysToShift", true)};
     /// Time spent sleeping between checking elements in the DoList in micro seconds. 100000
-    ConfigElement::Ptr _loopSleepTime{ConfigElement::create(_list, header, "loopSleepTime", false, "100000")};
+    ConfigElement::Ptr _loopSleepTime{ConfigElement::create(cfgList, header, "loopSleepTime", false, "100000")};
 };
 
 

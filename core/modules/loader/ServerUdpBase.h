@@ -38,10 +38,13 @@ namespace qserv {
 namespace loader {
 
 
+/// This class provides a basic UDP server. Derived classes can identify messages
+/// and take appropriate action.
 class ServerUdpBase {
 public:
     using Ptr = std::shared_ptr<ServerUdpBase>;
 
+    // This constructor can throw boost::system::system_error
     ServerUdpBase(boost::asio::io_service& io_service, std::string const& host, int port);
 
     ServerUdpBase() = delete;
