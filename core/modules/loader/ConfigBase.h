@@ -106,12 +106,12 @@ public:
 protected:
     ConfigBase() = default;
 
-    /// Set the values for all the elements in _list. This can
-    /// only be meaningfully called after the child class has filled in _list.
+    /// Set the values for all the elements in cfgList. This can
+    /// only be meaningfully called after the child class has filled in cfgList.
     void setFromConfig(util::ConfigStore const& configStore);
 
     /// A list of ConfigElement's that can be found in the configuration.
-    ConfigElement::CfgElementList _list;
+    ConfigElement::CfgElementList cfgList;
 };
 
 }}} // namespace lsst::qserv::loader

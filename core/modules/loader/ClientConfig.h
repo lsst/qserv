@@ -43,6 +43,16 @@ public:
     ClientConfig(ClientConfig const&) = delete;
     ClientConfig& operator=(ClientConfig const&) = delete;
 
+    std::string getMasterHost() const { return _masterHost->getValue(); }
+    int getMasterPortUdp() const { return std::stoi(_masterPortUdp->getValue()); }
+    int getDefWorkerPortUdp() const { return std::stoi(_defWorkerPortUdp->getValue()); }
+    std::string getDefWorkerHost() const { return _defWorkerHost->getValue(); }
+    int getClientPortUdp() const { return std::stoi(_clientPortUdp->getValue()); }
+    int getThreadPoolSize() const { return std::stoi(_threadPoolSize->getValue()); }
+    int getLoopSleepTime() const { return std::stoi(_loopSleepTime->getValue()); }
+    int getMaxLookups() const { return std::stoi(_maxLookups->getValue()); }
+    int getMaxInserts() const { return std::stoi(_maxInserts->getValue()); }
+
     std::ostream& dump(std::ostream &os) const override;
 
     std::string const header{"client"};
@@ -50,24 +60,26 @@ private:
     ClientConfig(util::ConfigStore const& configStore);
 
     /// Master host name
-    ConfigElement::Ptr _masterHost{ConfigElement::create(_list, header, "masterHost", true)};
+    ConfigElement::Ptr _masterHost{ConfigElement::create(cfgList, header, "masterHost", true)};
     /// Master UDP port
-    ConfigElement::Ptr _masterPortUdp{ConfigElement::create(_list, header, "masterPortUdp", true)};
+    ConfigElement::Ptr _masterPortUdp{ConfigElement::create(cfgList, header, "masterPortUdp", true)};
     /// UDP port for default worker. Reasonable value - 9876
-    ConfigElement::Ptr _clientPortUdp{ConfigElement::create(_list, header, "clientPortUdp", true)};
+    ConfigElement::Ptr _clientPortUdp{ConfigElement::create(cfgList, header, "clientPortUdp", true)};
     /// Default worker host name
-    ConfigElement::Ptr _defWorkerHost{ConfigElement::create(_list, header, "defWorkerHost", true)};
+    ConfigElement::Ptr _defWorkerHost{ConfigElement::create(cfgList, header, "defWorkerHost", true)};
     /// Default worker UDP port. Reasonable value - 9876
-    ConfigElement::Ptr _defWorkerPortUdp{ConfigElement::create(_list, header, "defWorkerPortUdp", true)};
+    ConfigElement::Ptr _defWorkerPortUdp{ConfigElement::create(cfgList, header, "defWorkerPortUdp", true)};
+    /// Size of the thread pool. Reasonable value - 10
+    ConfigElement::Ptr _threadPoolSize{ConfigElement::create(cfgList, header, "threadPoolSize", true)};
     /// Time spent sleeping between checking elements in the DoList in micro seconds. 100000
     ConfigElement::Ptr _loopSleepTime{
-        ConfigElement::create(_list, header, "loopSleepTime", false, "100000")};
+        ConfigElement::create(cfgList, header, "loopSleepTime", false, "100000")};
     /// Maximum number of lookup requests allowed in the DoList.
-    ConfigElement::Ptr _doListMaxLookups{
-        ConfigElement::create(_list, header, "doListMaxLookups", false, "90000")};
+    ConfigElement::Ptr _maxLookups{
+        ConfigElement::create(cfgList, header, "maxLookups", false, "90000")};
     /// Maximum number of insert requests allowed in the DoList.
-    ConfigElement::Ptr _doListMaxInserts{
-        ConfigElement::create(_list, header, "doListMaxInserts", false, "90000")};
+    ConfigElement::Ptr _maxInserts{
+        ConfigElement::create(cfgList, header, "maxInserts", false, "90000")};
 
 };
 

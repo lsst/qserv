@@ -59,13 +59,13 @@ private:
     MasterConfig(util::ConfigStore const& configStore);
 
     /// UDP port for the master - usually 9875
-    ConfigElement::Ptr _portUdp{ConfigElement::create(_list, header, "portUdp", true)};
+    ConfigElement::Ptr _portUdp{ConfigElement::create(cfgList, header, "portUdp", true)};
     /// Maximum average keys per worker before activating a new worker. 1000
-    ConfigElement::Ptr _maxKeysPerWorker{ConfigElement::create(_list, header, "maxKeysPerWorker", true)};
+    ConfigElement::Ptr _maxKeysPerWorker{ConfigElement::create(cfgList, header, "maxKeysPerWorker", true)};
     /// Size of the master's thread pool - 10
-    ConfigElement::Ptr _threadPoolSize{ConfigElement::create(_list, header, "threadPoolSize", true)};
+    ConfigElement::Ptr _threadPoolSize{ConfigElement::create(cfgList, header, "threadPoolSize", true)};
     /// Time spent sleeping between checking elements in the DoList in microseconds. 0.1 seconds.
-    ConfigElement::Ptr _loopSleepTime{ConfigElement::create(_list, header, "loopSleepTime", true)};
+    ConfigElement::Ptr _loopSleepTime{ConfigElement::create(cfgList, header, "loopSleepTime", true)};
 };
 
 }}} // namespace lsst::qserv::loader
