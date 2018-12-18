@@ -61,13 +61,14 @@ public:
     typedef std::shared_ptr<BoolFactorTerm> Ptr;
     typedef std::vector<Ptr> PtrVector;
     virtual ~BoolFactorTerm() {}
+    
     virtual Ptr clone() const = 0;
     virtual Ptr copySyntax() const = 0;
     virtual std::ostream& putStream(std::ostream& os) const = 0;
     virtual void renderTo(QueryTemplate& qt) const = 0;
 
-    virtual void findValueExprs(ValueExprPtrVector& vector) const {}
-    virtual void findColumnRefs(ColumnRef::Vector& vector) const {}
+    virtual void findValueExprs(ValueExprPtrVector& vector) const = 0;
+    virtual void findColumnRefs(ColumnRef::Vector& vector) const = 0;
 
     virtual bool operator==(const BoolFactorTerm& rhs) const = 0;
 
@@ -237,12 +238,16 @@ protected:
 
 /// PassTerm is a catch-all boolean factor term that can be safely passed
 /// without further analysis or manipulation.
-class PassTerm : public BoolFactorTerm {
-public: // text
+class PassTerm : public BoolFactorTerm
+{
+  public: // text
     typedef std::shared_ptr<PassTerm> Ptr;
 
     PassTerm() {}
     PassTerm(const std::string& text) : _text(text) {}
+
+    void findValueExprs(ValueExprPtrVector& vector) const override {}
+    void findColumnRefs(ColumnRef::Vector& vector) const override {}
 
     virtual BoolFactorTerm::Ptr clone() const { return copySyntax(); }
     virtual BoolFactorTerm::Ptr copySyntax() const;
@@ -352,6 +357,9 @@ protected:
 class PassListTerm : public BoolFactorTerm {
 public: // ( term, term, term )
     typedef std::shared_ptr<PassListTerm> Ptr;
+
+    void findValueExprs(ValueExprPtrVector& vector) const override {}
+    void findColumnRefs(ColumnRef::Vector& vector) const override {}
 
     virtual BoolFactorTerm::Ptr clone() const;
     virtual BoolFactorTerm::Ptr copySyntax() const;
