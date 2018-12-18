@@ -23,6 +23,7 @@
 
 // Class header
 #include "CentralClient.h"
+#include "ClientConfig.h"
 
 // system headers
 #include <iostream>
@@ -46,6 +47,22 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.loader.CentralClient");
 namespace lsst {
 namespace qserv {
 namespace loader {
+
+CentralClient::CentralClient(boost::asio::io_service& ioService_,
+                             std::string const& hostName, ClientConfig const& cfg)
+    : Central(ioService_, cfg.getMasterHost(), cfg.getMasterPortUdp(), cfg.getThreadPoolSize(), cfg.getLoopSleepTime()),
+      _workerHostName(cfg.getDefWorkerHost()), _workerPort(cfg.getDefWorkerPortUdp()),
+      _hostName(hostName), _udpPort(cfg.getClientPortUdp()),
+      _defWorkerHost(cfg.getDefWorkerHost()),
+      _defWorkerPortUdp(cfg.getDefWorkerPortUdp()),
+      _doListMaxLookups(cfg.getMaxLookups()),
+      _doListMaxInserts(cfg.getMaxInserts()) {
+}
+
+
+void CentralClient::start() {
+    _server = std::make_shared<ClientServer>(ioService, _hostName, _udpPort, this);
+}
 
 
 void CentralClient::handleKeyInfo(LoaderMsg const& inMsg, BufferUdp::Ptr const& data) {

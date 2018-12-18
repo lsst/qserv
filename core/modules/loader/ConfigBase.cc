@@ -79,7 +79,7 @@ std::ostream& operator<<(std::ostream &os, ConfigElement const& elem) {
 
 
 void ConfigBase::setFromConfig(util::ConfigStore const& configStore) {
-    for (auto& elem:_list) {
+    for (auto& elem:cfgList) {
         elem->setFromConfig(configStore);
     }
 }
@@ -87,7 +87,7 @@ void ConfigBase::setFromConfig(util::ConfigStore const& configStore) {
 
 std::ostream& ConfigBase::dump(std::ostream &os) const {
     os << "(ConfigBase: ";
-    for (auto&& elem:_list) {
+    for (auto&& elem:cfgList) {
         os << *elem << " ";
     }
     os << ")";
