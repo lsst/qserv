@@ -51,7 +51,6 @@ namespace loader {
 CentralClient::CentralClient(boost::asio::io_service& ioService_,
                              std::string const& hostName, ClientConfig const& cfg)
     : Central(ioService_, cfg.getMasterHost(), cfg.getMasterPortUdp(), cfg.getThreadPoolSize(), cfg.getLoopSleepTime()),
-      _workerHostName(cfg.getDefWorkerHost()), _workerPort(cfg.getDefWorkerPortUdp()),
       _hostName(hostName), _udpPort(cfg.getClientPortUdp()),
       _defWorkerHost(cfg.getDefWorkerHost()),
       _defWorkerPortUdp(cfg.getDefWorkerPortUdp()),
@@ -208,7 +207,7 @@ void CentralClient::_keyInsertReq(std::string const& key, int chunk, int subchun
     protoKeyInsert.SerializeToString(&(strElem.element));
     strElem.appendToData(msgData);
 
-    sendBufferTo(getWorkerHostName(), getWorkerPort(), msgData);
+    sendBufferTo(getDefWorkerHost(), getDefWorkerPortUdp(), msgData);
 }
 
 
@@ -251,7 +250,7 @@ void CentralClient::_keyInfoReq(std::string const& key) {
      protoKeyInsert.SerializeToString(&(strElem.element));
      strElem.appendToData(msgData);
 
-     sendBufferTo(getWorkerHostName(), getWorkerPort(), msgData);
+     sendBufferTo(getDefWorkerHost(), getDefWorkerPortUdp(), msgData);
 }
 
 

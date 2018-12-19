@@ -81,8 +81,8 @@ public:
     int getUdpPort() const { return _udpPort; }
     int getTcpPort() const { return 0; } ///< No tcp port at this time.
 
-    std::string getWorkerHostName() const { return _workerHostName; }
-    int getWorkerPort() const { return _workerPort; }
+    std::string getDefWorkerHost() const { return _defWorkerHost; }
+    int getDefWorkerPortUdp() const { return _defWorkerPortUdp; }
 
 
 
@@ -152,16 +152,16 @@ private:
 
     /// TODO The worker IP isbecomes default worker as it should be able to get
     ///      that information from the master in the future. DM-16555
-    const std::string _workerHostName;
-    const int         _workerPort;
     const std::string _hostName;
     const int         _udpPort;
 
-    std::string _defWorkerHost;    ///< Default worker host &&& implement
-    int         _defWorkerPortUdp; ///< Default worker UDP port &&& implement
+    // If const is removed, these will need mutex protection.
+    const std::string _defWorkerHost;    ///< Default worker host
+    const int         _defWorkerPortUdp; ///< Default worker UDP port
 
-    int _doListMaxLookups; ///< Maximum number of concurrent lookups in DoList &&& implement
-    int _doListMaxInserts; ///< Maximum number of concurrent inserts in DoList &&& implement
+
+    int _doListMaxLookups; ///< Maximum number of concurrent lookups in DoList  DM-16555
+    int _doListMaxInserts; ///< Maximum number of concurrent inserts in DoList  DM-16555
 
     std::map<std::string, KeyInsertReqOneShot::Ptr> _waitingKeyInsertMap;
     std::mutex _waitingKeyInsertMtx; ///< protects _waitingKeyInsertMap
