@@ -71,7 +71,7 @@ public:
 
     /// This method appends the data in the MsgElement to 'data'.
     /// Pointers in 'data are updated appropriately.
-    virtual bool appendToData(BufferUdp& data, bool log=false)=0;
+    virtual bool appendToData(BufferUdp& data)=0;
 
     /// This method retrieves a single MsgElement from 'data'. Pointers
     /// in 'data' are moved to where the next MsgElement should be located.
@@ -157,7 +157,7 @@ public:
     NumElement(NumElement<T> const&) = delete;
     NumElement& operator=(NumElement<T> const&) = delete;
 
-    bool appendToData(BufferUdp &data, bool log=false) override {
+    bool appendToData(BufferUdp &data) override {
         if (_appendType(data)) {
             T netElem = changeEndianessOnLittleEndianOnly(element);
             return data.append(&netElem, _sizeT);
@@ -261,7 +261,7 @@ public:
 
     ~StringElement() override = default;
 
-    bool appendToData(BufferUdp& data, bool log=false) override;
+    bool appendToData(BufferUdp& data) override;
     bool retrieveFromData(BufferUdp& data) override;
     std::string getStringVal() override { return element; }
 

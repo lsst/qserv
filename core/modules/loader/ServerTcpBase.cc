@@ -71,11 +71,9 @@ void ServerTcpBase::_startAccept() {
 bool ServerTcpBase::writeData(AsioTcp::socket& socket, BufferUdp& data) {
     while (data.getBytesLeftToRead() > 0) {
         // Read cursor advances (manually in this case) as data is read from the buffer.
-        LOGS(_log, LOG_LVL_INFO, "&&& ServerTcpBase::writeData dat=" << data.dumpStr(false));
         auto res = boost::asio::write(socket,
                                       boost::asio::buffer(data.getReadCursor(), data.getBytesLeftToRead()));
         data.advanceReadCursor(res);
-        LOGS(_log, LOG_LVL_INFO, "&&& ServerTcpBase::writeData res=" << res << " dat=" << data.dumpStr(false));
     }
     return true;
 }
@@ -462,15 +460,11 @@ void TcpBaseConnection::_handleImYourLNeighbor1(boost::system::error_code const&
         _buf.reset();
         StringElement strWKI;
         std::unique_ptr<proto::WorkerKeysInfo> protoWKI = _serverTcpBase->getCentralWorker()->_workerKeysInfoBuilder();
-        LOGS(_log, LOG_LVL_INFO, funcName << " &&& a protoWKI=" << protoWKI.get());
         protoWKI->SerializeToString(&(strWKI.element));
-        LOGS(_log, LOG_LVL_INFO, funcName << " &&& b");
         UInt32Element bytesInMsg(strWKI.transmitSize());
         // Send the number of bytes in the message so TCP client knows how many bytes to read.
         bytesInMsg.appendToData(_buf);
-        LOGS(_log, LOG_LVL_INFO, funcName << " &&& c");
         strWKI.appendToData(_buf);
-        LOGS(_log, LOG_LVL_INFO, funcName << " &&& d");
         ServerTcpBase::writeData(_socket, _buf);
         LOGS(_log, LOG_LVL_INFO, funcName << " done");
     } catch (LoaderMsgErr const& ex) {
@@ -607,25 +601,7 @@ void TcpBaseConnection::_handleShiftFromRight1(boost::system::error_code const& 
         auto keyListTransmitSz = keyList->transmitSize();
         BufferUdp data(keyListTransmitSz);
         keyList->appendToData(data);
-        { // &&& convert back and make sure protoparse works. Temporary, delete block
-            BufferUdp dataB(keyListTransmitSz);
-            keyList->appendToData(dataB, true);
-            auto msgElemTBase = MsgElement::retrieve(dataB);
-            StringElement::Ptr msgElemT = std::dynamic_pointer_cast<StringElement>(msgElemTBase);
-            //msgElemT.retrieveFromData(dataB);
-            std::ostringstream oss;
-            keyList->compare(msgElemT.get(), oss);
-            LOGS(_log, LOG_LVL_INFO, "&&& keyList=" << dataB.dumpStr(false));
-            LOGS(_log, LOG_LVL_INFO, "&&& this=keyList " << oss.str());
-            auto protoKeyListA = msgElemT->protoParse<proto::KeyList>();
-            if (protoKeyListA == nullptr) {
-                LOGS(_log, LOG_LVL_ERROR, "&&& protoKeyListA==nullptr dataB=" << dataB.dumpStr());
-                exit(-1);
-            }
-            LOGS(_log, LOG_LVL_INFO, "&&& protoKeyListA was parsed dataB=" << dataB.dumpStr(false));
-        }
         ServerTcpBase::writeData(_socket, data);
-
 
         // Wait for the SHIFT_FROM_RIGHT_KEYS_RECEIVED response back.
         _buf.reset();
