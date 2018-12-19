@@ -53,10 +53,8 @@ MsgElement::Ptr BufferUdp::readFromSocket(boost::asio::ip::tcp::socket& socket, 
             return msgElem;
         }
 
-        LOGS(_log, LOG_LVL_INFO, note << " &&& readFromSocket");
         size_t len = socket.read_some(boost::asio::buffer(_wCursor, getAvailableWriteLength()), error);
         _wCursor += len; /// must advance the cursor.
-        LOGS(_log, LOG_LVL_INFO, note << " &&& readFromSocket len=" << len << " " << dumpStr(false));
 
         // EOF is only a problem if no MsgElement was retrieved.
         // ??? This is definitely the case in UDP, EOF as nothing more will show up.

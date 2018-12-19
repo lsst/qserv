@@ -81,7 +81,7 @@ MsgElement::Ptr MsgElement::create(char elementType) {
 
 
 // Returns data pointer after inserted string.
-bool StringElement::appendToData(BufferUdp& data, bool log) {  // &&& remove log
+bool StringElement::appendToData(BufferUdp& data) {
      auto len = element.length();
      auto sz = sizeof(S_LEN_TYPE);
      auto totalLength = len + sz + 1; // string, length of string, data type.
@@ -98,9 +98,6 @@ bool StringElement::appendToData(BufferUdp& data, bool log) {  // &&& remove log
      // Insert the length
      S_LEN_TYPE lenLT = len;
      S_LEN_TYPE netLen = htonl(lenLT);
-     if (log) { // &&&
-         LOGS(_log, LOG_LVL_INFO, "&&& appendToData netLen=" << netLen << " lenLT=" << lenLT << " len=" << len << " totalLen=" << totalLength);
-     }
 
      data.append(&netLen, sz);
 
@@ -121,9 +118,7 @@ bool StringElement::retrieveFromData(BufferUdp& data) {
         LOGS(_log, LOG_LVL_WARN, "retrieveFromData failed to retrieve length");
         return false;
     }
-
     S_LEN_TYPE len = ntohl(netLen);
-    LOGS(_log, LOG_LVL_INFO, "&&& retrieveFromData netLen=" << netLen << " len=" << len);
 
     // Get the string.
     bool res =  data.retrieveString(element, len);
