@@ -89,6 +89,7 @@ public:
 
 
     /// Asynchronously request a key value insert to the workers.
+    /// This can block if too many key insert requests are already in progress.
     /// @return - a KeyInfoData object for checking the job's status or
     ///           nullptr if CentralClient is already trying to insert the key
     ///           but value doesn't match the existing value. This indicates
@@ -99,6 +100,7 @@ public:
 
     /// Asynchronously request a key value lookup from the workers. It returns a
     /// KeyInfoData object to be used to track job status and get the value of the key.
+    /// This can block if too many key lookup requests are already in progress.
     KeyInfoData::Ptr keyInfoReq(std::string const& key);
     /// Handle a workers response to the keyInfoReq call.
     void handleKeyInfo(LoaderMsg const& inMsg, BufferUdp::Ptr const& data);
@@ -162,14 +164,15 @@ private:
     const int         _defWorkerPortUdp; ///< Default worker UDP port
 
 
-    int _doListMaxLookups; ///< Maximum number of concurrent lookups in DoList  DM-16555
-    int _doListMaxInserts; ///< Maximum number of concurrent inserts in DoList  DM-16555
+    size_t _doListMaxLookups; ///< Maximum number of concurrent lookups in DoList  DM-16555 &&&
+    size_t _doListMaxInserts; ///< Maximum number of concurrent inserts in DoList  DM-16555 &&&
+    int _maxRequestSleepTime{100000}; ///< Time to sleep between checking requests when at max length &&& add config file entry
 
     std::map<std::string, KeyInsertReqOneShot::Ptr> _waitingKeyInsertMap;
-    std::mutex _waitingKeyInsertMtx; ///< protects _waitingKeyInsertMap
+    std::mutex _waitingKeyInsertMtx; ///< protects _waitingKeyInsertMap, _doListMaxInserts
 
-    std::map<std::string, KeyInfoReqOneShot::Ptr> _waitingKeyInfoMap;
-    std::mutex _waitingKeyInfoMtx; ///< protects _waitingKeyInfoMap
+    std::map<std::string, KeyInfoReqOneShot::Ptr> _waitingKeyInfoMap; // &&& change all references of keyInfo to keyLookup &&&, including protobuf keyInfo should only apply to  worker key count and worker key range.
+    std::mutex _waitingKeyInfoMtx; ///< protects _waitingKeyInfoMap, _doListMaxLookups
 };
 
 }}} // namespace lsst::qserv::loader
