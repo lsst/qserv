@@ -23,7 +23,7 @@ docker run \
     -v /etc/group:/etc/group:ro \
     -v $PWD:$PWD \
     qserv/replica:dev \
-    bash -c '$SOURCE/admin/tools/docker/replication/container/tools/collect.bash $SOURCE'
+    bash -c '$SOURCE/admin/tools/docker/replication/container/tools/ncsa/collect.sh $SOURCE'
 
 # Build the runnable container from the previously prepared area
 
@@ -42,3 +42,9 @@ docker run --rm qserv/replica:tools /qserv/bin/qserv-replica-job-chunks
 # made earlier)
 
 docker push qserv/replica:tools
+
+####################################################################
+# An alternative method is run the following script wich will do all
+# explained above
+
+admin/tools/docker/replication/container/tools/ncsa/build.sh /home/user/development/qserv

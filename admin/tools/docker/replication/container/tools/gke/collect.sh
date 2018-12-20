@@ -25,5 +25,3 @@ cp ${bins} "${build}/bin/"
 libs="$(for l in $(ldd ${bins} | grep '=>' | grep '/' | awk '{print $3}'); do if [[ $l != /lib* && $l != /usr/* ]]; then echo $l; fi; done | sort -u)"
 cp ${libs} "${build}/lib/"
 cp ${JEMALLOC_DIR}/lib/libjemalloc.so "${build}/lib/"
-
-cp admin/tools/docker/replication/container/tools/gke/Dockerfile "${build}/"

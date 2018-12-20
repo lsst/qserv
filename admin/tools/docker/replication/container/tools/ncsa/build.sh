@@ -10,7 +10,7 @@ fi
 
 cd $SOURCE
 
-TAG="qserv/replica:tools-$(git describe --dirty --always)"
+TAG="qserv/replica:tools"
 
 echo "************************************************************************************************"
 echo "collecting binaries and library dependencies of ${TAG}"
@@ -22,14 +22,14 @@ docker run \
        -v /etc/group:/etc/group:ro \
        -v $PWD:$PWD \
        qserv/replica:dev \
-       bash -c '$SOURCE/admin/tools/docker/replication/container/tools/gke/collect.sh $SOURCE'
+       bash -c '$SOURCE/admin/tools/docker/replication/container/tools/ncsa/collect.sh $SOURCE'
 
 echo "************************************************************************************************"
 echo "building ${TAG}"
 echo "************************************************************************************************"
 docker build \
        -t ${TAG} \
-       -f admin/tools/docker/replication/container/tools/gke/Dockerfile \
+       -f admin/tools/docker/replication/container/tools/ncsa/Dockerfile \
        tmp/replication/container/build
 
 echo "************************************************************************************************"
