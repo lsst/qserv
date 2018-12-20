@@ -135,8 +135,10 @@ void CentralClient::_handleKeyInsertComplete(LoaderMsg const& inMsg, std::unique
     LOGS(_log, LOG_LVL_DEBUG, "trying to remove oneShot for key=" << key << " " << chunkInfo);
     /// Locate the original one shot and mark it as done.
     CentralClient::KeyInsertReqOneShot::Ptr keyInsertOneShot;
+    size_t mapSize;
     {
         std::lock_guard<std::mutex> lck(_waitingKeyInsertMtx);
+        mapSize = _waitingKeyInsertMap.size();
         auto iter = _waitingKeyInsertMap.find(key);
         if (iter == _waitingKeyInsertMap.end()) {
             LOGS(_log, LOG_LVL_WARN, "handleKeyInsertComplete could not find key=" << key);
@@ -146,13 +148,14 @@ void CentralClient::_handleKeyInsertComplete(LoaderMsg const& inMsg, std::unique
         _waitingKeyInsertMap.erase(iter);
     }
     keyInsertOneShot->keyInsertComplete();
-    LOGS(_log, LOG_LVL_INFO, "Successfully inserted key=" << key << " " << chunkInfo);
+    LOGS(_log, LOG_LVL_INFO, "Successfully inserted key=" << key << " " << chunkInfo <<
+                             " mapSize=" << mapSize);
 }
 
 
 /// Returns a pointer to a Tracker object that can be used to track job
 //  completion and the status of the job. keyInsertOneShot will call
-//  _keyInsertReq until it knows the task was completed, via a call
+//  _keyInsertReq until it knows the task was completed via a call
 //  to _handleKeyInsertComplete
 KeyInfoData::Ptr CentralClient::keyInsertReq(std::string const& key, int chunk, int subchunk) {
     // Insert a oneShot DoListItem to keep trying to add the key until
@@ -161,10 +164,27 @@ KeyInfoData::Ptr CentralClient::keyInsertReq(std::string const& key, int chunk, 
                              " subchunk=" << subchunk);
     auto keyInsertOneShot = std::make_shared<CentralClient::KeyInsertReqOneShot>(this, key, chunk, subchunk);
     {
-        std::lock_guard<std::mutex> lck(_waitingKeyInsertMtx);
+        std::unique_lock<std::mutex> lck(_waitingKeyInsertMtx);
+        // Limit the number of concurrent inserts.
+        // If the key is already in the map, there is no point in blocking.
+        int loopCount = 0;
         auto iter = _waitingKeyInsertMap.find(key);
+        while (_waitingKeyInsertMap.size() > _doListMaxInserts
+               && iter == _waitingKeyInsertMap.end()) {
+            size_t sz = _waitingKeyInsertMap.size();
+            lck.unlock();
+            if (loopCount % 100 == 0) {
+                LOGS(_log, LOG_LVL_INFO, "keyInsertReq waiting key=" << key <<
+                        "size=" << sz << " loopCount=" << loopCount);
+            }
+            usleep(_maxRequestSleepTime);
+            ++loopCount;
+            lck.lock();
+            iter = _waitingKeyInsertMap.find(key);
+        }
+
         if (iter != _waitingKeyInsertMap.end()) {
-            // There is already an entry in the table and we can just use the existing entry,
+            // There is already an entry in the map and we can just use the existing entry,
             // as long as it has the same chunk and subchunk numbers.
             auto cData = iter->second->cmdData;
             if (cData->chunk == chunk && cData->subchunk == subchunk) {
@@ -214,14 +234,38 @@ void CentralClient::_keyInsertReq(std::string const& key, int chunk, int subchun
 KeyInfoData::Ptr CentralClient::keyInfoReq(std::string const& key) {
     // Returns a pointer to a Tracker object that can be used to track job
     // completion and job status. keyInsertOneShot will call _keyInsertReq until
-    // it knows the task was completed. _handleKeyInsertComplete marks
+    // it knows the task was completed. _handleKeyInfoComplete marks
     // the jobs complete as the messages come in from workers.
     // Insert a oneShot DoListItem to keep trying to add the key until
     // we get word that it has been added successfully.
     LOGS(_log, LOG_LVL_INFO, "Trying to lookup key=" << key);
     auto keyInfoOneShot = std::make_shared<CentralClient::KeyInfoReqOneShot>(this, key);
     {
-        std::lock_guard<std::mutex> lck(_waitingKeyInfoMtx);
+        std::unique_lock<std::mutex> lck(_waitingKeyInfoMtx);
+        // Limit the number of concurrent lookups.
+        // If the key is already in the map, there is no point in blocking.
+        int loopCount = 0;
+        auto iter = _waitingKeyInfoMap.find(key);
+        while (_waitingKeyInfoMap.size() > _doListMaxLookups
+               && iter == _waitingKeyInfoMap.end()) {
+            size_t sz = _waitingKeyInfoMap.size();
+            lck.unlock();
+            if (loopCount % 100 == 0) {
+                LOGS(_log, LOG_LVL_INFO, "keyInfoReq waiting key=" << key <<
+                        "size=" << sz << " loopCount=" << loopCount);
+            }
+            usleep(_maxRequestSleepTime);
+            ++loopCount;
+            lck.lock();
+            iter = _waitingKeyInfoMap.find(key);
+        }
+
+        // Use the existing lookup, if there is one.
+        if (iter != _waitingKeyInfoMap.end()) {
+            auto cData = iter->second->cmdData;
+            return cData;
+        }
+
         _waitingKeyInfoMap[key] = keyInfoOneShot;
     }
     runAndAddDoListItem(keyInfoOneShot);
