@@ -23,16 +23,10 @@
 // Class header
 #include "replica/ConfigurationMySQL.h"
 
-// System headers
-#include <stdexcept>
-
 // Qserv headers
-#include "lsst/log/Log.h"
 #include "replica/ChunkNumber.h"
 
 namespace {
-
-LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.ConfigurationMySQL");
 
 using namespace lsst::qserv::replica;
 
@@ -60,7 +54,7 @@ void readMandatoryParameter(database::mysql::Row& row,
                             T&                    value) {
     if (not row.get(name, value)) {
         throw std::runtime_error(
-                "ConfigurationMySQL::readMandatoryParameter()  the field '" + name +
+                "ConfigurationMySQL::" + std::string(__func__) + "  the field '" + name +
                 "' is not allowed to be NULL");
     }
 }
@@ -82,7 +76,8 @@ namespace replica {
 
 ConfigurationMySQL::ConfigurationMySQL(database::mysql::ConnectionParams const& connectionParams)
     :   Configuration(),
-        _connectionParams(connectionParams) {
+        _connectionParams(connectionParams),
+        _log(LOG_GET("lsst.qserv.replica.ConfigurationMySQL")) {
 
     loadConfiguration();
 }
@@ -100,7 +95,7 @@ std::string ConfigurationMySQL::configUrl() const {
 
 void ConfigurationMySQL::addWorker(WorkerInfo const& info) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "addWorker  name=" << info.name);
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  name=" << info.name);
 
     database::mysql::Connection::Ptr conn;
     try {
@@ -128,7 +123,7 @@ void ConfigurationMySQL::addWorker(WorkerInfo const& info) {
 
         // Then update the transient state
 
-        util::Lock lock(_mtx, context() + "addWorker");
+        util::Lock lock(_mtx, context() + __func__);
 
         _workerInfo[info.name] = info;
 
@@ -144,7 +139,7 @@ void ConfigurationMySQL::addWorker(WorkerInfo const& info) {
 
 void ConfigurationMySQL::deleteWorker(std::string const& name) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "deleteWorker  name=" << name);
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  name=" << name);
 
     database::mysql::Connection::Ptr conn;
     try {
@@ -162,11 +157,12 @@ void ConfigurationMySQL::deleteWorker(std::string const& name) {
 
         // Then update the transient state
 
-        util::Lock lock(_mtx, context() + "deleteWorker");
+        util::Lock lock(_mtx, context() + __func__);
 
         auto&& itr = _workerInfo.find(name);
         if (_workerInfo.end() == itr) {
-            throw std::invalid_argument("ConfigurationMySQL::deleteWorker  no such worker: " + name);
+            throw std::invalid_argument(
+                    "ConfigurationMySQL::" + std::string(__func__) + "  no such worker: " + name);
         }
         _workerInfo.erase(itr);
 
@@ -183,7 +179,7 @@ void ConfigurationMySQL::deleteWorker(std::string const& name) {
 WorkerInfo const ConfigurationMySQL::disableWorker(std::string const& name,
                                                    bool disable) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "disableWorker  name=" << name
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  name=" << name
          << " disable=" << (disable ? "true" : "false"));
 
     database::mysql::Connection::Ptr conn;
@@ -205,11 +201,12 @@ WorkerInfo const ConfigurationMySQL::disableWorker(std::string const& name,
 
         // Then update the transient state
 
-        util::Lock lock(_mtx, context() + "disableWorker");
+        util::Lock lock(_mtx, context() + __func__);
 
         auto&& itr = _workerInfo.find(name);
         if (_workerInfo.end() == itr) {
-            throw std::invalid_argument("ConfigurationMySQL::disableWorker  no such worker: " + name);
+            throw std::invalid_argument(
+                    "ConfigurationMySQL::" + std::string(__func__) + "  no such worker: " + name);
         }
         itr->second.isEnabled = not disable;
 
@@ -227,7 +224,7 @@ WorkerInfo const ConfigurationMySQL::disableWorker(std::string const& name,
 WorkerInfo const ConfigurationMySQL::setWorkerReadOnly(std::string const& name,
                                                        bool readOnly) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "setWorkerReadOnly  name=" << name
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  name=" << name
          << " readOnly=" << (readOnly ? "true" : "false"));
 
     database::mysql::Connection::Ptr conn;
@@ -249,11 +246,12 @@ WorkerInfo const ConfigurationMySQL::setWorkerReadOnly(std::string const& name,
 
         // Then update the transient state
 
-        util::Lock lock(_mtx, context() + "setWorkerReadOnly");
+        util::Lock lock(_mtx, context() + __func__);
 
         auto&& itr = _workerInfo.find(name);
         if (_workerInfo.end() == itr) {
-            throw std::invalid_argument("ConfigurationMySQL::setWorkerReadOnly  no such worker: " + name);
+            throw std::invalid_argument(
+                    "ConfigurationMySQL::" + std::string(__func__) + "  no such worker: " + name);
         }
         itr->second.isReadOnly = readOnly;
 
@@ -271,7 +269,7 @@ WorkerInfo const ConfigurationMySQL::setWorkerReadOnly(std::string const& name,
 WorkerInfo const ConfigurationMySQL::setWorkerSvcHost(std::string const& name,
                                                       std::string const& host) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "setWorkerSvcHost  name=" << name << " host=" << host);
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  name=" << name << " host=" << host);
 
     database::mysql::Connection::Ptr conn;
     try {
@@ -291,11 +289,12 @@ WorkerInfo const ConfigurationMySQL::setWorkerSvcHost(std::string const& name,
 
         // Then update the transient state 
 
-        util::Lock lock(_mtx, context() + "setWorkerSvcHost");
+        util::Lock lock(_mtx, context() + __func__);
 
         auto&& itr = _workerInfo.find(name);
         if (_workerInfo.end() == itr) {
-            throw std::invalid_argument("ConfigurationMySQL::setWorkerSvcHost  no such worker: " + name);
+            throw std::invalid_argument(
+                    "ConfigurationMySQL::" + std::string(__func__) + "  no such worker: " + name);
         }
         itr->second.svcHost = host;
 
@@ -313,7 +312,7 @@ WorkerInfo const ConfigurationMySQL::setWorkerSvcHost(std::string const& name,
 WorkerInfo const ConfigurationMySQL::setWorkerSvcPort(std::string const& name,
                                                       uint16_t port) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "setWorkerSvcPort  name=" << name << " port=" << port);
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  name=" << name << " port=" << port);
 
     database::mysql::Connection::Ptr conn;
     try {
@@ -333,11 +332,12 @@ WorkerInfo const ConfigurationMySQL::setWorkerSvcPort(std::string const& name,
 
         // Then update the transient state 
 
-        util::Lock lock(_mtx, context() + "setWorkerSvcPort");
+        util::Lock lock(_mtx, context() + __func__);
 
         auto&& itr = _workerInfo.find(name);
         if (_workerInfo.end() == itr) {
-            throw std::invalid_argument("ConfigurationMySQL::setWorkerSvcPort  no such worker: " + name);
+            throw std::invalid_argument(
+                    "ConfigurationMySQL::" + std::string(__func__) + "  no such worker: " + name);
         }
         itr->second.svcPort = port;
 
@@ -355,7 +355,7 @@ WorkerInfo const ConfigurationMySQL::setWorkerSvcPort(std::string const& name,
 WorkerInfo const ConfigurationMySQL::setWorkerFsHost(std::string const& name,
                                                      std::string const& host) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "setWorkerFsHost  name=" << name << " host=" << host);
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  name=" << name << " host=" << host);
 
     database::mysql::Connection::Ptr conn;
     try {
@@ -375,11 +375,11 @@ WorkerInfo const ConfigurationMySQL::setWorkerFsHost(std::string const& name,
 
         // Then update the transient state 
 
-        util::Lock lock(_mtx, context() + "setWorkerFsHost");
+        util::Lock lock(_mtx, context() + __func__);
 
         auto&& itr = _workerInfo.find(name);
         if (_workerInfo.end() == itr) {
-            throw std::invalid_argument("ConfigurationMySQL::setWorkerFsHost  no such worker: " + name);
+            throw std::invalid_argument("ConfigurationMySQL::" + std::string(__func__) + "  no such worker: " + name);
         }
         itr->second.fsHost = host;
 
@@ -397,7 +397,7 @@ WorkerInfo const ConfigurationMySQL::setWorkerFsHost(std::string const& name,
 WorkerInfo const ConfigurationMySQL::setWorkerFsPort(std::string const& name,
                                                      uint16_t port) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "setWorkerFsPort  name=" << name << " port=" << port);
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  name=" << name << " port=" << port);
 
     database::mysql::Connection::Ptr conn;
     try {
@@ -417,11 +417,12 @@ WorkerInfo const ConfigurationMySQL::setWorkerFsPort(std::string const& name,
 
         // Then update the transient state 
 
-        util::Lock lock(_mtx, context() + "setWorkerFsPort");
+        util::Lock lock(_mtx, context() + __func__);
     
         auto&& itr = _workerInfo.find(name);
         if (_workerInfo.end() == itr) {
-            throw std::invalid_argument("ConfigurationMySQL::setWorkerFsPort  no such worker: " + name);
+            throw std::invalid_argument(
+                    "ConfigurationMySQL::" + std::string(__func__) + "  no such worker: " + name);
         }
         itr->second.fsPort = port;
 
@@ -439,7 +440,7 @@ WorkerInfo const ConfigurationMySQL::setWorkerFsPort(std::string const& name,
 WorkerInfo const ConfigurationMySQL::setWorkerDataDir(std::string const& name,
                                                       std::string const& dataDir) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "setWorkerDataDir  name=" << name << " dataDir=" << dataDir);
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  name=" << name << " dataDir=" << dataDir);
 
     database::mysql::Connection::Ptr conn;
     try {
@@ -459,11 +460,12 @@ WorkerInfo const ConfigurationMySQL::setWorkerDataDir(std::string const& name,
 
         // Then update the transient state 
 
-        util::Lock lock(_mtx, context() + "setWorkerDataDir");
+        util::Lock lock(_mtx, context() + __func__);
 
         auto&& itr = _workerInfo.find(name);
         if (_workerInfo.end() == itr) {
-            throw std::invalid_argument("ConfigurationMySQL::setWorkerDataDir  no such worker: " + name);
+            throw std::invalid_argument(
+                    "ConfigurationMySQL::" + std::string(__func__) + "  no such worker: " + name);
         }
         itr->second.dataDir = dataDir;
 
@@ -480,9 +482,9 @@ WorkerInfo const ConfigurationMySQL::setWorkerDataDir(std::string const& name,
 
 void ConfigurationMySQL::loadConfiguration() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "ConfigurationMySQL::loadConfiguration");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
-    util::Lock lock(_mtx, context() + "ConfigurationMySQL::loadConfiguration");
+    util::Lock lock(_mtx, context() + __func__);
 
     database::mysql::Connection::Ptr conn;
 
@@ -635,5 +637,41 @@ void ConfigurationMySQL::loadConfigurationImpl(util::Lock const& lock,
 
     dumpIntoLogger();
 }
+
+void ConfigurationMySQL::_setImp(database::mysql::Connection::Ptr const& conn,
+                                 std::string const& category,
+                                 std::string const& param,
+                                 std::string const& setValueExpr,
+                                 std::function<void()> const& onSuccess) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  category: " << category
+         << " param: " << param << "  setValueExpr: " << setValueExpr);
+
+    util::Lock lock(_mtx, context() + __func__);
+
+    try {
+        conn->execute(
+            [&category,&param,&setValueExpr](decltype(conn) conn) {
+                std::ostringstream query;
+                query << "UPDATE  " << conn->sqlId("config")
+                      << "  SET   " << setValueExpr
+                      << "  WHERE " << conn->sqlEqual("category", category)
+                      << "    AND " << conn->sqlEqual("param", param);
+                conn->begin();
+                conn->execute(query.str());
+                conn->commit();
+            }
+        );
+        onSuccess();
+    } catch (database::mysql::Error const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context() << "MySQL error: " << ex.what());
+        if ((nullptr != conn) and conn->inTransaction()) {
+            conn->rollback();
+        }
+        throw;
+    }
+
+}
+
 
 }}} // namespace lsst::qserv::replica

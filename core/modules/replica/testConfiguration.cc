@@ -439,6 +439,70 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         BOOST_CHECK(config->workerNumProcessingThreads() == 4);
         BOOST_CHECK(config->fsNumProcessingThreads()     == 5);
         BOOST_CHECK(config->workerFsBufferSizeBytes()    == 1024);
+
+        config->setRequestBufferSizeBytes(8193);
+        BOOST_CHECK(config->requestBufferSizeBytes() == 8193);
+
+        config->setRetryTimeoutSec(2);
+        BOOST_CHECK(config->retryTimeoutSec() == 2);
+
+        config->setRetryTimeoutSec(2);
+        BOOST_CHECK(config->retryTimeoutSec() == 2);
+
+        config->setControllerThreads(3);
+        BOOST_CHECK(config->controllerThreads() == 3);
+
+        config->setControllerHttpPort(8081);
+        BOOST_CHECK(config->controllerHttpPort() == 8081);
+
+        config->setControllerHttpThreads(4);
+        BOOST_CHECK(config->controllerHttpThreads() == 4);
+
+        config->setControllerRequestTimeoutSec(101);
+        BOOST_CHECK(config->controllerRequestTimeoutSec() == 101);
+
+        config->setJobTimeoutSec(201);
+        BOOST_CHECK(config->jobTimeoutSec() == 201);
+
+        config->setJobHeartbeatTimeoutSec(301);
+        BOOST_CHECK(config->jobHeartbeatTimeoutSec() == 301);
+
+        config->setJobHeartbeatTimeoutSec(0);
+        BOOST_CHECK(config->jobHeartbeatTimeoutSec() == 0);
+
+        config->setXrootdAutoNotify(true);
+        BOOST_CHECK(config->xrootdAutoNotify());
+
+        config->setXrootdAutoNotify(false);
+        BOOST_CHECK(not config->xrootdAutoNotify());
+
+        config->setXrootdHost("localhost");
+        BOOST_CHECK(config->xrootdHost() == "localhost");
+
+        BOOST_CHECK_THROW(config->setXrootdHost(""), std::invalid_argument);
+
+        config->setXrootdPort(1105);
+        BOOST_CHECK(config->xrootdPort() == 1105);
+
+        config->setXrootdTimeoutSec(401);
+        BOOST_CHECK(config->xrootdTimeoutSec() == 401);
+
+        config->setDatabaseServicesPoolSize(3);
+        BOOST_CHECK(config->databaseServicesPoolSize() == 3);
+
+        BOOST_CHECK_THROW(config->setDatabaseServicesPoolSize(0), std::invalid_argument);
+
+        config->setWorkerTechnology("FS");
+        BOOST_CHECK(config->workerTechnology() == "FS");
+
+        config->setWorkerNumProcessingThreads(5);
+        BOOST_CHECK(config->workerNumProcessingThreads() == 5);
+
+        config->setFsNumProcessingThreads(6);
+        BOOST_CHECK(config->fsNumProcessingThreads() == 6);
+
+        config->setWorkerFsBufferSizeBytes(1025);
+        BOOST_CHECK(config->workerFsBufferSizeBytes() == 1025);
     });
 
     BOOST_CHECK_THROW(kvMap.at("non-existing-key"), std::out_of_range);

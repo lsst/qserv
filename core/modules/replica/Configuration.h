@@ -214,49 +214,100 @@ public:
      */
     std::vector<std::string> allWorkers() const;
 
+
     /// @return maximum size of the request buffers in bytes
     size_t requestBufferSizeBytes() const { return _requestBufferSizeBytes; }
 
+    /// @param val  the new value of the parameter
+    virtual void setRequestBufferSizeBytes(size_t val)=0;
+
+
     /// @return timeout in seconds for the network retry operations
     unsigned int retryTimeoutSec() const { return _retryTimeoutSec; }
+
+    /// @param val  the new value of the parameter
+    virtual void setRetryTimeoutSec(unsigned int val)=0;
+
 
     // --------------------------------------------------------
     // -- Configuration parameters of the controller service --
     // --------------------------------------------------------
 
+
     /// @return number of threads to launch for BOOST ASIO within the controller
     size_t controllerThreads() const { return _controllerThreads; }
+
+    /// @param val  the new value of the parameter
+    virtual void setControllerThreads(size_t val)=0;
+
 
     /// @return port number for the controller's HTTP server
     uint16_t controllerHttpPort() const { return _controllerHttpPort; }
 
+    /// @param val  the new value of the parameter
+    virtual void setControllerHttpPort(uint16_t val)=0;
+
+
     /// @return number of threads to run within the controller's HTTP server
     size_t controllerHttpThreads() const { return _controllerHttpThreads; }
+
+    /// @param val  the new value of the parameter
+    virtual void setControllerHttpThreads(size_t val)=0;
+
 
     // @return expiration timeout for requests
     unsigned int controllerRequestTimeoutSec() const { return _controllerRequestTimeoutSec; }
 
+    /// @param val  the new value of the parameter
+    virtual void setControllerRequestTimeoutSec(unsigned int val)=0;
+
+
     // @return expiration timeout for jobs
     unsigned int jobTimeoutSec() const { return _jobTimeoutSec; }
 
+    /// @param val  the new value of the parameter
+    virtual void setJobTimeoutSec(unsigned int val)=0;
+
+
     /// @return timeout in seconds for the job's heartbeats
     unsigned int jobHeartbeatTimeoutSec() const { return _jobHeartbeatTimeoutSec; }
+
+    /// @param val  the new value of the parameter
+    virtual void setJobHeartbeatTimeoutSec(unsigned int val)=0;
+
 
     // --------------------------------------------------------
     // -- Qserv Worker Management Services  (via XRootD/SSI) --
     // --------------------------------------------------------
 
+
     /// @return flag indicating if Qserv should be automatically notified on changes
     bool xrootdAutoNotify() const { return  _xrootdAutoNotify; }
+
+    /// @param val  the new value of the parameter
+    virtual void setXrootdAutoNotify(bool val)=0;
+
 
     /// @return host name of the worker XRootD service
     std::string const& xrootdHost() const { return  _xrootdHost; }
 
+    /// @param val  the new value of the parameter
+    virtual void setXrootdHost(std::string const& val)=0;
+
+
     /// @return port number of the worker XRootD service
     uint16_t xrootdPort() const { return _xrootdPort; }
 
+    /// @param val  the new value of the parameter
+    virtual void setXrootdPort(uint16_t val)=0;
+
+
     // @return expiration timeout for requests
     unsigned int xrootdTimeoutSec() const { return _xrootdTimeoutSec; }
+
+    /// @param val  the new value of the parameter
+    virtual void setXrootdTimeoutSec(unsigned int val)=0;
+
 
     // -----------------------------------------------------------
     // -- Configuration parameters related to database services --
@@ -280,8 +331,13 @@ public:
     /// @return the name of a database to be set upon the connection
     std::string const& databaseName() const { return _databaseName; }
 
+
     /// @return the number of concurrent connections to the database service
     size_t databaseServicesPoolSize() const { return _databaseServicesPoolSize; }
+
+    /// @param val  the new value of the parameter
+    virtual void setDatabaseServicesPoolSize(size_t val)=0;
+
 
     // --------------------------------------------------
     // -- Global parameters of the database connectors --
@@ -622,14 +678,30 @@ public:
     /// @return the name of the default technology for implementing requests
     std::string const& workerTechnology() const { return _workerTechnology; }
 
+    /// @param val  the new value of the parameter
+    virtual void setWorkerTechnology(std::string const& val)=0;
+
+
     /// @return the number of request processing threads in each worker service
     size_t workerNumProcessingThreads() const { return _workerNumProcessingThreads; }
+
+    /// @param val  the new value of the parameter
+    virtual void setWorkerNumProcessingThreads(size_t val)=0;
+
 
     /// @return the number of request processing threads in each worker's file service
     size_t fsNumProcessingThreads() const { return _fsNumProcessingThreads; }
 
+    /// @param val  the new value of the parameter
+    virtual void setFsNumProcessingThreads(size_t val)=0;
+
+
     /// @return the buffer size for the file I/O operations
     size_t workerFsBufferSizeBytes() const { return _workerFsBufferSizeBytes; }
+
+    /// @param val  the new value of the parameter
+    virtual void setWorkerFsBufferSizeBytes(size_t val)=0;
+
 
     // -----------
     // -- Misc. --

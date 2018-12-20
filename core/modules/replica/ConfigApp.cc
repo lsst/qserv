@@ -31,6 +31,7 @@
 
 // Qserv headers
 #include "util/TablePrinter.h"
+#include "ConfigApp.h"
 
 
 using namespace std;
@@ -41,6 +42,9 @@ string const description {
     "This application is the tool for viewing and manipulating"
     " the configuration data of the Replication system stored in the MySQL/MariaDB"
 };
+
+
+
 
 } /// namespace
 
@@ -70,14 +74,16 @@ ConfigApp::ConfigApp(int argc,
             false /* boostProtobufVersionCheck */,
             false /* enableServiceProvider */
         ),
-        _configUrl("file:replication.cfg"),
-        _log(LOG_GET("lsst.qserv.replica.ConfigApp")) {
+        _log(LOG_GET("lsst.qserv.replica.ConfigApp")),
+        _configUrl("file:replication.cfg") {
 
     // Configure the command line parser
 
     parser().commands(
         "command",
-        {"DUMP", "UPDATE_WORKER", "ADD_WORKER", "DELETE_WORKER"},
+        {"DUMP",
+         "UPDATE_WORKER", "ADD_WORKER", "DELETE_WORKER",
+         "UPDATE_GENERAL"},
         _command
     ).option(
         "config",
@@ -180,6 +186,78 @@ ConfigApp::ConfigApp(int argc,
         "The name of a worker to be deleted",
         _workerInfo.name
     );
+
+    parser().command("UPDATE_GENERAL").option(
+        _requestBufferSizeBytes.key,
+        _requestBufferSizeBytes.description,
+        _requestBufferSizeBytes.value
+    ).option(
+        _retryTimeoutSec.key,
+        _retryTimeoutSec.description,
+        _retryTimeoutSec.value
+    ).option(
+        _controllerThreads.key,
+        _controllerThreads.description,
+        _controllerThreads.value
+    ).option(
+        _controllerHttpPort.key,
+        _controllerHttpPort.description,
+        _controllerHttpPort.value
+    ).option(
+        _controllerHttpThreads.key,
+        _controllerHttpThreads.description,
+        _controllerHttpThreads.value
+    ).option(
+        _controllerRequestTimeoutSec.key,
+        _controllerRequestTimeoutSec.description,
+        _controllerRequestTimeoutSec.value
+    ).option(
+        _jobTimeoutSec.key,
+        _jobTimeoutSec.description,
+        _jobTimeoutSec.value
+    ).option(
+        _jobHeartbeatTimeoutSec.key,
+        _jobHeartbeatTimeoutSec.description,
+        _jobHeartbeatTimeoutSec.value
+    ).option(
+        _xrootdAutoNotify.key,
+        _xrootdAutoNotify.description +
+            " Use 0 to disable this feature. Any number equal or greater"
+            " than 1 will enable it.",
+        _xrootdAutoNotify.value
+    ).option(
+        _xrootdHost.key,
+        _xrootdHost.description,
+        _xrootdHost.value
+    ).option(
+        _xrootdPort.key,
+        _xrootdPort.description,
+        _xrootdPort.value
+    ).option(
+        _xrootdTimeoutSec.key,
+        _xrootdTimeoutSec.description,
+        _xrootdTimeoutSec.value
+    ).option(
+        _databaseServicesPoolSize.key,
+        _databaseServicesPoolSize.description,
+        _databaseServicesPoolSize.value
+    ).option(
+        _workerTechnology.key,
+        _workerTechnology.description,
+        _workerTechnology.value
+    ).option(
+        _workerNumProcessingThreads.key,
+        _workerNumProcessingThreads.description,
+        _workerNumProcessingThreads.value
+    ).option(
+        _fsNumProcessingThreads.key,
+        _fsNumProcessingThreads.description,
+        _fsNumProcessingThreads.value
+    ).option(
+        _workerFsBufferSizeBytes.key,
+        _workerFsBufferSizeBytes.description,
+        _workerFsBufferSizeBytes.value
+    );
 }
 
 
@@ -193,10 +271,11 @@ int ConfigApp::runImpl() {
              << "' is not allowed by this application");
         return 1;
     }
-    if (_command == "DUMP")          return _dump();
-    if (_command == "UPDATE_WORKER") return _updateWorker();
-    if (_command == "ADD_WORKER")    return _addWorker();
-    if (_command == "DELETE_WORKER") return _deleteWorker();
+    if (_command == "DUMP")           return _dump();
+    if (_command == "UPDATE_WORKER")  return _updateWorker();
+    if (_command == "ADD_WORKER")     return _addWorker();
+    if (_command == "DELETE_WORKER")  return _deleteWorker();
+    if (_command == "UPDATE_GENERAL") return _updateGeneral();
 
     LOGS(_log, LOG_LVL_ERROR, context << "unsupported command: '" + _command + "'");
     return 1;
@@ -240,89 +319,97 @@ void ConfigApp::_dumpGeneralAsTable(string const indent) const {
     vector<string> value;
     vector<string> description;
 
-    parameter.  push_back("NET_BUF_SIZE_BYTES");
+    parameter.  push_back(                  _requestBufferSizeBytes.key);
     value.      push_back(to_string(_config->requestBufferSizeBytes()));
-    description.push_back("default buffer size for network communications");
+    description.push_back(                  _requestBufferSizeBytes.description);
 
-    parameter.  push_back("NET_RETRY_TIMEOUT_SEC");
+    parameter.  push_back(                  _retryTimeoutSec.key);
     value.      push_back(to_string(_config->retryTimeoutSec()));
-    description.push_back("default retry timeout for network communications");
+    description.push_back(                  _retryTimeoutSec.description);
 
-    parameter.  push_back("CONTR_NUM_THREADS");
+    parameter.  push_back(                  _controllerThreads.key);
     value.      push_back(to_string(_config->controllerThreads()));
-    description.push_back("number of threads managed by BOOST ASIO");
+    description.push_back(                  _controllerThreads.description);
 
-    parameter.  push_back("CONTR_HTTP_PORT");
+    parameter.  push_back(                  _controllerHttpPort.key);
     value.      push_back(to_string(_config->controllerHttpPort()));
-    description.push_back("port number for the controller's HTTP server");
+    description.push_back(                  _controllerHttpPort.description);
 
-    parameter.  push_back("CONTR_NUM_HTTP_THREADS");
+    parameter.  push_back(                  _controllerHttpThreads.key);
     value.      push_back(to_string(_config->controllerHttpThreads()));
-    description.push_back("number of threads managed by BOOST ASIO for the HTTP server");
+    description.push_back(                  _controllerHttpThreads.description);
 
-    parameter.  push_back("CONTR_REQUEST_TIMEOUT_SEC");
+    parameter.  push_back(                  _controllerRequestTimeoutSec.key);
     value.      push_back(to_string(_config->controllerRequestTimeoutSec()));
-    description.push_back("default timeout for completing worker requests");
+    description.push_back(                  _controllerRequestTimeoutSec.description);
 
-    parameter.  push_back("CONTR_JOB_TIMEOUT_SEC");
+    parameter.  push_back(                  _jobTimeoutSec.key);
     value.      push_back(to_string(_config->jobTimeoutSec()));
-    description.push_back("default timeout for completing jobs");
+    description.push_back(                  _jobTimeoutSec.description);
 
-    parameter.  push_back("CONTR_JOB_HEARTBEAT_SEC");
+    parameter.  push_back(                  _jobHeartbeatTimeoutSec.key);
     value.      push_back(to_string(_config->jobHeartbeatTimeoutSec()));
-    description.push_back("heartbeat interval for jobs");
+    description.push_back(                  _jobHeartbeatTimeoutSec.description);
 
-    parameter.  push_back("QSERV_AUTO_NOTIFY");
+    parameter.  push_back(        _xrootdAutoNotify.key);
     value.      push_back(_config->xrootdAutoNotify() ? "yes" : "no");
-    description.push_back("automatically notify Qserv on changes in replica disposition");
+    description.push_back(        _xrootdAutoNotify.description);
 
-    parameter.  push_back("XROOTD_HOST_PORT");
-    value.      push_back(_config->xrootdHost() + ":" + to_string(_config->xrootdPort()));
-    description.push_back("service location of XRootD/SSI for communications with Qserv");
+    parameter.  push_back(        _xrootdHost.key);
+    value.      push_back(_config->xrootdHost());
+    description.push_back(        _xrootdHost.description);
 
-    parameter.  push_back("XROOT_COMM_TIMEOUT_SEC");
+    parameter.  push_back(          _xrootdPort.key);
+    value.      push_back(to_string(_config->xrootdPort()));
+    description.push_back(          _xrootdPort.description);
+
+    parameter.  push_back(                  _xrootdTimeoutSec.key);
     value.      push_back(to_string(_config->xrootdTimeoutSec()));
-    description.push_back("default timeout for communications with Qserv over XRootD/SSI");
+    description.push_back(                  _xrootdTimeoutSec.description);
 
-    parameter.  push_back("DB_TECHNOLOGY");
+    parameter.  push_back(        _databaseTechnology.key);
     value.      push_back(_config->databaseTechnology());
-    description.push_back("name of a database technology for the persistent state");
+    description.push_back(        _databaseTechnology.description);
 
-    parameter.  push_back("DB_HOST_PORT");
-    value.      push_back(_config->databaseHost() + ":" + to_string(_config->databasePort()));
-    description.push_back("database service location");
+    parameter.  push_back(        _databaseHost.key);
+    value.      push_back(_config->databaseHost());
+    description.push_back(        _databaseHost.description);
 
-    parameter.  push_back("DB_USER");
+    parameter.  push_back(                  _databasePort.key);
+    value.      push_back(to_string(_config->databasePort()));
+    description.push_back(                  _databasePort.description);
+
+    parameter.  push_back(        _databaseUser.key);
     value.      push_back(_config->databaseUser());
-    description.push_back("user name for connecting to the database service");
+    description.push_back(        _databaseUser.description);
 
-    parameter.  push_back("DB_PASSWORD");
+    parameter.  push_back(                              _databasePassword.key);
     value.      push_back(_dumpDbShowPassword ? _config->databasePassword() : "xxxxxx");
-    description.push_back("password for connecting to the database service");
+    description.push_back(                              _databasePassword.description);
 
-    parameter.  push_back("DB_NAME");
+    parameter.  push_back(        _databaseName.key);
     value.      push_back(_config->databaseName());
-    description.push_back("the name of the default database schema");
+    description.push_back(        _databaseName.description);
 
-    parameter.  push_back("DB_SVC_POOL_SIZE");
+    parameter.  push_back(                  _databaseServicesPoolSize.key);
     value.      push_back(to_string(_config->databaseServicesPoolSize()));
-    description.push_back("the pool size at the client database services connector");
+    description.push_back(                  _databaseServicesPoolSize.description);
 
-    parameter.  push_back("WORKER_TECHNOLOGY");
+    parameter.  push_back(        _workerTechnology.key);
     value.      push_back(_config->workerTechnology());
-    description.push_back("name of a technology for implementing requests");
+    description.push_back(        _workerTechnology.description);
 
-    parameter.  push_back("WORKER_NUM_PROC_THREADS");
+    parameter.  push_back(                  _workerNumProcessingThreads.key);
     value.      push_back(to_string(_config->workerNumProcessingThreads()));
-    description.push_back("number of request processing threads in each worker service");
+    description.push_back(                  _workerNumProcessingThreads.description);
 
-    parameter.  push_back("WORKER_FS_NUM_PROC_THREADS");
+    parameter.  push_back(                  _fsNumProcessingThreads.key);
     value.      push_back(to_string(_config->fsNumProcessingThreads()));
-    description.push_back("number of request processing threads in each worker's file server");
+    description.push_back(                  _fsNumProcessingThreads.description);
 
-    parameter.  push_back("WORKER_FS_BUF_SIZE_BYTES");
+    parameter.  push_back(                  _workerFsBufferSizeBytes.key);
     value.      push_back(to_string(_config->workerFsBufferSizeBytes()));
-    description.push_back("buffer size for file and network operations at worker's file server");
+    description.push_back(                  _workerFsBufferSizeBytes.description);
 
     util::ColumnTablePrinter table("GENERAL PARAMETERS:", indent);
 
@@ -536,6 +623,36 @@ int ConfigApp::_deleteWorker() const {
     auto const info = _config->workerInfo(_workerInfo.name);
     try {
         _config->deleteWorker(_workerInfo.name);
+    } catch (std::exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
+        return 1;
+    }
+    return 0;
+}
+
+
+int ConfigApp::_updateGeneral() {
+
+    char const* context = "ConfigApp::_updateGeneral  ";
+
+    try {
+        _requestBufferSizeBytes     .save(_config);
+        _retryTimeoutSec            .save(_config);
+        _controllerThreads          .save(_config);
+        _controllerHttpPort         .save(_config);
+        _controllerHttpThreads      .save(_config);
+        _controllerRequestTimeoutSec.save(_config);
+        _jobTimeoutSec              .save(_config);
+        _jobHeartbeatTimeoutSec     .save(_config);
+        _xrootdAutoNotify           .save(_config);
+        _xrootdHost                 .save(_config);
+        _xrootdPort                 .save(_config);
+        _xrootdTimeoutSec           .save(_config);
+        _databaseServicesPoolSize   .save(_config);
+        _workerTechnology           .save(_config);
+        _workerNumProcessingThreads .save(_config);
+        _fsNumProcessingThreads     .save(_config);
+        _workerFsBufferSizeBytes    .save(_config);
     } catch (std::exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
         return 1;

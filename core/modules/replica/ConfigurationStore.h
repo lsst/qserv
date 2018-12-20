@@ -28,10 +28,14 @@
  */
 
 // System headers
+#include <stdexcept>
 #include <string>
 
 // Qserv headers
 #include "replica/Configuration.h"
+
+// LSST headers
+#include "lsst/log/Log.h"
 
 // Forward declarations
 
@@ -71,6 +75,71 @@ public:
     ConfigurationStore& operator=(ConfigurationStore const&) = delete;
 
     ~ConfigurationStore() override = default;
+
+    /**
+     * @see Configuration::setRequestBufferSizeBytes()
+     */
+    void setRequestBufferSizeBytes(size_t val) final { _set(_requestBufferSizeBytes, val); }
+
+    /**
+     * @see Configuration::setRetryTimeoutSec()
+     */
+    void setRetryTimeoutSec(unsigned int val) final { _set(_retryTimeoutSec, val); }
+
+    /**
+     * @see Configuration::setControllerThreads()
+     */
+    void setControllerThreads(size_t val) final { _set(_controllerThreads, val); }
+
+    /**
+     * @see Configuration::setControllerHttpPort()
+     */
+    void setControllerHttpPort(uint16_t val) final { _set(_controllerHttpPort, val); }
+
+    /**
+     * @see Configuration::setControllerHttpThreads()
+     */
+    void setControllerHttpThreads(size_t val) final { _set(_controllerHttpThreads, val); }
+
+    /**
+     * @see Configuration::setControllerRequestTimeoutSec()
+     */
+    void setControllerRequestTimeoutSec(unsigned int val) final { _set(_controllerRequestTimeoutSec, val); }
+
+    /**
+     * @see Configuration::setJobTimeoutSec()
+     */
+    void setJobTimeoutSec(unsigned int val) final { _set(_jobTimeoutSec, val); }
+
+    /**
+     * @see Configuration::setJobHeartbeatTimeoutSec()
+     */
+    void setJobHeartbeatTimeoutSec(unsigned int val) final { _set(_jobHeartbeatTimeoutSec, val, true); }
+
+    /**
+     * @see Configuration::setXrootdAutoNotify()
+     */
+    void setXrootdAutoNotify(bool val) final { _set(_xrootdAutoNotify, val); }
+
+    /**
+     * @see Configuration::setXrootdHost()
+     */
+    void setXrootdHost(std::string const& val) final { _set(_xrootdHost, val); }
+
+    /**
+     * @see Configuration::setXrootdPort()
+     */
+    void setXrootdPort(uint16_t val) final { _set(_xrootdPort, val); }
+
+    /**
+     * @see Configuration::setXrootdTimeoutSec()
+     */
+    void setXrootdTimeoutSec(unsigned int val) final { _set(_xrootdTimeoutSec, val); }
+
+    /**
+     * @see Configuration::setDatabaseServicesPoolSize()
+     */
+    void setDatabaseServicesPoolSize(size_t val) final { _set(_databaseServicesPoolSize, val); }
 
     /**
      * @see Configuration::addWorker()
@@ -124,6 +193,26 @@ public:
     WorkerInfo const setWorkerDataDir(std::string const& name,
                                       std::string const& dataDir) final;
 
+    /**
+     * @see Configuration::setWorkerTechnology()
+     */
+    void setWorkerTechnology(std::string const& val) final { _set(_workerTechnology, val); }
+
+    /**
+     * @see Configuration::setWorkerNumProcessingThreads()
+     */
+    void setWorkerNumProcessingThreads(size_t val) final { _set(_workerNumProcessingThreads, val); }
+
+    /**
+     * @see Configuration::setFsNumProcessingThreads()
+     */
+    void setFsNumProcessingThreads(size_t val) final { _set(_fsNumProcessingThreads, val); }
+
+    /**
+     * @see Configuration::setWorkerFsBufferSizeBytes()
+     */
+    void setWorkerFsBufferSizeBytes(size_t val) final { _set(_workerFsBufferSizeBytes, val); }
+
 protected:
 
     /**
@@ -149,6 +238,65 @@ private:
      * with expectations of the application
      */
     void loadConfiguration(util::ConfigStore const& configStore);
+
+    /**
+     * The setter method for numeric types
+     * 
+     * @param var
+     *   a reference to a parameter variable to be set
+     * 
+     * @param val
+     *   the new value of the parameter
+     * 
+     * @param allowZero
+     *   (optional) flag disallowing (if set) zero values
+     */
+    template <class T>
+    void _set(T& var, T val, bool allowZero=false) {
+        LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  val=" << val);
+        util::Lock lock(_mtx, context() + __func__);
+        if (not allowZero and val == 0) {
+            throw std::invalid_argument(
+                    "ConfigurationStore::" + std::string(__func__) + "<numeric>  0 value is not allowed");
+        }
+        var = val;
+    }
+
+    /**
+     * Specialized version of the setter method for type 'bool'
+     */
+    void _set(bool& var, bool val) {
+        LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  val=" << (val ? "true" : "false"));
+        util::Lock lock(_mtx, context() + __func__);
+        var = val;
+    }
+
+    /**
+     * Specialized version of the setter method for type 'std::string'
+     * 
+     * @param var
+     *   a reference to a parameter variable to be set
+     * 
+     * @param val
+     *   the new value of the parameter
+     * 
+     * @param allowEmpty
+     *   (optional) flag disallowing (if set) empty values
+     */
+    void _set(std::string& var, std::string const& val, bool allowEmpty=false) {
+        LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  val=" << val);
+        util::Lock lock(_mtx, context() + __func__);
+        if (not allowEmpty and val.empty()) {
+            throw std::invalid_argument(
+                    "ConfigurationStore::" + std::string(__func__) + "<string>  empty value is not allowed");
+        }
+        var = val;
+    }
+
+private:
+
+    /// Message logger
+    LOG_LOGGER _log;
 };
 
 }}} // namespace lsst::qserv::replica
