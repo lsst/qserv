@@ -63,8 +63,108 @@ std::ostream& operator<<(std::ostream& os, StringRange const& strRange) {
 }
 
 
+void StringRange::setAllInclusiveRange() {
+    _min = CompositeKey(0,"");
+    _maxE = CompositeKey(CompositeKey::maxIntVal(), "");
+    _unlimited = true;
+    setValid();
+}
+
+
+/* &&&
+bool StringRange::setMin(std::string const& val) {
+    if (not _unlimited && val >= _maxE) {
+        _min = decrementString(_maxE);
+        return false;
+    }
+    _min = val;
+    return true;
+}
+*/
+bool StringRange::setMin(CompositeKey const& val) {
+    if (not _unlimited && val >= _maxE) {
+        _min = decrement(_maxE);
+        return false;
+    }
+    _min = val;
+    return true;
+}
+
+/* &&&
+
+    bool StringRange::setMax(std::string const& val, bool unlimited=false) {
+        _unlimited = unlimited;
+        if (unlimited) {
+            if (val > _maxE) { _maxE = val; }
+            return true;
+        }
+        if (val < _min) {
+            _maxE = incrementString(_min);
+            return false;
+        }
+        _maxE = val;
+        return true;
+    }
+
+ */
+bool StringRange::setMax(CompositeKey const& val, bool unlimited=false) {
+    _unlimited = unlimited;
+    if (unlimited) {
+        if (val > _maxE) { _maxE = val; }
+        return true;
+    }
+    if (val < _min) {
+        _maxE = increment(_min);
+        return false;
+    }
+    _maxE = val;
+    return true;
+}
+
+
+/* &&&
+bool StringRange::setMinMax(std::string const& vMin, std::string const& vMax, bool unlimited=false) {
+    _unlimited = unlimited;
+    if (!unlimited && vMin > vMax) {
+        return false;
+    }
+    _unlimited = unlimited;
+    if (_unlimited) {
+        _min = vMin;
+        _maxE = std::max(vMax, _min); // max is irrelevant at this point
+    } else {
+        _min = vMin;
+        _maxE = vMax;
+    }
+    setValid();
+    return true;
+}
+*/
+bool StringRange::setMinMax(CompositeKey const& vMin, CompositeKey const& vMax, bool unlimited=false) {
+    _unlimited = unlimited;
+    if (!unlimited && vMin > vMax) {
+        return false;
+    }
+    _unlimited = unlimited;
+    if (_unlimited) {
+        _min = vMin;
+        _maxE = std::max(vMax, _min); // max is irrelevant at this point
+    } else {
+        _min = vMin;
+        _maxE = vMax;
+    }
+    setValid();
+    return true;
+}
+
+
+
+
 std::string StringRange::incrementString(std::string const& str, char appendChar) {
     std::string output(str);
+    if (output.empty()) {
+        output += appendChar;
+    }
     size_t pos = output.size() - 1;
     char lastChar = output[pos];
     if (lastChar < 'z') {
@@ -74,6 +174,12 @@ std::string StringRange::incrementString(std::string const& str, char appendChar
         output += appendChar;
     }
     return output;
+}
+
+
+CompositeKey StringRange::increment(CompositeKey const& key, char appendChar) {
+    CompositeKey outKey(key.kInt, incrementString(key.kStr, appendChar));
+    return outKey;
 }
 
 
@@ -92,6 +198,17 @@ std::string StringRange::decrementString(std::string const& str, char minChar) {
         output.erase(pos, 1);
     }
     return output;
+}
+
+
+CompositeKey StringRange::decrement(CompositeKey const& key, char minChar='0') {
+    CompositeKey outK(key);
+    if (outK.kStr.empty()) {
+        if (outK.kInt > 0) --outK.kInt;
+        return outK;
+    }
+    outK.kStr = decrementString(outK.kStr, minChar);
+    return outK;
 }
 
 
