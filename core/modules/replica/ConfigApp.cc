@@ -82,8 +82,12 @@ ConfigApp::ConfigApp(int argc,
     parser().commands(
         "command",
         {"DUMP",
+         "UPDATE_GENERAL",
          "UPDATE_WORKER", "ADD_WORKER", "DELETE_WORKER",
-         "UPDATE_GENERAL"},
+         "ADD_DATABASE_FAMILY", "DELETE_DATABASE_FAMILY",
+         "ADD_DATABASE", "DELETE_DATABASE",
+         "ADD_TABLE", "DELETE_TABLE"
+        },
         _command
     ).option(
         "config",
@@ -258,12 +262,80 @@ ConfigApp::ConfigApp(int argc,
         _workerFsBufferSizeBytes.description,
         _workerFsBufferSizeBytes.value
     );
+    
+    parser().command("ADD_DATABASE_FAMILY").required(
+        "name",
+        "The name of a new database family",
+        _familyInfo.name
+    ).required(
+        "replication-level",
+        "The minimum replication level desired (1..N)",
+        _familyInfo.replicationLevel
+    ).required(
+        "num-stripes",
+        "The number of stripes (from the CSS partitioning configuration)",
+        _familyInfo.numStripes
+    ).required(
+        "num-sub-stripes",
+        "The number of sub-stripes (from the CSS partitioning configuration)",
+        _familyInfo.numSubStripes
+    );
+
+    parser().command("DELETE_DATABASE_FAMILY").required(
+        "name",
+        "The name of an existing database family to be deleted. ATTENTION: all databases that"
+        " are members of the family will be deleted as well, along with the relevant info"
+        " about replicas of all chunks of the databases",
+        _familyInfo.name
+    );
+    
+    parser().command("ADD_DATABASE").required(
+        "name",
+        "The name of a new database",
+        _databaseInfo.name
+    ).required(
+        "family",
+        "The name of an existing family the new database will join",
+        _databaseInfo.family
+    );
+
+    parser().command("DELETE_DATABASE").required(
+        "name",
+        "The name of an existing database to be deleted. ATTENTION: all relevant info that"
+        " is associated with the database (replicas of all chunks, etc.) will get deleted as well.",
+        _databaseInfo.name
+    );
+
+    parser().command("ADD_TABLE").required(
+        "database",
+        "The name of an existing database",
+        _database
+    ).required(
+        "table",
+        "The name of a new table",
+        _table
+    ).flag(
+        "partitioned",
+        "The flag indicating (if present) that a table is partitioned",
+        _isPartitioned
+    );
+
+    parser().command("DELETE_TABLE").required(
+        "database",
+        "The name of an existing database",
+        _database
+    ).required(
+        "table",
+        "The name of an existing table to be deleted. ATTENTION: all relevant info that"
+        " is associated with the table (replicas of all chunks, etc.) will get deleted as well.",
+        _table
+    );
 }
 
 
 int ConfigApp::runImpl() {
 
-    char const* context = "ConfigApp::runImpl  ";
+    string const context = "ConfigApp::" + string(__func__) + "  ";
 
     _config = Configuration::load(_configUrl);
     if (_config->prefix() != "mysql") {
@@ -271,11 +343,17 @@ int ConfigApp::runImpl() {
              << "' is not allowed by this application");
         return 1;
     }
-    if (_command == "DUMP")           return _dump();
-    if (_command == "UPDATE_WORKER")  return _updateWorker();
-    if (_command == "ADD_WORKER")     return _addWorker();
-    if (_command == "DELETE_WORKER")  return _deleteWorker();
-    if (_command == "UPDATE_GENERAL") return _updateGeneral();
+    if (_command == "DUMP")                   return _dump();
+    if (_command == "UPDATE_GENERAL")         return _updateGeneral();
+    if (_command == "UPDATE_WORKER")          return _updateWorker();
+    if (_command == "ADD_WORKER")             return _addWorker();
+    if (_command == "DELETE_WORKER")          return _deleteWorker();
+    if (_command == "ADD_DATABASE_FAMILY")    return _addFamily();
+    if (_command == "DELETE_DATABASE_FAMILY") return _deleteFamily();
+    if (_command == "ADD_DATABASE")           return _addDatabase();
+    if (_command == "DELETE_DATABASE")        return _deleteDatabase();
+    if (_command == "ADD_TABLE")              return _addTable();
+    if (_command == "DELETE_TABLE"   )        return _deleteTable();
 
     LOGS(_log, LOG_LVL_ERROR, context << "unsupported command: '" + _command + "'");
     return 1;
@@ -509,6 +587,12 @@ void ConfigApp::_dumpDatabasesAsTable(string const indent) const {
             tableName      .push_back(table);
             isPartitionable.push_back("no");
         }
+        if (di.partitionedTables.empty() and di.regularTables.empty()) {
+            familyName     .push_back(di.family);
+            databaseName   .push_back(di.name);
+            tableName      .push_back("<no tables>");
+            isPartitionable.push_back("n/a");
+        }
     }
 
     util::ColumnTablePrinter table("DATABASES & TABLES:", indent);
@@ -522,9 +606,39 @@ void ConfigApp::_dumpDatabasesAsTable(string const indent) const {
 }
 
 
+int ConfigApp::_updateGeneral() {
+
+    string const context = "ConfigApp::" + string(__func__) + "  ";
+
+    try {
+        _requestBufferSizeBytes     .save(_config);
+        _retryTimeoutSec            .save(_config);
+        _controllerThreads          .save(_config);
+        _controllerHttpPort         .save(_config);
+        _controllerHttpThreads      .save(_config);
+        _controllerRequestTimeoutSec.save(_config);
+        _jobTimeoutSec              .save(_config);
+        _jobHeartbeatTimeoutSec     .save(_config);
+        _xrootdAutoNotify           .save(_config);
+        _xrootdHost                 .save(_config);
+        _xrootdPort                 .save(_config);
+        _xrootdTimeoutSec           .save(_config);
+        _databaseServicesPoolSize   .save(_config);
+        _workerTechnology           .save(_config);
+        _workerNumProcessingThreads .save(_config);
+        _fsNumProcessingThreads     .save(_config);
+        _workerFsBufferSizeBytes    .save(_config);
+    } catch (std::exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
+        return 1;
+    }
+    return 0;
+}
+
+
 int ConfigApp::_updateWorker() const {
 
-    char const* context = "ConfigApp::_updateWorker  ";
+    string const context = "ConfigApp::" + string(__func__) + "  ";
 
     if (_workerEnable and _workerDisable) {
         LOGS(_log, LOG_LVL_ERROR, context << "flags --worker-enable and --worker-disable"
@@ -595,7 +709,7 @@ int ConfigApp::_updateWorker() const {
 
 int ConfigApp::_addWorker() const {
 
-    char const* context = "ConfigApp::_addWorker  ";
+    string const context = "ConfigApp::" + string(__func__) + "  ";
 
     if (_config->isKnownWorker(_workerInfo.name)) {
         LOGS(_log, LOG_LVL_ERROR, context << "the worker already exists: '" << _workerInfo.name << "'");
@@ -613,7 +727,7 @@ int ConfigApp::_addWorker() const {
 
 int ConfigApp::_deleteWorker() const {
 
-    char const* context = "ConfigApp::_deleteWorker  ";
+    string const context = "ConfigApp::" + string(__func__) + "  ";
 
     if (not _config->isKnownWorker(_workerInfo.name)) {
         LOGS(_log, LOG_LVL_ERROR, context << "the worker doesn't exists: '" << _workerInfo.name << "'");
@@ -631,28 +745,28 @@ int ConfigApp::_deleteWorker() const {
 }
 
 
-int ConfigApp::_updateGeneral() {
+int ConfigApp::_addFamily() {
 
-    char const* context = "ConfigApp::_updateGeneral  ";
-
+    string const context = "ConfigApp::" + string(__func__) + "  ";
+    
+    if (_familyInfo.name.empty()) {
+        LOGS(_log, LOG_LVL_ERROR, context << "the family name can't be empty");
+        return 1;
+    }
+    if (_familyInfo.replicationLevel == 0) {
+        LOGS(_log, LOG_LVL_ERROR, context << "the replication level can't be 0");
+        return 1;
+    }
+    if (_familyInfo.numStripes == 0) {
+        LOGS(_log, LOG_LVL_ERROR, context << "the number of stripes level can't be 0");
+        return 1;
+    }
+    if (_familyInfo.numSubStripes == 0) {
+        LOGS(_log, LOG_LVL_ERROR, context << "the number of sub-stripes level can't be 0");
+        return 1;
+    }
     try {
-        _requestBufferSizeBytes     .save(_config);
-        _retryTimeoutSec            .save(_config);
-        _controllerThreads          .save(_config);
-        _controllerHttpPort         .save(_config);
-        _controllerHttpThreads      .save(_config);
-        _controllerRequestTimeoutSec.save(_config);
-        _jobTimeoutSec              .save(_config);
-        _jobHeartbeatTimeoutSec     .save(_config);
-        _xrootdAutoNotify           .save(_config);
-        _xrootdHost                 .save(_config);
-        _xrootdPort                 .save(_config);
-        _xrootdTimeoutSec           .save(_config);
-        _databaseServicesPoolSize   .save(_config);
-        _workerTechnology           .save(_config);
-        _workerNumProcessingThreads .save(_config);
-        _fsNumProcessingThreads     .save(_config);
-        _workerFsBufferSizeBytes    .save(_config);
+        _config->addDatabaseFamily(_familyInfo);
     } catch (std::exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
         return 1;
@@ -660,5 +774,106 @@ int ConfigApp::_updateGeneral() {
     return 0;
 }
 
+
+int ConfigApp::_deleteFamily() {
+
+    string const context = "ConfigApp::" + string(__func__) + "  ";
+
+    if (_familyInfo.name.empty()) {
+        LOGS(_log, LOG_LVL_ERROR, context << "the family name can't be empty");
+        return 1;
+    }
+    try {
+        _config->deleteDatabaseFamily(_familyInfo.name);
+    } catch (std::exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
+        return 1;
+    }
+    return 0;
+}
+
+
+int ConfigApp::_addDatabase() {
+
+    string const context = "ConfigApp::" + string(__func__) + "  ";
+    
+    if (_databaseInfo.name.empty()) {
+        LOGS(_log, LOG_LVL_ERROR, context << "the database name can't be empty");
+        return 1;
+    }
+    if (_databaseInfo.family.empty()) {
+        LOGS(_log, LOG_LVL_ERROR, context << "the family name can't be empty");
+        return 1;
+    }
+    try {
+        _config->addDatabase(_databaseInfo);
+    } catch (std::exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
+        return 1;
+    }
+    return 0;
+}
+
+
+int ConfigApp::_deleteDatabase() {
+
+    string const context = "ConfigApp::" + string(__func__) + "  ";
+
+    if (_databaseInfo.name.empty()) {
+        LOGS(_log, LOG_LVL_ERROR, context << "the database name can't be empty");
+        return 1;
+    }
+    try {
+        _config->deleteDatabase(_databaseInfo.name);
+    } catch (std::exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
+        return 1;
+    }
+    return 0;
+}
+
+
+int ConfigApp::_addTable() {
+
+    string const context = "ConfigApp::" + string(__func__) + "  ";
+    
+    if (_database.empty()) {
+        LOGS(_log, LOG_LVL_ERROR, context << "the database name can't be empty");
+        return 1;
+    }
+    if (_table.empty()) {
+        LOGS(_log, LOG_LVL_ERROR, context << "the table name can't be empty");
+        return 1;
+    }
+    try {
+        _config->addTable(_database, _table, _isPartitioned ? true : false);
+    } catch (std::exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
+        return 1;
+    }
+    return 0;
+}
+
+
+int ConfigApp::_deleteTable() {
+
+    string const context = "ConfigApp::" + string(__func__) + "  ";
+
+    if (_database.empty()) {
+        LOGS(_log, LOG_LVL_ERROR, context << "the database name can't be empty");
+        return 1;
+    }
+    if (_table.empty()) {
+        LOGS(_log, LOG_LVL_ERROR, context << "the table name can't be empty");
+        return 1;
+    }
+    try {
+        _config->deleteTable(_database, _table);
+    } catch (std::exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
+        return 1;
+    }
+    return 0;
+}
 
 }}} // namespace lsst::qserv::replica

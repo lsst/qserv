@@ -24,6 +24,7 @@
 #include "replica/ConfigurationStore.h"
 
 // System headers
+#include <algorithm>
 #include <iterator>
 #include <sstream>
 
@@ -133,7 +134,7 @@ void ConfigurationStore::deleteWorker(std::string const& name) {
 }
 
 
-WorkerInfo const ConfigurationStore::disableWorker(std::string const& name,
+WorkerInfo ConfigurationStore::disableWorker(std::string const& name,
                                                    bool disable) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  name=" << name
          << " disable=" << (disable ? "true" : "false"));
@@ -148,7 +149,7 @@ WorkerInfo const ConfigurationStore::disableWorker(std::string const& name,
     return itr->second;
 }
 
-WorkerInfo const ConfigurationStore::setWorkerReadOnly(std::string const& name,
+WorkerInfo ConfigurationStore::setWorkerReadOnly(std::string const& name,
                                                        bool readOnly) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  name=" << name
          << " readOnly=" << (readOnly ? "true" : "false"));
@@ -164,7 +165,7 @@ WorkerInfo const ConfigurationStore::setWorkerReadOnly(std::string const& name,
 }
 
 
-WorkerInfo const ConfigurationStore::setWorkerSvcHost(std::string const& name,
+WorkerInfo ConfigurationStore::setWorkerSvcHost(std::string const& name,
                                                       std::string const& host) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  name=" << name << " host=" << host);
     util::Lock lock(_mtx, context() + __func__);
@@ -179,7 +180,7 @@ WorkerInfo const ConfigurationStore::setWorkerSvcHost(std::string const& name,
 }
 
 
-WorkerInfo const ConfigurationStore::setWorkerSvcPort(std::string const& name,
+WorkerInfo ConfigurationStore::setWorkerSvcPort(std::string const& name,
                                                       uint16_t port) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  name=" << name << " port=" << port);
     util::Lock lock(_mtx, context() + __func__);
@@ -194,7 +195,7 @@ WorkerInfo const ConfigurationStore::setWorkerSvcPort(std::string const& name,
 }
 
 
-WorkerInfo const ConfigurationStore::setWorkerFsHost(std::string const& name,
+WorkerInfo ConfigurationStore::setWorkerFsHost(std::string const& name,
                                                      std::string const& host) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  name=" << name << " host=" << host);
     util::Lock lock(_mtx, context() + __func__);
@@ -209,7 +210,7 @@ WorkerInfo const ConfigurationStore::setWorkerFsHost(std::string const& name,
 }
 
 
-WorkerInfo const ConfigurationStore::setWorkerFsPort(std::string const& name,
+WorkerInfo ConfigurationStore::setWorkerFsPort(std::string const& name,
                                                      uint16_t port) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  name=" << name << " port=" << port);
     util::Lock lock(_mtx, context() + __func__);
@@ -224,8 +225,9 @@ WorkerInfo const ConfigurationStore::setWorkerFsPort(std::string const& name,
 }
 
 
-WorkerInfo const ConfigurationStore::setWorkerDataDir(std::string const& name,
+WorkerInfo ConfigurationStore::setWorkerDataDir(std::string const& name,
                                                       std::string const& dataDir) {
+
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  name=" << name << " dataDir=" << dataDir);
     util::Lock lock(_mtx, context() + __func__);
 
@@ -240,8 +242,203 @@ WorkerInfo const ConfigurationStore::setWorkerDataDir(std::string const& name,
 }
 
 
+DatabaseFamilyInfo ConfigurationStore::addDatabaseFamily(DatabaseFamilyInfo const& info) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  familyInfo: " << info);
+
+    util::Lock lock(_mtx, context() + __func__);
+    
+    if (info.name.empty()) {
+        throw std::invalid_argument(context() + std::string(__func__) + "  the family name can't be empty");
+    }
+    if (info.replicationLevel == 0) {
+        throw std::invalid_argument(context() + std::string(__func__) + "  the replication level can't be 0");
+    }
+    if (info.numStripes == 0) {
+        throw std::invalid_argument(context() + std::string(__func__) + "  the number of stripes level can't be 0");
+    }
+    if (info.numSubStripes == 0) {
+        throw std::invalid_argument(context() + std::string(__func__) + "  the number of sub-stripes level can't be 0");
+    }
+    if (_databaseFamilyInfo.end() != _databaseFamilyInfo.find(info.name)) {
+        throw std::invalid_argument(context() + std::string(__func__) + "  the family already exists");
+    }
+    _databaseFamilyInfo[info.name] = DatabaseFamilyInfo{
+        info.name,
+        info.replicationLevel,
+        info.numStripes,
+        info.numSubStripes,
+        std::make_shared<ChunkNumberQservValidator>(
+            static_cast<int32_t>(info.numStripes),
+            static_cast<int32_t>(info.numSubStripes))
+    };
+    return _databaseFamilyInfo[info.name];
+}
+
+
+void ConfigurationStore::deleteDatabaseFamily(std::string const& name) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  name: " << name);
+
+    util::Lock lock(_mtx, context() + __func__);
+
+    if (name.empty()) {
+        throw std::invalid_argument(context() + std::string(__func__) + "  the family name can't be empty");
+    }
+    
+    // Find and delete the family
+    auto itr = _databaseFamilyInfo.find(name);
+    if (itr == _databaseFamilyInfo.end()) {
+        throw std::invalid_argument(context() + std::string(__func__) + "  unknown family");
+    }
+    _databaseFamilyInfo.erase(itr);
+
+    // Find and delete the relevant databases
+    for(auto itr = _databaseInfo.begin(); itr != _databaseInfo.end();) {
+        if (itr->second.family == name) {
+            itr = _databaseInfo.erase(itr);     // the iterator now points past the erased element
+        } else {
+            ++itr;
+        }
+    }
+}
+
+
+DatabaseInfo ConfigurationStore::addDatabase(DatabaseInfo const& info) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  databaseInfo: " << info);
+
+    util::Lock lock(_mtx, context() + __func__);
+    
+    if (info.name.empty()) {
+        throw std::invalid_argument(context() + std::string(__func__) + "  the database name can't be empty");
+    }
+    if (info.family.empty()) {
+        throw std::invalid_argument(context() + std::string(__func__) + "  the family name can't be empty");
+    }
+    if (_databaseFamilyInfo.find(info.family) == _databaseFamilyInfo.end()) {
+        throw std::invalid_argument(context() + std::string(__func__) + "  unknown database family: '" + info.family + "'");
+    }
+    if (_databaseInfo.find(info.name) != _databaseInfo.end()) {
+        throw std::invalid_argument(context() + std::string(__func__) + "  database already exists");
+    }
+    _databaseInfo[info.name] = DatabaseInfo{
+        info.name,
+        info.family,
+        {},
+        {}
+    };
+    return _databaseInfo[info.name];
+}
+
+
+void ConfigurationStore::deleteDatabase(std::string const& name) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  name: " << name);
+
+    util::Lock lock(_mtx, context() + __func__);
+
+    if (name.empty()) {
+        throw std::invalid_argument(context() + std::string(__func__) + "  the database name can't be empty");
+    }
+    
+    // Find and delete the database
+    auto itr = _databaseInfo.find(name);
+    if (itr == _databaseInfo.end()) {
+        throw std::invalid_argument(context() + std::string(__func__) + "  unknown database");
+    }
+    _databaseInfo.erase(itr);
+}
+
+
+DatabaseInfo ConfigurationStore::addTable(std::string const& database,
+                                          std::string const& table,
+                                          bool isPartitioned) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  database: " << database
+         << " table: " << table << " isPartitioned: " << (isPartitioned ? "true" : "false"));
+
+    util::Lock lock(_mtx, context() + __func__);
+
+    if (database.empty()) {
+        throw std::invalid_argument(context() + std::string(__func__) + "  the database name can't be empty");
+    }
+    if (table.empty()) {
+        throw std::invalid_argument(context() + std::string(__func__) + "  the table name can't be empty");
+    }
+
+    // Find the database
+    auto itr = _databaseInfo.find(database);
+    if (itr == _databaseInfo.end()) {
+        throw std::invalid_argument(context() + std::string(__func__) + "  unknown database");
+    }
+    DatabaseInfo& info = itr->second;
+
+    // Find the table
+    if (std::find(info.partitionedTables.cbegin(),
+                  info.partitionedTables.cend(),
+                  table) != info.partitionedTables.cend() or
+        std::find(info.regularTables.cbegin(), 
+                  info.regularTables.cend(),
+                  table) != info.regularTables.cend()) {
+
+        throw std::invalid_argument(context() + std::string(__func__) + "  table already exists");
+    }
+
+    // Insert the table into the corresponding collection
+    if (isPartitioned) {
+        info.partitionedTables.push_back(table);
+    } else {
+        info.regularTables.push_back(table);
+    }
+    return info;
+}
+
+
+DatabaseInfo ConfigurationStore::deleteTable(std::string const& database,
+                                             std::string const& table) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  database: " << database
+         << " table: " << table);
+
+    util::Lock lock(_mtx, context() + __func__);
+
+    if (database.empty()) {
+        throw std::invalid_argument(context() + std::string(__func__) + "  the database name can't be empty");
+    }
+    if (table.empty()) {
+        throw std::invalid_argument(context() + std::string(__func__) + "  the table name can't be empty");
+    }
+    
+    // Find the database
+    auto itr = _databaseInfo.find(database);
+    if (itr == _databaseInfo.end()) {
+        throw std::invalid_argument(context() + std::string(__func__) + "  unknown database");
+    }
+    DatabaseInfo& info = itr->second;
+
+    auto pTableItr = std::find(info.partitionedTables.cbegin(),
+                               info.partitionedTables.cend(),
+                               table);
+    if (pTableItr != info.partitionedTables.cend()) {
+        info.partitionedTables.erase(pTableItr);
+        return info;
+    }
+    auto rTableItr = std::find(info.regularTables.cbegin(),
+                               info.regularTables.cend(),
+                               table);
+    if (rTableItr != info.regularTables.cend()) {
+        info.regularTables.erase(rTableItr);
+        return info;
+    }
+    throw std::invalid_argument(context() + std::string(__func__) + "  unknown table");
+}
+
+
 void ConfigurationStore::loadConfiguration(util::ConfigStore const& configStore) {
+
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
+
     util::Lock lock(_mtx, context() + __func__);
 
     // Parse the list of worker names

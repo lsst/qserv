@@ -249,6 +249,23 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         BOOST_CHECK(config->replicationLevel("production") == 10);
         BOOST_CHECK(config->replicationLevel("test")       == 13);
     
+        DatabaseFamilyInfo newFamily;
+        newFamily.name = "new";
+        newFamily.replicationLevel = 300;
+        newFamily.numStripes = 301;
+        newFamily.numSubStripes = 302;
+
+        DatabaseFamilyInfo const newFamilyAdded = config->addDatabaseFamily(newFamily);
+        BOOST_CHECK(config->isKnownDatabaseFamily("new"));
+
+        BOOST_CHECK(newFamilyAdded.name == "new");
+        BOOST_CHECK(newFamilyAdded.replicationLevel == 300);
+        BOOST_CHECK(newFamilyAdded.numStripes       == 301);
+        BOOST_CHECK(newFamilyAdded.numSubStripes    == 302);
+
+        config->deleteDatabaseFamily("new");
+        BOOST_CHECK(not config->isKnownDatabaseFamily("new"));
+
         // Databases
 
         std::vector<std::string> databases1 = config->databases();
@@ -337,6 +354,44 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
 
         tables = db5info.regularTables;
         BOOST_CHECK(tables.size() == 0);
+
+        DatabaseInfo newDatabase;
+        newDatabase.name = "new";
+        newDatabase.family = "test";
+        
+        DatabaseInfo const newDatabaseCreated = config->addDatabase(newDatabase);
+        BOOST_CHECK(newDatabaseCreated.name   == "new");
+        BOOST_CHECK(newDatabaseCreated.family == "test");
+        BOOST_CHECK(newDatabaseCreated.partitionedTables.size() == 0);
+        BOOST_CHECK(newDatabaseCreated.regularTables.size() == 0);
+
+        BOOST_CHECK_THROW(config->addDatabase(newDatabase), std::invalid_argument);
+
+        newDatabase.name = "";
+        BOOST_CHECK_THROW(config->addDatabase(newDatabase), std::invalid_argument);
+
+        newDatabase.name   = "another";
+        newDatabase.family = "";
+        BOOST_CHECK_THROW(config->addDatabase(newDatabase), std::invalid_argument);
+
+        newDatabase.family = "unknown";
+        BOOST_CHECK_THROW(config->addDatabase(newDatabase), std::invalid_argument);
+
+        DatabaseInfo newDatabaseUpdated = config->addTable("new", "T1", true);
+        BOOST_CHECK(newDatabaseUpdated.partitionedTables.size() == 1 and
+                    newDatabaseUpdated.partitionedTables[0] == "T1");
+        BOOST_CHECK_THROW(config->addTable("new", "T1", true), std::invalid_argument);
+
+        newDatabaseUpdated = config->addTable("new", "T2", false);
+        BOOST_CHECK(newDatabaseUpdated.regularTables.size() == 1 and
+                    newDatabaseUpdated.regularTables[0] == "T2");
+        BOOST_CHECK_THROW(config->addTable("new", "T2", false), std::invalid_argument);
+
+        config->deleteTable("new", "T1");
+        config->deleteTable("new", "T2");
+
+        config->deleteDatabase("new");
+        BOOST_CHECK_THROW(config->deleteDatabase("new"), std::invalid_argument);
 
         // -----------------------------------------------------
         // -- Configuration parameters of the worker services --

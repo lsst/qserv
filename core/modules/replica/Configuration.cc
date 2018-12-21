@@ -234,13 +234,9 @@ std::vector<std::string> Configuration::databaseFamilies() const {
 
     util::Lock lock(_mtx, context() + "databaseFamilies");
 
-    std::set<std::string> familyNames;
-    for (auto&& elem: _databaseInfo) {
-        familyNames.insert(elem.second.family);
-    }
     std::vector<std::string> families;
-    for (auto&& name: familyNames) {
-        families.push_back(name);
+    for (auto&& itr: _databaseFamilyInfo) {
+        families.push_back(itr.first);
     }
     return families;
 }
@@ -265,7 +261,7 @@ size_t Configuration::replicationLevel(std::string const& family) const {
     return itr->second.replicationLevel;
 }
 
-DatabaseFamilyInfo const Configuration::databaseFamilyInfo(std::string const& name) const {
+DatabaseFamilyInfo Configuration::databaseFamilyInfo(std::string const& name) const {
 
     util::Lock lock(_mtx, context() + "databaseFamilyInfo");
 
@@ -303,7 +299,7 @@ bool Configuration::isKnownWorker(std::string const& name) const {
     return _workerInfo.count(name) > 0;
 }
 
-WorkerInfo const Configuration::workerInfo(std::string const& name) const {
+WorkerInfo Configuration::workerInfo(std::string const& name) const {
 
     util::Lock lock(_mtx, context() + "workerInfo");
 
@@ -322,7 +318,7 @@ bool Configuration::isKnownDatabase(std::string const& name) const {
     return _databaseInfo.count(name) > 0;
 }
 
-DatabaseInfo const Configuration::databaseInfo(std::string const& name) const {
+DatabaseInfo Configuration::databaseInfo(std::string const& name) const {
 
     util::Lock lock(_mtx, context() + "databaseInfo");
 

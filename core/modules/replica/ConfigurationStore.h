@@ -154,44 +154,44 @@ public:
     /**
      * @see Configuration::disableWorker()
      */
-    WorkerInfo const disableWorker(std::string const& name,
-                                   bool disable) final;
+    WorkerInfo disableWorker(std::string const& name,
+                             bool disable) final;
 
     /**
      * @see Configuration::setWorkerReadOnly()
      */
-    WorkerInfo const setWorkerReadOnly(std::string const& name,
-                                       bool readOnly) final;
+    WorkerInfo setWorkerReadOnly(std::string const& name,
+                                 bool readOnly) final;
 
     /**
      * @see Configuration::setWorkerSvcHost()
      */
-    WorkerInfo const setWorkerSvcHost(std::string const& name,
-                                      std::string const& host) final;
+    WorkerInfo setWorkerSvcHost(std::string const& name,
+                                std::string const& host) final;
 
     /**
      * @see Configuration::setWorkerSvcPort()
      */
-    WorkerInfo const setWorkerSvcPort(std::string const& name,
-                                      uint16_t port) final;
+    WorkerInfo setWorkerSvcPort(std::string const& name,
+                                uint16_t port) final;
 
     /**
      * @see Configuration::setWorkerFsHost()
      */
-    WorkerInfo const setWorkerFsHost(std::string const& name,
-                                     std::string const& host) final;
+    WorkerInfo setWorkerFsHost(std::string const& name,
+                               std::string const& host) final;
 
     /**
      * @see Configuration::setWorkerFsPort()
      */
-    WorkerInfo const setWorkerFsPort(std::string const& name,
-                                     uint16_t port) final;
+    WorkerInfo setWorkerFsPort(std::string const& name,
+                               uint16_t port) final;
 
     /**
      * @see Configuration::setWorkerDataDir()
      */
-    WorkerInfo const setWorkerDataDir(std::string const& name,
-                                      std::string const& dataDir) final;
+    WorkerInfo setWorkerDataDir(std::string const& name,
+                                std::string const& dataDir) final;
 
     /**
      * @see Configuration::setWorkerTechnology()
@@ -212,6 +212,41 @@ public:
      * @see Configuration::setWorkerFsBufferSizeBytes()
      */
     void setWorkerFsBufferSizeBytes(size_t val) final { _set(_workerFsBufferSizeBytes, val); }
+
+
+    /**
+     * @see Configuration::addDatabaseFamily()
+     */
+    DatabaseFamilyInfo addDatabaseFamily(DatabaseFamilyInfo const& info) final;
+
+    /**
+     * @see Configuration::deleteDatabaseFamily()
+     */
+    void deleteDatabaseFamily(std::string const& name) final;
+
+
+    /**
+     * @see Configuration::addDatabase()
+     */
+    DatabaseInfo addDatabase(DatabaseInfo const& info) final;
+
+    /**
+     * @see Configuration::deleteDatabase()
+     */
+    void deleteDatabase(std::string const& name) final;
+
+    /**
+     * @see Configuration::addTable()
+     */
+    DatabaseInfo addTable(std::string const& database,
+                          std::string const& table,
+                          bool isPartitioned) final;
+
+    /**
+     * @see Configuration::deleteTable()
+     */
+    DatabaseInfo deleteTable(std::string const& database,
+                             std::string const& table) final;
 
 protected:
 

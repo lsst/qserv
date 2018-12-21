@@ -428,14 +428,41 @@ public:
     bool isKnownDatabaseFamily(std::string const& name) const;
 
     /**
-     * Return database family description
+     * @return database family description
      *
      * @param name - the name of a family
      *
      * @throw std::invalid_argument - if the specified family was not found in
      *                                the configuration
      */
-    DatabaseFamilyInfo const databaseFamilyInfo(std::string const& name) const;
+    DatabaseFamilyInfo databaseFamilyInfo(std::string const& name) const;
+
+    /**
+     * Register a new database family
+     * 
+     * @param info
+     *   parameters of the family
+     * 
+     * @return a description of the newly created database family
+     *
+     * @throw std::invalid_argument
+     *   if the specified family already exists, or if the input descriptor
+     *   has incorrect parameters (empty name, 0 values of the numbers of stripes
+     *   or sub-stripes, or 0 value of the replication level)
+     */
+    virtual DatabaseFamilyInfo addDatabaseFamily(DatabaseFamilyInfo const& info)=0;
+
+    /**
+     * Delete an existing family
+     * 
+     * @param name
+     *   the name of a family
+     *
+     * @throw std::invalid_argument
+     *   if the specified family was not found in the configuration, or
+     *   an empty string passed as a value of the parameter.
+     */
+    virtual void deleteDatabaseFamily(std::string const& name)=0;
 
     /**
      * Return the minimum number of chunk replicas for a database family
@@ -473,7 +500,71 @@ public:
      * @throw std::invalid_argument - if the specified database was not found in
      *                                the configuration
      */
-    DatabaseInfo const databaseInfo(std::string const& name) const;
+    DatabaseInfo databaseInfo(std::string const& name) const;
+
+    /**
+     * Register a new database
+     * 
+     * @param info
+     *   database descriptor (only the name and the database family attributes
+     *   will be considered.
+     *
+     * @return
+     *    a database descriptor of the newly created database
+     *
+     * @throw std::invalid_argument
+     *   if the specified database already exists, or if the database family is
+     *   not valid, or if either of those parameters are the empty strings
+     */
+    virtual DatabaseInfo addDatabase(DatabaseInfo const& info)=0;
+
+    /**
+     *  Delete an existing database
+     * 
+     * @param name
+     *   the name of a database to be deleted
+     *
+     * @throw std::invalid_argument
+     *   if the specified database doesn't exist, or if an empty string is
+     *   passed as a parameters of the method
+     */
+    virtual void deleteDatabase(std::string const& name)=0;
+
+    /**
+     * Register a new table with a database
+     * 
+     * @param database
+     *   the name of an existing database hosting the new table
+     *
+     * @param table
+     *   the name of a new table to be registered
+     *
+     * @return
+     *    a database descriptor of the updated database
+     *
+     * @throw std::invalid_argument
+     *   if the specified database doesn't exists, or if the table already exists,
+     *   or if either of those parameters are the empty strings
+     */
+    virtual DatabaseInfo addTable(std::string const& database,
+                                  std::string const& table,
+                                  bool isPartitioned)=0;
+
+    /**
+     *  Delete an existing database
+     * 
+     * @param database
+     *   the name of an existing database hosting the table
+     *
+     * @param table
+     *   the name of an existing table to be deleted
+     *
+     * @throw std::invalid_argument
+     *   if the specified database doesn't exists, or if the table doesn't exist,
+     *   or if either of those parameters are the empty strings
+     */
+    virtual DatabaseInfo deleteTable(std::string const& database,
+                                     std::string const& table)=0;
 
     // -----------------------------------------------------
     // -- Configuration parameters of the worker services --
@@ -494,7 +585,7 @@ public:
      * @throw std::invalid_argument - if the specified worker was not found in
      *                                the configuration.
      */
-    WorkerInfo const workerInfo(std::string const& name) const;
+    WorkerInfo workerInfo(std::string const& name) const;
 
     /**
      * Register a new worker in the Configuration.
@@ -549,8 +640,8 @@ public:
      * @throw std::invalid_argument
      *   if the specified worker was not found in the configuration.
      */
-    virtual WorkerInfo const disableWorker(std::string const& name,
-                                           bool disable=true)=0;
+    virtual WorkerInfo disableWorker(std::string const& name,
+                                     bool disable=true)=0;
 
     /**
      * Change the status of the worker node to 'read-only' or 'read-write'
@@ -576,8 +667,8 @@ public:
      * @throw std::invalid_argument
      *   if the specified worker was not found in the configuration.
      */
-    virtual WorkerInfo const setWorkerReadOnly(std::string const& name,
-                                               bool readOnly=true)=0;
+    virtual WorkerInfo setWorkerReadOnly(std::string const& name,
+                                         bool readOnly=true)=0;
 
     /**
      * Change the host name of the worker's service
@@ -595,8 +686,8 @@ public:
      * @throw std::invalid_argument - if the specified worker was not found in
      *                                the configuration.
      */
-    virtual WorkerInfo const setWorkerSvcHost(std::string const& name,
-                                              std::string const& host)=0;
+    virtual WorkerInfo setWorkerSvcHost(std::string const& name,
+                                        std::string const& host)=0;
 
     /**
      * Change the port number of the worker's service
@@ -614,8 +705,8 @@ public:
      * @throw std::invalid_argument - if the specified worker was not found in
      *                                the configuration.
      */
-    virtual WorkerInfo const setWorkerSvcPort(std::string const& name,
-                                              uint16_t port)=0;
+    virtual WorkerInfo setWorkerSvcPort(std::string const& name,
+                                        uint16_t port)=0;
 
     /**
      * Change the host name of the worker's file service
@@ -633,8 +724,8 @@ public:
      * @throw std::invalid_argument - if the specified worker was not found in
      *                                the configuration.
      */
-    virtual WorkerInfo const setWorkerFsHost(std::string const& name,
-                                             std::string const& host)=0;
+    virtual WorkerInfo setWorkerFsHost(std::string const& name,
+                                       std::string const& host)=0;
 
     /**
      * Change the port number of the worker's file service
@@ -652,8 +743,8 @@ public:
      * @throw std::invalid_argument - if the specified worker was not found in
      *                                the configuration.
      */
-    virtual WorkerInfo const setWorkerFsPort(std::string const& name,
-                                             uint16_t port)=0;
+    virtual WorkerInfo setWorkerFsPort(std::string const& name,
+                                       uint16_t port)=0;
 
     /**
      * Change the data directory of the worker
@@ -671,8 +762,8 @@ public:
      * @throw std::invalid_argument - if the specified worker was not found in
      *                                the configuration.
      */
-    virtual WorkerInfo const setWorkerDataDir(std::string const& name,
-                                              std::string const& dataDir)=0;
+    virtual WorkerInfo setWorkerDataDir(std::string const& name,
+                                        std::string const& dataDir)=0;
 
 
     /// @return the name of the default technology for implementing requests

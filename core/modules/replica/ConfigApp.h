@@ -129,6 +129,14 @@ private:
     void _dumpDatabasesAsTable(std::string const indent) const;
 
     /**
+     * Update the general configuration parameters
+     *
+     * @return
+     *   a status code to be returned to the shell
+     */
+    int _updateGeneral();
+
+    /**
      * Update parameters of a worker
      *
      * @return
@@ -153,12 +161,52 @@ private:
     int _deleteWorker() const;
 
     /**
-     * Update the general configuration parameters
+     * Add a new database family
      *
      * @return
      *   a status code to be returned to the shell
      */
-    int _updateGeneral();
+    int _addFamily();
+
+    /**
+     * Delete an existing database family
+     *
+     * @return
+     *   a status code to be returned to the shell
+     */
+    int _deleteFamily();
+
+    /**
+     * Add a new database
+     *
+     * @return
+     *   a status code to be returned to the shell
+     */
+    int _addDatabase();
+
+    /**
+     * Delete an existing database
+     *
+     * @return
+     *   a status code to be returned to the shell
+     */
+    int _deleteDatabase();
+
+    /**
+     * Add a new table
+     *
+     * @return
+     *   a status code to be returned to the shell
+     */
+    int _addTable();
+
+    /**
+     * Delete an existing table
+     *
+     * @return
+     *   a status code to be returned to the shell
+     */
+    int _deleteTable();
 
 private:
 
@@ -398,6 +446,21 @@ private:
             if (value != 0) config->setWorkerFsBufferSizeBytes(value);
         }
     } _workerFsBufferSizeBytes;
+
+    /// For database families
+    DatabaseFamilyInfo _familyInfo;
+
+    /// For databases
+    DatabaseInfo _databaseInfo;
+
+    /// The name of a database"
+    std::string _database;
+
+    /// The name of a table"
+    std::string _table;
+
+    /// 'false' for the regular tables, 'true' for the partitioned ones
+    bool _isPartitioned{false};
 };
 
 }}} // namespace lsst::qserv::replica
