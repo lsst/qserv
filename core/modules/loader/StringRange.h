@@ -36,10 +36,55 @@ namespace lsst {
 namespace qserv {
 namespace loader {
 
+
+/// &&&
+class CompositeKey {
+public:
+    CompositeKey(uint64_t ki, std::string const& ks) : kInt(ki), kStr(ks) {}
+    CompositeKey(uint64_t ki) : CompositeKey(ki, "") {}
+    CompositeKey(std::string const& ks) : CompositeKey(0, ks) {}
+    CompositeKey(CompositeKey const& ck) : CompositeKey(ck.kInt, ck.kStr) {}
+    CompositeKey() : CompositeKey(0, "") {}
+    ~CompositeKey() = default;
+
+    static uint64_t maxIntVal() const { return UINT64_MAX; }
+
+    CompositeKey& operator=(CompositeKey const& other) {
+        kInt = other.kInt;
+        kStr = other.kStr;
+    }
+
+    bool operator<(CompositeKey const& other) const {
+        if (kInt < other.kInt) return true;
+        if (kInt > other.kInt) return false;
+        if (kStr < other.kStr) return true;
+        return false;
+    }
+
+    bool operator>(CompositeKey const& other) const {
+        return other < *this;
+    }
+
+    bool operator=(CompositeKey const& other) const {
+        return (kInt == other.kInt) && (kStr == other.kStr);
+    }
+
+    uint64_t    kInt;
+    std::string kStr;
+};
+
 /// Class for storing the range of a single worker.
 /// This is likely to become a template class, hence lots in the header.
 /// It tries to keep its state consistent, _min < _max, but depends on
-/// other classes to eventually get the correct values for _min and _max
+/// other classes to eventually get the correct values for _min and _max.
+///
+/// When new workers are activated, they need placeholder values for
+/// for their ranges, as the new worker will have no keys. increment(...)
+/// and decrement(...) try to create reasonable key values for the ranges
+/// but true ranges cannot be established until the worker and its
+/// right neighbor (if there is one) each have at least one key. The worker
+/// ranges should eventually reach the master, then the other workers
+/// and clients.
 class StringRange {
 public:
     using Ptr = std::shared_ptr<StringRange>;
@@ -50,51 +95,11 @@ public:
 
     ~StringRange() = default;
 
-    void setAllInclusiveRange() {
-        _min = "";
-        _unlimited = true;
-        setValid();
-    }
+    void setAllInclusiveRange();
 
-    bool setMin(std::string const& val) {
-        if (not _unlimited && val >= _maxE) {
-            _min = decrementString(_maxE);
-            return false;
-        }
-        _min = val;
-        return true;
-    }
-
-    bool setMax(std::string const& val, bool unlimited=false) {
-        _unlimited = unlimited;
-        if (unlimited) {
-            if (val > _maxE) { _maxE = val; }
-            return true;
-        }
-        if (val < _min) {
-            _maxE = incrementString(_min);
-            return false;
-        }
-        _maxE = val;
-        return true;
-    }
-
-    bool setMinMax(std::string const& vMin, std::string const& vMax, bool unlimited=false) {
-        _unlimited = unlimited;
-        if (!unlimited && vMin > vMax) {
-            return false;
-        }
-        _unlimited = unlimited;
-        if (_unlimited) {
-            _min = vMin;
-            _maxE = std::max(vMax, _min); // max is irrelevant at this point
-        } else {
-            _min = vMin;
-            _maxE = vMax;
-        }
-        setValid();
-        return true;
-    }
+    bool setMin(CompositeKey const& val);
+    bool setMax(CompositeKey const& val, bool unlimited=false);
+    bool setMinMax(CompositeKey const& vMin, CompositeKey const& vMax, bool unlimited=false);
 
     bool setValid() {
         _valid = (_min <= _maxE );
@@ -142,19 +147,26 @@ public:
     /// Return a string that would slightly follow the value of the input string 'str'
     /// appendChar is the character appended to a string ending with a character > 'z'
     static std::string incrementString(std::string const& str, char appendChar='0');
+    /// Return a CompositeKey slightly higher value than 'key'.
+    static CompositeKey increment(CompositeKey const& key, char appendChar='0');
 
     // Return a string that would come slightly before 'str'. 'minChar' is the
     // smallest acceptable value for the last character before just erasing the last character.
     static std::string decrementString(std::string const& str, char minChar='0');
-
+    /// Return a CompositeKey slightly higher lower than 'key'.
+    static CompositeKey decrement(CompositeKey const& str, char minChar='0');
 
     friend std::ostream& operator<<(std::ostream&, StringRange const&);
 
 private:
     bool        _valid{false}; ///< true if range is valid
     bool        _unlimited{false}; ///< true if the range includes largest possible values.
+    CompositeKey _min; ///< Smallest value = ""
+    CompositeKey _maxE; ///< maximum value exclusive
+    /* &&&
     std::string _min; ///< Smallest value = ""
     std::string _maxE; ///< maximum value exclusive
+    */
 
 };
 
