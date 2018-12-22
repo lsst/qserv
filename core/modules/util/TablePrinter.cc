@@ -34,9 +34,11 @@ namespace util {
 
     
 ColumnTablePrinter::ColumnTablePrinter(std::string const& capture,
-                                       std::string const& indent)
+                                       std::string const& indent,
+                                       bool verticalSeparator)
     :   _capture(capture),
-        _indent(indent) {
+        _indent(indent),
+        _verticalSeparator(verticalSeparator) {
 }
 
 
@@ -126,11 +128,15 @@ void ColumnTablePrinter::_rightUppendCellsToRows(std::string const& title,
     size_t const width = _columnWidth(title, cells);
 
     // Extend the separator
-    _separator += (_separator.empty() ? ""  : "+")   + std::string(1 + width + 1, '-');
+    if (_verticalSeparator) {
+        _separator += (_separator.empty() ? ""  : "+")   + std::string(1 + width + 1, '-');
+    } else {
+        _separator += (_separator.empty() ? " "  : "  ") + std::string(    width,     '-') + " ";
+    }
 
     // Extend the header
     std::ostringstream titleStream;
-    titleStream << " " << (_header.empty() ? "" : "| ")
+    titleStream << " " << (_header.empty() ? "" : (_verticalSeparator ? "| " : "  "))
                 << (align == Alignment::LEFT ? std::left : std::right) << std::setw(width) << title;
     _header += titleStream.str();
 
@@ -138,7 +144,7 @@ void ColumnTablePrinter::_rightUppendCellsToRows(std::string const& title,
     auto itr = cells.cbegin();
     for (auto&& r: _rows) {
         std::ostringstream cellStream;
-        cellStream << " " <<  (r.empty() ? "" : "| ")
+        cellStream << " " <<  (r.empty() ? "" : (_verticalSeparator ? "| " : "  "))
                    << (align == Alignment::LEFT ? std::left : std::right) << std::setw(width) << *(itr++);
         r += cellStream.str();
     }

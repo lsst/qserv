@@ -150,9 +150,14 @@ public:
      * 
      * @param indent
      *   optional indentation before the table
+     * 
+     * @param verticalSeparator
+     *   optional flag indicating if the vertical separators should be printed between
+     *   the columns. The default value is 'true'
      */
-    explicit ColumnTablePrinter(std::string const& capture = "",
-                                std::string const& indent = "");
+    explicit ColumnTablePrinter(std::string const& capture=std::string(),
+                                std::string const& indent=std::string(),
+                                bool verticalSeparator=true);
 
     ColumnTablePrinter(ColumnTablePrinter const&) = default;
     ColumnTablePrinter& operator=(ColumnTablePrinter const&) = default;
@@ -286,6 +291,8 @@ private:
 
     /// Optional indentation (if any) to be printed at each row
     std::string const _indent;
+
+    bool _verticalSeparator;
 
     /// The standard separator for the table header and its footer
     std::string _separator;
