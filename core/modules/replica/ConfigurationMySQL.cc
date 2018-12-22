@@ -23,6 +23,14 @@
 // Class header
 #include "replica/ConfigurationMySQL.h"
 
+// System headers
+#include <algorithm>
+#include <iterator>
+#include <stdexcept>
+#include <sstream>
+#include <vector>
+
+
 // Qserv headers
 #include "replica/ChunkNumber.h"
 
@@ -68,11 +76,103 @@ void readOptionalParameter(database::mysql::Row& row,
         value = defaultValue;
     }
 }
+
+template<class T>
+void configInsert(std::ostream& os,
+                  std::string const& category,
+                  std::string const& param,
+                  T const& val) {
+    os << "INSERT INTO `config` VALUES ('" << category << "', '" << param << "', '" << val << "');\n";
+}
+
 } // namespace
 
 namespace lsst {
 namespace qserv {
 namespace replica {
+
+
+std::string ConfigurationMySQL::dump2init(Configuration::Ptr const& config) {
+
+    using namespace std;
+
+    if (config == nullptr) {
+        throw invalid_argument(
+                "ConfigurationMySQL::" + string(__func__) + "  the configuration can't be empty");
+    }
+    ostringstream str;
+
+    str << "SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0;\n"
+        << "SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0;\n"
+        << "SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='TRADITIONAL';\n"
+        << "\n";
+
+    ::configInsert(str, "common",     "request_buf_size_bytes",     config->requestBufferSizeBytes());
+    ::configInsert(str, "common",     "request_retry_interval_sec", config->retryTimeoutSec());
+    ::configInsert(str, "controller", "num_threads",                config->controllerThreads());
+    ::configInsert(str, "controller", "http_server_port",           config->controllerHttpPort());
+    ::configInsert(str, "controller", "http_server_threads",        config->controllerHttpThreads());
+    ::configInsert(str, "controller", "request_timeout_sec",        config->controllerRequestTimeoutSec());
+    ::configInsert(str, "controller", "job_timeout_sec",            config->jobTimeoutSec());
+    ::configInsert(str, "controller", "job_heartbeat_sec",          config->jobHeartbeatTimeoutSec());
+    ::configInsert(str, "database",   "services_pool_size",         config->databaseServicesPoolSize());
+    ::configInsert(str, "xrootd",     "auto_notify",                config->xrootdAutoNotify() ? 1 : 0);
+    ::configInsert(str, "xrootd",     "host",                       config->xrootdHost());
+    ::configInsert(str, "xrootd",     "port",                       config->xrootdPort());
+    ::configInsert(str, "xrootd",     "request_timeout_sec",        config->xrootdTimeoutSec());
+    ::configInsert(str, "worker",     "technology",                 config->workerTechnology());
+    ::configInsert(str, "worker",     "num_svc_processing_threads", config->workerNumProcessingThreads());
+    ::configInsert(str, "worker",     "num_fs_processing_threads",  config->fsNumProcessingThreads());
+    ::configInsert(str, "worker",     "fs_buf_size_bytes",          config->workerFsBufferSizeBytes());
+
+    for (auto&& worker: config->allWorkers()) {
+        auto&& info = config->workerInfo(worker);
+        str << "INSERT INTO `config_worker` VALUES ("
+            << "'" << info.name << "',"
+            <<        (info.isEnabled  ? 1 : 0) << ","
+            <<        (info.isReadOnly ? 1 : 0) << ","
+            << "'" <<  info.svcHost << "',"
+            <<         info.svcPort << ","
+            << "'" <<  info.fsHost  << "',"
+            <<         info.fsPort  << ","
+            << "'" <<  info.dataDir << "'"
+            << ");\n";
+    }
+    for (auto&& family: config->databaseFamilies()) {
+        auto&& familyInfo = config->databaseFamilyInfo(family);
+
+        str << "INSERT INTO `config_database_family` VALUES ("
+            << "'" << familyInfo.name << "',"
+            <<        familyInfo.replicationLevel << ","
+            <<        familyInfo.numStripes << ","
+            <<        familyInfo.numSubStripes
+            << ");\n";
+
+        for (auto&& database: config->databases(familyInfo.name)) {
+            auto&& databaseInfo = config->databaseInfo(database);
+
+            str << "INSERT INTO `config_database` VALUES ("
+                << "'" << databaseInfo.name << "','" << databaseInfo.family << "');\n";
+
+            for (auto&& table: databaseInfo.partitionedTables) {
+                str << "INSERT INTO `config_database_table` VALUES ("
+                    << "'" << databaseInfo.name << "','" << table << "',1);\n";
+            }
+            for (auto&& table: databaseInfo.regularTables) {
+                str << "INSERT INTO `config_database_table` VALUES ("
+                    << "'" << databaseInfo.name << "','" << table << "',0);\n";
+            }
+        }
+    }
+
+    str << "SET SQL_MODE=@OLD_SQL_MODE;\n"
+        << "SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;\n"
+        << "SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;\n"
+        << "\n";
+
+    return str.str();
+}
+
 
 ConfigurationMySQL::ConfigurationMySQL(database::mysql::ConnectionParams const& connectionParams)
     :   Configuration(),
@@ -89,7 +189,8 @@ std::string ConfigurationMySQL::prefix() const {
 
 
 std::string ConfigurationMySQL::configUrl() const {
-    return  _databaseTechnology + ":" + _connectionParams.toString();
+    return   _connectionParams.toString();
+    //return  _databaseTechnology + ":" + _connectionParams.toString();
 }
 
 

@@ -30,9 +30,9 @@
 #include <vector>
 
 // Qserv headers
+#include "replica/ConfigurationFile.h"
+#include "replica/ConfigurationMySQL.h"
 #include "util/TablePrinter.h"
-#include "ConfigApp.h"
-
 
 using namespace std;
 
@@ -42,9 +42,6 @@ string const description {
     "This application is the tool for viewing and manipulating"
     " the configuration data of the Replication system stored in the MySQL/MariaDB"
 };
-
-
-
 
 } /// namespace
 
@@ -82,6 +79,7 @@ ConfigApp::ConfigApp(int argc,
     parser().commands(
         "command",
         {"DUMP",
+         "CONFIG_INIT_FILE",
          "UPDATE_GENERAL",
          "UPDATE_WORKER", "ADD_WORKER", "DELETE_WORKER",
          "ADD_DATABASE_FAMILY", "DELETE_DATABASE_FAMILY",
@@ -93,6 +91,10 @@ ConfigApp::ConfigApp(int argc,
         "config",
         "Configuration URL (a configuration file or a set of database connection parameters).",
         _configUrl
+    ).flag(
+        "tables-vertical-separator",
+        "Print vertical separator when displaying tabular data in dumps",
+        _verticalSeparator
     );
 
     parser().command("DUMP").optional(
@@ -105,6 +107,14 @@ ConfigApp::ConfigApp(int argc,
         "db-show-password",
         "show the actual database password when making the dump of the GENERAL parameters",
         _dumpDbShowPassword
+    );
+
+    parser().command("CONFIG_INIT_FILE").required(
+        "format",
+        "The format of the initialization file to be produced with this option."
+        " Allowed values: MYSQL, INI",
+        _format,
+        vector<string>({"MYSQL", "INI"})
     );
 
     parser().command("UPDATE_WORKER").required(
@@ -338,12 +348,15 @@ int ConfigApp::runImpl() {
     string const context = "ConfigApp::" + string(__func__) + "  ";
 
     _config = Configuration::load(_configUrl);
+    /*
     if (_config->prefix() != "mysql") {
         LOGS(_log, LOG_LVL_ERROR, context << "configuration with prefix '" << _config->prefix()
              << "' is not allowed by this application");
         return 1;
     }
+     * */
     if (_command == "DUMP")                   return _dump();
+    if (_command == "CONFIG_INIT_FILE")       return _configInitFile();
     if (_command == "UPDATE_GENERAL")         return _updateGeneral();
     if (_command == "UPDATE_WORKER")          return _updateWorker();
     if (_command == "ADD_WORKER")             return _addWorker();
@@ -489,7 +502,7 @@ void ConfigApp::_dumpGeneralAsTable(string const indent) const {
     value.      push_back(to_string(_config->workerFsBufferSizeBytes()));
     description.push_back(                  _workerFsBufferSizeBytes.description);
 
-    util::ColumnTablePrinter table("GENERAL PARAMETERS:", indent);
+    util::ColumnTablePrinter table("GENERAL PARAMETERS:", indent, _verticalSeparator);
 
     table.addColumn("parameter",   parameter,   util::ColumnTablePrinter::Alignment::LEFT);
     table.addColumn("value",       value);
@@ -521,7 +534,7 @@ void ConfigApp::_dumpWorkersAsTable(string const indent) const {
         dataDir    .push_back(wi.dataDir);
     }
 
-    util::ColumnTablePrinter table("WORKERS:", indent);
+    util::ColumnTablePrinter table("WORKERS:", indent, _verticalSeparator);
 
     table.addColumn("name",                name,        util::ColumnTablePrinter::Alignment::LEFT);
     table.addColumn("enabled",             isEnabled);
@@ -552,7 +565,7 @@ void ConfigApp::_dumpFamiliesAsTable(string const indent) const {
         numSubStripes   .push_back(fi.numSubStripes);
     }
 
-    util::ColumnTablePrinter table("DATABASE FAMILIES:", indent);
+    util::ColumnTablePrinter table("DATABASE FAMILIES:", indent, _verticalSeparator);
 
     table.addColumn("name", name, util::ColumnTablePrinter::Alignment::LEFT);
     table.addColumn("replication level", replicationLevel);
@@ -571,38 +584,57 @@ void ConfigApp::_dumpDatabasesAsTable(string const indent) const {
     vector<string> familyName;
     vector<string> databaseName;
     vector<string> tableName;
-    vector<string> isPartitionable;
+    vector<string> isPartitioned;
 
     for (auto&& database: _config->databases()) {
         auto const di = _config->databaseInfo(database);
         for (auto& table: di.partitionedTables) {
-            familyName     .push_back(di.family);
-            databaseName   .push_back(di.name);
-            tableName      .push_back(table);
-            isPartitionable.push_back("yes");
+            familyName    .push_back(di.family);
+            databaseName .push_back(di.name);
+            tableName    .push_back(table);
+            isPartitioned.push_back("yes");
         }
         for (auto& table: di.regularTables) {
-            familyName     .push_back(di.family);
-            databaseName   .push_back(di.name);
-            tableName      .push_back(table);
-            isPartitionable.push_back("no");
+            familyName   .push_back(di.family);
+            databaseName .push_back(di.name);
+            tableName    .push_back(table);
+            isPartitioned.push_back("no");
         }
         if (di.partitionedTables.empty() and di.regularTables.empty()) {
-            familyName     .push_back(di.family);
-            databaseName   .push_back(di.name);
-            tableName      .push_back("<no tables>");
-            isPartitionable.push_back("n/a");
+            familyName   .push_back(di.family);
+            databaseName .push_back(di.name);
+            tableName    .push_back("<no tables>");
+            isPartitioned.push_back("n/a");
         }
     }
 
-    util::ColumnTablePrinter table("DATABASES & TABLES:", indent);
+    util::ColumnTablePrinter table("DATABASES & TABLES:", indent, _verticalSeparator);
 
-    table.addColumn("family",        familyName,   util::ColumnTablePrinter::Alignment::LEFT);
-    table.addColumn("database",      databaseName, util::ColumnTablePrinter::Alignment::LEFT);
-    table.addColumn("table",         tableName,    util::ColumnTablePrinter::Alignment::LEFT);
-    table.addColumn("partitionable", isPartitionable);
+    table.addColumn("family",      familyName,   util::ColumnTablePrinter::Alignment::LEFT);
+    table.addColumn("database",    databaseName, util::ColumnTablePrinter::Alignment::LEFT);
+    table.addColumn("table",       tableName,    util::ColumnTablePrinter::Alignment::LEFT);
+    table.addColumn("partitioned", isPartitioned);
 
     table.print(cout, false, false);
+}
+
+
+int ConfigApp::_configInitFile() const {
+
+    string const context = "ConfigApp::" + string(__func__) + "  ";
+
+    try {
+        if      ("MYSQL" == _format) { cout << ConfigurationMySQL::dump2init(_config) << endl; }
+        else if ("INI"   == _format) { cout << ConfigurationFile::dump2init(_config) << endl; }
+        else {
+            LOGS(_log, LOG_LVL_ERROR, context << "operation failed, unsupported format: " << _format);
+            return 1;
+        }
+    } catch (std::exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
+        return 1;
+    }
+    return 0;
 }
 
 

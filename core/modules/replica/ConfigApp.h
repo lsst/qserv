@@ -129,6 +129,16 @@ private:
     void _dumpDatabasesAsTable(std::string const indent) const;
 
     /**
+     * Dump the Configuration into the Standard output stream in  format which could
+     * be used for initializing the Configuration, either directly from the INI file,
+     * or indirectly via a database.
+     * 
+     * @return
+     *   a status code to be returned to the shell
+     */
+    int _configInitFile() const;
+
+    /**
      * Update the general configuration parameters
      *
      * @return
@@ -227,6 +237,12 @@ private:
 
     /// Show the actual database password when dumping the Configuration
     bool _dumpDbShowPassword{false};
+
+    /// Print vertical separator in tables
+    bool _verticalSeparator{false};
+
+    /// Format of an initialization file
+    std::string _format;
 
     /// Parameters of a worker to be updated
     WorkerInfo _workerInfo;
@@ -394,7 +410,7 @@ private:
 
     struct {
         std::string const key        {"DB_NAME"};
-        std::string const description{"he name of the default database schema"};
+        std::string const description{"the name of the default database schema"};
     } _databaseName;
 
     struct {

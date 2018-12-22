@@ -59,6 +59,19 @@ class ConfigurationMySQL
 
 public:
 
+    /**
+     * Dump the input configuration into the text representing the database
+     * initialization sequence compatible with the database schema assumed
+     * by the current implementation.
+     *
+     * @param config
+     *   input configuration to be dumped
+     *
+     * @return
+     *   the text representation of the configuration
+     */
+    static std::string dump2init(Configuration::Ptr const& config);
+
     // Default construction and copy semantics are prohibited
 
     ConfigurationMySQL() = delete;
