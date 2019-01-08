@@ -295,10 +295,13 @@ BoolFactorTerm::Ptr BoolTermFactor::clone() const {
     return BoolFactorTerm::Ptr(p);
 }
 // copySyntax
+std::shared_ptr<OrTerm> OrTerm::copy() const {
+    auto orTerm = std::make_shared<OrTerm>();
+    copyTerms<BoolTerm::PtrVector, syntaxCopy>(orTerm->_terms, _terms);
+    return orTerm;
+}
 std::shared_ptr<BoolTerm> OrTerm::copySyntax() const {
-    std::shared_ptr<OrTerm> ot = std::make_shared<OrTerm>();
-    copyTerms<BoolTerm::PtrVector, syntaxCopy>(ot->_terms, _terms);
-    return ot;
+    return copy();
 }
 bool OrTerm::merge(const BoolTerm& other) {
     auto otherOr = dynamic_cast<const OrTerm*>(&other);

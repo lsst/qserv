@@ -948,17 +948,7 @@ public:
             auto whereClause = _getWhereClause();
             ASSERT_EXECUTION_CONDITION(nullptr == whereClause->getRootTerm(),
                     "expected handleLogicalExpression to be called only once.", _ctx);
-            // The antlr 2 parser code always put the AndTerm into an OrTerm at the top of the where clause
-            // tree. Since I currently don't know what parts of qana and qproc rely on this nesting it is
-            // safer to add the OrTerm here as well. (It also makes testing easier, at least for now, if we
-            // can keep the generated IR from diverging).
-            auto orTerm = dynamic_pointer_cast<query::OrTerm>(logicalTerm);
-            if (orTerm == nullptr) {
-                orTerm = make_shared<query::OrTerm>(logicalTerm);
-                whereClause->setRootTerm(orTerm);
-            } else {
-                whereClause->setRootTerm(logicalTerm);
-            }
+            whereClause->setRootTerm(logicalTerm);
         } else if (_ctx->havingExpr == childCtx) {
             ASSERT_EXECUTION_CONDITION(false,
                     "The having expression is expected to be handled as a Predicate Expression.", _ctx);

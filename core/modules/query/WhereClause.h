@@ -67,9 +67,13 @@ public:
     std::shared_ptr<QsRestrictor::PtrVector const> getRestrs() const {
         return _restrs;
     }
-    std::shared_ptr<BoolTerm const> getRootTerm() const { return _tree; }
-    std::shared_ptr<BoolTerm> getRootTerm() { return _tree; }
-    void setRootTerm(std::shared_ptr<BoolTerm> term) { _tree = term; }
+    std::shared_ptr<OrTerm const> getRootTerm() const { return _rootOrTerm; }
+    std::shared_ptr<OrTerm> getRootTerm() { return _rootOrTerm; }
+
+    // Set the root term of the where clause. If `term` is an OrTerm, this will be the root term. If not then
+    // an OrTerm that contains term will be the root term.
+    void setRootTerm(std::shared_ptr<LogicalTerm> term);
+
     std::shared_ptr<ColumnRef::Vector const> getColumnRefs() const;
     std::shared_ptr<AndTerm> getRootAndTerm();
 
@@ -86,12 +90,14 @@ public:
     bool operator==(WhereClause& rhs) const;
 
 private:
+    std::shared_ptr<AndTerm> _addRootAndTerm();
+
     friend std::ostream& operator<<(std::ostream& os, WhereClause const& wc);
     friend std::ostream& operator<<(std::ostream& os, WhereClause const* wc);
 
     friend class parser::WhereFactory;
 
-    std::shared_ptr<BoolTerm> _tree;
+    std::shared_ptr<OrTerm> _rootOrTerm;
     std::shared_ptr<QsRestrictor::PtrVector> _restrs{std::make_shared<query::QsRestrictor::PtrVector>()};
 };
 

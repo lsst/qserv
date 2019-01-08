@@ -202,6 +202,8 @@ public:
     virtual void renderTo(QueryTemplate& qt) const;
     virtual std::shared_ptr<BoolTerm> clone() const;
     virtual std::shared_ptr<BoolTerm> copySyntax() const;
+    // copy is like copySyntax, but returns an OrTerm ptr.
+    Ptr copy() const;
 
     bool merge(const BoolTerm& other) override;
 
