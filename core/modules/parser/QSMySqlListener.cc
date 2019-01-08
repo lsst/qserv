@@ -2725,47 +2725,42 @@ public:
     }
 
     void onExit() override {
-        ASSERT_EXECUTION_CONDITION(_logicalOperator != nullptr, "logicalOperator is not set.", _ctx);
+        ASSERT_EXECUTION_CONDITION(_logicalOperatorIsSet, "logicalOperator is not set.", _ctx);
+        shared_ptr<query::LogicalTerm> logicalTerm;
+        switch (_logicalOperatorType) {
+            case LogicalOperatorCBH::AND:
+                logicalTerm = make_shared<query::AndTerm>();
+                break;
 
-        bool isOr = dynamic_pointer_cast<query::OrTerm>(_logicalOperator) != nullptr;
+            case LogicalOperatorCBH::OR:
+                logicalTerm = make_shared<query::OrTerm>();
+                break;
+
+            default:
+                ASSERT_EXECUTION_CONDITION(false, "unhandled logical operator.", _ctx);
+        }
         for (auto term : _terms) {
-            if (false == _logicalOperator->merge(*term)) {
-                if (isOr) {
-                    _logicalOperator->addBoolTerm(make_shared<query::AndTerm>(term));
-                } else {
-                    _logicalOperator->addBoolTerm(term);
-                }
+            if (false == logicalTerm->merge(*term)) {
+                logicalTerm->addBoolTerm(term);
             }
         }
-        lockedParent()->handleLogicalExpression(_logicalOperator, _ctx);
+        lockedParent()->handleLogicalExpression(logicalTerm, _ctx);
     }
 
     string name() const override { return getTypeName(this); }
 
 private:
-    void _setLogicalOperator(shared_ptr<query::LogicalTerm> const & logicalTerm) {
-        ASSERT_EXECUTION_CONDITION(nullptr == _logicalOperator,
-                "logical operator must be set only once.", _ctx);
-        _logicalOperator = logicalTerm;
-    }
-
     friend ostream& operator<<(ostream& os, const LogicalExpressionAdapter& logicaAndlExpressionAdapter);
 
-    // a qserv restrictor fucntion can be the left side of a predicate (currently it can only be the left
-    // side; that is to say, it can only be the first term in the WHERE clause. If `handleQservFunctionSpec`
-    // is called and _leftTerm is null (as well as _rightTerm and _logicalOperator, then _leftHandled is set
-    // to true to indicate that the left term has been handled. This allows onExit to put only one term into
-    // the logicalOperator and know that it was ok (the qserv IR accepts an AndTerm with only one factor).
-    // This mechanism does not fully proect against qserv restrictors that may be the left side of a
-    // subsequent logical expression. TBD if that's really an issue.
     vector<shared_ptr<query::BoolTerm>> _terms;
-    shared_ptr<query::LogicalTerm> _logicalOperator;
+    LogicalOperatorCBH::OperatorType _logicalOperatorType;
+    bool _logicalOperatorIsSet {false};
 };
 
 
 ostream& operator<<(ostream& os, const LogicalExpressionAdapter& logicalExpressionAdapter) {
     os << "LogicalExpressionAdapter(";
-    os << "terms:" << util::printable(logicalExpressionAdapter._terms);
+    os << util::printable(logicalExpressionAdapter._terms);
     return os;
 }
 
