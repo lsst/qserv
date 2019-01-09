@@ -81,7 +81,9 @@ public:
     int getUdpPort() const { return _udpPort; }
     int getTcpPort() const { return 0; } ///< No tcp port at this time.
 
+    /// @return the default worker's host name.
     std::string getDefWorkerHost() const { return _defWorkerHost; }
+    /// @return the default worker's UDP port
     int getDefWorkerPortUdp() const { return _defWorkerPortUdp; }
 
 
@@ -150,7 +152,7 @@ private:
     };
 
 
-    /// TODO The worker IP isbecomes default worker as it should be able to get
+    /// TODO The worker IP becomes default worker as it should be able to get
     ///      that information from the master in the future. DM-16555
     const std::string _hostName;
     const int         _udpPort;
