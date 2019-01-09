@@ -127,8 +127,19 @@ int main(int argc, char* argv[]) {
     elements.push_back(std::make_shared<UInt32Element>(338999));
     elements.push_back(std::make_shared<UInt64Element>(1234567));
     elements.push_back(std::make_shared<StringElement>("One last string."));
+    /// Add one really long string, which can happen when using this for TCP. Something
+    /// where the size would not fit in an uint16_t.
+    std::string reallyLongStr;
+    {
+        for(int j=0; j<100000; ++j) {
+            reallyLongStr += std::to_string(j%10);
+        }
+    }
+    elements.push_back(std::make_shared<StringElement>(reallyLongStr));
 
-    BufferUdp data;
+    /// An exceptionally large buffer is needed as the sample data in 'elements' is far greater
+    /// than anything that should be sent in a UDP packet.
+    BufferUdp data(200000);
 
     // Write to the buffer.
     try {
@@ -255,7 +266,7 @@ int main(int argc, char* argv[]) {
             LOGS(_log, LOG_LVL_INFO, "ClientConfig clientBad threw " << e.what());
         }
         if (not threw) {
-            LOGS(_log, LOG_LVL_ERROR, "ClinetConfig workerBad.cnf should have thrown!!");
+            LOGS(_log, LOG_LVL_ERROR, "ClientConfig workerBad.cnf should have thrown!!");
             exit(-1);
         }
     }

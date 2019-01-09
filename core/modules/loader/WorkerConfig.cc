@@ -34,7 +34,7 @@
 #include "util/ConfigStoreError.h"
 
 namespace {
-LOG_LOGGER _log = LOG_GET("lsst.qserv.loader.WorkerConfig");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.loader.Config");
 }
 
 namespace lsst {
