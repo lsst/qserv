@@ -541,7 +541,7 @@ class CommandParser(object):
         self._checkExist(options, requiredKeys)
 
         # call CSS to do the rest, remap options to argument names
-        self._css.setNodeStatus(tokens[0], options['state'])
+        self._css.setNodeState(tokens[0], options['state'])
 
     def _parseKVList(self, tokens, possibleKeys=None):
         """
