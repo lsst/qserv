@@ -33,6 +33,10 @@
 #include "util/ConfigStore.h"
 #include "util/ConfigStoreError.h"
 
+// Third-party headers
+#include "boost/lexical_cast.hpp"
+
+
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.loader.Config");
 }
@@ -52,22 +56,91 @@ void ConfigElement::setFromConfig(util::ConfigStore const& cfgStore) {
 }
 
 
+bool ConfigElement::verifyValueIsOfKind() {
+    switch (_kind) {
+        case STRING:
+            return true;
+        case INT:
+            return isInteger();
+        case FLOAT:
+            return isFloat();
+        default:
+            return false;
+    }
+}
+
+
 std::string ConfigElement::getFullKey() const {
     if (_header.empty()) return std::string(_key);
-    return std::string(_header + "." + _key); }
+    return std::string(_header + "." + _key);
+}
+
+
+int ConfigElement::getInt() const {
+    if (_kind != INT) {
+        throw ConfigErr(ERR_LOC, "getInt called for non-integer " + dump());
+    }
+    return boost::lexical_cast<int>(_value);
+}
+
+
+double ConfigElement::getDouble() const {
+    if (_kind != FLOAT) {
+        throw ConfigErr(ERR_LOC, "getDouble called for non-float " + dump());
+    }
+    return boost::lexical_cast<double>(_value);
+}
+
+
+bool ConfigElement::isInteger() const {
+    if (_kind != INT) return false;
+    try {
+        // lexical cast is more strict than std::stoi()
+        getInt();
+    } catch (boost::bad_lexical_cast const& exc) {
+        return false;
+    }
+    return true;
+}
+
+
+bool ConfigElement::isFloat() const {
+    if (_kind != FLOAT) return false;
+    try {
+        getDouble();
+    } catch (boost::bad_lexical_cast const& exc) {
+        return false;
+    }
+    return true;
+}
+
+
+std::string ConfigElement::kindToStr(Kind kind) {
+    switch (kind) {
+    case STRING:
+        return "STRING";
+    case INT:
+        return "INT";
+    case FLOAT:
+        return "FLOAT";
+    default:
+        return "undefined Kind";
+    }
+}
 
 
 std::ostream& ConfigElement::dump(std::ostream &os) const {
     os << "(key=" << getFullKey()
        << " val=" << _value
        << " req=" << _required
+       << " kind=" << kindToStr(_kind)
        << " def=" << _default << ")";
     return os;
 }
 
 
 std::string ConfigElement::dump() const {
-    std::stringstream os;
+    std::ostringstream os;
     dump(os);
     return os.str();
 }
@@ -81,6 +154,9 @@ std::ostream& operator<<(std::ostream &os, ConfigElement const& elem) {
 void ConfigBase::setFromConfig(util::ConfigStore const& configStore) {
     for (auto& elem:cfgList) {
         elem->setFromConfig(configStore);
+        if (not elem->verifyValueIsOfKind()) {
+            throw util::ConfigStoreError("Could not parse " + elem->dump());
+        }
     }
 }
 

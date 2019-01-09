@@ -285,7 +285,7 @@ shlibs["qmetaLib"] = dict(mods="qmeta:python",
                           
 # library of tools for building binary applications of the loader subsystem
 shlibs["loader"] = dict(mods="""loader""",
-                         libs="""util protobuf boost_filesystem boost_system
+                         libs="""qserv_common util protobuf boost_filesystem boost_system
                               log log4cxx""")                          
 
 # get list of all modules

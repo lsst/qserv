@@ -1000,7 +1000,7 @@ std::unique_ptr<proto::WorkerKeysInfo> CentralWorker::_workerKeysInfoBuilder() {
         _removeOldEntries();
         recentAdds = _recentAdds.size();
     }
-    LOGS(_log, LOG_LVL_INFO, "CentralWorker WorkerKeysInfo aaaaa name=" << _ourId <<
+    LOGS(_log, LOG_LVL_INFO, "CentralWorker WorkerKeysInfo a name=" << _ourId <<
                              " keyCount=" << mapSize << " recentAdds=" << recentAdds);
     protoWKI->set_wid(_ourId);
     protoWKI->set_mapsize(mapSize);
@@ -1015,8 +1015,8 @@ std::unique_ptr<proto::WorkerKeysInfo> CentralWorker::_workerKeysInfoBuilder() {
     protoLeft->set_wid(_neighborLeft.getId());
     proto::Neighbor *protoRight = protoWKI->mutable_right();
     protoRight->set_wid(_neighborRight.getId());
-    LOGS(_log, LOG_LVL_INFO, "CentralWorker WorkerKeysInfo bbbbb name=" << _ourId <<
-                                 " keyCount=" << mapSize << " recentAdds=" << recentAdds);
+    LOGS(_log, LOG_LVL_INFO, "CentralWorker WorkerKeysInfo b name=" << _ourId <<
+                             " keyCount=" << mapSize << " recentAdds=" << recentAdds);
     return protoWKI;
 }
 

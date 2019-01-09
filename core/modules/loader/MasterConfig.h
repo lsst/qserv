@@ -46,10 +46,10 @@ public:
     MasterConfig(MasterConfig const&) = delete;
     MasterConfig& operator=(MasterConfig const&) = delete;
 
-    int getMasterPort() const { return std::stoi(_portUdp->getValue()); }
-    int getThreadPoolSize() const { return std::stoi(_threadPoolSize->getValue()); }
-    int getLoopSleepTime() const { return std::stoi(_loopSleepTime->getValue()); }
-    int getMaxKeysPerWorker() const { return std::stoi(_maxKeysPerWorker->getValue()); }
+    int getMasterPort() const { return _portUdp->getInt(); }
+    int getThreadPoolSize() const { return _threadPoolSize->getInt(); }
+    int getLoopSleepTime() const { return _loopSleepTime->getInt(); }
+    int getMaxKeysPerWorker() const { return _maxKeysPerWorker->getInt(); }
 
 
     std::ostream& dump(std::ostream &os) const override;
@@ -59,13 +59,16 @@ private:
     MasterConfig(util::ConfigStore const& configStore);
 
     /// UDP port for the master - usually 9875
-    ConfigElement::Ptr _portUdp{ConfigElement::create(cfgList, header, "portUdp", true)};
+    ConfigElement::Ptr _portUdp{ConfigElement::create(cfgList, header, "portUdp", ConfigElement::INT, true)};
     /// Maximum average keys per worker before activating a new worker. 1000
-    ConfigElement::Ptr _maxKeysPerWorker{ConfigElement::create(cfgList, header, "maxKeysPerWorker", true)};
+    ConfigElement::Ptr _maxKeysPerWorker{
+        ConfigElement::create(cfgList, header, "maxKeysPerWorker", ConfigElement::INT, true)};
     /// Size of the master's thread pool - 10
-    ConfigElement::Ptr _threadPoolSize{ConfigElement::create(cfgList, header, "threadPoolSize", true)};
+    ConfigElement::Ptr _threadPoolSize{
+        ConfigElement::create(cfgList, header, "threadPoolSize", ConfigElement::INT, true)};
     /// Time spent sleeping between checking elements in the DoList in microseconds. 0.1 seconds.
-    ConfigElement::Ptr _loopSleepTime{ConfigElement::create(cfgList, header, "loopSleepTime", true)};
+    ConfigElement::Ptr _loopSleepTime{
+        ConfigElement::create(cfgList, header, "loopSleepTime", ConfigElement::INT, true)};
 };
 
 }}} // namespace lsst::qserv::loader
