@@ -21,8 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  *
  */
-#ifndef LSST_QSERV_LOADER_UPDATABLE_H
-#define LSST_QSERV_LOADER_UPDATABLE_H
+#ifndef LSST_QSERV_LOADER_UPDATEABLE_H
+#define LSST_QSERV_LOADER_UPDATEABLE_H
 
 // system headers
 #include <list>
@@ -97,4 +97,4 @@ private:
 
 }}} // namespace lsst::qserv::loader
 
-#endif // LSST_QSERV_LOADER_UPDATABLE_H
+#endif // LSST_QSERV_LOADER_UPDATEABLE_H

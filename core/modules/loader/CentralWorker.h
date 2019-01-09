@@ -239,7 +239,7 @@ private:
     std::atomic<bool> _rangeChanged{false};
     std::map<std::string, ChunkSubchunk> _keyValueMap;
     std::deque<std::chrono::system_clock::time_point> _recentAdds; ///< track how many keys added recently.
-    std::chrono::milliseconds _recentAddLimit; ///< default to 60000 for 1 minute
+    std::chrono::milliseconds _recentAddLimit; ///< After this period of time, additions are no longer recent.
     std::mutex _idMapMtx; ///< protects _strRange, _keyValueMap,
                           ///< _recentAdds, _transferListToRight, _transferListFromRight
 
@@ -254,11 +254,15 @@ private:
 
     std::atomic<bool> _shiftAsClientInProgress{false}; ///< True when shifting to or from right neighbor.
 
-    /// Shift if a node has % more than it's neighbor (1.1 would be 10% more than neighbor)
+    /// Shift if a node has % more than it's neighbor. the percentage threshold is expressed
+    /// as a decimal, so 1.1 would be 10% more than neighbor or 110%.
     double _thresholdNeighborShift;
 
     /// Maximum number of keys to shift in one iteration. 10000 may be reasonable.
-    /// An iteration would be transfer, insert, verify range.
+    /// An iteration would be transfer, insert, and verify range. During the
+    /// insert phase, the mutex is locked preventing key inserts and look ups.
+    /// Using smaller values locks the mutex for more periods of time but each
+    /// period is shorter and lookups can occur during the gaps.
     /// Too big a value, and the maps will be paralyzed for a long time during inserts.
     /// Too small and shift operations will take significantly longer.
     int _maxKeysToShift;

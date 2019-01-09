@@ -60,8 +60,3 @@ std::ostream& ClientConfig::dump(std::ostream &os) const {
 
 }}} // namespace lsst::qserv::css
 
-
-
-
-
-

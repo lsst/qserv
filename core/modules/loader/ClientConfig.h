@@ -34,9 +34,9 @@ namespace loader {
 /// A class for reading the configuration file for the client which consists of
 /// a collection of key-value pairs and provide access functions for those values.
 ///
-class ClientConfig : public ConfigBase{
+class ClientConfig : public ConfigBase {
 public:
-    ClientConfig(std::string configFileName)
+    ClientConfig(std::string const& configFileName)
         : ClientConfig(util::ConfigStore(configFileName)) {}
 
     ClientConfig() = delete;
@@ -44,14 +44,14 @@ public:
     ClientConfig& operator=(ClientConfig const&) = delete;
 
     std::string getMasterHost() const { return _masterHost->getValue(); }
-    int getMasterPortUdp() const { return std::stoi(_masterPortUdp->getValue()); }
-    int getDefWorkerPortUdp() const { return std::stoi(_defWorkerPortUdp->getValue()); }
+    int getMasterPortUdp() const { return _masterPortUdp->getInt(); }
+    int getDefWorkerPortUdp() const { return _defWorkerPortUdp->getInt(); }
     std::string getDefWorkerHost() const { return _defWorkerHost->getValue(); }
-    int getClientPortUdp() const { return std::stoi(_clientPortUdp->getValue()); }
-    int getThreadPoolSize() const { return std::stoi(_threadPoolSize->getValue()); }
-    int getLoopSleepTime() const { return std::stoi(_loopSleepTime->getValue()); }
-    int getMaxLookups() const { return std::stoi(_maxLookups->getValue()); }
-    int getMaxInserts() const { return std::stoi(_maxInserts->getValue()); }
+    int getClientPortUdp() const { return _clientPortUdp->getInt(); }
+    int getThreadPoolSize() const { return _threadPoolSize->getInt(); }
+    int getLoopSleepTime() const { return _loopSleepTime->getInt(); } // TODO: Maybe chrono types for times
+    int getMaxLookups() const { return _maxLookups->getInt(); }
+    int getMaxInserts() const { return _maxInserts->getInt(); }
 
     std::ostream& dump(std::ostream &os) const override;
 
@@ -60,30 +60,36 @@ private:
     ClientConfig(util::ConfigStore const& configStore);
 
     /// Master host name
-    ConfigElement::Ptr _masterHost{ConfigElement::create(cfgList, header, "masterHost", true)};
+    ConfigElement::Ptr _masterHost{
+        ConfigElement::create(cfgList, header, "masterHost", ConfigElement::STRING, true)};
     /// Master UDP port
-    ConfigElement::Ptr _masterPortUdp{ConfigElement::create(cfgList, header, "masterPortUdp", true)};
+    ConfigElement::Ptr _masterPortUdp{
+        ConfigElement::create(cfgList, header, "masterPortUdp", ConfigElement::INT, true)};
     /// UDP port for default worker. Reasonable value - 9876
-    ConfigElement::Ptr _clientPortUdp{ConfigElement::create(cfgList, header, "clientPortUdp", true)};
+    ConfigElement::Ptr _clientPortUdp{
+        ConfigElement::create(cfgList, header, "clientPortUdp", ConfigElement::INT, true)};
     /// Default worker host name
-    ConfigElement::Ptr _defWorkerHost{ConfigElement::create(cfgList, header, "defWorkerHost", true)};
+    ConfigElement::Ptr _defWorkerHost{
+        ConfigElement::create(cfgList, header, "defWorkerHost", ConfigElement::STRING, true)};
     /// Default worker UDP port. Reasonable value - 9876
-    ConfigElement::Ptr _defWorkerPortUdp{ConfigElement::create(cfgList, header, "defWorkerPortUdp", true)};
+    ConfigElement::Ptr _defWorkerPortUdp{
+        ConfigElement::create(cfgList, header, "defWorkerPortUdp", ConfigElement::INT, true)};
     /// Size of the thread pool. Reasonable value - 10
-    ConfigElement::Ptr _threadPoolSize{ConfigElement::create(cfgList, header, "threadPoolSize", true)};
+    ConfigElement::Ptr _threadPoolSize{
+        ConfigElement::create(cfgList, header, "threadPoolSize", ConfigElement::INT, true)};
     /// Time spent sleeping between checking elements in the DoList in micro seconds. 100000
     ConfigElement::Ptr _loopSleepTime{
-        ConfigElement::create(cfgList, header, "loopSleepTime", false, "100000")};
+        ConfigElement::create(cfgList, header, "loopSleepTime", ConfigElement::INT, false, "100000")};
     /// Maximum number of lookup requests allowed in the DoList.
     ConfigElement::Ptr _maxLookups{
-        ConfigElement::create(cfgList, header, "maxLookups", false, "90000")};
+        ConfigElement::create(cfgList, header, "maxLookups", ConfigElement::INT, false, "90000")};
     /// Maximum number of insert requests allowed in the DoList.
     ConfigElement::Ptr _maxInserts{
-        ConfigElement::create(cfgList, header, "maxInserts", false, "90000")};
+        ConfigElement::create(cfgList, header, "maxInserts", ConfigElement::INT, false, "90000")};
 
 };
 
 
 }}} // namespace lsst::qserv::loader
 
-#endif // LSST_QSERV_LOADER_ClientCONFIG_H
+#endif // LSST_QSERV_LOADER_CLIENTCONFIG_H
