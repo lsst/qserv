@@ -51,10 +51,10 @@ class ClientConfig;
 class KeyInfoData : public util::Tracker {
 public:
     using Ptr = std::shared_ptr<KeyInfoData>;
-    KeyInfoData(std::string const& key_, int chunk_, int subchunk_) :
+    KeyInfoData(CompositeKey const& key_, int chunk_, int subchunk_) :
         key(key_), chunk(chunk_), subchunk(subchunk_) {}
 
-    std::string key;
+    CompositeKey key;
     int chunk;
     int subchunk;
     bool success{false};
@@ -94,24 +94,24 @@ public:
     ///           nullptr if CentralClient is already trying to insert the key
     ///           but value doesn't match the existing value. This indicates
     ///           there is an input data error.
-    KeyInfoData::Ptr keyInsertReq(std::string const& key, int chunk, int subchunk);
+    KeyInfoData::Ptr keyInsertReq(CompositeKey const& key, int chunk, int subchunk);
     /// Handle a workers response to the keyInserReq call
     void handleKeyInsertComplete(LoaderMsg const& inMsg, BufferUdp::Ptr const& data);
 
     /// Asynchronously request a key value lookup from the workers. It returns a
     /// KeyInfoData object to be used to track job status and get the value of the key.
     /// This can block if too many key lookup requests are already in progress.
-    KeyInfoData::Ptr keyInfoReq(std::string const& key);
+    KeyInfoData::Ptr keyInfoReq(CompositeKey const& key);
     /// Handle a workers response to the keyInfoReq call.
     void handleKeyInfo(LoaderMsg const& inMsg, BufferUdp::Ptr const& data);
 
     std::string getOurLogId() const override { return "client"; }
 
 private:
-    void _keyInsertReq(std::string const& key, int chunk, int subchunk); ///< see keyInsertReq()
+    void _keyInsertReq(CompositeKey const& key, int chunk, int subchunk); ///< see keyInsertReq()
     void _handleKeyInsertComplete(LoaderMsg const& inMsg, std::unique_ptr<proto::KeyInfo>& protoBuf);
 
-    void _keyInfoReq(std::string const& key); ///< see keyInfoReq()
+    void _keyInfoReq(CompositeKey const& key); ///< see keyInfoReq()
     void _handleKeyInfo(LoaderMsg const& inMsg, std::unique_ptr<proto::KeyInfo>& protoBuf);
 
 
@@ -121,7 +121,7 @@ private:
     struct KeyInsertReqOneShot : public DoListItem {
         using Ptr = std::shared_ptr<KeyInsertReqOneShot>;
 
-        KeyInsertReqOneShot(CentralClient* central_, std::string const& key_, int chunk_, int subchunk_) :
+        KeyInsertReqOneShot(CentralClient* central_, CompositeKey const& key_, int chunk_, int subchunk_) :
             cmdData(std::make_shared<KeyInfoData>(key_, chunk_, subchunk_)), central(central_) {
             setOneShot(true);
         }
@@ -141,13 +141,13 @@ private:
     struct KeyInfoReqOneShot : public DoListItem {
         using Ptr = std::shared_ptr<KeyInfoReqOneShot>;
 
-        KeyInfoReqOneShot(CentralClient* central_, std::string const& key_) :
+        KeyInfoReqOneShot(CentralClient* central_, CompositeKey const& key_) :
             cmdData(std::make_shared<KeyInfoData>(key_, -1, -1)), central(central_) { setOneShot(true); }
 
         util::CommandTracked::Ptr createCommand() override;
 
         // TODO Have this function take result codes as arguments and put them in cmdData.
-        void keyInfoComplete(std::string const& key, int chunk, int subchunk, bool success);
+        void keyInfoComplete(CompositeKey const& key, int chunk, int subchunk, bool success);
 
         KeyInfoData::Ptr cmdData;
         CentralClient* central;
@@ -168,10 +168,10 @@ private:
     size_t _doListMaxInserts; ///< Maximum number of concurrent inserts in DoList  DM-16555 &&&
     int _maxRequestSleepTime{100000}; ///< Time to sleep between checking requests when at max length &&& add config file entry
 
-    std::map<std::string, KeyInsertReqOneShot::Ptr> _waitingKeyInsertMap;
+    std::map<CompositeKey, KeyInsertReqOneShot::Ptr> _waitingKeyInsertMap;
     std::mutex _waitingKeyInsertMtx; ///< protects _waitingKeyInsertMap, _doListMaxInserts
 
-    std::map<std::string, KeyInfoReqOneShot::Ptr> _waitingKeyInfoMap; // &&& change all references of keyInfo to keyLookup &&&, including protobuf keyInfo should only apply to  worker key count and worker key range.
+    std::map<CompositeKey, KeyInfoReqOneShot::Ptr> _waitingKeyInfoMap; // &&& change all references of keyInfo to keyLookup &&&, including protobuf keyInfo should only apply to  worker key count and worker key range.
     std::mutex _waitingKeyInfoMtx; ///< protects _waitingKeyInfoMap, _doListMaxLookups
 };
 

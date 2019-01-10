@@ -12,7 +12,7 @@ import os.path
 
 bin_cc_files = {}
 path = "./"
-for f in env.Glob(os.path.join(path, "udp*.cc"), source=True, strings=True):
+for f in env.Glob(os.path.join(path, "app*.cc"), source=True, strings=True):
     print(f)
     bin_cc_files[f] = [
         "loader",

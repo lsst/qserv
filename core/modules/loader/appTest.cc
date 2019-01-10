@@ -54,8 +54,8 @@ using namespace lsst::qserv::loader;
 using  boost::asio::ip::udp;
 
 struct KeyChSch {
-    KeyChSch(std::string const& k, int c, int sc) : key(k), chunk(c), subchunk(sc) {}
-    std::string key;
+    KeyChSch(CompositeKey const& k, int c, int sc) : key(k), chunk(c), subchunk(sc) {}
+    CompositeKey key;
     int chunk;
     int subchunk;
 };
@@ -410,7 +410,7 @@ int main(int argc, char* argv[]) {
 
     /// Client
     LOGS(_log, LOG_LVL_INFO, "3TSTAGE client register key A");
-    KeyChSch keyA("asdf_1", 4001, 200001);
+    KeyChSch keyA(CompositeKey("asdf_1"), 4001, 200001);
     auto keyAInsert = cCentral1A.keyInsertReq(keyA.key, keyA.chunk, keyA.subchunk);
     if (keyAInsert == nullptr) {
         LOGS(_log, LOG_LVL_ERROR, "ERROR failed insert keyA !!! "  << keyA);
@@ -418,14 +418,14 @@ int main(int argc, char* argv[]) {
     }
 
     LOGS(_log, LOG_LVL_INFO, "4TSTAGE client register key B");;
-    KeyChSch keyB("ndjes_bob", 9871, 65008);
+    KeyChSch keyB(CompositeKey("ndjes_bob"), 9871, 65008);
     auto keyBInsert = cCentral1B.keyInsertReq(keyB.key, keyB.chunk, keyB.subchunk);
     if (keyBInsert == nullptr) {
         LOGS(_log, LOG_LVL_ERROR, "ERROR failed insert keyB !!! " << keyB);
         exit(-1);
     }
 
-    KeyChSch keyC("asl_diebb", 422001, 7373721);
+    KeyChSch keyC(CompositeKey("asl_diebb"), 422001, 7373721);
 
     size_t arraySz = 1000;
     std::vector<KeyChSch> keyList;
@@ -434,7 +434,7 @@ int main(int argc, char* argv[]) {
         for (size_t j=0; j<arraySz; ++j) {
             std::string reversed(bStr.rbegin(), bStr.rend());
             LOGS(_log, LOG_LVL_INFO, bStr << " newKey=" << reversed << " j(" << j%10 << " ," << j << ")");
-            keyList.emplace_back(reversed, j%10, j);
+            keyList.emplace_back(CompositeKey(reversed), j%10, j);
             bStr = StringRange::incrementString(bStr, '0');
         }
     }
@@ -444,7 +444,7 @@ int main(int argc, char* argv[]) {
         for (size_t j=0; j<100000; ++j) {
             std::string str("z");
             str += std::to_string(j);
-            keyListB.emplace_back(str, j%10, j);
+            keyListB.emplace_back(CompositeKey(str), j%10, j);
         }
     }
 
