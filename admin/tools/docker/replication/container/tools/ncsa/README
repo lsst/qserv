@@ -1,9 +1,9 @@
 # file: README
 #
-#   This folder containes instructions and tools for building a runnable container
-#   packed with the Replication System's binaries and their dependant libraries
+#   This folder contains instructions and tools for building a runnable container
+#   packed with the Replication System's binaries and their dependent libraries
 #
-#   NOTES: these instructions assumei you're building a container under
+#   NOTES: these instructions assume you're building a container under
 #          the following name: 'qserv/replica:tools'
 #          This name can be obviously changed to some other name as needed
 
@@ -23,7 +23,7 @@ docker run \
     -v /etc/group:/etc/group:ro \
     -v $PWD:$PWD \
     qserv/replica:dev \
-    bash -c '$SOURCE/admin/tools/docker/replication/container/tools/collect.bash $SOURCE'
+    bash -c '$SOURCE/admin/tools/docker/replication/container/tools/ncsa/collect.sh $SOURCE'
 
 # Build the runnable container from the previously prepared area
 
@@ -38,7 +38,13 @@ docker run --rm qserv/replica:tools ldd /qserv/bin/qserv-replica-job-chunks
 docker run --rm qserv/replica:tools /qserv/bin/qserv-replica-job-chunks
 
 
-# And, finally - publush the container (provided a proper login into DockerHub was
+# And, finally - publish the container (provided a proper login into DockerHub was
 # made earlier)
 
 docker push qserv/replica:tools
+
+####################################################################
+# An alternative method is run the following script wich will do all
+# explained above
+
+admin/tools/docker/replication/container/tools/ncsa/build.sh /home/user/development/qserv

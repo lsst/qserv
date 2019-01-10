@@ -63,10 +63,10 @@ struct QservMgtRequestWrapper {
      * This method (to be implemented by subclasses) will be called upon
      * a completion of a request to notify a subscriber on the event.
      */
-    virtual void notify() const=0;
+    virtual void notify() const = 0;
 
     /// @return a pointer to the stored request object
-    virtual std::shared_ptr<QservMgtRequest> request() const=0;
+    virtual std::shared_ptr<QservMgtRequest> request() const = 0;
 };
 
 /**

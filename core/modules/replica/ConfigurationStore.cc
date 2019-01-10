@@ -24,21 +24,18 @@
 #include "replica/ConfigurationStore.h"
 
 // System headers
+#include <algorithm>
 #include <iterator>
 #include <sstream>
-#include <stdexcept>
 
 // Third party headers
 #include <boost/lexical_cast.hpp>
 
 // Qserv headers
-#include "lsst/log/Log.h"
 #include "replica/ChunkNumber.h"
 #include "util/ConfigStore.h"
 
 namespace {
-
-LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.ConfigurationStore");
 
 using namespace lsst::qserv;
 
@@ -81,74 +78,368 @@ namespace qserv {
 namespace replica {
 
 ConfigurationStore::ConfigurationStore(util::ConfigStore const& configStore)
-    :   Configuration() {
+    :   Configuration(),
+        _log(LOG_GET("lsst.qserv.replica.ConfigurationStore")) {
+
     loadConfiguration(configStore);
 }
 
-WorkerInfo const ConfigurationStore::disableWorker(std::string const& name) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "disableWorker  name=" << name);
+void ConfigurationStore::addWorker(WorkerInfo const& info) {
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  name=" << info.name);
+    util::Lock lock(_mtx, context() + __func__);
 
-    util::Lock lock(_mtx, context() + "disableWorker");
-
-    auto&& itr = _workerInfo.find(name);
-    if (_workerInfo.end() == itr) {
-        throw std::invalid_argument("ConfigurationStore::disableWorker  no such worker: " + name);
+    auto&& itr = _workerInfo.find(info.name);
+    if (_workerInfo.end() != itr) {
+        throw std::invalid_argument("ConfigurationStore::" + std::string(__func__) + "  worker: " + info.name + " already exists");
     }
-    itr->second.isEnabled = false;
-
-    return itr->second;
+    
+    // Scan existing workers to make sure no conflict on the same combination
+    // of host:port exists
+    
+    for (auto const& itr: _workerInfo) {
+        if (itr.first == info.name) {
+            throw std::invalid_argument(
+                    "ConfigurationStore::" + std::string(__func__) + "  worker: " + info.name +
+                    " already exists");
+        }
+        if (itr.second.svcHost == info.svcHost and itr.second.svcPort == info.svcPort) {
+            throw std::invalid_argument(
+                    "ConfigurationStore::" + std::string(__func__) + "  worker: " + itr.first +
+                    " with a conflicting combination of the service host/port " +
+                    itr.second.svcHost + ":" + std::to_string(itr.second.svcPort) +
+                    " already exists");
+        }
+        if (itr.second.fsHost == info.fsHost and itr.second.fsPort == info.fsPort) {
+            throw std::invalid_argument(
+                    "ConfigurationStore::" + std::string(__func__) + "  worker: " + itr.first +
+                    " with a conflicting combination of the file service host/port " +
+                    itr.second.fsHost + ":" + std::to_string(itr.second.fsPort) +
+                    " already exists");
+        }
+    }
+    _workerInfo[info.name] = info;
 }
 
+
 void ConfigurationStore::deleteWorker(std::string const& name) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << "deleteWorker  name=" << name);
-
-    util::Lock lock(_mtx, context() + "deleteWorker");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  name=" << name);
+    util::Lock lock(_mtx, context() + __func__);
 
     auto&& itr = _workerInfo.find(name);
     if (_workerInfo.end() == itr) {
-        throw std::invalid_argument("ConfigurationStore::deleteWorker  no such worker: " + name);
+        throw std::invalid_argument("ConfigurationStore::" + std::string(__func__) + "  no such worker: " + name);
     }
     _workerInfo.erase(itr);
 }
 
-WorkerInfo const ConfigurationStore::setWorkerSvcPort(std::string const& name,
-                                                      uint16_t port) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "setWorkerSvcPort  name=" << name << " port=" << port);
-
-    util::Lock lock(_mtx, context() + "setWorkerSvcPort");
+WorkerInfo ConfigurationStore::disableWorker(std::string const& name,
+                                                   bool disable) {
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  name=" << name
+         << " disable=" << (disable ? "true" : "false"));
+    util::Lock lock(_mtx, context() + __func__);
 
     auto&& itr = _workerInfo.find(name);
     if (_workerInfo.end() == itr) {
-        throw std::invalid_argument("ConfigurationStore::setWorkerSvcPort  no such worker: " + name);
+        throw std::invalid_argument("ConfigurationStore::" + std::string(__func__) + "  no such worker: " + name);
+    }
+    itr->second.isEnabled = not disable;
+
+    return itr->second;
+}
+
+WorkerInfo ConfigurationStore::setWorkerReadOnly(std::string const& name,
+                                                       bool readOnly) {
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  name=" << name
+         << " readOnly=" << (readOnly ? "true" : "false"));
+    util::Lock lock(_mtx, context() + __func__);
+
+    auto&& itr = _workerInfo.find(name);
+    if (_workerInfo.end() == itr) {
+        throw std::invalid_argument("ConfigurationStore::" + std::string(__func__) + "  no such worker: " + name);
+    }
+    itr->second.isReadOnly = readOnly;
+
+    return itr->second;
+}
+
+
+WorkerInfo ConfigurationStore::setWorkerSvcHost(std::string const& name,
+                                                      std::string const& host) {
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  name=" << name << " host=" << host);
+    util::Lock lock(_mtx, context() + __func__);
+
+    auto&& itr = _workerInfo.find(name);
+    if (_workerInfo.end() == itr) {
+        throw std::invalid_argument("ConfigurationStore::" + std::string(__func__) + "  no such worker: " + name);
+    }
+    itr->second.svcHost = host;
+
+    return itr->second;
+}
+
+
+WorkerInfo ConfigurationStore::setWorkerSvcPort(std::string const& name,
+                                                      uint16_t port) {
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  name=" << name << " port=" << port);
+    util::Lock lock(_mtx, context() + __func__);
+
+    auto&& itr = _workerInfo.find(name);
+    if (_workerInfo.end() == itr) {
+        throw std::invalid_argument("ConfigurationStore::" + std::string(__func__) + "  no such worker: " + name);
     }
     itr->second.svcPort = port;
 
     return itr->second;
 }
 
-WorkerInfo const ConfigurationStore::setWorkerFsPort(std::string const& name,
-                                                     uint16_t port) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "setWorkerFsPort  name=" << name << " port=" << port);
-
-    util::Lock lock(_mtx, context() + "setWorkerFsPort");
+WorkerInfo ConfigurationStore::setWorkerFsHost(std::string const& name,
+                                                     std::string const& host) {
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  name=" << name << " host=" << host);
+    util::Lock lock(_mtx, context() + __func__);
 
     auto&& itr = _workerInfo.find(name);
     if (_workerInfo.end() == itr) {
-        throw std::invalid_argument("ConfigurationStore::setWorkerFsPort  no such worker: " + name);
+        throw std::invalid_argument("ConfigurationStore::" + std::string(__func__) + "  no such worker: " + name);
+    }
+    itr->second.fsHost = host;
+
+    return itr->second;
+}
+
+
+WorkerInfo ConfigurationStore::setWorkerFsPort(std::string const& name,
+                                                     uint16_t port) {
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  name=" << name << " port=" << port);
+    util::Lock lock(_mtx, context() + __func__);
+
+    auto&& itr = _workerInfo.find(name);
+    if (_workerInfo.end() == itr) {
+        throw std::invalid_argument("ConfigurationStore::" + std::string(__func__) + "  no such worker: " + name);
     }
     itr->second.fsPort = port;
 
-    return itr->second;}
+    return itr->second;
+}
+
+
+WorkerInfo ConfigurationStore::setWorkerDataDir(std::string const& name,
+                                                      std::string const& dataDir) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  name=" << name << " dataDir=" << dataDir);
+    util::Lock lock(_mtx, context() + __func__);
+
+    auto&& itr = _workerInfo.find(name);
+    if (_workerInfo.end() == itr) {
+        throw std::invalid_argument("ConfigurationStore::" + std::string(__func__) + "  no such worker: " + name);
+    }
+    itr->second.dataDir = dataDir;
+
+    return itr->second;
+
+}
+
+
+DatabaseFamilyInfo ConfigurationStore::addDatabaseFamily(DatabaseFamilyInfo const& info) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  familyInfo: " << info);
+
+    util::Lock lock(_mtx, context() + __func__);
+    
+    if (info.name.empty()) {
+        throw std::invalid_argument(context() + std::string(__func__) + "  the family name can't be empty");
+    }
+    if (info.replicationLevel == 0) {
+        throw std::invalid_argument(context() + std::string(__func__) + "  the replication level can't be 0");
+    }
+    if (info.numStripes == 0) {
+        throw std::invalid_argument(context() + std::string(__func__) + "  the number of stripes level can't be 0");
+    }
+    if (info.numSubStripes == 0) {
+        throw std::invalid_argument(context() + std::string(__func__) + "  the number of sub-stripes level can't be 0");
+    }
+    if (_databaseFamilyInfo.end() != _databaseFamilyInfo.find(info.name)) {
+        throw std::invalid_argument(context() + std::string(__func__) + "  the family already exists");
+    }
+    _databaseFamilyInfo[info.name] = DatabaseFamilyInfo{
+        info.name,
+        info.replicationLevel,
+        info.numStripes,
+        info.numSubStripes,
+        std::make_shared<ChunkNumberQservValidator>(
+            static_cast<int32_t>(info.numStripes),
+            static_cast<int32_t>(info.numSubStripes))
+    };
+    return _databaseFamilyInfo[info.name];
+}
+
+
+void ConfigurationStore::deleteDatabaseFamily(std::string const& name) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  name: " << name);
+
+    util::Lock lock(_mtx, context() + __func__);
+
+    if (name.empty()) {
+        throw std::invalid_argument(context() + std::string(__func__) + "  the family name can't be empty");
+    }
+    
+    // Find and delete the family
+    auto itr = _databaseFamilyInfo.find(name);
+    if (itr == _databaseFamilyInfo.end()) {
+        throw std::invalid_argument(context() + std::string(__func__) + "  unknown family");
+    }
+    _databaseFamilyInfo.erase(itr);
+
+    // Find and delete the relevant databases
+    for(auto itr = _databaseInfo.begin(); itr != _databaseInfo.end();) {
+        if (itr->second.family == name) {
+            itr = _databaseInfo.erase(itr);     // the iterator now points past the erased element
+        } else {
+            ++itr;
+        }
+    }
+}
+
+
+DatabaseInfo ConfigurationStore::addDatabase(DatabaseInfo const& info) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  databaseInfo: " << info);
+
+    util::Lock lock(_mtx, context() + __func__);
+    
+    if (info.name.empty()) {
+        throw std::invalid_argument(context() + std::string(__func__) + "  the database name can't be empty");
+    }
+    if (info.family.empty()) {
+        throw std::invalid_argument(context() + std::string(__func__) + "  the family name can't be empty");
+    }
+    if (_databaseFamilyInfo.find(info.family) == _databaseFamilyInfo.end()) {
+        throw std::invalid_argument(context() + std::string(__func__) + "  unknown database family: '" + info.family + "'");
+    }
+    if (_databaseInfo.find(info.name) != _databaseInfo.end()) {
+        throw std::invalid_argument(context() + std::string(__func__) + "  database already exists");
+    }
+    _databaseInfo[info.name] = DatabaseInfo{
+        info.name,
+        info.family,
+        {},
+        {}
+    };
+    return _databaseInfo[info.name];
+}
+
+
+void ConfigurationStore::deleteDatabase(std::string const& name) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  name: " << name);
+
+    util::Lock lock(_mtx, context() + __func__);
+
+    if (name.empty()) {
+        throw std::invalid_argument(context() + std::string(__func__) + "  the database name can't be empty");
+    }
+    
+    // Find and delete the database
+    auto itr = _databaseInfo.find(name);
+    if (itr == _databaseInfo.end()) {
+        throw std::invalid_argument(context() + std::string(__func__) + "  unknown database");
+    }
+    _databaseInfo.erase(itr);
+}
+
+
+DatabaseInfo ConfigurationStore::addTable(std::string const& database,
+                                          std::string const& table,
+                                          bool isPartitioned) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  database: " << database
+         << " table: " << table << " isPartitioned: " << (isPartitioned ? "true" : "false"));
+
+    util::Lock lock(_mtx, context() + __func__);
+
+    if (database.empty()) {
+        throw std::invalid_argument(context() + std::string(__func__) + "  the database name can't be empty");
+    }
+    if (table.empty()) {
+        throw std::invalid_argument(context() + std::string(__func__) + "  the table name can't be empty");
+    }
+
+    // Find the database
+    auto itr = _databaseInfo.find(database);
+    if (itr == _databaseInfo.end()) {
+        throw std::invalid_argument(context() + std::string(__func__) + "  unknown database");
+    }
+    DatabaseInfo& info = itr->second;
+
+    // Find the table
+    if (std::find(info.partitionedTables.cbegin(),
+                  info.partitionedTables.cend(),
+                  table) != info.partitionedTables.cend() or
+        std::find(info.regularTables.cbegin(), 
+                  info.regularTables.cend(),
+                  table) != info.regularTables.cend()) {
+
+        throw std::invalid_argument(context() + std::string(__func__) + "  table already exists");
+    }
+
+    // Insert the table into the corresponding collection
+    if (isPartitioned) {
+        info.partitionedTables.push_back(table);
+    } else {
+        info.regularTables.push_back(table);
+    }
+    return info;
+}
+
+
+DatabaseInfo ConfigurationStore::deleteTable(std::string const& database,
+                                             std::string const& table) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  database: " << database
+         << " table: " << table);
+
+    util::Lock lock(_mtx, context() + __func__);
+
+    if (database.empty()) {
+        throw std::invalid_argument(context() + std::string(__func__) + "  the database name can't be empty");
+    }
+    if (table.empty()) {
+        throw std::invalid_argument(context() + std::string(__func__) + "  the table name can't be empty");
+    }
+    
+    // Find the database
+    auto itr = _databaseInfo.find(database);
+    if (itr == _databaseInfo.end()) {
+        throw std::invalid_argument(context() + std::string(__func__) + "  unknown database");
+    }
+    DatabaseInfo& info = itr->second;
+
+    auto pTableItr = std::find(info.partitionedTables.cbegin(),
+                               info.partitionedTables.cend(),
+                               table);
+    if (pTableItr != info.partitionedTables.cend()) {
+        info.partitionedTables.erase(pTableItr);
+        return info;
+    }
+    auto rTableItr = std::find(info.regularTables.cbegin(),
+                               info.regularTables.cend(),
+                               table);
+    if (rTableItr != info.regularTables.cend()) {
+        info.regularTables.erase(rTableItr);
+        return info;
+    }
+    throw std::invalid_argument(context() + std::string(__func__) + "  unknown table");
+}
+
 
 void ConfigurationStore::loadConfiguration(util::ConfigStore const& configStore) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "ConfigurationStore::loadConfiguration");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
-    util::Lock lock(_mtx, context() + "ConfigurationStore::loadConfiguration");
+    util::Lock lock(_mtx, context() + __func__);
 
     // Parse the list of worker names
 
@@ -221,7 +512,7 @@ void ConfigurationStore::loadConfiguration(util::ConfigStore const& configStore)
         std::string const section = "worker:" + name;
         if (_workerInfo.count(name)) {
             throw std::range_error(
-                    "ConfigurationStore::loadConfiguration() duplicate worker entry: '" +
+                    "ConfigurationStore::" + std::string(__func__) + "  duplicate worker entry: '" +
                     name + "' in: [common] or ["+section+"]");
         }
         auto& workerInfo = _workerInfo[name];
@@ -244,7 +535,7 @@ void ConfigurationStore::loadConfiguration(util::ConfigStore const& configStore)
         std::string const section = "database_family:" + name;
         if (_databaseFamilyInfo.count(name)) {
             throw std::range_error(
-                    "ConfigurationStore::loadConfiguration() duplicate database family entry: '" +
+                    "ConfigurationStore::" + std::string(__func__) + "  duplicate database family entry: '" +
                     name + "' in: [common] or ["+section+"]");
         }
         _databaseFamilyInfo[name].name = name;
@@ -273,14 +564,14 @@ void ConfigurationStore::loadConfiguration(util::ConfigStore const& configStore)
         std::string const section = "database:" + name;
         if (_databaseInfo.count(name)) {
             throw std::range_error(
-                    "ConfigurationStore::loadConfiguration() duplicate database entry: '" +
+                    "ConfigurationStore::" + std::string(__func__) + "  duplicate database entry: '" +
                     name + "' in: [common] or ["+section+"]");
         }
         _databaseInfo[name].name = name;
         _databaseInfo[name].family = configStore.getRequired(section+".family");
         if (not _databaseFamilyInfo.count(_databaseInfo[name].family)) {
             throw std::range_error(
-                    "ConfigurationStore::loadConfiguration() unknown database family: '" +
+                    "ConfigurationStore::" + std::string(__func__) + "  unknown database family: '" +
                     _databaseInfo[name].family + "' in section ["+section+"]");
         }
         {

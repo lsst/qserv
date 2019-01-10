@@ -45,6 +45,19 @@ class ConfigurationFile
 
 public:
 
+    /**
+     * Dump the input configuration into the text representing an initialization
+     * sequence compatible with the INI file format and its schema assumed by
+     * the current implementation.
+     *
+     * @param config
+     *   input configuration to be dumped
+     *
+     * @return
+     *   the text representation of the configuration
+     */
+    static std::string dump2init(Configuration::Ptr const& config);
+
     // Default construction and copy semantics are prohibited
 
     ConfigurationFile() = delete;
@@ -62,10 +75,15 @@ public:
     ~ConfigurationFile() final = default;
 
     /**
+     * @see Configuration::prefix()
+     */
+    virtual std::string prefix() const final { return "file"; }
+
+    /**
      * @see Configuration::configUrl()
      */
     std::string configUrl() const final {
-        return "file:" + _configFile;
+        return prefix() + ":" + _configFile;
     }
 
 private:

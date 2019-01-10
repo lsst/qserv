@@ -249,6 +249,23 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         BOOST_CHECK(config->replicationLevel("production") == 10);
         BOOST_CHECK(config->replicationLevel("test")       == 13);
     
+        DatabaseFamilyInfo newFamily;
+        newFamily.name = "new";
+        newFamily.replicationLevel = 300;
+        newFamily.numStripes = 301;
+        newFamily.numSubStripes = 302;
+
+        DatabaseFamilyInfo const newFamilyAdded = config->addDatabaseFamily(newFamily);
+        BOOST_CHECK(config->isKnownDatabaseFamily("new"));
+
+        BOOST_CHECK(newFamilyAdded.name == "new");
+        BOOST_CHECK(newFamilyAdded.replicationLevel == 300);
+        BOOST_CHECK(newFamilyAdded.numStripes       == 301);
+        BOOST_CHECK(newFamilyAdded.numSubStripes    == 302);
+
+        config->deleteDatabaseFamily("new");
+        BOOST_CHECK(not config->isKnownDatabaseFamily("new"));
+
         // Databases
 
         std::vector<std::string> databases1 = config->databases();
@@ -338,6 +355,44 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         tables = db5info.regularTables;
         BOOST_CHECK(tables.size() == 0);
 
+        DatabaseInfo newDatabase;
+        newDatabase.name = "new";
+        newDatabase.family = "test";
+        
+        DatabaseInfo const newDatabaseCreated = config->addDatabase(newDatabase);
+        BOOST_CHECK(newDatabaseCreated.name   == "new");
+        BOOST_CHECK(newDatabaseCreated.family == "test");
+        BOOST_CHECK(newDatabaseCreated.partitionedTables.size() == 0);
+        BOOST_CHECK(newDatabaseCreated.regularTables.size() == 0);
+
+        BOOST_CHECK_THROW(config->addDatabase(newDatabase), std::invalid_argument);
+
+        newDatabase.name = "";
+        BOOST_CHECK_THROW(config->addDatabase(newDatabase), std::invalid_argument);
+
+        newDatabase.name   = "another";
+        newDatabase.family = "";
+        BOOST_CHECK_THROW(config->addDatabase(newDatabase), std::invalid_argument);
+
+        newDatabase.family = "unknown";
+        BOOST_CHECK_THROW(config->addDatabase(newDatabase), std::invalid_argument);
+
+        DatabaseInfo newDatabaseUpdated = config->addTable("new", "T1", true);
+        BOOST_CHECK(newDatabaseUpdated.partitionedTables.size() == 1 and
+                    newDatabaseUpdated.partitionedTables[0] == "T1");
+        BOOST_CHECK_THROW(config->addTable("new", "T1", true), std::invalid_argument);
+
+        newDatabaseUpdated = config->addTable("new", "T2", false);
+        BOOST_CHECK(newDatabaseUpdated.regularTables.size() == 1 and
+                    newDatabaseUpdated.regularTables[0] == "T2");
+        BOOST_CHECK_THROW(config->addTable("new", "T2", false), std::invalid_argument);
+
+        config->deleteTable("new", "T1");
+        config->deleteTable("new", "T2");
+
+        config->deleteDatabase("new");
+        BOOST_CHECK_THROW(config->deleteDatabase("new"), std::invalid_argument);
+
         // -----------------------------------------------------
         // -- Configuration parameters of the worker services --
         // -----------------------------------------------------
@@ -375,22 +430,134 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         BOOST_CHECK(workerC.fsPort  == 52000);
         BOOST_CHECK(workerC.dataDir == "/tmp/worker-C");
 
+        // Adding a new worker with well formed and unique parameters
+
+        WorkerInfo workerD;
+        workerD.name       = "worker-D";
+        workerD.isEnabled  = true;
+        workerD.isReadOnly = true;
+        workerD.svcHost    = "host-D";
+        workerD.svcPort    = 51001;
+        workerD.fsHost     = "host-D";
+        workerD.fsPort     = 52001;
+        workerD.dataDir    = "/data/D";
+
+        config->addWorker(workerD);
+        BOOST_CHECK_THROW(config->addWorker(workerD), std::invalid_argument);
+
+        workerD = config->workerInfo("worker-D");
+        BOOST_CHECK(workerD.name =="worker-D");
+        BOOST_CHECK(workerD.isEnabled);
+        BOOST_CHECK(workerD.isReadOnly);
+        BOOST_CHECK(workerD.svcHost == "host-D");
+        BOOST_CHECK(workerD.svcPort == 51001);
+        BOOST_CHECK(workerD.fsHost  == "host-D");
+        BOOST_CHECK(workerD.fsPort  == 52001);
+        BOOST_CHECK(workerD.dataDir == "/data/D");
+
+        // Adding a new worker with parameters conflicting with the ones of
+        // some existing worker
+
+        WorkerInfo workerE = workerD;
+        workerE.name = "worker-E";
+        BOOST_CHECK_THROW(config->addWorker(workerE), std::invalid_argument);
+
+        config->deleteWorker("worker-C");
+        BOOST_CHECK(not config->isKnownWorker("worker-C"));
+        BOOST_CHECK_THROW(config->deleteWorker("worker-C"), std::invalid_argument);
+
         WorkerInfo const disabledWorker = config->disableWorker("worker-B");
         BOOST_CHECK(disabledWorker.name == "worker-B");
         BOOST_CHECK(not disabledWorker.isEnabled);
 
-        config->deleteWorker("worker-C");
-        BOOST_CHECK(not config->isKnownWorker("worker-C"));
+        WorkerInfo const enabledWorker = config->disableWorker("worker-B", false);
+        BOOST_CHECK(enabledWorker.name == "worker-B");
+        BOOST_CHECK(enabledWorker.isEnabled);
+
+        WorkerInfo const readOnlyWorker = config->setWorkerReadOnly("worker-B");
+        BOOST_CHECK(readOnlyWorker.name == "worker-B");
+        BOOST_CHECK(readOnlyWorker.isReadOnly);
+
+        WorkerInfo const readWriteWorker = config->setWorkerReadOnly("worker-B", false);
+        BOOST_CHECK(readWriteWorker.name == "worker-B");
+        BOOST_CHECK(not readWriteWorker.isReadOnly);
+
+        BOOST_CHECK(config->setWorkerSvcHost("worker-A", "host-A1").svcHost == "host-A1");
+        BOOST_CHECK(config->setWorkerSvcPort("worker-A", 1).svcPort == 1);
+
+        BOOST_CHECK(config->setWorkerFsHost("worker-A", "host-A1").fsHost == "host-A1");
+        BOOST_CHECK(config->setWorkerFsPort("worker-A", 2).fsPort == 2);
+
+        BOOST_CHECK(config->setWorkerDataDir("worker-A", "/test").dataDir == "/test");
 
         BOOST_CHECK(config->workerTechnology()           == "POSIX");
         BOOST_CHECK(config->workerNumProcessingThreads() == 4);
         BOOST_CHECK(config->fsNumProcessingThreads()     == 5);
         BOOST_CHECK(config->workerFsBufferSizeBytes()    == 1024);
 
+        config->setRequestBufferSizeBytes(8193);
+        BOOST_CHECK(config->requestBufferSizeBytes() == 8193);
 
-        BOOST_CHECK(config->setWorkerSvcPort("worker-A", 1).svcPort == 1);
+        config->setRetryTimeoutSec(2);
+        BOOST_CHECK(config->retryTimeoutSec() == 2);
 
-        BOOST_CHECK(config->setWorkerFsPort("worker-A", 2).fsPort == 2);
+        config->setRetryTimeoutSec(2);
+        BOOST_CHECK(config->retryTimeoutSec() == 2);
+
+        config->setControllerThreads(3);
+        BOOST_CHECK(config->controllerThreads() == 3);
+
+        config->setControllerHttpPort(8081);
+        BOOST_CHECK(config->controllerHttpPort() == 8081);
+
+        config->setControllerHttpThreads(4);
+        BOOST_CHECK(config->controllerHttpThreads() == 4);
+
+        config->setControllerRequestTimeoutSec(101);
+        BOOST_CHECK(config->controllerRequestTimeoutSec() == 101);
+
+        config->setJobTimeoutSec(201);
+        BOOST_CHECK(config->jobTimeoutSec() == 201);
+
+        config->setJobHeartbeatTimeoutSec(301);
+        BOOST_CHECK(config->jobHeartbeatTimeoutSec() == 301);
+
+        config->setJobHeartbeatTimeoutSec(0);
+        BOOST_CHECK(config->jobHeartbeatTimeoutSec() == 0);
+
+        config->setXrootdAutoNotify(true);
+        BOOST_CHECK(config->xrootdAutoNotify());
+
+        config->setXrootdAutoNotify(false);
+        BOOST_CHECK(not config->xrootdAutoNotify());
+
+        config->setXrootdHost("localhost");
+        BOOST_CHECK(config->xrootdHost() == "localhost");
+
+        BOOST_CHECK_THROW(config->setXrootdHost(""), std::invalid_argument);
+
+        config->setXrootdPort(1105);
+        BOOST_CHECK(config->xrootdPort() == 1105);
+
+        config->setXrootdTimeoutSec(401);
+        BOOST_CHECK(config->xrootdTimeoutSec() == 401);
+
+        config->setDatabaseServicesPoolSize(3);
+        BOOST_CHECK(config->databaseServicesPoolSize() == 3);
+
+        BOOST_CHECK_THROW(config->setDatabaseServicesPoolSize(0), std::invalid_argument);
+
+        config->setWorkerTechnology("FS");
+        BOOST_CHECK(config->workerTechnology() == "FS");
+
+        config->setWorkerNumProcessingThreads(5);
+        BOOST_CHECK(config->workerNumProcessingThreads() == 5);
+
+        config->setFsNumProcessingThreads(6);
+        BOOST_CHECK(config->fsNumProcessingThreads() == 6);
+
+        config->setWorkerFsBufferSizeBytes(1025);
+        BOOST_CHECK(config->workerFsBufferSizeBytes() == 1025);
     });
 
     BOOST_CHECK_THROW(kvMap.at("non-existing-key"), std::out_of_range);

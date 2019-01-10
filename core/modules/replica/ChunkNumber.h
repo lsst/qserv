@@ -74,7 +74,7 @@ public:
     bool operator!=(ChunkNumberValidator const& rhs) const { return not operator==(rhs); }
 
     /// @return 'true' if the input value is valid
-    virtual bool valid(unsigned int value) const=0;
+    virtual bool valid(unsigned int value) const = 0;
 
     /// @return 'true' if the input value is 'valid' and corresponds to the 'overflow' chunk
     virtual bool overflow(unsigned int value) const;

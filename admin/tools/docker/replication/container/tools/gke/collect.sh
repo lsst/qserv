@@ -19,11 +19,9 @@ build=tmp/replication/container/build
 mkdir -p "${build}/lib" && rm -rf "${build}/lib/*"
 mkdir -p "${build}/bin" && rm -rf "${build}/bin/*"
 
-bins=$(ls bin/qserv-replica-* bin/qserv-worker-*)
+bins=$(ls bin/qserv-replica-* bin/qserv-worker-* $(which mysql))
 cp ${bins} "${build}/bin/"
 
 libs="$(for l in $(ldd ${bins} | grep '=>' | grep '/' | awk '{print $3}'); do if [[ $l != /lib* && $l != /usr/* ]]; then echo $l; fi; done | sort -u)"
 cp ${libs} "${build}/lib/"
 cp ${JEMALLOC_DIR}/lib/libjemalloc.so "${build}/lib/"
-
-cp admin/tools/docker/replication/container/tools/Dockerfile "${build}/"

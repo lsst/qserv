@@ -880,6 +880,42 @@ private:
                         // while a client will be processing its content.
 };
 
+
+
+/**
+ * Class ConnectionHandler implements the RAII method of handling database
+ * connection.
+ */
+class ConnectionHandler {
+
+public:
+
+    /**
+     * The default constructor will initialize the connection pointer
+     * with 'nullptr'
+     */
+    ConnectionHandler() = default;
+
+    // Copy semantics is prohibited
+
+    ConnectionHandler(ConnectionHandler const&) = delete;
+    ConnectionHandler& operator=(ConnectionHandler const&) = delete;
+
+    /**
+     * The destructor will rollback a transaction if any was started at
+     * a presence of a connection.
+     */
+    ~ConnectionHandler() {
+        if ((nullptr != conn) and conn->inTransaction()) {
+            conn->rollback();
+        }
+    }
+
+    /// The smart reference to the connector object (if any))
+    Connection::Ptr conn;
+};
+
+
 }}}}} // namespace lsst::qserv::replica::database::mysql
 
 #endif // LSST_QSERV_REPLICA_DATABASEMYSQL_H

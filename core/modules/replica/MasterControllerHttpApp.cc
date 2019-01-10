@@ -28,8 +28,6 @@
 
 namespace {
 
-LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.ClusterHealthJob");
-
 /**
  * This structure encapsulates default values for the Master Controller.
  * These values may be overridden by specifying the corresponding command

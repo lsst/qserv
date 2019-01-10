@@ -89,56 +89,56 @@ protected:
             _o1(123),
             _o2(false) {
 
-        // Configure the parser of the command-line arguments. Note that
-        // the parser is guaranteed to run before invoking method "runImpl()".
+        /* Configure the parser for the following syntax:
+         *
+         * COMMAND1 <p1> <p11> [<o1>] [<o11>] [--o12=<v>] [--verbose]
+         * COMMAND2 <p1>       [<o1>]                     [--verbose] [--f21]
+         * COMMAND2 <p1>       [<o1>]                     [--verbose]
+         * 
+         * Note that the parser is guaranteed to run before invoking method "runImpl()".
+         */
+        parser().commands(
+            "command",
+            {"COMMAND1", "COMMAND2", "COMMAND3"},
+            _cmd);
 
         parser().required(
             "p1",
-            "The first positional parameter description",
-            _p1
-        ).optional(
-            "p2",
-            "The second positional parameter description. Note, this"
-            " parameter is optional, and it allows a limited set of"
-            " values: 'ONE', 'TWO' or 'THREE'",
-            _p2,
-            {"ONE","TWO","THREE"}
-        ).option(
+            "description of the required parameter p1 for all commands",
+            _p1);
+
+        parser().optional(
             "o1",
-            "The first option description",
-            _o1
-        ).option(
-            "o2",
-            "The 'bool' option",
-            _o2
-        ).flag(
+            "description of the optional parameter o1 for all commands",
+            _o1);
+
+        parser().flag(
             "verbose",
             "verbose mode",
-            _verbose
+            _verbose);
+
+        auto&& command1 = parser().command("COMMAND1");
+        command1.required(
+            "p11",
+            "description of the additional required parameter specific for the command",
+            _p11
+        );
+        command1.optional(
+            "o11",
+            "description of the additional optional parameter specific for the command",
+            _o11
+        );
+        command1.option(
+            "o12",
+            "description of the additional option specific to the command",
+            _o12
         );
 
-#if 0
-        /* The proposed extension to the command line parser to allow
-         * the following syntax (as per code example)
-         *
-         * COMMAND1 <p1> <p11> [<o1>] [<o11>] [--o11=<v>] [--f1]
-         * COMMAND2 <p1>       [<o1>]                     [--f1] [--f21]
-         * COMMAND2 <p3>       [<o1>]                     [--f1]
-         */
-        std::string cmd;
-        parser({"COMMAND1","COMMAND2","COMMAND3"}, cmd)
-            .required("p1", "description of the required parameter p1 for all commands", p1)
-            .optional("o1", "description of the optional parameter o1 for all commands", o1)
-            .flag("f1", "description of f1", f1);
-
-        command("COMMAND1")
-            .required("p11", "description of the additional required parameter specific for the command", p11)
-            .optional("o11", "description of the additional optional parameter specific for the command", o11)
-            .option("o11", "description of the additional option specific to the command", o11);
-
-        command("COMMAND2")
-            .flag("f21", "description of the additional flag specific to the command", f21);
-#endif
+        parser().command("COMMAND2").flag(
+           "f21",
+           "description of the additional flag specific to the command",
+           _f21
+        );
     }
 
     /**
@@ -149,10 +149,15 @@ protected:
     int runImpl() final {
         std::cout
             << "Hello from TestApplication:\n"
-            << "       p1: " << _p1 << "\n"
-            << "       p2: " << _p2 << "\n"
-            << "       o1: " << _o1 << "\n"
+            << "      cmd: " << _cmd << "\n"
+            << "      p11: " << _p11 << "\n"
+            << "       p1: " << _p1  << "\n"
+            << "       p2: " << _p2  << "\n"
+            << "       o1: " << _o1  << "\n"
             << "       o2: " << (_o2      ? "true" : "false") << "\n"
+            << "      o11: " << _o11 << "\n"
+            << "      o12: " << _o12 << "\n"
+            << "      f21: " << (_f21     ? "true" : "false") << "\n"
             << "  verbose: " << (_verbose ? "true" : "false") << std::endl;
         return 0;
     }
@@ -161,11 +166,16 @@ private:
 
     // Values of the command line parameters
 
-    int _p1;
-    std::string _p2;
+    std::string  _cmd;
+    int          _p1;
+    std::string  _p11;
+    std::string  _p2;
     unsigned int _o1;
-    bool _o2;
-    bool _verbose;
+    unsigned int _o2;
+    unsigned int _o11;
+    std::string  _o12;
+    bool         _verbose;
+    bool         _f21;
 };
 } /// namespace
 

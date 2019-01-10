@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_UTIL_BLOCK_POST_H
-#define LSST_QSERV_UTIL_BLOCK_POST_H
+#ifndef LSST_QSERV_UTIL_BLOCKPOST_H
+#define LSST_QSERV_UTIL_BLOCKPOST_H
 
 /// BlockPost.h declares:
 ///
@@ -30,8 +30,6 @@
 // System headers
 #include <mutex>
 #include <random>
-
-// Qserv headers
 
 // This header declarations
 
@@ -108,4 +106,4 @@ private:
 
 }}} // namespace lsst::qserv::util
 
-#endif // LSST_QSERV_UTIL_BLOCK_POST_H
+#endif // LSST_QSERV_UTIL_BLOCKPOST_H

@@ -108,7 +108,7 @@ protected:
      *
      * @param os - an output stream for the printout
      */
-    virtual void printErrorReport(std::ostream& os) const=0;
+    virtual void printErrorReport(std::ostream& os) const = 0;
 
     /**
      * The method to be implemented by a subclass is supposed to return all
@@ -116,7 +116,7 @@ protected:
      *
      * @return collection of requests
      */
-    virtual std::list<Request::Ptr> getRequests() const=0;
+    virtual std::list<Request::Ptr> getRequests() const = 0;
 
     /**
      * The method to be implemented by a subclass is supposed to clear
@@ -125,7 +125,7 @@ protected:
      * NOTE: It's guaranteed that the base class's counters will stay
      * intact when this method is called.
      */
-    virtual void resetImpl()=0;
+    virtual void resetImpl() = 0;
 
 protected:
 

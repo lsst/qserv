@@ -319,7 +319,7 @@ protected:
       * 
       * @param lock - a lock on a mutex must be acquired before calling this method
       */
-    virtual void startImpl(util::Lock const& lock)=0;
+    virtual void startImpl(util::Lock const& lock) = 0;
 
     /**
      * Request expiration timer's handler. The expiration interval (if any)
@@ -348,7 +348,7 @@ protected:
       *
       * @param lock - a lock on a mutex must be acquired before calling this method
       */
-    virtual void finishImpl(util::Lock const& lock)=0;
+    virtual void finishImpl(util::Lock const& lock) = 0;
 
     /**
       * This method is supposed to be provided by subclasses to save the request's
