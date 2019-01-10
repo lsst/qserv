@@ -127,15 +127,15 @@ BOOST_AUTO_TEST_CASE(ApplicationParser2) {
                   " f1=" + std::string(f1 ? "true" : "false") +
                   " f2=" + std::string(f2 ? "true" : "false"));
         
-        BOOST_CHECK(r1 == "1");
-        BOOST_CHECK(r2 == 2);
-        BOOST_CHECK(r3 == 3);
+        BOOST_CHECK_EQUAL(r1, "1");
+        BOOST_CHECK_EQUAL(r2, 2);
+        BOOST_CHECK_EQUAL(r3, 3u);
         BOOST_CHECK_EQUAL(r4, 4.4f);
         BOOST_CHECK_EQUAL(r5, 5.5);
         BOOST_CHECK(r6);
-        BOOST_CHECK(o1 == "o1");
+        BOOST_CHECK_EQUAL(o1, "o1");
         BOOST_CHECK(o2.empty());
-        BOOST_CHECK(o3 == "o3");
+        BOOST_CHECK_EQUAL(o3, "o3");
         BOOST_CHECK(f1);
         BOOST_CHECK(not f2);
     });
@@ -147,7 +147,7 @@ BOOST_AUTO_TEST_CASE(ApplicationParser3) {
 
     LOGS_INFO("ApplicationParser3 test begins");
 
-    // Test for excepted exceptions
+    // Test for expected exceptions
 
     bool isHelp = false;
     bool isEmpty = false;
@@ -232,16 +232,16 @@ BOOST_AUTO_TEST_CASE(ApplicationParser4) {
                   " o1="   + o1 +
                   " c1o1=" + std::to_string(c1o1));
         
-        BOOST_CHECK(command == "C1");
-        BOOST_CHECK(r1 == "1");
-        BOOST_CHECK(r2 == 2);
-        BOOST_CHECK(r3 == 3);
+        BOOST_CHECK_EQUAL(command, "C1");
+        BOOST_CHECK_EQUAL(r1, "1");
+        BOOST_CHECK_EQUAL(r2, 2);
+        BOOST_CHECK_EQUAL(r3, 3u);
         BOOST_CHECK_EQUAL(r4, 4.4f);
         BOOST_CHECK_EQUAL(r5, 5.5);
         BOOST_CHECK(r6);
-        BOOST_CHECK(c1r1 == "c1r1");
-        BOOST_CHECK(o1   == "o1");
-        BOOST_CHECK(c1o1 == 11);
+        BOOST_CHECK_EQUAL(c1r1, "c1r1");
+        BOOST_CHECK_EQUAL(o1,   "o1");
+        BOOST_CHECK_EQUAL(c1o1, 11);
     });
 
     // Running the Parser in the 'commands' mode for command "C2"
@@ -297,15 +297,15 @@ BOOST_AUTO_TEST_CASE(ApplicationParser4) {
                   " o1="   + o1 +
                   " c2f1=" + std::string(c2f1 ? "true" : "false"));
 
-        BOOST_CHECK(command == "C2");
-        BOOST_CHECK(r1 == "1");
-        BOOST_CHECK(r2 == 2);
-        BOOST_CHECK(r3 == 3);
+        BOOST_CHECK_EQUAL(command, "C2");
+        BOOST_CHECK_EQUAL(r1, "1");
+        BOOST_CHECK_EQUAL(r2, 2);
+        BOOST_CHECK_EQUAL(r3, 3u);
         BOOST_CHECK_EQUAL(r4, 4.4f);
         BOOST_CHECK_EQUAL(r5, 5.5);
         BOOST_CHECK(r6);
-        BOOST_CHECK(c2r1 == "c2r1");
-        BOOST_CHECK(o1   == "o1");
+        BOOST_CHECK_EQUAL(c2r1, "c2r1");
+        BOOST_CHECK_EQUAL(o1,   "o1");
         BOOST_CHECK(c2f1);
     });
 
@@ -319,7 +319,7 @@ BOOST_AUTO_TEST_CASE(ApplicationParser4) {
     //
     // Values of the input arguments tested:
     //
-    //  "--help"
+    //  "C3"  1    2     3     4.4   5.5   1             "o1"   31 
 
     int c3o1 = -1;
 
@@ -364,15 +364,15 @@ BOOST_AUTO_TEST_CASE(ApplicationParser4) {
                   " o1="   + o1 +
                   " c3o1=" + std::to_string(c3o1));
 
-        BOOST_CHECK(command == "C3");
-        BOOST_CHECK(r1 == "1");
-        BOOST_CHECK(r2 == 2);
-        BOOST_CHECK(r3 == 3);
+        BOOST_CHECK_EQUAL(command, "C3");
+        BOOST_CHECK_EQUAL(r1, "1");
+        BOOST_CHECK_EQUAL(r2, 2);
+        BOOST_CHECK_EQUAL(r3, 3u);
         BOOST_CHECK_EQUAL(r4, 4.4f);
         BOOST_CHECK_EQUAL(r5, 5.5);
         BOOST_CHECK(r6);
-        BOOST_CHECK(o1   == "o1");
-        BOOST_CHECK(c3o1 == 31);
+        BOOST_CHECK_EQUAL(o1,   "o1");
+        BOOST_CHECK_EQUAL(c3o1, 31);
     });
 
     // Running the Parser in the 'commands' mode to test '--help'
@@ -414,7 +414,7 @@ BOOST_AUTO_TEST_CASE(ApplicationParser4) {
 
         int status = parser.parse();
 
-        BOOST_CHECK(status == Parser::Status::HELP_REQUESTED);
+        BOOST_CHECK_EQUAL(status, Parser::Status::HELP_REQUESTED);
     });
 
     LOGS_INFO("ApplicationParser4 test ends");

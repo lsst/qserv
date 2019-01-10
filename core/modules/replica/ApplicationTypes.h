@@ -436,8 +436,7 @@ public:
     /**
      * Register a mandatory positional parameter for parsing. Positional
      * parameters are lined up based on an order in which the positional
-     * parameter methods (this and 'optional') are
-     * a being called.
+     * parameter methods (this and 'optional') are called.
      *
      * @see method Command::optional()
      *
@@ -472,13 +471,11 @@ public:
                       T& var,
                       std::vector<T> const& allowedValues = std::vector<T>()) {
         _required.push_back(
-            std::move(
-                std::make_unique<ParameterParser<T>>(
-                    name,
-                    description,
-                    var,
-                    allowedValues
-                )
+            std::make_unique<ParameterParser<T>>(
+                name,
+                description,
+                var,
+                allowedValues
             )
         );
         return *this;
@@ -497,17 +494,15 @@ public:
      */
     template <typename T>
     Command& optional(std::string const& name,
-                      std::string const& description ,
+                      std::string const& description,
                       T& var,
                       std::vector<T> const& allowedValues = std::vector<T>()) {
         _optional.push_back(
-            std::move(
-                std::make_unique<ParameterParser<T>>(
-                    name,
-                    description,
-                    var,
-                    allowedValues
-                )
+            std::make_unique<ParameterParser<T>>(
+                name,
+                description,
+                var,
+                allowedValues
             )
         );
         return *this;
@@ -527,15 +522,11 @@ public:
                     std::string const& description,
                     T& var) {
         _options.emplace(
-            std::make_pair(
+            name,
+            std::make_unique<OptionParser<T>>(
                 name,
-                std::move(
-                    std::make_unique<OptionParser<T>>(
-                        name,
-                        description,
-                        var
-                    )
-                )
+                description,
+                var
             )
         );
         return *this;
@@ -593,7 +584,7 @@ public:
      * Construct the object
      * 
      * @param commandNames
-     *   a collection of column names
+     *   a collection of command names
      *
      * @param var
      *   a user variable to be initialized with the name of a command detected

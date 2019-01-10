@@ -145,17 +145,17 @@ public:
     /**
      * The normal and also the default constructor
      *
-     * @param capture
-     *   optional table capture (if any) to be printed before the table
+     * @param caption
+     *   optional table caption (if any) to be printed before the table
      * 
      * @param indent
-     *   optional indentation before the table
+     *   optional indentation before each line of the table
      * 
      * @param verticalSeparator
      *   optional flag indicating if the vertical separators should be printed between
      *   the columns. The default value is 'true'
      */
-    explicit ColumnTablePrinter(std::string const& capture=std::string(),
+    explicit ColumnTablePrinter(std::string const& caption=std::string(),
                                 std::string const& indent=std::string(),
                                 bool verticalSeparator=true);
 
@@ -278,7 +278,7 @@ private:
      *   the column title to be printed in the headers
      *
      * @param cells
-     *   values of the column cells to be upended to the corresponding rows
+     *   values of the column cells to uppend to the corresponding rows
      */
     void _rightUppendCellsToRows(std::string const& title,
                                  std::list<std::string> const& cells,
@@ -286,8 +286,8 @@ private:
 
 private:
 
-    /// Optional table capture (if any) to be printed before the table
-    std::string const _capture;
+    /// Optional table caption (if any) to be printed before the table
+    std::string const _caption;
 
     /// Optional indentation (if any) to be printed at each row
     std::string const _indent;

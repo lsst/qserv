@@ -440,4 +440,13 @@ std::string Configuration::asString() const {
     return ss.str();
 }
 
+std::map<std::string, WorkerInfo>::iterator Configuration::safeFindWorker(util::Lock const& lock,
+                                                                          std::string const& name,
+                                                                          std::string const& context) {
+    auto itr = _workerInfo.find(name);
+    if (_workerInfo.end() != itr) return itr;
+    throw std::invalid_argument(context + "  no such worker: " + name);
+}
+
+
 }}} // namespace lsst::qserv::replica

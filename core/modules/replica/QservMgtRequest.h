@@ -228,7 +228,7 @@ protected:
       *
       * @param lock - the lock must be acquired by a caller of the method
       */
-    virtual void startImpl(util::Lock const& lock)=0;
+    virtual void startImpl(util::Lock const& lock) = 0;
 
     /**
      * Request expiration timer's handler. The expiration interval (if any)
@@ -259,7 +259,7 @@ protected:
       *
       * @param lock - the lock must be acquired by a caller of the method
       */
-    virtual void finishImpl(util::Lock const& lock)=0;
+    virtual void finishImpl(util::Lock const& lock) = 0;
 
     /**
      * Start user-notification protocol (in case if user-defined notifiers
@@ -281,7 +281,7 @@ protected:
      *
      * @param lock - the lock must be acquired by a caller of the method
      */
-    virtual void notify(util::Lock const& lock)=0;
+    virtual void notify(util::Lock const& lock) = 0;
 
     /**
      * The helper function which pushes up-stream notifications on behalf of

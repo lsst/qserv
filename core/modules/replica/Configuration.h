@@ -145,17 +145,20 @@ public:
      * The static factory method will instantiate an instance of a subclass
      * corresponding to a prefix of the configuration URL. The following
      * prefixes are supported:
-     *
+     * @code
      *   file:<path>
      *   mysql://[user][:password]@[host][:port][/database]
+     * @code
      *
-     * @param configUrl - the configuration source
+     * @param configUrl
+     *   the configuration source
      *
-     * @throw std::invalid_argument if the URL has unsupported prefix or it
-     * couldn't be parsed
+     * @throw std::invalid_argument
+     *   if the URL has unsupported prefix or it couldn't be parsed
      *                            
-     * @throw std::runtime_error if the input configuration is not consistent
-     * with expectations of the application
+     * @throw std::runtime_error
+     *   if the input configuration is not consistent with expectations of
+     *   the application
      */
     static Ptr load(std::string const& configUrl);
 
@@ -166,10 +169,12 @@ public:
      *
      *   map:
      *
-     * @param kvMap - the configuration source
+     * @param kvMap
+     *   the configuration source
      *
-     * @throw std::runtime_error if the input configuration is not consistent
-     * with expectations of the application
+     * @throw std::runtime_error
+     *   if the input configuration is not consistent
+     *   with expectations of the application
      */
     static Ptr load(std::map<std::string, std::string> const& kvMap);
 
@@ -181,7 +186,7 @@ public:
     virtual ~Configuration() = default;
 
     /// @return the configuration prefix
-    virtual std::string prefix() const=0;
+    virtual std::string prefix() const = 0;
 
     /**
      * Construct the original (minus security-related info) path to
@@ -189,22 +194,26 @@ public:
      *
      * @return the constructed path
      */
-    virtual std::string configUrl() const=0;
+    virtual std::string configUrl() const = 0;
 
     // ------------------------------------------------------------------------
     // -- Common configuration parameters of both the controller and workers --
     // ------------------------------------------------------------------------
 
     /**
-     * The names of known workers which have the specified properties
-     * as per input filters.
+     * @param isEnabled
+     *   select workers which are allowed to participate in the
+     *   replication operations.
      *
-     * @param isEnabled  - select workers which are allowed to participate in the
-     *                     replication operations.
-     * @param isReadOnly - a subclass of the 'enabled' workers which can only serve as
-     *                     a source of replicas. No replica modification (creation or
-     *                     deletion) operations would be allowed against those workers.
-     *                     NOTE: this filter only matters for the 'enabled' workers.
+     * @param isReadOnly
+     *   a subclass of the 'enabled' workers which can only serve as
+     *   a source of replicas. No replica modification (creation or
+     *   deletion) operations would be allowed against those workers.
+     *   NOTE: this filter only matters for the 'enabled' workers.
+     *
+     * @return
+     *   the names of known workers which have the specified properties
+     *   as per input filters.
      */
     std::vector<std::string> workers(bool isEnabled=true,
                                      bool isReadOnly=false) const;
@@ -219,14 +228,14 @@ public:
     size_t requestBufferSizeBytes() const { return _requestBufferSizeBytes; }
 
     /// @param val  the new value of the parameter
-    virtual void setRequestBufferSizeBytes(size_t val)=0;
+    virtual void setRequestBufferSizeBytes(size_t val) = 0;
 
 
     /// @return timeout in seconds for the network retry operations
     unsigned int retryTimeoutSec() const { return _retryTimeoutSec; }
 
     /// @param val  the new value of the parameter
-    virtual void setRetryTimeoutSec(unsigned int val)=0;
+    virtual void setRetryTimeoutSec(unsigned int val) = 0;
 
 
     // --------------------------------------------------------
@@ -238,42 +247,42 @@ public:
     size_t controllerThreads() const { return _controllerThreads; }
 
     /// @param val  the new value of the parameter
-    virtual void setControllerThreads(size_t val)=0;
+    virtual void setControllerThreads(size_t val) = 0;
 
 
     /// @return port number for the controller's HTTP server
     uint16_t controllerHttpPort() const { return _controllerHttpPort; }
 
     /// @param val  the new value of the parameter
-    virtual void setControllerHttpPort(uint16_t val)=0;
+    virtual void setControllerHttpPort(uint16_t val) = 0;
 
 
     /// @return number of threads to run within the controller's HTTP server
     size_t controllerHttpThreads() const { return _controllerHttpThreads; }
 
     /// @param val  the new value of the parameter
-    virtual void setControllerHttpThreads(size_t val)=0;
+    virtual void setControllerHttpThreads(size_t val) = 0;
 
 
     // @return expiration timeout for requests
     unsigned int controllerRequestTimeoutSec() const { return _controllerRequestTimeoutSec; }
 
     /// @param val  the new value of the parameter
-    virtual void setControllerRequestTimeoutSec(unsigned int val)=0;
+    virtual void setControllerRequestTimeoutSec(unsigned int val) = 0;
 
 
     // @return expiration timeout for jobs
     unsigned int jobTimeoutSec() const { return _jobTimeoutSec; }
 
     /// @param val  the new value of the parameter
-    virtual void setJobTimeoutSec(unsigned int val)=0;
+    virtual void setJobTimeoutSec(unsigned int val) = 0;
 
 
     /// @return timeout in seconds for the job's heartbeats
     unsigned int jobHeartbeatTimeoutSec() const { return _jobHeartbeatTimeoutSec; }
 
     /// @param val  the new value of the parameter
-    virtual void setJobHeartbeatTimeoutSec(unsigned int val)=0;
+    virtual void setJobHeartbeatTimeoutSec(unsigned int val) = 0;
 
 
     // --------------------------------------------------------
@@ -285,28 +294,28 @@ public:
     bool xrootdAutoNotify() const { return  _xrootdAutoNotify; }
 
     /// @param val  the new value of the parameter
-    virtual void setXrootdAutoNotify(bool val)=0;
+    virtual void setXrootdAutoNotify(bool val) = 0;
 
 
     /// @return host name of the worker XRootD service
     std::string const& xrootdHost() const { return  _xrootdHost; }
 
     /// @param val  the new value of the parameter
-    virtual void setXrootdHost(std::string const& val)=0;
+    virtual void setXrootdHost(std::string const& val) = 0;
 
 
     /// @return port number of the worker XRootD service
     uint16_t xrootdPort() const { return _xrootdPort; }
 
     /// @param val  the new value of the parameter
-    virtual void setXrootdPort(uint16_t val)=0;
+    virtual void setXrootdPort(uint16_t val) = 0;
 
 
     // @return expiration timeout for requests
     unsigned int xrootdTimeoutSec() const { return _xrootdTimeoutSec; }
 
     /// @param val  the new value of the parameter
-    virtual void setXrootdTimeoutSec(unsigned int val)=0;
+    virtual void setXrootdTimeoutSec(unsigned int val) = 0;
 
 
     // -----------------------------------------------------------
@@ -336,7 +345,7 @@ public:
     size_t databaseServicesPoolSize() const { return _databaseServicesPoolSize; }
 
     /// @param val  the new value of the parameter
-    virtual void setDatabaseServicesPoolSize(size_t val)=0;
+    virtual void setDatabaseServicesPoolSize(size_t val) = 0;
 
 
     // --------------------------------------------------
@@ -353,9 +362,11 @@ public:
      * automatic reconnects to a database server. Setting 'true' will enable
      * reconnects.
      *
-     * @param value - new value of the parameter
+     * @param value
+     *   new value of the parameter
      *
-     * @return the previous value
+     * @return
+     *   the previous value
      */
     static bool setDatabaseAllowReconnect(bool value);
 
@@ -368,11 +379,14 @@ public:
      * Change the default value of a parameter specifying delays between automatic
      * reconnects (should those be enabled by the corresponding policy).
      *
-     * @param value - new value of the parameter (must be strictly greater than 0)
+     * @param value
+     *   new value of the parameter (must be strictly greater than 0)
      *
-     * @return the previous value
+     * @return
+     *   the previous value
      *
-     * @throws std::invalid_argument if the new value of the parameter is 0
+     * @throws std::invalid_argument
+     *   if the new value of the parameter is 0
      */
     static unsigned int setDatabaseConnectTimeoutSec(unsigned int value);
 
@@ -387,11 +401,14 @@ public:
      * of attempts to execute a query due to database connection failures and
      * subsequent reconnects (should they be enabled by the corresponding policy).
      *
-     * @param value - new value of the parameter (must be strictly greater than 0)
+     * @param value
+     *   new value of the parameter (must be strictly greater than 0)
      *
-     * @return the previous value
+     * @return
+     *   the previous value
      *
-     * @throws std::invalid_argument if the new value of the parameter is 0
+     * @throws std::invalid_argument
+     *   if the new value of the parameter is 0
      */
     static unsigned int setDatabaseMaxReconnects(unsigned int value);
 
@@ -405,11 +422,14 @@ public:
      * Change the default value of a parameter specifying a timeout for executing
      * transactions at a presence of server reconnects.
      *
-     * @param value - new value of the parameter (must be strictly greater than 0)
+     * @param value
+     *   new value of the parameter (must be strictly greater than 0)
      *
-     * @return the previous value
+     * @return
+     *   the previous value
      *
-     * @throws std::invalid_argument if the new value of the parameter is 0
+     * @throws std::invalid_argument
+     *   if the new value of the parameter is 0
      */
     static unsigned int setDatabaseTransactionTimeoutSec(unsigned int value);
 
@@ -421,19 +441,23 @@ public:
     std::vector<std::string> databaseFamilies() const;
 
     /**
-     * Return 'true' if the specified database family is known to the configuration
+     * @param name
+     *   the name of a family
      *
-     * @param name - the name of a family
+     * @return
+     *    'true' if the specified database family is known to the configuration
      */
     bool isKnownDatabaseFamily(std::string const& name) const;
 
     /**
-     * @return database family description
+     * @param name
+     *   the name of a family
      *
-     * @param name - the name of a family
+     * @return
+     *   database family description
      *
-     * @throw std::invalid_argument - if the specified family was not found in
-     *                                the configuration
+     * @throw std::invalid_argument
+     *   if the specified family was not found in the configuration
      */
     DatabaseFamilyInfo databaseFamilyInfo(std::string const& name) const;
 
@@ -443,14 +467,15 @@ public:
      * @param info
      *   parameters of the family
      * 
-     * @return a description of the newly created database family
+     * @return
+     *   a description of the newly created database family
      *
      * @throw std::invalid_argument
      *   if the specified family already exists, or if the input descriptor
      *   has incorrect parameters (empty name, 0 values of the numbers of stripes
      *   or sub-stripes, or 0 value of the replication level)
      */
-    virtual DatabaseFamilyInfo addDatabaseFamily(DatabaseFamilyInfo const& info)=0;
+    virtual DatabaseFamilyInfo addDatabaseFamily(DatabaseFamilyInfo const& info) = 0;
 
     /**
      * Delete an existing family
@@ -462,43 +487,51 @@ public:
      *   if the specified family was not found in the configuration, or
      *   an empty string passed as a value of the parameter.
      */
-    virtual void deleteDatabaseFamily(std::string const& name)=0;
+    virtual void deleteDatabaseFamily(std::string const& name) = 0;
 
     /**
-     * Return the minimum number of chunk replicas for a database family
+     * @param family
+     *   the name of a database family
      *
-     * @param family - the name of a database family
+     * @return
+     *   the minimum number of chunk replicas for a database family
      *
-     * @throw std::invalid_argument - if the specified family was not found in
-     *                                the configuration.
+     * @throw std::invalid_argument
+     *   if the specified family was not found in the configuration.
      */
     size_t replicationLevel(std::string const& family) const;
 
     /**
-     * Return the names of known databases. A result of the method may be
-     * limited to a subset of databases belonging to the specified family.
+     * @param family
+     *   the optional name of a database family
      *
-     * @param family - the optional name of a database family
-     *
-     * @throw std::invalid_argument - if the specified family was not found in
-     *                                the configuration.
-     */
+     * @return
+     *   the names of known databases. A result of the method may be
+     *   limited to a subset of databases belonging to the specified family.
+    *
+     * @throw std::invalid_argument
+     *   if the specified family was not found in the configuration.
+      */
     std::vector<std::string> databases(std::string const& family=std::string()) const;
 
     /**
-     * Return 'true' if the specified database is known in the configuration
+     * @param name
+     *   the name of a database
      *
-     * @param name - the name of a database
+     * @return
+     *   'true' if the specified database is known in the configuration
      */
     bool isKnownDatabase(std::string const& name) const;
 
     /**
-     * Return database descriptor
+     * @param name
+     *   the name of a database
      *
-     * @param name - the name of a database
+     * @return
+     *   database descriptor
      *
-     * @throw std::invalid_argument - if the specified database was not found in
-     *                                the configuration
+     * @throw std::invalid_argument
+     *   if the specified database was not found in the configuration
      */
     DatabaseInfo databaseInfo(std::string const& name) const;
 
@@ -516,7 +549,7 @@ public:
      *   if the specified database already exists, or if the database family is
      *   not valid, or if either of those parameters are the empty strings
      */
-    virtual DatabaseInfo addDatabase(DatabaseInfo const& info)=0;
+    virtual DatabaseInfo addDatabase(DatabaseInfo const& info) = 0;
 
     /**
      *  Delete an existing database
@@ -528,7 +561,7 @@ public:
      *   if the specified database doesn't exist, or if an empty string is
      *   passed as a parameters of the method
      */
-    virtual void deleteDatabase(std::string const& name)=0;
+    virtual void deleteDatabase(std::string const& name) = 0;
 
     /**
      * Register a new table with a database
@@ -539,6 +572,9 @@ public:
      * @param table
      *   the name of a new table to be registered
      *
+     * @param isPartitioned
+     *   'true' if the table is partitioned
+     *
      * @return
      *    a database descriptor of the updated database
      *
@@ -548,10 +584,10 @@ public:
      */
     virtual DatabaseInfo addTable(std::string const& database,
                                   std::string const& table,
-                                  bool isPartitioned)=0;
+                                  bool isPartitioned) = 0;
 
     /**
-     *  Delete an existing database
+     * Delete an existing table
      * 
      * @param database
      *   the name of an existing database hosting the table
@@ -564,26 +600,30 @@ public:
      *   or if either of those parameters are the empty strings
      */
     virtual DatabaseInfo deleteTable(std::string const& database,
-                                     std::string const& table)=0;
+                                     std::string const& table) = 0;
 
     // -----------------------------------------------------
     // -- Configuration parameters of the worker services --
     // -----------------------------------------------------
 
     /**
-     * Return 'true' if the specified worker is known to the configuration
+     * @param name
+     *   the name of a worker
      *
-     * @param name - the name of a worker
+     * @return
+     *   'true' if the specified worker is known to the configuration
      */
     bool isKnownWorker(std::string const& name) const;
 
     /**
-     * Return worker descriptor
+     * @param name
+     *   the name of a worker
      *
-     * @param name - the name of a worker
+     * @return
+     *   worker descriptor
      *
-     * @throw std::invalid_argument - if the specified worker was not found in
-     *                                the configuration.
+     * @throw std::invalid_argument
+     *   if the specified worker was not found in the configuration.
      */
     WorkerInfo workerInfo(std::string const& name) const;
 
@@ -595,12 +635,13 @@ public:
      *   which are not covered by this technology-neutral interface.
      * @note
      *
-     * @param name - the name of a worker
+     * @param workerInfo
+     *   the worker description
      *
-     * @throw std::invalid_argument - if the specified worker was not found in
-     *                                the configuration.
+     * @throw std::invalid_argument
+     *   if the specified worker was not found in the configuration.
      */
-    virtual void addWorker(WorkerInfo const& workerInfo)=0;
+    virtual void addWorker(WorkerInfo const& workerInfo) = 0;
 
     /**
      * Completely remove the specified worker from the Configuration.
@@ -610,12 +651,13 @@ public:
      *   which are not covered by this technology-neutral interface.
      * @note
      *
-     * @param name - the name of a worker
+     * @param name
+     *   the name of a worker
      *
-     * @throw std::invalid_argument - if the specified worker was not found in
-     *                                the configuration.
+     * @throw std::invalid_argument
+     *   if the specified worker was not found in the configuration.
      */
-    virtual void deleteWorker(std::string const& name)=0;
+    virtual void deleteWorker(std::string const& name) = 0;
 
     /**
      * Change the status of the worker node to 'disabled' or 'enabled'
@@ -641,7 +683,7 @@ public:
      *   if the specified worker was not found in the configuration.
      */
     virtual WorkerInfo disableWorker(std::string const& name,
-                                     bool disable=true)=0;
+                                     bool disable=true) = 0;
 
     /**
      * Change the status of the worker node to 'read-only' or 'read-write'
@@ -668,7 +710,7 @@ public:
      *   if the specified worker was not found in the configuration.
      */
     virtual WorkerInfo setWorkerReadOnly(std::string const& name,
-                                         bool readOnly=true)=0;
+                                         bool readOnly=true) = 0;
 
     /**
      * Change the host name of the worker's service
@@ -678,16 +720,20 @@ public:
      *   which are not covered by this technology-neutral interface.
      * @note
      *
-     * @param name - the name of a worker
-     * @param host - the name of a host
+     * @param name
+     *   the name of a worker
      *
-     * @return updated worker descriptor
+     * @param host
+     *   the name of a host
      *
-     * @throw std::invalid_argument - if the specified worker was not found in
-     *                                the configuration.
+     * @return
+     *   updated worker descriptor
+     *
+     * @throw std::invalid_argument
+     *   if the specified worker was not found in the configuration.
      */
     virtual WorkerInfo setWorkerSvcHost(std::string const& name,
-                                        std::string const& host)=0;
+                                        std::string const& host) = 0;
 
     /**
      * Change the port number of the worker's service
@@ -697,16 +743,20 @@ public:
      *   which are not covered by this technology-neutral interface.
      * @note
      *
-     * @param name - the name of a worker
-     * @param port - the number of a port
+     * @param name
+     *   the name of a worker
      *
-     * @return updated worker descriptor
+     * @param port
+     *   the number of a port
      *
-     * @throw std::invalid_argument - if the specified worker was not found in
-     *                                the configuration.
+     * @return
+     *   updated worker descriptor
+     *
+     * @throw std::invalid_argument
+     *   if the specified worker was not found in the configuration.
      */
     virtual WorkerInfo setWorkerSvcPort(std::string const& name,
-                                        uint16_t port)=0;
+                                        uint16_t port) = 0;
 
     /**
      * Change the host name of the worker's file service
@@ -716,16 +766,20 @@ public:
      *   which are not covered by this technology-neutral interface.
      * @note
      *
-     * @param name - the name of a worker
-     * @param host - the name of a host
+     * @param name
+     *   the name of a worker
      *
-     * @return updated worker descriptor
+     * @param host
+     *   the name of a host
      *
-     * @throw std::invalid_argument - if the specified worker was not found in
-     *                                the configuration.
+     * @return
+     *   updated worker descriptor
+     *
+     * @throw std::invalid_argument
+     *   if the specified worker was not found in the configuration.
      */
     virtual WorkerInfo setWorkerFsHost(std::string const& name,
-                                       std::string const& host)=0;
+                                       std::string const& host) = 0;
 
     /**
      * Change the port number of the worker's file service
@@ -735,16 +789,20 @@ public:
      *   which are not covered by this technology-neutral interface.
      * @note
      *
-     * @param name - the name of a worker
-     * @param port - the number of a port
+     * @param name
+     *   the name of a worker
      *
-     * @return updated worker descriptor
+     * @param port
+     *   the number of a port
      *
-     * @throw std::invalid_argument - if the specified worker was not found in
-     *                                the configuration.
+     * @return
+     *   updated worker descriptor
+     *
+     * @throw std::invalid_argument
+     *   if the specified worker was not found in the configuration.
      */
     virtual WorkerInfo setWorkerFsPort(std::string const& name,
-                                       uint16_t port)=0;
+                                       uint16_t port) = 0;
 
     /**
      * Change the data directory of the worker
@@ -754,44 +812,48 @@ public:
      *   which are not covered by this technology-neutral interface.
      * @note
      *
-     * @param name    - the name of a worker
-     * @param dataDir - the new file system path
+     * @param name
+     *   the name of a worker
      *
-     * @return updated worker descriptor
+     * @param dataDir
+     *   the new file system path
      *
-     * @throw std::invalid_argument - if the specified worker was not found in
-     *                                the configuration.
+     * @return
+     *   updated worker descriptor
+     *
+     * @throw std::invalid_argument
+     *   if the specified worker was not found in the configuration.
      */
     virtual WorkerInfo setWorkerDataDir(std::string const& name,
-                                        std::string const& dataDir)=0;
+                                        std::string const& dataDir) = 0;
 
 
     /// @return the name of the default technology for implementing requests
     std::string const& workerTechnology() const { return _workerTechnology; }
 
     /// @param val  the new value of the parameter
-    virtual void setWorkerTechnology(std::string const& val)=0;
+    virtual void setWorkerTechnology(std::string const& val) = 0;
 
 
     /// @return the number of request processing threads in each worker service
     size_t workerNumProcessingThreads() const { return _workerNumProcessingThreads; }
 
     /// @param val  the new value of the parameter
-    virtual void setWorkerNumProcessingThreads(size_t val)=0;
+    virtual void setWorkerNumProcessingThreads(size_t val) = 0;
 
 
     /// @return the number of request processing threads in each worker's file service
     size_t fsNumProcessingThreads() const { return _fsNumProcessingThreads; }
 
     /// @param val  the new value of the parameter
-    virtual void setFsNumProcessingThreads(size_t val)=0;
+    virtual void setFsNumProcessingThreads(size_t val) = 0;
 
 
     /// @return the buffer size for the file I/O operations
     size_t workerFsBufferSizeBytes() const { return _workerFsBufferSizeBytes; }
 
     /// @param val  the new value of the parameter
-    virtual void setWorkerFsBufferSizeBytes(size_t val)=0;
+    virtual void setWorkerFsBufferSizeBytes(size_t val) = 0;
 
 
     // -----------
@@ -801,7 +863,8 @@ public:
     /**
      * Serialize the configuration parameters into a string
      *
-     * @return string representation of the cached Configuration
+     * @return
+     *    string representation of the cached Configuration
      */
     std::string asString() const;
 
@@ -856,8 +919,11 @@ protected:
      * In-place translation of the the data directory string by finding an optional
      * placeholder '{worker}' and replacing it with the name of the specified worker.
      *
-     * @param dataDir    - the string to be translated
-     * @param workerName - the actual name of a worker for replacing the placeholder
+     * @param dataDir
+     *   the string to be translated
+     * 
+     * @param workerName
+     *   the actual name of a worker for replacing the placeholder
      */
     static void translateDataDir(std::string&       dataDir,
                                  std::string const& workerName);
@@ -871,6 +937,28 @@ protected:
 
     /// @return the context string for debugging and diagnostic printouts
     std::string context() const;
+
+    /**
+     * 
+     * @param lock
+     *   the lock on a mutex required for the thread safety
+     *
+     * @param name
+     *   the name of a worker to find
+     *
+     * @param context
+     *   a context (usually - a class and a method) from which the operation was
+     *   requested. This is used for error reporting if o such worker was found.
+     *
+     * @return
+     *   an iterator pointing to the worker's position within a collection of workers
+     *
+     * @throw std::invalid_argument
+     *   if the specified worker was not found in the configuration
+     */
+    std::map<std::string, WorkerInfo>::iterator safeFindWorker(util::Lock const& lock,
+                                                               std::string const& name,
+                                                               std::string const& context);
 
 protected:
 

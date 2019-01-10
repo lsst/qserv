@@ -89,7 +89,7 @@ public:
     /**
      * Parse the content of the buffer and notify a subscriber
      */
-    virtual void parseAndNotify()=0;
+    virtual void parseAndNotify() = 0;
 
 protected:
 

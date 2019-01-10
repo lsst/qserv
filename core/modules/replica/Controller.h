@@ -65,10 +65,10 @@ struct ControllerRequestWrapper {
     virtual ~ControllerRequestWrapper() = default;
 
     /// This subscriber notification method will be called upon a completion of a request
-    virtual void notify()=0;
+    virtual void notify() = 0;
 
     /// Return a pointer to the stored request object
-    virtual std::shared_ptr<Request> request() const=0;
+    virtual std::shared_ptr<Request> request() const = 0;
 };
 
 /**

@@ -33,9 +33,6 @@
 // Qserv headers
 #include "util/ConfigStore.h"
 
-namespace {
-    
-}  // namespace
 
 namespace lsst {
 namespace qserv {

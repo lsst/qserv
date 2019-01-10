@@ -33,10 +33,10 @@ namespace qserv {
 namespace util {
 
     
-ColumnTablePrinter::ColumnTablePrinter(std::string const& capture,
+ColumnTablePrinter::ColumnTablePrinter(std::string const& caption,
                                        std::string const& indent,
                                        bool verticalSeparator)
-    :   _capture(capture),
+    :   _caption(caption),
         _indent(indent),
         _verticalSeparator(verticalSeparator) {
 }
@@ -64,8 +64,8 @@ void ColumnTablePrinter::print(std::ostream& os,
                                size_t pageSize,
                                bool repeatedHeader) const {
 
-    if (not _capture.empty()) {
-        os << _indent << _capture << "\n";
+    if (not _caption.empty()) {
+        os << _indent << _caption << "\n";
     }
     if (topSeparator) {
         os << _indent << _separator << "\n";

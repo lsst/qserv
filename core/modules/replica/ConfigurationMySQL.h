@@ -29,6 +29,7 @@
 
 // System headers
 #include <cstddef>
+#include <functional>
 #include <stdexcept>
 #include <string>
 
@@ -58,6 +59,9 @@ class ConfigurationMySQL
     :   public Configuration {
 
 public:
+
+    /// The function type for converting values into the corresponding SQL sub-expressions
+    typedef std::function<std::string(database::mysql::Connection::Ptr const& conn)> SetValueExprFunc;
 
     /**
      * Dump the input configuration into the text representing the database
@@ -408,13 +412,15 @@ private:
             throw std::invalid_argument(
                     "ConfigurationMySQL::" + std::string(__func__) + "<numeric>  0 value is not allowed");
         }
-        auto const conn = database::mysql::Connection::open(_connectionParams);
         _setImp(
-            conn,
             category,
             param,
-            conn->sqlEqual("value", value),
-            [&var,&value]() { var = value; }
+            [&value](database::mysql::Connection::Ptr const& conn) -> std::string {
+                return conn->sqlEqual("value", value);
+            },
+            [&var,&value]() {
+                var = value;
+            }
         );
     }
 
@@ -438,13 +444,15 @@ private:
               std::string const& param,
               bool value) {
 
-        auto const conn = database::mysql::Connection::open(_connectionParams);
         _setImp(
-            conn,
             category,
             param,
-            conn->sqlEqual<std::string>("value", value ? "1" : "0"),
-            [&var,&value]() { var = value; }
+            [&value](database::mysql::Connection::Ptr const& conn) -> std::string {
+                return conn->sqlEqual<std::string>("value", value ? "1" : "0");
+            },
+            [&var,&value]() {
+                var = value;
+            }
         );
     }
 
@@ -476,13 +484,15 @@ private:
             throw std::invalid_argument(
                     "ConfigurationMySQL::" + std::string(__func__) + "<string>  empty value is not allowed");
         }
-        auto const conn = database::mysql::Connection::open(_connectionParams);
         _setImp(
-            conn,
             category,
             param,
-            conn->sqlEqual("value", value),
-            [&var,&value]() { var = value; }
+            [&value](database::mysql::Connection::Ptr const& conn) -> std::string {
+                return conn->sqlEqual("value", value);
+            },
+            [&var,&value]() {
+                var = value;
+            }
         );
     }
 
@@ -496,7 +506,8 @@ private:
      *   a value of the 'param' field
      *
      * @param setValueExpr
-     *   an SQL sub-expression for updating the 'value' field
+     *   the lambda function for converting a value of an arbitrary type
+     *   into the corresponding SQL sub-expression for updating the 'value' field
      * 
      * @param onSuccess
      *   a function to be called upon successful completion of the update
@@ -504,10 +515,9 @@ private:
      *   This function is meant to be used to safely update a transient (cached)
      *   value of the corresponding configuration parameter.
      */
-    void _setImp(database::mysql::Connection::Ptr const& conn,
-                 std::string const& category,
+    void _setImp(std::string const& category,
                  std::string const& param,
-                 std::string const& setValueExpr,
+                 SetValueExprFunc const& setValueExprFunc,
                  std::function<void()> const& onSuccess);
 
 private:

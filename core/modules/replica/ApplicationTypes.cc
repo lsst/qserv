@@ -50,15 +50,11 @@ Command& Command::flag(std::string const& name,
                        std::string const& description,
                        bool& var) {
     _flags.emplace(
-        std::make_pair(
+        name,
+        std::make_unique<FlagParser>(
             name,
-            std::move(
-                std::make_unique<FlagParser>(
-                    name,
-                    description,
-                    var
-                )
-            )
+            description,
+            var
         )
     );
     return *this;
@@ -300,21 +296,19 @@ int Parser::parse() {
 bool Parser::_parseOption(std::map<std::string, std::unique_ptr<ArgumentParser>>& options,
                           std::string const& name,
                           std::string const& value) {
-    if (0 != options.count(name)) {
-        options[name]->parse(value);
-        return true;
-    }
-    return false;
+    auto itr = options.find(name);
+    if (itr == options.end()) return false;
+    (*itr).second->parse(value);
+    return true;
 }
 
 
 bool Parser::_parseFlag(std::map<std::string, std::unique_ptr<ArgumentParser>>& flags,
                         std::string const& name) {
-    if (0 != flags.count(name)) {
-        flags[name]->parse();
-        return true;
-    }
-    return false;    
+    auto itr = flags.find(name);
+    if (itr == flags.end()) return false;
+    (*itr).second->parse();
+    return true;   
 }
 
 
@@ -322,7 +316,7 @@ void Parser::_parseParameters(std::vector<std::unique_ptr<ArgumentParser>>& out,
                               std::vector<std::string>::const_iterator& inItr,
                               std::vector<std::string>::const_iterator const& inItrEnd) {
 
-    auto outItr = out.begin();
+    auto outItr = out.cbegin();
     while (outItr != out.cend() and inItr != inItrEnd) {
         (*(outItr++))->parse(*(inItr++));
     }

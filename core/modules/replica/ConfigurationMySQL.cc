@@ -102,11 +102,6 @@ std::string ConfigurationMySQL::dump2init(Configuration::Ptr const& config) {
     }
     ostringstream str;
 
-    str << "SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0;\n"
-        << "SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0;\n"
-        << "SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='TRADITIONAL';\n"
-        << "\n";
-
     ::configInsert(str, "common",     "request_buf_size_bytes",     config->requestBufferSizeBytes());
     ::configInsert(str, "common",     "request_retry_interval_sec", config->retryTimeoutSec());
     ::configInsert(str, "controller", "num_threads",                config->controllerThreads());
@@ -164,12 +159,6 @@ std::string ConfigurationMySQL::dump2init(Configuration::Ptr const& config) {
             }
         }
     }
-
-    str << "SET SQL_MODE=@OLD_SQL_MODE;\n"
-        << "SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;\n"
-        << "SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;\n"
-        << "\n";
-
     return str.str();
 }
 
@@ -196,16 +185,18 @@ std::string ConfigurationMySQL::configUrl() const {
 
 void ConfigurationMySQL::addWorker(WorkerInfo const& info) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  name=" << info.name);
+    std::string const context_ = context() + std::string(__func__);
 
-    database::mysql::Connection::Ptr conn;
+    LOGS(_log, LOG_LVL_DEBUG, context_ << "  name=" << info.name);
+
+    database::mysql::ConnectionHandler handler;
     try {
 
         // First update the database
 
-        conn = database::mysql::Connection::open(_connectionParams);
-        conn->execute(
-            [&info](decltype(conn) conn) {
+        handler.conn = database::mysql::Connection::open(_connectionParams);
+        handler.conn->execute(
+            [&info](decltype(handler.conn) conn) {
                 conn->begin();
                 conn->executeInsertQuery(
                     "config_worker",
@@ -224,15 +215,12 @@ void ConfigurationMySQL::addWorker(WorkerInfo const& info) {
 
         // Then update the transient state
 
-        util::Lock lock(_mtx, context() + __func__);
+        util::Lock lock(_mtx, context_);
 
         _workerInfo[info.name] = info;
 
     } catch (database::mysql::Error const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, context ()<< ex.what());
-        if ((nullptr != conn) and conn->inTransaction()) {
-            conn->rollback();
-        }
+        LOGS(_log, LOG_LVL_ERROR, context_ << ex.what());
         throw;
     }
 }
@@ -240,16 +228,18 @@ void ConfigurationMySQL::addWorker(WorkerInfo const& info) {
 
 void ConfigurationMySQL::deleteWorker(std::string const& name) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  name=" << name);
+    std::string const context_ = context() + std::string(__func__);
 
-    database::mysql::Connection::Ptr conn;
+    LOGS(_log, LOG_LVL_DEBUG, context_ << "  name=" << name);
+
+    database::mysql::ConnectionHandler handler;
     try {
 
         // First update the database
 
-        conn = database::mysql::Connection::open(_connectionParams);
-        conn->execute(
-            [&name](decltype(conn) conn) {
+        handler.conn = database::mysql::Connection::open(_connectionParams);
+        handler.conn->execute(
+            [&name](decltype(handler.conn) conn) {
                 conn->begin();
                 conn->execute("DELETE FROM config_worker WHERE " + conn->sqlEqual("name", name));
                 conn->commit();
@@ -258,20 +248,13 @@ void ConfigurationMySQL::deleteWorker(std::string const& name) {
 
         // Then update the transient state
 
-        util::Lock lock(_mtx, context() + __func__);
+        util::Lock lock(_mtx, context_);
 
-        auto&& itr = _workerInfo.find(name);
-        if (_workerInfo.end() == itr) {
-            throw std::invalid_argument(
-                    "ConfigurationMySQL::" + std::string(__func__) + "  no such worker: " + name);
-        }
+        auto itr = safeFindWorker(lock, name, context_);
         _workerInfo.erase(itr);
 
     } catch (database::mysql::Error const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, context ()<< ex.what());
-        if ((nullptr != conn) and conn->inTransaction()) {
-            conn->rollback();
-        }
+        LOGS(_log, LOG_LVL_ERROR, context_ << ex.what());
         throw;
     }
 }
@@ -280,17 +263,19 @@ void ConfigurationMySQL::deleteWorker(std::string const& name) {
 WorkerInfo ConfigurationMySQL::disableWorker(std::string const& name,
                                              bool disable) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  name=" << name
+    std::string const context_ = context() + std::string(__func__);
+
+    LOGS(_log, LOG_LVL_DEBUG, context_ << "  name=" << name
          << " disable=" << (disable ? "true" : "false"));
 
-    database::mysql::Connection::Ptr conn;
+    database::mysql::ConnectionHandler handler;
     try {
 
         // First update the database state
 
-        conn = database::mysql::Connection::open(_connectionParams);
-        conn->execute(
-            [&name,disable](decltype(conn) conn) {
+        handler.conn = database::mysql::Connection::open(_connectionParams);
+        handler.conn->execute(
+            [&name,disable](decltype(handler.conn) conn) {
                 conn->begin();
                 conn->executeSimpleUpdateQuery(
                     "config_worker",
@@ -302,20 +287,13 @@ WorkerInfo ConfigurationMySQL::disableWorker(std::string const& name,
 
         // Then update the transient state
 
-        util::Lock lock(_mtx, context() + __func__);
+        util::Lock lock(_mtx, context_);
 
-        auto&& itr = _workerInfo.find(name);
-        if (_workerInfo.end() == itr) {
-            throw std::invalid_argument(
-                    "ConfigurationMySQL::" + std::string(__func__) + "  no such worker: " + name);
-        }
+        auto itr = safeFindWorker(lock, name, context_);
         itr->second.isEnabled = not disable;
 
     } catch (database::mysql::Error const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, context() << "MySQL error: " << ex.what());
-        if ((nullptr != conn) and conn->inTransaction()) {
-            conn->rollback();
-        }
+        LOGS(_log, LOG_LVL_ERROR, context_ << "MySQL error: " << ex.what());
         throw;
     }
     return workerInfo(name);
@@ -325,17 +303,19 @@ WorkerInfo ConfigurationMySQL::disableWorker(std::string const& name,
 WorkerInfo ConfigurationMySQL::setWorkerReadOnly(std::string const& name,
                                                  bool readOnly) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  name=" << name
+    std::string const context_ = context() + std::string(__func__);
+
+    LOGS(_log, LOG_LVL_DEBUG, context_ << "  name=" << name
          << " readOnly=" << (readOnly ? "true" : "false"));
 
-    database::mysql::Connection::Ptr conn;
+    database::mysql::ConnectionHandler handler;
     try {
 
         // First update the database state
 
-        conn = database::mysql::Connection::open(_connectionParams);
-        conn->execute(
-            [&name,readOnly](decltype(conn) conn) {
+        handler.conn = database::mysql::Connection::open(_connectionParams);
+        handler.conn->execute(
+            [&name,readOnly](decltype(handler.conn) conn) {
                 conn->begin();
                 conn->executeSimpleUpdateQuery(
                     "config_worker",
@@ -347,20 +327,13 @@ WorkerInfo ConfigurationMySQL::setWorkerReadOnly(std::string const& name,
 
         // Then update the transient state
 
-        util::Lock lock(_mtx, context() + __func__);
+        util::Lock lock(_mtx, context_);
 
-        auto&& itr = _workerInfo.find(name);
-        if (_workerInfo.end() == itr) {
-            throw std::invalid_argument(
-                    "ConfigurationMySQL::" + std::string(__func__) + "  no such worker: " + name);
-        }
+        auto itr = safeFindWorker(lock, name, context_);
         itr->second.isReadOnly = readOnly;
 
     } catch (database::mysql::Error const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, context() << "MySQL error: " << ex.what());
-        if ((nullptr != conn) and conn->inTransaction()) {
-            conn->rollback();
-        }
+        LOGS(_log, LOG_LVL_ERROR, context_ << "MySQL error: " << ex.what());
         throw;
     }
     return workerInfo(name);
@@ -370,15 +343,17 @@ WorkerInfo ConfigurationMySQL::setWorkerReadOnly(std::string const& name,
 WorkerInfo ConfigurationMySQL::setWorkerSvcHost(std::string const& name,
                                                 std::string const& host) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  name=" << name << " host=" << host);
+    std::string const context_ = context() + std::string(__func__);
 
-    database::mysql::Connection::Ptr conn;
+    LOGS(_log, LOG_LVL_DEBUG, context_ << "  name=" << name << " host=" << host);
+
+    database::mysql::ConnectionHandler handler;
     try {
 
         // First update the database
-        conn = database::mysql::Connection::open(_connectionParams);
-        conn->execute(
-            [&name,&host](decltype(conn) conn) {
+        handler.conn = database::mysql::Connection::open(_connectionParams);
+        handler.conn->execute(
+            [&name,&host](decltype(handler.conn) conn) {
                 conn->begin();
                 conn->executeSimpleUpdateQuery(
                     "config_worker",
@@ -390,20 +365,13 @@ WorkerInfo ConfigurationMySQL::setWorkerSvcHost(std::string const& name,
 
         // Then update the transient state 
 
-        util::Lock lock(_mtx, context() + __func__);
+        util::Lock lock(_mtx, context_);
 
-        auto&& itr = _workerInfo.find(name);
-        if (_workerInfo.end() == itr) {
-            throw std::invalid_argument(
-                    "ConfigurationMySQL::" + std::string(__func__) + "  no such worker: " + name);
-        }
+        auto itr = safeFindWorker(lock, name, context_);
         itr->second.svcHost = host;
 
     } catch (database::mysql::Error const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, context() << "MySQL error: " << ex.what());
-        if ((nullptr != conn) and conn->inTransaction()) {
-            conn->rollback();
-        }
+        LOGS(_log, LOG_LVL_ERROR, context_ << "MySQL error: " << ex.what());
         throw;
     }
     return workerInfo(name);
@@ -413,15 +381,17 @@ WorkerInfo ConfigurationMySQL::setWorkerSvcHost(std::string const& name,
 WorkerInfo ConfigurationMySQL::setWorkerSvcPort(std::string const& name,
                                                 uint16_t port) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  name=" << name << " port=" << port);
+    std::string const context_ = context() + std::string(__func__);
 
-    database::mysql::Connection::Ptr conn;
+    LOGS(_log, LOG_LVL_DEBUG, context_ << "  name=" << name << " port=" << port);
+
+    database::mysql::ConnectionHandler handler;
     try {
 
         // First update the database
-        conn = database::mysql::Connection::open(_connectionParams);
-        conn->execute(
-            [&name,port](decltype(conn) conn) {
+        handler.conn = database::mysql::Connection::open(_connectionParams);
+        handler.conn->execute(
+            [&name,port](decltype(handler.conn) conn) {
                 conn->begin();
                 conn->executeSimpleUpdateQuery(
                     "config_worker",
@@ -433,20 +403,13 @@ WorkerInfo ConfigurationMySQL::setWorkerSvcPort(std::string const& name,
 
         // Then update the transient state 
 
-        util::Lock lock(_mtx, context() + __func__);
+        util::Lock lock(_mtx, context_);
 
-        auto&& itr = _workerInfo.find(name);
-        if (_workerInfo.end() == itr) {
-            throw std::invalid_argument(
-                    "ConfigurationMySQL::" + std::string(__func__) + "  no such worker: " + name);
-        }
+        auto itr = safeFindWorker(lock, name, context_);
         itr->second.svcPort = port;
 
     } catch (database::mysql::Error const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, context() << "MySQL error: " << ex.what());
-        if ((nullptr != conn) and conn->inTransaction()) {
-            conn->rollback();
-        }
+        LOGS(_log, LOG_LVL_ERROR, context_ << "MySQL error: " << ex.what());
         throw;
     }
     return workerInfo(name);
@@ -456,15 +419,17 @@ WorkerInfo ConfigurationMySQL::setWorkerSvcPort(std::string const& name,
 WorkerInfo ConfigurationMySQL::setWorkerFsHost(std::string const& name,
                                                std::string const& host) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  name=" << name << " host=" << host);
+    std::string const context_ = context() + std::string(__func__);
 
-    database::mysql::Connection::Ptr conn;
+    LOGS(_log, LOG_LVL_DEBUG, context_ << "  name=" << name << " host=" << host);
+
+    database::mysql::ConnectionHandler handler;
     try {
 
         // First update the database
-        conn = database::mysql::Connection::open(_connectionParams);
-        conn->execute(
-            [&name,&host](decltype(conn) conn) {
+        handler.conn = database::mysql::Connection::open(_connectionParams);
+        handler.conn->execute(
+            [&name,&host](decltype(handler.conn) conn) {
                 conn->begin();
                 conn->executeSimpleUpdateQuery(
                     "config_worker",
@@ -476,19 +441,13 @@ WorkerInfo ConfigurationMySQL::setWorkerFsHost(std::string const& name,
 
         // Then update the transient state 
 
-        util::Lock lock(_mtx, context() + __func__);
+        util::Lock lock(_mtx, context_);
 
-        auto&& itr = _workerInfo.find(name);
-        if (_workerInfo.end() == itr) {
-            throw std::invalid_argument("ConfigurationMySQL::" + std::string(__func__) + "  no such worker: " + name);
-        }
+        auto itr = safeFindWorker(lock, name, context_);
         itr->second.fsHost = host;
 
     } catch (database::mysql::Error const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, context() << "MySQL error: " << ex.what());
-        if ((nullptr != conn) and conn->inTransaction()) {
-            conn->rollback();
-        }
+        LOGS(_log, LOG_LVL_ERROR, context_ << "MySQL error: " << ex.what());
         throw;
     }
     return workerInfo(name);
@@ -498,15 +457,17 @@ WorkerInfo ConfigurationMySQL::setWorkerFsHost(std::string const& name,
 WorkerInfo ConfigurationMySQL::setWorkerFsPort(std::string const& name,
                                                uint16_t port) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  name=" << name << " port=" << port);
+    std::string const context_ = context() + std::string(__func__);
 
-    database::mysql::Connection::Ptr conn;
+    LOGS(_log, LOG_LVL_DEBUG, context_ << "  name=" << name << " port=" << port);
+
+    database::mysql::ConnectionHandler handler;
     try {
 
         // First update the database
-        conn = database::mysql::Connection::open(_connectionParams);
-        conn->execute(
-            [&name,port](decltype(conn) conn) {
+        handler.conn = database::mysql::Connection::open(_connectionParams);
+        handler.conn->execute(
+            [&name,port](decltype(handler.conn) conn) {
                 conn->begin();
                 conn->executeSimpleUpdateQuery(
                     "config_worker",
@@ -518,20 +479,13 @@ WorkerInfo ConfigurationMySQL::setWorkerFsPort(std::string const& name,
 
         // Then update the transient state 
 
-        util::Lock lock(_mtx, context() + __func__);
+        util::Lock lock(_mtx, context_);
     
-        auto&& itr = _workerInfo.find(name);
-        if (_workerInfo.end() == itr) {
-            throw std::invalid_argument(
-                    "ConfigurationMySQL::" + std::string(__func__) + "  no such worker: " + name);
-        }
+        auto itr = safeFindWorker(lock, name, context_);
         itr->second.fsPort = port;
 
     } catch (database::mysql::Error const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, context() << "MySQL error: " << ex.what());
-        if ((nullptr != conn) and conn->inTransaction()) {
-            conn->rollback();
-        }
+        LOGS(_log, LOG_LVL_ERROR, context_ << "MySQL error: " << ex.what());
         throw;
     }
     return workerInfo(name);
@@ -541,15 +495,17 @@ WorkerInfo ConfigurationMySQL::setWorkerFsPort(std::string const& name,
 WorkerInfo ConfigurationMySQL::setWorkerDataDir(std::string const& name,
                                                 std::string const& dataDir) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  name=" << name << " dataDir=" << dataDir);
+    std::string const context_ = context() + std::string(__func__);
 
-    database::mysql::Connection::Ptr conn;
+    LOGS(_log, LOG_LVL_DEBUG, context_ << "  name=" << name << " dataDir=" << dataDir);
+
+    database::mysql::ConnectionHandler handler;
     try {
 
         // First update the database
-        conn = database::mysql::Connection::open(_connectionParams);
-        conn->execute(
-            [&name,&dataDir](decltype(conn) conn) {
+        handler.conn = database::mysql::Connection::open(_connectionParams);
+        handler.conn->execute(
+            [&name,&dataDir](decltype(handler.conn) conn) {
                 conn->begin();
                 conn->executeSimpleUpdateQuery(
                     "config_worker",
@@ -561,20 +517,13 @@ WorkerInfo ConfigurationMySQL::setWorkerDataDir(std::string const& name,
 
         // Then update the transient state 
 
-        util::Lock lock(_mtx, context() + __func__);
+        util::Lock lock(_mtx, context_);
 
-        auto&& itr = _workerInfo.find(name);
-        if (_workerInfo.end() == itr) {
-            throw std::invalid_argument(
-                    "ConfigurationMySQL::" + std::string(__func__) + "  no such worker: " + name);
-        }
+        auto itr = safeFindWorker(lock, name, context_);
         itr->second.dataDir = dataDir;
 
     } catch (database::mysql::Error const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, context() << "MySQL error: " << ex.what());
-        if ((nullptr != conn) and conn->inTransaction()) {
-            conn->rollback();
-        }
+        LOGS(_log, LOG_LVL_ERROR, context_ << "MySQL error: " << ex.what());
         throw;
     }
     return workerInfo(name);
@@ -583,27 +532,30 @@ WorkerInfo ConfigurationMySQL::setWorkerDataDir(std::string const& name,
 
 DatabaseFamilyInfo ConfigurationMySQL::addDatabaseFamily(DatabaseFamilyInfo const& info) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  familyInfo: " << info);
+    std::string const context_ = context() + std::string(__func__);
+
+    LOGS(_log, LOG_LVL_DEBUG, context_ << "  familyInfo: " << info);
     
     if (info.name.empty()) {
-        throw std::invalid_argument(context() + std::string(__func__) + "  the family name can't be empty");
+        throw std::invalid_argument(context_ + "  the family name can't be empty");
     }
     if (info.replicationLevel == 0) {
-        throw std::invalid_argument(context() + std::string(__func__) + "  the replication level can't be 0");
+        throw std::invalid_argument(context_ + "  the replication level can't be 0");
     }
     if (info.numStripes == 0) {
-        throw std::invalid_argument(context() + std::string(__func__) + "  the number of stripes level can't be 0");
+        throw std::invalid_argument(context_ + "  the number of stripes level can't be 0");
     }
     if (info.numSubStripes == 0) {
-        throw std::invalid_argument(context() + std::string(__func__) + "  the number of sub-stripes level can't be 0");
+        throw std::invalid_argument(context_ + "  the number of sub-stripes level can't be 0");
     }
-    database::mysql::Connection::Ptr conn;
+
+    database::mysql::ConnectionHandler handler;
     try {
 
         // First update the database
-        conn = database::mysql::Connection::open(_connectionParams);
-        conn->execute(
-            [&info](decltype(conn) conn) {
+        handler.conn = database::mysql::Connection::open(_connectionParams);
+        handler.conn->execute(
+            [&info](decltype(handler.conn) conn) {
                 conn->begin();
                 conn->executeInsertQuery(
                     "config_database_family",
@@ -618,7 +570,7 @@ DatabaseFamilyInfo ConfigurationMySQL::addDatabaseFamily(DatabaseFamilyInfo cons
 
         // Then update the transient state
 
-        util::Lock lock(_mtx, context() + __func__);
+        util::Lock lock(_mtx, context_);
 
         _databaseFamilyInfo[info.name] = DatabaseFamilyInfo{
             info.name,
@@ -632,10 +584,7 @@ DatabaseFamilyInfo ConfigurationMySQL::addDatabaseFamily(DatabaseFamilyInfo cons
         return _databaseFamilyInfo[info.name];
 
     } catch (database::mysql::Error const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, context() << "MySQL error: " << ex.what());
-        if ((nullptr != conn) and conn->inTransaction()) {
-            conn->rollback();
-        }
+        LOGS(_log, LOG_LVL_ERROR, context_ << "MySQL error: " << ex.what());
         throw;
     }
 }
@@ -643,19 +592,21 @@ DatabaseFamilyInfo ConfigurationMySQL::addDatabaseFamily(DatabaseFamilyInfo cons
 
 void ConfigurationMySQL::deleteDatabaseFamily(std::string const& name) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  name: " << name);
+    std::string const context_ = context() + std::string(__func__);
+
+    LOGS(_log, LOG_LVL_DEBUG, context_ << "  name: " << name);
 
     if (name.empty()) {
-        throw std::invalid_argument(context() + std::string(__func__) + "  the family name can't be empty");
+        throw std::invalid_argument(context_ + "  the family name can't be empty");
     }
 
-    database::mysql::Connection::Ptr conn;
+    database::mysql::ConnectionHandler handler;
     try {
 
         // First update the database
-        conn = database::mysql::Connection::open(_connectionParams);
-        conn->execute(
-            [&name](decltype(conn) conn) {
+        handler.conn = database::mysql::Connection::open(_connectionParams);
+        handler.conn->execute(
+            [&name](decltype(handler.conn) conn) {
                 conn->begin();
                 conn->execute(
                     "DELETE FROM " + conn->sqlId("config_database_family") +
@@ -670,7 +621,7 @@ void ConfigurationMySQL::deleteDatabaseFamily(std::string const& name) {
         // NOTE: when updating the transient state do not check if the family is still there
         // because the transient state may not be consistent with the persistent one.
 
-        util::Lock lock(_mtx, context() + __func__);
+        util::Lock lock(_mtx, context_);
 
         _databaseFamilyInfo.erase(name);
 
@@ -684,10 +635,7 @@ void ConfigurationMySQL::deleteDatabaseFamily(std::string const& name) {
         }
 
     } catch (database::mysql::Error const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, context() << "MySQL error: " << ex.what());
-        if ((nullptr != conn) and conn->inTransaction()) {
-            conn->rollback();
-        }
+        LOGS(_log, LOG_LVL_ERROR, context_ << "MySQL error: " << ex.what());
         throw;
     }
 }
@@ -695,24 +643,27 @@ void ConfigurationMySQL::deleteDatabaseFamily(std::string const& name) {
 
 DatabaseInfo ConfigurationMySQL::addDatabase(DatabaseInfo const& info) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  familyInfo: " << info);
+    std::string const context_ = context() + std::string(__func__);
+
+    LOGS(_log, LOG_LVL_DEBUG, context_ << "  familyInfo: " << info);
     
     if (info.name.empty()) {
-        throw std::invalid_argument(context() + std::string(__func__) + "  the database name can't be empty");
+        throw std::invalid_argument(context_ + "  the database name can't be empty");
     }
     if (info.family.empty()) {
-        throw std::invalid_argument(context() + std::string(__func__) + "  the family name can't be empty");
+        throw std::invalid_argument(context_ + "  the family name can't be empty");
     }
     if (not isKnownDatabaseFamily(info.family)) {
-        throw std::invalid_argument(context() + std::string(__func__) + "  unknown database family: '" + info.family + "'");
+        throw std::invalid_argument(context_ + "  unknown database family: '" + info.family + "'");
     }
-    database::mysql::Connection::Ptr conn;
+
+    database::mysql::ConnectionHandler handler;
     try {
 
         // First update the database
-        conn = database::mysql::Connection::open(_connectionParams);
-        conn->execute(
-            [&info](decltype(conn) conn) {
+        handler.conn = database::mysql::Connection::open(_connectionParams);
+        handler.conn->execute(
+            [&info](decltype(handler.conn) conn) {
                 conn->begin();
                 conn->executeInsertQuery(
                     "config_database",
@@ -725,7 +676,7 @@ DatabaseInfo ConfigurationMySQL::addDatabase(DatabaseInfo const& info) {
 
         // Then update the transient state
 
-        util::Lock lock(_mtx, context() + __func__);
+        util::Lock lock(_mtx, context_);
 
         _databaseInfo[info.name] = DatabaseInfo{
             info.name,
@@ -736,10 +687,7 @@ DatabaseInfo ConfigurationMySQL::addDatabase(DatabaseInfo const& info) {
         return _databaseInfo[info.name];
 
     } catch (database::mysql::Error const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, context() << "MySQL error: " << ex.what());
-        if ((nullptr != conn) and conn->inTransaction()) {
-            conn->rollback();
-        }
+        LOGS(_log, LOG_LVL_ERROR, context_ << "MySQL error: " << ex.what());
         throw;
     }
 }
@@ -747,19 +695,21 @@ DatabaseInfo ConfigurationMySQL::addDatabase(DatabaseInfo const& info) {
 
 void ConfigurationMySQL::deleteDatabase(std::string const& name) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  name: " << name);
+    std::string const context_ = context() + std::string(__func__);
+
+    LOGS(_log, LOG_LVL_DEBUG, context_ << "  name: " << name);
 
     if (name.empty()) {
-        throw std::invalid_argument(context() + std::string(__func__) + "  the database name can't be empty");
+        throw std::invalid_argument(context_ + "  the database name can't be empty");
     }
 
-    database::mysql::Connection::Ptr conn;
+    database::mysql::ConnectionHandler handler;
     try {
 
         // First update the database
-        conn = database::mysql::Connection::open(_connectionParams);
-        conn->execute(
-            [&name](decltype(conn) conn) {
+        handler.conn = database::mysql::Connection::open(_connectionParams);
+        handler.conn->execute(
+            [&name](decltype(handler.conn) conn) {
                 conn->begin();
                 conn->execute(
                     "DELETE FROM " + conn->sqlId("config_database") +
@@ -774,15 +724,12 @@ void ConfigurationMySQL::deleteDatabase(std::string const& name) {
         // NOTE: when updating the transient state do not check if the database is still there
         // because the transient state may not be consistent with the persistent one.
 
-        util::Lock lock(_mtx, context() + __func__);
+        util::Lock lock(_mtx, context_);
 
         _databaseInfo.erase(name);
 
     } catch (database::mysql::Error const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, context() << "MySQL error: " << ex.what());
-        if ((nullptr != conn) and conn->inTransaction()) {
-            conn->rollback();
-        }
+        LOGS(_log, LOG_LVL_ERROR, context_ << "MySQL error: " << ex.what());
         throw;
     }
 }
@@ -792,26 +739,28 @@ DatabaseInfo ConfigurationMySQL::addTable(std::string const& database,
                                           std::string const& table,
                                           bool isPartitioned) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  database: " << database
+    std::string const context_ = context() + std::string(__func__);
+
+    LOGS(_log, LOG_LVL_DEBUG, context_ << "  database: " << database
          << " table: " << table << " isPartitioned: " << (isPartitioned ? "true" : "false"));
 
     if (database.empty()) {
-        throw std::invalid_argument(context() + std::string(__func__) + "  the database name can't be empty");
+        throw std::invalid_argument(context_ + "  the database name can't be empty");
     }
     if (table.empty()) {
-        throw std::invalid_argument(context() + std::string(__func__) + "  the table name can't be empty");
+        throw std::invalid_argument(context_ + "  the table name can't be empty");
     }
     if (not isKnownDatabase(database)) {
-        throw std::invalid_argument(context() + std::string(__func__) + "  unknown database");
+        throw std::invalid_argument(context_ + "  unknown database");
     }
 
-    database::mysql::Connection::Ptr conn;
+    database::mysql::ConnectionHandler handler;
     try {
 
         // First update the database
-        conn = database::mysql::Connection::open(_connectionParams);
-        conn->execute(
-            [&database,&table,isPartitioned](decltype(conn) conn) {
+        handler.conn = database::mysql::Connection::open(_connectionParams);
+        handler.conn->execute(
+            [&database,&table,isPartitioned](decltype(handler.conn) conn) {
                 conn->begin();
                 conn->executeInsertQuery(
                     "config_database_table",
@@ -825,7 +774,7 @@ DatabaseInfo ConfigurationMySQL::addTable(std::string const& database,
 
         // Then update the transient state
 
-        util::Lock lock(_mtx, context() + __func__);
+        util::Lock lock(_mtx, context_);
 
         auto& info = _databaseInfo[database];
         if (isPartitioned) {
@@ -836,10 +785,7 @@ DatabaseInfo ConfigurationMySQL::addTable(std::string const& database,
         return info;
 
     } catch (database::mysql::Error const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, context() << "MySQL error: " << ex.what());
-        if ((nullptr != conn) and conn->inTransaction()) {
-            conn->rollback();
-        }
+        LOGS(_log, LOG_LVL_ERROR, context_ << "MySQL error: " << ex.what());
         throw;
     }
 }
@@ -848,25 +794,28 @@ DatabaseInfo ConfigurationMySQL::addTable(std::string const& database,
 DatabaseInfo ConfigurationMySQL::deleteTable(std::string const& database,
                                              std::string const& table) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  database: " << database
+    std::string const context_ = context() + std::string(__func__);
+
+    LOGS(_log, LOG_LVL_DEBUG, context_ << "  database: " << database
          << " table: " << table);
 
     if (database.empty()) {
-        throw std::invalid_argument(context() + std::string(__func__) + "  the database name can't be empty");
+        throw std::invalid_argument(context_ + "  the database name can't be empty");
     }
     if (table.empty()) {
-        throw std::invalid_argument(context() + std::string(__func__) + "  the table name can't be empty");
+        throw std::invalid_argument(context_ + "  the table name can't be empty");
     }
     if (not isKnownDatabase(database)) {
-        throw std::invalid_argument(context() + std::string(__func__) + "  unknown database");
+        throw std::invalid_argument(context_ + "  unknown database");
     }
-    database::mysql::Connection::Ptr conn;
+
+    database::mysql::ConnectionHandler handler;
     try {
 
         // First update the database
-        conn = database::mysql::Connection::open(_connectionParams);
-        conn->execute(
-            [&database,&table](decltype(conn) conn) {
+        handler.conn = database::mysql::Connection::open(_connectionParams);
+        handler.conn->execute(
+            [&database,&table](decltype(handler.conn) conn) {
                 conn->begin();
                 conn->execute(
                     "DELETE FROM " + conn->sqlId("config_database_table") +
@@ -882,7 +831,7 @@ DatabaseInfo ConfigurationMySQL::deleteTable(std::string const& database,
         // NOTE: when updating the transient state do not check if the database is still there
         // because the transient state may not be consistent with the persistent one.
 
-        util::Lock lock(_mtx, context() + __func__);
+        util::Lock lock(_mtx, context_);
 
         auto& info = _databaseInfo[database];
 
@@ -901,10 +850,7 @@ DatabaseInfo ConfigurationMySQL::deleteTable(std::string const& database,
         return info;
 
     } catch (database::mysql::Error const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, context() << "MySQL error: " << ex.what());
-        if ((nullptr != conn) and conn->inTransaction()) {
-            conn->rollback();
-        }
+        LOGS(_log, LOG_LVL_ERROR, context_ << "MySQL error: " << ex.what());
         throw;
     }
 }
@@ -912,24 +858,22 @@ DatabaseInfo ConfigurationMySQL::deleteTable(std::string const& database,
 
 void ConfigurationMySQL::loadConfiguration() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
+    std::string const context_ = context() + std::string(__func__);
 
-    util::Lock lock(_mtx, context() + __func__);
+    LOGS(_log, LOG_LVL_DEBUG, context_);
 
-    database::mysql::Connection::Ptr conn;
+    util::Lock lock(_mtx, context_);
 
+    database::mysql::ConnectionHandler handler;
     try {
-        conn = database::mysql::Connection::open(_connectionParams);
-        conn->execute(
-            [this, &lock](decltype(conn) conn) {
+        handler.conn = database::mysql::Connection::open(_connectionParams);
+        handler.conn->execute(
+            [this, &lock](decltype(handler.conn) conn) {
                 this->loadConfigurationImpl(lock, conn);
             }
         );
     } catch (database::mysql::Error const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, context() << "MySQL error: " << ex.what());
-        if ((nullptr != conn) and conn->inTransaction()) {
-            conn->rollback();
-        }
+        LOGS(_log, LOG_LVL_ERROR, context_ << "MySQL error: " << ex.what());
         throw;
     }
 }
@@ -1069,23 +1013,24 @@ void ConfigurationMySQL::loadConfigurationImpl(util::Lock const& lock,
     dumpIntoLogger();
 }
 
-void ConfigurationMySQL::_setImp(database::mysql::Connection::Ptr const& conn,
-                                 std::string const& category,
+
+void ConfigurationMySQL::_setImp(std::string const& category,
                                  std::string const& param,
-                                 std::string const& setValueExpr,
+                                 SetValueExprFunc const& setValueExprFunc,
                                  std::function<void()> const& onSuccess) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  category: " << category
-         << " param: " << param << "  setValueExpr: " << setValueExpr);
+    std::string const context_ = context() + std::string(__func__);
 
-    util::Lock lock(_mtx, context() + __func__);
+    LOGS(_log, LOG_LVL_DEBUG, context_ << "  category: " << category << " param: " << param);
 
+    database::mysql::ConnectionHandler handler;
     try {
-        conn->execute(
-            [&category,&param,&setValueExpr](decltype(conn) conn) {
+        handler.conn = database::mysql::Connection::open(_connectionParams);
+        handler.conn->execute(
+            [&category,&param,&setValueExprFunc](decltype(handler.conn) conn) {
                 std::ostringstream query;
                 query << "UPDATE  " << conn->sqlId("config")
-                      << "  SET   " << setValueExpr
+                      << "  SET   " << setValueExprFunc(conn)
                       << "  WHERE " << conn->sqlEqual("category", category)
                       << "    AND " << conn->sqlEqual("param", param);
                 conn->begin();
@@ -1093,16 +1038,14 @@ void ConfigurationMySQL::_setImp(database::mysql::Connection::Ptr const& conn,
                 conn->commit();
             }
         );
+
+        util::Lock lock(_mtx, context_);
         onSuccess();
+
     } catch (database::mysql::Error const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, context() << "MySQL error: " << ex.what());
-        if ((nullptr != conn) and conn->inTransaction()) {
-            conn->rollback();
-        }
+        LOGS(_log, LOG_LVL_ERROR, context_ << "MySQL error: " << ex.what());
         throw;
     }
-
 }
-
 
 }}} // namespace lsst::qserv::replica

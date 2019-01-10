@@ -43,6 +43,20 @@ string const description {
     " the configuration data of the Replication system stored in the MySQL/MariaDB"
 };
 
+/**
+ * Register an option with a parser (which could also represent a command)
+ *
+ * @param parser
+ *   the handler responsible for processing options
+ *
+ * @param struct_
+ *   the option descriptor
+ */
+template <class PARSER, typename T>
+void addCommandOption(PARSER& parser, T& struct_) {
+    parser.option(struct_.key, struct_.description, struct_.value);
+}
+
 } /// namespace
 
 
@@ -86,260 +100,262 @@ ConfigApp::ConfigApp(int argc,
          "ADD_DATABASE", "DELETE_DATABASE",
          "ADD_TABLE", "DELETE_TABLE"
         },
-        _command
-    ).option(
+        _command);
+
+    // Parameters, options and flags shared by all commands
+
+    parser().option(
         "config",
         "Configuration URL (a configuration file or a set of database connection parameters).",
-        _configUrl
-    ).flag(
+        _configUrl);
+
+    parser().flag(
         "tables-vertical-separator",
         "Print vertical separator when displaying tabular data in dumps",
-        _verticalSeparator
-    );
+        _verticalSeparator);
 
-    parser().command("DUMP").optional(
+    // Command-specific parameters, options and flags
+
+    auto&& dumpCmd = parser().command("DUMP");
+
+    dumpCmd.optional(
         "scope",
         "This optional parameter narrows a scope of the operation down to a specific"
         " context. If no scope is specified then everything will be dumped.",
         _dumpScope,
-        vector<string>({"GENERAL", "WORKERS", "FAMILIES", "DATABASES"})
-    ).flag(
+        vector<string>({"GENERAL", "WORKERS", "FAMILIES", "DATABASES"}));
+
+    dumpCmd.flag(
         "db-show-password",
         "show the actual database password when making the dump of the GENERAL parameters",
-        _dumpDbShowPassword
-    );
+        _dumpDbShowPassword);
+
+    // Command-specific parameters, options and flags
 
     parser().command("CONFIG_INIT_FILE").required(
         "format",
         "The format of the initialization file to be produced with this option."
         " Allowed values: MYSQL, INI",
         _format,
-        vector<string>({"MYSQL", "INI"})
-    );
+        vector<string>({"MYSQL", "INI"}));
 
-    parser().command("UPDATE_WORKER").required(
+    // Command-specific parameters, options and flags
+
+    auto&& updateWorkerCmd = parser().command("UPDATE_WORKER");
+
+    updateWorkerCmd.required(
         "worker",
         "The name of a worker to be updated",
-        _workerInfo.name
-    ).option(
+        _workerInfo.name);
+
+    updateWorkerCmd.option(
         "worker-service-host",
         "The new DNS name or an IP address where the worker runs",
-        _workerInfo.svcHost
-    ).option(
+        _workerInfo.svcHost);
+
+    updateWorkerCmd.option(
         "worker-service-port",
         "The port number of the worker service",
-        _workerInfo.svcPort
-    ).option(
+        _workerInfo.svcPort);
+
+    updateWorkerCmd.option(
         "worker-fs-host",
         "The new DNS name or an IP address where the worker's File Server runs",
-        _workerInfo.fsHost
-    ).option(
+        _workerInfo.fsHost);
+
+    updateWorkerCmd.option(
         "worker-fs-port",
         "The port number of the worker's File Server",
-        _workerInfo.fsPort
-    ).option(
+        _workerInfo.fsPort);
+
+    updateWorkerCmd.option(
         "worker-data-dir",
         "The data directory of the worker",
-        _workerInfo.dataDir
-    ).flag(
+        _workerInfo.dataDir);
+
+    updateWorkerCmd.flag(
         "worker-enable",
         "Enable the worker. ATTENTION: this flag can't be used together with flag --worker-disable",
-        _workerEnable
-    ).flag(
+        _workerEnable);
+
+    updateWorkerCmd.flag(
         "worker-disable",
         "Disable the worker. ATTENTION: this flag can't be used together with flag --worker-enable",
-        _workerDisable
-    ).flag(
+        _workerDisable);
+
+    updateWorkerCmd.flag(
         "worker-read-only",
         "Turn the worker into the read-only mode. ATTENTION: this flag can't be"
         " used together with flag --worker-read-write",
-        _workerReadOnly
-    ).flag(
+        _workerReadOnly);
+
+    updateWorkerCmd.flag(
         "worker-read-write",
         "Turn the worker into the read-write mode. ATTENTION: this flag can't be"
         " used together with flag --worker-read-only",
-        _workerReadWrite
-    );
+        _workerReadWrite);
 
-    parser().command("ADD_WORKER").required(
+    // Command-specific parameters, options and flags
+
+    auto&& addWorkerCmd = parser().command("ADD_WORKER");
+
+    addWorkerCmd.required(
         "worker",
         "The name of a worker to be added",
-        _workerInfo.name
-    ).required(
+        _workerInfo.name);
+
+    addWorkerCmd.required(
         "service-host",
         "The DNS name or an IP address where the worker runs",
-        _workerInfo.svcHost
-    ).required(
+        _workerInfo.svcHost);
+
+    addWorkerCmd.required(
         "service-port",
         "The port number of the worker service",
-        _workerInfo.svcPort
-    ).required(
+        _workerInfo.svcPort);
+
+    addWorkerCmd.required(
         "fs-host",
         "The DNS name or an IP address where the worker's File Server runs",
-        _workerInfo.fsHost
-    ).required(
+        _workerInfo.fsHost);
+
+    addWorkerCmd.required(
         "fs-port",
         "The port number of the worker's File Server",
-        _workerInfo.fsPort
-    ).required(
+        _workerInfo.fsPort);
+
+    addWorkerCmd.required(
         "data-dir",
         "The data directory of the worker",
-        _workerInfo.dataDir
-    ).required(
+        _workerInfo.dataDir);
+
+    addWorkerCmd.required(
         "enabled",
         "Set to '0' if the worker is turned into disabled mode upon creation",
-        _workerInfo.isEnabled
-    ).required(
+        _workerInfo.isEnabled);
+
+    addWorkerCmd.required(
         "read-only",
         "Set to '0' if the worker is NOT turned into the read-only mode upon creation",
-        _workerInfo.isReadOnly
-    );
+        _workerInfo.isReadOnly);
+
+    // Command-specific parameters, options and flags
 
     parser().command("DELETE_WORKER").required(
         "worker",
         "The name of a worker to be deleted",
-        _workerInfo.name
-    );
+        _workerInfo.name);
 
-    parser().command("UPDATE_GENERAL").option(
-        _requestBufferSizeBytes.key,
-        _requestBufferSizeBytes.description,
-        _requestBufferSizeBytes.value
-    ).option(
-        _retryTimeoutSec.key,
-        _retryTimeoutSec.description,
-        _retryTimeoutSec.value
-    ).option(
-        _controllerThreads.key,
-        _controllerThreads.description,
-        _controllerThreads.value
-    ).option(
-        _controllerHttpPort.key,
-        _controllerHttpPort.description,
-        _controllerHttpPort.value
-    ).option(
-        _controllerHttpThreads.key,
-        _controllerHttpThreads.description,
-        _controllerHttpThreads.value
-    ).option(
-        _controllerRequestTimeoutSec.key,
-        _controllerRequestTimeoutSec.description,
-        _controllerRequestTimeoutSec.value
-    ).option(
-        _jobTimeoutSec.key,
-        _jobTimeoutSec.description,
-        _jobTimeoutSec.value
-    ).option(
-        _jobHeartbeatTimeoutSec.key,
-        _jobHeartbeatTimeoutSec.description,
-        _jobHeartbeatTimeoutSec.value
-    ).option(
-        _xrootdAutoNotify.key,
-        _xrootdAutoNotify.description +
-            " Use 0 to disable this feature. Any number equal or greater"
-            " than 1 will enable it.",
-        _xrootdAutoNotify.value
-    ).option(
-        _xrootdHost.key,
-        _xrootdHost.description,
-        _xrootdHost.value
-    ).option(
-        _xrootdPort.key,
-        _xrootdPort.description,
-        _xrootdPort.value
-    ).option(
-        _xrootdTimeoutSec.key,
-        _xrootdTimeoutSec.description,
-        _xrootdTimeoutSec.value
-    ).option(
-        _databaseServicesPoolSize.key,
-        _databaseServicesPoolSize.description,
-        _databaseServicesPoolSize.value
-    ).option(
-        _workerTechnology.key,
-        _workerTechnology.description,
-        _workerTechnology.value
-    ).option(
-        _workerNumProcessingThreads.key,
-        _workerNumProcessingThreads.description,
-        _workerNumProcessingThreads.value
-    ).option(
-        _fsNumProcessingThreads.key,
-        _fsNumProcessingThreads.description,
-        _fsNumProcessingThreads.value
-    ).option(
-        _workerFsBufferSizeBytes.key,
-        _workerFsBufferSizeBytes.description,
-        _workerFsBufferSizeBytes.value
-    );
-    
-    parser().command("ADD_DATABASE_FAMILY").required(
+    // Command-specific parameters, options and flags
+
+    auto&& updateGeneralCmd = parser().command("UPDATE_GENERAL");
+
+    ::addCommandOption(updateGeneralCmd, _requestBufferSizeBytes);
+    ::addCommandOption(updateGeneralCmd, _retryTimeoutSec);
+    ::addCommandOption(updateGeneralCmd, _controllerThreads);
+    ::addCommandOption(updateGeneralCmd, _controllerHttpPort);
+    ::addCommandOption(updateGeneralCmd, _controllerHttpThreads);
+    ::addCommandOption(updateGeneralCmd, _controllerRequestTimeoutSec);
+    ::addCommandOption(updateGeneralCmd, _jobTimeoutSec);
+    ::addCommandOption(updateGeneralCmd, _jobHeartbeatTimeoutSec);
+    ::addCommandOption(updateGeneralCmd, _xrootdAutoNotify);
+    ::addCommandOption(updateGeneralCmd, _xrootdHost);
+    ::addCommandOption(updateGeneralCmd, _xrootdPort);
+    ::addCommandOption(updateGeneralCmd, _xrootdTimeoutSec);
+    ::addCommandOption(updateGeneralCmd, _databaseServicesPoolSize);
+    ::addCommandOption(updateGeneralCmd, _workerTechnology);
+    ::addCommandOption(updateGeneralCmd, _workerNumProcessingThreads);
+    ::addCommandOption(updateGeneralCmd, _fsNumProcessingThreads);
+    ::addCommandOption(updateGeneralCmd, _workerFsBufferSizeBytes);
+
+    // Command-specific parameters, options and flags
+
+    auto&& addFamilyCmd = parser().command("ADD_DATABASE_FAMILY");
+
+    addFamilyCmd.required(
         "name",
         "The name of a new database family",
-        _familyInfo.name
-    ).required(
+        _familyInfo.name);
+
+    addFamilyCmd.required(
         "replication-level",
         "The minimum replication level desired (1..N)",
-        _familyInfo.replicationLevel
-    ).required(
+        _familyInfo.replicationLevel);
+
+    addFamilyCmd.required(
         "num-stripes",
         "The number of stripes (from the CSS partitioning configuration)",
-        _familyInfo.numStripes
-    ).required(
+        _familyInfo.numStripes);
+
+    addFamilyCmd.required(
         "num-sub-stripes",
         "The number of sub-stripes (from the CSS partitioning configuration)",
-        _familyInfo.numSubStripes
-    );
+        _familyInfo.numSubStripes);
+
+    // Command-specific parameters, options and flags
 
     parser().command("DELETE_DATABASE_FAMILY").required(
         "name",
         "The name of an existing database family to be deleted. ATTENTION: all databases that"
         " are members of the family will be deleted as well, along with the relevant info"
         " about replicas of all chunks of the databases",
-        _familyInfo.name
-    );
+        _familyInfo.name);
     
-    parser().command("ADD_DATABASE").required(
+    // Command-specific parameters, options and flags
+
+    auto&& addDatabaseCmd = parser().command("ADD_DATABASE");
+
+    addDatabaseCmd.required(
         "name",
         "The name of a new database",
-        _databaseInfo.name
-    ).required(
+        _databaseInfo.name);
+
+    addDatabaseCmd.required(
         "family",
         "The name of an existing family the new database will join",
-        _databaseInfo.family
-    );
+        _databaseInfo.family);
+
+    // Command-specific parameters, options and flags
 
     parser().command("DELETE_DATABASE").required(
         "name",
         "The name of an existing database to be deleted. ATTENTION: all relevant info that"
         " is associated with the database (replicas of all chunks, etc.) will get deleted as well.",
-        _databaseInfo.name
-    );
+        _databaseInfo.name);
 
-    parser().command("ADD_TABLE").required(
+    // Command-specific parameters, options and flags
+
+    auto&& addTableCmd = parser().command("ADD_TABLE");
+
+    addTableCmd.required(
         "database",
         "The name of an existing database",
-        _database
-    ).required(
+        _database);
+
+    addTableCmd.required(
         "table",
         "The name of a new table",
-        _table
-    ).flag(
+        _table);
+
+    addTableCmd.flag(
         "partitioned",
         "The flag indicating (if present) that a table is partitioned",
-        _isPartitioned
-    );
+        _isPartitioned);
 
-    parser().command("DELETE_TABLE").required(
+    // Command-specific parameters, options and flags
+
+    auto&& deleteTableCmd = parser().command("DELETE_TABLE");
+
+    deleteTableCmd.required(
         "database",
         "The name of an existing database",
-        _database
-    ).required(
+        _database );
+
+    deleteTableCmd.required(
         "table",
         "The name of an existing table to be deleted. ATTENTION: all relevant info that"
         " is associated with the table (replicas of all chunks, etc.) will get deleted as well.",
-        _table
-    );
+        _table);
 }
 
 
@@ -401,7 +417,7 @@ int ConfigApp::_dump() const {
     return 0;
 }
 
-void ConfigApp::_dumpGeneralAsTable(string const indent) const {
+void ConfigApp::_dumpGeneralAsTable(string const& indent) const {
 
     // Extract general attributes and put them into the corresponding
     // columns. Translate tables cell values into strings when required.
@@ -512,7 +528,7 @@ void ConfigApp::_dumpGeneralAsTable(string const indent) const {
 }
 
 
-void ConfigApp::_dumpWorkersAsTable(string const indent) const {
+void ConfigApp::_dumpWorkersAsTable(string const& indent) const {
 
     // Extract attributes of each worker and put them into the corresponding
     // columns. Translate tables cell values into strings when required.
@@ -547,7 +563,7 @@ void ConfigApp::_dumpWorkersAsTable(string const indent) const {
 }
 
 
-void ConfigApp::_dumpFamiliesAsTable(string const indent) const {
+void ConfigApp::_dumpFamiliesAsTable(string const& indent) const {
 
     // Extract attributes of each family and put them into the corresponding
     // columns.
@@ -576,7 +592,7 @@ void ConfigApp::_dumpFamiliesAsTable(string const indent) const {
 }
 
 
-void ConfigApp::_dumpDatabasesAsTable(string const indent) const {
+void ConfigApp::_dumpDatabasesAsTable(string const& indent) const {
 
     // Extract attributes of each database and put them into the corresponding
     // columns.
@@ -878,7 +894,7 @@ int ConfigApp::_addTable() {
         return 1;
     }
     try {
-        _config->addTable(_database, _table, _isPartitioned ? true : false);
+        _config->addTable(_database, _table, _isPartitioned);
     } catch (std::exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
         return 1;

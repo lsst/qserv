@@ -89,76 +89,52 @@ protected:
             _o1(123),
             _o2(false) {
 
-        // Configure the parser of the command-line arguments. Note that
-        // the parser is guaranteed to run before invoking method "runImpl()".
-#if 0
-        parser().required(
-            "p1",
-            "The first positional parameter description",
-            _p1
-        ).optional(
-            "p2",
-            "The second positional parameter description. Note, this"
-            " parameter is optional, and it allows a limited set of"
-            " values: 'ONE', 'TWO' or 'THREE'",
-            _p2,
-            {"ONE","TWO","THREE"}
-        ).option(
-            "o1",
-            "The first option description",
-            _o1
-        ).option(
-            "o2",
-            "The 'bool' option",
-            _o2
-        ).flag(
-            "verbose",
-            "verbose mode",
-            _verbose
-        );
-#endif
-        /* The proposed extension to the command line parser to allow
-         * the following syntax (as per code example)
+        /* Configure the parser for the following syntax:
          *
          * COMMAND1 <p1> <p11> [<o1>] [<o11>] [--o12=<v>] [--verbose]
          * COMMAND2 <p1>       [<o1>]                     [--verbose] [--f21]
          * COMMAND2 <p1>       [<o1>]                     [--verbose]
+         * 
+         * Note that the parser is guaranteed to run before invoking method "runImpl()".
          */
         parser().commands(
             "command",
             {"COMMAND1", "COMMAND2", "COMMAND3"},
-            _cmd
-        ).required(
+            _cmd);
+
+        parser().required(
             "p1",
             "description of the required parameter p1 for all commands",
-            _p1
-        ).optional(
+            _p1);
+
+        parser().optional(
             "o1",
             "description of the optional parameter o1 for all commands",
-            _o1
-        ).flag(
+            _o1);
+
+        parser().flag(
             "verbose",
             "verbose mode",
-            _verbose
-        );
-        parser().command(
-            "COMMAND1"
-        ).required(
+            _verbose);
+
+        auto&& command1 = parser().command("COMMAND1");
+        command1.required(
             "p11",
             "description of the additional required parameter specific for the command",
             _p11
-        ).optional(
+        );
+        command1.optional(
             "o11",
             "description of the additional optional parameter specific for the command",
             _o11
-        ).option(
+        );
+        command1.option(
             "o12",
             "description of the additional option specific to the command",
             _o12
         );
-        parser().command(
-            "COMMAND2"
-        ).flag(
+
+        parser().command("COMMAND2").flag(
            "f21",
            "description of the additional flag specific to the command",
            _f21
