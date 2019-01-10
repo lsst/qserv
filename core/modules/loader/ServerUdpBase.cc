@@ -111,6 +111,7 @@ void ServerUdpBase::sendBufferTo(std::string const& hostName, int port, BufferUd
     cv.wait(uLock, [&done](){return done;});
 #else
     using namespace boost::asio;
+    LOGS(_log, LOG_LVL_INFO, "ServerUdpBase::sendBufferTo hostName=" << hostName << " port=" << port); // &&&
     ip::udp::endpoint dest(boost::asio::ip::address::from_string(hostName), port);
     _socket.send_to(buffer(sendBuf.getReadCursor(), sendBuf.getBytesLeftToRead()), dest);
 #endif

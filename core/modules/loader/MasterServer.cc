@@ -242,7 +242,8 @@ BufferUdp::Ptr MasterServer::workerInfoRequest(LoaderMsg const& inMsg, BufferUdp
         /// Return worker's name, netaddress, and range in MAST_WORKER_INFO msg
         proto::WorkerListItem protoWorker;
         proto::LdrNetAddress* protoAddr = protoWorker.mutable_address();
-        proto::WorkerRangeString* protoRange = protoWorker.mutable_rangestr();
+        //proto::WorkerRangeString* protoRange = protoWorker.mutable_rangestr(); &&&
+        proto::WorkerRange* protoRange = protoWorker.mutable_range();
         protoWorker.set_wid(workerItem->getId());
         auto udp = workerItem->getUdpAddress();
         protoAddr->set_ip(udp.ip);
@@ -250,10 +251,7 @@ BufferUdp::Ptr MasterServer::workerInfoRequest(LoaderMsg const& inMsg, BufferUdp
         protoAddr->set_tcpport(workerItem->getTcpAddress().port);
         auto range = workerItem->getRangeString();
         LOGS(_log, LOG_LVL_INFO, funcName << " workerInfoRequest range = " << range);
-        protoRange->set_valid(range.getValid());
-        protoRange->set_min(range.getMin());
-        protoRange->set_max(range.getMax());
-        protoRange->set_maxunlimited(range.getUnlimited());
+        range.loadProtoRange(*protoRange);
         StringElement seItem(protoWorker.SerializeAsString());
 
         LoaderMsg masterWorkerInfoMsg(LoaderMsg::MAST_WORKER_INFO, _centralMaster->getNextMsgId(),

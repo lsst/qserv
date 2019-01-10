@@ -74,7 +74,7 @@ public:
     bool equal(WWorkerListItem &other) const;
 
     /// @return true if 'key' can be found in this item's map.
-    bool containsKey(std::string const& key) const;
+    bool containsKey(CompositeKey const& key) const;
 
 private:
     WWorkerListItem(uint32_t wId, CentralWorker* central) : WorkerListItemBase(wId), _central(central) {}
@@ -128,7 +128,7 @@ public:
     void updateEntry(uint32_t wId,
                      std::string const& ipUdp, int portUdp, int portTcp,
                      StringRange& strRange);
-    WWorkerListItem::Ptr findWorkerForKey(std::string const& key);
+    WWorkerListItem::Ptr findWorkerForKey(CompositeKey const& key);
 
     std::string dump() const;
 

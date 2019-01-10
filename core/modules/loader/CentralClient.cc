@@ -86,7 +86,7 @@ void CentralClient::handleKeyInfo(LoaderMsg const& inMsg, BufferUdp::Ptr const& 
 void CentralClient::_handleKeyInfo(LoaderMsg const& inMsg, std::unique_ptr<proto::KeyInfo>& protoBuf) {
     std::unique_ptr<proto::KeyInfo> protoData(std::move(protoBuf));
 
-    std::string key = protoData->key();
+    CompositeKey key(protoData->keyint(), protoData->keystr());
     ChunkSubchunk chunkInfo(protoData->chunk(), protoData->subchunk());
 
     LOGS(_log, LOG_LVL_INFO, "trying to remove oneShot for lookup key=" << key << " " << chunkInfo);
@@ -129,7 +129,7 @@ void CentralClient::handleKeyInsertComplete(LoaderMsg const& inMsg, BufferUdp::P
 void CentralClient::_handleKeyInsertComplete(LoaderMsg const& inMsg, std::unique_ptr<proto::KeyInfo>& protoBuf) {
     std::unique_ptr<proto::KeyInfo> protoData(std::move(protoBuf));
 
-    std::string key = protoData->key();
+    CompositeKey key(protoData->keyint(), protoData->keystr());
     ChunkSubchunk chunkInfo(protoData->chunk(), protoData->subchunk());
 
     LOGS(_log, LOG_LVL_DEBUG, "trying to remove oneShot for key=" << key << " " << chunkInfo);
@@ -157,7 +157,7 @@ void CentralClient::_handleKeyInsertComplete(LoaderMsg const& inMsg, std::unique
 //  completion and the status of the job. keyInsertOneShot will call
 //  _keyInsertReq until it knows the task was completed via a call
 //  to _handleKeyInsertComplete
-KeyInfoData::Ptr CentralClient::keyInsertReq(std::string const& key, int chunk, int subchunk) {
+KeyInfoData::Ptr CentralClient::keyInsertReq(CompositeKey const& key, int chunk, int subchunk) {
     // Insert a oneShot DoListItem to keep trying to add the key until
     // we get word that it has been added successfully.
     LOGS(_log, LOG_LVL_INFO, "Trying to insert key=" << key << " chunk=" << chunk <<
@@ -206,7 +206,7 @@ KeyInfoData::Ptr CentralClient::keyInsertReq(std::string const& key, int chunk, 
 }
 
 
-void CentralClient::_keyInsertReq(std::string const& key, int chunk, int subchunk) {
+void CentralClient::_keyInsertReq(CompositeKey const& key, int chunk, int subchunk) {
     LOGS(_log, LOG_LVL_INFO, "CentralClient::_keyInsertReq trying key=" << key);
     LoaderMsg msg(LoaderMsg::KEY_INSERT_REQ, getNextMsgId(), getHostName(), getUdpPort());
     BufferUdp msgData;
@@ -218,7 +218,8 @@ void CentralClient::_keyInsertReq(std::string const& key, int chunk, int subchun
     protoAddr->set_udpport(getUdpPort());
     protoAddr->set_tcpport(getTcpPort());
     lsst::qserv::proto::KeyInfo* protoKeyInfo = protoKeyInsert.mutable_keyinfo();
-    protoKeyInfo->set_key(key);
+    protoKeyInfo->set_keyint(key.kInt);
+    protoKeyInfo->set_keystr(key.kStr);
     protoKeyInfo->set_chunk(chunk);
     protoKeyInfo->set_subchunk(subchunk);
     protoKeyInsert.set_hops(0);
@@ -231,7 +232,7 @@ void CentralClient::_keyInsertReq(std::string const& key, int chunk, int subchun
 }
 
 
-KeyInfoData::Ptr CentralClient::keyInfoReq(std::string const& key) {
+KeyInfoData::Ptr CentralClient::keyInfoReq(CompositeKey const& key) {
     // Returns a pointer to a Tracker object that can be used to track job
     // completion and job status. keyInsertOneShot will call _keyInsertReq until
     // it knows the task was completed. _handleKeyInfoComplete marks
@@ -273,7 +274,7 @@ KeyInfoData::Ptr CentralClient::keyInfoReq(std::string const& key) {
 }
 
 
-void CentralClient::_keyInfoReq(std::string const& key) {
+void CentralClient::_keyInfoReq(CompositeKey const& key) {
     LOGS(_log, LOG_LVL_INFO, "CentralClient::_keyInfoReq trying key=" << key);
      LoaderMsg msg(LoaderMsg::KEY_INFO_REQ, getNextMsgId(), getHostName(), getUdpPort());
      BufferUdp msgData;
@@ -285,7 +286,8 @@ void CentralClient::_keyInfoReq(std::string const& key) {
      protoAddr->set_udpport(getUdpPort());
      protoAddr->set_tcpport(getTcpPort());
      lsst::qserv::proto::KeyInfo* protoKeyInfo = protoKeyInsert.mutable_keyinfo();
-     protoKeyInfo->set_key(key);
+     protoKeyInfo->set_keyint(key.kInt);
+     protoKeyInfo->set_keystr(key.kStr);
      protoKeyInfo->set_chunk(0);
      protoKeyInfo->set_subchunk(0);
      protoKeyInsert.set_hops(0);
@@ -338,7 +340,7 @@ util::CommandTracked::Ptr CentralClient::KeyInfoReqOneShot::createCommand()  {
 }
 
 
-void CentralClient::KeyInfoReqOneShot::keyInfoComplete(std::string const& key,
+void CentralClient::KeyInfoReqOneShot::keyInfoComplete(CompositeKey const& key,
                                                        int chunk, int subchunk, bool success) {
     if (key == cmdData->key) {
         cmdData->chunk = chunk;

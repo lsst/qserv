@@ -42,30 +42,18 @@ message LdrNetAddress {
 }
 
 
-message WorkerRangeString {
-    required bool valid  = 1;
-    required string min  = 2; 
-    required string max  = 3;
-    required bool maxunlimited = 4;
-}
-
-
-message WorkerRangeInt {
-    required bool valid     = 1;
-	required uint64 minint  = 2;
-	required uint64 maxint  = 3;
-	required bool maxunlimited = 4;
-}
-
 message WorkerRange {
-    optional WorkerRangeString rangeStr = 3;
-    optional WorkerRangeInt rangeInt = 4;
+    required bool valid        = 1;
+    required uint64 minint     = 2;
+    required string minstr     = 3;
+    required uint64 maxint     = 4; 
+    required string maxstr     = 5;
+    required bool maxunlimited = 6;
 }
-
 
 message WorkerListItem {
-    required uint32            wid     = 1; // worker's id number
-    optional WorkerRangeString rangestr = 2; // TODO replace with WorkerRange
+    required uint32            wid      = 1; // worker's id number
+    optional WorkerRange       range    = 2;
     optional LdrNetAddress     address  = 3;
 }
 
@@ -77,10 +65,11 @@ message LdrMastWorkerList {
 
 
 message KeyInfo {
-	required string key      = 1;
-	required uint32 chunk    = 2;
-	required uint32 subchunk = 3;
-	optional bool   success  = 4;
+	required string keystr   = 1;
+	required uint64 keyint   = 2;
+	required uint32 chunk    = 3;
+	required uint32 subchunk = 4;
+	optional bool   success  = 5;
 }
 
 
@@ -101,16 +90,16 @@ message WorkerKeysInfo {
     required uint32            wid        = 1;
     required uint32            mapsize    = 2;
     required uint32            recentadds = 3;
-    required WorkerRangeString range      = 4; // TODO replace with WorkerRange
+    required WorkerRange       range      = 4;
     required Neighbor          left       = 5;
     required Neighbor          right      = 6;
 }
 
 
 message WorkerImNeighbor {
-    required uint32            wid      = 1;
-    required uint64            keycount = 2;
-    required WorkerRangeString range    = 4; // TODO replace with WorkerRange
+    required uint32      wid      = 1;
+    required uint64      keycount = 2;
+    required WorkerRange range    = 4;
 }
  
  

@@ -29,49 +29,14 @@
 #include <string>
 
 // Qserv headers
+#include "loader/CompositeKey.h"
 #include "loader/Updateable.h"
+#include "proto/loader.pb.h"
 
 
 namespace lsst {
 namespace qserv {
 namespace loader {
-
-
-/// &&&
-class CompositeKey {
-public:
-    CompositeKey(uint64_t ki, std::string const& ks) : kInt(ki), kStr(ks) {}
-    CompositeKey(uint64_t ki) : CompositeKey(ki, "") {}
-    CompositeKey(std::string const& ks) : CompositeKey(0, ks) {}
-    CompositeKey(CompositeKey const& ck) : CompositeKey(ck.kInt, ck.kStr) {}
-    CompositeKey() : CompositeKey(0, "") {}
-    ~CompositeKey() = default;
-
-    static uint64_t maxIntVal() const { return UINT64_MAX; }
-
-    CompositeKey& operator=(CompositeKey const& other) {
-        kInt = other.kInt;
-        kStr = other.kStr;
-    }
-
-    bool operator<(CompositeKey const& other) const {
-        if (kInt < other.kInt) return true;
-        if (kInt > other.kInt) return false;
-        if (kStr < other.kStr) return true;
-        return false;
-    }
-
-    bool operator>(CompositeKey const& other) const {
-        return other < *this;
-    }
-
-    bool operator=(CompositeKey const& other) const {
-        return (kInt == other.kInt) && (kStr == other.kStr);
-    }
-
-    uint64_t    kInt;
-    std::string kStr;
-};
 
 /// Class for storing the range of a single worker.
 /// This is likely to become a template class, hence lots in the header.
@@ -117,17 +82,17 @@ public:
         return true;
     }
 
-    bool isInRange(std::string const& str) const {
+    bool isInRange(CompositeKey const& cKey) const {
         if (not _valid) { return false; }
-        if (str < _min) { return false; }
-        if (not _unlimited && str >= _maxE) { return false; }
+        if (cKey < _min) { return false; }
+        if (not _unlimited && cKey >= _maxE) { return false; }
         return true;
     }
 
     bool getValid() const { return _valid; }
     bool getUnlimited() const { return _unlimited; }
-    std::string getMin() const { return _min; }
-    std::string getMax() const { return _maxE; }
+    CompositeKey getMin() const { return _min; }
+    CompositeKey getMax() const { return _maxE; }
 
     bool operator<(StringRange const& other) const {
         /// Arbitrarily, invalid are less than valid, but such comparisons should be avoided.
@@ -156,6 +121,9 @@ public:
     /// Return a CompositeKey slightly higher lower than 'key'.
     static CompositeKey decrement(CompositeKey const& str, char minChar='0');
 
+    /// Load 'protoRange' with information from this object.
+    void loadProtoRange(proto::WorkerRange& protoRange);
+
     friend std::ostream& operator<<(std::ostream&, StringRange const&);
 
 private:
@@ -163,11 +131,6 @@ private:
     bool        _unlimited{false}; ///< true if the range includes largest possible values.
     CompositeKey _min; ///< Smallest value = ""
     CompositeKey _maxE; ///< maximum value exclusive
-    /* &&&
-    std::string _min; ///< Smallest value = ""
-    std::string _maxE; ///< maximum value exclusive
-    */
-
 };
 
 
