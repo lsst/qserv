@@ -36,7 +36,7 @@ namespace loader {
 ///
 class WorkerConfig : public ConfigBase {
 public:
-    WorkerConfig(std::string const& configFileName)
+    explicit WorkerConfig(std::string const& configFileName)
         : WorkerConfig(util::ConfigStore(configFileName)) {}
 
     WorkerConfig() = delete;

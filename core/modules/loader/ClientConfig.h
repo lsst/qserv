@@ -36,7 +36,7 @@ namespace loader {
 ///
 class ClientConfig : public ConfigBase {
 public:
-    ClientConfig(std::string const& configFileName)
+    explicit ClientConfig(std::string const& configFileName)
         : ClientConfig(util::ConfigStore(configFileName)) {}
 
     ClientConfig() = delete;

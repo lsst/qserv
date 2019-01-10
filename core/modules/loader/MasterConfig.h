@@ -39,7 +39,7 @@ namespace loader {
 class MasterConfig : public ConfigBase {
 public:
     /// Constructor can throw ConfigErr
-    MasterConfig(std::string configFileName)
+    explicit MasterConfig(std::string configFileName)
         : MasterConfig(util::ConfigStore(configFileName)) {}
 
     MasterConfig() = delete;

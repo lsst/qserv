@@ -53,7 +53,7 @@ class CentralWorkerDoListItem;
 
 class CentralWorker : public Central {
 public:
-    typedef std::pair<std::string, ChunkSubchunk> StringKeyPair;
+    typedef std::pair<CompositeKey, ChunkSubchunk> StringKeyPair; // &&& rename CompositeKeyPair
 
     enum SocketStatus {
         VOID0 = 0,
@@ -237,7 +237,7 @@ private:
 
     StringRange _strRange; ///< range for this worker TODO _range both int and string;
     std::atomic<bool> _rangeChanged{false};
-    std::map<std::string, ChunkSubchunk> _keyValueMap;
+    std::map<CompositeKey, ChunkSubchunk> _keyValueMap;
     std::deque<std::chrono::system_clock::time_point> _recentAdds; ///< track how many keys added recently.
     std::chrono::milliseconds _recentAddLimit; ///< After this period of time, additions are no longer recent.
     std::mutex _idMapMtx; ///< protects _strRange, _keyValueMap,
