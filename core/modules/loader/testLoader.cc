@@ -25,6 +25,7 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "loader/CompositeKey.h"
 #include "loader/ConfigBase.h"
 
 // Boost unit test header
@@ -193,6 +194,107 @@ BOOST_AUTO_TEST_CASE(LoaderTest) {
     }
 
     LOGS_INFO("LoaderConfig test end");
+
+
+    LOG_INFO("CompositeKey test start");
+
+    {
+        LOGS_INFO("Comparisons to self");
+        CompositeKey a();
+        BOOST_CHECK(a == a);
+        BOOST_CHECK(!(a != a));
+        BOOST_CHECK(!(a < a));
+        BOOST_CHECK(!(a > a));
+        BOOST_CHECK(a <= a);
+        BOOST_CHECK(a >= a);
+    }
+
+    {
+        LOGS_INFO("Comparisons integer equal");
+        CompositeKey a(9876);
+        CompositeKey b(9876);
+        BOOST_CHECK(a == b);
+        BOOST_CHECK(!(a != b));
+        BOOST_CHECK(!(a < b));
+        BOOST_CHECK(!(a > b));
+        BOOST_CHECK(a <= b);
+        BOOST_CHECK(a >= b);
+    }
+
+    {
+        LOGS_INFO("Comparisons integer less than");
+        CompositeKey a(875);
+        CompositeKey b(876);
+        BOOST_CHECK(!(a == b));
+        BOOST_CHECK( (a != b));
+        BOOST_CHECK( (a < b));
+        BOOST_CHECK(!(a > b));
+        BOOST_CHECK( (a <= b));
+        BOOST_CHECK(!(a >= b));
+    }
+
+    {
+        LOGS_INFO("Comparisons integer greater than");
+        CompositeKey a(1000000);
+        CompositeKey b(30);
+        BOOST_CHECK(!(a == b));
+        BOOST_CHECK( (a != b));
+        BOOST_CHECK(!(a < b));
+        BOOST_CHECK( (a > b));
+        BOOST_CHECK(!(a <= b));
+        BOOST_CHECK( (a >= b));
+    }
+
+    {
+        LOGS_INFO("Comparisons string equal");
+        CompositeKey a(0, "string%$testA");
+        CompositeKey b(0, "string%$testA");
+        BOOST_CHECK(a == b);
+        BOOST_CHECK(!(a != b));
+        BOOST_CHECK(!(a < b));
+        BOOST_CHECK(!(a > b));
+        BOOST_CHECK(a <= b);
+        BOOST_CHECK(a >= b);
+    }
+
+    {
+        LOGS_INFO("Comparisons string less than");
+        CompositeKey a(875, "testa");
+        CompositeKey b(875, "testb");
+        BOOST_CHECK(!(a == b));
+        BOOST_CHECK( (a != b));
+        BOOST_CHECK( (a < b));
+        BOOST_CHECK(!(a > b));
+        BOOST_CHECK( (a <= b));
+        BOOST_CHECK(!(a >= b));
+    }
+
+    {
+        LOGS_INFO("Comparisons string greater than");
+        CompositeKey a(30, "testd");
+        CompositeKey b(30, "testc");
+        BOOST_CHECK(!(a == b));
+        BOOST_CHECK( (a != b));
+        BOOST_CHECK(!(a < b));
+        BOOST_CHECK( (a > b));
+        BOOST_CHECK(!(a <= b));
+        BOOST_CHECK( (a >= b));
+    }
+
+    {
+        CompositeKey a(34568, "@#WSR$RT%fewsewer");
+        CompositeKey b(a);
+        BOOST_CHECK(b == a);
+    }
+
+    {
+        CompositeKey b;
+        CompositeKey a(98763, "AsdE$%342");
+        b = a;
+        BOOST_CHECK(a == b);
+    }
+
+    LOGS_INFO("CompositeKey test end");
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -431,15 +431,15 @@ void TcpBaseConnection::_handleImYourLNeighbor1(boost::system::error_code const&
         auto workerName = protoItem->wid();
         nInfo.keyCount = protoItem->mapsize();
         nInfo.recentAdds = protoItem->recentadds();
-        proto::WorkerRangeString protoRange = protoItem->range();
+        proto::WorkerRange protoRange = protoItem->range();
         LOGS(_log, LOG_LVL_INFO, funcName << " WorkerKeysInfo name=" << workerName <<
                                  " keyCount=" << nInfo.keyCount << " recentAdds=" << nInfo.recentAdds);
         bool valid = protoRange.valid();
         StringRange leftRange;
         StringRange newLeftRange;
         if (valid) {
-            std::string min   = protoRange.min();
-            std::string max   = protoRange.max();
+            CompositeKey min(protoRange.minint(), protoRange.minstr());
+            CompositeKey max(protoRange.maxint(), protoRange.maxstr());
             bool unlimited = protoRange.maxunlimited();
             leftRange.setMinMax(min, max, unlimited);
             LOGS(_log, LOG_LVL_WARN, funcName << " leftRange=" << leftRange);
@@ -528,7 +528,8 @@ void TcpBaseConnection::_handleShiftToRight1(boost::system::error_code const& ec
         for (int j=0; j < sz; ++j) {
             proto::KeyInfo const& protoKI = protoKeyList->keypair(j);
             ChunkSubchunk chSub(protoKI.chunk(), protoKI.subchunk());
-            keyList.push_back(std::make_pair(protoKI.key(), chSub));
+            CompositeKey key(protoKI.keyint(), protoKI.keystr());
+            keyList.push_back(std::make_pair(key, chSub));
         }
 
         // Now that the proto buffer was read without error, insert into map and adjust our range.

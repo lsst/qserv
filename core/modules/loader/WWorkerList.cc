@@ -253,7 +253,7 @@ void WWorkerList::updateEntry(uint32_t wId,
 }
 
 
-WWorkerListItem::Ptr WWorkerList::findWorkerForKey(std::string const& key) {
+WWorkerListItem::Ptr WWorkerList::findWorkerForKey(CompositeKey const& key) {
     std::string const funcName("WWorkerList::findWorkerForKey");
     std::unique_lock<std::mutex> lk(_mapMtx);
     // TODO Really could use a custom container for _rangeMap to speed this up.
@@ -361,7 +361,7 @@ util::CommandTracked::Ptr WWorkerListItem::createCommandWorkerInfoReq(CentralWor
 }
 
 
-bool WWorkerListItem::containsKey(std::string const& key) const {
+bool WWorkerListItem::containsKey(CompositeKey const& key) const {
     std::lock_guard<std::mutex> lck(_mtx);
     return _range.isInRange(key);
 }

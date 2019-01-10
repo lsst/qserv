@@ -71,16 +71,6 @@ void StringRange::setAllInclusiveRange() {
 }
 
 
-/* &&&
-bool StringRange::setMin(std::string const& val) {
-    if (not _unlimited && val >= _maxE) {
-        _min = decrementString(_maxE);
-        return false;
-    }
-    _min = val;
-    return true;
-}
-*/
 bool StringRange::setMin(CompositeKey const& val) {
     if (not _unlimited && val >= _maxE) {
         _min = decrement(_maxE);
@@ -90,24 +80,8 @@ bool StringRange::setMin(CompositeKey const& val) {
     return true;
 }
 
-/* &&&
 
-    bool StringRange::setMax(std::string const& val, bool unlimited=false) {
-        _unlimited = unlimited;
-        if (unlimited) {
-            if (val > _maxE) { _maxE = val; }
-            return true;
-        }
-        if (val < _min) {
-            _maxE = incrementString(_min);
-            return false;
-        }
-        _maxE = val;
-        return true;
-    }
-
- */
-bool StringRange::setMax(CompositeKey const& val, bool unlimited=false) {
+bool StringRange::setMax(CompositeKey const& val, bool unlimited) {
     _unlimited = unlimited;
     if (unlimited) {
         if (val > _maxE) { _maxE = val; }
@@ -122,25 +96,7 @@ bool StringRange::setMax(CompositeKey const& val, bool unlimited=false) {
 }
 
 
-/* &&&
-bool StringRange::setMinMax(std::string const& vMin, std::string const& vMax, bool unlimited=false) {
-    _unlimited = unlimited;
-    if (!unlimited && vMin > vMax) {
-        return false;
-    }
-    _unlimited = unlimited;
-    if (_unlimited) {
-        _min = vMin;
-        _maxE = std::max(vMax, _min); // max is irrelevant at this point
-    } else {
-        _min = vMin;
-        _maxE = vMax;
-    }
-    setValid();
-    return true;
-}
-*/
-bool StringRange::setMinMax(CompositeKey const& vMin, CompositeKey const& vMax, bool unlimited=false) {
+bool StringRange::setMinMax(CompositeKey const& vMin, CompositeKey const& vMax, bool unlimited) {
     _unlimited = unlimited;
     if (!unlimited && vMin > vMax) {
         return false;
@@ -201,7 +157,7 @@ std::string StringRange::decrementString(std::string const& str, char minChar) {
 }
 
 
-CompositeKey StringRange::decrement(CompositeKey const& key, char minChar='0') {
+CompositeKey StringRange::decrement(CompositeKey const& key, char minChar) {
     CompositeKey outK(key);
     if (outK.kStr.empty()) {
         if (outK.kInt > 0) --outK.kInt;
@@ -209,6 +165,16 @@ CompositeKey StringRange::decrement(CompositeKey const& key, char minChar='0') {
     }
     outK.kStr = decrementString(outK.kStr, minChar);
     return outK;
+}
+
+
+void StringRange::loadProtoRange(proto::WorkerRange& protoRange) {
+    protoRange.set_valid(_valid);
+    protoRange.set_minint(_min.kInt);
+    protoRange.set_minstr(_min.kStr);
+    protoRange.set_maxint(_maxE.kInt);
+    protoRange.set_maxstr(_maxE.kStr);
+    protoRange.set_maxunlimited(_unlimited);
 }
 
 
@@ -223,11 +189,11 @@ void ProtoHelper::workerKeysInfoExtractor(BufferUdp& data, uint32_t& wId, Neighb
     wId = protoItem->wid();
     nInfo.keyCount = protoItem->mapsize();
     nInfo.recentAdds = protoItem->recentadds();
-    proto::WorkerRangeString protoRange = protoItem->range();
+    proto::WorkerRange protoRange = protoItem->range();
     bool valid = protoRange.valid();
     if (valid) {
-        std::string min   = protoRange.min();
-        std::string max   = protoRange.max();
+        CompositeKey min(protoRange.minint(), protoRange.minstr());
+        CompositeKey max(protoRange.maxint(), protoRange.maxstr());
         bool unlimited = protoRange.maxunlimited();
         strRange.setMinMax(min, max, unlimited);
     }
