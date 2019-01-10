@@ -19,22 +19,24 @@ expression
     | expression logicalOperator expression                         #logicalExpression
     | predicate IS NOT? testValue=(TRUE | FALSE | UNKNOWN)          #isExpression
     | predicate                                                     #predicateExpression
-    | qservFunctionSpec                                             #qservFunctionSpecExpression
+    | ((DECIMAL_LITERAL EQUAL_SYMBOL qservFunctionSpec) |
+       (qservFunctionSpec EQUAL_SYMBOL DECIMAL_LITERAL) |
+        qservFunctionSpec)                                           #qservFunctionSpecExpression
     ;
-    
+
 qservFunctionSpec
-	: (	QSERV_AREASPEC_BOX | QSERV_AREASPEC_CIRCLE  
-	  | QSERV_AREASPEC_ELLIPSE | QSERV_AREASPEC_POLY   	
+	: (	QSERV_AREASPEC_BOX | QSERV_AREASPEC_CIRCLE
+	  | QSERV_AREASPEC_ELLIPSE | QSERV_AREASPEC_POLY
 	  | QSERV_AREASPEC_HULL) '(' constants ')'
-	;  	
- 
+	;
+
 // same as MySqlParser except:
 // * adds (val, min, max) keywords to betweenPredicate
 predicate
    : predicate NOT? IN '(' (selectStatement | expressions) ')'     #inPredicate
    | predicate IS nullNotnull                                      #isNullPredicate
    | left=predicate comparisonOperator right=predicate             #binaryComparasionPredicate
-   | predicate comparisonOperator 
+   | predicate comparisonOperator
      quantifier=(ALL | ANY | SOME) '(' selectStatement ')'         #subqueryComparasionPredicate
    | val=predicate NOT? BETWEEN min=predicate AND max=predicate    #betweenPredicate
    | predicate SOUNDS LIKE predicate                               #soundsLikePredicate
@@ -42,7 +44,7 @@ predicate
    | predicate NOT? regex=(REGEXP | RLIKE) predicate               #regexpPredicate
    | (LOCAL_ID VAR_ASSIGN)? expressionAtom                         #expressionAtomPredicate
    ;
- 
+
  decimalLiteral
     : MINUS? DECIMAL_LITERAL | ZERO_DECIMAL | ONE_DECIMAL | TWO_DECIMAL
     ;
