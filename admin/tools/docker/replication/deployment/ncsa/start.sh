@@ -105,7 +105,7 @@ if [ -n "${MASTER_CONTROLLER}" ]; then
         -v ${WORK_DIR}:${WORK_DIR} \
         -v ${CONFIG_DIR}:/qserv/replication/config:ro \
         -v ${LOG_DIR}:${LOG_DIR} \
-        -e "TOOL=qserv-replica-master" \
+        -e "TOOL=qserv-replica-master-http" \
         -e "'PARAMETERS=${MASTER_PARAMETERS}'" \
         -e "WORK_DIR=${WORK_DIR}" \
         -e "LOG_DIR=${LOG_DIR}" \
