@@ -20,73 +20,26 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-/// qserv-replica-calc-cs.cc calculate and print a checksum of
-/// the specified file.
+/**
+ * qserv-replica-calc-cs.cc calculate and print a checksum of
+ * the specified file.
+ */
 
 // System headers
-#include <iostream> 
+#include <iostream>
 #include <stdexcept>
-#include <string> 
-#include <vector> 
 
 // Qserv headers
-#include "replica/FileUtils.h"
-#include "util/CmdLineParser.h"
+#include "replica/CheckSumApp.h"
 
-using namespace lsst::qserv;
+using namespace lsst::qserv::replica;
 
-namespace {
-
-/// The name of an input file to be processed
-std::vector<std::string> fileNames;
-
-/// USe the incremental engine if set
-bool incremental;
-
-/// The test
-void test() {
+int main(int argc, const char* const argv[]) {
     try {
-        if (incremental) {
-            replica::MultiFileCsComputeEngine eng(fileNames);
-            while (not eng.execute()) { ; }
-            for (auto const& name: fileNames) {
-                std::cout << name << ": " << eng.cs(name) << std::endl;
-            }
-        } else {
-            for (auto const& name: fileNames) {
-                std::cout << name << ": " << replica::FileUtils::compute_cs(name) << std::endl;
-            }
-        }
+        auto app = CheckSumApp::create(argc, argv);
+        return app->run();
     } catch (std::exception const& ex) {
-        std::cerr << ex.what() << std::endl;
-        std::exit(1);
+        std::cerr << "main()  the application failed, exception: " << ex.what() << std::endl;
     }
-}
-} // namespace
-
-int main(int argc, const char *argv[]) {
-
-    // Parse command line parameters
-    try {
-        util::CmdLineParser parser(
-            argc,
-            argv,
-            "\n"
-            "Usage:\n"
-            "  <file> [<file> [<file> ... ] [--incremental]\n"
-            "\n"
-            "Parameters:\n"
-            "  <file>  - the name of a file to read. Multiple files can be specified\n"
-            "\n"
-            "Flags and options\n"
-            "  --incremental  -- use the incremental file reader\n");
-
-        parser.parameters<std::string>(::fileNames);
-        ::incremental = parser.flag("incremental");
-
-    } catch (std::exception const &ex) {
-        return 1;
-    } 
-    ::test();
-    return 0;
+    return 1;
 }
