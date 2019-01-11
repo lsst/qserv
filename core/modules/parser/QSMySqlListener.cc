@@ -3988,6 +3988,9 @@ ENTER_EXIT_PARENT(FunctionArgs)
 ENTER_EXIT_PARENT(FunctionArg)
 UNHANDLED(IsExpression)
 ENTER_EXIT_PARENT(NotExpression)
+// The grammar allows for an equals operator with a decimal literal on either side of the
+// QservFunctionSpecExpression to allow qserv to be compatible with libraries that generate SQL. However, the
+// equals operator and decimal literal are ignored by qserv, and may be omitted.
 IGNORED(QservFunctionSpecExpression)
 ENTER_EXIT_PARENT(LogicalExpression)
 UNHANDLED(SoundsLikePredicate)
