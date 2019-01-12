@@ -1010,7 +1010,8 @@ size_t DatabaseServicesMySQL::numOrphanChunks(std::string const& database,
                 "    (SELECT  "       + _conn->sqlId("chunk")   +
                 "       FROM  "       + _conn->sqlId("replica") +
                 "       WHERE "       + _conn->sqlEqual("database", database) +
-                "         AND "       + _conn->sqlIn("worker", workersToExclude) +
+                (workersToExclude.empty() ? "" :
+                "         AND "       + _conn->sqlIn("worker", workersToExclude)) +
                 "    )";
 
             LOGS(_log, LOG_LVL_DEBUG, context + "query: " + query);
