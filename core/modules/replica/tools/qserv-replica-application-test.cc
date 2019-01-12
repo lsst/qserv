@@ -118,6 +118,9 @@ protected:
             _verbose);
 
         auto&& command1 = parser().command("COMMAND1");
+        command1.description(
+            "This is the first command"
+        );
         command1.required(
             "p11",
             "description of the additional required parameter specific for the command",
@@ -134,6 +137,9 @@ protected:
             _o12
         );
 
+        parser().command("COMMAND2").description(
+            "This is the second command"
+        );
         parser().command("COMMAND2").flag(
            "f21",
            "description of the additional flag specific to the command",

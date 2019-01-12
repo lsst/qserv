@@ -167,7 +167,7 @@ BOOST_AUTO_TEST_CASE(ApplicationParser4) {
 
     LOGS_INFO("ApplicationParser4 test begins");
 
-    std::string  command;
+    std::string command;
 
     // Required by all commands
 
@@ -216,6 +216,7 @@ BOOST_AUTO_TEST_CASE(ApplicationParser4) {
               .required("r6", "required parameter r6", r6)
               .optional("o1", "optional parameter o1", o1);
         parser.command("C1")
+              .description("This is the first command")
               .required("c1r1", "required parameter c1r1 of command C1", c1r1)
               .optional("c1o1", "optional parameter c1o1 of command C1", c1o1);
         parser.parse();
@@ -281,6 +282,7 @@ BOOST_AUTO_TEST_CASE(ApplicationParser4) {
               .required("r6", "required parameter r6", r6)
               .optional("o1", "optional parameter o1", o1);
         parser.command("C2")
+              .description("This is the second command")
               .required("c2r1", "required parameter c2r1 of command C2", c2r1)
               .flag(    "c2f1", "flag c2f1 of command C2",               c2f1);
         parser.parse();
@@ -344,12 +346,15 @@ BOOST_AUTO_TEST_CASE(ApplicationParser4) {
               .required("r6", "required parameter r6", r6)
               .optional("o1", "optional parameter o1", o1);
         parser.command("C1")
+              .description("This is the first command")
               .required("c1r1", "required parameter c1r1 of command C1", c1r1)
               .optional("c1o1", "optional parameter c1o1 of command C1", c1o1);
         parser.command("C2")
+              .description("This is the second command")
               .required("c2r1", "required parameter c2r1 of command C2", c2r1)
               .optional("c2f1", "flag c2f1 of command C1", c2f1);
         parser.command("C3")
+              .description("This is the third command")
               .optional("c3o1", "optional parameter c3o1 of command C3", c3o1);
         parser.parse();
 
@@ -404,12 +409,15 @@ BOOST_AUTO_TEST_CASE(ApplicationParser4) {
               .required("r6", "required parameter r6", r6)
               .optional("o1", "optional parameter o1", o1);
         parser.command("C1")
+              .description("This is the first command")
               .required("c1r1", "required parameter c1r1 of command C1", c1r1)
               .optional("c1o1", "optional parameter c1o1 of command C1", c1o1);
         parser.command("C2")
+              .description("This is the second command")
               .required("c2r1", "required parameter c2r1 of command C2", c2r1)
               .optional("c2f1", "flag c2f1 of command C1", c2f1);
         parser.command("C3")
+              .description("This is the third command")
               .optional("c3o1", "optional parameter c3o1 of command C3", c3o1);
 
         int status = parser.parse();
