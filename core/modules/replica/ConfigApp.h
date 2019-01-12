@@ -239,7 +239,7 @@ private:
     bool _dumpDbShowPassword{false};
 
     /// Print vertical separator in tables
-    bool _verticalSeparator{false};
+    bool _verticalSeparator = false;
 
     /// Format of an initialization file
     std::string _format;
