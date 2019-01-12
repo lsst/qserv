@@ -41,7 +41,14 @@
 
 // Qserv headers
 #include "global/Bug.h"
+#include "query/AndTerm.h"
+#include "query/BoolTerm.h"
+#include "query/BoolFactor.h"
+#include "query/ColumnRef.h"
+#include "query/LogicalTerm.h"
+#include "query/OrTerm.h"
 #include "query/Predicate.h"
+#include "query/QsRestrictor.h"
 #include "query/QueryTemplate.h"
 #include "util/PointerCompare.h"
 #include "util/IterableFormatter.h"
@@ -108,8 +115,7 @@ void WhereClause::setRootTerm(std::shared_ptr<LogicalTerm> term) {
 }
 
 
-std::shared_ptr<AndTerm>
-WhereClause::getRootAndTerm()
+std::shared_ptr<AndTerm> WhereClause::getRootAndTerm() const
 {
     // Find the global AND. If an OR term is root and has multiple terms, there is no global AND which means
     // we should return NULL.
@@ -148,7 +154,7 @@ WhereClause::prependAndTerm(std::shared_ptr<BoolTerm> t) {
     }
 
     if (!andTerm->merge(*t)) {
-        andTerm->_terms.push_back(t);
+        andTerm->_terms.insert(andTerm->_terms.begin(), t);
     }
 }
 

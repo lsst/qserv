@@ -42,9 +42,12 @@
 #include "qana/TableInfoPool.h"
 
 #include "parser/SqlSQL2Parser.hpp" // (generated) SqlSQL2TokenTypes
+#include "query/AndTerm.h"
+#include "query/BoolFactor.h"
 #include "query/ColumnRef.h"
 #include "query/FromList.h"
 #include "query/FuncExpr.h"
+#include "query/OrTerm.h"
 #include "query/Predicate.h"
 #include "query/QueryContext.h"
 #include "query/QueryTemplate.h"

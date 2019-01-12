@@ -33,6 +33,7 @@
 #include "parser/BoolTermFactory.h"
 
 // Third-party headers
+#include "lsst/log/Log.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -43,6 +44,13 @@
 #include "parser/ParseException.h"
 #include "parser/SqlSQL2Parser.hpp" // (generated) SqlSQL2TokenTypes
 #include "parser/ValueExprFactory.h"
+#include "query/BoolFactor.h"
+#include "query/BoolFactorTerm.h"
+#include "query/BoolTermFactor.h"
+#include "query/AndTerm.h"
+#include "query/OrTerm.h"
+#include "query/UnknownTerm.h"
+#include "query/PassTerm.h"
 #include "query/Predicate.h"
 
 namespace {

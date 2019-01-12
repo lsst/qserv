@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2015 LSST Corporation.
+ * Copyright 2012-2019 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -32,30 +32,30 @@
   * @author Daniel L. Wang, SLAC
   */
 
+
 // System headers
 #include <iostream>
 #include <memory>
 #include <stack>
+#include <vector>
 
-// Local headers
-#include "query/BoolTerm.h"
-#include "query/ColumnRef.h"
-#include "query/QsRestrictor.h"
 
-// Forward declarations
 namespace lsst {
 namespace qserv {
 namespace parser {
     class WhereFactory;
 }
 namespace query {
-    class BoolTerm;
-}}} // End of forward declarations
 
 
-namespace lsst {
-namespace qserv {
-namespace query {
+class BoolTerm;
+class ColumnRef;
+class LogicalTerm;
+class AndTerm;
+class OrTerm;
+class QsRestrictor;
+class QueryTemplate;
+class ValueExpr;
 
 
 /// WhereClause is a SQL WHERE containing QsRestrictors and a BoolTerm tree.
@@ -64,7 +64,7 @@ public:
     WhereClause() {}
     ~WhereClause() {}
 
-    std::shared_ptr<QsRestrictor::PtrVector const> getRestrs() const {
+    std::shared_ptr<std::vector<std::shared_ptr<QsRestrictor>> const> getRestrs() const {
         return _restrs;
     }
     std::shared_ptr<OrTerm const> getRootTerm() const { return _rootOrTerm; }
@@ -74,15 +74,15 @@ public:
     // an OrTerm that contains term will be the root term.
     void setRootTerm(std::shared_ptr<LogicalTerm> term);
 
-    std::shared_ptr<ColumnRef::Vector const> getColumnRefs() const;
-    std::shared_ptr<AndTerm> getRootAndTerm();
+    std::shared_ptr<std::vector<std::shared_ptr<ColumnRef>> const> getColumnRefs() const;
+    std::shared_ptr<AndTerm> getRootAndTerm() const;
 
     std::string getGenerated() const;
     void renderTo(QueryTemplate& qt) const;
     std::shared_ptr<WhereClause> clone() const;
     std::shared_ptr<WhereClause> copySyntax();
 
-    void findValueExprs(ValueExprPtrVector& list) const;
+    void findValueExprs(std::vector<std::shared_ptr<ValueExpr>>& list) const;
 
     void resetRestrs();
     void prependAndTerm(std::shared_ptr<BoolTerm> t);
@@ -98,7 +98,9 @@ private:
     friend class parser::WhereFactory;
 
     std::shared_ptr<OrTerm> _rootOrTerm;
-    std::shared_ptr<QsRestrictor::PtrVector> _restrs{std::make_shared<query::QsRestrictor::PtrVector>()};
+    std::shared_ptr<std::vector<std::shared_ptr<QsRestrictor>>> _restrs {
+        std::make_shared<std::vector<std::shared_ptr<QsRestrictor>>>()
+    };
 };
 
 

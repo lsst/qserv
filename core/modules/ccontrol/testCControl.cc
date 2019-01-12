@@ -40,6 +40,10 @@
 #include "parser/ParseException.h"
 #include "parser/SelectParser.h"
 #include "qproc/QuerySession.h"
+#include "query/AndTerm.h"
+#include "query/BoolFactor.h"
+#include "query/BoolTerm.h"
+#include "query/OrTerm.h"
 #include "query/Predicate.h"
 #include "query/SelectList.h"
 #include "query/SelectStmt.h"
@@ -752,7 +756,7 @@ static const std::vector<Antlr4CompareQueries> ANTLR4_COMPARE_QUERIES = {
     Antlr4CompareQueries(
         // The numbers used here; 400000000000000 and 430000000000000 are arbitrary, but do represent values
         // that one may see for objectId in the lsst qserv database and so are reasonable choices for a unit
-        // test. 
+        // test.
         "select objectId from Object where objectId < 400000000000000 || objectId > 430000000000000 ORDER BY objectId;", // ||
         "select objectId from Object where objectId < 400000000000000 OR objectId > 430000000000000 ORDER BY objectId", // OR
         nullptr,

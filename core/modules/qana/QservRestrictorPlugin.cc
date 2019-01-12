@@ -47,11 +47,17 @@
 #include "css/CssAccess.h"
 #include "global/stringTypes.h"
 #include "qana/AnalysisError.h"
+#include "query/AndTerm.h"
+#include "query/BoolFactor.h"
 #include "query/ColumnRef.h"
+#include "query/DbTablePair.h"
 #include "query/FromList.h"
 #include "query/FuncExpr.h"
 #include "query/JoinRef.h"
+#include "query/PassTerm.h"
+#include "query/PassListTerm.h"
 #include "query/Predicate.h"
+#include "query/QsRestrictor.h"
 #include "query/QueryContext.h"
 #include "query/SelectStmt.h"
 #include "query/SqlSQL2Tokens.h" // (generated) SqlSQL2TokenTypes
@@ -233,8 +239,8 @@ query::QsRestrictor::PtrVector getSecIndexRestrictors(query::QueryContext& conte
     query::QsRestrictor::PtrVector result;
     if (not andTerm) return result;
 
-    for (auto term : andTerm->_terms) {
-        query::BoolFactor* factor = dynamic_cast<query::BoolFactor*>(term.get());
+    for (auto&& term : andTerm->_terms) {
+        auto factor = std::dynamic_pointer_cast<query::BoolFactor>(term);
         if (!factor) continue;
         for (auto factorTerm : factor->_terms) {
 

@@ -33,8 +33,12 @@
 // Third-party headers
 
 // Qserv headers
+#include "query/AndTerm.h"
 #include "query/BoolTerm.h"
+#include "query/BoolFactor.h"
 #include "query/ColumnRef.h"
+#include "query/OrTerm.h"
+#include "query/PassTerm.h"
 #include "query/Predicate.h"
 #include "query/QueryContext.h"
 #include "query/SelectStmt.h"

@@ -36,16 +36,12 @@
 
 // Local headers
 #include "query/typedefs.h"
-#include "query/BoolTerm.h"
+#include "query/BoolFactorTerm.h"
 #include "query/ValueExpr.h"
 
 namespace lsst {
 namespace qserv {
 namespace query {
-
-
-// Forward
-class QueryTemplate;
 
 
 ///  Predicate is a representation of a SQL predicate.

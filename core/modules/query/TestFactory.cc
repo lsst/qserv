@@ -27,6 +27,7 @@
 // Third-party headers
 
 // Qserv headers
+#include "query/BoolFactor.h"
 #include "query/FromList.h"
 #include "query/Predicate.h"
 #include "query/SelectList.h"

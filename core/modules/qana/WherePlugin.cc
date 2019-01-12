@@ -37,6 +37,7 @@
 // Third-party headers
 
 // Qserv headers
+#include "query/AndTerm.h"
 #include "query/BoolTerm.h"
 #include "query/QueryContext.h"
 #include "query/SelectStmt.h"

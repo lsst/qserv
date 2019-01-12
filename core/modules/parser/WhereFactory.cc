@@ -51,6 +51,9 @@
 #include "parser/parseTreeUtil.h"
 #include "parser/ParseException.h"
 #include "parser/SqlSQL2Parser.hpp" // applies several "using antlr::***".
+#include "query/LogicalTerm.h"
+#include "query/OrTerm.h"
+#include "query/QsRestrictor.h"
 #include "query/ValueFactor.h"
 #include "query/WhereClause.h"
 
