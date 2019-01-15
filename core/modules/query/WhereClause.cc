@@ -153,7 +153,7 @@ WhereClause::prependAndTerm(std::shared_ptr<BoolTerm> t) {
         throw std::logic_error("There is more than term in the root OR term; can't pick a global AND term");
     }
 
-    if (!andTerm->merge(*t)) {
+    if (!andTerm->merge(*t, AndTerm::PREPEND)) {
         andTerm->_terms.insert(andTerm->_terms.begin(), t);
     }
 }

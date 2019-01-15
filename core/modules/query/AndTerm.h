@@ -51,6 +51,9 @@ public:
 
     bool merge(const BoolTerm& other) override;
 
+    enum MergeBehavior {PREPEND, APPEND};
+    bool merge(const BoolTerm& other, MergeBehavior mergeBehavior);
+
     bool operator==(const BoolTerm& rhs) const;
 
 protected:

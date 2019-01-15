@@ -43,11 +43,17 @@ std::shared_ptr<BoolTerm> AndTerm::copySyntax() const {
 
 
 bool AndTerm::merge(const BoolTerm& other) {
+    return merge(other, APPEND);
+}
+
+
+bool AndTerm::merge(const BoolTerm& other, MergeBehavior mergeBehavior) {
     auto otherAnd = dynamic_cast<const AndTerm*>(&other);
     if (nullptr == otherAnd) {
         return false;
     }
-    _terms.insert(_terms.end(), otherAnd->_terms.begin(), otherAnd->_terms.end());
+    auto startAt = mergeBehavior == PREPEND ? _terms.begin() : _terms.end();
+    _terms.insert(startAt, otherAnd->_terms.begin(), otherAnd->_terms.end());
     return true;
 }
 
