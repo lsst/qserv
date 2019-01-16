@@ -90,6 +90,9 @@ private:
     /// The flag which if set allows selecting all workers for the operation
     bool _allWorkers = false;
 
+    /// The flag which if set will trigger detailed report on remote requests
+    bool _dumpRequestInfo = false;
+
     /// The maximum timeout for the management requests
     unsigned int _requestExpirationIvalSec = 10;
 

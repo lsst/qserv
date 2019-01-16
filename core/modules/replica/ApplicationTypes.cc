@@ -393,7 +393,7 @@ std::string const& Parser::help() {
                 auto const& name    = entry.first;
                 auto const& command = entry.second;
 
-                _help += "\n  <" + name + ">\n" + wrap(command->_description) + "\n";
+                _help += "\n  " + name + "\n" + wrap(command->_description) + "\n";
             }
         }
         _help += "\nPARAMETERS:\n";

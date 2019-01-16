@@ -80,6 +80,29 @@ AdminApp::AdminApp(int argc,
         {"STATUS", "SUSPEND", "RESUME", "REQUESTS", "DRAIN"},
         _operation);
 
+    parser().command("STATUS").description(
+        "Retrieve and display the status of each worker");
+
+    parser().command("SUSPEND").description(
+        "Suspend workers services on all workers. Cancel requests which are being processed"
+        " and put them back into the input queue. The operation won't affect requests"
+        " which have already completed");
+
+    parser().command("RESUME").description(
+        "Resume workers services on all workers");
+
+    parser().command("REQUESTS").description(
+        "Retrieve and display the information of all (regardless of their processing status)"
+        " requests from all workers");
+
+    parser().command("REQUESTS").flag(
+        "dump-request-info",
+        "Print detailed info on requests obtained from the workers",
+        _dumpRequestInfo);
+
+    parser().command("DRAIN").description(
+        "Cancel the in-progress (if any) requests on all workers, then empty all queues");
+
     parser().option(
         "timeout",
         "maximum timeout (seconds) for the management requests",
@@ -202,20 +225,71 @@ int AdminApp::runImpl() {
             numFinishedRequests.push_back(  "*");
         }
     }
+    util::ColumnTablePrinter tableWorkers("WORKERS:", "  ", _verticalSeparator);
+
+    tableWorkers.addColumn("worker",                workerName, util::ColumnTablePrinter::Alignment::LEFT);
+    tableWorkers.addColumn("started (seconds ago)", startedSecondsAgo);
+    tableWorkers.addColumn("state",                 state,      util::ColumnTablePrinter::Alignment::LEFT);
+    tableWorkers.addColumn("queued",                numNewRequests);
+    tableWorkers.addColumn("in-progress",           numInProgressRequests);
+    tableWorkers.addColumn("finished",              numFinishedRequests);
 
     cout << "\n";
+    tableWorkers.print(cout, false, false);
 
-    util::ColumnTablePrinter table("WORKERS:", "  ", _verticalSeparator);
+    if (_dumpRequestInfo) {
 
-    table.addColumn("worker",                workerName, util::ColumnTablePrinter::Alignment::LEFT);
-    table.addColumn("started (seconds ago)", startedSecondsAgo);
-    table.addColumn("state",                 state,      util::ColumnTablePrinter::Alignment::LEFT);
-    table.addColumn("queued",                numNewRequests);
-    table.addColumn("in-progress",           numInProgressRequests);
-    table.addColumn("finished",              numFinishedRequests);
+        vector<string>   workerName;
+        vector<string>   requestId;
+        vector<string>   requestType;
+        vector<string>   queue;
+        vector<uint32_t> priority;
+        vector<string>   database;
+        vector<uint32_t> chunk;
+        vector<string>   sourceWorkerName;
 
-    table.print(cout, false, false);
+        auto analyzeRemoteRequestInfo = [&](string const& worker,
+                                            string const& queueName,
+                                            proto::ReplicationServiceResponseInfo const& info) {
+            workerName      .push_back(worker);
+            requestId       .push_back(info.id());
+            requestType     .push_back(proto::ReplicationReplicaRequestType_Name(info.replica_type()));
+            queue           .push_back(queueName);
+            priority        .push_back(info.priority());
+            database        .push_back(info.database());
+            chunk           .push_back(info.chunk());
+            sourceWorkerName.push_back(info.worker());
+        };
+        for (auto const& ptr: tracker.requests) {
 
+            if ((ptr->state()         == Request::State::FINISHED) &&
+                (ptr->extendedState() == Request::ExtendedState::SUCCESS)) {
+
+                for (auto&& info: ptr->getServiceState().newRequests) {
+                    analyzeRemoteRequestInfo(ptr->worker(), "QUEUED", info);
+                }
+                for (auto&& info: ptr->getServiceState().inProgressRequests) {
+                    analyzeRemoteRequestInfo(ptr->worker(), "IN-PROGRESS", info);
+                }
+                for (auto&& info: ptr->getServiceState().finishedRequests) {
+                    analyzeRemoteRequestInfo(ptr->worker(), "FINISHED", info);
+                }
+            }
+        }
+        util::ColumnTablePrinter tableRequests("REQUESTS:", "  ", _verticalSeparator);
+
+        tableRequests.addColumn("worker",        workerName,       util::ColumnTablePrinter::Alignment::LEFT);
+        tableRequests.addColumn("id",            requestId,        util::ColumnTablePrinter::Alignment::LEFT);
+        tableRequests.addColumn("type",          requestType,      util::ColumnTablePrinter::Alignment::LEFT);
+        tableRequests.addColumn("queue",         queue,            util::ColumnTablePrinter::Alignment::LEFT);
+        tableRequests.addColumn("priority",      priority);
+        tableRequests.addColumn("database",      database,         util::ColumnTablePrinter::Alignment::LEFT);
+        tableRequests.addColumn("chunk",         chunk);
+        tableRequests.addColumn("source worker", sourceWorkerName, util::ColumnTablePrinter::Alignment::LEFT);
+
+        cout << "\n";
+        tableRequests.print(cout, false, false);
+    }
     return 0;
 }
 
