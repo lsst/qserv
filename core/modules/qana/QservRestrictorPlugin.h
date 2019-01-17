@@ -36,7 +36,7 @@ namespace query {
     class QsRestrictor;
     class QueryContext;
     class SelectStmt;
-} // end forward declarations
+}}} // end forward declarations
 
 
 namespace lsst {
@@ -77,9 +77,8 @@ public:
     void applyPhysical(QueryPlugin::Plan& p, query::QueryContext& context) override;
 
 private:
-    std::shared_ptr<query::BoolTerm>
-        _makeCondition(std::shared_ptr<query::QsRestrictor> const restr,
-                       RestrictorEntry const& restrictorEntry);
+    std::shared_ptr<query::BoolTerm> _makeCondition(std::shared_ptr<query::QsRestrictor> const restr,
+                                                    RestrictorEntry const& restrictorEntry);
 };
 
 
