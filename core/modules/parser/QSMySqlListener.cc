@@ -2744,7 +2744,7 @@ private:
 
     vector<shared_ptr<query::BoolTerm>> _terms;
     LogicalOperatorCBH::OperatorType _logicalOperatorType;
-    bool _logicalOperatorIsSet {false};
+    bool _logicalOperatorIsSet = false;
 };
 
 
