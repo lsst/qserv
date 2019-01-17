@@ -237,7 +237,7 @@ std::shared_ptr<AndTerm> WhereClause::_addRootAndTerm() {
 }
 
 
-bool WhereClause::operator==(WhereClause& rhs) const {
+bool WhereClause::operator==(WhereClause const& rhs) const {
     return (util::ptrCompare<BoolTerm>(_rootOrTerm, rhs._rootOrTerm) &&
             util::ptrVectorPtrCompare<QsRestrictor>(_restrs, rhs._restrs));
 }

@@ -86,7 +86,7 @@ public:
     void resetRestrs();
     void prependAndTerm(std::shared_ptr<BoolTerm> t);
 
-    bool operator==(WhereClause& rhs) const;
+    bool operator==(WhereClause const& rhs) const;
 
 private:
     std::shared_ptr<AndTerm> _addRootAndTerm();
