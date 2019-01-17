@@ -22,9 +22,10 @@
  */
 
 
+// Class header
 #include "query/BoolFactor.h"
 
-
+// Qserv headers
 #include "query/BoolFactorTerm.h"
 #include "query/BoolTermFactor.h"
 #include "query/ColumnRef.h"

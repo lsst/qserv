@@ -26,20 +26,26 @@
 #define LSST_QSERV_QUERY_BOOLFACTOR_H
 
 
+// System headers
 #include <vector>
 
-
+// Qserv headers
 #include "query/BoolTerm.h"
+
+
+// Forward declarations
+namespace lsst {
+namespace qserv {
+namespace query {
+    class BoolFactorTerm;
+    class ColumnRef;
+    class ValueExpr;
+}}} // End of forward declarations
 
 
 namespace lsst {
 namespace qserv {
 namespace query {
-
-
-class BoolFactorTerm;
-class ColumnRef;
-class ValueExpr;
 
 
 /// BoolFactor is a plain factor in a BoolTerm
