@@ -49,12 +49,12 @@ public:
     std::shared_ptr<BoolTerm> clone() const override;
     std::shared_ptr<BoolTerm> copySyntax() const override;
 
-    bool merge(const BoolTerm& other) override;
+    bool merge(BoolTerm const& other) override;
 
     enum MergeBehavior {PREPEND, APPEND};
-    bool merge(const BoolTerm& other, MergeBehavior mergeBehavior);
+    bool merge(BoolTerm const& other, MergeBehavior mergeBehavior);
 
-    bool operator==(const BoolTerm& rhs) const;
+    bool operator==(BoolTerm const& rhs) const;
 
 protected:
     void dbgPrint(std::ostream& os) const override;

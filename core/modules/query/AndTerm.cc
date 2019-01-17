@@ -42,12 +42,12 @@ std::shared_ptr<BoolTerm> AndTerm::copySyntax() const {
 }
 
 
-bool AndTerm::merge(const BoolTerm& other) {
+bool AndTerm::merge(BoolTerm const& other) {
     return merge(other, APPEND);
 }
 
 
-bool AndTerm::merge(const BoolTerm& other, MergeBehavior mergeBehavior) {
+bool AndTerm::merge(BoolTerm const& other, MergeBehavior mergeBehavior) {
     auto otherAnd = dynamic_cast<const AndTerm*>(&other);
     if (nullptr == otherAnd) {
         return false;
@@ -63,7 +63,7 @@ void AndTerm::dbgPrint(std::ostream& os) const {
 }
 
 
-bool AndTerm::operator==(const BoolTerm& rhs) const {
+bool AndTerm::operator==(BoolTerm const& rhs) const {
     auto rhsAndTerm = dynamic_cast<AndTerm const *>(&rhs);
     if (nullptr == rhsAndTerm) {
         return false;
