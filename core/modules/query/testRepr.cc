@@ -26,16 +26,15 @@
   *
   */
 
+
 // System headers
 #include <cstddef>
 #include <sstream>
 
-// Third-party headers
-
 // Qserv headers
 #include "query/AndTerm.h"
-#include "query/BoolTerm.h"
 #include "query/BoolFactor.h"
+#include "query/BoolTerm.h"
 #include "query/ColumnRef.h"
 #include "query/OrTerm.h"
 #include "query/PassTerm.h"
@@ -48,9 +47,11 @@
 #include "query/ValueFactor.h"
 #include "query/WhereClause.h"
 
+
 // Boost unit test header
 #define BOOST_TEST_MODULE QueryRepr_1
 #include "boost/test/included/unit_test.hpp"
+
 
 namespace lsst {
 namespace qserv {
