@@ -113,6 +113,7 @@ void FindAllJob::startImpl(util::Lock const& lock) {
 
     for (auto&& worker: controller()->serviceProvider()->config()->workers()) {
         for (auto&& database: _databases) {
+            _replicaData.workers[worker] = false;
             _requests.push_back(
                 controller()->findAllReplicas(
                     worker,
@@ -201,8 +202,6 @@ void FindAllJob::onRequestFinish(FindAllRequest::Ptr const& request) {
                                .atWorker(info.worker()) = info;
         }
         _replicaData.workers[request->worker()] = true;
-    } else {
-        _replicaData.workers[request->worker()] = false;
     }
 
     LOGS(_log, LOG_LVL_DEBUG, context()
