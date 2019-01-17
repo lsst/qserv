@@ -67,8 +67,7 @@ public:
     std::shared_ptr<std::vector<std::shared_ptr<QsRestrictor>> const> getRestrs() const {
         return _restrs;
     }
-    std::shared_ptr<OrTerm const> getRootTerm() const { return _rootOrTerm; }
-    std::shared_ptr<OrTerm> getRootTerm() { return _rootOrTerm; }
+    std::shared_ptr<OrTerm>& getRootTerm() { return _rootOrTerm; }
 
     // Set the root term of the where clause. If `term` is an OrTerm, this will be the root term. If not then
     // an OrTerm that contains term will be the root term.
