@@ -55,7 +55,7 @@ class BoolTermFactor : public BoolFactorTerm {
 public:
     typedef std::shared_ptr<BoolTermFactor> Ptr;
 
-    BoolTermFactor() {}
+    BoolTermFactor() = default;
     BoolTermFactor(std::shared_ptr<BoolTerm> term) : _term(term) {}
 
     virtual BoolFactorTerm::Ptr clone() const;
