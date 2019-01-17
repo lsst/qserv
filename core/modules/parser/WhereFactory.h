@@ -41,6 +41,8 @@
 
 class SqlSQL2Parser;
 
+
+// forward declarations
 namespace lsst {
 namespace qserv {
 namespace query {
@@ -50,6 +52,12 @@ namespace query {
 namespace parser {
     class SelectFactory;
     class ValueExprFactory;
+}}} // end forward declarations
+
+
+namespace lsst {
+namespace qserv {
+namespace parser {
 
 
 /// WhereFactory is a factory for WhereClause parsed elements.
