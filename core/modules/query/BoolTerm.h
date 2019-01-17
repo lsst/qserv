@@ -62,7 +62,7 @@ public:
     typedef std::shared_ptr<BoolTerm> Ptr;
     typedef std::vector<Ptr> PtrVector;
 
-    virtual ~BoolTerm() {}
+    virtual ~BoolTerm() = default;
     virtual char const* getName() const { return "BoolTerm"; }
 
     enum OpPrecedence {
