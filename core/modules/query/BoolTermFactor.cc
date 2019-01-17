@@ -22,9 +22,10 @@
  */
 
 
+// Class header
 #include "BoolTermFactor.h"
 
-
+// Qserv headers
 #include "query/BoolTerm.h"
 
 
@@ -63,7 +64,7 @@ void BoolTermFactor::dbgPrint(std::ostream& os) const {
 }
 
 
-bool BoolTermFactor::operator==(const BoolFactorTerm& rhs) const {
+bool BoolTermFactor::operator==(BoolFactorTerm const& rhs) const {
     auto rhsTerm = dynamic_cast<BoolTermFactor const *>(&rhs);
     if (nullptr == rhsTerm) {
         return false;

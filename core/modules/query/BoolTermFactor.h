@@ -26,19 +26,26 @@
 #define LSST_QSERV_QUERY_BOOLTERMFACTOR_H
 
 
+// System headers
 #include <ostream>
 
+// Qserv headers
 #include "query/BoolFactorTerm.h"
 #include "query/ColumnRef.h"
+
+
+// Forward declarations
+namespace lsst {
+namespace qserv {
+namespace query {
+    class BoolTerm;
+    class ValueExpr;
+}}} // End of forward declarations
 
 
 namespace lsst {
 namespace qserv {
 namespace query {
-
-
-class BoolTerm;
-class ValueExpr;
 
 
 /// BoolTermFactor is a bool factor term that contains a bool term. Occurs often
@@ -59,7 +66,7 @@ public:
     virtual void findValueExprs(std::vector<std::shared_ptr<ValueExpr>>& vector) const;
     virtual void findColumnRefs(ColumnRef::Vector& vector) const;
 
-    bool operator==(const BoolFactorTerm& rhs) const override;
+    bool operator==(BoolFactorTerm const& rhs) const override;
 
     std::shared_ptr<BoolTerm> _term;
 
