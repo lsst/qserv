@@ -59,12 +59,12 @@ bool BoolFactor::_reduceTerms(std::vector<std::shared_ptr<BoolFactorTerm>>& newT
     bool hasReduction = false;
     for (auto&& term : oldTerms) {
         auto btf = std::dynamic_pointer_cast<BoolTermFactor>(term);
-        if (btf) {
-            if (btf->_term) {
+        if (nullptr != btf) {
+            if (nullptr != btf->_term) {
                 std::shared_ptr<BoolTerm> reduced = btf->_term->getReduced();
                 if (reduced) {
                     auto f = std::dynamic_pointer_cast<BoolFactor>(reduced);
-                    if (f) {
+                    if (nullptr != f) {
                         // factor in a term in a factor --> factor
                         newTerms.insert(newTerms.end(), f->_terms.begin(), f->_terms.end());
                         hasReduction = true;
@@ -96,11 +96,11 @@ bool BoolFactor::_reduceTerms(std::vector<std::shared_ptr<BoolFactorTerm>>& newT
 bool BoolFactor::_checkParen(std::vector<std::shared_ptr<BoolFactorTerm>>& terms) {
     if (terms.size() != 3) { return false; }
 
-    PassTerm* pt = dynamic_cast<PassTerm*>(terms.front().get());
-    if (!pt || (pt->_text != "(")) { return false; }
+    auto pt = std::dynamic_pointer_cast<PassTerm>(terms.front());
+    if (nullptr == pt || (pt->_text != "(")) { return false; }
 
-    pt = dynamic_cast<PassTerm*>(terms.back().get());
-    if (!pt || (pt->_text != ")")) { return false; }
+    pt = std::dynamic_pointer_cast<PassTerm>(terms.back());
+    if (nullptr == pt || (pt->_text != ")")) { return false; }
 
     auto boolTermFactorPtr = std::dynamic_pointer_cast<BoolTermFactor>(terms[1]);
     if (nullptr == boolTermFactorPtr) {
@@ -135,7 +135,7 @@ std::shared_ptr<BoolTerm> BoolFactor::getReduced() {
 
 
 std::shared_ptr<BoolTerm> BoolFactor::clone() const {
-    std::shared_ptr<BoolFactor> t = std::make_shared<BoolFactor>();
+    auto t = std::make_shared<BoolFactor>();
     t->_hasNot = _hasNot;
     copyTerms<BoolFactorTerm::PtrVector, deepCopy>(t->_terms, _terms);
     return t;
@@ -143,7 +143,7 @@ std::shared_ptr<BoolTerm> BoolFactor::clone() const {
 
 
 std::shared_ptr<BoolTerm> BoolFactor::copySyntax() const {
-    std::shared_ptr<BoolFactor> bf = std::make_shared<BoolFactor>();
+    auto bf = std::make_shared<BoolFactor>();
     bf->_hasNot = _hasNot;
     copyTerms<BoolFactorTerm::PtrVector, syntaxCopy>(bf->_terms, _terms);
     return bf;
