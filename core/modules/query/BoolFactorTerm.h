@@ -26,22 +26,28 @@
 #define LSST_QSERV_QUERY_BOOLFACTORTERM_H
 
 
+// System headers
 #include <memory>
 #include <ostream>
 #include <vector>
 
+// Third-party headers
 #include "boost/iterator_adaptors.hpp"
+
+
+// Forward declarations
+namespace lsst {
+namespace qserv {
+namespace query {
+    class QueryTemplate;
+    class ColumnRef;
+    class ValueExpr;
+}}} // End of forward declarations
 
 
 namespace lsst {
 namespace qserv {
 namespace query {
-
-
-// Forward declarations
-class QueryTemplate;
-class ColumnRef;
-class ValueExpr;
 
 
 /// BoolFactorTerm is a term in a in a BoolFactor
@@ -59,7 +65,7 @@ public:
     virtual void findValueExprs(std::vector<std::shared_ptr<ValueExpr>>& vector) const = 0;
     virtual void findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& vector) const = 0;
 
-    virtual bool operator==(const BoolFactorTerm& rhs) const = 0;
+    virtual bool operator==(BoolFactorTerm const& rhs) const = 0;
 
 protected:
     friend std::ostream& operator<<(std::ostream& os, BoolFactorTerm const& bft) {
