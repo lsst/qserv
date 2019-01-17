@@ -40,14 +40,20 @@
 #include "typedefs.h"
 #include "util/PointerCompare.h"
 
+
+// Forward declarations
 namespace lsst {
 namespace qserv {
 namespace query {
+    class BoolFactorTerm;
+    class QueryTemplate;
+    class ValueExpr;
+}}} // End of forward declarations
 
 
-class BoolFactorTerm;
-class QueryTemplate;
-class ValueExpr;
+namespace lsst {
+namespace qserv {
+namespace query {
 
 
 /// BoolTerm is a representation of a boolean-valued term in a SQL WHERE
@@ -93,9 +99,9 @@ public:
     /// this and the other AndTerm can be thrown away (by the caller, if they desire).
     /// Returns true if the terms were merged, and false if not (this could happen e.g. if this is an AndTerm
     /// and other is an OrTerm, or for any other reason implemented by subclass's merge function.
-    virtual bool merge(const BoolTerm& other) { return false; }
+    virtual bool merge(BoolTerm const& other) { return false; }
 
-    virtual bool operator==(const BoolTerm& rhs) const = 0;
+    virtual bool operator==(BoolTerm const& rhs) const = 0;
 
     friend std::ostream& operator<<(std::ostream& os, BoolTerm const& bt);
     friend std::ostream& operator<<(std::ostream& os, BoolTerm const* bt);

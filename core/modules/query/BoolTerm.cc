@@ -28,6 +28,7 @@
   * @author Daniel L. Wang, SLAC
   */
 
+
 // Class header
 #include "query/BoolTerm.h"
 
@@ -35,8 +36,6 @@
 #include <algorithm>
 #include <iterator>
 #include <stdexcept>
-
-// Third-party headers
 
 // LSST headers
 #include "lsst/log/Log.h"
