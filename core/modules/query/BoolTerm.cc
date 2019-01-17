@@ -48,13 +48,6 @@
 #include "util/IterableFormatter.h"
 
 
-namespace {
-
-    LOG_LOGGER _log = LOG_GET("lsst.qserv.query.BoolTerm");
-
-}
-
-
 namespace lsst {
 namespace qserv {
 namespace query {
