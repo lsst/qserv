@@ -28,6 +28,7 @@
 #include "qana/QueryPlugin.h"
 
 
+// forward declarations
 namespace lsst {
 namespace qserv {
 namespace query {
@@ -35,7 +36,11 @@ namespace query {
     class QsRestrictor;
     class QueryContext;
     class SelectStmt;
-}
+} // end forward declarations
+
+
+namespace lsst {
+namespace qserv {
 namespace qana {
 
 
