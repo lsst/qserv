@@ -106,7 +106,7 @@ void findColumnRefs(std::shared_ptr<BoolTerm> t, ColumnRef::Vector& vector) {
 }
 
 
-void WhereClause::setRootTerm(std::shared_ptr<LogicalTerm> term) {
+void WhereClause::setRootTerm(std::shared_ptr<LogicalTerm> const& term) {
     auto orTerm = std::dynamic_pointer_cast<OrTerm>(term);
     if (nullptr == orTerm) {
         orTerm = std::make_shared<OrTerm>(term);

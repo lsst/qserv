@@ -71,7 +71,7 @@ public:
 
     // Set the root term of the where clause. If `term` is an OrTerm, this will be the root term. If not then
     // an OrTerm that contains term will be the root term.
-    void setRootTerm(std::shared_ptr<LogicalTerm> term);
+    void setRootTerm(std::shared_ptr<LogicalTerm> const& term);
 
     std::shared_ptr<std::vector<std::shared_ptr<ColumnRef>> const> getColumnRefs() const;
     std::shared_ptr<AndTerm> getRootAndTerm() const;
