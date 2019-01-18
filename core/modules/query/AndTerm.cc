@@ -22,9 +22,10 @@
  */
 
 
+// Class header
 #include "query/AndTerm.h"
 
-
+// Qserv headers
 #include "query/BoolFactorTerm.h"
 #include "query/CopyTerms.h"
 #include "util/IterableFormatter.h"

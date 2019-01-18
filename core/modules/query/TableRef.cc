@@ -28,6 +28,7 @@
   * @author Daniel L. Wang, SLAC
   */
 
+
 // Class header
 #include "query/TableRef.h"
 
@@ -35,24 +36,27 @@
 #include <algorithm>
 #include <sstream>
 
- // Third-party headers
-
 // Qserv headers
 #include "query/JoinRef.h"
 #include "query/JoinSpec.h"
 #include "util/IterableFormatter.h"
 #include "util/PointerCompare.h"
 
+
 namespace {
+
 lsst::qserv::query::JoinRef::Ptr
 joinRefClone(lsst::qserv::query::JoinRef::Ptr const& r) {
     return r->clone();
 }
+
 } // anonymous namespace
+
 
 namespace lsst {
 namespace qserv {
 namespace query {
+
 
 ////////////////////////////////////////////////////////////////////////
 // TableRef
@@ -67,6 +71,7 @@ std::ostream& operator<<(std::ostream& os, TableRef const& ref) {
     return os;
 }
 
+
 std::ostream& operator<<(std::ostream& os, TableRef const* ref) {
     if (nullptr == ref) {
         os << "nullptr";
@@ -76,10 +81,12 @@ std::ostream& operator<<(std::ostream& os, TableRef const* ref) {
     return os;
 }
 
+
 void TableRef::render::applyToQT(TableRef const& ref) {
     if (_count++ > 0) _qt.append(",");
     ref.putTemplate(_qt);
 }
+
 
 std::ostream& TableRef::putStream(std::ostream& os) const {
     os << "Table(" << _db << "." << _table << ")";
@@ -91,6 +98,7 @@ std::ostream& TableRef::putStream(std::ostream& os) const {
     }
     return os;
 }
+
 
 void TableRef::putTemplate(QueryTemplate& qt) const {
     if (!_db.empty()) {
@@ -109,13 +117,16 @@ void TableRef::putTemplate(QueryTemplate& qt) const {
     }
 }
 
+
 void TableRef::addJoin(std::shared_ptr<JoinRef> r) {
     _joinRefs.push_back(r);
 }
 
+
 void TableRef::addJoins(const JoinRefPtrVector& r) {
     _joinRefs.insert(std::end(_joinRefs), std::begin(r), std::end(r));
 }
+
 
 void TableRef::apply(TableRef::Func& f) {
     f(*this);
@@ -126,6 +137,7 @@ void TableRef::apply(TableRef::Func& f) {
     }
 }
 
+
 void TableRef::apply(TableRef::FuncC& f) const {
     f(*this);
     typedef JoinRefPtrVector::const_iterator Iter;
@@ -135,12 +147,14 @@ void TableRef::apply(TableRef::FuncC& f) const {
     }
 }
 
+
 TableRef::Ptr TableRef::clone() const {
     TableRef::Ptr newCopy = std::make_shared<TableRef>(_db, _table, _alias);
     std::transform(_joinRefs.begin(), _joinRefs.end(),
                    std::back_inserter(newCopy->_joinRefs), joinRefClone);
     return newCopy;
 }
+
 
 bool TableRef::operator==(const TableRef& rhs) const {
     return _alias == rhs._alias &&

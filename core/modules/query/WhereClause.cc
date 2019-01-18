@@ -28,6 +28,7 @@
   * @author Daniel L. Wang, SLAC
   */
 
+
 // Class header
 #include "query/WhereClause.h"
 
@@ -36,8 +37,6 @@
 #include <iostream>
 #include <memory>
 #include <stdexcept>
-
-// Third-party headers
 
 // Qserv headers
 #include "global/Bug.h"

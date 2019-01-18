@@ -21,8 +21,10 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
+
 #ifndef LSST_QSERV_QUERY_BOOLTERM_H
 #define LSST_QSERV_QUERY_BOOLTERM_H
+
 
 // System headers
 #include <algorithm>
@@ -63,8 +65,11 @@ public:
     typedef std::vector<Ptr> PtrVector;
 
     virtual ~BoolTerm() = default;
+
+    /// Get the class name.
     virtual char const* getName() const { return "BoolTerm"; }
 
+    /// Definition of the precidence order for different operators.
     enum OpPrecedence {
         OTHER_PRECEDENCE   = 3,  // terms joined stronger than AND -- no parens needed
         AND_PRECEDENCE     = 2,  // terms joined by AND
@@ -72,33 +77,45 @@ public:
         UNKNOWN_PRECEDENCE = 0   // terms joined by ??? -- always add parens
     };
 
+    /// Get the operator precidence for this class.
     virtual OpPrecedence getOpPrecedence() const { return UNKNOWN_PRECEDENCE; }
 
+    /// Get a vector of the ValueExprs this contains.
     virtual void findValueExprs(std::vector<std::shared_ptr<ValueExpr>>& vector) const {}
+
+    /// Get a vector of the ColumnRefs this contains.
     virtual void findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& vector) const {}
 
-    /// @return a mutable vector iterator for the contained terms
+    /// Get a mutable vector iterator for the contained terms
     virtual PtrVector::iterator iterBegin() { return PtrVector::iterator(); }
-    /// @return the terminal iterator
+
+    /// Get the terminal iterator
     virtual PtrVector::iterator iterEnd() { return PtrVector::iterator(); }
 
-    /// @return the reduced form of this term, or null if no reduction is
-    /// possible.
+    /// Get the reduced form of this term, or null if no reduction is possible.
     virtual std::shared_ptr<BoolTerm> getReduced() { return Ptr(); }
 
+    /// Write a human-readable version of this instance to the ostream for debug output.
     virtual std::ostream& putStream(std::ostream& os) const = 0;
+
+    /// Serialze this instance as SQL to the QueryTemplate.
     virtual void renderTo(QueryTemplate& qt) const = 0;
-    /// Deep copy this term.
+
+    /// Make a deep copy of this term.
     virtual std::shared_ptr<BoolTerm> clone() const = 0;
 
-    virtual std::shared_ptr<BoolTerm> copySyntax() const {
-        return std::shared_ptr<BoolTerm>(); }
+    /// Make a shallow copy of this term.
+    virtual std::shared_ptr<BoolTerm> copySyntax() const;
 
-    /// Merge is implemented in subclasses; if they are of the same type (that is, if the subclass instance is
-    /// e.g. an AndTerm and `other` is also an AndTerm, then the _terms of the other AndTerm can be added to
-    /// this and the other AndTerm can be thrown away (by the caller, if they desire).
-    /// Returns true if the terms were merged, and false if not (this could happen e.g. if this is an AndTerm
-    /// and other is an OrTerm, or for any other reason implemented by subclass's merge function.
+    /**
+     * @brief Merge this term with the other term if possible.
+     *
+     * @note If two BoolTerm subclasses are of the same type then the terms of the other instance can be
+     * added to the terms of this instance and the other instance can be thrown away.
+     *
+     * @param other[in] the BoolTerm subclass instance to try to merge with this one.
+     * @returns true if the terms were merged and false if not.
+     */
     virtual bool merge(BoolTerm const& other) { return false; }
 
     virtual bool operator==(BoolTerm const& rhs) const = 0;
@@ -107,11 +124,29 @@ public:
     friend std::ostream& operator<<(std::ostream& os, BoolTerm const* bt);
 
 protected:
+    /// Serialize this instance to os for debug output.
     virtual void dbgPrint(std::ostream& os) const = 0;
 
-    // If a BoolTerm owns a list of BoolTerms, this can be used to render the list.
+    /**
+     * @brief Render a list of BoolTerm to the QueryTemplate.
+     *
+     * @note Used by subclasses that own a list of BoolTerm. Uses `this` to determine operator precidence.
+     *
+     * @param qt[out] The QueryTemplate to which this is rendered.
+     * @param terms[in] The terms to render.
+     * @param sep[in] The separation string to put between terms.
+     */
     void renderList(QueryTemplate& qt, BoolTerm::PtrVector const& terms, std::string const& sep) const;
-    // If a BoolTerm owns a list of BoolFactorTerms, this can be used to render the list.
+
+    /**
+     * @brief Render a list of BoolFactorTerm to the QueryTemplate.
+     *
+     * @note Used by subclasses that own a list of BoolFactorTerm. Uses `this` to determine operator precidence.
+     *
+     * @param qt[out] The QueryTemplate to which this is rendered.
+     * @param terms[in] The terms to render.
+     * @param sep[in] The separation string to put between terms.
+     */
     void renderList(QueryTemplate& qt, std::vector<std::shared_ptr<BoolFactorTerm>> const& terms,
                     std::string const& sep) const;
 };

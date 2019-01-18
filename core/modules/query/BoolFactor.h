@@ -48,7 +48,7 @@ namespace qserv {
 namespace query {
 
 
-/// BoolFactor is a plain factor in a BoolTerm
+/// BoolFactor is a plain factor in a BoolTerm.
 class BoolFactor : public BoolTerm {
 public:
     BoolFactor() = default;
@@ -60,38 +60,65 @@ public:
         : _terms({term}), _hasNot(hasNot) {}
 
     typedef std::shared_ptr<BoolFactor> Ptr;
+
+    /// Get the class name.
     virtual char const* getName() const { return "BoolFactor"; }
+
+    /// Get the operator precidence for this class.
     virtual OpPrecedence getOpPrecedence() const { return OTHER_PRECEDENCE; }
 
+    /// Add a BoolFactorTerm.
     void addBoolFactorTerm(std::shared_ptr<BoolFactorTerm> boolFactorTerm);
 
+    /// Get a vector of the ValueExprs this contains.
     virtual void findValueExprs(std::vector<std::shared_ptr<ValueExpr>>& vector) const;
 
+    /// Get a vector of the ColumnRefs this contains.
     virtual void findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& vector) const;
 
+    /// Set if this term is 'not', as in `NOT <something>` in SQL.
     void setHasNot(bool hasNot) { _hasNot = hasNot; }
 
-    virtual std::shared_ptr<BoolTerm> getReduced();
+    /// Get the reduced form of this BoolFactor, or null if no reduction is possible.
+    std::shared_ptr<BoolTerm> getReduced() override;
 
-    virtual std::ostream& putStream(std::ostream& os) const;
-    virtual void renderTo(QueryTemplate& qt) const;
-    virtual std::shared_ptr<BoolTerm> clone() const;
-    virtual std::shared_ptr<BoolTerm> copySyntax() const;
+    /// Write a human-readable version of this instance to the ostream for debug output.
+    std::ostream& putStream(std::ostream& os) const override;
+
+    /// Serialze this instance as SQL to the QueryTemplate.
+    void renderTo(QueryTemplate& qt) const override;
+
+    /// Make a deep copy of this term.
+    std::shared_ptr<BoolTerm> clone() const override;
+
+    /// Make a shallow copy of this term.
+    std::shared_ptr<BoolTerm> copySyntax() const override;
 
     bool operator==(const BoolTerm& rhs) const;
 
     // prepend _terms with an open parenthesis PassTerm and append it with a close parenthesis PassTerm.
     void addParenthesis();
 
+    // FIXME these members should be private, or at least protected. Jira issue DM-17306
     std::vector<std::shared_ptr<BoolFactorTerm>> _terms;
     bool _hasNot;
 
 protected:
+    /// Serialize this instance to os for debug output.
     void dbgPrint(std::ostream& os) const override;
 
 private:
+    /// Perform term reduction for `getReduced`
     bool _reduceTerms(std::vector<std::shared_ptr<BoolFactorTerm>>& newTerms,
                       std::vector<std::shared_ptr<BoolFactorTerm>>& oldTerms);
+
+    /**
+     * @brief Check if parenthesis can be removed from the vector of BoolFactorTerms.
+     *
+     * @param terms[in] the vector of BoolFactorTerms to check
+     * @return true if the first item is an open paren, the last item is a close paren, and it's allowed to
+     *         remove parens from the middle item. Otherwise, false.
+     */
     bool _checkParen(std::vector<std::shared_ptr<BoolFactorTerm>>& terms);
 };
 

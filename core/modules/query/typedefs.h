@@ -30,15 +30,14 @@
  * @author Fabrice Jammes, IN2P3/SLAC
  */
 
-// System headers
-#include <vector>
-
-// Third-party headers
-
-// Qserv headers
 
 #ifndef LSST_QSERV_QUERY_TYPES_H_
 #define LSST_QSERV_QUERY_TYPES_H_
+
+
+// System headers
+#include <vector>
+
 
 namespace lsst {
 namespace qserv {
@@ -49,9 +48,11 @@ typedef std::shared_ptr<ValueExpr> ValueExprPtr;
 typedef std::vector<ValueExprPtr> ValueExprPtrVector;
 typedef ValueExprPtrVector::const_iterator ValueExprPtrVectorConstIter;
 
+
 class SelectStmt;
 typedef std::shared_ptr<SelectStmt> SelectStmtPtr;
 typedef std::vector<std::shared_ptr<SelectStmt> > SelectStmtPtrVector;
+
 
 }}} // namespace lsst::qserv::query
 

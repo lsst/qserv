@@ -26,6 +26,7 @@
 #define LSST_QSERV_QUERY_ANDTERM_H
 
 
+// Qserv headers
 #include "query/LogicalTerm.h"
 
 
@@ -41,22 +42,45 @@ public:
 
     typedef std::shared_ptr<AndTerm> Ptr;
 
+    /// Get the class name.
     char const* getName() const override { return "AndTerm"; }
+
+    /// Get the operator precidence for this class.
     OpPrecedence getOpPrecedence() const override { return AND_PRECEDENCE; }
 
+    /// Serialze this instance as SQL to the QueryTemplate.
     void renderTo(QueryTemplate& qt) const override;
 
+    /// Make a deep copy of this term.
     std::shared_ptr<BoolTerm> clone() const override;
+
+    /// Make a shallow copy of this term.
     std::shared_ptr<BoolTerm> copySyntax() const override;
 
+    /**
+     * @brief Merge this term with the other term if possible.
+     *
+     * @note If two BoolTerm subclasses are of the same type then the terms of the other instance can be
+     * added to the terms of this instance and the other instance can be thrown away.
+     *
+     * @param other[in] the BoolTerm subclass instance to try to merge with this one.
+     * @returns true if the terms were merged and false if not.
+     */
     bool merge(BoolTerm const& other) override;
 
+    /**
+     * @brief Used with merge(BoolTerm, MergeBehavior) to indicate if terms from the other AndTerm should be
+     * before or after the terms from this term.
+     */
     enum MergeBehavior {PREPEND, APPEND};
+
+    /// Like `merge(BoolTerm)` but can be told what order this term and the other term.
     bool merge(BoolTerm const& other, MergeBehavior mergeBehavior);
 
     bool operator==(BoolTerm const& rhs) const;
 
 protected:
+    /// Serialize this instance to os for debug output.
     void dbgPrint(std::ostream& os) const override;
 };
 

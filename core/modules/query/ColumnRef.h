@@ -29,19 +29,26 @@
   * @author Daniel L. Wang, SLAC
   */
 
+
 // System headers
 #include <memory>
 #include <ostream>
 #include <string>
 #include <vector>
 
-// Third-party headers
+
+// Forward declarations
+namespace lsst {
+namespace qserv {
+namespace query {
+    class QueryTemplate;
+}}} // End of forward declarations
+
 
 namespace lsst {
 namespace qserv {
 namespace query {
 
-class QueryTemplate; // Forward
 
 /// ColumnRef is an abstract value class holding a parsed single column ref
 class ColumnRef {
@@ -79,6 +86,7 @@ public:
     bool operator!=(const ColumnRef& rhs) const { return false == (*this == rhs); }
     bool operator<(const ColumnRef& rhs) const;
 };
+
 
 }}} // namespace lsst::qserv::query
 

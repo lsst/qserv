@@ -20,9 +20,6 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-
-#ifndef LSST_QSERV_QUERY_WHERECLAUSE_H
-#define LSST_QSERV_QUERY_WHERECLAUSE_H
 /**
   * @file
   *
@@ -33,6 +30,10 @@
   */
 
 
+#ifndef LSST_QSERV_QUERY_WHERECLAUSE_H
+#define LSST_QSERV_QUERY_WHERECLAUSE_H
+
+
 // System headers
 #include <iostream>
 #include <memory>
@@ -40,22 +41,27 @@
 #include <vector>
 
 
+// Forward declarations
 namespace lsst {
 namespace qserv {
 namespace parser {
     class WhereFactory;
 }
 namespace query {
+    class BoolTerm;
+    class ColumnRef;
+    class LogicalTerm;
+    class AndTerm;
+    class OrTerm;
+    class QsRestrictor;
+    class QueryTemplate;
+    class ValueExpr;
+}}} // End of forward declarations
 
 
-class BoolTerm;
-class ColumnRef;
-class LogicalTerm;
-class AndTerm;
-class OrTerm;
-class QsRestrictor;
-class QueryTemplate;
-class ValueExpr;
+namespace lsst {
+namespace qserv {
+namespace query {
 
 
 /// WhereClause is a SQL WHERE containing QsRestrictors and a BoolTerm tree.

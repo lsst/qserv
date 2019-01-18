@@ -28,6 +28,7 @@
   * @author Daniel L. Wang, SLAC
   */
 
+
 // Class header
 #include "query/AggOp.h"
 
@@ -36,16 +37,16 @@
 #include <sstream>
 #include <stdexcept>
 
-// Third-party headers
-
 // Qserv headers
 #include "query/FuncExpr.h"
 #include "query/ValueExpr.h"
 #include "query/ValueFactor.h"
 
+
 namespace lsst {
 namespace qserv {
 namespace query {
+
 
 ////////////////////////////////////////////////////////////////////////
 // AggOp specializations
@@ -65,6 +66,7 @@ public:
         return arp;
     }
 };
+
 
 /// CountAggOp implements COUNT() (COUNT followed by SUM)
 class CountAggOp : public AggOp {
@@ -90,6 +92,8 @@ public:
         return arp;
     }
 };
+
+
 /// AccumulateOp implements simple aggregations (MIN, MAX, SUM) where
 /// the same action may be used in the parallel and merging phases.
 class AccumulateOp : public AggOp {
@@ -123,6 +127,7 @@ public:
     }
     std::string accName;
 };
+
 
 /// AvgAggOp implements AVG (SUM-COUNT followed by SUM/SUM)
 class AvgAggOp : public AggOp {
@@ -169,6 +174,7 @@ public:
     }
 };
 
+
 ////////////////////////////////////////////////////////////////////////
 // class AggOp::Mgr
 ////////////////////////////////////////////////////////////////////////
@@ -182,12 +188,14 @@ AggOp::Mgr::Mgr() : _hasAggregate(false) {
     _seq = 0; // Note: accessor return ++_seq
 }
 
+
 AggOp::Ptr
 AggOp::Mgr::getOp(std::string const& name) {
     OpMap::const_iterator i = _map.find(name);
     if (i != _map.end()) return i->second;
     else return AggOp::Ptr();
 }
+
 
 AggRecord::Ptr
 AggOp::Mgr::applyOp(std::string const& name, ValueFactor const& orig) {
@@ -201,11 +209,13 @@ AggOp::Mgr::applyOp(std::string const& name, ValueFactor const& orig) {
     return (*p)(orig);
 }
 
+
 std::string AggOp::Mgr::getAggName(std::string const& name) {
     std::stringstream ss;
     int s = getNextSeq();
     ss << "QS" << s << "_" << name;
     return ss.str();
 }
+
 
 }}} // namespace lsst::qserv::query

@@ -20,8 +20,6 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_QUERY_ORDERBYCLAUSE_H
-#define LSST_QSERV_QUERY_ORDERBYCLAUSE_H
 /**
   * @file
   *
@@ -31,6 +29,11 @@
   * @author Daniel L. Wang, SLAC
   */
 
+
+#ifndef LSST_QSERV_QUERY_ORDERBYCLAUSE_H
+#define LSST_QSERV_QUERY_ORDERBYCLAUSE_H
+
+
 // System headers
 #include <deque>
 #include <memory>
@@ -39,18 +42,22 @@
 // Local headers
 #include "query/typedefs.h"
 
-namespace lsst {
-namespace qserv {
-
-namespace parser {
-    // Forward
-    class ModFactory;
-}
-
-namespace query {
 
 // Forward declarations
-class QueryTemplate;
+namespace lsst {
+namespace qserv {
+namespace parser {
+    class ModFactory;
+}
+namespace query {
+    class QueryTemplate;
+}}} // End of forward declarations
+
+
+namespace lsst {
+namespace qserv {
+namespace query {
+
 
 /// OrderByTerm is an element of an OrderByClause
 class OrderByTerm {
@@ -87,6 +94,7 @@ private:
     std::string _collate;
 };
 
+
 /// OrderByClause is a parsed SQL ORDER BY ... clause
 class OrderByClause {
 public:
@@ -116,7 +124,7 @@ private:
     std::shared_ptr<std::vector<OrderByTerm>> _terms;
 };
 
+
 }}} // namespace lsst::qserv::query
 
 #endif // LSST_QSERV_QUERY_ORDERBYCLAUSE_H
-

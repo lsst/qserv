@@ -20,9 +20,6 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-
-#ifndef LSST_QSERV_QUERY_GROUPBYCLAUSE_H
-#define LSST_QSERV_QUERY_GROUPBYCLAUSE_H
 /**
   * @file
   *
@@ -31,13 +28,19 @@
   * @author Daniel L. Wang, SLAC
   */
 
+
+#ifndef LSST_QSERV_QUERY_GROUPBYCLAUSE_H
+#define LSST_QSERV_QUERY_GROUPBYCLAUSE_H
+
+
 // System headers
 #include <deque>
 #include <memory>
 #include <string>
 
-// Local headers
+// Qserv headers
 #include "query/typedefs.h"
+
 
 // Forward declarations
 namespace lsst {
@@ -45,11 +48,15 @@ namespace qserv {
 namespace parser {
     class ModFactory;
 }
+namespace query {
+    class QueryTemplate;
+}}}
 
+
+namespace lsst {
+namespace qserv {
 namespace query {
 
-// Forward declarations
-class QueryTemplate;
 
 // GroupByTerm is a element of a GroupByClause
 class GroupByTerm {
@@ -78,6 +85,7 @@ private:
     ValueExprPtr _expr;
     std::string _collate;
 };
+
 
 /// GroupByClause is a parsed GROUP BY ... element.
 class GroupByClause {
@@ -108,7 +116,7 @@ private:
     std::shared_ptr<List> _terms;
 };
 
+
 }}} // namespace lsst::qserv::query
 
 #endif // LSST_QSERV_QUERY_GROUPBYCLAUSE_H
-

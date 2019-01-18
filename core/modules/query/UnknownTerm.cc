@@ -22,8 +22,10 @@
  */
 
 
+// Class header
 #include "UnknownTerm.h"
 
+// Qserv headers
 #include "query/QueryTemplate.h"
 
 

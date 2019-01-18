@@ -29,6 +29,7 @@
   * @author Daniel L. Wang, SLAC
   */
 
+
 // Class header
 #include "query/GroupByClause.h"
 
@@ -37,12 +38,11 @@
 #include <iostream>
 #include <iterator>
 
-// Third-party headers
-
 // Qserv headers
 #include "query/QueryTemplate.h"
 #include "query/ValueExpr.h"
 #include "util/IterableFormatter.h"
+
 
 namespace lsst {
 namespace qserv {
@@ -59,6 +59,7 @@ GroupByTerm GroupByTerm::cloneValue() const {
     return t;
 }
 
+
 GroupByTerm& GroupByTerm::operator=(GroupByTerm const& gb) {
     if (this != &gb) {
         if (gb._expr) { _expr = gb._expr->clone(); }
@@ -67,6 +68,7 @@ GroupByTerm& GroupByTerm::operator=(GroupByTerm const& gb) {
     return *this;
 }
 
+
 std::ostream& operator<<(std::ostream& os, GroupByTerm const& t) {
     os << "GroupByTerm(expr:" << t._expr;
     os << ", collate:" << t._collate;
@@ -74,10 +76,12 @@ std::ostream& operator<<(std::ostream& os, GroupByTerm const& t) {
     return os;
 }
 
+
 bool GroupByTerm::operator==(const GroupByTerm& rhs) const {
     return util::ptrCompare<ValueExpr>(_expr, rhs._expr) &&
             _collate == rhs._collate;
 }
+
 
 ////////////////////////////////////////////////////////////////////////
 // GroupByClause
@@ -87,10 +91,12 @@ std::ostream& operator<<(std::ostream& os, GroupByClause const& c) {
     return os;
 }
 
+
 std::ostream& operator<<(std::ostream& os, GroupByClause const* c) {
     (nullptr == c) ? os << "nullptr" : os << *c;
     return os;
 }
+
 
 std::string GroupByClause::getGenerated() {
     QueryTemplate qt;
@@ -112,11 +118,13 @@ void GroupByClause::renderTo(QueryTemplate& qt) const {
     }
 }
 
+
 namespace {
 GroupByTerm callClone(GroupByTerm const& t) {
     return t.cloneValue();
 }
 }
+
 
 std::shared_ptr<GroupByClause> GroupByClause::clone() const {
     GroupByClause::Ptr p = std::make_shared<GroupByClause>();
@@ -125,15 +133,18 @@ std::shared_ptr<GroupByClause> GroupByClause::clone() const {
     return p;
 }
 
+
 std::shared_ptr<GroupByClause> GroupByClause::copySyntax() {
     return std::make_shared<GroupByClause>(*this);
 }
+
 
 void GroupByClause::findValueExprs(ValueExprPtrVector& list) const {
     for (auto&& groupByTerm : *_terms) {
         list.push_back(groupByTerm.getExpr());
     }
 }
+
 
 bool GroupByClause::operator==(const GroupByClause& rhs) const {
     return util::ptrDequeCompare<GroupByTerm>(_terms, rhs._terms);

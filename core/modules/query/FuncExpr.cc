@@ -30,16 +30,12 @@
   * @author Daniel L. Wang, SLAC
   */
 
+
 // Class header
 #include "query/FuncExpr.h"
 
 // System headers
 #include <iostream>
-
-// Third-party headers
-
-
-#include "lsst/log/Log.h"
 
 // Qserv headers
 #include "query/ColumnRef.h"
@@ -48,11 +44,6 @@
 #include "query/ValueFactor.h"
 #include "util/IterableFormatter.h"
 
-namespace {
-
-LOG_LOGGER _log = LOG_GET("lsst.qserv.FuncExpr");
-
-}
 
 namespace lsst {
 namespace qserv {
@@ -64,6 +55,7 @@ FuncExpr::getName() const {
     return _name;
 }
 
+
 FuncExpr::Ptr
 FuncExpr::newLike(FuncExpr const& src, std::string const& newName) {
     FuncExpr::Ptr e = std::make_shared<FuncExpr>();
@@ -72,12 +64,14 @@ FuncExpr::newLike(FuncExpr const& src, std::string const& newName) {
     return e;
 }
 
+
 FuncExpr::Ptr
 FuncExpr::newArg1(std::string const& newName, std::string const& arg1) {
     std::shared_ptr<ColumnRef> cr = std::make_shared<ColumnRef>("","",arg1);
     return newArg1(newName,
                    ValueExpr::newSimple(ValueFactor::newColumnRefFactor(cr)));
 }
+
 
 FuncExpr::Ptr
 FuncExpr::newArg1(std::string const& newName, ValueExprPtr ve) {
@@ -87,6 +81,7 @@ FuncExpr::newArg1(std::string const& newName, ValueExprPtr ve) {
     return e;
 }
 
+
 FuncExpr::Ptr
 FuncExpr::newWithArgs(std::string const& newName, const ValueExprPtrVector& ve) {
     FuncExpr::Ptr e = std::make_shared<FuncExpr>();
@@ -95,10 +90,12 @@ FuncExpr::newWithArgs(std::string const& newName, const ValueExprPtrVector& ve) 
     return e;
 }
 
+
 void
 FuncExpr::setName(const std::string& val) {
     _name = val;
 }
+
 
 void
 FuncExpr::findColumnRefs(ColumnRef::Vector& outputRefs) const {
@@ -107,6 +104,7 @@ FuncExpr::findColumnRefs(ColumnRef::Vector& outputRefs) const {
     }
 }
 
+
 std::shared_ptr<FuncExpr>
 FuncExpr::clone() const {
     FuncExpr::Ptr e = std::make_shared<FuncExpr>();
@@ -114,6 +112,7 @@ FuncExpr::clone() const {
     cloneValueExprPtrVector(e->params, params);
     return e;
 }
+
 
 std::ostream&
 operator<<(std::ostream& os, FuncExpr const& fe) {
@@ -124,11 +123,13 @@ operator<<(std::ostream& os, FuncExpr const& fe) {
     return os;
 }
 
+
 std::ostream&
 operator<<(std::ostream& os, FuncExpr const* fe) {
     (nullptr == fe) ? os << "nullptr" : os << *fe;
     return os;
 }
+
 
 void
 FuncExpr::renderTo(QueryTemplate& qt) const {
@@ -138,9 +139,11 @@ FuncExpr::renderTo(QueryTemplate& qt) const {
     qt.append(")");
 }
 
+
 bool FuncExpr::operator==(const FuncExpr& rhs) const {
     return _name == rhs._name &&
            util::vectorPtrCompare<ValueExpr>(params, rhs.params);
 }
+
 
 }}} // namespace lsst::qserv::query

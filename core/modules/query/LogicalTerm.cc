@@ -22,8 +22,10 @@
  */
 
 
+// Class header
 #include "query/LogicalTerm.h"
 
+// Qserv headers
 #include "query/BoolFactor.h"
 #include "query/ColumnRef.h"
 #include "query/QueryTemplate.h"

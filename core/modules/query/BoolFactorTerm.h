@@ -55,14 +55,25 @@ class BoolFactorTerm {
 public:
     typedef std::shared_ptr<BoolFactorTerm> Ptr;
     typedef std::vector<Ptr> PtrVector;
+
     virtual ~BoolFactorTerm() {}
 
+    /// Make a deep copy of this term.
     virtual Ptr clone() const = 0;
+
+    /// Make a shallow copy of this term.
     virtual Ptr copySyntax() const = 0;
+
+    /// Write a human-readable version of this instance to the ostream for debug output.
     virtual std::ostream& putStream(std::ostream& os) const = 0;
+
+    /// Serialze this instance as SQL to the QueryTemplate.
     virtual void renderTo(QueryTemplate& qt) const = 0;
 
+    /// Get a vector of the ValueExprs this contains.
     virtual void findValueExprs(std::vector<std::shared_ptr<ValueExpr>>& vector) const = 0;
+
+    /// Get a vector of the ColumnRefs this contains.
     virtual void findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& vector) const = 0;
 
     virtual bool operator==(BoolFactorTerm const& rhs) const = 0;
@@ -72,10 +83,13 @@ protected:
         bft.dbgPrint(os);
         return os;
     }
+
     friend std::ostream& operator<<(std::ostream& os, BoolFactorTerm const* bft) {
         (nullptr == bft) ? os << "nullptr" : os << *bft;
         return os;
     }
+
+    /// Serialize this instance to os for debug output.
     virtual void dbgPrint(std::ostream& os) const = 0;
 };
 

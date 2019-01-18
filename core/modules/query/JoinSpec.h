@@ -20,9 +20,6 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-
-#ifndef LSST_QSERV_QUERY_JOINSPEC_H
-#define LSST_QSERV_QUERY_JOINSPEC_H
 /**
   * @file
   *
@@ -31,17 +28,30 @@
   * @author Daniel L. Wang, SLAC
   */
 
+
+#ifndef LSST_QSERV_QUERY_JOINSPEC_H
+#define LSST_QSERV_QUERY_JOINSPEC_H
+
+
 // System headers
 #include <iostream>
 #include <memory>
+
+
+// Forward declarations
+namespace lsst {
+namespace qserv {
+namespace query {
+    class QueryTemplate;
+    class BoolTerm;
+    class ColumnRef;
+}}} // End of forward declarations
+
 
 namespace lsst {
 namespace qserv {
 namespace query {
 
-class QueryTemplate; // Forward
-class BoolTerm;
-class ColumnRef;
 
 /// JoinSpec is a parsed join spec.
 /// join_spec :
@@ -93,6 +103,5 @@ private:
 
 
 }}} // namespace lsst::qserv::query
-
 
 #endif // LSST_QSERV_QUERY_JOINSPEC_H

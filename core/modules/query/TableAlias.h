@@ -20,9 +20,6 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-
-#ifndef LSST_QSERV_QUERY_TABLEALIAS_H
-#define LSST_QSERV_QUERY_TABLEALIAS_H
 /**
   * @file
   *
@@ -31,6 +28,10 @@
   * @author Daniel L. Wang, SLAC
   */
 
+
+#ifndef LSST_QSERV_QUERY_TABLEALIAS_H
+#define LSST_QSERV_QUERY_TABLEALIAS_H
+
 // System headers
 #include <sstream>
 #include <stdexcept>
@@ -38,9 +39,11 @@
 // Local headers
 #include "query/DbTablePair.h"
 
+
 namespace lsst {
 namespace qserv {
 namespace query {
+
 
 /// TableAlias is a mapping from an alias to a (db, table)
 /// name. TableAlias is a forward mapping, and TableAliasReverse is a
@@ -61,6 +64,7 @@ private:
     typedef std::map<std::string, DbTablePair> Map;
     Map _map;
 };
+
 
 /// Stores a reverse alias mapping:  (db,table) -> alias
 class TableAliasReverse {
@@ -112,6 +116,7 @@ private:
     typedef std::map<DbTablePair, std::string> Map;
     Map _map;
 };
+
 
 }}} // namespace lsst::qserv::query
 

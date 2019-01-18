@@ -20,14 +20,16 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-
-#ifndef LSST_QSERV_QUERY_SELECTSTMT_H
-#define LSST_QSERV_QUERY_SELECTSTMT_H
 /**
   * @file
   *
   * @author Daniel L. Wang, SLAC
   */
+
+
+#ifndef LSST_QSERV_QUERY_SELECTSTMT_H
+#define LSST_QSERV_QUERY_SELECTSTMT_H
+
 
 // System headers
 #include <memory>
@@ -37,6 +39,7 @@
 #include "global/stringTypes.h"
 #include "query/OrderByClause.h"
 #include "query/QueryTemplate.h"
+
 
 // Forward declarations
 class SqlSQL2Parser;
@@ -53,9 +56,11 @@ namespace query {
     class HavingClause;
 }}} // End of forward declarations
 
+
 namespace lsst {
 namespace qserv {
 namespace query {
+
 
 // SelectStmt contains extracted information about a particular parsed
 // SQL select statement. It is not responsible for performing

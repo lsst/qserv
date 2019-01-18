@@ -41,20 +41,39 @@ public:
 
     typedef std::shared_ptr<OrTerm> Ptr;
 
+    /// Get the class name.
     virtual char const* getName() const { return "OrTerm"; }
+
+    /// Get the operator precidence for this class.
     virtual OpPrecedence getOpPrecedence() const { return OR_PRECEDENCE; }
 
+    /// Serialze this instance as SQL to the QueryTemplate.
     virtual void renderTo(QueryTemplate& qt) const;
-    virtual std::shared_ptr<BoolTerm> clone() const;
-    virtual std::shared_ptr<BoolTerm> copySyntax() const;
+
+    /// Make a deep copy of this term.
+    std::shared_ptr<BoolTerm> clone() const override;
+
+    /// Make a shallow copy of this term.
+    std::shared_ptr<BoolTerm> copySyntax() const override;
+
     // copy is like copySyntax, but returns an OrTerm ptr.
     Ptr copy() const;
 
+    /**
+     * @brief Merge this term with the other term if possible.
+     *
+     * @note If two BoolTerm subclasses are of the same type then the terms of the other instance can be
+     * added to the terms of this instance and the other instance can be thrown away.
+     *
+     * @param other[in] the BoolTerm subclass instance to try to merge with this one.
+     * @returns true if the terms were merged and false if not.
+     */
     bool merge(const BoolTerm& other) override;
 
     bool operator==(const BoolTerm& rhs) const override;
 
 protected:
+    /// Serialize this instance to os for debug output.
     void dbgPrint(std::ostream& os) const override;
 };
 

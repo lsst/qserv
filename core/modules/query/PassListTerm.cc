@@ -22,8 +22,10 @@
  */
 
 
+// Class header
 #include "PassListTerm.h"
 
+// Qserv headers
 #include "query/QueryTemplate.h"
 #include "util/IterableFormatter.h"
 

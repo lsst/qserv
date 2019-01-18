@@ -21,8 +21,11 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
+
+// Class header
 #include "query/PassTerm.h"
 
+// Qserv headers
 #include "query/BoolFactorTerm.h"
 #include "query/QueryTemplate.h"
 

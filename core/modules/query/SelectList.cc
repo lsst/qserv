@@ -27,6 +27,8 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
+
 // SelectList design notes:
 // Idea was to have this as an intermediate query tree representation.
 // This might be practical through the use of factories to hide enough
@@ -39,6 +41,7 @@
 // map them?
 // For now, just build the syntax tree without evaluating.
 
+
 // Class header
 #include "query/SelectList.h"
 
@@ -48,8 +51,6 @@
 #include <iterator>
 #include <stdexcept>
 #include <string>
-
-// Third-party headers
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -61,9 +62,11 @@
 #include "util/PointerCompare.h"
 #include "util/IterableFormatter.h"
 
+
 namespace lsst {
 namespace qserv {
 namespace query {
+
 
 template <typename T>
 struct renderWithSep {
@@ -76,6 +79,7 @@ struct renderWithSep {
     std::string sep;
     int count;
 };
+
 
 void
 SelectList::addStar(std::string const& table) {
@@ -95,11 +99,13 @@ operator<<(std::ostream& os, SelectList const& sl) {
     return os;
 }
 
+
 std::ostream&
 operator<<(std::ostream& os, SelectList const* sl) {
     (nullptr == sl) ? os << "nullptr" : os << *sl;
     return os;
 }
+
 
 std::string
 SelectList::getGenerated() {
@@ -125,6 +131,7 @@ std::shared_ptr<SelectList> SelectList::clone() const {
     return newS;
 }
 
+
 std::shared_ptr<SelectList> SelectList::copySyntax() {
     std::shared_ptr<SelectList> newS = std::make_shared<SelectList>(*this);
     // Shallow copy of expr list is okay.
@@ -133,8 +140,10 @@ std::shared_ptr<SelectList> SelectList::copySyntax() {
     return newS;
 }
 
+
 bool SelectList::operator==(const SelectList& rhs) {
     return util::ptrVectorPtrCompare<ValueExpr>(_valueExprList, rhs._valueExprList);
 }
+
 
 }}} // namespace lsst::qserv::query

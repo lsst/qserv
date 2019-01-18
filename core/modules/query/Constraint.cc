@@ -28,6 +28,7 @@
   * @author Daniel L. Wang, SLAC
   */
 
+
 // Class header
 #include "query/Constraint.h"
 
@@ -38,9 +39,11 @@
 // Qserv header
 #include "util/IterableFormatter.h"
 
+
 namespace lsst {
 namespace qserv {
 namespace query {
+
 
 std::ostream& operator<<(std::ostream& os, Constraint const& c) {
     os << "Constraint("
@@ -48,6 +51,7 @@ std::ostream& operator<<(std::ostream& os, Constraint const& c) {
        << "params=" << util::printable(c.params) << ")";
     return os;
 }
+
 
 }}} // namespace lsst::qserv::query
 

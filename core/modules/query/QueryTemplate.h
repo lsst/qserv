@@ -20,26 +20,36 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_QUERY_QUERYTEMPLATE_H
-#define LSST_QSERV_QUERY_QUERYTEMPLATE_H
 /**
   * @file
   *
   * @author Daniel L. Wang, SLAC
   */
 
+
+#ifndef LSST_QSERV_QUERY_QUERYTEMPLATE_H
+#define LSST_QSERV_QUERY_QUERYTEMPLATE_H
+
+
 // System headers
 #include <memory>
 #include <string>
 #include <vector>
 
+
+// Forward declarations
+namespace lsst {
+namespace qserv {
+namespace query {
+    class ColumnRef;
+    class TableRefAux;
+}}} // End of forward declarations
+
+
 namespace lsst {
 namespace qserv {
 namespace query {
 
-// Forward
-class ColumnRef;
-class TableRefAux;
 
 /// QueryTemplate
 ///
@@ -145,6 +155,7 @@ public:
 private:
     EntryPtrVector _entries;
 };
+
 
 }}} // namespace lsst::qserv::query
 

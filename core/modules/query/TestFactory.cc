@@ -21,10 +21,9 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
+
 // Class header
 #include "query/TestFactory.h"
-
-// Third-party headers
 
 // Qserv headers
 #include "query/BoolFactor.h"
@@ -38,9 +37,11 @@
 #include "query/ValueFactor.h"
 #include "query/WhereClause.h"
 
+
 namespace lsst {
 namespace qserv {
 namespace query {
+
 
 std::shared_ptr<QueryContext>
 TestFactory::newContext(std::shared_ptr<css::CssAccess> css, mysql::MySqlConfig const& schemaCfg) {
@@ -49,6 +50,7 @@ TestFactory::newContext(std::shared_ptr<css::CssAccess> css, mysql::MySqlConfig 
     context->userName = "alice";
     return context;
 }
+
 
 void TestFactory::addSelectField(std::shared_ptr<SelectStmt> const& stmt, StringVector const& fields) {
     std::shared_ptr<SelectList> sl = std::make_shared<SelectList>();
@@ -65,6 +67,7 @@ void TestFactory::addSelectField(std::shared_ptr<SelectStmt> const& stmt, String
     stmt->setSelectList(sl);
 }
 
+
 void TestFactory::addFrom(std::shared_ptr<SelectStmt> const& stmt) {
     TableRefListPtr refp = std::make_shared<TableRefList>();
     TableRef::Ptr tr = std::make_shared<TableRef>("", "Bar", "b");
@@ -72,6 +75,7 @@ void TestFactory::addFrom(std::shared_ptr<SelectStmt> const& stmt) {
     FromList::Ptr fl = std::make_shared<FromList>(refp);
     stmt->setFromList(fl);
 }
+
 
 void TestFactory::addWhere(std::shared_ptr<SelectStmt> const& stmt) {
     std::shared_ptr<WhereClause> wc = std::make_shared<WhereClause>();
@@ -88,6 +92,7 @@ void TestFactory::addWhere(std::shared_ptr<SelectStmt> const& stmt) {
     wc->prependAndTerm(bfactor);
     stmt->setWhereClause(wc);
 }
+
 
 std::shared_ptr<SelectStmt>
 TestFactory::newDuplSelectExprStmt() {
@@ -109,6 +114,7 @@ TestFactory::newDuplSelectExprStmt() {
     return stmt;
 }
 
+
 std::shared_ptr<SelectStmt>
 TestFactory::newSimpleStmt() {
     // Create a "SELECT foo FROM Bar b WHERE b.baz=42;
@@ -127,5 +133,6 @@ TestFactory::newSimpleStmt() {
 
     return stmt;
 }
+
 
 }}} // lsst::qserv::query

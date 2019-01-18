@@ -47,7 +47,6 @@
 #include "query/ValueFactor.h"
 #include "query/WhereClause.h"
 
-
 // Boost unit test header
 #define BOOST_TEST_MODULE QueryRepr_1
 #include "boost/test/included/unit_test.hpp"
@@ -57,7 +56,9 @@ namespace lsst {
 namespace qserv {
 namespace query {
 
+
 namespace test = boost::test_tools;
+
 
 struct TestFixture {
     TestFixture(void) {}
@@ -67,7 +68,9 @@ struct TestFixture {
     std::shared_ptr<lsst::qserv::css::CssAccess> css;
 };
 
+
 BOOST_FIXTURE_TEST_SUITE(Suite, TestFixture)
+
 
 BOOST_AUTO_TEST_CASE(Factory) {
     TestFactory tf;

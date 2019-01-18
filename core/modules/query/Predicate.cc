@@ -28,6 +28,7 @@
   * @author Daniel L. Wang, SLAC
   */
 
+
 // Class header
 #include "query/Predicate.h"
 
@@ -47,6 +48,7 @@ namespace lsst {
 namespace qserv {
 namespace query {
 
+
 std::ostream& operator<<(std::ostream& os, Predicate const& bt) {
     bt.dbgPrint(os);
     return os;
@@ -58,6 +60,7 @@ void CompPredicate::findColumnRefs(ColumnRef::Vector& vector) const {
     if (right) { right->findColumnRefs(vector); }
 }
 
+
 void InPredicate::findColumnRefs(ColumnRef::Vector& vector) const {
     if (value) { value->findColumnRefs(vector); }
     for(auto&& valueExpr : cands) {
@@ -65,39 +68,51 @@ void InPredicate::findColumnRefs(ColumnRef::Vector& vector) const {
     }
 }
 
+
 void BetweenPredicate::findColumnRefs(ColumnRef::Vector& vector) const {
     if (value) { value->findColumnRefs(vector); }
     if (minValue) { minValue->findColumnRefs(vector); }
     if (maxValue) { maxValue->findColumnRefs(vector); }
 }
 
+
 void LikePredicate::findColumnRefs(ColumnRef::Vector& vector) const {
     if (value) { value->findColumnRefs(vector); }
     if (charValue) { charValue->findColumnRefs(vector); }
 }
 
+
 void NullPredicate::findColumnRefs(ColumnRef::Vector& vector) const {
     if (value) { value->findColumnRefs(vector); }
 }
 
+
 std::ostream& CompPredicate::putStream(std::ostream& os) const {
     return QueryTemplate::renderDbg(os, *this);
 }
+
+
 std::ostream& InPredicate::putStream(std::ostream& os) const {
     return QueryTemplate::renderDbg(os, *this);
 }
+
+
 std::ostream& BetweenPredicate::putStream(std::ostream& os) const {
     return QueryTemplate::renderDbg(os, *this);
 }
+
+
 std::ostream& LikePredicate::putStream(std::ostream& os) const {
     return QueryTemplate::renderDbg(os, *this);
 }
+
+
 std::ostream& NullPredicate::putStream(std::ostream& os) const {
     return QueryTemplate::renderDbg(os, *this);
 }
 
-void CompPredicate::renderTo(QueryTemplate& qt) const {
 
+void CompPredicate::renderTo(QueryTemplate& qt) const {
     ValueExpr::render r(qt, false);
     r.applyToQT(left);
     switch(op) {
@@ -113,6 +128,7 @@ void CompPredicate::renderTo(QueryTemplate& qt) const {
     r.applyToQT(right);
 }
 
+
 void InPredicate::renderTo(QueryTemplate& qt) const {
     ValueExpr::render r(qt, false);
     r.applyToQT(value);
@@ -126,6 +142,7 @@ void InPredicate::renderTo(QueryTemplate& qt) const {
     qt.append(")");
 }
 
+
 void BetweenPredicate::renderTo(QueryTemplate& qt) const {
     ValueExpr::render r(qt, false);
     r.applyToQT(value);
@@ -136,6 +153,7 @@ void BetweenPredicate::renderTo(QueryTemplate& qt) const {
     r.applyToQT(maxValue);
 }
 
+
 void LikePredicate::renderTo(QueryTemplate& qt) const {
     ValueExpr::render r(qt, false);
     r.applyToQT(value);
@@ -143,6 +161,7 @@ void LikePredicate::renderTo(QueryTemplate& qt) const {
     qt.append("LIKE");
     r.applyToQT(charValue);
 }
+
 
 void NullPredicate::renderTo(QueryTemplate& qt) const {
     ValueExpr::render r(qt, false);
@@ -152,15 +171,18 @@ void NullPredicate::renderTo(QueryTemplate& qt) const {
     qt.append("NULL");
 }
 
+
 void CompPredicate::findValueExprs(ValueExprPtrVector& vector) const {
     vector.push_back(left);
     vector.push_back(right);
 }
 
+
 void InPredicate::findValueExprs(ValueExprPtrVector& vector) const {
     vector.push_back(value);
     vector.insert(vector.end(), cands.begin(), cands.end());
 }
+
 
 void BetweenPredicate::findValueExprs(ValueExprPtrVector& vector) const {
     vector.push_back(value);
@@ -168,14 +190,17 @@ void BetweenPredicate::findValueExprs(ValueExprPtrVector& vector) const {
     vector.push_back(maxValue);
 }
 
+
 void LikePredicate::findValueExprs(ValueExprPtrVector& vector) const {
     vector.push_back(value);
     vector.push_back(charValue);
 }
 
+
 void NullPredicate::findValueExprs(ValueExprPtrVector& vector) const {
     vector.push_back(value);
 }
+
 
 int CompPredicate::lookupOp(char const* op) {
     switch(op[0]) {
@@ -195,12 +220,14 @@ int CompPredicate::lookupOp(char const* op) {
     }
 }
 
+
 void CompPredicate::dbgPrint(std::ostream& os) const {
     os << "CompPredicate(left:" << left;
     os << ", op:" << op;
     os << ", right:" << right;
     os << ")";
 }
+
 
 bool CompPredicate::operator==(const BoolFactorTerm& rhs) const {
     auto rhsCompPredicate = dynamic_cast<CompPredicate const *>(&rhs);
@@ -212,6 +239,7 @@ bool CompPredicate::operator==(const BoolFactorTerm& rhs) const {
            util::ptrCompare<ValueExpr>(right, rhsCompPredicate->right);
 }
 
+
 BoolFactorTerm::Ptr CompPredicate::clone() const {
     CompPredicate* p = new CompPredicate;
     if (left) p->left = left->clone();
@@ -220,10 +248,12 @@ BoolFactorTerm::Ptr CompPredicate::clone() const {
     return BoolFactorTerm::Ptr(p);
 }
 
+
 BoolFactorTerm::Ptr GenericPredicate::clone() const {
     //return BfTerm::Ptr(new GenericPredicate());
     return BoolFactorTerm::Ptr();
 }
+
 
 namespace {
     struct valueExprCopy {
@@ -232,6 +262,7 @@ namespace {
         }
     };
 }
+
 
 BoolFactorTerm::Ptr InPredicate::clone() const {
     InPredicate::Ptr p  = std::make_shared<InPredicate>();
@@ -243,6 +274,7 @@ BoolFactorTerm::Ptr InPredicate::clone() const {
     return BoolFactorTerm::Ptr(p);
 }
 
+
 void InPredicate::dbgPrint(std::ostream& os) const {
     os << "InPredicate(value:" << value;
     os << ", cands:" << util::printable(cands);
@@ -251,6 +283,7 @@ void InPredicate::dbgPrint(std::ostream& os) const {
     }
     os << ")";
 }
+
 
 bool InPredicate::operator==(const BoolFactorTerm& rhs) const {
     auto rhsInPredicate = dynamic_cast<InPredicate const *>(&rhs);
@@ -262,6 +295,7 @@ bool InPredicate::operator==(const BoolFactorTerm& rhs) const {
            hasNot == rhsInPredicate->hasNot;
 }
 
+
 BoolFactorTerm::Ptr BetweenPredicate::clone() const {
     BetweenPredicate::Ptr p = std::make_shared<BetweenPredicate>();
     if (value) p->value = value->clone();
@@ -270,6 +304,7 @@ BoolFactorTerm::Ptr BetweenPredicate::clone() const {
     if (maxValue) p->maxValue = maxValue->clone();
     return BoolFactorTerm::Ptr(p);
 }
+
 
 void BetweenPredicate::dbgPrint(std::ostream& os) const {
     os << "BetweenPredicate(value:" << value;
@@ -280,6 +315,7 @@ void BetweenPredicate::dbgPrint(std::ostream& os) const {
     os << ", maxValue:" << maxValue;
     os << ")";
 }
+
 
 bool BetweenPredicate::operator==(const BoolFactorTerm& rhs) const {
     auto rhsBetweenPredicate = dynamic_cast<BetweenPredicate const *>(&rhs);
@@ -292,6 +328,7 @@ bool BetweenPredicate::operator==(const BoolFactorTerm& rhs) const {
            util::ptrCompare<ValueExpr>(maxValue, rhsBetweenPredicate->maxValue);
 }
 
+
 BoolFactorTerm::Ptr LikePredicate::clone() const {
     LikePredicate::Ptr p = std::make_shared<LikePredicate>();
     if (value) p->value = value->clone();
@@ -299,6 +336,7 @@ BoolFactorTerm::Ptr LikePredicate::clone() const {
     p->hasNot = hasNot;
     return BoolFactorTerm::Ptr(p);
 }
+
 
 void LikePredicate::dbgPrint(std::ostream& os) const {
     os << "LikePredicate(value:" << value;
@@ -308,6 +346,7 @@ void LikePredicate::dbgPrint(std::ostream& os) const {
     os << ", charValue:" << charValue;
     os << ")";
 }
+
 
 bool LikePredicate::operator==(const BoolFactorTerm& rhs) const {
     auto rhsLikePredicate = dynamic_cast<LikePredicate const *>(&rhs);
@@ -319,12 +358,14 @@ bool LikePredicate::operator==(const BoolFactorTerm& rhs) const {
            hasNot == rhsLikePredicate->hasNot;
 }
 
+
 BoolFactorTerm::Ptr NullPredicate::clone() const {
     NullPredicate::Ptr p = std::make_shared<NullPredicate>();
     if (value) p->value = value->clone();
     p->hasNot = hasNot;
     return BoolFactorTerm::Ptr(p);
 }
+
 
 void NullPredicate::dbgPrint(std::ostream& os) const {
     os << "NullPredicate(value:" << value;
@@ -333,6 +374,7 @@ void NullPredicate::dbgPrint(std::ostream& os) const {
     }
     os << ")";
 }
+
 
 bool NullPredicate::operator==(const BoolFactorTerm& rhs) const {
     auto rhsNullPredicate = dynamic_cast<NullPredicate const *>(&rhs);

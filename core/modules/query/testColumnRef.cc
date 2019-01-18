@@ -28,6 +28,7 @@
 
 // System headers
 #include <fstream>
+
 // list must be included before boost/test/data/test_case.hpp, because it is used there but not included.
 // (or that file could be included after boost/test/included/unit_test.hpp, which does cause list to be
 // included. But, we like to include our headers alphabetically so I'm including list here.
@@ -41,6 +42,7 @@
 #define BOOST_TEST_MODULE ColumnRef
 #include "boost/test/data/test_case.hpp"
 #include "boost/test/included/unit_test.hpp"
+
 
 namespace test = boost::test_tools;
 using namespace lsst::qserv;
@@ -106,6 +108,3 @@ BOOST_DATA_TEST_CASE(ColumnRefMatches, COLUMN_REF_MATCHES, columns) {
 
 
 BOOST_AUTO_TEST_SUITE_END()
-
-
-

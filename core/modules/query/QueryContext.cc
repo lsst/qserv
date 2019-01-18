@@ -28,6 +28,7 @@
   * @author Daniel L. Wang, SLAC
   */
 
+
 // Class header
 #include "query/QueryContext.h"
 
@@ -39,8 +40,11 @@
 #include "sql/SqlConnection.h"
 #include "sql/SqlResults.h"
 
+
 namespace {
+
 LOG_LOGGER _log = LOG_GET("lsst.qserv.query.QueryContext");
+
 }
 
 namespace lsst {
@@ -87,7 +91,6 @@ std::string QueryContext::columnToTablesMapToString() const {
 }
 
 
-///
 /// Get the table schema from the mysqlSchemaConfig database. Primarily, this is
 /// used to map column names to particular tables.
 std::vector<std::string> QueryContext::getTableSchema(std::string const& dbName,

@@ -110,4 +110,9 @@ void BoolTerm::renderList(QueryTemplate& qt,
 }
 
 
+std::shared_ptr<BoolTerm> BoolTerm::copySyntax() const {
+    return std::shared_ptr<BoolTerm>();
+}
+
+
 }}} // namespace lsst::qserv::query

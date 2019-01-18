@@ -58,19 +58,31 @@ public:
     BoolTermFactor() = default;
     BoolTermFactor(std::shared_ptr<BoolTerm> term) : _term(term) {}
 
-    virtual BoolFactorTerm::Ptr clone() const;
-    virtual BoolFactorTerm::Ptr copySyntax() const;
-    virtual std::ostream& putStream(std::ostream& os) const;
-    virtual void renderTo(QueryTemplate& qt) const;
+    /// Make a deep copy of this term.
+    BoolFactorTerm::Ptr clone() const override;
 
-    virtual void findValueExprs(std::vector<std::shared_ptr<ValueExpr>>& vector) const;
-    virtual void findColumnRefs(ColumnRef::Vector& vector) const;
+    /// Make a shallow copy of this term.
+     BoolFactorTerm::Ptr copySyntax() const override;
 
-    bool operator==(BoolFactorTerm const& rhs) const override;
+    /// Write a human-readable version of this instance to the ostream for debug output.
+    std::ostream& putStream(std::ostream& os) const override;
 
+    /// Serialze this instance as SQL to the QueryTemplate.
+    void renderTo(QueryTemplate& qt) const override;
+
+    /// Get a vector of the ValueExprs this contains.
+    void findValueExprs(std::vector<std::shared_ptr<ValueExpr>>& vector) const override;
+
+    /// Get a vector of the ColumnRefs this contains.
+    void findColumnRefs(ColumnRef::Vector& vector) const override;
+
+    bool operator==(BoolFactorTerm const& rhs) const;
+
+    // FIXME this member should be private, or at least protected. Jira issue DM-17306
     std::shared_ptr<BoolTerm> _term;
 
 protected:
+    /// Serialize this instance to os for debug output.
     void dbgPrint(std::ostream& os) const override;
 };
 

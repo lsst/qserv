@@ -33,6 +33,7 @@
   * @author Daniel L. Wang, SLAC
   */
 
+
 // Class header
 #include "query/SelectStmt.h"
 
@@ -56,10 +57,12 @@
 #include "util/IterableFormatter.h"
 #include "util/PointerCompare.h"
 
+
 ////////////////////////////////////////////////////////////////////////
 // anonymous
 ////////////////////////////////////////////////////////////////////////
 namespace {
+
 template <typename T>
 inline void renderTemplate(lsst::qserv::query::QueryTemplate& qt,
                            char const prefix[],
@@ -69,16 +72,19 @@ inline void renderTemplate(lsst::qserv::query::QueryTemplate& qt,
         t->renderTo(qt);
     }
 }
+
 template <typename T>
 inline void
 cloneIf(std::shared_ptr<T>& dest, std::shared_ptr<T> source) {
     if (source.get()) dest = source->clone();
 }
+
 template <typename T>
 inline void
 copySyntaxIf(std::shared_ptr<T>& dest, std::shared_ptr<T> source) {
     if (source.get()) dest = source->copySyntax();
 }
+
 } // namespace
 
 
@@ -91,6 +97,7 @@ namespace query {
 ////////////////////////////////////////////////////////////////////////
 
 SelectStmt::SelectStmt() : _hasDistinct(false), _limit(0) {}
+
 
 QueryTemplate
 SelectStmt::getQueryTemplate() const {
@@ -115,6 +122,7 @@ SelectStmt::getQueryTemplate() const {
     return qt;
 }
 
+
 /// getPostTemplate() is specialized to the needs of generating a
 /// "post" string for the aggregating table merger MergeFixup
 /// object. Hopefully, we will port the merger to use the merging
@@ -128,10 +136,12 @@ SelectStmt::getPostTemplate() const {
     return qt;
 }
 
+
 std::shared_ptr<WhereClause const>
 SelectStmt::getWhere() const {
     return _whereClause;
 }
+
 
 std::shared_ptr<SelectStmt>
 SelectStmt::clone() const {
@@ -147,6 +157,7 @@ SelectStmt::clone() const {
     // For the other fields, default-copied versions are okay.
     return newS;
 }
+
 
 // reate a merge statement for current object
 std::shared_ptr<SelectStmt>
@@ -168,11 +179,13 @@ SelectStmt::copyMerge() const {
     return newS;
 }
 
+
 void SelectStmt::setFromListAsTable(std::string const& t) {
     TableRefListPtr tr = std::make_shared<TableRefList>();
     tr->push_back(std::make_shared<TableRef>("", t, ""));
     _fromList = std::make_shared<FromList>(tr);
 }
+
 
 bool SelectStmt::operator==(const SelectStmt& rhs) const {
     return (util::ptrCompare<FromList>(_fromList, rhs._fromList) &&
@@ -185,6 +198,7 @@ bool SelectStmt::operator==(const SelectStmt& rhs) const {
             _limit == rhs._limit &&
             OutputMods == rhs.OutputMods);
 }
+
 
 std::ostream& operator<<(std::ostream& os, SelectStmt const& selectStmt) {
     os << "SelectStmt(";
@@ -200,5 +214,6 @@ std::ostream& operator<<(std::ostream& os, SelectStmt const& selectStmt) {
     os << ")";
     return os;
 }
+
 
 }}} // namespace lsst::qserv::query

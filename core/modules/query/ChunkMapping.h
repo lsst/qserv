@@ -21,8 +21,10 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
+
 #ifndef LSST_QSERV_QUERY_CHUNKMAPPING_H
 #define LSST_QSERV_QUERY_CHUNKMAPPING_H
+
 
 // System headers
 #include <map>
@@ -33,20 +35,22 @@
 // Local headers
 #include "global/stringTypes.h"
 
+
+// Forward declarations
 namespace lsst {
 namespace qserv {
-
 namespace qdisp {
-    // Forward
     class ChunkMeta;
-}
+}}} // End of forward declarations
 
+
+namespace lsst {
+namespace qserv {
 namespace query {
 
 
 // class ChunkMapping is a helper class that generates mappings from
 // placeholder table references to physical table names.
-//
 class ChunkMapping {
 public:
     typedef StringMap Map;
@@ -76,6 +80,7 @@ private:
     Map _instanceMap;
     std::string _subPrefix;
 };
+
 
 }}} // namespace lsst::qserv::query
 

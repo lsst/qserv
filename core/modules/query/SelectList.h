@@ -20,14 +20,15 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-
-#ifndef LSST_QSERV_QUERY_SELECTLIST_H
-#define LSST_QSERV_QUERY_SELECTLIST_H
 /**
   * @file
   *
   * @author Daniel L. Wang, SLAC
   */
+
+
+#ifndef LSST_QSERV_QUERY_SELECTLIST_H
+#define LSST_QSERV_QUERY_SELECTLIST_H
 
 // System headers
 #include <memory>
@@ -37,6 +38,7 @@
 #include "global/stringTypes.h"
 #include "query/ColumnRef.h"
 #include "query/ValueExpr.h"
+
 
 // Forward declarations
 namespace lsst {
@@ -56,6 +58,7 @@ namespace query {
 namespace lsst {
 namespace qserv {
 namespace query {
+
 
 /// SelectList is the SELECT... portion of a SELECT...FROM...
 /// SelectList contains a list of the ValueExprs that are representative of the
@@ -88,6 +91,7 @@ private:
 
     std::shared_ptr<ValueExprPtrVector> _valueExprList;
 };
+
 
 }}} // namespace lsst::qserv::query
 

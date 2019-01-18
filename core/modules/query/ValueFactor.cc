@@ -33,6 +33,7 @@
   * @author Daniel L. Wang, SLAC
   */
 
+
 // Class header
 #include "query/ValueFactor.h"
 
@@ -52,12 +53,14 @@ namespace lsst {
 namespace qserv {
 namespace query {
 
+
 ValueFactorPtr ValueFactor::newColumnRefFactor(std::shared_ptr<ColumnRef const> cr) {
     ValueFactorPtr term = std::make_shared<ValueFactor>();
     term->_type = COLUMNREF;
     term->_columnRef = std::make_shared<ColumnRef>(*cr);
     return term;
 }
+
 
 ValueFactorPtr ValueFactor::newStarFactor(std::string const& table) {
     ValueFactorPtr term = std::make_shared<ValueFactor>();
@@ -67,6 +70,8 @@ ValueFactorPtr ValueFactor::newStarFactor(std::string const& table) {
     }
     return term;
 }
+
+
 ValueFactorPtr ValueFactor::newFuncFactor(std::shared_ptr<FuncExpr> fe) {
     ValueFactorPtr term = std::make_shared<ValueFactor>();
     term->_type = FUNCTION;
@@ -74,12 +79,14 @@ ValueFactorPtr ValueFactor::newFuncFactor(std::shared_ptr<FuncExpr> fe) {
     return term;
 }
 
+
 ValueFactorPtr ValueFactor::newAggFactor(std::shared_ptr<FuncExpr> fe) {
     ValueFactorPtr term = std::make_shared<ValueFactor>();
     term->_type = AGGFUNC;
     term->_funcExpr = fe;
     return term;
 }
+
 
 ValueFactorPtr
 ValueFactor::newConstFactor(std::string const& alnum) {
@@ -92,6 +99,7 @@ ValueFactor::newConstFactor(std::string const& alnum) {
     return term;
 }
 
+
 ValueFactorPtr
 ValueFactor::newExprFactor(std::shared_ptr<ValueExpr> ve) {
     ValueFactorPtr factor = std::make_shared<ValueFactor>();
@@ -99,6 +107,7 @@ ValueFactor::newExprFactor(std::shared_ptr<ValueExpr> ve) {
     factor->_valueExpr = ve;
     return factor;
 }
+
 
 void ValueFactor::findColumnRefs(ColumnRef::Vector& vector) const {
     switch(_type) {
@@ -119,6 +128,7 @@ void ValueFactor::findColumnRefs(ColumnRef::Vector& vector) const {
     }
 }
 
+
 ValueFactorPtr ValueFactor::clone() const{
     ValueFactorPtr expr = std::make_shared<ValueFactor>(*this);
     // Clone refs.
@@ -134,6 +144,7 @@ ValueFactorPtr ValueFactor::clone() const{
     return expr;
 }
 
+
 std::ostream& operator<<(std::ostream& os, ValueFactor const& ve) {
     os << "ValueFactor(";
     if (ve._columnRef != nullptr) os << ve._columnRef;
@@ -144,6 +155,7 @@ std::ostream& operator<<(std::ostream& os, ValueFactor const& ve) {
     os << ")";
     return os;
 }
+
 
 std::ostream& operator<<(std::ostream& os, ValueFactor const* ve) {
     if (!ve) return os << "nullptr";
@@ -173,6 +185,7 @@ void ValueFactor::render::applyToQT(ValueFactor const& ve) {
     }
     if (!ve._alias.empty()) { _qt.append("AS"); _qt.append(ve._alias); }
 }
+
 
 bool ValueFactor::operator==(const ValueFactor& rhs) const {
     return (_type == rhs._type &&

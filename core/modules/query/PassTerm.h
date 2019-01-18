@@ -39,25 +39,37 @@ namespace query {
 /// without further analysis or manipulation.
 class PassTerm : public BoolFactorTerm
 {
-  public: // text
+public:
     typedef std::shared_ptr<PassTerm> Ptr;
 
     PassTerm() {}
     PassTerm(const std::string& text) : _text(text) {}
 
+    /// Get a vector of the ValueExprs this contains.
     void findValueExprs(ValueExprPtrVector& vector) const override {}
+
+    /// Get a vector of the ColumnRefs this contains.
     void findColumnRefs(ColumnRef::Vector& vector) const override {}
 
-    virtual BoolFactorTerm::Ptr clone() const { return copySyntax(); }
-    virtual BoolFactorTerm::Ptr copySyntax() const;
-    virtual std::ostream& putStream(std::ostream& os) const;
-    virtual void renderTo(QueryTemplate& qt) const;
+    /// Make a deep copy of this term.
+    BoolFactorTerm::Ptr clone() const override { return copySyntax(); }
 
+    /// Make a shallow copy of this term.
+    BoolFactorTerm::Ptr copySyntax() const override;
+
+    /// Write a human-readable version of this instance to the ostream for debug output.
+    std::ostream& putStream(std::ostream& os) const override;
+
+    /// Serialze this instance as SQL to the QueryTemplate.
+    void renderTo(QueryTemplate& qt) const override;
+
+    // FIXME this member should be private, or at least protected. Jira issue DM-17306
     std::string _text;
 
     bool operator==(const BoolFactorTerm& rhs) const override;
 
 protected:
+    /// Serialize this instance to os for debug output.
     void dbgPrint(std::ostream& os) const override;
 };
 

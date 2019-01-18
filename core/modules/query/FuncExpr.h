@@ -20,9 +20,6 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-
-#ifndef LSST_QSERV_QUERY_FUNCEXPR_H
-#define LSST_QSERV_QUERY_FUNCEXPR_H
 /**
   * @file
   *
@@ -32,6 +29,11 @@
   * @author Daniel L. Wang, SLAC
   */
 
+
+#ifndef LSST_QSERV_QUERY_FUNCEXPR_H
+#define LSST_QSERV_QUERY_FUNCEXPR_H
+
+
 // System headers
 #include <memory>
 #include <string>
@@ -40,44 +42,63 @@
 #include "query/ColumnRef.h"
 #include "query/typedefs.h"
 
+
+// Forward declarations
+namespace lsst {
+namespace qserv {
+namespace query {
+    class QueryTemplate;
+}}} // End of forward declarations
+
+
 namespace lsst {
 namespace qserv {
 namespace query {
 
-// Forward
-class QueryTemplate;
 
 // FuncExpr is a function expression, e.g., foo(1,2,bar)
 class FuncExpr {
 public:
     typedef std::shared_ptr<FuncExpr> Ptr;
 
+    /// Set the function name.
+    void setName(const std::string& val);
+
+    /// Get the function name.
     const std::string& getName() const;
+
+    /// Get the function parameters.
     ValueExprPtrVector getParams() const;
 
     /// Construct a new FuncExpr like an existing one.
     static FuncExpr::Ptr newLike(FuncExpr const& src, std::string const& newName);
+
     /// Construct a new FuncExpr with a name and string arg
     static FuncExpr::Ptr newArg1(std::string const& newName,
                                  std::string const& arg1);
+
     /// Construct a new FuncExpr with a name and ValueExpr arg
     static FuncExpr::Ptr newArg1(std::string const& newName,
                                  ValueExprPtr ve);
+
     /// Construct a new FuncExpr with a name and a vector of ValueExpr arg
     static FuncExpr::Ptr newWithArgs(std::string const& newName,
                                      const ValueExprPtrVector& ve);
 
-
-    void setName(const std::string& val);
-
+    /// Get a vector of the ColumnRefs this contains.
     void findColumnRefs(ColumnRef::Vector& outputRefs) const;
+
+    /// Make a deep copy of this term.
     std::shared_ptr<FuncExpr> clone() const;
 
-    // Fields
-    ValueExprPtrVector params;
+    /// Serialze this instance as SQL to the QueryTemplate.
     void renderTo(QueryTemplate& qt) const;
 
     bool operator==(const FuncExpr& rhs) const;
+
+    // Fields
+    ValueExprPtrVector params;
+
 private:
     friend std::ostream& operator<<(std::ostream& os, FuncExpr const& fe);
     friend std::ostream& operator<<(std::ostream& os, FuncExpr const* fe);
@@ -89,6 +110,7 @@ private:
 // output helpers
 std::ostream& output(std::ostream& os, ValueExprPtrVector const& vel);
 void renderList(QueryTemplate& qt, ValueExprPtrVector const& vel);
+
 
 }}} // namespace lsst::qserv::query
 
