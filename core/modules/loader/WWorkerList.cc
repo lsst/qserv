@@ -82,7 +82,13 @@ util::CommandTracked::Ptr WWorkerList::createCommandWorker(CentralWorker* centra
             // Send the request to master.
             auto masterHost = _centralW->getMasterHostName();
             auto masterPort = _centralW->getMasterPort();
-            _centralW->sendBufferTo(masterHost, masterPort, sendBuf);
+            LOGS(_log, LOG_LVL_DEBUG, "MastWorkerListReqCmd::action host=" << masterHost <<
+                                      " port=" << masterPort);
+            try {
+                _centralW->sendBufferTo(masterHost, masterPort, sendBuf);
+            } catch (boost::system::system_error const& e) {
+                LOGS(_log, LOG_LVL_ERROR, "MastWorkerListReqCmd::action boost system_error=" << e.what());
+            }
 
             /// Go through the existing list and add any that have not been add to the doList
             for (auto const& item : _wIdMap) {
@@ -205,7 +211,7 @@ std::string WWorkerList::dump() const {
 //  TODO believe our neighbors range over the master
 void WWorkerList::updateEntry(uint32_t wId,
                               std::string const& ip, int portUdp, int portTcp,
-                              StringRange& strRange) {
+                              KeyRange& strRange) {
     std::unique_lock<std::mutex> lk(_mapMtx);
     auto iter = _wIdMap.find(wId);
     if (iter == _wIdMap.end()) {
@@ -347,7 +353,12 @@ util::CommandTracked::Ptr WWorkerListItem::createCommandWorkerInfoReq(CentralWor
             // Send the request to master.
             auto masterHost = _centralW->getMasterHostName();
             auto masterPort = _centralW->getMasterPort();
-            _centralW->sendBufferTo(masterHost, masterPort, sendBuf);
+            try {
+                _centralW->sendBufferTo(masterHost, masterPort, sendBuf);
+            } catch (boost::system::system_error const& e) {
+                LOGS(_log, LOG_LVL_ERROR, "WorkerReqCmd::action boost system_error=" << e.what() <<
+                        " wId=" << _wId);
+            }
         }
 
     private:

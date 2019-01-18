@@ -70,6 +70,8 @@ public:
         neighborPtr_->registerNotify(updatePtr); // Must do this so it will call our updateNotify().
         LOGS(_log, LOG_LVL_INFO, "SetNeighborOneShot neighborId=" <<
                                  neighborId_ << " " << neighborPtr_->get());
+        // Send this message frequently as the target node could be getting spammed.
+        oneShot->setTimeRateLimit(std::chrono::milliseconds(100)); // TODO: DM-17453 set via config
         return oneShot;
     }
 
@@ -181,7 +183,13 @@ bool MWorkerList::sendListTo(uint64_t msgId, std::string const& ip, short port,
                 workerList.appendToData(*_stateListData);
             }
         }
-        _central->sendBufferTo(ip, port, *_stateListData);
+        try {
+            _central->sendBufferTo(ip, port, *_stateListData);
+        } catch (boost::system::system_error const& e) {
+            LOGS(_log, LOG_LVL_ERROR, "MWorkerList::sendListTo boost system_error=" << e.what() <<
+                    " msgId=" << msgId << " ip=" << ip << " port=" << port <<
+                    " ourName=" << ourHostName << " ourPort=" << ourPort);
+        }
     }
 
     // See if this worker is know.
@@ -345,7 +353,7 @@ void MWorkerListItem::setRightNeighbor(MWorkerListItem::Ptr const& item) {
                                               LoaderMsg::WORKER_RIGHT_NEIGHBOR,
                                               item->getId(),
                                               _neighborsInfo.neighborRight);
-    _central->addDoListItem(oneShot);
+    _central->runAndAddDoListItem(oneShot);
 }
 
 
@@ -362,7 +370,7 @@ void MWorkerListItem::setLeftNeighbor(MWorkerListItem::Ptr const& item) {
                                               item->getId(),
                                               _neighborsInfo.neighborLeft);
 
-    _central->addDoListItem(oneShot);
+    _central->runAndAddDoListItem(oneShot);
 }
 
 

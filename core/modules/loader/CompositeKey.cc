@@ -28,8 +28,6 @@
 // System headers
 #include <iostream>
 
-// qserv headers
-
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -43,10 +41,14 @@ namespace qserv {
 namespace loader {
 
 
-std::ostream& CompositeKey::dump(std::ostream& os) const {
+CompositeKey const CompositeKey::minValue(0,"");
+
+
+void CompositeKey::dump(std::ostream& os) const {
     os << "CKey(" << kInt << ", " << kStr << ")";
-    return os;
 }
+
+
 std::string CompositeKey::dump() const {
     std::stringstream os;
     dump(os);
@@ -61,8 +63,4 @@ std::ostream& operator<<(std::ostream& os, CompositeKey const& cKey) {
 
 
 }}} // namespace lsst::qserv::loader
-
-
-
-
 

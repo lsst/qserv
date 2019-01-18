@@ -95,12 +95,12 @@ public:
         _keyCount = count;
     }
 
-    void setRange(StringRange const& range) {
+    void setRange(KeyRange const& range) {
         std::lock_guard<std::mutex> lck(_nMtx);
         _strRange = range;
     }
 
-    void getKeyData(int& keyCount, StringRange& range) {
+    void getKeyData(int& keyCount, KeyRange& range) {
         std::lock_guard<std::mutex> lck(_nMtx);
         keyCount = _keyCount;
         range = _strRange;
@@ -117,7 +117,7 @@ private:
     std::mutex _nMtx;
     Type _type;
     int _keyCount{0};
-    StringRange _strRange;
+    KeyRange _strRange;
 };
 
 }}} // namespace lsst::qserv::loader

@@ -61,7 +61,7 @@ void DoList::checkList() {
             _central.queueCmd(cmd);
         } else {
             if (item->shouldRemoveFromList()) {
-                LOGS(_log, LOG_LVL_INFO, "removing item");
+                LOGS(_log, LOG_LVL_INFO, "removing item " << item->getCommandsCreated());
                 item->setAddedToList(false);
                 iter = _list.erase(iter);
             }

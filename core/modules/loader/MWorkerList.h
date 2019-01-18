@@ -34,8 +34,8 @@
 #include "loader/Updateable.h"
 #include "loader/BufferUdp.h"
 #include "loader/DoList.h"
+#include "loader/KeyRange.h"
 #include "loader/NetworkAddress.h"
-#include "loader/StringRange.h"
 #include "loader/WorkerListItemBase.h"
 
 

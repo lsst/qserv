@@ -151,7 +151,7 @@ int main(int argc, char* argv[]) {
             }
         }
         LOGS(_log, LOG_LVL_INFO, "data:" << data.dumpStr());
-    } catch (LoaderMsgErr& ex) {
+    } catch (LoaderMsgErr const& ex) {
         LOGS(_log, LOG_LVL_ERROR, "Write to buffer FAILED msg=" << ex.what());
         exit(-1);
     }
@@ -179,7 +179,7 @@ int main(int argc, char* argv[]) {
                 LOGS(_log, LOG_LVL_INFO, "matched " << ele->getStringVal());
             }
         }
-    } catch (LoaderMsgErr& ex) {
+    } catch (LoaderMsgErr const& ex) {
         LOGS(_log, LOG_LVL_ERROR, "Read from buffer FAILED msg=" << ex.what());
         exit(-1);
     }
@@ -222,7 +222,7 @@ int main(int argc, char* argv[]) {
             LOGS(_log, LOG_LVL_INFO, "ServTcpBase e");
             sleep(5);
         }
-        catch (std::exception& e) {
+        catch (std::exception const& e) {
             std::cerr << e.what() << std::endl;
         }
     }
@@ -309,11 +309,7 @@ int main(int argc, char* argv[]) {
     }
     cMaster.setMaxKeysPerWorker(4);
     // Need to start several threads so messages aren't dropped while being processed.
-    cMaster.run();
-    cMaster.run();
-    cMaster.run();
-    cMaster.run();
-    cMaster.run();
+    cMaster.runServer();
 
     /// Start worker server 1
     CentralWorker wCentral1(ioServiceWorker1, ioContext1, ourHost, workerCfg1);
@@ -324,10 +320,7 @@ int main(int argc, char* argv[]) {
         exit(-1);
     }
 
-    wCentral1.run();
-    wCentral1.run();
-    wCentral1.run();
-
+    wCentral1.runServer();
 
     /// Start worker server 2
     CentralWorker wCentral2(ioServiceWorker2, ioContext2, ourHost, workerCfg2);
@@ -337,10 +330,7 @@ int main(int argc, char* argv[]) {
         LOGS(_log, LOG_LVL_ERROR, "wCentral2.start() failed e=" << e.what());
         exit(-1);
     }
-    wCentral2.run();
-    wCentral2.run();
-    wCentral2.run();
-
+    wCentral2.runServer();
 
     ClientConfig clientCfg1("core/modules/loader/config/client1.cnf");
     LOGS(_log, LOG_LVL_INFO, "clientCfg1=" << clientCfg1);
@@ -351,7 +341,7 @@ int main(int argc, char* argv[]) {
         LOGS(_log, LOG_LVL_ERROR, "cCentral1A.start() failed e=" << e.what());
         exit(-1);
     }
-    cCentral1A.run();
+    cCentral1A.runServer();
 
 
     ClientConfig clientCfg2("core/modules/loader/config/client2.cnf");
@@ -363,7 +353,7 @@ int main(int argc, char* argv[]) {
         LOGS(_log, LOG_LVL_ERROR, "cCentral2A.start() failed e=" << e.what());
         exit(-1);
     }
-    cCentral2A.run();
+    cCentral2A.runServer();
 
     ClientConfig clientCfg3("core/modules/loader/config/client3.cnf");
     LOGS(_log, LOG_LVL_INFO, "clientCfg3=" << clientCfg3);
@@ -374,7 +364,7 @@ int main(int argc, char* argv[]) {
         LOGS(_log, LOG_LVL_ERROR, "cCentral1B.start() failed e=" << e.what());
         exit(-1);
     }
-    cCentral1B.run();
+    cCentral1B.runServer();
 
 
     /// Unknown message kind test. Pretending to be worker1.
@@ -435,7 +425,7 @@ int main(int argc, char* argv[]) {
             std::string reversed(bStr.rbegin(), bStr.rend());
             LOGS(_log, LOG_LVL_INFO, bStr << " newKey=" << reversed << " j(" << j%10 << " ," << j << ")");
             keyList.emplace_back(CompositeKey(reversed), j%10, j);
-            bStr = StringRange::incrementString(bStr, '0');
+            bStr = KeyRange::incrementString(bStr, '0');
         }
     }
 
@@ -460,9 +450,9 @@ int main(int argc, char* argv[]) {
     // Retrieve keyA and keyB
     {
         LOGS(_log, LOG_LVL_INFO, "5TSTAGE client retrieve keyB keyA");
-        auto keyBInfo = cCentral1A.keyInfoReq(keyB.key);
-        auto keyAInfo = cCentral1A.keyInfoReq(keyA.key);
-        auto keyCInfo = cCentral1A.keyInfoReq(keyC.key);
+        auto keyBInfo = cCentral1A.keyLookupReq(keyB.key);
+        auto keyAInfo = cCentral1A.keyLookupReq(keyA.key);
+        auto keyCInfo = cCentral1A.keyLookupReq(keyC.key);
 
         keyAInfo->waitComplete();
         keyBInfo->waitComplete();
@@ -503,15 +493,15 @@ int main(int argc, char* argv[]) {
             LOGS(_log, LOG_LVL_INFO, "keyC inserted.");
         }
 
-        auto keyAInfo = cCentral1A.keyInfoReq(keyA.key);
+        auto keyAInfo = cCentral1A.keyLookupReq(keyA.key);
         LOGS(_log, LOG_LVL_INFO, "6TSTAGE waiting A");
         keyAInfo->waitComplete();
 
-        auto keyBInfo = cCentral2A.keyInfoReq(keyB.key);
+        auto keyBInfo = cCentral2A.keyLookupReq(keyB.key);
         LOGS(_log, LOG_LVL_INFO, "6TSTAGE waiting B");
         keyBInfo->waitComplete();
 
-        auto keyCInfo = cCentral2A.keyInfoReq(keyC.key);
+        auto keyCInfo = cCentral2A.keyLookupReq(keyC.key);
         LOGS(_log, LOG_LVL_INFO, "6TSTAGE waiting C");
         keyCInfo->waitComplete();
 

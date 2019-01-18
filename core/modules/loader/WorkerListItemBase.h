@@ -30,10 +30,11 @@
 #include <memory>
 #include <mutex>
 
+
 // Qserv headers
-#include "loader/Updateable.h"
+#include "loader/KeyRange.h"
 #include "loader/NetworkAddress.h"
-#include "loader/StringRange.h"
+#include "loader/Updateable.h"
 
 
 namespace lsst {
@@ -54,10 +55,10 @@ public:
     virtual ~WorkerListItemBase() = default;
 
     /// @return return the previous range value.
-    StringRange setRangeString(StringRange const& strRange);
+    KeyRange setRangeString(KeyRange const& strRange);
 
     /// @return the current range.
-    StringRange getRangeString() const {
+    KeyRange getRangeString() const {
         std::lock_guard<std::mutex> lck(_mtx);
         return _range;
     }
@@ -100,7 +101,7 @@ protected:
     }
 
     uint32_t const _wId; ///< worker id, immutable.
-    StringRange _range;      ///< min and max range for this worker.
+    KeyRange _range;      ///< min and max range for this worker.
     mutable std::mutex _mtx; ///< protects _range. Child classes may use it to protect additional members.
 
 private:

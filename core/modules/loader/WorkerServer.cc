@@ -73,7 +73,7 @@ BufferUdp::Ptr WorkerServer::parseMsg(BufferUdp::Ptr const& data,
         case LoaderMsg::KEY_INSERT_REQ:
             _centralWorker->workerKeyInsertReq(inMsg, data);
             break;
-        case LoaderMsg::KEY_INFO_REQ:
+        case LoaderMsg::KEY_LOOKUP_REQ:
             _centralWorker->workerKeyInfoReq(inMsg, data);
             break;
         case LoaderMsg::WORKER_KEYS_INFO_REQ:
@@ -87,7 +87,7 @@ BufferUdp::Ptr WorkerServer::parseMsg(BufferUdp::Ptr const& data,
             break;
 
         // Following not expected by worker
-        case LoaderMsg::KEY_INFO:
+        case LoaderMsg::KEY_LOOKUP:
         case LoaderMsg::MAST_INFO_REQ:
         case LoaderMsg::MAST_WORKER_LIST_REQ:
         case LoaderMsg::MAST_WORKER_INFO_REQ:

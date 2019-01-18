@@ -54,7 +54,7 @@ namespace loader {
 CentralWorker::CentralWorker(boost::asio::io_service& ioService_, boost::asio::io_context& io_context_,
                              std::string const& hostName_, WorkerConfig const& cfg)
     : Central(ioService_, cfg.getMasterHost(), cfg.getMasterPortUdp(),
-              cfg.getThreadPoolSize(), cfg.getLoopSleepTime()),
+              cfg.getThreadPoolSize(), cfg.getLoopSleepTime(), cfg.getIOThreads()),
       _hostName(hostName_),
       _udpPort(cfg.getWPortUdp()),
       _tcpPort(cfg.getWPortTcp()),
@@ -246,7 +246,7 @@ bool CentralWorker::_determineRange() {
         LOGS(_log, LOG_LVL_INFO, funcName << " rightNeighbor workerId=" << workerId <<
                                  " keyCount=" << nInfoR.keyCount << " recentAdds=" << nInfoR.recentAdds);
         bool valid = protoRange.valid();
-        StringRange rightRange;
+        KeyRange rightRange;
         if (valid) {
             CompositeKey min(protoRange.minint(), protoRange.minstr());
             CompositeKey max(protoRange.maxint(), protoRange.maxstr());
@@ -258,12 +258,12 @@ bool CentralWorker::_determineRange() {
             // Our maximum value is up to but not including the right minimum.
             {
                 std::lock_guard<std::mutex> lckMap(_idMapMtx);
-                auto origMax = _strRange.getMax();
-                auto origUnlim = _strRange.getUnlimited();
+                auto origMax = _keyRange.getMax();
+                auto origUnlim = _keyRange.getUnlimited();
                 // Can't be unlimited anymore as there is a right neighbor.
-                _strRange.setMax(min, false);
-                if (origUnlim != _strRange.getUnlimited() ||
-                    (!origUnlim && origMax != _strRange.getMax())) {
+                _keyRange.setMax(min, false);
+                if (origUnlim != _keyRange.getUnlimited() ||
+                    (!origUnlim && origMax != _keyRange.getMax())) {
                     rangeChanged = true;
                 }
             }
@@ -297,11 +297,11 @@ bool CentralWorker::_shiftIfNeeded(std::lock_guard<std::mutex> const& rightMtxLG
     }
 
     // Get local copies of range and map info.
-    StringRange range;
+    KeyRange range;
     size_t mapSize;
     {
         std::lock_guard<std::mutex> lck(_idMapMtx);
-        range = _strRange;
+        range = _keyRange;
         mapSize = _keyValueMap.size();
     }
 
@@ -309,7 +309,7 @@ bool CentralWorker::_shiftIfNeeded(std::lock_guard<std::mutex> const& rightMtxLG
     // If this worker has _thresholdAverage more keys than average or _thresholdNeighborShift more keys than the right neighbor
     // send enough keys to the right to balance (min 1 key, max _maxShiftKeys, never shift more than 1/3 of our keys)
     int rightKeyCount = 0;
-    StringRange rightRange;
+    KeyRange rightRange;
     _neighborRight.getKeyData(rightKeyCount, rightRange);
     if (range > rightRange) {
         LOGS(_log, LOG_LVL_ERROR, "Right neighbor range is less than ours!!!! our=" << range << " right=" << rightRange);
@@ -346,7 +346,8 @@ bool CentralWorker::_shiftIfNeeded(std::lock_guard<std::mutex> const& rightMtxLG
 
 
 void CentralWorker::_shift(Direction direction, int keysToShift) {
-    LOGS(_log, LOG_LVL_DEBUG, "CentralWorker::_shift");
+    std::string const fName("CentralWorker::_shift");
+    LOGS(_log, LOG_LVL_DEBUG, fName);
     if (direction == FROMRIGHT2) {
         BufferUdp data(1000000);
         // Construct a message asking for keys to shift (it will shift its lowest keys, which will be our highest keys)
@@ -362,27 +363,27 @@ void CentralWorker::_shift(Direction direction, int keysToShift) {
             kindShiftFromRight.appendToData(data);
             bytesInMsg.appendToData(data);
             keyShiftReq.appendToData(data);
-            LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift FROMRIGHT " << keysToShift);
+            LOGS(_log, LOG_LVL_INFO, fName << " FROMRIGHT " << keysToShift);
             ServerTcpBase::writeData(*_rightSocket, data);
         }
         // Wait for the KeyList response
         {
             data.reset();
             auto msgElem = data.readFromSocket(*_rightSocket,
-                                               "CentralWorker::_shift waiting for FROMRIGHT KeyList");
+                                               fName + " waiting for FROMRIGHT KeyList");
             auto keyListElem = std::dynamic_pointer_cast<StringElement>(msgElem);
             if (keyListElem == nullptr) {
-                throw LoaderMsgErr(ERR_LOC, "_shift FROMRIGHT failure to get KeyList");
+                throw LoaderMsgErr(ERR_LOC, fName +" FROMRIGHT failure to get KeyList");
             }
             auto protoKeyList = keyListElem->protoParse<proto::KeyList>();
             if (protoKeyList == nullptr) {
-                throw LoaderMsgErr(ERR_LOC, "_shift FROMRIGHT failure to parse KeyList size=" +
+                throw LoaderMsgErr(ERR_LOC, fName + " FROMRIGHT failure to parse KeyList size=" +
                                    std::to_string(keyListElem->element.size()));
             }
 
             // TODO This is very similar to code in TcpBaseConnection::_handleShiftToRight and they should be merged.
             int sz = protoKeyList->keypair_size();
-            std::vector<CentralWorker::StringKeyPair> keyList;
+            std::vector<CentralWorker::CompKeyPair> keyList;
             for (int j=0; j < sz; ++j) {
                 proto::KeyInfo const& protoKI = protoKeyList->keypair(j);
                 ChunkSubchunk chSub(protoKI.chunk(), protoKI.subchunk());
@@ -395,28 +396,23 @@ void CentralWorker::_shift(Direction direction, int keysToShift) {
         UInt32Element elem(LoaderMsg::SHIFT_FROM_RIGHT_RECEIVED);
         elem.appendToData(data);
         ServerTcpBase::writeData(*_rightSocket, data);
-        LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift  direction=" << direction << " keys=" << keysToShift);
+        LOGS(_log, LOG_LVL_INFO, fName << " direction=" << direction << " keys=" << keysToShift);
 
     } else if (direction == TORIGHT1) {
-        LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift TORIGHT " << keysToShift);
+        LOGS(_log, LOG_LVL_INFO, fName << " TORIGHT " << keysToShift);
         // TODO this is very similar to CentralWorker::buildKeyList() and should be merged with that.
         // Construct a message with that many keys and send it (sending the highest keys)
         proto::KeyList protoKeyList;
         protoKeyList.set_keycount(keysToShift);
-        CompositeKey minKey = CompositeKey::minValue(); // smallest value of a key is sent to right neighbor
-        CompositeKey maxKey = CompositeKey::minValue();
+        CompositeKey minKey = CompositeKey::minValue; // smallest key is sent to right neighbor
         {
             std::lock_guard<std::mutex> lck(_idMapMtx);
             if (not _transferListToRight.empty()) {
-                throw LoaderMsgErr(ERR_LOC, "_shift _transferList not empty");
+                throw LoaderMsgErr(ERR_LOC, fName + " _transferList not empty");
             }
-            bool firstPass = true;
             for (int j=0; j < keysToShift && _keyValueMap.size() > 1; ++j) {
                 auto iter = _keyValueMap.end();
                 --iter; // rbegin() returns a reverse iterator which doesn't work with erase().
-                if (firstPass) {
-                    maxKey = iter->first;
-                }
                 _transferListToRight.push_back(std::make_pair(iter->first, iter->second));
                 proto::KeyInfo* protoKI = protoKeyList.add_keypair();
                 minKey = iter->first;
@@ -427,7 +423,7 @@ void CentralWorker::_shift(Direction direction, int keysToShift) {
                 _keyValueMap.erase(iter);
             }
             // Adjust our range;
-            _strRange.setMax(minKey);
+            _keyRange.setMax(minKey);
         }
         StringElement keyList;
         protoKeyList.SerializeToString(&(keyList.element));
@@ -435,27 +431,41 @@ void CentralWorker::_shift(Direction direction, int keysToShift) {
         UInt32Element kindShiftRight(LoaderMsg::SHIFT_TO_RIGHT);
         UInt32Element bytesInMsg(keyList.transmitSize());
         BufferUdp data(kindShiftRight.transmitSize() + bytesInMsg.transmitSize() + keyList.transmitSize());
+        if (data.getMaxLength() > TcpBaseConnection::getMaxBufSize()) {
+            std::string errMsg = fName + " SHIFT_TO_RIGHT FAILED message too big sz=" +
+                    std::to_string(data.getMaxLength()) +
+                    " max=" + std::to_string(TcpBaseConnection::getMaxBufSize());
+            LOGS(_log, LOG_LVL_ERROR, errMsg);
+            // This will keep getting thrown and never work, but at least it will show up
+            // in the logs.
+            // &&& create new exception, catch it and halve the number of keys to shift ???
+            throw LoaderMsgErr(ERR_LOC, errMsg);
+        }
         kindShiftRight.appendToData(data);
         bytesInMsg.appendToData(data);
         keyList.appendToData(data);
-        LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift TORIGHT sending keys");
+
+        LOGS(_log, LOG_LVL_INFO, fName << " TORIGHT sending keys");
         ServerTcpBase::writeData(*_rightSocket, data);
 
         // read back LoaderMsg::SHIFT_TO_RIGHT_KEYS_RECEIVED
         data.reset();
         auto msgElem = data.readFromSocket(*_rightSocket,
-                                           "CentralWorker::_shift SHIFT_TO_RIGHT_KEYS_RECEIVED");
+                                           fName + " SHIFT_TO_RIGHT_KEYS_RECEIVED");
         UInt32Element::Ptr received = std::dynamic_pointer_cast<UInt32Element>(msgElem);
-        LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift TORIGHT keys were received");
+        LOGS(_log, LOG_LVL_INFO, fName << " TORIGHT keys were received");
         if (received == nullptr || received->element !=  LoaderMsg::SHIFT_TO_RIGHT_RECEIVED) {
-            throw LoaderMsgErr(ERR_LOC, "_shift receive failure");
+            throw LoaderMsgErr(ERR_LOC, fName +" receive failure");
         }
         _finishShiftToRight();
-        LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift end direction=" << direction << " keys=" << keysToShift);
+        LOGS(_log, LOG_LVL_INFO, fName + " end direction=" << direction << " keys=" << keysToShift);
     }
     LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift DumpKeys " << dumpKeysStr(2));
     _shiftAsClientInProgress = false;
 }
+
+
+
 
 
 void CentralWorker::_finishShiftToRight() {
@@ -473,8 +483,8 @@ void CentralWorker::finishShiftFromRight() {
 StringElement::UPtr CentralWorker::buildKeyList(int keysToShift) {
     std::string funcName = "CentralWorker::buildKeyList";
     proto::KeyList protoKeyList;
-    CompositeKey minKey = CompositeKey::minValue(); // smallest key sent
-    CompositeKey maxKey = CompositeKey::minValue(); // largest key sent
+    CompositeKey minKey = CompositeKey::minValue; // smallest key sent
+    CompositeKey maxKey = CompositeKey::minValue; // largest key sent
     {
         LOGS(_log, LOG_LVL_INFO, funcName);
         std::lock_guard<std::mutex> lck(_idMapMtx);
@@ -501,10 +511,10 @@ StringElement::UPtr CentralWorker::buildKeyList(int keysToShift) {
         }
         // Adjust our range;
         auto iter = _keyValueMap.begin();
-        auto minKey = _strRange.getMin();
-        if (minKey != CompositeKey::minValue()) {
+        auto minKey = _keyRange.getMin();
+        if (minKey != CompositeKey::minValue) {
             if (iter->first != minKey) {
-                _strRange.setMin(iter->first);
+                _keyRange.setMin(iter->first);
                 _rangeChanged = true;
             }
         }
@@ -519,6 +529,7 @@ StringElement::UPtr CentralWorker::buildKeyList(int keysToShift) {
 void CentralWorker::_rightConnect(std::lock_guard<std::mutex> const& rightMtxLG) {
     std::string const funcName("CentralWorker::_rightConnect");
     if(_rightConnectStatus == VOID0) {
+        LOGS(_log, LOG_LVL_INFO, funcName + " starting rightConnection");
         _rightConnectStatus = STARTING1;
         // Connect to the right neighbor server
         AsioTcp::resolver resolver(_ioContext);
@@ -557,12 +568,13 @@ void CentralWorker::_rightConnect(std::lock_guard<std::mutex> const& rightMtxLG)
         _determineRange();
 
         _rightConnectStatus = ESTABLISHED2;
+        LOGS(_log, LOG_LVL_INFO, funcName + " established rightConnection");
         _neighborRight.setEstablished(true);
     }
 }
 
 
-void CentralWorker::setNeighborInfoLeft(uint32_t wId, int keyCount, StringRange const& range) {
+void CentralWorker::setNeighborInfoLeft(uint32_t wId, int keyCount, KeyRange const& range) {
     if (wId != _neighborLeft.getId()) {
         LOGS(_log, LOG_LVL_ERROR, "disconnecting left since setNeighborInfoLeft wId(" << wId <<
                                   ") != neighborLeft.name(" << _neighborLeft.getId() << ")");
@@ -627,8 +639,8 @@ void CentralWorker::cancelShiftsWithLeftNeighbor() {
         _transferListWithLeft.clear();
 
         // Fix the bottom of the range.
-        if (_strRange.getMin() != CompositeKey::minValue()) {
-            _strRange.setMin(_keyValueMap.begin()->first);
+        if (_keyRange.getMin() != CompositeKey::minValue) {
+            _keyRange.setMin(_keyValueMap.begin()->first);
         }
     }
 }
@@ -668,7 +680,7 @@ void CentralWorker::_workerInfoReceive(std::unique_ptr<proto::WorkerListItem>& p
         portUdp = protoAddr.udpport();
         portTcp = protoAddr.tcpport();
     }
-    StringRange strRange;
+    KeyRange strRange;
     if (protoList->has_range()) {
         proto::WorkerRange protoRange = protoList->range();
         bool valid        = protoRange.valid();
@@ -694,9 +706,9 @@ void CentralWorker::_workerInfoReceive(std::unique_ptr<proto::WorkerListItem>& p
         // take the range given as our own.
         if (strRange.getValid()) {
             std::lock_guard<std::mutex> lckM(_idMapMtx);
-            if (not _strRange.getValid()) {
+            if (not _keyRange.getValid()) {
                 LOGS(_log, LOG_LVL_INFO, "Setting our range " << strRange);
-                _strRange.setMinMax(strRange.getMin(), strRange.getMax(), strRange.getUnlimited());
+                _keyRange.setMinMax(strRange.getMin(), strRange.getMax(), strRange.getUnlimited());
             }
         }
     }
@@ -706,7 +718,7 @@ void CentralWorker::_workerInfoReceive(std::unique_ptr<proto::WorkerListItem>& p
 }
 
 
-StringRange CentralWorker::updateRangeWithLeftData(StringRange const& leftNeighborRange) {
+KeyRange CentralWorker::updateRangeWithLeftData(KeyRange const& leftNeighborRange) {
     // Update our range with data from our left neighbor. Our min is their max.
     // If our range is invalid
     //    our min is their max incremented (stringRange increment function)
@@ -714,20 +726,20 @@ StringRange CentralWorker::updateRangeWithLeftData(StringRange const& leftNeighb
     //    else max = increment(min)
     //    send range to master
     //    return our new range
-    StringRange newLeftNeighborRange(leftNeighborRange);
+    KeyRange newLeftNeighborRange(leftNeighborRange);
     {
         std::unique_lock<std::mutex> lck(_idMapMtx);
-        if (not _strRange.getValid()) {
+        if (not _keyRange.getValid()) {
             // Our range has not been set, so base it on the range of the left neighbor.
-            auto min = StringRange::increment(leftNeighborRange.getMax());
+            auto min = KeyRange::increment(leftNeighborRange.getMax());
             auto max = min;
-            _strRange.setMinMax(min, max, leftNeighborRange.getUnlimited());
+            _keyRange.setMinMax(min, max, leftNeighborRange.getUnlimited());
             newLeftNeighborRange.setMax(max, false);
         } else {
             // Our range is valid already, it should be > than the left neighbor range.
-            if (_strRange < leftNeighborRange) {
+            if (_keyRange < leftNeighborRange) {
                 LOGS(_log, LOG_LVL_ERROR, "LeftNeighborRange(" << leftNeighborRange <<
-                        ") is greater than our range(" << _strRange << ")");
+                        ") is greater than our range(" << _keyRange << ")");
                 // TODO corrective action?
             }
             // The left neighbor's max should be the minimum value in our keymap, unless the
@@ -736,7 +748,7 @@ StringRange CentralWorker::updateRangeWithLeftData(StringRange const& leftNeighb
                 // Don't do anything to left neighbor range.
             } else {
                 auto min = _keyValueMap.begin()->first;
-                _strRange.setMin(min);
+                _keyRange.setMin(min);
                 newLeftNeighborRange.setMax(min, false);
             }
         }
@@ -777,10 +789,10 @@ void CentralWorker::_workerKeyInsertReq(LoaderMsg const& inMsg, std::unique_ptr<
 
     /// see if the key should be inserted into our map
     std::unique_lock<std::mutex> lck(_idMapMtx);
-    auto min = _strRange.getMin();
+    auto min = _keyRange.getMin();
     auto leftAddress = _neighborLeft.getAddressUdp();
     auto rightAddress = _neighborRight.getAddressUdp();
-    if (_strRange.isInRange(key)) {
+    if (_keyRange.isInRange(key)) {
         // insert into our map
         auto res = _keyValueMap.insert(std::make_pair(key, chunkInfo));
         lck.unlock();
@@ -804,7 +816,12 @@ void CentralWorker::_workerKeyInsertReq(LoaderMsg const& inMsg, std::unique_ptr<
         protoReply.SerializeToString(&(strElem.element));
         strElem.appendToData(msgData);
         LOGS(_log, LOG_LVL_INFO, "sending complete " << key << " to " << nAddr << " from " << _ourId);
-        sendBufferTo(nAddr.ip, nAddr.port, msgData);
+        try {
+            sendBufferTo(nAddr.ip, nAddr.port, msgData);
+        } catch (boost::system::system_error const& e) {
+            LOGS(_log, LOG_LVL_ERROR, "CentralWorker::_workerKeyInsertReq boost system_error=" << e.what() <<
+                    " msg=" << inMsg);
+        }
     } else {
         lck.unlock();
         // Find the target range in the list and send the request there
@@ -842,7 +859,12 @@ void CentralWorker::_forwardKeyInsertRequest(NetworkAddress const& targetAddr, L
     StringElement strElem;
     protoData->SerializeToString(&(strElem.element));
     strElem.appendToData(msgData);
-    sendBufferTo(targetAddr.ip, targetAddr.port, msgData);
+    try {
+        sendBufferTo(targetAddr.ip, targetAddr.port, msgData);
+    } catch (boost::system::system_error const& e) {
+        LOGS(_log, LOG_LVL_ERROR, "CentralWorker::_forwardKeyInsertRequest boost system_error=" << e.what() <<
+                " tAddr=" << targetAddr << " inMsg=" << inMsg);
+    }
 }
 
 
@@ -877,14 +899,14 @@ void CentralWorker::_workerKeyInfoReq(LoaderMsg const& inMsg, std::unique_ptr<pr
 
     /// see if the key is in our map
     std::unique_lock<std::mutex> lck(_idMapMtx);
-    if (_strRange.isInRange(key)) {
+    if (_keyRange.isInRange(key)) {
         LOGS(_log, LOG_LVL_INFO, "CentralWorker::_workerKeyInfoReq " << _ourId << " looking for key=" << key);
         // check out map
         auto iter = _keyValueMap.find(key);
         lck.unlock();
 
         // Key found or not, message will be returned.
-        LoaderMsg msg(LoaderMsg::KEY_INFO, inMsg.msgId->element, getHostName(), getUdpPort());
+        LoaderMsg msg(LoaderMsg::KEY_LOOKUP, inMsg.msgId->element, getHostName(), getUdpPort());
         BufferUdp msgData;
         msg.appendToData(msgData);
         proto::KeyInfo protoReply;
@@ -909,7 +931,12 @@ void CentralWorker::_workerKeyInfoReq(LoaderMsg const& inMsg, std::unique_ptr<pr
         protoReply.SerializeToString(&(strElem.element));
         strElem.appendToData(msgData);
         LOGS(_log, LOG_LVL_INFO, "sending key lookup " << key << " to " << nAddr << " from " << _ourId);
-        sendBufferTo(nAddr.ip, nAddr.port, msgData);
+        try {
+            sendBufferTo(nAddr.ip, nAddr.port, msgData);
+        } catch (boost::system::system_error const& e) {
+            LOGS(_log, LOG_LVL_ERROR, "CentralWorker::_workerKeyInfoReq boost system_error=" << e.what() <<
+                    " inMsg=" << inMsg);
+        }
     } else {
         // Find the target range in the list and send the request there
         auto targetWorker = _wWorkerList->findWorkerForKey(key);
@@ -986,7 +1013,12 @@ void CentralWorker::_sendWorkerKeysInfo(NetworkAddress const& nAddr, uint64_t ms
     LOGS(_log, LOG_LVL_INFO, "sending WorkerKeysInfo name=" << _ourId <<
          " mapsize=" << protoWKI->mapsize() << " recentAdds=" << protoWKI->recentadds() <<
          " to " << nAddr);
-    sendBufferTo(nAddr.ip, nAddr.port, msgData);
+    try {
+        sendBufferTo(nAddr.ip, nAddr.port, msgData);
+    } catch (boost::system::system_error const& e) {
+        LOGS(_log, LOG_LVL_ERROR, "CentralWorker::_sendWorkerKeysInfo boost system_error=" << e.what() <<
+                " nAddr=" << nAddr << "msgId=" << msgId);
+    }
 }
 
 
@@ -994,12 +1026,12 @@ std::unique_ptr<proto::WorkerKeysInfo> CentralWorker::_workerKeysInfoBuilder() {
     std::unique_ptr<proto::WorkerKeysInfo> protoWKI(new proto::WorkerKeysInfo());
     // Build message containing Range, size of map, number of items added.
     // TODO this code is similar to code elsewhere, try to merge it.
-    StringRange range;
+    KeyRange range;
     size_t mapSize;
     size_t recentAdds;
     {
         std::lock_guard<std::mutex> lck(_idMapMtx);
-        range = _strRange;
+        range = _keyRange;
         mapSize = _keyValueMap.size();
         _removeOldEntries();
         recentAdds = _recentAdds.size();
@@ -1009,7 +1041,6 @@ std::unique_ptr<proto::WorkerKeysInfo> CentralWorker::_workerKeysInfoBuilder() {
     protoWKI->set_wid(_ourId);
     protoWKI->set_mapsize(mapSize);
     protoWKI->set_recentadds(recentAdds);
-    // TODO Maybe make a function to load WorkerRangeString, happens a bit. &&&
     proto::WorkerRange *protoRange = protoWKI->mutable_range();
     range.loadProtoRange(*protoRange);
     proto::Neighbor *protoLeft = protoWKI->mutable_left();
@@ -1026,7 +1057,7 @@ std::unique_ptr<proto::WorkerKeysInfo> CentralWorker::_workerKeysInfoBuilder() {
 void CentralWorker::_forwardKeyInfoRequest(WWorkerListItem::Ptr const& target, LoaderMsg const& inMsg,
                                              std::unique_ptr<proto::KeyInfoInsert> const& protoData) {
     // The proto buffer should be the same, just need a new message.
-    LoaderMsg msg(LoaderMsg::KEY_INFO_REQ, inMsg.msgId->element, getHostName(), getUdpPort());
+    LoaderMsg msg(LoaderMsg::KEY_LOOKUP_REQ, inMsg.msgId->element, getHostName(), getUdpPort());
     BufferUdp msgData;
     msg.appendToData(msgData);
 
@@ -1035,7 +1066,12 @@ void CentralWorker::_forwardKeyInfoRequest(WWorkerListItem::Ptr const& target, L
     strElem.appendToData(msgData);
 
     auto nAddr = target->getUdpAddress();
-    sendBufferTo(nAddr.ip, nAddr.port, msgData);
+    try {
+        sendBufferTo(nAddr.ip, nAddr.port, msgData);
+    } catch (boost::system::system_error const& e) {
+        LOGS(_log, LOG_LVL_ERROR, "CentralWorker::_forwardKeyInfoRequest boost system_error=" << e.what() <<
+                " target=" << target << " inMsg=" << inMsg);
+    }
 }
 
 
@@ -1053,7 +1089,11 @@ void CentralWorker::_registerWithMaster() {
     protoBuf.SerializeToString(&(strElem.element));
     strElem.appendToData(msgData);
 
-    sendBufferTo(getMasterHostName(), getMasterPort(), msgData);
+    try {
+        sendBufferTo(getMasterHostName(), getMasterPort(), msgData);
+    } catch (boost::system::system_error const& e) {
+        LOGS(_log, LOG_LVL_ERROR, "CentralWorker::_registerWithMaster boost system_error=" << e.what());
+    }
 }
 
 
@@ -1063,7 +1103,12 @@ void CentralWorker::testSendBadMessage() {
     LOGS(_log, LOG_LVL_INFO, "testSendBadMessage msg=" << msg);
     BufferUdp msgData(128);
     msg.appendToData(msgData);
-    sendBufferTo(getMasterHostName(), getMasterPort(), msgData);
+    try {
+        sendBufferTo(getMasterHostName(), getMasterPort(), msgData);
+    } catch (boost::system::system_error const& e) {
+        LOGS(_log, LOG_LVL_ERROR, "CentralWorker::testSendBadMessage boost system_error=" << e.what());
+        throw e; // This would not be the expected error, re-throw so it is noticed.
+    }
 }
 
 
@@ -1077,9 +1122,9 @@ void CentralWorker::_removeOldEntries() {
 }
 
 
-void CentralWorker::insertKeys(std::vector<StringKeyPair> const& keyList, bool mustSetMin) {
+void CentralWorker::insertKeys(std::vector<CompKeyPair> const& keyList, bool mustSetMin) {
     std::unique_lock<std::mutex> lck(_idMapMtx);
-    auto maxKey = _strRange.getMax();
+    auto maxKey = _keyRange.getMax();
     bool maxKeyChanged = false;
     for (auto&& elem:keyList) {
         auto const& key = elem.first;
@@ -1097,13 +1142,13 @@ void CentralWorker::insertKeys(std::vector<StringKeyPair> const& keyList, bool m
     // On all nodes except the left most, the minimum should be reset.
     if (mustSetMin && _keyValueMap.size() > 0) {
         auto minKeyPair = _keyValueMap.begin();
-        _strRange.setMin(minKeyPair->first);
+        _keyRange.setMin(minKeyPair->first);
     }
 
     if (maxKeyChanged) {
         // if unlimited is false, range will be slightly off until corrected by the right neighbor.
-        bool unlimited = _strRange.getUnlimited();
-        _strRange.setMax(maxKey, unlimited);
+        bool unlimited = _keyRange.getUnlimited();
+        _keyRange.setMax(maxKey, unlimited);
     }
 }
 
@@ -1112,7 +1157,7 @@ std::string CentralWorker::dumpKeysStr(unsigned int count) {
     std::stringstream os;
     std::lock_guard<std::mutex> lck(_idMapMtx);
     os << "name=" << getOurId() << " count=" << _keyValueMap.size() << " range("
-       << _strRange << ") pairs: ";
+       << _keyRange << ") pairs: ";
 
     if (count < 1 || _keyValueMap.size() < count*2) {
         for (auto&& elem:_keyValueMap) {
