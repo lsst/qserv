@@ -160,30 +160,41 @@ bool BufferUdp::retrieveString(std::string& out, size_t len) {
 
 
 std::string BufferUdp::dumpStr(bool hexDump, bool charDump) const {
-        std::stringstream os;
-        os << "maxLength=" << _length;
-        os << " buffer=" << (void*)_buffer;
-        os << " wCurLen=" << getAvailableWriteLength();
-        os << " wCursor=" << (void*)_wCursor;
-        os << " rCurLen=" << getBytesLeftToRead();
-        os << " rCursor=" << (void*)_rCursor;
-        os << " end=" << (void*)_end;
+    std::stringstream os;
+    dump(os, hexDump, charDump);
+    return os.str();
+}
 
-        // hex dump
-        if (hexDump) {
-            os << "(";
-            for (const char* j=_buffer; j < _wCursor; ++j) {
-                os << std::hex << (int)*j << " ";
-            }
-            os << ")";
+
+std::ostream& BufferUdp::dump(std::ostream &os, bool hexDump, bool charDump) const {
+    os << "maxLength=" << _length;
+    os << " buffer=" << (void*)_buffer;
+    os << " wCurLen=" << getAvailableWriteLength();
+    os << " wCursor=" << (void*)_wCursor;
+    os << " rCurLen=" << getBytesLeftToRead();
+    os << " rCursor=" << (void*)_rCursor;
+    os << " end=" << (void*)_end;
+
+    // hex dump
+    if (hexDump) {
+        os << "(";
+        for (const char* j=_buffer; j < _wCursor; ++j) {
+            os << std::hex << (int)*j << " ";
         }
-
-        // character dump
-        if (charDump) {
-            os << "(" << std::string(_buffer, _wCursor) << ")";
-        }
-
-        return os.str();
+        os << ")";
     }
+
+    // character dump
+    if (charDump) {
+        os << "(" << std::string(_buffer, _wCursor) << ")";
+    }
+
+    return os;
+}
+
+
+std::ostream& operator<<(std::ostream& os, BufferUdp const& buf) {
+    return buf.dump(os, false, false);
+}
 
 }}} // namespace lsst:qserv:loader

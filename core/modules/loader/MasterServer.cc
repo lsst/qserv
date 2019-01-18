@@ -262,8 +262,14 @@ BufferUdp::Ptr MasterServer::workerInfoRequest(LoaderMsg const& inMsg, BufferUdp
         seItem.appendToData(sendBuf);
 
         // Send the response to the worker that asked for it.
-        _centralMaster->sendBufferTo(requestorAddr->ip, requestorAddr->port, sendBuf);
-
+        try {
+            _centralMaster->sendBufferTo(requestorAddr->ip, requestorAddr->port, sendBuf);
+        } catch (boost::system::system_error e) {
+            LOGS(_log, LOG_LVL_ERROR, "MasterServer::workerInfoRequest boost system_error=" << e.what() <<
+                    " inMsg=" << inMsg);
+            exit(-1); // TODO:&&& The correct course of action is unclear and requires thought,
+            //       so just blow up so it's unmistakable something bad happened for now.
+        }
     } catch (LoaderMsgErr &msgErr) {
         LOGS(_log, LOG_LVL_ERROR, msgErr.what());
         return prepareReplyMsg(senderEndpoint, inMsg, LoaderMsg::STATUS_PARSE_ERR, msgErr.what());
