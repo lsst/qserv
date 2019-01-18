@@ -55,7 +55,8 @@ CentralClient::CentralClient(boost::asio::io_service& ioService_,
       _defWorkerHost(cfg.getDefWorkerHost()),
       _defWorkerPortUdp(cfg.getDefWorkerPortUdp()),
       _doListMaxLookups(cfg.getMaxLookups()),
-      _doListMaxInserts(cfg.getMaxInserts()) {
+      _doListMaxInserts(cfg.getMaxInserts()),
+      _maxRequestSleepTime(cfg.getMaxRequestSleepTime()){
 }
 
 
@@ -89,7 +90,7 @@ void CentralClient::_handleKeyInfo(LoaderMsg const& inMsg, std::unique_ptr<proto
     CompositeKey key(protoData->keyint(), protoData->keystr());
     ChunkSubchunk chunkInfo(protoData->chunk(), protoData->subchunk());
 
-    LOGS(_log, LOG_LVL_INFO, "trying to remove oneShot for lookup key=" << key << " " << chunkInfo);
+    LOGS(_log, LOG_LVL_DEBUG, "trying to remove oneShot for lookup key=" << key << " " << chunkInfo);
     /// Locate the original one shot and mark it as done.
     CentralClient::KeyInfoReqOneShot::Ptr keyInfoOneShot;
     {
@@ -227,8 +228,14 @@ void CentralClient::_keyInsertReq(CompositeKey const& key, int chunk, int subchu
     StringElement strElem;
     protoKeyInsert.SerializeToString(&(strElem.element));
     strElem.appendToData(msgData);
-
-    sendBufferTo(getDefWorkerHost(), getDefWorkerPortUdp(), msgData);
+    try {
+        sendBufferTo(getDefWorkerHost(), getDefWorkerPortUdp(), msgData);
+    } catch (boost::system::system_error e) {
+        LOGS(_log, LOG_LVL_ERROR, "CentralClient::_keyInsertReq boost system_error=" << e.what() <<
+                                  " key=" << key << " chunk=" << chunk << " sub=" << subchunk);
+        exit(-1); // TODO:&&& The correct course of action is unclear and requires thought,
+                  //       so just blow up so it's unmistakable something bad happened for now.
+    }
 }
 
 
@@ -296,7 +303,14 @@ void CentralClient::_keyInfoReq(CompositeKey const& key) {
      protoKeyInsert.SerializeToString(&(strElem.element));
      strElem.appendToData(msgData);
 
-     sendBufferTo(getDefWorkerHost(), getDefWorkerPortUdp(), msgData);
+     try {
+         sendBufferTo(getDefWorkerHost(), getDefWorkerPortUdp(), msgData);
+     } catch (boost::system::system_error e) {
+         LOGS(_log, LOG_LVL_ERROR, "CentralClient::_keyInfoReq boost system_error=" << e.what() <<
+                 " key=" << key);
+         exit(-1); // TODO:&&& The correct course of action is unclear and requires thought.
+                   //       So just blow up so it's unmistakable something bad happened for now.
+     }
 }
 
 
