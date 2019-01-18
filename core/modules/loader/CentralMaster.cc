@@ -97,7 +97,15 @@ void CentralMaster::setWorkerNeighbor(MWorkerListItem::WPtr const& target, int m
     UInt32Element neighborIdElem(neighborId);
     neighborIdElem.appendToData(msgData);
     auto addr = targetWorker->getUdpAddress();
-    sendBufferTo(addr.ip, addr.port, msgData);
+    try {
+        sendBufferTo(addr.ip, addr.port, msgData);
+    } catch (boost::system::system_error e) {
+        LOGS(_log, LOG_LVL_ERROR, "CentralMaster::setWorkerNeighbor boost system_error=" << e.what() <<
+                                  " targ=" << *targetWorker << " msg=" << message <<
+                                  " neighborId=" << neighborId);
+        exit(-1); // TODO:&&& The correct course of action is unclear and requires thought,
+                  //       so just blow up so it's unmistakable something bad happened for now.
+    }
 }
 
 
@@ -196,7 +204,15 @@ void CentralMaster::reqWorkerKeysInfo(uint64_t msgId, std::string const& targetI
     LoaderMsg reqMsg(LoaderMsg::WORKER_KEYS_INFO_REQ, msgId, ourHostName, ourPort);
     BufferUdp data;
     reqMsg.appendToData(data);
-    sendBufferTo(targetIp, targetPort, data);
+    try {
+        sendBufferTo(targetIp, targetPort, data);
+    } catch (boost::system::system_error e) {
+        LOGS(_log, LOG_LVL_ERROR, "CentralMaster::reqWorkerKeysInfo boost system_error=" << e.what() <<
+                " msgId=" << msgId << " tIp=" << targetIp << " tPort=" << targetPort <<
+                " ourHost=" << ourHostName << " ourPort=" << ourPort);
+        exit(-1); // TODO:&&& The correct course of action is unclear and requires thought,
+                  //       so just blow up so it's unmistakable something bad happened for now.
+    }
 }
 
 }}} // namespace lsst::qserv::loader

@@ -164,9 +164,9 @@ private:
     const int         _defWorkerPortUdp; ///< Default worker UDP port
 
 
-    size_t _doListMaxLookups; ///< Maximum number of concurrent lookups in DoList  DM-16555 &&&
-    size_t _doListMaxInserts; ///< Maximum number of concurrent inserts in DoList  DM-16555 &&&
-    int _maxRequestSleepTime{100000}; ///< Time to sleep between checking requests when at max length &&& add config file entry
+    size_t _doListMaxLookups{1000}; ///< Maximum number of concurrent lookups in DoList (set by config)
+    size_t _doListMaxInserts{1000}; ///< Maximum number of concurrent inserts in DoList (set by config)
+    int _maxRequestSleepTime{100000}; ///< Time to sleep between checking requests when at max length (set by config)
 
     std::map<CompositeKey, KeyInsertReqOneShot::Ptr> _waitingKeyInsertMap;
     std::mutex _waitingKeyInsertMtx; ///< protects _waitingKeyInsertMap, _doListMaxInserts

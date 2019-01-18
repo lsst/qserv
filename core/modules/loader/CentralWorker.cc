@@ -804,7 +804,14 @@ void CentralWorker::_workerKeyInsertReq(LoaderMsg const& inMsg, std::unique_ptr<
         protoReply.SerializeToString(&(strElem.element));
         strElem.appendToData(msgData);
         LOGS(_log, LOG_LVL_INFO, "sending complete " << key << " to " << nAddr << " from " << _ourId);
-        sendBufferTo(nAddr.ip, nAddr.port, msgData);
+        try {
+            sendBufferTo(nAddr.ip, nAddr.port, msgData);
+        } catch (boost::system::system_error e) {
+            LOGS(_log, LOG_LVL_ERROR, "CentralWorker::_workerKeyInsertReq boost system_error=" << e.what() <<
+                    " msg=" << inMsg);
+            exit(-1); // TODO:&&& The correct course of action is unclear and requires thought,
+                      //       so just blow up so it's unmistakable something bad happened for now.
+        }
     } else {
         lck.unlock();
         // Find the target range in the list and send the request there
@@ -842,7 +849,14 @@ void CentralWorker::_forwardKeyInsertRequest(NetworkAddress const& targetAddr, L
     StringElement strElem;
     protoData->SerializeToString(&(strElem.element));
     strElem.appendToData(msgData);
-    sendBufferTo(targetAddr.ip, targetAddr.port, msgData);
+    try {
+        sendBufferTo(targetAddr.ip, targetAddr.port, msgData);
+    } catch (boost::system::system_error e) {
+        LOGS(_log, LOG_LVL_ERROR, "CentralWorker::_forwardKeyInsertRequest boost system_error=" << e.what() <<
+                " tAddr=" << targetAddr << " inMsg=" << inMsg);
+        exit(-1); // TODO:&&& The correct course of action is unclear and requires thought,
+                  //       so just blow up so it's unmistakable something bad happened for now.
+    }
 }
 
 
@@ -909,7 +923,14 @@ void CentralWorker::_workerKeyInfoReq(LoaderMsg const& inMsg, std::unique_ptr<pr
         protoReply.SerializeToString(&(strElem.element));
         strElem.appendToData(msgData);
         LOGS(_log, LOG_LVL_INFO, "sending key lookup " << key << " to " << nAddr << " from " << _ourId);
-        sendBufferTo(nAddr.ip, nAddr.port, msgData);
+        try {
+            sendBufferTo(nAddr.ip, nAddr.port, msgData);
+        }catch (boost::system::system_error e) {
+            LOGS(_log, LOG_LVL_ERROR, "CentralWorker::_workerKeyInfoReq boost system_error=" << e.what() <<
+                    " inMsg=" << inMsg);
+            exit(-1); // TODO:&&& The correct course of action is unclear and requires thought,
+                      //       so just blow up so it's unmistakable something bad happened for now.
+        }
     } else {
         // Find the target range in the list and send the request there
         auto targetWorker = _wWorkerList->findWorkerForKey(key);
@@ -986,7 +1007,14 @@ void CentralWorker::_sendWorkerKeysInfo(NetworkAddress const& nAddr, uint64_t ms
     LOGS(_log, LOG_LVL_INFO, "sending WorkerKeysInfo name=" << _ourId <<
          " mapsize=" << protoWKI->mapsize() << " recentAdds=" << protoWKI->recentadds() <<
          " to " << nAddr);
-    sendBufferTo(nAddr.ip, nAddr.port, msgData);
+    try {
+        sendBufferTo(nAddr.ip, nAddr.port, msgData);
+    } catch (boost::system::system_error e) {
+        LOGS(_log, LOG_LVL_ERROR, "CentralWorker::_sendWorkerKeysInfo boost system_error=" << e.what() <<
+                " nAddr=" << nAddr << "msgId=" << msgId);
+        exit(-1); // TODO:&&& The correct course of action is unclear and requires thought,
+                  //       so just blow up so it's unmistakable something bad happened for now.
+    }
 }
 
 
@@ -1035,7 +1063,14 @@ void CentralWorker::_forwardKeyInfoRequest(WWorkerListItem::Ptr const& target, L
     strElem.appendToData(msgData);
 
     auto nAddr = target->getUdpAddress();
-    sendBufferTo(nAddr.ip, nAddr.port, msgData);
+    try {
+        sendBufferTo(nAddr.ip, nAddr.port, msgData);
+    } catch (boost::system::system_error e) {
+        LOGS(_log, LOG_LVL_ERROR, "CentralWorker::_forwardKeyInfoRequest boost system_error=" << e.what() <<
+                " target=" << target << " inMsg=" << inMsg);
+        exit(-1); // TODO:&&& The correct course of action is unclear and requires thought,
+                  //       so just blow up so it's unmistakable something bad happened for now.
+    }
 }
 
 
@@ -1053,7 +1088,13 @@ void CentralWorker::_registerWithMaster() {
     protoBuf.SerializeToString(&(strElem.element));
     strElem.appendToData(msgData);
 
-    sendBufferTo(getMasterHostName(), getMasterPort(), msgData);
+    try {
+        sendBufferTo(getMasterHostName(), getMasterPort(), msgData);
+    } catch (boost::system::system_error e) {
+        LOGS(_log, LOG_LVL_ERROR, "CentralWorker::_registerWithMaster boost system_error=" << e.what());
+        exit(-1); // TODO:&&& The correct course of action is unclear and requires thought,
+                  //       so just blow up so it's unmistakable something bad happened for now.
+    }
 }
 
 
@@ -1063,7 +1104,12 @@ void CentralWorker::testSendBadMessage() {
     LOGS(_log, LOG_LVL_INFO, "testSendBadMessage msg=" << msg);
     BufferUdp msgData(128);
     msg.appendToData(msgData);
-    sendBufferTo(getMasterHostName(), getMasterPort(), msgData);
+    try {
+        sendBufferTo(getMasterHostName(), getMasterPort(), msgData);
+    } catch (boost::system::system_error e) {
+        LOGS(_log, LOG_LVL_ERROR, "CentralWorker::testSendBadMessage boost system_error=" << e.what());
+        throw e; // This would not be the expected error, re-throw so it is noticed.
+    }
 }
 
 

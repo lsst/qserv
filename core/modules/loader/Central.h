@@ -80,7 +80,7 @@ public:
     int getErrCount() const { return _server->getErrCount(); }
 
     /// Send the contents of 'sendBuf' to 'host:port'. This waits for the message to be
-    /// sent before returning.
+    /// sent before returning. Throws boost::system::system_error on failure.
     void sendBufferTo(std::string const& host, int port, BufferUdp& sendBuf) {
         _server->sendBufferTo(host, port, sendBuf);
     }

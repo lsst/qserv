@@ -62,7 +62,10 @@ public:
     uint32_t getErrCount() const { return _errCount; }
 
     /// This waits for the message to be sent before returning.
+    /// throws boost::system::system_error on failure.
     void sendBufferTo(std::string const& host, int port, BufferUdp& sendBuf);
+
+    /// This throws boost::system::system_error on failure.
     boost::asio::ip::udp::endpoint resolve(std::string const& hostName, int port);
 
 protected:
@@ -83,6 +86,13 @@ private:
     BufferUdp::Ptr _sendData; ///< data buffer for sending.
     std::string _hostName;
     int _port;
+
+    /// Items for resolving UDP addresses
+    /// There appear to be concurrency issues even with
+    /// separate io_contexts, so re-using existing objects.
+   boost::asio::io_context _ioContext;
+   boost::asio::ip::udp::resolver _resolver{_ioContext};
+   std::mutex _resolveMtx; ///< protects _ioContext, _resolver
 };
 
 

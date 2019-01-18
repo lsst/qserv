@@ -138,6 +138,8 @@ public:
     /// in ascii.
     std::string dumpStr(bool hexDump, bool charDump) const;
 
+    std::ostream& dump(std::ostream &os, bool hexDump, bool charDump) const;
+
 private:
     void _setupBuffer() {
         _end = _buffer + _length;
@@ -160,6 +162,9 @@ private:
 
     bool _ourBuffer{false}; ///< true if this class object is responsible for deleting the buffer.
 };
+
+/// Print basic buffer information. Use BufferUdp::dump() directly if the buffer contents are needed.
+std::ostream& operator<<(std::ostream& os, BufferUdp const& buf);
 
 }}} // namespace lsst:qserv:loader
 

@@ -111,9 +111,15 @@ void ServerUdpBase::sendBufferTo(std::string const& hostName, int port, BufferUd
     cv.wait(uLock, [&done](){return done;});
 #else
     using namespace boost::asio;
-    LOGS(_log, LOG_LVL_INFO, "ServerUdpBase::sendBufferTo hostName=" << hostName << " port=" << port); // &&&
-    ip::udp::endpoint dest(boost::asio::ip::address::from_string(hostName), port);
-    _socket.send_to(buffer(sendBuf.getReadCursor(), sendBuf.getBytesLeftToRead()), dest);
+    LOGS(_log, LOG_LVL_DEBUG, "ServerUdpBase::sendBufferTo hostName=" << hostName << " port=" << port);
+    try {
+        ip::udp::endpoint dest = resolve(hostName, port);
+        _socket.send_to(buffer(sendBuf.getReadCursor(), sendBuf.getBytesLeftToRead()), dest);
+    } catch (boost::system::system_error const& e) {
+        LOGS(_log, LOG_LVL_ERROR, "ServerUdpBase::sendBufferTo boost system_error=" << e.what() <<
+                " host=" << hostName << " port=" << port << " buf=" << sendBuf);
+        throw e;
+    }
 #endif
 }
 
@@ -147,15 +153,24 @@ void ServerUdpBase::_receivePrepare() {
 
 
 boost::asio::ip::udp::endpoint ServerUdpBase::resolve(std::string const& hostName, int port) {
-    /* More flexible version
+#if 1 // &&&
+    std::lock_guard<std::mutex> lg(_resolveMtx);
+    /* &&&
     using namespace boost::asio;
     io_context ioContext;
     ip::udp::resolver resolver(ioContext);
-    return *resolver.resolve(udp::v4(), hostName, std::to_string(port)).begin();
+    return *resolver.resolve(ip::udp::v4(), hostName, std::to_string(port)).begin();
     */
+    using namespace boost::asio;
+    // resolver returns an iterator. This uses the first item only.
+    ip::udp::endpoint dest =
+            *_resolver.resolve(ip::udp::v4(), hostName, std::to_string(port)).begin();
+    return dest;
+#else
     using namespace boost::asio;
     ip::udp::endpoint dest(ip::address::from_string(hostName), port);
     return dest;
+#endif
 }
 
 

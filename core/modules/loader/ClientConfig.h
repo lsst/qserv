@@ -52,6 +52,7 @@ public:
     int getLoopSleepTime() const { return _loopSleepTime->getInt(); } // TODO: Maybe chrono types for times
     int getMaxLookups() const { return _maxLookups->getInt(); }
     int getMaxInserts() const { return _maxInserts->getInt(); }
+    int getMaxRequestSleepTime() const { return _maxRequestSleepTime->getInt(); }
 
     std::ostream& dump(std::ostream &os) const override;
 
@@ -86,7 +87,11 @@ private:
     /// Maximum number of insert requests allowed in the DoList.
     ConfigElement::Ptr _maxInserts{
         ConfigElement::create(cfgList, header, "maxInserts", ConfigElement::INT, false, "90000")};
-
+    /// When reaching maxInserts or maxLookups, sleep this long before trying to add more,
+    /// in micro seconds. 100000micro = 0.1sec
+    ConfigElement::Ptr _maxRequestSleepTime{
+            ConfigElement::create(cfgList, header,
+                                  "maxRequestSleepTime", ConfigElement::INT, false, "100000")};
 };
 
 
