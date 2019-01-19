@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2019 AURA/LSST.
+ * Copyright 2019 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,16 +20,13 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-/**
-  * @file
-  *
-  * @brief Predicate implementation.
-  *
-  * @author Daniel L. Wang, SLAC
-  */
 
 
-// Class header
+#ifndef LSST_QSERV_QUERY_GENERICPREDICATE_H
+#define LSST_QSERV_QUERY_GENERICPREDICATE_H
+
+
+// Local headers
 #include "query/Predicate.h"
 
 
@@ -38,10 +35,19 @@ namespace qserv {
 namespace query {
 
 
-std::ostream& operator<<(std::ostream& os, Predicate const& bt) {
-    bt.dbgPrint(os);
-    return os;
-}
+/// GenericPredicate is a Predicate whose structure whose semantic meaning
+/// is unimportant for qserv
+class GenericPredicate : public Predicate {
+public:
+    typedef std::shared_ptr<GenericPredicate> Ptr;
+
+    ~GenericPredicate() override = default;
+
+    BoolFactorTerm::Ptr clone() const override;
+    BoolFactorTerm::Ptr copySyntax() const override { return clone(); }
+};
 
 
 }}} // namespace lsst::qserv::query
+
+#endif // LSST_QSERV_QUERY_GENERICPREDICATE_H

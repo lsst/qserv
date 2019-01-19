@@ -27,8 +27,8 @@
 
 // Qserv headers
 #include "query/BoolFactor.h"
+#include "query/CompPredicate.h"
 #include "query/FromList.h"
-#include "query/Predicate.h"
 #include "query/SelectList.h"
 #include "query/SelectStmt.h"
 #include "query/TableRef.h"
