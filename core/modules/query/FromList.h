@@ -20,33 +20,36 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-
-#ifndef LSST_QSERV_QUERY_FROMLIST_H
-#define LSST_QSERV_QUERY_FROMLIST_H
 /**
   * @file
   *
   * @author Daniel L. Wang, SLAC
   */
 
-// System headers
 
-// Third-party headers
+#ifndef LSST_QSERV_QUERY_FROMLIST_H
+#define LSST_QSERV_QUERY_FROMLIST_H
+
+
+// System headers
 #include <memory>
 
 // Local headers
 #include "query/TableRef.h"
 
 
+// Forward declarations
 namespace lsst {
 namespace qserv {
-
 namespace parser {
-    // Forward
     class FromFactory;
-}
+}}} // End of forward declarations
 
+
+namespace lsst {
+namespace qserv {
 namespace query {
+
 
 // FromList is a representation of SQL FROM.
 class FromList {
@@ -80,6 +83,7 @@ private:
 
     TableRefListPtr _tableRefs;
 };
+
 
 }}} // namespace lsst::qserv::query
 

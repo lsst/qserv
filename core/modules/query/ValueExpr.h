@@ -20,13 +20,16 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_QUERY_VALUEEXPR_H
-#define LSST_QSERV_QUERY_VALUEEXPR_H
 /**
   * @file
   *
   * @author Daniel L. Wang, SLAC
   */
+
+
+#ifndef LSST_QSERV_QUERY_VALUEEXPR_H
+#define LSST_QSERV_QUERY_VALUEEXPR_H
+
 
 // System headers
 #include <iostream>
@@ -49,6 +52,7 @@ namespace parser {
 }
 namespace query {
     class QueryTemplate;
+    class ValueFactor;
 }}} // End of forward declarations
 
 
@@ -56,7 +60,7 @@ namespace lsst {
 namespace qserv {
 namespace query {
 
-class ValueFactor;
+
 /// ValueExpr is a general value expression in a SQL statement. It is allowed to
 /// have an alias and a single level of ValueFactors joined by arithmetic
 /// operators. No nesting is allowed yet.
@@ -162,8 +166,11 @@ public:
     int _count;
 };
 
+
 void cloneValueExprPtrVector(ValueExprPtrVector& dest,
                              ValueExprPtrVector const& src);
+
+
 }}} // namespace lsst::qserv::query
 
 #endif // LSST_QSERV_QUERY_VALUEEXPR_H

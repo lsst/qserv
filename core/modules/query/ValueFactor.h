@@ -20,15 +20,18 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// ValueFactor is a term in a ValueExpr's "term (term_op term)*" phrase
-
-#ifndef LSST_QSERV_QUERY_VALUEFACTOR_H
-#define LSST_QSERV_QUERY_VALUEFACTOR_H
 /**
   * @file
   *
   * @author Daniel L. Wang, SLAC
   */
+
+
+// ValueFactor is a term in a ValueExpr's "term (term_op term)*" phrase
+
+
+#ifndef LSST_QSERV_QUERY_VALUEFACTOR_H
+#define LSST_QSERV_QUERY_VALUEFACTOR_H
 
 // System headers
 #include <memory>
@@ -37,17 +40,25 @@
 // Local headers
 #include "query/ColumnRef.h"
 
+
+// Forward declarations
+namespace lsst {
+namespace qserv {
+namespace query {
+    class QueryTemplate;
+    class FuncExpr;
+    class ValueExpr; // To support nested expressions.
+    class ValueFactor;
+}}} // End of forward declarations
+
+
 namespace lsst {
 namespace qserv {
 namespace query {
 
-// Forward
-class QueryTemplate;
-class FuncExpr;
-class ValueExpr; // To support nested expressions.
 
-class ValueFactor;
 typedef std::shared_ptr<ValueFactor> ValueFactorPtr;
+
 
 /// ValueFactor is some kind of value that can exist in a column. It can be
 /// logical (i.e. a column name) or physical (a constant number or value).
@@ -127,6 +138,7 @@ public:
     }
     QueryTemplate& _qt;
 };
+
 
 }}} // namespace lsst::qserv::query
 

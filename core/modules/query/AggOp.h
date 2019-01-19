@@ -20,9 +20,6 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-
-#ifndef LSST_QSERV_QUERY_AGGOP_H
-#define LSST_QSERV_QUERY_AGGOP_H
 /**
   * @file
   *
@@ -30,6 +27,11 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
+
+#ifndef LSST_QSERV_QUERY_AGGOP_H
+#define LSST_QSERV_QUERY_AGGOP_H
+
 
 // System headers
 #include <map>
@@ -84,6 +86,7 @@ private:
     int _seq;
     bool _hasAggregate;
 };
+
 
 }}} // namespace lsst::qserv::query
 

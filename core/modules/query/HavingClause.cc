@@ -28,22 +28,25 @@
   * @author Daniel L. Wang, SLAC
   */
 
+
 // Class header
 #include "query/HavingClause.h"
+
 
 // System headers
 #include <iostream>
 
-// Third-party headers
 
 // Qserv headers
 #include "query/BoolTerm.h"
 #include "query/QueryTemplate.h"
 #include "util/PointerCompare.h"
 
+
 namespace lsst {
 namespace qserv {
 namespace query {
+
 
 ////////////////////////////////////////////////////////////////////////
 // HavingClause
@@ -54,11 +57,13 @@ operator<<(std::ostream& os, HavingClause const& c) {
     return os;
 }
 
+
 std::ostream&
 operator<<(std::ostream& os, HavingClause const* c) {
     (nullptr == c) ? os << "nullptr" : os << *c;
     return os;
 }
+
 
 std::string
 HavingClause::getGenerated() const {
@@ -67,12 +72,14 @@ HavingClause::getGenerated() const {
     return qt.sqlFragment();
 }
 
+
 void
 HavingClause::renderTo(QueryTemplate& qt) const {
     if (_tree.get()) {
         _tree->renderTo(qt);
     }
 }
+
 
 std::shared_ptr<HavingClause>
 HavingClause::clone() const {
@@ -83,18 +90,22 @@ HavingClause::clone() const {
     return hc;
 }
 
+
 std::shared_ptr<HavingClause>
 HavingClause::copySyntax() {
     return std::make_shared<HavingClause>(*this);
 }
+
 
 void
 HavingClause::findValueExprs(ValueExprPtrVector& list) const {
     if (_tree) { _tree->findValueExprs(list); }
 }
 
+
 bool HavingClause::operator==(const HavingClause& rhs) const {
     return util::ptrCompare<BoolTerm>(_tree, rhs._tree);
 }
+
 
 }}} // namespace lsst::qserv::query

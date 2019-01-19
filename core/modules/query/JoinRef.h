@@ -20,6 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+
+
 #ifndef LSST_QSERV_QUERY_JOINREF_H
 #define LSST_QSERV_QUERY_JOINREF_H
 
@@ -33,13 +35,20 @@
 #include "query/TableRef.h"
 
 
+// Forward declarations
+namespace lsst {
+namespace qserv {
+namespace query {
+    class QueryTemplate;
+    class BoolTerm;
+    class ColumnRef;
+}}} // End of forward declarations
+
+
 namespace lsst {
 namespace qserv {
 namespace query {
 
-class QueryTemplate; // Forward
-class BoolTerm;
-class ColumnRef;
 
 /// JoinRef combines a join_spec with the target join table.
 /// e.g., in FROM Alice a LEFT JOIN Bob b USING(fooColumn)
@@ -89,6 +98,7 @@ private:
     bool _isNatural;
     std::shared_ptr<JoinSpec> _spec;
 };
+
 
 }}} // namespace lsst::qserv::query
 

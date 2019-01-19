@@ -28,6 +28,7 @@
   * @author Daniel L. Wang, SLAC
   */
 
+
 // Class header
 #include "query/ColumnRef.h"
 
@@ -37,6 +38,7 @@
 
 // Qserv headers
 #include "query/QueryTemplate.h"
+
 
 namespace lsst {
 namespace qserv {
@@ -52,6 +54,7 @@ std::ostream& operator<<(std::ostream& os, ColumnRef const& cr) {
     return os;
 }
 
+
 std::ostream& operator<<(std::ostream& os, ColumnRef const* cr) {
     if (nullptr == cr) {
         os << "nullptr";
@@ -61,9 +64,11 @@ std::ostream& operator<<(std::ostream& os, ColumnRef const* cr) {
     return os;
 }
 
+
 void ColumnRef::renderTo(QueryTemplate& qt) const {
     qt.append(*this);
 }
+
 
 bool ColumnRef::isSubsetOf(const ColumnRef::Ptr & rhs) const {
     // the columns can not be empty

@@ -28,6 +28,7 @@
   * @author Daniel L. Wang, SLAC
   */
 
+
 // Class header
 #include "query/FromList.h"
 
@@ -35,10 +36,11 @@
 #include <algorithm>
 #include <iterator>
 
+// Qserv headers
 #include "util/IterableFormatter.h"
-
-
 #include "util/PointerCompare.h"
+
+
 
 namespace lsst {
 namespace qserv {
@@ -64,6 +66,7 @@ FromList::isJoin() const {
     return false;
 }
 
+
 std::vector<DbTablePair>
 FromList::computeResolverTables() const {
     struct Memo : public TableRef::FuncC {
@@ -81,12 +84,14 @@ FromList::computeResolverTables() const {
     return m.vec;
 }
 
+
 std::string
 FromList::getGenerated() {
     QueryTemplate qt;
     renderTo(qt);
     return qt.sqlFragment();
 }
+
 
 void
 FromList::renderTo(QueryTemplate& qt) const {
@@ -98,6 +103,7 @@ FromList::renderTo(QueryTemplate& qt) const {
     }
 }
 
+
 std::shared_ptr<FromList>
 FromList::copySyntax() {
     std::shared_ptr<FromList> newL = std::make_shared<FromList>(*this);
@@ -106,6 +112,7 @@ FromList::copySyntax() {
     // For the other fields, default-copied versions are okay.
     return newL;
 }
+
 
 std::shared_ptr<FromList>
 FromList::clone() const {
@@ -120,9 +127,11 @@ FromList::clone() const {
     return newL;
 }
 
+
 bool FromList::operator==(const FromList& rhs) {
     return util::ptrVectorPtrCompare<TableRef>(_tableRefs, rhs._tableRefs);
 }
+
 
 std::ostream& operator<<(std::ostream& os, FromList const& fromList) {
     os << "FromList(tableRefs:";
@@ -135,12 +144,11 @@ std::ostream& operator<<(std::ostream& os, FromList const& fromList) {
     return os;
 }
 
+
 std::ostream& operator<<(std::ostream& os, FromList const* fromList) {
     (nullptr == fromList) ? os << "nullptr" : os << *fromList;
     return os;
 }
 
 
-
 }}} // namespace lsst::qserv::query
-

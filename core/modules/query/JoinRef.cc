@@ -21,14 +21,18 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
+
 // Class header
 #include "query/JoinRef.h"
 
+// Qserv headers
 #include "util/PointerCompare.h"
+
 
 namespace lsst {
 namespace qserv {
 namespace query {
+
 
 std::ostream& JoinRef::putStream(std::ostream& os) const {
     QueryTemplate t;
@@ -40,11 +44,13 @@ std::ostream& JoinRef::putStream(std::ostream& os) const {
     return os;
 }
 
+
 void JoinRef::putTemplate(QueryTemplate& qt) const {
     _putJoinTemplate(qt);
     _right->putTemplate(qt);
     if (_spec) { _spec->putTemplate(qt); }
 }
+
 
 JoinRef::Ptr JoinRef::clone() const {
     TableRef::Ptr r;
@@ -53,6 +59,7 @@ JoinRef::Ptr JoinRef::clone() const {
     if (_spec) { s = _spec->clone(); }
     return std::make_shared<JoinRef>(r, _joinType, _isNatural, s);
 }
+
 
 void JoinRef::_putJoinTemplate(QueryTemplate& qt) const {
     if (_isNatural) { qt.append("NATURAL"); }
@@ -69,6 +76,8 @@ void JoinRef::_putJoinTemplate(QueryTemplate& qt) const {
 
     qt.append("JOIN");
 }
+
+
 std::ostream& operator<<(std::ostream& os, JoinRef const& js) {
     os << "JoinRef(";
     os << "right:" << js._right;
@@ -89,9 +98,11 @@ std::ostream& operator<<(std::ostream& os, JoinRef const& js) {
     return os;
 }
 
+
 std::ostream& operator<<(std::ostream& os, JoinRef const* js) {
     return js->putStream(os);
 }
+
 
 bool JoinRef::operator==(const JoinRef& rhs) const {
     return  util::ptrCompare<TableRef>(_right, rhs._right) &&
@@ -99,5 +110,6 @@ bool JoinRef::operator==(const JoinRef& rhs) const {
             _isNatural == rhs._isNatural &&
             util::ptrCompare<JoinSpec>(_spec, rhs._spec);
 }
+
 
 }}} // lsst::qserv::query

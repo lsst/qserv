@@ -20,20 +20,23 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-
-#ifndef LSST_QSERV_QUERY_HAVINGCLAUSE_H
-#define LSST_QSERV_QUERY_HAVINGCLAUSE_H
 /**
   * @file
   *
   * @author Daniel L. Wang, SLAC
   */
 
+
+#ifndef LSST_QSERV_QUERY_HAVINGCLAUSE_H
+#define LSST_QSERV_QUERY_HAVINGCLAUSE_H
+
+
 // System headers
 #include <memory>
 
 // Local headers
 #include "query/BoolTerm.h"
+
 
 // Forward declarations
 namespace lsst {
@@ -50,6 +53,7 @@ namespace query {
 namespace lsst {
 namespace qserv {
 namespace query {
+
 
 /// HavingClause: a representation of SQL HAVING. Support for this construct is
 /// incomplete.
@@ -75,6 +79,7 @@ private:
     friend class parser::ModFactory;
     std::shared_ptr<BoolTerm> _tree;
 };
+
 
 }}} // namespace lsst::qserv::query
 

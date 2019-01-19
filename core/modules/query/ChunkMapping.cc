@@ -27,15 +27,18 @@
 // query without requiring another walk through the original parse
 // tree.
 
+
 // Class header
 #include "query/ChunkMapping.h"
 
 // Qserv headers
 #include "qdisp/ChunkMeta.h"
 
+
 namespace lsst {
 namespace qserv {
 namespace query {
+
 
 ChunkMapping::Map
 ChunkMapping::getMapping(int chunk, int subChunk) {
@@ -78,11 +81,13 @@ ChunkMapping::getMapping(int chunk, int subChunk) {
     return m;
 }
 
+
 ChunkMapping::Map const&
 ChunkMapping::getMapReference(int chunk, int subChunk) {
     _instanceMap = getMapping(chunk, subChunk);
     return _instanceMap;
 }
+
 
 void
 ChunkMapping::setFromMeta(qdisp::ChunkMeta const& m) {
@@ -98,5 +103,6 @@ ChunkMapping::setFromMeta(qdisp::ChunkMeta const& m) {
         else if (i->getChunkLevel() == 2) addSubChunkKey(i->getTable());
     }
 }
+
 
 }}} // namespace lsst::qserv::query

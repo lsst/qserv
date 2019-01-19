@@ -31,6 +31,7 @@
   * @author Daniel L. Wang, SLAC
   */
 
+
 // Class header
 #include "query/QueryTemplate.h"
 
@@ -38,21 +39,11 @@
 #include <iostream>
 #include <sstream>
 
-// Third-party headers
-
-// LSST headers
-#include "lsst/log/Log.h"
-
 // Qserv headers
 #include "global/sqltoken.h" // sqlShouldSeparate
 #include "query/ColumnRef.h"
 #include "query/TableRef.h"
 
-namespace {
-
-LOG_LOGGER _log = LOG_GET("lsst.qserv.query.QueryTemplate");
-
-} // annonymous namespace
 
 namespace lsst {
 namespace qserv {
@@ -68,6 +59,7 @@ std::string QueryTemplate::TableEntry::getValue() const {
     ss << table;
     return ss.str();
 }
+
 
 class ColumnEntry : public QueryTemplate::Entry {
 public:
@@ -92,6 +84,7 @@ public:
 ////////////////////////////////////////////////////////////////////////
 // QueryTemplate
 ////////////////////////////////////////////////////////////////////////
+
 
 // Return a string representation of the object
 std::string QueryTemplate::sqlFragment() const {
@@ -163,5 +156,6 @@ void
 QueryTemplate::clear() {
     _entries.clear();
 }
+
 
 }}} // namespace lsst::qserv::query

@@ -26,6 +26,7 @@
   * @author Daniel L. Wang, SLAC
   */
 
+
 // Class header
 #include "query/QsRestrictor.h"
 
@@ -36,6 +37,7 @@
 // Qserv headers
 #include "query/QueryTemplate.h"
 #include "util/IterableFormatter.h"
+
 
 namespace lsst {
 namespace qserv {

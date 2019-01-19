@@ -38,23 +38,27 @@
 // Third-party headers
 #include <antlr/AST.hpp>
 
-// Forward declarations
+
 class SqlSQL2Parser;
+
+
+// forward declarations
 namespace lsst {
 namespace qserv {
+namespace query {
+    class ValueFactor;
+    class WhereClause;
+}
 namespace parser {
     class SelectFactory;
     class ValueExprFactory;
-}
-namespace query {
-    class WhereClause;
-}}} // End of forward declarations
+}}} // end forward declarations
 
 
 namespace lsst {
 namespace qserv {
-namespace query { class ValueFactor; }
 namespace parser {
+
 
 /// WhereFactory is a factory for WhereClause parsed elements.
 class WhereFactory {

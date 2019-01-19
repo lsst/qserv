@@ -20,8 +20,11 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+
+
 #ifndef LSST_QSERV_QUERY_TESTFACTORY_H
 #define LSST_QSERV_QUERY_TESTFACTORY_H
+
 
 // System headers
 #include <memory>
@@ -29,6 +32,7 @@
 // Qserv headers
 #include "global/stringTypes.h"
 #include "mysql/MySqlConfig.h"
+
 
 // Forward declarations
 namespace lsst {
@@ -46,6 +50,7 @@ namespace lsst {
 namespace qserv {
 namespace query {
 
+
 /// TestFactory is a factory for non-parsed query representation objects
 class TestFactory {
 public:
@@ -59,6 +64,7 @@ private:
     static void addFrom(std::shared_ptr<SelectStmt> const& stmt);
     static void addWhere(std::shared_ptr<SelectStmt> const& stmt);
 };
+
 
 }}} // namespace lsst::qserv::query
 

@@ -26,15 +26,18 @@
   *
   */
 
+
 // System headers
 #include <cstddef>
 #include <sstream>
 
-// Third-party headers
-
 // Qserv headers
+#include "query/AndTerm.h"
+#include "query/BoolFactor.h"
 #include "query/BoolTerm.h"
 #include "query/ColumnRef.h"
+#include "query/OrTerm.h"
+#include "query/PassTerm.h"
 #include "query/Predicate.h"
 #include "query/QueryContext.h"
 #include "query/SelectStmt.h"
@@ -48,11 +51,14 @@
 #define BOOST_TEST_MODULE QueryRepr_1
 #include "boost/test/included/unit_test.hpp"
 
+
 namespace lsst {
 namespace qserv {
 namespace query {
 
+
 namespace test = boost::test_tools;
+
 
 struct TestFixture {
     TestFixture(void) {}
@@ -62,7 +68,9 @@ struct TestFixture {
     std::shared_ptr<lsst::qserv::css::CssAccess> css;
 };
 
+
 BOOST_FIXTURE_TEST_SUITE(Suite, TestFixture)
+
 
 BOOST_AUTO_TEST_CASE(Factory) {
     TestFactory tf;

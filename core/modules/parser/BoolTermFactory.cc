@@ -32,8 +32,6 @@
 // Class header
 #include "parser/BoolTermFactory.h"
 
-// Third-party headers
-
 // LSST headers
 #include "lsst/log/Log.h"
 
@@ -43,7 +41,14 @@
 #include "parser/ParseException.h"
 #include "parser/SqlSQL2Parser.hpp" // (generated) SqlSQL2TokenTypes
 #include "parser/ValueExprFactory.h"
+#include "query/AndTerm.h"
+#include "query/BoolFactor.h"
+#include "query/BoolFactorTerm.h"
+#include "query/BoolTermFactor.h"
+#include "query/OrTerm.h"
+#include "query/PassTerm.h"
 #include "query/Predicate.h"
+#include "query/UnknownTerm.h"
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.parser.BoolTermFactory");

@@ -20,9 +20,6 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-
-#ifndef LSST_QSERV_QUERY_TABLEREF_H
-#define LSST_QSERV_QUERY_TABLEREF_H
 /**
   * @file
   *
@@ -30,6 +27,11 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
+
+#ifndef LSST_QSERV_QUERY_TABLEREF_H
+#define LSST_QSERV_QUERY_TABLEREF_H
+
 
 // System headers
 #include <iostream>
@@ -42,14 +44,24 @@
 #include "query/DbTablePair.h"
 #include "query/QueryTemplate.h"
 
+
+// Forward declarations
+namespace lsst {
+namespace qserv {
+namespace query {
+    class QueryTemplate;
+    class JoinSpec;
+    class JoinRef;
+}}} // End of forward declarations
+
+
 namespace lsst {
 namespace qserv {
 namespace query {
 
-class QueryTemplate; // Forward
-class JoinSpec;
-class JoinRef;
+
 typedef std::vector<std::shared_ptr<JoinRef> > JoinRefPtrVector;
+
 
 /// TableRefN is a parsed table reference node
 // table_ref :
@@ -113,6 +125,7 @@ private:
     JoinRefPtrVector _joinRefs;
 };
 
+
 class TableRef::render {
 public:
     render(QueryTemplate& qt) : _qt(qt), _count(0) {}
@@ -129,5 +142,7 @@ public:
 typedef std::vector<TableRef::Ptr> TableRefList;
 typedef std::shared_ptr<TableRefList> TableRefListPtr;
 
+
 }}} // namespace lsst::qserv::query
+
 #endif // LSST_QSERV_QUERY_TABLEREF_H

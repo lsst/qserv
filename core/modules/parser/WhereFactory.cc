@@ -51,6 +51,9 @@
 #include "parser/parseTreeUtil.h"
 #include "parser/ParseException.h"
 #include "parser/SqlSQL2Parser.hpp" // applies several "using antlr::***".
+#include "query/LogicalTerm.h"
+#include "query/OrTerm.h"
+#include "query/QsRestrictor.h"
 #include "query/ValueFactor.h"
 #include "query/WhereClause.h"
 
@@ -315,7 +318,7 @@ WhereFactory::_addOrSibs(antlr::RefAST a) {
 
     walkTreeVisit(a, p);
     BoolTermFactory f(_vf);
-    _clause->_tree = f.newOrTerm(a);
+    _clause->setRootTerm(f.newOrTerm(a));
     // FIXME: Store template.
     // Template must allow table substitution.
     // For now, reuse old templating scheme.

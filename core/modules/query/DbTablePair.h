@@ -20,8 +20,11 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+
+
 #ifndef LSST_QSERV_QUERY_DBTABLEPAIR_H
 #define LSST_QSERV_QUERY_DBTABLEPAIR_H
+
 
 // System headers
 #include <set>
@@ -51,6 +54,7 @@ struct DbTablePair {
 
 typedef std::vector<DbTablePair> DbTableVector;
 using DbTableSet=std::set<DbTablePair>;
+
 
 }}} // namespace lsst::qserv::query
 

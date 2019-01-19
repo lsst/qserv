@@ -20,8 +20,6 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_QUERY_PREDICATE_H
-#define LSST_QSERV_QUERY_PREDICATE_H
 /**
   * @file
   *
@@ -30,22 +28,24 @@
   * @author Daniel L. Wang, SLAC
   */
 
+
+#ifndef LSST_QSERV_QUERY_PREDICATE_H
+#define LSST_QSERV_QUERY_PREDICATE_H
+
+
 // System headers
 #include <memory>
 #include <string>
 
 // Local headers
+#include "query/BoolFactorTerm.h"
 #include "query/typedefs.h"
-#include "query/BoolTerm.h"
 #include "query/ValueExpr.h"
+
 
 namespace lsst {
 namespace qserv {
 namespace query {
-
-
-// Forward
-class QueryTemplate;
 
 
 ///  Predicate is a representation of a SQL predicate.
@@ -232,6 +232,7 @@ public:
 protected:
     void dbgPrint(std::ostream& os) const override;
 };
+
 
 }}} // namespace lsst::qserv::query
 

@@ -38,15 +38,20 @@
 #include "css/CssAccess.h"
 #include "parser/SqlSQL2Parser.hpp" // (generated) SqlSQL2TokenTypes
 #include "qana/QueryPlugin.h"
+#include "query/BoolFactor.h"
 #include "query/BoolTerm.h"
+#include "query/BoolTermFactor.h"
 #include "query/ColumnRef.h"
 #include "query/FromList.h"
+#include "query/OrTerm.h"
+#include "query/PassTerm.h"
 #include "query/Predicate.h"
 #include "query/QueryContext.h"
 #include "query/SelectStmt.h"
 #include "query/ValueExpr.h"
 #include "query/ValueFactor.h"
 #include "query/WhereClause.h"
+
 
 using lsst::qserv::query::BoolFactor;
 using lsst::qserv::query::BoolTermFactor;

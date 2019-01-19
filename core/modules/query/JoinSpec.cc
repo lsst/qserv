@@ -24,26 +24,28 @@
   * @author Daniel L. Wang, SLAC
   */
 
+
 // Class header
 #include "query/JoinSpec.h"
 
 // System headers
 #include <stdexcept>
 
-// Third-party headers
-
 // Qserv headers
 #include "query/BoolTerm.h"
 #include "query/ColumnRef.h"
 #include "query/QueryTemplate.h"
 
+
 namespace lsst {
 namespace qserv {
 namespace query {
 
+
 inline bool isInconsistent(JoinSpec const& s) {
     return s.getOn() && s.getUsing();
 }
+
 
 std::ostream& operator<<(std::ostream& os, JoinSpec const& js) {
     os << "JoinSpec(";
@@ -53,10 +55,12 @@ std::ostream& operator<<(std::ostream& os, JoinSpec const& js) {
     return os;
 }
 
+
 std::ostream& operator<<(std::ostream& os, JoinSpec const* js) {
     (nullptr == js) ? os << "nullptr" : os << *js;
     return os;
 }
+
 
 std::ostream& JoinSpec::putStream(std::ostream& os) const {
     // boilerplate impl until we can think of something better
@@ -64,6 +68,8 @@ std::ostream& JoinSpec::putStream(std::ostream& os) const {
     putTemplate(qt);
     return os << qt;
 }
+
+
 void JoinSpec::putTemplate(QueryTemplate& qt) const {
     if (isInconsistent(*this)) {
         throw std::logic_error("Inconsistent JoinSpec with ON and USING");
@@ -80,6 +86,7 @@ void JoinSpec::putTemplate(QueryTemplate& qt) const {
         throw std::logic_error("Empty JoinSpec");
     }
 }
+
 
 JoinSpec::Ptr JoinSpec::clone() const {
     if (isInconsistent(*this)) {

@@ -32,6 +32,7 @@
   * @author Daniel L. Wang, SLAC
   */
 
+
 // Class header
 #include "query/ValueExpr.h"
 
@@ -51,9 +52,11 @@
 #include "query/ValueFactor.h"
 #include "util/IterableFormatter.h"
 
+
 namespace lsst {
 namespace qserv {
 namespace query {
+
 
 std::ostream&
 output(std::ostream& os, ValueExprPtrVector const& vel) {
@@ -61,6 +64,8 @@ output(std::ostream& os, ValueExprPtrVector const& vel) {
               std::ostream_iterator<ValueExprPtr>(os, ";"));
     return os;
 }
+
+
 void
 renderList(QueryTemplate& qt, ValueExprPtrVector const& vel) {
     ValueExpr::render rend(qt, true, true);
@@ -69,12 +74,13 @@ renderList(QueryTemplate& qt, ValueExprPtrVector const& vel) {
     }
 }
 
+
 ////////////////////////////////////////////////////////////////////////
 // ValueExpr::FactorOp
 ////////////////////////////////////////////////////////////////////////
 
 std::ostream& operator<<(std::ostream& os, const ValueExpr::FactorOp& factorOp) {
-    os << "FactorOp(op:";
+    os << "FactorOp(";
     switch(factorOp.op) {
     case ValueExpr::NONE: os << "NONE"; break;
     case ValueExpr::UNKNOWN: os << "UNKNOWN"; break;
@@ -92,10 +98,11 @@ std::ostream& operator<<(std::ostream& os, const ValueExpr::FactorOp& factorOp) 
     case ValueExpr::BIT_XOR: os << "BIT_XOR"; break;
     default: os << "!!unhandled!!"; break;
     }
-    os << ", factor:" << factorOp.factor;
+    os << ", " << factorOp.factor;
     os << ")";
     return os;
 }
+
 
 bool ValueExpr::FactorOp::operator==(const FactorOp& rhs) const {
     return (util::ptrCompare<ValueFactor>(factor, rhs.factor) && op == rhs.op);
@@ -114,6 +121,8 @@ ValueExprPtr ValueExpr::newSimple(std::shared_ptr<ValueFactor> vt)  {
     ve->_factorOps.push_back(t);
     return ve;
 }
+
+
 ////////////////////////////////////////////////////////////////////////
 // ValueExpr
 ////////////////////////////////////////////////////////////////////////
@@ -136,6 +145,7 @@ std::shared_ptr<ColumnRef> ValueExpr::copyAsColumnRef() const {
     return cr;
 }
 
+
 std::string ValueExpr::copyAsLiteral() const{
     std::string s;
     // Make sure there is only one factor.
@@ -146,6 +156,7 @@ std::string ValueExpr::copyAsLiteral() const{
     if (factor->getType() != ValueFactor::CONST) { return s; }
     return factor->getConstVal();
 }
+
 
 template<typename T>
 T ValueExpr::copyAsType(T const& defaultValue) const {
@@ -160,10 +171,15 @@ T ValueExpr::copyAsType(T const& defaultValue) const {
     }
     return value;
 }
+
+
 template<>
 float ValueExpr::copyAsType<float>(float const& defaultValue) const;
+
+
 template<>
 double ValueExpr::copyAsType<double>(double const& defaultValue) const;
+
 
 template int ValueExpr::copyAsType<int>(int const&) const;
 
@@ -174,6 +190,7 @@ void ValueExpr::findColumnRefs(ColumnRef::Vector& vector) const {
         factorOp.factor->findColumnRefs(vector);
     }
 }
+
 
 /** Check if the current ValueExpr contains an aggregation function.
  *  This function assume the ValueExpr was part of a SelectList
@@ -186,6 +203,7 @@ bool ValueExpr::hasAggregation() const {
     return hasAgg;
 }
 
+
 ColumnRef::Ptr ValueExpr::getColumnRef() const {
     if (_factorOps.size() != 1) {
         return nullptr;
@@ -196,6 +214,7 @@ ColumnRef::Ptr ValueExpr::getColumnRef() const {
     }
     return vf->getColumnRef();
 }
+
 
 /// @return true if holding a single ValueFactor, and that factor is a *
 bool ValueExpr::isStar() const {
@@ -209,10 +228,13 @@ bool ValueExpr::isStar() const {
     return false;
 }
 
+
 /// @return true if holding a single ValueFactor
 bool ValueExpr::isFactor() const {
     return _factorOps.size() == 1;
 }
+
+
 /// @return first ValueFactorPtr held. Useful when isFactor() == true
 std::shared_ptr<ValueFactor const> ValueExpr::getFactor() const {
     if (_factorOps.empty()) {
@@ -220,6 +242,7 @@ std::shared_ptr<ValueFactor const> ValueExpr::getFactor() const {
     }
     return _factorOps.front().factor;
 }
+
 
 /// @return true if holding a single ValueFactor
 bool ValueExpr::isColumnRef() const {
@@ -232,6 +255,7 @@ bool ValueExpr::isColumnRef() const {
     return false;
 }
 
+
 bool ValueExpr::isFunction() const {
     if (_factorOps.size() == 1) {
         ValueFactor const& factor = *_factorOps.front().factor;
@@ -241,6 +265,7 @@ bool ValueExpr::isFunction() const {
     }
     return false;
 }
+
 
 ValueExprPtr ValueExpr::clone() const {
     // First, make a shallow copy
@@ -253,6 +278,7 @@ ValueExprPtr ValueExpr::clone() const {
     }
     return expr;
 }
+
 
 /** Return a string representation of the object
  *
@@ -268,25 +294,22 @@ std::string ValueExpr::sqlFragment() const {
     return os.str();
 }
 
+
 std::ostream& operator<<(std::ostream& os, ValueExpr const& ve) {
     os << "ValueExpr(";
-    os << "alias:" << ve._alias;
-    os << ", isColumnRef:" << ve.isColumnRef();
-    os << ", isFactor:" << ve.isFactor();
-    os << ", isStar:" << ve.isStar();
-    bool hasAgg = false;
-    qana::CheckAggregation ca(hasAgg);
-    os << ", hasAgg:" << hasAgg;
-    os << ", factorOps:";
+    if (not ve._alias.empty()) os << "alias:" << ve._alias << ", ";
     os << util::printable(ve._factorOps);
     os << ")";
     return os;
 }
 
+
 std::ostream& operator<<(std::ostream& os, ValueExpr const* ve) {
     if (!ve) return os << "nullptr";
     return os << *ve;
 }
+
+
 ////////////////////////////////////////////////////////////////////////
 // ValueExpr::render
 ////////////////////////////////////////////////////////////////////////
@@ -329,10 +352,12 @@ void ValueExpr::render::applyToQT(ValueExpr const& ve) {
     if (!ve._alias.empty()) { _qt.append("AS"); _qt.append(ve._alias); }
 }
 
+
 bool ValueExpr::operator==(const ValueExpr& rhs) const {
     return (_alias == rhs._alias &&
             _factorOps == rhs._factorOps);
 }
+
 
 // Miscellaneous
 struct _copyValueExpr {
@@ -340,6 +365,8 @@ struct _copyValueExpr {
         return p->clone();
     }
 };
+
+
 void cloneValueExprPtrVector(ValueExprPtrVector& dest,
                              ValueExprPtrVector const& src) {
     dest.resize(src.size()); // Presize destination

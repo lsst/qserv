@@ -20,13 +20,16 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_QUERY_QUERYCONTEXT_H
-#define LSST_QSERV_QUERY_QUERYCONTEXT_H
 /**
   * @file
   *
   * @author Daniel L. Wang, SLAC
   */
+
+
+#ifndef LSST_QSERV_QUERY_QUERYCONTEXT_H
+#define LSST_QSERV_QUERY_QUERYCONTEXT_H
+
 
 // System headers
 #include <memory>
@@ -43,12 +46,20 @@
 #include "query/TableAlias.h"
 #include "global/stringTypes.h"
 
+
+// Forward declarations
+namespace lsst {
+namespace qserv {
+namespace query {
+    class ColumnRef;
+    class QsRestrictor;
+}}} // End of forward declarations
+
+
 namespace lsst {
 namespace qserv {
 namespace query {
 
-class ColumnRef;
-class QsRestrictor;
 
 /// QueryContext is a value container for query state related to analyzing,
 /// rewriting, and generating queries. It is the primary mechanism for
@@ -107,6 +118,7 @@ public:
         return queryMapping.get() && queryMapping->hasSubChunks(); }
     DbTableSet resolve(std::shared_ptr<ColumnRef> cr);
 };
+
 
 }}} // namespace lsst::qserv::query
 

@@ -51,6 +51,7 @@
 #include "query/FromList.h" // for class FromList
 #include "query/JoinRef.h"
 #include "query/JoinSpec.h"
+#include "query/OrTerm.h"
 #include "query/QueryTemplate.h"
 #include "query/TableRef.h"
 

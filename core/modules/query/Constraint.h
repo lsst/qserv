@@ -32,15 +32,15 @@
 
 // System headers
 #include <iosfwd>
+#include <memory>
 #include <string>
 #include <vector>
 
-// Third-party headers
-#include <memory>
 
 namespace lsst {
 namespace qserv {
 namespace query {
+
 
 /// A detected qserv constraint for C++ to Python
 class Constraint {
@@ -58,6 +58,7 @@ public:
 std::ostream&
 operator<<(std::ostream& os, Constraint const& c);
 typedef std::vector<Constraint> ConstraintVector;
+
 
 }}} // namespace lsst::qserv::query
 

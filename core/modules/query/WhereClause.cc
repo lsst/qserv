@@ -28,6 +28,7 @@
   * @author Daniel L. Wang, SLAC
   */
 
+
 // Class header
 #include "query/WhereClause.h"
 
@@ -37,53 +38,49 @@
 #include <memory>
 #include <stdexcept>
 
-// Third-party headers
-
 // Qserv headers
 #include "global/Bug.h"
+#include "query/AndTerm.h"
+#include "query/BoolTerm.h"
+#include "query/BoolFactor.h"
+#include "query/ColumnRef.h"
+#include "query/LogicalTerm.h"
+#include "query/OrTerm.h"
 #include "query/Predicate.h"
+#include "query/QsRestrictor.h"
 #include "query/QueryTemplate.h"
 #include "util/PointerCompare.h"
 #include "util/IterableFormatter.h"
 
-namespace {
-
-lsst::qserv::query::BoolTerm::Ptr
-skipTrivialOrTerms(lsst::qserv::query::BoolTerm::Ptr& tree) {
-    lsst::qserv::query::OrTerm * ot = dynamic_cast<lsst::qserv::query::OrTerm *>(tree.get());
-    while (ot && ot->_terms.size() == 1) {
-        tree = ot->_terms.front();
-        ot = dynamic_cast<lsst::qserv::query::OrTerm *>(tree.get());
-    }
-    return tree;
-}
-
-} // anonymous namespace
 
 namespace lsst {
 namespace qserv {
 namespace query {
 
-////////////////////////////////////////////////////////////////////////
-// WhereClause
-////////////////////////////////////////////////////////////////////////
+
 std::ostream&
 operator<<(std::ostream& os, WhereClause const& wc) {
-    os << "WhereClause(tree:" << wc._tree;
+    os << "WhereClause(" << wc._rootOrTerm;
     os << ", restrs:" << util::ptrPrintable(wc._restrs);
     os << ")";
     return os;
 }
+
+
 std::ostream&
 operator<<(std::ostream& os, WhereClause const* wc) {
     (nullptr == wc) ? os << "nullptr" : os << *wc;
     return os;
 }
+
+
 void findColumnRefs(std::shared_ptr<BoolFactor> f, ColumnRef::Vector& vector) {
     if (f) {
         f->findColumnRefs(vector);
     }
 }
+
+
 void findColumnRefs(std::shared_ptr<BoolTerm> t, ColumnRef::Vector& vector) {
     if (!t) { return; }
     BoolTerm::PtrVector::iterator i = t->iterBegin();
@@ -107,6 +104,60 @@ void findColumnRefs(std::shared_ptr<BoolTerm> t, ColumnRef::Vector& vector) {
     }
 }
 
+
+void WhereClause::setRootTerm(std::shared_ptr<LogicalTerm> const& term) {
+    auto orTerm = std::dynamic_pointer_cast<OrTerm>(term);
+    if (nullptr == orTerm) {
+        orTerm = std::make_shared<OrTerm>(term);
+    }
+    _rootOrTerm = orTerm;
+}
+
+
+std::shared_ptr<AndTerm> WhereClause::getRootAndTerm() const
+{
+    // Find the global AND. If an OR term is root and has multiple terms, there is no global AND which means
+    // we should return NULL.
+    if (nullptr == _rootOrTerm) {
+        return nullptr;
+    }
+    if (_rootOrTerm->_terms.size() != 1) {
+        return nullptr;
+    }
+    auto andTerm = std::dynamic_pointer_cast<AndTerm>(_rootOrTerm->_terms.front());
+    return andTerm;
+}
+
+
+void
+WhereClause::prependAndTerm(std::shared_ptr<BoolTerm> t) {
+    // Find the global AndTerm and add the new BoolTerm to its terms. If the new BoolTerm is an instance of
+    // AndTerm, merge its terms instead of adding it to the AndTerm's terms.
+    // If a global AndTerm can not be found then throw; this query can not be handled.
+    if (nullptr == _rootOrTerm) {
+        _rootOrTerm = std::make_shared<OrTerm>();
+    }
+
+    std::shared_ptr<AndTerm> andTerm;
+    if (_rootOrTerm->_terms.size() == 0) {
+        andTerm = std::make_shared<AndTerm>();
+        _rootOrTerm->addBoolTerm(andTerm);
+    } else if (_rootOrTerm->_terms.size() == 1) {
+        andTerm = std::dynamic_pointer_cast<AndTerm>(_rootOrTerm->_terms[0]);
+        if (nullptr == andTerm) {
+            throw std::logic_error("Term of first OR term is not an AND term; there is no global AND term");
+        }
+    }
+    else {
+        throw std::logic_error("There is more than term in the root OR term; can't pick a global AND term");
+    }
+
+    if (!andTerm->merge(*t, AndTerm::PREPEND)) {
+        andTerm->_terms.insert(andTerm->_terms.begin(), t);
+    }
+}
+
+
 std::shared_ptr<ColumnRef::Vector const>
 WhereClause::getColumnRefs() const {
     std::shared_ptr<ColumnRef::Vector> vector = std::make_shared<ColumnRef::Vector>();
@@ -114,24 +165,16 @@ WhereClause::getColumnRefs() const {
     // Idea: Walk the expression tree and add all column refs to the
     // list. We will walk in depth-first order, but the interface spec
     // doesn't require any particular order.
-    findColumnRefs(_tree, *vector);
+    findColumnRefs(_rootOrTerm, *vector);
 
     return vector;
 }
 
 
-std::shared_ptr<AndTerm>
-WhereClause::getRootAndTerm() {
-    // Walk the list to find the global AND. If an OR term is root,
-    // and has multiple terms, there is no global AND which means we
-    // should return NULL.
-    BoolTerm::Ptr t = skipTrivialOrTerms(_tree);
-    return std::dynamic_pointer_cast<AndTerm>(t);
+void WhereClause::findValueExprs(ValueExprPtrVector& vector) const {
+    if (_rootOrTerm) { _rootOrTerm->findValueExprs(vector); }
 }
 
-void WhereClause::findValueExprs(ValueExprPtrVector& vector) const {
-    if (_tree) { _tree->findValueExprs(vector); }
-}
 
 std::string
 WhereClause::getGenerated() const {
@@ -139,6 +182,8 @@ WhereClause::getGenerated() const {
     renderTo(qt);
     return qt.sqlFragment();
 }
+
+
 void WhereClause::renderTo(QueryTemplate& qt) const {
     if (_restrs != nullptr) {
         QsRestrictor::render rend(qt);
@@ -146,19 +191,20 @@ void WhereClause::renderTo(QueryTemplate& qt) const {
             rend.applyToQT(res);
         }
     }
-    if (_tree.get()) {
-        _tree->renderTo(qt);
+    if (nullptr != _rootOrTerm) {
+        _rootOrTerm->renderTo(qt);
     }
 }
+
 
 std::shared_ptr<WhereClause> WhereClause::clone() const {
     // FIXME
     std::shared_ptr<WhereClause> newC = std::make_shared<WhereClause>(*this);
     // Shallow copy of expr list is okay.
-    if (_tree.get()) {
-        newC->_tree = _tree->copySyntax();
+    if (nullptr != _rootOrTerm) {
+        newC->_rootOrTerm = _rootOrTerm->copy();
     }
-    if (_restrs.get()) {
+    if (nullptr != _restrs) {
         newC->_restrs = std::make_shared<QsRestrictor::PtrVector>(*_restrs);
     }
     // For the other fields, default-copied versions are okay.
@@ -166,63 +212,36 @@ std::shared_ptr<WhereClause> WhereClause::clone() const {
 
 }
 
+
 std::shared_ptr<WhereClause> WhereClause::copySyntax() {
     std::shared_ptr<WhereClause> newC = std::make_shared<WhereClause>(*this);
     // Shallow copy of expr list is okay.
-    if (_tree.get()) {
-        newC->_tree = _tree->copySyntax();
+    if (nullptr != _rootOrTerm) {
+        newC->_rootOrTerm = _rootOrTerm->copy();
     }
     // For the other fields, default-copied versions are okay.
     return newC;
 }
 
-void
-WhereClause::prependAndTerm(std::shared_ptr<BoolTerm> t) {
-    // Walk to AndTerm and prepend new BoolTerm in front of the
-    // list. If the new BoolTerm is an instance of AndTerm, prepend
-    // its terms rather than the AndTerm itself.
-    std::shared_ptr<BoolTerm> insertPos = skipTrivialOrTerms(_tree);
 
-    // FIXME: Should deal with case where AndTerm is not found.
-    AndTerm* rootAnd = dynamic_cast<AndTerm*>(insertPos.get());
-    if (!rootAnd) {
-        std::shared_ptr<AndTerm> a = std::make_shared<AndTerm>();
-        std::shared_ptr<BoolTerm> oldTree(_tree);
-        _tree = a;
-        if (oldTree.get()) { // Only add oldTree root if non-NULL
-            a->_terms.push_back(oldTree);
-        }
-        rootAnd = a.get();
-
+std::shared_ptr<AndTerm> WhereClause::_addRootAndTerm() {
+    if (nullptr == _rootOrTerm) {
+        _rootOrTerm = std::make_shared<OrTerm>();
+    } else if (_rootOrTerm->_terms.size() != 0) {
+        throw std::logic_error("Can not add root AND term."); // expected 0 or 1 items in _terms
     }
-    if (!rootAnd) {
-        // For now, the root AND should be there by construction. No
-        // code has been written that would eliminate the root AND term.
-        throw std::logic_error("Couldn't find root AND term");
-    }
-
-    AndTerm* incomingTerms = dynamic_cast<AndTerm*>(t.get());
-    if (incomingTerms) {
-        // Insert its elements then.
-        rootAnd->_terms.insert(rootAnd->_terms.begin(),
-                               incomingTerms->_terms.begin(),
-                               incomingTerms->_terms.end());
-    } else {
-        // Just insert the term as-is.
-        rootAnd->_terms.insert(rootAnd->_terms.begin(), t);
-    }
+    auto andTerm = std::make_shared<AndTerm>();
+    _rootOrTerm->addBoolTerm(andTerm);
+    return andTerm;
 }
 
 
-bool WhereClause::operator==(WhereClause& rhs) const {
-    return (util::ptrCompare<BoolTerm>(_tree, rhs._tree) &&
+bool WhereClause::operator==(WhereClause const& rhs) const {
+    return (util::ptrCompare<BoolTerm>(_rootOrTerm, rhs._rootOrTerm) &&
             util::ptrVectorPtrCompare<QsRestrictor>(_restrs, rhs._restrs));
 }
 
 
-////////////////////////////////////////////////////////////////////////
-// WhereClause (private)
-////////////////////////////////////////////////////////////////////////
 void
 WhereClause::resetRestrs() {
     _restrs = std::make_shared<QsRestrictor::PtrVector>();
