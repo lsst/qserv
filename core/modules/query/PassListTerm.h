@@ -60,16 +60,16 @@ public:
     void findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& vector) const override {}
 
     /// Make a deep copy of this term.
-    virtual BoolFactorTerm::Ptr clone() const;
+    BoolFactorTerm::Ptr clone() const override;
 
     /// Make a shallow copy of this term.
-    virtual BoolFactorTerm::Ptr copySyntax() const;
+    BoolFactorTerm::Ptr copySyntax() const override;
 
     /// Write a human-readable version of this instance to the ostream for debug output.
-    virtual std::ostream& putStream(std::ostream& os) const;
+    std::ostream& putStream(std::ostream& os) const override;
 
     /// Serialze this instance as SQL to the QueryTemplate.
-    virtual void renderTo(QueryTemplate& qt) const;
+    void renderTo(QueryTemplate& qt) const override;
 
     bool operator==(const BoolFactorTerm& rhs) const override;
 
