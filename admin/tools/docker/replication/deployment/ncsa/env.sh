@@ -90,8 +90,8 @@ CONFIG="mysql://qsreplica@lsst-qserv-${MASTER}:${DB_PORT}/qservReplica"
 MASTER_PARAMETERS="--debug --worker-evict-timeout=3600 --health-probe-interval=120 --replication-interval=1200"
 
 # User account under which the containers will be run
-UID=1000
-GID=1000
+CONTAINER_UID=1000
+CONTAINER_GID=1000
 
 unset basedir
 unset -f get_param

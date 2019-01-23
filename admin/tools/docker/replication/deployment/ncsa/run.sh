@@ -49,7 +49,7 @@ docker run \
     --rm \
     -it \
     --network host \
-    -u ${UID}:${GID} \
+    -u ${CONTAINER_UID}:${CONTAINER_GID} \
     -v /etc/passwd:/etc/passwd:ro \
     -v ${CONFIG_DIR}:/qserv/replication/config:ro \
     -v ${WORK_DIR}:${WORK_DIR} \
