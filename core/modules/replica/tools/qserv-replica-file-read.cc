@@ -24,6 +24,26 @@
 /// interface.
 
 // System headers
+#include <iostream>
+#include <stdexcept>
+
+// Qserv headers
+#include "replica/FileReadApp.h"
+
+using namespace lsst::qserv::replica;
+
+int main(int argc, const char* const argv[]) {
+    try {
+        auto app = FileReadApp::create(argc, argv);
+        return app->run();
+    } catch (std::exception const& ex) {
+        std::cerr << "main()  the application failed, exception: " << ex.what() << std::endl;
+    }
+    return 1;
+}
+
+#if 0
+// System headers
 #include <cerrno>
 #include <cstdio>           // std::FILE, C-style file I/O
 #include <cstring>
@@ -145,3 +165,4 @@ int main(int argc, const char* const argv[]) {
     ::run ();
     return 0;
 }
+#endif

@@ -63,7 +63,7 @@ CheckSumApp::CheckSumApp(int argc,
             ::description,
             false   /* injectDatabaseOptions */,
             false   /* boostProtobufVersionCheck */,
-            false   /* enableServiceProvider */
+            true    /* enableServiceProvider */
         ),
         _incremental(false) {
 
