@@ -203,7 +203,7 @@ int ChunksApp::runImpl() {
     auto controller = Controller::create(serviceProvider());
 
     // Workers requested
-    auto const workers = _allWorkers ?
+    auto const workerNames = _allWorkers ?
         serviceProvider()->config()->allWorkers() :
         serviceProvider()->config()->workers();
 
@@ -227,6 +227,7 @@ int ChunksApp::runImpl() {
     auto findAllJob = FindAllJob::create(
         _databaseFamily,
         not _doNotSaveReplicaInfo,
+        _allWorkers,
         controller,
         string(),
         [&replicaJobFinished] (FindAllJob::Ptr const& job) {
@@ -242,6 +243,7 @@ int ChunksApp::runImpl() {
         qservGetReplicasJob = QservGetReplicasJob::create(
             _databaseFamily,
             inUseOnly,
+            _allWorkers,
             controller,
             string(),
             [&qservJobFinished] (QservGetReplicasJob::Ptr const& job) {
@@ -280,9 +282,8 @@ int ChunksApp::runImpl() {
     // worker identifiers
 
     map<string, size_t> worker2idx;
-    for (size_t idx = 0, num = workers.size(); idx < num; ++idx) {
-        string const& worker = workers[idx];
-        worker2idx[worker] = idx;
+    for (size_t idx = 0, num = workerNames.size(); idx < num; ++idx) {
+        worker2idx[workerNames[idx]] = idx;
     }
 
     // Count chunk replicas per worker from both sources
@@ -307,40 +308,49 @@ int ChunksApp::runImpl() {
 
     set<string> badWorkers;
     set<string> badQservWorkers;
-    for (auto const& worker: workers) {
-        if (not replicaData.workers.at(worker)) badWorkers.insert(worker);
-        if (_pullQservReplicas and not qservReplicaData.workers.at(worker)) badQservWorkers.insert(worker);
+    for (auto const& workerName: workerNames) {
+        if (not replicaData.workers.at(workerName)) badWorkers.insert(workerName);
+        if (_pullQservReplicas and not qservReplicaData.workers.at(workerName)) badQservWorkers.insert(workerName);
     }
 
     // Print a summary table with the number of chunks across both types
     // of workers.
     {
-        vector<size_t> workerIdx;
-        vector<string> workerName;
-        vector<string> numReplicas;
-        vector<string> numQservReplicas;
+        vector<size_t> columnWorkerIdx;
+        vector<string> columnWorkerName;
+        vector<string> columnNumReplicas;
+        vector<string> columnNumQservReplicas;
+        vector<string> columnNumReplicasDiff;
 
-        for (auto const& worker: workers) {
+        for (auto const& workerName: workerNames) {
 
-            workerIdx.push_back(worker2idx[worker]);
-            workerName.push_back(worker);
+            columnWorkerIdx.push_back(worker2idx[workerName]);
+            columnWorkerName.push_back(workerName);
 
-            numReplicas.push_back(
-                replicaData.workers.at(worker) ?
-                    to_string(worker2numChunks[worker]) :
+            columnNumReplicas.push_back(
+                replicaData.workers.at(workerName) ?
+                    to_string(worker2numChunks[workerName]) :
                     "*");
 
-            numQservReplicas.push_back(
-                _pullQservReplicas and qservReplicaData.workers.at(worker) ?
-                    to_string(qservWorker2numChunks[worker]) :
+            columnNumQservReplicas.push_back(
+                _pullQservReplicas and qservReplicaData.workers.at(workerName) ?
+                    to_string(qservWorker2numChunks[workerName]) :
                     "*");
+            
+            string const numReplicasDiffStr =
+                replicaData.workers.at(workerName) and
+                _pullQservReplicas and qservReplicaData.workers.at(workerName) ?
+                    to_string(qservWorker2numChunks[workerName] - worker2numChunks[workerName]) :
+                    "*";
+            columnNumReplicasDiff.push_back(numReplicasDiffStr == "0" ? "" : numReplicasDiffStr);
         }
-        util::ColumnTablePrinter table("NUMBER OF CHUNKS REPORTED BY WORKERS:", "  ", _verticalSeparator);
+        util::ColumnTablePrinter table("NUMBER OF CHUNKS REPORTED BY WORKERS ('R'eplication, 'Q'serv):", "  ", _verticalSeparator);
 
-        table.addColumn("idx",         workerIdx);
-        table.addColumn("worker",      workerName, util::ColumnTablePrinter::LEFT);
-        table.addColumn("Replication", numReplicas);
-        table.addColumn("Qserv",       numQservReplicas);
+        table.addColumn("idx",    columnWorkerIdx);
+        table.addColumn("worker", columnWorkerName, util::ColumnTablePrinter::LEFT);
+        table.addColumn("R",      columnNumReplicas);
+        table.addColumn("Q",      columnNumQservReplicas);
+        table.addColumn("Q-R",    columnNumReplicasDiff);
 
         cout << "\n";
         table.print(cout, false, false);

@@ -57,6 +57,7 @@ std::string FindAllJob::typeName() { return "FindAllJob"; }
 
 FindAllJob::Ptr FindAllJob::create(std::string const& databaseFamily,
                                    bool saveReplicaInfo,
+                                   bool allWorkers,
                                    Controller::Ptr const& controller,
                                    std::string const& parentJobId,
                                    CallbackType const& onFinish,
@@ -64,6 +65,7 @@ FindAllJob::Ptr FindAllJob::create(std::string const& databaseFamily,
     return FindAllJob::Ptr(
         new FindAllJob(databaseFamily,
                        saveReplicaInfo,
+                       allWorkers,
                        controller,
                        parentJobId,
                        onFinish,
@@ -72,6 +74,7 @@ FindAllJob::Ptr FindAllJob::create(std::string const& databaseFamily,
 
 FindAllJob::FindAllJob(std::string const& databaseFamily,
                        bool saveReplicaInfo,
+                       bool allWorkers,
                        Controller::Ptr const& controller,
                        std::string const& parentJobId,
                        CallbackType const& onFinish,
@@ -82,6 +85,7 @@ FindAllJob::FindAllJob(std::string const& databaseFamily,
             options),
         _databaseFamily(databaseFamily),
         _saveReplicaInfo(saveReplicaInfo),
+        _allWorkers(allWorkers),
         _databases(controller->serviceProvider()->config()->databases(databaseFamily)),
         _onFinish(onFinish),
         _numLaunched(0),
@@ -101,7 +105,9 @@ FindAllJobResult const& FindAllJob::getReplicaData() const {
 
 std::list<std::pair<std::string,std::string>> FindAllJob::extendedPersistentState() const {
     std::list<std::pair<std::string,std::string>> result;
-    result.emplace_back("database_family", databaseFamily());
+    result.emplace_back("database_family",   databaseFamily());
+    result.emplace_back("save_replica_info", saveReplicaInfo() ? "1" : "0");
+    result.emplace_back("all_workers",       allWorkers()      ? "1" : "0");
     return result;
 }
 
@@ -109,9 +115,13 @@ void FindAllJob::startImpl(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
 
-    auto self = shared_from_base<FindAllJob>();
+    auto const self = shared_from_base<FindAllJob>();
 
-    for (auto&& worker: controller()->serviceProvider()->config()->workers()) {
+    auto const workerNames = allWorkers() ?
+        controller()->serviceProvider()->config()->allWorkers() :
+        controller()->serviceProvider()->config()->workers();
+    
+    for (auto&& worker: workerNames) {
         for (auto&& database: _databases) {
             _replicaData.workers[worker] = false;
             _requests.push_back(

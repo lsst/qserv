@@ -120,9 +120,11 @@ void FixUpJob::startImpl(util::Lock const& lock) {
     auto self = shared_from_base<FixUpJob>();
     bool const saveReplicInfo = true;           // always save the replica info in a database because
                                                 // the algorithm depends on it.
+    bool const allWorkers = false;              // only consider enabled workers
     _findAllJob = FindAllJob::create(
         databaseFamily(),
         saveReplicInfo,
+        allWorkers,
         controller(),
         id(),
         [self] (FindAllJob::Ptr job) {

@@ -92,6 +92,7 @@ public:
      *
      * @param databaseFamily - name of a database family
      * @param inUseOnly      - return replicas which are presently in use
+     * @param allWorkers     - engage all known workers regardless of their status
      * @param controller     - for launching requests
      * @param parentJobId    - (optional) identifier of a parent job
      * @param onFinish       - (optional) callback function to be called upon a job completion
@@ -101,6 +102,7 @@ public:
      */
     static Ptr create(std::string const& databaseFamily,
                       bool inUseOnly,
+                      bool allWorkers,
                       Controller::Ptr const& controller,
                       std::string const& parentJobId,
                       CallbackType const& onFinish,
@@ -119,6 +121,9 @@ public:
 
     /// @return flag indicating (if set) to report a subset of chunks which are in use
     bool inUseOnly() const { return _inUseOnly; }
+
+    /// @return 'true' if all known workers were engaged
+    bool allWorkers() const { return _allWorkers; }
 
     /**
      * @return the result of the operation (when the job finishes)
@@ -151,6 +156,7 @@ protected:
      */
     QservGetReplicasJob(std::string const& databaseFamily,
                         bool inUseOnly,
+                        bool allWorkers,
                         Controller::Ptr const& controller,
                         std::string const& parentJobId,
                         CallbackType const& onFinish,
@@ -185,6 +191,9 @@ protected:
 
     /// Flag indicating to report (if set) a subset of chunks which are in use
     bool const _inUseOnly;
+
+    /// The flag (if 'true') for engaging all known workers regardless of their status
+    bool const _allWorkers;
 
     /// Client-defined function to be called upon the completion of the job
     CallbackType _onFinish;
