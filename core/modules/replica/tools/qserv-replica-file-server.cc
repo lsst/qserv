@@ -20,8 +20,10 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-/// qserv-replica-file-server.cc is a file server application running
-/// an instance of FileServer.
+/**
+ * qserv-replica-file-server.cc is a file server application running
+ * an instance of FileServer.
+ */
 
 // System headers
 #include <iostream>

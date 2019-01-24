@@ -35,7 +35,7 @@ using namespace std;
 namespace {
 
 string const description {
-    "This is an  application which runs a read-only file server"
+    "This is an application which runs a read-only file server"
     " on behalf of a Replication system's worker"
 };
 
@@ -103,6 +103,7 @@ int FileServerApp::runImpl() {
             LOGS(_log, LOG_LVL_INFO, "HEARTBEAT  worker: " << server->worker());
         }
     }
+    return 0;
 }
 
 }}} // namespace lsst::qserv::replica
