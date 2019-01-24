@@ -28,6 +28,7 @@
 
 // Qserv headers
 #include "replica/Application.h"
+#include "replica/ReplicaInfo.h"
 
 // This header declarations
 
@@ -83,6 +84,32 @@ protected:
 
 private:
 
+    /**
+     * Read and parse a space/newline separated stream of pairs from the input
+     * file and fill replica entries into the collection. Each pair has
+     * the following format:
+     *
+     *   <database>:<chunk>
+     *
+     * For example:
+     *
+     *   LSST:123 LSST:124 LSST:23456
+     *   LSST:0
+     *
+     * @param replicas
+     *   collection to be initialized
+     */
+    void _readInFile(QservReplicaCollection& replicas) const;
+
+    /**
+      * Print a collection of replicas
+      *
+      * @param collection
+      */
+    void _dump(QservReplicaCollection const& collection) const;
+
+private:
+
     /// The name of a command (the first mandatory parameter)
     std::string _command;
 
@@ -107,6 +134,12 @@ private:
 
     /// Limit a scope of operations to a subset of chunks which are in use 
     bool _inUseOnly = false;
+
+    /// The flag (if set) for "printing the vertical separator when displaying tabular data in reports
+    bool _verticalSeparator = false;
+
+    /// The number of rows in the table of replicas (0 means no pages)
+    size_t _pageSize = 0;
 };
 
 }}} // namespace lsst::qserv::replica

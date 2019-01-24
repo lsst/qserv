@@ -43,92 +43,9 @@ using namespace std;
 
 namespace {
 
-using namespace lsst::qserv::replica;
-namespace util = lsst::qserv::util;
-
 string const description {
     "This is an application for operations with Qserv workers."
 };
-
-/**
- * Read and parse a space/newline separated stream of pairs from the input
- * file and fill replica entries into the collection. Each pair has
- * the following format:
- *
- *   <database>:<chunk>
- *
- * For example:
- *
- *   LSST:123 LSST:124 LSST:23456
- *   LSST:0
- *
- * @param replicas
- *   collection to be initialized
- *
- * @param inFileName
- *   the name of an input file to be read
- */
-void readInFile(QservReplicaCollection& replicas,
-                string const& inFileName) {
-
-    replicas.clear();
-
-    ifstream infile(inFileName);
-    if (not infile.good()) {
-        cerr << "failed to open file: " << inFileName << endl;
-        throw runtime_error("failed to open file: " + inFileName);
-    }
-
-    string databaseAndChunk;
-    while (infile >> databaseAndChunk) {
-
-        if (databaseAndChunk.empty()) { continue; }
-
-        string::size_type const pos = databaseAndChunk.rfind(':');
-        if ((pos == string::npos) or
-            (pos == 0) or (pos == databaseAndChunk.size() - 1)) {
-            throw runtime_error(
-                "failed to parse file: " + inFileName + ", illegal <database>::<chunk> pair: '" +
-                databaseAndChunk + "'");
-        }
-        unsigned int const chunk    = (unsigned int)(stoul(databaseAndChunk.substr(pos + 1)));
-        string  const database = databaseAndChunk.substr(0, pos);
-
-        replicas.emplace_back(
-            QservReplica{
-                chunk,
-                database,
-                0   /* useCount (UNUSED) */
-            }
-        );
-    }
-}
-
-/**
-  * Print a collection of replicas
-  *
-  * @param collection
-  */
-void dump(QservReplicaCollection const& collection) {
-
-    vector<string>       columnDatabaseName;
-    vector<unsigned int> columnChunkNumber;
-    vector<size_t>       columnUseCount;
-
-    for (auto&& replica: collection) {
-        columnDatabaseName.push_back(replica.database);
-        columnChunkNumber .push_back(replica.chunk);
-        columnUseCount    .push_back(replica.useCount);
-    }
-
-    util::ColumnTablePrinter table("REPLICAS:", "  ", false);
-
-    table.addColumn("database",  columnDatabaseName,   util::ColumnTablePrinter::LEFT);
-    table.addColumn("chunk",     columnChunkNumber);
-    table.addColumn("use count", columnUseCount);
-
-    table.print(cout, false, false);
-}
 
 } /// namespace
 
@@ -173,6 +90,22 @@ QservWorkerApp::QservWorkerApp(int argc,
         "the name of a Qserv worker",
         _workerName);
 
+    parser().flag(
+        "force",
+        "Force the worker to proceed with requested"
+        " replica removal regardless of the replica usage status",
+        _forceRemove);
+
+    parser().option(
+        "tables-page-size",
+        "the number of rows in the table of replicas (0 means no pages)",
+        _pageSize);
+
+    parser().flag(
+        "tables-vertical-separator",
+        "Print vertical separator when displaying tabular data in reports",
+        _verticalSeparator);
+
     // Command-specific parameters, options and flags
 
     auto&& addCmd = parser().command("ADD_REPLICA");
@@ -206,12 +139,6 @@ QservWorkerApp::QservWorkerApp(int argc,
         "chunk",
         "The number of a chunk",
         _chunkNumber);
-
-    removeCmd.flag(
-        "force",
-        "Force the worker to proceed with requested"
-        " replica removal regardless of the replica usage status",
-        _forceRemove);
 
     // Command-specific parameters, options and flags
 
@@ -269,10 +196,10 @@ int QservWorkerApp::runImpl() {
             _workerName,
             _inUseOnly,
             string(),
-            [&finished] (GetReplicasQservMgtRequest::Ptr const& request) {
+            [&finished,this] (GetReplicasQservMgtRequest::Ptr const& request) {
                 cout << "state: " << request->state2string() << endl;
                 if (request->extendedState() == QservMgtRequest::SUCCESS) {
-                    dump(request->replicas());
+                    this->_dump(request->replicas());
                 }
                 finished = true;
             }
@@ -281,7 +208,7 @@ int QservWorkerApp::runImpl() {
     } else if (_command == "SET_REPLICAS") {
 
         QservReplicaCollection replicas;
-        ::readInFile(replicas, _inFileName);
+        _readInFile(replicas);
 
         cout << "replicas read: " << replicas.size() << endl;
 
@@ -290,10 +217,10 @@ int QservWorkerApp::runImpl() {
             replicas,
             _forceRemove,
             string(),
-            [&finished] (SetReplicasQservMgtRequest::Ptr const& request) {
+            [&finished,this] (SetReplicasQservMgtRequest::Ptr const& request) {
                 cout << "state: " << request->state2string() << endl;
                 if (request->extendedState() == QservMgtRequest::SUCCESS) {
-                    ::dump(request->replicas());
+                    this->_dump(request->replicas());
                 }
                 finished = true;
             }
@@ -336,6 +263,65 @@ int QservWorkerApp::runImpl() {
     }
 
     return 0;
+}
+
+
+void QservWorkerApp::_readInFile(QservReplicaCollection& replicas) const {
+
+    replicas.clear();
+
+    ifstream infile(_inFileName);
+    if (not infile.good()) {
+        cerr << "failed to open file: " << _inFileName << endl;
+        throw runtime_error("failed to open file: " + _inFileName);
+    }
+
+    string databaseAndChunk;
+    while (infile >> databaseAndChunk) {
+
+        if (databaseAndChunk.empty()) { continue; }
+
+        string::size_type const pos = databaseAndChunk.rfind(':');
+        if ((pos == string::npos) or
+            (pos == 0) or (pos == databaseAndChunk.size() - 1)) {
+            throw runtime_error(
+                "failed to parse file: " + _inFileName + ", illegal <database>::<chunk> pair: '" +
+                databaseAndChunk + "'");
+        }
+        unsigned int const chunk    = (unsigned int)(stoul(databaseAndChunk.substr(pos + 1)));
+        string  const database = databaseAndChunk.substr(0, pos);
+
+        replicas.emplace_back(
+            QservReplica{
+                chunk,
+                database,
+                0   /* useCount (UNUSED) */
+            }
+        );
+    }
+}
+
+
+void QservWorkerApp::_dump(QservReplicaCollection const& collection) const {
+
+    vector<string>       columnDatabaseName;
+    vector<unsigned int> columnChunkNumber;
+    vector<size_t>       columnUseCount;
+
+    for (auto&& replica: collection) {
+        columnDatabaseName.push_back(replica.database);
+        columnChunkNumber .push_back(replica.chunk);
+        columnUseCount    .push_back(replica.useCount);
+    }
+
+    util::ColumnTablePrinter table("REPLICAS:", "  ", _verticalSeparator);
+
+    table.addColumn("database",  columnDatabaseName,   util::ColumnTablePrinter::LEFT);
+    table.addColumn("chunk",     columnChunkNumber);
+    table.addColumn("use count", columnUseCount);
+
+    cout << "\n";
+    table.print(cout, false, false, _pageSize, _pageSize != 0);
 }
 
 }}} // namespace lsst::qserv::replica
