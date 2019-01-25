@@ -279,6 +279,8 @@ bool Executive::join() {
 }
 
 void Executive::markCompleted(int jobId, bool success) {
+    // &&& every time a chunk completes, consider sending an update. Chunks we definitely care about:first, last, middle
+    // &&& limiting factors: no more than one update a minute (config)
     ResponseHandler::Error err;
     std::string idStr = QueryIdHelper::makeIdStr(_id, jobId);
     LOGS(_log, LOG_LVL_DEBUG, "Executive::markCompleted " << idStr

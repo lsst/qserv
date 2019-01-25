@@ -340,6 +340,8 @@ QMetaMysql::registerQuery(QInfo const& qInfo,
 
     trans.commit();
     LOGS(_log, LOG_LVL_DEBUG, qIdStr << " assigned to UserQuery:" << qInfo.queryText());
+
+    // &&& create in memory table for this query. (see wbase/Base.cc:line 83 for in memory table creation)
     return queryId;
 }
 
@@ -368,6 +370,7 @@ QMetaMysql::addChunks(QueryId queryId, std::vector<int> const& chunks) {
     }
 
     trans.commit();
+    // &&& add total number of chunks in query (insert first row here or when table is made? Make this insert or update)
 }
 
 // Assign or re-assign chunk to a worker.
@@ -447,6 +450,7 @@ QMetaMysql::finishChunk(QueryId queryId, int chunk) {
 // Mark query as completed or failed.
 void
 QMetaMysql::completeQuery(QueryId queryId, QInfo::QStatus qStatus) {
+    // &&& delete the in memory status table in this func.
 
     std::lock_guard<std::mutex> sync(_dbMutex);
 
@@ -773,7 +777,8 @@ QMetaMysql::getQueriesForTable(std::string const& dbName,
 // Check that all necessary tables exist or create them
 void
 QMetaMysql::_checkDb() {
-
+    //&&& try to delete old in memory tables. The table schema is written to disk,
+    //&&& but row data is not. Since there are multiple czars, this may be difficult. Maybe any table older than 2 weeks (config).
     // this is only called from constructor, no locking is needed here
 
     std::vector<std::string> tables;

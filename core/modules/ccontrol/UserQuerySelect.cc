@@ -301,6 +301,7 @@ void UserQuerySelect::submit() {
 /// Block until a submit()'ed query completes.
 /// @return the QueryState indicating success or failure
 QueryState UserQuerySelect::join() {
+    // &&& add completion status to the query in this function (line up or add to qMeta stuff already here)
     bool successful = _executive->join(); // Wait for all data
     // Since all data are in, run final SQL commands like GROUP BY.
     if (!_infileMerger->finalize()) {
