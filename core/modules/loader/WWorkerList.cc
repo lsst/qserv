@@ -82,13 +82,12 @@ util::CommandTracked::Ptr WWorkerList::createCommandWorker(CentralWorker* centra
             // Send the request to master.
             auto masterHost = _centralW->getMasterHostName();
             auto masterPort = _centralW->getMasterPort();
-            LOGS(_log, LOG_LVL_INFO, "&&&MastWorkerListReqCmd::action host=" << masterHost << " port=" << masterPort);
+            LOGS(_log, LOG_LVL_DEBUG, "MastWorkerListReqCmd::action host=" << masterHost <<
+                                      " port=" << masterPort);
             try {
                 _centralW->sendBufferTo(masterHost, masterPort, sendBuf);
-            } catch (boost::system::system_error e) {
+            } catch (boost::system::system_error const& e) {
                 LOGS(_log, LOG_LVL_ERROR, "MastWorkerListReqCmd::action boost system_error=" << e.what());
-                exit(-1); // TODO:&&& The correct course of action is unclear and requires thought,
-                //       so just blow up so it's unmistakable something bad happened for now.
             }
 
             /// Go through the existing list and add any that have not been add to the doList
@@ -212,7 +211,7 @@ std::string WWorkerList::dump() const {
 //  TODO believe our neighbors range over the master
 void WWorkerList::updateEntry(uint32_t wId,
                               std::string const& ip, int portUdp, int portTcp,
-                              StringRange& strRange) {
+                              KeyRange& strRange) {
     std::unique_lock<std::mutex> lk(_mapMtx);
     auto iter = _wIdMap.find(wId);
     if (iter == _wIdMap.end()) {
@@ -356,11 +355,9 @@ util::CommandTracked::Ptr WWorkerListItem::createCommandWorkerInfoReq(CentralWor
             auto masterPort = _centralW->getMasterPort();
             try {
                 _centralW->sendBufferTo(masterHost, masterPort, sendBuf);
-            } catch (boost::system::system_error e) {
+            } catch (boost::system::system_error const& e) {
                 LOGS(_log, LOG_LVL_ERROR, "WorkerReqCmd::action boost system_error=" << e.what() <<
                         " wId=" << _wId);
-                exit(-1); // TODO:&&& The correct course of action is unclear and requires thought,
-                          //       so just blow up so it's unmistakable something bad happened for now.
             }
         }
 

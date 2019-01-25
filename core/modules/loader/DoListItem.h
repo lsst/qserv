@@ -65,7 +65,7 @@ public:
     std::chrono::milliseconds getTimeOut() const { return _timeOut; }
 private:
     // How much time since lastTrigger needs to pass before triggering.
-    std::chrono::milliseconds _timeOut; // default, 15 minutes
+    std::chrono::milliseconds _timeOut;
     TimePoint _lastTrigger{std::chrono::seconds(0)};
 };
 
@@ -77,7 +77,7 @@ private:
 /// at a low frequency (a couple of times a second to once every
 /// few hours or even days).
 /// The DoListItems can cycle forever by just remaining on the
-/// DoList where it will run their actions when the timer run out,
+/// DoList where it will run their actions when the timer runs out,
 /// which is useful for monitoring status.
 /// Or they can be setup to run until they have completed once,
 /// a oneShot, which is useful for looking up or inserting keys.
@@ -101,10 +101,10 @@ public:
     util::CommandTracked::Ptr runIfNeeded(TimeOut::TimePoint now) {
         std::lock_guard<std::mutex> lock(_mtx);
         if (_command == nullptr) {
-            if (_isOneShotDone()) { return nullptr; }
+            if (_isOneShotDone()) return nullptr;
             if ((_needInfo || _timeOut.due(now)) && _timeRequest.due(now)) {
                 _timeRequest.triggered();
-                    _command = createCommand();
+                _command = createCommand();
                 return _command;
             }
         } else if (_command->isFinished()) {
@@ -166,8 +166,10 @@ private:
     bool    _oneShot{false}; ///< True if after the needed information is gathered, this item can be dropped.
     bool    _needInfo{true}; ///< True if information is needed.
     bool    _remove{false}; ///< set to true if this item should no longer be checked.
-    TimeOut _timeOut{std::chrono::minutes(5)}; ///< If no info is needed, check for info after this period of time.
-    TimeOut _timeRequest{std::chrono::seconds(5)}; ///< Rate limiter, no more than 1 message every 5 seconds
+    /// If no info is needed, check for info after this period of time.
+    TimeOut _timeOut{std::chrono::minutes(5)};
+    /// Rate limiter, no more than 1 message every few seconds
+    TimeOut _timeRequest{std::chrono::seconds(4)};  // TODO: DM-17453 set via config
     util::CommandTracked::Ptr _command;
     std::mutex _mtx; ///< protects _timeOut, _timeRequest, _command, _oneShot, _needInfo
 };

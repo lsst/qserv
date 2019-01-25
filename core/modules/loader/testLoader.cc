@@ -246,6 +246,18 @@ BOOST_AUTO_TEST_CASE(LoaderTest) {
     }
 
     {
+        LOGS_INFO("Comparisons integer greater than");
+        CompositeKey a(1000000, "a");
+        CompositeKey b(30, "b");
+        BOOST_CHECK(!(a == b));
+        BOOST_CHECK( (a != b));
+        BOOST_CHECK(!(a < b));
+        BOOST_CHECK( (a > b));
+        BOOST_CHECK(!(a <= b));
+        BOOST_CHECK( (a >= b));
+    }
+
+    {
         LOGS_INFO("Comparisons string equal");
         CompositeKey a(0, "string%$testA");
         CompositeKey b(0, "string%$testA");

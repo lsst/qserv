@@ -21,19 +21,12 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
-// Class header
-#include "loader/CentralWorker.h"
-
 // System headers
 #include <iostream>
 #include <unistd.h>
 
-// Third-party headers
-
-
 // qserv headers
-
+#include "loader/CentralWorker.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -53,16 +46,7 @@ int main(int argc, char* argv[]) {
     }
     LOGS(_log, LOG_LVL_INFO, "workerCfg=" << wCfgFile);
 
-    std::string ourHost;
-    {
-        char hName[300];
-        if (gethostname(hName, sizeof(hName)) < 0) {
-            LOGS(_log, LOG_LVL_ERROR, "Failed to get host name errno=" << errno);
-            exit(-1);
-        }
-        ourHost = hName;
-    }
-
+    std::string const ourHost = boost::asio::ip::host_name();
     boost::asio::io_service ioService;
     boost::asio::io_context ioContext;
 
@@ -72,13 +56,9 @@ int main(int argc, char* argv[]) {
         cWorker.start();
     } catch (boost::system::system_error const& e) {
         LOGS(_log, LOG_LVL_ERROR, "cWorker.start() failed e=" << e.what());
-        exit(-1);
+        return 1;
     }
-
-    // Need to start several threads so messages aren't dropped while being processed.
-    cWorker.run();
-    cWorker.run();
-    cWorker.run();
+    cWorker.runServer();
 
     bool loop = true;
     while(loop) {

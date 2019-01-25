@@ -55,7 +55,7 @@ public:
     CentralMaster(boost::asio::io_service& ioService_, std::string const& masterHostName_,
                   MasterConfig const& cfg)
         : Central(ioService_, masterHostName_, cfg.getMasterPort(),
-                  cfg.getThreadPoolSize(), cfg.getLoopSleepTime()),
+                  cfg.getThreadPoolSize(), cfg.getLoopSleepTime(), cfg.getIOThreads()),
           _maxKeysPerWorker(cfg.getMaxKeysPerWorker()) {}
 
     /// Open the UDP port. This can throw boost::system::system_error.
@@ -67,7 +67,7 @@ public:
     int getMaxKeysPerWorker() const { return _maxKeysPerWorker; }
 
     void addWorker(std::string const& ip, int udpPort, int tcpPort); ///< Add a new worker to the system.
-    void updateWorkerInfo(uint32_t workerId, NeighborsInfo const& nInfo, StringRange const& strRange);
+    void updateWorkerInfo(uint32_t workerId, NeighborsInfo const& nInfo, KeyRange const& strRange);
 
     MWorkerListItem::Ptr getWorkerWithId(uint32_t id);
 

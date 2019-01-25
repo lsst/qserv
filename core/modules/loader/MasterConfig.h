@@ -39,7 +39,7 @@ namespace loader {
 class MasterConfig : public ConfigBase {
 public:
     /// Constructor can throw ConfigErr
-    explicit MasterConfig(std::string configFileName)
+    explicit MasterConfig(std::string const& configFileName)
         : MasterConfig(util::ConfigStore(configFileName)) {}
 
     MasterConfig() = delete;
@@ -50,6 +50,7 @@ public:
     int getThreadPoolSize() const { return _threadPoolSize->getInt(); }
     int getLoopSleepTime() const { return _loopSleepTime->getInt(); }
     int getMaxKeysPerWorker() const { return _maxKeysPerWorker->getInt(); }
+    int getIOThreads() const { return _iOThreads->getInt(); }
 
 
     std::ostream& dump(std::ostream &os) const override;
@@ -60,7 +61,7 @@ private:
 
     /// UDP port for the master - usually 9875
     ConfigElement::Ptr _portUdp{ConfigElement::create(cfgList, header, "portUdp", ConfigElement::INT, true)};
-    /// Maximum average keys per worker before activating a new worker. 1000
+    /// Maximum average keys per worker before activating a new worker.
     ConfigElement::Ptr _maxKeysPerWorker{
         ConfigElement::create(cfgList, header, "maxKeysPerWorker", ConfigElement::INT, true)};
     /// Size of the master's thread pool - 10
@@ -69,6 +70,9 @@ private:
     /// Time spent sleeping between checking elements in the DoList in microseconds. 0.1 seconds.
     ConfigElement::Ptr _loopSleepTime{
         ConfigElement::create(cfgList, header, "loopSleepTime", ConfigElement::INT, true)};
+    /// Number of IO threads the server should run.
+    ConfigElement::Ptr _iOThreads{
+        ConfigElement::create(cfgList, header, "iOThreads", ConfigElement::INT, false, "5")};
 };
 
 }}} // namespace lsst::qserv::loader
