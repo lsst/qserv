@@ -22,17 +22,11 @@
  */
 
 
-// Class header
-#include "loader/CentralMaster.h"
-
 // System headers
 #include <iostream>
 
-// Third-party headers
-
-
 // qserv headers
-
+#include "loader/CentralMaster.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -52,16 +46,7 @@ int main(int argc, char* argv[]) {
     }
     LOGS(_log, LOG_LVL_INFO, "masterCfg=" << mCfgFile);
 
-    std::string ourHost;
-    {
-        char hName[300];
-        if (gethostname(hName, sizeof(hName)) < 0) {
-            LOGS(_log, LOG_LVL_ERROR, "Failed to get host name errno=" << errno);
-            exit(-1);
-        }
-        ourHost = hName;
-    }
-
+    std::string const ourHost = boost::asio::ip::host_name();
     boost::asio::io_service ioService;
 
     MasterConfig mCfg(mCfgFile);
@@ -70,21 +55,15 @@ int main(int argc, char* argv[]) {
         cMaster.start();
     } catch (boost::system::system_error const& e) {
         LOGS(_log, LOG_LVL_ERROR, "cMaster.start() failed e=" << e.what());
-        exit(-1);
+        return 1;
     }
-    cMaster.setMaxKeysPerWorker(100); // delete
-    // Need to start several threads so messages aren't dropped while being processed.
-    cMaster.run();
-    cMaster.run();
-    cMaster.run();
-    cMaster.run();
-    cMaster.run();
+    cMaster.runServer();
 
     bool loop = true;
     while(loop) {
         sleep(10);
     }
-    ioService.stop(); // this doesn't seem to work cleanly
+    ioService.stop();
     LOGS(_log, LOG_LVL_INFO, "master DONE");
 }
 

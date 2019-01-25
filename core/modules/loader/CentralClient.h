@@ -74,7 +74,6 @@ public:
 
     void start();
 
-
     ~CentralClient() override = default;
 
     std::string const& getHostName() const { return _hostName; }
@@ -85,8 +84,6 @@ public:
     std::string getDefWorkerHost() const { return _defWorkerHost; }
     /// @return the default worker's UDP port
     int getDefWorkerPortUdp() const { return _defWorkerPortUdp; }
-
-
 
     /// Asynchronously request a key value insert to the workers.
     /// This can block if too many key insert requests are already in progress.
@@ -101,9 +98,9 @@ public:
     /// Asynchronously request a key value lookup from the workers. It returns a
     /// KeyInfoData object to be used to track job status and get the value of the key.
     /// This can block if too many key lookup requests are already in progress.
-    KeyInfoData::Ptr keyInfoReq(CompositeKey const& key);
+    KeyInfoData::Ptr keyLookupReq(CompositeKey const& key);
     /// Handle a workers response to the keyInfoReq call.
-    void handleKeyInfo(LoaderMsg const& inMsg, BufferUdp::Ptr const& data);
+    void handleKeyLookup(LoaderMsg const& inMsg, BufferUdp::Ptr const& data);
 
     std::string getOurLogId() const override { return "client"; }
 
@@ -111,8 +108,8 @@ private:
     void _keyInsertReq(CompositeKey const& key, int chunk, int subchunk); ///< see keyInsertReq()
     void _handleKeyInsertComplete(LoaderMsg const& inMsg, std::unique_ptr<proto::KeyInfo>& protoBuf);
 
-    void _keyInfoReq(CompositeKey const& key); ///< see keyInfoReq()
-    void _handleKeyInfo(LoaderMsg const& inMsg, std::unique_ptr<proto::KeyInfo>& protoBuf);
+    void _keyLookupReq(CompositeKey const& key); ///< see keyLookReq()
+    void _handleKeyLookup(LoaderMsg const& inMsg, std::unique_ptr<proto::KeyInfo>& protoBuf);
 
 
 
@@ -136,12 +133,12 @@ private:
         CentralClient* central;
     };
 
-    /// Create commands to find a key in the index and get its value.
+    /// Create commands to lookup a key in the index and get its value.
     /// It should keep trying this until it works and then drop it from _waitingKeyInfoMap.
-    struct KeyInfoReqOneShot : public DoListItem {
-        using Ptr = std::shared_ptr<KeyInfoReqOneShot>;
+    struct KeyLookupReqOneShot : public DoListItem {
+        using Ptr = std::shared_ptr<KeyLookupReqOneShot>;
 
-        KeyInfoReqOneShot(CentralClient* central_, CompositeKey const& key_) :
+        KeyLookupReqOneShot(CentralClient* central_, CompositeKey const& key_) :
             cmdData(std::make_shared<KeyInfoData>(key_, -1, -1)), central(central_) { setOneShot(true); }
 
         util::CommandTracked::Ptr createCommand() override;
@@ -164,15 +161,16 @@ private:
     const int         _defWorkerPortUdp; ///< Default worker UDP port
 
 
-    size_t _doListMaxLookups{1000}; ///< Maximum number of concurrent lookups in DoList (set by config)
-    size_t _doListMaxInserts{1000}; ///< Maximum number of concurrent inserts in DoList (set by config)
-    int _maxRequestSleepTime{100000}; ///< Time to sleep between checking requests when at max length (set by config)
+    size_t const _doListMaxLookups = 1000; ///< Maximum number of concurrent lookups in DoList, set by config
+    size_t const _doListMaxInserts = 1000; ///< Maximum number of concurrent inserts in DoList, set by config
+    /// Time to sleep between checking requests when at max length, set by config
+    int const _maxRequestSleepTime = 100000;
 
-    std::map<CompositeKey, KeyInsertReqOneShot::Ptr> _waitingKeyInsertMap;
+    std::map<CompositeKey, KeyInsertReqOneShot::Ptr> _waitingKeyInsertMap; ///< Map of current insert requests.
     std::mutex _waitingKeyInsertMtx; ///< protects _waitingKeyInsertMap, _doListMaxInserts
 
-    std::map<CompositeKey, KeyInfoReqOneShot::Ptr> _waitingKeyInfoMap; // &&& change all references of keyInfo to keyLookup &&&, including protobuf keyInfo should only apply to  worker key count and worker key range.
-    std::mutex _waitingKeyInfoMtx; ///< protects _waitingKeyInfoMap, _doListMaxLookups
+    std::map<CompositeKey, KeyLookupReqOneShot::Ptr> _waitingKeyLookupMap; ///< Map of current look up requests.
+    std::mutex _waitingKeyLookupMtx; ///< protects _waitingKeyLookMap, _doListMaxLookups
 };
 
 }}} // namespace lsst::qserv::loader

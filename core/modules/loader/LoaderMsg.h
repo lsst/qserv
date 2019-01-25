@@ -59,8 +59,8 @@ public:
         WORKER_KEYS_INFO,      // Information about number of key values, range, number of new keys.
         KEY_INSERT_REQ,        // Insert a new key with info. MSG_RECEIVED + KEY_INFO
         KEY_INSERT_COMPLETE,   // Key has been inserted and logged.
-        KEY_INFO_REQ,          // Request info for a single key.
-        KEY_INFO,              // Information about a specific key. (includes file id and row)
+        KEY_LOOKUP_REQ,          // Request info for a single key.
+        KEY_LOOKUP,              // Information about a specific key. (includes file id and row)
         WORKER_LEFT_NEIGHBOR,  // Mast assigns a left neighbor to a worker.
         WORKER_RIGHT_NEIGHBOR, // Mast assigns a right neighbor to a worker.
         IM_YOUR_L_NEIGHBOR,    // Worker message to other worker to setup being neighbors.

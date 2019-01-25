@@ -25,9 +25,11 @@
 #define LSST_QSERV_LOADER_COMPOSITEKEY_H
 
 // system headers
+#include <cstdint>
+#include <limits>
 #include <string>
+#include <tuple>
 
-// Qserv headers
 
 namespace lsst {
 namespace qserv {
@@ -45,7 +47,7 @@ public:
     CompositeKey() : CompositeKey(0, "") {}
     ~CompositeKey() = default;
 
-    static uint64_t maxIntVal() { return UINT64_MAX; }
+    static uint64_t maxIntVal() { return std::numeric_limits<uint64_t>::max(); }
 
     CompositeKey& operator=(CompositeKey const& other) {
         if (this != &other) {
@@ -55,13 +57,11 @@ public:
         return *this;
     }
 
-    static CompositeKey minValue() { return CompositeKey(0, ""); }
+    /// Smallest possible value for a CompositeKey (0,"")
+    static CompositeKey const minValue;
 
     bool operator<(CompositeKey const& other) const {
-        if (kInt < other.kInt) return true;
-        if (kInt > other.kInt) return false;
-        if (kStr < other.kStr) return true;
-        return false;
+        return std::tie(kInt, kStr) < std::tie(other.kInt, other.kStr);
     }
 
     bool operator>(CompositeKey const& other) const {
@@ -84,7 +84,7 @@ public:
         return !(*this < other);
     }
 
-    std::ostream& dump(std::ostream& os) const;
+    void dump(std::ostream& os) const;
     std::string dump() const ;
 
     uint64_t    kInt;

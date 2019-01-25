@@ -84,32 +84,6 @@ void ServerUdpBase::_sendResponse() {
 
 
 void ServerUdpBase::sendBufferTo(std::string const& hostName, int port, BufferUdp& sendBuf) {
-#if 0 // TODO Delete this if send_to proves to be safe.
-    // The socket is not thread safe. To send on "_socket", it needs to be an async send
-    // and then it needs to know when the message was sent so it can return and free the buffer.
-    using namespace boost::asio;
-
-    std::mutex mtx;
-    std::condition_variable cv;
-    bool done = false;
-
-    // This function will wait until callbackFunc is called before returning, so the references will be
-    // valid for the life of callbackFunc.
-    auto callbackFunc = [&mtx, &cv, &done](const boost::system::error_code& error, std::size_t bytesTransferred) {
-        {
-            std::lock_guard<std::mutex> lock(mtx);
-            done = true;
-        }
-        cv.notify_one();
-    };
-
-    ip::udp::endpoint dest(boost::asio::ip::address::from_string(hostName), port);
-    _socket.async_send_to(buffer(sendBuf.getReadCursor(), sendBuf.getBytesLeftToRead()), dest,
-                          callbackFunc);
-
-    std::unique_lock<std::mutex> uLock(mtx);
-    cv.wait(uLock, [&done](){return done;});
-#else
     using namespace boost::asio;
     LOGS(_log, LOG_LVL_DEBUG, "ServerUdpBase::sendBufferTo hostName=" << hostName << " port=" << port);
     try {
@@ -118,9 +92,8 @@ void ServerUdpBase::sendBufferTo(std::string const& hostName, int port, BufferUd
     } catch (boost::system::system_error const& e) {
         LOGS(_log, LOG_LVL_ERROR, "ServerUdpBase::sendBufferTo boost system_error=" << e.what() <<
                 " host=" << hostName << " port=" << port << " buf=" << sendBuf);
-        throw e;
+        throw;
     }
-#endif
 }
 
 
@@ -153,24 +126,13 @@ void ServerUdpBase::_receivePrepare() {
 
 
 boost::asio::ip::udp::endpoint ServerUdpBase::resolve(std::string const& hostName, int port) {
-#if 1 // &&&
     std::lock_guard<std::mutex> lg(_resolveMtx);
-    /* &&&
     using namespace boost::asio;
-    io_context ioContext;
-    ip::udp::resolver resolver(ioContext);
-    return *resolver.resolve(ip::udp::v4(), hostName, std::to_string(port)).begin();
-    */
-    using namespace boost::asio;
-    // resolver returns an iterator. This uses the first item only.
+    // Resolver returns an iterator. This uses the first item only.
+    // Failure to resolve anything throws a boost::system::error.
     ip::udp::endpoint dest =
             *_resolver.resolve(ip::udp::v4(), hostName, std::to_string(port)).begin();
     return dest;
-#else
-    using namespace boost::asio;
-    ip::udp::endpoint dest(ip::address::from_string(hostName), port);
-    return dest;
-#endif
 }
 
 

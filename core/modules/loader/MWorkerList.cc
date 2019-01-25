@@ -183,12 +183,10 @@ bool MWorkerList::sendListTo(uint64_t msgId, std::string const& ip, short port,
         }
         try {
             _central->sendBufferTo(ip, port, *_stateListData);
-        } catch (boost::system::system_error e) {
+        } catch (boost::system::system_error const& e) {
             LOGS(_log, LOG_LVL_ERROR, "MWorkerList::sendListTo boost system_error=" << e.what() <<
                     " msgId=" << msgId << " ip=" << ip << " port=" << port <<
                     " ourName=" << ourHostName << " ourPort=" << ourPort);
-            exit(-1); // TODO:&&& The correct course of action is unclear and requires thought,
-                      //       so just blow up so it's unmistakable something bad happened for now.
         }
     }
 

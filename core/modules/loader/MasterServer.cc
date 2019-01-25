@@ -94,8 +94,8 @@ BufferUdp::Ptr MasterServer::parseMsg(BufferUdp::Ptr const& data,
             case LoaderMsg::MAST_WORKER_LIST:
             case LoaderMsg::MAST_WORKER_INFO:
             case LoaderMsg::KEY_INSERT_REQ:
-            case LoaderMsg::KEY_INFO_REQ:
-            case LoaderMsg::KEY_INFO:
+            case LoaderMsg::KEY_LOOKUP_REQ:
+            case LoaderMsg::KEY_LOOKUP:
                 /// TODO add msg unexpected by master response.
                 break;
             default:
@@ -199,7 +199,7 @@ BufferUdp::Ptr MasterServer::workerKeysInfo(LoaderMsg const& inMsg, BufferUdp::P
     try {
         uint32_t name;
         NeighborsInfo nInfo;
-        StringRange strRange;
+        KeyRange strRange;
         ProtoHelper::workerKeysInfoExtractor(*data, name, nInfo, strRange);
         LOGS(_log, LOG_LVL_INFO, funcName << "name=" << name << " keyCount=" << nInfo.keyCount <<
                                  " recentAdds=" << nInfo.recentAdds << " range=" << strRange);
@@ -242,7 +242,6 @@ BufferUdp::Ptr MasterServer::workerInfoRequest(LoaderMsg const& inMsg, BufferUdp
         /// Return worker's name, netaddress, and range in MAST_WORKER_INFO msg
         proto::WorkerListItem protoWorker;
         proto::LdrNetAddress* protoAddr = protoWorker.mutable_address();
-        //proto::WorkerRangeString* protoRange = protoWorker.mutable_rangestr(); &&&
         proto::WorkerRange* protoRange = protoWorker.mutable_range();
         protoWorker.set_wid(workerItem->getId());
         auto udp = workerItem->getUdpAddress();
@@ -264,13 +263,11 @@ BufferUdp::Ptr MasterServer::workerInfoRequest(LoaderMsg const& inMsg, BufferUdp
         // Send the response to the worker that asked for it.
         try {
             _centralMaster->sendBufferTo(requestorAddr->ip, requestorAddr->port, sendBuf);
-        } catch (boost::system::system_error e) {
+        } catch (boost::system::system_error const& e) {
             LOGS(_log, LOG_LVL_ERROR, "MasterServer::workerInfoRequest boost system_error=" << e.what() <<
                     " inMsg=" << inMsg);
-            exit(-1); // TODO:&&& The correct course of action is unclear and requires thought,
-            //       so just blow up so it's unmistakable something bad happened for now.
         }
-    } catch (LoaderMsgErr &msgErr) {
+    } catch (LoaderMsgErr const& msgErr) {
         LOGS(_log, LOG_LVL_ERROR, msgErr.what());
         return prepareReplyMsg(senderEndpoint, inMsg, LoaderMsg::STATUS_PARSE_ERR, msgErr.what());
     }

@@ -90,9 +90,9 @@ private:
     /// Items for resolving UDP addresses
     /// There appear to be concurrency issues even with
     /// separate io_contexts, so re-using existing objects.
-   boost::asio::io_context _ioContext;
-   boost::asio::ip::udp::resolver _resolver{_ioContext};
-   std::mutex _resolveMtx; ///< protects _ioContext, _resolver
+    boost::asio::io_context _ioContext;
+    boost::asio::ip::udp::resolver _resolver{_ioContext};
+    std::mutex _resolveMtx; ///< protects _ioContext, _resolver
 };
 
 

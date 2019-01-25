@@ -40,7 +40,7 @@ namespace qserv {
 namespace loader {
 
 
-StringRange WorkerListItemBase::setRangeString(StringRange const& strRange) {
+KeyRange WorkerListItemBase::setRangeString(KeyRange const& strRange) {
     std::lock_guard<std::mutex> lck(_mtx);
     auto oldRange = _range;
     _range = strRange;
