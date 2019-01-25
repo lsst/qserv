@@ -69,8 +69,6 @@ public:
 
     virtual ~Central();
 
-    void run();
-
     std::string getMasterHostName() const { return _masterAddr.ip; }
     int getMasterPort() const { return _masterAddr.port; }
     NetworkAddress getMasterAddr() const { return _masterAddr; }
@@ -80,7 +78,8 @@ public:
     int getErrCount() const { return _server->getErrCount(); }
 
     /// Send the contents of 'sendBuf' to 'host:port'. This waits for the message to be
-    /// sent before returning. Throws boost::system::system_error on failure.
+    /// sent before returning.
+    /// @throw boost::system::system_error on failure.
     void sendBufferTo(std::string const& host, int port, BufferUdp& sendBuf) {
         _server->sendBufferTo(host, port, sendBuf);
     }
@@ -103,6 +102,13 @@ public:
         return doList->addItem(item);
     }
 
+    /// Run the server.
+    void runServer() {
+        for (; _runningIOThreads < _iOThreads; ++_runningIOThreads) {
+            run();
+        }
+    }
+
     /// Provides a method for identifying different Central classes and
     /// CentralWorkers in the log file.
     virtual std::string getOurLogId() const { return "Central baseclass"; }
@@ -110,11 +116,15 @@ public:
 protected:
     Central(boost::asio::io_service& ioService_,
                 std::string const& masterHostName, int masterPort,
-                int threadPoolSize, int loopSleepTime)
+                int threadPoolSize, int loopSleepTime,
+                int iOThreads)
                 : ioService(ioService_), _masterAddr(masterHostName, masterPort),
-                  _threadPoolSize(threadPoolSize), _loopSleepTime(loopSleepTime) {
+                  _threadPoolSize(threadPoolSize), _loopSleepTime(loopSleepTime),
+                  _iOThreads(iOThreads) {
         _initialize();
     }
+
+    void run(); ///< Run a single asio thread.
 
     boost::asio::io_service& ioService;
 
@@ -143,6 +153,9 @@ private:
     std::vector<std::thread> _ioServiceThreads; ///< List of asio io threads created by this
 
     std::thread _checkDoListThread; ///< Thread for running doList checks on DoListItems.
+
+    int _iOThreads{5}; ///< Number of asio IO threads to run, set by config file.
+    int _runningIOThreads{0}; ///< Number of asio IO threads started.
 };
 
 }}} // namespace lsst::qserv::loader

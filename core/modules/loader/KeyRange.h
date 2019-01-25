@@ -21,8 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  *
  */
-#ifndef LSST_QSERV_LOADER_STRINGRANGE_H
-#define LSST_QSERV_LOADER_STRINGRANGE_H
+#ifndef LSST_QSERV_LOADER_KEYRANGE_H
+#define LSST_QSERV_LOADER_KEYRANGE_H
 
 // system headers
 #include <memory>
@@ -38,7 +38,7 @@ namespace lsst {
 namespace qserv {
 namespace loader {
 
-/// Class for storing the range of a single worker.
+/// Class for storing the key range of a single worker.
 /// This is likely to become a template class, hence lots in the header.
 /// It tries to keep its state consistent, _min < _max, but depends on
 /// other classes to eventually get the correct values for _min and _max.
@@ -50,15 +50,15 @@ namespace loader {
 /// right neighbor (if there is one) each have at least one key. The worker
 /// ranges should eventually reach the master, then the other workers
 /// and clients.
-class StringRange {
+class KeyRange {
 public:
-    using Ptr = std::shared_ptr<StringRange>;
+    using Ptr = std::shared_ptr<KeyRange>;
 
-    StringRange() = default;
-    StringRange(StringRange const&) = default;
-    StringRange& operator=(StringRange const&) = default;
+    KeyRange() = default;
+    KeyRange(KeyRange const&) = default;
+    KeyRange& operator=(KeyRange const&) = default;
 
-    ~StringRange() = default;
+    ~KeyRange() = default;
 
     void setAllInclusiveRange();
 
@@ -72,29 +72,29 @@ public:
     }
 
     /// Return true if other functionally equivalent.
-    bool equal(StringRange const& other) const {
-        if (_valid != other._valid) { return false; }
-        if (not _valid) { return true; }  // both invalid
-        if (_min != other._min) { return false; }
-        if (_unlimited != other._unlimited) { return false; }
-        if (_unlimited) { return true; } // both same _min and _unlimited
-        if (_maxE != other._maxE) { return false; }
+    bool equal(KeyRange const& other) const {
+        if (_valid != other._valid) return false;
+        if (not _valid) return true;  // both invalid
+        if (_min != other._min) return false;
+        if (_unlimited != other._unlimited) return false;
+        if (_unlimited) return true; // both same _min and _unlimited
+        if (_maxE != other._maxE) return false;
         return true;
     }
 
     bool isInRange(CompositeKey const& cKey) const {
-        if (not _valid) { return false; }
-        if (cKey < _min) { return false; }
-        if (not _unlimited && cKey >= _maxE) { return false; }
+        if (not _valid) return false;
+        if (cKey < _min) return false;
+        if (not _unlimited && cKey >= _maxE) return false;
         return true;
     }
 
     bool getValid() const { return _valid; }
     bool getUnlimited() const { return _unlimited; }
-    CompositeKey getMin() const { return _min; }
-    CompositeKey getMax() const { return _maxE; }
+    CompositeKey const& getMin() const { return _min; }
+    CompositeKey const& getMax() const { return _maxE; }
 
-    bool operator<(StringRange const& other) const {
+    bool operator<(KeyRange const& other) const {
         /// Arbitrarily, invalid are less than valid, but such comparisons should be avoided.
         if (_valid != other._valid) {
             if (not _valid) { return true; }
@@ -105,7 +105,7 @@ public:
         return false;
     }
 
-    bool operator>(StringRange const& other) const {
+    bool operator>(KeyRange const& other) const {
         return other < *this;
     }
 
@@ -124,12 +124,12 @@ public:
     /// Load 'protoRange' with information from this object.
     void loadProtoRange(proto::WorkerRange& protoRange);
 
-    friend std::ostream& operator<<(std::ostream&, StringRange const&);
+    friend std::ostream& operator<<(std::ostream&, KeyRange const&);
 
 private:
     bool        _valid{false}; ///< true if range is valid
     bool        _unlimited{false}; ///< true if the range includes largest possible values.
-    CompositeKey _min; ///< Smallest value = ""
+    CompositeKey _min; ///< Smallest value = (0, "")
     CompositeKey _maxE; ///< maximum value exclusive
 };
 
@@ -154,10 +154,10 @@ class BufferUdp;
 
 class ProtoHelper {
 public:
-    static void workerKeysInfoExtractor(BufferUdp& data, uint32_t& name, NeighborsInfo& nInfo, StringRange& strRange);
+    static void workerKeysInfoExtractor(BufferUdp& data, uint32_t& name, NeighborsInfo& nInfo, KeyRange& strRange);
 };
 
 }}} // namespace lsst::qserv::loader
 
-#endif // LSST_QSERV_LOADER_STRINGRANGE_H
+#endif // LSST_QSERV_LOADER_KEYRANGE_H
 

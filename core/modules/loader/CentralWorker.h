@@ -53,7 +53,7 @@ class CentralWorkerDoListItem;
 
 class CentralWorker : public Central {
 public:
-    typedef std::pair<CompositeKey, ChunkSubchunk> StringKeyPair; // &&& rename CompositeKeyPair
+    typedef std::pair<CompositeKey, ChunkSubchunk> CompKeyPair;
 
     enum SocketStatus {
         VOID0 = 0,
@@ -91,7 +91,7 @@ public:
     /// @parameter mustSetMin should be set true if this is not the left
     ///                       most worker. It causes the minimum value to
     ///                       be set to the smallest key in _keyValueMap.
-    void insertKeys(std::vector<StringKeyPair> const& keyList, bool mustSetMin);
+    void insertKeys(std::vector<CompKeyPair> const& keyList, bool mustSetMin);
 
     /// @Return a list of the smallest keys from _keyValueMap. The keys are removed from
     ///         from the map. Put keys are also put in _transferList in case the shift fails
@@ -108,7 +108,7 @@ public:
     /// Update our range with data from our left neighbor.
     /// Our minimum key is their maximum key(exclusive).
     /// @returns what it thinks the range of the left neighbor should be.
-    StringRange updateRangeWithLeftData(StringRange const& strRange);
+    KeyRange updateRangeWithLeftData(KeyRange const& strRange);
 
     /// Receive our name from the master. Returns true if successful.
     bool workerInfoReceive(BufferUdp::Ptr const&  data);
@@ -137,7 +137,7 @@ public:
     std::string getOurLogId() const override;
 
     std::unique_ptr<proto::WorkerKeysInfo> _workerKeysInfoBuilder(); // TODO make private
-    void setNeighborInfoLeft(uint32_t wId, int keyCount, StringRange const& range);  // TODO make private
+    void setNeighborInfoLeft(uint32_t wId, int keyCount, KeyRange const& range);  // TODO make private
 
 
     /// @Return a string describing the first and last 'count' keys. count=0 dumps all keys.
@@ -235,7 +235,7 @@ private:
     mutable std::mutex _ourIdMtx; ///< protects _ourIdInvalid, _ourId
 
 
-    StringRange _strRange; ///< range for this worker TODO _range both int and string;
+    KeyRange _keyRange; ///< range for this worker
     std::atomic<bool> _rangeChanged{false};
     std::map<CompositeKey, ChunkSubchunk> _keyValueMap;
     std::deque<std::chrono::system_clock::time_point> _recentAdds; ///< track how many keys added recently.
@@ -260,15 +260,15 @@ private:
 
     /// Maximum number of keys to shift in one iteration. 10000 may be reasonable.
     /// An iteration would be transfer, insert, and verify range. During the
-    /// insert phase, the mutex is locked preventing key inserts and look ups.
+    /// insert phase, the mutex is locked preventing key inserts and lookups.
     /// Using smaller values locks the mutex for more periods of time but each
     /// period is shorter and lookups can occur during the gaps.
     /// Too big a value, and the maps will be paralyzed for a long time during inserts.
     /// Too small and shift operations will take significantly longer.
     int _maxKeysToShift;
-    std::vector<StringKeyPair> _transferListToRight; ///< List of items being transfered to right
+    std::vector<CompKeyPair> _transferListToRight; ///< List of items being transfered to right
     /// List of items being transfered to our left neighbor. (answering neighbor's FromRight request)
-    std::vector<StringKeyPair> _transferListWithLeft;
+    std::vector<CompKeyPair> _transferListWithLeft;
 
     /// The DoListItem that makes sure _monitor() is run.
     std::shared_ptr<CentralWorkerDoListItem> _centralWorkerDoListItem;

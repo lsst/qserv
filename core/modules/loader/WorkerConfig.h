@@ -52,6 +52,7 @@ public:
     double getThresholdNeighborShift() const { return _thresholdNeighborShift->getDouble(); }
     int getMaxKeysToShift() const { return _maxKeysToShift->getInt(); }
     int getLoopSleepTime() const { return _loopSleepTime->getInt(); }
+    int getIOThreads() const { return _iOThreads->getInt(); }
 
     std::ostream& dump(std::ostream &os) const override;
 
@@ -89,6 +90,9 @@ private:
     /// Time spent sleeping between checking elements in the DoList in micro seconds. 100000
     ConfigElement::Ptr _loopSleepTime{
         ConfigElement::create(cfgList, header, "loopSleepTime", ConfigElement::INT, false, "100000")};
+    /// Number of IO threads the server should run.
+    ConfigElement::Ptr _iOThreads{
+        ConfigElement::create(cfgList, header, "iOThreads", ConfigElement::INT, false, "5")};
 };
 
 

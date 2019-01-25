@@ -168,7 +168,7 @@ bool ServerTcpBase::testConnect() {
         }
         // socket.close(); socket should close when it falls out of scope.
     }
-    catch (std::exception& e) {
+    catch (std::exception const& e) {
         std::cerr << e.what() << std::endl;
         return false;
     }
@@ -435,13 +435,13 @@ void TcpBaseConnection::_handleImYourLNeighbor1(boost::system::error_code const&
         LOGS(_log, LOG_LVL_INFO, funcName << " WorkerKeysInfo name=" << workerName <<
                                  " keyCount=" << nInfo.keyCount << " recentAdds=" << nInfo.recentAdds);
         bool valid = protoRange.valid();
-        StringRange leftRange;
-        StringRange newLeftRange;
+        KeyRange leftRange;
+        KeyRange newLeftRange;
         if (valid) {
-            CompositeKey min(protoRange.minint(), protoRange.minstr());
-            CompositeKey max(protoRange.maxint(), protoRange.maxstr());
+            CompositeKey minKey(protoRange.minint(), protoRange.minstr());
+            CompositeKey maxKey(protoRange.maxint(), protoRange.maxstr());
             bool unlimited = protoRange.maxunlimited();
-            leftRange.setMinMax(min, max, unlimited);
+            leftRange.setMinMax(minKey, maxKey, unlimited);
             LOGS(_log, LOG_LVL_WARN, funcName << " leftRange=" << leftRange);
             newLeftRange = _serverTcpBase->getCentralWorker()->updateRangeWithLeftData(leftRange);
         }
@@ -524,7 +524,7 @@ void TcpBaseConnection::_handleShiftToRight1(boost::system::error_code const& ec
         if (keyCount != sz) {
             LOGS(_log, LOG_LVL_WARN, funcName << " keyCount(" << keyCount << ") != sz(" << sz << ")");
         }
-        std::vector<CentralWorker::StringKeyPair> keyList;
+        std::vector<CentralWorker::CompKeyPair> keyList;
         for (int j=0; j < sz; ++j) {
             proto::KeyInfo const& protoKI = protoKeyList->keypair(j);
             ChunkSubchunk chSub(protoKI.chunk(), protoKI.subchunk());

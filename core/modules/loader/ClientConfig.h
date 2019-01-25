@@ -53,6 +53,7 @@ public:
     int getMaxLookups() const { return _maxLookups->getInt(); }
     int getMaxInserts() const { return _maxInserts->getInt(); }
     int getMaxRequestSleepTime() const { return _maxRequestSleepTime->getInt(); }
+    int getIOThreads() const { return _iOThreads->getInt(); }
 
     std::ostream& dump(std::ostream &os) const override;
 
@@ -90,8 +91,11 @@ private:
     /// When reaching maxInserts or maxLookups, sleep this long before trying to add more,
     /// in micro seconds. 100000micro = 0.1sec
     ConfigElement::Ptr _maxRequestSleepTime{
-            ConfigElement::create(cfgList, header,
-                                  "maxRequestSleepTime", ConfigElement::INT, false, "100000")};
+        ConfigElement::create(cfgList, header,
+                              "maxRequestSleepTime", ConfigElement::INT, false, "100000")};
+    /// Number of IO threads the server should run.
+    ConfigElement::Ptr _iOThreads{
+        ConfigElement::create(cfgList, header, "iOThreads", ConfigElement::INT, false, "4")};
 };
 
 

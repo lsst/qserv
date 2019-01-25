@@ -63,9 +63,9 @@ BufferUdp::Ptr ClientServer::parseMsg(BufferUdp::Ptr const& data,
             sendData.reset(); // Never send a response back for one of these, infinite loop.
             break;
 
-        case LoaderMsg::KEY_INFO:
-            LOGS(_log, LOG_LVL_INFO, "KEY_INFO");
-            _centralClient->handleKeyInfo(inMsg, data);
+        case LoaderMsg::KEY_LOOKUP:
+            LOGS(_log, LOG_LVL_INFO, "KEY_LOOK");
+            _centralClient->handleKeyLookup(inMsg, data);
             break;
 
         case LoaderMsg::KEY_INSERT_COMPLETE:
@@ -75,7 +75,7 @@ BufferUdp::Ptr ClientServer::parseMsg(BufferUdp::Ptr const& data,
 
             // following not expected by client
         case LoaderMsg::KEY_INSERT_REQ: //  This is what this client should send out
-        case LoaderMsg::KEY_INFO_REQ: //  This is what this client should send out
+        case LoaderMsg::KEY_LOOKUP_REQ: //  This is what this client should send out
         case LoaderMsg::MAST_WORKER_INFO:
         case LoaderMsg::MAST_WORKER_LIST: // TODO having the client know would be useful.
         case LoaderMsg::MAST_INFO:

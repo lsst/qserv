@@ -65,7 +65,7 @@ void CentralMaster::addWorker(std::string const& ip, int udpPort, int tcpPort) {
 }
 
 
-void CentralMaster::updateWorkerInfo(uint32_t workerId, NeighborsInfo const& nInfo, StringRange const& strRange) {
+void CentralMaster::updateWorkerInfo(uint32_t workerId, NeighborsInfo const& nInfo, KeyRange const& strRange) {
     if (workerId == 0) {
         return;
     }
@@ -99,12 +99,10 @@ void CentralMaster::setWorkerNeighbor(MWorkerListItem::WPtr const& target, int m
     auto addr = targetWorker->getUdpAddress();
     try {
         sendBufferTo(addr.ip, addr.port, msgData);
-    } catch (boost::system::system_error e) {
+    } catch (boost::system::system_error const& e) {
         LOGS(_log, LOG_LVL_ERROR, "CentralMaster::setWorkerNeighbor boost system_error=" << e.what() <<
                                   " targ=" << *targetWorker << " msg=" << message <<
                                   " neighborId=" << neighborId);
-        exit(-1); // TODO:&&& The correct course of action is unclear and requires thought,
-                  //       so just blow up so it's unmistakable something bad happened for now.
     }
 }
 
@@ -206,12 +204,10 @@ void CentralMaster::reqWorkerKeysInfo(uint64_t msgId, std::string const& targetI
     reqMsg.appendToData(data);
     try {
         sendBufferTo(targetIp, targetPort, data);
-    } catch (boost::system::system_error e) {
+    } catch (boost::system::system_error const& e) {
         LOGS(_log, LOG_LVL_ERROR, "CentralMaster::reqWorkerKeysInfo boost system_error=" << e.what() <<
                 " msgId=" << msgId << " tIp=" << targetIp << " tPort=" << targetPort <<
                 " ourHost=" << ourHostName << " ourPort=" << ourPort);
-        exit(-1); // TODO:&&& The correct course of action is unclear and requires thought,
-                  //       so just blow up so it's unmistakable something bad happened for now.
     }
 }
 
