@@ -42,16 +42,17 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.czar.MessageTable");
 
+#define MAX_MESSAGE_LEN "1024" // string, for splicing into templates below
 
 std::string const createTmpl("CREATE TABLE IF NOT EXISTS %1% "
-    "(chunkId INT, code SMALLINT, message CHAR(255), "
+    "(chunkId INT, code SMALLINT, message VARCHAR(" MAX_MESSAGE_LEN "), "
     "severity ENUM ('INFO', 'ERROR'), timeStamp FLOAT)"
     "ENGINE=MEMORY");
 
 std::string const createAndLockTmpl(createTmpl + "; LOCK TABLES %1% WRITE;");
 
 std::string const writeTmpl("INSERT INTO %1% (chunkId, code, message, severity, timeStamp) "
-    "VALUES (%2%, %3%, '%4%', '%5%', %6%)");
+    "VALUES (%2%, %3%, '%4$." MAX_MESSAGE_LEN "s', '%5%', %6%)");
 
 // mysql can only unlock all locked tables,
 // there is no command to unlock single table
