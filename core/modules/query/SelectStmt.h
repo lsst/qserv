@@ -71,11 +71,10 @@ public:
     typedef std::shared_ptr<SelectStmt> Ptr;
     typedef std::shared_ptr<SelectStmt const> Cptr;
 
-    SelectStmt();
-    SelectStmt(std::shared_ptr<FromList> fromList, std::shared_ptr<SelectList> selectList,
-            std::shared_ptr<WhereClause> whereClause, std::shared_ptr<OrderByClause> orderBy,
-            std::shared_ptr<GroupByClause> groupBy, std::shared_ptr<HavingClause> having, bool hasDistinct,
-            int limit)
+    SelectStmt(std::shared_ptr<SelectList> selectList=nullptr, std::shared_ptr<FromList> fromList=nullptr,
+            std::shared_ptr<WhereClause> whereClause=nullptr, std::shared_ptr<OrderByClause> orderBy=nullptr,
+            std::shared_ptr<GroupByClause> groupBy=nullptr, std::shared_ptr<HavingClause> having=nullptr,
+            bool hasDistinct=false, int limit=lsst::qserv::NOTSET)
     : _fromList(fromList)
     , _selectList(selectList)
     , _whereClause(whereClause)

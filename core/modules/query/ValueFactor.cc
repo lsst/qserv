@@ -54,11 +54,23 @@ namespace qserv {
 namespace query {
 
 
+ValueFactor::ValueFactor(std::shared_ptr<ColumnRef> const& columnRef)
+: _type(COLUMNREF)
+, _columnRef(columnRef)
+{}
+
+
+ValueFactor::ValueFactor(std::string const& constVal)
+: _type(CONST)
+, _constVal(constVal) {
+    auto&& removeFrom = std::find_if(_constVal.rbegin(), _constVal.rend(),
+            [](unsigned char c) {return !std::isspace(c);}).base();
+    _constVal.erase(removeFrom, _constVal.end());
+}
+
+
 ValueFactorPtr ValueFactor::newColumnRefFactor(std::shared_ptr<ColumnRef const> cr) {
-    ValueFactorPtr term = std::make_shared<ValueFactor>();
-    term->_type = COLUMNREF;
-    term->_columnRef = std::make_shared<ColumnRef>(*cr);
-    return term;
+    return std::make_shared<ValueFactor>(std::make_shared<ColumnRef>(*cr));
 }
 
 
@@ -90,13 +102,7 @@ ValueFactorPtr ValueFactor::newAggFactor(std::shared_ptr<FuncExpr> fe) {
 
 ValueFactorPtr
 ValueFactor::newConstFactor(std::string const& alnum) {
-    ValueFactorPtr term = std::make_shared<ValueFactor>();
-    term->_type = CONST;
-    term->_constVal = alnum;
-    auto&& removeFrom = std::find_if(term->_constVal.rbegin(), term->_constVal.rend(),
-            [](unsigned char c) {return !std::isspace(c);}).base();
-    term->_constVal.erase(removeFrom, term->_constVal.end());
-    return term;
+    return std::make_shared<ValueFactor>(alnum);
 }
 
 

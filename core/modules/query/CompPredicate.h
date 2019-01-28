@@ -51,6 +51,13 @@ class CompPredicate : public Predicate {
 public:
     typedef std::shared_ptr<CompPredicate> Ptr;
 
+    CompPredicate() = default;
+
+    /// Construct a CompPredicate that owns the given args and uses them for its expression.
+    CompPredicate(std::shared_ptr<ValueExpr> const& iLeft, int iOp,
+            std::shared_ptr<ValueExpr> const& iRight)
+        : left(iLeft), op(iOp), right(iRight) {}
+
     ~CompPredicate() override = default;
 
     char const* getName() const override { return "CompPredicate"; }

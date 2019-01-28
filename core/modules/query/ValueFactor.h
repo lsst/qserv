@@ -77,6 +77,14 @@ public:
         return "unknown";
     }
 
+    ValueFactor() = default;
+
+    // Construct a ColumnRef ValueFactor.
+    ValueFactor(std::shared_ptr<ColumnRef> const& columnRef);
+
+    // Construct a "const" (string value) ValueFactor.
+    ValueFactor(std::string const& constVal);
+
     // May need non-const, otherwise, need new construction
     std::shared_ptr<ColumnRef const> getColumnRef() const { return _columnRef; }
     std::shared_ptr<ColumnRef> getColumnRef() { return _columnRef; }

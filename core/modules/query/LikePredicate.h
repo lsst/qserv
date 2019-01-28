@@ -51,6 +51,13 @@ class LikePredicate : public Predicate {
 public:
     typedef std::shared_ptr<LikePredicate> Ptr;
 
+    LikePredicate() = default;
+
+    /// Construct a LikePredicate that owns the given args and uses them for its expression.
+    LikePredicate(std::shared_ptr<ValueExpr> const& iValue, std::shared_ptr<ValueExpr> const& iCharValue,
+            bool iHasNot=false)
+        : value(iValue), charValue(iCharValue), hasNot(iHasNot) {}
+
     ~LikePredicate()  override = default;
 
     char const* getName() const override { return "LikePredicate"; }

@@ -801,7 +801,7 @@ public:
 
     void onExit() override {
         ASSERT_EXECUTION_CONDITION(_selectList != nullptr, "Failed to create a select list.", _ctx);
-        auto selectStatement = make_shared<query::SelectStmt>(_fromList, _selectList, _whereClause,
+        auto selectStatement = make_shared<query::SelectStmt>(_selectList, _fromList, _whereClause,
                 _orderByClause, _groupByClause, _havingClause, _distinct, _limit);
         lockedParent()->handleSelectStatement(selectStatement);
     }
