@@ -21,8 +21,12 @@
  */
 
 /**
- * qserv-replica-controller-cmd.cc is a Controller application for
- * testing all known types of requests.
+ * qserv-replica-worker-all.cc runs all worker servers within a single process.
+ *
+ * NOTE: a special single-node configuration is required by this test.
+ * Also, each logical worker must get a unique path in a data file
+ * system. The files must be read-write enabled for a user account
+ * under which the test is run.
  */
 
 // System headers
@@ -30,13 +34,13 @@
 #include <stdexcept>
 
 // Qserv headers
-#include "replica/ControllerApp.h"
+#include "replica/WorkerAllApp.h"
 
 using namespace lsst::qserv::replica;
 
 int main(int argc, const char* const argv[]) {
     try {
-        auto app = ControllerApp::create(argc, argv);
+        auto app = WorkerAllApp::create(argc, argv);
         return app->run();
     } catch (std::exception const& ex) {
         std::cerr << "main()  the application failed, exception: " << ex.what() << std::endl;

@@ -171,12 +171,6 @@ QservWorkerApp::QservWorkerApp(int argc,
         "filename",
         "The name of of a file with space-separated pairs of <database>:<chunk>",
         _inFileName);
-
-    setCmd.flag(
-        "force",
-        "Force the worker to proceed with requested"
-        " replica removal regardless of the replica usage status",
-        _forceRemove);
 }
 
 

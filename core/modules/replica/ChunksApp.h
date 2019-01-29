@@ -28,9 +28,6 @@
 // Qserv headers
 #include "replica/Application.h"
 
-// LSST headers
-#include "lsst/log/Log.h"
-
 // This header declarations
 
 namespace lsst {
@@ -91,7 +88,7 @@ private:
     /// The flag which if set allows selecting all workers for the operation
     bool _allWorkers = false;
 
-    /// Do not save the rplica info in the database if set to 'true'
+    /// Do not save the replica info in the database if set to 'true'
     bool _doNotSaveReplicaInfo = false;
 
     /// The flag (if set) for pulling chunk disposition from Qserv workers for the combined analysis
