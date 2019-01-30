@@ -128,7 +128,7 @@ private:
     /// Do not save the replica info in the database if set to 'true'
     bool _doNotSaveReplicaInfo = false;
 
-    /// Automatically compute and store in the database checksums for
+    /// Automatically compute and store in the database check/control sums of
     /// the replica's files.
     bool _computeCheckSum  = false;
 };

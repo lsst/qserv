@@ -159,7 +159,7 @@ ControllerApp::ControllerApp(int argc,
 
     parser().flag(
         "compute-check-sum",
-        " automatically compute and store in the database checksums for"
+        " automatically compute and store in the database check/control sums for"
         " all files of the found replica",
         _computeCheckSum);
 

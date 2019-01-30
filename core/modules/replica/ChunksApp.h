@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_CHUNKAPP_H
-#define LSST_QSERV_REPLICA_CHUNKAPP_H
+#ifndef LSST_QSERV_REPLICA_CHUNKSAPP_H
+#define LSST_QSERV_REPLICA_CHUNKSAPP_H
 
 // System headers
 #include <string>
@@ -109,4 +109,4 @@ private:
 
 }}} // namespace lsst::qserv::replica
 
-#endif /* LSST_QSERV_REPLICA_CHUNKAPP_H */
+#endif /* LSST_QSERV_REPLICA_CHUNKSAPP_H */

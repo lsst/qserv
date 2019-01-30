@@ -20,152 +20,26 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-/// qserv-replica-job-verify.cc is a single job Controller application
-/// which is meant to run the corresponding job.
+/**
+ *  qserv-replica-job-verify.cc is an application which runs the replica
+ *  verification algorithm for all known replicas across all ENABLED workers.
+ */
 
 // System headers
-#include <atomic>
-#include <iomanip>
 #include <iostream>
 #include <stdexcept>
-#include <string>
 
 // Qserv headers
-#include "proto/replication.pb.h"
-#include "replica/Controller.h"
-#include "replica/VerifyJob.h"
-#include "replica/ReplicaInfo.h"
-#include "replica/ServiceProvider.h"
-#include "util/BlockPost.h"
-#include "util/CmdLineParser.h"
+#include "replica/VerifyApp.h"
 
-using namespace lsst::qserv;
-
-namespace {
-
-// Command line parameters
-
-std::string configUrl;
-size_t      maxReplicas;
-bool        computeCheckSum;
-bool        progressReport;
-bool        errorReport;
-bool        detailedReport;
-
-/// Run the test
-bool run() {
-
-    try {
-
-        ///////////////////////////////////////////////////////////////////////////
-        // Start the provider in its own thread pool before initiating any requests
-        // or jobs.
-        //
-        // Note that onFinish callbacks which are activated upon the completion of
-        // the requests or jobs will be run by a thread from the pool.
-
-        replica::ServiceProvider::Ptr const provider   = replica::ServiceProvider::create(configUrl);
-        replica::Controller::Ptr      const controller = replica::Controller::create(provider);
-
-        provider->run();
-
-        ///////////////////////////////////////
-        // Find all replicas across all workers
-
-        std::atomic<bool> finished{false};
-        auto job = replica::VerifyJob::create (
-            maxReplicas,
-            computeCheckSum,
-            [] (replica::VerifyJob::Ptr const& job,
-                replica::ReplicaDiff const& selfReplicaDiff,
-                std::vector<replica::ReplicaDiff> const& otherReplicaDiff) {
-
-                    replica::ReplicaInfo const& r1 = selfReplicaDiff.replica1();
-                    replica::ReplicaInfo const& r2 = selfReplicaDiff.replica2();
-                    std::cout
-                        << "Compared with OWN previous state  "
-                        << " " << std::setw(20) << r1.database() << " " << std::setw(12) << r1.chunk()
-                        << " " << std::setw(20) << r1.worker()   << " " << std::setw(20) << r2.worker() << " "
-                        << " " << selfReplicaDiff.flags2string()
-                        << std::endl;
-    
-                    for (auto const& diff: otherReplicaDiff) {
-                        replica::ReplicaInfo const& r1 = diff.replica1();
-                        replica::ReplicaInfo const& r2 = diff.replica2();
-                        std::cout
-                            << "Compared with OTHER replica state "
-                            << " " << std::setw(20) << r1.database() << " " << std::setw(12) << r1.chunk()
-                            << " " << std::setw(20) << r1.worker()   << " " << std::setw(20) << r2.worker() << " "
-                            << " " << diff.flags2string()
-                            << std::endl;
-                    }
-            },
-            controller,
-            std::string(),
-            [&finished] (replica::VerifyJob::Ptr const& job) {
-                finished = true;
-            }
-        );
-        job->start();
-
-        util::BlockPost blockPost(1000,2000);
-        while (not finished) {
-            blockPost.wait();
-        }
-
-        //////////////////////////////////////////////////
-        // Shutdown the provider and join with its threads
-
-        provider->stop();
-
-    } catch (std::exception const& ex) {
-        std::cerr << ex.what() << std::endl;
-    }
-    return true;
-}
-} /// namespace
+using namespace lsst::qserv::replica;
 
 int main(int argc, const char* const argv[]) {
-
-    // Verify that the version of the library that we linked against is
-    // compatible with the version of the headers we compiled against.
-
-    GOOGLE_PROTOBUF_VERIFY_VERSION;
-
-    // Parse command line parameters
     try {
-        util::CmdLineParser parser(
-            argc,
-            argv,
-            "\n"
-            "Usage:\n"
-            "  [--config=<url>]\n"
-            "  [--max-replicas]\n"
-            "  [--check-sum]\n"
-            "  [--progress-report]\n"
-            "  [--error-report]\n"
-            "  [--detailed-report]\n"
-            "\n"
-            "Flags and options:\n"
-            "  --config           - a configuration URL (a configuration file or a set of the database\n"
-            "                       connection parameters [ DEFAULT: file:replication.cfg ]\n"
-            "  --max-replicas     - the maximum number of replicas to be processed simultaneously\n"
-            "                       [ DEFAULT: 1 ]\n"
-            "  --check-sum        - compute check/control sum of files\n"
-            "  --progress-report  - progress report when executing batches of requests\n"
-            "  --error-report     - detailed report on failed requests\n"
-            "  --detailed-report  - detailed report on results\n");
-
-        ::configUrl       = parser.option<std::string>("config", "file:replication.cfg");
-        ::maxReplicas     = parser.option<unsigned int>("max-replicas", 1);
-        ::computeCheckSum = parser.flag("check-sum");
-        ::progressReport  = parser.flag("progress-report");
-        ::errorReport     = parser.flag("error-report");
-        ::detailedReport  = parser.flag("detailed-report");
-
+        auto app = VerifyApp::create(argc, argv);
+        return app->run();
     } catch (std::exception const& ex) {
-        return 1;
+        std::cerr << "main()  the application failed, exception: " << ex.what() << std::endl;
     }
-    ::run ();
-    return 0;
+    return 1;
 }
