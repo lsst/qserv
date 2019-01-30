@@ -33,7 +33,6 @@
 #include "query/Predicate.h"
 
 
-
 // Forward declarations
 namespace lsst {
 namespace qserv {
@@ -69,7 +68,7 @@ public:
     void renderTo(QueryTemplate& qt) const override;
     BoolFactorTerm::Ptr clone() const override;
     BoolFactorTerm::Ptr copySyntax() const override { return clone();}
-    bool operator==(const BoolFactorTerm& rhs) const override;
+    bool operator==(BoolFactorTerm const& rhs) const override;
 
     std::shared_ptr<ValueExpr> value;
     std::vector<std::shared_ptr<ValueExpr>> cands;

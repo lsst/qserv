@@ -27,8 +27,8 @@
 
 // Qserv headers
 #include "query/ColumnRef.h"
-#include "query/ValueExpr.h"
 #include "query/QueryTemplate.h"
+#include "query/ValueExpr.h"
 
 
 namespace lsst {
@@ -37,8 +37,8 @@ namespace query {
 
 
 void LikePredicate::findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& vector) const {
-    if (value) { value->findColumnRefs(vector); }
-    if (charValue) { charValue->findColumnRefs(vector); }
+    if (value) value->findColumnRefs(vector);
+    if (charValue) charValue->findColumnRefs(vector);
 }
 
 
@@ -63,11 +63,10 @@ void LikePredicate::findValueExprs(std::vector<std::shared_ptr<ValueExpr>>& vect
 
 
 BoolFactorTerm::Ptr LikePredicate::clone() const {
-    LikePredicate::Ptr p = std::make_shared<LikePredicate>();
-    if (value) p->value = value->clone();
-    if (charValue) p->charValue = charValue->clone();
-    p->hasNot = hasNot;
-    return BoolFactorTerm::Ptr(p);
+    return std::make_shared<LikePredicate>(
+        ((nullptr != value) ? value->clone() : nullptr),
+        ((nullptr != charValue) ? charValue->clone() : nullptr),
+        hasNot);
 }
 
 
@@ -81,7 +80,7 @@ void LikePredicate::dbgPrint(std::ostream& os) const {
 }
 
 
-bool LikePredicate::operator==(const BoolFactorTerm& rhs) const {
+bool LikePredicate::operator==(BoolFactorTerm const& rhs) const {
     auto rhsLikePredicate = dynamic_cast<LikePredicate const *>(&rhs);
     if (nullptr == rhsLikePredicate) {
         return false;

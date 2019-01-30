@@ -67,8 +67,9 @@ public:
     void renderTo(QueryTemplate& qt) const override;
     BoolFactorTerm::Ptr clone() const override;
     BoolFactorTerm::Ptr copySyntax() const override { return clone(); }
-    bool operator==(const BoolFactorTerm& rhs) const override;
+    bool operator==(BoolFactorTerm const& rhs) const override;
 
+    // FIXME these members should be private, or at least protected. Jira issue DM-17306
     std::shared_ptr<ValueExpr> value;
     std::shared_ptr<ValueExpr> charValue;
     bool hasNot;

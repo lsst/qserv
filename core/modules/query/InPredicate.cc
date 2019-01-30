@@ -30,8 +30,8 @@
 
 // Qserv headers
 #include "query/ColumnRef.h"
-#include "query/ValueExpr.h"
 #include "query/QueryTemplate.h"
+#include "query/ValueExpr.h"
 #include "util/IterableFormatter.h"
 
 
@@ -105,8 +105,8 @@ void InPredicate::dbgPrint(std::ostream& os) const {
 }
 
 
-bool InPredicate::operator==(const BoolFactorTerm& rhs) const {
-    auto rhsInPredicate = dynamic_cast<InPredicate const *>(&rhs);
+bool InPredicate::operator==(BoolFactorTerm const& rhs) const {
+    auto rhsInPredicate = dynamic_cast<InPredicate const*>(&rhs);
     if (nullptr == rhsInPredicate) {
         return false;
     }

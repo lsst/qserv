@@ -30,8 +30,8 @@
 
 // Qserv headers
 #include "query/ColumnRef.h"
-#include "query/ValueExpr.h"
 #include "query/QueryTemplate.h"
+#include "query/ValueExpr.h"
 
 
 namespace lsst {
@@ -64,10 +64,7 @@ void NullPredicate::findValueExprs(std::vector<std::shared_ptr<ValueExpr>>& vect
 
 
 BoolFactorTerm::Ptr NullPredicate::clone() const {
-    NullPredicate::Ptr p = std::make_shared<NullPredicate>();
-    if (value) p->value = value->clone();
-    p->hasNot = hasNot;
-    return BoolFactorTerm::Ptr(p);
+    return std::make_shared<NullPredicate>(((nullptr != value) ? value->clone() : nullptr), hasNot);
 }
 
 
@@ -80,7 +77,7 @@ void NullPredicate::dbgPrint(std::ostream& os) const {
 }
 
 
-bool NullPredicate::operator==(const BoolFactorTerm& rhs) const {
+bool NullPredicate::operator==(BoolFactorTerm const& rhs) const {
     auto rhsNullPredicate = dynamic_cast<NullPredicate const *>(&rhs);
     if (nullptr == rhsNullPredicate) {
         return false;

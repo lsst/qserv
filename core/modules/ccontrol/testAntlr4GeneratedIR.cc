@@ -29,7 +29,7 @@
 #define BOOST_TEST_MODULE Antlr4GeneratedIR
 
 // Third-party headers
-#include <boost/test/included/unit_test.hpp>
+#include <boost/test/included/unit_test.hpp> // it seems this must be included before boost/test/data/test_case.hpp
 #include <boost/test/data/test_case.hpp>
 
 // Qserv headers

@@ -27,8 +27,8 @@
 
 // Qserv headers
 #include "query/ColumnRef.h"
-#include "query/ValueExpr.h"
 #include "query/QueryTemplate.h"
+#include "query/ValueExpr.h"
 
 
 namespace lsst {
@@ -37,9 +37,9 @@ namespace query {
 
 
 void BetweenPredicate::findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& vector) const {
-    if (value) { value->findColumnRefs(vector); }
-    if (minValue) { minValue->findColumnRefs(vector); }
-    if (maxValue) { maxValue->findColumnRefs(vector); }
+    if (value) value->findColumnRefs(vector);
+    if (minValue) minValue->findColumnRefs(vector);
+    if (maxValue) maxValue->findColumnRefs(vector);
 }
 
 
@@ -72,7 +72,7 @@ BoolFactorTerm::Ptr BetweenPredicate::clone() const {
     p->hasNot = hasNot;
     if (minValue) p->minValue = minValue->clone();
     if (maxValue) p->maxValue = maxValue->clone();
-    return BoolFactorTerm::Ptr(p);
+    return p;
 }
 
 

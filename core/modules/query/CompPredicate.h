@@ -67,7 +67,7 @@ public:
     void renderTo(QueryTemplate& qt) const override;
     BoolFactorTerm::Ptr clone() const override;
     BoolFactorTerm::Ptr copySyntax() const override { return clone(); }
-    bool operator==(const BoolFactorTerm& rhs) const override;
+    bool operator==(BoolFactorTerm const& rhs) const override;
 
     static int lookupOp(char const* op);
 

@@ -48,24 +48,34 @@ namespace query {
 /// BetweenPredicate is a Predicate comparing a row value to a range
 class BetweenPredicate : public Predicate {
 public:
+    typedef std::shared_ptr<BetweenPredicate> Ptr;
+
     BetweenPredicate() : hasNot(false) {}
+
     BetweenPredicate(std::shared_ptr<ValueExpr>& iValue, std::shared_ptr<ValueExpr>& iMinValue,
                      std::shared_ptr<ValueExpr>& iMaxValue, bool iHasNot)
     : value(iValue), minValue(iMinValue), maxValue(iMaxValue), hasNot(iHasNot) {}
-    typedef std::shared_ptr<BetweenPredicate> Ptr;
 
     ~BetweenPredicate() override = default;
 
     char const* getName() const override { return "BetweenPredicate"; }
-    void findValueExprs(std::vector<std::shared_ptr<ValueExpr>>& vector) const override;
-    void findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& vector) const override;
-    std::ostream& putStream(std::ostream& os) const override;
-    void renderTo(QueryTemplate& qt) const override;
-    BoolFactorTerm::Ptr clone() const override;
-    BoolFactorTerm::Ptr copySyntax() const override { return clone(); }
-    bool operator==(const BoolFactorTerm& rhs) const override;
 
-    std::shared_ptr<ValueExpr> value;
+    void findValueExprs(std::vector<std::shared_ptr<ValueExpr>>& vector) const override;
+
+    void findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& vector) const override;
+
+    std::ostream& putStream(std::ostream& os) const override;
+
+    void renderTo(QueryTemplate& qt) const override;
+
+    BoolFactorTerm::Ptr clone() const override;
+
+    BoolFactorTerm::Ptr copySyntax() const override { return clone(); }
+
+    bool operator==(BoolFactorTerm const& rhs) const override;
+
+    // FIXME these members should be private, or at least protected. Jira issue DM-17306
+     std::shared_ptr<ValueExpr> value;
     std::shared_ptr<ValueExpr> minValue;
     std::shared_ptr<ValueExpr> maxValue;
     bool hasNot;

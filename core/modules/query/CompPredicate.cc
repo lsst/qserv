@@ -26,10 +26,11 @@
 #include "query/CompPredicate.h"
 
 // Qserv headers
+#include "ccontrol/UserQueryError.h"
 #include "query/ColumnRef.h"
-#include "query/ValueExpr.h"
 #include "query/QueryTemplate.h"
 #include "query/SqlSQL2Tokens.h"
+#include "query/ValueExpr.h"
 
 
 namespace lsst {
@@ -38,8 +39,8 @@ namespace query {
 
 
 void CompPredicate::findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& vector) const {
-    if (left) { left->findColumnRefs(vector); }
-    if (right) { right->findColumnRefs(vector); }
+    if (left) left->findColumnRefs(vector);
+    if (right) right->findColumnRefs(vector);
 }
 
 
@@ -52,14 +53,15 @@ void CompPredicate::renderTo(QueryTemplate& qt) const {
     ValueExpr::render r(qt, false);
     r.applyToQT(left);
     switch(op) {
-    case SqlSQL2Tokens::EQUALS_OP: qt.append("="); break;
-    case SqlSQL2Tokens::NULL_SAFE_EQUALS_OP: qt.append("<=>"); break;
-    case SqlSQL2Tokens::NOT_EQUALS_OP: qt.append("<>"); break;
-    case SqlSQL2Tokens::LESS_THAN_OP: qt.append("<"); break;
-    case SqlSQL2Tokens::GREATER_THAN_OP: qt.append(">"); break;
-    case SqlSQL2Tokens::LESS_THAN_OR_EQUALS_OP: qt.append("<="); break;
-    case SqlSQL2Tokens::GREATER_THAN_OR_EQUALS_OP: qt.append(">="); break;
-    case SqlSQL2Tokens::NOT_EQUALS_OP_ALT: qt.append("!="); break;
+        case SqlSQL2Tokens::EQUALS_OP: qt.append("="); break;
+        case SqlSQL2Tokens::NULL_SAFE_EQUALS_OP: qt.append("<=>"); break;
+        case SqlSQL2Tokens::NOT_EQUALS_OP: qt.append("<>"); break;
+        case SqlSQL2Tokens::LESS_THAN_OP: qt.append("<"); break;
+        case SqlSQL2Tokens::GREATER_THAN_OP: qt.append(">"); break;
+        case SqlSQL2Tokens::LESS_THAN_OR_EQUALS_OP: qt.append("<="); break;
+        case SqlSQL2Tokens::GREATER_THAN_OR_EQUALS_OP: qt.append(">="); break;
+        case SqlSQL2Tokens::NOT_EQUALS_OP_ALT: qt.append("!="); break;
+        default: throw ccontrol::UserQueryBug("Unhandled op:" + std::to_string(op));
     }
     r.applyToQT(right);
 }
@@ -73,19 +75,29 @@ void CompPredicate::findValueExprs(std::vector<std::shared_ptr<ValueExpr>>& vect
 
 int CompPredicate::lookupOp(char const* op) {
     switch(op[0]) {
-    case '<':
-        if (op[1] == '\0') { return SqlSQL2Tokens::LESS_THAN_OP; }
-        else if (op[1] == '>') { return SqlSQL2Tokens::NOT_EQUALS_OP; }
-        else if (op[1] == '=') { return SqlSQL2Tokens::LESS_THAN_OR_EQUALS_OP; }
-        else { throw std::invalid_argument("Invalid op string <?"); }
-    case '>':
-        if (op[1] == '\0') { return SqlSQL2Tokens::GREATER_THAN_OP; }
-        else if (op[1] == '=') { return SqlSQL2Tokens::GREATER_THAN_OR_EQUALS_OP; }
-        else { throw std::invalid_argument("Invalid op string >?"); }
-    case '=':
-        return SqlSQL2Tokens::EQUALS_OP;
-    default:
-        throw std::invalid_argument("Invalid op string ?");
+        case '<':
+            if (op[1] == '\0') {
+                return SqlSQL2Tokens::LESS_THAN_OP;
+            } else if (op[1] == '>') {
+                return SqlSQL2Tokens::NOT_EQUALS_OP;
+            } else if (op[1] == '=') {
+                return SqlSQL2Tokens::LESS_THAN_OR_EQUALS_OP;
+            }
+            throw std::invalid_argument("Invalid op string <?");
+
+        case '>':
+            if (op[1] == '\0') {
+                return SqlSQL2Tokens::GREATER_THAN_OP;
+            } else if (op[1] == '=') {
+                return SqlSQL2Tokens::GREATER_THAN_OR_EQUALS_OP;
+            }
+            throw std::invalid_argument("Invalid op string >?");
+
+        case '=':
+            return SqlSQL2Tokens::EQUALS_OP;
+
+        default:
+            throw std::invalid_argument("Invalid op string ?");
     }
 }
 
@@ -98,8 +110,8 @@ void CompPredicate::dbgPrint(std::ostream& os) const {
 }
 
 
-bool CompPredicate::operator==(const BoolFactorTerm& rhs) const {
-    auto rhsCompPredicate = dynamic_cast<CompPredicate const *>(&rhs);
+bool CompPredicate::operator==(BoolFactorTerm const& rhs) const {
+    auto rhsCompPredicate = dynamic_cast<CompPredicate const*>(&rhs);
     if (nullptr == rhsCompPredicate) {
         return false;
     }
@@ -110,11 +122,7 @@ bool CompPredicate::operator==(const BoolFactorTerm& rhs) const {
 
 
 BoolFactorTerm::Ptr CompPredicate::clone() const {
-    CompPredicate* p = new CompPredicate;
-    if (left) p->left = left->clone();
-    p->op = op;
-    if (right) p->right = right->clone();
-    return BoolFactorTerm::Ptr(p);
+    return std::make_shared<CompPredicate>(left->clone(), op, right->clone());
 }
 
 

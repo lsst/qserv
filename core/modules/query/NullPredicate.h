@@ -67,10 +67,11 @@ public:
     void renderTo(QueryTemplate& qt) const;
     BoolFactorTerm::Ptr clone() const;
     BoolFactorTerm::Ptr copySyntax() const { return clone(); }
-    bool operator==(const BoolFactorTerm& rhs) const override;
+    bool operator==(BoolFactorTerm const& rhs) const override;
 
     static int reverseOp(int op); // Reverses operator token
 
+    // FIXME these members should be private, or at least protected. Jira issue DM-17306
     std::shared_ptr<ValueExpr> value;
     bool hasNot;
 
