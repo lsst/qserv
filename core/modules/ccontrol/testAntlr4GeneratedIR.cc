@@ -46,6 +46,7 @@
 #include "query/ColumnRef.h"
 #include "query/CompPredicate.h"
 #include "query/FromList.h"
+#include "query/GroupByClause.h"
 #include "query/LikePredicate.h"
 #include "query/OrTerm.h"
 #include "query/PassTerm.h"
@@ -65,52 +66,44 @@ using namespace lsst::qserv;
 
 BOOST_AUTO_TEST_SUITE(Suite)
 
+
 /**
  * @brief Pusher is a set of recursive variadic functions to receive a variable number of arguments and push
- *        them onto a vector.
- *        This form is the last to be called when a series of args is being recursively pushed.
- * @tparam T The type contained by the vector.
- * @param vec The vector to push onto.
- * @param v The last object to be pushed.
+ *        them into a container that has a push_back function.
+ *
+ *        This form of `pusher` is the last to get called, for the single remaining element.
+ *
+ * @tparam Container The type of container
+ * @tparam Types The template parameters the container accepts (e.g. for a vector it will be the element type
+ *               and the allocator type)
+ * @tparam T The type of the object to push into the container.
+ * @tparam TArgs The type of the remaining objects to push onto the vector (this should match T)
+ * @param container The container to push objects into.
+ * @param first The object to push into the container.
  */
-template <typename T>
-void pusher(vector<T>& vec, T v) {
-    vec.push_back(v);
+template <template <typename... Args> class Container, typename... Types, typename T, typename... TArgs>
+void pusher(Container<Types...>& container, T first) {
+    container.push_back(first);
 }
 
 
 /**
  * @brief Pusher is a set of recursive variadic functions to receive a variable number of arguments and push
- *        them onto a vector.
+ *        them into a container that has a push_back function.
  *
- *        This form is used when explicitly decalring the template types when there is exactly one arg.
- *
- * @tparam T The type contained by the vector.
- * @tparam U The type of object being pushed.
- * @param vec The vector to push onto.
- * @param v The last object to be pushed.
+ * @tparam Container The type of container
+ * @tparam Types The template parameters the container accepts (e.g. for a vector it will be the element type
+ *               and the allocator type)
+ * @tparam T The type of the object to push into the container.
+ * @tparam TArgs The type of the remaining objects to push onto the vector (this should match T)
+ * @param container The container to push objects into.
+ * @param first The object to push into the container.
+ * @param args The rest of the objects to push into the container.
  */
-template <typename T, typename U>
-void pusher(vector<T>& vec, U v) {
-    vec.push_back(v);
-}
-
-
-/**
- * @brief Pusher is a set of recursive variadic functions to receive a variable number of arguments and push
- *        them onto a vector.
- *
- * @tparam T The type contained by the vector.
- * @tparam Args The variadic list of objects to push onto the vector.
- * @param vec The vector to push onto.
- * @param first The object to push onto. This will be each next object until there is one left, then the
- *              other form of `pusher` will be called.
- * @param args The rest of the object to be pushed onto the vector.
- */
-template <typename T, typename...Args>
-void pusher(vector<T>& vec, T first, Args... args) {
-    vec.push_back(first);
-    pusher(vec, args...);
+template <template <typename... Args> class Container, typename... Types, typename T, typename... TArgs>
+void pusher(Container<Types...>& container, T first, TArgs... args) {
+    container.push_back(first);
+    pusher(container, args...);
 }
 
 
@@ -118,7 +111,7 @@ void pusher(vector<T>& vec, T first, Args... args) {
 template <typename...Targs>
 shared_ptr<query::AndTerm> AndTerm(Targs... args) {
     vector<shared_ptr<query::BoolTerm>> terms;
-    pusher<shared_ptr<query::BoolTerm>, shared_ptr<query::BoolTerm>>(terms, args...);
+    pusher(terms, args...);
     return make_shared<query::AndTerm>(terms);
 }
 
@@ -127,7 +120,7 @@ shared_ptr<query::AndTerm> AndTerm(Targs... args) {
 template <typename...Targs>
 shared_ptr<query::BoolFactor> BoolFactor(Targs... args) {
     vector<shared_ptr<query::BoolFactorTerm>> terms;
-    pusher<shared_ptr<query::BoolFactorTerm>, shared_ptr<query::BoolFactorTerm>>(terms, args...);
+    pusher(terms, args...);
     return make_shared<query::BoolFactor>(terms);
 }
 
@@ -156,8 +149,25 @@ shared_ptr<query::CompPredicate> CompPredicate(shared_ptr<query::ValueExpr> cons
 template <typename...Targs>
 shared_ptr<query::FromList> FromList(Targs... args) {
     auto tableRefs = make_shared<vector<shared_ptr<query::TableRef>>>();
-    pusher<shared_ptr<query::TableRef>, shared_ptr<query::TableRef>>(*tableRefs, args...);
+    pusher(*tableRefs, args...);
     return make_shared<query::FromList>(tableRefs);
+}
+
+
+// No need to write a factory function for GroupByTerm; its cosntructor is named consistently with the
+// factory functions here, and its ultimate owner wants an instance, not a shared_ptr.
+// The 'using' statement is placed here to put the function (that is, class constructor) in alphabetical
+// order with the other factory functions to make it as obvious as possible where the GroupByTerm function
+// is coming from.
+using query::GroupByTerm;
+
+
+/// Create a new GroupByClause. Args should be a comma separated list of GroupByTerm.
+template <typename...Targs>
+shared_ptr<query::GroupByClause> GroupByClause(Targs... args) {
+    auto terms = make_shared<deque<query::GroupByTerm>>();
+    pusher(*terms, args...);
+    return make_shared<query::GroupByClause>(terms);
 }
 
 
@@ -189,7 +199,7 @@ query::OrderByTerm OrderByTerm(shared_ptr<query::ValueExpr> const& term) {
 template <typename...Targs>
 shared_ptr<query::OrTerm> OrTerm(Targs... args) {
     vector<shared_ptr<query::BoolTerm>> terms;
-    pusher<shared_ptr<query::BoolTerm>, shared_ptr<query::BoolTerm>>(terms, args...);
+    pusher(terms, args...);
     return make_shared<query::OrTerm>(terms);
 }
 
@@ -213,8 +223,9 @@ shared_ptr<query::SelectList> SelectList(Targs... args) {
 shared_ptr<query::SelectStmt> SelectStmt(shared_ptr<query::SelectList> const& selectList,
         shared_ptr<query::FromList> const& fromList,
         shared_ptr<query::WhereClause> const& whereClause,
-        shared_ptr<query::OrderByClause> const& orderByClause) {
-    return make_shared<query::SelectStmt>(selectList, fromList, whereClause, orderByClause);
+        shared_ptr<query::OrderByClause> const& orderByClause,
+        shared_ptr<query::GroupByClause> const& groupByClause) {
+    return make_shared<query::SelectStmt>(selectList, fromList, whereClause, orderByClause, groupByClause);
 }
 
 
@@ -312,13 +323,33 @@ static const vector<Antlr4TestQueries> ANTLR4_TEST_QUERIES = {
                         ValueExpr(ValueFactor("'%'"))))))),
                     PassTerm(")"))
             ))),
-            OrderByClause(OrderByTerm(ValueExpr(ValueFactor(ColumnRef("", "", "filterId")))))
+            OrderByClause(OrderByTerm(ValueExpr(ValueFactor(ColumnRef("", "", "filterId"))))),
+            nullptr // Group By Clause
         ),
 
         "SELECT sce.filterId,sce.filterName "
             "FROM Science_Ccd_Exposure AS sce "
             "WHERE (sce.visit=887404831) AND (sce.raftName='3,3') AND (sce.ccdName LIKE '%') "
             "ORDER BY filterId"
+    ),
+
+    // tests a query with 2 items in the GROUP BY expression
+    Antlr4TestQueries(
+        "SELECT objectId, filterId FROM Source GROUP BY objectId, filterId;",
+        SelectStmt(
+            SelectList(
+                ValueExpr(ValueFactor(ColumnRef("", "", "objectId"))),
+                ValueExpr(ValueFactor(ColumnRef("", "", "filterId")))
+            ),
+            FromList(TableRef("", "Source", "")),
+            nullptr, // WhereClause
+            nullptr, // OrderByClause
+            GroupByClause(
+                GroupByTerm(ValueExpr(ValueFactor(ColumnRef("", "", "objectId"))), ""),
+                GroupByTerm(ValueExpr(ValueFactor(ColumnRef("", "", "filterId"))), "")
+            )
+        ),
+        "SELECT objectId,filterId FROM Source GROUP BY objectId,filterId"
     )
 };
 

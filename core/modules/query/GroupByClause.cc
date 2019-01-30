@@ -106,13 +106,9 @@ std::string GroupByClause::getGenerated() {
 
 
 void GroupByClause::renderTo(QueryTemplate& qt) const {
-    if (_terms.get() && _terms->size() > 0) {
+    if (nullptr != _terms && _terms->size() > 0) {
         ValueExpr::render vr(qt, true);
-        int count = 0;
-        for (auto& term : *_terms) {
-            if (count++ > 0) {
-                qt.append(",");
-            }
+        for (auto&& term : *_terms) {
             vr.applyToQT(term.getExpr());
         }
     }
