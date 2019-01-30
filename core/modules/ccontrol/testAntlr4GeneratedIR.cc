@@ -81,9 +81,9 @@ BOOST_AUTO_TEST_SUITE(Suite)
  * @param container The container to push objects into.
  * @param first The object to push into the container.
  */
-template <template <typename... Args> class Container, typename... Types, typename T, typename... TArgs>
-void pusher(Container<Types...>& container, T first) {
-    container.push_back(first);
+template <typename Container, typename T>
+void pusher(Container& container, T&& first) {
+    container.push_back(std::forward<T>(first));
 }
 
 
@@ -100,10 +100,10 @@ void pusher(Container<Types...>& container, T first) {
  * @param first The object to push into the container.
  * @param args The rest of the objects to push into the container.
  */
-template <template <typename... Args> class Container, typename... Types, typename T, typename... TArgs>
-void pusher(Container<Types...>& container, T first, TArgs... args) {
-    container.push_back(first);
-    pusher(container, args...);
+template <typename Container, typename T, typename... TArgs>
+void pusher(Container& container, T&& first, TArgs&&... args) {
+    container.push_back(std::forward<T>(first));
+    pusher(container, std::forward<TArgs>(args)...);
 }
 
 
