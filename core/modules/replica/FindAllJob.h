@@ -50,7 +50,7 @@ namespace replica {
 struct FindAllJobResult {
 
     /// Per-worker flags indicating if the corresponding replica retrieval
-    /// request succeeded.
+    /// request succeeded for all databases in the family.
     ///
     std::map<std::string, bool> workers;
 
@@ -248,6 +248,10 @@ protected:
 
     /// A collection of requests implementing the operation
     std::list<FindAllRequest::Ptr> _requests;
+
+    /// Per-worker and per database flags indicating if the corresponding replica
+    /// retrieval request succeeded for all databases in the family.
+    std::map<std::string, std::map<std::string, bool>> _workerDatabaseSuccess;
 
     // The counter of requests which will be updated. They need to be atomic
     // to avoid race condition between the onFinish() callbacks executed within

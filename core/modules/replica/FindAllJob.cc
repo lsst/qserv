@@ -122,8 +122,9 @@ void FindAllJob::startImpl(util::Lock const& lock) {
         controller()->serviceProvider()->config()->workers();
     
     for (auto&& worker: workerNames) {
+        _replicaData.workers[worker] = false;
         for (auto&& database: _databases) {
-            _replicaData.workers[worker] = false;
+            _workerDatabaseSuccess[worker][database]= false;
             _requests.push_back(
                 controller()->findAllReplicas(
                     worker,
@@ -211,7 +212,7 @@ void FindAllJob::onRequestFinish(FindAllRequest::Ptr const& request) {
                                .atDatabase(info.database())
                                .atWorker(info.worker()) = info;
         }
-        _replicaData.workers[request->worker()] = true;
+        _workerDatabaseSuccess[request->worker()][request->database()]= true;
     }
 
     LOGS(_log, LOG_LVL_DEBUG, context()
@@ -225,6 +226,20 @@ void FindAllJob::onRequestFinish(FindAllRequest::Ptr const& request) {
      // before finalizing the object state and notifying clients.
 
      if (_numFinished == _numLaunched) {
+
+         // Compute the final state of the workers participated in the operation
+
+         for (auto const& workerEntry: _workerDatabaseSuccess) {
+            auto const& worker = workerEntry.first;
+            _replicaData.workers[worker] = true;
+            for (auto const& databaseEntry: workerEntry.second) {
+                bool const success  = databaseEntry.second;
+                if (not success) {
+                    _replicaData.workers[worker] = false;
+                    break;
+                }
+            }
+         }
 
          // Databases participating in a chunk
 
