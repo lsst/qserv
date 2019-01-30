@@ -29,6 +29,7 @@
   * @author Daniel L. Wang, SLAC
   */
 
+
 // Class header
 #include "parser/PredicateFactory.h"
 
@@ -42,12 +43,17 @@
 #include "parser/parseTreeUtil.h"
 #include "parser/SqlSQL2Parser.hpp" // (generated) SqlSQL2TokenTypes
 #include "parser/ValueExprFactory.h"
-#include "query/Predicate.h"
+#include "query/BetweenPredicate.h"
+#include "query/CompPredicate.h"
+#include "query/InPredicate.h"
+#include "query/LikePredicate.h"
+#include "query/NullPredicate.h"
 
 
 namespace lsst {
 namespace qserv {
 namespace parser {
+
 
 std::shared_ptr<query::CompPredicate>
 PredicateFactory::newCompPredicate(antlr::RefAST a) {
@@ -64,6 +70,7 @@ PredicateFactory::newCompPredicate(antlr::RefAST a) {
     return p;
 }
 
+
 std::shared_ptr<query::BetweenPredicate> PredicateFactory::newBetweenPredicate(antlr::RefAST a) {
     std::shared_ptr<query::BetweenPredicate> p = std::make_shared<query::BetweenPredicate>();
     if (a->getType() == SqlSQL2TokenTypes::BETWEEN_PREDICATE) {
@@ -78,6 +85,7 @@ std::shared_ptr<query::BetweenPredicate> PredicateFactory::newBetweenPredicate(a
     p->maxValue = _vf.newExpr(maxValue->getFirstChild());
     return p;
 }
+
 
 std::shared_ptr<query::InPredicate>
 PredicateFactory::newInPredicate(antlr::RefAST a) {
@@ -102,6 +110,7 @@ PredicateFactory::newInPredicate(antlr::RefAST a) {
     return p;
 }
 
+
 std::shared_ptr<query::LikePredicate>
 PredicateFactory::newLikePredicate(antlr::RefAST a) {
     std::shared_ptr<query::LikePredicate> p = std::make_shared<query::LikePredicate>();
@@ -117,6 +126,7 @@ PredicateFactory::newLikePredicate(antlr::RefAST a) {
     // query::LikePredicate& lp = *p; // for gdb
     return p;
 }
+
 
 std::shared_ptr<query::NullPredicate>
 PredicateFactory::newNullPredicate(antlr::RefAST a) {
@@ -139,5 +149,6 @@ PredicateFactory::newNullPredicate(antlr::RefAST a) {
     // query::NullPredicate& np = *p; // for gdb
     return p;
 }
+
 
 }}} // namespace lsst::qserv::parser

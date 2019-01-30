@@ -68,12 +68,21 @@ public:
     typedef std::shared_ptr<SelectList> Ptr;
 
     SelectList() : _valueExprList(std::make_shared<ValueExprPtrVector>()) {}
+
+    // Construct a SelectList that owns the given vector of ValueExpr.
+    SelectList(std::shared_ptr<ValueExprPtrVector> valueExprList)
+    : _valueExprList(valueExprList) {}
+
     ~SelectList() {}
+
     void addStar(std::string const& table);
 
     std::string getGenerated();
+
     void renderTo(QueryTemplate& qt) const;
+
     std::shared_ptr<SelectList> clone() const;
+
     std::shared_ptr<SelectList> copySyntax();
 
     // non-const accessor for query manipulation.

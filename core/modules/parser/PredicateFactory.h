@@ -32,11 +32,13 @@
   * @author Daniel L. Wang, SLAC
   */
 
+
 // System headers
 #include <memory>
 
 // Third-party headers
 #include <antlr/AST.hpp>
+
 
 // Forward declarations
 namespace lsst {
@@ -57,6 +59,7 @@ namespace lsst {
 namespace qserv {
 namespace parser {
 
+
 /// PredicateFactory is a factory for making Predicate objects
 class PredicateFactory {
 public:
@@ -70,6 +73,7 @@ public:
 private:
     ValueExprFactory& _vf;
 };
+
 
 }}} // namespace lsst::qserv::parser
 

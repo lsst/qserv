@@ -36,19 +36,23 @@
 #include "parser/ValueFactorFactory.h"
 #include "parser/WhereFactory.h"
 #include "query/AndTerm.h"
+#include "query/BetweenPredicate.h"
 #include "query/BoolFactor.h"
 #include "query/BoolTerm.h"
 #include "query/BoolTermFactor.h"
+#include "query/CompPredicate.h"
 #include "query/FromList.h"
 #include "query/FuncExpr.h"
 #include "query/GroupByClause.h"
 #include "query/HavingClause.h"
+#include "query/InPredicate.h"
 #include "query/JoinRef.h"
+#include "query/LikePredicate.h"
 #include "query/LogicalTerm.h"
+#include "query/NullPredicate.h"
 #include "query/OrderByClause.h"
 #include "query/OrTerm.h"
 #include "query/PassTerm.h"
-#include "query/Predicate.h"
 #include "query/SelectList.h"
 #include "query/SelectStmt.h"
 #include "query/SqlSQL2Tokens.h"
@@ -797,7 +801,7 @@ public:
 
     void onExit() override {
         ASSERT_EXECUTION_CONDITION(_selectList != nullptr, "Failed to create a select list.", _ctx);
-        auto selectStatement = make_shared<query::SelectStmt>(_fromList, _selectList, _whereClause,
+        auto selectStatement = make_shared<query::SelectStmt>(_selectList, _fromList, _whereClause,
                 _orderByClause, _groupByClause, _havingClause, _distinct, _limit);
         lockedParent()->handleSelectStatement(selectStatement);
     }

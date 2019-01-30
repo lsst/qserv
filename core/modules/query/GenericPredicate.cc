@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2019 AURA/LSST.
+ * Copyright 2019 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,17 +20,10 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-/**
-  * @file
-  *
-  * @brief Predicate implementation.
-  *
-  * @author Daniel L. Wang, SLAC
-  */
 
 
 // Class header
-#include "query/Predicate.h"
+#include "query/GenericPredicate.h"
 
 
 namespace lsst {
@@ -38,9 +31,9 @@ namespace qserv {
 namespace query {
 
 
-std::ostream& operator<<(std::ostream& os, Predicate const& bt) {
-    bt.dbgPrint(os);
-    return os;
+BoolFactorTerm::Ptr GenericPredicate::clone() const {
+    //return BfTerm::Ptr(new GenericPredicate());
+    return BoolFactorTerm::Ptr();
 }
 
 

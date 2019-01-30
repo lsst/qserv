@@ -67,8 +67,13 @@ namespace query {
 /// WhereClause is a SQL WHERE containing QsRestrictors and a BoolTerm tree.
 class WhereClause {
 public:
-    WhereClause() {}
-    ~WhereClause() {}
+    WhereClause() = default;
+
+    // Construct a WhereClause that has the given OrTerm as its root term.
+    WhereClause(std::shared_ptr<query::OrTerm> rootOrTerm)
+    : _rootOrTerm(rootOrTerm) {}
+
+    ~WhereClause() = default;
 
     std::shared_ptr<std::vector<std::shared_ptr<QsRestrictor>> const> getRestrs() const {
         return _restrs;

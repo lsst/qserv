@@ -96,9 +96,6 @@ namespace query {
 // class SelectStmt
 ////////////////////////////////////////////////////////////////////////
 
-SelectStmt::SelectStmt() : _hasDistinct(false), _limit(0) {}
-
-
 QueryTemplate
 SelectStmt::getQueryTemplate() const {
     QueryTemplate qt;

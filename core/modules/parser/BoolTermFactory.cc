@@ -45,9 +45,13 @@
 #include "query/BoolFactor.h"
 #include "query/BoolFactorTerm.h"
 #include "query/BoolTermFactor.h"
+#include "query/BetweenPredicate.h"
+#include "query/CompPredicate.h"
+#include "query/InPredicate.h"
+#include "query/LikePredicate.h"
+#include "query/NullPredicate.h"
 #include "query/OrTerm.h"
 #include "query/PassTerm.h"
-#include "query/Predicate.h"
 #include "query/UnknownTerm.h"
 
 namespace {

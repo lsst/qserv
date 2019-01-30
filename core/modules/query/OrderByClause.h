@@ -67,8 +67,8 @@ public:
 
     OrderByTerm() : _order(DEFAULT) {}
     OrderByTerm(std::shared_ptr<ValueExpr> val,
-                Order order,
-                std::string collate)
+                Order order=DEFAULT,
+                std::string collate=std::string())
     : _expr(val)
     , _order(order)
     , _collate(collate)
@@ -102,6 +102,10 @@ public:
     typedef std::vector<OrderByTerm> OrderByTermVector;
 
     OrderByClause() : _terms(std::make_shared<OrderByTermVector>()) {}
+
+    // Construct an OrderByClause that owns the given vector of OrderByTerm.
+    OrderByClause(std::shared_ptr<OrderByTermVector> const& terms) : _terms(terms) {}
+
     ~OrderByClause() {}
 
     std::string sqlFragment() const;

@@ -22,16 +22,15 @@
  */
 
 
-#ifndef LSST_QSERV_QUERY_PASSLISTTERM_H
-#define LSST_QSERV_QUERY_PASSLISTTERM_H
-
+#ifndef LSST_QSERV_QUERY_INPREDICATE_H
+#define LSST_QSERV_QUERY_INPREDICATE_H
 
 // System headers
-#include <string>
+#include <memory>
 #include <vector>
 
-// Qserv headers
-#include "query/BoolFactorTerm.h"
+// Local headers
+#include "query/Predicate.h"
 
 
 // Forward declarations
@@ -40,6 +39,7 @@ namespace qserv {
 namespace query {
     class ColumnRef;
     class ValueExpr;
+    class QueryTemplate;
 }}} // End of forward declarations
 
 
@@ -48,33 +48,31 @@ namespace qserv {
 namespace query {
 
 
-/// PassListTerm is like a PassTerm, but holds a list of passing strings
-class PassListTerm : public BoolFactorTerm {
+/// InPredicate is a Predicate comparing a row value to a set
+class InPredicate : public Predicate {
 public:
-    typedef std::shared_ptr<PassListTerm> Ptr;
+    typedef std::shared_ptr<InPredicate> Ptr;
 
-    /// Get a vector of the ValueExprs this contains.
-    void findValueExprs(std::vector<std::shared_ptr<ValueExpr>>& vector) const override {}
+    InPredicate(std::shared_ptr<ValueExpr> const& iValue, std::vector<std::shared_ptr<ValueExpr>> const& iCands, bool iHasNot)
+    : value(iValue), cands(iCands), hasNot(iHasNot)
+    {}
 
-    /// Get a vector of the ColumnRefs this contains.
-    void findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& vector) const override {}
+    InPredicate() : hasNot(false) {}
 
-    /// Make a deep copy of this term.
-    BoolFactorTerm::Ptr clone() const override;
+    ~InPredicate() override = default;
 
-    /// Make a shallow copy of this term.
-    BoolFactorTerm::Ptr copySyntax() const override;
-
-    /// Write a human-readable version of this instance to the ostream for debug output.
+    char const* getName() const override { return "InPredicate"; }
+    void findValueExprs(std::vector<std::shared_ptr<ValueExpr>>& vector) const override;
+    void findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& vector) const override;
     std::ostream& putStream(std::ostream& os) const override;
-
-    /// Serialze this instance as SQL to the QueryTemplate.
     void renderTo(QueryTemplate& qt) const override;
+    BoolFactorTerm::Ptr clone() const override;
+    BoolFactorTerm::Ptr copySyntax() const override { return clone();}
+    bool operator==(BoolFactorTerm const& rhs) const override;
 
-    bool operator==(const BoolFactorTerm& rhs) const override;
-
-    // FIXME this member should be private, or at least protected. Jira issue DM-17306
-    std::vector<std::string> _terms;
+    std::shared_ptr<ValueExpr> value;
+    std::vector<std::shared_ptr<ValueExpr>> cands;
+    bool hasNot;
 
 protected:
     void dbgPrint(std::ostream& os) const override;
@@ -83,4 +81,4 @@ protected:
 
 }}} // namespace lsst::qserv::query
 
-#endif // LSST_QSERV_QUERY_PASSLISTTERM_H
+#endif // LSST_QSERV_QUERY_INPREDICATE_H
