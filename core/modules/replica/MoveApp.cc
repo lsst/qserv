@@ -21,7 +21,7 @@
  */
 
 // Class header
-#include "replica/RebalanceApp.h"
+#include "replica/MoveApp.h"
 
 // System headers
 #include <atomic>
@@ -30,12 +30,10 @@
 #include <vector>
 
 // Qserv headers
-#include "replica/Configuration.h"
 #include "replica/Controller.h"
+#include "replica/MoveReplicaJob.h"
 #include "replica/ReplicaInfo.h"
-#include "replica/RebalanceJob.h"
 #include "util/BlockPost.h"
-#include "util/TablePrinter.h"
 
 using namespace std;
 
@@ -48,45 +46,6 @@ string const description {
     " collocation intact."
 };
 
-using namespace lsst::qserv::replica;
-namespace util = lsst::qserv::util;
-
-
-void printPlan(RebalanceJobResult const& r) {
-
-    cout << "\nTHE REBALANCE PLAN:\n"
-         << "  totalWorkers:    " << r.totalWorkers    << "  (not counting workers which failed to report chunks)\n"
-         << "  totalGoodChunks: " << r.totalGoodChunks << "  (good chunks reported by the precursor job)\n"
-         << "  avgChunks:       " << r.avgChunks       << "\n"
-         << "\n";
-
-    vector<unsigned int> columnChunk;
-    vector<string>       columnSourceWorker;
-    vector<string>       columnDestinationWorker;
-
-    for (auto&& chunkEntry: r.plan) {
-        auto const chunkNumber = chunkEntry.first;
-
-        for (auto&& sourceWorkerEntry: chunkEntry.second) {
-            auto&& sourceWorker      = sourceWorkerEntry.first;
-            auto&& destinationWorker = sourceWorkerEntry.second;
-
-            columnChunk            .push_back(chunkNumber);
-            columnSourceWorker     .push_back(sourceWorker);
-            columnDestinationWorker.push_back(destinationWorker);
-        }
-    }
-    util::ColumnTablePrinter table("", "  ", false);
-
-    table.addColumn("chunk",              columnChunk );
-    table.addColumn("source worker",      columnSourceWorker,      util::ColumnTablePrinter::LEFT);
-    table.addColumn("destination worker", columnDestinationWorker, util::ColumnTablePrinter::LEFT);
-
-    table.print(cout, false, false);
-
-    cout << endl;
-}
-
 } /// namespace
 
 
@@ -94,10 +53,10 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-RebalanceApp::Ptr RebalanceApp::create(int argc,
-                                       const char* const argv[]) {
+MoveApp::Ptr MoveApp::create(int argc,
+                             const char* const argv[]) {
     return Ptr(
-        new RebalanceApp(
+        new MoveApp(
             argc,
             argv
         )
@@ -105,8 +64,8 @@ RebalanceApp::Ptr RebalanceApp::create(int argc,
 }
 
 
-RebalanceApp::RebalanceApp(int argc,
-                           const char* const argv[])
+MoveApp::MoveApp(int argc,
+                 const char* const argv[])
     :   Application(
             argc,
             argv,
@@ -123,29 +82,47 @@ RebalanceApp::RebalanceApp(int argc,
         "The name of a database family",
         _databaseFamily);
 
+    parser().required(
+        "chunk",
+        "The chunk to be affected by the operation",
+        _chunk);
+
+    parser().required(
+        "source-worker",
+        "The name of a worker which has the replica to be moved",
+        _sourceWorker);
+
+    parser().required(
+        "destination-worker",
+        "The name of a worker where the replica will be moved (must not"
+        " be the same worker as the source one)",
+        _destinationWorker);
+
     parser().flag(
-        "estimate-only",
-        "Do not make any changes to chunk disposition. Just produce and print"
-        " an estimated re-balancing plan.",
-        _estimateOnly
-    );
+        "purge",
+        "Purge the input replica at the source worker upon a successful"
+        " completion of the operation.",
+        _purge);
 
     parser().option(
         "tables-page-size",
-        "the number of rows in the table of replicas (0 means no pages)",
+        "The number of rows in the table of replicas (0 means no pages)",
         _pageSize);
 }
 
 
-int RebalanceApp::runImpl() {
+int MoveApp::runImpl() {
 
     atomic<bool> finished{false};
-    auto const job = RebalanceJob::create(
+    auto const job = MoveReplicaJob::create(
         _databaseFamily,
-        _estimateOnly,
+        _chunk,
+        _sourceWorker,
+        _destinationWorker,
+        _purge,
         Controller::create(serviceProvider()),
         string(),
-        [&finished] (RebalanceJob::Ptr const& job) {
+        [&finished] (MoveReplicaJob::Ptr const& job) {
             finished = true;
         }
     );
@@ -161,14 +138,11 @@ int RebalanceApp::runImpl() {
     auto&& jobResult = job->getReplicaData();
 
     cout << "\n";
-    ::printPlan(jobResult);
-    if (not _estimateOnly) {
-        cout << "\n";
-        replica::printAsTable("CREATED REPLICAS", "  ", jobResult.createdChunks, cout, _pageSize);
-        cout << "\n";
-        replica::printAsTable("DELETED REPLICAS", "  ", jobResult.deletedChunks, cout, _pageSize);
-    }
+    replica::printAsTable("CREATED REPLICAS", "  ", jobResult.createdChunks, cout, _pageSize);
     cout << "\n";
+    replica::printAsTable("DELETED REPLICAS", "  ", jobResult.deletedChunks, cout, _pageSize);
+    cout << "\n";
+
     return 0;
 }
 

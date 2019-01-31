@@ -21,7 +21,7 @@
  */
 
 // Class header
-#include "replica/ReplicateApp.h"
+#include "replica/PurgeApp.h"
 
 // System headers
 #include <atomic>
@@ -33,7 +33,7 @@
 #include "replica/Configuration.h"
 #include "replica/Controller.h"
 #include "replica/ReplicaInfo.h"
-#include "replica/ReplicateJob.h"
+#include "replica/PurgeJob.h"
 #include "util/BlockPost.h"
 
 using namespace std;
@@ -41,11 +41,10 @@ using namespace std;
 namespace {
 
 string const description {
-    "This application analyzes the replication level for all chunks of a given"
-    " database family and bring the number of replicas up to the explicitly specified"
-    " (via the corresponding option) or implied (as per the site's Configuration)"
-    " minimum level. Chunks which already have the desired replication level won't"
-    " be affected by the operation"
+    "This application purges excess replicas for all chunks of"
+    " a database family down to the minimally required replication level. And while"
+    " doing so, the application will make the best effort to leave worker nodes as"
+    " balanced as possible, and it will also preserve chunk collocation."
 };
 
 } /// namespace
@@ -55,10 +54,10 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-ReplicateApp::Ptr ReplicateApp::create(int argc,
-                                       const char* const argv[]) {
+PurgeApp::Ptr PurgeApp::create(int argc,
+                               const char* const argv[]) {
     return Ptr(
-        new ReplicateApp(
+        new PurgeApp(
             argc,
             argv
         )
@@ -66,8 +65,8 @@ ReplicateApp::Ptr ReplicateApp::create(int argc,
 }
 
 
-ReplicateApp::ReplicateApp(int argc,
-                           const char* const argv[])
+PurgeApp::PurgeApp(int argc,
+                   const char* const argv[])
     :   Application(
             argc,
             argv,
@@ -86,7 +85,7 @@ ReplicateApp::ReplicateApp(int argc,
 
     parser().option(
         "replicas",
-        "The minimum number of replicas to be guaranteed for each chunk (leaving"
+        "The maximum number of replicas to be left for each chunk (leaving"
         " it to the default value 0 will pull the actual value of the parameter"
         " from the Configuration).",
         _replicas
@@ -99,15 +98,15 @@ ReplicateApp::ReplicateApp(int argc,
 }
 
 
-int ReplicateApp::runImpl() {
+int PurgeApp::runImpl() {
 
     atomic<bool> finished{false};
-    auto const job = ReplicateJob::create(
+    auto const job = PurgeJob::create(
         _databaseFamily,
         _replicas,
         Controller::create(serviceProvider()),
         string(),
-        [&finished] (ReplicateJob::Ptr const& job) {
+        [&finished] (PurgeJob::Ptr const& job) {
             finished = true;
         }
     );
@@ -121,7 +120,7 @@ int ReplicateApp::runImpl() {
     // Analyze and display results
 
     cout << "\n";
-    replica::printAsTable("CREATED REPLICAS", "  ", job->getReplicaData().chunks, cout, _pageSize);
+    replica::printAsTable("DELETED REPLICAS", "  ", job->getReplicaData().chunks, cout, _pageSize);
     cout << "\n";
 
     return 0;

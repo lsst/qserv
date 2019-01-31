@@ -104,7 +104,7 @@ private:
     bool _verticalSeparator = false;
 
     /// The number of rows in the table of replicas (0 means no pages)
-    size_t _pageSize = 0;
+    size_t _pageSize = 20;
 };
 
 }}} // namespace lsst::qserv::replica

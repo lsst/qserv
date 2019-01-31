@@ -47,25 +47,15 @@ namespace replica {
  */
 struct RebalanceJobResult {
 
-    /// The type describing replicas affected by the operation and grouped
-    /// by:
-    ///
-    ///   <chunk number>, <database>, <affected worker>
-    ///
-    typedef std::map<unsigned int,          // chunk
-             std::map<std::string,          // database
-                      std::map<std::string, // worker
-                               ReplicaInfo>>> ChunkDatabaseWorker;
-
     /// Results reported by workers upon the successful completion
     /// of the new replica creation requests
     std::list<ReplicaInfo> createdReplicas;
 
     /// New replica creation results grouped by:
     ///
-    ///   <chunk number>, <database>, <destination worker>
+    ///   <chunk>, <database>, <destination worker>
     ///
-    ChunkDatabaseWorker createdChunks;
+    ChunkDatabaseWorkerReplicaInfo createdChunks;
 
     /// Results reported by workers upon the successful completion
     /// of the replica deletion requests
@@ -73,9 +63,9 @@ struct RebalanceJobResult {
 
     /// Replica deletion results grouped by:
     ///
-    ///   <chunk number>, <database>, <source worker>
+    ///   <chunk>, <database>, <source worker>
     ///
-    ChunkDatabaseWorker deletedChunks;
+    ChunkDatabaseWorkerReplicaInfo deletedChunks;
 
     /// Per-worker flags indicating if the corresponding replica retrieval
     /// request succeeded.

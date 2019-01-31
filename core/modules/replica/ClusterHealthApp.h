@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_REBALANCEAPP_H
-#define LSST_QSERV_REPLICA_REBALANCEAPP_H
+#ifndef LSST_QSERV_REPLICA_CLUSTERHEALTHAPP_H
+#define LSST_QSERV_REPLICA_CLUSTERHEALTHAPP_H
 
 // Qserv headers
 #include "replica/Application.h"
@@ -32,16 +32,17 @@ namespace qserv {
 namespace replica {
 
 /**
- * Class RebalanceApp implements a tool which runs the rebalancing algorithm
- * in a scope of a database family.
+ * Class ClusterHealthApp probes and reports a status of the Replication system's
+ * and Qserv workers to see if they respond within the specified (or implied)
+ * timeout.
  */
-class RebalanceApp
+class ClusterHealthApp
     :   public Application {
 
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<RebalanceApp> Ptr;
+    typedef std::shared_ptr<ClusterHealthApp> Ptr;
 
     /**
      * The factory method is the only way of creating objects of this class
@@ -58,19 +59,19 @@ public:
 
     // Default construction and copy semantics are prohibited
 
-    RebalanceApp()=delete;
-    RebalanceApp(RebalanceApp const&)=delete;
-    RebalanceApp& operator=(RebalanceApp const&)=delete;
+    ClusterHealthApp()=delete;
+    ClusterHealthApp(ClusterHealthApp const&)=delete;
+    ClusterHealthApp& operator=(ClusterHealthApp const&)=delete;
 
-    ~RebalanceApp() override=default;
+    ~ClusterHealthApp() override=default;
 
 protected:
 
     /**
-     * @see RebalanceApp::create()
+     * @see ClusterHealthApp::create()
      */
-    RebalanceApp(int argc,
-                 const char* const argv[]);
+    ClusterHealthApp(int argc,
+                     const char* const argv[]);
 
     /**
      * @see Application::runImpl()
@@ -79,17 +80,15 @@ protected:
 
 private:
 
-    /// The name of a database family
-    std::string _databaseFamily;
+    /// The timeout (seconds) for status requests sent to the Replication
+    /// system's and Qserv workers
+    unsigned int _timeoutSec = 10;
 
-    /// Do not make any changes to chunk disposition. Just produce and print
-    /// an estimated re-balancing plan.
-    bool _estimateOnly = false;
-
-    /// The number of rows in the table of replicas (0 means no pages)
-    size_t _pageSize = 20;
+    /// Extend a scope of the operation to probes all known workers instead of
+    /// just the ENABLED ones.
+    bool _allWorkers = false;
 };
 
 }}} // namespace lsst::qserv::replica
 
-#endif /* LSST_QSERV_REPLICA_REBALANCEAPP_H */
+#endif /* LSST_QSERV_REPLICA_CLUSTERHEALTHAPP_H */

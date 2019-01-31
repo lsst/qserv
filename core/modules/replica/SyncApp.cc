@@ -138,7 +138,7 @@ int SyncApp::runImpl() {
     }
     util::ColumnTablePrinter table("CHUNK DISTRIBUTION:", "  ", false);
 
-    table.addColumn("chunk",        columnWorker, util::ColumnTablePrinter::LEFT);
+    table.addColumn("worker",       columnWorker, util::ColumnTablePrinter::LEFT);
     table.addColumn("prev #chunks", columnNumPrevChunks);
     table.addColumn("new #chunks",  columnNumNewChunks);
 

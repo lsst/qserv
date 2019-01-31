@@ -87,6 +87,8 @@ private:
     /// from the Configuration).
     size_t _replicas = 0;
 
+    /// The number of rows in the table of replicas (0 means no pages)
+    size_t _pageSize = 20;
 };
 
 }}} // namespace lsst::qserv::replica

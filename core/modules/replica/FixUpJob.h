@@ -52,10 +52,7 @@ struct FixUpJobResult {
     std::list<ReplicaInfo> replicas;
 
     /// Results grouped by: chunk number, database, worker
-    std::map<unsigned int,                  // chunk
-             std::map<std::string,          // database
-                      std::map<std::string, // worker
-                               ReplicaInfo>>> chunks;
+    ChunkDatabaseWorkerReplicaInfo chunks;
 
     /// Per-worker flags indicating if the corresponding replica retrieval
     /// request succeeded.

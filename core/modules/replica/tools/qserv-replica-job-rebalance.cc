@@ -20,8 +20,10 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-/// qserv-replica-job-rebalance.cc is a single job Controller application
-/// which is meant to run the corresponding job.
+/**
+ * qserv-replica-job-rebalance.cc re-balances replicas across worker nodes
+ * in a scope of a database family.
+ */
 
 // System headers
 #include <iostream>

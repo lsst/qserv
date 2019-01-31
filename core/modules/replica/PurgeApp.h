@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_REBALANCEAPP_H
-#define LSST_QSERV_REPLICA_REBALANCEAPP_H
+#ifndef LSST_QSERV_REPLICA_PURGEAPP_H
+#define LSST_QSERV_REPLICA_PURGEAPP_H
 
 // Qserv headers
 #include "replica/Application.h"
@@ -32,16 +32,18 @@ namespace qserv {
 namespace replica {
 
 /**
- * Class RebalanceApp implements a tool which runs the rebalancing algorithm
- * in a scope of a database family.
+ * Class PurgeApp implements a tool which purges excess replicas for all chunks of
+ * a database family down to the minimally required replication level. And while
+ * doing so, the application will make the best effort to leave worker nodes as
+ * balanced as possible, and it will also preserve chunk collocation.
  */
-class RebalanceApp
+class PurgeApp
     :   public Application {
 
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<RebalanceApp> Ptr;
+    typedef std::shared_ptr<PurgeApp> Ptr;
 
     /**
      * The factory method is the only way of creating objects of this class
@@ -58,19 +60,19 @@ public:
 
     // Default construction and copy semantics are prohibited
 
-    RebalanceApp()=delete;
-    RebalanceApp(RebalanceApp const&)=delete;
-    RebalanceApp& operator=(RebalanceApp const&)=delete;
+    PurgeApp()=delete;
+    PurgeApp(PurgeApp const&)=delete;
+    PurgeApp& operator=(PurgeApp const&)=delete;
 
-    ~RebalanceApp() override=default;
+    ~PurgeApp() override=default;
 
 protected:
 
     /**
-     * @see RebalanceApp::create()
+     * @see PurgeApp::create()
      */
-    RebalanceApp(int argc,
-                 const char* const argv[]);
+    PurgeApp(int argc,
+             const char* const argv[]);
 
     /**
      * @see Application::runImpl()
@@ -82,9 +84,10 @@ private:
     /// The name of a database family
     std::string _databaseFamily;
 
-    /// Do not make any changes to chunk disposition. Just produce and print
-    /// an estimated re-balancing plan.
-    bool _estimateOnly = false;
+    /// The maximum number of replicas to be left for each chunk (leaving
+    /// it to the default value 0 will pull the actual value of the parameter
+    /// from the Configuration).
+    size_t _replicas = 0;
 
     /// The number of rows in the table of replicas (0 means no pages)
     size_t _pageSize = 20;
@@ -92,4 +95,4 @@ private:
 
 }}} // namespace lsst::qserv::replica
 
-#endif /* LSST_QSERV_REPLICA_REBALANCEAPP_H */
+#endif /* LSST_QSERV_REPLICA_PURGEAPP_H */
