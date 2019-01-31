@@ -20,128 +20,29 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-/// qserv-replica-job-replicate.cc is a single job Controller application
-/// which is meant to run the corresponding job.
+/**
+ * qserv-replica-job-replicate.cc is an application which analyzes the replication
+ * level for all chunks of a given database family and bring the number of replicas
+ * up to the explicitly specified (via the corresponding option) or implied (as per
+ * the site's Configuration) minimum level. Chunks which already have the desired
+ * replication level won't be affected by the operation.
+ */
 
 // System headers
-#include <atomic>
 #include <iostream>
 #include <stdexcept>
-#include <string>
 
 // Qserv headers
-#include "proto/replication.pb.h"
-#include "replica/Controller.h"
-#include "replica/ReplicateJob.h"
-#include "replica/ServiceProvider.h"
-#include "util/BlockPost.h"
-#include "util/CmdLineParser.h"
+#include "replica/ReplicateApp.h"
 
-using namespace lsst::qserv;
-
-namespace {
-
-// Command line parameters
-
-std::string  databaseFamily;
-std::string  configUrl;
-unsigned int numReplicas;
-bool         progressReport;
-bool         errorReport;
-bool         chunkLocksReport;
-
-/// Run the test
-bool test() {
-
-    try {
-
-        ///////////////////////////////////////////////////////////////////////////
-        // Start the provider in its own thread pool before initiating any requests
-        // or jobs.
-        //
-        // Note that onFinish callbacks which are activated upon the completion of
-        // the requests or jobs will be run by a thread from the pool.
-
-        replica::ServiceProvider::Ptr const provider   = replica::ServiceProvider::create(configUrl);
-        replica::Controller::Ptr      const controller = replica::Controller::create(provider);
-
-        provider->run();
-
-        ////////////////////
-        // Start replication
-
-        std::atomic<bool> finished{false};
-        auto job = replica::ReplicateJob::create(
-            databaseFamily,
-            numReplicas,
-            controller,
-            std::string(),
-            [&finished] (replica::ReplicateJob::Ptr job) {
-                finished = true;
-            }
-        );
-        job->start();
-
-        util::BlockPost blockPost(1000,2000);
-        while (not finished) {
-            blockPost.wait();
-        }
-
-        //////////////////////////////////////////////////
-        // Shutdown the provider and join with its threads
-
-        provider->stop();
-
-    } catch (std::exception const& ex) {
-        std::cerr << ex.what() << std::endl;
-    }
-    return true;
-}
-} /// namespace
+using namespace lsst::qserv::replica;
 
 int main(int argc, const char* const argv[]) {
-
-    // Verify that the version of the library that we linked against is
-    // compatible with the version of the headers we compiled against.
-
-    GOOGLE_PROTOBUF_VERIFY_VERSION;
-
-    // Parse command line parameters
     try {
-        util::CmdLineParser parser(
-            argc,
-            argv,
-            "\n"
-            "Usage:\n"
-            "  <database-family> [--config=<url>]\n"
-            "                    [--replicas=<number>]\n"
-            "                    [--progress-report]\n"
-            "                    [--error-report]\n"
-            "                    [--chunk-locks-report]\n"
-            "\n"
-            "Parameters:\n"
-            "  <database>         - the name of a database to inspect\n"
-            "\n"
-            "Flags and options:\n"
-            "  --config           - a configuration URL (a configuration file or a set of the database\n"
-            "                       connection parameters [ DEFAULT: 'file:replication.cfg' ]\n"
-            "  --replicas         - the minimum number of replicas\n"
-            "                       [ DEFAULT: '0' which will tell the application to pull the corresponding\n"
-            "                       parameter from the Configuration]\n"
-            "  --progress-report  - the flag triggering progress report when executing batches of requests\n"
-            "  --error-report     - the flag triggering detailed report on failed requests\n"
-            "  --chunk-locks-report - report chunks which are locked\n");
-
-        ::databaseFamily   = parser.parameter<std::string>(1);
-        ::configUrl        = parser.option<std::string>("config", "file:replication.cfg");
-        ::numReplicas      = parser.option<unsigned int>("replicas", 0);
-        ::progressReport   = parser.flag("progress-report");
-        ::errorReport      = parser.flag("error-report");
-        ::chunkLocksReport = parser.flag("chunk-locks-report");
-
+        auto app = ReplicateApp::create(argc, argv);
+        return app->run();
     } catch (std::exception const& ex) {
-        return 1;
+        std::cerr << "main()  the application failed, exception: " << ex.what() << std::endl;
     }
-    ::test();
-    return 0;
+    return 1;
 }
