@@ -260,7 +260,6 @@ ostream& operator<<(ostream &os, ReplicaInfoCollection const& ric) {
 }
 
 
-
 void printAsTable(string const& caption,
                   string const& prefix,
                   ChunkDatabaseWorkerReplicaInfo const& collection,
@@ -302,7 +301,92 @@ void printAsTable(string const& caption,
     table.addColumn("workers",   columnWorkers, util::ColumnTablePrinter::LEFT);
 
     table.print(os, false, false, pageSize, pageSize != 0);
-
 }
+
+
+void printAsTable(string const& caption,
+                  string const& prefix,
+                  ChunkDatabaseReplicaInfo const& collection,
+                  ostream& os,
+                  size_t pageSize) {
+
+    vector<unsigned int> columnChunk;
+    vector<string>       columnDatabase;
+    vector<string>       columnWarnings;
+
+
+    for (auto&& chunkEntry: collection) {
+        unsigned int const& chunk = chunkEntry.first;
+
+        for (auto&& databaseEntry: chunkEntry.second) {
+            auto&& databaseName = databaseEntry.first;
+            auto&& replicaInfo  = databaseEntry.second;
+
+            columnChunk   .push_back(chunk);
+            columnDatabase.push_back(databaseName);
+            columnWarnings.push_back(replicaInfo.status() != ReplicaInfo::Status::COMPLETE ? "INCOMPLETE " : "");
+        }
+    }
+    util::ColumnTablePrinter table(caption, prefix, false);
+
+    table.addColumn("chunk",    columnChunk );
+    table.addColumn("database", columnDatabase, util::ColumnTablePrinter::LEFT);
+    table.addColumn("warnings", columnWarnings, util::ColumnTablePrinter::LEFT);
+
+    table.print(os, false, false, pageSize, pageSize != 0);
+}
+
+
+void printAsTable(string const& caption,
+                  string const& prefix,
+                  FamilyChunkDatabaseWorkerInfo const& collection,
+                  ostream& os,
+                  size_t pageSize) {
+
+
+    vector<string>       columnFamily;
+    vector<unsigned int> columnChunk;
+    vector<string>       columnDatabase;
+    vector<size_t>       columnNumReplicas;
+    vector<string>       columnWorkers;
+
+
+    for (auto&& familyEntry: collection) {
+        auto&& familyName = familyEntry.first;
+
+        for (auto&& chunkEntry: familyEntry.second) {
+            unsigned int const& chunk = chunkEntry.first;
+
+            for (auto&& databaseEntry: chunkEntry.second) {
+                auto&& databaseName    = databaseEntry.first;
+                auto const numReplicas = databaseEntry.second.size();
+
+                string workers;
+
+                for (auto&& replicaEntry: databaseEntry.second) {
+                    auto&& workerName  = replicaEntry.first;
+                    auto&& replicaInfo = replicaEntry.second;
+
+                    workers += workerName + (replicaInfo.status() != ReplicaInfo::Status::COMPLETE ? "(!) " : " ");
+                }
+                columnFamily     .push_back(familyName);
+                columnChunk      .push_back(chunk);
+                columnDatabase   .push_back(databaseName);
+                columnNumReplicas.push_back(numReplicas);
+                columnWorkers    .push_back(workers);
+            }
+        }
+    }
+    util::ColumnTablePrinter table(caption, prefix, false);
+
+    table.addColumn("database family",  columnFamily,   util::ColumnTablePrinter::LEFT);
+    table.addColumn("chunk",            columnChunk );
+    table.addColumn("database",         columnDatabase, util::ColumnTablePrinter::LEFT);
+    table.addColumn("#replicas",        columnNumReplicas);
+    table.addColumn("workers",          columnWorkers,  util::ColumnTablePrinter::LEFT);
+
+    table.print(os, false, false, pageSize, pageSize != 0);
+}
+
 
 }}} // namespace lsst::qserv::replica

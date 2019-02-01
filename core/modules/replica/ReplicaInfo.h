@@ -343,6 +343,78 @@ void printAsTable(std::string const& caption,
 
 
 /**
+ * The type which groups ReplicaInfo by:
+ *
+ *   <chunk number>, <database>
+ */
+typedef std::map<unsigned int,          // chunk
+                 std::map<std::string,  // database
+                          ReplicaInfo>> ChunkDatabaseReplicaInfo;
+
+
+/**
+ * Pretty-print the collection of replicas as a table
+ * 
+ * @param caption
+ *   The table caption to be printed before the table
+ * 
+ * @param prefix
+ *   The prefix string to be printed at the beginning of each line
+ * 
+ * @param collection
+ *   The collection to be printed
+ * 
+ * @param os
+ *   The output stream where to direct the output to
+ * 
+ * @param pageSize
+ *   The optional number of rows in the table (0 means no pagination)
+ */
+void printAsTable(std::string const& caption,
+                  std::string const& prefix,
+                  ChunkDatabaseReplicaInfo const& collection,
+                  std::ostream& os,
+                  size_t pageSize=0);
+
+
+/**
+ * The type which groups ReplicaInfo by:
+ *
+ *   <database family>, <chunk number>, <database>, <worker>
+ */
+typedef std::map<std::string,                               // database family
+                 std::map<unsigned int,                     // chunk
+                          std::map<std::string,             // database
+                                   std::map<std::string,    // worker
+                                            ReplicaInfo>>>> FamilyChunkDatabaseWorkerInfo;
+
+
+/**
+ * Pretty-print the collection of replicas as a table
+ * 
+ * @param caption
+ *   The table caption to be printed before the table
+ * 
+ * @param prefix
+ *   The prefix string to be printed at the beginning of each line
+ * 
+ * @param collection
+ *   The collection to be printed
+ * 
+ * @param os
+ *   The output stream where to direct the output to
+ * 
+ * @param pageSize
+ *   The optional number of rows in the table (0 means no pagination)
+ */
+void printAsTable(std::string const& caption,
+                  std::string const& prefix,
+                  FamilyChunkDatabaseWorkerInfo const& collection,
+                  std::ostream& os,
+                  size_t pageSize=0);
+
+
+/**
  * Structure QservReplica represents replica entries used in communications
  * with Qserv workers management services.
  */
