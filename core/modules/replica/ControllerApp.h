@@ -38,8 +38,7 @@ namespace replica {
  * Class ControllerApp implements a tool for testing all known types of
  * the Controller requests.
  */
-class ControllerApp
-    :   public Application {
+class ControllerApp: public Application {
 
 public:
 
@@ -56,8 +55,7 @@ public:
      * @param argv
      *   the vector of command-line arguments
      */
-    static Ptr create(int argc,
-                      const char* const argv[]);
+    static Ptr create(int argc, char* argv[]);
 
     // Default construction and copy semantics are prohibited
 
@@ -72,8 +70,7 @@ protected:
     /**
      * @see ControllerApp::create()
      */
-    ControllerApp(int argc,
-                  const char* const argv[]);
+    ControllerApp(int argc, char* argv[]);
 
     /**
      * @see Application::runImpl()

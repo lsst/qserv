@@ -41,8 +41,7 @@ namespace replica {
 /**
  * Class WorkerApp implements represents a worker service.
  */
-class WorkerApp
-    :   public Application {
+class WorkerApp: public Application {
 
 public:
 
@@ -59,8 +58,7 @@ public:
      * @param argv
      *   the vector of command-line arguments
      */
-    static Ptr create(int argc,
-                      const char* const argv[]);
+    static Ptr create(int argc, char* argv[]);
 
     // Default construction and copy semantics are prohibited
 
@@ -75,8 +73,7 @@ protected:
     /**
      * @see WorkerApp::create()
      */
-    WorkerApp(int argc,
-              const char* const argv[]);
+    WorkerApp(int argc, char* argv[]);
 
     /**
      * @see Application::runImpl()

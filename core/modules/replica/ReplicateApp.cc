@@ -40,13 +40,12 @@ using namespace std;
 
 namespace {
 
-string const description {
+string const description =
     "This application analyzes the replication level for all chunks of a given"
-    " database family and bring the number of replicas up to the explicitly specified"
-    " (via the corresponding option) or implied (as per the site's Configuration)"
+    " database family and brings the number of replicas up to the explicitly specified"
+    " (via the corresponding option) or implied (as per the site Configuration)"
     " minimum level. Chunks which already have the desired replication level won't"
-    " be affected by the operation"
-};
+    " be affected by the operation.";
 
 } /// namespace
 
@@ -55,22 +54,16 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-ReplicateApp::Ptr ReplicateApp::create(int argc,
-                                       const char* const argv[]) {
+ReplicateApp::Ptr ReplicateApp::create(int argc, char* argv[]) {
     return Ptr(
-        new ReplicateApp(
-            argc,
-            argv
-        )
+        new ReplicateApp(argc, argv)
     );
 }
 
 
-ReplicateApp::ReplicateApp(int argc,
-                           const char* const argv[])
+ReplicateApp::ReplicateApp(int argc, char* argv[])
     :   Application(
-            argc,
-            argv,
+            argc, argv,
             ::description,
             true    /* injectDatabaseOptions */,
             true    /* boostProtobufVersionCheck */,
@@ -81,7 +74,7 @@ ReplicateApp::ReplicateApp(int argc,
 
     parser().required(
         "database-family",
-        "The name of a database family",
+        "The name of a database family.",
         _databaseFamily);
 
     parser().option(
@@ -94,7 +87,7 @@ ReplicateApp::ReplicateApp(int argc,
 
     parser().option(
         "tables-page-size",
-        "the number of rows in the table of replicas (0 means no pages)",
+        "The number of rows in the table of replicas (0 means no pages).",
         _pageSize);
 }
 

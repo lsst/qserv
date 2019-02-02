@@ -43,9 +43,8 @@ using namespace std;
 
 namespace {
 
-string const description {
-    "This is an application for operations with Qserv workers."
-};
+string const description =
+    "This is an application for operations with Qserv workers.";
 
 } /// namespace
 
@@ -54,22 +53,16 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-QservWorkerApp::Ptr QservWorkerApp::create(int argc,
-                                           const char* const argv[]) {
+QservWorkerApp::Ptr QservWorkerApp::create(int argc, char* argv[]) {
     return Ptr(
-        new QservWorkerApp(
-            argc,
-            argv
-        )
+        new QservWorkerApp(argc, argv)
     );
 }
 
 
-QservWorkerApp::QservWorkerApp(int argc,
-                               const char* const argv[])
+QservWorkerApp::QservWorkerApp(int argc, char* argv[])
     :   Application(
-            argc,
-            argv,
+            argc, argv,
             ::description,
             true    /* injectDatabaseOptions */,
             true    /* boostProtobufVersionCheck */,
@@ -87,23 +80,23 @@ QservWorkerApp::QservWorkerApp(int argc,
 
     parser().required(
         "worker",
-        "the name of a Qserv worker",
+        "The name of a Qserv worker.",
         _workerName);
 
     parser().flag(
         "force",
         "Force the worker to proceed with requested"
-        " replica removal regardless of the replica usage status",
+        " replica removal regardless of the replica usage status.",
         _forceRemove);
 
     parser().option(
         "tables-page-size",
-        "the number of rows in the table of replicas (0 means no pages)",
+        "The number of rows in the table of replicas (0 means no pages).",
         _pageSize);
 
     parser().flag(
         "tables-vertical-separator",
-        "Print vertical separator when displaying tabular data in reports",
+        "Print vertical separator when displaying tabular data in reports.",
         _verticalSeparator);
 
     // Command-specific parameters, options and flags
@@ -111,16 +104,16 @@ QservWorkerApp::QservWorkerApp(int argc,
     auto&& addCmd = parser().command("ADD_REPLICA");
 
     addCmd.description(
-        "Add a single replica of a chunk to the worker" );
+        "Add a single replica of a chunk to the worker." );
 
     addCmd.required(
         "database",
-        "The name of a database",
+        "The name of a database.",
         _databaseName);
 
     addCmd.required(
         "chunk",
-        "The number of a chunk",
+        "The number of a chunk.",
         _chunkNumber);
 
     // Command-specific parameters, options and flags
@@ -128,16 +121,16 @@ QservWorkerApp::QservWorkerApp(int argc,
     auto&& removeCmd = parser().command("REMOVE_REPLICA");
 
     removeCmd.description(
-        "Remove a single replica of a chunk from the worker" );
+        "Remove a single replica of a chunk from the worker.");
 
     removeCmd.required(
         "database",
-        "The name of a database",
+        "The name of a database.",
         _databaseName);
 
     removeCmd.required(
         "chunk",
-        "The number of a chunk",
+        "The number of a chunk.",
         _chunkNumber);
 
     // Command-specific parameters, options and flags
@@ -150,12 +143,12 @@ QservWorkerApp::QservWorkerApp(int argc,
 
     getCmd.required(
         "database-family",
-        "The name of a database family",
+        "The name of a database family.",
         _familyName);
 
     getCmd.flag(
         "in-use-only",
-        "Limit a scope of operations to a subset of chunks which are in use",
+        "Limit a scope of operations to a subset of chunks which are in use.",
         _inUseOnly);
 
     // Command-specific parameters, options and flags
@@ -169,7 +162,7 @@ QservWorkerApp::QservWorkerApp(int argc,
 
     setCmd.required(
         "filename",
-        "The name of of a file with space-separated pairs of <database>:<chunk>",
+        "The name of of a file with space-separated pairs of <database>:<chunk>.",
         _inFileName);
 }
 

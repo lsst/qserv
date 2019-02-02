@@ -37,10 +37,9 @@ using namespace std;
 
 namespace {
 
-string const description {
+string const description =
     "This application is for testing the MySQL API used by"
-    " the Replication system implementation."
-};
+    " the Replication system implementation.";
 
 } /// namespace
 
@@ -49,22 +48,16 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-MySQLTestApp::Ptr MySQLTestApp::create(int argc,
-                                       const char* const argv[]) {
+MySQLTestApp::Ptr MySQLTestApp::create(int argc, char* argv[]) {
     return Ptr(
-        new MySQLTestApp(
-            argc,
-            argv
-        )
+        new MySQLTestApp(argc, argv)
     );
 }
 
 
-MySQLTestApp::MySQLTestApp(int argc,
-                           const char* const argv[])
+MySQLTestApp::MySQLTestApp(int argc, char* argv[])
     :   Application(
-            argc,
-            argv,
+            argc, argv,
             ::description,
             true    /* injectDatabaseOptions */,
             false   /* boostProtobufVersionCheck */,
@@ -87,26 +80,26 @@ MySQLTestApp::MySQLTestApp(int argc,
         auto& command = parser().command("TEST_TRANSACTIONS");
 
         command.description(
-            "Test the transactions API by beginning, committing or rolling back transactions");
+            "Test the transactions API by beginning, committing or rolling back transactions.");
     }
     {
         auto& command = parser().command("CREATE_DATABASE");
 
         command.description(
-            "Create a new database");
+            "Create a new database.");
         command.required(
             "database",
-            "The name of a database to be created",
+            "The name of a database to be created.",
             _databaseName);
     }
     {
         auto& command = parser().command("DROP_DATABASE");
 
         command.description(
-            "Drop an existing database");
+            "Drop an existing database.");
         command.required(
             "database",
-            "The name of a database to be deleted",
+            "The name of a database to be deleted.",
             _databaseName);
     }
     {
@@ -114,7 +107,7 @@ MySQLTestApp::MySQLTestApp(int argc,
 
         command.description(
             "Read a query from a file and execute it using the traditional method which"
-            " wouldn't attempt to repeat the transaction after connection looses and"
+            " wouldn't attempt to repeat the transaction after connection loss and"
             " subsequent reconnects."
         );
         command.required(
@@ -323,8 +316,8 @@ string MySQLTestApp::_getQuery() const {
 
     string query;
     if (_fileName == "-") {
-        query = string((istreambuf_iterator<char>(cin)),
-                             istreambuf_iterator<char>());
+        query = string(istreambuf_iterator<char>(cin),
+                       istreambuf_iterator<char>());
     } else {
 
         // Note a little optimization in which the algorithm determines the file
@@ -336,11 +329,7 @@ string MySQLTestApp::_getQuery() const {
             cerr << "failed to read the contents of file: " << _fileName << endl;
             return query;
         }
-        fs.seekg(0, ios::end);
-        query.reserve(fs.tellg());
-        fs.seekg(0, ios::beg);
-        query.assign(istreambuf_iterator<char>(fs),
-                     istreambuf_iterator<char>());
+        getline(fs, query, '\0');
     }
     cout << "Query: " << query << endl;
 

@@ -42,8 +42,7 @@ namespace replica {
  * Class FileServerApp runs an instance of a file server on behalf of
  * the specified (via a command line parameter) worker.
  */
-class FileServerApp
-    :   public Application {
+class FileServerApp: public Application {
 
 public:
 
@@ -60,8 +59,7 @@ public:
      * @param argv
      *   the vector of command-line arguments
      */
-    static Ptr create(int argc,
-                      const char* const argv[]);
+    static Ptr create(int argc, char* argv[]);
 
     // Default construction and copy semantics are prohibited
 
@@ -76,8 +74,7 @@ protected:
     /**
      * @see FileServerApp::create()
      */
-    FileServerApp(int argc,
-                  const char* const argv[]);
+    FileServerApp(int argc, char* argv[]);
 
     /**
      * @see Application::runImpl()

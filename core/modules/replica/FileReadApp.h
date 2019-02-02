@@ -43,8 +43,7 @@ namespace replica {
  * Class FileReadApp implements a tool which acts as a read-only client of
  * the Replication system's file server.
  */
-class FileReadApp
-    :   public Application {
+class FileReadApp: public Application {
 
 public:
 
@@ -61,8 +60,7 @@ public:
      * @param argv
      *   the vector of command-line arguments
      */
-    static Ptr create(int argc,
-                      const char* const argv[]);
+    static Ptr create(int argc, char* argv[]);
 
     // Default construction and copy semantics are prohibited
 
@@ -77,8 +75,7 @@ protected:
     /**
      * @see FileReadApp::create()
      */
-    FileReadApp(int argc,
-                const char* const argv[]);
+    FileReadApp(int argc, char* argv[]);
 
     /**
      * @see Application::runImpl()

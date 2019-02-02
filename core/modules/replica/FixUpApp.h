@@ -32,13 +32,12 @@ namespace qserv {
 namespace replica {
 
 /**
- * Class FixUpApp implements a tool which finds and correct various problems with replicas
+ * Class FixUpApp implements a tool which finds and corrects various problems with replicas
  * in a scope of a database family. And while doing so, the application will make the best
  * effort to leave worker nodes as balanced as possible, and it will also preserve chunk
  * collocation.
  */
-class FixUpApp
-    :   public Application {
+class FixUpApp: public Application {
 
 public:
 
@@ -55,8 +54,7 @@ public:
      * @param argv
      *   the vector of command-line arguments
      */
-    static Ptr create(int argc,
-                      const char* const argv[]);
+    static Ptr create(int argc, char* argv[]);
 
     // Default construction and copy semantics are prohibited
 
@@ -71,8 +69,7 @@ protected:
     /**
      * @see FixUpApp::create()
      */
-    FixUpApp(int argc,
-             const char* const argv[]);
+    FixUpApp(int argc, char* argv[]);
 
     /**
      * @see Application::runImpl()

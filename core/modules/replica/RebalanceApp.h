@@ -35,8 +35,7 @@ namespace replica {
  * Class RebalanceApp implements a tool which runs the rebalancing algorithm
  * in a scope of a database family.
  */
-class RebalanceApp
-    :   public Application {
+class RebalanceApp: public Application {
 
 public:
 
@@ -53,8 +52,7 @@ public:
      * @param argv
      *   the vector of command-line arguments
      */
-    static Ptr create(int argc,
-                      const char* const argv[]);
+    static Ptr create(int argc, char* argv[]);
 
     // Default construction and copy semantics are prohibited
 
@@ -69,8 +67,7 @@ protected:
     /**
      * @see RebalanceApp::create()
      */
-    RebalanceApp(int argc,
-                 const char* const argv[]);
+    RebalanceApp(int argc, char* argv[]);
 
     /**
      * @see Application::runImpl()

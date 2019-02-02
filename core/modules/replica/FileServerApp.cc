@@ -34,10 +34,9 @@ using namespace std;
 
 namespace {
 
-string const description {
+string const description =
     "This is an application which runs a read-only file server"
-    " on behalf of a Replication system's worker"
-};
+    " on behalf of a Replication system's worker.";
 
 } /// namespace
 
@@ -46,22 +45,16 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-FileServerApp::Ptr FileServerApp::create(int argc,
-                                         const char* const argv[]) {
+FileServerApp::Ptr FileServerApp::create(int argc, char* argv[]) {
     return Ptr(
-        new FileServerApp(
-            argc,
-            argv
-        )
+        new FileServerApp(argc, argv)
     );
 }
 
 
-FileServerApp::FileServerApp(int argc,
-                             const char* const argv[])
+FileServerApp::FileServerApp(int argc, char* argv[])
     :   Application(
-            argc,
-            argv,
+            argc, argv,
             ::description,
             true    /* injectDatabaseOptions */,
             true    /* boostProtobufVersionCheck */,
@@ -73,12 +66,12 @@ FileServerApp::FileServerApp(int argc,
 
     parser().required(
         "worker",
-        "the name of a worker for which the server will be run",
+        "The name of a worker for which the server will be run.",
         _workerName);
 
     parser().flag(
         "verbose",
-        "enable the periodic 'heartbeat' printouts",
+        "Enable the periodic 'heartbeat' printouts.",
         _verbose);
 
 }

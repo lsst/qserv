@@ -40,9 +40,8 @@ using namespace std;
 
 namespace {
 
-string const description {
-    "This is a Controller application for launching worker management requests."
-};
+string const description =
+    "This is a Controller application for launching worker management requests.";
 
 } /// namespace
 
@@ -51,22 +50,16 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-AdminApp::Ptr AdminApp::create(int argc,
-                               const char* const argv[]) {
+AdminApp::Ptr AdminApp::create(int argc, char* argv[]) {
     return Ptr(
-        new AdminApp(
-            argc,
-            argv
-        )
+        new AdminApp(argc, argv)
     );
 }
 
 
-AdminApp::AdminApp(int argc,
-                   const char* const argv[])
+AdminApp::AdminApp(int argc, char* argv[])
     :   Application(
-            argc,
-            argv,
+            argc, argv,
             ::description,
             true    /* injectDatabaseOptions */,
             true    /* boostProtobufVersionCheck */,
@@ -81,51 +74,51 @@ AdminApp::AdminApp(int argc,
         _operation);
 
     parser().command("STATUS").description(
-        "Retrieve and display the status of each worker");
+        "Retrieve and display the status of each worker.");
 
     parser().command("SUSPEND").description(
         "Suspend workers services on all workers. Cancel requests which are being processed"
         " and put them back into the input queue. The operation won't affect requests"
-        " which have already completed");
+        " which have already completed.");
 
     parser().command("RESUME").description(
         "Resume workers services on all workers");
 
     parser().command("REQUESTS").description(
         "Retrieve and display the information of all (regardless of their processing status)"
-        " requests from all workers");
+        " requests from all workers.");
 
     parser().command("REQUESTS").flag(
         "dump-request-info",
-        "Print detailed info on requests obtained from the workers",
+        "Print detailed info on requests obtained from the workers.",
         _dumpRequestInfo);
 
     parser().command("DRAIN").description(
-        "Cancel the in-progress (if any) requests on all workers, then empty all queues");
+        "Cancel the in-progress (if any) requests on all workers, then empty all queues.");
 
     parser().option(
         "timeout",
-        "maximum timeout (seconds) for the management requests",
+        "Maximum timeout (seconds) for the management request.s",
         _requestExpirationIvalSec);
 
     parser().flag(
         "all-workers",
-        "the flag for selecting all workers regardless of their status (DISABLED or READ-ONLY)",
+        "The flag for selecting all workers regardless of their status (DISABLED or READ-ONLY).",
         _allWorkers);
 
     parser().flag(
         "progress-report",
-        "the flag triggering progress report when executing batches of requests",
+        "The flag triggering progress report when executing batches of requests.",
         _progressReport);
 
     parser().flag(
         "error-report",
-        "the flag triggering detailed report on failed requests",
+        "The flag triggering detailed report on failed requests.",
         _errorReport);
 
     parser().flag(
         "tables-vertical-separator",
-        "Print vertical separator when displaying tabular data in reports",
+        "Print vertical separator when displaying tabular data in reports.",
         _verticalSeparator);
 }
 
@@ -211,18 +204,18 @@ int AdminApp::runImpl() {
         if ((ptr->state()         == Request::State::FINISHED) &&
             (ptr->extendedState() == Request::ExtendedState::SUCCESS)) {
 
-            startedSecondsAgo.push_back(    to_string((PerformanceUtils::now() - ptr->getServiceState().startTime) / 1000));
-            state.push_back(                                                     ptr->getServiceState().state2string());
-            numNewRequests.push_back(       to_string(                           ptr->getServiceState().numNewRequests));
+            startedSecondsAgo    .push_back(to_string((PerformanceUtils::now() - ptr->getServiceState().startTime) / 1000));
+            state                .push_back(                                     ptr->getServiceState().state2string());
+            numNewRequests       .push_back(to_string(                           ptr->getServiceState().numNewRequests));
             numInProgressRequests.push_back(to_string(                           ptr->getServiceState().numInProgressRequests));
-            numFinishedRequests.push_back(  to_string(                           ptr->getServiceState().numFinishedRequests));
+            numFinishedRequests  .push_back(to_string(                           ptr->getServiceState().numFinishedRequests));
 
         } else {
-            startedSecondsAgo.push_back(    "*");
-            state.push_back(                "*");
-            numNewRequests.push_back(       "*");
+            startedSecondsAgo    .push_back("*");
+            state                .push_back("*");
+            numNewRequests       .push_back("*");
             numInProgressRequests.push_back("*");
-            numFinishedRequests.push_back(  "*");
+            numFinishedRequests  .push_back("*");
         }
     }
     util::ColumnTablePrinter tableWorkers("WORKERS:", "  ", _verticalSeparator);

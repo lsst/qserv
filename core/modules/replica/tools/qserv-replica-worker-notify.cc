@@ -21,8 +21,7 @@
  */
 
 /**
- * qserv-replica-worker-notify.cc is a command-line tool for operations
- * with Qserv workers.
+ * @see QservWorkerApp
  */
 
 // System headers
@@ -34,12 +33,12 @@
 
 using namespace lsst::qserv::replica;
 
-int main(int argc, const char* const argv[]) {
+int main(int argc, char* argv[]) {
     try {
         auto app = QservWorkerApp::create(argc, argv);
         return app->run();
     } catch (std::exception const& ex) {
         std::cerr << "main()  the application failed, exception: " << ex.what() << std::endl;
+        return 1;
     }
-    return 1;
 }

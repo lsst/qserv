@@ -40,12 +40,11 @@ using namespace std;
 
 namespace {
 
-string const description {
-    "This application finds and correct various problems with replicas in a scope"
+string const description =
+    "This application finds and corrects various problems with replicas in a scope"
     " of a database family. And while doing so, the application will make the best"
     " effort to leave worker nodes as balanced as possible, and it will also preserve"
-    " chunk collocation."
-};
+    " chunk collocation.";
 
 } /// namespace
 
@@ -54,22 +53,16 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-FixUpApp::Ptr FixUpApp::create(int argc,
-                               const char* const argv[]) {
+FixUpApp::Ptr FixUpApp::create(int argc, char* argv[]) {
     return Ptr(
-        new FixUpApp(
-            argc,
-            argv
-        )
+        new FixUpApp(argc, argv)
     );
 }
 
 
-FixUpApp::FixUpApp(int argc,
-                   const char* const argv[])
+FixUpApp::FixUpApp(int argc, char* argv[])
     :   Application(
-            argc,
-            argv,
+            argc, argv,
             ::description,
             true    /* injectDatabaseOptions */,
             true    /* boostProtobufVersionCheck */,
@@ -80,12 +73,12 @@ FixUpApp::FixUpApp(int argc,
 
     parser().required(
         "database-family",
-        "The name of a database family",
+        "The name of a database family.",
         _databaseFamily);
 
     parser().option(
         "tables-page-size",
-        "the number of rows in the table of replicas (0 means no pages)",
+        "The number of rows in the table of replicas (0 means no pages).",
         _pageSize);
 }
 

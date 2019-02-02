@@ -36,8 +36,7 @@ namespace replica {
  * from any active use in a replication setup. All chunks hosted by
  * the worker node will be distributed across the cluster.
  */
-class DeleteWorkerApp
-    :   public Application {
+class DeleteWorkerApp: public Application {
 
 public:
 
@@ -54,8 +53,7 @@ public:
      * @param argv
      *   the vector of command-line arguments
      */
-    static Ptr create(int argc,
-                      const char* const argv[]);
+    static Ptr create(int argc, char* argv[]);
 
     // Default construction and copy semantics are prohibited
 
@@ -70,8 +68,7 @@ protected:
     /**
      * @see DeleteWorkerApp::create()
      */
-    DeleteWorkerApp(int argc,
-                    const char* const argv[]);
+    DeleteWorkerApp(int argc, char* argv[]);
 
     /**
      * @see Application::runImpl()

@@ -40,10 +40,9 @@ using namespace std;
 
 namespace {
 
-string const description {
+string const description =
     "This application runs the replica verification algorithm for all known"
-    " replicas across all ENABLED workers"
-};
+    " replicas across all ENABLED workers.";
 
 } /// namespace
 
@@ -52,22 +51,16 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-VerifyApp::Ptr VerifyApp::create(int argc,
-                                 const char* const argv[]) {
+VerifyApp::Ptr VerifyApp::create(int argc, char* argv[]) {
     return Ptr(
-        new VerifyApp(
-            argc,
-            argv
-        )
+        new VerifyApp(argc, argv)
     );
 }
 
 
-VerifyApp::VerifyApp(int argc,
-                     const char* const argv[])
+VerifyApp::VerifyApp(int argc, char* argv[])
     :   Application(
-            argc,
-            argv,
+            argc, argv,
             ::description,
             true    /* injectDatabaseOptions */,
             true    /* boostProtobufVersionCheck */,
@@ -78,14 +71,14 @@ VerifyApp::VerifyApp(int argc,
 
     parser().option(
         "max-replicas",
-        "The maximum number of replicas to be processed simultaneously",
+        "The maximum number of replicas to be processed simultaneously.",
         _maxReplicas
     );
 
     parser().flag(
         "compute-check-sum",
-        " automatically compute and store in the database check/control sums for"
-        " all files of the found replica",
+        "Also compute and store in the database check/control sums for"
+        " all files of the found replica.",
         _computeCheckSum);
 }
 

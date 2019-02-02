@@ -21,11 +21,7 @@
  */
 
 /**
- * qserv-replica-job-replicate.cc is an application which analyzes the replication
- * level for all chunks of a given database family and bring the number of replicas
- * up to the explicitly specified (via the corresponding option) or implied (as per
- * the site's Configuration) minimum level. Chunks which already have the desired
- * replication level won't be affected by the operation.
+ * @see ReplicateApp
  */
 
 // System headers
@@ -37,12 +33,12 @@
 
 using namespace lsst::qserv::replica;
 
-int main(int argc, const char* const argv[]) {
+int main(int argc, char* argv[]) {
     try {
         auto app = ReplicateApp::create(argc, argv);
         return app->run();
     } catch (std::exception const& ex) {
         std::cerr << "main()  the application failed, exception: " << ex.what() << std::endl;
+        return 1;
     }
-    return 1;
 }

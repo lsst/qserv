@@ -42,10 +42,9 @@ using namespace std;
 
 namespace {
 
-string const description {
+string const description =
     "This is a Controller application which launches a single job Controller in order"
-    " to acquire, analyze and reports chunk disposition within a database family."
-};
+    " to acquire, analyze, and report chunk disposition within a database family.";
 
 /**
  * Dump the replica info
@@ -72,19 +71,35 @@ void dump(lsst::qserv::replica::FindAllJobResult const& replicaData) {
 }
 
 /**
- * @return a string in which participating workers are represented by some
- * non default character at the corresponding worker position starting with
- * index 0 (counting from the left to the right).
+ * @return
+ *   a string in which participating workers are represented by some
+ *   non default character at the corresponding worker position starting with
+ *   index 0 (counting from the left to the right).
  *
  * The meaning of characters:
  *   '-' - the default character meaning no replica reported
  *   '*' - the worker didn't report any data due to a timeout or some other problem
  *   'R' - the worker is known to the replication system only
  *   'Q' - the worker is known to Qserv only
- *   'B' - the worker is known to both the Replication system and Qserv
  *
- * @param worker2idx - index map for workers (worker name to its 0-based index)
- * @param workers    - collection of worker names participating in the operation
+ * @param worker2idx
+ *   index map for workers (worker name to its 0-based index)
+ *
+ * @param workers
+ *   collection of the names of  Replication system's workers participating
+ *   in the operation
+ *
+ * @param badWorkers
+ *   collection of the Replication system's workers which didn't respond
+ *   to the requests
+ * 
+ * @param qservWorkers
+ *   collection of the names of  Qserv workers participating
+ *   in the operation
+ * 
+ * @param badQservWorkers
+ *   collection of the Qserv workers which didn't respond
+ *   to the requests
  */
 string workers2str(map<string, size_t> const& worker2idx,
                    set<string> const& workers,
@@ -126,22 +141,16 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-ChunksApp::Ptr ChunksApp::create(int argc,
-                                 const char* const argv[]) {
+ChunksApp::Ptr ChunksApp::create(int argc, char* argv[]) {
     return Ptr(
-        new ChunksApp(
-            argc,
-            argv
-        )
+        new ChunksApp(argc, argv)
     );
 }
 
 
-ChunksApp::ChunksApp(int argc,
-                     const char* const argv[])
+ChunksApp::ChunksApp(int argc, char* argv[])
     :   Application(
-            argc,
-            argv,
+            argc, argv,
             ::description,
             true    /* injectDatabaseOptions */,
             true    /* boostProtobufVersionCheck */,
@@ -152,18 +161,18 @@ ChunksApp::ChunksApp(int argc,
 
     parser().required(
         "database-family",
-        "the name of a database family to inspect",
+        "The name of a database family to inspect.",
         _databaseFamily);
 
     parser().flag(
         "all-workers",
-        "the flag for selecting all workers regardless of their status (DISABLED or READ-ONLY)",
+        "The flag for selecting all workers regardless of their status (DISABLED or READ-ONLY).",
         _allWorkers);
 
     parser().option(
         "worker-response-timeout",
-        "maximum timeout (seconds) to wait before the replica scanning requests will finish."
-        " Setting this timeout to some reasonably low umber would prevent the application from"
+        "Maximum timeout (seconds) to wait before the replica scanning requests will finish."
+        " Setting this timeout to some reasonably low number would prevent the application from"
         " hanging for a substantial duration of time (which depends on the default Configuration)"
         " in case if some workers were down. The parameter applies to operations with both"
         " the Replication and Qserv workers.",
@@ -171,29 +180,29 @@ ChunksApp::ChunksApp(int argc,
 
     parser().flag(
         "do-not-save-replica",
-        "the flag which (if used) prevents the application from saving replica info in a database."
+        "The flag which (if used) prevents the application from saving replica info in a database."
         " This may significantly speed up the application in setups where the number of chunks is on"
         " a scale of one million, or exceeds it.",
         _doNotSaveReplicaInfo);
 
     parser().flag(
         "qserv-replicas",
-        "the flag for pulling chunk disposition from Qserv workers for the combined analysis",
+        "The flag for pulling chunk disposition from Qserv workers for the combined analysis.",
         _pullQservReplicas);
 
     parser().flag(
         "detailed-report",
-        "the flag triggering detailed report on the found replicas",
+        "The flag triggering detailed report on the found replicas.",
         _detailedReport);
 
     parser().option(
         "tables-page-size",
-        "the number of rows in the table of replicas (0 means no pages)",
+        "The number of rows in the table of replicas (0 means no pages).",
         _pageSize);
 
     parser().flag(
         "tables-vertical-separator",
-        "Print vertical separator when displaying tabular data in reports",
+        "Print vertical separator when displaying tabular data in reports.",
         _verticalSeparator);
 }
 
@@ -210,7 +219,6 @@ int ChunksApp::runImpl() {
     // Limit request execution time if such limit was provided
     if (_timeoutSec != 0) {
         serviceProvider()->config()->setControllerRequestTimeoutSec(_timeoutSec);
-        //serviceProvider()->config()->setJobTimeoutSec(_timeoutSec);
     }
 
     ///////////////////////////////////////////////////////////////////
@@ -221,7 +229,9 @@ int ChunksApp::runImpl() {
     // ATTENTION: jobs are allowed to be partially successful if some
     // workers are offline.
 
-    util::BlockPost blockPost(1000,2000);
+    // The delay of 1 second for periodic checking of the completion status
+    // of the launched jobs.
+    util::BlockPost blockPost(1000,1001);
 
     atomic<bool> replicaJobFinished{false};
     auto findAllJob = FindAllJob::create(
@@ -377,10 +387,10 @@ int ChunksApp::runImpl() {
                 auto&& databaseName = database.first;
                 auto&& workers      = database.second;
 
-                size_t    const  numReplicas        = workers.size();
-                string    const  numReplicasStr     = numReplicas ? to_string(numReplicas) : "";
-                long long const  numReplicasDiff    = numReplicas - replicationLevel;
-                string    const  numReplicasDiffStr = numReplicasDiff ? to_string(numReplicasDiff) : "";
+                size_t const  numReplicas        = workers.size();
+                string const  numReplicasStr     = numReplicas ? to_string(numReplicas) : "";
+                int    const  numReplicasDiff    = int(numReplicas) - int(replicationLevel);
+                string const  numReplicasDiffStr = numReplicasDiff ? to_string(numReplicasDiff) : "";
 
                 columnChunkNumber    .push_back(chunkNumber);
                 columnDatabaseName   .push_back(databaseName);

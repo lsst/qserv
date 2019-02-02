@@ -42,10 +42,9 @@ using namespace std;
 
 namespace {
 
-string const description {
+string const description =
     "This application is for testing the DatabaseServices API used by"
-    " the Replication system implementation."
-};
+    " the Replication system implementation.";
 
 
 string asString(time_t t) {
@@ -108,22 +107,16 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-DatabaseTestApp::Ptr DatabaseTestApp::create(int argc,
-                                             const char* const argv[]) {
+DatabaseTestApp::Ptr DatabaseTestApp::create(int argc, char* argv[]) {
     return Ptr(
-        new DatabaseTestApp(
-            argc,
-            argv
-        )
+        new DatabaseTestApp(argc, argv)
     );
 }
 
 
-DatabaseTestApp::DatabaseTestApp(int argc,
-                                 const char* const argv[])
+DatabaseTestApp::DatabaseTestApp(int argc, char* argv[])
     :   Application(
-            argc,
-            argv,
+            argc, argv,
             ::description,
             true    /* injectDatabaseOptions */,
             false   /* boostProtobufVersionCheck */,
@@ -146,13 +139,13 @@ DatabaseTestApp::DatabaseTestApp(int argc,
     );
     parser().option(
         "tables-page-size",
-        "the number of rows in the table of replicas (0 means no pages)",
+        "The number of rows in the table of replicas (0 means no pages).",
         _pageSize);
     {
         auto& command = parser().command("CONFIGURATION");
 
         command.description(
-            "Dump the current configuration of the Rep;lication system");
+            "Dump the current configuration of the Replication system.");
     }
     {
         auto& command = parser().command("FIND_OLDEST_REPLICAS");
@@ -162,7 +155,7 @@ DatabaseTestApp::DatabaseTestApp(int argc,
             " option --replicas.");
         command.option(
             "replicas",
-            "The maximum number of replicas to be returned when querying the database",
+            "The maximum number of replicas to be returned when querying the database.",
             _maxReplicas);
         command.flag(
             "enabled-workers-only",
@@ -177,11 +170,11 @@ DatabaseTestApp::DatabaseTestApp(int argc,
             "Find replicas of a given chunk in a scope of a database.");
         command.required(
             "chunk",
-            "The chunk number",
+            "The chunk number.",
             _chunk);
         command.required(
             "database",
-            "The name of a database",
+            "The name of a database.",
             _databaseName);
         command.flag(
             "enabled-workers-only",
@@ -193,17 +186,17 @@ DatabaseTestApp::DatabaseTestApp(int argc,
         auto& command = parser().command("FIND_WORKER_REPLICAS_1");
 
         command.description(
-            "Find replicas at a given worker");
+            "Find replicas at a given worker.");
         command.required(
             "worker",
-            "The name of a worker",
+            "The name of a worker.",
             _workerName);
     }
     {
         auto& command = parser().command("FIND_WORKER_REPLICAS_2");
 
         command.description(
-            "Find replicas at a given worker for the specified database only"
+            "Find replicas at a given worker for the specified database only."
         );
         command.required(
             "worker",
@@ -220,10 +213,10 @@ DatabaseTestApp::DatabaseTestApp(int argc,
         auto& command = parser().command("FIND_WORKER_REPLICAS_3");
 
         command.description(
-            "Find replicas of a chunk at a given worker");
+            "Find replicas of a chunk at a given worker.");
         command.required(
             "chunk",
-            "The chunk number",
+            "The chunk number.",
             _chunk);
         command.required(
             "worker",
@@ -234,18 +227,18 @@ DatabaseTestApp::DatabaseTestApp(int argc,
         auto& command = parser().command("FIND_WORKER_REPLICAS_4");
 
         command.description(
-            "Find replicas of a chunk at a given worker");
+            "Find replicas of a chunk at a given worker.");
         command.required(
             "chunk",
-            "The chunk number",
+            "The chunk number.",
             _chunk);
         command.required(
             "worker",
-            "The name of a worker",
+            "The name of a worker.",
             _workerName);
         command.required(
             "database-family",
-            "The name of a database family",
+            "The name of a database family.",
             _databaseFamilyName);
     }
 }

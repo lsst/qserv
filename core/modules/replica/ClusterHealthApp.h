@@ -36,8 +36,7 @@ namespace replica {
  * and Qserv workers to see if they respond within the specified (or implied)
  * timeout.
  */
-class ClusterHealthApp
-    :   public Application {
+class ClusterHealthApp: public Application {
 
 public:
 
@@ -54,8 +53,7 @@ public:
      * @param argv
      *   the vector of command-line arguments
      */
-    static Ptr create(int argc,
-                      const char* const argv[]);
+    static Ptr create(int argc, char* argv[]);
 
     // Default construction and copy semantics are prohibited
 
@@ -70,8 +68,7 @@ protected:
     /**
      * @see ClusterHealthApp::create()
      */
-    ClusterHealthApp(int argc,
-                     const char* const argv[]);
+    ClusterHealthApp(int argc, char* argv[]);
 
     /**
      * @see Application::runImpl()

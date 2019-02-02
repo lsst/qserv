@@ -41,12 +41,11 @@ using namespace std;
 
 namespace {
 
-string const description {
+string const description =
     "This application makes the best effort to ensure replicas are distributed"
     " equally among the worker nodes. And while doing so the re-balancing algorithm"
     " will both preserve the replication level of chunks and to keep the chunk"
-    " collocation intact."
-};
+    " collocation intact.";
 
 using namespace lsst::qserv::replica;
 namespace util = lsst::qserv::util;
@@ -94,22 +93,16 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-RebalanceApp::Ptr RebalanceApp::create(int argc,
-                                       const char* const argv[]) {
+RebalanceApp::Ptr RebalanceApp::create(int argc, char* argv[]) {
     return Ptr(
-        new RebalanceApp(
-            argc,
-            argv
-        )
+        new RebalanceApp(argc, argv)
     );
 }
 
 
-RebalanceApp::RebalanceApp(int argc,
-                           const char* const argv[])
+RebalanceApp::RebalanceApp(int argc, char* argv[])
     :   Application(
-            argc,
-            argv,
+            argc, argv,
             ::description,
             true    /* injectDatabaseOptions */,
             true    /* boostProtobufVersionCheck */,
@@ -120,7 +113,7 @@ RebalanceApp::RebalanceApp(int argc,
 
     parser().required(
         "database-family",
-        "The name of a database family",
+        "The name of a database family.",
         _databaseFamily);
 
     parser().flag(
@@ -132,7 +125,7 @@ RebalanceApp::RebalanceApp(int argc,
 
     parser().option(
         "tables-page-size",
-        "the number of rows in the table of replicas (0 means no pages)",
+        "The number of rows in the table of replicas (0 means no pages).",
         _pageSize);
 }
 

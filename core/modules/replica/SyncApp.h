@@ -36,8 +36,7 @@ namespace replica {
  * collections of chunks at the Qserv workers with what the Replication
  * system sees as "good" chunks in the data directories.
  */
-class SyncApp
-    :   public Application {
+class SyncApp: public Application {
 
 public:
 
@@ -54,8 +53,7 @@ public:
      * @param argv
      *   the vector of command-line arguments
      */
-    static Ptr create(int argc,
-                      const char* const argv[]);
+    static Ptr create(int argc, char* argv[]);
 
     // Default construction and copy semantics are prohibited
 
@@ -70,8 +68,7 @@ protected:
     /**
      * @see SyncApp::create()
      */
-    SyncApp(int argc,
-              const char* const argv[]);
+    SyncApp(int argc, char* argv[]);
 
     /**
      * @see Application::runImpl()

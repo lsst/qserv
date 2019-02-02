@@ -39,11 +39,10 @@ using namespace std;
 
 namespace {
 
-string const description {
+string const description =
     "This application probes and reports a status of the Replication system's"
     " and Qserv workers to see if they respond within the specified (or implied)"
-    " timeout."
-};
+    " timeout.";
 
 
 /**
@@ -81,22 +80,16 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-ClusterHealthApp::Ptr ClusterHealthApp::create(int argc,
-                                               const char* const argv[]) {
+ClusterHealthApp::Ptr ClusterHealthApp::create(int argc, char* argv[]) {
     return Ptr(
-        new ClusterHealthApp(
-            argc,
-            argv
-        )
+        new ClusterHealthApp(argc, argv)
     );
 }
 
 
-ClusterHealthApp::ClusterHealthApp(int argc,
-                                   const char* const argv[])
+ClusterHealthApp::ClusterHealthApp(int argc, char* argv[])
     :   Application(
-            argc,
-            argv,
+            argc, argv,
             ::description,
             true    /* injectDatabaseOptions */,
             true    /* boostProtobufVersionCheck */,
@@ -108,7 +101,7 @@ ClusterHealthApp::ClusterHealthApp(int argc,
     parser().option(
         "timeout",
         "The timeout (seconds) for status requests sent to the Replication"
-        " system's and Qserv workers",
+        " system's and Qserv workers.",
         _timeoutSec);
 
     parser().flag(

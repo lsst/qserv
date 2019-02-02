@@ -39,8 +39,7 @@ namespace replica {
 /**
  * Class CheckSumApp implements calculates and prints a checksum of a file.
  */
-class CheckSumApp
-    :   public Application {
+class CheckSumApp: public Application {
 
 public:
 
@@ -57,8 +56,7 @@ public:
      * @param argv
      *   the vector of command-line arguments
      */
-    static Ptr create(int argc,
-                      const char* const argv[]);
+    static Ptr create(int argc, char* argv[]);
 
     // Default construction and copy semantics are prohibited
 
@@ -73,8 +71,7 @@ protected:
     /**
      * @see CheckSumApp::create()
      */
-    CheckSumApp(int argc,
-                const char* const argv[]);
+    CheckSumApp(int argc, char* argv[]);
 
     /**
      * @see Application::runImpl()

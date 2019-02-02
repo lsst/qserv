@@ -39,10 +39,9 @@ using namespace std;
 
 namespace {
 
-string const description {
+string const description =
     "This application synchronizes collections of chunks at the Qserv workers"
-    "with what the Replication system sees as 'good' chunks in the data directories."
-};
+    " with what the Replication system sees as 'good' chunks in the data directories.";
 
 } /// namespace
 
@@ -51,22 +50,16 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-SyncApp::Ptr SyncApp::create(int argc,
-                                 const char* const argv[]) {
+SyncApp::Ptr SyncApp::create(int argc, char* argv[]) {
     return Ptr(
-        new SyncApp(
-            argc,
-            argv
-        )
+        new SyncApp(argc, argv)
     );
 }
 
 
-SyncApp::SyncApp(int argc,
-                     const char* const argv[])
+SyncApp::SyncApp(int argc, char* argv[])
     :   Application(
-            argc,
-            argv,
+            argc, argv,
             ::description,
             true    /* injectDatabaseOptions */,
             true    /* boostProtobufVersionCheck */,
@@ -83,7 +76,7 @@ SyncApp::SyncApp(int argc,
     parser().option(
         "worker-response-timeout",
         "The maximum timeout (seconds) to wait before worker requests will finish."
-        " Setting this timeout to some reasonably low umber would prevent the application from"
+        " Setting this timeout to some reasonably low number would prevent the application from"
         " hanging for a substantial duration of time (which depends on the default Configuration)"
         " in case if some workers were down. The parameter applies to operations with both"
         " the Replication and Qserv workers.",
@@ -92,7 +85,7 @@ SyncApp::SyncApp(int argc,
     parser().flag(
         "force",
         "Force the Qerv workers to proceed with requested chunk updates regardless of the chunk"
-        " usage status",
+        " usage status.",
         _force);
 }
 

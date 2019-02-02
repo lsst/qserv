@@ -45,11 +45,10 @@ using namespace std;
 
 namespace {
 
-string const description {
+string const description =
     "This application allows launching Controller requests, and it's meant"
     " for both testing all known types of requests and for various manual fix up"
-    " operations in a replication setup"
-};
+    " operations in a replication setup.";
 
 using namespace lsst::qserv::replica;
 
@@ -81,22 +80,16 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-ControllerApp::Ptr ControllerApp::create(int argc,
-                                         const char* const argv[]) {
+ControllerApp::Ptr ControllerApp::create(int argc, char* argv[]) {
     return Ptr(
-        new ControllerApp(
-            argc,
-            argv
-        )
+        new ControllerApp(argc, argv)
     );
 }
 
 
-ControllerApp::ControllerApp(int argc,
-                             const char* const argv[])
+ControllerApp::ControllerApp(int argc, char* argv[])
     :   Application(
-            argc,
-            argv,
+            argc, argv,
             ::description,
             true    /* injectDatabaseOptions */,
             true    /* boostProtobufVersionCheck */,
@@ -124,13 +117,13 @@ ControllerApp::ControllerApp(int argc,
 
     parser().required(
         "worker",
-        "The name of a worker",
+        "The name of a worker.",
         _workerName);
 
     parser().option(
         "cancel-delay-milliseconds",
         "The number of milliseconds to wait before cancelling (if the number of not 0)"
-        " the earlier made request",
+        " the earlier made request.",
         _cancelDelayMilliseconds);
 
     parser().option(
@@ -140,7 +133,7 @@ ControllerApp::ControllerApp(int argc,
 
     parser().flag(
         "do-not-track",
-        "Do not track requests by waiting before they finish",
+        "Do not track requests by waiting before they finish.",
         _doNotTrackRequest);
 
     parser().flag(
@@ -152,7 +145,7 @@ ControllerApp::ControllerApp(int argc,
 
     parser().flag(
         "do-not-save-replica",
-        "the flag which (if used) prevents the application from saving replica info in a database."
+        "The flag which (if used) prevents the application from saving replica info in a database."
         " This may significantly speed up the application in setups where the number of chunks is on"
         " a scale of one million, or exceeds it.",
         _doNotSaveReplicaInfo);
@@ -160,7 +153,7 @@ ControllerApp::ControllerApp(int argc,
     parser().flag(
         "compute-check-sum",
         " automatically compute and store in the database check/control sums for"
-        " all files of the found replica",
+        " all files of the found replica.",
         _computeCheckSum);
 
     /// Request-specific parameters, options, flags
@@ -168,21 +161,21 @@ ControllerApp::ControllerApp(int argc,
     auto& replicateCmd = parser().command("REPLICATE");
 
     replicateCmd.description(
-        "Create a new replica of a chunk in a scope of database");
+        "Create a new replica of a chunk in a scope of database.");
 
     replicateCmd.required(
         "source-worker",
-        "The name of a source worker which has a replica to be cloned",
+        "The name of a source worker which has a replica to be cloned.",
         _sourceWorkerName);
 
     replicateCmd.required(
         "database",
-        "The name of a database which has a chunk",
+        "The name of a database which has a chunk.",
         _databaseName);
 
     replicateCmd.required(
         "chunk",
-        "The number of a chunk",
+        "The number of a chunk.",
         _chunkNumber);
 
     /// Request-specific parameters, options, flags
@@ -190,16 +183,16 @@ ControllerApp::ControllerApp(int argc,
     auto& deleteCmd = parser().command("DELETE");
 
     deleteCmd.description(
-        "Delete an existing replica of a chunk in a scope of database");
+        "Delete an existing replica of a chunk in a scope of database.");
 
     deleteCmd.required(
         "database",
-        "The name of a database which has a chunk",
+        "The name of a database which has a chunk.",
         _databaseName);
 
     deleteCmd.required(
         "chunk",
-        "The number of a chunk",
+        "The number of a chunk.",
         _chunkNumber);
 
     /// Request-specific parameters, options, flags
@@ -207,16 +200,16 @@ ControllerApp::ControllerApp(int argc,
     auto& findCmd = parser().command("FIND");
 
     findCmd.description(
-        "Find info on an existing replica of a chunk in a scope of database");
+        "Find info on an existing replica of a chunk in a scope of database.");
 
     findCmd.required(
         "database",
-        "The name of a database which has a chunk",
+        "The name of a database which has a chunk.",
         _databaseName);
 
     findCmd.required(
         "chunk",
-        "The number of a chunk",
+        "The number of a chunk.",
         _chunkNumber);
 
     /// Request-specific parameters, options, flags
@@ -224,11 +217,11 @@ ControllerApp::ControllerApp(int argc,
     auto& findAllCmd = parser().command("FIND_ALL");
 
     findAllCmd.description(
-        "Find info on all replicas in a scope of database");
+        "Find info on all replicas in a scope of database.");
 
     findAllCmd.required(
         "database",
-        "The name of a database which has chunks",
+        "The name of a database which has chunks.",
         _databaseName);
 
     /// Request-specific parameters, options, flags
@@ -237,11 +230,11 @@ ControllerApp::ControllerApp(int argc,
 
     echoCmd.description(
         "Probe a worker service by sending a data string to be echoed back after"
-        " an optional delay introduced by the worker");
+        " an optional delay introduced by the worker.");
 
     echoCmd.required(
         "data",
-        "The data string to be sent to a worker with the request",
+        "The data string to be sent to a worker with the request.",
         _echoData);
 
     echoCmd.optional(
@@ -256,18 +249,18 @@ ControllerApp::ControllerApp(int argc,
     auto& statusCmd = parser().command("STATUS");
 
     statusCmd.description(
-        "Ask a worker to return a status of a request");
+        "Ask a worker to return a status of a request.");
 
     statusCmd.required(
         "affected-request",
-        "The type of a request affected by the operation. Supported types: "
-        " CREATE, DELETE, FIND, FIND_ALL, ECHO.",
+        "The type of a request affected by the operation. Supported types:"
+        " REPLICATE, DELETE, FIND, FIND_ALL, ECHO.",
         _affectedRequest,
        {"REPLICATE", "DELETE", "FIND", "FIND_ALL", "ECHO"});
 
     statusCmd.required(
         "id",
-        "A valid identifier of a request to be probed",
+        "A valid identifier of a request to be probed.",
         _affectedRequestId);
 
     /// Request-specific parameters, options, flags
@@ -275,18 +268,18 @@ ControllerApp::ControllerApp(int argc,
     auto& stopCmd = parser().command("STOP");
 
     stopCmd.description(
-        "Ask a worker to stop an on-going request of the given type");
+        "Ask a worker to stop an on-going request of the given type.");
 
     stopCmd.required(
         "affected-request",
-        "The type of a request affected by the operation. Supported types: "
-        " CREATE, DELETE, FIND, FIND_ALL, ECHO.",
+        "The type of a request affected by the operation. Supported types:"
+        " REPLICATE, DELETE, FIND, FIND_ALL, ECHO.",
         _affectedRequest,
        {"REPLICATE", "DELETE", "FIND", "FIND_ALL", "ECHO"});
 
     stopCmd.required(
         "id",
-        "A valid identifier of a request to be stopped",
+        "A valid identifier of a request to be stopped.",
         _affectedRequestId);
 
     /// Request-specific parameters, options, flags for the remaining

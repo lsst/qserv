@@ -38,8 +38,7 @@ namespace replica {
  * Class ChunksApp implements a tool which launches a single job Controller in order
  * to acquire, analyze and reports chunk disposition within a database family.
  */
-class ChunksApp
-    :   public Application {
+class ChunksApp: public Application {
 
 public:
 
@@ -56,8 +55,7 @@ public:
      * @param argv
      *   the vector of command-line arguments
      */
-    static Ptr create(int argc,
-                      const char* const argv[]);
+    static Ptr create(int argc, char* argv[]);
 
     // Default construction and copy semantics are prohibited
 
@@ -72,8 +70,7 @@ protected:
     /**
      * @see ChunksApp::create()
      */
-    ChunksApp(int argc,
-              const char* const argv[]);
+    ChunksApp(int argc, char* argv[]);
 
     /**
      * @see Application::runImpl()

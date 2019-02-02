@@ -39,12 +39,11 @@ using namespace std;
 
 namespace {
 
-string const description {
+string const description =
     "This application makes the best effort to ensure replicas are distributed"
     " equally among the worker nodes. And while doing so the re-balancing algorithm"
     " will both preserve the replication level of chunks and to keep the chunk"
-    " collocation intact."
-};
+    " collocation intact.";
 
 } /// namespace
 
@@ -53,22 +52,16 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-MoveApp::Ptr MoveApp::create(int argc,
-                             const char* const argv[]) {
+MoveApp::Ptr MoveApp::create(int argc, char* argv[]) {
     return Ptr(
-        new MoveApp(
-            argc,
-            argv
-        )
+        new MoveApp(argc, argv)
     );
 }
 
 
-MoveApp::MoveApp(int argc,
-                 const char* const argv[])
+MoveApp::MoveApp(int argc, char* argv[])
     :   Application(
-            argc,
-            argv,
+            argc, argv,
             ::description,
             true    /* injectDatabaseOptions */,
             true    /* boostProtobufVersionCheck */,
@@ -79,23 +72,23 @@ MoveApp::MoveApp(int argc,
 
     parser().required(
         "database-family",
-        "The name of a database family",
+        "The name of a database family.",
         _databaseFamily);
 
     parser().required(
         "chunk",
-        "The chunk to be affected by the operation",
+        "The chunk to be affected by the operation.",
         _chunk);
 
     parser().required(
         "source-worker",
-        "The name of a worker which has the replica to be moved",
+        "The name of a worker which has the replica to be moved.",
         _sourceWorker);
 
     parser().required(
         "destination-worker",
         "The name of a worker where the replica will be moved (must not"
-        " be the same worker as the source one)",
+        " be the same worker as the source one).",
         _destinationWorker);
 
     parser().flag(
@@ -106,7 +99,7 @@ MoveApp::MoveApp(int argc,
 
     parser().option(
         "tables-page-size",
-        "The number of rows in the table of replicas (0 means no pages)",
+        "The number of rows in the table of replicas (0 means no pages).",
         _pageSize);
 }
 

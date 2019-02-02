@@ -37,8 +37,7 @@ namespace replica {
  * doing so, the application will make the best effort to leave worker nodes as
  * balanced as possible, and it will also preserve chunk collocation.
  */
-class PurgeApp
-    :   public Application {
+class PurgeApp: public Application {
 
 public:
 
@@ -55,8 +54,7 @@ public:
      * @param argv
      *   the vector of command-line arguments
      */
-    static Ptr create(int argc,
-                      const char* const argv[]);
+    static Ptr create(int argc, char* argv[]);
 
     // Default construction and copy semantics are prohibited
 
@@ -71,8 +69,7 @@ protected:
     /**
      * @see PurgeApp::create()
      */
-    PurgeApp(int argc,
-             const char* const argv[]);
+    PurgeApp(int argc, char* argv[]);
 
     /**
      * @see Application::runImpl()

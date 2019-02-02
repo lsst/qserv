@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
+ * Copyright 2019 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -21,9 +21,7 @@
  */
 
 /**
- * qserv-replica-job-chunks.cc implements a command-line tool which launches
- * a single job Controller in order to acquire, analyze and reports chunk
- * disposition within a database family.
+ * @see ChunksApp
  */
 
 // System headers
@@ -35,12 +33,12 @@
 
 using namespace lsst::qserv::replica;
 
-int main(int argc, const char* const argv[]) {
+int main(int argc, char* argv[]) {
     try {
         auto app = ChunksApp::create(argc, argv);
         return app->run();
     } catch (std::exception const& ex) {
         std::cerr << "main()  the application failed, exception: " << ex.what() << std::endl;
+        return 1;
     }
-    return 1;
 }

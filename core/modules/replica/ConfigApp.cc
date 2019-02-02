@@ -38,10 +38,9 @@ using namespace std;
 
 namespace {
 
-string const description {
+string const description =
     "This application is the tool for viewing and manipulating"
-    " the configuration data of the Replication system stored in the MySQL/MariaDB"
-};
+    " the configuration data of the Replication system stored in the MySQL/MariaDB.";
 
 /**
  * Register an option with a parser (which could also represent a command)
@@ -64,22 +63,16 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-ConfigApp::Ptr ConfigApp::create(int argc,
-                                 const char* const argv[]) {
+ConfigApp::Ptr ConfigApp::create(int argc, char* argv[]) {
     return Ptr(
-        new ConfigApp(
-            argc,
-            argv
-        )
+        new ConfigApp(argc, argv)
     );
 }
 
 
-ConfigApp::ConfigApp(int argc,
-                     const char* const argv[])
+ConfigApp::ConfigApp(int argc, char* argv[])
     :   Application(
-            argc,
-            argv,
+            argc, argv,
             ::description,
             true  /* injectDatabaseOptions */,
             false /* boostProtobufVersionCheck */,
@@ -111,7 +104,7 @@ ConfigApp::ConfigApp(int argc,
 
     parser().flag(
         "tables-vertical-separator",
-        "Print vertical separator when displaying tabular data in dumps",
+        "Print vertical separator when displaying tabular data in dumps.",
         _verticalSeparator);
 
     // Command-specific parameters, options and flags
@@ -127,7 +120,7 @@ ConfigApp::ConfigApp(int argc,
 
     dumpCmd.flag(
         "db-show-password",
-        "show the actual database password when making the dump of the GENERAL parameters",
+        "Show the actual database password when making the dump of the GENERAL parameters.",
         _dumpDbShowPassword);
 
     // Command-specific parameters, options and flags
@@ -145,54 +138,54 @@ ConfigApp::ConfigApp(int argc,
 
     updateWorkerCmd.required(
         "worker",
-        "The name of a worker to be updated",
+        "The name of a worker to be updated.",
         _workerInfo.name);
 
     updateWorkerCmd.option(
         "worker-service-host",
-        "The new DNS name or an IP address where the worker runs",
+        "The new DNS name or an IP address where the worker runs.",
         _workerInfo.svcHost);
 
     updateWorkerCmd.option(
         "worker-service-port",
-        "The port number of the worker service",
+        "The port number of the worker service.",
         _workerInfo.svcPort);
 
     updateWorkerCmd.option(
         "worker-fs-host",
-        "The new DNS name or an IP address where the worker's File Server runs",
+        "The new DNS name or an IP address where the worker's File Server runs.",
         _workerInfo.fsHost);
 
     updateWorkerCmd.option(
         "worker-fs-port",
-        "The port number of the worker's File Server",
+        "The port number of the worker's File Server.",
         _workerInfo.fsPort);
 
     updateWorkerCmd.option(
         "worker-data-dir",
-        "The data directory of the worker",
+        "The data directory of the worker.",
         _workerInfo.dataDir);
 
     updateWorkerCmd.flag(
         "worker-enable",
-        "Enable the worker. ATTENTION: this flag can't be used together with flag --worker-disable",
+        "Enable the worker. ATTENTION: this flag can't be used together with flag --worker-disable.",
         _workerEnable);
 
     updateWorkerCmd.flag(
         "worker-disable",
-        "Disable the worker. ATTENTION: this flag can't be used together with flag --worker-enable",
+        "Disable the worker. ATTENTION: this flag can't be used together with flag --worker-enable.",
         _workerDisable);
 
     updateWorkerCmd.flag(
         "worker-read-only",
         "Turn the worker into the read-only mode. ATTENTION: this flag can't be"
-        " used together with flag --worker-read-write",
+        " used together with flag --worker-read-write.",
         _workerReadOnly);
 
     updateWorkerCmd.flag(
         "worker-read-write",
         "Turn the worker into the read-write mode. ATTENTION: this flag can't be"
-        " used together with flag --worker-read-only",
+        " used together with flag --worker-read-only.",
         _workerReadWrite);
 
     // Command-specific parameters, options and flags
@@ -201,12 +194,12 @@ ConfigApp::ConfigApp(int argc,
 
     addWorkerCmd.required(
         "worker",
-        "The name of a worker to be added",
+        "The name of a worker to be added.",
         _workerInfo.name);
 
     addWorkerCmd.required(
         "service-host",
-        "The DNS name or an IP address where the worker runs",
+        "The DNS name or an IP address where the worker runs.",
         _workerInfo.svcHost);
 
     addWorkerCmd.required(
@@ -216,12 +209,12 @@ ConfigApp::ConfigApp(int argc,
 
     addWorkerCmd.required(
         "fs-host",
-        "The DNS name or an IP address where the worker's File Server runs",
+        "The DNS name or an IP address where the worker's File Server runs.",
         _workerInfo.fsHost);
 
     addWorkerCmd.required(
         "fs-port",
-        "The port number of the worker's File Server",
+        "The port number of the worker's File Server.",
         _workerInfo.fsPort);
 
     addWorkerCmd.required(
@@ -231,19 +224,19 @@ ConfigApp::ConfigApp(int argc,
 
     addWorkerCmd.required(
         "enabled",
-        "Set to '0' if the worker is turned into disabled mode upon creation",
+        "Set to '0' if the worker is turned into disabled mode upon creation.",
         _workerInfo.isEnabled);
 
     addWorkerCmd.required(
         "read-only",
-        "Set to '0' if the worker is NOT turned into the read-only mode upon creation",
+        "Set to '0' if the worker is NOT turned into the read-only mode upon creation.",
         _workerInfo.isReadOnly);
 
     // Command-specific parameters, options and flags
 
     parser().command("DELETE_WORKER").required(
         "worker",
-        "The name of a worker to be deleted",
+        "The name of a worker to be deleted.",
         _workerInfo.name);
 
     // Command-specific parameters, options and flags
@@ -274,22 +267,22 @@ ConfigApp::ConfigApp(int argc,
 
     addFamilyCmd.required(
         "name",
-        "The name of a new database family",
+        "The name of a new database family.",
         _familyInfo.name);
 
     addFamilyCmd.required(
         "replication-level",
-        "The minimum replication level desired (1..N)",
+        "The minimum replication level desired (1..N).",
         _familyInfo.replicationLevel);
 
     addFamilyCmd.required(
         "num-stripes",
-        "The number of stripes (from the CSS partitioning configuration)",
+        "The number of stripes (from the CSS partitioning configuration).",
         _familyInfo.numStripes);
 
     addFamilyCmd.required(
         "num-sub-stripes",
-        "The number of sub-stripes (from the CSS partitioning configuration)",
+        "The number of sub-stripes (from the CSS partitioning configuration).",
         _familyInfo.numSubStripes);
 
     // Command-specific parameters, options and flags
@@ -298,7 +291,7 @@ ConfigApp::ConfigApp(int argc,
         "name",
         "The name of an existing database family to be deleted. ATTENTION: all databases that"
         " are members of the family will be deleted as well, along with the relevant info"
-        " about replicas of all chunks of the databases",
+        " about replicas of all chunks of the databases.",
         _familyInfo.name);
     
     // Command-specific parameters, options and flags
@@ -307,12 +300,12 @@ ConfigApp::ConfigApp(int argc,
 
     addDatabaseCmd.required(
         "name",
-        "The name of a new database",
+        "The name of a new database.",
         _databaseInfo.name);
 
     addDatabaseCmd.required(
         "family",
-        "The name of an existing family the new database will join",
+        "The name of an existing family the new database will join.",
         _databaseInfo.family);
 
     // Command-specific parameters, options and flags
@@ -329,17 +322,17 @@ ConfigApp::ConfigApp(int argc,
 
     addTableCmd.required(
         "database",
-        "The name of an existing database",
+        "The name of an existing database.",
         _database);
 
     addTableCmd.required(
         "table",
-        "The name of a new table",
+        "The name of a new table.",
         _table);
 
     addTableCmd.flag(
         "partitioned",
-        "The flag indicating (if present) that a table is partitioned",
+        "The flag indicating (if present) that a table is partitioned.",
         _isPartitioned);
 
     // Command-specific parameters, options and flags
@@ -348,7 +341,7 @@ ConfigApp::ConfigApp(int argc,
 
     deleteTableCmd.required(
         "database",
-        "The name of an existing database",
+        "The name of an existing database.",
         _database );
 
     deleteTableCmd.required(

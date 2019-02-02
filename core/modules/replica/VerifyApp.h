@@ -35,8 +35,7 @@ namespace replica {
  * Class VerifyApp implements a tool which runs the replica verification algorithm
  * for all known replicas across all ENABLED workers.
  */
-class VerifyApp
-    :   public Application {
+class VerifyApp: public Application {
 
 public:
 
@@ -53,8 +52,7 @@ public:
      * @param argv
      *   the vector of command-line arguments
      */
-    static Ptr create(int argc,
-                      const char* const argv[]);
+    static Ptr create(int argc, char* argv[]);
 
     // Default construction and copy semantics are prohibited
 
@@ -69,8 +67,7 @@ protected:
     /**
      * @see VerifyApp::create()
      */
-    VerifyApp(int argc,
-              const char* const argv[]);
+    VerifyApp(int argc, char* argv[]);
 
     /**
      * @see Application::runImpl()

@@ -42,9 +42,8 @@ using namespace std;
 
 namespace {
 
-string const description {
-    "This application tests the Messenger Network w/o leaving side effects on the workers."
-};
+string const description =
+    "This application tests the Messenger Network w/o leaving side effects on the workers.";
 
 } /// namespace
 
@@ -53,22 +52,16 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-MessengerTestApp::Ptr MessengerTestApp::create(int argc,
-                                               const char* const argv[]) {
+MessengerTestApp::Ptr MessengerTestApp::create(int argc, char* argv[]) {
     return Ptr(
-        new MessengerTestApp(
-            argc,
-            argv
-        )
+        new MessengerTestApp(argc, argv)
     );
 }
 
 
-MessengerTestApp::MessengerTestApp(int argc,
-                                   const char* const argv[])
+MessengerTestApp::MessengerTestApp(int argc, char* argv[])
     :   Application(
-            argc,
-            argv,
+            argc, argv,
             ::description,
             false   /* injectDatabaseOptions */,
             true    /* boostProtobufVersionCheck */,
@@ -79,12 +72,12 @@ MessengerTestApp::MessengerTestApp(int argc,
 
     parser().required(
         "worker",
-        "The name of a worker to be used during the testing",
+        "The name of a worker to be used during the testing.",
         _workerName);
 
     parser().option(
         "iterations",
-        "The number of number of iterations (must be strictly greater than 0)",
+        "The number of number of iterations (must be strictly greater than 0).",
         _numIterations);
 
     parser().option(

@@ -37,13 +37,12 @@ using namespace std;
 
 namespace {
 
-string const description {
+string const description =
     "This application runs all worker servers within a single process."
     " NOTE: a special single-node configuration is required by this test."
     " Also, each logical worker must get a unique path in a data file"
     " system. The files must be read-write enabled for a user account"
-    " under which the test is run."
-};
+    " under which the test is run.";
 
 } /// namespace
 
@@ -52,22 +51,16 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-WorkerAllApp::Ptr WorkerAllApp::create(int argc,
-                                       const char* const argv[]) {
+WorkerAllApp::Ptr WorkerAllApp::create(int argc, char* argv[]) {
     return Ptr(
-        new WorkerAllApp(
-            argc,
-            argv
-        )
+        new WorkerAllApp(argc, argv)
     );
 }
 
 
-WorkerAllApp::WorkerAllApp(int argc,
-                           const char* const argv[])
+WorkerAllApp::WorkerAllApp(int argc, char* argv[])
     :   Application(
-            argc,
-            argv,
+            argc, argv,
             ::description,
             true    /* injectDatabaseOptions */,
             true    /* boostProtobufVersionCheck */,
@@ -80,12 +73,12 @@ WorkerAllApp::WorkerAllApp(int argc,
     parser().flag(
         "all-workers",
         "Launch worker services for all known workers regardless of their"
-        " configuration status (DISABLED or READ-ONLY)",
+        " configuration status (DISABLED or READ-ONLY).",
         _allWorkers);
 
     parser().flag(
         "enable-file-server",
-        "also launch a dedicatedfFile server for each worker",
+        "Also launch a dedicatedfFile server for each worker.",
         _enableFileServer);
 }
 

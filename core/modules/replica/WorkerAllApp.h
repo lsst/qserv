@@ -48,8 +48,7 @@ class WorkerRequestFactory;
  * system. The files must be read-write enabled for a user account
  * under which the test is run.
  */
-class WorkerAllApp
-    :   public Application {
+class WorkerAllApp: public Application {
 
 public:
 
@@ -66,8 +65,7 @@ public:
      * @param argv
      *   the vector of command-line arguments
      */
-    static Ptr create(int argc,
-                      const char* const argv[]);
+    static Ptr create(int argc, char* argv[]);
 
     // Default construction and copy semantics are prohibited
 
@@ -82,8 +80,7 @@ protected:
     /**
      * @see WorkerAllApp::create()
      */
-    WorkerAllApp(int argc,
-                 const char* const argv[]);
+    WorkerAllApp(int argc, char* argv[]);
 
     /**
      * @see Application::runImpl()

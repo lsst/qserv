@@ -40,10 +40,9 @@ using namespace std;
 
 namespace {
 
-string const description {
+string const description =
     "This application disable a worker from any active use in a replication setup."
-    " All chunks hosted by  the worker node will be distributed across the cluster."
-};
+    " All chunks hosted by  the worker node will be distributed across the cluster.";
 
 } /// namespace
 
@@ -52,22 +51,16 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-DeleteWorkerApp::Ptr DeleteWorkerApp::create(int argc,
-                                             const char* const argv[]) {
+DeleteWorkerApp::Ptr DeleteWorkerApp::create(int argc, char* argv[]) {
     return Ptr(
-        new DeleteWorkerApp(
-            argc,
-            argv
-        )
+        new DeleteWorkerApp(argc, argv)
     );
 }
 
 
-DeleteWorkerApp::DeleteWorkerApp(int argc,
-                                 const char* const argv[])
+DeleteWorkerApp::DeleteWorkerApp(int argc, char* argv[])
     :   Application(
-            argc,
-            argv,
+            argc, argv,
             ::description,
             true    /* injectDatabaseOptions */,
             true    /* boostProtobufVersionCheck */,
@@ -78,17 +71,17 @@ DeleteWorkerApp::DeleteWorkerApp(int argc,
 
     parser().required(
         "worker",
-        "The name of a worker to be deleted",
+        "The name of a worker to be deleted.",
         _workerName);
 
     parser().flag(
         "permanent-delete",
-        "Permanently delete a worker from the Configuration",
+        "Permanently delete a worker from the Configuration.",
         _permanentDelete);
 
     parser().option(
         "tables-page-size",
-        "the number of rows in the table of replicas (0 means no pages)",
+        "The number of rows in the table of replicas (0 means no pages).",
         _pageSize);
 }
 
@@ -115,7 +108,7 @@ int DeleteWorkerApp::runImpl() {
     // Analyze and display results
 
     cout << "\n";
-    replica::printAsTable("NEWELY CREATED CHUNKS", "  ", job->getReplicaData().chunks, cout, _pageSize);
+    replica::printAsTable("NEWLY CREATED CHUNKS", "  ", job->getReplicaData().chunks, cout, _pageSize);
     cout << "\n";
     replica::printAsTable("ORPHAN CHUNKS", "  ", job->getReplicaData().orphanChunks, cout, _pageSize);
     cout << "\n";

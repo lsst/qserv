@@ -21,12 +21,7 @@
  */
 
 /**
- * qserv-replica-worker-all.cc runs all worker servers within a single process.
- *
- * NOTE: a special single-node configuration is required by this test.
- * Also, each logical worker must get a unique path in a data file
- * system. The files must be read-write enabled for a user account
- * under which the test is run.
+ * @see WorkerAllApp
  */
 
 // System headers
@@ -38,12 +33,12 @@
 
 using namespace lsst::qserv::replica;
 
-int main(int argc, const char* const argv[]) {
+int main(int argc, char* argv[]) {
     try {
         auto app = WorkerAllApp::create(argc, argv);
         return app->run();
     } catch (std::exception const& ex) {
         std::cerr << "main()  the application failed, exception: " << ex.what() << std::endl;
+        return 1;
     }
-    return 1;
 }

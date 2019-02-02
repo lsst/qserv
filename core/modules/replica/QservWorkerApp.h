@@ -40,8 +40,7 @@ namespace replica {
  * Class QservWorkerApp represents a command-line tool for operations
  * with Qserv workers.
  */
-class QservWorkerApp
-    :   public Application {
+class QservWorkerApp: public Application {
 
 public:
 
@@ -58,8 +57,7 @@ public:
      * @param argv
      *   the vector of command-line arguments
      */
-    static Ptr create(int argc,
-                      const char* const argv[]);
+    static Ptr create(int argc, char* argv[]);
 
     // Default construction and copy semantics are prohibited
 
@@ -74,8 +72,7 @@ protected:
     /**
      * @see QservWorkerApp::create()
      */
-    QservWorkerApp(int argc,
-                   const char* const argv[]);
+    QservWorkerApp(int argc, char* argv[]);
 
     /**
      * @see Application::runImpl()

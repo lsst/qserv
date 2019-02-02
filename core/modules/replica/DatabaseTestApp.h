@@ -35,8 +35,7 @@ namespace replica {
  * Class DatabaseTestApp implements a tool for testing the DatabaseServices API used by
  * the Replication system implementation.
  */
-class DatabaseTestApp
-    :   public Application {
+class DatabaseTestApp: public Application {
 
 public:
 
@@ -53,8 +52,7 @@ public:
      * @param argv
      *   the vector of command-line arguments
      */
-    static Ptr create(int argc,
-                      const char* const argv[]);
+    static Ptr create(int argc, char* argv[]);
 
     // Default construction and copy semantics are prohibited
 
@@ -69,8 +67,7 @@ protected:
     /**
      * @see DatabaseTestApp::create()
      */
-    DatabaseTestApp(int argc,
-                    const char* const argv[]);
+    DatabaseTestApp(int argc, char* argv[]);
 
     /**
      * @see Application::runImpl()

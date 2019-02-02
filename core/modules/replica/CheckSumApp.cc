@@ -33,9 +33,8 @@ using namespace std;
 
 namespace {
 
-string const description {
-    "This application calculates and prints a checksum of a file"
-};
+string const description =
+    "This application calculates and prints a checksum of a file.";
 
 } /// namespace
 
@@ -44,22 +43,16 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-CheckSumApp::Ptr CheckSumApp::create(int argc,
-                                     const char* const argv[]) {
+CheckSumApp::Ptr CheckSumApp::create(int argc, char* argv[]) {
     return Ptr(
-        new CheckSumApp(
-            argc,
-            argv
-        )
+        new CheckSumApp(argc, argv)
     );
 }
 
 
-CheckSumApp::CheckSumApp(int argc,
-                         const char* const argv[])
+CheckSumApp::CheckSumApp(int argc, char* argv[])
     :   Application(
-            argc,
-            argv,
+            argc, argv,
             ::description,
             false   /* injectDatabaseOptions */,
             false   /* boostProtobufVersionCheck */,
@@ -71,12 +64,12 @@ CheckSumApp::CheckSumApp(int argc,
 
     parser().required(
         "file",
-        "The name of a file to process",
+        "The name of a file to process.",
         _file);
 
     parser().flag(
         "incremental",
-        "use the incremental file reader",
+        "Use the incremental file reader.",
         _incremental);
 }
 

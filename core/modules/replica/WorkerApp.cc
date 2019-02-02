@@ -39,9 +39,8 @@ using namespace std;
 
 namespace {
 
-string const description {
-    "This application represents the worker service of the Replication system"
-};
+string const description =
+    "This application represents the worker service of the Replication system.";
 
 } /// namespace
 
@@ -50,22 +49,16 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-WorkerApp::Ptr WorkerApp::create(int argc,
-                                 const char* const argv[]) {
+WorkerApp::Ptr WorkerApp::create(int argc, char* argv[]) {
     return Ptr(
-        new WorkerApp(
-            argc,
-            argv
-        )
+        new WorkerApp(argc, argv)
     );
 }
 
 
-WorkerApp::WorkerApp(int argc,
-                     const char* const argv[])
+WorkerApp::WorkerApp(int argc, char* argv[])
     :   Application(
-            argc,
-            argv,
+            argc, argv,
             ::description,
             true    /* injectDatabaseOptions */,
             true    /* boostProtobufVersionCheck */,
@@ -77,7 +70,7 @@ WorkerApp::WorkerApp(int argc,
 
     parser().required(
         "worker",
-        "The name of a worker",
+        "The name of a worker.",
         _worker);
 }
 

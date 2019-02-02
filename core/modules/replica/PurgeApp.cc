@@ -40,12 +40,11 @@ using namespace std;
 
 namespace {
 
-string const description {
+string const description =
     "This application purges excess replicas for all chunks of"
     " a database family down to the minimally required replication level. And while"
     " doing so, the application will make the best effort to leave worker nodes as"
-    " balanced as possible, and it will also preserve chunk collocation."
-};
+    " balanced as possible, and it will also preserve chunk collocation.";
 
 } /// namespace
 
@@ -54,22 +53,16 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-PurgeApp::Ptr PurgeApp::create(int argc,
-                               const char* const argv[]) {
+PurgeApp::Ptr PurgeApp::create(int argc, char* argv[]) {
     return Ptr(
-        new PurgeApp(
-            argc,
-            argv
-        )
+        new PurgeApp(argc, argv)
     );
 }
 
 
-PurgeApp::PurgeApp(int argc,
-                   const char* const argv[])
+PurgeApp::PurgeApp(int argc, char* argv[])
     :   Application(
-            argc,
-            argv,
+            argc, argv,
             ::description,
             true    /* injectDatabaseOptions */,
             true    /* boostProtobufVersionCheck */,
@@ -93,7 +86,7 @@ PurgeApp::PurgeApp(int argc,
 
     parser().option(
         "tables-page-size",
-        "the number of rows in the table of replicas (0 means no pages)",
+        "The number of rows in the table of replicas (0 means no pages).",
         _pageSize);
 }
 

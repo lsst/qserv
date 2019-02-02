@@ -35,8 +35,7 @@ namespace replica {
  * Class MessengerTestApp implements a tool which tests the Messenger Network
  * w/o leaving side effects on the workers.
  */
-class MessengerTestApp
-    :   public Application {
+class MessengerTestApp: public Application {
 
 public:
 
@@ -53,8 +52,7 @@ public:
      * @param argv
      *   the vector of command-line arguments
      */
-    static Ptr create(int argc,
-                      const char* const argv[]);
+    static Ptr create(int argc, char* argv[]);
 
     // Default construction and copy semantics are prohibited
 
@@ -69,8 +67,7 @@ protected:
     /**
      * @see MessengerTestApp::create()
      */
-    MessengerTestApp(int argc,
-                     const char* const argv[]);
+    MessengerTestApp(int argc, char* argv[]);
 
     /**
      * @see Application::runImpl()

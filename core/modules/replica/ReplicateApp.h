@@ -35,8 +35,7 @@ namespace replica {
  * Class ReplicateApp implements a tool which runs the replication algorithm
  * in a scope of a database family.
  */
-class ReplicateApp
-    :   public Application {
+class ReplicateApp: public Application {
 
 public:
 
@@ -53,8 +52,7 @@ public:
      * @param argv
      *   the vector of command-line arguments
      */
-    static Ptr create(int argc,
-                      const char* const argv[]);
+    static Ptr create(int argc, char* argv[]);
 
     // Default construction and copy semantics are prohibited
 
@@ -69,8 +67,7 @@ protected:
     /**
      * @see ReplicateApp::create()
      */
-    ReplicateApp(int argc,
-                 const char* const argv[]);
+    ReplicateApp(int argc, char* argv[]);
 
     /**
      * @see Application::runImpl()

@@ -21,9 +21,7 @@
  */
 
 /**
- * qserv-replica-job-sync.cc is an application which synchronizes
- * collections of chunks at the Qserv workers with what the Replication
- * system sees as "good" chunks in the data directories.
+ * @see SyncApp
  */
 
 // System headers
@@ -35,12 +33,12 @@
 
 using namespace lsst::qserv::replica;
 
-int main(int argc, const char* const argv[]) {
+int main(int argc, char* argv[]) {
     try {
         auto app = SyncApp::create(argc, argv);
         return app->run();
     } catch (std::exception const& ex) {
         std::cerr << "main()  the application failed, exception: " << ex.what() << std::endl;
+        return 1;
     }
-    return 1;
 }

@@ -25,7 +25,7 @@
 
 // System headers
 #include <cerrno>
-#include <cstdio>           // std::FILE, C-style file I/O
+#include <cstdio>
 #include <cstring>
 #include <iostream>
 #include <stdexcept>
@@ -39,10 +39,9 @@ using namespace std;
 
 namespace {
 
-string const description {
+string const description =
     "This is an  application which acts as a read-only client of"
-    " the Replication system's file server"
-};
+    " the Replication system's file server.";
 
 } /// namespace
 
@@ -51,22 +50,16 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-FileReadApp::Ptr FileReadApp::create(int argc,
-                                     const char* const argv[]) {
+FileReadApp::Ptr FileReadApp::create(int argc, char* argv[]) {
     return Ptr(
-        new FileReadApp(
-            argc,
-            argv
-        )
+        new FileReadApp(argc, argv)
     );
 }
 
 
-FileReadApp::FileReadApp(int argc,
-                         const char* const argv[])
+FileReadApp::FileReadApp(int argc, char* argv[])
     :   Application(
-            argc,
-            argv,
+            argc, argv,
             ::description,
             true    /* injectDatabaseOptions */,
             true    /* boostProtobufVersionCheck */,
@@ -77,33 +70,33 @@ FileReadApp::FileReadApp(int argc,
 
     parser().required(
         "worker",
-        "the name of a worker where the input file is located",
+        "The name of a worker where the input file is located.",
         _workerName);
 
     parser().required(
         "database",
-        "the name of a database",
+        "The name of a database.",
         _databaseName);
 
     parser().required(
         "infile",
-        "the name of an input file to be copied from the worker. The name should not"
+        "The name of an input file to be copied from the worker. The name should not"
         " include any directories.",
         _inFileName);
 
     parser().required(
         "outfile",
-        "the name of a local file to be created and populated with received data",
+        "The name of a local file to be created and populated with received data.",
         _outFileName);
 
     parser().option(
         "record-size-bytes",
-        "the maximum number of bytes to be read from a server at each request",
+        "The maximum number of bytes to be read from a server at each request.",
         _recordSizeBytes);
 
     parser().flag(
         "verbose",
-        "report on a progress of the operation",
+        "Report on a progress of the operation.",
         _verbose);
 }
 
@@ -111,7 +104,7 @@ FileReadApp::FileReadApp(int argc,
 int FileReadApp::runImpl() {
 
     if (_recordSizeBytes == 0) {
-        throw invalid_argument("record size 0 is not allowed");
+        throw invalid_argument("record size 0 is not allowed.");
     }
     _buf.resize(_recordSizeBytes);
 
@@ -141,11 +134,15 @@ int FileReadApp::runImpl() {
                 }
                 cerr << "input file was closed too early after reading " << totalRead
                      << " bytes instead of " << fileSize << endl;
+                fclose(fp);
+                return 1;
             }
             cerr << "failed to open the output file, error: " << strerror(errno) << endl;
+            return 1;
         }
         cerr << "failed to open the input file" << endl;
-
+        return 1;
+ 
     } catch (exception const& ex) {
         cerr << ex.what() << endl;
     }

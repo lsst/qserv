@@ -40,8 +40,7 @@ namespace replica {
  * Class AdminApp implements a Controller application for launching
  * worker management requests.
  */
-class AdminApp
-    :   public Application {
+class AdminApp: public Application {
 
 public:
 
@@ -58,8 +57,7 @@ public:
      * @param argv
      *   the vector of command-line arguments
      */
-    static Ptr create(int argc,
-                      const char* const argv[]);
+    static Ptr create(int argc, char* argv[]);
 
     // Default construction and copy semantics are prohibited
 
@@ -74,8 +72,7 @@ protected:
     /**
      * @see AdminApp::create()
      */
-    AdminApp(int argc,
-             const char* const argv[]);
+    AdminApp(int argc, char* argv[]);
 
     /**
      * @see Application::runImpl()
