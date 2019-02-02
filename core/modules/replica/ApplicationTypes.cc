@@ -385,8 +385,18 @@ std::string const& Parser::help() {
         bool const commandMode = (_commands != nullptr);
 
         _help += "DESCRIPTION:\n\n" + wrap(_description, "  ") + "\n\n" + usage();
-        _help += "\nPARAMETERS:\n";
 
+        if (commandMode) {
+            _help += "\nCOMMANDS:\n";
+            for (auto const& entry: _commands->_commands) {
+
+                auto const& name    = entry.first;
+                auto const& command = entry.second;
+
+                _help += "\n  " + name + "\n" + wrap(command->_description) + "\n";
+            }
+        }
+        _help += "\nPARAMETERS:\n";
         for (auto&& arg: _required) {
             _help += "\n  <" + arg->name() + ">\n" + wrap(arg->description()) + "\n";
         }

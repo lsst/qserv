@@ -49,8 +49,7 @@ namespace replica {
  * two tasks running in parallel (in dedicated threads): Linear Replication one and
  * the Health Monitoring one. These tasks can be suspended/resumed via the REST API.
  */
-class MasterControllerHttpApp
-    :   public Application {
+class MasterControllerHttpApp: public Application {
 
 public:
 
@@ -67,8 +66,7 @@ public:
      * @param argv
      *   the vector of command-line arguments
      */
-    static Ptr create(int argc,
-                      const char* const argv[]);
+    static Ptr create(int argc, char* argv[]);
 
     // Default construction and copy semantics are prohibited
 
@@ -83,8 +81,7 @@ protected:
     /**
      * @see MasterControllerHttpApp::create()
      */
-    MasterControllerHttpApp(int argc,
-                            const char* const argv[]);
+    MasterControllerHttpApp(int argc, char* argv[]);
 
     /**
      * @see Application::runImpl()

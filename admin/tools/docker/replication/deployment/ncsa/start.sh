@@ -43,7 +43,7 @@ if [ -n "${DB_SERVICE}" ]; then
     ssh -n $HOST docker run \
         --detach \
         --name "${DB_CONTAINER_NAME}" \
-        -u 1000:1000 \
+        -u ${CONTAINER_UID}:${CONTAINER_GID} \
         -v /etc/passwd:/etc/passwd:ro \
         -v "${DB_DATA_DIR}/mysql:/var/lib/mysql" \
         -v "${DB_DATA_DIR}/log:${DB_DATA_DIR}/log" \
@@ -72,7 +72,7 @@ for WORKER in $WORKERS; do
         --detach \
         --network host \
         --name "${WORKER_CONTAINER_NAME}" \
-        -u 1000:1000 \
+        -u ${CONTAINER_UID}:${CONTAINER_GID} \
         -v /etc/passwd:/etc/passwd:ro \
         -v "${QSERV_DATA_DIR}/mysql:${QSERV_DATA_DIR}/mysql" \
         -v "${CONFIG_DIR}:/qserv/replication/config:ro" \
@@ -100,12 +100,12 @@ if [ -n "${MASTER_CONTROLLER}" ]; then
     ssh -n $HOST docker run \
         --detach \
         --network host \
-        -u 1000:1000 \
+        -u ${CONTAINER_UID}:${CONTAINER_GID} \
         -v /etc/passwd:/etc/passwd:ro \
         -v ${WORK_DIR}:${WORK_DIR} \
         -v ${CONFIG_DIR}:/qserv/replication/config:ro \
         -v ${LOG_DIR}:${LOG_DIR} \
-        -e "TOOL=qserv-replica-master" \
+        -e "TOOL=qserv-replica-master-http" \
         -e "'PARAMETERS=${MASTER_PARAMETERS}'" \
         -e "WORK_DIR=${WORK_DIR}" \
         -e "LOG_DIR=${LOG_DIR}" \

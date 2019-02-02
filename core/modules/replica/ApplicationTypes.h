@@ -434,6 +434,21 @@ public:
     ~Command() = default;
 
     /**
+     * Set a description of the command
+     *
+     * @param description
+     *   the description of the command as it will be shown in the 'help'
+     *   printout (if the one is requested in the constructor of the class)
+     *
+     * @return
+     *   a reference to the command object in order to allow chained calls
+     */
+    Command& description(std::string const& descr) {
+        _description = descr;
+        return *this;
+    }
+
+    /**
      * Register a mandatory positional parameter for parsing. Positional
      * parameters are lined up based on an order in which the positional
      * parameter methods (this and 'optional') are called.
@@ -551,6 +566,9 @@ private:
     /// The friend class is allowed to access the members when parsing
     /// the command-line input
     friend class Parser;
+
+    /// The optional description of the command
+    std::string _description;
 
     /// A sequence of the mandatory parameters
     std::vector<std::unique_ptr<ArgumentParser>> _required;

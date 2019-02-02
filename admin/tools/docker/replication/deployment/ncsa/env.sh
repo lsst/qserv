@@ -87,7 +87,11 @@ DB_ROOT_PASSWORD="CHANGEME"
 CONFIG="mysql://qsreplica@lsst-qserv-${MASTER}:${DB_PORT}/qservReplica"
 
 # Optional parameters of the Master Controller
-MASTER_PARAMETERS="--worker-evict-timeout=3600 --health-probe-interval=120 --replication-interval=1200"
+MASTER_PARAMETERS="--debug --worker-evict-timeout=3600 --health-probe-interval=120 --replication-interval=1200"
+
+# User account under which the containers will be run
+CONTAINER_UID=1000
+CONTAINER_GID=1000
 
 unset basedir
 unset -f get_param

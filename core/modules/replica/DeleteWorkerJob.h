@@ -48,16 +48,10 @@ namespace replica {
 struct DeleteWorkerJobResult {
 
     /// New replicas created upon successful completion of the request
-    std::map<std::string,               // database family
-        std::map<unsigned int,          // chunk
-            std::map<std::string,       // database
-                std::map<std::string,   // worker
-                    ReplicaInfo>>>> chunks;
+    FamilyChunkDatabaseWorkerInfo chunks;
 
     /// Completely lost replicas which only existed on the deleted worker node
-    std::map<unsigned int,              // chunk
-        std::map<std::string,           // database
-            ReplicaInfo>> orphanChunks;
+    ChunkDatabaseReplicaInfo orphanChunks;
 };
 
 /**

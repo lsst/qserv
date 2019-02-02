@@ -80,7 +80,11 @@ void ColumnTablePrinter::print(std::ostream& os,
         os << _indent << r << "\n";
         if (pageSize != 0 and pageSize == ++currentPageRows) {
             currentPageRows = 0;
-            os << _indent << _separator << "\n";
+            if (topSeparator) {
+                os << _indent << _separator << "\n";
+            } else {
+                os << _indent << "\n";
+            }
             if (repeatedHeader) {
                 os << _indent << _header    << "\n"
                    << _indent << _separator << "\n";

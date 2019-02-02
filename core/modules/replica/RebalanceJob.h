@@ -51,21 +51,21 @@ struct RebalanceJobResult {
     /// of the new replica creation requests
     std::list<ReplicaInfo> createdReplicas;
 
-    /// New replica creation results grouped by: chunk number, database, worker
-    std::map<unsigned int,                  // chunk
-             std::map<std::string,          // database
-                      std::map<std::string, // destination worker
-                               ReplicaInfo>>> createdChunks;
+    /// New replica creation results grouped by:
+    ///
+    ///   <chunk>, <database>, <destination worker>
+    ///
+    ChunkDatabaseWorkerReplicaInfo createdChunks;
 
     /// Results reported by workers upon the successful completion
     /// of the replica deletion requests
     std::list<ReplicaInfo> deletedReplicas;
 
-    /// Replica deletion results grouped by: chunk number, database, worker
-    std::map<unsigned int,                  // chunk
-             std::map<std::string,          // database
-                      std::map<std::string, // source worker
-                               ReplicaInfo>>> deletedChunks;
+    /// Replica deletion results grouped by:
+    ///
+    ///   <chunk>, <database>, <source worker>
+    ///
+    ChunkDatabaseWorkerReplicaInfo deletedChunks;
 
     /// Per-worker flags indicating if the corresponding replica retrieval
     /// request succeeded.

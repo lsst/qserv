@@ -60,6 +60,7 @@ std::string QservGetReplicasJob::typeName() { return "QservGetReplicasJob"; }
 QservGetReplicasJob::Ptr QservGetReplicasJob::create(
                                     std::string const& databaseFamily,
                                     bool inUseOnly,
+                                    bool allWorkers,
                                     Controller::Ptr const& controller,
                                     std::string const& parentJobId,
                                     CallbackType const& onFinish,
@@ -67,6 +68,7 @@ QservGetReplicasJob::Ptr QservGetReplicasJob::create(
     return QservGetReplicasJob::Ptr(
         new QservGetReplicasJob(databaseFamily,
                                 inUseOnly,
+                                allWorkers,
                                 controller,
                                 parentJobId,
                                 onFinish,
@@ -76,6 +78,7 @@ QservGetReplicasJob::Ptr QservGetReplicasJob::create(
 QservGetReplicasJob::QservGetReplicasJob(
                        std::string const& databaseFamily,
                        bool inUseOnly,
+                       bool allWorkers,
                        Controller::Ptr const& controller,
                        std::string const& parentJobId,
                        CallbackType const& onFinish,
@@ -86,6 +89,7 @@ QservGetReplicasJob::QservGetReplicasJob(
             options),
         _databaseFamily(databaseFamily),
         _inUseOnly(inUseOnly),
+        _allWorkers(allWorkers),
         _onFinish(onFinish),
         _numLaunched(0),
         _numFinished(0),
@@ -105,7 +109,8 @@ QservGetReplicasJobResult const& QservGetReplicasJob::getReplicaData() const {
 std::list<std::pair<std::string,std::string>> QservGetReplicasJob::extendedPersistentState() const {
     std::list<std::pair<std::string,std::string>> result;
     result.emplace_back("database_family", databaseFamily());
-    result.emplace_back("in_use_only",     inUseOnly() ? "1" : "0");
+    result.emplace_back("in_use_only",     inUseOnly()  ? "1" : "0");
+    result.emplace_back("all_workers",     allWorkers() ? "1" : "0");
     return result;
 }
 
@@ -115,7 +120,12 @@ void QservGetReplicasJob::startImpl(util::Lock const& lock) {
 
     auto self = shared_from_base<QservGetReplicasJob>();
 
-    for (auto&& worker: controller()->serviceProvider()->config()->workers()) {
+    auto const workerNames = allWorkers() ?
+        controller()->serviceProvider()->config()->allWorkers() :
+        controller()->serviceProvider()->config()->workers();
+
+    for (auto&& worker: workerNames) {
+        _replicaData.workers[worker] = false;
         auto const request = controller()->serviceProvider()->qservMgtServices()->getReplicas(
             databaseFamily(),
             worker,
@@ -200,8 +210,6 @@ void QservGetReplicasJob::onRequestFinish(GetReplicasQservMgtRequest::Ptr const&
                                  .atWorker(request->worker()) = replica.useCount;
         }
         _replicaData.workers[request->worker()] = true;
-    } else {
-        _replicaData.workers[request->worker()] = false;
     }
 
     LOGS(_log, LOG_LVL_DEBUG, context()

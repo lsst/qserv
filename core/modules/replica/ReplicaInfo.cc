@@ -29,6 +29,9 @@
 
 // Qserv headers
 #include "proto/replication.pb.h"
+#include "util/TablePrinter.h"
+
+using namespace std;
 
 namespace {
 
@@ -45,7 +48,7 @@ void setInfoImpl(replica::ReplicaInfo const& ri,
         case replica::ReplicaInfo::Status::INCOMPLETE: info->set_status(proto::ReplicationReplicaInfo::INCOMPLETE); break;
         case replica::ReplicaInfo::Status::COMPLETE:   info->set_status(proto::ReplicationReplicaInfo::COMPLETE);   break;
         default:
-            throw std::logic_error(
+            throw logic_error(
                         "unhandled status " + replica::ReplicaInfo::status2string(ri.status()) +
                         " in ReplicaInfo::setInfoImpl()");
     }
@@ -72,15 +75,15 @@ namespace qserv {
 namespace replica {
 
 
-std::string ReplicaInfo::status2string(Status status) {
+string ReplicaInfo::status2string(Status status) {
     switch (status) {
         case Status::NOT_FOUND:                  return "NOT_FOUND";
         case Status::CORRUPT:                    return "CORRUPT";
         case Status::INCOMPLETE:                 return "INCOMPLETE";
         case Status::COMPLETE:                   return "COMPLETE";
     }
-    throw std::logic_error("unhandled status " + std::to_string(status) +
-                           " in ReplicaInfo::status2string()");
+    throw logic_error("unhandled status " + to_string(status) +
+                      " in ReplicaInfo::status2string()");
 }
 ReplicaInfo::ReplicaInfo()
     :   _status(Status::NOT_FOUND),
@@ -92,8 +95,8 @@ ReplicaInfo::ReplicaInfo()
 }
 
 ReplicaInfo::ReplicaInfo(Status status,
-                         std::string const& worker,
-                         std::string const& database,
+                         string const& worker,
+                         string const& database,
                          unsigned int chunk,
                          uint64_t verifyTime,
                          ReplicaInfo::FileInfoCollection const& fileInfo)
@@ -106,8 +109,8 @@ ReplicaInfo::ReplicaInfo(Status status,
 }
 
 ReplicaInfo::ReplicaInfo(Status status,
-                         std::string const& worker,
-                         std::string const& database,
+                         string const& worker,
+                         string const& database,
                          unsigned int chunk,
                          uint64_t verifyTime)
     :   _status(status),
@@ -125,10 +128,9 @@ ReplicaInfo::ReplicaInfo(proto::ReplicationReplicaInfo const* info) {
         case proto::ReplicationReplicaInfo::INCOMPLETE: this->_status = Status::INCOMPLETE; break;
         case proto::ReplicationReplicaInfo::COMPLETE:   this->_status = Status::COMPLETE;   break;
         default:
-            throw std::logic_error(
-                        "unhandled status " +
-                        proto::ReplicationReplicaInfo_ReplicaStatus_Name(info->status()) +
-                        " in ReplicaInfo::ReplicaInfo()");
+            throw logic_error("unhandled status " +
+                              proto::ReplicationReplicaInfo_ReplicaStatus_Name(info->status()) +
+                              " in ReplicaInfo::ReplicaInfo()");
     }
     _worker   = info->worker();
     _database = info->database();
@@ -162,7 +164,7 @@ void ReplicaInfo::setFileInfo(FileInfoCollection&& fileInfo) {
 uint64_t ReplicaInfo::beginTransferTime() const {
     uint64_t t = 0;
     for (auto&& f: _fileInfo) {
-        t = t ? std::min(t, f.beginTransferTime) : f.beginTransferTime;
+        t = t ? min(t, f.beginTransferTime) : f.beginTransferTime;
     }
     return t;
 }
@@ -170,7 +172,7 @@ uint64_t ReplicaInfo::beginTransferTime() const {
 uint64_t ReplicaInfo::endTransferTime() const {
     uint64_t t = 0;
     for (auto&& f: _fileInfo) {
-        t = std::max(t, f.endTransferTime);
+        t = max(t, f.endTransferTime);
     }
     return t;
 }
@@ -185,8 +187,8 @@ void ReplicaInfo::setInfo(lsst::qserv::proto::ReplicationReplicaInfo* info) cons
     ::setInfoImpl(*this, info);
 }
 
-std::map<std::string, ReplicaInfo::FileInfo> ReplicaInfo::fileInfoMap() const {
-    std::map<std::string, ReplicaInfo::FileInfo> result;
+map<string, ReplicaInfo::FileInfo> ReplicaInfo::fileInfoMap() const {
+    map<string, ReplicaInfo::FileInfo> result;
     for (auto&& f: _fileInfo) {
         result[f.name] = f;
     }
@@ -198,8 +200,8 @@ bool ReplicaInfo::equalFileCollections(ReplicaInfo const& other) const {
     // Files of both collections needs to be map-sorted because objects may
     // have them stored in different order.
 
-    std::map<std::string, ReplicaInfo::FileInfo> thisFileInfo  = this->fileInfoMap();
-    std::map<std::string, ReplicaInfo::FileInfo> otherFileInfo = other.fileInfoMap();
+    map<string, ReplicaInfo::FileInfo> thisFileInfo  = this->fileInfoMap();
+    map<string, ReplicaInfo::FileInfo> otherFileInfo = other.fileInfoMap();
 
     if (thisFileInfo.size() != otherFileInfo.size()) return false;
 
@@ -211,7 +213,7 @@ bool ReplicaInfo::equalFileCollections(ReplicaInfo const& other) const {
     return true;
 }
 
-std::ostream& operator<<(std::ostream& os, ReplicaInfo::FileInfo const& fi) {
+ostream& operator<<(ostream& os, ReplicaInfo::FileInfo const& fi) {
 
     static float const MB =  1024.0*1024.0;
     static float const millisec_per_sec = 1000.0;
@@ -233,7 +235,7 @@ std::ostream& operator<<(std::ostream& os, ReplicaInfo::FileInfo const& fi) {
     return os;
 }
 
-std::ostream& operator<<(std::ostream& os, ReplicaInfo const& ri) {
+ostream& operator<<(ostream& os, ReplicaInfo const& ri) {
 
     os  << "ReplicaInfo"
         << " status: "     << ReplicaInfo::status2string(ri.status())
@@ -248,7 +250,7 @@ std::ostream& operator<<(std::ostream& os, ReplicaInfo const& ri) {
     return os;
 }
 
-std::ostream& operator<<(std::ostream &os, ReplicaInfoCollection const& ric) {
+ostream& operator<<(ostream &os, ReplicaInfoCollection const& ric) {
 
     os << "ReplicaInfoCollection";
     for (auto&& ri: ric) {
@@ -256,5 +258,135 @@ std::ostream& operator<<(std::ostream &os, ReplicaInfoCollection const& ric) {
     }
     return os;
 }
+
+
+void printAsTable(string const& caption,
+                  string const& prefix,
+                  ChunkDatabaseWorkerReplicaInfo const& collection,
+                  ostream& os,
+                  size_t pageSize) {
+
+    vector<unsigned int> columnChunk;
+    vector<string>       columnDatabase;
+    vector<size_t>       columnNumReplicas;
+    vector<string>       columnWorkers;
+
+
+    for (auto&& chunkEntry: collection) {
+        unsigned int const& chunk = chunkEntry.first;
+
+        for (auto&& databaseEntry: chunkEntry.second) {
+            auto&& databaseName    = databaseEntry.first;
+            auto const numReplicas = databaseEntry.second.size();
+
+            string workers;
+
+            for (auto&& replicaEntry: databaseEntry.second) {
+                auto&& workerName  = replicaEntry.first;
+                auto&& replicaInfo = replicaEntry.second;
+
+                workers += workerName + (replicaInfo.status() != ReplicaInfo::Status::COMPLETE ? "(!) " : " ");
+            }
+            columnChunk      .push_back(chunk);
+            columnDatabase   .push_back(databaseName);
+            columnNumReplicas.push_back(numReplicas);
+            columnWorkers    .push_back(workers);
+        }
+    }
+    util::ColumnTablePrinter table(caption, prefix, false);
+
+    table.addColumn("chunk",     columnChunk );
+    table.addColumn("database",  columnDatabase, util::ColumnTablePrinter::LEFT);
+    table.addColumn("#replicas", columnNumReplicas);
+    table.addColumn("workers",   columnWorkers, util::ColumnTablePrinter::LEFT);
+
+    table.print(os, false, false, pageSize, pageSize != 0);
+}
+
+
+void printAsTable(string const& caption,
+                  string const& prefix,
+                  ChunkDatabaseReplicaInfo const& collection,
+                  ostream& os,
+                  size_t pageSize) {
+
+    vector<unsigned int> columnChunk;
+    vector<string>       columnDatabase;
+    vector<string>       columnWarnings;
+
+
+    for (auto&& chunkEntry: collection) {
+        unsigned int const& chunk = chunkEntry.first;
+
+        for (auto&& databaseEntry: chunkEntry.second) {
+            auto&& databaseName = databaseEntry.first;
+            auto&& replicaInfo  = databaseEntry.second;
+
+            columnChunk   .push_back(chunk);
+            columnDatabase.push_back(databaseName);
+            columnWarnings.push_back(replicaInfo.status() != ReplicaInfo::Status::COMPLETE ? "INCOMPLETE " : "");
+        }
+    }
+    util::ColumnTablePrinter table(caption, prefix, false);
+
+    table.addColumn("chunk",    columnChunk );
+    table.addColumn("database", columnDatabase, util::ColumnTablePrinter::LEFT);
+    table.addColumn("warnings", columnWarnings, util::ColumnTablePrinter::LEFT);
+
+    table.print(os, false, false, pageSize, pageSize != 0);
+}
+
+
+void printAsTable(string const& caption,
+                  string const& prefix,
+                  FamilyChunkDatabaseWorkerInfo const& collection,
+                  ostream& os,
+                  size_t pageSize) {
+
+
+    vector<string>       columnFamily;
+    vector<unsigned int> columnChunk;
+    vector<string>       columnDatabase;
+    vector<size_t>       columnNumReplicas;
+    vector<string>       columnWorkers;
+
+
+    for (auto&& familyEntry: collection) {
+        auto&& familyName = familyEntry.first;
+
+        for (auto&& chunkEntry: familyEntry.second) {
+            unsigned int const& chunk = chunkEntry.first;
+
+            for (auto&& databaseEntry: chunkEntry.second) {
+                auto&& databaseName    = databaseEntry.first;
+                auto const numReplicas = databaseEntry.second.size();
+
+                string workers;
+
+                for (auto&& replicaEntry: databaseEntry.second) {
+                    auto&& workerName  = replicaEntry.first;
+                    auto&& replicaInfo = replicaEntry.second;
+
+                    workers += workerName + (replicaInfo.status() != ReplicaInfo::Status::COMPLETE ? "(!) " : " ");
+                }
+                columnFamily     .push_back(familyName);
+                columnChunk      .push_back(chunk);
+                columnDatabase   .push_back(databaseName);
+                columnNumReplicas.push_back(numReplicas);
+                columnWorkers    .push_back(workers);
+            }
+        }
+    }
+    util::ColumnTablePrinter table(caption, prefix, false);
+
+    table.addColumn("database family",  columnFamily,   util::ColumnTablePrinter::LEFT);
+    table.addColumn("chunk",            columnChunk );
+    table.addColumn("database",         columnDatabase, util::ColumnTablePrinter::LEFT);
+    table.addColumn("#replicas",        columnNumReplicas);
+    table.addColumn("workers",          columnWorkers,  util::ColumnTablePrinter::LEFT);
+
+    table.print(os, false, false, pageSize, pageSize != 0);
+}
+
 
 }}} // namespace lsst::qserv::replica

@@ -176,41 +176,40 @@ bool HealthMonitorTask::onRun() {
             }
         }
     }
+
+    // There are three requirements which both must be met before attempting
+    // to evict workers:
+    //
+    //   a) exactly one worker is allowed to be evicted at a time
+    //   b) the candidate worker must be still ENABLED in the system
+    //   c) the Replication services on the remaining ENABLED workers must be up
+    //      and running
+    //
+    // If any abnormalities will be detected in the system, and if the System
+    // won't be able to handle them as per the above stated rules then the Monitor
+    // will just complain and keep tracking changes in a status of the system.
+    // The problem may require a manual repair.
+
     switch (workers2evict.size()) {
 
         case 0:
-
             break;
 
         case 1:
-
-            // An important requirement for evicting a worker is that the Replication
-            // services on the remaining ENABLED workers must be up and running.
-
             if (1 == numEnabledWorkersOffline) {
 
                 // Upstream notification on the evicted worker
                 _onWorkerEvictTimeout(workers2evict[0]);
 
-                break;
+            } else {
+                error("single worker eviction is not possible if other workers are offline: " +
+                      std::to_string(numEnabledWorkersOffline));
             }
-
-            // Otherwise, proceed down to the default scenario.
+            break;
 
         default:
-
-            // Any successful replication effort is not possible at this stage due
-            // to one of the following reasons (among other possibilities):
-            //
-            //   1) multiple nodes failed simultaneously
-            //   2) all services on the worker nodes are down (typically after site outage)
-            //   3) network problems
-            //
-            // So, we just keep monitoring the status of the system. The problem (unless it's
-            // cases 2 or 3) should require a manual repair.
-
-            error("automated workers eviction is not possible if multiple workers " +
-                  std::to_string(workers2evict.size()) + " are offline");
+            error("simultaneous eviction of multiple workers is not supported: " +
+                  std::to_string(workers2evict.size()));
 
             break;
     }

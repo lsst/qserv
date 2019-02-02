@@ -37,8 +37,7 @@ using namespace lsst::qserv::replica;
 
 namespace {
     
-class TestApplication
-    :   public Application {
+class TestApplication: public Application {
 
 public:
 
@@ -55,8 +54,7 @@ public:
      * @param argv
      *   the vector of command-line arguments
      */
-    static Ptr create(int argc,
-                      const char* const argv[]) {
+    static Ptr create(int argc, char* argv[]) {
         return Ptr(new TestApplication(argc, argv));
     }
 
@@ -73,11 +71,9 @@ protected:
     /**
      * @see TestApplication::create()
      */
-    TestApplication(int argc,
-                    const char* const argv[])
+    TestApplication(int argc, char* argv[])
         :   Application(
-                argc,
-                argv,
+                argc, argv,
                 "This is a simple demo illustrating how to use class Application"
                 " for constructing user applications with very little efforts spent"
                 " on typical tasks.",
@@ -118,6 +114,9 @@ protected:
             _verbose);
 
         auto&& command1 = parser().command("COMMAND1");
+        command1.description(
+            "This is the first command"
+        );
         command1.required(
             "p11",
             "description of the additional required parameter specific for the command",
@@ -134,6 +133,9 @@ protected:
             _o12
         );
 
+        parser().command("COMMAND2").description(
+            "This is the second command"
+        );
         parser().command("COMMAND2").flag(
            "f21",
            "description of the additional flag specific to the command",
@@ -179,12 +181,12 @@ private:
 };
 } /// namespace
 
-int main(int argc, const char* const argv[]) {
+int main(int argc, char* argv[]) {
     try {
         auto app = ::TestApplication::create(argc, argv);
         return app->run();
     } catch (std::exception const& ex) {
         std::cerr << "main()  the application failed, exception: " << ex.what() << std::endl;
+        return 1;
     }
-    return 1;
 }

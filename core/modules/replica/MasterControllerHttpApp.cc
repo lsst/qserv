@@ -47,7 +47,7 @@ struct {
 
 } const defaultOptions;
 
-std::string const description {
+std::string const description =
     "This application is the Master Replication Controller which has"
     " a built-in Cluster Health Monitor and a linear Replication loop."
     " The Monitor would track a status of both Qserv and Replication workers"
@@ -58,8 +58,7 @@ std::string const description {
     " Also, note that only a single node failure can trigger the worker"
     " exclusion sequence."
     " The controller has the built-in REST API which accepts external commands"
-    " or request for information."
-};
+    " or request for information.";
 
 } /// namespace
 
@@ -68,22 +67,16 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-MasterControllerHttpApp::Ptr MasterControllerHttpApp::create(int argc,
-                                                             const char* const argv[]) {
+MasterControllerHttpApp::Ptr MasterControllerHttpApp::create(int argc, char* argv[]) {
     return Ptr(
-        new MasterControllerHttpApp(
-            argc,
-            argv
-        )
+        new MasterControllerHttpApp(argc, argv)
     );
 }
 
 
-MasterControllerHttpApp::MasterControllerHttpApp(int argc,
-                                                 const char* const argv[])
+MasterControllerHttpApp::MasterControllerHttpApp(int argc, char* argv[])
     :   Application(
-            argc,
-            argv,
+            argc, argv,
             ::description,
             true /* injectDatabaseOptions */,
             true /* boostProtobufVersionCheck */,
@@ -104,26 +97,26 @@ MasterControllerHttpApp::MasterControllerHttpApp(int argc,
 
     parser().option(
         "health-probe-interval",
-        "interval (seconds) between iterations of the health monitoring probes",
+        "Interval (seconds) between iterations of the health monitoring probes.",
         _healthProbeIntervalSec
     ).option(
         "replication-interval",
-        "interval (seconds) between running the linear sequence of"
-        " actions: check - fix-up - replicate - re-balance",
+        "Interval (seconds) between running the linear sequence of"
+        " actions: check - fix-up - replicate - re-balance.",
         _replicationIntervalSec
     ).option(
         "worker-response-timeout",
-        "maximum number of seconds to wait before giving up"
-        " on worker probes when checking for workers",
+        "The maximum number of seconds to wait before giving up"
+        " on worker probes when checking for workers.",
         _workerResponseTimeoutSec
     ).option(
         "worker-evict-timeout",
-        "the maximum number of seconds to allow troubled workers to recover"
-        " from the last catastrophic event before evicting them from a cluster",
+        "The maximum number of seconds to allow troubled workers to recover"
+        " from the last catastrophic event before evicting them from a cluster.",
         _workerEvictTimeoutSec
     ).option(
         "qserv-sync-timeout",
-        "the maximum number of seconds to wait before Qserv workers respond"
+        "The maximum number of seconds to wait before Qserv workers respond"
         " to the synchronization requests before bailing out and proceeding"
         " to the next step in the normal replication sequence. A value which"
         " differs from " + std::to_string(defaultOptions.qservSyncTimeoutSec) +
@@ -132,14 +125,14 @@ MasterControllerHttpApp::MasterControllerHttpApp(int argc,
         _qservSyncTimeoutSec
     ).flag(
         "qserv-sync-force",
-        "the flag which would force Qserv workers to update their list of replicas"
+        "The flag which would force Qserv workers to update their list of replicas"
         " even if some of the chunk replicas were still in use by on-going queries."
         " This affect replicas to be deleted from the workers during the synchronization"
-        " stages",
+        " stages.",
         _forceQservSync
     ).option(
         "replicas",
-        "the minimal number of replicas when running the replication phase"
+        "The minimal number of replicas when running the replication phase"
         " This number if provided and if it's not " + std::to_string(defaultOptions.numReplicas) +
         " will override the corresponding value found"
         " in the Configuration.",
@@ -155,7 +148,7 @@ MasterControllerHttpApp::MasterControllerHttpApp(int argc,
         "The flag would trigger the permanent removal of the evicted workers"
         " from the configuration of the Replication system. Please, use"
         " this option with caution as it will result in losing all records"
-        " associated with the deleted workers",
+        " associated with the deleted workers.",
         _permanentDelete
     );
 }

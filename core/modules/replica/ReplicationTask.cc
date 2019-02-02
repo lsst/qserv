@@ -57,8 +57,9 @@ ReplicationTask::Ptr ReplicationTask::create(
 bool ReplicationTask::onRun() {
 
     bool const saveReplicaInfo = true;
+    bool const allWorkers = false;
 
-    launch<FindAllJob>(saveReplicaInfo);
+    launch<FindAllJob>(saveReplicaInfo, allWorkers);
     sync(_qservSyncTimeoutSec);
 
     launch<FixUpJob>();

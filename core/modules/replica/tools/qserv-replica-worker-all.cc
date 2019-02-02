@@ -20,18 +20,25 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-/// qserv-replica-json-test.cc is a simple test for the 'nlohmann' JSON
-/// library.
+/**
+ * @see WorkerAllApp
+ */
 
 // System headers
 #include <iostream>
+#include <stdexcept>
 
-// Third party headers
-#include "nlohmann/json.hpp"
-using json = nlohmann::json;
+// Qserv headers
+#include "replica/WorkerAllApp.h"
 
-int main (int argc, const char *argv[]) {
-    json j = {"a", "123"};
-    std::cout << j << std::endl;
-    return 0;
+using namespace lsst::qserv::replica;
+
+int main(int argc, char* argv[]) {
+    try {
+        auto app = WorkerAllApp::create(argc, argv);
+        return app->run();
+    } catch (std::exception const& ex) {
+        std::cerr << "main()  the application failed, exception: " << ex.what() << std::endl;
+        return 1;
+    }
 }

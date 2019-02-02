@@ -50,7 +50,7 @@ namespace replica {
 struct FindAllJobResult {
 
     /// Per-worker flags indicating if the corresponding replica retrieval
-    /// request succeeded.
+    /// request succeeded for all databases in the family.
     ///
     std::map<std::string, bool> workers;
 
@@ -135,6 +135,7 @@ public:
      *
      * @param databaseFamily  - name of a database family
      * @param saveReplicaInfo - save replica info in a database
+     * @param allWorkers      - engage all known workers regardless of their status
      * @param controller      - for launching requests
      * @param parentJobId     - optional identifier of a parent job
      * @param onFinish        - callback function to be called upon a completion of the job
@@ -144,6 +145,7 @@ public:
      */
     static Ptr create(std::string const& databaseFamily,
                       bool saveReplicaInfo,
+                      bool allWorkers,
                       Controller::Ptr const& controller,
                       std::string const& parentJobId=std::string(),
                       CallbackType const& onFinish=nullptr,
@@ -162,6 +164,9 @@ public:
 
     /// @return 'true' if replica info has to be saved in a database
     bool saveReplicaInfo() const { return _saveReplicaInfo; }
+
+    /// @return 'true' if all known workers were engaged
+    bool allWorkers() const { return _allWorkers; }
 
     /**
      * Return the result of the operation.
@@ -196,6 +201,7 @@ protected:
      */
     FindAllJob(std::string const& databaseFamily,
                bool saveReplicaInfo,
+               bool allWorkers,
                Controller::Ptr const& controller,
                std::string const& parentJobId,
                CallbackType const& onFinish,
@@ -231,6 +237,9 @@ protected:
     /// The flag indicating if the replica info has to be saved in the database
     bool const _saveReplicaInfo;
 
+    /// The flag (if 'true') for engaging all known workers regardless of their status
+    bool const _allWorkers;
+
     /// Members of the family
     std::vector<std::string> const _databases;
 
@@ -239,6 +248,10 @@ protected:
 
     /// A collection of requests implementing the operation
     std::list<FindAllRequest::Ptr> _requests;
+
+    /// Per-worker and per database flags indicating if the corresponding replica
+    /// retrieval request succeeded for all databases in the family.
+    std::map<std::string, std::map<std::string, bool>> _workerDatabaseSuccess;
 
     // The counter of requests which will be updated. They need to be atomic
     // to avoid race condition between the onFinish() callbacks executed within
