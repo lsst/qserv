@@ -90,6 +90,10 @@
                 <df name="dev">
                 </df>
                 <df name="tools">
+                  <df name="gke">
+                  </df>
+                  <df name="ncsa">
+                  </df>
                 </df>
               </df>
               <df name="deployment">
@@ -551,6 +555,7 @@
             <df name="tools">
               <in>qserv-replica-application-test.cc</in>
               <in>qserv-replica-calc-cs.cc</in>
+              <in>qserv-replica-config.cc</in>
               <in>qserv-replica-controller-admin.cc</in>
               <in>qserv-replica-controller-chunks.cc</in>
               <in>qserv-replica-controller-cmd.cc</in>
@@ -584,6 +589,7 @@
             <in>AddReplicaQservMgtRequest.h</in>
             <in>Application.cc</in>
             <in>Application.h</in>
+            <in>ApplicationTypes.cc</in>
             <in>ApplicationTypes.h</in>
             <in>ChunkLocker.cc</in>
             <in>ChunkLocker.h</in>
@@ -593,6 +599,8 @@
             <in>ClusterHealthJob.h</in>
             <in>Common.cc</in>
             <in>Common.h</in>
+            <in>ConfigApp.cc</in>
+            <in>ConfigApp.h</in>
             <in>Configuration.cc</in>
             <in>Configuration.h</in>
             <in>ConfigurationFile.cc</in>
@@ -604,7 +612,6 @@
             <in>ConfigurationStore.cc</in>
             <in>ConfigurationStore.h</in>
             <in>ControlThread.cc</in>
-            <in>ControlThread.h</in>
             <in>Controller.cc</in>
             <in>Controller.h</in>
             <in>CreateReplicaJob.cc</in>
@@ -628,8 +635,9 @@
             <in>DeleteRequest.h</in>
             <in>DeleteWorkerJob.cc</in>
             <in>DeleteWorkerJob.h</in>
+            <in>DeleteWorkerTask.cc</in>
+            <in>DeleteWorkerTask.h</in>
             <in>DeleteWorkerThread.cc</in>
-            <in>DeleteWorkerThread.h</in>
             <in>EchoRequest.cc</in>
             <in>EchoRequest.h</in>
             <in>ErrorReporting.h</in>
@@ -651,18 +659,24 @@
             <in>FixUpJob.h</in>
             <in>GetReplicasQservMgtRequest.cc</in>
             <in>GetReplicasQservMgtRequest.h</in>
+            <in>HealthMonitorTask.cc</in>
+            <in>HealthMonitorTask.h</in>
             <in>HealthMonitorThread.cc</in>
-            <in>HealthMonitorThread.h</in>
+            <in>HttpProcessor.cc</in>
+            <in>HttpProcessor.h</in>
             <in>HttpThread.cc</in>
             <in>HttpThread.h</in>
             <in>Job.cc</in>
             <in>Job.h</in>
+            <in>MasterControllerHttpApp.cc</in>
+            <in>MasterControllerHttpApp.h</in>
             <in>Messenger.cc</in>
             <in>Messenger.h</in>
             <in>MessengerConnector.cc</in>
             <in>MessengerConnector.h</in>
             <in>MoveReplicaJob.cc</in>
             <in>MoveReplicaJob.h</in>
+            <in>OneWayFailer.h</in>
             <in>Performance.cc</in>
             <in>Performance.h</in>
             <in>ProtocolBuffer.cc</in>
@@ -689,8 +703,9 @@
             <in>ReplicateJob.h</in>
             <in>ReplicationRequest.cc</in>
             <in>ReplicationRequest.h</in>
+            <in>ReplicationTask.cc</in>
+            <in>ReplicationTask.h</in>
             <in>ReplicationThread.cc</in>
-            <in>ReplicationThread.h</in>
             <in>Request.cc</in>
             <in>Request.h</in>
             <in>RequestMessenger.cc</in>
@@ -717,6 +732,8 @@
             <in>StopRequestBase.h</in>
             <in>SuccessRateGenerator.cc</in>
             <in>SuccessRateGenerator.h</in>
+            <in>Task.cc</in>
+            <in>Task.h</in>
             <in>TestEchoQservMgtRequest.cc</in>
             <in>TestEchoQservMgtRequest.h</in>
             <in>VerifyJob.cc</in>
@@ -743,6 +760,7 @@
             <in>WorkerServer.h</in>
             <in>WorkerServerConnection.cc</in>
             <in>WorkerServerConnection.h</in>
+            <in>testApplicationParser.cc</in>
             <in>testChunkLocker.cc</in>
             <in>testChunkNumber.cc</in>
             <in>testConfiguration.cc</in>
@@ -821,6 +839,8 @@
             <in>StringHash.h</in>
             <in>Substitution.cc</in>
             <in>Substitution.h</in>
+            <in>TablePrinter.cc</in>
+            <in>TablePrinter.h</in>
             <in>ThreadPool.cc</in>
             <in>ThreadPool.h</in>
             <in>ThreadPriority.cc</in>
@@ -836,6 +856,7 @@
             <in>testIterableFormatter.cc</in>
             <in>testMultiError.cc</in>
             <in>testMutex.cc</in>
+            <in>testTablePrinter.cc</in>
             <in>threadSafe.h</in>
             <in>xrootd.cc</in>
             <in>xrootd.h</in>
@@ -1045,24 +1066,8 @@
           </df>
         </df>
       </df>
-      <df name="tmp">
-        <df name="replication">
-          <df name="container">
-            <df name="build">
-              <df name="bin">
-              </df>
-              <df name="lib">
-              </df>
-            </df>
-          </df>
-        </df>
-      </df>
       <df name="ups">
       </df>
-      <df name="www">
-      </df>
-      <in>ptr.cc</in>
-      <in>test_map_perf.cc</in>
     </df>
   </logicalFolder>
   <projectmakefile>SConstruct</projectmakefile>
