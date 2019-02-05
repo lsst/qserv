@@ -70,8 +70,8 @@ GroupByTerm& GroupByTerm::operator=(GroupByTerm const& gb) {
 
 
 std::ostream& operator<<(std::ostream& os, GroupByTerm const& t) {
-    os << "GroupByTerm(expr:" << t._expr;
-    os << ", collate:" << t._collate;
+    os << "GroupByTerm(" << t._expr;
+    os << ", " << "\"" <<  t._collate << "\"";
     os << ")";
     return os;
 }
@@ -87,7 +87,7 @@ bool GroupByTerm::operator==(const GroupByTerm& rhs) const {
 // GroupByClause
 ////////////////////////////////////////////////////////////////////////
 std::ostream& operator<<(std::ostream& os, GroupByClause const& c) {
-    os << "GroupByClause(" << util::ptrPrintable(c._terms) << ")";
+    os << "GroupByClause(" << util::ptrPrintable(c._terms, "", "") << ")";
     return os;
 }
 

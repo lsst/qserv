@@ -43,11 +43,9 @@ BoolFactorTerm::Ptr PassTerm::copySyntax() const {
 
 
 void PassTerm::dbgPrint(std::ostream& os) const {
-    os << "PassTerm('";
-    if ("(" == _text) os << "LHP";
-    else if (")" == _text) os << "RHP";
-    else os << _text;
-    os << "')";
+    os << "PassTerm(\"";
+    os << _text;
+    os << "\")";
 }
 
 

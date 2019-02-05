@@ -81,31 +81,31 @@ renderList(QueryTemplate& qt, ValueExprPtrVector const& vel) {
 
 std::ostream& operator<<(std::ostream& os, const ValueExpr::FactorOp& factorOp) {
     os << "FactorOp(";
+    os << factorOp.factor;
     switch(factorOp.op) {
-    case ValueExpr::NONE: os << "NONE"; break;
-    case ValueExpr::UNKNOWN: os << "UNKNOWN"; break;
-    case ValueExpr::PLUS: os << "PLUS"; break;
-    case ValueExpr::MINUS: os << "MINUS"; break;
-    case ValueExpr::MULTIPLY: os << "MULTIPLY"; break;
-    case ValueExpr::DIVIDE: os << "DIVIDE"; break;
-    case ValueExpr::DIV: os << "DIV"; break;
-    case ValueExpr::MODULO: os << "MODULO"; break;
-    case ValueExpr::MOD: os << "MOD"; break;
-    case ValueExpr::BIT_SHIFT_LEFT: os << "BIT_SHIFT_LEFT"; break;
-    case ValueExpr::BIT_SHIFT_RIGHT: os << ">BIT_SHIFT_RIGHT>"; break;
-    case ValueExpr::BIT_AND: os << "BIT_AND"; break;
-    case ValueExpr::BIT_OR: os << "BIT_OR"; break;
-    case ValueExpr::BIT_XOR: os << "BIT_XOR"; break;
-    default: os << "!!unhandled!!"; break;
+    case ValueExpr::NONE: os << ", query::ValueExpr::NONE"; break;
+    case ValueExpr::UNKNOWN: os << ", query::ValueExpr::UNKNOWN"; break;
+    case ValueExpr::PLUS: os << ", query::ValueExpr::PLUS"; break;
+    case ValueExpr::MINUS: os << ", query::ValueExpr::MINUS"; break;
+    case ValueExpr::MULTIPLY: os << ", query::ValueExpr::MULTIPLY"; break;
+    case ValueExpr::DIVIDE: os << ", query::ValueExpr::DIVIDE"; break;
+    case ValueExpr::DIV: os << ", query::ValueExpr::DIV"; break;
+    case ValueExpr::MODULO: os << ", query::ValueExpr::MODULO"; break;
+    case ValueExpr::MOD: os << ", query::ValueExpr::MOD"; break;
+    case ValueExpr::BIT_SHIFT_LEFT: os << ", query::ValueExpr::BIT_SHIFT_LEFT"; break;
+    case ValueExpr::BIT_SHIFT_RIGHT: os << ", query::ValueExpr::BIT_SHIFT_RIGHT"; break;
+    case ValueExpr::BIT_AND: os << ", query::ValueExpr::BIT_AND"; break;
+    case ValueExpr::BIT_OR: os << ", query::ValueExpr::BIT_OR"; break;
+    case ValueExpr::BIT_XOR: os << ", query::ValueExpr::BIT_XOR"; break;
+    default: os << ",  !!unhandled!!"; break;
     }
-    os << ", " << factorOp.factor;
     os << ")";
     return os;
 }
 
 
 bool ValueExpr::FactorOp::operator==(const FactorOp& rhs) const {
-    return (util::ptrCompare<ValueFactor>(factor, rhs.factor) && op == rhs.op);
+    return util::ptrCompare<ValueFactor>(factor, rhs.factor) && op == rhs.op;
 }
 
 
@@ -297,8 +297,8 @@ std::string ValueExpr::sqlFragment() const {
 
 std::ostream& operator<<(std::ostream& os, ValueExpr const& ve) {
     os << "ValueExpr(";
-    if (not ve._alias.empty()) os << "alias:" << ve._alias << ", ";
-    os << util::printable(ve._factorOps);
+    os << "\"" << ve._alias << "\", ";
+    os << util::printable(ve._factorOps, "", "");
     os << ")";
     return os;
 }

@@ -52,8 +52,8 @@ public:
 
     BetweenPredicate() : hasNot(false) {}
 
-    BetweenPredicate(std::shared_ptr<ValueExpr>& iValue, std::shared_ptr<ValueExpr>& iMinValue,
-                     std::shared_ptr<ValueExpr>& iMaxValue, bool iHasNot)
+    BetweenPredicate(std::shared_ptr<ValueExpr> const& iValue, std::shared_ptr<ValueExpr> const& iMinValue,
+                     std::shared_ptr<ValueExpr> const& iMaxValue, bool iHasNot)
     : value(iValue), minValue(iMinValue), maxValue(iMaxValue), hasNot(iHasNot) {}
 
     ~BetweenPredicate() override = default;

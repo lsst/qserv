@@ -199,15 +199,17 @@ bool SelectStmt::operator==(const SelectStmt& rhs) const {
 
 std::ostream& operator<<(std::ostream& os, SelectStmt const& selectStmt) {
     os << "SelectStmt(";
-    os << "fromList:" << selectStmt._fromList;
-    os << ", selectList:" << selectStmt._selectList;
-    os << ", whereClause:" << selectStmt._whereClause;
-    os << ", orderBy:" << selectStmt._orderBy;
-    os << ", groupBy:" << selectStmt._groupBy;
-    os << ", having:" << selectStmt._having;
-    os << ", distinct:" << selectStmt._hasDistinct;
-    os << ", limit:" << selectStmt._limit;
-    os << ", outputMods" << util::printable(selectStmt.OutputMods);
+    os << selectStmt._selectList;
+    os << ", " << selectStmt._fromList;
+    os << ", " << selectStmt._whereClause;
+    os << ", " << selectStmt._orderBy;
+    os << ", " << selectStmt._groupBy;
+    os << ", " << selectStmt._having;
+    os << ", " << selectStmt._hasDistinct;
+    os << ", " << selectStmt._limit;
+    if (selectStmt.OutputMods.empty() == false) {
+        os << ", " << util::printable(selectStmt.OutputMods, "", "");
+    }
     os << ")";
     return os;
 }

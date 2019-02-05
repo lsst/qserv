@@ -60,7 +60,7 @@ bool AndTerm::merge(BoolTerm const& other, MergeBehavior mergeBehavior) {
 
 
 void AndTerm::dbgPrint(std::ostream& os) const {
-    os << "AndTerm(" << util::printable(_terms) << ")";
+    os << "AndTerm(" << util::printable(_terms, "", "") << ")";
 }
 
 

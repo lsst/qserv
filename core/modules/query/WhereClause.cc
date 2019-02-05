@@ -61,7 +61,9 @@ namespace query {
 std::ostream&
 operator<<(std::ostream& os, WhereClause const& wc) {
     os << "WhereClause(" << wc._rootOrTerm;
-    os << ", restrs:" << util::ptrPrintable(wc._restrs);
+    if (nullptr != wc._restrs && !wc._restrs->empty()) {
+        os << ", " << util::ptrPrintable(wc._restrs, "", "");
+    }
     os << ")";
     return os;
 }

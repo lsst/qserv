@@ -61,6 +61,13 @@ class FuncExpr {
 public:
     typedef std::shared_ptr<FuncExpr> Ptr;
 
+    FuncExpr() = default;
+
+    FuncExpr(std::string name, ValueExprPtrVector const& valueExprVec)
+            : params(valueExprVec)
+            , _name(name) {
+    }
+
     /// Set the function name.
     void setName(const std::string& val);
 

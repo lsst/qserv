@@ -80,20 +80,21 @@ void JoinRef::_putJoinTemplate(QueryTemplate& qt) const {
 
 std::ostream& operator<<(std::ostream& os, JoinRef const& js) {
     os << "JoinRef(";
-    os << "right:" << js._right;
-    os << ", joinType:";
+    os << js._right;
+    os << ", ";
     switch (js._joinType) {
     default: os << "!!unhandled!!"; break;
-    case JoinRef::DEFAULT: os << "DEFAULT"; break;
-    case JoinRef::INNER: os << "INNER"; break;
-    case JoinRef::LEFT: os << "LEFT"; break;
-    case JoinRef::RIGHT: os << "RIGHT"; break;
-    case JoinRef::FULL: os << "FULL"; break;
-    case JoinRef::CROSS: os << "CROSS"; break;
-    case JoinRef::UNION: os << "UNION"; break;
+    case JoinRef::DEFAULT: os << "query::JoinRef::DEFAULT"; break;
+    case JoinRef::INNER: os << "query::JoinRef::INNER"; break;
+    case JoinRef::LEFT: os << "query::JoinRef::LEFT"; break;
+    case JoinRef::RIGHT: os << "query::JoinRef::RIGHT"; break;
+    case JoinRef::FULL: os << "query::JoinRef::FULL"; break;
+    case JoinRef::CROSS: os << "query::JoinRef::CROSS"; break;
+    case JoinRef::UNION: os << "query::JoinRef::UNION"; break;
     }
-    os << ", isNatural:" << js._isNatural;
-    os << ", joinSpec:" << js._spec;
+    os << ", ";
+    os << (js._isNatural ? "NATURAL" : "NOT_NATURAL");
+    os << ", " << js._spec;
     os << ")";
     return os;
 }

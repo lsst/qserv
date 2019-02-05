@@ -103,9 +103,10 @@ int CompPredicate::lookupOp(char const* op) {
 
 
 void CompPredicate::dbgPrint(std::ostream& os) const {
-    os << "CompPredicate(left:" << left;
-    os << ", op:" << op;
-    os << ", right:" << right;
+    os << "CompPredicate(";
+    os << left;
+    os << ", " << op;
+    os << ", " << right;
     os << ")";
 }
 

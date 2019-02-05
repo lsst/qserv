@@ -117,8 +117,8 @@ FuncExpr::clone() const {
 std::ostream&
 operator<<(std::ostream& os, FuncExpr const& fe) {
     os << "FuncExpr(";
-    os << "name:" << fe._name;
-    os << ", " << util::printable(fe.params);
+    os << "\"" << fe._name << "\"";
+    os << ", " << util::printable(fe.params, "", "");
     os << ")";
     return os;
 }

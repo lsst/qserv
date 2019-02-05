@@ -71,11 +71,10 @@ BoolFactorTerm::Ptr LikePredicate::clone() const {
 
 
 void LikePredicate::dbgPrint(std::ostream& os) const {
-    os << "LikePredicate(value:" << value;
-    if (hasNot) {
-        os << ", NOT";
-    }
-    os << ", charValue:" << charValue;
+    os << "LikePredicate(";
+    os << value;
+    os << (hasNot ? ", NOT_LIKE" : ", LIKE");
+    os << ", " << charValue;
     os << ")";
 }
 

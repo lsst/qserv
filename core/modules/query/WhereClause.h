@@ -70,8 +70,11 @@ public:
     WhereClause() = default;
 
     // Construct a WhereClause that has the given OrTerm as its root term.
-    WhereClause(std::shared_ptr<query::OrTerm> rootOrTerm)
-    : _rootOrTerm(rootOrTerm) {}
+    WhereClause(std::shared_ptr<query::OrTerm> rootOrTerm,
+                std::shared_ptr<std::vector<std::shared_ptr<QsRestrictor>>> qsRestrictor=nullptr)
+            : _rootOrTerm(rootOrTerm)
+            , _restrs(qsRestrictor)
+    {}
 
     ~WhereClause() = default;
 
