@@ -188,7 +188,7 @@ if __name__ == "__main__":
     try:
         parallelCmd = ParallelCmd()
         r = parallelCmd.run()
-        if r is not 0:
+        if r != 0:
             sys.exit(1)
         else:
             sys.exit(0)
