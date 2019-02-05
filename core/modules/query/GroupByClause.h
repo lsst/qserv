@@ -94,6 +94,9 @@ public:
     typedef std::deque<GroupByTerm> List;
 
     GroupByClause() : _terms(std::make_shared<List>()) {}
+
+    GroupByClause(std::shared_ptr<List> const& terms) : _terms(terms) {}
+
     ~GroupByClause() {}
 
     std::string getGenerated();
