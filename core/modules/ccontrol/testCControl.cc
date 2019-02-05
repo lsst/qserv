@@ -666,7 +666,9 @@ BOOST_DATA_TEST_CASE(antlr4_builder, QUERIES, query) {
     if (a2SelectStatement != nullptr) {
         std::cout << "    Antlr4TestQueries(" << std::endl <<
                      "        \"" << query << "\"," << std::endl <<
-                     "        " << *a2SelectStatement << "," <<  std::endl <<
+
+
+                     "        []()->shared_ptr<query::SelectStmt>{return " << *a2SelectStatement << ";}," <<  std::endl <<
                      "        \"" << a2SelectStatement->getQueryTemplate() << "\"" << std::endl <<
                      "    )," << std::endl;
     }
