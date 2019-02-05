@@ -1750,6 +1750,21 @@ BOOST_DATA_TEST_CASE(antlr4_test, ANTLR4_TEST_QUERIES, queryInfo) {
     // verify the selectStatement converted back to sql is the same as the original query:
     BOOST_REQUIRE_EQUAL(selectStatement->getQueryTemplate().sqlFragment(),
              (queryInfo.serializedQuery != "" ? queryInfo.serializedQuery : queryInfo.query));
+
+
+    // TEMP: as a transitional step, verify the 'compare' IR matches the antlr2 IR:
+    auto a2parser = parser::SelectParser::newInstance(queryInfo.query, parser::SelectParser::ANTLR2);
+    try {
+        a2parser->setup();
+    } catch(parser::ParseException const& e) {
+        BOOST_TEST_MESSAGE("antlr2 parse exception: " << e.what());
+    }
+    auto a2SelectStatement = a2parser->getSelectStmt();
+    BOOST_REQUIRE(a2SelectStatement != nullptr);
+    std::ostringstream a2QueryStr;
+    a2QueryStr << a2SelectStatement->getQueryTemplate();
+    BOOST_REQUIRE_MESSAGE(*a2SelectStatement == *compareStatement, "antlr2-generated statement:" << *selectStatement <<
+        "does not match compare statement:" << *compareStatement);
 }
 
 
