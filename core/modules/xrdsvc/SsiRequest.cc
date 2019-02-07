@@ -389,6 +389,10 @@ bool SsiRequest::replyStream(StreamBuffer::Ptr const& sBuf, bool last) {
        _stream = new ChannelStream();
        if (SetResponse(_stream) != XrdSsiResponder::Status::wasPosted) {
            LOGS(_log, LOG_LVL_WARN, "SetResponse stream failed, calling Recycle for sBuf");
+           // Normally, XrdSsi would call Recycle() when it is done with sBuf, but the
+           // return value from SetResponse indicates XrdSsi will never use sBuf nor call Recycle().
+           // Calling Recycle() here means we're done waiting for XrdSsi and sBuf can be freed when
+           // qserv is done with it.
            sBuf->Recycle();
            return false;
        }
