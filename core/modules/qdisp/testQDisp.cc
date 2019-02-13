@@ -190,7 +190,8 @@ class SetupTest {
          conf = std::make_shared<qdisp::Executive::Config>(str);
          ms = std::make_shared<qdisp::MessageStore>();
          qdispPool = std::make_shared<qdisp::QdispPool>(true);
-         ex = qdisp::Executive::create(conf, ms, qdispPool);
+         std::shared_ptr<qmeta::QMeta> qMeta;
+         ex = qdisp::Executive::create(*conf, ms, qdispPool, qMeta);
     }
     ~SetupTest() {}
 };

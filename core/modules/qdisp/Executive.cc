@@ -65,6 +65,7 @@
 #include "qdisp/QueryRequest.h"
 #include "qdisp/ResponseHandler.h"
 #include "qdisp/XrdSsiMocks.h"
+#include "qmeta/QMeta.h"
 #include "util/EventThread.h"
 
 extern XrdSsiProvider *XrdSsiProviderClient;
@@ -90,9 +91,10 @@ namespace qdisp {
 ////////////////////////////////////////////////////////////////////////
 // class Executive implementation
 ////////////////////////////////////////////////////////////////////////
-Executive::Executive(Config::Ptr const& c, std::shared_ptr<MessageStore> const& ms,
-                     std::shared_ptr<QdispPool> const& qdispPool)
-    : _config(*c), _messageStore(ms), _qdispPool(qdispPool) {
+Executive::Executive(Config const& c, std::shared_ptr<MessageStore> const& ms,
+                     std::shared_ptr<QdispPool> const& qdispPool,
+                     std::shared_ptr<qmeta::QMeta> const& qMeta)
+    : _config(c), _messageStore(ms), _qdispPool(qdispPool), _qMeta(qMeta) {
     _setup();
 }
 
@@ -103,9 +105,10 @@ Executive::~Executive() {
 }
 
 
-Executive::Ptr Executive::create(Config::Ptr const& c, std::shared_ptr<MessageStore> const& ms,
-                                       std::shared_ptr<QdispPool> const& qdispPool) {
-    Executive::Ptr exec{new Executive(c, ms, qdispPool)}; // make_shared dislikes private constructor.
+Executive::Ptr Executive::create(Config const& c, std::shared_ptr<MessageStore> const& ms,
+                                 std::shared_ptr<QdispPool> const& qdispPool,
+                                 std::shared_ptr<qmeta::QMeta> const& qMeta) {
+    Executive::Ptr exec{new Executive(c, ms, qdispPool, qMeta)}; // make_shared dislikes private constructor.
     return exec;
 }
 
@@ -242,7 +245,9 @@ bool Executive::startQuery(std::shared_ptr<JobQuery> const& jobQuery) {
 bool Executive::_addJobToMap(JobQuery::Ptr const& job) {
     auto entry = std::pair<int, JobQuery::Ptr>(job->getIdInt(), job);
     std::lock_guard<std::recursive_mutex> lockJobMap(_jobMapMtx);
-    return _jobMap.insert(entry).second;
+    bool res = _jobMap.insert(entry).second;
+    _totalJobs = _jobMap.size();
+    return res;
 }
 
 bool Executive::join() {
@@ -279,8 +284,6 @@ bool Executive::join() {
 }
 
 void Executive::markCompleted(int jobId, bool success) {
-    // &&& every time a chunk completes, consider sending an update. Chunks we definitely care about:first, last, middle
-    // &&& limiting factors: no more than one update a minute (config)
     ResponseHandler::Error err;
     std::string idStr = QueryIdHelper::makeIdStr(_id, jobId);
     LOGS(_log, LOG_LVL_DEBUG, "Executive::markCompleted " << idStr
@@ -422,6 +425,7 @@ bool Executive::_track(int jobId, std::shared_ptr<JobQuery> const& r) {
 
 void Executive::_unTrack(int jobId) {
     bool untracked = false;
+    int incompleteJobs = _totalJobs;
     std::string s;
     {
         std::lock_guard<std::mutex> lock(_incompleteJobsMutex);
@@ -429,6 +433,7 @@ void Executive::_unTrack(int jobId) {
         if (i != _incompleteJobs.end()) {
             _incompleteJobs.erase(i);
             untracked = true;
+            incompleteJobs = _incompleteJobs.size();
             if (_incompleteJobs.empty()) _allJobsComplete.notify_all();
         }
         if (!untracked || LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
@@ -439,6 +444,20 @@ void Executive::_unTrack(int jobId) {
     LOGS(_log, (untracked ? LOG_LVL_DEBUG : LOG_LVL_WARN),
          "Executive UNTRACKING " << QueryIdHelper::makeIdStr(_id, jobId)
              << " " << (untracked ? "success":"failed") << "::" << s);
+    // &&& every time a chunk completes, consider sending an update to QMeta.
+    // Important chunks to log: first, last, middle
+    // limiting factors: no more than one update a minute (config)
+    if (untracked) {
+        auto now = std::chrono::system_clock::now();
+        auto diff = std::chrono::duration_cast<std::chrono::seconds>(now - _lastQMetaUpdate);
+        if (diff.count() > 60 || incompleteJobs == _totalJobs/2 || incompleteJobs == 0) {
+            _lastQMetaUpdate = now;
+            int completedJobs = _totalJobs -  incompleteJobs;
+            if (_qMeta != nullptr) {
+                _qMeta->queryStatsTmpChunkUpdate(_id, completedJobs);
+            }
+        }
+    }
 }
 
 

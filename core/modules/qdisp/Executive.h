@@ -52,6 +52,11 @@ class XrdSsiService;
 
 namespace lsst {
 namespace qserv {
+
+namespace qmeta {
+class QMeta;
+}
+
 namespace qdisp {
 
 class JobQuery;
@@ -79,8 +84,8 @@ public:
     /// Construct an Executive.
     /// If c->serviceUrl == Config::getMockStr(), then use XrdSsiServiceMock
     /// instead of a real XrdSsiService
-    static Executive::Ptr create(Config::Ptr const& c, std::shared_ptr<MessageStore> const& ms,
-                std::shared_ptr<QdispPool> const& qdispPool);
+    static Executive::Ptr create(Config const& c, std::shared_ptr<MessageStore> const& ms,
+                std::shared_ptr<QdispPool> const& qdispPool, std::shared_ptr<qmeta::QMeta> const& qMeta);
 
     ~Executive();
 
@@ -134,8 +139,8 @@ public:
     int endQSEASum{0}; // TEMPORARY-timing
 
 private:
-    Executive(Config::Ptr const& c, std::shared_ptr<MessageStore> const& ms,
-              std::shared_ptr<QdispPool> const& qdispPool);
+    Executive(Config const& c, std::shared_ptr<MessageStore> const& ms,
+              std::shared_ptr<QdispPool> const& qdispPool, std::shared_ptr<qmeta::QMeta> const& qMeta);
 
     void _setup();
 
@@ -157,6 +162,9 @@ private:
     XrdSsiService* _xrdSsiService; ///< RPC interface
     JobMap _jobMap; ///< Contains information about all jobs.
     JobMap _incompleteJobs; ///< Map of incomplete jobs.
+    std::atomic<int> _totalJobs{1}; ///< How many jobs are used in this query.
+    /// Last time Executive updated QMeta, defaults to epoch for clock.
+    std::chrono::system_clock::time_point _lastQMetaUpdate{};
     QdispPool::Ptr _qdispPool; ///< Shared thread pool for handling commands to and from workers.
 
     std::deque<PriorityCommand::Ptr> _jobStartCmdList; ///< list of jobs to start.
@@ -177,8 +185,10 @@ private:
     mutable std::recursive_mutex _jobMapMtx;
 
     QueryId _id{0}; ///< Unique identifier for this query.
-    std::string    _idStr{QueryIdHelper::makeIdStr(0, true)};
+    std::string _idStr{QueryIdHelper::makeIdStr(0, true)};
     util::InstanceCount _instC{"Executive"};
+
+    std::shared_ptr<qmeta::QMeta> _qMeta;
 };
 
 class MarkCompleteFunc {

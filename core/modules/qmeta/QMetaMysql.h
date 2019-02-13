@@ -248,6 +248,26 @@ public:
     virtual std::vector<QueryId> getQueriesForTable(std::string const& dbName,
                                                     std::string const& tableName) override;
 
+    /**
+     * @see QMeta::queryStatsTmpRegister(QueryId queryId, int totalChunks)
+     */
+    bool queryStatsTmpRegister(QueryId queryId, int totalChunks) override;
+
+    /**
+     * @see QMeta::queryStatsTmpChunkUpdate(QueryId queryId, int completedChunks)
+     */
+    bool queryStatsTmpChunkUpdate(QueryId queryId, int completedChunks) override;
+
+    /**
+     * @see QMeta::queryStatsTmpGet(QueryId queryId)
+     */
+    QStats queryStatsTmpGet(QueryId queryId);
+
+    /**
+     * @see QMeta::queryStatsTmpRemove(QueryId queryId)
+     */
+    bool queryStatsTmpRemove(QueryId queryId) override;
+
 protected:
 
     ///  Check that all necessary tables exist

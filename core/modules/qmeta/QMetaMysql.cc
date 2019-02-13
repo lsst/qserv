@@ -342,6 +342,7 @@ QMetaMysql::registerQuery(QInfo const& qInfo,
     LOGS(_log, LOG_LVL_DEBUG, qIdStr << " assigned to UserQuery:" << qInfo.queryText());
 
     // &&& create in memory table for this query. (see wbase/Base.cc:line 83 for in memory table creation)
+    // &&& "CREATE TABLE IF NOT EXISTS qservMeta.QStatsTmp (queryId bigint(20), totalChunks int, completedChunks int, begin timestamp, lastUpdate timestamp, PRIMARY KEY (queryId)) ENGINE = MEMORY;"
     return queryId;
 }
 
@@ -370,7 +371,7 @@ QMetaMysql::addChunks(QueryId queryId, std::vector<int> const& chunks) {
     }
 
     trans.commit();
-    // &&& add total number of chunks in query (insert first row here or when table is made? Make this insert or update)
+    // &&& Looks like this is never called add total number of chunks in query (insert first row here or when table is made? Make this insert or update)
 }
 
 // Assign or re-assign chunk to a worker.
@@ -777,8 +778,6 @@ QMetaMysql::getQueriesForTable(std::string const& dbName,
 // Check that all necessary tables exist or create them
 void
 QMetaMysql::_checkDb() {
-    //&&& try to delete old in memory tables. The table schema is written to disk,
-    //&&& but row data is not. Since there are multiple czars, this may be difficult. Maybe any table older than 2 weeks (config).
     // this is only called from constructor, no locking is needed here
 
     std::vector<std::string> tables;
@@ -822,6 +821,123 @@ QMetaMysql::_checkDb() {
                                value);
     }
 
+    // Try to create the temporary table if it is not there.
+    QMetaTransaction trans(_conn);
+    //sql::SqlErrorObject errObj; &&&
+    //sql::SqlResults results; &&&
+    query = "CREATE TABLE IF NOT EXISTS QStatsTmp (queryId bigint(20), "
+            "totalChunks int, completedChunks int, begin timestamp, "
+            "lastUpdate timestamp, PRIMARY KEY (queryId)) "
+            "ENGINE = MEMORY;";
+    LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
+    if (not _conn.runQuery(query, results, errObj)) {
+        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
+        throw SqlError(ERR_LOC, errObj);
+    }
+
+    trans.commit();
+}
+
+
+bool QMetaMysql::queryStatsTmpRegister(QueryId queryId, int totalChunks) {
+    QMetaTransaction trans(_conn);
+    sql::SqlErrorObject errObj;
+    sql::SqlResults results;
+    std::string query = "INSERT INTO QStatsTmp (queryId, totalChunks, completedChunks, begin, lastUpdate) "
+                        "VALUES ( ";
+    query += boost::lexical_cast<std::string>(queryId) + ", ";
+    query += boost::lexical_cast<std::string>(totalChunks) + ", ";
+    query += "0, NOW(), NOW());";
+
+    LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
+    if (not _conn.runQuery(query, results, errObj)) {
+        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
+        // If this doesn't work, it is not at all vital to qserv functionality.
+        return false;
+    }
+
+    trans.commit();
+    return true;
+}
+
+
+bool QMetaMysql::queryStatsTmpChunkUpdate(QueryId queryId, int completedChunks) {
+    QMetaTransaction trans(_conn);
+    sql::SqlErrorObject errObj;
+    sql::SqlResults results;
+    std::string query = "UPDATE QStatsTmp SET completedChunks = ";
+    query += boost::lexical_cast<std::string>(completedChunks);
+    query += ", lastUpdate = NOW() WHERE queryId = ";
+    query += boost::lexical_cast<std::string>(queryId) + ";";
+
+    LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
+    if (not _conn.runQuery(query, results, errObj)) {
+        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
+        // If this doesn't work, it is not at all vital to qserv functionality.
+        return false;
+    }
+
+    trans.commit();
+    return true;
+}
+
+
+QStats QMetaMysql::queryStatsTmpGet(QueryId queryId) {
+    std::lock_guard<std::mutex> sync(_dbMutex); // &&& is this needed??? is it needed for other queries???
+
+    QMetaTransaction trans(_conn);
+
+    // run query
+    sql::SqlErrorObject errObj;
+    sql::SqlResults results;
+    std::string query = "SELECT queryId, totalChunks, completedChunks, "
+                        "UNIX_TIMESTAMP(begin), UNIX_TIMESTAMP(lastUpdate) "
+                        "FROM qservMeta.QStatsTmp WHERE queryId= ";
+    query += boost::lexical_cast<std::string>(queryId) + ";";
+    LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
+    if (not _conn.runQuery(query, results, errObj)) {
+        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
+        throw SqlError(ERR_LOC, errObj);
+    }
+
+    sql::SqlResults::iterator rowIter = results.begin();
+    if (rowIter == results.end()) {
+        // no records found
+        throw QueryIdError(ERR_LOC, queryId);
+    }
+
+    // make sure that iterator does not move until we are done with row
+    sql::SqlResults::value_type const& row = *rowIter;
+
+    QueryId qId            = boost::lexical_cast<QueryId>(row[0].first);
+    int totalChunks        = boost::lexical_cast<int>(row[1].first);
+    int completedChunks    = boost::lexical_cast<int>(row[2].first);
+    std::time_t begin      = boost::lexical_cast<std::time_t>(row[3].first);
+    std::time_t lastUpdate = boost::lexical_cast<std::time_t>(row[4].first);
+
+    trans.commit();
+    return QStats(qId, totalChunks, completedChunks, begin, lastUpdate);
+}
+
+
+bool QMetaMysql::queryStatsTmpRemove(QueryId queryId) {
+    std::lock_guard<std::mutex> sync(_dbMutex); // &&& is this needed??? is it needed for other queries???
+    QMetaTransaction trans(_conn);
+    sql::SqlErrorObject errObj;
+    sql::SqlResults results;
+    std::string query = "DELETE FROM QStatsTmp WHERE queryId =";
+    query += boost::lexical_cast<std::string>(queryId) + ";";
+
+    LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
+    if (not _conn.runQuery(query, results, errObj)) {
+        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
+        // If this doesn't work, it is not vital to qserv functionality. It's an in memory table, and,
+        // if needed, there could be a check added to remove any rows more than a couple of weeks old.
+        return false;
+    }
+
+    trans.commit();
+    return true;
 }
 
 }}} // namespace lsst::qserv::qmeta

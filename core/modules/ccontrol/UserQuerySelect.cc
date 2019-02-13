@@ -232,6 +232,12 @@ void UserQuerySelect::submit() {
         threadPriority.setPriorityPolicy(10);
     }
 
+    // Add QStatsTmp table entry
+    LOGS(_log, LOG_LVL_INFO, "&&& Add QStatsTmp table entry");
+    if (!_queryMetadata->queryStatsTmpRegister(_qMetaQueryId, _qSession->getChunksSize())) {
+        LOGS(_log, LOG_LVL_WARN, "Failed queryStatsTmpRegister " << getQueryIdString());
+    }
+
     for(auto i = _qSession->cQueryBegin(), e = _qSession->cQueryEnd();
             i != e && !_executive->getCancelled(); ++i) {
         auto& chunkSpec = *i;
@@ -301,7 +307,6 @@ void UserQuerySelect::submit() {
 /// Block until a submit()'ed query completes.
 /// @return the QueryState indicating success or failure
 QueryState UserQuerySelect::join() {
-    // &&& add completion status to the query in this function (line up or add to qMeta stuff already here)
     bool successful = _executive->join(); // Wait for all data
     // Since all data are in, run final SQL commands like GROUP BY.
     if (!_infileMerger->finalize()) {
@@ -518,6 +523,7 @@ void UserQuerySelect::qMetaRegister(std::string const& resultLocation, std::stri
 void UserQuerySelect::_qMetaUpdateStatus(qmeta::QInfo::QStatus qStatus)
 {
     _queryMetadata->completeQuery(_qMetaQueryId, qStatus);
+    _queryMetadata->queryStatsTmpRemove(_qMetaQueryId);
 }
 
 // add chunk information to qmeta
