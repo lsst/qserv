@@ -277,7 +277,9 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
 UserQueryFactory::Impl::Impl(czar::CzarConfig const& czarConfig)
     : mysqlResultConfig(czarConfig.getMySqlResultConfig()) {
 
-    executiveConfig = std::make_shared<qdisp::Executive::Config>(czarConfig.getXrootdFrontendUrl());
+    executiveConfig = std::make_shared<qdisp::Executive::Config>(
+                          czarConfig.getXrootdFrontendUrl(),
+                          czarConfig.getQMetaSecondsBetweenChunkUpdates());
     secondaryIndex = std::make_shared<qproc::SecondaryIndex>(mysqlResultConfig);
 
     // make one dedicated connection for results database

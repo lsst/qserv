@@ -50,6 +50,9 @@ largeResultConcurrentMerges = 6
 # xrootdCBThreadsInit must be less than xrootdCBThreadsMax
 xrootdCBThreadsMax = 500
 xrootdCBThreadsInit = 50
+# Seconds between updates the czar the czar sends to qmeta for completed chunks.
+# This is per user query and important milestones ignor this limit.
+qMetaSecsBetweenChunkCompletionUpdates = 59
 
 #[debug]
 #chunkLimit = -1

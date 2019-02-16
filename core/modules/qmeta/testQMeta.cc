@@ -131,6 +131,50 @@ BOOST_AUTO_TEST_CASE(messWithCzars) {
     BOOST_CHECK_THROW(qMeta->setCzarActive(9999999, true), CzarIdError);
 }
 
+BOOST_AUTO_TEST_CASE(messWithQueryStats) {
+
+    // make sure that we have czars from previous test
+    CzarId cid1 = qMeta->getCzarID("czar:1000");
+    BOOST_CHECK(cid1 != 0U);
+
+    // resister one query
+    QInfo qinfo(QInfo::SYNC, cid1, "user1", "SELECT * from Object", "SELECT * from Object_{}",
+            "SELECT Merge ' query", "SELECT Proxy query", "result_#QID#", "message_12345");
+    QMeta::TableNames tables(1, std::make_pair("TestDB", "Object"));
+    lsst::qserv::QueryId qid1 = qMeta->registerQuery(qinfo, tables);
+
+    qMeta->createQueryStatsTmpTable();
+    int totalChunks = 99;
+    bool success = qMeta->queryStatsTmpRegister(qid1, totalChunks);
+    BOOST_CHECK(success);
+
+    QStats qStats = qMeta->queryStatsTmpGet(qid1);
+    BOOST_CHECK(qStats.totalChunks == totalChunks);
+    BOOST_CHECK(qStats.completedChunks == 0);
+
+    int completedChunks = 35;
+    success = qMeta->queryStatsTmpChunkUpdate(qid1, completedChunks);
+    BOOST_CHECK(success);
+
+    qStats = qMeta->queryStatsTmpGet(qid1);
+    BOOST_CHECK(qStats.totalChunks == totalChunks);
+    BOOST_CHECK(qStats.completedChunks == completedChunks);
+
+    success = qMeta->queryStatsTmpRemove(qid1);
+    BOOST_CHECK(success);
+    success = qMeta->queryStatsTmpRemove(qid1);
+    BOOST_CHECK(!success);
+
+
+    bool caught = false;
+    try {
+        qStats = qMeta->queryStatsTmpGet(qid1);
+    } catch (QueryIdError const& e) {
+        caught = true;
+    }
+    BOOST_CHECK(caught);
+}
+
 BOOST_AUTO_TEST_CASE(messWithQueries) {
 
     // make sure that we have czars from previous test

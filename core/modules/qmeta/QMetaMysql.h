@@ -249,6 +249,11 @@ public:
                                                     std::string const& tableName) override;
 
     /**
+     * @see QMeta::createQueryStatsTable()
+     */
+    void createQueryStatsTmpTable() override;
+
+    /**
      * @see QMeta::queryStatsTmpRegister(QueryId queryId, int totalChunks)
      */
     bool queryStatsTmpRegister(QueryId queryId, int totalChunks) override;

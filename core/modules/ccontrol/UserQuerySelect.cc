@@ -233,7 +233,6 @@ void UserQuerySelect::submit() {
     }
 
     // Add QStatsTmp table entry
-    LOGS(_log, LOG_LVL_INFO, "&&& Add QStatsTmp table entry");
     if (!_queryMetadata->queryStatsTmpRegister(_qMetaQueryId, _qSession->getChunksSize())) {
         LOGS(_log, LOG_LVL_WARN, "Failed queryStatsTmpRegister " << getQueryIdString());
     }
@@ -523,6 +522,7 @@ void UserQuerySelect::qMetaRegister(std::string const& resultLocation, std::stri
 void UserQuerySelect::_qMetaUpdateStatus(qmeta::QInfo::QStatus qStatus)
 {
     _queryMetadata->completeQuery(_qMetaQueryId, qStatus);
+    // Remove the row for temporary query statistics.
     _queryMetadata->queryStatsTmpRemove(_qMetaQueryId);
 }
 

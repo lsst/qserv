@@ -187,10 +187,10 @@ class SetupTest {
          qrMsg = request;
          qdisp::XrdSsiServiceMock::Reset();
          str = qdisp::Executive::Config::getMockStr();
-         conf = std::make_shared<qdisp::Executive::Config>(str);
+         conf = std::make_shared<qdisp::Executive::Config>(str, 0); // No updating of QMeta.
          ms = std::make_shared<qdisp::MessageStore>();
          qdispPool = std::make_shared<qdisp::QdispPool>(true);
-         std::shared_ptr<qmeta::QMeta> qMeta;
+         std::shared_ptr<qmeta::QMeta> qMeta; // No updating QMeta, nullptr
          ex = qdisp::Executive::create(*conf, ms, qdispPool, qMeta);
     }
     ~SetupTest() {}

@@ -136,6 +136,13 @@ public:
         return _xrootdCBThreadsInit;
     }
 
+    /* Get minimum number of seconds between QMeta chunk completion updates.
+     *
+     * @return seconds between QMeta chunk completion updates.
+     */
+    int getQMetaSecondsBetweenChunkUpdates() const {
+        return _qMetaSecsBetweenChunkCompletionUpdates;
+    }
 private:
 
     CzarConfig(util::ConfigStore const& ConfigStore);
@@ -152,6 +159,7 @@ private:
     int const _largeResultConcurrentMerges;
     int const _xrootdCBThreadsMax;
     int const _xrootdCBThreadsInit;
+    int const _qMetaSecsBetweenChunkCompletionUpdates;
 };
 
 }}} // namespace lsst::qserv::czar

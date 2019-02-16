@@ -52,7 +52,6 @@ class XrdSsiService;
 
 namespace lsst {
 namespace qserv {
-
 namespace qmeta {
 class QMeta;
 }
@@ -73,11 +72,12 @@ public:
 
     struct Config {
         typedef std::shared_ptr<Config> Ptr;
-        Config(std::string const& serviceUrl_)
-            : serviceUrl(serviceUrl_) {}
+        Config(std::string const& serviceUrl_, int secsBetweenChunkUpdates_)
+            : serviceUrl(serviceUrl_), secondsBetweenChunkUpdates(secsBetweenChunkUpdates_) {}
         Config(int,int) : serviceUrl(getMockStr()) {}
 
         std::string serviceUrl; ///< XrdSsi service URL, e.g. localhost:1094
+        int secondsBetweenChunkUpdates; ///< Seconds between QMeta chunk updates.
         static std::string getMockStr() {return "Mock";};
     };
 
@@ -163,8 +163,6 @@ private:
     JobMap _jobMap; ///< Contains information about all jobs.
     JobMap _incompleteJobs; ///< Map of incomplete jobs.
     std::atomic<int> _totalJobs{1}; ///< How many jobs are used in this query.
-    /// Last time Executive updated QMeta, defaults to epoch for clock.
-    std::chrono::system_clock::time_point _lastQMetaUpdate{};
     QdispPool::Ptr _qdispPool; ///< Shared thread pool for handling commands to and from workers.
 
     std::deque<PriorityCommand::Ptr> _jobStartCmdList; ///< list of jobs to start.
@@ -189,6 +187,10 @@ private:
     util::InstanceCount _instC{"Executive"};
 
     std::shared_ptr<qmeta::QMeta> _qMeta;
+    /// Last time Executive updated QMeta, defaults to epoch for clock.
+    std::chrono::system_clock::time_point _lastQMetaUpdate;
+    int _secondsBetweenQMetaUpdates{60}; ///< Minimum number of seconds between QMeta chunk updates (set by config)
+    std::mutex _lastQMetaMtx; ///< protects _lastQMetaUpdate.
 };
 
 class MarkCompleteFunc {

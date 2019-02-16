@@ -83,7 +83,9 @@ CzarConfig::CzarConfig(util::ConfigStore const& configStore)
        _emptyChunkPath(configStore.get("partitioner.emptyChunkPath", ".")),
        _largeResultConcurrentMerges(configStore.getInt("tuning.largeResultConcurrentMerges", 3)),
        _xrootdCBThreadsMax(configStore.getInt("tuning.xrootdCBThreadsMax", 500)),
-       _xrootdCBThreadsInit(configStore.getInt("tuning.xrootdCBThreadsInit", 50)) {
+       _xrootdCBThreadsInit(configStore.getInt("tuning.xrootdCBThreadsInit", 50)),
+       _qMetaSecsBetweenChunkCompletionUpdates(configStore.getInt(
+                                               "tuning.qMetaSecsBetweenChunkCompletionUpdates", 60)) {
 }
 
 std::ostream& operator<<(std::ostream &out, CzarConfig const& czarConfig) {

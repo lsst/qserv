@@ -95,6 +95,7 @@ Executive::Executive(Config const& c, std::shared_ptr<MessageStore> const& ms,
                      std::shared_ptr<QdispPool> const& qdispPool,
                      std::shared_ptr<qmeta::QMeta> const& qMeta)
     : _config(c), _messageStore(ms), _qdispPool(qdispPool), _qMeta(qMeta) {
+    _secondsBetweenQMetaUpdates = _config.secondsBetweenChunkUpdates;
     _setup();
 }
 
@@ -444,16 +445,21 @@ void Executive::_unTrack(int jobId) {
     LOGS(_log, (untracked ? LOG_LVL_DEBUG : LOG_LVL_WARN),
          "Executive UNTRACKING " << QueryIdHelper::makeIdStr(_id, jobId)
              << " " << (untracked ? "success":"failed") << "::" << s);
-    // &&& every time a chunk completes, consider sending an update to QMeta.
+    // Every time a chunk completes, consider sending an update to QMeta.
     // Important chunks to log: first, last, middle
     // limiting factors: no more than one update a minute (config)
     if (untracked) {
         auto now = std::chrono::system_clock::now();
+        std::unique_lock<std::mutex> lastUpdateLock(_lastQMetaMtx);
         auto diff = std::chrono::duration_cast<std::chrono::seconds>(now - _lastQMetaUpdate);
-        if (diff.count() > 60 || incompleteJobs == _totalJobs/2 || incompleteJobs == 0) {
+        if (diff.count() > _secondsBetweenQMetaUpdates
+           || incompleteJobs == _totalJobs/2
+           || incompleteJobs == 0) {
             _lastQMetaUpdate = now;
+            lastUpdateLock.unlock(); // unlock asap, _qMeta write can be slow.
             int completedJobs = _totalJobs -  incompleteJobs;
             if (_qMeta != nullptr) {
+                // This is not vital (logging), if it fails keep going.
                 _qMeta->queryStatsTmpChunkUpdate(_id, completedJobs);
             }
         }

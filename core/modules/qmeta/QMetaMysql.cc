@@ -341,8 +341,6 @@ QMetaMysql::registerQuery(QInfo const& qInfo,
     trans.commit();
     LOGS(_log, LOG_LVL_DEBUG, qIdStr << " assigned to UserQuery:" << qInfo.queryText());
 
-    // &&& create in memory table for this query. (see wbase/Base.cc:line 83 for in memory table creation)
-    // &&& "CREATE TABLE IF NOT EXISTS qservMeta.QStatsTmp (queryId bigint(20), totalChunks int, completedChunks int, begin timestamp, lastUpdate timestamp, PRIMARY KEY (queryId)) ENGINE = MEMORY;"
     return queryId;
 }
 
@@ -371,7 +369,6 @@ QMetaMysql::addChunks(QueryId queryId, std::vector<int> const& chunks) {
     }
 
     trans.commit();
-    // &&& Looks like this is never called add total number of chunks in query (insert first row here or when table is made? Make this insert or update)
 }
 
 // Assign or re-assign chunk to a worker.
@@ -451,7 +448,6 @@ QMetaMysql::finishChunk(QueryId queryId, int chunk) {
 // Mark query as completed or failed.
 void
 QMetaMysql::completeQuery(QueryId queryId, QInfo::QStatus qStatus) {
-    // &&& delete the in memory status table in this func.
 
     std::lock_guard<std::mutex> sync(_dbMutex);
 
@@ -821,29 +817,37 @@ QMetaMysql::_checkDb() {
                                value);
     }
 
+    createQueryStatsTmpTable();
+}
+
+
+void QMetaMysql::createQueryStatsTmpTable() {
+    // If this is being run outside the constructor, _bdMutex may need to be locked first.
     // Try to create the temporary table if it is not there.
     QMetaTransaction trans(_conn);
-    //sql::SqlErrorObject errObj; &&&
-    //sql::SqlResults results; &&&
-    query = "CREATE TABLE IF NOT EXISTS QStatsTmp (queryId bigint(20), "
-            "totalChunks int, completedChunks int, begin timestamp, "
-            "lastUpdate timestamp, PRIMARY KEY (queryId)) "
-            "ENGINE = MEMORY;";
+    sql::SqlErrorObject errObj;
+    sql::SqlResults results;
+    std::string query = "CREATE TABLE IF NOT EXISTS QStatsTmp (queryId bigint(20), "
+                        "totalChunks int, completedChunks int, "
+                        "queryBegin timestamp DEFAULT 0, "
+                        "lastUpdate timestamp DEFAULT 0, "
+                        "PRIMARY KEY (queryId)) "
+                        "ENGINE = MEMORY;";
     LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     if (not _conn.runQuery(query, results, errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
         throw SqlError(ERR_LOC, errObj);
     }
-
     trans.commit();
 }
 
 
 bool QMetaMysql::queryStatsTmpRegister(QueryId queryId, int totalChunks) {
+    std::lock_guard<std::mutex> sync(_dbMutex);
     QMetaTransaction trans(_conn);
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
-    std::string query = "INSERT INTO QStatsTmp (queryId, totalChunks, completedChunks, begin, lastUpdate) "
+    std::string query = "INSERT INTO QStatsTmp (queryId, totalChunks, completedChunks, queryBegin, lastUpdate) "
                         "VALUES ( ";
     query += boost::lexical_cast<std::string>(queryId) + ", ";
     query += boost::lexical_cast<std::string>(totalChunks) + ", ";
@@ -862,6 +866,7 @@ bool QMetaMysql::queryStatsTmpRegister(QueryId queryId, int totalChunks) {
 
 
 bool QMetaMysql::queryStatsTmpChunkUpdate(QueryId queryId, int completedChunks) {
+    std::lock_guard<std::mutex> sync(_dbMutex);
     QMetaTransaction trans(_conn);
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
@@ -883,16 +888,13 @@ bool QMetaMysql::queryStatsTmpChunkUpdate(QueryId queryId, int completedChunks) 
 
 
 QStats QMetaMysql::queryStatsTmpGet(QueryId queryId) {
-    std::lock_guard<std::mutex> sync(_dbMutex); // &&& is this needed??? is it needed for other queries???
-
+    std::lock_guard<std::mutex> sync(_dbMutex);
     QMetaTransaction trans(_conn);
-
-    // run query
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
     std::string query = "SELECT queryId, totalChunks, completedChunks, "
-                        "UNIX_TIMESTAMP(begin), UNIX_TIMESTAMP(lastUpdate) "
-                        "FROM qservMeta.QStatsTmp WHERE queryId= ";
+                        "UNIX_TIMESTAMP(queryBegin), UNIX_TIMESTAMP(lastUpdate) "
+                        "FROM QStatsTmp WHERE queryId= ";
     query += boost::lexical_cast<std::string>(queryId) + ";";
     LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     if (not _conn.runQuery(query, results, errObj)) {
@@ -921,7 +923,7 @@ QStats QMetaMysql::queryStatsTmpGet(QueryId queryId) {
 
 
 bool QMetaMysql::queryStatsTmpRemove(QueryId queryId) {
-    std::lock_guard<std::mutex> sync(_dbMutex); // &&& is this needed??? is it needed for other queries???
+    std::lock_guard<std::mutex> sync(_dbMutex);
     QMetaTransaction trans(_conn);
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
