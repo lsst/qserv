@@ -38,7 +38,7 @@ struct {
     unsigned int const replicationIntervalSec{60};
     unsigned int const workerResponseTimeoutSec{60};
     unsigned int const workerEvictTimeoutSec{3600};
-    unsigned int const qservSyncTimeoutSec{60};
+    unsigned int const qservSyncTimeoutSec{1800};
     unsigned int const numReplicas{0};
 
     bool const purge{false};
