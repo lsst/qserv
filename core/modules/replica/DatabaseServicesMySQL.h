@@ -171,6 +171,19 @@ public:
     size_t numOrphanChunks(std::string const& database,
                            std::vector<std::string> const& uniqueOnWorkers) final;
 
+    /**
+     * @see DatabaseServices::logControllerEvent()
+     */
+    void logControllerEvent(ControllerEvent const& event) final;
+
+    /**
+     * @see DatabaseServices::readControllerEvents()
+     */
+    std::list<ControllerEvent> readControllerEvents(std::string const& controllerId,
+                                                    uint64_t fromTimeStamp,
+                                                    uint64_t toTimeStamp,
+                                                    size_t maxEntries) final;
+
 private:
 
     /**
@@ -243,6 +256,23 @@ private:
     void findReplicaFilesImpl(util::Lock const& lock,
                               std::map<uint64_t, ReplicaInfo> const& id2replica,
                               std::vector<ReplicaInfo>& replicas);
+
+    /**
+     * Implement the corresponding public method
+     *
+     * @see DatabaseServicesMySQL::logControllerEvent()
+     */
+    void _logControllerEvent(util::Lock const& lock,
+                             ControllerEvent const& event);
+
+    /**
+     * @see DatabaseServices::readControllerEvents()
+     */
+    std::list<ControllerEvent> _readControllerEvents(util::Lock const& lock,
+                                                     std::string const& controllerId,
+                                                     uint64_t fromTimeStamp,
+                                                     uint64_t toTimeStamp,
+                                                     size_t maxEntries);
 
 private:
 

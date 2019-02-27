@@ -23,6 +23,7 @@
 #define LSST_QSERV_REPLICA_DATABASESERVICES_H
 
 // System headers
+#include <list>
 #include <map>
 #include <memory>
 #include <string>
@@ -44,6 +45,45 @@ struct ControllerIdentity;
 class QservMgtRequest;
 class Performance;
 class Request;
+
+/**
+ * Data structure encapsulating various info on events logged by Controllers.
+ * These objects are retrieved from the persistent logs.
+ * 
+ * @see DatabaseServices::logControllerEvent
+ * @see DatabaseServices::readControllerEvents
+ */
+struct ControllerEvent {
+
+    /// A unique identifier of the event in the persistent log. Note, that
+    /// a value of this field is retrieved from the database. 
+    uint32_t id;
+
+    /// Unique identifier of the Controller instance
+    std::string controllerId;
+
+    /// 64-bit timestamp (nanoseconds) of the event
+    uint64_t timeStamp;
+
+    /// The name of a Controller task defining a scope of the operation
+    std::string task;
+
+    /// The name of an operation (request, job, other action)
+    std::string operation;
+
+    /// The optional status of the operation
+    std::string status;
+
+    /// The optional identifier of a request
+    std::string requestId;
+
+    /// The optional identifier of a job
+    std::string jobId;
+
+    /// The optional collection (key-value pairs) of the event-specific data
+    std::list<std::pair<std::string, std::string>> kvInfo;
+};
+
 
 /**
   * Class DatabaseServices is a high-level interface to the database services
@@ -307,7 +347,7 @@ public:
     virtual std::map<unsigned int, size_t> actualReplicationLevel(
                                                 std::string const& database,
                                                 std::vector<std::string> const& workersToExclude =
-                                                    std::vector<std::string>()) = 0;
+                                                std::vector<std::string>()) = 0;
 
     /**
      * @return a total number of chunks which only exist on any worker of
@@ -331,7 +371,39 @@ public:
      *   was not found in the configuration.
      */
     virtual size_t numOrphanChunks(std::string const& database,
-                           std::vector<std::string> const& uniqueOnWorkers) = 0;
+                                   std::vector<std::string> const& uniqueOnWorkers) = 0;
+
+    /**
+     * Log a Controller event
+     *
+     * @param event
+     *   event to be logged
+     */
+    virtual void logControllerEvent(ControllerEvent const& event) = 0;
+
+    /**
+     * Search the log of controller events for events in the specified time range.
+     *
+     * @param controllerId
+     *   unique identifier of a Controller whose events will be searched
+     *
+     * @param fromTimeStamp
+     *   (optional) the oldest (inclusive) timestamp for the search.
+     * 
+     * @param toTimeStamp
+     *   (optional) the most recent (inclusive) timestamp for the search.
+     *
+     * @param maxEntries
+     *   (optional) the maximum number of events to be reported. The default
+     *   values of 0 doesn't impose any limits.
+     *
+     * @return
+     *   collection of events found within the specified time interval
+     */
+    virtual std::list<ControllerEvent> readControllerEvents(std::string const& controllerId,
+                                                            uint64_t fromTimeStamp=0,
+                                                            uint64_t toTimeStamp=0,
+                                                            size_t maxEntries=0) = 0;
 
 protected:
 

@@ -173,6 +173,19 @@ public:
     size_t numOrphanChunks(std::string const& database,
                            std::vector<std::string> const& uniqueOnWorkers) final;
 
+    /**
+     * @see DatabaseServices::logControllerEvent()
+     */
+    void logControllerEvent(ControllerEvent const& event) final;
+
+    /**
+     * @see DatabaseServices::readControllerEvents()
+     */
+    std::list<ControllerEvent> readControllerEvents(std::string const& controllerId,
+                                                    uint64_t fromTimeStamp,
+                                                    uint64_t toTimeStamp,
+                                                    size_t maxEntries) final;
+
 private:
     /**
      * Construct the object.

@@ -90,6 +90,9 @@ protected:
 
 private:
 
+    /// @return the name of the application for the purpose of logging
+    std::string name() const { return "MASTER CONTROLLER"; };
+
     /**
      * Evict the specified worker from the cluster
      *
@@ -101,6 +104,61 @@ private:
      *   the name of a worker to be evicted
      */
     void _evict(std::string const& worker);
+
+    /**
+     * Log the very first event to report the initialization of the controller
+     * along with values of its command-line parameters.
+     *
+     * @throws std::logic_error
+     *   if the instance of the Controller is not set up
+     */
+    void _logControllerStartedEvent() const;
+
+    /**
+     * Log the very last event to report the finalization of the controller.
+     *
+     * @throws std::logic_error
+     *   if the instance of the Controller is not set up
+     */
+    void _logControllerStoppedEvent() const;
+
+    /**
+     * Log the beginning of the worker eviction.
+     *
+     * @param worker
+     *   the name of a worker to be evicted
+     *
+     * @throws std::logic_error
+     *   if the instance of the Controller is not set up
+     */
+    void _logWorkerEvictionStartedEvent(std::string const& worker) const;
+
+    /**
+     * Log the ending of the worker eviction.
+     *
+     * @param worker
+     *   the name of a worker to be evicted
+     *
+     * @throws std::logic_error
+     *   if the instance of the Controller is not set up
+     */
+    void _logWorkerEvictionFinishedEvent(std::string const& worker) const;
+
+    /**
+     * Log an event in the persistent log
+     *
+     * @param event
+     *   event to be recorded
+     */
+    void _logEvent(ControllerEvent const& event) const;
+
+    /**
+     * Ensure the Controller is running. Otherwise, throw an exception.
+     *
+     * @param func
+     *   the name of a method which called this operation
+     */
+    void _assertIsStarted(std::string const& func) const;
 
 private:
 

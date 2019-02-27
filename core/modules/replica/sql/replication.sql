@@ -382,6 +382,73 @@ CREATE TABLE IF NOT EXISTS `replica_file` (
 ENGINE = InnoDB;
 
 
+-- -----------------------------------------------------
+-- Table `controller_log`
+-- -----------------------------------------------------
+DROP TABLE IF EXISTS `controller_log` ;
+
+CREATE TABLE IF NOT EXISTS `controller_log` (
+
+  `id`            INT             NOT NULL AUTO_INCREMENT ,
+  `controller_id` VARCHAR(255)    NOT NULL ,
+  `time`          BIGINT UNSIGNED NOT NULL ,  -- 64-bit timestamp: seconds and nanoseconds when
+                                              -- an event was posted
+
+  `task`          VARCHAR(255)    NOT NULL ,  -- the name of a task which runs within Controllers
+  `operation`     VARCHAR(255)    NOT NULL ,  -- the name of a request, a jobs or some other action launched
+                                              -- in a scope of the corresponding task
+  `status`        VARCHAR(255)    NOT NULL ,  -- status of the operation (STARTED, COMPLETED, CANCELLED,
+                                              -- FAILED, etc.). Can be an empty string.
+
+  `request_id`    VARCHAR(255) DEFAULT NULL ,  -- (optional) depends on an operation
+  `job_id`        VARCHAR(255) DEFAULT NULL ,  -- (optional) depends on an operation
+
+  PRIMARy KEY (`id`) ,
+
+  CONSTRAINT `controller_log_fk_1`
+    FOREIGN KEY (`controller_id` )
+    REFERENCES `controller` (`id` )
+    ON DELETE CASCADE
+    ON UPDATE CASCADE ,
+
+  CONSTRAINT `controller_log_fk_2`
+    FOREIGN KEY (`request_id` )
+    REFERENCES `request` (`id` )
+    ON DELETE CASCADE
+    ON UPDATE CASCADE ,
+
+  CONSTRAINT `controller_log_fk_3`
+    FOREIGN KEY (`job_id` )
+    REFERENCES `job` (`id` )
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
+)
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `controller_log_ext`
+-- -----------------------------------------------------
+--
+-- This table is for adding extra notes on the logged events.
+--
+DROP TABLE IF EXISTS `controller_log_ext` ;
+
+CREATE TABLE IF NOT EXISTS `controller_log_ext` (
+
+  `controller_log_id`  INT NOT NULL ,
+
+  `key` VARCHAR(255) NOT NULL ,
+  `val` TEXT         NOT NULL ,
+
+  CONSTRAINT `controller_log_ext_fk_1`
+    FOREIGN KEY (`controller_log_id` )
+    REFERENCES `controller_log` (`id` )
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
+)
+ENGINE = InnoDB;
+
 SET SQL_MODE=@OLD_SQL_MODE ;
 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS ;
 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS ;

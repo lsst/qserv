@@ -28,7 +28,10 @@
 #include <thread>
 
 // Qserv headers
+#include "replica/Controller.h"
+#include "replica/DatabaseServices.h"
 #include "replica/QservSyncJob.h"
+#include "replica/ServiceProvider.h"
 #include "util/BlockPost.h"
 
 namespace lsst {
@@ -174,6 +177,17 @@ void Task::_startImpl() {
                 shared_from_this()
             )
         );
+    }
+}
+
+
+void Task::_logEvent(ControllerEvent const& event) const {
+
+    // For now ignore exceptions when logging events. Just report errors.
+    try {
+        controller()->serviceProvider()->databaseServices()->logControllerEvent(event);
+    } catch (std::exception const& ex) {
+       LOGS(_log, LOG_LVL_ERROR, name() << "  " << "failed to log event in " << __func__);
     }
 }
 

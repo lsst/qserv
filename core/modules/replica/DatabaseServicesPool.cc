@@ -225,6 +225,27 @@ size_t DatabaseServicesPool::numOrphanChunks(std::string const& database,
 }
 
 
+void DatabaseServicesPool::logControllerEvent(ControllerEvent const& event) {
+
+    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
+    service()->logControllerEvent(event);
+}
+
+
+std::list<ControllerEvent> DatabaseServicesPool::readControllerEvents(
+                                                    std::string const& controllerId,
+                                                    uint64_t fromTimeStamp,
+                                                    uint64_t toTimeStamp,
+                                                    size_t maxEntries) {
+
+    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
+    return service()->readControllerEvents(controllerId,
+                                           fromTimeStamp,
+                                           toTimeStamp,
+                                           maxEntries);
+}
+
+
 DatabaseServices::Ptr DatabaseServicesPool::allocateService() {
 
     std::string const context = "DatabaseServicesPool::allocateService  ";

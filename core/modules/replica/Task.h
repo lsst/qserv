@@ -40,6 +40,14 @@
 // LSST headers
 #include "lsst/log/Log.h"
 
+// Forward declarations
+
+namespace lsst {
+namespace qserv {
+namespace replica {
+    struct ControllerEvent;
+}}} // namespace lsst::qserv::replica
+
 // This header declarations
 
 namespace lsst {
@@ -361,6 +369,14 @@ private:
      * This method is launched by the task when it starts
      */
     void _startImpl();
+
+    /**
+     * Log an event in the persistent log
+     *
+     * @param event
+     *   event to be recorded
+     */
+    void _logEvent(ControllerEvent const& event) const;
 
 private:
 

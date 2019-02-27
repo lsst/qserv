@@ -1037,6 +1037,176 @@ size_t DatabaseServicesMySQL::numOrphanChunks(std::string const& database,
 
 }
 
+
+void DatabaseServicesMySQL::logControllerEvent(ControllerEvent const& event) {
+
+    std::string const context =
+         "DatabaseServicesMySQL::" + std::string(__func__) + " " +
+         " controller: "  + event.controllerId +
+         " timeStamp: "   + std::to_string(event.timeStamp) +
+         " task: "        + event.task +
+         " operation: "   + event.operation +
+         " status: "      + event.status +
+         " request: "     + event.requestId +
+         " job: "         + event.jobId +
+         " kvInfo.size: " + std::to_string(event.kvInfo.size());
+
+    LOGS(_log, LOG_LVL_DEBUG, context);
+
+    util::Lock lock(_mtx, context);
+    try {
+        _conn->execute(
+            [&](decltype(_conn) conn) {
+                conn->begin();
+                _logControllerEvent(
+                    lock,
+                    event);
+                conn->commit();
+            }
+        );
+
+    } catch (std::exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
+        if (_conn->inTransaction()) _conn->rollback();
+        throw;
+    }
+    LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
+}
+
+
+void DatabaseServicesMySQL::_logControllerEvent(util::Lock const& lock,
+                                                ControllerEvent const& event) {
+
+    _conn->executeInsertQuery(
+        "controller_log",
+        "NULL",
+        event.controllerId,
+        event.timeStamp,
+        event.task,
+        event.operation,
+        event.status,
+        event.requestId.empty() ? "NULL" : event.requestId,
+        event.jobId.empty()     ? "NULL" : event.jobId);
+    
+    for (auto&& kv: event.kvInfo) {
+        _conn->executeInsertQuery(
+            "controller_log_ext",
+                "LAST_INSERT_ID()",
+                kv.first,
+                kv.second
+        );
+    }
+}
+
+std::list<ControllerEvent>
+DatabaseServicesMySQL::readControllerEvents(std::string const& controllerId,
+                                            uint64_t fromTimeStamp,
+                                            uint64_t toTimeStamp,
+                                            size_t maxEntries) {
+    std::string const context =
+         "DatabaseServicesMySQL::" + std::string(__func__) + " " +
+         " controller: "    + controllerId +
+         " fromTimeStamp: " + std::to_string(fromTimeStamp) +
+         " toTimeStamp: "   + std::to_string(toTimeStamp);
+
+    LOGS(_log, LOG_LVL_DEBUG, context);
+
+    util::Lock lock(_mtx, context);
+    
+    std::list<ControllerEvent> events;
+    try {
+        _conn->execute(
+            [&](decltype(_conn) conn) {
+                conn->begin();
+                events = _readControllerEvents(
+                    lock,
+                    controllerId,
+                    fromTimeStamp,
+                    toTimeStamp,
+                    maxEntries);
+                conn->commit();
+            }
+        );
+
+    } catch (std::exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
+        if (_conn->inTransaction()) _conn->rollback();
+        throw;
+    }
+    LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
+    return events;
+}
+
+
+std::list<ControllerEvent>
+DatabaseServicesMySQL::_readControllerEvents(util::Lock const& lock,
+                                             std::string const& controllerId,
+                                             uint64_t fromTimeStamp,
+                                             uint64_t toTimeStamp,
+                                             size_t maxEntries) {
+    if (controllerId.empty()) {
+        throw std::invalid_argument(
+                "DatabaseServicesMySQL::" + std::string(__func__) + " parameter"
+                " controllerId can't be empty");
+    }
+    if (fromTimeStamp > toTimeStamp) {
+        throw std::invalid_argument(
+                "DatabaseServicesMySQL::" + std::string(__func__) + " illegal time range"
+                " for events: [" + std::to_string(fromTimeStamp) + "," + std::to_string(toTimeStamp) + "]");
+    }
+
+    std::list<ControllerEvent> events;
+
+    std::string const query =
+        "SELECT * FROM " + _conn->sqlId("controller_log") +
+        "  WHERE "       + _conn->sqlEqual("id", controllerId) +
+        "    AND "       + _conn->sqlGreaterOrEqual("time", fromTimeStamp) +
+        "    AND "       + _conn->sqlLessOrEqual("time", toTimeStamp != 0 ? toTimeStamp : std::numeric_limits<uint64_t>::max()) +
+        "  ORDER BY "    + _conn->sqlId("time") + " DESC" + (maxEntries == 0 ? "" :
+        "  LIMIT "       + std::to_string(maxEntries)
+        );
+
+    _conn->execute(query);
+    if (_conn->hasResult()) {
+
+        database::mysql::Row row;
+        while (_conn->next(row)) {
+
+            ControllerEvent event;
+
+            row.get("id",            event.id);
+            row.get("controller_id", event.controllerId);
+            row.get("time",          event.timeStamp);
+            row.get("task",          event.task);
+            row.get("operation",     event.operation);
+            row.get("status",        event.status);
+            if (not row.isNull("request_id")) row.get("request_id", event.requestId);
+            if (not row.isNull("job_id"))     row.get("job_id",     event.jobId);
+
+            events.push_back(event);
+        }
+        for (auto&& event: events) {
+            std::string const query =
+                "SELECT * FROM " + _conn->sqlId("controller_log_ext") +
+                "  WHERE "       + _conn->sqlEqual("controller_log_id", event.id);
+
+            _conn->execute(query);
+            if (_conn->hasResult()) {
+
+                database::mysql::Row row;
+                while (_conn->next(row)) {
+                    std::string key;
+                    std::string val;
+                    row.get("key", key);
+                    row.get("val", val);
+                    event.kvInfo.emplace_back(key, val);
+                }
+            }
+        }
+    }
+    return events;
+}
+
 void DatabaseServicesMySQL::findReplicasImpl(util::Lock const& lock,
                                              std::vector<ReplicaInfo>& replicas,
                                              std::string const& query) {

@@ -23,7 +23,12 @@
 // Class header
 #include "replica/MasterControllerHttpApp.h"
 
+// System headers
+#include <stdexcept>
+
 // Qserv headers
+#include "replica/DatabaseServices.h"
+#include "replica/Performance.h"
 #include "util/BlockPost.h"
 
 namespace {
@@ -156,9 +161,11 @@ MasterControllerHttpApp::MasterControllerHttpApp(int argc, char* argv[])
 
 int MasterControllerHttpApp::runImpl() {
 
-    LOGS(_log, LOG_LVL_INFO, "MASTER CONTROLLER  " << parser().serializeArguments());
+    LOGS(_log, LOG_LVL_INFO, name() << parser().serializeArguments());
 
     _controller = Controller::create(serviceProvider());
+
+    _logControllerStartedEvent();
 
     // These tasks should be running in parallel
 
@@ -216,11 +223,15 @@ int MasterControllerHttpApp::runImpl() {
     if ((_replicationTask != nullptr) and
          _replicationTask->isRunning()) _replicationTask->stop();
 
+    _logControllerStoppedEvent();
+
     return 1;
 }
 
 
 void MasterControllerHttpApp::_evict(std::string const& worker) {
+
+    _logWorkerEvictionStartedEvent(worker);
 
     // This thread needs to be stopped to avoid any interference with
     // the worker exclusion protocol.
@@ -257,6 +268,105 @@ void MasterControllerHttpApp::_evict(std::string const& worker) {
     // in the system has been detected
 
     if (not _isFailed()) _replicationTask->start();
+    
+    _logWorkerEvictionFinishedEvent(worker);
+}
+
+
+void MasterControllerHttpApp::_logControllerStartedEvent() const {
+ 
+    _assertIsStarted(__func__);
+
+    ControllerEvent event;
+
+    event.controllerId = _controller->identity().id;
+    event.timeStamp    = PerformanceUtils::now();
+    event.task         = name();
+    event.operation    = "started";
+
+    event.kvInfo.emplace_back("host",                                   _controller->identity().host);
+    event.kvInfo.emplace_back("pid",                     std::to_string(_controller->identity().pid));
+    event.kvInfo.emplace_back("health-probe-interval",   std::to_string(_healthProbeIntervalSec));
+    event.kvInfo.emplace_back("replication-interval",    std::to_string(_replicationIntervalSec));
+    event.kvInfo.emplace_back("worker-response-timeout", std::to_string(_workerResponseTimeoutSec));
+    event.kvInfo.emplace_back("worker-evict-timeout",    std::to_string(_workerEvictTimeoutSec));
+    event.kvInfo.emplace_back("qserv-sync-timeout",      std::to_string(_qservSyncTimeoutSec));
+    event.kvInfo.emplace_back("qserv-sync-force",                       _forceQservSync ? "1" : "0");
+    event.kvInfo.emplace_back("replicas",                std::to_string(_numReplicas));
+    event.kvInfo.emplace_back("purge",                                  _purge ? "1" : "0");
+    event.kvInfo.emplace_back("permanent-worker-delete",                _permanentDelete ? "1" : "0");
+
+    _logEvent(event);
+}
+
+
+void MasterControllerHttpApp::_logControllerStoppedEvent() const {
+ 
+    _assertIsStarted(__func__);
+
+    ControllerEvent event;
+
+    event.controllerId = _controller->identity().id;
+    event.timeStamp    = PerformanceUtils::now();
+    event.task         = name();
+    event.operation    = "stopped";
+
+    _logEvent(event);
+}
+
+
+void MasterControllerHttpApp::_logWorkerEvictionStartedEvent(std::string const& worker) const {
+ 
+    _assertIsStarted(__func__);
+
+    ControllerEvent event;
+
+    event.controllerId = _controller->identity().id;
+    event.timeStamp    = PerformanceUtils::now();
+    event.task         = name();
+    event.operation    = "worker eviction";
+    event.status       = "STARTED";
+
+    event.kvInfo.emplace_back("worker", worker);
+
+    _logEvent(event);
+}
+
+
+void MasterControllerHttpApp::_logWorkerEvictionFinishedEvent(std::string const& worker) const {
+ 
+    _assertIsStarted(__func__);
+
+    ControllerEvent event;
+
+    event.controllerId = _controller->identity().id;
+    event.timeStamp    = PerformanceUtils::now();
+    event.task         = name();
+    event.operation    = "worker eviction";
+    event.status       = "FINISHED";
+
+    event.kvInfo.emplace_back("worker", worker);
+
+    _logEvent(event);
+}
+
+
+void MasterControllerHttpApp::_logEvent(ControllerEvent const& event) const {
+
+    // For now ignore exceptions when logging events. Just report errors.
+    try {
+        serviceProvider()->databaseServices()->logControllerEvent(event);
+    } catch (std::exception const& ex) {
+       LOGS(_log, LOG_LVL_ERROR, name() << "  " << "failed to log event in " << __func__);
+    }
+}
+
+
+void MasterControllerHttpApp::_assertIsStarted(std::string const& func) const {
+    if (nullptr == _controller) {
+        throw std::logic_error(
+                "MasterControllerHttpApp::" + func + "  Controller is not running");
+    }
 }
 
 
