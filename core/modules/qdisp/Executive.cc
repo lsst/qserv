@@ -65,7 +65,7 @@
 #include "qdisp/QueryRequest.h"
 #include "qdisp/ResponseHandler.h"
 #include "qdisp/XrdSsiMocks.h"
-#include "qmeta/QMeta.h"
+#include "qmeta/QStatus.h"
 #include "util/EventThread.h"
 
 extern XrdSsiProvider *XrdSsiProviderClient;
@@ -93,9 +93,9 @@ namespace qdisp {
 ////////////////////////////////////////////////////////////////////////
 Executive::Executive(Config const& c, std::shared_ptr<MessageStore> const& ms,
                      std::shared_ptr<QdispPool> const& qdispPool,
-                     std::shared_ptr<qmeta::QMeta> const& qMeta)
-    : _config(c), _messageStore(ms), _qdispPool(qdispPool), _qMeta(qMeta) {
-    _secondsBetweenQMetaUpdates = _config.secondsBetweenChunkUpdates;
+                     std::shared_ptr<qmeta::QStatus> const& qStatus)
+    : _config(c), _messageStore(ms), _qdispPool(qdispPool), _qMeta(qStatus) {
+    _secondsBetweenQMetaUpdates = std::chrono::seconds(_config.secondsBetweenChunkUpdates);
     _setup();
 }
 
@@ -108,7 +108,7 @@ Executive::~Executive() {
 
 Executive::Ptr Executive::create(Config const& c, std::shared_ptr<MessageStore> const& ms,
                                  std::shared_ptr<QdispPool> const& qdispPool,
-                                 std::shared_ptr<qmeta::QMeta> const& qMeta) {
+                                 std::shared_ptr<qmeta::QStatus> const& qMeta) {
     Executive::Ptr exec{new Executive(c, ms, qdispPool, qMeta)}; // make_shared dislikes private constructor.
     return exec;
 }
@@ -451,8 +451,7 @@ void Executive::_unTrack(int jobId) {
     if (untracked) {
         auto now = std::chrono::system_clock::now();
         std::unique_lock<std::mutex> lastUpdateLock(_lastQMetaMtx);
-        auto diff = std::chrono::duration_cast<std::chrono::seconds>(now - _lastQMetaUpdate);
-        if (diff.count() > _secondsBetweenQMetaUpdates
+        if (now - _lastQMetaUpdate > _secondsBetweenQMetaUpdates
            || incompleteJobs == _totalJobs/2
            || incompleteJobs == 0) {
             _lastQMetaUpdate = now;

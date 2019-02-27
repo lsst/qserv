@@ -83,6 +83,7 @@ public:
     mysql::MySqlConfig const mysqlResultConfig;
     std::shared_ptr<qproc::SecondaryIndex> secondaryIndex;
     std::shared_ptr<qmeta::QMeta> queryMetadata;
+    std::shared_ptr<qmeta::QStatus> queryStatsData; // &&& NEEDS to be initialized
     std::shared_ptr<qmeta::QMetaSelect> qMetaSelect;
     std::unique_ptr<sql::SqlConnection> resultDbConn;
     qmeta::CzarId qMetaCzarId = {0};   ///< Czar ID in QMeta database
@@ -219,13 +220,13 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
         std::shared_ptr<rproc::InfileMergerConfig> infileMergerConfig;
         if (sessionValid) {
             executive = qdisp::Executive::create(*_impl->executiveConfig, messageStore,
-                                                 qdispPool, _impl->queryMetadata);
+                                                 qdispPool, _impl->queryStatsData);
             infileMergerConfig = std::make_shared<rproc::InfileMergerConfig>(_impl->mysqlResultConfig);
         }
         auto uq = std::make_shared<UserQuerySelect>(qs, messageStore, executive, infileMergerConfig,
                                                     _impl->secondaryIndex, _impl->queryMetadata,
-                                                    _impl->qMetaCzarId, qdispPool,
-                                                    errorExtra, async);
+                                                    _impl->queryStatsData, _impl->qMetaCzarId,
+                                                    qdispPool, errorExtra, async);
         if (sessionValid) {
             uq->qMetaRegister(resultLocation, msgTableName);
             uq->setupChunking();

@@ -817,10 +817,10 @@ QMetaMysql::_checkDb() {
                                value);
     }
 
-    createQueryStatsTmpTable();
+    // createQueryStatsTmpTable(); &&&
 }
 
-
+#if 0 // &&&
 void QMetaMysql::createQueryStatsTmpTable() {
     // If this is being run outside the constructor, _bdMutex may need to be locked first.
     // Try to create the temporary table if it is not there.
@@ -860,7 +860,12 @@ bool QMetaMysql::queryStatsTmpRegister(QueryId queryId, int totalChunks) {
         return false;
     }
 
-    trans.commit();
+    try {
+    	trans.commit();
+    } catch (SqlError const& e) {
+    	LOGS(_log, LOG_LVL_ERROR, "queryStatsTmpRegister failed to commit " << e.what());
+    	return false;
+    }
     return true;
 }
 
@@ -882,7 +887,12 @@ bool QMetaMysql::queryStatsTmpChunkUpdate(QueryId queryId, int completedChunks) 
         return false;
     }
 
-    trans.commit();
+    try {
+    	trans.commit();
+    } catch (SqlError const& e) {
+    	LOGS(_log, LOG_LVL_ERROR, "queryStatsTmpChunkUpdate failed to commit " << e.what());
+    	return false;
+    }
     return true;
 }
 
@@ -941,5 +951,6 @@ bool QMetaMysql::queryStatsTmpRemove(QueryId queryId) {
     trans.commit();
     return true;
 }
+#endif
 
 }}} // namespace lsst::qserv::qmeta

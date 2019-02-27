@@ -155,13 +155,15 @@ UserQuerySelect::UserQuerySelect(std::shared_ptr<qproc::QuerySession> const& qs,
                                  std::shared_ptr<rproc::InfileMergerConfig> const& infileMergerConfig,
                                  std::shared_ptr<qproc::SecondaryIndex> const& secondaryIndex,
                                  std::shared_ptr<qmeta::QMeta> const& queryMetadata,
+                                 std::shared_ptr<qmeta::QStatus> const& queryStatsData,
                                  qmeta::CzarId czarId,
                                  std::shared_ptr<qdisp::QdispPool> const& qdispPool,
                                  std::string const& errorExtra,
                                  bool async)
     :  _qSession(qs), _messageStore(messageStore), _executive(executive),
        _infileMergerConfig(infileMergerConfig), _secondaryIndex(secondaryIndex),
-       _queryMetadata(queryMetadata), _qMetaCzarId(czarId), _qdispPool(qdispPool),
+       _queryMetadata(queryMetadata), _queryStatsData(queryStatsData),
+       _qMetaCzarId(czarId), _qdispPool(qdispPool),
        _errorExtra(errorExtra), _async(async) {
 }
 
@@ -233,7 +235,7 @@ void UserQuerySelect::submit() {
     }
 
     // Add QStatsTmp table entry
-    if (!_queryMetadata->queryStatsTmpRegister(_qMetaQueryId, _qSession->getChunksSize())) {
+    if (!_queryStatsData->queryStatsTmpRegister(_qMetaQueryId, _qSession->getChunksSize())) {
         LOGS(_log, LOG_LVL_WARN, "Failed queryStatsTmpRegister " << getQueryIdString());
     }
 
@@ -523,7 +525,7 @@ void UserQuerySelect::_qMetaUpdateStatus(qmeta::QInfo::QStatus qStatus)
 {
     _queryMetadata->completeQuery(_qMetaQueryId, qStatus);
     // Remove the row for temporary query statistics.
-    _queryMetadata->queryStatsTmpRemove(_qMetaQueryId);
+    _queryStatsData->queryStatsTmpRemove(_qMetaQueryId);
 }
 
 // add chunk information to qmeta

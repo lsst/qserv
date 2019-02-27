@@ -248,6 +248,7 @@ public:
     virtual std::vector<QueryId> getQueriesForTable(std::string const& dbName,
                                                     std::string const& tableName) override;
 
+#if 0 // &&&
     /**
      * @see QMeta::createQueryStatsTable()
      */
@@ -272,7 +273,7 @@ public:
      * @see QMeta::queryStatsTmpRemove(QueryId queryId)
      */
     bool queryStatsTmpRemove(QueryId queryId) override;
-
+#endif
 protected:
 
     ///  Check that all necessary tables exist

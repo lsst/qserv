@@ -20,8 +20,6 @@
  * see <https://www.lsstcorp.org/LegalNotices/>.
  */
 
-// Class header
-#include "QMetaMysql.h"
 
 // System headers
 #include <iostream>
@@ -33,6 +31,8 @@
 #include  "boost/algorithm/string/replace.hpp"
 
 // Qserv headers
+#include "QMetaMysql.h"
+#include "QStatusMysql.h"
 #include "sql/SqlConnection.h"
 #include "sql/SqlErrorObject.h"
 
@@ -143,32 +143,38 @@ BOOST_AUTO_TEST_CASE(messWithQueryStats) {
     QMeta::TableNames tables(1, std::make_pair("TestDB", "Object"));
     lsst::qserv::QueryId qid1 = qMeta->registerQuery(qinfo, tables);
 
-    qMeta->createQueryStatsTmpTable();
+
+    std::shared_ptr<QStatus> qStatus = std::make_shared<QStatusMysql>(testDB.sqlConfig); // &&& check config values
+    sqlConn = std::make_shared<SqlConnection>(testDB.sqlConfig); /// &&& check if db values ok, database is opened
+
+
+
+    qStatus->createQueryStatsTmpTable();
     int totalChunks = 99;
-    bool success = qMeta->queryStatsTmpRegister(qid1, totalChunks);
+    bool success = qStatus->queryStatsTmpRegister(qid1, totalChunks);
     BOOST_CHECK(success);
 
-    QStats qStats = qMeta->queryStatsTmpGet(qid1);
+    QStats qStats = qStatus->queryStatsTmpGet(qid1);
     BOOST_CHECK(qStats.totalChunks == totalChunks);
     BOOST_CHECK(qStats.completedChunks == 0);
 
     int completedChunks = 35;
-    success = qMeta->queryStatsTmpChunkUpdate(qid1, completedChunks);
+    success = qStatus->queryStatsTmpChunkUpdate(qid1, completedChunks);
     BOOST_CHECK(success);
 
-    qStats = qMeta->queryStatsTmpGet(qid1);
+    qStats = qStatus->queryStatsTmpGet(qid1);
     BOOST_CHECK(qStats.totalChunks == totalChunks);
     BOOST_CHECK(qStats.completedChunks == completedChunks);
 
-    success = qMeta->queryStatsTmpRemove(qid1);
+    success = qStatus->queryStatsTmpRemove(qid1);
     BOOST_CHECK(success);
-    success = qMeta->queryStatsTmpRemove(qid1);
+    success = qStatus->queryStatsTmpRemove(qid1);
     BOOST_CHECK(!success);
 
 
     bool caught = false;
     try {
-        qStats = qMeta->queryStatsTmpGet(qid1);
+        qStats = qStatus->queryStatsTmpGet(qid1);
     } catch (QueryIdError const& e) {
         caught = true;
     }

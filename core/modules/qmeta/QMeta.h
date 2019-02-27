@@ -273,6 +273,7 @@ public:
     virtual std::vector<QueryId> getQueriesForTable(std::string const& dbName,
                                                     std::string const& tableName) = 0;
 
+#if 0 // &&&
     /**
      * @brief Create the table for temporary query statistics.
      * @throw SqlError
@@ -303,7 +304,7 @@ public:
      * @return true if successful.
      */
     virtual bool queryStatsTmpRemove(QueryId queryId) = 0;
-
+#endif
 protected:
 
     // Default constructor

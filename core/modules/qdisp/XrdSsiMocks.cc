@@ -105,6 +105,7 @@ public:
                   break;
              case RESP_ERRNR:
                   _reqP->doNotRetry();
+                  // Fallthrough
              case RESP_ERROR:
                   _ReplyError();
                   break;

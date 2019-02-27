@@ -190,8 +190,8 @@ class SetupTest {
          conf = std::make_shared<qdisp::Executive::Config>(str, 0); // No updating of QMeta.
          ms = std::make_shared<qdisp::MessageStore>();
          qdispPool = std::make_shared<qdisp::QdispPool>(true);
-         std::shared_ptr<qmeta::QMeta> qMeta; // No updating QMeta, nullptr
-         ex = qdisp::Executive::create(*conf, ms, qdispPool, qMeta);
+         std::shared_ptr<qmeta::QStatus> qStatus; // No updating QStatus, nullptr
+         ex = qdisp::Executive::create(*conf, ms, qdispPool, qStatus);
     }
     ~SetupTest() {}
 };

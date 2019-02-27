@@ -53,7 +53,7 @@ class XrdSsiService;
 namespace lsst {
 namespace qserv {
 namespace qmeta {
-class QMeta;
+class QStatus;
 }
 
 namespace qdisp {
@@ -85,7 +85,7 @@ public:
     /// If c->serviceUrl == Config::getMockStr(), then use XrdSsiServiceMock
     /// instead of a real XrdSsiService
     static Executive::Ptr create(Config const& c, std::shared_ptr<MessageStore> const& ms,
-                std::shared_ptr<QdispPool> const& qdispPool, std::shared_ptr<qmeta::QMeta> const& qMeta);
+                std::shared_ptr<QdispPool> const& qdispPool, std::shared_ptr<qmeta::QStatus> const& qMeta);
 
     ~Executive();
 
@@ -140,7 +140,7 @@ public:
 
 private:
     Executive(Config const& c, std::shared_ptr<MessageStore> const& ms,
-              std::shared_ptr<QdispPool> const& qdispPool, std::shared_ptr<qmeta::QMeta> const& qMeta);
+              std::shared_ptr<QdispPool> const& qdispPool, std::shared_ptr<qmeta::QStatus> const& qStatus);
 
     void _setup();
 
@@ -157,7 +157,7 @@ private:
     void _printState(std::ostream& os);
 
     Config _config; ///< Personal copy of config
-    std::atomic<bool> _empty {true};
+    std::atomic<bool> _empty{true};
     std::shared_ptr<MessageStore> _messageStore; ///< MessageStore for logging
     XrdSsiService* _xrdSsiService; ///< RPC interface
     JobMap _jobMap; ///< Contains information about all jobs.
@@ -171,7 +171,7 @@ private:
     util::MultiError _multiError;
 
     std::atomic<int> _requestCount; ///< Count of submitted jobs
-    util::Flag<bool> _cancelled {false}; ///< Has execution been cancelled.
+    util::Flag<bool> _cancelled{false}; ///< Has execution been cancelled.
 
     // Mutexes
     std::mutex _incompleteJobsMutex; ///< protect incompleteJobs map.
@@ -186,10 +186,11 @@ private:
     std::string _idStr{QueryIdHelper::makeIdStr(0, true)};
     util::InstanceCount _instC{"Executive"};
 
-    std::shared_ptr<qmeta::QMeta> _qMeta;
+    std::shared_ptr<qmeta::QStatus> _qMeta;
     /// Last time Executive updated QMeta, defaults to epoch for clock.
     std::chrono::system_clock::time_point _lastQMetaUpdate;
-    int _secondsBetweenQMetaUpdates{60}; ///< Minimum number of seconds between QMeta chunk updates (set by config)
+    /// Minimum number of seconds between QMeta chunk updates (set by config)
+    std::chrono::seconds _secondsBetweenQMetaUpdates{60};
     std::mutex _lastQMetaMtx; ///< protects _lastQMetaUpdate.
 };
 
