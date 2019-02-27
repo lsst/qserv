@@ -86,6 +86,7 @@
 #include "qdisp/Executive.h"
 #include "qdisp/MessageStore.h"
 #include "qmeta/QMeta.h"
+#include "qmeta/Exceptions.h"
 #include "qproc/geomAdapter.h"
 #include "qproc/IndexMap.h"
 #include "qproc/QuerySession.h"
@@ -235,8 +236,10 @@ void UserQuerySelect::submit() {
     }
 
     // Add QStatsTmp table entry
-    if (!_queryStatsData->queryStatsTmpRegister(_qMetaQueryId, _qSession->getChunksSize())) {
-        LOGS(_log, LOG_LVL_WARN, "Failed queryStatsTmpRegister " << getQueryIdString());
+    try {
+        _queryStatsData->queryStatsTmpRegister(_qMetaQueryId, _qSession->getChunksSize());
+    } catch (qmeta::SqlError const& e) {
+        LOGS(_log, LOG_LVL_WARN, "Failed queryStatsTmpRegister " << getQueryIdString() << " " << e.what());
     }
 
     for(auto i = _qSession->cQueryBegin(), e = _qSession->cQueryEnd();
@@ -525,7 +528,11 @@ void UserQuerySelect::_qMetaUpdateStatus(qmeta::QInfo::QStatus qStatus)
 {
     _queryMetadata->completeQuery(_qMetaQueryId, qStatus);
     // Remove the row for temporary query statistics.
-    _queryStatsData->queryStatsTmpRemove(_qMetaQueryId);
+    try {
+        _queryStatsData->queryStatsTmpRemove(_qMetaQueryId);
+    } catch (qmeta::SqlError const&) {
+        LOGS(_log, LOG_LVL_WARN, "queryStatsTmp remove failed " << _queryIdStr);
+    }
 }
 
 // add chunk information to qmeta

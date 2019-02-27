@@ -81,6 +81,15 @@ public:
         return _mySqlQmetaConfig;
     }
 
+    /* Get MySQL configuration for czar MySQL QStatusData
+     *
+     * @return a structure containing MySQL parameters
+     */
+    mysql::MySqlConfig const& getMySqlQStatusDataConfig() const {
+        return _mySqlQstatusDataConfig;
+    }
+
+
     /* Get CSS parameters as a collection of key-value
      *
      * Do not check CSS parameters consistency
@@ -154,6 +163,7 @@ private:
     // Parameters below used in ccontrol::UserQueryFactory
     std::map<std::string, std::string> const _cssConfigMap;
     mysql::MySqlConfig const _mySqlQmetaConfig;
+    mysql::MySqlConfig const _mySqlQstatusDataConfig;
     std::string const _xrootdFrontendUrl;
     std::string const _emptyChunkPath;
     int const _largeResultConcurrentMerges;

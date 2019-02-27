@@ -54,6 +54,7 @@
 #include "qdisp/MessageStore.h"
 #include "qmeta/QMetaMysql.h"
 #include "qmeta/QMetaSelect.h"
+#include "qmeta/QStatusMysql.h"
 #include "qproc/QuerySession.h"
 #include "qproc/SecondaryIndex.h"
 #include "query/FromList.h"
@@ -83,7 +84,7 @@ public:
     mysql::MySqlConfig const mysqlResultConfig;
     std::shared_ptr<qproc::SecondaryIndex> secondaryIndex;
     std::shared_ptr<qmeta::QMeta> queryMetadata;
-    std::shared_ptr<qmeta::QStatus> queryStatsData; // &&& NEEDS to be initialized
+    std::shared_ptr<qmeta::QStatus> queryStatsData;
     std::shared_ptr<qmeta::QMetaSelect> qMetaSelect;
     std::unique_ptr<sql::SqlConnection> resultDbConn;
     qmeta::CzarId qMetaCzarId = {0};   ///< Czar ID in QMeta database
@@ -288,6 +289,8 @@ UserQueryFactory::Impl::Impl(czar::CzarConfig const& czarConfig)
 
     queryMetadata = std::make_shared<qmeta::QMetaMysql>(czarConfig.getMySqlQmetaConfig());
     qMetaSelect = std::make_shared<qmeta::QMetaSelect>(czarConfig.getMySqlQmetaConfig());
+
+    queryStatsData = std::make_shared<qmeta::QStatusMysql>(czarConfig.getMySqlQStatusDataConfig());
 
     // create CssAccess instance
     css = css::CssAccess::createFromConfig(czarConfig.getCssConfigMap(), czarConfig.getEmptyChunkPath());

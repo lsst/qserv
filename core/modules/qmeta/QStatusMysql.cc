@@ -39,10 +39,9 @@
 #include "sql/SqlResults.h"
 
 
-namespace {
+using namespace std;
 
-// Current version of QStatus schema.
-char const VERSION_STR[] = "1";
+namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qmeta.QStatusMysql");
 
@@ -56,29 +55,27 @@ namespace qmeta {
 QStatusMysql::QStatusMysql(mysql::MySqlConfig const& mysqlConf)
   : QStatus(), _conn(mysqlConf) {
     // Check that database is in consistent state
-    _checkDb();
-}
-
-
-// Check that all necessary tables exist or create them
-void QStatusMysql::_checkDb() { // &&& rename
-    // If this doesn't work, this czar should terminate.
-    createQueryStatsTmpTable();
+    try {
+        createQueryStatsTmpTable();
+    } catch (SqlError const& e) {
+        LOGS(_log, LOG_LVL_WARN, "QStatusMysql create table QStatsTmp failed. " << e.what());
+    }
 }
 
 
 void QStatusMysql::createQueryStatsTmpTable() {
+    LOGS(_log, LOG_LVL_DEBUG, "QStatusMysql create, if not exists, table QStatsTmp");
     // If this is being run outside the constructor, _bdMutex may need to be locked first.
     // Try to create the temporary table if it is not there.
     QMetaTransaction trans(_conn);
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
-    std::string query = "CREATE TABLE IF NOT EXISTS QStatsTmp (queryId bigint(20), "
+    string query = "CREATE TABLE IF NOT EXISTS QStatsTmp (queryId bigint(20), "
                         "totalChunks int, completedChunks int, "
                         "queryBegin timestamp DEFAULT 0, "
                         "lastUpdate timestamp DEFAULT 0, "
                         "PRIMARY KEY (queryId)) "
-                        "ENGINE = MEMORY;";
+                        "ENGINE = MEMORY";
     LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     if (not _conn.runQuery(query, results, errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
@@ -88,70 +85,51 @@ void QStatusMysql::createQueryStatsTmpTable() {
 }
 
 
-bool QStatusMysql::queryStatsTmpRegister(QueryId queryId, int totalChunks) {
-    std::lock_guard<std::mutex> sync(_dbMutex);
+void QStatusMysql::queryStatsTmpRegister(QueryId queryId, int totalChunks) {
+    lock_guard<mutex> sync(_dbMutex);
     QMetaTransaction trans(_conn);
     sql::SqlErrorObject errObj;
-    sql::SqlResults results;
-    std::string query = "INSERT INTO QStatsTmp (queryId, totalChunks, completedChunks, queryBegin, lastUpdate) "
-                        "VALUES ( ";
-    query += boost::lexical_cast<std::string>(queryId) + ", ";
-    query += boost::lexical_cast<std::string>(totalChunks) + ", ";
-    query += "0, NOW(), NOW());";
+    string query = "INSERT INTO QStatsTmp (queryId, totalChunks, completedChunks, queryBegin, lastUpdate) "
+                   "VALUES ( " + to_string(queryId) + ", " + to_string(totalChunks) +
+                   ", 0, NOW(), NOW())";
 
     LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
-    if (not _conn.runQuery(query, results, errObj)) {
+    if (not _conn.runQuery(query, errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
-        // If this doesn't work, it is not at all vital to qserv functionality.
-        return false;
+        // If this doesn't work, it is not vital to qserv functionality.
+        throw SqlError(ERR_LOC, errObj);
     }
 
-    try {
-        trans.commit();
-    } catch (SqlError const& e) {
-        LOGS(_log, LOG_LVL_ERROR, "queryStatsTmpRegister failed to commit " << e.what());
-        return false;
-    }
-    return true;
+    trans.commit();
 }
 
 
-bool QStatusMysql::queryStatsTmpChunkUpdate(QueryId queryId, int completedChunks) {
-    std::lock_guard<std::mutex> sync(_dbMutex);
+void QStatusMysql::queryStatsTmpChunkUpdate(QueryId queryId, int completedChunks) {
+    lock_guard<mutex> sync(_dbMutex);
     QMetaTransaction trans(_conn);
     sql::SqlErrorObject errObj;
-    sql::SqlResults results;
-    std::string query = "UPDATE QStatsTmp SET completedChunks = ";
-    query += boost::lexical_cast<std::string>(completedChunks);
-    query += ", lastUpdate = NOW() WHERE queryId = ";
-    query += boost::lexical_cast<std::string>(queryId) + ";";
+    string query = "UPDATE QStatsTmp SET completedChunks = " + to_string(completedChunks) +
+                    ", lastUpdate = NOW() WHERE queryId =" + to_string(queryId);
 
     LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
-    if (not _conn.runQuery(query, results, errObj)) {
+    if (not _conn.runQuery(query, errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
         // If this doesn't work, it is not at all vital to qserv functionality.
-        return false;
+        throw SqlError(ERR_LOC, errObj);
     }
 
-    try {
-        trans.commit();
-    } catch (SqlError const& e) {
-        LOGS(_log, LOG_LVL_ERROR, "queryStatsTmpChunkUpdate failed to commit " << e.what());
-        return false;
-    }
-    return true;
+    trans.commit();
 }
 
 
 QStats QStatusMysql::queryStatsTmpGet(QueryId queryId) {
-    std::lock_guard<std::mutex> sync(_dbMutex);
+    lock_guard<mutex> sync(_dbMutex);
     QMetaTransaction trans(_conn);
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
-    std::string query = "SELECT queryId, totalChunks, completedChunks, "
-                        "UNIX_TIMESTAMP(queryBegin), UNIX_TIMESTAMP(lastUpdate) "
-                        "FROM QStatsTmp WHERE queryId= ";
-    query += boost::lexical_cast<std::string>(queryId) + ";";
+    string query = "SELECT queryId, totalChunks, completedChunks, "
+                   "UNIX_TIMESTAMP(queryBegin), UNIX_TIMESTAMP(lastUpdate) "
+                   "FROM QStatsTmp WHERE queryId= " +  to_string(queryId);
     LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     if (not _conn.runQuery(query, results, errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
@@ -167,35 +145,32 @@ QStats QStatusMysql::queryStatsTmpGet(QueryId queryId) {
     // make sure that iterator does not move until we are done with row
     sql::SqlResults::value_type const& row = *rowIter;
 
-    QueryId qId            = boost::lexical_cast<QueryId>(row[0].first);
-    int totalChunks        = boost::lexical_cast<int>(row[1].first);
-    int completedChunks    = boost::lexical_cast<int>(row[2].first);
-    std::time_t begin      = boost::lexical_cast<std::time_t>(row[3].first);
-    std::time_t lastUpdate = boost::lexical_cast<std::time_t>(row[4].first);
+    QueryId qId         = boost::lexical_cast<QueryId>(row[0].first);
+    int totalChunks     = boost::lexical_cast<int>(row[1].first);
+    int completedChunks = boost::lexical_cast<int>(row[2].first);
+    time_t begin        = boost::lexical_cast<time_t>(row[3].first);
+    time_t lastUpdate   = boost::lexical_cast<time_t>(row[4].first);
 
     trans.commit();
     return QStats(qId, totalChunks, completedChunks, begin, lastUpdate);
 }
 
 
-bool QStatusMysql::queryStatsTmpRemove(QueryId queryId) {
-    std::lock_guard<std::mutex> sync(_dbMutex);
+void QStatusMysql::queryStatsTmpRemove(QueryId queryId) {
+    lock_guard<mutex> sync(_dbMutex);
     QMetaTransaction trans(_conn);
     sql::SqlErrorObject errObj;
-    sql::SqlResults results;
-    std::string query = "DELETE FROM QStatsTmp WHERE queryId =";
-    query += boost::lexical_cast<std::string>(queryId) + ";";
+    string query = "DELETE FROM QStatsTmp WHERE queryId =" + to_string(queryId);
 
     LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
-    if (not _conn.runQuery(query, results, errObj)) {
+    if (not _conn.runQuery(query, errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
         // If this doesn't work, it is not vital to qserv functionality. It's an in memory table, and,
         // if needed, there could be a check added to remove any rows more than a couple of weeks old.
-        return false;
+        throw SqlError(ERR_LOC, errObj);
     }
 
     trans.commit();
-    return true;
 }
 
 }}} // namespace lsst::qserv::qmeta

@@ -30,6 +30,9 @@
 // Third-party headers
 #include  "boost/algorithm/string/replace.hpp"
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Qserv headers
 #include "QMetaMysql.h"
 #include "QStatusMysql.h"
@@ -49,6 +52,8 @@ using lsst::qserv::sql::SqlConnection;
 using lsst::qserv::sql::SqlErrorObject;
 
 namespace {
+
+LOG_LOGGER _log = LOG_GET("lsst.qserv.qmeta.testQMeta");
 
 struct TestDBGuard {
     TestDBGuard() {
@@ -89,6 +94,7 @@ struct TestDBGuard {
 
     MySqlConfig sqlConfig;
 };
+
 
 }
 
@@ -131,55 +137,7 @@ BOOST_AUTO_TEST_CASE(messWithCzars) {
     BOOST_CHECK_THROW(qMeta->setCzarActive(9999999, true), CzarIdError);
 }
 
-BOOST_AUTO_TEST_CASE(messWithQueryStats) {
 
-    // make sure that we have czars from previous test
-    CzarId cid1 = qMeta->getCzarID("czar:1000");
-    BOOST_CHECK(cid1 != 0U);
-
-    // resister one query
-    QInfo qinfo(QInfo::SYNC, cid1, "user1", "SELECT * from Object", "SELECT * from Object_{}",
-            "SELECT Merge ' query", "SELECT Proxy query", "result_#QID#", "message_12345");
-    QMeta::TableNames tables(1, std::make_pair("TestDB", "Object"));
-    lsst::qserv::QueryId qid1 = qMeta->registerQuery(qinfo, tables);
-
-
-    std::shared_ptr<QStatus> qStatus = std::make_shared<QStatusMysql>(testDB.sqlConfig); // &&& check config values
-    sqlConn = std::make_shared<SqlConnection>(testDB.sqlConfig); /// &&& check if db values ok, database is opened
-
-
-
-    qStatus->createQueryStatsTmpTable();
-    int totalChunks = 99;
-    bool success = qStatus->queryStatsTmpRegister(qid1, totalChunks);
-    BOOST_CHECK(success);
-
-    QStats qStats = qStatus->queryStatsTmpGet(qid1);
-    BOOST_CHECK(qStats.totalChunks == totalChunks);
-    BOOST_CHECK(qStats.completedChunks == 0);
-
-    int completedChunks = 35;
-    success = qStatus->queryStatsTmpChunkUpdate(qid1, completedChunks);
-    BOOST_CHECK(success);
-
-    qStats = qStatus->queryStatsTmpGet(qid1);
-    BOOST_CHECK(qStats.totalChunks == totalChunks);
-    BOOST_CHECK(qStats.completedChunks == completedChunks);
-
-    success = qStatus->queryStatsTmpRemove(qid1);
-    BOOST_CHECK(success);
-    success = qStatus->queryStatsTmpRemove(qid1);
-    BOOST_CHECK(!success);
-
-
-    bool caught = false;
-    try {
-        qStats = qStatus->queryStatsTmpGet(qid1);
-    } catch (QueryIdError const& e) {
-        caught = true;
-    }
-    BOOST_CHECK(caught);
-}
 
 BOOST_AUTO_TEST_CASE(messWithQueries) {
 
@@ -420,5 +378,45 @@ BOOST_AUTO_TEST_CASE(messWithChunks) {
     qMeta->finishChunk(qid1, 37);
     BOOST_CHECK_THROW(qMeta->finishChunk(qid1, 42), ChunkIdError);
 }
+
+
+BOOST_AUTO_TEST_CASE(messWithQueryStats) {
+    LOGS(_log, LOG_LVL_WARN, "messWithQueryStats connect");
+    std::shared_ptr<QStatus> qStatus = std::make_shared<QStatusMysql>(testDB.sqlConfig);
+    sqlConn = std::make_shared<SqlConnection>(testDB.sqlConfig);
+    CzarId qid1 = 7; // just need a number.
+
+    LOGS(_log, LOG_LVL_WARN, "messWithQueryStats create table");
+    qStatus->createQueryStatsTmpTable();
+    int totalChunks = 99;
+    LOGS(_log, LOG_LVL_WARN, "messWithQueryStats register");
+    qStatus->queryStatsTmpRegister(qid1, totalChunks);
+
+    LOGS(_log, LOG_LVL_WARN, "messWithQueryStats get");
+    QStats qStats = qStatus->queryStatsTmpGet(qid1);
+    BOOST_CHECK(qStats.totalChunks == totalChunks);
+    BOOST_CHECK(qStats.completedChunks == 0);
+
+    int completedChunks = 35;
+    LOGS(_log, LOG_LVL_WARN, "messWithQueryStats chunk update");
+    qStatus->queryStatsTmpChunkUpdate(qid1, completedChunks);
+
+    qStats = qStatus->queryStatsTmpGet(qid1);
+    BOOST_CHECK(qStats.totalChunks == totalChunks);
+    BOOST_CHECK(qStats.completedChunks == completedChunks);
+
+    LOGS(_log, LOG_LVL_WARN, "messWithQueryStats remove");
+    qStatus->queryStatsTmpRemove(qid1);
+
+    LOGS(_log, LOG_LVL_WARN, "messWithQueryStats check get failure discovery");
+    bool caught = false;
+    try {
+        qStats = qStatus->queryStatsTmpGet(qid1);
+    } catch (QueryIdError const&) {
+        caught = true;
+    }
+    BOOST_CHECK(caught);
+}
+
 
 BOOST_AUTO_TEST_SUITE_END()

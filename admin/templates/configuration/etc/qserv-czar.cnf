@@ -35,6 +35,18 @@ host =
 user = {{MYSQLD_USER_QSERV}}
 port = 0
 
+# database connection for QStatusData
+# Using qmeta for now. May move this qservResult or make its own instance
+# databse based on what happens with multiple czars.
+[qstatus]
+passwd =
+#db = qservStatusData
+db = qservMeta
+unix_socket = {{MYSQLD_SOCK}}
+host =
+user = {{MYSQLD_USER_QSERV}}
+port = 0
+
 [partitioner]
 # emptyChunkPath is used to check existence of empty_$DBNAME.txt
 emptyChunkPath = {{QSERV_DATA_DIR}}/qserv

@@ -65,6 +65,7 @@
 #include "qdisp/QueryRequest.h"
 #include "qdisp/ResponseHandler.h"
 #include "qdisp/XrdSsiMocks.h"
+#include "qmeta/Exceptions.h"
 #include "qmeta/QStatus.h"
 #include "util/EventThread.h"
 
@@ -459,7 +460,11 @@ void Executive::_unTrack(int jobId) {
             int completedJobs = _totalJobs -  incompleteJobs;
             if (_qMeta != nullptr) {
                 // This is not vital (logging), if it fails keep going.
-                _qMeta->queryStatsTmpChunkUpdate(_id, completedJobs);
+                try {
+                    _qMeta->queryStatsTmpChunkUpdate(_id, completedJobs);
+                } catch (qmeta::SqlError const& e) {
+                    LOGS(_log, LOG_LVL_WARN, "Failed to update StatsTmp " << e.what());
+                }
             }
         }
     }

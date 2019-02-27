@@ -47,28 +47,22 @@ public:
 
     virtual ~QStatusMysql() = default;
 
-    /// @see QMeta::createQueryStatsTable()
+    /// @see QStatus::createQueryStatsTable()
     void createQueryStatsTmpTable() override;
 
-    /// @see QMeta::queryStatsTmpRegister(QueryId queryId, int totalChunks)
-    bool queryStatsTmpRegister(QueryId queryId, int totalChunks) override;
+    /// @see QStatus::queryStatsTmpRegister(QueryId queryId, int totalChunks)
+    void queryStatsTmpRegister(QueryId queryId, int totalChunks) override;
 
-    /// @see QMeta::queryStatsTmpChunkUpdate(QueryId queryId, int completedChunks)
-    bool queryStatsTmpChunkUpdate(QueryId queryId, int completedChunks) override;
+    /// @see QStatus::queryStatsTmpChunkUpdate(QueryId queryId, int completedChunks)
+    void queryStatsTmpChunkUpdate(QueryId queryId, int completedChunks) override;
 
-    /// @see QMeta::queryStatsTmpGet(QueryId queryId)
+    /// @see QStatus::queryStatsTmpGet(QueryId queryId)
     QStats queryStatsTmpGet(QueryId queryId);
 
-    /// @see QMeta::queryStatsTmpRemove(QueryId queryId)
-    bool queryStatsTmpRemove(QueryId queryId) override;
-
-protected:
-
-    ///  Check that all necessary tables exist
-    void _checkDb();
+    /// @see QStatus::queryStatsTmpRemove(QueryId queryId)
+    void queryStatsTmpRemove(QueryId queryId) override;
 
 private:
-
     sql::SqlConnection _conn;
     std::mutex _dbMutex;    ///< Synchronizes access to certain DB operations
 

@@ -162,7 +162,9 @@ private:
     XrdSsiService* _xrdSsiService; ///< RPC interface
     JobMap _jobMap; ///< Contains information about all jobs.
     JobMap _incompleteJobs; ///< Map of incomplete jobs.
-    std::atomic<int> _totalJobs{1}; ///< How many jobs are used in this query.
+    /// How many jobs are used in this query. 1 avoids possible 0 of 0 jobs completed race condition.
+    /// The correct value is set when it is available.
+    std::atomic<int> _totalJobs{1};
     QdispPool::Ptr _qdispPool; ///< Shared thread pool for handling commands to and from workers.
 
     std::deque<PriorityCommand::Ptr> _jobStartCmdList; ///< list of jobs to start.

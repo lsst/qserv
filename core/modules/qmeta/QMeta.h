@@ -273,38 +273,6 @@ public:
     virtual std::vector<QueryId> getQueriesForTable(std::string const& dbName,
                                                     std::string const& tableName) = 0;
 
-#if 0 // &&&
-    /**
-     * @brief Create the table for temporary query statistics.
-     * @throw SqlError
-     */
-    virtual void createQueryStatsTmpTable() = 0;
-
-    /**
-     * @brief Insert a row for tracking chunksCompleted vs totalChunks of a query.
-     * @return true if successful.
-     */
-    virtual bool queryStatsTmpRegister(QueryId queryId, int totalChunks) = 0;
-
-    /**
-     * @brief Update the number of completed chunks
-     * @return true if successful.
-     */
-    virtual bool queryStatsTmpChunkUpdate(QueryId queryId, int completedChunks) = 0;
-
-    /**
-     * @brief Get statistics for queryId
-     * @return QStats object containing query completion information.
-     * @throw QueryIdError, SqlError
-     */
-    virtual QStats queryStatsTmpGet(QueryId queryId) = 0;
-
-    /**
-     * @ brief Remove row for completion status when the query is done.
-     * @return true if successful.
-     */
-    virtual bool queryStatsTmpRemove(QueryId queryId) = 0;
-#endif
 protected:
 
     // Default constructor
