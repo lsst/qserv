@@ -150,7 +150,7 @@ private:
      * @param event
      *   event to be recorded
      */
-    void _logEvent(ControllerEvent const& event) const;
+    void _logEvent(ControllerEvent& event) const;
 
     /**
      * Ensure the Controller is running. Otherwise, throw an exception.

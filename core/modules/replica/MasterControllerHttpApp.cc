@@ -278,12 +278,7 @@ void MasterControllerHttpApp::_logControllerStartedEvent() const {
     _assertIsStarted(__func__);
 
     ControllerEvent event;
-
-    event.controllerId = _controller->identity().id;
-    event.timeStamp    = PerformanceUtils::now();
-    event.task         = name();
-    event.operation    = "started";
-
+    event.status = "STARTED";
     event.kvInfo.emplace_back("host",                                   _controller->identity().host);
     event.kvInfo.emplace_back("pid",                     std::to_string(_controller->identity().pid));
     event.kvInfo.emplace_back("health-probe-interval",   std::to_string(_healthProbeIntervalSec));
@@ -305,12 +300,7 @@ void MasterControllerHttpApp::_logControllerStoppedEvent() const {
     _assertIsStarted(__func__);
 
     ControllerEvent event;
-
-    event.controllerId = _controller->identity().id;
-    event.timeStamp    = PerformanceUtils::now();
-    event.task         = name();
-    event.operation    = "stopped";
-
+    event.status = "STOPPED";
     _logEvent(event);
 }
 
@@ -320,13 +310,8 @@ void MasterControllerHttpApp::_logWorkerEvictionStartedEvent(std::string const& 
     _assertIsStarted(__func__);
 
     ControllerEvent event;
-
-    event.controllerId = _controller->identity().id;
-    event.timeStamp    = PerformanceUtils::now();
-    event.task         = name();
-    event.operation    = "worker eviction";
-    event.status       = "STARTED";
-
+    event.operation = "worker eviction";
+    event.status    = "STARTED";
     event.kvInfo.emplace_back("worker", worker);
 
     _logEvent(event);
@@ -338,20 +323,21 @@ void MasterControllerHttpApp::_logWorkerEvictionFinishedEvent(std::string const&
     _assertIsStarted(__func__);
 
     ControllerEvent event;
-
-    event.controllerId = _controller->identity().id;
-    event.timeStamp    = PerformanceUtils::now();
-    event.task         = name();
-    event.operation    = "worker eviction";
-    event.status       = "FINISHED";
-
+    event.operation = "worker eviction";
+    event.status    = "FINISHED";
     event.kvInfo.emplace_back("worker", worker);
 
     _logEvent(event);
 }
 
 
-void MasterControllerHttpApp::_logEvent(ControllerEvent const& event) const {
+void MasterControllerHttpApp::_logEvent(ControllerEvent& event) const {
+
+    // Finish filling the common fields
+
+    event.controllerId = _controller->identity().id;
+    event.timeStamp    = PerformanceUtils::now();
+    event.task         = name();
 
     // For now ignore exceptions when logging events. Just report errors.
     try {

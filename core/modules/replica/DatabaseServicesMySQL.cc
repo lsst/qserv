@@ -1079,19 +1079,19 @@ void DatabaseServicesMySQL::_logControllerEvent(util::Lock const& lock,
 
     _conn->executeInsertQuery(
         "controller_log",
-        "NULL",
+        database::mysql::Keyword::SQL_NULL,
         event.controllerId,
         event.timeStamp,
         event.task,
         event.operation,
         event.status,
-        event.requestId.empty() ? "NULL" : event.requestId,
-        event.jobId.empty()     ? "NULL" : event.jobId);
-    
+        _conn->nullIfEmpty(event.requestId),
+        _conn->nullIfEmpty(event.jobId)
+    );
     for (auto&& kv: event.kvInfo) {
         _conn->executeInsertQuery(
             "controller_log_ext",
-                "LAST_INSERT_ID()",
+                database::mysql::Function::LAST_INSERT_ID,
                 kv.first,
                 kv.second
         );

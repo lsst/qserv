@@ -27,6 +27,7 @@
 #include <set>
 
 // Qserv headers
+#include "replica/DeleteWorkerJob.h"
 #include "replica/Task.h"
 
 // This header declarations
@@ -103,6 +104,24 @@ protected:
      * @see Task::onStart()
      */
     void onStart() override;
+
+private:
+
+    /**
+     * Log a persistent event on the started job
+     *
+     * @param job
+     *   pointer to the worker eviction job
+     */
+    void _logStartedEvent(DeleteWorkerJob::Ptr const& job) const;
+
+    /**
+     * Log a persistent event on the finished job
+     *
+     * @param job
+     *   pointer to the worker eviction job
+     */
+    void _logFinishedEvent(DeleteWorkerJob::Ptr const& job) const;
 
 private:
 

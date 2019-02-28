@@ -31,6 +31,7 @@
 #include "replica/Controller.h"
 #include "replica/DatabaseServices.h"
 #include "replica/QservSyncJob.h"
+#include "replica/Performance.h"
 #include "replica/ServiceProvider.h"
 #include "util/BlockPost.h"
 
@@ -125,6 +126,23 @@ void Task::sync(unsigned int qservSyncTimeoutSec,
 }
 
 
+void Task::logEvent(ControllerEvent& event) const {
+
+    // Finish filling the common fields
+
+    event.controllerId = controller()->identity().id;
+    event.timeStamp    = PerformanceUtils::now();
+    event.task         = name();
+
+    // For now ignore exceptions when logging events. Just report errors.
+    try {
+        controller()->serviceProvider()->databaseServices()->logControllerEvent(event);
+    } catch (std::exception const& ex) {
+       LOGS(_log, LOG_LVL_ERROR, name() << "  " << "failed to log event in " << __func__);
+    }
+}
+
+
 void Task::_startImpl() {
 
     // By design of this class, any but TaskStopped exceptions thrown
@@ -135,6 +153,7 @@ void Task::_startImpl() {
     bool terminated = false;
     try {
         debug("started");
+        _logOnStartEvent();
         onStart();
 
         util::BlockPost blockPost(1000 * _waitIntervalSec,
@@ -144,14 +163,18 @@ void Task::_startImpl() {
             blockPost.wait();
         }
         debug("stopped");
+        _logOnStopEvent();
         onStop();
 
     } catch (TaskStopped const&) {
         debug("stopped");
+        _logOnStopEvent();
         onStop();
 
     } catch (std::exception const& ex) {
-        error("terminated, exception: " + std::string(ex.what()));
+        std::string const msg = ex.what();
+        error("terminated, exception: " + msg);
+        _logOnTerminatedEvent(msg);
         terminated = true;
     }
 
@@ -181,14 +204,65 @@ void Task::_startImpl() {
 }
 
 
-void Task::_logEvent(ControllerEvent const& event) const {
+void Task::_logOnStartEvent() const {
 
-    // For now ignore exceptions when logging events. Just report errors.
-    try {
-        controller()->serviceProvider()->databaseServices()->logControllerEvent(event);
-    } catch (std::exception const& ex) {
-       LOGS(_log, LOG_LVL_ERROR, name() << "  " << "failed to log event in " << __func__);
-    }
+    ControllerEvent event;
+    event.status = "STARTED";
+    logEvent(event);
+}
+
+
+void Task::_logOnStopEvent() const {
+
+    ControllerEvent event;
+
+    event.status = "STOPPED";
+
+    logEvent(event);
+}
+
+
+void Task::_logOnTerminatedEvent(std::string const& msg) const {
+
+    ControllerEvent event;
+
+    event.status = "TERMINATED";
+    event.kvInfo.emplace_back("error", msg);
+
+    logEvent(event);
+}
+
+
+void Task::_logJobStartedEvent(std::string const& typeName,
+                               Job::Ptr const& job,
+                               std::string const& family) const {
+ 
+    ControllerEvent event;
+
+    event.operation = typeName;
+    event.status    = "STARTED";
+    event.jobId     = job->id();
+    event.kvInfo.emplace_back("database-family", family);
+
+    logEvent(event);
+}
+
+
+void Task::_logJobFinishedEvent(std::string const& typeName,
+                                Job::Ptr const& job,
+                                std::string const& family) const {
+
+    ControllerEvent event;
+
+    event.operation = typeName;
+    event.status    = job->state2string();
+    event.jobId     = job->id();
+
+    uint64_t const jobDurationMs = job->endTime() - job->beginTime();
+    event.kvInfo.emplace_back("job-duration-ms", std::to_string(jobDurationMs));
+    event.kvInfo.emplace_back("database-family", family);
+
+    logEvent(event);
 }
 
 
