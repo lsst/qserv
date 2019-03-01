@@ -236,7 +236,6 @@ void Task::_logOnTerminatedEvent(std::string const& msg) const {
 void Task::_logJobStartedEvent(std::string const& typeName,
                                Job::Ptr const& job,
                                std::string const& family) const {
- 
     ControllerEvent event;
 
     event.operation = typeName;
@@ -252,7 +251,6 @@ void Task::_logJobStartedEvent(std::string const& typeName,
 void Task::_logJobFinishedEvent(std::string const& typeName,
                                 Job::Ptr const& job,
                                 std::string const& family) const {
-
     ControllerEvent event;
 
     event.operation = typeName;
@@ -260,9 +258,6 @@ void Task::_logJobFinishedEvent(std::string const& typeName,
     event.jobId     = job->id();
 
     event.kvInfo = job->persistentLogData();
-
-    uint64_t const jobDurationMs = job->endTime() - job->beginTime();
-    event.kvInfo.emplace_back("job-duration-ms", std::to_string(jobDurationMs));
     event.kvInfo.emplace_back("database-family", family);
 
     logEvent(event);

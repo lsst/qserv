@@ -111,6 +111,74 @@ std::list<std::pair<std::string,std::string>> FindAllJob::extendedPersistentStat
     return result;
 }
 
+
+std::list<std::pair<std::string,std::string>> FindAllJob::persistentLogData() const {
+
+    std::list<std::pair<std::string,std::string>> result;
+
+    auto&& replicaData = getReplicaData();
+
+    // Report workers failed to respond to the requests
+
+    for (auto&& workerInfo: replicaData.workers) {
+        auto&& worker = workerInfo.first;
+
+        bool const responded = workerInfo.second;
+        if (not responded) {
+            result.emplace_back("failed-qserv-worker", worker);
+        }
+    }
+    
+    // Per-worker counters for the following categories:
+    //
+    //   chunks:
+    //     the total number of chunks found on the workers regardless of
+    //     the chunk status
+    //
+    //   collocated-replicas:
+    //     the number of "collocated" replicas
+    //
+    //   good-replicas:
+    //     the number of "good" replicas
+
+    std::map<std::string,
+             std::map<std::string,
+                      size_t>> workerCategoryCounter;
+
+    for (auto&& infoCollection: replicaData.replicas) {
+        for (auto&& info: infoCollection) {
+            workerCategoryCounter[info.worker()]["chunks"]++;
+        }
+    }
+    for (auto&& chunkItr: replicaData.isColocated) {
+        for (auto&& workerItr: chunkItr.second) {
+            auto&& worker = workerItr.first;
+            bool const isCollocated = workerItr.second;
+            if (isCollocated) workerCategoryCounter[worker]["collocated-replicas"]++;
+        }
+    }
+    for (auto&& chunkItr: replicaData.isGood) {
+        for (auto&& workerItr: chunkItr.second) {
+            auto&& worker = workerItr.first;
+            bool const isGood = workerItr.second;
+            if (isGood) workerCategoryCounter[worker]["good-replicas"]++;
+        }
+    }
+    for (auto&& workerItr: workerCategoryCounter) {
+        auto&& worker = workerItr.first;
+        std::string val = "worker=" + worker;
+
+        for (auto&& categoryItr: workerItr.second) {
+            auto&& category = categoryItr.first;
+            size_t const counter = categoryItr.second;
+            val += " " + category + "=" + std::to_string(counter);
+        }
+        result.emplace_back("worker-stat", val);
+    }
+    return result;
+}
+
+
 void FindAllJob::startImpl(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");

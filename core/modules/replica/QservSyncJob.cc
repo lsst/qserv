@@ -125,9 +125,9 @@ std::list<std::pair<std::string,std::string>> QservSyncJob::persistentLogData() 
         // Report workers failed to respond to the synchronization requests
         // and ignore them in the subsequent replica comparison report.
 
-        bool const responded = not workerInfo.second;
+        bool const responded = workerInfo.second;
         if (not responded) {
-            result.emplace_back("failed-worker", worker);
+            result.emplace_back("failed-qserv-worker", worker);
             continue;
         }
 

@@ -246,6 +246,7 @@ void HealthMonitorTask::_logStartedEvent(ClusterHealthJob::Ptr const& job) const
     event.operation = job->typeName();
     event.status    = "STARTED";
     event.jobId     = job->id();
+
     event.kvInfo.emplace_back("worker-response-timeout", std::to_string(_workerResponseTimeoutSec));
 
     logEvent(event);
@@ -259,28 +260,8 @@ void HealthMonitorTask::_logFinishedEvent(ClusterHealthJob::Ptr const& job) cons
     event.operation = job->typeName();
     event.status    = job->state2string();
     event.jobId     = job->id();
+    event.kvInfo    = job->persistentLogData();
 
-    uint64_t const jobDurationMs = job->endTime() - job->beginTime();
-    event.kvInfo.emplace_back("job-duration-ms", std::to_string(jobDurationMs));
-
-    for (auto&& entry: job->clusterHealth().qserv()) {
-
-        auto worker = entry.first;
-        auto responded = entry.second;
-        
-        if (not responded) {
-            event.kvInfo.emplace_back("qserv-worker", worker);
-        }
-    }
-    for (auto&& entry: job->clusterHealth().replication()) {
-
-        auto worker = entry.first;
-        auto responded = entry.second;
-        
-        if (not responded) {
-            event.kvInfo.emplace_back("replication-worker", worker);
-        }
-    }
     logEvent(event);
 }
     
