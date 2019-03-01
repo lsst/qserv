@@ -419,13 +419,79 @@ void printAsTable(std::string const& caption,
  * with Qserv workers management services.
  */
 struct QservReplica {
+
     unsigned int chunk;
-    std::string database;
+    std::string  database;
     unsigned int useCount;
+
+    QservReplica(unsigned int       chunk_,
+                 std::string const& database_,
+                 unsigned int       useCount_)
+        :   chunk   (chunk_),
+            database(database_),
+            useCount(useCount_) {
+    }
 };
 
 /// The type definition for a collection of Qserv replicas
 typedef std::vector<QservReplica> QservReplicaCollection;
+
+
+/**
+ * One-directional comparison of the replica collections reported by Qserv workers
+ *
+ * The function will also report elements which aren't found in second collection.
+ *
+ * @note
+ *   the output collection will be modified (reset to the empty state) even if
+ *   the function will not find any differences.
+ *
+ * @param one
+ *   input collection to be compared with the second one
+ *
+ * @param two
+ *   input collection to be compared with the first one
+ *
+ * @param inFirstOnly
+ *   output collection with elements of the first collection which are not found
+ *   in the second collection
+ *
+ * @return 'true' if different
+ */
+bool diff(QservReplicaCollection const& one,
+          QservReplicaCollection const& two,
+          QservReplicaCollection& inFirstOnly);
+
+/**
+ * Bi-directional comparison of the replica collections reported by Qserv workers
+ *
+ * The function will also elements keys which aren't found in opposite
+ * collections.
+ *
+ * @note
+ *   The output collections will be modified (reset to the empty state) even if
+ *   the function won't find any differences.
+ *
+ * @param one
+ *   input collection to be compared with the second one
+ *
+ * @param two
+ *   input collection to be compared with the first one
+ *
+ * @param inFirstOnly
+ *   output collection with elements of the first collection which are not found
+ *   in the second collection
+ *
+ * @param inSecondOnly
+ *   output collection with elements of the second collection which are not found
+ *   in the first collection
+ *
+ * @return 'true' if different
+ */
+bool diff2(QservReplicaCollection const& one,
+           QservReplicaCollection const& two,
+           QservReplicaCollection& inFirstOnly,
+           QservReplicaCollection& inSecondOnly);
 
 }}} // namespace lsst::qserv::replica
 

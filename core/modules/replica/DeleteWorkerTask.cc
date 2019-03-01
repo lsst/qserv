@@ -99,6 +99,7 @@ void DeleteWorkerTask::_logStartedEvent(DeleteWorkerJob::Ptr const& job) const {
     event.operation = job->typeName();
     event.status    = "STARTED";
     event.jobId     = job->id();
+
     event.kvInfo.emplace_back("worker", _worker);
 
     logEvent(event);
@@ -112,39 +113,10 @@ void DeleteWorkerTask::_logFinishedEvent(DeleteWorkerJob::Ptr const& job) const 
     event.operation = job->typeName();
     event.status    = job->state2string();
     event.jobId     = job->id();
+
+    event.kvInfo = job->persistentLogData();
     event.kvInfo.emplace_back("worker", _worker);
 
-    // Encode new chunk replicas (if any) which had to be created to compensate
-    // for lost ones.
-
-    for (auto&& familyChunkDatabaseWorkerInfo: job->getReplicaData().chunks) {
-        auto&& family = familyChunkDatabaseWorkerInfo.first;
-        for (auto&& chunkDatabaseWorkerInfo: familyChunkDatabaseWorkerInfo.second) {
-            auto&& chunk = chunkDatabaseWorkerInfo.first;
-            for (auto&& databaseWorkerInfo: chunkDatabaseWorkerInfo.second) {
-                auto&& database = databaseWorkerInfo.first;
-                for (auto&& workerInfo: databaseWorkerInfo.second) {
-                    auto&& worker = workerInfo.first;
-                    event.kvInfo.emplace_back(
-                        "new-replica",
-                        "family="    + family   + " chunk="  + std::to_string(chunk) +
-                        " database=" + database + " worker=" + worker);
-                }
-            }
-        }
-    }
-
-    // Encode orphan replicas (if any) which only existed on the evicted worker
-
-    for (auto&& chunkDatabaseReplicaInfo: job->getReplicaData().orphanChunks) {
-        auto&& chunk = chunkDatabaseReplicaInfo.first;
-        for (auto&& databaseReplicaInfo: chunkDatabaseReplicaInfo.second) {
-            auto&& database = databaseReplicaInfo.first;
-            event.kvInfo.emplace_back(
-                        "orphan-replica",
-                        "chunk=" + std::to_string(chunk) + " database=" + database);
-        }
-    }
     logEvent(event);
 }
 

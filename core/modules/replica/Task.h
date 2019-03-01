@@ -300,7 +300,7 @@ protected:
             job->start();
             jobs.push_back(job);
 
-            _logJobStartedEvent(T::typeName(), job, family);
+            _logJobStartedEvent(T::typeName(), job, job->databaseFamily());
         }
 
         // Track the completion of all jobs

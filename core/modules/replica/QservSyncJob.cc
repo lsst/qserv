@@ -112,6 +112,52 @@ std::list<std::pair<std::string,std::string>> QservSyncJob::extendedPersistentSt
     return result;
 }
 
+
+std::list<std::pair<std::string,std::string>> QservSyncJob::persistentLogData() const {
+
+    std::list<std::pair<std::string,std::string>> result;
+
+    auto&& replicaData = getReplicaData();
+
+    for (auto&& workerInfo: replicaData.workers) {
+        auto&& worker = workerInfo.first;
+
+        // Report workers failed to respond to the synchronization requests
+        // and ignore them in the subsequent replica comparison report.
+
+        bool const responded = not workerInfo.second;
+        if (not responded) {
+            result.emplace_back("failed-worker", worker);
+            continue;
+        }
+
+        // Find and report (if any) differences between the known replica disposition
+        // and the one reported by workers.
+
+        auto&& prevReplicas = replicaData.prevReplicas.at(worker);
+        auto&& newReplicas  = replicaData.newReplicas.at(worker);
+
+        QservReplicaCollection inPrevReplicasOnly;
+        QservReplicaCollection inNewReplicasOnly;
+
+        if (diff2(prevReplicas, newReplicas, inPrevReplicasOnly, inNewReplicasOnly)) {
+            if (inPrevReplicasOnly.size() != 0) {
+                result.emplace_back(
+                    "removed-replicas",
+                    "worker=" + worker + " num=" + std::to_string(inPrevReplicasOnly.size())
+                );
+            }
+            if (inNewReplicasOnly.size() != 0) {
+                result.emplace_back(
+                    "added-replicas",
+                    "worker=" + worker + " num=" + std::to_string(inNewReplicasOnly.size())
+                );
+            }
+        }
+    }
+    return result;
+}
+
 void QservSyncJob::startImpl(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");

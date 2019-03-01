@@ -242,6 +242,7 @@ void Task::_logJobStartedEvent(std::string const& typeName,
     event.operation = typeName;
     event.status    = "STARTED";
     event.jobId     = job->id();
+
     event.kvInfo.emplace_back("database-family", family);
 
     logEvent(event);
@@ -257,6 +258,8 @@ void Task::_logJobFinishedEvent(std::string const& typeName,
     event.operation = typeName;
     event.status    = job->state2string();
     event.jobId     = job->id();
+
+    event.kvInfo = job->persistentLogData();
 
     uint64_t const jobDurationMs = job->endTime() - job->beginTime();
     event.kvInfo.emplace_back("job-duration-ms", std::to_string(jobDurationMs));

@@ -89,6 +89,7 @@ Job::Options const& DeleteWorkerJob::defaultOptions() {
     return options;
 }
 
+
 DeleteWorkerJob::Ptr DeleteWorkerJob::create(std::string const& worker,
                                              bool permanentDelete,
                                              Controller::Ptr const& controller,
@@ -103,6 +104,7 @@ DeleteWorkerJob::Ptr DeleteWorkerJob::create(std::string const& worker,
                             onFinish,
                             options));
 }
+
 
 DeleteWorkerJob::DeleteWorkerJob(std::string const& worker,
                                  bool permanentDelete,
@@ -122,6 +124,7 @@ DeleteWorkerJob::DeleteWorkerJob(std::string const& worker,
         _numSuccess(0) {
 }
 
+
 DeleteWorkerJobResult const& DeleteWorkerJob::getReplicaData() const {
 
     LOGS(_log, LOG_LVL_DEBUG, context());
@@ -132,12 +135,59 @@ DeleteWorkerJobResult const& DeleteWorkerJob::getReplicaData() const {
         "DeleteWorkerJob::getReplicaData()  the method can't be called while the job hasn't finished");
 }
 
+
 std::list<std::pair<std::string,std::string>> DeleteWorkerJob::extendedPersistentState() const {
     std::list<std::pair<std::string,std::string>> result;
     result.emplace_back("worker",           worker());
     result.emplace_back("permanent_delete", permanentDelete() ? "1" : "0");
     return result;
 }
+
+
+std::list<std::pair<std::string,std::string>> DeleteWorkerJob::persistentLogData() const {
+
+    std::list<std::pair<std::string,std::string>> result;
+
+    auto&& replicaData = getReplicaData();
+
+    // Encode new chunk replicas (if any) which had to be created to compensate
+    // for lost ones.
+
+    for (auto&& familyChunkDatabaseWorkerInfo: replicaData.chunks) {
+        auto&& family = familyChunkDatabaseWorkerInfo.first;
+
+        for (auto&& chunkDatabaseWorkerInfo: familyChunkDatabaseWorkerInfo.second) {
+            auto&& chunk = chunkDatabaseWorkerInfo.first;
+
+            for (auto&& databaseWorkerInfo: chunkDatabaseWorkerInfo.second) {
+                auto&& database = databaseWorkerInfo.first;
+
+                for (auto&& workerInfo: databaseWorkerInfo.second) {
+                    auto&& worker = workerInfo.first;
+
+                    result.emplace_back("new-replica",
+                                        "family="    + family   + " chunk="  + std::to_string(chunk) +
+                                        " database=" + database + " worker=" + worker);
+                }
+            }
+        }
+    }
+
+    // Encode orphan replicas (if any) which only existed on the evicted worker
+
+    for (auto&& chunkDatabaseReplicaInfo: replicaData.orphanChunks) {
+        auto&& chunk = chunkDatabaseReplicaInfo.first;
+
+        for (auto&& databaseReplicaInfo: chunkDatabaseReplicaInfo.second) {
+            auto&& database = databaseReplicaInfo.first;
+
+            result.emplace_back("orphan-replica",
+                                "chunk=" + std::to_string(chunk) + " database=" + database);
+        }
+    }
+    return result;
+}
+
 
 void DeleteWorkerJob::startImpl(util::Lock const& lock) {
 
@@ -225,6 +275,7 @@ void DeleteWorkerJob::startImpl(util::Lock const& lock) {
     return;
 }
 
+
 void DeleteWorkerJob::cancelImpl(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
@@ -250,6 +301,7 @@ void DeleteWorkerJob::cancelImpl(util::Lock const& lock) {
 
     for (auto&& ptr: _replicateJobs) ptr->cancel();
 }
+
 
 void DeleteWorkerJob::onRequestFinish(FindAllRequest::Ptr const& request) {
 
@@ -283,8 +335,8 @@ void DeleteWorkerJob::onRequestFinish(FindAllRequest::Ptr const& request) {
     if (_numFinished == _numLaunched) disableWorker(lock);
 }
 
-void
-DeleteWorkerJob::disableWorker(util::Lock const& lock) {
+
+void DeleteWorkerJob::disableWorker(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "disableWorker");
 
@@ -318,6 +370,7 @@ DeleteWorkerJob::disableWorker(util::Lock const& lock) {
         _numLaunched++;
     }
 }
+
 
 void DeleteWorkerJob::onJobFinish(ReplicateJob::Ptr const& job) {
 
@@ -416,6 +469,7 @@ void DeleteWorkerJob::onJobFinish(ReplicateJob::Ptr const& job) {
         finish(lock, ExtendedState::SUCCESS);
     }
 }
+
 
 void DeleteWorkerJob::notify(util::Lock const& lock) {
 

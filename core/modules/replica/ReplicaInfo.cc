@@ -389,4 +389,49 @@ void printAsTable(string const& caption,
 }
 
 
+bool diff(QservReplicaCollection const& one,
+          QservReplicaCollection const& two,
+          QservReplicaCollection& inFirstOnly) {
+
+    inFirstOnly.clear();
+    
+    // Translate the second collection into a dictionary
+    std::map<unsigned int,
+            std::map<std::string,
+                     unsigned int>> replicas;
+
+    for (auto&& replica: two) {
+        replicas[replica.chunk][replica.database] = replica.useCount;
+    }
+    
+    // Scan the first collection and identify all elements which aren't
+    // present in the above created dictionary. Log those records into the
+    // output collection.
+    for (auto&& replica: one) {
+        auto itr = replicas.find(replica.chunk);
+        if (itr == replicas.end()) {
+            inFirstOnly.push_back(replica);
+            continue;
+        }
+        auto&& workers = itr->second;
+        if (workers.find(replica.database) == workers.end()) {
+            inFirstOnly.push_back(replica);
+        }
+    }
+    return not ((one.size() == two.size()) and inFirstOnly.empty());
+}
+
+
+bool diff2(QservReplicaCollection const& one,
+           QservReplicaCollection const& two,
+           QservReplicaCollection& inFirstOnly,
+           QservReplicaCollection& inSecondOnly) {
+
+    bool const notEqual1 = diff(one, two, inFirstOnly);
+    bool const notEqual2 = diff(two, one, inSecondOnly);
+
+    return notEqual1 or notEqual2;
+}
+
+
 }}} // namespace lsst::qserv::replica
