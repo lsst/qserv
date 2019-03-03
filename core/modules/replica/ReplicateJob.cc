@@ -1,4 +1,4 @@
-/*
+    /*
  * LSST Data Management System
  * Copyright 2017 LSST Corporation.
  *
@@ -111,6 +111,52 @@ std::list<std::pair<std::string,std::string>> ReplicateJob::extendedPersistentSt
     result.emplace_back("num_replicas",    std::to_string(numReplicas()));
     return result;
 }
+
+
+std::list<std::pair<std::string,std::string>> ReplicateJob::persistentLogData() const {
+
+    std::list<std::pair<std::string,std::string>> result;
+
+    auto&& replicaData = getReplicaData();
+
+    // Report workers failed to respond to the requests
+
+    for (auto&& workerInfo: replicaData.workers) {
+        auto&& worker = workerInfo.first;
+
+        bool const responded = workerInfo.second;
+        if (not responded) {
+            result.emplace_back("failed-worker", worker);
+        }
+    }
+
+    // Per-worker counters for the following categories:
+    //
+    //   created-chunks:
+    //     the total number of chunks created on the workers as a result
+    //     of the operation
+
+    std::map<std::string,
+             std::map<std::string,
+                      size_t>> workerCategoryCounter;
+
+    for (auto&& info: replicaData.replicas) {
+        workerCategoryCounter[info.worker()]["created-chunks"]++;
+    }
+    for (auto&& workerItr: workerCategoryCounter) {
+        auto&& worker = workerItr.first;
+        std::string val = "worker=" + worker;
+
+        for (auto&& categoryItr: workerItr.second) {
+            auto&& category = categoryItr.first;
+            size_t const counter = categoryItr.second;
+            val += " " + category + "=" + std::to_string(counter);
+        }
+        result.emplace_back("worker-stats", val);
+    }
+    return result;
+}
+
 
 void ReplicateJob::startImpl(util::Lock const& lock) {
 

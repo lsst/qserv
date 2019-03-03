@@ -145,7 +145,12 @@ public:
      *
      * @see Job::extendedPersistentState()
      */
-    std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
+    std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
+
+    /**
+     * @see Job::persistentLogData()
+     */
+    std::list<std::pair<std::string,std::string>> persistentLogData() const final;
 
 protected:
 

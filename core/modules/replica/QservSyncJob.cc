@@ -141,18 +141,11 @@ std::list<std::pair<std::string,std::string>> QservSyncJob::persistentLogData() 
         QservReplicaCollection inNewReplicasOnly;
 
         if (diff2(prevReplicas, newReplicas, inPrevReplicasOnly, inNewReplicasOnly)) {
-            if (inPrevReplicasOnly.size() != 0) {
-                result.emplace_back(
-                    "removed-replicas",
-                    "worker=" + worker + " num=" + std::to_string(inPrevReplicasOnly.size())
-                );
-            }
-            if (inNewReplicasOnly.size() != 0) {
-                result.emplace_back(
-                    "added-replicas",
-                    "worker=" + worker + " num=" + std::to_string(inNewReplicasOnly.size())
-                );
-            }
+            auto const val =
+                "worker="            + worker +
+                " removed-replicas=" + std::to_string(inPrevReplicasOnly.size()) +
+                " added-replicas="   + std::to_string(inNewReplicasOnly.size());
+            result.emplace_back("worker-stats", val);
         }
     }
     return result;

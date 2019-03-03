@@ -133,6 +133,41 @@ std::list<std::pair<std::string,std::string>> DeleteReplicaJob::extendedPersiste
     return result;
 }
 
+
+std::list<std::pair<std::string,std::string>> DeleteReplicaJob::persistentLogData() const {
+
+    std::list<std::pair<std::string,std::string>> result;
+
+    auto&& replicaData = getReplicaData();
+
+    // Per-worker counters for the following categories:
+    //
+    //   deleted-chunks:
+    //     the total number of chunks deleted from the workers as a result
+    //     of the operation
+
+    std::map<std::string,
+             std::map<std::string,
+                      size_t>> workerCategoryCounter;
+
+    for (auto&& info: replicaData.replicas) {
+        workerCategoryCounter[info.worker()]["deleted-chunks"]++;
+    }
+    for (auto&& workerItr: workerCategoryCounter) {
+        auto&& worker = workerItr.first;
+        std::string val = "worker=" + worker;
+
+        for (auto&& categoryItr: workerItr.second) {
+            auto&& category = categoryItr.first;
+            size_t const counter = categoryItr.second;
+            val += " " + category + "=" + std::to_string(counter);
+        }
+        result.emplace_back("worker-stats", val);
+    }
+    return result;
+}
+
+
 void DeleteReplicaJob::startImpl(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");

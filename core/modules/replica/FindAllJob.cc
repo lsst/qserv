@@ -173,7 +173,7 @@ std::list<std::pair<std::string,std::string>> FindAllJob::persistentLogData() co
             size_t const counter = categoryItr.second;
             val += " " + category + "=" + std::to_string(counter);
         }
-        result.emplace_back("worker-stat", val);
+        result.emplace_back("worker-stats", val);
     }
     return result;
 }
