@@ -23,11 +23,16 @@
 #define LSST_QSERV_REPLICA_DATABASESERVICES_H
 
 // System headers
+#include <limits>
 #include <list>
 #include <map>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <vector>
+
+// Third party headers
+#include "nlohmann/json.hpp"
 
 // Qserv headers
 #include "replica/Job.h"
@@ -46,9 +51,34 @@ class QservMgtRequest;
 class Performance;
 class Request;
 
+
 /**
- * Data structure encapsulating various info on events logged by Controllers.
- * These objects are retrieved from the persistent logs.
+ * Class DatabaseServicesError is an exception class for reporting errors
+ * in database operations.
+ */
+class DatabaseServicesError: public std::runtime_error {
+public:
+    DatabaseServicesError(std::string const& msg)
+        :   std::runtime_error(std::string(__func__) + ": " + msg) {
+    }
+};
+
+
+/**
+ * Class DatabaseServicesNotFound is an exception class for reporting content
+ * which can't be found in the database.
+ */
+class DatabaseServicesNotFound: public std::runtime_error {
+public:
+    DatabaseServicesNotFound(std::string const& msg)
+        :   std::runtime_error(std::string(__func__) + ": " + msg) {
+    }
+};
+
+
+/**
+ * Data structure ControllerEvent encapsulating various info on events logged
+ * by Controllers. These objects are retrieved from the persistent logs.
  * 
  * @see DatabaseServices::logControllerEvent
  * @see DatabaseServices::readControllerEvents
@@ -82,8 +112,44 @@ struct ControllerEvent {
 
     /// The optional collection (key-value pairs) of the event-specific data
     std::list<std::pair<std::string, std::string>> kvInfo;
+
+    /**
+     * @return JSON representation of the event
+     */
+    nlohmann::json toJson() const;
 };
 
+
+/**
+ * Data structure ControllerInfo encapsulates a description of the Controller
+ * fetched from the database.
+ */
+struct ControllerInfo {
+
+    /// Unique identifier of the Controller instance
+    std::string id;
+
+    /// 64-bit timestamp (nanoseconds) for its start time
+    uint64_t started;
+
+    /// The name of a host where the Controller was run
+    std::string hostname;
+
+    /// the PID of the Controller's process
+    int pid;
+
+    /**
+     * Translate the structure into a JSON object
+     *
+     * @param isCurrent
+     *   (optional) flag which will set an extra property 'current' to the desired
+     *    state (as defined by the value of the flag)
+     *
+     * @return
+     *   JSON representation of the structure
+     */
+    nlohmann::json toJson(bool isCurrent=false) const;
+};
 
 /**
   * Class DatabaseServices is a high-level interface to the database services
@@ -402,9 +468,23 @@ public:
      */
     virtual std::list<ControllerEvent> readControllerEvents(std::string const& controllerId,
                                                             uint64_t fromTimeStamp=0,
-                                                            uint64_t toTimeStamp=0,
+                                                            uint64_t toTimeStamp=std::numeric_limits<uint64_t>::max(),
                                                             size_t maxEntries=0) = 0;
 
+    /**
+     * Find am information on a controller
+     * 
+     * @param id
+     *   the unique identifier of the Controller
+     * 
+     * @return
+     *   the description of the Controller
+     * 
+     * @throws DatabaseServicesNotFound
+     *   if no Controller was found for the specified identifier
+     */
+    virtual ControllerInfo controller(std::string const& id) = 0;
+    
 protected:
 
     DatabaseServices() = default;

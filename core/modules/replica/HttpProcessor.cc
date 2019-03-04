@@ -40,8 +40,63 @@
 #include "replica/Performance.h"
 
 
+using namespace std;
 using namespace std::placeholders;
 using json = nlohmann::json;
+
+namespace {
+
+using namespace lsst::qserv;
+
+/**
+ * Extract a value of an optional parameter of a query (boolean value)
+ * 
+ * @param req
+ *   HTTP request object
+ * 
+ * @param name
+ *   the name of a parameter to look for
+ * 
+ * @param defaultValue
+ *   the default value to be returned if no parameter was found
+ * 
+ * @return
+ *   the found value or the default value
+ */
+bool getQueryParamBool(qhttp::Request::Ptr req,
+                       string const& param,
+                       bool defaultValue) {
+    auto&& itr = req->query.find(param);
+    if (itr == req->query.end()) return defaultValue;
+    return not (itr->second.empty() or (itr->second == "0"));
+}
+
+
+/**
+ * Extract a value of an optional parameter of a query (unsigned 64-bit)
+ * 
+ * @param req
+ *   HTTP request object
+ * 
+ * @param name
+ *   the name of a parameter to look for
+ * 
+ * @param defaultValue
+ *   the default value to be returned if no parameter was found
+ * 
+ * @return
+ *   the found value or the default value
+ */
+uint64_t getQueryParam(qhttp::Request::Ptr req,
+                       string const& param,
+                       uint64_t defaultValue) {
+    auto&& itr = req->query.find(param);
+    if (itr == req->query.end()) return defaultValue;
+    return stoull(itr->second);
+}
+
+}  // namespace
+
 
 namespace lsst {
 namespace qserv {
@@ -91,68 +146,44 @@ void HttpProcessor::_initialize() {
 
     controller()->serviceProvider()->httpServer()->addHandlers({
 
-        // Trivial tests of the API
-        {"POST",   "/replication/test",     std::bind(&HttpProcessor::_testCreate, self, _1, _2)},
-        {"GET",    "/replication/test",     std::bind(&HttpProcessor::_testList,   self, _1, _2)},
-        {"GET",    "/replication/test/:id", std::bind(&HttpProcessor::_testGet,    self, _1, _2)},
-        {"PUT",    "/replication/test/:id", std::bind(&HttpProcessor::_testUpdate, self, _1, _2)},
-        {"DELETE", "/replication/test/:id", std::bind(&HttpProcessor::_testDelete, self, _1, _2)},
-
         // Replication level summary
-        {"GET",    "/replication/v1/level", std::bind(&HttpProcessor::_getReplicationLevel, self, _1, _2)},
+        {"GET",    "/replication/v1/level", bind(&HttpProcessor::_getReplicationLevel, self, _1, _2)},
 
         // Status of all workers or a particular worker
-        {"GET",    "/replication/v1/worker",       std::bind(&HttpProcessor::_listWorkerStatuses, self, _1, _2)},
-        {"GET",    "/replication/v1/worker/:name", std::bind(&HttpProcessor::_getWorkerStatus,    self, _1, _2)},
+        {"GET",    "/replication/v1/worker",       bind(&HttpProcessor::_listWorkerStatuses, self, _1, _2)},
+        {"GET",    "/replication/v1/worker/:name", bind(&HttpProcessor::_getWorkerStatus,    self, _1, _2)},
 
+        // Info on the controllers
+        {"GET",    "/replication/v1/controller",     bind(&HttpProcessor::_listControllers,   self, _1, _2)},
+        {"GET",    "/replication/v1/controller/:id", bind(&HttpProcessor::_getControllerInfo, self, _1, _2)},
     });
     controller()->serviceProvider()->httpServer()->start();
 }
 
 
-std::string HttpProcessor::context() const {
+string HttpProcessor::_context() const {
     return "HTTP-PROCESSOR ";
 }
 
 
-void HttpProcessor::_testCreate(qhttp::Request::Ptr req,
-                                qhttp::Response::Ptr resp) {
-    debug("_testCreate");
-    resp->send("_testCreate", "application/json");
+void HttpProcessor::_info(std::string const& msg) {
+    LOGS(_log, LOG_LVL_INFO, _context() << msg);
 }
 
 
-void HttpProcessor::_testList(qhttp::Request::Ptr req,
-                              qhttp::Response::Ptr resp) {
-    debug("_testList");
-    resp->send("_testList", "application/json");
+void HttpProcessor::_debug(std::string const& msg) {
+    LOGS(_log, LOG_LVL_DEBUG, _context() << msg);
 }
 
 
-void HttpProcessor::_testGet(qhttp::Request::Ptr req,
-                             qhttp::Response::Ptr resp) {
-    debug("_testGet");
-    resp->send("_testGet", "application/json");
-}
-
-
-void HttpProcessor::_testUpdate(qhttp::Request::Ptr req,
-                                qhttp::Response::Ptr resp) {
-    debug("_testUpdate");
-    resp->send("_testUpdate", "application/json");
-}
-
-
-void HttpProcessor::_testDelete(qhttp::Request::Ptr req,
-                                qhttp::Response::Ptr resp) {
-    debug("_testDelete");
-    resp->send("_testDelete", "application/json");
+void HttpProcessor::_error(std::string const& msg) {
+    LOGS(_log, LOG_LVL_ERROR, _context() << msg);
 }
 
 
 void HttpProcessor::_getReplicationLevel(qhttp::Request::Ptr req,
                                          qhttp::Response::Ptr resp) {
-    debug("_getReplicationLevel");
+    _debug(__func__);
 
     util::Lock lock(_replicationLevelMtx, "HttpProcessor::_getReplicationLevel");
 
@@ -173,8 +204,8 @@ void HttpProcessor::_getReplicationLevel(qhttp::Request::Ptr req,
     HealthMonitorTask::WorkerResponseDelay const delays =
         _healthMonitorTask->workerResponseDelay();
 
-    std::vector<std::string> disabledQservWorkers;
-    std::vector<std::string> disabledReplicationWorkers;
+    vector<string> disabledQservWorkers;
+    vector<string> disabledReplicationWorkers;
     for (auto&& entry: delays) {
         auto&& worker =  entry.first;
 
@@ -195,7 +226,7 @@ void HttpProcessor::_getReplicationLevel(qhttp::Request::Ptr req,
         resultJson["families"][family]["level"] = replicationLevel;
 
         for (auto&& database: config->databases(family)) {
-            debug("_getReplicationLevel  database=" + database);
+            _debug(string(__func__) + "  database=" + database);
 
             // Get observed replication levels for workers which are on-line
             // as well as for the whole cluster (if there in-active workers).
@@ -247,25 +278,25 @@ void HttpProcessor::_getReplicationLevel(qhttp::Request::Ptr req,
 
             size_t numOnlineQservChunks = numOrphanQservChunks;
             for (auto&& entry: onlineQservLevels) {
-                maxObservedLevel = std::max(maxObservedLevel, entry.first);
+                maxObservedLevel = max(maxObservedLevel, entry.first);
                 numOnlineQservChunks += entry.second;
             }
 
             size_t numAllQservChunks = 0;
             for (auto&& entry: allQservLevels) {
-                maxObservedLevel = std::max(maxObservedLevel, entry.first);
+                maxObservedLevel = max(maxObservedLevel, entry.first);
                 numAllQservChunks += entry.second;
             }
 
             size_t numOnlineReplicationSystemChunks = numOrphanReplicationSystemChunks;
             for (auto&& entry: onLineReplicationSystemLevels) {
-                maxObservedLevel = std::max(maxObservedLevel, entry.first);
+                maxObservedLevel = max(maxObservedLevel, entry.first);
                 numOnlineReplicationSystemChunks += entry.second;
             }
 
             size_t numAllReplicationSystemChunks = 0;
             for (auto&& entry: allReplicationSystemLevels) {
-                maxObservedLevel = std::max(maxObservedLevel, entry.first);
+                maxObservedLevel = max(maxObservedLevel, entry.first);
                 numAllReplicationSystemChunks += entry.second;
             }
 
@@ -339,7 +370,7 @@ void HttpProcessor::_getReplicationLevel(qhttp::Request::Ptr req,
 
 void HttpProcessor::_listWorkerStatuses(qhttp::Request::Ptr req,
                                         qhttp::Response::Ptr resp) {
-    debug("_listWorkerStatuses");
+    _debug(__func__);
 
     HealthMonitorTask::WorkerResponseDelay delays =
         _healthMonitorTask->workerResponseDelay();
@@ -377,8 +408,69 @@ void HttpProcessor::_listWorkerStatuses(qhttp::Request::Ptr req,
 
 void HttpProcessor::_getWorkerStatus(qhttp::Request::Ptr req,
                                      qhttp::Response::Ptr resp) {
-    debug("_getWorkerStatus");
-    resp->send(json::array(), "application/json");
+    _debug(__func__);
+    json resultJson;
+    resp->send(resultJson.dump(), "application/json");
+}
+
+
+void HttpProcessor::_listControllers(qhttp::Request::Ptr req,
+                                     qhttp::Response::Ptr resp) {
+    _debug(__func__);
+    json resultJson;
+    resp->send(resultJson.dump(), "application/json");
+}
+
+
+void HttpProcessor::_getControllerInfo(qhttp::Request::Ptr req,
+                                       qhttp::Response::Ptr resp) {
+    _debug(__func__);
+
+    auto const id = req->params["id"];
+    try {
+
+        json resultJson;
+
+        // General parameters of the Controller
+
+        auto const dbSvc = controller()->serviceProvider()->databaseServices();
+        auto const controllerInfo = dbSvc->controller(id);
+
+        resultJson["controller"] = controllerInfo.toJson(controllerInfo.id == id);
+
+        // Pull the Controller log data if requested
+        
+        json jsonLog = json::array();
+
+        for (auto&& itr: req->query) {
+            _debug(string(__func__) + " req->query: " + itr.first + "=" + itr.second);
+        }
+        _debug(string(__func__) + " log="        +    string(::getQueryParamBool(req, "log",        false) ? "true" : "false"));
+        _debug(string(__func__) + " from="       + to_string(::getQueryParam(    req, "from",       0)));
+        _debug(string(__func__) + " to="         + to_string(::getQueryParam(    req, "to",         std::numeric_limits<uint64_t>::max())));
+        _debug(string(__func__) + " max_events=" + to_string(::getQueryParam(    req, "max_events", 0)));
+
+        if (::getQueryParamBool(req, "log", false)) {
+            auto const events =
+                dbSvc->readControllerEvents(
+                    id,
+                    ::getQueryParam(req, "from",       0),
+                    ::getQueryParam(req, "to",         std::numeric_limits<uint64_t>::max()),
+                    ::getQueryParam(req, "max_events", 0));
+            for (auto&& event: events) {
+                jsonLog.push_back(event.toJson());
+            }
+        }
+        resultJson["log"] = jsonLog;
+        resp->send(resultJson.dump(), "application/json");
+
+    } catch (DatabaseServicesNotFound const& ex) {
+        _error(string(__func__) + " no Controller found for id: " + id);
+        resp->sendStatus(404);
+    } catch (invalid_argument const& ex) {
+        _error(string(__func__) + " invalid parameters of the request");
+        resp->sendStatus(400);
+    }
 }
 
 }}} // namespace lsst::qserv::replica

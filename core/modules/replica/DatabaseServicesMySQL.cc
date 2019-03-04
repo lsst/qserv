@@ -84,7 +84,7 @@ DatabaseServicesMySQL::DatabaseServicesMySQL(Configuration::Ptr const& configura
 void DatabaseServicesMySQL::saveState(ControllerIdentity const& identity,
                                       uint64_t startTime) {
 
-    std::string const context = "DatabaseServicesMySQL::saveState[Controller]  ";
+    std::string const context = "DatabaseServicesMySQL::" + std::string(__func__) + "[Controller] ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
@@ -120,7 +120,7 @@ void DatabaseServicesMySQL::saveState(ControllerIdentity const& identity,
 void DatabaseServicesMySQL::saveState(Job const& job,
                                       Job::Options const& options) {
 
-    std::string const context = "DatabaseServicesMySQL::saveState[Job::" + job.type() + "]  ";
+    std::string const context = "DatabaseServicesMySQL::" + std::string(__func__) + "[Job::" + job.type() + "] ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
@@ -192,7 +192,7 @@ void DatabaseServicesMySQL::saveState(Job const& job,
 
 void DatabaseServicesMySQL::updateHeartbeatTime(Job const& job) {
 
-    std::string const context = "DatabaseServicesMySQL::updateHeartbeatTime[Job::" + job.type() + "]  ";
+    std::string const context = "DatabaseServicesMySQL::" + std::string(__func__) + "[Job::" + job.type() + "] ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
@@ -222,7 +222,7 @@ void DatabaseServicesMySQL::saveState(QservMgtRequest const& request,
                                       std::string const& serverError) {
 
     std::string const context =
-        "DatabaseServicesMySQL::saveState[QservMgtRequest::" + request.type() + "]  ";
+        "DatabaseServicesMySQL::" + std::string(__func__) + "[QservMgtRequest::" + request.type() + "] ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
@@ -315,7 +315,7 @@ void DatabaseServicesMySQL::saveState(Request const& request,
                                       Performance const& performance) {
 
     std::string const context =
-        "DatabaseServicesMySQL::saveState[Request::" + request.type() + "]  ";
+        "DatabaseServicesMySQL::" + std::string(__func__) + "[Request::" + request.type() + "] ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
@@ -411,7 +411,7 @@ void DatabaseServicesMySQL::updateRequestState(Request const& request,
                                                std::string const& targetRequestId,
                                                Performance const& targetRequestPerformance) {
 
-    std::string const context = "DatabaseServicesMySQL::upateRequestState[Request::" + request.type() + "]  ";
+    std::string const context = "DatabaseServicesMySQL::" + std::string(__func__) + "[Request::" + request.type() + "] ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
@@ -460,7 +460,7 @@ void DatabaseServicesMySQL::updateRequestState(Request const& request,
 
 void DatabaseServicesMySQL::saveReplicaInfo(ReplicaInfo const& info) {
 
-    std::string const context = "DatabaseServicesMySQL::saveReplicaInfo  ";
+    std::string const context = "DatabaseServicesMySQL::" + std::string(__func__) + " ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
@@ -487,7 +487,7 @@ void DatabaseServicesMySQL::saveReplicaInfoCollection(std::string const& worker,
                                                       std::string const& database,
                                                       ReplicaInfoCollection const& newReplicaInfoCollection) {
 
-    std::string const context = "DatabaseServicesMySQL::saveReplicaInfoCollection  ";
+    std::string const context = "DatabaseServicesMySQL::" + std::string(__func__) + " ";
 
     util::Lock lock(_mtx, context);
 
@@ -515,7 +515,7 @@ void DatabaseServicesMySQL::saveReplicaInfoCollection(std::string const& worker,
 void DatabaseServicesMySQL::saveReplicaInfoImpl(util::Lock const& lock,
                                                 ReplicaInfo const& info) {
 
-    std::string const context = "DatabaseServicesMySQL::saveReplicaInfoImpl  ";
+    std::string const context = "DatabaseServicesMySQL::" + std::string(__func__) + " ";
 
     try {
 
@@ -568,7 +568,7 @@ void DatabaseServicesMySQL::saveReplicaInfoCollectionImpl(util::Lock const& lock
                                                           std::string const& database,
                                                           ReplicaInfoCollection const& newReplicaInfoCollection) {
 
-    std::string const context = "DatabaseServicesMySQL::saveReplicaInfoCollectionImpl  ";
+    std::string const context = "DatabaseServicesMySQL::" + std::string(__func__) + " ";
 
     LOGS(_log, LOG_LVL_DEBUG, context
          << "worker: " << worker
@@ -696,7 +696,7 @@ void DatabaseServicesMySQL::findOldestReplicas(std::vector<ReplicaInfo>& replica
                                                size_t maxReplicas,
                                                bool enabledWorkersOnly) {
 
-    std::string const context = "DatabaseServicesMySQL::findOldestReplicas  ";
+    std::string const context = "DatabaseServicesMySQL::" + std::string(__func__) + " ";
 
     util::Lock lock(_mtx, context);
 
@@ -734,8 +734,9 @@ void DatabaseServicesMySQL::findReplicas(std::vector<ReplicaInfo>& replicas,
                                          std::string const& database,
                                          bool enabledWorkersOnly) {
     std::string const context =
-         "DatabaseServicesMySQL::findReplicas  chunk: " + std::to_string(chunk) +
-         "  database: " + database + "  ";
+         "DatabaseServicesMySQL::" + std::string(__func__) + " chunk=" + std::to_string(chunk) +
+         "  database=" + database +
+         " ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
@@ -771,7 +772,7 @@ void DatabaseServicesMySQL::findWorkerReplicas(std::vector<ReplicaInfo>& replica
                                                std::string const& worker,
                                                std::string const& database) {
 
-    std::string const context = "DatabaseServicesMySQL::findWorkerReplicas  ";
+    std::string const context = "DatabaseServicesMySQL::" + std::string(__func__) + " ";
 
     util::Lock lock(_mtx, context);
 
@@ -798,7 +799,7 @@ void DatabaseServicesMySQL::findWorkerReplicas(std::vector<ReplicaInfo>& replica
 uint64_t DatabaseServicesMySQL::numWorkerReplicas(std::string const& worker,
                                                   std::string const& database) {
 
-    std::string const context = "DatabaseServicesMySQL::numWorkerReplicas  ";
+    std::string const context = "DatabaseServicesMySQL::" + std::string(__func__) + " ";
 
     util::Lock lock(_mtx, context);
 
@@ -833,8 +834,8 @@ void DatabaseServicesMySQL::findWorkerReplicasImpl(util::Lock const& lock,
                                                    std::string const& worker,
                                                    std::string const& database) {
     std::string const context =
-         "DatabaseServicesMySQL::findWorkerReplicasImpl  worker: " + worker +
-         " database: " + database + "  ";
+         "DatabaseServicesMySQL::" + std::string(__func__) + " worker=" + worker +
+         " database=" + database + " ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
@@ -862,8 +863,8 @@ void DatabaseServicesMySQL::findWorkerReplicas(std::vector<ReplicaInfo>& replica
                                                std::string const& worker,
                                                std::string const& databaseFamily) {
     std::string const context =
-         "DatabaseServicesMySQL::findWorkerReplicas  worker: " + worker +
-         " chunk: " + std::to_string(chunk) + " database family: " + databaseFamily;
+         "DatabaseServicesMySQL::" + std::string(__func__) + " worker=" + worker +
+         " chunk=" + std::to_string(chunk) + " family=" + databaseFamily + " ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
@@ -902,7 +903,7 @@ std::map<unsigned int, size_t> DatabaseServicesMySQL::actualReplicationLevel(
                                     std::string const& database,
                                     std::vector<std::string> const& workersToExclude) {
     std::string const context =
-         "DatabaseServicesMySQL::actualReplicationLevel  database: " + database;
+         "DatabaseServicesMySQL::" + std::string(__func__) + " database=" + database + " ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
@@ -972,7 +973,7 @@ size_t DatabaseServicesMySQL::numOrphanChunks(std::string const& database,
                                               std::vector<std::string> const& uniqueOnWorkers) {
 
     std::string const context =
-         "DatabaseServicesMySQL::numOrphanChunks  database: " + database;
+         "DatabaseServicesMySQL::" + std::string(__func__) + " database=" + database + " ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
@@ -1042,14 +1043,14 @@ void DatabaseServicesMySQL::logControllerEvent(ControllerEvent const& event) {
 
     std::string const context =
          "DatabaseServicesMySQL::" + std::string(__func__) + " " +
-         " controller: "  + event.controllerId +
-         " timeStamp: "   + std::to_string(event.timeStamp) +
-         " task: "        + event.task +
-         " operation: "   + event.operation +
-         " status: "      + event.status +
-         " request: "     + event.requestId +
-         " job: "         + event.jobId +
-         " kvInfo.size: " + std::to_string(event.kvInfo.size());
+         " controllerId=" + event.controllerId +
+         " timeStamp="    + std::to_string(event.timeStamp) +
+         " task="         + event.task +
+         " operation="    + event.operation +
+         " status="       + event.status +
+         " requestId="    + event.requestId +
+         " jobId="        + event.jobId +
+         " kvInfo.size="  + std::to_string(event.kvInfo.size()) + " ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
@@ -1105,9 +1106,9 @@ DatabaseServicesMySQL::readControllerEvents(std::string const& controllerId,
                                             size_t maxEntries) {
     std::string const context =
          "DatabaseServicesMySQL::" + std::string(__func__) + " " +
-         " controller: "    + controllerId +
-         " fromTimeStamp: " + std::to_string(fromTimeStamp) +
-         " toTimeStamp: "   + std::to_string(toTimeStamp);
+         " controllerId="  + controllerId +
+         " fromTimeStamp=" + std::to_string(fromTimeStamp) +
+         " toTimeStamp="   + std::to_string(toTimeStamp) + " ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
@@ -1159,7 +1160,7 @@ DatabaseServicesMySQL::_readControllerEvents(util::Lock const& lock,
 
     std::string const query =
         "SELECT * FROM " + _conn->sqlId("controller_log") +
-        "  WHERE "       + _conn->sqlEqual("id", controllerId) +
+        "  WHERE "       + _conn->sqlEqual("controller_id", controllerId) +
         "    AND "       + _conn->sqlGreaterOrEqual("time", fromTimeStamp) +
         "    AND "       + _conn->sqlLessOrEqual("time", toTimeStamp != 0 ? toTimeStamp : std::numeric_limits<uint64_t>::max()) +
         "  ORDER BY "    + _conn->sqlId("time") + " DESC" + (maxEntries == 0 ? "" :
@@ -1207,11 +1208,74 @@ DatabaseServicesMySQL::_readControllerEvents(util::Lock const& lock,
     return events;
 }
 
+
+ControllerInfo DatabaseServicesMySQL::controller(std::string const& id) {
+
+    std::string const context =
+        "DatabaseServicesMySQL::" + std::string(__func__) + " id=" + id + " ";
+
+    LOGS(_log, LOG_LVL_DEBUG, context);
+
+    if (id.empty()) {
+        throw std::invalid_argument(context + ", cController identifier can't be empty");
+    }
+    util::Lock lock(_mtx, context);
+    
+    ControllerInfo info;
+    try {
+        _conn->execute(
+            [&](decltype(_conn) conn) {
+                conn->begin();
+                info = _controller(
+                    lock,
+                    id);
+                conn->commit();
+            }
+        );
+
+    } catch (std::exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
+        if (_conn->inTransaction()) _conn->rollback();
+        throw;
+    }
+    LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
+    return info;
+}
+
+
+ControllerInfo DatabaseServicesMySQL::_controller(util::Lock const& lock,
+                                                  std::string const& id) {
+
+    std::string const query =
+        "SELECT * FROM " + _conn->sqlId("controller") +
+        "  WHERE "       + _conn->sqlEqual("id", id);
+
+    _conn->execute(query);
+    if (_conn->hasResult()) {
+
+        database::mysql::Row row;
+        while (_conn->next(row)) {
+
+            ControllerInfo info;
+
+            row.get("id",         info.id);
+            row.get("start_time", info.started);
+            row.get("hostname",   info.hostname);
+            row.get("pid",        info.pid);
+
+            return info;
+        }
+    }
+    throw DatabaseServicesNotFound("no Controller found for id: " + id);
+}
+
+
 void DatabaseServicesMySQL::findReplicasImpl(util::Lock const& lock,
                                              std::vector<ReplicaInfo>& replicas,
                                              std::string const& query) {
 
-    std::string const context = "DatabaseServicesMySQL::findReplicasImpl(replicas,query)  ";
+    std::string const context =
+        "DatabaseServicesMySQL::" + std::string(__func__) + "(replicas,query) ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
@@ -1262,7 +1326,7 @@ void DatabaseServicesMySQL::findReplicaFilesImpl(util::Lock const& lock,
                                                  std::map<uint64_t, ReplicaInfo> const& id2replica,
                                                  std::vector<ReplicaInfo>& replicas) {
 
-    std::string const context = "DatabaseServicesMySQL::findReplicaFilesImpl  ";
+    std::string const context = "DatabaseServicesMySQL::" + std::string(__func__) + " ";
 
     if (0 == id2replica.size()) return;
 

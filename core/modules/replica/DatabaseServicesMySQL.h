@@ -184,6 +184,11 @@ public:
                                                     uint64_t toTimeStamp,
                                                     size_t maxEntries) final;
 
+    /**
+     * @see DatabaseServices::controller()
+     */
+    ControllerInfo controller(std::string const& id) final;
+
 private:
 
     /**
@@ -273,6 +278,14 @@ private:
                                                      uint64_t fromTimeStamp,
                                                      uint64_t toTimeStamp,
                                                      size_t maxEntries);
+
+    /**
+     * Implement the corresponding public method
+     *
+     * @see DatabaseServicesMySQL::controller()
+     */
+    ControllerInfo _controller(util::Lock const& lock,
+                               std::string const& id);
 
 private:
 

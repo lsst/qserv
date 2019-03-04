@@ -32,6 +32,8 @@
 #include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServicesMySQL.h"
 
+using json = nlohmann::json;
+
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.DatabaseServices");
@@ -42,6 +44,45 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.DatabaseServices");
 namespace lsst {
 namespace qserv {
 namespace replica {
+
+json ControllerEvent::toJson() const {
+    
+    json event;
+
+    event["id"]            = id;
+    event["controller_id"] = controllerId;
+    event["timestamp"]     = timeStamp;
+    event["task"]          = task;
+    event["operation"]     = operation;
+    event["status"]        = status;
+    event["request_id"]    = requestId;
+    event["job_id"]        = jobId;
+    event["kv_info"]       = json::array();
+    
+    json kvInfoJson = json::array();
+    for (auto&& kv: kvInfo) {
+        json kvJson;
+        kvJson[kv.first] = kv.second;
+        kvInfoJson.push_back(kvJson);
+    }
+    event["kv_info"] = kvInfoJson;
+    return event;
+}
+
+
+json ControllerInfo::toJson(bool isCurrent) const {
+
+    json info;
+
+    info["id"]         = id;
+    info["hostname"]   = hostname;
+    info["pid"]        = pid;
+    info["start_time"] = started;
+    info["current"]    = isCurrent ? 1 : 0;
+
+    return info;
+}
+
 
 DatabaseServices::Ptr DatabaseServices::create(Configuration::Ptr const& configuration) {
 

@@ -186,6 +186,11 @@ public:
                                                     uint64_t toTimeStamp,
                                                     size_t maxEntries) final;
 
+    /**
+     * @see DatabaseServices::controller()
+     */
+    ControllerInfo controller(std::string const& id) final;
+
 private:
     /**
      * Construct the object.

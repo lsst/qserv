@@ -246,6 +246,12 @@ std::list<ControllerEvent> DatabaseServicesPool::readControllerEvents(
 }
 
 
+ControllerInfo DatabaseServicesPool::controller(std::string const& id) {
+    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
+    return service()->controller(id);
+}
+
+
 DatabaseServices::Ptr DatabaseServicesPool::allocateService() {
 
     std::string const context = "DatabaseServicesPool::allocateService  ";
