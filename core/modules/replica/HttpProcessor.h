@@ -188,9 +188,8 @@ private:
     void _listWorkerStatuses(qhttp::Request::Ptr req,
                              qhttp::Response::Ptr resp);
 
-
     /**
-     * Process a request which return info on all known Replication Controllers
+     * Process a request which return info on known Replication Controllers
      *
      * @param req   request received from a client
      * @param resp  response to be sent back
@@ -206,6 +205,42 @@ private:
      */
     void _getControllerInfo(qhttp::Request::Ptr req,
                             qhttp::Response::Ptr resp);
+
+    /**
+     * Process a request which return info on known Replication Requests
+     *
+     * @param req   request received from a client
+     * @param resp  response to be sent back
+     */
+    void _listRequests(qhttp::Request::Ptr req,
+                       qhttp::Response::Ptr resp);
+
+    /**
+     * Process a request which return info on the specified Replication Request
+     *
+     * @param req   request received from a client
+     * @param resp  response to be sent back
+     */
+    void _getRequestInfo(qhttp::Request::Ptr req,
+                         qhttp::Response::Ptr resp);
+
+    /**
+     * Process a request which return info on known Replication Jobs
+     *
+     * @param req   request received from a client
+     * @param resp  response to be sent back
+     */
+    void _listJobs(qhttp::Request::Ptr req,
+                   qhttp::Response::Ptr resp);
+
+    /**
+     * Process a request which return info on the specified Replication Job
+     *
+     * @param req   request received from a client
+     * @param resp  response to be sent back
+     */
+    void _getJobInfo(qhttp::Request::Ptr req,
+                     qhttp::Response::Ptr resp);
 
 private:
 

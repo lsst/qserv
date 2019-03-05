@@ -84,6 +84,65 @@ json ControllerInfo::toJson(bool isCurrent) const {
 }
 
 
+json RequestInfo::toJson() const {
+
+    json info;
+
+    info["id"]             = id;
+    info["job_id"]         = jobId;
+    info["name"]           = name;
+    info["worker"]         = worker;
+    info["priority"]       = priority;
+    info["state"]          = state;
+    info["ext_state"]      = extendedState;
+    info["server_status"]  = serverStatus;
+    info["c_create_time"]  = controllerCreateTime;
+    info["c_start_time"]   = controllerStartTime;
+    info["c_finish_time"]  = controllerFinishTime;
+    info["w_receive_time"] = workerReceiveTime;
+    info["w_start_time"]   = workerStartTime;
+    info["w_finish_time"]  = workerFinishTime;
+
+    json extended;
+    for (auto&& itr: kvInfo) {
+        json attr;
+        attr[itr.first] = itr.second;
+        extended.push_back(attr);
+    }
+    info["extended"] = extended;
+
+    return info;
+}
+
+
+json JobInfo::toJson() const {
+
+    json info;
+
+    info["id"]             = id;
+    info["controller_id"]  = controllerId;
+    info["parent_job_id"]  = parentJobId;
+    info["type"]           = type;
+    info["state"]          = state;
+    info["ext_state"]      = extendedState;
+    info["begin_time"]     = beginTime;
+    info["heartbeat_time"] = heartbeatTime;
+    info["priority"]       = priority;
+    info["exclusive"]      = exclusive   ? 1 : 0;
+    info["preemptable"]    = preemptable ? 1 : 0;
+
+    json extended;
+    for (auto&& itr: kvInfo) {
+        json attr;
+        attr[itr.first] = itr.second;
+        extended.push_back(attr);
+    }
+    info["extended"] = extended;
+
+    return info;
+}
+
+
 DatabaseServices::Ptr DatabaseServices::create(Configuration::Ptr const& configuration) {
 
     // If the configuration is pulled from a database then *try*

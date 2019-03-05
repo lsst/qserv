@@ -156,6 +156,14 @@ void HttpProcessor::_initialize() {
         // Info on the controllers
         {"GET",    "/replication/v1/controller",     bind(&HttpProcessor::_listControllers,   self, _1, _2)},
         {"GET",    "/replication/v1/controller/:id", bind(&HttpProcessor::_getControllerInfo, self, _1, _2)},
+
+        // Info on the requests
+        {"GET",    "/replication/v1/request",     bind(&HttpProcessor::_listRequests,   self, _1, _2)},
+        {"GET",    "/replication/v1/request/:id", bind(&HttpProcessor::_getRequestInfo, self, _1, _2)},
+
+        // Info on the jobs
+        {"GET",    "/replication/v1/job",     bind(&HttpProcessor::_listJobs,   self, _1, _2)},
+        {"GET",    "/replication/v1/job/:id", bind(&HttpProcessor::_getJobInfo, self, _1, _2)},
     });
     controller()->serviceProvider()->httpServer()->start();
 }
@@ -409,16 +417,16 @@ void HttpProcessor::_listWorkerStatuses(qhttp::Request::Ptr req,
 void HttpProcessor::_getWorkerStatus(qhttp::Request::Ptr req,
                                      qhttp::Response::Ptr resp) {
     _debug(__func__);
-    json resultJson;
-    resp->send(resultJson.dump(), "application/json");
+    json workersJson;
+    resp->send(workersJson.dump(), "application/json");
 }
 
 
 void HttpProcessor::_listControllers(qhttp::Request::Ptr req,
                                      qhttp::Response::Ptr resp) {
     _debug(__func__);
-    json resultJson;
-    resp->send(resultJson.dump(), "application/json");
+    json controllersJson;
+    resp->send(controllersJson.dump(), "application/json");
 }
 
 
@@ -445,18 +453,18 @@ void HttpProcessor::_getControllerInfo(qhttp::Request::Ptr req,
         for (auto&& itr: req->query) {
             _debug(string(__func__) + " req->query: " + itr.first + "=" + itr.second);
         }
-        _debug(string(__func__) + " log="        +    string(::getQueryParamBool(req, "log",        false) ? "true" : "false"));
-        _debug(string(__func__) + " from="       + to_string(::getQueryParam(    req, "from",       0)));
-        _debug(string(__func__) + " to="         + to_string(::getQueryParam(    req, "to",         std::numeric_limits<uint64_t>::max())));
-        _debug(string(__func__) + " max_events=" + to_string(::getQueryParam(    req, "max_events", 0)));
+        _debug(string(__func__) + " log="            +    string(::getQueryParamBool(req, "log",            false) ? "true" : "false"));
+        _debug(string(__func__) + " log_from="       + to_string(::getQueryParam(    req, "log_from",       0)));
+        _debug(string(__func__) + " log_to="         + to_string(::getQueryParam(    req, "log_to",         std::numeric_limits<uint64_t>::max())));
+        _debug(string(__func__) + " log_max_events=" + to_string(::getQueryParam(    req, "log_max_events", 0)));
 
         if (::getQueryParamBool(req, "log", false)) {
             auto const events =
                 dbSvc->readControllerEvents(
                     id,
-                    ::getQueryParam(req, "from",       0),
-                    ::getQueryParam(req, "to",         std::numeric_limits<uint64_t>::max()),
-                    ::getQueryParam(req, "max_events", 0));
+                    ::getQueryParam(req, "log_from",       0),
+                    ::getQueryParam(req, "log_to",         std::numeric_limits<uint64_t>::max()),
+                    ::getQueryParam(req, "log_max_events", 0));
             for (auto&& event: events) {
                 jsonLog.push_back(event.toJson());
             }
@@ -472,5 +480,66 @@ void HttpProcessor::_getControllerInfo(qhttp::Request::Ptr req,
         resp->sendStatus(400);
     }
 }
+
+
+void HttpProcessor::_listRequests(qhttp::Request::Ptr req,
+                                  qhttp::Response::Ptr resp) {
+    _debug(__func__);
+    json requestsJson;
+    resp->send(requestsJson.dump(), "application/json");
+}
+
+
+void HttpProcessor::_getRequestInfo(qhttp::Request::Ptr req,
+                                    qhttp::Response::Ptr resp) {
+    _debug(__func__);
+
+    auto const id = req->params["id"];
+    try {
+        json requestJson;
+        requestJson["request"] =
+            controller()->serviceProvider()->databaseServices()->request(id).toJson();
+
+        resp->send(requestJson.dump(), "application/json");
+
+    } catch (DatabaseServicesNotFound const& ex) {
+        _error(string(__func__) + " no Request found for id: " + id);
+        resp->sendStatus(404);
+    } catch (invalid_argument const& ex) {
+        _error(string(__func__) + " invalid parameters of the request");
+        resp->sendStatus(400);
+    }
+}
+
+
+void HttpProcessor::_listJobs(qhttp::Request::Ptr req,
+                              qhttp::Response::Ptr resp) {
+    _debug(__func__);
+    json jobsJson;
+    resp->send(jobsJson.dump(), "application/json");
+}
+
+
+void HttpProcessor::_getJobInfo(qhttp::Request::Ptr req,
+                                qhttp::Response::Ptr resp) {
+    _debug(__func__);
+
+    auto const id = req->params["id"];
+    try {
+        json jobJson;
+        jobJson["job"] =
+            controller()->serviceProvider()->databaseServices()->job(id).toJson();
+
+        resp->send(jobJson.dump(), "application/json");
+
+    } catch (DatabaseServicesNotFound const& ex) {
+        _error(string(__func__) + " no Request found for id: " + id);
+        resp->sendStatus(404);
+    } catch (invalid_argument const& ex) {
+        _error(string(__func__) + " invalid parameters of the request");
+        resp->sendStatus(400);
+    }
+}
+
 
 }}} // namespace lsst::qserv::replica

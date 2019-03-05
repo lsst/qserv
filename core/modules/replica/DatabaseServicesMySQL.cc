@@ -29,6 +29,7 @@
 #include <ctime>
 #include <limits>
 #include <stdexcept>
+#include <list>
 
 // Qserv headers
 #include "lsst/log/Log.h"
@@ -1108,7 +1109,8 @@ DatabaseServicesMySQL::readControllerEvents(std::string const& controllerId,
          "DatabaseServicesMySQL::" + std::string(__func__) + " " +
          " controllerId="  + controllerId +
          " fromTimeStamp=" + std::to_string(fromTimeStamp) +
-         " toTimeStamp="   + std::to_string(toTimeStamp) + " ";
+         " toTimeStamp="   + std::to_string(toTimeStamp) +
+         " maxEntries="    + std::to_string(maxEntries) + " ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
@@ -1164,8 +1166,7 @@ DatabaseServicesMySQL::_readControllerEvents(util::Lock const& lock,
         "    AND "       + _conn->sqlGreaterOrEqual("time", fromTimeStamp) +
         "    AND "       + _conn->sqlLessOrEqual("time", toTimeStamp != 0 ? toTimeStamp : std::numeric_limits<uint64_t>::max()) +
         "  ORDER BY "    + _conn->sqlId("time") + " DESC" + (maxEntries == 0 ? "" :
-        "  LIMIT "       + std::to_string(maxEntries)
-        );
+        "  LIMIT "       + std::to_string(maxEntries));
 
     _conn->execute(query);
     if (_conn->hasResult()) {
@@ -1217,7 +1218,7 @@ ControllerInfo DatabaseServicesMySQL::controller(std::string const& id) {
     LOGS(_log, LOG_LVL_DEBUG, context);
 
     if (id.empty()) {
-        throw std::invalid_argument(context + ", cController identifier can't be empty");
+        throw std::invalid_argument(context + ", controller identifier can't be empty");
     }
     util::Lock lock(_mtx, context);
     
@@ -1226,9 +1227,7 @@ ControllerInfo DatabaseServicesMySQL::controller(std::string const& id) {
         _conn->execute(
             [&](decltype(_conn) conn) {
                 conn->begin();
-                info = _controller(
-                    lock,
-                    id);
+                info = _controller(lock, id);
                 conn->commit();
             }
         );
@@ -1245,12 +1244,10 @@ ControllerInfo DatabaseServicesMySQL::controller(std::string const& id) {
 
 ControllerInfo DatabaseServicesMySQL::_controller(util::Lock const& lock,
                                                   std::string const& id) {
-
-    std::string const query =
+    _conn->execute(
         "SELECT * FROM " + _conn->sqlId("controller") +
-        "  WHERE "       + _conn->sqlEqual("id", id);
-
-    _conn->execute(query);
+        "  WHERE "       + _conn->sqlEqual("id", id)
+    );
     if (_conn->hasResult()) {
 
         database::mysql::Row row;
@@ -1267,6 +1264,485 @@ ControllerInfo DatabaseServicesMySQL::_controller(util::Lock const& lock,
         }
     }
     throw DatabaseServicesNotFound("no Controller found for id: " + id);
+}
+
+
+std::list<ControllerInfo> DatabaseServicesMySQL::controllers(uint64_t fromTimeStamp,
+                                                             uint64_t toTimeStamp,
+                                                             size_t maxEntries) {
+    std::string const context =
+         "DatabaseServicesMySQL::" + std::string(__func__) + " " +
+         " fromTimeStamp=" + std::to_string(fromTimeStamp) +
+         " toTimeStamp="   + std::to_string(toTimeStamp) +
+         " maxEntries="    + std::to_string(maxEntries) + " ";
+
+    LOGS(_log, LOG_LVL_DEBUG, context);
+
+    util::Lock lock(_mtx, context);
+    
+    std::list<ControllerInfo> collection;
+    try {
+        _conn->execute(
+            [&](decltype(_conn) conn) {
+                conn->begin();
+                collection = _controllers(
+                    lock,
+                    fromTimeStamp,
+                    toTimeStamp,
+                    maxEntries);
+                conn->commit();
+            }
+        );
+
+    } catch (std::exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
+        if (_conn->inTransaction()) _conn->rollback();
+        throw;
+    }
+    LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
+    return collection;
+}
+
+
+std::list<ControllerInfo> DatabaseServicesMySQL::_controllers(util::Lock const& lock,
+                                                              uint64_t fromTimeStamp,
+                                                              uint64_t toTimeStamp,
+                                                              size_t maxEntries) {
+    std::list<ControllerInfo> collection;
+
+    std::string const limitOpt =
+        maxEntries == 0
+        ? ""
+        : "  LIMIT " + std::to_string(maxEntries);
+
+    _conn->execute(
+        "SELECT * FROM " + _conn->sqlId("controller") +
+        "  WHERE "       + _conn->sqlGreaterOrEqual("start_time", fromTimeStamp) +
+        "    AND "       + _conn->sqlLessOrEqual("start_time", toTimeStamp != 0
+                                    ? toTimeStamp
+                                    : std::numeric_limits<uint64_t>::max()) +
+        "  ORDER BY "    + _conn->sqlId("start_time") + " DESC" +
+        limitOpt
+    );
+    if (_conn->hasResult()) {
+
+        database::mysql::Row row;
+        while (_conn->next(row)) {
+
+            ControllerInfo info;
+
+            row.get("id",         info.id);
+            row.get("start_time", info.started);
+            row.get("hostname",   info.hostname);
+            row.get("pid",        info.pid);
+
+            collection.push_back(info);
+        }
+    }
+    return collection;
+}
+
+
+RequestInfo DatabaseServicesMySQL::request(std::string const& id) {
+
+    std::string const context =
+        "DatabaseServicesMySQL::" + std::string(__func__) + " id=" + id + " ";
+
+    LOGS(_log, LOG_LVL_DEBUG, context);
+
+    if (id.empty()) {
+        throw std::invalid_argument(context + ", request identifier can't be empty");
+    }
+    util::Lock lock(_mtx, context);
+    
+    RequestInfo info;
+    try {
+        _conn->execute(
+            [&](decltype(_conn) conn) {
+                conn->begin();
+                info = _request(lock, id);
+                conn->commit();
+            }
+        );
+
+    } catch (std::exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
+        if (_conn->inTransaction()) _conn->rollback();
+        throw;
+    }
+    LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
+    return info;
+}
+
+
+RequestInfo DatabaseServicesMySQL::_request(util::Lock const& lock,
+                                            std::string const& id) {
+    _conn->execute(
+        "SELECT * FROM " + _conn->sqlId("request") +
+        "  WHERE "       + _conn->sqlEqual("id", id)
+    );
+    if (_conn->hasResult()) {
+
+        database::mysql::Row row;
+        while (_conn->next(row)) {
+
+            RequestInfo info;
+
+            row.get("id",             info.id);
+            row.get("job_id",         info.jobId);
+            row.get("name",           info.name);
+            row.get("worker",         info.worker);
+            row.get("priority",       info.priority);
+            row.get("state",          info.state);
+            row.get("ext_state",      info.extendedState);
+            row.get("server_status",  info.serverStatus);
+            row.get("c_create_time",  info.controllerCreateTime);
+            row.get("c_start_time",   info.controllerStartTime);
+            row.get("c_finish_time",  info.controllerFinishTime);
+            row.get("w_receive_time", info.workerReceiveTime);
+            row.get("w_start_time",   info.workerStartTime);
+            row.get("w_finish_time",  info.workerFinishTime);
+
+            _conn->execute(
+                "SELECT * FROM " + _conn->sqlId("request_ext") +
+                "  WHERE "       + _conn->sqlEqual("request_id", id)
+            );
+            if (_conn->hasResult()) {
+
+                database::mysql::Row row;
+                while (_conn->next(row)) {
+
+                    std::string param;
+                    std::string value;
+
+                    row.get("param", param);
+                    row.get("value", value);
+
+                    info.kvInfo.emplace_back(param, value);
+                }
+            }
+            return info;
+        }
+    }
+    throw DatabaseServicesNotFound("no Request found for id: " + id);
+}
+
+
+std::list<RequestInfo> DatabaseServicesMySQL::requests(std::string const& jobId,
+                                                       uint64_t fromTimeStamp,
+                                                       uint64_t toTimeStamp,
+                                                       size_t maxEntries) {
+    std::string const context =
+         "DatabaseServicesMySQL::" + std::string(__func__) + " " +
+         " jobId="         + jobId +
+         " fromTimeStamp=" + std::to_string(fromTimeStamp) +
+         " toTimeStamp="   + std::to_string(toTimeStamp) +
+         " maxEntries="    + std::to_string(maxEntries) + " ";
+
+    LOGS(_log, LOG_LVL_DEBUG, context);
+
+    util::Lock lock(_mtx, context);
+    
+    std::list<RequestInfo> collection;
+    try {
+        _conn->execute(
+            [&](decltype(_conn) conn) {
+                conn->begin();
+                collection = _requests(
+                    lock,
+                    jobId,
+                    fromTimeStamp,
+                    toTimeStamp,
+                    maxEntries);
+                conn->commit();
+            }
+        );
+
+    } catch (std::exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
+        if (_conn->inTransaction()) _conn->rollback();
+        throw;
+    }
+    LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
+    return collection;
+}
+
+
+std::list<RequestInfo> DatabaseServicesMySQL::_requests(util::Lock const& lock,
+                                                        std::string const& jobId,
+                                                        uint64_t fromTimeStamp,
+                                                        uint64_t toTimeStamp,
+                                                        size_t maxEntries) {
+
+    std::list<RequestInfo> collection;
+
+    std::string const jobIdOpt =
+        jobId.empty() ? "" : " AND " + _conn->sqlEqual("job_id", jobId);
+
+    std::string const limitOpt =
+        maxEntries == 0 ? "" : " LIMIT " + std::to_string(maxEntries);
+
+    _conn->execute(
+        "SELECT * FROM " + _conn->sqlId("request") +
+        "  WHERE "       + _conn->sqlGreaterOrEqual("c_create_time", fromTimeStamp) +
+        "    AND "       + _conn->sqlLessOrEqual("c_create_time", toTimeStamp != 0
+                                    ? toTimeStamp
+                                    : std::numeric_limits<uint64_t>::max()) +
+        jobIdOpt +
+        "  ORDER BY "    + _conn->sqlId("c_create_time") + " DESC" +
+        limitOpt
+    );
+    if (_conn->hasResult()) {
+
+        database::mysql::Row row;
+        while (_conn->next(row)) {
+
+            RequestInfo info;
+
+            row.get("id",             info.id);
+            row.get("job_id",         info.jobId);
+            row.get("name",           info.name);
+            row.get("worker",         info.worker);
+            row.get("priority",       info.priority);
+            row.get("state",          info.state);
+            row.get("ext_state",      info.extendedState);
+            row.get("server_status",  info.serverStatus);
+            row.get("c_create_time",  info.controllerCreateTime);
+            row.get("c_start_time",   info.controllerStartTime);
+            row.get("c_finish_time",  info.controllerFinishTime);
+            row.get("w_receive_time", info.workerReceiveTime);
+            row.get("w_start_time",   info.workerStartTime);
+            row.get("w_finish_time",  info.workerFinishTime);
+
+            collection.push_back(info);
+        }
+    }
+    for (auto&& info: collection) {
+        _conn->execute(
+            "SELECT * FROM " + _conn->sqlId("request_ext") +
+            "  WHERE "       + _conn->sqlEqual("request_id", info.id)
+        );
+        if (_conn->hasResult()) {
+
+            database::mysql::Row row;
+            while (_conn->next(row)) {
+
+                std::string param;
+                std::string value;
+
+                row.get("param", param);
+                row.get("value", value);
+
+                info.kvInfo.emplace_back(param, value);
+            }
+        }
+    }
+    return collection;
+}
+
+
+JobInfo DatabaseServicesMySQL::job(std::string const& id) {
+
+    std::string const context =
+        "DatabaseServicesMySQL::" + std::string(__func__) + " id=" + id + " ";
+
+    LOGS(_log, LOG_LVL_DEBUG, context);
+
+    if (id.empty()) {
+        throw std::invalid_argument(context + ", job identifier can't be empty");
+    }
+    util::Lock lock(_mtx, context);
+    
+    JobInfo info;
+    try {
+        _conn->execute(
+            [&](decltype(_conn) conn) {
+                conn->begin();
+                info = _job(lock, id);
+                conn->commit();
+            }
+        );
+
+    } catch (std::exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
+        if (_conn->inTransaction()) _conn->rollback();
+        throw;
+    }
+    LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
+    return info;
+}
+
+
+JobInfo DatabaseServicesMySQL::_job(util::Lock const& lock,
+                                    std::string const& id) {
+    _conn->execute(
+        "SELECT * FROM " + _conn->sqlId("job") +
+        "  WHERE "       + _conn->sqlEqual("id", id)
+    );
+    if (_conn->hasResult()) {
+
+        database::mysql::Row row;
+        while (_conn->next(row)) {
+
+            JobInfo info;
+
+            row.get("id",             info.id);
+            row.get("controller_id",  info.controllerId);
+            row.get("parent_job_id",  info.parentJobId);
+            row.get("type",           info.type);
+            row.get("state",          info.state);
+            row.get("ext_state",      info.extendedState);
+
+            row.get("begin_time",     info.beginTime);
+            row.get("end_time",       info.endTime);
+            row.get("heartbeat_time", info.heartbeatTime);
+
+            row.get("priority",       info.priority);
+            row.get("exclusive",      info.exclusive);
+            row.get("preemptable",    info.preemptable);
+
+            _conn->execute(
+                "SELECT * FROM " + _conn->sqlId("job_ext") +
+                "  WHERE "       + _conn->sqlEqual("job_id", id)
+            );
+            if (_conn->hasResult()) {
+
+                database::mysql::Row row;
+                while (_conn->next(row)) {
+
+                    std::string param;
+                    std::string value;
+
+                    row.get("param", param);
+                    row.get("value", value);
+
+                    info.kvInfo.emplace_back(param, value);
+                }
+            }
+            return info;
+        }
+    }
+    throw DatabaseServicesNotFound("no Job found for id: " + id);
+}
+
+
+std::list<JobInfo> DatabaseServicesMySQL::jobs(std::string const& controllerId,
+                                               std::string const& parentJobId,
+                                               uint64_t fromTimeStamp,
+                                               uint64_t toTimeStamp,
+                                               size_t maxEntries) {
+    std::string const context =
+         "DatabaseServicesMySQL::" + std::string(__func__) + " " +
+         " controllerId="  + controllerId +
+         " parentJobId="   + parentJobId +
+         " fromTimeStamp=" + std::to_string(fromTimeStamp) +
+         " toTimeStamp="   + std::to_string(toTimeStamp) +
+         " maxEntries="    + std::to_string(maxEntries) + " ";
+
+    LOGS(_log, LOG_LVL_DEBUG, context);
+
+    util::Lock lock(_mtx, context);
+    
+    std::list<JobInfo> collection;
+    try {
+        _conn->execute(
+            [&](decltype(_conn) conn) {
+                conn->begin();
+                collection = _jobs(
+                    lock,
+                    controllerId,
+                    parentJobId,
+                    fromTimeStamp,
+                    toTimeStamp,
+                    maxEntries);
+                conn->commit();
+            }
+        );
+
+    } catch (std::exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
+        if (_conn->inTransaction()) _conn->rollback();
+        throw;
+    }
+    LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
+    return collection;
+}
+
+
+std::list<JobInfo> DatabaseServicesMySQL::_jobs(util::Lock const& lock,
+                                                std::string const& controllerId,
+                                                std::string const& parentJobId,
+                                                uint64_t fromTimeStamp,
+                                                uint64_t toTimeStamp,
+                                                size_t maxEntries) {
+    std::list<JobInfo> collection;
+
+    std::string const controllerIdOpt =
+        controllerId.empty() ? "" : " AND " + _conn->sqlEqual("controller_id", controllerId);
+
+    std::string const parentJobIdOpt =
+        parentJobId.empty() ? "" : " AND " + _conn->sqlEqual("parent_job_id", parentJobId);
+
+    std::string const limitOpt =
+        maxEntries == 0 ? "" : " LIMIT " + std::to_string(maxEntries);
+
+    _conn->execute(
+        "SELECT * FROM " + _conn->sqlId("job") +
+        "  WHERE "       + _conn->sqlGreaterOrEqual("begin_time", fromTimeStamp) +
+        "    AND "       + _conn->sqlLessOrEqual("begin_time", toTimeStamp != 0
+                                    ? toTimeStamp
+                                    : std::numeric_limits<uint64_t>::max()) +
+        controllerIdOpt +
+        parentJobIdOpt +
+        "  ORDER BY "    + _conn->sqlId("begin_time") + " DESC" +
+        limitOpt
+    );
+    if (_conn->hasResult()) {
+
+        database::mysql::Row row;
+        while (_conn->next(row)) {
+
+            JobInfo info;
+
+            row.get("id",             info.id);
+            row.get("controller_id",  info.controllerId);
+            row.get("parent_job_id",  info.parentJobId);
+            row.get("type",           info.type);
+            row.get("state",          info.state);
+            row.get("ext_state",      info.extendedState);
+
+            row.get("begin_time",     info.beginTime);
+            row.get("end_time",       info.endTime);
+            row.get("heartbeat_time", info.heartbeatTime);
+
+            row.get("priority",       info.priority);
+            row.get("exclusive",      info.exclusive);
+            row.get("preemptable",    info.preemptable);
+
+            collection.push_back(info);
+        }
+    }
+    for (auto&& info: collection) {
+        _conn->execute(
+            "SELECT * FROM " + _conn->sqlId("job_ext") +
+            "  WHERE "       + _conn->sqlEqual("job_id", info.id)
+        );
+        if (_conn->hasResult()) {
+
+            database::mysql::Row row;
+            while (_conn->next(row)) {
+
+                std::string param;
+                std::string value;
+
+                row.get("param", param);
+                row.get("value", value);
+
+                info.kvInfo.emplace_back(param, value);
+            }
+        }
+    }
+    return collection;
 }
 
 

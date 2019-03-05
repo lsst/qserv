@@ -121,8 +121,8 @@ struct ControllerEvent {
 
 
 /**
- * Data structure ControllerInfo encapsulates a description of the Controller
- * fetched from the database.
+ * Data structure ControllerInfo encapsulates a persistent state of the Controller
+ * object fetched from the database.
  */
 struct ControllerInfo {
 
@@ -150,6 +150,127 @@ struct ControllerInfo {
      */
     nlohmann::json toJson(bool isCurrent=false) const;
 };
+
+
+/**
+ * Data structure RequestInfo encapsulates a persistent state of the Request (its
+ * subclasses) objects fetched from the database.
+ */
+struct RequestInfo {
+
+    /// Unique identifier of the Request instance
+    std::string id;
+
+    /// Unique identifier of the parent Job instance
+    std::string jobId;
+
+    /// The name (actually - its specific type) of the request
+    std::string name;
+
+    /// The name of a worker where the request was sent
+    std::string worker;
+
+    /// The priority level
+    int priority;
+
+    /// The primary state
+    std::string state;
+
+    /// The secondary state
+    std::string extendedState;
+
+    /// The optional status of the request obtained from the corresponding worker
+    /// service after the request was (or was attempted to be) executed.
+    std::string serverStatus;
+
+    /// The timestamp (nanoseconds) when the request was created by Controller
+    uint64_t controllerCreateTime;
+    
+    /// The timestamp (nanoseconds) when the request was started by Controller
+    uint64_t controllerStartTime;
+    
+    /// The timestamp (nanoseconds) when the request was declared as FINISHED by Controller
+    uint64_t controllerFinishTime;
+
+    /// The timestamp (nanoseconds) when the request was received by the corresponding worker
+    uint64_t workerReceiveTime;
+    
+    /// The timestamp (nanoseconds) when the request was started by the corresponding worker
+    uint64_t workerStartTime;
+    
+    /// The timestamp (nanoseconds) when the request was declared as FINISHED by
+    /// the corresponding worker
+    uint64_t workerFinishTime;
+    
+    /// The optional collection (key-value pairs) of extended attributes
+    std::list<std::pair<std::string, std::string>> kvInfo;
+
+    /**
+     * Translate the structure into a JSON object
+     *
+     * @return
+     *   JSON representation of the structure
+     */
+    nlohmann::json toJson() const;
+};
+
+
+/**
+ * Data structure JobInfo encapsulates a persistent state of the Job (its
+ * subclasses) objects fetched from the database.
+ */
+struct JobInfo {
+
+    /// Unique identifier of the Job instance
+    std::string id;
+
+    /// Unique identifier of the parent Controller instance)
+    std::string controllerId;
+
+    /// Unique identifier of the parent Job instance
+    std::string parentJobId;
+
+    /// The type name of the job
+    std::string type;
+
+    /// The primary state
+    std::string state;
+
+    /// The secondary state
+    std::string extendedState;
+
+    /// The timestamp (nanoseconds) when the job started
+    uint64_t beginTime;
+    
+    /// The timestamp (nanoseconds) when the job finished
+    uint64_t endTime;
+
+    /// The optional timestamp (nanoseconds) when the job refreshed its state as "still alive"
+    uint64_t heartbeatTime;
+
+    /// The priority level
+    int priority;
+
+    /// The scheduling parameter of the job allowing it to run w/o interfering
+    /// with other jobs in relevant execution contexts
+    bool exclusive;
+
+    /// The scheduling parameter allowing the job to be cancelled by job
+    /// schedulers if needed
+    bool preemptable;
+
+    /// The optional collection (key-value pairs) of extended attributes
+    std::list<std::pair<std::string, std::string>> kvInfo;
+
+    /**
+     * Translate the structure into a JSON object
+     *
+     * @return
+     *   JSON representation of the structure
+     */
+    nlohmann::json toJson() const;
+};
+
 
 /**
   * Class DatabaseServices is a high-level interface to the database services
@@ -472,7 +593,7 @@ public:
                                                             size_t maxEntries=0) = 0;
 
     /**
-     * Find am information on a controller
+     * Find an information on a controller
      * 
      * @param id
      *   the unique identifier of the Controller
@@ -484,7 +605,110 @@ public:
      *   if no Controller was found for the specified identifier
      */
     virtual ControllerInfo controller(std::string const& id) = 0;
+
+    /**
+     * Find an information on controllers in the specified scope.
+     *
+     * @param fromTimeStamp
+     *   (optional) the oldest (inclusive) timestamp for the search
+     * 
+     * @param toTimeStamp
+     *   (optional) the most recent (inclusive) timestamp for the search
+     *
+     * @param maxEntries
+     *   (optional) the maximum number of controllers to be reported. The default
+     *   values of 0 doesn't impose any limits.
+     *
+     * @return
+     *   a collection of controllers descriptors sorted by the start time in
+     *   in the descent order
+     */
+    virtual std::list<ControllerInfo> controllers(uint64_t fromTimeStamp=0,
+                                                  uint64_t toTimeStamp=std::numeric_limits<uint64_t>::max(),
+                                                  size_t maxEntries=0) = 0;
+
+    /**
+     * Find an information on a request
+     * 
+     * @param id
+     *   the unique identifier of a request
+     * 
+     * @return
+     *   the description of the request
+     * 
+     * @throws DatabaseServicesNotFound
+     *   if no request was found for the specified identifier
+     */
+    virtual RequestInfo request(std::string const& id) = 0;
     
+    /**
+     * Find an information on requests in the specified scope
+     * 
+     * @param jobId
+     *   the unique identifier of a parent job
+     *
+     * @param fromTimeStamp
+     *   (optional) the oldest (inclusive) timestamp for the search
+     * 
+     * @param toTimeStamp
+     *   (optional) the most recent (inclusive) timestamp for the search
+     *
+     * @param maxEntries
+     *   (optional) the maximum number of requests to be reported. The default
+     *   values of 0 doesn't impose any limits.
+     *
+     * @return
+     *   a collection of request descriptors sorted by the creation time in
+     *   in the descent order
+     */
+    virtual std::list<RequestInfo> requests(std::string const& jobId="",
+                                            uint64_t fromTimeStamp=0,
+                                            uint64_t toTimeStamp=std::numeric_limits<uint64_t>::max(),
+                                            size_t maxEntries=0) = 0;
+    
+    /**
+     * Find an information on a job
+     * 
+     * @param id
+     *   the unique identifier of a job
+     * 
+     * @return
+     *   the description of the job
+     * 
+     * @throws DatabaseServicesNotFound
+     *   if no job was found for the specified identifier
+     */
+    virtual JobInfo job(std::string const& id) = 0;
+
+    /**
+     * Find an information on jobs in the specified scope
+     *
+     * @param controllerId
+     *   the unique identifier of a Controller
+     *
+     * @param parentJobId
+     *   the unique identifier of a parent job
+     *
+     * @param fromTimeStamp
+     *   (optional) the oldest (inclusive) timestamp for the search
+     * 
+     * @param toTimeStamp
+     *   (optional) the most recent (inclusive) timestamp for the search
+     *
+     * @param maxEntries
+     *   (optional) the maximum number of jobs to be reported. The default
+     *   values of 0 doesn't impose any limits.
+     *
+     * @return
+     *   a collection of jobs descriptors sorted by the start time in
+     *   in the descent order
+     */
+    virtual std::list<JobInfo> jobs(std::string const& controllerId="",
+                                    std::string const& parentJobId="",
+                                    uint64_t fromTimeStamp=0,
+                                    uint64_t toTimeStamp=std::numeric_limits<uint64_t>::max(),
+                                    size_t maxEntries=0) = 0;
+
 protected:
 
     DatabaseServices() = default;
