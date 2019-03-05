@@ -19,7 +19,7 @@ build_data['module_objects']['qmeta:python'] = py_wrapper
 
 # runs standard stuff _after_ above to install Python module
 standardModule(env,  exclude="./qmetaPythonWrapper.cc",
-               unit_tests=[])
+               unit_tests=[], test_libs='log4cxx')
 
 # install schema files
 build_data['install'] += env.Install("$prefix/share/qserv/schema/qmeta", env.Glob("schema/*.sql"))

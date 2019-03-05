@@ -81,6 +81,15 @@ public:
         return _mySqlQmetaConfig;
     }
 
+    /* Get MySQL configuration for czar MySQL QStatusData
+     *
+     * @return a structure containing MySQL parameters
+     */
+    mysql::MySqlConfig const& getMySqlQStatusDataConfig() const {
+        return _mySqlQstatusDataConfig;
+    }
+
+
     /* Get CSS parameters as a collection of key-value
      *
      * Do not check CSS parameters consistency
@@ -136,6 +145,13 @@ public:
         return _xrootdCBThreadsInit;
     }
 
+    /* Get minimum number of seconds between QMeta chunk completion updates.
+     *
+     * @return seconds between QMeta chunk completion updates.
+     */
+    int getQMetaSecondsBetweenChunkUpdates() const {
+        return _qMetaSecsBetweenChunkCompletionUpdates;
+    }
 private:
 
     CzarConfig(util::ConfigStore const& ConfigStore);
@@ -147,11 +163,13 @@ private:
     // Parameters below used in ccontrol::UserQueryFactory
     std::map<std::string, std::string> const _cssConfigMap;
     mysql::MySqlConfig const _mySqlQmetaConfig;
+    mysql::MySqlConfig const _mySqlQstatusDataConfig;
     std::string const _xrootdFrontendUrl;
     std::string const _emptyChunkPath;
     int const _largeResultConcurrentMerges;
     int const _xrootdCBThreadsMax;
     int const _xrootdCBThreadsInit;
+    int const _qMetaSecsBetweenChunkCompletionUpdates;
 };
 
 }}} // namespace lsst::qserv::czar

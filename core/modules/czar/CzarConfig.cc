@@ -73,17 +73,25 @@ CzarConfig::CzarConfig(util::ConfigStore const& configStore)
             configStore.getInt("resultdb.maxtablesize_mb", 5001)),
       _logConfig(configStore.get("log.logConfig")),
       _cssConfigMap(configStore.getSectionConfigMap("css")),
-      _mySqlQmetaConfig(configStore.get( "qmeta.user", "qsmaster"),
+      _mySqlQmetaConfig(configStore.get("qmeta.user", "qsmaster"),
                         configStore.get("qmeta.passwd"),
                         configStore.get("qmeta.host"),
                         configStore.getInt("qmeta.port", 3306),
                         configStore.get("qmeta.unix_socket"),
                         configStore.get("qmeta.db", "qservMeta")),
-       _xrootdFrontendUrl(configStore.get("frontend.xrootd", "localhost:1094")),
-       _emptyChunkPath(configStore.get("partitioner.emptyChunkPath", ".")),
-       _largeResultConcurrentMerges(configStore.getInt("tuning.largeResultConcurrentMerges", 3)),
-       _xrootdCBThreadsMax(configStore.getInt("tuning.xrootdCBThreadsMax", 500)),
-       _xrootdCBThreadsInit(configStore.getInt("tuning.xrootdCBThreadsInit", 50)) {
+      _mySqlQstatusDataConfig(configStore.get("qstatus.user", "qsmaster"),
+                              configStore.get("qstatus.passwd"),
+                              configStore.get("qstatus.host"),
+                              configStore.getInt("qstatus.port", 3306),
+                              configStore.get("qstatus.unix_socket"),
+                              configStore.get("qstatus.db", "qservStatusData")),
+      _xrootdFrontendUrl(configStore.get("frontend.xrootd", "localhost:1094")),
+      _emptyChunkPath(configStore.get("partitioner.emptyChunkPath", ".")),
+      _largeResultConcurrentMerges(configStore.getInt("tuning.largeResultConcurrentMerges", 3)),
+      _xrootdCBThreadsMax(configStore.getInt("tuning.xrootdCBThreadsMax", 500)),
+      _xrootdCBThreadsInit(configStore.getInt("tuning.xrootdCBThreadsInit", 50)),
+      _qMetaSecsBetweenChunkCompletionUpdates(configStore.getInt(
+                                               "tuning.qMetaSecsBetweenChunkCompletionUpdates", 60)) {
 }
 
 std::ostream& operator<<(std::ostream &out, CzarConfig const& czarConfig) {
@@ -91,6 +99,7 @@ std::ostream& operator<<(std::ostream &out, CzarConfig const& czarConfig) {
            ", emptyChunkPath=" << czarConfig._emptyChunkPath <<
            ", logConfig=" << czarConfig._logConfig <<
            ", mySqlQmetaConfig=" << czarConfig._mySqlQmetaConfig <<
+           ", mySqlQStatusDataConfig=" << czarConfig._mySqlQstatusDataConfig <<
            ", mySqlResultConfig=" << czarConfig._mySqlResultConfig <<
            ", xrootdFrontendUrl=" << czarConfig._xrootdFrontendUrl <<
            "]";

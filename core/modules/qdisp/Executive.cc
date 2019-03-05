@@ -65,6 +65,8 @@
 #include "qdisp/QueryRequest.h"
 #include "qdisp/ResponseHandler.h"
 #include "qdisp/XrdSsiMocks.h"
+#include "qmeta/Exceptions.h"
+#include "qmeta/QStatus.h"
 #include "util/EventThread.h"
 
 extern XrdSsiProvider *XrdSsiProviderClient;
@@ -90,9 +92,11 @@ namespace qdisp {
 ////////////////////////////////////////////////////////////////////////
 // class Executive implementation
 ////////////////////////////////////////////////////////////////////////
-Executive::Executive(Config::Ptr const& c, std::shared_ptr<MessageStore> const& ms,
-                     std::shared_ptr<QdispPool> const& qdispPool)
-    : _config(*c), _messageStore(ms), _qdispPool(qdispPool) {
+Executive::Executive(Config const& c, std::shared_ptr<MessageStore> const& ms,
+                     std::shared_ptr<QdispPool> const& qdispPool,
+                     std::shared_ptr<qmeta::QStatus> const& qStatus)
+    : _config(c), _messageStore(ms), _qdispPool(qdispPool), _qMeta(qStatus) {
+    _secondsBetweenQMetaUpdates = std::chrono::seconds(_config.secondsBetweenChunkUpdates);
     _setup();
 }
 
@@ -103,9 +107,10 @@ Executive::~Executive() {
 }
 
 
-Executive::Ptr Executive::create(Config::Ptr const& c, std::shared_ptr<MessageStore> const& ms,
-                                       std::shared_ptr<QdispPool> const& qdispPool) {
-    Executive::Ptr exec{new Executive(c, ms, qdispPool)}; // make_shared dislikes private constructor.
+Executive::Ptr Executive::create(Config const& c, std::shared_ptr<MessageStore> const& ms,
+                                 std::shared_ptr<QdispPool> const& qdispPool,
+                                 std::shared_ptr<qmeta::QStatus> const& qMeta) {
+    Executive::Ptr exec{new Executive(c, ms, qdispPool, qMeta)}; // make_shared dislikes private constructor.
     return exec;
 }
 
@@ -242,7 +247,9 @@ bool Executive::startQuery(std::shared_ptr<JobQuery> const& jobQuery) {
 bool Executive::_addJobToMap(JobQuery::Ptr const& job) {
     auto entry = std::pair<int, JobQuery::Ptr>(job->getIdInt(), job);
     std::lock_guard<std::recursive_mutex> lockJobMap(_jobMapMtx);
-    return _jobMap.insert(entry).second;
+    bool res = _jobMap.insert(entry).second;
+    _totalJobs = _jobMap.size();
+    return res;
 }
 
 bool Executive::join() {
@@ -420,6 +427,7 @@ bool Executive::_track(int jobId, std::shared_ptr<JobQuery> const& r) {
 
 void Executive::_unTrack(int jobId) {
     bool untracked = false;
+    int incompleteJobs = _totalJobs;
     std::string s;
     {
         std::lock_guard<std::mutex> lock(_incompleteJobsMutex);
@@ -427,6 +435,7 @@ void Executive::_unTrack(int jobId) {
         if (i != _incompleteJobs.end()) {
             _incompleteJobs.erase(i);
             untracked = true;
+            incompleteJobs = _incompleteJobs.size();
             if (_incompleteJobs.empty()) _allJobsComplete.notify_all();
         }
         if (!untracked || LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
@@ -437,6 +446,28 @@ void Executive::_unTrack(int jobId) {
     LOGS(_log, (untracked ? LOG_LVL_DEBUG : LOG_LVL_WARN),
          "Executive UNTRACKING " << QueryIdHelper::makeIdStr(_id, jobId)
              << " " << (untracked ? "success":"failed") << "::" << s);
+    // Every time a chunk completes, consider sending an update to QMeta.
+    // Important chunks to log: first, last, middle
+    // limiting factors: no more than one update a minute (config)
+    if (untracked) {
+        auto now = std::chrono::system_clock::now();
+        std::unique_lock<std::mutex> lastUpdateLock(_lastQMetaMtx);
+        if (now - _lastQMetaUpdate > _secondsBetweenQMetaUpdates
+           || incompleteJobs == _totalJobs/2
+           || incompleteJobs == 0) {
+            _lastQMetaUpdate = now;
+            lastUpdateLock.unlock(); // unlock asap, _qMeta write can be slow.
+            int completedJobs = _totalJobs -  incompleteJobs;
+            if (_qMeta != nullptr) {
+                // This is not vital (logging), if it fails keep going.
+                try {
+                    _qMeta->queryStatsTmpChunkUpdate(_id, completedJobs);
+                } catch (qmeta::SqlError const& e) {
+                    LOGS(_log, LOG_LVL_WARN, "Failed to update StatsTmp " << e.what());
+                }
+            }
+        }
+    }
 }
 
 

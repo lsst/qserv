@@ -31,6 +31,7 @@
 
 // Qserv headers
 #include "qmeta/QInfo.h"
+#include "qmeta/QStats.h"
 #include "qmeta/types.h"
 
 

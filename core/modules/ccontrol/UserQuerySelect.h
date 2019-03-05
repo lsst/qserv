@@ -42,6 +42,7 @@
 #include "ccontrol/UserQuery.h"
 #include "css/StripingParams.h"
 #include "qmeta/QInfo.h"
+#include "qmeta/QStatus.h"
 #include "qmeta/types.h"
 #include "qproc/ChunkSpec.h"
 #include "query/Constraint.h"
@@ -88,6 +89,7 @@ public:
                     std::shared_ptr<rproc::InfileMergerConfig> const& infileMergerConfig,
                     std::shared_ptr<qproc::SecondaryIndex> const& secondaryIndex,
                     std::shared_ptr<qmeta::QMeta> const& queryMetadata,
+                    std::shared_ptr<qmeta::QStatus> const& queryStatsData,
                     qmeta::CzarId czarId,
                     std::shared_ptr<qdisp::QdispPool> const& qdispPool,
                     std::string const& errorExtra,
@@ -159,6 +161,7 @@ private:
     std::shared_ptr<rproc::InfileMerger> _infileMerger;
     std::shared_ptr<qproc::SecondaryIndex> _secondaryIndex;
     std::shared_ptr<qmeta::QMeta> _queryMetadata;
+    std::shared_ptr<qmeta::QStatus> _queryStatsData;
 
     qmeta::CzarId _qMetaCzarId; ///< Czar ID in QMeta database
     QueryId _qMetaQueryId{0};      ///< Query ID in QMeta database

@@ -340,6 +340,7 @@ QMetaMysql::registerQuery(QInfo const& qInfo,
 
     trans.commit();
     LOGS(_log, LOG_LVL_DEBUG, qIdStr << " assigned to UserQuery:" << qInfo.queryText());
+
     return queryId;
 }
 
@@ -773,7 +774,6 @@ QMetaMysql::getQueriesForTable(std::string const& dbName,
 // Check that all necessary tables exist or create them
 void
 QMetaMysql::_checkDb() {
-
     // this is only called from constructor, no locking is needed here
 
     std::vector<std::string> tables;

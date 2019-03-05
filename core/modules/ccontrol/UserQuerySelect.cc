@@ -86,6 +86,7 @@
 #include "qdisp/Executive.h"
 #include "qdisp/MessageStore.h"
 #include "qmeta/QMeta.h"
+#include "qmeta/Exceptions.h"
 #include "qproc/geomAdapter.h"
 #include "qproc/IndexMap.h"
 #include "qproc/QuerySession.h"
@@ -155,13 +156,15 @@ UserQuerySelect::UserQuerySelect(std::shared_ptr<qproc::QuerySession> const& qs,
                                  std::shared_ptr<rproc::InfileMergerConfig> const& infileMergerConfig,
                                  std::shared_ptr<qproc::SecondaryIndex> const& secondaryIndex,
                                  std::shared_ptr<qmeta::QMeta> const& queryMetadata,
+                                 std::shared_ptr<qmeta::QStatus> const& queryStatsData,
                                  qmeta::CzarId czarId,
                                  std::shared_ptr<qdisp::QdispPool> const& qdispPool,
                                  std::string const& errorExtra,
                                  bool async)
     :  _qSession(qs), _messageStore(messageStore), _executive(executive),
        _infileMergerConfig(infileMergerConfig), _secondaryIndex(secondaryIndex),
-       _queryMetadata(queryMetadata), _qMetaCzarId(czarId), _qdispPool(qdispPool),
+       _queryMetadata(queryMetadata), _queryStatsData(queryStatsData),
+       _qMetaCzarId(czarId), _qdispPool(qdispPool),
        _errorExtra(errorExtra), _async(async) {
 }
 
@@ -230,6 +233,13 @@ void UserQuerySelect::submit() {
     if (increaseThreadPriority) {
         threadPriority.storeOriginalValues();
         threadPriority.setPriorityPolicy(10);
+    }
+
+    // Add QStatsTmp table entry
+    try {
+        _queryStatsData->queryStatsTmpRegister(_qMetaQueryId, _qSession->getChunksSize());
+    } catch (qmeta::SqlError const& e) {
+        LOGS(_log, LOG_LVL_WARN, "Failed queryStatsTmpRegister " << getQueryIdString() << " " << e.what());
     }
 
     for(auto i = _qSession->cQueryBegin(), e = _qSession->cQueryEnd();
@@ -517,6 +527,12 @@ void UserQuerySelect::qMetaRegister(std::string const& resultLocation, std::stri
 void UserQuerySelect::_qMetaUpdateStatus(qmeta::QInfo::QStatus qStatus)
 {
     _queryMetadata->completeQuery(_qMetaQueryId, qStatus);
+    // Remove the row for temporary query statistics.
+    try {
+        _queryStatsData->queryStatsTmpRemove(_qMetaQueryId);
+    } catch (qmeta::SqlError const&) {
+        LOGS(_log, LOG_LVL_WARN, "queryStatsTmp remove failed " << _queryIdStr);
+    }
 }
 
 // add chunk information to qmeta

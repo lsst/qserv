@@ -52,6 +52,10 @@ class XrdSsiService;
 
 namespace lsst {
 namespace qserv {
+namespace qmeta {
+class QStatus;
+}
+
 namespace qdisp {
 
 class JobQuery;
@@ -68,19 +72,20 @@ public:
 
     struct Config {
         typedef std::shared_ptr<Config> Ptr;
-        Config(std::string const& serviceUrl_)
-            : serviceUrl(serviceUrl_) {}
+        Config(std::string const& serviceUrl_, int secsBetweenChunkUpdates_)
+            : serviceUrl(serviceUrl_), secondsBetweenChunkUpdates(secsBetweenChunkUpdates_) {}
         Config(int,int) : serviceUrl(getMockStr()) {}
 
         std::string serviceUrl; ///< XrdSsi service URL, e.g. localhost:1094
+        int secondsBetweenChunkUpdates; ///< Seconds between QMeta chunk updates.
         static std::string getMockStr() {return "Mock";};
     };
 
     /// Construct an Executive.
     /// If c->serviceUrl == Config::getMockStr(), then use XrdSsiServiceMock
     /// instead of a real XrdSsiService
-    static Executive::Ptr create(Config::Ptr const& c, std::shared_ptr<MessageStore> const& ms,
-                std::shared_ptr<QdispPool> const& qdispPool);
+    static Executive::Ptr create(Config const& c, std::shared_ptr<MessageStore> const& ms,
+                std::shared_ptr<QdispPool> const& qdispPool, std::shared_ptr<qmeta::QStatus> const& qMeta);
 
     ~Executive();
 
@@ -134,8 +139,8 @@ public:
     int endQSEASum{0}; // TEMPORARY-timing
 
 private:
-    Executive(Config::Ptr const& c, std::shared_ptr<MessageStore> const& ms,
-              std::shared_ptr<QdispPool> const& qdispPool);
+    Executive(Config const& c, std::shared_ptr<MessageStore> const& ms,
+              std::shared_ptr<QdispPool> const& qdispPool, std::shared_ptr<qmeta::QStatus> const& qStatus);
 
     void _setup();
 
@@ -152,11 +157,14 @@ private:
     void _printState(std::ostream& os);
 
     Config _config; ///< Personal copy of config
-    std::atomic<bool> _empty {true};
+    std::atomic<bool> _empty{true};
     std::shared_ptr<MessageStore> _messageStore; ///< MessageStore for logging
     XrdSsiService* _xrdSsiService; ///< RPC interface
     JobMap _jobMap; ///< Contains information about all jobs.
     JobMap _incompleteJobs; ///< Map of incomplete jobs.
+    /// How many jobs are used in this query. 1 avoids possible 0 of 0 jobs completed race condition.
+    /// The correct value is set when it is available.
+    std::atomic<int> _totalJobs{1};
     QdispPool::Ptr _qdispPool; ///< Shared thread pool for handling commands to and from workers.
 
     std::deque<PriorityCommand::Ptr> _jobStartCmdList; ///< list of jobs to start.
@@ -165,7 +173,7 @@ private:
     util::MultiError _multiError;
 
     std::atomic<int> _requestCount; ///< Count of submitted jobs
-    util::Flag<bool> _cancelled {false}; ///< Has execution been cancelled.
+    util::Flag<bool> _cancelled{false}; ///< Has execution been cancelled.
 
     // Mutexes
     std::mutex _incompleteJobsMutex; ///< protect incompleteJobs map.
@@ -177,8 +185,15 @@ private:
     mutable std::recursive_mutex _jobMapMtx;
 
     QueryId _id{0}; ///< Unique identifier for this query.
-    std::string    _idStr{QueryIdHelper::makeIdStr(0, true)};
+    std::string _idStr{QueryIdHelper::makeIdStr(0, true)};
     util::InstanceCount _instC{"Executive"};
+
+    std::shared_ptr<qmeta::QStatus> _qMeta;
+    /// Last time Executive updated QMeta, defaults to epoch for clock.
+    std::chrono::system_clock::time_point _lastQMetaUpdate;
+    /// Minimum number of seconds between QMeta chunk updates (set by config)
+    std::chrono::seconds _secondsBetweenQMetaUpdates{60};
+    std::mutex _lastQMetaMtx; ///< protects _lastQMetaUpdate.
 };
 
 class MarkCompleteFunc {
