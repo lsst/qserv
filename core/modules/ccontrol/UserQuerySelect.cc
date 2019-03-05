@@ -29,7 +29,7 @@
   *
   * Basic usage:
   *
-  * After constructing a UserQuery object with the UserQueryFactory...
+  * After constructing a UserQuery object ...
   *
   * getConstraints() -- retrieve constraints of the user query to be passed to
   * spatial region selection code in another layer.

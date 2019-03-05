@@ -116,6 +116,11 @@ void WhereClause::setRootTerm(std::shared_ptr<LogicalTerm> const& term) {
 }
 
 
+void WhereClause::addQsRestrictor(std::shared_ptr<QsRestrictor> const& qsRestrictor) {
+    _restrs->push_back(qsRestrictor);
+}
+
+
 std::shared_ptr<AndTerm> WhereClause::getRootAndTerm() const
 {
     // Find the global AND. If an OR term is root and has multiple terms, there is no global AND which means

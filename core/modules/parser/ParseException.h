@@ -32,17 +32,9 @@
 #include <stdexcept>
 #include <map>
 
-// Third-party headers
-#include <antlr/AST.hpp>
-
 // Qserv headers
 #include "global/Bug.h"
 
-// Forward
-namespace antlr {
-class ANTLRException;
-class RecognitionException;
-}
 
 namespace lsst {
 namespace qserv {
@@ -55,14 +47,10 @@ class ParseException : public std::runtime_error {
 public:
     ~ParseException() override = default;
 
-    ParseException(char const* msg, antlr::RefAST subTree);
-    ParseException(std::string const& msg, antlr::RefAST subTree);
-    /// Lexer errors don't have a subtree to reference.
-    ParseException(std::string const& msg, antlr::RecognitionException const&);
-    /// ANTLR errors have almost nothing inside
-    ParseException(std::string const& msg, antlr::ANTLRException const&);
+    /// Parse exception with a qserv "likely bug" (see global/Bug.h)
     explicit ParseException(Bug const& b);
-    /// Parse related exception where the antlr/antlr4 context need not be included.
+
+    /// Parse related exception where the antlr4 context need not be included.
     explicit ParseException(std::string const& msg);
 };
 

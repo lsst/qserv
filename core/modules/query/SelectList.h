@@ -43,9 +43,6 @@
 // Forward declarations
 namespace lsst {
 namespace qserv {
-namespace parser {
-    class SelectListFactory;
-}
 namespace query {
     class ColumnRefNodeMap;
     class ColumnAliasMap;
@@ -77,6 +74,8 @@ public:
 
     void addStar(std::string const& table);
 
+    void addValueExpr(ValueExprPtr const& valueExpr);
+
     std::string getGenerated();
 
     void renderTo(QueryTemplate& qt) const;
@@ -90,11 +89,9 @@ public:
         return _valueExprList;
     }
 
-    friend class parser::SelectListFactory;
-
     bool operator==(const SelectList& rhs);
-private:
 
+private:
     friend std::ostream& operator<<(std::ostream& os, SelectList const& sl);
     friend std::ostream& operator<<(std::ostream& os, SelectList const* sl);
 

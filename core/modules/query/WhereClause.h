@@ -87,6 +87,8 @@ public:
     // an OrTerm that contains term will be the root term.
     void setRootTerm(std::shared_ptr<LogicalTerm> const& term);
 
+    void addQsRestrictor(std::shared_ptr<QsRestrictor> const& qsRestrictor);
+
     std::shared_ptr<std::vector<std::shared_ptr<ColumnRef>> const> getColumnRefs() const;
     std::shared_ptr<AndTerm> getRootAndTerm() const;
 

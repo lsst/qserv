@@ -36,7 +36,6 @@
 
 // Qserv headers
 #include "css/CssAccess.h"
-#include "parser/SqlSQL2Parser.hpp" // (generated) SqlSQL2TokenTypes
 #include "qana/QueryPlugin.h"
 #include "query/BoolFactor.h"
 #include "query/BoolTerm.h"
@@ -131,7 +130,7 @@ void MatchTablePlugin::applyLogical(query::SelectStmt& stmt,
         std::make_shared<CompPredicate>();
     compPred->left = ValueExpr::newSimple(ValueFactor::newColumnRefFactor(
         std::make_shared<ColumnRef>("", "", mt.flagColName)));
-    compPred->op = SqlSQL2TokenTypes::NOT_EQUALS_OP;
+    compPred->op = CompPredicate::NOT_EQUALS_OP;
     compPred->right = ValueExpr::newSimple(ValueFactor::newConstFactor("2"));
     // Create BoolFactors for each Predicate node.
     std::shared_ptr<BoolFactor> bf1 = std::make_shared<BoolFactor>();

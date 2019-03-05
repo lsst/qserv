@@ -42,9 +42,6 @@
 #include <sstream>
 #include <stdexcept>
 
-// Third-party headers
-#include <antlr/NoViableAltException.hpp>
-
 // LSST headers
 #include "lsst/log/Log.h"
 
@@ -89,9 +86,8 @@ namespace qproc {
 ////////////////////////////////////////////////////////////////////////
 
 
-std::shared_ptr<query::SelectStmt> QuerySession::parseQuery(std::string const & statement,
-        parser::SelectParser::AntlrVersion version) {
-    auto parser = parser::SelectParser::newInstance(statement, version);
+std::shared_ptr<query::SelectStmt> QuerySession::parseQuery(std::string const & statement) {
+    auto parser = parser::SelectParser::newInstance(statement);
     try {
         parser->setup();
     } catch(parser::ParseException const& e) {
@@ -129,8 +125,6 @@ void QuerySession::analyzeQuery(std::string const& sql, std::shared_ptr<query::S
         _error = std::string("NoSuchDb:") + e.what();
     } catch(css::NoSuchTable& e) {
         _error = std::string("NoSuchTable:") + e.what();
-    } catch(antlr::NoViableAltException& e) {
-        _error = std::string("ANTLR exception:") + e.getMessage();
     } catch(Bug& b) {
         _error = std::string("Qserv bug:") + b.what();
     } catch(std::exception const& e) {

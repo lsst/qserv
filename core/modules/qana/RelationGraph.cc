@@ -41,7 +41,6 @@
 #include "qana/QueryNotEvaluableError.h"
 #include "qana/TableInfoPool.h"
 
-#include "parser/SqlSQL2Parser.hpp" // (generated) SqlSQL2TokenTypes
 #include "query/AndTerm.h"
 #include "query/BoolFactor.h"
 #include "query/ColumnRef.h"
@@ -313,7 +312,7 @@ std::pair<ColumnRef::Ptr, ColumnRef::Ptr> const getEqColumnRefs(
     }
     CompPredicate::Ptr cp =
         std::dynamic_pointer_cast<CompPredicate>(bf->_terms.front());
-    if (!cp || cp->op != SqlSQL2TokenTypes::EQUALS_OP) {
+    if (!cp || cp->op != query::CompPredicate::EQUALS_OP) {
         return p;
     }
     // Extract column references (if they exist)
@@ -530,17 +529,20 @@ size_t RelationGraph::_addSpEdges(BoolTerm::Ptr bt)
     FuncExpr::Ptr fe;
     double angSep = std::numeric_limits<double>::quiet_NaN();
     switch (cp->op) {
-        case SqlSQL2TokenTypes::LESS_THAN_OP: // fallthrough
-        case SqlSQL2TokenTypes::LESS_THAN_OR_EQUALS_OP:
+        case query::CompPredicate::LESS_THAN_OP: // fallthrough
+        case query::CompPredicate::LESS_THAN_OR_EQUALS_OP:
             fe = getAngSepFunc(cp->left);
             angSep = getNumericConst(cp->right);
             break;
-        case SqlSQL2TokenTypes::GREATER_THAN_OP: // fallthrough
-        case SqlSQL2TokenTypes::GREATER_THAN_OR_EQUALS_OP:
+        case query::CompPredicate::GREATER_THAN_OP: // fallthrough
+        case query::CompPredicate::GREATER_THAN_OR_EQUALS_OP:
             angSep = getNumericConst(cp->left);
             fe = getAngSepFunc(cp->right);
             break;
-        case SqlSQL2TokenTypes::EQUALS_OP:
+        case query::CompPredicate::EQUALS_OP:
+        case query::CompPredicate::NULL_SAFE_EQUALS_OP:
+        case query::CompPredicate::NOT_EQUALS_OP:
+        case query::CompPredicate::NOT_EQUALS_OP_ALT:
             // While this doesn't make much sense numerically (floating
             // point numbers are being tested for equality), it is
             // technically evaluable.
@@ -552,6 +554,8 @@ size_t RelationGraph::_addSpEdges(BoolTerm::Ptr bt)
                 angSep = getNumericConst(cp->right);
             }
             break;
+        default:
+            throw QueryNotEvaluableError("Unhandled comparison operator:" + cp->op);
     }
     if (!fe || boost::math::isnan(angSep)) {
         // The scisql_angSep() call and/or numeric constant is missing,

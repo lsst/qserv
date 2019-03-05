@@ -93,6 +93,12 @@ SelectList::addStar(std::string const& table) {
 }
 
 
+void
+SelectList::addValueExpr(ValueExprPtr const& valueExpr) {
+    _valueExprList->push_back(valueExpr);
+}
+
+
 std::ostream&
 operator<<(std::ostream& os, SelectList const& sl) {
     os << "SelectList(" << util::ptrPrintable(sl._valueExprList, "", "") << ")";

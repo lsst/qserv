@@ -65,16 +65,14 @@ class SelectParser {
 public:
     typedef std::shared_ptr<SelectParser> Ptr;
 
-    enum AntlrVersion { ANTLR2, ANTLR4 };
-
     /// Create a new instance of the SelectParser, that will use the specified parser code (using version 2
     /// or version 4) to parse the statement.
     /// Does not throw.
-    static Ptr newInstance(std::string const& statement, AntlrVersion v);
+    static Ptr newInstance(std::string const& statement);
 
     /// Convenience function to get a SelectStatement.
     /// This function calls SelectParser::setup; so it may throw any exception thrown by that function.
-    static std::shared_ptr<query::SelectStmt> makeSelectStmt(std::string const& statement, AntlrVersion v);
+    static std::shared_ptr<query::SelectStmt> makeSelectStmt(std::string const& statement);
 
     /// Setup the parser and parse into a SelectStmt
     /// May throw a ParseException (including adapter_order_error and adapter_execution_error)
@@ -86,7 +84,7 @@ public:
     std::shared_ptr<query::SelectStmt> getSelectStmt() { return _selectStmt; }
 
 private:
-    SelectParser(std::string const& statement, AntlrVersion v);
+    SelectParser(std::string const& statement);
 
     std::string const _statement;
     std::shared_ptr<query::SelectStmt> _selectStmt;

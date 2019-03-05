@@ -36,7 +36,6 @@
 
 // Qserv headers
 #include "ccontrol/UserQueryType.h"
-#include "ccontrol/UserQueryFactory.h"
 #include "parser/ParseException.h"
 #include "parser/SelectParser.h"
 #include "qproc/QuerySession.h"
@@ -50,7 +49,6 @@
 #include "query/OrTerm.h"
 #include "query/SelectList.h"
 #include "query/SelectStmt.h"
-#include "query/SqlSQL2Tokens.h"
 #include "query/ValueFactor.h"
 #include "query/WhereClause.h"
 
@@ -136,7 +134,7 @@ static const std::vector<Antlr4CompareQueries> ANTLR4_COMPARE_QUERIES = {
             auto andTerm = std::dynamic_pointer_cast<query::AndTerm>(orTerm->_terms[0]);
             auto boolFactor = std::dynamic_pointer_cast<query::BoolFactor>(andTerm->_terms[0]);
             auto compPredicate = std::dynamic_pointer_cast<query::CompPredicate>(boolFactor->_terms[0]);
-            compPredicate->op = SqlSQL2Tokens::NULL_SAFE_EQUALS_OP;
+            compPredicate->op = query::CompPredicate::NULL_SAFE_EQUALS_OP;
         }
     ),
 
@@ -373,12 +371,12 @@ static const std::vector<Antlr4CompareQueries> ANTLR4_COMPARE_QUERIES = {
 BOOST_DATA_TEST_CASE(antlr4_compare, ANTLR4_COMPARE_QUERIES, queryInfo) {
     query::SelectStmt::Ptr selectStatement;
     BOOST_REQUIRE_NO_THROW(
-        selectStatement = parser::SelectParser::makeSelectStmt(queryInfo.query, parser::SelectParser::ANTLR4));
+        selectStatement = parser::SelectParser::makeSelectStmt(queryInfo.query));
     BOOST_REQUIRE(selectStatement != nullptr);
 
     query::SelectStmt::Ptr compSelectStatement;
     BOOST_REQUIRE_NO_THROW(
-        compSelectStatement = parser::SelectParser::makeSelectStmt(queryInfo.compQuery, parser::SelectParser::ANTLR4));
+        compSelectStatement = parser::SelectParser::makeSelectStmt(queryInfo.compQuery));
     BOOST_REQUIRE(compSelectStatement != nullptr);
 
     if (queryInfo.modFunc != nullptr) {
@@ -459,7 +457,7 @@ static const std::vector< ParseErrorQueryInfo > PARSE_ERROR_QUERIES = {
 
 BOOST_DATA_TEST_CASE(expected_parse_error, PARSE_ERROR_QUERIES, queryInfo) {
     auto querySession = qproc::QuerySession();
-    auto selectStmt = querySession.parseQuery(queryInfo.query, parser::SelectParser::ANTLR4);
+    auto selectStmt = querySession.parseQuery(queryInfo.query);
     BOOST_REQUIRE_EQUAL(selectStmt, nullptr);
     BOOST_REQUIRE_EQUAL(querySession.getError(), queryInfo.errorMessage);
 }

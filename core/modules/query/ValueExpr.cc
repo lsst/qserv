@@ -133,6 +133,22 @@ ValueExpr::ValueExpr() {
 ValueExpr::ValueExpr(FactorOpVector factorOpVec) : _factorOps(factorOpVec) {}
 
 
+void ValueExpr::addValueFactor(std::shared_ptr<query::ValueFactor> valueFactor) {
+    query::ValueExpr::FactorOp factorOp;
+    factorOp.factor = valueFactor;
+    _factorOps.push_back(factorOp);
+}
+
+
+bool ValueExpr::addOp(query::ValueExpr::Op op) {
+    if (_factorOps.empty()) {
+        return false;
+    }
+    _factorOps.back().op = op;
+    return true;
+}
+
+
 std::shared_ptr<ColumnRef> ValueExpr::copyAsColumnRef() const {
     std::shared_ptr<ColumnRef> cr;
     if (_factorOps.size() != 1) { return cr; } // Empty or Not a single ColumnRef

@@ -29,7 +29,6 @@
 #include "ccontrol/UserQueryError.h"
 #include "query/ColumnRef.h"
 #include "query/QueryTemplate.h"
-#include "query/SqlSQL2Tokens.h"
 #include "query/ValueExpr.h"
 
 
@@ -53,14 +52,14 @@ void CompPredicate::renderTo(QueryTemplate& qt) const {
     ValueExpr::render r(qt, false);
     r.applyToQT(left);
     switch(op) {
-        case SqlSQL2Tokens::EQUALS_OP: qt.append("="); break;
-        case SqlSQL2Tokens::NULL_SAFE_EQUALS_OP: qt.append("<=>"); break;
-        case SqlSQL2Tokens::NOT_EQUALS_OP: qt.append("<>"); break;
-        case SqlSQL2Tokens::LESS_THAN_OP: qt.append("<"); break;
-        case SqlSQL2Tokens::GREATER_THAN_OP: qt.append(">"); break;
-        case SqlSQL2Tokens::LESS_THAN_OR_EQUALS_OP: qt.append("<="); break;
-        case SqlSQL2Tokens::GREATER_THAN_OR_EQUALS_OP: qt.append(">="); break;
-        case SqlSQL2Tokens::NOT_EQUALS_OP_ALT: qt.append("!="); break;
+        case EQUALS_OP: qt.append("="); break;
+        case NULL_SAFE_EQUALS_OP: qt.append("<=>"); break;
+        case NOT_EQUALS_OP: qt.append("<>"); break;
+        case LESS_THAN_OP: qt.append("<"); break;
+        case GREATER_THAN_OP: qt.append(">"); break;
+        case LESS_THAN_OR_EQUALS_OP: qt.append("<="); break;
+        case GREATER_THAN_OR_EQUALS_OP: qt.append(">="); break;
+        case NOT_EQUALS_OP_ALT: qt.append("!="); break;
         default: throw ccontrol::UserQueryBug("Unhandled op:" + std::to_string(op));
     }
     r.applyToQT(right);
@@ -73,28 +72,28 @@ void CompPredicate::findValueExprs(std::vector<std::shared_ptr<ValueExpr>>& vect
 }
 
 
-int CompPredicate::lookupOp(char const* op) {
+CompPredicate::OpType CompPredicate::lookupOp(char const* op) {
     switch(op[0]) {
         case '<':
             if (op[1] == '\0') {
-                return SqlSQL2Tokens::LESS_THAN_OP;
+                return LESS_THAN_OP;
             } else if (op[1] == '>') {
-                return SqlSQL2Tokens::NOT_EQUALS_OP;
+                return NOT_EQUALS_OP;
             } else if (op[1] == '=') {
-                return SqlSQL2Tokens::LESS_THAN_OR_EQUALS_OP;
+                return LESS_THAN_OR_EQUALS_OP;
             }
             throw std::invalid_argument("Invalid op string <?");
 
         case '>':
             if (op[1] == '\0') {
-                return SqlSQL2Tokens::GREATER_THAN_OP;
+                return GREATER_THAN_OP;
             } else if (op[1] == '=') {
-                return SqlSQL2Tokens::GREATER_THAN_OR_EQUALS_OP;
+                return GREATER_THAN_OR_EQUALS_OP;
             }
             throw std::invalid_argument("Invalid op string >?");
 
         case '=':
-            return SqlSQL2Tokens::EQUALS_OP;
+            return EQUALS_OP;
 
         default:
             throw std::invalid_argument("Invalid op string ?");

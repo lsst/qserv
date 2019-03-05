@@ -49,12 +49,23 @@ namespace query {
 /// (literals can be row values)
 class CompPredicate : public Predicate {
 public:
+    enum OpType {
+        EQUALS_OP,                  // =
+        NULL_SAFE_EQUALS_OP,        // <=>
+        NOT_EQUALS_OP,              // <>
+        LESS_THAN_OP,               // <
+        GREATER_THAN_OP,            // >
+        LESS_THAN_OR_EQUALS_OP,     // <=
+        GREATER_THAN_OR_EQUALS_OP,  // >=
+        NOT_EQUALS_OP_ALT,          // !=
+    };
+
     typedef std::shared_ptr<CompPredicate> Ptr;
 
     CompPredicate() = default;
 
     /// Construct a CompPredicate that owns the given args and uses them for its expression.
-    CompPredicate(std::shared_ptr<ValueExpr> const& iLeft, int iOp,
+    CompPredicate(std::shared_ptr<ValueExpr> const& iLeft, OpType iOp,
             std::shared_ptr<ValueExpr> const& iRight)
         : left(iLeft), op(iOp), right(iRight) {}
 
@@ -69,10 +80,10 @@ public:
     BoolFactorTerm::Ptr copySyntax() const override { return clone(); }
     bool operator==(BoolFactorTerm const& rhs) const override;
 
-    static int lookupOp(char const* op);
+    static OpType lookupOp(char const* op);
 
     std::shared_ptr<ValueExpr> left;
-    int op; // Parser token type of operator
+    OpType op; // Parser token type of operator
     std::shared_ptr<ValueExpr> right;
 
 protected:

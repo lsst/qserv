@@ -45,9 +45,6 @@
 // Forward declarations
 namespace lsst {
 namespace qserv {
-namespace parser {
-    class ModFactory;
-}
 namespace query {
     class QueryTemplate;
 }}}
@@ -80,7 +77,6 @@ public:
 
 private:
     friend std::ostream& operator<<(std::ostream& os, GroupByTerm const& gb);
-    friend class parser::ModFactory;
 
     ValueExprPtr _expr;
     std::string _collate;
@@ -113,7 +109,6 @@ public:
 private:
     friend std::ostream& operator<<(std::ostream& os, GroupByClause const& gc);
     friend std::ostream& operator<<(std::ostream& os, GroupByClause const* gc);
-    friend class parser::ModFactory;
 
     void _addTerm(GroupByTerm const& t) { _terms->push_back(t); }
     std::shared_ptr<List> _terms;

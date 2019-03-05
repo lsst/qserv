@@ -43,18 +43,11 @@
 #include <vector>
 
 // Third-party headers
-#include <antlr/CommonAST.hpp>
-
 #include "boost/bind.hpp"
 
 // Qserv headers
 #include "global/Bug.h"
 #include "parser/ParseException.h"
-#include "parser/parseTreeUtil.h"
-#include "parser/SelectFactory.h"
-#include "parser/SqlSQL2Parser.hpp"   //!!! Order is important, SqlSQL2Parser must be first
-#include "parser/SqlSQL2Lexer.hpp"
-#include "parser/SqlSQL2TokenTypes.hpp"
 #include "query/SelectStmt.h"
 #include "util/IterableFormatter.h"
 
@@ -68,14 +61,6 @@
 // must come after QSMySqlLexer & Parser because of namespace collision
 #include "lsst/log/Log.h"
 
-// ANTLR headers, declare after auto-generated headers to
-// reduce namespace pollution
-#include <antlr/MismatchedCharException.hpp>
-#include <antlr/MismatchedTokenException.hpp>
-#include <antlr/NoViableAltException.hpp>
-#include <antlr/NoViableAltForCharException.hpp>
-#include <antlr/RecognitionException.hpp>
-#include <antlr/SemanticException.hpp>
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.parser.SelectParser");
@@ -98,9 +83,11 @@ VecPairStr getTokenPairs(antlr4::CommonTokenStream & tokens, QSMySqlLexer & lexe
 
 }
 
+
 namespace lsst {
 namespace qserv {
 namespace parser {
+
 
 ////////////////////////////////////////////////////////////////////////
 // AntlrParser -- Antlr parsing complex
@@ -164,76 +151,6 @@ protected:
 
 private:
     State _state {INIT};
-};
-
-class Antlr2Parser : public AntlrParser {
-public:
-    Antlr2Parser(std::string const& q)
-        : statement(q)
-        , stream(q, std::stringstream::in | std::stringstream::out)
-        , lexer(stream)
-        , parser(lexer)
-    {}
-
-    void setup() override {
-        changeState(SETUP_DONE);
-        sf.attachTo(parser);
-    }
-
-    void run() override {
-        changeState(RUN_DONE);
-        parser.initializeASTFactory(factory);
-        parser.setASTFactory(&factory);
-        try {
-            parser.qserv_stmt();
-        } catch(antlr::NoViableAltException& e) {
-            throw ParseException("Parse error(ANTLR):"
-                                 + e.getMessage(), e.node);
-        } catch(antlr::NoViableAltForCharException& e) {
-            throw ParseException("Parse error(unexpected char lex):"
-                                 + e.getMessage(), e);
-        } catch(antlr::MismatchedCharException& e) {
-            throw ParseException("Parse char mismatch error:"
-                                 + e.getMessage(), e);
-        } catch(antlr::MismatchedTokenException& e) {
-            throw ParseException("Parse token mismatch error:"
-                                 + e.getMessage(), e.node);
-        } catch(antlr::SemanticException& e) {
-            throw ParseException("Parse error(corrupted, semantic):"
-                                 + e.getMessage(), e);
-        } catch(antlr::RecognitionException& e) {
-            throw ParseException("Parse error(corrupted, recognition):"
-                                 + e.getMessage(), e);
-        } catch(antlr::ANTLRException& e) {
-            throw ParseException("Unknown ANTLR error:" + e.getMessage(), e);
-        } catch(ParseException& e) {
-            throw;
-        } catch (Bug& b) {
-            throw ParseException(b);
-        } catch (std::logic_error& e) {
-            throw Bug(e.what());
-        } catch (...) {
-            // leading underscores in literals as value_expr throw this.
-            throw Bug("Unknown parsing error");
-        }
-        RefAST a = parser.getAST();
-    }
-
-    query::SelectStmt::Ptr getStatement() override {
-        if (false == runTransitionDone()) {
-            throw ParseException("Parse error(INTERNAL): run has not been executed on the statement..");
-        }
-        return sf.getStatement();
-        // _selectStmt->diagnose(); // helpful for debugging.
-    }
-
-private:
-    SelectFactory sf;
-    std::string statement;
-    std::stringstream stream;
-    ASTFactory factory;
-    SqlSQL2Lexer lexer;
-    SqlSQL2Parser parser;
 };
 
 
@@ -363,26 +280,20 @@ private:
 ////////////////////////////////////////////////////////////////////////
 
 
-SelectParser::Ptr SelectParser::newInstance(std::string const& statement, AntlrVersion v) {
-    return std::shared_ptr<SelectParser>(new SelectParser(statement, v));
+SelectParser::Ptr SelectParser::newInstance(std::string const& statement) {
+    return std::shared_ptr<SelectParser>(new SelectParser(statement));
 }
 
 
-std::shared_ptr<query::SelectStmt> SelectParser::makeSelectStmt(
-        std::string const& statement, AntlrVersion v) {
-    auto parser = newInstance(statement, v);
+std::shared_ptr<query::SelectStmt> SelectParser::makeSelectStmt(std::string const& statement) {
+    auto parser = newInstance(statement);
     parser->setup();
     return parser->getSelectStmt();
 }
 
 
-SelectParser::SelectParser(std::string const& statement, AntlrVersion v)
+SelectParser::SelectParser(std::string const& statement)
     :_statement(statement) {
-    if (ANTLR2 == v) {
-        _aParser = std::make_shared<Antlr2Parser>(_statement);
-        return;
-    }
-
     _aParser = Antlr4Parser::create(_statement);
 }
 
