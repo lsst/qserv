@@ -82,6 +82,9 @@ public:
 
     static OpType lookupOp(char const* op);
 
+    static const char* opTypeToStr(CompPredicate::OpType op);
+    static const char* opTypeToEnumStr(CompPredicate::OpType op);
+
     std::shared_ptr<ValueExpr> left;
     OpType op; // Parser token type of operator
     std::shared_ptr<ValueExpr> right;
