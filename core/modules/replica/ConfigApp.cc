@@ -243,23 +243,23 @@ ConfigApp::ConfigApp(int argc, char* argv[])
 
     auto&& updateGeneralCmd = parser().command("UPDATE_GENERAL");
 
-    ::addCommandOption(updateGeneralCmd, _requestBufferSizeBytes);
-    ::addCommandOption(updateGeneralCmd, _retryTimeoutSec);
-    ::addCommandOption(updateGeneralCmd, _controllerThreads);
-    ::addCommandOption(updateGeneralCmd, _controllerHttpPort);
-    ::addCommandOption(updateGeneralCmd, _controllerHttpThreads);
-    ::addCommandOption(updateGeneralCmd, _controllerRequestTimeoutSec);
-    ::addCommandOption(updateGeneralCmd, _jobTimeoutSec);
-    ::addCommandOption(updateGeneralCmd, _jobHeartbeatTimeoutSec);
-    ::addCommandOption(updateGeneralCmd, _xrootdAutoNotify);
-    ::addCommandOption(updateGeneralCmd, _xrootdHost);
-    ::addCommandOption(updateGeneralCmd, _xrootdPort);
-    ::addCommandOption(updateGeneralCmd, _xrootdTimeoutSec);
-    ::addCommandOption(updateGeneralCmd, _databaseServicesPoolSize);
-    ::addCommandOption(updateGeneralCmd, _workerTechnology);
-    ::addCommandOption(updateGeneralCmd, _workerNumProcessingThreads);
-    ::addCommandOption(updateGeneralCmd, _fsNumProcessingThreads);
-    ::addCommandOption(updateGeneralCmd, _workerFsBufferSizeBytes);
+    ::addCommandOption(updateGeneralCmd, _general.requestBufferSizeBytes);
+    ::addCommandOption(updateGeneralCmd, _general.retryTimeoutSec);
+    ::addCommandOption(updateGeneralCmd, _general.controllerThreads);
+    ::addCommandOption(updateGeneralCmd, _general.controllerHttpPort);
+    ::addCommandOption(updateGeneralCmd, _general.controllerHttpThreads);
+    ::addCommandOption(updateGeneralCmd, _general.controllerRequestTimeoutSec);
+    ::addCommandOption(updateGeneralCmd, _general.jobTimeoutSec);
+    ::addCommandOption(updateGeneralCmd, _general.jobHeartbeatTimeoutSec);
+    ::addCommandOption(updateGeneralCmd, _general.xrootdAutoNotify);
+    ::addCommandOption(updateGeneralCmd, _general.xrootdHost);
+    ::addCommandOption(updateGeneralCmd, _general.xrootdPort);
+    ::addCommandOption(updateGeneralCmd, _general.xrootdTimeoutSec);
+    ::addCommandOption(updateGeneralCmd, _general.databaseServicesPoolSize);
+    ::addCommandOption(updateGeneralCmd, _general.workerTechnology);
+    ::addCommandOption(updateGeneralCmd, _general.workerNumProcessingThreads);
+    ::addCommandOption(updateGeneralCmd, _general.fsNumProcessingThreads);
+    ::addCommandOption(updateGeneralCmd, _general.workerFsBufferSizeBytes);
 
     // Command-specific parameters, options and flags
 
@@ -419,97 +419,98 @@ void ConfigApp::_dumpGeneralAsTable(string const& indent) const {
     vector<string> value;
     vector<string> description;
 
-    parameter.  push_back(                  _requestBufferSizeBytes.key);
-    value.      push_back(to_string(_config->requestBufferSizeBytes()));
-    description.push_back(                  _requestBufferSizeBytes.description);
+    parameter.  push_back(_general.requestBufferSizeBytes.key);
+    value.      push_back(_general.requestBufferSizeBytes.str(_config));
+    description.push_back(_general.requestBufferSizeBytes.description);
 
-    parameter.  push_back(                  _retryTimeoutSec.key);
-    value.      push_back(to_string(_config->retryTimeoutSec()));
-    description.push_back(                  _retryTimeoutSec.description);
+    parameter.  push_back(_general.retryTimeoutSec.key);
+    value.      push_back(_general.retryTimeoutSec.str(_config));
+    description.push_back(_general.retryTimeoutSec.description);
 
-    parameter.  push_back(                  _controllerThreads.key);
-    value.      push_back(to_string(_config->controllerThreads()));
-    description.push_back(                  _controllerThreads.description);
+    parameter.  push_back(_general.controllerThreads.key);
+    value.      push_back(_general.controllerThreads.str(_config));
+    description.push_back(_general.controllerThreads.description);
 
-    parameter.  push_back(                  _controllerHttpPort.key);
-    value.      push_back(to_string(_config->controllerHttpPort()));
-    description.push_back(                  _controllerHttpPort.description);
+    parameter.  push_back(_general.controllerHttpPort.key);
+    value.      push_back(_general.controllerHttpPort.str(_config));
+    description.push_back(_general.controllerHttpPort.description);
 
-    parameter.  push_back(                  _controllerHttpThreads.key);
-    value.      push_back(to_string(_config->controllerHttpThreads()));
-    description.push_back(                  _controllerHttpThreads.description);
+    parameter.  push_back(_general.controllerHttpThreads.key);
+    value.      push_back(_general.controllerHttpThreads.str(_config));
+    description.push_back(_general.controllerHttpThreads.description);
 
-    parameter.  push_back(                  _controllerRequestTimeoutSec.key);
-    value.      push_back(to_string(_config->controllerRequestTimeoutSec()));
-    description.push_back(                  _controllerRequestTimeoutSec.description);
+    parameter.  push_back(_general.controllerRequestTimeoutSec.key);
+    value.      push_back(_general.controllerRequestTimeoutSec.str(_config));
+    description.push_back(_general.controllerRequestTimeoutSec.description);
 
-    parameter.  push_back(                  _jobTimeoutSec.key);
-    value.      push_back(to_string(_config->jobTimeoutSec()));
-    description.push_back(                  _jobTimeoutSec.description);
+    parameter.  push_back(_general.jobTimeoutSec.key);
+    value.      push_back(_general.jobTimeoutSec.str(_config));
+    description.push_back(_general.jobTimeoutSec.description);
 
-    parameter.  push_back(                  _jobHeartbeatTimeoutSec.key);
-    value.      push_back(to_string(_config->jobHeartbeatTimeoutSec()));
-    description.push_back(                  _jobHeartbeatTimeoutSec.description);
+    parameter.  push_back(_general.jobHeartbeatTimeoutSec.key);
+    value.      push_back(_general.jobHeartbeatTimeoutSec.str(_config));
+    description.push_back(_general.jobHeartbeatTimeoutSec.description);
 
-    parameter.  push_back(        _xrootdAutoNotify.key);
-    value.      push_back(_config->xrootdAutoNotify() ? "yes" : "no");
-    description.push_back(        _xrootdAutoNotify.description);
+    parameter.  push_back(_general.xrootdAutoNotify.key);
+    value.      push_back(_general.xrootdAutoNotify.str(_config));
+    description.push_back(_general.xrootdAutoNotify.description);
 
-    parameter.  push_back(        _xrootdHost.key);
-    value.      push_back(_config->xrootdHost());
-    description.push_back(        _xrootdHost.description);
+    parameter.  push_back(_general.xrootdHost.key);
+    value.      push_back(_general.xrootdHost.str(_config));
+    description.push_back(_general.xrootdHost.description);
 
-    parameter.  push_back(          _xrootdPort.key);
-    value.      push_back(to_string(_config->xrootdPort()));
-    description.push_back(          _xrootdPort.description);
+    parameter.  push_back(_general.xrootdPort.key);
+    value.      push_back(_general.xrootdPort.str(_config));
+    description.push_back(_general.xrootdPort.description);
 
-    parameter.  push_back(                  _xrootdTimeoutSec.key);
-    value.      push_back(to_string(_config->xrootdTimeoutSec()));
-    description.push_back(                  _xrootdTimeoutSec.description);
+    parameter.  push_back(_general.xrootdTimeoutSec.key);
+    value.      push_back(_general.xrootdTimeoutSec.str(_config));
+    description.push_back(_general.xrootdTimeoutSec.description);
 
-    parameter.  push_back(        _databaseTechnology.key);
-    value.      push_back(_config->databaseTechnology());
-    description.push_back(        _databaseTechnology.description);
+    parameter.  push_back(_general.databaseTechnology.key);
+    value.      push_back(_general.databaseTechnology.str(_config));
+    description.push_back(_general.databaseTechnology.description);
 
-    parameter.  push_back(        _databaseHost.key);
-    value.      push_back(_config->databaseHost());
-    description.push_back(        _databaseHost.description);
+    parameter.  push_back(_general.databaseHost.key);
+    value.      push_back(_general.databaseHost.str(_config));
+    description.push_back(_general.databaseHost.description);
 
-    parameter.  push_back(                  _databasePort.key);
-    value.      push_back(to_string(_config->databasePort()));
-    description.push_back(                  _databasePort.description);
+    parameter.  push_back(_general.databasePort.key);
+    value.      push_back(_general.databasePort.str(_config));
+    description.push_back(_general.databasePort.description);
 
-    parameter.  push_back(        _databaseUser.key);
-    value.      push_back(_config->databaseUser());
-    description.push_back(        _databaseUser.description);
+    parameter.  push_back(_general.databaseUser.key);
+    value.      push_back(_general.databaseUser.str(_config));
+    description.push_back(_general.databaseUser.description);
 
-    parameter.  push_back(                              _databasePassword.key);
-    value.      push_back(_dumpDbShowPassword ? _config->databasePassword() : "xxxxxx");
-    description.push_back(                              _databasePassword.description);
+    bool const scrambleDbPassword = not _dumpDbShowPassword;
+    parameter.  push_back(_general.databasePassword.key);
+    value.      push_back(_general.databasePassword.str(_config, scrambleDbPassword));
+    description.push_back(_general.databasePassword.description);
 
-    parameter.  push_back(        _databaseName.key);
-    value.      push_back(_config->databaseName());
-    description.push_back(        _databaseName.description);
+    parameter.  push_back(_general.databaseName.key);
+    value.      push_back(_general.databaseName.str(_config));
+    description.push_back(_general.databaseName.description);
 
-    parameter.  push_back(                  _databaseServicesPoolSize.key);
-    value.      push_back(to_string(_config->databaseServicesPoolSize()));
-    description.push_back(                  _databaseServicesPoolSize.description);
+    parameter.  push_back(_general.databaseServicesPoolSize.key);
+    value.      push_back(_general.databaseServicesPoolSize.str(_config));
+    description.push_back(_general.databaseServicesPoolSize.description);
 
-    parameter.  push_back(        _workerTechnology.key);
-    value.      push_back(_config->workerTechnology());
-    description.push_back(        _workerTechnology.description);
+    parameter.  push_back(_general.workerTechnology.key);
+    value.      push_back(_general.workerTechnology.str(_config));
+    description.push_back(_general.workerTechnology.description);
 
-    parameter.  push_back(                  _workerNumProcessingThreads.key);
-    value.      push_back(to_string(_config->workerNumProcessingThreads()));
-    description.push_back(                  _workerNumProcessingThreads.description);
+    parameter.  push_back(_general.workerNumProcessingThreads.key);
+    value.      push_back(_general.workerNumProcessingThreads.str(_config));
+    description.push_back(_general.workerNumProcessingThreads.description);
 
-    parameter.  push_back(                  _fsNumProcessingThreads.key);
-    value.      push_back(to_string(_config->fsNumProcessingThreads()));
-    description.push_back(                  _fsNumProcessingThreads.description);
+    parameter.  push_back(_general.fsNumProcessingThreads.key);
+    value.      push_back(_general.fsNumProcessingThreads.str(_config));
+    description.push_back(_general.fsNumProcessingThreads.description);
 
-    parameter.  push_back(                  _workerFsBufferSizeBytes.key);
-    value.      push_back(to_string(_config->workerFsBufferSizeBytes()));
-    description.push_back(                  _workerFsBufferSizeBytes.description);
+    parameter.  push_back(_general.workerFsBufferSizeBytes.key);
+    value.      push_back(_general.workerFsBufferSizeBytes.str(_config));
+    description.push_back(_general.workerFsBufferSizeBytes.description);
 
     util::ColumnTablePrinter table("GENERAL PARAMETERS:", indent, _verticalSeparator);
 
@@ -652,23 +653,23 @@ int ConfigApp::_updateGeneral() {
     string const context = "ConfigApp::" + string(__func__) + "  ";
 
     try {
-        _requestBufferSizeBytes     .save(_config);
-        _retryTimeoutSec            .save(_config);
-        _controllerThreads          .save(_config);
-        _controllerHttpPort         .save(_config);
-        _controllerHttpThreads      .save(_config);
-        _controllerRequestTimeoutSec.save(_config);
-        _jobTimeoutSec              .save(_config);
-        _jobHeartbeatTimeoutSec     .save(_config);
-        _xrootdAutoNotify           .save(_config);
-        _xrootdHost                 .save(_config);
-        _xrootdPort                 .save(_config);
-        _xrootdTimeoutSec           .save(_config);
-        _databaseServicesPoolSize   .save(_config);
-        _workerTechnology           .save(_config);
-        _workerNumProcessingThreads .save(_config);
-        _fsNumProcessingThreads     .save(_config);
-        _workerFsBufferSizeBytes    .save(_config);
+        _general.requestBufferSizeBytes     .save(_config);
+        _general.retryTimeoutSec            .save(_config);
+        _general.controllerThreads          .save(_config);
+        _general.controllerHttpPort         .save(_config);
+        _general.controllerHttpThreads      .save(_config);
+        _general.controllerRequestTimeoutSec.save(_config);
+        _general.jobTimeoutSec              .save(_config);
+        _general.jobHeartbeatTimeoutSec     .save(_config);
+        _general.xrootdAutoNotify           .save(_config);
+        _general.xrootdHost                 .save(_config);
+        _general.xrootdPort                 .save(_config);
+        _general.xrootdTimeoutSec           .save(_config);
+        _general.databaseServicesPoolSize   .save(_config);
+        _general.workerTechnology           .save(_config);
+        _general.workerNumProcessingThreads .save(_config);
+        _general.fsNumProcessingThreads     .save(_config);
+        _general.workerFsBufferSizeBytes    .save(_config);
     } catch (std::exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
         return 1;

@@ -35,6 +35,7 @@
 
 // Qserv headers
 #include "util/BlockPost.h"
+#include "replica/ConfigurationTypes.h"
 #include "replica/Controller.h"
 #include "replica/DatabaseServices.h"
 #include "replica/Performance.h"
@@ -704,9 +705,44 @@ void HttpProcessor::_getConfig(qhttp::Request::Ptr req,
 
     try {
 
+        json configJson;
+
         auto const config = controller()->serviceProvider()->config();
 
-        resp->sendStatus(404);
+        // General parameters
+
+        ConfigurationGeneralParams general;
+
+        bool const scrambleDbPassword = true;
+        configJson["general"] = general.toJson(config, scrambleDbPassword);
+
+        // Workers
+        
+        json workersJson;
+        for (auto&& worker: config->allWorkers()) {
+            auto const wi = config->workerInfo(worker);
+            workersJson.push_back(wi.toJson());
+        }
+        configJson["workers"] = workersJson;
+
+        // Database families, databases, and tables
+
+        json familiesJson;
+        for (auto&& family: config->databaseFamilies()) {
+            auto const fi = config->databaseFamilyInfo(family);
+            json familyJson = fi.toJson();
+            for (auto&& database: config->databases(family)) {
+                auto const di = config->databaseInfo(database);
+                familyJson["databases"].push_back(di.toJson());
+            }
+            familiesJson.push_back(familyJson);
+        }
+        configJson["families"] = familiesJson;
+
+        json resultJson;
+        resultJson["config"] = configJson;
+
+        resp->send(resultJson.dump(), "application/json");
 
     } catch (exception const& ex) {
         _error(string(__func__) + " operation failed due to: " + string(ex.what()));
