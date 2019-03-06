@@ -242,6 +242,14 @@ private:
     void _getJobInfo(qhttp::Request::Ptr req,
                      qhttp::Response::Ptr resp);
 
+    /**
+     * Process a request which return the Configuration of the Replication system
+     *
+     * @param req   request received from a client
+     * @param resp  response to be sent back
+     */
+    void _getConfig(qhttp::Request::Ptr req,
+                    qhttp::Response::Ptr resp);
 private:
 
     /// The reference to the Replication Framework's Controller

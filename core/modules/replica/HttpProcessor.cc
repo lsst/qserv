@@ -49,6 +49,30 @@ namespace {
 using namespace lsst::qserv;
 
 /**
+ * Extract a value of an optional parameter of a query (string value)
+ * 
+ * @param req
+ *   HTTP request object
+ * 
+ * @param name
+ *   the name of a parameter to look for
+ * 
+ * @param defaultValue
+ *   the default value to be returned if no parameter was found
+ * 
+ * @return
+ *   the found value or the default value
+ */
+string getQueryParamStr(qhttp::Request::Ptr req,
+                        string const& param,
+                        string const& defaultValue) {
+    auto&& itr = req->query.find(param);
+    if (itr == req->query.end()) return defaultValue;
+    return itr->second;
+}
+
+
+/**
  * Extract a value of an optional parameter of a query (boolean value)
  * 
  * @param req
@@ -147,23 +171,21 @@ void HttpProcessor::_initialize() {
     controller()->serviceProvider()->httpServer()->addHandlers({
 
         // Replication level summary
-        {"GET",    "/replication/v1/level", bind(&HttpProcessor::_getReplicationLevel, self, _1, _2)},
-
+        {"GET",    "/replication/v1/level",          bind(&HttpProcessor::_getReplicationLevel, self, _1, _2)},
         // Status of all workers or a particular worker
-        {"GET",    "/replication/v1/worker",       bind(&HttpProcessor::_listWorkerStatuses, self, _1, _2)},
-        {"GET",    "/replication/v1/worker/:name", bind(&HttpProcessor::_getWorkerStatus,    self, _1, _2)},
-
+        {"GET",    "/replication/v1/worker",         bind(&HttpProcessor::_listWorkerStatuses,  self, _1, _2)},
+        {"GET",    "/replication/v1/worker/:name",   bind(&HttpProcessor::_getWorkerStatus,     self, _1, _2)},
         // Info on the controllers
-        {"GET",    "/replication/v1/controller",     bind(&HttpProcessor::_listControllers,   self, _1, _2)},
-        {"GET",    "/replication/v1/controller/:id", bind(&HttpProcessor::_getControllerInfo, self, _1, _2)},
-
+        {"GET",    "/replication/v1/controller",     bind(&HttpProcessor::_listControllers,     self, _1, _2)},
+        {"GET",    "/replication/v1/controller/:id", bind(&HttpProcessor::_getControllerInfo,   self, _1, _2)},
         // Info on the requests
-        {"GET",    "/replication/v1/request",     bind(&HttpProcessor::_listRequests,   self, _1, _2)},
-        {"GET",    "/replication/v1/request/:id", bind(&HttpProcessor::_getRequestInfo, self, _1, _2)},
-
+        {"GET",    "/replication/v1/request",        bind(&HttpProcessor::_listRequests,        self, _1, _2)},
+        {"GET",    "/replication/v1/request/:id",    bind(&HttpProcessor::_getRequestInfo,      self, _1, _2)},
         // Info on the jobs
-        {"GET",    "/replication/v1/job",     bind(&HttpProcessor::_listJobs,   self, _1, _2)},
-        {"GET",    "/replication/v1/job/:id", bind(&HttpProcessor::_getJobInfo, self, _1, _2)},
+        {"GET",    "/replication/v1/job",            bind(&HttpProcessor::_listJobs,            self, _1, _2)},
+        {"GET",    "/replication/v1/job/:id",        bind(&HttpProcessor::_getJobInfo,          self, _1, _2)},
+        // System's configuration
+        {"GET",    "/replication/v1/config",         bind(&HttpProcessor::_getConfig,           self, _1, _2)},
     });
     controller()->serviceProvider()->httpServer()->start();
 }
@@ -193,7 +215,7 @@ void HttpProcessor::_getReplicationLevel(qhttp::Request::Ptr req,
                                          qhttp::Response::Ptr resp) {
     _debug(__func__);
 
-    util::Lock lock(_replicationLevelMtx, "HttpProcessor::_getReplicationLevel");
+    util::Lock lock(_replicationLevelMtx, "HttpProcessor::" + string(__func__));
 
     // Check if a cached report can be used
     //
@@ -207,172 +229,181 @@ void HttpProcessor::_getReplicationLevel(qhttp::Request::Ptr req,
         }
     }
 
-    auto const config = controller()->serviceProvider()->config();
+    // Otherwise, get the fresh snapshot of the replica distributions
 
-    HealthMonitorTask::WorkerResponseDelay const delays =
-        _healthMonitorTask->workerResponseDelay();
+    try {
 
-    vector<string> disabledQservWorkers;
-    vector<string> disabledReplicationWorkers;
-    for (auto&& entry: delays) {
-        auto&& worker =  entry.first;
+        auto const config = controller()->serviceProvider()->config();
 
-        unsigned int const qservProbeDelaySec = entry.second.at("qserv");
-        if (qservProbeDelaySec > 0) {
-            disabledQservWorkers.push_back(worker);
+        HealthMonitorTask::WorkerResponseDelay const delays =
+            _healthMonitorTask->workerResponseDelay();
+
+        vector<string> disabledQservWorkers;
+        vector<string> disabledReplicationWorkers;
+        for (auto&& entry: delays) {
+            auto&& worker =  entry.first;
+
+            unsigned int const qservProbeDelaySec = entry.second.at("qserv");
+            if (qservProbeDelaySec > 0) {
+                disabledQservWorkers.push_back(worker);
+            }
+            unsigned int const replicationSystemProbeDelaySec = entry.second.at("replication");
+            if (replicationSystemProbeDelaySec > 0) {
+                disabledReplicationWorkers.push_back(worker);
+            }
         }
-        unsigned int const replicationSystemProbeDelaySec = entry.second.at("replication");
-        if (replicationSystemProbeDelaySec > 0) {
-            disabledReplicationWorkers.push_back(worker);
+
+        json resultJson;
+        for (auto&& family: config->databaseFamilies()) {
+
+            size_t const replicationLevel = config->databaseFamilyInfo(family).replicationLevel;
+            resultJson["families"][family]["level"] = replicationLevel;
+
+            for (auto&& database: config->databases(family)) {
+                _debug(string(__func__) + "  database=" + database);
+
+                // Get observed replication levels for workers which are on-line
+                // as well as for the whole cluster (if there in-active workers).
+
+                auto const onlineQservLevels =
+                    controller()->serviceProvider()->databaseServices()->actualReplicationLevel(
+                        database,
+                        disabledQservWorkers);
+
+                auto const allQservLevels = disabledQservWorkers.empty() ?
+                    onlineQservLevels : 
+                    controller()->serviceProvider()->databaseServices()->actualReplicationLevel(
+                        database);
+
+                auto const onLineReplicationSystemLevels =
+                    controller()->serviceProvider()->databaseServices()->actualReplicationLevel(
+                        database,
+                        disabledReplicationWorkers);
+
+                auto const allReplicationSystemLevels = disabledReplicationWorkers.empty() ?
+                    onLineReplicationSystemLevels :
+                    controller()->serviceProvider()->databaseServices()->actualReplicationLevel(
+                        database);
+
+                // Get the numbers of 'orphan' chunks in each context. These chunks (if any)
+                // will be associated with the replication level 0. Also note, that these
+                // chunks will be contributing into the total number of chunks when computing
+                // the percentage of each replication level.
+
+                size_t const numOrphanQservChunks = disabledQservWorkers.empty() ?
+                    0 :
+                    controller()->serviceProvider()->databaseServices()->numOrphanChunks(
+                        database,
+                        disabledQservWorkers);
+
+                size_t const numOrphanReplicationSystemChunks = disabledReplicationWorkers.empty() ?
+                    0 :
+                    controller()->serviceProvider()->databaseServices()->numOrphanChunks(
+                        database,
+                        disabledReplicationWorkers);
+
+                // The maximum level is needed to initialize result with zeros for
+                // a contiguous range of levels [0,maxObservedLevel]. The non-empty
+                // cells will be filled from the above captured reports.
+                //
+                // Also, while doing so compute the total number of chunks in each context.
+
+                unsigned int maxObservedLevel = 0;
+
+                size_t numOnlineQservChunks = numOrphanQservChunks;
+                for (auto&& entry: onlineQservLevels) {
+                    maxObservedLevel = max(maxObservedLevel, entry.first);
+                    numOnlineQservChunks += entry.second;
+                }
+
+                size_t numAllQservChunks = 0;
+                for (auto&& entry: allQservLevels) {
+                    maxObservedLevel = max(maxObservedLevel, entry.first);
+                    numAllQservChunks += entry.second;
+                }
+
+                size_t numOnlineReplicationSystemChunks = numOrphanReplicationSystemChunks;
+                for (auto&& entry: onLineReplicationSystemLevels) {
+                    maxObservedLevel = max(maxObservedLevel, entry.first);
+                    numOnlineReplicationSystemChunks += entry.second;
+                }
+
+                size_t numAllReplicationSystemChunks = 0;
+                for (auto&& entry: allReplicationSystemLevels) {
+                    maxObservedLevel = max(maxObservedLevel, entry.first);
+                    numAllReplicationSystemChunks += entry.second;
+                }
+
+                // Pre-initialize the database-specific result with zeroes for all
+                // levels in the range of [0,maxObservedLevel]
+
+                json databaseJson;
+
+                for (int level = maxObservedLevel; level >= 0; --level) {
+                    databaseJson["levels"][level]["qserv"      ]["online"]["num_chunks"] = 0;
+                    databaseJson["levels"][level]["qserv"      ]["online"]["percent"   ] = 0.;
+                    databaseJson["levels"][level]["qserv"      ]["all"   ]["num_chunks"] = 0;
+                    databaseJson["levels"][level]["qserv"      ]["all"   ]["percent"   ] = 0.;
+                    databaseJson["levels"][level]["replication"]["online"]["num_chunks"] = 0;
+                    databaseJson["levels"][level]["replication"]["online"]["percent"   ] = 0.;
+                    databaseJson["levels"][level]["replication"]["all"   ]["num_chunks"] = 0;
+                    databaseJson["levels"][level]["replication"]["all"   ]["percent"   ] = 0.;
+                }
+
+                // Fill-in non-blank areas
+
+                for (auto&& entry: onlineQservLevels) {
+                    unsigned int const level = entry.first;
+                    size_t const numChunks   = entry.second;
+                    double const percent     = 100. * numChunks / numOnlineQservChunks;
+                    databaseJson["levels"][level]["qserv"]["online"]["num_chunks"] = numChunks;
+                    databaseJson["levels"][level]["qserv"]["online"]["percent"   ] = percent;
+                }
+                for (auto&& entry: allQservLevels) {
+                    unsigned int const level = entry.first;
+                    size_t const numChunks   = entry.second;
+                    double const percent     = 100. * numChunks / numAllQservChunks;
+                    databaseJson["levels"][level]["qserv"]["all"]["num_chunks"] = numChunks;
+                    databaseJson["levels"][level]["qserv"]["all"]["percent"   ] = percent;
+                }
+                for (auto&& entry: onLineReplicationSystemLevels) {
+                    unsigned int const level = entry.first;
+                    size_t const numChunks   = entry.second;
+                    double const percent     = 100. * numChunks / numOnlineReplicationSystemChunks;
+                    databaseJson["levels"][level]["replication"]["online"]["num_chunks"] = numChunks;
+                    databaseJson["levels"][level]["replication"]["online"]["percent"   ] = percent;
+                }
+                for (auto&& entry: allReplicationSystemLevels) {
+                    unsigned int const level = entry.first;
+                    size_t const numChunks   = entry.second;
+                    double const percent     = 100. * numChunks / numAllReplicationSystemChunks;
+                    databaseJson["levels"][level]["replication"]["all"]["num_chunks"] = numChunks;
+                    databaseJson["levels"][level]["replication"]["all"]["percent"   ] = percent;
+                }
+                {
+                    double const percent = 100. * numOrphanQservChunks / numAllQservChunks;
+                    databaseJson["levels"][0]["qserv"]["online"]["num_chunks"] = numOrphanQservChunks;
+                    databaseJson["levels"][0]["qserv"]["online"]["percent"   ] = percent;
+                }
+                {
+                    double const percent     = 100. * numOrphanReplicationSystemChunks / numAllReplicationSystemChunks;
+                    databaseJson["levels"][0]["replication"]["online"]["num_chunks"] = numOrphanReplicationSystemChunks;
+                    databaseJson["levels"][0]["replication"]["online"]["percent"   ] = percent;
+                }
+                resultJson["families"][family]["databases"][database] = databaseJson;
+            }
         }
+
+        // Update the cache
+        _replicationLevelReport = resultJson.dump();
+        _replicationLevelReportTimeMs = PerformanceUtils::now();
+
+        resp->send(_replicationLevelReport, "application/json");
+
+    } catch (exception const& ex) {
+        _error(string(__func__) + " operation failed due to: " + string(ex.what()));
+        resp->sendStatus(500);
     }
-    
-    json resultJson;
-    for (auto&& family: config->databaseFamilies()) {
-
-        size_t const replicationLevel = config->databaseFamilyInfo(family).replicationLevel;
-        resultJson["families"][family]["level"] = replicationLevel;
-
-        for (auto&& database: config->databases(family)) {
-            _debug(string(__func__) + "  database=" + database);
-
-            // Get observed replication levels for workers which are on-line
-            // as well as for the whole cluster (if there in-active workers).
-
-            auto const onlineQservLevels =
-                controller()->serviceProvider()->databaseServices()->actualReplicationLevel(
-                    database,
-                    disabledQservWorkers);
-
-            auto const allQservLevels = disabledQservWorkers.empty() ?
-                onlineQservLevels : 
-                controller()->serviceProvider()->databaseServices()->actualReplicationLevel(
-                    database);
-
-            auto const onLineReplicationSystemLevels =
-                controller()->serviceProvider()->databaseServices()->actualReplicationLevel(
-                    database,
-                    disabledReplicationWorkers);
-
-            auto const allReplicationSystemLevels = disabledReplicationWorkers.empty() ?
-                onLineReplicationSystemLevels :
-                controller()->serviceProvider()->databaseServices()->actualReplicationLevel(
-                    database);
-
-            // Get the numbers of 'orphan' chunks in each context. These chunks (if any)
-            // will be associated with the replication level 0. Also note, that these
-            // chunks will be contributing into the total number of chunks when computing
-            // the percentage of each replication level.
-
-            size_t const numOrphanQservChunks = disabledQservWorkers.empty() ?
-                0 :
-                controller()->serviceProvider()->databaseServices()->numOrphanChunks(
-                    database,
-                    disabledQservWorkers);
-
-            size_t const numOrphanReplicationSystemChunks = disabledReplicationWorkers.empty() ?
-                0 :
-                controller()->serviceProvider()->databaseServices()->numOrphanChunks(
-                    database,
-                    disabledReplicationWorkers);
-
-            // The maximum level is needed to initialize result with zeros for
-            // a contiguous range of levels [0,maxObservedLevel]. The non-empty
-            // cells will be filled from the above captured reports.
-            //
-            // Also, while doing so compute the total number of chunks in each context.
-
-            unsigned int maxObservedLevel = 0;
-
-            size_t numOnlineQservChunks = numOrphanQservChunks;
-            for (auto&& entry: onlineQservLevels) {
-                maxObservedLevel = max(maxObservedLevel, entry.first);
-                numOnlineQservChunks += entry.second;
-            }
-
-            size_t numAllQservChunks = 0;
-            for (auto&& entry: allQservLevels) {
-                maxObservedLevel = max(maxObservedLevel, entry.first);
-                numAllQservChunks += entry.second;
-            }
-
-            size_t numOnlineReplicationSystemChunks = numOrphanReplicationSystemChunks;
-            for (auto&& entry: onLineReplicationSystemLevels) {
-                maxObservedLevel = max(maxObservedLevel, entry.first);
-                numOnlineReplicationSystemChunks += entry.second;
-            }
-
-            size_t numAllReplicationSystemChunks = 0;
-            for (auto&& entry: allReplicationSystemLevels) {
-                maxObservedLevel = max(maxObservedLevel, entry.first);
-                numAllReplicationSystemChunks += entry.second;
-            }
-
-            // Pre-initialize the database-specific result with zeroes for all
-            // levels in the range of [0,maxObservedLevel]
-
-            json databaseJson;
-
-            for (int level = maxObservedLevel; level >= 0; --level) {
-                databaseJson["levels"][level]["qserv"      ]["online"]["num_chunks"] = 0;
-                databaseJson["levels"][level]["qserv"      ]["online"]["percent"   ] = 0.;
-                databaseJson["levels"][level]["qserv"      ]["all"   ]["num_chunks"] = 0;
-                databaseJson["levels"][level]["qserv"      ]["all"   ]["percent"   ] = 0.;
-                databaseJson["levels"][level]["replication"]["online"]["num_chunks"] = 0;
-                databaseJson["levels"][level]["replication"]["online"]["percent"   ] = 0.;
-                databaseJson["levels"][level]["replication"]["all"   ]["num_chunks"] = 0;
-                databaseJson["levels"][level]["replication"]["all"   ]["percent"   ] = 0.;
-            }
-
-            // Fill-in non-blank areas
-
-            for (auto&& entry: onlineQservLevels) {
-                unsigned int const level = entry.first;
-                size_t const numChunks   = entry.second;
-                double const percent     = 100. * numChunks / numOnlineQservChunks;
-                databaseJson["levels"][level]["qserv"]["online"]["num_chunks"] = numChunks;
-                databaseJson["levels"][level]["qserv"]["online"]["percent"   ] = percent;
-            }
-            for (auto&& entry: allQservLevels) {
-                unsigned int const level = entry.first;
-                size_t const numChunks   = entry.second;
-                double const percent     = 100. * numChunks / numAllQservChunks;
-                databaseJson["levels"][level]["qserv"]["all"]["num_chunks"] = numChunks;
-                databaseJson["levels"][level]["qserv"]["all"]["percent"   ] = percent;
-            }
-            for (auto&& entry: onLineReplicationSystemLevels) {
-                unsigned int const level = entry.first;
-                size_t const numChunks   = entry.second;
-                double const percent     = 100. * numChunks / numOnlineReplicationSystemChunks;
-                databaseJson["levels"][level]["replication"]["online"]["num_chunks"] = numChunks;
-                databaseJson["levels"][level]["replication"]["online"]["percent"   ] = percent;
-            }
-            for (auto&& entry: allReplicationSystemLevels) {
-                unsigned int const level = entry.first;
-                size_t const numChunks   = entry.second;
-                double const percent     = 100. * numChunks / numAllReplicationSystemChunks;
-                databaseJson["levels"][level]["replication"]["all"]["num_chunks"] = numChunks;
-                databaseJson["levels"][level]["replication"]["all"]["percent"   ] = percent;
-            }
-            {
-                double const percent = 100. * numOrphanQservChunks / numAllQservChunks;
-                databaseJson["levels"][0]["qserv"]["online"]["num_chunks"] = numOrphanQservChunks;
-                databaseJson["levels"][0]["qserv"]["online"]["percent"   ] = percent;
-            }
-            {
-                double const percent     = 100. * numOrphanReplicationSystemChunks / numAllReplicationSystemChunks;
-                databaseJson["levels"][0]["replication"]["online"]["num_chunks"] = numOrphanReplicationSystemChunks;
-                databaseJson["levels"][0]["replication"]["online"]["percent"   ] = percent;
-            }
-            resultJson["families"][family]["databases"][database] = databaseJson;
-        }
-    }
-    
-    // Update the cache
-    _replicationLevelReport = resultJson.dump();
-    _replicationLevelReportTimeMs = PerformanceUtils::now();
-
-    resp->send(_replicationLevelReport, "application/json");
 }
 
 
@@ -380,53 +411,92 @@ void HttpProcessor::_listWorkerStatuses(qhttp::Request::Ptr req,
                                         qhttp::Response::Ptr resp) {
     _debug(__func__);
 
-    HealthMonitorTask::WorkerResponseDelay delays =
-        _healthMonitorTask->workerResponseDelay();
+    try {
+        HealthMonitorTask::WorkerResponseDelay delays =
+            _healthMonitorTask->workerResponseDelay();
 
-    json resultJson = json::array();
-    for (auto&& worker: controller()->serviceProvider()->config()->allWorkers()) {
+        json resultJson = json::array();
+        for (auto&& worker: controller()->serviceProvider()->config()->allWorkers()) {
 
-        json workerJson;
+            json workerJson;
 
-        workerJson["worker"] = worker;
+            workerJson["worker"] = worker;
 
-        WorkerInfo const info =
-            controller()->serviceProvider()->config()->workerInfo(worker);
+            WorkerInfo const info =
+                controller()->serviceProvider()->config()->workerInfo(worker);
 
-        uint64_t const numReplicas =
-            controller()->serviceProvider()->databaseServices()->numWorkerReplicas(worker);
+            uint64_t const numReplicas =
+                controller()->serviceProvider()->databaseServices()->numWorkerReplicas(worker);
 
-        workerJson["replication"]["num_replicas"] = numReplicas;
-        workerJson["replication"]["isEnabled"]    = info.isEnabled  ? 1 : 0;
-        workerJson["replication"]["isReadOnly"]   = info.isReadOnly ? 1 : 0;
+            workerJson["replication"]["num_replicas"] = numReplicas;
+            workerJson["replication"]["isEnabled"]    = info.isEnabled  ? 1 : 0;
+            workerJson["replication"]["isReadOnly"]   = info.isReadOnly ? 1 : 0;
 
-        auto itr = delays.find(worker);
-        if (delays.end() != itr) {
-            workerJson["replication"]["probe_delay_s"] = itr->second["replication"];
-            workerJson["qserv"      ]["probe_delay_s"] = itr->second["qserv"];
-        } else {
-            workerJson["replication"]["probe_delay_s"] = 0;
-            workerJson["qserv"      ]["probe_delay_s"] = 0;
+            auto itr = delays.find(worker);
+            if (delays.end() != itr) {
+                workerJson["replication"]["probe_delay_s"] = itr->second["replication"];
+                workerJson["qserv"      ]["probe_delay_s"] = itr->second["qserv"];
+            } else {
+                workerJson["replication"]["probe_delay_s"] = 0;
+                workerJson["qserv"      ]["probe_delay_s"] = 0;
+            }
+            resultJson.push_back(workerJson);
         }
-        resultJson.push_back(workerJson);
+        resp->send(resultJson.dump(), "application/json");
+
+    } catch (exception const& ex) {
+        _error(string(__func__) + " operation failed due to: " + string(ex.what()));
+        resp->sendStatus(500);
     }
-    resp->send(resultJson.dump(), "application/json");
 }
 
 
 void HttpProcessor::_getWorkerStatus(qhttp::Request::Ptr req,
                                      qhttp::Response::Ptr resp) {
     _debug(__func__);
-    json workersJson;
-    resp->send(workersJson.dump(), "application/json");
+    resp->sendStatus(404);
 }
 
 
 void HttpProcessor::_listControllers(qhttp::Request::Ptr req,
                                      qhttp::Response::Ptr resp) {
     _debug(__func__);
-    json controllersJson;
-    resp->send(controllersJson.dump(), "application/json");
+    
+    try {
+
+        // Extract parameters of the query
+
+        uint64_t const fromTimeStamp = ::getQueryParam(req, "from",        0);
+        uint64_t const toTimeStamp   = ::getQueryParam(req, "to",          std::numeric_limits<uint64_t>::max());
+        size_t   const maxEntries    = ::getQueryParam(req, "max_entries", 0);
+
+        _debug(string(__func__) + " from="        + to_string(fromTimeStamp));
+        _debug(string(__func__) + " to="          + to_string(toTimeStamp));
+        _debug(string(__func__) + " max_entries=" + to_string(maxEntries));
+
+        // Just descriptions of the Controllers. No persistent logs in this
+        // report.
+
+        json controllersJson;
+
+        auto const controllers =
+            controller()->serviceProvider()->databaseServices()->controllers(
+                fromTimeStamp,
+                toTimeStamp,
+                maxEntries);
+
+        for (auto&& info: controllers) {
+            bool const isCurrent = info.id == controller()->identity().id;
+            controllersJson.push_back(info.toJson(isCurrent));
+        }
+        json resultJson;
+        resultJson["controllers"] = controllersJson;
+        resp->send(resultJson.dump(), "application/json");
+
+    } catch (exception const& ex) {
+        _error(string(__func__) + " operation failed due to: " + string(ex.what()));
+        resp->sendStatus(500);
+    }
 }
 
 
@@ -437,34 +507,38 @@ void HttpProcessor::_getControllerInfo(qhttp::Request::Ptr req,
     auto const id = req->params["id"];
     try {
 
+        // Extract parameters of the query
+
+        bool     const log           = ::getQueryParamBool(req, "log",            false);
+        uint64_t const fromTimeStamp = ::getQueryParam(    req, "log_from",       0);
+        uint64_t const toTimeStamp   = ::getQueryParam(    req, "log_to",         std::numeric_limits<uint64_t>::max());
+        size_t   const maxEvents     = ::getQueryParam(    req, "log_max_events", 0);
+
+        _debug(string(__func__) + " log="            +    string(log ? "true" : "false"));
+        _debug(string(__func__) + " log_from="       + to_string(fromTimeStamp));
+        _debug(string(__func__) + " log_to="         + to_string(toTimeStamp));
+        _debug(string(__func__) + " log_max_events=" + to_string(maxEvents));
+
         json resultJson;
 
-        // General parameters of the Controller
+        // General description of the Controller
 
         auto const dbSvc = controller()->serviceProvider()->databaseServices();
         auto const controllerInfo = dbSvc->controller(id);
 
-        resultJson["controller"] = controllerInfo.toJson(controllerInfo.id == id);
+        bool const isCurrent = controllerInfo.id == controller()->identity().id;
+        resultJson["controller"] = controllerInfo.toJson(isCurrent);
 
         // Pull the Controller log data if requested
         
         json jsonLog = json::array();
-
-        for (auto&& itr: req->query) {
-            _debug(string(__func__) + " req->query: " + itr.first + "=" + itr.second);
-        }
-        _debug(string(__func__) + " log="            +    string(::getQueryParamBool(req, "log",            false) ? "true" : "false"));
-        _debug(string(__func__) + " log_from="       + to_string(::getQueryParam(    req, "log_from",       0)));
-        _debug(string(__func__) + " log_to="         + to_string(::getQueryParam(    req, "log_to",         std::numeric_limits<uint64_t>::max())));
-        _debug(string(__func__) + " log_max_events=" + to_string(::getQueryParam(    req, "log_max_events", 0)));
-
-        if (::getQueryParamBool(req, "log", false)) {
+        if (log) {
             auto const events =
                 dbSvc->readControllerEvents(
                     id,
-                    ::getQueryParam(req, "log_from",       0),
-                    ::getQueryParam(req, "log_to",         std::numeric_limits<uint64_t>::max()),
-                    ::getQueryParam(req, "log_max_events", 0));
+                    fromTimeStamp,
+                    toTimeStamp,
+                    maxEvents);
             for (auto&& event: events) {
                 jsonLog.push_back(event.toJson());
             }
@@ -478,6 +552,9 @@ void HttpProcessor::_getControllerInfo(qhttp::Request::Ptr req,
     } catch (invalid_argument const& ex) {
         _error(string(__func__) + " invalid parameters of the request");
         resp->sendStatus(400);
+    } catch (exception const& ex) {
+        _error(string(__func__) + " operation failed due to: " + string(ex.what()));
+        resp->sendStatus(500);
     }
 }
 
@@ -485,8 +562,43 @@ void HttpProcessor::_getControllerInfo(qhttp::Request::Ptr req,
 void HttpProcessor::_listRequests(qhttp::Request::Ptr req,
                                   qhttp::Response::Ptr resp) {
     _debug(__func__);
-    json requestsJson;
-    resp->send(requestsJson.dump(), "application/json");
+
+    try {
+
+        // Extract parameters of the query
+
+        string   const jobId         = ::getQueryParamStr(req, "job_id",      "");
+        uint64_t const fromTimeStamp = ::getQueryParam   (req, "from",        0);
+        uint64_t const toTimeStamp   = ::getQueryParam   (req, "to",          std::numeric_limits<uint64_t>::max());
+        size_t   const maxEntries    = ::getQueryParam   (req, "max_entries", 0);
+
+        _debug(string(__func__) + " job_id="      + jobId);
+        _debug(string(__func__) + " from="        + to_string(fromTimeStamp));
+        _debug(string(__func__) + " to="          + to_string(toTimeStamp));
+        _debug(string(__func__) + " max_entries=" + to_string(maxEntries));
+
+        // Pull descriptions of the Requests
+
+        json requestsJson;
+
+        auto const requests =
+            controller()->serviceProvider()->databaseServices()->requests(
+                jobId,
+                fromTimeStamp,
+                toTimeStamp,
+                maxEntries);
+
+        for (auto&& info: requests) {
+            requestsJson.push_back(info.toJson());
+        }
+        json resultJson;
+        resultJson["requests"] = requestsJson;
+        resp->send(resultJson.dump(), "application/json");
+
+    } catch (exception const& ex) {
+        _error(string(__func__) + " operation failed due to: " + string(ex.what()));
+        resp->sendStatus(500);
+    }
 }
 
 
@@ -508,6 +620,9 @@ void HttpProcessor::_getRequestInfo(qhttp::Request::Ptr req,
     } catch (invalid_argument const& ex) {
         _error(string(__func__) + " invalid parameters of the request");
         resp->sendStatus(400);
+    } catch (exception const& ex) {
+        _error(string(__func__) + " operation failed due to: " + string(ex.what()));
+        resp->sendStatus(500);
     }
 }
 
@@ -515,8 +630,46 @@ void HttpProcessor::_getRequestInfo(qhttp::Request::Ptr req,
 void HttpProcessor::_listJobs(qhttp::Request::Ptr req,
                               qhttp::Response::Ptr resp) {
     _debug(__func__);
-    json jobsJson;
-    resp->send(jobsJson.dump(), "application/json");
+
+    try {
+
+        // Extract parameters of the query
+
+        string   const controllerId  = ::getQueryParamStr(req, "controller_id", "");
+        string   const parentJobId   = ::getQueryParamStr(req, "parent_job_id", "");
+        uint64_t const fromTimeStamp = ::getQueryParam   (req, "from",          0);
+        uint64_t const toTimeStamp   = ::getQueryParam   (req, "to",            std::numeric_limits<uint64_t>::max());
+        size_t   const maxEntries    = ::getQueryParam   (req, "max_entries",   0);
+
+        _debug(string(__func__) + " controller_id=" + controllerId);
+        _debug(string(__func__) + " parent_job_id=" + parentJobId);
+        _debug(string(__func__) + " from="          + to_string(fromTimeStamp));
+        _debug(string(__func__) + " to="            + to_string(toTimeStamp));
+        _debug(string(__func__) + " max_entries="   + to_string(maxEntries));
+
+        // Pull descriptions of the Jobs
+
+        json jobsJson;
+
+        auto const jobs =
+            controller()->serviceProvider()->databaseServices()->jobs(
+                controllerId,
+                parentJobId,
+                fromTimeStamp,
+                toTimeStamp,
+                maxEntries);
+
+        for (auto&& info: jobs) {
+            jobsJson.push_back(info.toJson());
+        }
+        json resultJson;
+        resultJson["jobs"] = jobsJson;
+        resp->send(resultJson.dump(), "application/json");
+
+    } catch (exception const& ex) {
+        _error(string(__func__) + " operation failed due to: " + string(ex.what()));
+        resp->sendStatus(500);
+    }
 }
 
 
@@ -538,6 +691,26 @@ void HttpProcessor::_getJobInfo(qhttp::Request::Ptr req,
     } catch (invalid_argument const& ex) {
         _error(string(__func__) + " invalid parameters of the request");
         resp->sendStatus(400);
+    } catch (exception const& ex) {
+        _error(string(__func__) + " operation failed due to: " + string(ex.what()));
+        resp->sendStatus(500);
+    }
+}
+
+
+void HttpProcessor::_getConfig(qhttp::Request::Ptr req,
+                               qhttp::Response::Ptr resp) {
+    _debug(__func__);
+
+    try {
+
+        auto const config = controller()->serviceProvider()->config();
+
+        resp->sendStatus(404);
+
+    } catch (exception const& ex) {
+        _error(string(__func__) + " operation failed due to: " + string(ex.what()));
+        resp->sendStatus(500);
     }
 }
 
