@@ -4602,6 +4602,143 @@ static const vector<Antlr4TestQueries> ANTLR4_TEST_QUERIES = {
             WhereClause(OrTerm(AndTerm(BoolFactor(IS, CompPredicate(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "ra_PS")), query::ValueExpr::DIVIDE), FactorOp(ValueFactor("2"), query::ValueExpr::NONE)), query::CompPredicate::GREATER_THAN_OP, ValueExpr("", FactorOp(ValueFactor("1"), query::ValueExpr::NONE))))))), nullptr, nullptr, nullptr, 0, -1);},
         "SELECT objectId FROM Object WHERE (ra_PS/2)>1"
     ),
+    // tests NOT LIKE (which is 'NOT LIKE', different than 'NOT' and 'LIKE' operators separately)
+    Antlr4TestQueries(
+        "SELECT filterId FROM Filter WHERE filterName NOT LIKE 'Z'",
+        []()->shared_ptr<query::SelectStmt>{return SelectStmt(
+            SelectList(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "filterId")), query::ValueExpr::NONE))),
+            FromList(TableRef("", "Filter", "")),
+            WhereClause(OrTerm(AndTerm(BoolFactor(IS, LikePredicate(
+                ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "filterName")), query::ValueExpr::NONE)),
+                NOT_LIKE,
+                ValueExpr("", FactorOp(ValueFactor("'Z'"), query::ValueExpr::NONE))))))),
+            nullptr, nullptr, nullptr, 0, -1);},
+        "SELECT filterId FROM Filter WHERE filterName NOT LIKE 'Z'"
+    ),
+    // tests quoted IDs
+    Antlr4TestQueries(
+        "SELECT `Source`.`sourceId`, `Source`.`objectId` From Source WHERE `Source`.`objectId` IN (386942193651348) ORDER BY `Source`.`sourceId`",
+        []()->shared_ptr<query::SelectStmt>{return SelectStmt(
+            SelectList(
+                ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "Source", "sourceId")), query::ValueExpr::NONE)),
+                ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "Source", "objectId")), query::ValueExpr::NONE))),
+            FromList(TableRef("", "Source", "")),
+            WhereClause(OrTerm(AndTerm(BoolFactor(IS, InPredicate(
+                ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "Source", "objectId")), query::ValueExpr::NONE)),
+                IN,
+                ValueExpr("", FactorOp(ValueFactor("386942193651348"), query::ValueExpr::NONE))))))),
+            OrderByClause(OrderByTerm(
+                ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "Source", "sourceId")), query::ValueExpr::NONE)), query::OrderByTerm::DEFAULT, "")),
+            nullptr, nullptr, 0, -1);},
+        "SELECT Source.sourceId,Source.objectId FROM Source WHERE Source.objectId IN(386942193651348) ORDER BY Source.sourceId"
+    ),
+
+    // tests the null-safe equals operator
+    Antlr4TestQueries(
+        "SELECT ra_PS FROM Object WHERE objectId<=>417857368235490",
+        []()->shared_ptr<query::SelectStmt>{return SelectStmt(SelectList(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "ra_PS")), query::ValueExpr::NONE))), FromList(TableRef("", "Object", "")), WhereClause(OrTerm(AndTerm(BoolFactor(IS, CompPredicate(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "objectId")), query::ValueExpr::NONE)), query::CompPredicate::NULL_SAFE_EQUALS_OP, ValueExpr("", FactorOp(ValueFactor("417857368235490"), query::ValueExpr::NONE))))))), nullptr, nullptr, nullptr, 0, -1);},
+        "SELECT ra_PS FROM Object WHERE objectId<=>417857368235490"
+    ),
+
+    // tests the NOT BETWEEN operator
+    Antlr4TestQueries(
+        "SELECT objectId,ra_PS FROM Object WHERE objectId NOT BETWEEN 417857368235490 AND 420949744686724",
+        []()->shared_ptr<query::SelectStmt>{return SelectStmt(SelectList(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "objectId")), query::ValueExpr::NONE)), ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "ra_PS")), query::ValueExpr::NONE))), FromList(TableRef("", "Object", "")), WhereClause(OrTerm(AndTerm(BoolFactor(IS, BetweenPredicate(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "objectId")), query::ValueExpr::NONE)), NOT_BETWEEN, ValueExpr("", FactorOp(ValueFactor("417857368235490"), query::ValueExpr::NONE)), ValueExpr("", FactorOp(ValueFactor("420949744686724"), query::ValueExpr::NONE))))))), nullptr, nullptr, nullptr, 0, -1);},
+        "SELECT objectId,ra_PS FROM Object WHERE objectId NOT BETWEEN 417857368235490 AND 420949744686724"
+    ),
+
+    // tests the && operator.
+    // The Qserv IR converts && to AND as a result of the IR structure and how it serializes it to string.
+    Antlr4TestQueries(
+        "select objectId, iRadius_SG, ra_PS, decl_PS from Object where iRadius_SG > .5 && ra_PS < 2 && decl_PS < 3;",
+        []()->shared_ptr<query::SelectStmt>{return SelectStmt(SelectList(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "objectId")), query::ValueExpr::NONE)), ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "iRadius_SG")), query::ValueExpr::NONE)), ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "ra_PS")), query::ValueExpr::NONE)), ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "decl_PS")), query::ValueExpr::NONE))), FromList(TableRef("", "Object", "")), WhereClause(OrTerm(AndTerm(BoolFactor(IS, CompPredicate(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "iRadius_SG")), query::ValueExpr::NONE)), query::CompPredicate::GREATER_THAN_OP, ValueExpr("", FactorOp(ValueFactor(".5"), query::ValueExpr::NONE)))), BoolFactor(IS, CompPredicate(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "ra_PS")), query::ValueExpr::NONE)), query::CompPredicate::LESS_THAN_OP, ValueExpr("", FactorOp(ValueFactor("2"), query::ValueExpr::NONE)))), BoolFactor(IS, CompPredicate(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "decl_PS")), query::ValueExpr::NONE)), query::CompPredicate::LESS_THAN_OP, ValueExpr("", FactorOp(ValueFactor("3"), query::ValueExpr::NONE))))))), nullptr, nullptr, nullptr, 0, -1);},
+        "SELECT objectId,iRadius_SG,ra_PS,decl_PS FROM Object WHERE iRadius_SG>.5 AND ra_PS<2 AND decl_PS<3"
+    ),
+
+    // tests the || operator.
+    // The Qserv IR converts || to OR as a result of the IR structure and how it serializes it to string.
+    Antlr4TestQueries(
+        "select objectId from Object where objectId < 400000000000000 || objectId > 430000000000000 ORDER BY objectId;",
+        []()->shared_ptr<query::SelectStmt>{return SelectStmt(SelectList(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "objectId")), query::ValueExpr::NONE))), FromList(TableRef("", "Object", "")), WhereClause(OrTerm(AndTerm(BoolFactor(IS, CompPredicate(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "objectId")), query::ValueExpr::NONE)), query::CompPredicate::LESS_THAN_OP, ValueExpr("", FactorOp(ValueFactor("400000000000000"), query::ValueExpr::NONE))))), AndTerm(BoolFactor(IS, CompPredicate(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "objectId")), query::ValueExpr::NONE)), query::CompPredicate::GREATER_THAN_OP, ValueExpr("", FactorOp(ValueFactor("430000000000000"), query::ValueExpr::NONE))))))), OrderByClause(OrderByTerm(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "objectId")), query::ValueExpr::NONE)), query::OrderByTerm::DEFAULT, "")), nullptr, nullptr, 0, -1);},
+        "SELECT objectId FROM Object WHERE objectId<400000000000000 OR objectId>430000000000000 ORDER BY objectId"
+    ),
+
+    // tests NOT IN in the InPredicate
+    Antlr4TestQueries(
+        "SELECT objectId, ra_PS FROM Object WHERE objectId NOT IN (417857368235490, 420949744686724, 420954039650823);",
+        []()->shared_ptr<query::SelectStmt>{return SelectStmt(SelectList(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "objectId")), query::ValueExpr::NONE)), ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "ra_PS")), query::ValueExpr::NONE))), FromList(TableRef("", "Object", "")), WhereClause(OrTerm(AndTerm(BoolFactor(IS, InPredicate(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "objectId")), query::ValueExpr::NONE)), NOT_IN, ValueExpr("", FactorOp(ValueFactor("417857368235490"), query::ValueExpr::NONE)), ValueExpr("", FactorOp(ValueFactor("420949744686724"), query::ValueExpr::NONE)), ValueExpr("", FactorOp(ValueFactor("420954039650823"), query::ValueExpr::NONE))))))), nullptr, nullptr, nullptr, 0, -1);},
+        "SELECT objectId,ra_PS FROM Object WHERE objectId NOT IN(417857368235490,420949744686724,420954039650823)"
+    ),
+
+    // tests the modulo operator
+    Antlr4TestQueries(
+        "select objectId, ra_PS % 3, decl_PS from Object where ra_PS % 3 > 1.5",
+        []()->shared_ptr<query::SelectStmt>{return SelectStmt(SelectList(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "objectId")), query::ValueExpr::NONE)), ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "ra_PS")), query::ValueExpr::MODULO), FactorOp(ValueFactor("3"), query::ValueExpr::NONE)), ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "decl_PS")), query::ValueExpr::NONE))), FromList(TableRef("", "Object", "")), WhereClause(OrTerm(AndTerm(BoolFactor(IS, CompPredicate(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "ra_PS")), query::ValueExpr::MODULO), FactorOp(ValueFactor("3"), query::ValueExpr::NONE)), query::CompPredicate::GREATER_THAN_OP, ValueExpr("", FactorOp(ValueFactor("1.5"), query::ValueExpr::NONE))))))), nullptr, nullptr, nullptr, 0, -1);},
+        "SELECT objectId,(ra_PS % 3),decl_PS FROM Object WHERE (ra_PS % 3)>1.5"
+    ),
+
+    // tests the MOD operator
+    Antlr4TestQueries(
+        "select objectId, ra_PS MOD 3, decl_PS from Object where ra_PS MOD 3 > 1.5",
+        []()->shared_ptr<query::SelectStmt>{return SelectStmt(SelectList(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "objectId")), query::ValueExpr::NONE)), ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "ra_PS")), query::ValueExpr::MOD), FactorOp(ValueFactor("3"), query::ValueExpr::NONE)), ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "decl_PS")), query::ValueExpr::NONE))), FromList(TableRef("", "Object", "")), WhereClause(OrTerm(AndTerm(BoolFactor(IS, CompPredicate(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "ra_PS")), query::ValueExpr::MOD), FactorOp(ValueFactor("3"), query::ValueExpr::NONE)), query::CompPredicate::GREATER_THAN_OP, ValueExpr("", FactorOp(ValueFactor("1.5"), query::ValueExpr::NONE))))))), nullptr, nullptr, nullptr, 0, -1);},
+        "SELECT objectId,(ra_PS MOD 3),decl_PS FROM Object WHERE (ra_PS MOD 3)>1.5"
+    ),
+
+    // tests the DIV operator
+    Antlr4TestQueries(
+        "SELECT objectId from Object where ra_PS DIV 2 > 1",
+        []()->shared_ptr<query::SelectStmt>{return SelectStmt(SelectList(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "objectId")), query::ValueExpr::NONE))), FromList(TableRef("", "Object", "")), WhereClause(OrTerm(AndTerm(BoolFactor(IS, CompPredicate(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "ra_PS")), query::ValueExpr::DIV), FactorOp(ValueFactor("2"), query::ValueExpr::NONE)), query::CompPredicate::GREATER_THAN_OP, ValueExpr("", FactorOp(ValueFactor("1"), query::ValueExpr::NONE))))))), nullptr, nullptr, nullptr, 0, -1);},
+        "SELECT objectId FROM Object WHERE (ra_PS DIV 2)>1"
+    ),
+
+    // tests the & operator
+    Antlr4TestQueries(
+        "SELECT objectId from Object where objectID & 1 = 1",
+        []()->shared_ptr<query::SelectStmt>{return SelectStmt(SelectList(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "objectId")), query::ValueExpr::NONE))), FromList(TableRef("", "Object", "")), WhereClause(OrTerm(AndTerm(BoolFactor(IS, CompPredicate(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "objectID")), query::ValueExpr::BIT_AND), FactorOp(ValueFactor("1"), query::ValueExpr::NONE)), query::CompPredicate::EQUALS_OP, ValueExpr("", FactorOp(ValueFactor("1"), query::ValueExpr::NONE))))))), nullptr, nullptr, nullptr, 0, -1);},
+        "SELECT objectId FROM Object WHERE (objectID&1)=1"
+    ),
+
+    // tests the | operator
+    Antlr4TestQueries(
+        "SELECT objectId from Object where objectID | 1 = 1",
+        []()->shared_ptr<query::SelectStmt>{return SelectStmt(SelectList(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "objectId")), query::ValueExpr::NONE))), FromList(TableRef("", "Object", "")), WhereClause(OrTerm(AndTerm(BoolFactor(IS, CompPredicate(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "objectID")), query::ValueExpr::BIT_OR), FactorOp(ValueFactor("1"), query::ValueExpr::NONE)), query::CompPredicate::EQUALS_OP, ValueExpr("", FactorOp(ValueFactor("1"), query::ValueExpr::NONE))))))), nullptr, nullptr, nullptr, 0, -1);},
+        "SELECT objectId FROM Object WHERE (objectID|1)=1"
+    ),
+
+    // tests the << operator
+    Antlr4TestQueries(
+        "SELECT objectId from Object where objectID << 10 = 1",
+        []()->shared_ptr<query::SelectStmt>{return SelectStmt(SelectList(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "objectId")), query::ValueExpr::NONE))), FromList(TableRef("", "Object", "")), WhereClause(OrTerm(AndTerm(BoolFactor(IS, CompPredicate(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "objectID")), query::ValueExpr::BIT_SHIFT_LEFT), FactorOp(ValueFactor("10"), query::ValueExpr::NONE)), query::CompPredicate::EQUALS_OP, ValueExpr("", FactorOp(ValueFactor("1"), query::ValueExpr::NONE))))))), nullptr, nullptr, nullptr, 0, -1);},
+        "SELECT objectId FROM Object WHERE (objectID<<10)=1"
+    ),
+
+    // tests the >> operator
+    Antlr4TestQueries(
+        "SELECT objectId from Object where objectID >> 10 = 1",
+        []()->shared_ptr<query::SelectStmt>{return SelectStmt(SelectList(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "objectId")), query::ValueExpr::NONE))), FromList(TableRef("", "Object", "")), WhereClause(OrTerm(AndTerm(BoolFactor(IS, CompPredicate(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "objectID")), query::ValueExpr::BIT_SHIFT_RIGHT), FactorOp(ValueFactor("10"), query::ValueExpr::NONE)), query::CompPredicate::EQUALS_OP, ValueExpr("", FactorOp(ValueFactor("1"), query::ValueExpr::NONE))))))), nullptr, nullptr, nullptr, 0, -1);},
+        "SELECT objectId FROM Object WHERE (objectID>>10)=1"
+    ),
+
+    // tests the ^ operator
+    Antlr4TestQueries(
+        "SELECT objectId from Object where objectID ^ 1 = 1",
+        []()->shared_ptr<query::SelectStmt>{return SelectStmt(SelectList(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "objectId")), query::ValueExpr::NONE))), FromList(TableRef("", "Object", "")), WhereClause(OrTerm(AndTerm(BoolFactor(IS, CompPredicate(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "objectID")), query::ValueExpr::BIT_XOR), FactorOp(ValueFactor("1"), query::ValueExpr::NONE)), query::CompPredicate::EQUALS_OP, ValueExpr("", FactorOp(ValueFactor("1"), query::ValueExpr::NONE))))))), nullptr, nullptr, nullptr, 0, -1);},
+        "SELECT objectId FROM Object WHERE (objectID^1)=1"
+    ),
+
+    // tests NOT with a BoolFactor
+    Antlr4TestQueries(
+        "select * from Filter where NOT filterId > 1 AND filterId < 6",
+        []()->shared_ptr<query::SelectStmt>{return SelectStmt(SelectList(ValueExpr("", FactorOp(ValueFactor(STAR, ""), query::ValueExpr::NONE))), FromList(TableRef("", "Filter", "")), WhereClause(OrTerm(AndTerm(BoolFactor(IS_NOT, CompPredicate(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "filterId")), query::ValueExpr::NONE)), query::CompPredicate::GREATER_THAN_OP, ValueExpr("", FactorOp(ValueFactor("1"), query::ValueExpr::NONE)))), BoolFactor(IS, CompPredicate(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "filterId")), query::ValueExpr::NONE)), query::CompPredicate::LESS_THAN_OP, ValueExpr("", FactorOp(ValueFactor("6"), query::ValueExpr::NONE))))))), nullptr, nullptr, nullptr, 0, -1);},
+        "SELECT * FROM Filter WHERE NOT filterId>1 AND filterId<6"
+    ),
+
+    // tests NOT with an AND term
+    Antlr4TestQueries(
+        "select * from Filter where NOT (filterId > 1 AND filterId < 6)",
+        []()->shared_ptr<query::SelectStmt>{return SelectStmt(SelectList(ValueExpr("", FactorOp(ValueFactor(STAR, ""), query::ValueExpr::NONE))), FromList(TableRef("", "Filter", "")), WhereClause(OrTerm(AndTerm(BoolFactor(IS_NOT, PassTerm("("), BoolTermFactor(AndTerm(BoolFactor(IS, CompPredicate(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "filterId")), query::ValueExpr::NONE)), query::CompPredicate::GREATER_THAN_OP, ValueExpr("", FactorOp(ValueFactor("1"), query::ValueExpr::NONE)))), BoolFactor(IS, CompPredicate(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "filterId")), query::ValueExpr::NONE)), query::CompPredicate::LESS_THAN_OP, ValueExpr("", FactorOp(ValueFactor("6"), query::ValueExpr::NONE)))))), PassTerm(")"))))), nullptr, nullptr, nullptr, 0, -1);},
+        "SELECT * FROM Filter WHERE NOT(filterId>1 AND filterId<6)"
+    ),
 };
 
 
