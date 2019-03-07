@@ -54,6 +54,8 @@ struct ConfigurationGeneralParams {
         std::string const description = "The default buffer size for network communications.";
         size_t            value;
 
+        bool const updatable = true;
+
         void save(Configuration::Ptr const& config) {
             if (value != 0) config->setRequestBufferSizeBytes(value);
         }
@@ -67,6 +69,8 @@ struct ConfigurationGeneralParams {
         std::string const key         = "NET_RETRY_TIMEOUT_SEC";
         std::string const description = "The default retry timeout for network communications.";
         unsigned int      value;
+
+        bool const updatable = true;
 
         void save(Configuration::Ptr const& config) {
             if (value != 0) config->setRetryTimeoutSec(value);
@@ -82,6 +86,8 @@ struct ConfigurationGeneralParams {
         std::string const description = "The number of threads managed by BOOST ASIO.";
         size_t            value;
 
+        bool const updatable = true;
+
         void save(Configuration::Ptr const& config) {
             if (value != 0) config->setControllerThreads(value);
         }
@@ -95,6 +101,8 @@ struct ConfigurationGeneralParams {
         std::string const key         = "CONTR_HTTP_PORT";
         std::string const description = "The port number for the controller's HTTP server.";
         uint16_t          value;
+
+        bool const updatable = true;
 
         void save(Configuration::Ptr const& config) {
             if (value != 0) config->setControllerHttpPort(value);
@@ -110,6 +118,8 @@ struct ConfigurationGeneralParams {
         std::string const description = "The number of threads managed by BOOST ASIO for the HTTP server.";
         size_t            value;
 
+        bool const updatable = true;
+
         void save(Configuration::Ptr const& config) {
             if (value != 0) config->setControllerHttpThreads(value);
         }
@@ -123,6 +133,8 @@ struct ConfigurationGeneralParams {
         std::string const key         = "CONTR_REQUEST_TIMEOUT_SEC";
         std::string const description = "The default timeout for completing worker requests.";
         unsigned int      value;
+
+        bool const updatable = true;
 
         void save(Configuration::Ptr const& config) {
             if (value != 0) config->setControllerRequestTimeoutSec(value);
@@ -138,6 +150,8 @@ struct ConfigurationGeneralParams {
         std::string const description = "default timeout for completing jobs";
         unsigned int      value;
 
+        bool const updatable = true;
+
         void save(Configuration::Ptr const& config) {
             if (value != 0) config->setJobTimeoutSec(value);
         }
@@ -152,6 +166,8 @@ struct ConfigurationGeneralParams {
         std::string const key         = "CONTR_JOB_HEARTBEAT_SEC";
         std::string const description = "The heartbeat interval for jobs. A value of 0 disables heartbeats.";
         unsigned int      value       = std::numeric_limits<unsigned int>::max();
+
+        bool const updatable = true;
 
         void save(Configuration::Ptr const& config) {
             if (value != std::numeric_limits<unsigned int>::max()) {
@@ -169,6 +185,8 @@ struct ConfigurationGeneralParams {
         std::string const description = "Automatically notify Qserv on changes in replica disposition (0 disables this feature).";
         int               value       = -1;
 
+        bool const updatable = true;
+
         void save(Configuration::Ptr const& config) {
             if (value >= 0) config->setXrootdAutoNotify(value != 0);
         }
@@ -184,6 +202,8 @@ struct ConfigurationGeneralParams {
                                         " communications with Qserv.";
         std::string       value;
 
+        bool const updatable = true;
+
         void save(Configuration::Ptr const& config) {
             if (not value.empty()) config->setXrootdHost(value);
         }
@@ -197,6 +217,8 @@ struct ConfigurationGeneralParams {
         std::string const key         = "XROOTD_PORT";
         std::string const description = "A port number for the XRootD/SSI service needed for communications with Qserv.";
         uint16_t          value;
+
+        bool const updatable = true;
 
         void save(Configuration::Ptr const& config) {
             if (value != 0) config->setXrootdPort(value);
@@ -212,6 +234,8 @@ struct ConfigurationGeneralParams {
         std::string const description = "The default timeout for communications with Qserv over XRootD/SSI.";
         unsigned int      value;
 
+        bool const updatable = true;
+
         void save(Configuration::Ptr const& config) {
             if (value != 0) config->setXrootdTimeoutSec(value);
         }
@@ -225,6 +249,8 @@ struct ConfigurationGeneralParams {
         std::string const key         = "DB_TECHNOLOGY";
         std::string const description = "The name of a database technology for the persistent state.";
 
+        bool const updatable = false;
+
         std::string get(Configuration::Ptr const& config) const { return config->databaseTechnology(); }
         std::string str(Configuration::Ptr const& config) const { return get(config); }
 
@@ -234,6 +260,8 @@ struct ConfigurationGeneralParams {
 
         std::string const key         = "DB_HOST";
         std::string const description = "database service location";
+
+        bool const updatable = false;
 
         std::string get(Configuration::Ptr const& config) const { return config->databaseHost(); }
         std::string str(Configuration::Ptr const& config) const { return get(config); }
@@ -245,6 +273,8 @@ struct ConfigurationGeneralParams {
         std::string const key         = "DB_PORT";
         std::string const description = "The database service port.";
 
+        bool const updatable = false;
+
         uint16_t    get(Configuration::Ptr const& config) const { return config->databasePort(); }
         std::string str(Configuration::Ptr const& config) const { return std::to_string(get(config)); }
 
@@ -254,6 +284,8 @@ struct ConfigurationGeneralParams {
 
         std::string const key         = "DB_USER";
         std::string const description = "A user account for connecting to the database service.";
+
+        bool const updatable = false;
 
         std::string get(Configuration::Ptr const& config) const { return config->databaseUser(); }
         std::string str(Configuration::Ptr const& config) const { return get(config); }
@@ -265,7 +297,9 @@ struct ConfigurationGeneralParams {
         std::string const key         = "DB_PASSWORD";
         std::string const description = "A password for connecting to the database service.";
 
-        std::string get(Configuration::Ptr const& config, bool scramble) const {
+        bool const updatable = false;
+
+        std::string get(Configuration::Ptr const& config, bool scramble=true) const {
             return scramble ? "xxxxxx" : config->databasePassword();
         }
         std::string str(Configuration::Ptr const& config, bool scramble) const { return get(config, scramble); }
@@ -277,6 +311,8 @@ struct ConfigurationGeneralParams {
         std::string const key         = "DB_NAME";
         std::string const description = "The name of the default database schema.";
 
+        bool const updatable = false;
+
         std::string get(Configuration::Ptr const& config) const { return config->databaseName(); }
         std::string str(Configuration::Ptr const& config) const { return get(config); }
 
@@ -287,6 +323,8 @@ struct ConfigurationGeneralParams {
         std::string const key         = "DB_SVC_POOL_SIZE";
         std::string const description = "The pool size at the client database services connector.";
         size_t            value;
+
+        bool const updatable = true;
 
         void save(Configuration::Ptr const& config) {
             if (value != 0) config->setDatabaseServicesPoolSize(value);
@@ -302,6 +340,8 @@ struct ConfigurationGeneralParams {
         std::string const description = "The name of a technology for implementing requests.";
         std::string       value;
 
+        bool const updatable = true;
+
         void save(Configuration::Ptr const& config) {
             if (not value.empty()) config->setWorkerTechnology(value);
         }
@@ -315,6 +355,8 @@ struct ConfigurationGeneralParams {
         std::string const key         = "WORKER_NUM_PROC_THREADS";
         std::string const description = "The number of request processing threads in each worker service.";
         size_t            value;
+
+        bool const updatable = true;
 
         void save(Configuration::Ptr const& config) {
             if (value != 0) config->setWorkerNumProcessingThreads(value);
@@ -330,6 +372,8 @@ struct ConfigurationGeneralParams {
         std::string const description = "The number of request processing threads in each worker's file server.";
         size_t            value;
 
+        bool const updatable = true;
+
         void save(Configuration::Ptr const& config) {
             if (value != 0) config->setFsNumProcessingThreads(value);
         }
@@ -343,6 +387,8 @@ struct ConfigurationGeneralParams {
         std::string const key         = "WORKER_FS_BUF_SIZE_BYTES";
         std::string const description = "Buffer size for file and network operations at worker's file server.";
         size_t            value;
+
+        bool const updatable = true;
 
         void save(Configuration::Ptr const& config) {
             if (value != 0) config->setWorkerFsBufferSizeBytes(value);
@@ -358,15 +404,11 @@ struct ConfigurationGeneralParams {
      *
      * @param config
      *   pointer to the Configuration object
-     * 
-     * @param scrambleDbPassword
-     *   replace an actual database password with some random string if 'true'
      *
      * @return
      *   JSON array
      */
-    nlohmann::json toJson(Configuration::Ptr const& config,
-                          bool const scrambleDbPassword) const;
+    nlohmann::json toJson(Configuration::Ptr const& config) const;
 };
 
 

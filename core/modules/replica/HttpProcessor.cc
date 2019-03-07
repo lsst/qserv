@@ -25,13 +25,14 @@
 
 // System headers
 #include <atomic>
+#include <functional>
 #include <map>
 #include <iomanip>
 #include <stdexcept>
 #include <sstream>
 
 // Third party headers
-#include "nlohmann/json.hpp"
+#include <boost/lexical_cast.hpp>
 
 // Qserv headers
 #include "util/BlockPost.h"
@@ -47,7 +48,8 @@ using json = nlohmann::json;
 
 namespace {
 
-using namespace lsst::qserv;
+namespace qhttp = lsst::qserv::qhttp;
+using namespace lsst::qserv::replica;
 
 /**
  * Extract a value of an optional parameter of a query (string value)
@@ -120,6 +122,42 @@ uint64_t getQueryParam(qhttp::Request::Ptr req,
     return stoull(itr->second);
 }
 
+/**
+ * Inspect parameters of the request's query to see if the specified parameter
+ * is one of those. And if so then extract its value, convert it into an appropriate
+ * type and save in the Configuration.
+ * 
+ * @param struct_
+ *   helper type specific to the Configuration parameter
+ * 
+ * @param req
+ *   input request descriptor
+ * 
+ * @param config
+ *   pointer to the Configuration service
+ * 
+ * @param logger
+ *   the logger function to report  to the Configuration service
+ *
+ * @return
+ *   'true' f the parameter was found and saved
+ */
+template<typename T>
+bool saveConfigParameter(T& struct_,
+                         qhttp::Request::Ptr const& req,
+                         Configuration::Ptr const& config,
+                         string const& context,
+                         function<void(string const&)> const& logger) {
+    auto const itr = req->query.find(struct_.key);
+    if (itr != req->query.end()) {
+        struct_.value = boost::lexical_cast<decltype(struct_.value)>(itr->second);
+        struct_.save(config);
+        logger(context + " updated Configuration parameter " + struct_.key + "=" + itr->second);
+        return true;
+    }
+    return false;
+}
+
 }  // namespace
 
 
@@ -171,22 +209,17 @@ void HttpProcessor::_initialize() {
 
     controller()->serviceProvider()->httpServer()->addHandlers({
 
-        // Replication level summary
         {"GET",    "/replication/v1/level",          bind(&HttpProcessor::_getReplicationLevel, self, _1, _2)},
-        // Status of all workers or a particular worker
         {"GET",    "/replication/v1/worker",         bind(&HttpProcessor::_listWorkerStatuses,  self, _1, _2)},
         {"GET",    "/replication/v1/worker/:name",   bind(&HttpProcessor::_getWorkerStatus,     self, _1, _2)},
-        // Info on the controllers
         {"GET",    "/replication/v1/controller",     bind(&HttpProcessor::_listControllers,     self, _1, _2)},
         {"GET",    "/replication/v1/controller/:id", bind(&HttpProcessor::_getControllerInfo,   self, _1, _2)},
-        // Info on the requests
         {"GET",    "/replication/v1/request",        bind(&HttpProcessor::_listRequests,        self, _1, _2)},
         {"GET",    "/replication/v1/request/:id",    bind(&HttpProcessor::_getRequestInfo,      self, _1, _2)},
-        // Info on the jobs
         {"GET",    "/replication/v1/job",            bind(&HttpProcessor::_listJobs,            self, _1, _2)},
         {"GET",    "/replication/v1/job/:id",        bind(&HttpProcessor::_getJobInfo,          self, _1, _2)},
-        // System's configuration
         {"GET",    "/replication/v1/config",         bind(&HttpProcessor::_getConfig,           self, _1, _2)},
+        {"PUT",    "/replication/v1/config",         bind(&HttpProcessor::_updateConfig,        self, _1, _2)}
     });
     controller()->serviceProvider()->httpServer()->start();
 }
@@ -704,51 +737,93 @@ void HttpProcessor::_getConfig(qhttp::Request::Ptr req,
     _debug(__func__);
 
     try {
-
-        json configJson;
-
-        auto const config = controller()->serviceProvider()->config();
-
-        // General parameters
-
-        ConfigurationGeneralParams general;
-
-        bool const scrambleDbPassword = true;
-        configJson["general"] = general.toJson(config, scrambleDbPassword);
-
-        // Workers
-        
-        json workersJson;
-        for (auto&& worker: config->allWorkers()) {
-            auto const wi = config->workerInfo(worker);
-            workersJson.push_back(wi.toJson());
-        }
-        configJson["workers"] = workersJson;
-
-        // Database families, databases, and tables
-
-        json familiesJson;
-        for (auto&& family: config->databaseFamilies()) {
-            auto const fi = config->databaseFamilyInfo(family);
-            json familyJson = fi.toJson();
-            for (auto&& database: config->databases(family)) {
-                auto const di = config->databaseInfo(database);
-                familyJson["databases"].push_back(di.toJson());
-            }
-            familiesJson.push_back(familyJson);
-        }
-        configJson["families"] = familiesJson;
-
-        json resultJson;
-        resultJson["config"] = configJson;
-
-        resp->send(resultJson.dump(), "application/json");
-
+        resp->send(_configToJson().dump(), "application/json");
     } catch (exception const& ex) {
         _error(string(__func__) + " operation failed due to: " + string(ex.what()));
         resp->sendStatus(500);
     }
 }
 
+
+void HttpProcessor::_updateConfig(qhttp::Request::Ptr req,
+                                  qhttp::Response::Ptr resp) {
+    _debug(__func__);
+
+    try {
+
+        ConfigurationGeneralParams general;
+
+        auto const config = controller()->serviceProvider()->config();
+        auto const logger = [this](string const& msg) { this->_debug(msg); };
+
+        ::saveConfigParameter(general.requestBufferSizeBytes,      req, config, __func__, logger);
+        ::saveConfigParameter(general.retryTimeoutSec,             req, config, __func__, logger);
+        ::saveConfigParameter(general.controllerThreads,           req, config, __func__, logger);
+        ::saveConfigParameter(general.controllerHttpPort,          req, config, __func__, logger);
+        ::saveConfigParameter(general.controllerHttpThreads,       req, config, __func__, logger);
+        ::saveConfigParameter(general.controllerRequestTimeoutSec, req, config, __func__, logger);
+        ::saveConfigParameter(general.jobTimeoutSec,               req, config, __func__, logger);
+        ::saveConfigParameter(general.jobHeartbeatTimeoutSec,      req, config, __func__, logger);
+        ::saveConfigParameter(general.xrootdAutoNotify,            req, config, __func__, logger);
+        ::saveConfigParameter(general.xrootdHost,                  req, config, __func__, logger);
+        ::saveConfigParameter(general.xrootdPort,                  req, config, __func__, logger);
+        ::saveConfigParameter(general.xrootdTimeoutSec,            req, config, __func__, logger);
+        ::saveConfigParameter(general.databaseServicesPoolSize,    req, config, __func__, logger);
+        ::saveConfigParameter(general.workerTechnology,            req, config, __func__, logger);
+        ::saveConfigParameter(general.workerNumProcessingThreads,  req, config, __func__, logger);
+        ::saveConfigParameter(general.fsNumProcessingThreads,      req, config, __func__, logger);
+        ::saveConfigParameter(general.workerFsBufferSizeBytes,     req, config, __func__, logger);
+
+        resp->send(_configToJson().dump(), "application/json");
+
+    } catch (boost::bad_lexical_cast const& ex) {
+        _error(string(__func__) + " invalid value of a configuration parameter: " + string(ex.what()));
+        resp->sendStatus(400);
+    } catch (exception const& ex) {
+        _error(string(__func__) + " operation failed due to: " + string(ex.what()));
+        resp->sendStatus(500);
+    }
+}
+
+
+json HttpProcessor::_configToJson() const {
+
+    json configJson;
+
+    auto const config = controller()->serviceProvider()->config();
+
+    // General parameters
+
+    ConfigurationGeneralParams general;
+    configJson["general"] = general.toJson(config);
+
+    // Workers
+
+    json workersJson;
+    for (auto&& worker: config->allWorkers()) {
+        auto const wi = config->workerInfo(worker);
+        workersJson.push_back(wi.toJson());
+    }
+    configJson["workers"] = workersJson;
+
+    // Database families, databases, and tables
+
+    json familiesJson;
+    for (auto&& family: config->databaseFamilies()) {
+        auto const fi = config->databaseFamilyInfo(family);
+        json familyJson = fi.toJson();
+        for (auto&& database: config->databases(family)) {
+            auto const di = config->databaseInfo(database);
+            familyJson["databases"].push_back(di.toJson());
+        }
+        familiesJson.push_back(familyJson);
+    }
+    configJson["families"] = familiesJson;
+
+    json resultJson;
+    resultJson["config"] = configJson;
+
+    return resultJson;
+}
 
 }}} // namespace lsst::qserv::replica

@@ -27,6 +27,9 @@
 #include <memory>
 #include <set>
 
+// Third party headers
+#include "nlohmann/json.hpp"
+
 // Qserv headers
 #include "qhttp/Server.h"
 #include "replica/DeleteWorkerTask.h"
@@ -250,6 +253,24 @@ private:
      */
     void _getConfig(qhttp::Request::Ptr req,
                     qhttp::Response::Ptr resp);
+
+    /**
+     * Process a request which updates the Configuration of the Replication system
+     * and reports back its new state.
+     *
+     * @param req   request received from a client
+     * @param resp  response to be sent back
+     */
+    void _updateConfig(qhttp::Request::Ptr req,
+                       qhttp::Response::Ptr resp);
+
+    /**
+     * Pull the current Configuration and translate it into a JSON object
+     * 
+     * @return JSON object
+     */
+    nlohmann::json _configToJson() const;
+
 private:
 
     /// The reference to the Replication Framework's Controller
