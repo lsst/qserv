@@ -76,7 +76,22 @@ string getQueryParamStr(qhttp::Request::Ptr req,
 
 
 /**
- * Extract a value of an optional parameter of a query (boolean value)
+ * Safe version of the above defined method which requires that
+ * the parameter was provided and it had a valid value.
+ */
+string getRequiredQueryParamStr(qhttp::Request::Ptr req,
+                                string const& param) {
+    auto const val = getQueryParamStr(req, param, string());
+    if (val.empty()) {
+        throw invalid_argument(
+                string(__func__) + " parameter '" + param + "' is missing or has an invalid value");
+    }
+    return val;
+}
+
+
+/**
+ * Extract a value of an optional parameter of a query (unsigned 16-bit)
  * 
  * @param req
  *   HTTP request object
@@ -90,12 +105,32 @@ string getQueryParamStr(qhttp::Request::Ptr req,
  * @return
  *   the found value or the default value
  */
-bool getQueryParamBool(qhttp::Request::Ptr req,
-                       string const& param,
-                       bool defaultValue) {
+uint16_t getQueryParamUInt16(qhttp::Request::Ptr req,
+                             string const& param,
+                             uint16_t defaultValue) {
     auto&& itr = req->query.find(param);
     if (itr == req->query.end()) return defaultValue;
-    return not (itr->second.empty() or (itr->second == "0"));
+    unsigned long val = stoul(itr->second);
+    if (val >= USHRT_MAX) {
+        throw out_of_range(
+           "HttpProcessor::" + string(__func__) + " invalid value of parameter: " + param);
+    }
+    return static_cast<uint16_t>(val);
+}
+
+
+/**
+ * Safe version of the above defined method which requires that
+ * the parameter was provided and it had a valid value.
+ */
+uint16_t getRequiredQueryParamUInt16(qhttp::Request::Ptr req,
+                                string const& param) {
+    auto const val = getQueryParamUInt16(req, param, 0U);
+    if (val == 0L) {
+        throw invalid_argument(
+                string(__func__) + " parameter '" + param + "' is missing or has an invalid value");
+    }
+    return val;
 }
 
 
@@ -121,6 +156,70 @@ uint64_t getQueryParam(qhttp::Request::Ptr req,
     if (itr == req->query.end()) return defaultValue;
     return stoull(itr->second);
 }
+
+
+/**
+ * Extract a value of an optional parameter of a query (int)
+ * 
+ * @param req
+ *   HTTP request object
+ * 
+ * @param name
+ *   the name of a parameter to look for
+ * 
+ * @param defaultValue
+ *   the default value to be returned if no parameter was found
+ * 
+ * @return
+ *   the found value or the default value
+ */
+int getQueryParamInt(qhttp::Request::Ptr req,
+                     string const& param,
+                     int defaultValue) {
+    auto&& itr = req->query.find(param);
+    if (itr == req->query.end()) return defaultValue;
+    return stoi(itr->second);
+}
+
+
+/**
+ * Safe version of the above defined method which requires that
+ * the parameter was provided and it had a valid value.
+ */
+bool getRequiredQueryParamBool(qhttp::Request::Ptr req,
+                               string const& param) {
+    auto const val = getQueryParamInt(req, param, -1);
+    if (val < 0) {
+        throw invalid_argument(
+                string(__func__) + " parameter '" + param + "' is missing or has an invalid value");
+    }
+    return val != 0;
+}
+
+
+/**
+ * Extract a value of an optional parameter of a query (boolean value)
+ * 
+ * @param req
+ *   HTTP request object
+ * 
+ * @param name
+ *   the name of a parameter to look for
+ * 
+ * @param defaultValue
+ *   the default value to be returned if no parameter was found
+ * 
+ * @return
+ *   the found value or the default value
+ */
+bool getQueryParamBool(qhttp::Request::Ptr req,
+                       string const& param,
+                       bool defaultValue) {
+    auto&& itr = req->query.find(param);
+    if (itr == req->query.end()) return defaultValue;
+    return not (itr->second.empty() or (itr->second == "0"));
+}
+
 
 /**
  * Inspect parameters of the request's query to see if the specified parameter
@@ -210,16 +309,24 @@ void HttpProcessor::_initialize() {
     controller()->serviceProvider()->httpServer()->addHandlers({
 
         {"GET",    "/replication/v1/level",          bind(&HttpProcessor::_getReplicationLevel, self, _1, _2)},
+
         {"GET",    "/replication/v1/worker",         bind(&HttpProcessor::_listWorkerStatuses,  self, _1, _2)},
         {"GET",    "/replication/v1/worker/:name",   bind(&HttpProcessor::_getWorkerStatus,     self, _1, _2)},
+
         {"GET",    "/replication/v1/controller",     bind(&HttpProcessor::_listControllers,     self, _1, _2)},
         {"GET",    "/replication/v1/controller/:id", bind(&HttpProcessor::_getControllerInfo,   self, _1, _2)},
+
         {"GET",    "/replication/v1/request",        bind(&HttpProcessor::_listRequests,        self, _1, _2)},
         {"GET",    "/replication/v1/request/:id",    bind(&HttpProcessor::_getRequestInfo,      self, _1, _2)},
+
         {"GET",    "/replication/v1/job",            bind(&HttpProcessor::_listJobs,            self, _1, _2)},
         {"GET",    "/replication/v1/job/:id",        bind(&HttpProcessor::_getJobInfo,          self, _1, _2)},
-        {"GET",    "/replication/v1/config",         bind(&HttpProcessor::_getConfig,           self, _1, _2)},
-        {"PUT",    "/replication/v1/config",         bind(&HttpProcessor::_updateConfig,        self, _1, _2)}
+
+        {"GET",    "/replication/v1/config",               bind(&HttpProcessor::_getConfig,           self, _1, _2)},
+        {"PUT",    "/replication/v1/config/general",       bind(&HttpProcessor::_updateGeneralConfig, self, _1, _2)},
+        {"PUT",    "/replication/v1/config/worker/:name",  bind(&HttpProcessor::_updateWorkerConfig,  self, _1, _2)},
+        {"POST",   "/replication/v1/config/worker/:name",  bind(&HttpProcessor::_addWorkerConfig,     self, _1, _2)},
+        {"DELETE", "/replication/v1/config/worker/:name",  bind(&HttpProcessor::_deleteWorkerConfig,  self, _1, _2)}
     });
     controller()->serviceProvider()->httpServer()->start();
 }
@@ -629,6 +736,9 @@ void HttpProcessor::_listRequests(qhttp::Request::Ptr req,
         resultJson["requests"] = requestsJson;
         resp->send(resultJson.dump(), "application/json");
 
+    } catch (invalid_argument const& ex) {
+        _error(string(__func__) + " invalid parameters of the request");
+        resp->sendStatus(400);
     } catch (exception const& ex) {
         _error(string(__func__) + " operation failed due to: " + string(ex.what()));
         resp->sendStatus(500);
@@ -700,6 +810,9 @@ void HttpProcessor::_listJobs(qhttp::Request::Ptr req,
         resultJson["jobs"] = jobsJson;
         resp->send(resultJson.dump(), "application/json");
 
+    } catch (invalid_argument const& ex) {
+        _error(string(__func__) + " invalid parameters of the request");
+        resp->sendStatus(400);
     } catch (exception const& ex) {
         _error(string(__func__) + " operation failed due to: " + string(ex.what()));
         resp->sendStatus(500);
@@ -745,8 +858,8 @@ void HttpProcessor::_getConfig(qhttp::Request::Ptr req,
 }
 
 
-void HttpProcessor::_updateConfig(qhttp::Request::Ptr req,
-                                  qhttp::Response::Ptr resp) {
+void HttpProcessor::_updateGeneralConfig(qhttp::Request::Ptr req,
+                                         qhttp::Response::Ptr resp) {
     _debug(__func__);
 
     try {
@@ -779,6 +892,91 @@ void HttpProcessor::_updateConfig(qhttp::Request::Ptr req,
     } catch (boost::bad_lexical_cast const& ex) {
         _error(string(__func__) + " invalid value of a configuration parameter: " + string(ex.what()));
         resp->sendStatus(400);
+    } catch (exception const& ex) {
+        _error(string(__func__) + " operation failed due to: " + string(ex.what()));
+        resp->sendStatus(500);
+    }
+}
+
+
+void HttpProcessor::_updateWorkerConfig(qhttp::Request::Ptr req,
+                                        qhttp::Response::Ptr resp) {
+    _debug(__func__);
+
+    auto const name = req->params["name"];
+    try {
+        int      const isEnabled  = ::getQueryParamInt   (req, "is_enabled",   -1);
+        int      const isReadOnly = ::getQueryParamInt   (req, "is_read_only", -1);
+        string   const svcHost    = ::getQueryParamStr   (req, "svc_host",     string());
+        uint16_t const svcPort    = ::getQueryParamUInt16(req, "svc_port",     0U);
+        string   const fsHost     = ::getQueryParamStr   (req, "fs_host",      string());
+        uint16_t const fsPort     = ::getQueryParamUInt16(req, "fs_port",      0U);
+        string   const dataDir    = ::getQueryParamStr   (req, "data_dir",     string());
+
+        _debug(string(__func__) + " is_enabled="   + to_string(isEnabled));
+        _debug(string(__func__) + " is_read_only=" + to_string(isReadOnly));
+        _debug(string(__func__) + " svc_host="     + svcHost);
+        _debug(string(__func__) + " svc_port="     + to_string(svcPort));
+        _debug(string(__func__) + " fs_host="      + fsHost);
+        _debug(string(__func__) + " fs_port="      + to_string(fsPort));
+        _debug(string(__func__) + " data_dir="     + dataDir);
+
+        resp->send(_configToJson().dump(), "application/json");
+
+    } catch (invalid_argument const& ex) {
+        _error(string(__func__) + " invalid parameters of the request");
+        resp->sendStatus(400);
+    } catch (exception const& ex) {
+        _error(string(__func__) + " operation failed due to: " + string(ex.what()));
+        resp->sendStatus(500);
+    }
+}
+
+
+void HttpProcessor::_addWorkerConfig(qhttp::Request::Ptr req,
+                                     qhttp::Response::Ptr resp) {
+    _debug(__func__);
+
+    auto const name = req->params["name"];
+    try {
+
+        // All parameters must be provided
+        
+        bool     const isEnabled  = ::getRequiredQueryParamBool  (req, "is_enabled");
+        bool     const isReadOnly = ::getRequiredQueryParamBool  (req, "is_read_only");
+        string   const svcHost    = ::getRequiredQueryParamStr   (req, "svc_host");
+        uint16_t const svcPort    = ::getRequiredQueryParamUInt16(req, "svc_port");
+        string   const fsHost     = ::getRequiredQueryParamStr   (req, "fs_host");
+        uint16_t const fsPort     = ::getRequiredQueryParamUInt16(req, "fs_port");
+        string   const dataDir    = ::getRequiredQueryParamStr   (req, "data_dir");
+
+        _debug(string(__func__) + " is_enabled="   + to_string(isEnabled  ? 1 : 0));
+        _debug(string(__func__) + " is_read_only=" + to_string(isReadOnly ? 1 : 0));
+        _debug(string(__func__) + " svc_host="     + svcHost);
+        _debug(string(__func__) + " svc_port="     + to_string(svcPort));
+        _debug(string(__func__) + " fs_host="      + fsHost);
+        _debug(string(__func__) + " fs_port="      + to_string(fsPort));
+        _debug(string(__func__) + " data_dir="     + dataDir);        
+
+        resp->send(_configToJson().dump(), "application/json");
+
+    } catch (invalid_argument const& ex) {
+        _error(string(__func__) + " invalid parameters of the request");
+        resp->sendStatus(400);
+    } catch (exception const& ex) {
+        _error(string(__func__) + " operation failed due to: " + string(ex.what()));
+        resp->sendStatus(500);
+    }
+}
+
+
+void HttpProcessor::_deleteWorkerConfig(qhttp::Request::Ptr req,
+                                        qhttp::Response::Ptr resp) {
+    _debug(__func__);
+
+    auto const name = req->params["name"];
+    try {
+        resp->send(_configToJson().dump(), "application/json");
     } catch (exception const& ex) {
         _error(string(__func__) + " operation failed due to: " + string(ex.what()));
         resp->sendStatus(500);

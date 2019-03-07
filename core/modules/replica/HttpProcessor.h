@@ -261,8 +261,38 @@ private:
      * @param req   request received from a client
      * @param resp  response to be sent back
      */
-    void _updateConfig(qhttp::Request::Ptr req,
-                       qhttp::Response::Ptr resp);
+    void _updateGeneralConfig(qhttp::Request::Ptr req,
+                              qhttp::Response::Ptr resp);
+
+    /**
+     * Process a request which updates parameters of an existing worker in the Configuration
+     * of the Replication system and reports back the new state of the system
+     *
+     * @param req   request received from a client
+     * @param resp  response to be sent back
+     */
+    void _updateWorkerConfig(qhttp::Request::Ptr req,
+                             qhttp::Response::Ptr resp);
+
+    /**
+     * Process a request which adds a new worker into the Configuration
+     * of the Replication system and reports back the new state of the system
+     *
+     * @param req   request received from a client
+     * @param resp  response to be sent back
+     */
+    void _addWorkerConfig(qhttp::Request::Ptr req,
+                          qhttp::Response::Ptr resp);
+
+    /**
+     * Process a request which removes an existing worker from the Configuration
+     * of the Replication system and reports back the new state of the system
+     *
+     * @param req   request received from a client
+     * @param resp  response to be sent back
+     */
+    void _deleteWorkerConfig(qhttp::Request::Ptr req,
+                             qhttp::Response::Ptr resp);
 
     /**
      * Pull the current Configuration and translate it into a JSON object
