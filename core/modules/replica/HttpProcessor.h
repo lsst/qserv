@@ -275,6 +275,16 @@ private:
                              qhttp::Response::Ptr resp);
 
     /**
+     * Process a request which removes an existing worker from the Configuration
+     * of the Replication system and reports back the new state of the system
+     *
+     * @param req   request received from a client
+     * @param resp  response to be sent back
+     */
+    void _deleteWorkerConfig(qhttp::Request::Ptr req,
+                             qhttp::Response::Ptr resp);
+
+    /**
      * Process a request which adds a new worker into the Configuration
      * of the Replication system and reports back the new state of the system
      *
@@ -285,14 +295,64 @@ private:
                           qhttp::Response::Ptr resp);
 
     /**
-     * Process a request which removes an existing worker from the Configuration
+     * Process a request which removes an existing database family from the Configuration
      * of the Replication system and reports back the new state of the system
      *
      * @param req   request received from a client
      * @param resp  response to be sent back
      */
-    void _deleteWorkerConfig(qhttp::Request::Ptr req,
+    void _deleteFamilyConfig(qhttp::Request::Ptr req,
                              qhttp::Response::Ptr resp);
+
+    /**
+     * Process a request which adds a new database family into the Configuration
+     * of the Replication system and reports back the new state of the system
+     *
+     * @param req   request received from a client
+     * @param resp  response to be sent back
+     */
+    void _addFamilyConfig(qhttp::Request::Ptr req,
+                          qhttp::Response::Ptr resp);
+
+    /**
+     * Process a request which removes an existing database from the Configuration
+     * of the Replication system and reports back the new state of the system
+     *
+     * @param req   request received from a client
+     * @param resp  response to be sent back
+     */
+    void _deleteDatabaseConfig(qhttp::Request::Ptr req,
+                               qhttp::Response::Ptr resp);
+
+    /**
+     * Process a request which adds a new database into the Configuration
+     * of the Replication system and reports back the new state of the system
+     *
+     * @param req   request received from a client
+     * @param resp  response to be sent back
+     */
+    void _addDatabaseConfig(qhttp::Request::Ptr req,
+                            qhttp::Response::Ptr resp);
+
+    /**
+     * Process a request which removes an existing table from the Configuration
+     * of the Replication system and reports back the new state of the system
+     *
+     * @param req   request received from a client
+     * @param resp  response to be sent back
+     */
+    void _deleteTableConfig(qhttp::Request::Ptr req,
+                            qhttp::Response::Ptr resp);
+
+    /**
+     * Process a request which adds a new database table into the Configuration
+     * of the Replication system and reports back the new state of the system
+     *
+     * @param req   request received from a client
+     * @param resp  response to be sent back
+     */
+    void _addTableConfig(qhttp::Request::Ptr req,
+                        qhttp::Response::Ptr resp);
 
     /**
      * Pull the current Configuration and translate it into a JSON object

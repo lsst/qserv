@@ -54,8 +54,8 @@ using namespace lsst::qserv::replica;
 /**
  * Extract a value of an optional parameter of a query (string value)
  * 
- * @param req
- *   HTTP request object
+ * @param query
+ *   parameters of the HTTP request
  * 
  * @param name
  *   the name of a parameter to look for
@@ -66,11 +66,11 @@ using namespace lsst::qserv::replica;
  * @return
  *   the found value or the default value
  */
-string getQueryParamStr(qhttp::Request::Ptr req,
+string getQueryParamStr(unordered_map<string,string> const& query,
                         string const& param,
-                        string const& defaultValue) {
-    auto&& itr = req->query.find(param);
-    if (itr == req->query.end()) return defaultValue;
+                        string const& defaultValue=string()) {
+    auto&& itr = query.find(param);
+    if (itr == query.end()) return defaultValue;
     return itr->second;
 }
 
@@ -78,10 +78,12 @@ string getQueryParamStr(qhttp::Request::Ptr req,
 /**
  * Safe version of the above defined method which requires that
  * the parameter was provided and it had a valid value.
+ *
+ * @see getQueryParamStr
  */
-string getRequiredQueryParamStr(qhttp::Request::Ptr req,
+string getRequiredQueryParamStr(unordered_map<string,string> const& query,
                                 string const& param) {
-    auto const val = getQueryParamStr(req, param, string());
+    auto const val = getQueryParamStr(query, param);
     if (val.empty()) {
         throw invalid_argument(
                 string(__func__) + " parameter '" + param + "' is missing or has an invalid value");
@@ -93,8 +95,8 @@ string getRequiredQueryParamStr(qhttp::Request::Ptr req,
 /**
  * Extract a value of an optional parameter of a query (unsigned 16-bit)
  * 
- * @param req
- *   HTTP request object
+ * @param query
+ *   parameters of the HTTP request
  * 
  * @param name
  *   the name of a parameter to look for
@@ -105,15 +107,16 @@ string getRequiredQueryParamStr(qhttp::Request::Ptr req,
  * @return
  *   the found value or the default value
  */
-uint16_t getQueryParamUInt16(qhttp::Request::Ptr req,
+uint16_t getQueryParamUInt16(unordered_map<string,string> const& query,
                              string const& param,
-                             uint16_t defaultValue) {
-    auto&& itr = req->query.find(param);
-    if (itr == req->query.end()) return defaultValue;
+                             uint16_t defaultValue=0) {
+    auto&& itr = query.find(param);
+    if (itr == query.end()) return defaultValue;
     unsigned long val = stoul(itr->second);
-    if (val >= USHRT_MAX) {
+    if (val >= numeric_limits<uint16_t>::max()) {
         throw out_of_range(
-           "HttpProcessor::" + string(__func__) + " invalid value of parameter: " + param);
+           "HttpProcessor::" + string(__func__) + " value of parameter: " + param +
+           " exceeds allowed limit for type 'uint16_t'");
     }
     return static_cast<uint16_t>(val);
 }
@@ -122,11 +125,13 @@ uint16_t getQueryParamUInt16(qhttp::Request::Ptr req,
 /**
  * Safe version of the above defined method which requires that
  * the parameter was provided and it had a valid value.
+ *
+ * @see getQueryParamUInt16
  */
-uint16_t getRequiredQueryParamUInt16(qhttp::Request::Ptr req,
-                                string const& param) {
-    auto const val = getQueryParamUInt16(req, param, 0U);
-    if (val == 0L) {
+uint16_t getRequiredQueryParamUInt16(unordered_map<string,string> const& query,
+                                     string const& param) {
+    auto const val = getQueryParamUInt16(query, param, 0);
+    if (val == 0) {
         throw invalid_argument(
                 string(__func__) + " parameter '" + param + "' is missing or has an invalid value");
     }
@@ -137,8 +142,8 @@ uint16_t getRequiredQueryParamUInt16(qhttp::Request::Ptr req,
 /**
  * Extract a value of an optional parameter of a query (unsigned 64-bit)
  * 
- * @param req
- *   HTTP request object
+ * @param query
+ *   parameters of the HTTP request
  * 
  * @param name
  *   the name of a parameter to look for
@@ -149,20 +154,68 @@ uint16_t getRequiredQueryParamUInt16(qhttp::Request::Ptr req,
  * @return
  *   the found value or the default value
  */
-uint64_t getQueryParam(qhttp::Request::Ptr req,
+uint64_t getQueryParam(unordered_map<string,string> const& query,
                        string const& param,
-                       uint64_t defaultValue) {
-    auto&& itr = req->query.find(param);
-    if (itr == req->query.end()) return defaultValue;
+                       uint64_t defaultValue=0) {
+    auto&& itr = query.find(param);
+    if (itr == query.end()) return defaultValue;
     return stoull(itr->second);
+}
+
+
+/**
+ * Safe version of the above defined method which requires that
+ * the parameter was provided and it had a valid value.
+ *
+ * @see getQueryParam
+ */
+uint64_t getRequiredQueryParam(unordered_map<string,string> const& query,
+                               string const& param) {
+    auto const val = getQueryParam(query, param, 0);
+    if (val == 0) {
+        throw invalid_argument(
+                string(__func__) + " parameter '" + param + "' is missing or has an invalid value");
+    }
+    return val;
+}
+
+
+/**
+ * Extract a value of an optional parameter of a query (unsigned int)
+ * 
+ * @param query
+ *   parameters of the HTTP request
+ * 
+ * @param name
+ *   the name of a parameter to look for
+ * 
+ * @param defaultValue
+ *   the default value to be returned if no parameter was found
+ * 
+ * @return
+ *   the found value or the default value
+ */
+unsigned int getRequiredQueryParamUInt(unordered_map<string,string> const& query,
+                                       string const& param) {
+    auto&& itr = query.find(param);
+    if (itr == query.end()) {
+        throw invalid_argument("mandatory parameter '" + param + "' is missing");
+    }
+    unsigned long val = stoul(itr->second);
+    if (val > numeric_limits<unsigned int>::max()) {
+        throw out_of_range(
+           "HttpProcessor::" + string(__func__) + " value of parameter: " + param +
+           " exceeds allowed limit for type 'unsigned int'");
+    }
+    return static_cast<unsigned int>(val);
 }
 
 
 /**
  * Extract a value of an optional parameter of a query (int)
  * 
- * @param req
- *   HTTP request object
+ * @param query
+ *   parameters of the HTTP request
  * 
  * @param name
  *   the name of a parameter to look for
@@ -173,11 +226,11 @@ uint64_t getQueryParam(qhttp::Request::Ptr req,
  * @return
  *   the found value or the default value
  */
-int getQueryParamInt(qhttp::Request::Ptr req,
+int getQueryParamInt(unordered_map<string,string> const& query,
                      string const& param,
-                     int defaultValue) {
-    auto&& itr = req->query.find(param);
-    if (itr == req->query.end()) return defaultValue;
+                     int defaultValue=-1) {
+    auto&& itr = query.find(param);
+    if (itr == query.end()) return defaultValue;
     return stoi(itr->second);
 }
 
@@ -185,10 +238,12 @@ int getQueryParamInt(qhttp::Request::Ptr req,
 /**
  * Safe version of the above defined method which requires that
  * the parameter was provided and it had a valid value.
+ * 
+ * @see getQueryParamInt
  */
-bool getRequiredQueryParamBool(qhttp::Request::Ptr req,
+bool getRequiredQueryParamBool(unordered_map<string,string> const& query,
                                string const& param) {
-    auto const val = getQueryParamInt(req, param, -1);
+    auto const val = getQueryParamInt(query, param);
     if (val < 0) {
         throw invalid_argument(
                 string(__func__) + " parameter '" + param + "' is missing or has an invalid value");
@@ -200,8 +255,8 @@ bool getRequiredQueryParamBool(qhttp::Request::Ptr req,
 /**
  * Extract a value of an optional parameter of a query (boolean value)
  * 
- * @param req
- *   HTTP request object
+ * @param query
+ *   parameters of the HTTP request
  * 
  * @param name
  *   the name of a parameter to look for
@@ -212,11 +267,11 @@ bool getRequiredQueryParamBool(qhttp::Request::Ptr req,
  * @return
  *   the found value or the default value
  */
-bool getQueryParamBool(qhttp::Request::Ptr req,
+bool getQueryParamBool(unordered_map<string,string> const& query,
                        string const& param,
-                       bool defaultValue) {
-    auto&& itr = req->query.find(param);
-    if (itr == req->query.end()) return defaultValue;
+                       bool defaultValue=false) {
+    auto&& itr = query.find(param);
+    if (itr == query.end()) return defaultValue;
     return not (itr->second.empty() or (itr->second == "0"));
 }
 
@@ -229,8 +284,8 @@ bool getQueryParamBool(qhttp::Request::Ptr req,
  * @param struct_
  *   helper type specific to the Configuration parameter
  * 
- * @param req
- *   input request descriptor
+ * @param query
+ *   parameters of the HTTP request
  * 
  * @param config
  *   pointer to the Configuration service
@@ -243,15 +298,14 @@ bool getQueryParamBool(qhttp::Request::Ptr req,
  */
 template<typename T>
 bool saveConfigParameter(T& struct_,
-                         qhttp::Request::Ptr const& req,
+                         unordered_map<string,string> const& query,
                          Configuration::Ptr const& config,
-                         string const& context,
                          function<void(string const&)> const& logger) {
-    auto const itr = req->query.find(struct_.key);
-    if (itr != req->query.end()) {
+    auto const itr = query.find(struct_.key);
+    if (itr != query.end()) {
         struct_.value = boost::lexical_cast<decltype(struct_.value)>(itr->second);
         struct_.save(config);
-        logger(context + " updated Configuration parameter " + struct_.key + "=" + itr->second);
+        logger("updated " + struct_.key + "=" + itr->second);
         return true;
     }
     return false;
@@ -322,11 +376,17 @@ void HttpProcessor::_initialize() {
         {"GET",    "/replication/v1/job",            bind(&HttpProcessor::_listJobs,            self, _1, _2)},
         {"GET",    "/replication/v1/job/:id",        bind(&HttpProcessor::_getJobInfo,          self, _1, _2)},
 
-        {"GET",    "/replication/v1/config",               bind(&HttpProcessor::_getConfig,           self, _1, _2)},
-        {"PUT",    "/replication/v1/config/general",       bind(&HttpProcessor::_updateGeneralConfig, self, _1, _2)},
-        {"PUT",    "/replication/v1/config/worker/:name",  bind(&HttpProcessor::_updateWorkerConfig,  self, _1, _2)},
-        {"POST",   "/replication/v1/config/worker/:name",  bind(&HttpProcessor::_addWorkerConfig,     self, _1, _2)},
-        {"DELETE", "/replication/v1/config/worker/:name",  bind(&HttpProcessor::_deleteWorkerConfig,  self, _1, _2)}
+        {"GET",    "/replication/v1/config",                bind(&HttpProcessor::_getConfig,            self, _1, _2)},
+        {"PUT",    "/replication/v1/config/general",        bind(&HttpProcessor::_updateGeneralConfig,  self, _1, _2)},
+        {"PUT",    "/replication/v1/config/worker/:name",   bind(&HttpProcessor::_updateWorkerConfig,   self, _1, _2)},
+        {"DELETE", "/replication/v1/config/worker/:name",   bind(&HttpProcessor::_deleteWorkerConfig,   self, _1, _2)},
+        {"POST",   "/replication/v1/config/worker",         bind(&HttpProcessor::_addWorkerConfig,      self, _1, _2)},
+        {"DELETE", "/replication/v1/config/family/:name",   bind(&HttpProcessor::_deleteFamilyConfig,   self, _1, _2)},
+        {"POST",   "/replication/v1/config/family",         bind(&HttpProcessor::_addFamilyConfig,      self, _1, _2)},
+        {"DELETE", "/replication/v1/config/database/:name", bind(&HttpProcessor::_deleteDatabaseConfig, self, _1, _2)},
+        {"POST",   "/replication/v1/config/database",       bind(&HttpProcessor::_addDatabaseConfig,    self, _1, _2)},
+        {"DELETE", "/replication/v1/config/table/:name",    bind(&HttpProcessor::_deleteTableConfig,    self, _1, _2)},
+        {"POST",   "/replication/v1/config/table",          bind(&HttpProcessor::_addTableConfig,       self, _1, _2)}
     });
     controller()->serviceProvider()->httpServer()->start();
 }
@@ -605,11 +665,11 @@ void HttpProcessor::_listControllers(qhttp::Request::Ptr req,
     
     try {
 
-        // Extract parameters of the query
+        // Extract optional parameters of the query
 
-        uint64_t const fromTimeStamp = ::getQueryParam(req, "from",        0);
-        uint64_t const toTimeStamp   = ::getQueryParam(req, "to",          std::numeric_limits<uint64_t>::max());
-        size_t   const maxEntries    = ::getQueryParam(req, "max_entries", 0);
+        uint64_t const fromTimeStamp = ::getQueryParam(req->query, "from");
+        uint64_t const toTimeStamp   = ::getQueryParam(req->query, "to", std::numeric_limits<uint64_t>::max());
+        size_t   const maxEntries    = ::getQueryParam(req->query, "max_entries");
 
         _debug(string(__func__) + " from="        + to_string(fromTimeStamp));
         _debug(string(__func__) + " to="          + to_string(toTimeStamp));
@@ -645,17 +705,17 @@ void HttpProcessor::_getControllerInfo(qhttp::Request::Ptr req,
                                        qhttp::Response::Ptr resp) {
     _debug(__func__);
 
-    auto const id = req->params["id"];
     try {
+        auto const id = req->params.at("id");
 
-        // Extract parameters of the query
+        // Extract optional parameters of the query
 
-        bool     const log           = ::getQueryParamBool(req, "log",            false);
-        uint64_t const fromTimeStamp = ::getQueryParam(    req, "log_from",       0);
-        uint64_t const toTimeStamp   = ::getQueryParam(    req, "log_to",         std::numeric_limits<uint64_t>::max());
-        size_t   const maxEvents     = ::getQueryParam(    req, "log_max_events", 0);
+        bool     const log           = ::getQueryParamBool(req->query, "log");
+        uint64_t const fromTimeStamp = ::getQueryParam(    req->query, "log_from");
+        uint64_t const toTimeStamp   = ::getQueryParam(    req->query, "log_to", std::numeric_limits<uint64_t>::max());
+        size_t   const maxEvents     = ::getQueryParam(    req->query, "log_max_events");
 
-        _debug(string(__func__) + " log="            +    string(log ? "true" : "false"));
+        _debug(string(__func__) + " log="            +    string(log ? "1" : "0"));
         _debug(string(__func__) + " log_from="       + to_string(fromTimeStamp));
         _debug(string(__func__) + " log_to="         + to_string(toTimeStamp));
         _debug(string(__func__) + " log_max_events=" + to_string(maxEvents));
@@ -688,7 +748,7 @@ void HttpProcessor::_getControllerInfo(qhttp::Request::Ptr req,
         resp->send(resultJson.dump(), "application/json");
 
     } catch (DatabaseServicesNotFound const& ex) {
-        _error(string(__func__) + " no Controller found for id: " + id);
+        _error(string(__func__) + " no such controller found");
         resp->sendStatus(404);
     } catch (invalid_argument const& ex) {
         _error(string(__func__) + " invalid parameters of the request");
@@ -706,14 +766,14 @@ void HttpProcessor::_listRequests(qhttp::Request::Ptr req,
 
     try {
 
-        // Extract parameters of the query
+        // Extract optional parameters of the query
 
-        string   const jobId         = ::getQueryParamStr(req, "job_id",      "");
-        uint64_t const fromTimeStamp = ::getQueryParam   (req, "from",        0);
-        uint64_t const toTimeStamp   = ::getQueryParam   (req, "to",          std::numeric_limits<uint64_t>::max());
-        size_t   const maxEntries    = ::getQueryParam   (req, "max_entries", 0);
+        string   const jobId         = ::getQueryParamStr(req->query, "job_id");
+        uint64_t const fromTimeStamp = ::getQueryParam   (req->query, "from");
+        uint64_t const toTimeStamp   = ::getQueryParam   (req->query, "to", std::numeric_limits<uint64_t>::max());
+        size_t   const maxEntries    = ::getQueryParam   (req->query, "max_entries");
 
-        _debug(string(__func__) + " job_id="      + jobId);
+        _debug(string(__func__) + " job_id="      +           jobId);
         _debug(string(__func__) + " from="        + to_string(fromTimeStamp));
         _debug(string(__func__) + " to="          + to_string(toTimeStamp));
         _debug(string(__func__) + " max_entries=" + to_string(maxEntries));
@@ -750,8 +810,9 @@ void HttpProcessor::_getRequestInfo(qhttp::Request::Ptr req,
                                     qhttp::Response::Ptr resp) {
     _debug(__func__);
 
-    auto const id = req->params["id"];
     try {
+        auto const id = req->params.at("id");
+
         json requestJson;
         requestJson["request"] =
             controller()->serviceProvider()->databaseServices()->request(id).toJson();
@@ -759,7 +820,7 @@ void HttpProcessor::_getRequestInfo(qhttp::Request::Ptr req,
         resp->send(requestJson.dump(), "application/json");
 
     } catch (DatabaseServicesNotFound const& ex) {
-        _error(string(__func__) + " no Request found for id: " + id);
+        _error(string(__func__) + " no such request found");
         resp->sendStatus(404);
     } catch (invalid_argument const& ex) {
         _error(string(__func__) + " invalid parameters of the request");
@@ -777,16 +838,16 @@ void HttpProcessor::_listJobs(qhttp::Request::Ptr req,
 
     try {
 
-        // Extract parameters of the query
+        // Extract optional parameters of the query
 
-        string   const controllerId  = ::getQueryParamStr(req, "controller_id", "");
-        string   const parentJobId   = ::getQueryParamStr(req, "parent_job_id", "");
-        uint64_t const fromTimeStamp = ::getQueryParam   (req, "from",          0);
-        uint64_t const toTimeStamp   = ::getQueryParam   (req, "to",            std::numeric_limits<uint64_t>::max());
-        size_t   const maxEntries    = ::getQueryParam   (req, "max_entries",   0);
+        string   const controllerId  = ::getQueryParamStr(req->query, "controller_id");
+        string   const parentJobId   = ::getQueryParamStr(req->query, "parent_job_id");
+        uint64_t const fromTimeStamp = ::getQueryParam   (req->query, "from");
+        uint64_t const toTimeStamp   = ::getQueryParam   (req->query, "to", std::numeric_limits<uint64_t>::max());
+        size_t   const maxEntries    = ::getQueryParam   (req->query, "max_entries");
 
-        _debug(string(__func__) + " controller_id=" + controllerId);
-        _debug(string(__func__) + " parent_job_id=" + parentJobId);
+        _debug(string(__func__) + " controller_id=" +           controllerId);
+        _debug(string(__func__) + " parent_job_id=" +           parentJobId);
         _debug(string(__func__) + " from="          + to_string(fromTimeStamp));
         _debug(string(__func__) + " to="            + to_string(toTimeStamp));
         _debug(string(__func__) + " max_entries="   + to_string(maxEntries));
@@ -824,8 +885,9 @@ void HttpProcessor::_getJobInfo(qhttp::Request::Ptr req,
                                 qhttp::Response::Ptr resp) {
     _debug(__func__);
 
-    auto const id = req->params["id"];
     try {
+        auto const id = req->params.at("id");
+
         json jobJson;
         jobJson["job"] =
             controller()->serviceProvider()->databaseServices()->job(id).toJson();
@@ -833,7 +895,7 @@ void HttpProcessor::_getJobInfo(qhttp::Request::Ptr req,
         resp->send(jobJson.dump(), "application/json");
 
     } catch (DatabaseServicesNotFound const& ex) {
-        _error(string(__func__) + " no Request found for id: " + id);
+        _error(string(__func__) + " no such job found");
         resp->sendStatus(404);
     } catch (invalid_argument const& ex) {
         _error(string(__func__) + " invalid parameters of the request");
@@ -866,26 +928,28 @@ void HttpProcessor::_updateGeneralConfig(qhttp::Request::Ptr req,
 
         ConfigurationGeneralParams general;
 
-        auto const config = controller()->serviceProvider()->config();
-        auto const logger = [this](string const& msg) { this->_debug(msg); };
-
-        ::saveConfigParameter(general.requestBufferSizeBytes,      req, config, __func__, logger);
-        ::saveConfigParameter(general.retryTimeoutSec,             req, config, __func__, logger);
-        ::saveConfigParameter(general.controllerThreads,           req, config, __func__, logger);
-        ::saveConfigParameter(general.controllerHttpPort,          req, config, __func__, logger);
-        ::saveConfigParameter(general.controllerHttpThreads,       req, config, __func__, logger);
-        ::saveConfigParameter(general.controllerRequestTimeoutSec, req, config, __func__, logger);
-        ::saveConfigParameter(general.jobTimeoutSec,               req, config, __func__, logger);
-        ::saveConfigParameter(general.jobHeartbeatTimeoutSec,      req, config, __func__, logger);
-        ::saveConfigParameter(general.xrootdAutoNotify,            req, config, __func__, logger);
-        ::saveConfigParameter(general.xrootdHost,                  req, config, __func__, logger);
-        ::saveConfigParameter(general.xrootdPort,                  req, config, __func__, logger);
-        ::saveConfigParameter(general.xrootdTimeoutSec,            req, config, __func__, logger);
-        ::saveConfigParameter(general.databaseServicesPoolSize,    req, config, __func__, logger);
-        ::saveConfigParameter(general.workerTechnology,            req, config, __func__, logger);
-        ::saveConfigParameter(general.workerNumProcessingThreads,  req, config, __func__, logger);
-        ::saveConfigParameter(general.fsNumProcessingThreads,      req, config, __func__, logger);
-        ::saveConfigParameter(general.workerFsBufferSizeBytes,     req, config, __func__, logger);
+        auto   const config  = controller()->serviceProvider()->config();
+        string const context = __func__;
+        auto   const logger  = [this, context](string const& msg) {
+            this->_debug(context + " " + msg);
+        };
+        ::saveConfigParameter(general.requestBufferSizeBytes,      req->query, config, logger);
+        ::saveConfigParameter(general.retryTimeoutSec,             req->query, config, logger);
+        ::saveConfigParameter(general.controllerThreads,           req->query, config, logger);
+        ::saveConfigParameter(general.controllerHttpPort,          req->query, config, logger);
+        ::saveConfigParameter(general.controllerHttpThreads,       req->query, config, logger);
+        ::saveConfigParameter(general.controllerRequestTimeoutSec, req->query, config, logger);
+        ::saveConfigParameter(general.jobTimeoutSec,               req->query, config, logger);
+        ::saveConfigParameter(general.jobHeartbeatTimeoutSec,      req->query, config, logger);
+        ::saveConfigParameter(general.xrootdAutoNotify,            req->query, config, logger);
+        ::saveConfigParameter(general.xrootdHost,                  req->query, config, logger);
+        ::saveConfigParameter(general.xrootdPort,                  req->query, config, logger);
+        ::saveConfigParameter(general.xrootdTimeoutSec,            req->query, config, logger);
+        ::saveConfigParameter(general.databaseServicesPoolSize,    req->query, config, logger);
+        ::saveConfigParameter(general.workerTechnology,            req->query, config, logger);
+        ::saveConfigParameter(general.workerNumProcessingThreads,  req->query, config, logger);
+        ::saveConfigParameter(general.fsNumProcessingThreads,      req->query, config, logger);
+        ::saveConfigParameter(general.workerFsBufferSizeBytes,     req->query, config, logger);
 
         resp->send(_configToJson().dump(), "application/json");
 
@@ -903,61 +967,45 @@ void HttpProcessor::_updateWorkerConfig(qhttp::Request::Ptr req,
                                         qhttp::Response::Ptr resp) {
     _debug(__func__);
 
-    auto const name = req->params["name"];
     try {
-        int      const isEnabled  = ::getQueryParamInt   (req, "is_enabled",   -1);
-        int      const isReadOnly = ::getQueryParamInt   (req, "is_read_only", -1);
-        string   const svcHost    = ::getQueryParamStr   (req, "svc_host",     string());
-        uint16_t const svcPort    = ::getQueryParamUInt16(req, "svc_port",     0U);
-        string   const fsHost     = ::getQueryParamStr   (req, "fs_host",      string());
-        uint16_t const fsPort     = ::getQueryParamUInt16(req, "fs_port",      0U);
-        string   const dataDir    = ::getQueryParamStr   (req, "data_dir",     string());
+        auto const worker = req->params.at("name");
 
+        // Get optional parameters of the query. Note the default values which
+        // are expected to be replaced by actual values provided by a client in
+        // parameters found in the query.
+
+        string   const svcHost    = ::getQueryParamStr   (req->query, "svc_host");
+        uint16_t const svcPort    = ::getQueryParamUInt16(req->query, "svc_port");
+        string   const fsHost     = ::getQueryParamStr   (req->query, "fs_host");
+        uint16_t const fsPort     = ::getQueryParamUInt16(req->query, "fs_port");
+        string   const dataDir    = ::getQueryParamStr   (req->query, "data_dir");
+        int      const isEnabled  = ::getQueryParamInt   (req->query, "is_enabled");
+        int      const isReadOnly = ::getQueryParamInt   (req->query, "is_read_only");
+
+        _debug(string(__func__) + " svc_host="     +           svcHost);
+        _debug(string(__func__) + " svc_port="     + to_string(svcPort));
+        _debug(string(__func__) + " fs_host="      +           fsHost);
+        _debug(string(__func__) + " fs_port="      + to_string(fsPort));
+        _debug(string(__func__) + " data_dir="     +           dataDir);
         _debug(string(__func__) + " is_enabled="   + to_string(isEnabled));
         _debug(string(__func__) + " is_read_only=" + to_string(isReadOnly));
-        _debug(string(__func__) + " svc_host="     + svcHost);
-        _debug(string(__func__) + " svc_port="     + to_string(svcPort));
-        _debug(string(__func__) + " fs_host="      + fsHost);
-        _debug(string(__func__) + " fs_port="      + to_string(fsPort));
-        _debug(string(__func__) + " data_dir="     + dataDir);
 
-        resp->send(_configToJson().dump(), "application/json");
+        auto const config = controller()->serviceProvider()->config();
 
-    } catch (invalid_argument const& ex) {
-        _error(string(__func__) + " invalid parameters of the request");
-        resp->sendStatus(400);
-    } catch (exception const& ex) {
-        _error(string(__func__) + " operation failed due to: " + string(ex.what()));
-        resp->sendStatus(500);
-    }
-}
+        if (not  svcHost.empty()) config->setWorkerSvcHost(worker, svcHost);
+        if (0 != svcPort)         config->setWorkerSvcPort(worker, svcPort);
+        if (not  fsHost.empty())  config->setWorkerFsHost( worker, fsHost);
+        if (0 != fsPort)          config->setWorkerFsPort( worker, fsPort);
+        if (not  dataDir.empty()) config->setWorkerDataDir(worker, dataDir);
 
-
-void HttpProcessor::_addWorkerConfig(qhttp::Request::Ptr req,
-                                     qhttp::Response::Ptr resp) {
-    _debug(__func__);
-
-    auto const name = req->params["name"];
-    try {
-
-        // All parameters must be provided
-        
-        bool     const isEnabled  = ::getRequiredQueryParamBool  (req, "is_enabled");
-        bool     const isReadOnly = ::getRequiredQueryParamBool  (req, "is_read_only");
-        string   const svcHost    = ::getRequiredQueryParamStr   (req, "svc_host");
-        uint16_t const svcPort    = ::getRequiredQueryParamUInt16(req, "svc_port");
-        string   const fsHost     = ::getRequiredQueryParamStr   (req, "fs_host");
-        uint16_t const fsPort     = ::getRequiredQueryParamUInt16(req, "fs_port");
-        string   const dataDir    = ::getRequiredQueryParamStr   (req, "data_dir");
-
-        _debug(string(__func__) + " is_enabled="   + to_string(isEnabled  ? 1 : 0));
-        _debug(string(__func__) + " is_read_only=" + to_string(isReadOnly ? 1 : 0));
-        _debug(string(__func__) + " svc_host="     + svcHost);
-        _debug(string(__func__) + " svc_port="     + to_string(svcPort));
-        _debug(string(__func__) + " fs_host="      + fsHost);
-        _debug(string(__func__) + " fs_port="      + to_string(fsPort));
-        _debug(string(__func__) + " data_dir="     + dataDir);        
-
+        if (isEnabled >= 0) {
+            if (isEnabled != 0) config->disableWorker(worker, true);
+            if (isEnabled == 0) config->disableWorker(worker, false);
+        }
+        if (isReadOnly >= 0) {
+            if (isReadOnly != 0) config->setWorkerReadOnly(worker, true);
+            if (isReadOnly == 0) config->setWorkerReadOnly(worker, false);
+        }
         resp->send(_configToJson().dump(), "application/json");
 
     } catch (invalid_argument const& ex) {
@@ -974,9 +1022,198 @@ void HttpProcessor::_deleteWorkerConfig(qhttp::Request::Ptr req,
                                         qhttp::Response::Ptr resp) {
     _debug(__func__);
 
-    auto const name = req->params["name"];
     try {
+        auto const worker = req->params.at("name");
+        controller()->serviceProvider()->config()->deleteWorker(worker);
         resp->send(_configToJson().dump(), "application/json");
+    } catch (invalid_argument const& ex) {
+        _error(string(__func__) + " no such worker");
+        resp->sendStatus(404);
+    } catch (exception const& ex) {
+        _error(string(__func__) + " operation failed due to: " + string(ex.what()));
+        resp->sendStatus(500);
+    }
+}
+
+
+void HttpProcessor::_addWorkerConfig(qhttp::Request::Ptr req,
+                                     qhttp::Response::Ptr resp) {
+    _debug(__func__);
+
+    try {
+        // All parameters must be provided
+        
+        WorkerInfo info;
+        info.name       = ::getRequiredQueryParamStr   (req->query, "name");
+        info.svcHost    = ::getRequiredQueryParamStr   (req->query, "svc_host");
+        info.svcPort    = ::getRequiredQueryParamUInt16(req->query, "svc_port");
+        info.fsHost     = ::getRequiredQueryParamStr   (req->query, "fs_host");
+        info.fsPort     = ::getRequiredQueryParamUInt16(req->query, "fs_port");
+        info.dataDir    = ::getRequiredQueryParamStr   (req->query, "data_dir");
+        info.isEnabled  = ::getRequiredQueryParamBool  (req->query, "is_enabled");
+        info.isReadOnly = ::getRequiredQueryParamBool  (req->query, "is_read_only");
+
+        _debug(string(__func__) + " name="         +           info.name);
+        _debug(string(__func__) + " svc_host="     +           info.svcHost);
+        _debug(string(__func__) + " svc_port="     + to_string(info.svcPort));
+        _debug(string(__func__) + " fs_host="      +           info.fsHost);
+        _debug(string(__func__) + " fs_port="      + to_string(info.fsPort));
+        _debug(string(__func__) + " data_dir="     +           info.dataDir);        
+        _debug(string(__func__) + " is_enabled="   + to_string(info.isEnabled  ? 1 : 0));
+        _debug(string(__func__) + " is_read_only=" + to_string(info.isReadOnly ? 1 : 0));
+
+        controller()->serviceProvider()->config()->addWorker(info);
+        resp->send(_configToJson().dump(), "application/json");
+
+    } catch (invalid_argument const& ex) {
+        _error(string(__func__) + " invalid parameters of the request");
+        resp->sendStatus(400);
+    } catch (exception const& ex) {
+        _error(string(__func__) + " operation failed due to: " + string(ex.what()));
+        resp->sendStatus(500);
+    }
+}
+
+
+void HttpProcessor::_deleteFamilyConfig(qhttp::Request::Ptr req,
+                                 qhttp::Response::Ptr resp) {
+    _debug(__func__);
+
+    try {
+        auto const family = req->params.at("name");
+        controller()->serviceProvider()->config()->deleteDatabaseFamily(family);
+        resp->send(_configToJson().dump(), "application/json");
+    } catch (invalid_argument const& ex) {
+        _error(string(__func__) + " invalid parameters of the request");
+        resp->sendStatus(400);
+    } catch (exception const& ex) {
+        _error(string(__func__) + " operation failed due to: " + string(ex.what()));
+        resp->sendStatus(500);
+    }
+}
+
+
+void HttpProcessor::_addFamilyConfig(qhttp::Request::Ptr req,
+                                     qhttp::Response::Ptr resp) {
+    _debug(__func__);
+
+    try {
+        // All parameters must be provided
+        
+        DatabaseFamilyInfo info;
+        info.name             = ::getRequiredQueryParamStr( req->query, "name");
+        info.replicationLevel = ::getRequiredQueryParam(    req->query, "replication_level");
+        info.numStripes       = ::getRequiredQueryParamUInt(req->query, "num_stripes");
+        info.numSubStripes    = ::getRequiredQueryParamUInt(req->query, "num_sub_stripes");
+
+        _debug(string(__func__) + " name="              +           info.name);
+        _debug(string(__func__) + " replication_level=" + to_string(info.replicationLevel));
+        _debug(string(__func__) + " num_stripes="       + to_string(info.numStripes));
+        _debug(string(__func__) + " num_sub_stripes="   + to_string(info.numSubStripes));
+
+        if (0 == info.replicationLevel) throw invalid_argument("'replication_level' can't be equal to 0");
+        if (0 == info.numStripes)       throw invalid_argument("'num_stripes' can't be equal to 0");
+        if (0 == info.numSubStripes)    throw invalid_argument("'num_sub_stripes' can't be equal to 0");
+
+        controller()->serviceProvider()->config()->addDatabaseFamily(info);
+        resp->send(_configToJson().dump(), "application/json");
+
+    } catch (invalid_argument const& ex) {
+        _error(string(__func__) + " invalid parameters of the request, ex: " + ex.what());
+        resp->sendStatus(400);
+    } catch (exception const& ex) {
+        _error(string(__func__) + " operation failed due to: " + string(ex.what()));
+        resp->sendStatus(500);
+    }
+}
+
+
+void HttpProcessor::_deleteDatabaseConfig(qhttp::Request::Ptr req,
+                                          qhttp::Response::Ptr resp) {
+    _debug(__func__);
+
+    try {
+        auto const database = req->params.at("name");
+        controller()->serviceProvider()->config()->deleteDatabase(database);
+        resp->send(_configToJson().dump(), "application/json");
+    } catch (invalid_argument const& ex) {
+        _error(string(__func__) + " invalid parameters of the request");
+        resp->sendStatus(400);
+    } catch (exception const& ex) {
+        _error(string(__func__) + " operation failed due to: " + string(ex.what()));
+        resp->sendStatus(500);
+    }
+}
+
+
+void HttpProcessor::_addDatabaseConfig(qhttp::Request::Ptr req,
+                                       qhttp::Response::Ptr resp) {
+    _debug(__func__);
+
+    try {
+        // All parameters must be provided
+        
+        DatabaseInfo info;
+        info.name   = ::getRequiredQueryParamStr(req->query, "name");
+        info.family = ::getRequiredQueryParamStr(req->query, "family");
+
+        _debug(string(__func__) + " name="   + info.name);
+        _debug(string(__func__) + " family=" + info.family);
+
+ 
+        controller()->serviceProvider()->config()->addDatabase(info);
+        resp->send(_configToJson().dump(), "application/json");
+
+    } catch (invalid_argument const& ex) {
+        _error(string(__func__) + " invalid parameters of the request, ex: " + ex.what());
+        resp->sendStatus(400);
+    } catch (exception const& ex) {
+        _error(string(__func__) + " operation failed due to: " + string(ex.what()));
+        resp->sendStatus(500);
+    }
+}
+
+
+void HttpProcessor::_deleteTableConfig(qhttp::Request::Ptr req,
+                                       qhttp::Response::Ptr resp) {
+    _debug(__func__);
+
+    try {
+        auto const table = req->params.at("name");
+        auto const database = ::getRequiredQueryParamStr(req->query, "database");
+        controller()->serviceProvider()->config()->deleteTable(database, table);
+        resp->send(_configToJson().dump(), "application/json");
+    } catch (invalid_argument const& ex) {
+        _error(string(__func__) + " invalid parameters of the request");
+        resp->sendStatus(400);
+    } catch (exception const& ex) {
+        _error(string(__func__) + " operation failed due to: " + string(ex.what()));
+        resp->sendStatus(500);
+    }
+}
+
+
+void HttpProcessor::_addTableConfig(qhttp::Request::Ptr req,
+                                    qhttp::Response::Ptr resp) {
+    _debug(__func__);
+
+    try {
+        // All parameters must be provided
+        
+        auto const table         = ::getRequiredQueryParamStr( req->query, "name");
+        auto const database      = ::getRequiredQueryParamStr( req->query, "database");
+        auto const isPartitioned = ::getRequiredQueryParamBool(req->query, "is_partitioned");
+
+        _debug(string(__func__) + " name="           +           table);
+        _debug(string(__func__) + " database="       +           database);
+        _debug(string(__func__) + " is_partitioned=" + to_string(isPartitioned ? 1 : 0));
+
+        controller()->serviceProvider()->config()->addTable(database, table, isPartitioned);
+        resp->send(_configToJson().dump(), "application/json");
+
+    } catch (invalid_argument const& ex) {
+        _error(string(__func__) + " invalid parameters of the request, ex: " + ex.what());
+        resp->sendStatus(400);
     } catch (exception const& ex) {
         _error(string(__func__) + " operation failed due to: " + string(ex.what()));
         resp->sendStatus(500);
