@@ -44,7 +44,36 @@ namespace replica {
 
 /**
  * Structure ConfigurationGeneralParams defines helpers for the general parameters
- * of the Configuration system's API.
+ * of the Configuration system's API. The helpers are needed to eliminate code
+ * duplication and streamline implementations in some command line tools and services
+ * dealing with the Replication System's Configuration.
+ * 
+ * Each helper is represented by a dedicated
+ * structure (w/o any explicitly given type name) which has the following members:
+ * 
+ * key - the short name of a key to be used in various context when a text-based
+ * reference to the corresponding Configuration parameter is needed (within protocols
+ * and application's implementations).
+ * 
+ * description - an expanded description of the parameter, its role, etc. A value
+ * of this member is used in the command-line and Web UI applications where parameters
+ * are presented to users.
+ * 
+ * value - is a member storing a transient value of the parameter before forwarding it
+ * to the Configuration by method 'save'.
+ * 
+ * updatable - a flag indicating if the transient value of the parameter can be
+ * saved back into the Configuration. This flag can be used by the command-line tools
+ * and Web UI applications.
+ * 
+ * save - a method which stores the transient state of the parameter stored in
+ * member 'value' into the Configuration.
+ *
+ * get - is a type-aware method returning a value of the corresponding parameter
+ * retrieved from the Configuration.
+ * 
+ * str - is a method which returns a value of the parameter pulled from
+ * the Configuration and serializied into a string.
  */
 struct ConfigurationGeneralParams {
 
@@ -182,7 +211,8 @@ struct ConfigurationGeneralParams {
     struct {
 
         std::string const key         = "QSERV_AUTO_NOTIFY";
-        std::string const description = "Automatically notify Qserv on changes in replica disposition (0 disables this feature).";
+        std::string const description = "Automatically notify Qserv on changes in replica disposition"
+                                        " (0 disables this feature).";
         int               value       = -1;
 
         bool const updatable = true;
@@ -215,7 +245,8 @@ struct ConfigurationGeneralParams {
     struct {
 
         std::string const key         = "XROOTD_PORT";
-        std::string const description = "A port number for the XRootD/SSI service needed for communications with Qserv.";
+        std::string const description = "A port number for the XRootD/SSI service needed for communications"
+                                        " with Qserv.";
         uint16_t          value;
 
         bool const updatable = true;
@@ -369,7 +400,8 @@ struct ConfigurationGeneralParams {
     struct {
 
         std::string const key         = "WORKER_FS_NUM_PROC_THREADS";
-        std::string const description = "The number of request processing threads in each worker's file server.";
+        std::string const description = "The number of request processing threads in each worker's"
+                                        " file server.";
         size_t            value;
 
         bool const updatable = true;
@@ -385,7 +417,8 @@ struct ConfigurationGeneralParams {
     struct {
 
         std::string const key         = "WORKER_FS_BUF_SIZE_BYTES";
-        std::string const description = "Buffer size for file and network operations at worker's file server.";
+        std::string const description = "Buffer size for file and network operations at worker's"
+                                        " file server.";
         size_t            value;
 
         bool const updatable = true;

@@ -534,7 +534,7 @@ public:
     virtual std::map<unsigned int, size_t> actualReplicationLevel(
                                                 std::string const& database,
                                                 std::vector<std::string> const& workersToExclude =
-                                                std::vector<std::string>()) = 0;
+                                                    std::vector<std::string>()) = 0;
 
     /**
      * @return a total number of chunks which only exist on any worker of
@@ -587,10 +587,11 @@ public:
      * @return
      *   collection of events found within the specified time interval
      */
-    virtual std::list<ControllerEvent> readControllerEvents(std::string const& controllerId,
-                                                            uint64_t fromTimeStamp=0,
-                                                            uint64_t toTimeStamp=std::numeric_limits<uint64_t>::max(),
-                                                            size_t maxEntries=0) = 0;
+    virtual std::list<ControllerEvent> readControllerEvents(
+                                            std::string const& controllerId,
+                                            uint64_t fromTimeStamp=0,
+                                            uint64_t toTimeStamp=std::numeric_limits<uint64_t>::max(),
+                                            size_t maxEntries=0) = 0;
 
     /**
      * Find an information on a controller
@@ -623,9 +624,10 @@ public:
      *   a collection of controllers descriptors sorted by the start time in
      *   in the descent order
      */
-    virtual std::list<ControllerInfo> controllers(uint64_t fromTimeStamp=0,
-                                                  uint64_t toTimeStamp=std::numeric_limits<uint64_t>::max(),
-                                                  size_t maxEntries=0) = 0;
+    virtual std::list<ControllerInfo> controllers(
+                                        uint64_t fromTimeStamp=0,
+                                        uint64_t toTimeStamp=std::numeric_limits<uint64_t>::max(),
+                                        size_t maxEntries=0) = 0;
 
     /**
      * Find an information on a request

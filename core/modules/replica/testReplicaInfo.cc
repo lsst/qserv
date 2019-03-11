@@ -47,15 +47,15 @@ BOOST_AUTO_TEST_CASE(ReplicaInfoTest) {
 
     QservReplicaCollection one;
     one.emplace_back(1U, "db1", 0);
-    one.emplace_back(1U, "db2", 0);   // only here
+    one.emplace_back(1U, "db2", 0);   // is only present in 'one'
     one.emplace_back(2U, "db1", 0);
-    one.emplace_back(3U, "db3", 0);   // only here
+    one.emplace_back(3U, "db3", 0);   // is only present in 'one'
 
     QservReplicaCollection two;
     two.emplace_back(1U, "db1", 0);
     two.emplace_back(2U, "db1", 0);
-    two.emplace_back(3U, "db2", 0);   // only here
-    two.emplace_back(4U, "db3", 0);   // only here
+    two.emplace_back(3U, "db2", 0);   // only present in 'two'
+    two.emplace_back(4U, "db3", 0);   // only present in 'two'
 
     // Test one-way comparison
 

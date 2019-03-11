@@ -555,39 +555,45 @@ void HttpProcessor::_getReplicationLevel(qhttp::Request::Ptr req,
 
                 for (auto&& entry: onlineQservLevels) {
                     unsigned int const level = entry.first;
-                    size_t const numChunks   = entry.second;
-                    double const percent     = 100. * numChunks / numOnlineQservChunks;
+                    size_t const numChunks = entry.second;
+                    double const percent = numOnlineQservChunks == 0
+                            ? 0. : 100. * numChunks / numOnlineQservChunks;
                     databaseJson["levels"][level]["qserv"]["online"]["num_chunks"] = numChunks;
                     databaseJson["levels"][level]["qserv"]["online"]["percent"   ] = percent;
                 }
                 for (auto&& entry: allQservLevels) {
                     unsigned int const level = entry.first;
-                    size_t const numChunks   = entry.second;
-                    double const percent     = 100. * numChunks / numAllQservChunks;
+                    size_t const numChunks = entry.second;
+                    double const percent = numAllQservChunks == 0
+                            ? 0. : 100. * numChunks / numAllQservChunks;
                     databaseJson["levels"][level]["qserv"]["all"]["num_chunks"] = numChunks;
                     databaseJson["levels"][level]["qserv"]["all"]["percent"   ] = percent;
                 }
                 for (auto&& entry: onLineReplicationSystemLevels) {
                     unsigned int const level = entry.first;
-                    size_t const numChunks   = entry.second;
-                    double const percent     = 100. * numChunks / numOnlineReplicationSystemChunks;
+                    size_t const numChunks = entry.second;
+                    double const percent = numOnlineReplicationSystemChunks == 0
+                            ? 0. : 100. * numChunks / numOnlineReplicationSystemChunks;
                     databaseJson["levels"][level]["replication"]["online"]["num_chunks"] = numChunks;
                     databaseJson["levels"][level]["replication"]["online"]["percent"   ] = percent;
                 }
                 for (auto&& entry: allReplicationSystemLevels) {
                     unsigned int const level = entry.first;
-                    size_t const numChunks   = entry.second;
-                    double const percent     = 100. * numChunks / numAllReplicationSystemChunks;
+                    size_t const numChunks = entry.second;
+                    double const percent = numAllReplicationSystemChunks == 0
+                            ? 0. : 100. * numChunks / numAllReplicationSystemChunks;
                     databaseJson["levels"][level]["replication"]["all"]["num_chunks"] = numChunks;
                     databaseJson["levels"][level]["replication"]["all"]["percent"   ] = percent;
                 }
                 {
-                    double const percent = 100. * numOrphanQservChunks / numAllQservChunks;
+                    double const percent = numAllQservChunks == 0
+                            ? 0 : 100. * numOrphanQservChunks / numAllQservChunks;
                     databaseJson["levels"][0]["qserv"]["online"]["num_chunks"] = numOrphanQservChunks;
                     databaseJson["levels"][0]["qserv"]["online"]["percent"   ] = percent;
                 }
                 {
-                    double const percent     = 100. * numOrphanReplicationSystemChunks / numAllReplicationSystemChunks;
+                    double const percent = numAllReplicationSystemChunks == 0
+                            ? 0 : 100. * numOrphanReplicationSystemChunks / numAllReplicationSystemChunks;
                     databaseJson["levels"][0]["replication"]["online"]["num_chunks"] = numOrphanReplicationSystemChunks;
                     databaseJson["levels"][0]["replication"]["online"]["percent"   ] = percent;
                 }
