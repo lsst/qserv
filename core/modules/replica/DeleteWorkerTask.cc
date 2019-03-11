@@ -28,7 +28,7 @@
 #include <vector>
 
 // Qserv headers
-#include "replica/DeleteWorkerJob.h"
+#include "replica/DatabaseServices.h"
 #include "util/BlockPost.h"
 
 namespace lsst {
@@ -69,7 +69,7 @@ void DeleteWorkerTask::onStart() {
 
     std::string const parentJobId;  // no parent jobs
 
-    info("DeleteWorkerJob");
+    info(DeleteWorkerJob::typeName());
 
     std::atomic<size_t> numFinishedJobs{0};
     std::vector<DeleteWorkerJob::Ptr> jobs;
@@ -86,10 +86,38 @@ void DeleteWorkerTask::onStart() {
     );
     jobs[0]->start();
 
-    track<DeleteWorkerJob>(DeleteWorkerJob::typeName(),
-                          jobs,
-                          numFinishedJobs);
+    _logStartedEvent(jobs[0]);
+    track<DeleteWorkerJob>(DeleteWorkerJob::typeName(), jobs, numFinishedJobs);
+    _logStartedEvent(jobs[0]);
 }
 
+
+void DeleteWorkerTask::_logStartedEvent(DeleteWorkerJob::Ptr const& job) const {
+
+    ControllerEvent event;
+
+    event.operation = job->typeName();
+    event.status    = "STARTED";
+    event.jobId     = job->id();
+
+    event.kvInfo.emplace_back("worker", _worker);
+
+    logEvent(event);
+}
+
+
+void DeleteWorkerTask::_logFinishedEvent(DeleteWorkerJob::Ptr const& job) const {
+
+    ControllerEvent event;
+
+    event.operation = job->typeName();
+    event.status    = job->state2string();
+    event.jobId     = job->id();
+
+    event.kvInfo = job->persistentLogData();
+    event.kvInfo.emplace_back("worker", _worker);
+
+    logEvent(event);
+}
 
 }}} // namespace lsst::qserv::replica

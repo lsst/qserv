@@ -114,6 +114,37 @@ std::list<std::pair<std::string,std::string>> QservGetReplicasJob::extendedPersi
     return result;
 }
 
+
+std::list<std::pair<std::string,std::string>> QservGetReplicasJob::persistentLogData() const {
+
+    std::list<std::pair<std::string,std::string>> result;
+
+    auto&& replicaData = getReplicaData();
+
+    // Report workers failed to respond to the requests
+
+    for (auto&& workerInfo: replicaData.workers) {
+        auto&& worker = workerInfo.first;
+
+        bool const responded = workerInfo.second;
+        if (not responded) {
+            result.emplace_back("failed-worker", worker);
+        }
+    }
+
+    // Per-worker counters for the number of chunks reported by each
+    // worker (for the responding workers only)
+
+    for (auto&& itr: replicaData.replicas) {
+        auto&& worker        = itr.first;
+        auto&& qservReplicas = itr.second;
+        std::string const val = "worker=" + worker + " chunks=" + std::to_string(qservReplicas.size());
+        result.emplace_back("worker-stats", val);
+    }
+    return result;
+}
+
+
 void QservGetReplicasJob::startImpl(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");

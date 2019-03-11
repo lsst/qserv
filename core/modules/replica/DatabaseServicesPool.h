@@ -173,6 +173,58 @@ public:
     size_t numOrphanChunks(std::string const& database,
                            std::vector<std::string> const& uniqueOnWorkers) final;
 
+    /**
+     * @see DatabaseServices::logControllerEvent()
+     */
+    void logControllerEvent(ControllerEvent const& event) final;
+
+    /**
+     * @see DatabaseServices::readControllerEvents()
+     */
+    std::list<ControllerEvent> readControllerEvents(std::string const& controllerId,
+                                                    uint64_t fromTimeStamp,
+                                                    uint64_t toTimeStamp,
+                                                    size_t maxEntries) final;
+
+    /**
+     * @see DatabaseServices::controller()
+     */
+    ControllerInfo controller(std::string const& id) final;
+
+    /**
+     * @see DatabaseServices::controllers()
+     */
+    std::list<ControllerInfo> controllers(uint64_t fromTimeStamp,
+                                          uint64_t toTimeStamp,
+                                          size_t maxEntries) final;
+
+    /**
+     * @see DatabaseServices::controller()
+     */
+    RequestInfo request(std::string const& id) final;
+
+    /**
+     * @see DatabaseServices::requests()
+     */
+    std::list<RequestInfo> requests(std::string const& jobId,
+                                    uint64_t fromTimeStamp,
+                                    uint64_t toTimeStamp,
+                                    size_t maxEntries) final;
+
+    /**
+     * @see DatabaseServices::job()
+     */
+    JobInfo job(std::string const& id) final;
+
+    /**
+     * @see DatabaseServices::jobs()
+     */
+    std::list<JobInfo> jobs(std::string const& controllerId,
+                            std::string const& parentJobId,
+                            uint64_t fromTimeStamp,
+                            uint64_t toTimeStamp,
+                            size_t maxEntries) final;
+
 private:
     /**
      * Construct the object.

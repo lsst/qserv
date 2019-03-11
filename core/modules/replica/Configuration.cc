@@ -36,6 +36,8 @@
 #include "replica/FileUtils.h"
 #include "util/IterableFormatter.h"
 
+using json = nlohmann::json;
+
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.Configuration");
@@ -45,6 +47,56 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.Configuration");
 namespace lsst {
 namespace qserv {
 namespace replica {
+
+json WorkerInfo::toJson() const {
+
+    json infoJson;
+
+    infoJson["name"]         = name;
+    infoJson["is_enabled"]   = isEnabled  ? 1 : 0;
+    infoJson["is_read_only"] = isReadOnly ? 1 : 0;
+    infoJson["svc_host"]     = svcHost;
+    infoJson["svc_port"]     = svcPort;
+    infoJson["fs_host"]      = fsHost;
+    infoJson["fs_port"]      = fsPort;
+    infoJson["data_dir"]     = dataDir;
+
+    return infoJson;
+}
+
+
+json DatabaseInfo::toJson() const {
+
+    json infoJson;
+
+    infoJson["name"] = name;
+
+    for (auto&& name: partitionedTables) {
+        infoJson["tables"].push_back({
+            {"name",           name},
+            {"is_partitioned", 1}});
+    }
+    for (auto&& name: regularTables) {
+        infoJson["tables"].push_back({
+            {"name",           name},
+            {"is_partitioned", 0}});
+    }
+    return infoJson;
+}
+
+
+json DatabaseFamilyInfo::toJson() const {
+
+    json infoJson;
+
+    infoJson["name"]                  = name;
+    infoJson["min_replication_level"] = replicationLevel;
+    infoJson["num_stripes"]           = numStripes;
+    infoJson["num_sub_stripes"]       = numSubStripes;
+
+    return infoJson;
+}
+
 
 std::ostream& operator <<(std::ostream& os, WorkerInfo const& info) {
     os  << "WorkerInfo ("

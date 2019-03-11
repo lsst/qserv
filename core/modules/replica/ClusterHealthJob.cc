@@ -147,12 +147,42 @@ ClusterHealth const& ClusterHealthJob::clusterHealth() const {
             context() + "clusterHealth  can't use this operation before finishing the job");
 }
 
+
 std::list<std::pair<std::string,std::string>> ClusterHealthJob::extendedPersistentState() const {
     std::list<std::pair<std::string,std::string>> result;
     result.emplace_back("timeout_sec", std::to_string(timeoutSec()));
     result.emplace_back("all_workers", allWorkers() ? "1" : "0");
     return result;
 }
+
+
+std::list<std::pair<std::string,std::string>> ClusterHealthJob::persistentLogData() const {
+
+    std::list<std::pair<std::string,std::string>> result;
+
+    auto&& health = clusterHealth();
+
+    for (auto&& entry: health.qserv()) {
+
+        auto worker = entry.first;
+        auto responded = entry.second;
+        
+        if (not responded) {
+            result.emplace_back("failed-qserv-worker", worker);
+        }
+    }
+    for (auto&& entry: health.replication()) {
+
+        auto worker = entry.first;
+        auto responded = entry.second;
+        
+        if (not responded) {
+            result.emplace_back("failed-replication-worker", worker);
+        }
+    }
+    return result;
+}
+
 
 void ClusterHealthJob::startImpl(util::Lock const& lock) {
 

@@ -40,6 +40,14 @@
 // LSST headers
 #include "lsst/log/Log.h"
 
+// Forward declarations
+
+namespace lsst {
+namespace qserv {
+namespace replica {
+    struct ControllerEvent;
+}}} // namespace lsst::qserv::replica
+
 // This header declarations
 
 namespace lsst {
@@ -273,7 +281,7 @@ protected:
 
         auto self = shared_from_this();
 
-        std::vector<Job::Ptr> jobs;
+        std::vector<typename T::Ptr> jobs;
         _numFinishedJobs = 0;
 
         std::string const parentJobId;  // no parent for these jobs
@@ -291,13 +299,19 @@ protected:
             );
             job->start();
             jobs.push_back(job);
+
+            _logJobStartedEvent(T::typeName(), job, job->databaseFamily());
         }
 
         // Track the completion of all jobs
 
-        track<Job>(T::typeName(),
-                   jobs,
-                   _numFinishedJobs);
+        track<T>(T::typeName(),
+                 jobs,
+                 _numFinishedJobs);
+        
+        for (auto&& job: jobs) {
+            _logJobFinishedEvent(T::typeName(), job, job->databaseFamily());
+        }
     }
 
    /**
@@ -355,12 +369,70 @@ protected:
         info(typeName + ": tracking finished");
     }
 
+    /**
+     * Log an event in the persistent log
+     *
+     * @param event
+     *   event to be recorded
+     */
+    void logEvent(ControllerEvent& event) const;
+
 private:
 
     /**
      * This method is launched by the task when it starts
      */
     void _startImpl();
+
+    /**
+     * Log the very first event to report the start of the task.
+     */
+    void _logOnStartEvent() const;
+
+    /**
+     * Log the very first event to report the end of the task.
+     */
+    void _logOnStopEvent() const;
+
+    /**
+     * Log the very first event to report the termination of the task.
+     * 
+     * @param msg
+     *   error message to be reported
+     */
+    void _logOnTerminatedEvent(std::string const& msg) const;
+
+    /**
+     * Reported the start of a job
+     *
+     * @param typeName
+     *   the type name of the job
+     * 
+     * @param job
+     *   pointer to the job
+     * 
+     * @param family
+     *   the name of a database family
+     */
+    void _logJobStartedEvent(std::string const& typeName,
+                             Job::Ptr const& job,
+                             std::string const& family) const;
+
+    /**
+     * Reported the finish of a job
+     *
+     * @param typeName
+     *   the type name of the job
+     * 
+     * @param job
+     *   pointer to the job
+     *
+     * @param family
+     *   the name of a database family
+     */
+    void _logJobFinishedEvent(std::string const& typeName,
+                              Job::Ptr const& job,
+                              std::string const& family) const;
 
 private:
 

@@ -128,6 +128,18 @@ Job::Options Job::options(util::Lock const& lock) const {
     return _options;
 }
 
+
+std::list<std::pair<std::string,std::string>> Job::persistentLogData() const {
+
+    LOGS(_log, LOG_LVL_DEBUG, context());
+
+    if (state() == State::FINISHED) return std::list<std::pair<std::string,std::string>>();
+
+    throw std::logic_error(
+        "Job::" + std::string(__func__) + "  the method can't be called while the job hasn't finished");
+}
+
+
 Job::Options Job::setOptions(Options const& newOptions) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "setOptions");

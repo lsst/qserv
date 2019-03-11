@@ -28,6 +28,7 @@
 #include <set>
 
 // Qserv headers
+#include "replica/ClusterHealthJob.h"
 #include "replica/Task.h"
 #include "util/Mutex.h"
 
@@ -144,6 +145,22 @@ private:
                         unsigned int workerEvictTimeoutSec,
                         unsigned int workerResponseTimeoutSec,
                         unsigned int healthProbeIntervalSec);
+
+    /**
+     * Log a persistent event on the started job
+     *
+     * @param job
+     *   pointer to the job
+     */
+    void _logStartedEvent(ClusterHealthJob::Ptr const& job) const;
+
+    /**
+     * Log a persistent event on the finished job
+     *
+     * @param job
+     *   pointer to the job
+     */
+    void _logFinishedEvent(ClusterHealthJob::Ptr const& job) const;
 
 private:
 

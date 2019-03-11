@@ -320,6 +320,74 @@ public:
         return ss.str();
     }
 
+    /**
+     * Return:
+     *
+     *   `col` < <value>
+     *
+     * Where:
+     * - the column name will be surrounded by back ticks
+     * - values of string types will be escaped and surrounded by single quotes
+     */
+    template <typename T>
+    std::string sqlLess(std::string const& col,
+                        T const&           val) const {
+        std::ostringstream ss;
+        ss << sqlId(col) << "<" << sqlValue(val);
+        return ss.str();
+    }
+
+    /**
+     * Return:
+     *
+     *   `col` <= <value>
+     *
+     * Where:
+     * - the column name will be surrounded by back ticks
+     * - values of string types will be escaped and surrounded by single quotes
+     */
+    template <typename T>
+    std::string sqlLessOrEqual(std::string const& col,
+                               T const&           val) const {
+        std::ostringstream ss;
+        ss << sqlId(col) << "<" << sqlValue(val);
+        return ss.str();
+    }
+
+    /**
+     * Return:
+     *
+     *   `col` > <value>
+     *
+     * Where:
+     * - the column name will be surrounded by back ticks
+     * - values of string types will be escaped and surrounded by single quotes
+     */
+    template <typename T>
+    std::string sqlGreater(std::string const& col,
+                           T const&           val) const {
+        std::ostringstream ss;
+        ss << sqlId(col) << ">" << sqlValue(val);
+        return ss.str();
+    }
+
+    /**
+     * Return:
+     *
+     *   `col` >= <value>
+     *
+     * Where:
+     * - the column name will be surrounded by back ticks
+     * - values of string types will be escaped and surrounded by single quotes
+     */
+    template <typename T>
+    std::string sqlGreaterOrEqual(std::string const& col,
+                                  T const&           val) const {
+        std::ostringstream ss;
+        ss << sqlId(col) << ">=" << sqlValue(val);
+        return ss.str();
+    }
+
     /// The base (the final function) to be called
     void sqlPackPair(std::string&) const {}
 

@@ -204,6 +204,16 @@ public:
         return std::list<std::pair<std::string,std::string>>();
     }
 
+    /**
+     * @return
+     *   a collection of job's results to be recorded in a persistent log for
+     *   a job. The method is supposed to be called upon a completion of the job.
+     * 
+     * @throws std::logic_error
+     *   if the method is called when the job hasn't finished
+     */
+    virtual std::list<std::pair<std::string,std::string>> persistentLogData() const;
+
 protected:
 
     /**

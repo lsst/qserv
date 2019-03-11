@@ -36,6 +36,9 @@
 #include <string>
 #include <vector>
 
+// Third party headers
+#include "nlohmann/json.hpp"
+
 // Qserv headers
 #include "util/Mutex.h"
 
@@ -78,6 +81,14 @@ struct WorkerInfo {
     /// An absolute path to the data directory under which the MySQL database
     /// folders are residing.
     std::string dataDir;
+
+    /**
+     * Translate the structure into JSON
+     *
+     * @return
+     *   JSON array
+     */
+    nlohmann::json toJson() const;
 };
 
 /// Overloaded operator for dumping objects of class WorkerInfo
@@ -99,6 +110,14 @@ struct DatabaseInfo {
 
     /// The list of fully replicated tables
     std::vector<std::string> regularTables;
+
+    /**
+     * Translate the structure into JSON
+     *
+     * @return
+     *   JSON array
+     */
+    nlohmann::json toJson() const;
 };
 
 /// Overloaded operator for dumping objects of class DatabaseInfo
@@ -124,6 +143,14 @@ struct DatabaseFamilyInfo {
 
     /// A validator for chunk numbers
     std::shared_ptr<ChunkNumberValidator> chunkNumberValidator;
+
+    /**
+     * Translate the structure into JSON
+     *
+     * @return
+     *   JSON array
+     */
+    nlohmann::json toJson() const;
 };
 
 /// Overloaded operator for dumping objects of class DatabaseFamilyInfo

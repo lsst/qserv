@@ -83,9 +83,9 @@ struct RebalanceJobResult {
 
     // Parameters of the planner
 
-    size_t totalWorkers    {0};     // not counting workers which failed to report chunks
-    size_t totalGoodChunks {0};     // good chunks reported by the precursor job
-    size_t avgChunks       {0};     // per worker average
+    size_t totalWorkers    = 0;     /// not counting workers which failed to report chunks
+    size_t totalGoodChunks = 0;     /// good chunks reported by the precursor job
+    size_t avgChunks       = 0;     /// per worker average
 };
 
 /**
@@ -171,7 +171,7 @@ public:
     RebalanceJob(RebalanceJob const&) = delete;
     RebalanceJob& operator=(RebalanceJob const&) = delete;
 
-    ~RebalanceJob() = default;
+    ~RebalanceJob() final = default;
 
     /// @return the name of a database defining a scope of the operation
     std::string const& databaseFamily() const { return _databaseFamily; }
@@ -201,7 +201,12 @@ public:
     /**
      * @see Job::extendedPersistentState()
      */
-    std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
+    std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
+
+    /**
+     * @see Job::persistentLogData()
+     */
+    std::list<std::pair<std::string,std::string>> persistentLogData() const final;
 
 protected:
 

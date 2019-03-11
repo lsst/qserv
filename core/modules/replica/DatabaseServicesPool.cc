@@ -225,6 +225,81 @@ size_t DatabaseServicesPool::numOrphanChunks(std::string const& database,
 }
 
 
+void DatabaseServicesPool::logControllerEvent(ControllerEvent const& event) {
+
+    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
+    service()->logControllerEvent(event);
+}
+
+
+std::list<ControllerEvent> DatabaseServicesPool::readControllerEvents(
+                                                    std::string const& controllerId,
+                                                    uint64_t fromTimeStamp,
+                                                    uint64_t toTimeStamp,
+                                                    size_t maxEntries) {
+
+    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
+    return service()->readControllerEvents(controllerId,
+                                           fromTimeStamp,
+                                           toTimeStamp,
+                                           maxEntries);
+}
+
+
+ControllerInfo DatabaseServicesPool::controller(std::string const& id) {
+    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
+    return service()->controller(id);
+}
+
+
+std::list<ControllerInfo> DatabaseServicesPool::controllers(uint64_t fromTimeStamp,
+                                                            uint64_t toTimeStamp,
+                                                            size_t maxEntries) {
+    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
+    return service()->controllers(fromTimeStamp,
+                                  toTimeStamp,
+                                  maxEntries);
+}
+
+
+RequestInfo DatabaseServicesPool::request(std::string const& id) {
+    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
+    return service()->request(id);
+}
+
+
+std::list<RequestInfo> DatabaseServicesPool::requests(std::string const& jobId,
+                                                      uint64_t fromTimeStamp,
+                                                      uint64_t toTimeStamp,
+                                                      size_t maxEntries) {
+    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
+    return service()->requests(jobId,
+                               fromTimeStamp,
+                               toTimeStamp,
+                               maxEntries);
+}
+
+
+JobInfo DatabaseServicesPool::job(std::string const& id) {
+    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
+    return service()->job(id);
+}
+
+
+std::list<JobInfo> DatabaseServicesPool::jobs(std::string const& controllerId,
+                                              std::string const& parentJobId,
+                                              uint64_t fromTimeStamp,
+                                              uint64_t toTimeStamp,
+                                              size_t maxEntries) {
+    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
+    return service()->jobs(controllerId,
+                           parentJobId,
+                           fromTimeStamp,
+                           toTimeStamp,
+                           maxEntries);
+}
+
+
 DatabaseServices::Ptr DatabaseServicesPool::allocateService() {
 
     std::string const context = "DatabaseServicesPool::allocateService  ";

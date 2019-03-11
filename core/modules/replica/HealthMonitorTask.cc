@@ -27,7 +27,7 @@
 #include <map>
 
 // Qserv headers
-#include "replica/ClusterHealthJob.h"
+#include "replica/DatabaseServices.h"
 #include "replica/Performance.h"
 
 namespace lsst {
@@ -101,7 +101,9 @@ bool HealthMonitorTask::onRun() {
     );
     jobs[0]->start();
 
+    _logStartedEvent(jobs[0]);
     track<ClusterHealthJob>(ClusterHealthJob::typeName(), jobs, _numFinishedJobs);
+    _logFinishedEvent(jobs[0]);
 
     // Compute the actual delay which will also include the wait time since
     // the previous invocation of this method (onRun()).
@@ -236,4 +238,31 @@ HealthMonitorTask::HealthMonitorTask(
         _numFinishedJobs(0) {
 }
 
+
+void HealthMonitorTask::_logStartedEvent(ClusterHealthJob::Ptr const& job) const {
+
+    ControllerEvent event;
+
+    event.operation = job->typeName();
+    event.status    = "STARTED";
+    event.jobId     = job->id();
+
+    event.kvInfo.emplace_back("worker-response-timeout", std::to_string(_workerResponseTimeoutSec));
+
+    logEvent(event);
+}
+
+
+void HealthMonitorTask::_logFinishedEvent(ClusterHealthJob::Ptr const& job) const {
+
+    ControllerEvent event;
+
+    event.operation = job->typeName();
+    event.status    = job->state2string();
+    event.jobId     = job->id();
+    event.kvInfo    = job->persistentLogData();
+
+    logEvent(event);
+}
+    
 }}} // namespace lsst::qserv::replica
