@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -39,7 +38,7 @@ namespace replica {
 /**
  * Class CheckSumApp implements calculates and prints a checksum of a file.
  */
-class CheckSumApp: public Application {
+class CheckSumApp : public Application {
 
 public:
 

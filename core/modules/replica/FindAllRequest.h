@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -46,8 +45,7 @@ class Messenger;
   * Class FindAllRequest represents known replicas lookup requests within
   * the master controller.
   */
-class FindAllRequest
-    :   public RequestMessenger  {
+class FindAllRequest : public RequestMessenger  {
 
 public:
 

@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -40,8 +39,7 @@ namespace replica {
   * The implementation of this class relies upon the basic parser
   * of the INI-style configuration files.
   */
-class ConfigurationFile
-    :   public ConfigurationStore {
+class ConfigurationFile : public ConfigurationStore {
 
 public:
 

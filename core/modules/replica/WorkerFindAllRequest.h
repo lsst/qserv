@@ -1,7 +1,5 @@
-// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -44,8 +42,7 @@ namespace replica {
   *
   * Real implementations of the request processing must derive from this class.
   */
-class WorkerFindAllRequest
-    :   public WorkerRequest {
+class WorkerFindAllRequest : public WorkerRequest {
 
 public:
 

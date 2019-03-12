@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -63,8 +62,7 @@ struct DeleteReplicaJobResult {
   * Class DeleteReplicaJob represents a tool which will delete a chunk replica
   * from a worker.
   */
-class DeleteReplicaJob
-    :   public Job  {
+class DeleteReplicaJob : public Job  {
 
 public:
 

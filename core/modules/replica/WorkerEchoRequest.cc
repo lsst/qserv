@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -31,6 +30,8 @@
 #include "replica/Performance.h"
 #include "util/BlockPost.h"
 
+using namespace std;
+
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerEchoRequest");
@@ -42,10 +43,10 @@ namespace qserv {
 namespace replica {
 
 WorkerEchoRequest::Ptr WorkerEchoRequest::create(ServiceProvider::Ptr const& serviceProvider,
-                                                 std::string const& worker,
-                                                 std::string const& id,
+                                                 string const& worker,
+                                                 string const& id,
                                                  int priority,
-                                                 std::string const& data,
+                                                 string const& data,
                                                  uint64_t delay) {
     return WorkerEchoRequest::Ptr(
         new WorkerEchoRequest(serviceProvider,
@@ -56,11 +57,12 @@ WorkerEchoRequest::Ptr WorkerEchoRequest::create(ServiceProvider::Ptr const& ser
                               delay));
 }
 
+
 WorkerEchoRequest::WorkerEchoRequest(ServiceProvider::Ptr const& serviceProvider,
-                                     std::string const& worker,
-                                     std::string const& id,
+                                     string const& worker,
+                                     string const& id,
                                      int priority,
-                                     std::string const& data,
+                                     string const& data,
                                      uint64_t delay)
     :   WorkerRequest(serviceProvider,
                       worker,
@@ -71,6 +73,7 @@ WorkerEchoRequest::WorkerEchoRequest(ServiceProvider::Ptr const& serviceProvider
         _delay(delay),
         _delayLeft(delay) {
 }
+
 
 void WorkerEchoRequest::setInfo(proto::ReplicationResponseEcho& response) const {
 
@@ -83,6 +86,7 @@ void WorkerEchoRequest::setInfo(proto::ReplicationResponseEcho& response) const 
     response.set_allocated_target_performance(performance().info());
     response.set_data(data());
 }
+
 
 bool WorkerEchoRequest::execute() {
 
@@ -104,7 +108,7 @@ bool WorkerEchoRequest::execute() {
             throw WorkerRequestCancelled();
 
         default:
-            throw std::logic_error(
+            throw logic_error(
                         context() + "execute  not allowed while in state: " +
                         WorkerRequest::status2string(status()));
     }

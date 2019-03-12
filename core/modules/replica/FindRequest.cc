@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -40,6 +39,8 @@
 #include "replica/ReplicaInfo.h"
 #include "replica/ServiceProvider.h"
 
+using namespace std;
+
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.FindRequest");
@@ -52,14 +53,14 @@ namespace replica {
 
 FindRequest::Ptr FindRequest::create(ServiceProvider::Ptr const& serviceProvider,
                                      boost::asio::io_service& io_service,
-                                     std::string const& worker,
-                                     std::string const& database,
+                                     string const& worker,
+                                     string const& database,
                                      unsigned int chunk,
                                      CallbackType const& onFinish,
                                      int priority,
                                      bool computeCheckSum,
                                      bool keepTracking,
-                                     std::shared_ptr<Messenger> const& messenger) {
+                                     shared_ptr<Messenger> const& messenger) {
     return FindRequest::Ptr(
         new FindRequest(serviceProvider,
                         io_service,
@@ -73,16 +74,17 @@ FindRequest::Ptr FindRequest::create(ServiceProvider::Ptr const& serviceProvider
                         messenger));
 }
 
+
 FindRequest::FindRequest(ServiceProvider::Ptr const& serviceProvider,
                            boost::asio::io_service& io_service,
-                           std::string const& worker,
-                           std::string const& database,
+                           string const& worker,
+                           string const& database,
                            unsigned int  chunk,
                            CallbackType const& onFinish,
                            int  priority,
                            bool computeCheckSum,
                            bool keepTracking,
-                           std::shared_ptr<Messenger> const& messenger)
+                           shared_ptr<Messenger> const& messenger)
     :   RequestMessenger(serviceProvider,
                          io_service,
                          "REPLICA_FIND",
@@ -98,6 +100,7 @@ FindRequest::FindRequest(ServiceProvider::Ptr const& serviceProvider,
 
     Request::serviceProvider()->assertDatabaseIsValid(database);
 }
+
 
 ReplicaInfo const& FindRequest::responseData() const {
     return _replicaInfo;
@@ -135,6 +138,7 @@ void FindRequest::startImpl(util::Lock const& lock) {
     send(lock);
 }
 
+
 void FindRequest::wait(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "wait");
@@ -150,6 +154,7 @@ void FindRequest::wait(util::Lock const& lock) {
         )
     );
 }
+
 
 void FindRequest::awaken(boost::system::error_code const& ec) {
 
@@ -190,6 +195,7 @@ void FindRequest::awaken(boost::system::error_code const& ec) {
     send(lock);
 }
 
+
 void FindRequest::send(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "send");
@@ -200,7 +206,7 @@ void FindRequest::send(util::Lock const& lock) {
         worker(),
         id(),
         buffer(),
-        [self] (std::string const& id,
+        [self] (string const& id,
                 bool success,
                 proto::ReplicationResponseFind const& response) {
 
@@ -209,6 +215,7 @@ void FindRequest::send(util::Lock const& lock) {
         }
     );
 }
+
 
 void FindRequest::analyze(bool success,
                           proto::ReplicationResponseFind const& message) {
@@ -299,11 +306,12 @@ void FindRequest::analyze(bool success,
             break;
 
         default:
-            throw std::logic_error(
-                    "FindRequest::analyze() unknown status '" +
-                    proto::ReplicationStatus_Name(message.status()) + "' received from server");
+            throw logic_error(
+                        "FindRequest::analyze() unknown status '" +
+                        proto::ReplicationStatus_Name(message.status()) + "' received from server");
     }
 }
+
 
 void FindRequest::notify(util::Lock const& lock) {
 
@@ -312,14 +320,16 @@ void FindRequest::notify(util::Lock const& lock) {
     notifyDefaultImpl<FindRequest>(lock, _onFinish);
 }
 
+
 void FindRequest::savePersistentState(util::Lock const& lock) {
     controller()->serviceProvider()->databaseServices()->saveState(*this, performance(lock));
 }
 
-std::list<std::pair<std::string,std::string>> FindRequest::extendedPersistentState() const {
-    std::list<std::pair<std::string,std::string>> result;
+
+list<pair<string,string>> FindRequest::extendedPersistentState() const {
+    list<pair<string,string>> result;
     result.emplace_back("database", database());
-    result.emplace_back("chunk",    std::to_string(chunk()));
+    result.emplace_back("chunk",    to_string(chunk()));
     return result;
 }
 

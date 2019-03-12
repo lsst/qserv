@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -397,17 +396,17 @@ string HttpProcessor::_context() const {
 }
 
 
-void HttpProcessor::_info(std::string const& msg) {
+void HttpProcessor::_info(string const& msg) {
     LOGS(_log, LOG_LVL_INFO, _context() << msg);
 }
 
 
-void HttpProcessor::_debug(std::string const& msg) {
+void HttpProcessor::_debug(string const& msg) {
     LOGS(_log, LOG_LVL_DEBUG, _context() << msg);
 }
 
 
-void HttpProcessor::_error(std::string const& msg) {
+void HttpProcessor::_error(string const& msg) {
     LOGS(_log, LOG_LVL_ERROR, _context() << msg);
 }
 
@@ -674,7 +673,7 @@ void HttpProcessor::_listControllers(qhttp::Request::Ptr req,
         // Extract optional parameters of the query
 
         uint64_t const fromTimeStamp = ::getQueryParam(req->query, "from");
-        uint64_t const toTimeStamp   = ::getQueryParam(req->query, "to", std::numeric_limits<uint64_t>::max());
+        uint64_t const toTimeStamp   = ::getQueryParam(req->query, "to", numeric_limits<uint64_t>::max());
         size_t   const maxEntries    = ::getQueryParam(req->query, "max_entries");
 
         _debug(string(__func__) + " from="        + to_string(fromTimeStamp));
@@ -718,7 +717,7 @@ void HttpProcessor::_getControllerInfo(qhttp::Request::Ptr req,
 
         bool     const log           = ::getQueryParamBool(req->query, "log");
         uint64_t const fromTimeStamp = ::getQueryParam(    req->query, "log_from");
-        uint64_t const toTimeStamp   = ::getQueryParam(    req->query, "log_to", std::numeric_limits<uint64_t>::max());
+        uint64_t const toTimeStamp   = ::getQueryParam(    req->query, "log_to", numeric_limits<uint64_t>::max());
         size_t   const maxEvents     = ::getQueryParam(    req->query, "log_max_events");
 
         _debug(string(__func__) + " log="            +    string(log ? "1" : "0"));
@@ -776,7 +775,7 @@ void HttpProcessor::_listRequests(qhttp::Request::Ptr req,
 
         string   const jobId         = ::getQueryParamStr(req->query, "job_id");
         uint64_t const fromTimeStamp = ::getQueryParam   (req->query, "from");
-        uint64_t const toTimeStamp   = ::getQueryParam   (req->query, "to", std::numeric_limits<uint64_t>::max());
+        uint64_t const toTimeStamp   = ::getQueryParam   (req->query, "to", numeric_limits<uint64_t>::max());
         size_t   const maxEntries    = ::getQueryParam   (req->query, "max_entries");
 
         _debug(string(__func__) + " job_id="      +           jobId);
@@ -849,7 +848,7 @@ void HttpProcessor::_listJobs(qhttp::Request::Ptr req,
         string   const controllerId  = ::getQueryParamStr(req->query, "controller_id");
         string   const parentJobId   = ::getQueryParamStr(req->query, "parent_job_id");
         uint64_t const fromTimeStamp = ::getQueryParam   (req->query, "from");
-        uint64_t const toTimeStamp   = ::getQueryParam   (req->query, "to", std::numeric_limits<uint64_t>::max());
+        uint64_t const toTimeStamp   = ::getQueryParam   (req->query, "to", numeric_limits<uint64_t>::max());
         size_t   const maxEntries    = ::getQueryParam   (req->query, "max_entries");
 
         _debug(string(__func__) + " controller_id=" +           controllerId);

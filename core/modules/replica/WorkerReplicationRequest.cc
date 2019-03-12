@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -36,6 +35,7 @@
 #include "replica/Performance.h"
 #include "replica/ServiceProvider.h"
 
+using namespace std;
 namespace fs = boost::filesystem;
 
 namespace {
@@ -54,12 +54,12 @@ namespace replica {
 
 WorkerReplicationRequest::Ptr WorkerReplicationRequest::create(
                                         ServiceProvider::Ptr const& serviceProvider,
-                                        std::string const& worker,
-                                        std::string const& id,
-                                        int                priority,
-                                        std::string const& database,
-                                        unsigned int       chunk,
-                                        std::string const& sourceWorker) {
+                                        string const& worker,
+                                        string const& id,
+                                        int priority,
+                                        string const& database,
+                                        unsigned int chunk,
+                                        string const& sourceWorker) {
     return WorkerReplicationRequest::Ptr(
         new WorkerReplicationRequest(
                 serviceProvider,
@@ -71,14 +71,15 @@ WorkerReplicationRequest::Ptr WorkerReplicationRequest::create(
                 sourceWorker));
 }
 
+
 WorkerReplicationRequest::WorkerReplicationRequest(
                                 ServiceProvider::Ptr const& serviceProvider,
-                                std::string const& worker,
-                                std::string const& id,
-                                int                priority,
-                                std::string const& database,
-                                unsigned int       chunk,
-                                std::string const& sourceWorker)
+                                string const& worker,
+                                string const& id,
+                                int priority,
+                                string const& database,
+                                unsigned int chunk,
+                                string const& sourceWorker)
     :   WorkerRequest (
             serviceProvider,
             worker,
@@ -92,6 +93,7 @@ WorkerReplicationRequest::WorkerReplicationRequest(
     serviceProvider->assertWorkerIsValid(sourceWorker);
     serviceProvider->assertWorkersAreDifferent(worker, sourceWorker);
 }
+
 
 void WorkerReplicationRequest::setInfo(proto::ReplicationResponseReplicate& response) const {
 
@@ -143,18 +145,19 @@ bool WorkerReplicationRequest::execute() {
     return complete;
 }
 
+
 ////////////////////////////////////////////////////////////////////////
 ///////////////////// WorkerReplicationRequestPOSIX ////////////////////
 ////////////////////////////////////////////////////////////////////////
 
 WorkerReplicationRequestPOSIX::Ptr WorkerReplicationRequestPOSIX::create (
                                     ServiceProvider::Ptr const& serviceProvider,
-                                    std::string const& worker,
-                                    std::string const& id,
-                                    int                priority,
-                                    std::string const& database,
-                                    unsigned int       chunk,
-                                    std::string const& sourceWorker) {
+                                    string const& worker,
+                                    string const& id,
+                                    int priority,
+                                    string const& database,
+                                    unsigned int chunk,
+                                    string const& sourceWorker) {
     return WorkerReplicationRequestPOSIX::Ptr(
         new WorkerReplicationRequestPOSIX(
                 serviceProvider,
@@ -166,14 +169,15 @@ WorkerReplicationRequestPOSIX::Ptr WorkerReplicationRequestPOSIX::create (
                 sourceWorker));
 }
 
+
 WorkerReplicationRequestPOSIX::WorkerReplicationRequestPOSIX(
                                     ServiceProvider::Ptr const& serviceProvider,
-                                    std::string const& worker,
-                                    std::string const& id,
-                                    int                priority,
-                                    std::string const& database,
-                                    unsigned int       chunk,
-                                    std::string const& sourceWorker)
+                                    string const& worker,
+                                    string const& id,
+                                    int priority,
+                                    string const& database,
+                                    unsigned int chunk,
+                                    string const& sourceWorker)
     :   WorkerReplicationRequest(
                 serviceProvider,
                 worker,
@@ -183,6 +187,7 @@ WorkerReplicationRequestPOSIX::WorkerReplicationRequestPOSIX(
                 chunk,
                 sourceWorker) {
 }
+
 
 bool WorkerReplicationRequestPOSIX::execute () {
 
@@ -217,18 +222,17 @@ bool WorkerReplicationRequestPOSIX::execute () {
     fs::path const inDir  = fs::path(inWorkerInfo.dataDir)  / database();
     fs::path const outDir = fs::path(outWorkerInfo.dataDir) / database();
 
-    std::vector<std::string> const files =
-        FileUtils::partitionedFiles(databaseInfo, chunk());
+    vector<string> const files = FileUtils::partitionedFiles(databaseInfo, chunk());
 
-    std::vector<fs::path> inFiles;
-    std::vector<fs::path> tmpFiles;
-    std::vector<fs::path> outFiles;
+    vector<fs::path> inFiles;
+    vector<fs::path> tmpFiles;
+    vector<fs::path> outFiles;
 
-    std::map<std::string, fs::path> file2inFile;
-    std::map<std::string, fs::path> file2tmpFile;
-    std::map<std::string, fs::path> file2outFile;
+    map<string, fs::path> file2inFile;
+    map<string, fs::path> file2tmpFile;
+    map<string, fs::path> file2outFile;
 
-    std::map<fs::path,std::time_t> inFile2mtime;
+    map<fs::path,time_t> inFile2mtime;
 
     for (auto&& file: files) {
 
@@ -419,18 +423,19 @@ bool WorkerReplicationRequestPOSIX::execute () {
     return true;
 }
 
+
 /////////////////////////////////////////////////////////////////////
 ///////////////////// WorkerReplicationRequestFS ////////////////////
 /////////////////////////////////////////////////////////////////////
 
 WorkerReplicationRequestFS::Ptr WorkerReplicationRequestFS::create (
                                             ServiceProvider::Ptr const& serviceProvider,
-                                            std::string const& worker,
-                                            std::string const& id,
-                                            int                priority,
-                                            std::string const& database,
-                                            unsigned int       chunk,
-                                            std::string const& sourceWorker) {
+                                            string const& worker,
+                                            string const& id,
+                                            int priority,
+                                            string const& database,
+                                            unsigned int chunk,
+                                            string const& sourceWorker) {
     return WorkerReplicationRequestFS::Ptr(
         new WorkerReplicationRequestFS(
                 serviceProvider,
@@ -442,14 +447,15 @@ WorkerReplicationRequestFS::Ptr WorkerReplicationRequestFS::create (
                 sourceWorker));
 }
 
+
 WorkerReplicationRequestFS::WorkerReplicationRequestFS(
                                     ServiceProvider::Ptr const& serviceProvider,
-                                    std::string const& worker,
-                                    std::string const& id,
-                                    int                priority,
-                                    std::string const& database,
-                                    unsigned int       chunk,
-                                    std::string const& sourceWorker)
+                                    string const& worker,
+                                    string const& id,
+                                    int priority,
+                                    string const& database,
+                                    unsigned int chunk,
+                                    string const& sourceWorker)
     :   WorkerReplicationRequest(
                 serviceProvider,
                 worker,
@@ -468,10 +474,12 @@ WorkerReplicationRequestFS::WorkerReplicationRequestFS(
         _bufSize(serviceProvider->config()->workerFsBufferSizeBytes()) {
 }
 
+
 WorkerReplicationRequestFS::~WorkerReplicationRequestFS() {
     util::Lock lock(_mtx, context() + "destructor");
     releaseResources(lock);
 }
+
 
 bool WorkerReplicationRequestFS::execute () {
 
@@ -517,8 +525,8 @@ bool WorkerReplicationRequestFS::execute () {
 
         fs::path const outDir = fs::path(_outWorkerInfo.dataDir) / database();
 
-        std::vector<fs::path> tmpFiles;
-        std::vector<fs::path> outFiles;
+        vector<fs::path> tmpFiles;
+        vector<fs::path> outFiles;
 
         for (auto&& file: _files) {
 
@@ -546,8 +554,8 @@ bool WorkerReplicationRequestFS::execute () {
 
             // Check for a presence of input files and calculate space requirement
 
-            uintmax_t totalBytes = 0;                   // the total number of bytes in all input files to be moved
-            std::map<std::string, uintmax_t> file2size; // the number of bytes in each file
+            uintmax_t totalBytes = 0;           // the total number of bytes in all input files to be moved
+            map<string, uintmax_t> file2size;   // the number of bytes in each file
 
             for (auto&& file: _files) {
 
@@ -650,16 +658,16 @@ bool WorkerReplicationRequestFS::execute () {
 
                 // Create a file of size 0
 
-                std::FILE* tmpFilePtr = std::fopen(tmpFile.string().c_str(), "wb");
+                FILE* tmpFilePtr = fopen(tmpFile.string().c_str(), "wb");
                 errorContext = errorContext
                     or reportErrorIf(
                             not tmpFilePtr,
                             ExtendedCompletionStatus::EXT_STATUS_FILE_CREATE,
                             "failed to open/create temporary file: " + tmpFile.string() +
-                            ", error: " + std::strerror(errno));
+                            ", error: " + strerror(errno));
                 if (tmpFilePtr) {
-                    std::fflush(tmpFilePtr);
-                    std::fclose(tmpFilePtr);
+                    fflush(tmpFilePtr);
+                    fclose(tmpFilePtr);
                 }
 
                 // Resize the file (will be filled with \0)
@@ -680,8 +688,7 @@ bool WorkerReplicationRequestFS::execute () {
         // Allocate the record buffer
         _buf = new uint8_t[_bufSize];
         if (not _buf) {
-            throw std::runtime_error(
-                            "WorkerReplicationRequestFS::execute()  buffer allocation failed");
+            throw runtime_error("WorkerReplicationRequestFS::execute()  buffer allocation failed");
         }
 
         // Setup the iterator for the name of the very first file to be copied
@@ -704,7 +711,7 @@ bool WorkerReplicationRequestFS::execute () {
         try {
             num = _inFilePtr->read(_buf, _bufSize);
             if (num) {
-                if (num == std::fwrite(_buf, sizeof(uint8_t), num, _tmpFilePtr)) {
+                if (num == fwrite(_buf, sizeof(uint8_t), num, _tmpFilePtr)) {
 
                     // Update the descriptor (the number of bytes copied so far
                     // and the control sum)
@@ -725,7 +732,7 @@ bool WorkerReplicationRequestFS::execute () {
                         true,
                         ExtendedCompletionStatus::EXT_STATUS_FILE_WRITE,
                         "failed to write into temporary file: " + _file2descr[*_fileItr].tmpFile.string() +
-                        ", error: " + std::strerror(errno));
+                        ", error: " + strerror(errno));
             }
 
         } catch (FileClientError const& ex) {
@@ -755,8 +762,8 @@ bool WorkerReplicationRequestFS::execute () {
         }
         // Flush and close the current file
 
-        std::fflush(_tmpFilePtr);
-        std::fclose(_tmpFilePtr);
+        fflush(_tmpFilePtr);
+        fclose(_tmpFilePtr);
         _tmpFilePtr = 0;
 
         // Keep updating this stats after finishing to copy each file
@@ -776,6 +783,7 @@ bool WorkerReplicationRequestFS::execute () {
     // Finalize the operation, deallocate resources, etc.
     return finalize(lock);
 }
+
 
 bool WorkerReplicationRequestFS::openFiles(util::Lock const& lock) {
 
@@ -810,23 +818,24 @@ bool WorkerReplicationRequestFS::openFiles(util::Lock const& lock) {
 
     fs::path const tmpFile = _file2descr[*_fileItr].tmpFile;
 
-    _tmpFilePtr = std::fopen(tmpFile.string().c_str(), "wb");
+    _tmpFilePtr = fopen(tmpFile.string().c_str(), "wb");
     errorContext = errorContext
         or reportErrorIf(
             not _tmpFilePtr,
             ExtendedCompletionStatus::EXT_STATUS_FILE_OPEN,
             "failed to open temporary file: " + tmpFile.string() +
-            ", error: " + std::strerror(errno));
+            ", error: " + strerror(errno));
     if (errorContext.failed) {
         setStatus(lock, STATUS_FAILED, errorContext.extendedStatus);
         return false;
     }
-    std::rewind(_tmpFilePtr);
+    rewind(_tmpFilePtr);
 
     _file2descr[*_fileItr].beginTransferTime = PerformanceUtils::now();
 
     return true;
 }
+
 
 bool WorkerReplicationRequestFS::finalize(util::Lock const& lock) {
 
@@ -880,6 +889,7 @@ bool WorkerReplicationRequestFS::finalize(util::Lock const& lock) {
     return true;
 }
 
+
 void WorkerReplicationRequestFS::updateInfo(util::Lock const& lock) {
 
     size_t totalInSizeBytes  = 0;
@@ -892,7 +902,7 @@ void WorkerReplicationRequestFS::updateInfo(util::Lock const& lock) {
                 file,
                 _file2descr[file].outSizeBytes,
                 _file2descr[file].mtime,
-                std::to_string(_file2descr[file].cs),
+                to_string(_file2descr[file].cs),
                 _file2descr[file].beginTransferTime,
                 _file2descr[file].endTransferTime,
                 _file2descr[file].inSizeBytes
@@ -918,16 +928,16 @@ void WorkerReplicationRequestFS::updateInfo(util::Lock const& lock) {
         fileInfoCollection);
 }
 
-void
-WorkerReplicationRequestFS::releaseResources(util::Lock const& lock) {
+
+void WorkerReplicationRequestFS::releaseResources(util::Lock const& lock) {
 
     // Drop a connection to the remote server
     _inFilePtr.reset();
 
     // Close the output file
     if (_tmpFilePtr) {
-        std::fflush(_tmpFilePtr);
-        std::fclose(_tmpFilePtr);
+        fflush(_tmpFilePtr);
+        fclose(_tmpFilePtr);
         _tmpFilePtr = nullptr;
     }
 

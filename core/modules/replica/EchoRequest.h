@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -46,8 +45,7 @@ class Messenger;
   * the controller-worker protocol and the worker-side framework.
   * These requests have no side effects.
   */
-class EchoRequest
-    :   public RequestMessenger  {
+class EchoRequest : public RequestMessenger  {
 
 public:
 

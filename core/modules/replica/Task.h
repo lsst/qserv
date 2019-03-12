@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -58,8 +57,7 @@ namespace replica {
  * Class TaskError represents exceptions throw by the method
  * of class Task on various error conditions.
  */
-class TaskError
-    :   public util::Issue {
+class TaskError : public util::Issue {
 public:
     TaskError(util::Issue::Context const& ctx,
               std::string const& message);
@@ -71,8 +69,7 @@ public:
  * activities as a response to activity cancellation requests. Note, that
  * this kind of exception is not considered an error.
  */
-class TaskStopped
-    :   public std::runtime_error {
+class TaskStopped : public std::runtime_error {
 public:
     TaskStopped()
         :   std::runtime_error("task stopped") {
@@ -85,8 +82,7 @@ public:
  * the activities, notifying clients on abnormal termination of the activities,
  * as well as an infrastructure supporting an implementation of these activities.
  */
-class Task
-    :   public std::enable_shared_from_this<Task> {
+class Task : public std::enable_shared_from_this<Task> {
 
 public:
 

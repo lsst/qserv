@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -46,8 +45,7 @@ namespace replica {
   * Class RemoveReplicaQservMgtRequest implements a request notifying Qserv workers
   * on new chunks added to the database.
   */
-class RemoveReplicaQservMgtRequest
-    :   public QservMgtRequest  {
+class RemoveReplicaQservMgtRequest : public QservMgtRequest {
 
 public:
 

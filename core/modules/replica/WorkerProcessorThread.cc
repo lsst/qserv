@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -31,6 +30,8 @@
 #include "replica/WorkerProcessor.h"
 #include "replica/WorkerRequest.h"
 
+using namespace std;
+
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerProcessorThread");
@@ -47,6 +48,7 @@ WorkerProcessorThread::Ptr WorkerProcessorThread::create(WorkerProcessorPtr cons
         new WorkerProcessorThread(processor, id++));
 }
 
+
 WorkerProcessorThread::WorkerProcessorThread(WorkerProcessorPtr const& processor,
                                              unsigned int id)
     :   _processor(processor),
@@ -54,9 +56,11 @@ WorkerProcessorThread::WorkerProcessorThread(WorkerProcessorPtr const& processor
         _stop(false) {
 }
 
+
 bool WorkerProcessorThread::isRunning() const {
     return _thread != nullptr;
 }
+
 
 void WorkerProcessorThread::run() {
 
@@ -64,7 +68,7 @@ void WorkerProcessorThread::run() {
 
     auto const self = shared_from_this();
 
-    _thread = std::make_unique<std::thread>([self] () {
+    _thread = make_unique<thread>([self] () {
 
         LOGS(_log, LOG_LVL_DEBUG, self->context() << "start");
 
@@ -128,10 +132,12 @@ void WorkerProcessorThread::run() {
     _thread->detach();
 }
 
+
 void WorkerProcessorThread::stop() {
     if (not isRunning()) return;
     _stop = true;
 }
+
 
 void WorkerProcessorThread::stopped() {
     _stop = false;

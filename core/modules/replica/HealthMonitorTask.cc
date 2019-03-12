@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -30,6 +29,8 @@
 #include "replica/DatabaseServices.h"
 #include "replica/Performance.h"
 
+using namespace std;
+
 namespace lsst {
 namespace qserv {
 namespace replica {
@@ -53,14 +54,16 @@ HealthMonitorTask::Ptr HealthMonitorTask::create(
     );
 }
 
+
 HealthMonitorTask::WorkerResponseDelay HealthMonitorTask::workerResponseDelay() const {
     util::Lock lock(_mtx, "HealthMonitorTask::workerResponseDelay()");
     return _workerServiceNoResponseSec;
 }
 
+
 void HealthMonitorTask::onStart() {
  
-    std::string const context = "HealthMonitorTask::onStart()";
+    string const context = "HealthMonitorTask::onStart()";
 
     util::Lock lock(_mtx, context);
 
@@ -74,9 +77,9 @@ void HealthMonitorTask::onStart() {
 
 bool HealthMonitorTask::onRun() {
  
-    std::string const context = "HealthMonitorTask::onRun()";
+    string const context = "HealthMonitorTask::onRun()";
 
-    std::string const parentJobId;  // no parent jobs
+    string const parentJobId;  // no parent jobs
 
     // Probe hosts. Wait for completion or expiration of the job
     // before analyzing its findings.
@@ -87,7 +90,7 @@ bool HealthMonitorTask::onRun() {
 
     auto self = shared_from_base<HealthMonitorTask>();
 
-    std::vector<ClusterHealthJob::Ptr> jobs;
+    vector<ClusterHealthJob::Ptr> jobs;
     jobs.emplace_back(
         ClusterHealthJob::create(
             _workerResponseTimeoutSec,
@@ -126,7 +129,7 @@ bool HealthMonitorTask::onRun() {
             } else {
                 _workerServiceNoResponseSec[worker]["qserv"] += workerResponseDelaySec;
                 info("no response from Qserv at worker '" +worker + "' for " +
-                     std::to_string(_workerServiceNoResponseSec[worker]["qserv"]) + " seconds");
+                     to_string(_workerServiceNoResponseSec[worker]["qserv"]) + " seconds");
             }
         }
         for (auto&& entry: jobs[0]->clusterHealth().replication()) {
@@ -139,14 +142,14 @@ bool HealthMonitorTask::onRun() {
             } else {
                 _workerServiceNoResponseSec[worker]["replication"] += workerResponseDelaySec;
                 info("no response from Replication at worker '" + worker + "' for " +
-                     std::to_string(_workerServiceNoResponseSec[worker]["replication"]) + " seconds");
+                     to_string(_workerServiceNoResponseSec[worker]["replication"]) + " seconds");
             }
         }
     }
 
     // Analyze the intervals to see which workers have reached the eviction
     // threshold.
-    std::vector<std::string> workers2evict;
+    vector<string> workers2evict;
 
     // Also count the total number of the ENABLED Replication workers
     // (including the evicted ones) which are offline.
@@ -168,7 +171,7 @@ bool HealthMonitorTask::onRun() {
                 if (workerInfo.isEnabled) {
                     workers2evict.push_back(worker);
                     info("worker '" + worker + "' has reached eviction timeout of " +
-                         std::to_string(_workerEvictTimeoutSec) + " seconds");
+                         to_string(_workerEvictTimeoutSec) + " seconds");
                 }
             }
 
@@ -205,13 +208,13 @@ bool HealthMonitorTask::onRun() {
 
             } else {
                 error("single worker eviction is not possible if other workers are offline: " +
-                      std::to_string(numEnabledWorkersOffline));
+                      to_string(numEnabledWorkersOffline));
             }
             break;
 
         default:
             error("simultaneous eviction of multiple workers is not supported: " +
-                  std::to_string(workers2evict.size()));
+                  to_string(workers2evict.size()));
 
             break;
     }
@@ -219,6 +222,7 @@ bool HealthMonitorTask::onRun() {
     // Keep on getting calls on this method after a wait time
     return true;
 }
+
 
 HealthMonitorTask::HealthMonitorTask(
         Controller::Ptr const& controller,
@@ -247,7 +251,7 @@ void HealthMonitorTask::_logStartedEvent(ClusterHealthJob::Ptr const& job) const
     event.status    = "STARTED";
     event.jobId     = job->id();
 
-    event.kvInfo.emplace_back("worker-response-timeout", std::to_string(_workerResponseTimeoutSec));
+    event.kvInfo.emplace_back("worker-response-timeout", to_string(_workerResponseTimeoutSec));
 
     logEvent(event);
 }

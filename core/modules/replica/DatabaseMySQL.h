@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -67,8 +66,7 @@ namespace mysql {
 /**
  * Class Connection provides the main API to the database.
  */
-class Connection
-    :   public std::enable_shared_from_this<Connection> {
+class Connection : public std::enable_shared_from_this<Connection> {
 
 public:
 

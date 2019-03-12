@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -23,8 +22,8 @@
 #define LSST_QSERV_REPLICA_FILEUTILS_H
 
 // System headers
-#include <cstdio>       // C-style I/O
-#include <cstdint>      // size_t, uint64_t
+#include <cstdio>
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <string>

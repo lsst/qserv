@@ -1,7 +1,5 @@
-// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -24,8 +22,8 @@
 #define LSST_QSERV_REPLICA_PROTOCOLBUFFER_H
 
 // System headers
-#include <arpa/inet.h>  // ntohl
-#include <cstdint>      // uint32_t
+#include <arpa/inet.h>
+#include <cstdint>
 #include <stdexcept>
 
 // This header declarations

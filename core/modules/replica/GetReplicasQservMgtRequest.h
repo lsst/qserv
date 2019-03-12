@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -45,8 +44,7 @@ namespace replica {
   * Class GetReplicasQservMgtRequest implements a request retrieving a list of
   * replicas known to Qserv workers.
   */
-class GetReplicasQservMgtRequest
-    :   public QservMgtRequest  {
+class GetReplicasQservMgtRequest : public QservMgtRequest  {
 
 public:
 

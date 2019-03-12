@@ -1,7 +1,5 @@
-// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -51,8 +49,7 @@ namespace replica {
   * the file delivery service. Each instance of this class will be running
   * in its own thread.
   */
-class FileServer
-    : public std::enable_shared_from_this<FileServer>  {
+class FileServer : public std::enable_shared_from_this<FileServer>  {
 
 public:
 

@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -46,8 +45,7 @@ class Messenger;
   * Class FindRequest represents a transient state of the replica lookup
   * requests within the master controller for deleting replicas.
   */
-class FindRequest
-    :   public RequestMessenger  {
+class FindRequest : public RequestMessenger  {
 
 public:
 

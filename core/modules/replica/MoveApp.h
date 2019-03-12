@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -35,7 +34,7 @@ namespace replica {
  * Class MoveApp implements a tool which runs the rebalancing algorithm
  * in a scope of a database family.
  */
-class MoveApp: public Application {
+class MoveApp : public Application {
 
 public:
 

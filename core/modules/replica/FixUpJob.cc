@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -34,6 +33,8 @@
 #include "replica/ServiceProvider.h"
 #include "util/BlockPost.h"
 
+using namespace std;
+
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.FixUpJob");
@@ -54,12 +55,12 @@ Job::Options const& FixUpJob::defaultOptions() {
 }
 
 
-std::string FixUpJob::typeName() { return "FixUpJob"; }
+string FixUpJob::typeName() { return "FixUpJob"; }
 
 
-FixUpJob::Ptr FixUpJob::create(std::string const& databaseFamily,
+FixUpJob::Ptr FixUpJob::create(string const& databaseFamily,
                                Controller::Ptr const& controller,
-                               std::string const& parentJobId,
+                               string const& parentJobId,
                                CallbackType const& onFinish,
                                Job::Options const& options) {
     return FixUpJob::Ptr(
@@ -70,9 +71,10 @@ FixUpJob::Ptr FixUpJob::create(std::string const& databaseFamily,
                      options));
 }
 
-FixUpJob::FixUpJob(std::string const& databaseFamily,
+
+FixUpJob::FixUpJob(string const& databaseFamily,
                    Controller::Ptr const& controller,
-                   std::string const& parentJobId,
+                   string const& parentJobId,
                    CallbackType const& onFinish,
                    Job::Options const& options)
     :   Job(controller,
@@ -88,10 +90,12 @@ FixUpJob::FixUpJob(std::string const& databaseFamily,
         _numSuccess(0) {
 }
 
+
 FixUpJob::~FixUpJob() {
     // Make sure all chunks locked by this job are released
     controller()->serviceProvider()->chunkLocker().release(id());
 }
+
 
 FixUpJobResult const& FixUpJob::getReplicaData() const {
 
@@ -99,20 +103,21 @@ FixUpJobResult const& FixUpJob::getReplicaData() const {
 
     if (state() == State::FINISHED) return _replicaData;
 
-    throw std::logic_error(
-        "FixUpJob::getReplicaData  the method can't be called while the job hasn't finished");
+    throw logic_error(
+                "FixUpJob::getReplicaData  the method can't be called while the job hasn't finished");
 }
 
-std::list<std::pair<std::string,std::string>> FixUpJob::extendedPersistentState() const {
-    std::list<std::pair<std::string,std::string>> result;
+
+list<pair<string,string>> FixUpJob::extendedPersistentState() const {
+    list<pair<string,string>> result;
     result.emplace_back("database_family", databaseFamily());
     return result;
 }
 
 
-std::list<std::pair<std::string,std::string>> FixUpJob::persistentLogData() const {
+list<pair<string,string>> FixUpJob::persistentLogData() const {
 
-    std::list<std::pair<std::string,std::string>> result;
+    list<pair<string,string>> result;
 
     auto&& replicaData = getReplicaData();
 
@@ -133,21 +138,21 @@ std::list<std::pair<std::string,std::string>> FixUpJob::persistentLogData() cons
     //     the total number of chunks created on the workers as a result
     //     of the operation
 
-    std::map<std::string,
-             std::map<std::string,
-                      size_t>> workerCategoryCounter;
+    map<string,
+        map<string,
+            size_t>> workerCategoryCounter;
 
     for (auto&& info: replicaData.replicas) {
         workerCategoryCounter[info.worker()]["created-chunks"]++;
     }
     for (auto&& workerItr: workerCategoryCounter) {
         auto&& worker = workerItr.first;
-        std::string val = "worker=" + worker;
+        string val = "worker=" + worker;
 
         for (auto&& categoryItr: workerItr.second) {
             auto&& category = categoryItr.first;
             size_t const counter = categoryItr.second;
-            val += " " + category + "=" + std::to_string(counter);
+            val += " " + category + "=" + to_string(counter);
         }
         result.emplace_back("worker-stats", val);
     }
@@ -181,6 +186,7 @@ void FixUpJob::startImpl(util::Lock const& lock) {
 
     setState(lock, State::IN_PROGRESS);
 }
+
 
 void FixUpJob::cancelImpl(util::Lock const& lock) {
 
@@ -225,7 +231,7 @@ void FixUpJob::restart(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << "restart");
 
     if (_findAllJob or (_numLaunched != _numFinished)) {
-        throw std::logic_error("FixUpJob::restart ()  not allowed in this object state");
+        throw logic_error("FixUpJob::restart ()  not allowed in this object state");
     }
     _requests.clear();
 
@@ -236,12 +242,14 @@ void FixUpJob::restart(util::Lock const& lock) {
     _numSuccess  = 0;
 }
 
+
 void FixUpJob::notify(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
 
     notifyDefaultImpl<FixUpJob>(lock, _onFinish);
 }
+
 
 void FixUpJob::onPrecursorJobFinish() {
 
@@ -280,8 +288,8 @@ void FixUpJob::onPrecursorJobFinish() {
         unsigned int chunk = chunk2workers.first;
 
         for (auto&& worker2colocated: chunk2workers.second) {
-            std::string const& destinationWorker = worker2colocated.first;
-            bool        const  isColocated       = worker2colocated.second;
+            string const& destinationWorker = worker2colocated.first;
+            bool   const  isColocated       = worker2colocated.second;
 
             if (isColocated) continue;
 
@@ -305,7 +313,7 @@ void FixUpJob::onPrecursorJobFinish() {
                                           .workerExists(destinationWorker)) {
 
                     // Finding a source worker first
-                    std::string sourceWorker;
+                    string sourceWorker;
                     for (auto&& worker: replicaData.complete.at(chunk).at(database)) {
                         if (worker != destinationWorker) {
                             sourceWorker = worker;
@@ -376,10 +384,11 @@ void FixUpJob::onPrecursorJobFinish() {
     }
 }
 
+
 void FixUpJob::onRequestFinish(ReplicationRequest::Ptr const& request) {
 
-    std::string  const database = request->database();
-    std::string  const worker   = request->worker();
+    string       const database = request->database();
+    string       const worker   = request->worker();
     unsigned int const chunk    = request->chunk();
 
     LOGS(_log, LOG_LVL_DEBUG, context()
@@ -452,6 +461,7 @@ void FixUpJob::onRequestFinish(ReplicationRequest::Ptr const& request) {
         }
     }
 }
+
 
 void FixUpJob::release(unsigned int chunk) {
 

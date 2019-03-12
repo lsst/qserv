@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -35,6 +34,8 @@
 #include "replica/ProtocolBuffer.h"
 #include "replica/ServiceProvider.h"
 
+using namespace std;
+
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.StatusRequest");
@@ -48,11 +49,11 @@ namespace replica {
 StatusRequestBase::StatusRequestBase(ServiceProvider::Ptr const& serviceProvider,
                                      boost::asio::io_service& io_service,
                                      char const* requestTypeName,
-                                     std::string const& worker,
-                                     std::string const& targetRequestId,
+                                     string const& worker,
+                                     string const& targetRequestId,
                                      proto::ReplicationReplicaRequestType replicaRequestType,
                                      bool keepTracking,
-                                     std::shared_ptr<Messenger> const& messenger)
+                                     shared_ptr<Messenger> const& messenger)
     :   RequestMessenger(serviceProvider,
                          io_service,
                          requestTypeName,
@@ -64,6 +65,7 @@ StatusRequestBase::StatusRequestBase(ServiceProvider::Ptr const& serviceProvider
         _targetRequestId(targetRequestId),
         _replicaRequestType(replicaRequestType) {
 }
+
 
 void StatusRequestBase::startImpl(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
@@ -87,6 +89,7 @@ void StatusRequestBase::wait(util::Lock const& lock) {
     );
 }
 
+
 void StatusRequestBase::awaken(boost::system::error_code const& ec) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "awaken");
@@ -107,6 +110,7 @@ void StatusRequestBase::awaken(boost::system::error_code const& ec) {
 
     sendImpl(lock);
 }
+
 
 void StatusRequestBase::sendImpl(util::Lock const& lock) {
 
@@ -132,6 +136,7 @@ void StatusRequestBase::sendImpl(util::Lock const& lock) {
 
     send(lock);
 }
+
 
 void StatusRequestBase::analyze(bool success,
                                 proto::ReplicationStatus status) {
@@ -198,10 +203,10 @@ void StatusRequestBase::analyze(bool success,
             break;
 
         default:
-            throw std::logic_error(
-                    "StatusRequestBase::analyze() unknown status '"
-                    + proto::ReplicationStatus_Name(status) +
-                    "' received from server");
+            throw logic_error(
+                        "StatusRequestBase::analyze() unknown status '"
+                        + proto::ReplicationStatus_Name(status) +
+                        "' received from server");
     }
 }
 

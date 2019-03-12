@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -30,6 +29,8 @@
 #include "lsst/log/Log.h"
 #include "replica/Configuration.h"
 
+using namespace std;
+
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.DatabaseServicesPool");
@@ -51,6 +52,7 @@ namespace replica {
  * the pool in the destructor.
  */
 class ServiceAllocator {
+
 public:
     
     ServiceAllocator(DatabaseServicesPool::Ptr const& pool)
@@ -76,6 +78,7 @@ private:
     DatabaseServices::Ptr const _service;
 };
 
+
 // ==========================
 // == DatabaseServicesPool ==
 // ==========================
@@ -83,6 +86,7 @@ private:
 DatabaseServicesPool::Ptr DatabaseServicesPool::create(Configuration::Ptr const& configuration) {
     return DatabaseServicesPool::Ptr(new DatabaseServicesPool(configuration));
 }
+
 
 DatabaseServicesPool::DatabaseServicesPool(Configuration::Ptr const& configuration)
     :   DatabaseServices() {
@@ -92,12 +96,14 @@ DatabaseServicesPool::DatabaseServicesPool(Configuration::Ptr const& configurati
     }
 }
 
+
 void DatabaseServicesPool::saveState(ControllerIdentity const& identity,
                                       uint64_t startTime) {
 
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
     service()->saveState(identity, startTime);
 }
+
 
 void DatabaseServicesPool::saveState(Job const& job,
                                       Job::Options const& options) {
@@ -106,19 +112,22 @@ void DatabaseServicesPool::saveState(Job const& job,
     service()->saveState(job, options);
 }
 
+
 void DatabaseServicesPool::updateHeartbeatTime(Job const& job) {
 
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
     service()->updateHeartbeatTime(job);
 }
 
+
 void DatabaseServicesPool::saveState(QservMgtRequest const& request,
                                       Performance const& performance,
-                                      std::string const& serverError) {
+                                      string const& serverError) {
 
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
     service()->saveState(request, performance, serverError);
 }
+
 
 void DatabaseServicesPool::saveState(Request const& request,
                                      Performance const& performance) {
@@ -127,8 +136,9 @@ void DatabaseServicesPool::saveState(Request const& request,
     service()->saveState(request, performance);
 }
 
+
 void DatabaseServicesPool::updateRequestState(Request const& request,
-                                              std::string const& targetRequestId,
+                                              string const& targetRequestId,
                                               Performance const& targetRequestPerformance) {
 
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
@@ -139,14 +149,16 @@ void DatabaseServicesPool::updateRequestState(Request const& request,
     );
 }
 
+
 void DatabaseServicesPool::saveReplicaInfo(ReplicaInfo const& info) {
 
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
     service()->saveReplicaInfo(info);
 }
 
-void DatabaseServicesPool::saveReplicaInfoCollection(std::string const& worker,
-                                                     std::string const& database,
+
+void DatabaseServicesPool::saveReplicaInfoCollection(string const& worker,
+                                                     string const& database,
                                                      ReplicaInfoCollection const& newReplicaInfoCollection) {
 
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
@@ -155,7 +167,8 @@ void DatabaseServicesPool::saveReplicaInfoCollection(std::string const& worker,
                                          newReplicaInfoCollection);
 }
 
-void DatabaseServicesPool::findOldestReplicas(std::vector<ReplicaInfo>& replicas,
+
+void DatabaseServicesPool::findOldestReplicas(vector<ReplicaInfo>& replicas,
                                               size_t maxReplicas,
                                               bool enabledWorkersOnly) {
 
@@ -165,9 +178,10 @@ void DatabaseServicesPool::findOldestReplicas(std::vector<ReplicaInfo>& replicas
                                   enabledWorkersOnly);
 }
 
-void DatabaseServicesPool::findReplicas(std::vector<ReplicaInfo>& replicas,
+
+void DatabaseServicesPool::findReplicas(vector<ReplicaInfo>& replicas,
                                         unsigned int chunk,
-                                        std::string const& database,
+                                        string const& database,
                                         bool enabledWorkersOnly) {
 
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
@@ -177,9 +191,10 @@ void DatabaseServicesPool::findReplicas(std::vector<ReplicaInfo>& replicas,
                             enabledWorkersOnly);
 }
 
-void DatabaseServicesPool::findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
-                                              std::string const& worker,
-                                              std::string const& database) {
+
+void DatabaseServicesPool::findWorkerReplicas(vector<ReplicaInfo>& replicas,
+                                              string const& worker,
+                                              string const& database) {
 
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
     service()->findWorkerReplicas(replicas,
@@ -187,17 +202,19 @@ void DatabaseServicesPool::findWorkerReplicas(std::vector<ReplicaInfo>& replicas
                                   database);
 }
 
-uint64_t DatabaseServicesPool::numWorkerReplicas(std::string const& worker,
-                                                 std::string const& database) {
+
+uint64_t DatabaseServicesPool::numWorkerReplicas(string const& worker,
+                                                 string const& database) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
     return service()->numWorkerReplicas(worker,
                                         database);
 }
 
-void DatabaseServicesPool::findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
+
+void DatabaseServicesPool::findWorkerReplicas(vector<ReplicaInfo>& replicas,
                                               unsigned int chunk,
-                                              std::string const& worker,
-                                              std::string const& databaseFamily) {
+                                              string const& worker,
+                                              string const& databaseFamily) {
 
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
     service()->findWorkerReplicas(replicas,
@@ -206,9 +223,10 @@ void DatabaseServicesPool::findWorkerReplicas(std::vector<ReplicaInfo>& replicas
                                   databaseFamily);
 }
 
-std::map<unsigned int, size_t> DatabaseServicesPool::actualReplicationLevel(
-                                    std::string const& database,
-                                    std::vector<std::string> const& workersToExclude) {
+
+map<unsigned int, size_t> DatabaseServicesPool::actualReplicationLevel(
+                                    string const& database,
+                                    vector<string> const& workersToExclude) {
 
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
     return service()->actualReplicationLevel(database,
@@ -216,8 +234,8 @@ std::map<unsigned int, size_t> DatabaseServicesPool::actualReplicationLevel(
 }
 
 
-size_t DatabaseServicesPool::numOrphanChunks(std::string const& database,
-                                             std::vector<std::string> const& uniqueOnWorkers) {
+size_t DatabaseServicesPool::numOrphanChunks(string const& database,
+                                             vector<string> const& uniqueOnWorkers) {
 
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
     return service()->numOrphanChunks(database,
@@ -232,8 +250,8 @@ void DatabaseServicesPool::logControllerEvent(ControllerEvent const& event) {
 }
 
 
-std::list<ControllerEvent> DatabaseServicesPool::readControllerEvents(
-                                                    std::string const& controllerId,
+list<ControllerEvent> DatabaseServicesPool::readControllerEvents(
+                                                    string const& controllerId,
                                                     uint64_t fromTimeStamp,
                                                     uint64_t toTimeStamp,
                                                     size_t maxEntries) {
@@ -246,15 +264,15 @@ std::list<ControllerEvent> DatabaseServicesPool::readControllerEvents(
 }
 
 
-ControllerInfo DatabaseServicesPool::controller(std::string const& id) {
+ControllerInfo DatabaseServicesPool::controller(string const& id) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
     return service()->controller(id);
 }
 
 
-std::list<ControllerInfo> DatabaseServicesPool::controllers(uint64_t fromTimeStamp,
-                                                            uint64_t toTimeStamp,
-                                                            size_t maxEntries) {
+list<ControllerInfo> DatabaseServicesPool::controllers(uint64_t fromTimeStamp,
+                                                       uint64_t toTimeStamp,
+                                                       size_t maxEntries) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
     return service()->controllers(fromTimeStamp,
                                   toTimeStamp,
@@ -262,16 +280,16 @@ std::list<ControllerInfo> DatabaseServicesPool::controllers(uint64_t fromTimeSta
 }
 
 
-RequestInfo DatabaseServicesPool::request(std::string const& id) {
+RequestInfo DatabaseServicesPool::request(string const& id) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
     return service()->request(id);
 }
 
 
-std::list<RequestInfo> DatabaseServicesPool::requests(std::string const& jobId,
-                                                      uint64_t fromTimeStamp,
-                                                      uint64_t toTimeStamp,
-                                                      size_t maxEntries) {
+list<RequestInfo> DatabaseServicesPool::requests(string const& jobId,
+                                                 uint64_t fromTimeStamp,
+                                                 uint64_t toTimeStamp,
+                                                 size_t maxEntries) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
     return service()->requests(jobId,
                                fromTimeStamp,
@@ -280,17 +298,17 @@ std::list<RequestInfo> DatabaseServicesPool::requests(std::string const& jobId,
 }
 
 
-JobInfo DatabaseServicesPool::job(std::string const& id) {
+JobInfo DatabaseServicesPool::job(string const& id) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
     return service()->job(id);
 }
 
 
-std::list<JobInfo> DatabaseServicesPool::jobs(std::string const& controllerId,
-                                              std::string const& parentJobId,
-                                              uint64_t fromTimeStamp,
-                                              uint64_t toTimeStamp,
-                                              size_t maxEntries) {
+list<JobInfo> DatabaseServicesPool::jobs(string const& controllerId,
+                                         string const& parentJobId,
+                                         uint64_t fromTimeStamp,
+                                         uint64_t toTimeStamp,
+                                         size_t maxEntries) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
     return service()->jobs(controllerId,
                            parentJobId,
@@ -302,11 +320,11 @@ std::list<JobInfo> DatabaseServicesPool::jobs(std::string const& controllerId,
 
 DatabaseServices::Ptr DatabaseServicesPool::allocateService() {
 
-    std::string const context = "DatabaseServicesPool::allocateService  ";
+    string const context = "DatabaseServicesPool::allocateService  ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    std::unique_lock<std::mutex> lock(_mtx);
+    unique_lock<mutex> lock(_mtx);
 
     auto self = shared_from_base<DatabaseServicesPool>();
 
@@ -323,13 +341,14 @@ DatabaseServices::Ptr DatabaseServicesPool::allocateService() {
     return service;
 }
 
+
 void DatabaseServicesPool::releaseService(DatabaseServices::Ptr const& service) {
 
-    std::string const context = "DatabaseServicesPool::releaseService  ";
+    string const context = "DatabaseServicesPool::releaseService  ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    std::unique_lock<std::mutex> lock(_mtx);
+    unique_lock<mutex> lock(_mtx);
 
     // Move it between queues.
 
@@ -344,7 +363,7 @@ void DatabaseServicesPool::releaseService(DatabaseServices::Ptr const& service) 
         }
     );
     if (1 != numRemoved) {
-        throw std::logic_error(
+        throw logic_error(
                 "DatabaseServicesPool::releaseService  inappropriate use of the method");
     }
     _availableServices.push_back(service);

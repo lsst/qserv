@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -65,8 +64,7 @@ struct PurgeJobResult {
   * Class PurgeJob represents a tool which will increase the minimum
   * number of each chunk's replica up to the requested level.
   */
-class PurgeJob
-    :   public Job  {
+class PurgeJob : public Job  {
 
 public:
 

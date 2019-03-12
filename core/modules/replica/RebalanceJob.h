@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -126,8 +125,7 @@ struct RebalanceJobResult {
   *   of replicas will be processed. Then chunk disposition will be recomputed to adjust
   *   for other parallel activities (replication, purge, etc.).
   */
-class RebalanceJob
-    :   public Job  {
+class RebalanceJob : public Job  {
 
 public:
 

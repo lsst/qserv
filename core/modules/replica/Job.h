@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -52,8 +51,7 @@ namespace replica {
   * Class Job is a base class for a family of replication jobs within
   * the master server.
   */
-class Job
-    :   public std::enable_shared_from_this<Job>  {
+class Job : public std::enable_shared_from_this<Job>  {
 
 public:
 

@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -33,6 +32,8 @@
 #include "replica/QservMgtServices.h"
 #include "replica/ServiceProvider.h"
 
+using namespace std;
+
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.ClusterHealthJob");
@@ -47,7 +48,7 @@ namespace replica {
 //  Class: ClusterHealth
 // ----------------------
 
-ClusterHealth::ClusterHealth(std::vector<std::string> const& workers)
+ClusterHealth::ClusterHealth(vector<string> const& workers)
     :   _good(false) {
 
     for (auto const& worker: workers) {
@@ -56,17 +57,20 @@ ClusterHealth::ClusterHealth(std::vector<std::string> const& workers)
     }
 }
 
-void ClusterHealth::updateReplicationState(std::string const& worker,
+
+void ClusterHealth::updateReplicationState(string const& worker,
                                            bool state) {
     _replication[worker] = state;
     updateSummaryState();
 }
 
-void ClusterHealth::updateQservState(std::string const& worker,
+
+void ClusterHealth::updateQservState(string const& worker,
                                      bool state) {
     _qserv[worker] = state;
     updateSummaryState();
 }
+
 
 void ClusterHealth::updateSummaryState() {
     for (auto&& entry: _replication) {
@@ -84,6 +88,7 @@ void ClusterHealth::updateSummaryState() {
     _good = true;
 }
 
+
 Job::Options const& ClusterHealthJob::defaultOptions() {
     static Job::Options const options{
         3,      /* priority */
@@ -93,17 +98,18 @@ Job::Options const& ClusterHealthJob::defaultOptions() {
     return options;
 }
 
+
 // -------------------------
 //  Class: ClusterHealthJob
 // -------------------------
 
-std::string ClusterHealthJob::typeName() { return "ClusterHealthJob"; }
+string ClusterHealthJob::typeName() { return "ClusterHealthJob"; }
 
 
 ClusterHealthJob::Ptr ClusterHealthJob::create(unsigned int timeoutSec,
                                                bool allWorkers,
                                                Controller::Ptr const& controller,
-                                               std::string const& parentJobId,
+                                               string const& parentJobId,
                                                CallbackType const& onFinish,
                                                Job::Options const& options) {
     return ClusterHealthJob::Ptr(
@@ -115,10 +121,11 @@ ClusterHealthJob::Ptr ClusterHealthJob::create(unsigned int timeoutSec,
                              options));
 }
 
+
 ClusterHealthJob::ClusterHealthJob(unsigned int timeoutSec,
                                    bool allWorkers,
                                    Controller::Ptr const& controller,
-                                   std::string const& parentJobId,
+                                   string const& parentJobId,
                                    CallbackType const& onFinish,
                                    Job::Options const& options)
     :   Job(controller,
@@ -137,28 +144,29 @@ ClusterHealthJob::ClusterHealthJob(unsigned int timeoutSec,
         _numFinished(0) {
 }
 
+
 ClusterHealth const& ClusterHealthJob::clusterHealth() const {
  
     util::Lock lock(_mtx, context() + "clusterHealth");
  
     if (state() == State::FINISHED) return _health;
 
-    throw std::logic_error(
+    throw logic_error(
             context() + "clusterHealth  can't use this operation before finishing the job");
 }
 
 
-std::list<std::pair<std::string,std::string>> ClusterHealthJob::extendedPersistentState() const {
-    std::list<std::pair<std::string,std::string>> result;
-    result.emplace_back("timeout_sec", std::to_string(timeoutSec()));
+list<pair<string,string>> ClusterHealthJob::extendedPersistentState() const {
+    list<pair<string,string>> result;
+    result.emplace_back("timeout_sec", to_string(timeoutSec()));
     result.emplace_back("all_workers", allWorkers() ? "1" : "0");
     return result;
 }
 
 
-std::list<std::pair<std::string,std::string>> ClusterHealthJob::persistentLogData() const {
+list<pair<string,string>> ClusterHealthJob::persistentLogData() const {
 
-    std::list<std::pair<std::string,std::string>> result;
+    list<pair<string,string>> result;
 
     auto&& health = clusterHealth();
 
@@ -192,7 +200,7 @@ void ClusterHealthJob::startImpl(util::Lock const& lock) {
 
     // There is nothing special about this value. This is just an arbitrary
     // string to be sent to a worker.
-    std::string const testData = "123";
+    string const testData = "123";
 
     auto workers = allWorkers()
         ? controller()->serviceProvider()->config()->allWorkers()
@@ -230,6 +238,7 @@ void ClusterHealthJob::startImpl(util::Lock const& lock) {
     else                  setState(lock, State::IN_PROGRESS);
 }
 
+
 void ClusterHealthJob::cancelImpl(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
@@ -247,12 +256,14 @@ void ClusterHealthJob::cancelImpl(util::Lock const& lock) {
     _qservRequests.clear();
 }
 
+
 void ClusterHealthJob::notify(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
 
     notifyDefaultImpl<ClusterHealthJob>(lock, _onFinish);
 }
+
 
 void ClusterHealthJob::onRequestFinish(ServiceStatusRequest::Ptr const& request) {
 
@@ -276,6 +287,7 @@ void ClusterHealthJob::onRequestFinish(ServiceStatusRequest::Ptr const& request)
 
     if (++_numFinished == _numStarted) finish(lock, ExtendedState::SUCCESS);
 }
+
 
 void ClusterHealthJob::onRequestFinish(TestEchoQservMgtRequest::Ptr const& request) {
 

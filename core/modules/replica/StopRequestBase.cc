@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -37,6 +36,8 @@
 #include "replica/ProtocolBuffer.h"
 #include "replica/ServiceProvider.h"
 
+using namespace std;
+
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.StopRequest");
@@ -50,11 +51,11 @@ namespace replica {
 StopRequestBase::StopRequestBase(ServiceProvider::Ptr const& serviceProvider,
                                  boost::asio::io_service& io_service,
                                  char const* requestTypeName,
-                                 std::string const& worker,
-                                 std::string const& targetRequestId,
+                                 string const& worker,
+                                 string const& targetRequestId,
                                  proto::ReplicationReplicaRequestType replicaRequestType,
                                  bool keepTracking,
-                                 std::shared_ptr<Messenger> const& messenger)
+                                 shared_ptr<Messenger> const& messenger)
     :   RequestMessenger(serviceProvider,
                          io_service,
                          requestTypeName,
@@ -67,10 +68,12 @@ StopRequestBase::StopRequestBase(ServiceProvider::Ptr const& serviceProvider,
         _replicaRequestType(replicaRequestType) {
 }
 
+
 void StopRequestBase::startImpl(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
     sendImpl(lock);
 }
+
 
 void StopRequestBase::wait(util::Lock const& lock) {
 
@@ -87,6 +90,7 @@ void StopRequestBase::wait(util::Lock const& lock) {
         )
     );
 }
+
 
 void StopRequestBase::awaken(boost::system::error_code const& ec) {
 
@@ -108,6 +112,7 @@ void StopRequestBase::awaken(boost::system::error_code const& ec) {
 
     sendImpl(lock);
 }
+
 
 void StopRequestBase::sendImpl(util::Lock const& lock) {
 
@@ -133,6 +138,7 @@ void StopRequestBase::sendImpl(util::Lock const& lock) {
 
     send(lock);
 }
+
 
 void StopRequestBase::analyze(bool success,
                               proto::ReplicationStatus status) {
@@ -199,19 +205,21 @@ void StopRequestBase::analyze(bool success,
             break;
 
         default:
-            throw std::logic_error(
-                    "StopRequestBase::analyze() unknown status '" +
-                    proto::ReplicationStatus_Name(status) +
-                    "' received from server");
+            throw logic_error(
+                        "StopRequestBase::analyze() unknown status '" +
+                        proto::ReplicationStatus_Name(status) +
+                        "' received from server");
     }
 }
+
 
 void StopRequestBase::savePersistentState(util::Lock const& lock) {
     controller()->serviceProvider()->databaseServices()->saveState(*this, performance(lock));
 }
 
-std::list<std::pair<std::string,std::string>> StopRequestBase::extendedPersistentState() const {
-    std::list<std::pair<std::string,std::string>> result;
+
+list<pair<string,string>> StopRequestBase::extendedPersistentState() const {
+    list<pair<string,string>> result;
     result.emplace_back("target_request_id", targetRequestId());
     return result;
 }

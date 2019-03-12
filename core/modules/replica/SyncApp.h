@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -36,7 +35,7 @@ namespace replica {
  * collections of chunks at the Qserv workers with what the Replication
  * system sees as "good" chunks in the data directories.
  */
-class SyncApp: public Application {
+class SyncApp : public Application {
 
 public:
 

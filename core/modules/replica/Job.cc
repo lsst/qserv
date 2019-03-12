@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -26,7 +25,7 @@
 // System headers
 #include <sstream>
 #include <stdexcept>
-#include <utility>      // std::swap
+#include <utility>
 
 // Third party headers
 #include <boost/bind.hpp>
@@ -44,6 +43,7 @@
 #include "replica/ServiceProvider.h"
 #include "util/IterableFormatter.h"
 
+using namespace std;
 
 namespace {
 
@@ -55,20 +55,21 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-std::atomic<size_t> Job::_numClassInstances(0);
+atomic<size_t> Job::_numClassInstances(0);
 
-std::string Job::state2string(State state) {
+
+string Job::state2string(State state) {
     switch (state) {
         case CREATED:     return "CREATED";
         case IN_PROGRESS: return "IN_PROGRESS";
         case FINISHED:    return "FINISHED";
     }
-    throw std::logic_error(
+    throw logic_error(
                 "incomplete implementation of method Job::state2string(State)");
 }
 
-std::string
-Job::state2string(ExtendedState state) {
+
+string Job::state2string(ExtendedState state) {
     switch (state) {
         case NONE:               return "NONE";
         case SUCCESS:            return "SUCCESS";
@@ -79,13 +80,14 @@ Job::state2string(ExtendedState state) {
         case TIMEOUT_EXPIRED:    return "TIMEOUT_EXPIRED";
         case CANCELLED:          return "CANCELLED";
     }
-    throw std::logic_error(
+    throw logic_error(
                 "incomplete implementation of method Job::state2string(ExtendedState)");
 }
 
+
 Job::Job(Controller::Ptr const& controller,
-         std::string const& parentJobId,
-         std::string const& type,
+         string const& parentJobId,
+         string const& type,
          Options const& options)
     :   _id(Generators::uniqueId()),
         _controller(controller),
@@ -105,15 +107,18 @@ Job::Job(Controller::Ptr const& controller,
     LOGS(_log, LOG_LVL_DEBUG, context() << "constructed  instances: " << _numClassInstances);
 }
 
+
 Job::~Job() {
     --_numClassInstances;
     LOGS(_log, LOG_LVL_DEBUG, context() << "destructed   instances: " << _numClassInstances);
 }
 
-std::string Job::state2string() const {
+
+string Job::state2string() const {
     util::Lock lock(_mtx, context() + "state2string");
     return state2string(state(), extendedState());
 }
+
 
 Job::Options Job::options() const {
 
@@ -124,19 +129,21 @@ Job::Options Job::options() const {
     return options(lock);
 }
 
+
 Job::Options Job::options(util::Lock const& lock) const {
     return _options;
 }
 
 
-std::list<std::pair<std::string,std::string>> Job::persistentLogData() const {
+list<pair<string,string>> Job::persistentLogData() const {
 
     LOGS(_log, LOG_LVL_DEBUG, context());
 
-    if (state() == State::FINISHED) return std::list<std::pair<std::string,std::string>>();
+    if (state() == State::FINISHED) return list<pair<string,string>>();
 
-    throw std::logic_error(
-        "Job::" + std::string(__func__) + "  the method can't be called while the job hasn't finished");
+    throw logic_error(
+                "Job::" + string(__func__)
+                + "  the method can't be called while the job hasn't finished");
 }
 
 
@@ -147,15 +154,17 @@ Job::Options Job::setOptions(Options const& newOptions) {
     util::Lock lock(_mtx, context() + "setOptions");
 
     Options options = newOptions;
-    std::swap(_options, options);
+    swap(_options, options);
 
     return options;
 }
 
-std::string Job::context() const {
+
+string Job::context() const {
     return  "JOB     " + id() + "  " + type() +
             "  " + state2string(state(), extendedState()) + "  ";
 }
+
 
 void Job::start() {
 
@@ -198,6 +207,7 @@ void Job::start() {
                 context() + "start");
 }
 
+
 void Job::cancel() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancel");
@@ -216,6 +226,7 @@ void Job::cancel() {
 
     finish(lock, ExtendedState::CANCELLED);
 }
+
 
 void Job::finish(util::Lock const& lock,
                  ExtendedState newExtendedState) {
@@ -250,10 +261,11 @@ void Job::finish(util::Lock const& lock,
     notify(lock);
 }
 
+
 void Job::qservAddReplica(util::Lock const& lock,
                           unsigned int chunk,
-                          std::vector<std::string> const& databases,
-                          std::string const& worker,
+                          vector<string> const& databases,
+                          string const& worker,
                           AddReplicaQservMgtRequest::CallbackType const& onFinish) {
 
     LOGS(_log, LOG_LVL_DEBUG, context()
@@ -287,10 +299,11 @@ void Job::qservAddReplica(util::Lock const& lock,
     );
 }
 
+
 void Job::qservRemoveReplica(util::Lock const& lock,
                              unsigned int chunk,
-                             std::vector<std::string> const& databases,
-                             std::string const& worker,
+                             vector<string> const& databases,
+                             string const& worker,
                              bool force,
                              RemoveReplicaQservMgtRequest::CallbackType const& onFinish) {
 
@@ -327,14 +340,17 @@ void Job::qservRemoveReplica(util::Lock const& lock,
     );
 }
 
+
 void Job::assertState(util::Lock const& lock,
                       State desiredState,
-                      std::string const& context) const {
+                      string const& context) const {
     if (desiredState != state()) {
-        throw std::logic_error(
-            context + ": wrong state " + state2string(state()) + " instead of " + state2string(desiredState));
+        throw logic_error(
+                    context + ": wrong state " + state2string(state()) + " instead of " +
+                    state2string(desiredState));
     }
 }
+
 
 void Job::setState(util::Lock const& lock,
                    State newState,
@@ -354,6 +370,7 @@ void Job::setState(util::Lock const& lock,
 
     controller()->serviceProvider()->databaseServices()->saveState(*this, options(lock));
 }
+
 
 void Job::startHeartbeatTimer(util::Lock const& lock) {
 
@@ -378,6 +395,7 @@ void Job::startHeartbeatTimer(util::Lock const& lock) {
         );
     }
 }
+
 
 void Job::heartbeat(boost::system::error_code const& ec) {
 
@@ -408,6 +426,7 @@ void Job::heartbeat(boost::system::error_code const& ec) {
     startHeartbeatTimer(lock);
 }
 
+
 void Job::startExpirationTimer(util::Lock const& lock) {
 
     if (0 != _expirationIvalSec) {
@@ -432,6 +451,7 @@ void Job::startExpirationTimer(util::Lock const& lock) {
     }
 }
 
+
 void Job::expired(boost::system::error_code const& ec) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "expired: "
@@ -454,6 +474,7 @@ void Job::expired(boost::system::error_code const& ec) {
 
     finish(lock, ExtendedState::TIMEOUT_EXPIRED);
 }
+
 
 bool JobCompare::operator()(Job::Ptr const& lhs,
                             Job::Ptr const& rhs) const {

@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -67,8 +66,7 @@ struct MoveReplicaJobResult {
   * from a source worker to some other (destination) worker. The input replica
   * may be deleted if requested.
   */
-class MoveReplicaJob
-    :   public Job  {
+class MoveReplicaJob : public Job  {
 
 public:
 

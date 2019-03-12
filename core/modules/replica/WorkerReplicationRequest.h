@@ -1,7 +1,5 @@
-// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -24,7 +22,7 @@
 #define LSST_QSERV_REPLICA_WORKERREPLICATIONREQUEST_H
 
 // System headers
-#include <cstdio>               // std::FILE, C-style file I/O
+#include <cstdio>
 #include <ctime>
 #include <map>
 #include <string>
@@ -55,8 +53,7 @@ class FileClient;
   *
   * Real implementations of the request processing must derive from this class.
   */
-class WorkerReplicationRequest
-    :   public WorkerRequest {
+class WorkerReplicationRequest : public WorkerRequest {
 
 public:
 

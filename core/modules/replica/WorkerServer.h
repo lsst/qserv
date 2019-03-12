@@ -1,7 +1,5 @@
-// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -48,8 +46,7 @@ class WorkerRequestFactory;
   * the worker replication service. Only one instance of this class is
   * allowed per a thread.
   */
-class WorkerServer
-    : public std::enable_shared_from_this<WorkerServer>  {
+class WorkerServer : public std::enable_shared_from_this<WorkerServer>  {
 
 public:
 

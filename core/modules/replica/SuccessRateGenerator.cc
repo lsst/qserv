@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -23,9 +22,7 @@
 // Class header
 #include "replica/SuccessRateGenerator.h"
 
-// System headers
-
-// Qserv headers
+using namespace std;
 
 namespace lsst {
 namespace qserv {
@@ -37,8 +34,9 @@ SuccessRateGenerator::SuccessRateGenerator(double successRate)
         _distr(successRate) {
 }
 
+
 bool SuccessRateGenerator::success() {
-    std::lock_guard<util::Mutex> lock(_generatorMtx);
+    lock_guard<util::Mutex> lock(_generatorMtx);
     return _distr(_gen);
 }
 

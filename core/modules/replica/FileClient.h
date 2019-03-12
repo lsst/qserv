@@ -1,7 +1,5 @@
-// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -55,8 +53,7 @@ class ProtocolBuffer;
 /**
  * Class FileClientError represents exceptions thrown by FileClient on errors
  */
-class FileClientError
-    :   public std::runtime_error {
+class FileClientError : public std::runtime_error {
 public:
     
     /**
@@ -73,8 +70,7 @@ public:
   * Class FileClient is a client-side API for the point-to-point file migration
   * service.
   */
-class FileClient
-    :   public std::enable_shared_from_this<FileClient>  {
+class FileClient : public std::enable_shared_from_this<FileClient>  {
 
 public:
 

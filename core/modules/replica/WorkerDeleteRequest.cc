@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -35,7 +34,7 @@
 #include "replica/Performance.h"
 #include "replica/ServiceProvider.h"
 
-
+using namespace std;
 namespace fs = boost::filesystem;
 
 namespace {
@@ -54,11 +53,11 @@ namespace replica {
 
 WorkerDeleteRequest::Ptr WorkerDeleteRequest::create(
                                     ServiceProvider::Ptr const& serviceProvider,
-                                    std::string const& worker,
-                                    std::string const& id,
-                                    int                priority,
-                                    std::string const& database,
-                                    unsigned int       chunk) {
+                                    string const& worker,
+                                    string const& id,
+                                    int priority,
+                                    string const& database,
+                                    unsigned int chunk) {
     return WorkerDeleteRequest::Ptr(
         new WorkerDeleteRequest(serviceProvider,
                                 worker,
@@ -68,12 +67,13 @@ WorkerDeleteRequest::Ptr WorkerDeleteRequest::create(
                                 chunk));
 }
 
+
 WorkerDeleteRequest::WorkerDeleteRequest(ServiceProvider::Ptr const& serviceProvider,
-                                         std::string const& worker,
-                                         std::string const& id,
-                                         int                priority,
-                                         std::string const& database,
-                                         unsigned int       chunk)
+                                         string const& worker,
+                                         string const& id,
+                                         int priority,
+                                         string const& database,
+                                         unsigned int chunk)
     :   WorkerRequest (serviceProvider,
                        worker,
                        "DELETE",
@@ -89,6 +89,7 @@ WorkerDeleteRequest::WorkerDeleteRequest(ServiceProvider::Ptr const& serviceProv
                      PerformanceUtils::now(),
                      ReplicaInfo::FileInfoCollection{}) {
 }
+                     
 
 void WorkerDeleteRequest::setInfo(proto::ReplicationResponseDelete& response) const {
 
@@ -117,6 +118,7 @@ void WorkerDeleteRequest::setInfo(proto::ReplicationResponseDelete& response) co
     response.set_allocated_request(protoRequestPtr);
 }
 
+
 bool WorkerDeleteRequest::execute() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "execute"
@@ -126,17 +128,18 @@ bool WorkerDeleteRequest::execute() {
     return WorkerRequest::execute();
 }
 
+
 ///////////////////////////////////////////////////////////////////
 ///////////////////// WorkerDeleteRequestPOSIX ////////////////////
 ///////////////////////////////////////////////////////////////////
 
 WorkerDeleteRequestPOSIX::Ptr WorkerDeleteRequestPOSIX::create(
                                         ServiceProvider::Ptr const& serviceProvider,
-                                        std::string const& worker,
-                                        std::string const& id,
-                                        int                priority,
-                                        std::string const& database,
-                                        unsigned int       chunk) {
+                                        string const& worker,
+                                        string const& id,
+                                        int priority,
+                                        string const& database,
+                                        unsigned int chunk) {
 
     return WorkerDeleteRequestPOSIX::Ptr(
         new WorkerDeleteRequestPOSIX(
@@ -148,13 +151,14 @@ WorkerDeleteRequestPOSIX::Ptr WorkerDeleteRequestPOSIX::create(
                 chunk));
 }
 
+
 WorkerDeleteRequestPOSIX::WorkerDeleteRequestPOSIX(
                                 ServiceProvider::Ptr const& serviceProvider,
-                                std::string const& worker,
-                                std::string const& id,
-                                int                priority,
-                                std::string const& database,
-                                unsigned int       chunk)
+                                string const& worker,
+                                string const& id,
+                                int priority,
+                                string const& database,
+                                unsigned int chunk)
     :   WorkerDeleteRequest(
             serviceProvider,
             worker,
@@ -164,6 +168,7 @@ WorkerDeleteRequestPOSIX::WorkerDeleteRequestPOSIX(
             chunk) {
 }
 
+
 bool WorkerDeleteRequestPOSIX::execute() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "execute"
@@ -172,11 +177,10 @@ bool WorkerDeleteRequestPOSIX::execute() {
 
     util::Lock lock(_mtx, context() + "execute");
 
-    WorkerInfo   const workerInfo    = _serviceProvider->config()->workerInfo(worker());
-    DatabaseInfo const databaseInfo  = _serviceProvider->config()->databaseInfo(database());
+    WorkerInfo   const workerInfo   = _serviceProvider->config()->workerInfo(worker());
+    DatabaseInfo const databaseInfo = _serviceProvider->config()->databaseInfo(database());
 
-    std::vector<std::string> const files =
-        FileUtils::partitionedFiles(databaseInfo, chunk());
+    vector<string> const files =  FileUtils::partitionedFiles(databaseInfo, chunk());
 
     // The data folder will be locked while performing the operation
 

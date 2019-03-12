@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -36,6 +35,7 @@
 #include "replica/FileUtils.h"
 #include "util/IterableFormatter.h"
 
+using namespace std;
 using json = nlohmann::json;
 
 namespace {
@@ -98,7 +98,7 @@ json DatabaseFamilyInfo::toJson() const {
 }
 
 
-std::ostream& operator <<(std::ostream& os, WorkerInfo const& info) {
+ostream& operator <<(ostream& os, WorkerInfo const& info) {
     os  << "WorkerInfo ("
         << "name:'"      <<      info.name       << "',"
         << "isEnabled:"  << (int)info.isEnabled  << ","
@@ -111,7 +111,8 @@ std::ostream& operator <<(std::ostream& os, WorkerInfo const& info) {
     return os;
 }
 
-std::ostream& operator <<(std::ostream& os, DatabaseInfo const& info) {
+
+ostream& operator <<(ostream& os, DatabaseInfo const& info) {
     os  << "DatabaseInfo ("
         << "name:'" << info.name << "',"
         << "family:'" << info.family << "',"
@@ -120,7 +121,8 @@ std::ostream& operator <<(std::ostream& os, DatabaseInfo const& info) {
     return os;
 }
 
-std::ostream& operator <<(std::ostream& os, DatabaseFamilyInfo const& info) {
+
+ostream& operator <<(ostream& os, DatabaseFamilyInfo const& info) {
     os  << "DatabaseFamilyInfo ("
         << "name:'" << info.name << "',"
         << "replicationLevel:'" << info.replicationLevel << "',"
@@ -129,19 +131,20 @@ std::ostream& operator <<(std::ostream& os, DatabaseFamilyInfo const& info) {
     return os;
 }
 
-Configuration::Ptr Configuration::load(std::string const& configUrl) {
 
-    std::string::size_type const pos = configUrl.find(':');
-    if (pos != std::string::npos) {
+Configuration::Ptr Configuration::load(string const& configUrl) {
 
-        std::string const prefix = configUrl.substr(0, pos);
-        std::string const suffix = configUrl.substr(pos+1);
+    string::size_type const pos = configUrl.find(':');
+    if (pos != string::npos) {
+
+        string const prefix = configUrl.substr(0, pos);
+        string const suffix = configUrl.substr(pos+1);
 
         if ("file"  == prefix) {
-            return std::make_shared<ConfigurationFile>(suffix);
+            return make_shared<ConfigurationFile>(suffix);
 
         } else if ("mysql" == prefix) {
-            return std::make_shared<ConfigurationMySQL>(
+            return make_shared<ConfigurationMySQL>(
                 database::mysql::ConnectionParams::parse(
                     configUrl,
                     Configuration::defaultDatabaseHost,
@@ -152,13 +155,15 @@ Configuration::Ptr Configuration::load(std::string const& configUrl) {
             );
         }
     }
-    throw std::invalid_argument(
+    throw invalid_argument(
             "Configuration::load:  configUrl must start with 'file:' or 'mysql:'");
 }
 
-Configuration::Ptr Configuration::load(std::map<std::string, std::string> const& kvMap) {
-    return std::make_shared<ConfigurationMap>(kvMap);
+
+Configuration::Ptr Configuration::load(map<string, string> const& kvMap) {
+    return make_shared<ConfigurationMap>(kvMap);
 }
+
 
 // Set some reasonable defaults
 
@@ -171,24 +176,24 @@ unsigned int const Configuration::defaultControllerRequestTimeoutSec  (3600);
 unsigned int const Configuration::defaultJobTimeoutSec                (6000);
 unsigned int const Configuration::defaultJobHeartbeatTimeoutSec       (60);
 bool         const Configuration::defaultXrootdAutoNotify             (false);
-std::string  const Configuration::defaultXrootdHost                   ("localhost");
+string       const Configuration::defaultXrootdHost                   ("localhost");
 uint16_t     const Configuration::defaultXrootdPort                   (1094);
 unsigned int const Configuration::defaultXrootdTimeoutSec             (3600);
-std::string  const Configuration::defaultWorkerTechnology             ("TEST");
+string       const Configuration::defaultWorkerTechnology             ("TEST");
 size_t       const Configuration::defaultWorkerNumProcessingThreads   (1);
 size_t       const Configuration::defaultFsNumProcessingThreads       (1);
 size_t       const Configuration::defaultWorkerFsBufferSizeBytes      (1048576);
-std::string  const Configuration::defaultWorkerSvcHost                ("localhost");
+string       const Configuration::defaultWorkerSvcHost                ("localhost");
 uint16_t     const Configuration::defaultWorkerSvcPort                (50000);
-std::string  const Configuration::defaultWorkerFsHost                 ("localhost");
+string       const Configuration::defaultWorkerFsHost                 ("localhost");
 uint16_t     const Configuration::defaultWorkerFsPort                 (50001);
-std::string  const Configuration::defaultDataDir                      ("{worker}");
-std::string  const Configuration::defaultDatabaseTechnology           ("mysql");
-std::string  const Configuration::defaultDatabaseHost                 ("localhost");
+string       const Configuration::defaultDataDir                      ("{worker}");
+string       const Configuration::defaultDatabaseTechnology           ("mysql");
+string       const Configuration::defaultDatabaseHost                 ("localhost");
 uint16_t     const Configuration::defaultDatabasePort                 (3306);
-std::string  const Configuration::defaultDatabaseUser                 (FileUtils::getEffectiveUser());
-std::string  const Configuration::defaultDatabasePassword             ("");
-std::string  const Configuration::defaultDatabaseName                 ("qservReplica");
+string       const Configuration::defaultDatabaseUser                 (FileUtils::getEffectiveUser());
+string       const Configuration::defaultDatabasePassword             ("");
+string       const Configuration::defaultDatabaseName                 ("qservReplica");
 size_t       const Configuration::defaultDatabaseServicesPoolSize     (1);
 bool               Configuration::defaultDatabaseAllowReconnect       (true);
 unsigned int       Configuration::defaultDatabaseConnectTimeoutSec    (3600);
@@ -198,17 +203,18 @@ size_t       const Configuration::defaultReplicationLevel             (1);
 unsigned int const Configuration::defaultNumStripes                   (340);
 unsigned int const Configuration::defaultNumSubStripes                (12);
 
-void Configuration::translateDataDir(std::string&       dataDir,
-                                     std::string const& workerName) {
 
-    std::string::size_type const leftPos = dataDir.find('{');
-    if (leftPos == std::string::npos) return;
+void Configuration::translateDataDir(string& dataDir,
+                                     string const& workerName) {
 
-    std::string::size_type const rightPos = dataDir.find('}');
-    if (rightPos == std::string::npos) return;
+    string::size_type const leftPos = dataDir.find('{');
+    if (leftPos == string::npos) return;
+
+    string::size_type const rightPos = dataDir.find('}');
+    if (rightPos == string::npos) return;
 
     if (rightPos <= leftPos) {
-        throw std::invalid_argument(
+        throw invalid_argument(
                 "Configuration::translateDataDir  invalid template in the data directory path: '" +
                 dataDir + "'");
     }
@@ -216,6 +222,7 @@ void Configuration::translateDataDir(std::string&       dataDir,
         dataDir.replace(leftPos, rightPos - leftPos + 1, workerName);
     }
 }
+
 
 Configuration::Configuration()
     :   _requestBufferSizeBytes     (defaultRequestBufferSizeBytes),
@@ -243,17 +250,19 @@ Configuration::Configuration()
         _databaseServicesPoolSize   (defaultDatabaseServicesPoolSize) {
 }
 
-std::string Configuration::context() const {
-    std::string const str = "CONFIG   ";
+
+string Configuration::context() const {
+    string const str = "CONFIG   ";
     return str;
 }
 
-std::vector<std::string> Configuration::workers(bool isEnabled,
-                                                bool isReadOnly) const {
+
+vector<string> Configuration::workers(bool isEnabled,
+                                      bool isReadOnly) const {
 
     util::Lock lock(_mtx, context() + "workers");
 
-    std::vector<std::string> names;
+    vector<string> names;
     for (auto&& entry: _workerInfo) {
         auto const& name = entry.first;
         auto const& info = entry.second;
@@ -271,9 +280,9 @@ std::vector<std::string> Configuration::workers(bool isEnabled,
 }
 
 
-std::vector<std::string> Configuration::allWorkers() const {
+vector<string> Configuration::allWorkers() const {
     util::Lock lock(_mtx, context() + "allWorkers");
-    std::vector<std::string> names;
+    vector<string> names;
     for (auto&& entry: _workerInfo) {
         auto const& name = entry.first;
         names.push_back(name);
@@ -282,59 +291,63 @@ std::vector<std::string> Configuration::allWorkers() const {
 }
 
 
-std::vector<std::string> Configuration::databaseFamilies() const {
+vector<string> Configuration::databaseFamilies() const {
 
     util::Lock lock(_mtx, context() + "databaseFamilies");
 
-    std::vector<std::string> families;
+    vector<string> families;
     for (auto&& itr: _databaseFamilyInfo) {
         families.push_back(itr.first);
     }
     return families;
 }
 
-bool Configuration::isKnownDatabaseFamily(std::string const& name) const {
+
+bool Configuration::isKnownDatabaseFamily(string const& name) const {
 
     util::Lock lock(_mtx, context() + "isKnownDatabaseFamily");
 
     return _databaseFamilyInfo.count(name);
 }
 
-size_t Configuration::replicationLevel(std::string const& family) const {
+
+size_t Configuration::replicationLevel(string const& family) const {
 
     util::Lock lock(_mtx, context() + "databaseFamilies");
 
     auto const itr = _databaseFamilyInfo.find(family);
     if (itr == _databaseFamilyInfo.end()) {
-        throw std::invalid_argument(
+        throw invalid_argument(
                 "Configuration::replicationLevel  unknown database family: '" +
                 family + "'");
     }
     return itr->second.replicationLevel;
 }
 
-DatabaseFamilyInfo Configuration::databaseFamilyInfo(std::string const& name) const {
+
+DatabaseFamilyInfo Configuration::databaseFamilyInfo(string const& name) const {
 
     util::Lock lock(_mtx, context() + "databaseFamilyInfo");
 
     auto&& itr = _databaseFamilyInfo.find(name);
     if (itr == _databaseFamilyInfo.end()) {
-        throw std::invalid_argument(
+        throw invalid_argument(
                 "Configuration::databaseFamilyInfo  unknown database family: '" + name + "'");
     }
     return itr->second;
 }
 
-std::vector<std::string> Configuration::databases(std::string const& family) const {
+
+vector<string> Configuration::databases(string const& family) const {
 
     util::Lock lock(_mtx, context() + "databases(family)");
 
     if (not family.empty() and not _databaseFamilyInfo.count(family)) {
-        throw std::invalid_argument(
+        throw invalid_argument(
                 "Configuration::databases  unknown database family: '" +
                 family + "'");
     }
-    std::vector<std::string> names;
+    vector<string> names;
     for (auto&& entry: _databaseInfo) {
         if (not family.empty() and (family != entry.second.family)) {
             continue;
@@ -344,83 +357,93 @@ std::vector<std::string> Configuration::databases(std::string const& family) con
     return names;
 }
 
-bool Configuration::isKnownWorker(std::string const& name) const {
+
+bool Configuration::isKnownWorker(string const& name) const {
 
     util::Lock lock(_mtx, context() + "isKnownWorker");
 
     return _workerInfo.count(name) > 0;
 }
 
-WorkerInfo Configuration::workerInfo(std::string const& name) const {
+
+WorkerInfo Configuration::workerInfo(string const& name) const {
 
     util::Lock lock(_mtx, context() + "workerInfo");
 
     auto const itr = _workerInfo.find(name);
     if (itr == _workerInfo.end()) {
-        throw std::invalid_argument(
+        throw invalid_argument(
                 "Configuration::workerInfo() unknown worker: '" + name + "'");
     }
     return itr->second;
 }
 
-bool Configuration::isKnownDatabase(std::string const& name) const {
+
+bool Configuration::isKnownDatabase(string const& name) const {
 
     util::Lock lock(_mtx, context() + "isKnownDatabase");
 
     return _databaseInfo.count(name) > 0;
 }
 
-DatabaseInfo Configuration::databaseInfo(std::string const& name) const {
+
+DatabaseInfo Configuration::databaseInfo(string const& name) const {
 
     util::Lock lock(_mtx, context() + "databaseInfo");
 
     auto&& itr = _databaseInfo.find(name);
     if (itr == _databaseInfo.end()) {
-        throw std::invalid_argument(
+        throw invalid_argument(
                 "Configuration::databaseInfo() unknown database: '" + name + "'");
     }
     return itr->second;
 }
 
+
 bool Configuration::setDatabaseAllowReconnect(bool value) {
-    std::swap(value, defaultDatabaseAllowReconnect);
+    swap(value, defaultDatabaseAllowReconnect);
     return value;
 }
+
 
 unsigned int Configuration::setDatabaseConnectTimeoutSec(unsigned int value) {
     if (0 == value) {
-        throw std::invalid_argument(
+        throw invalid_argument(
                 "Configuration::setDatabaseConnectTimeoutSec:  0 is not allowed");
     }
-    std::swap(value, defaultDatabaseConnectTimeoutSec);
+    swap(value, defaultDatabaseConnectTimeoutSec);
     return value;
 }
+
 
 unsigned int Configuration::setDatabaseMaxReconnects(unsigned int value) {
     if (0 == value) {
-        throw std::invalid_argument(
+        throw invalid_argument(
                 "Configuration::setDatabaseMaxReconnects:  0 is not allowed");
     }
-    std::swap(value, defaultDatabaseMaxReconnects);
+    swap(value, defaultDatabaseMaxReconnects);
     return value;
 }
 
+
 unsigned int Configuration::setDatabaseTransactionTimeoutSec(unsigned int value) {
     if (0 == value) {
-        throw std::invalid_argument(
+        throw invalid_argument(
                 "Configuration::setDatabaseTransactionTimeoutSec:  0 is not allowed");
     }
-    std::swap(value, defaultDatabaseTransactionTimeoutSec);
+    swap(value, defaultDatabaseTransactionTimeoutSec);
     return value;
 }
+
 
 void Configuration::dumpIntoLogger() const {
     LOGS(_log, LOG_LVL_DEBUG, asString());
 }
 
-std::string Configuration::asString() const {
 
-    std::ostringstream ss;
+string Configuration::asString() const {
+
+    ostringstream ss;
     ss << context() << "defaultRequestBufferSizeBytes:        " << defaultRequestBufferSizeBytes << "\n";
     ss << context() << "defaultRetryTimeoutSec:               " << defaultRetryTimeoutSec << "\n";
     ss << context() << "defaultControllerThreads:             " << defaultControllerThreads << "\n";
@@ -492,13 +515,13 @@ std::string Configuration::asString() const {
     return ss.str();
 }
 
-std::map<std::string, WorkerInfo>::iterator Configuration::safeFindWorker(util::Lock const& lock,
-                                                                          std::string const& name,
-                                                                          std::string const& context) {
+
+map<string, WorkerInfo>::iterator Configuration::safeFindWorker(util::Lock const& lock,
+                                                                string const& name,
+                                                                string const& context) {
     auto itr = _workerInfo.find(name);
     if (_workerInfo.end() != itr) return itr;
-    throw std::invalid_argument(context + "  no such worker: " + name);
+    throw invalid_argument(context + "  no such worker: " + name);
 }
-
 
 }}} // namespace lsst::qserv::replica

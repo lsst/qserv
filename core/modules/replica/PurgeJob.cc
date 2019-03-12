@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -36,6 +35,8 @@
 #include "replica/ServiceProvider.h"
 #include "util/BlockPost.h"
 
+using namespace std;
+
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.PurgeJob");
@@ -56,14 +57,14 @@ Job::Options const& PurgeJob::defaultOptions() {
 }
 
 
-std::string PurgeJob::typeName() { return "PurgeJob"; }
+string PurgeJob::typeName() { return "PurgeJob"; }
 
 
 PurgeJob::Ptr PurgeJob::create(
-                        std::string const& databaseFamily,
+                        string const& databaseFamily,
                         unsigned int numReplicas,
                         Controller::Ptr const& controller,
-                        std::string const& parentJobId,
+                        string const& parentJobId,
                         CallbackType const& onFinish,
                         Job::Options const& options) {
     return PurgeJob::Ptr(
@@ -75,10 +76,11 @@ PurgeJob::Ptr PurgeJob::create(
                      options));
 }
 
-PurgeJob::PurgeJob(std::string const& databaseFamily,
+
+PurgeJob::PurgeJob(string const& databaseFamily,
                    unsigned int numReplicas,
                    Controller::Ptr const& controller,
-                   std::string const& parentJobId,
+                   string const& parentJobId,
                    CallbackType const& onFinish,
                    Job::Options const& options)
     :   Job(controller,
@@ -97,15 +99,17 @@ PurgeJob::PurgeJob(std::string const& databaseFamily,
         _numSuccess (0) {
 
     if (not _numReplicas) {
-        throw std::invalid_argument(
-                        "PurgeJob::PurgeJob ()  0 is not allowed for the number of replias");
+        throw invalid_argument(
+                    "PurgeJob::PurgeJob ()  0 is not allowed for the number of replias");
     }
 }
+
 
 PurgeJob::~PurgeJob() {
     // Make sure all chunks locked by this job are released
     controller()->serviceProvider()->chunkLocker().release(id());
 }
+
 
 PurgeJobResult const& PurgeJob::getReplicaData() const {
 
@@ -113,21 +117,22 @@ PurgeJobResult const& PurgeJob::getReplicaData() const {
 
     if (state() == State::FINISHED) return _replicaData;
 
-    throw std::logic_error (
-        "PurgeJob::getReplicaData  the method can't be called while the job hasn't finished");
+    throw logic_error (
+                "PurgeJob::getReplicaData  the method can't be called while the job hasn't finished");
 }
 
-std::list<std::pair<std::string,std::string>> PurgeJob::extendedPersistentState() const {
-    std::list<std::pair<std::string,std::string>> result;
+
+list<pair<string,string>> PurgeJob::extendedPersistentState() const {
+    list<pair<string,string>> result;
     result.emplace_back("database_family", databaseFamily());
-    result.emplace_back("num_replicas",    std::to_string(numReplicas()));
+    result.emplace_back("num_replicas",    to_string(numReplicas()));
     return result;
 }
 
 
-std::list<std::pair<std::string,std::string>> PurgeJob::persistentLogData() const {
+list<pair<string,string>> PurgeJob::persistentLogData() const {
 
-    std::list<std::pair<std::string,std::string>> result;
+    list<pair<string,string>> result;
 
     auto&& replicaData = getReplicaData();
 
@@ -148,21 +153,21 @@ std::list<std::pair<std::string,std::string>> PurgeJob::persistentLogData() cons
     //     the total number of chunks deleted from the workers as a result
     //     of the operation
 
-    std::map<std::string,
-             std::map<std::string,
-                      size_t>> workerCategoryCounter;
+    map<string,
+        map<string,
+            size_t>> workerCategoryCounter;
 
     for (auto&& info: replicaData.replicas) {
         workerCategoryCounter[info.worker()]["deleted-chunks"]++;
     }
     for (auto&& workerItr: workerCategoryCounter) {
         auto&& worker = workerItr.first;
-        std::string val = "worker=" + worker;
+        string val = "worker=" + worker;
 
         for (auto&& categoryItr: workerItr.second) {
             auto&& category = categoryItr.first;
             size_t const counter = categoryItr.second;
-            val += " " + category + "=" + std::to_string(counter);
+            val += " " + category + "=" + to_string(counter);
         }
         result.emplace_back("worker-stats", val);
     }
@@ -198,6 +203,7 @@ void PurgeJob::startImpl(util::Lock const& lock) {
     setState(lock, State::IN_PROGRESS);
 }
 
+
 void PurgeJob::cancelImpl(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
@@ -225,12 +231,13 @@ void PurgeJob::cancelImpl(util::Lock const& lock) {
     _numSuccess  = 0;
 }
 
+
 void PurgeJob::restart(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "restart");
 
     if (_findAllJob or (_numLaunched != _numFinished)) {
-        throw std::logic_error ("PurgeJob::restart ()  not allowed in this object state");
+        throw logic_error ("PurgeJob::restart ()  not allowed in this object state");
     }
     _jobs.clear();
 
@@ -240,12 +247,14 @@ void PurgeJob::restart(util::Lock const& lock) {
     _numFinished = 0;
 }
 
+
 void PurgeJob::notify(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
 
     notifyDefaultImpl<PurgeJob>(lock, _onFinish);
 }
+
 
 void PurgeJob::onPrecursorJobFinish() {
 
@@ -299,7 +308,7 @@ void PurgeJob::onPrecursorJobFinish() {
 
     // The number of replicas to be deleted for eligible chunks
     //
-    std::map<unsigned int,int> chunk2numReplicas2delete;
+    map<unsigned int,int> chunk2numReplicas2delete;
 
     for (auto&& chunk2workers: replicaData.isGood) {
         unsigned int const  chunk    = chunk2workers.first;
@@ -326,7 +335,7 @@ void PurgeJob::onPrecursorJobFinish() {
     //
     // Note, this map includes chunks in any state.
 
-    std::map<std::string, size_t> worker2occupancy;
+    map<string, size_t> worker2occupancy;
 
     for (auto chunk: replicaData.chunks.chunkNumbers()) {
         auto chunkMap = replicaData.chunks.chunk(chunk);
@@ -373,9 +382,9 @@ void PurgeJob::onPrecursorJobFinish() {
 
         // This list of workers will be reduced as the replica will get deleted
 
-        std::list<std::string> goodWorkersOfThisChunk;
+        list<string> goodWorkersOfThisChunk;
         for (auto&& entry: replicaData.isGood.at(chunk)) {
-            std::string const& worker = entry.first;
+            string const& worker = entry.first;
             goodWorkersOfThisChunk.push_back(worker);
             LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish"
                  << "  chunk=" << chunk
@@ -392,9 +401,8 @@ void PurgeJob::onPrecursorJobFinish() {
             // Find the most populated worker among the good ones of this chunk,
             // which are still available.
 
-            size_t      maxNumChunks = 0;   // will get updated within the next loop
-            std::string targetWorker;       // will be set to the best worker when the loop
-                                            // is over.
+            size_t maxNumChunks = 0;    // will get updated within the next loop
+            string targetWorker;        // will be set to the best worker when the loop is over
 
             for (auto&& worker: goodWorkersOfThisChunk) {
                 if (targetWorker.empty() or (worker2occupancy[worker] > maxNumChunks)) {
@@ -471,6 +479,7 @@ void PurgeJob::onPrecursorJobFinish() {
     }
 }
 
+
 void PurgeJob::onDeleteJobFinish(DeleteReplicaJob::Ptr const& job) {
 
     LOGS(_log, LOG_LVL_DEBUG, context()
@@ -517,7 +526,7 @@ void PurgeJob::onDeleteJobFinish(DeleteReplicaJob::Ptr const& job) {
         // Merge the replica info into the dictionary
 
         for (auto&& databaseEntry: jobReplicaData.chunks.at(job->chunk())) {
-            std::string const& database = databaseEntry.first;
+            string const& database = databaseEntry.first;
             _replicaData.chunks[job->chunk()][database][job->worker()] =
                 jobReplicaData.chunks.at(job->chunk()).at(database).at(job->worker());
         }
@@ -556,6 +565,7 @@ void PurgeJob::onDeleteJobFinish(DeleteReplicaJob::Ptr const& job) {
         }
     }
 }
+
 
 void PurgeJob::release(unsigned int chunk) {
 

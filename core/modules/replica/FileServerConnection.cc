@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -38,6 +37,7 @@
 #include "replica/Configuration.h"
 #include "replica/ServiceProvider.h"
 
+using namespace std;
 namespace fs    = boost::filesystem;
 namespace proto = lsst::qserv::proto;
 
@@ -49,17 +49,14 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.FileServerConnection");
 /// network operations.
 size_t const maxFileBufSizeBytes = 16 * 1024 * 1024;
 
-} /// namespace
 
-namespace {
-
-typedef std::shared_ptr<lsst::qserv::replica::ProtocolBuffer> ProtocolBufferPtr;
+typedef shared_ptr<lsst::qserv::replica::ProtocolBuffer> ProtocolBufferPtr;
 
 /// The context for diagnostic & debug printouts
-std::string const context = "FILE-SERVER-CONNECTION  ";
+string const context = "FILE-SERVER-CONNECTION  ";
 
 bool isErrorCode(boost::system::error_code const& ec,
-                 std::string const& scope) {
+                 string const& scope) {
     if (ec.value() != 0) {
         if (ec == boost::asio::error::eof) {
             LOGS(_log, LOG_LVL_DEBUG, context << scope << "  ** closed **");
@@ -70,6 +67,7 @@ bool isErrorCode(boost::system::error_code const& ec,
     }
     return false;
 }
+
 
 bool readIntoBuffer(boost::asio::ip::tcp::socket& socket,
                     ProtocolBufferPtr const& ptr,
@@ -90,6 +88,7 @@ bool readIntoBuffer(boost::asio::ip::tcp::socket& socket,
     return not ::isErrorCode(ec, "readIntoBuffer");
 }
 
+
 template <class T>
 bool readMessage(boost::asio::ip::tcp::socket& socket,
                  ProtocolBufferPtr const& ptr,
@@ -105,7 +104,6 @@ bool readMessage(boost::asio::ip::tcp::socket& socket,
     ptr->parse(message, bytes);
     return true;
 }
-
 }   // namespace
 
 namespace lsst {
@@ -113,7 +111,7 @@ namespace qserv {
 namespace replica {
 
 FileServerConnection::Ptr FileServerConnection::create(ServiceProvider::Ptr const& serviceProvider,
-                                                       std::string const& workerName,
+                                                       string const& workerName,
                                                        boost::asio::io_service& io_service) {
     return FileServerConnection::Ptr(
         new FileServerConnection(
@@ -122,15 +120,16 @@ FileServerConnection::Ptr FileServerConnection::create(ServiceProvider::Ptr cons
             io_service));
 }
 
+
 FileServerConnection::FileServerConnection(ServiceProvider::Ptr const& serviceProvider,
-                                           std::string const& workerName,
+                                           string const& workerName,
                                            boost::asio::io_service& io_service)
     :   _serviceProvider(serviceProvider),
         _workerName(workerName),
         _workerInfo(serviceProvider->config()->workerInfo(workerName)),
         _socket(io_service),
         _bufferPtr(
-            std::make_shared<ProtocolBuffer>(
+            make_shared<ProtocolBuffer>(
                 serviceProvider->config()->requestBufferSizeBytes())),
         _fileName(),
         _filePtr(0),
@@ -138,24 +137,27 @@ FileServerConnection::FileServerConnection(ServiceProvider::Ptr const& servicePr
         _fileBuf(0) {
 
     if (not _fileBufSize or (_fileBufSize > maxFileBufSizeBytes)) {
-        throw std::invalid_argument(
+        throw invalid_argument(
                   "FileServerConnection: the buffer size must be in a range of: 0-" +
-                  std::to_string(maxFileBufSizeBytes) + " bytes. Check the configuration.");
+                  to_string(maxFileBufSizeBytes) + " bytes. Check the configuration.");
     }
     _fileBuf = new uint8_t[_fileBufSize];
     if (not _fileBuf) {
-        throw std::runtime_error("FileServerConnection: failed to allocate the buffer, size: " +
-                                 std::to_string(maxFileBufSizeBytes) + " bytes.");
+        throw runtime_error("FileServerConnection: failed to allocate the buffer, size: " +
+                            to_string(maxFileBufSizeBytes) + " bytes.");
     }
 }
+
 
 FileServerConnection::~FileServerConnection() {
     delete [] _fileBuf;
 }
 
+
 void FileServerConnection::beginProtocol() {
     receiveRequest();
 }
+
 
 void FileServerConnection::receiveRequest() {
 
@@ -189,6 +191,7 @@ void FileServerConnection::receiveRequest() {
     );
 }
 
+
 void FileServerConnection::requestReceived(boost::system::error_code const& ec,
                                            size_t bytes_transferred) {
 
@@ -206,9 +209,9 @@ void FileServerConnection::requestReceived(boost::system::error_code const& ec,
 
     // Find a file requested by a client
 
-    bool        available = false;
-    uint64_t    size      = 0;
-    std::time_t mtime     = 0;
+    bool     available = false;
+    uint64_t size      = 0;
+    time_t   mtime     = 0;
     do {
         if (not _serviceProvider->config()->isKnownDatabase(request.database())) {
             LOGS(_log, LOG_LVL_ERROR, context << "requestReceived  unknown database: "
@@ -247,10 +250,10 @@ void FileServerConnection::requestReceived(boost::system::error_code const& ec,
 
         _fileName = file.string();
         if (request.send_content()) {
-            _filePtr  = std::fopen(file.string().c_str(), "rb");
+            _filePtr  = fopen(file.string().c_str(), "rb");
             if (not _filePtr) {
                 LOGS(_log, LOG_LVL_ERROR, context
-                     << "requestReceived  file open error: " << std::strerror(errno)
+                     << "requestReceived  file open error: " << strerror(errno)
                      << ", file: " << file);
                 break;
             }
@@ -272,6 +275,7 @@ void FileServerConnection::requestReceived(boost::system::error_code const& ec,
     sendResponse();
 }
 
+
 void FileServerConnection::sendResponse() {
 
     LOGS(_log, LOG_LVL_DEBUG, context << "sendResponse");
@@ -290,6 +294,7 @@ void FileServerConnection::sendResponse() {
         )
     );
 }
+
 
 void FileServerConnection::responseSent(boost::system::error_code const& ec,
                                         size_t bytes_transferred) {
@@ -311,6 +316,7 @@ void FileServerConnection::responseSent(boost::system::error_code const& ec,
     sendData();
 }
 
+
 void FileServerConnection::sendData() {
 
     LOGS(_log, LOG_LVL_DEBUG, context << "sendData  file: " << _fileName);
@@ -318,22 +324,22 @@ void FileServerConnection::sendData() {
     // Read next record if possible (a failure or EOF)
 
     size_t const bytes =
-        std::fread(_fileBuf,
+        fread(_fileBuf,
                    sizeof(uint8_t),
                    _fileBufSize,
                    _filePtr);
     if (not bytes) {
-        if (std::ferror(_filePtr)) {
+        if (ferror(_filePtr)) {
             LOGS(_log, LOG_LVL_ERROR, context
-                 << "sendData  file read error: " << std::strerror(errno)
+                 << "sendData  file read error: " << strerror(errno)
                  << ", file: " << _fileName);
-        } else if (std::feof(_filePtr)) {
+        } else if (feof(_filePtr)) {
             LOGS(_log, LOG_LVL_INFO, context << "sendData  <CLOSE> file: " << _fileName);
         } else {
             ;   // This file was empty, or the previous read was aligned exactly on
                 // the end of the file.
         }
-        std::fclose(_filePtr);
+        fclose(_filePtr);
         return;
     }
 
@@ -353,6 +359,7 @@ void FileServerConnection::sendData() {
         )
     );
 }
+
 
 void FileServerConnection::dataSent(boost::system::error_code const& ec,
                                     size_t bytes_transferred) {

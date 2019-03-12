@@ -1,7 +1,5 @@
-// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -39,6 +37,7 @@
 #define BOOST_TEST_MODULE ChunkLocker
 #include "boost/test/included/unit_test.hpp"
 
+using namespace std;
 namespace test = boost::test_tools;
 using namespace lsst::qserv::replica;
 
@@ -79,10 +78,10 @@ BOOST_AUTO_TEST_CASE(ChunkLockerTest) {
     BOOST_CHECK_EQUAL(locker.locked().size(), 0UL);
     BOOST_CHECK_EQUAL(locker.locked("qserv").size(), 0UL);
 
-    std::string owner;
+    string owner;
 
     BOOST_CHECK(not locker.release(chunk1));
-    BOOST_CHECK((not locker.release(chunk1, owner)) and (std::string() == owner));
+    BOOST_CHECK((not locker.release(chunk1, owner)) and owner.empty());
     BOOST_CHECK_EQUAL(locker.release("qserv").size(), 0UL);
 
     // Test chunk insertion
@@ -142,13 +141,13 @@ BOOST_AUTO_TEST_CASE(ChunkLockerTest) {
     //                      because BOOST unit test can't be made directly
     //                      inside threads.
 
-    unsigned int const concurrency = std::thread::hardware_concurrency();
+    unsigned int const concurrency = thread::hardware_concurrency();
     if (concurrency > 1) {
 
         LOGS_INFO("ChunkLocker run thread-safety test: hardware concurrency " << concurrency);
 
         unsigned int const num = 200000UL;
-        std::map<std::string, size_t> numTestsFailedByOwner;
+        map<string, size_t> numTestsFailedByOwner;
     
         // This function will attempt to ingest 'num' locks on behalf
         // of 'thisOwner'. In case if that's not possible for a particular
@@ -158,14 +157,14 @@ BOOST_AUTO_TEST_CASE(ChunkLockerTest) {
         // Any deviations will be accounted for and returned into the main thread
         // via dictionary 'numTestsFailedByOwner'.
 
-        auto ingest = [&locker,&numTestsFailedByOwner](std::string const& thisOwner,
-                                                       std::string const& otherOwner,
+        auto ingest = [&locker,&numTestsFailedByOwner](string const& thisOwner,
+                                                       string const& otherOwner,
                                                        unsigned int const num) {
             size_t numTestsFailed = 0UL;
             for (unsigned int i = 0UL; i < num; ++i) {
 
                 Chunk const chunk{"test", i};
-                std::string owner;
+                string owner;
 
                 bool const passed =
                     locker.lock(chunk, thisOwner) or
@@ -176,8 +175,8 @@ BOOST_AUTO_TEST_CASE(ChunkLockerTest) {
             }
             numTestsFailedByOwner[thisOwner] = numTestsFailed;
         };
-        std::thread t1(ingest, "qserv", "root",  num);
-        std::thread t2(ingest, "root",  "qserv", num);
+        thread t1(ingest, "qserv", "root",  num);
+        thread t2(ingest, "root",  "qserv", num);
         t1.join();
         t2.join();
 

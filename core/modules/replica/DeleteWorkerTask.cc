@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -31,6 +30,8 @@
 #include "replica/DatabaseServices.h"
 #include "util/BlockPost.h"
 
+using namespace std;
+
 namespace lsst {
 namespace qserv {
 namespace replica {
@@ -38,7 +39,7 @@ namespace replica {
 DeleteWorkerTask::Ptr DeleteWorkerTask::create(
         Controller::Ptr const& controller,
         Task::AbnormalTerminationCallbackType const& onTerminated,
-        std::string const& worker,
+        string const& worker,
         bool permanentDelete) {
     return Ptr(
         new DeleteWorkerTask(
@@ -53,7 +54,7 @@ DeleteWorkerTask::Ptr DeleteWorkerTask::create(
 
 DeleteWorkerTask::DeleteWorkerTask(Controller::Ptr const& controller,
                                    Task::AbnormalTerminationCallbackType const& onTerminated,
-                                   std::string const& worker,
+                                   string const& worker,
                                    bool permanentDelete)
     :   Task(controller,
              "EVICT-WORKER  ",
@@ -67,12 +68,12 @@ DeleteWorkerTask::DeleteWorkerTask(Controller::Ptr const& controller,
 
 void DeleteWorkerTask::onStart() {
 
-    std::string const parentJobId;  // no parent jobs
+    string const parentJobId;  // no parent jobs
 
     info(DeleteWorkerJob::typeName());
 
-    std::atomic<size_t> numFinishedJobs{0};
-    std::vector<DeleteWorkerJob::Ptr> jobs;
+    atomic<size_t> numFinishedJobs{0};
+    vector<DeleteWorkerJob::Ptr> jobs;
     jobs.emplace_back(
         DeleteWorkerJob::create(
             _worker,

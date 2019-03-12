@@ -1,7 +1,5 @@
-// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -41,8 +39,7 @@ class WorkerProcessor;
   * Class WorkerProcessorThread is a thread-based request processing engine
   * for replication requests within worker-side services.
   */
-class WorkerProcessorThread
-    : public std::enable_shared_from_this<WorkerProcessorThread> {
+class WorkerProcessorThread : public std::enable_shared_from_this<WorkerProcessorThread> {
 
 public:
 

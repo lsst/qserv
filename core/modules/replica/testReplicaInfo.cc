@@ -1,7 +1,5 @@
-// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2019 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -36,6 +34,7 @@
 #define BOOST_TEST_MODULE ReplicaInfo
 #include "boost/test/included/unit_test.hpp"
 
+using namespace std;
 namespace test = boost::test_tools;
 using namespace lsst::qserv::replica;
 

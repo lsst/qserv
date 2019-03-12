@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -39,6 +38,8 @@
 #include "replica/ServiceProvider.h"
 #include "util/BlockPost.h"
 
+using namespace std;
+
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.DeleteWorkerJob");
@@ -55,7 +56,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.DeleteWorkerJob");
  * @return - a tuple of three elements
  */
 template <class T>
-std::tuple<size_t,size_t,size_t> counters(std::list<typename T::Ptr> const& collection) {
+tuple<size_t,size_t,size_t> counters(list<typename T::Ptr> const& collection) {
     size_t total    = 0;
     size_t finished = 0;
     size_t success  = 0;
@@ -68,7 +69,7 @@ std::tuple<size_t,size_t,size_t> counters(std::list<typename T::Ptr> const& coll
             }
         }
     }
-    return std::make_tuple(total, finished, success);
+    return make_tuple(total, finished, success);
 }
 
 } /// namespace
@@ -77,7 +78,7 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-std::string DeleteWorkerJob::typeName() { return "DeleteWorkerJob"; }
+string DeleteWorkerJob::typeName() { return "DeleteWorkerJob"; }
 
 
 Job::Options const& DeleteWorkerJob::defaultOptions() {
@@ -90,10 +91,10 @@ Job::Options const& DeleteWorkerJob::defaultOptions() {
 }
 
 
-DeleteWorkerJob::Ptr DeleteWorkerJob::create(std::string const& worker,
+DeleteWorkerJob::Ptr DeleteWorkerJob::create(string const& worker,
                                              bool permanentDelete,
                                              Controller::Ptr const& controller,
-                                             std::string const& parentJobId,
+                                             string const& parentJobId,
                                              CallbackType const& onFinish,
                                              Job::Options const& options) {
     return DeleteWorkerJob::Ptr(
@@ -106,10 +107,10 @@ DeleteWorkerJob::Ptr DeleteWorkerJob::create(std::string const& worker,
 }
 
 
-DeleteWorkerJob::DeleteWorkerJob(std::string const& worker,
+DeleteWorkerJob::DeleteWorkerJob(string const& worker,
                                  bool permanentDelete,
                                  Controller::Ptr const& controller,
-                                 std::string const& parentJobId,
+                                 string const& parentJobId,
                                  CallbackType const& onFinish,
                                  Job::Options const& options)
     :   Job(controller,
@@ -131,22 +132,22 @@ DeleteWorkerJobResult const& DeleteWorkerJob::getReplicaData() const {
 
     if (state() == State::FINISHED) return _replicaData;
 
-    throw std::logic_error(
+    throw logic_error(
         "DeleteWorkerJob::getReplicaData()  the method can't be called while the job hasn't finished");
 }
 
 
-std::list<std::pair<std::string,std::string>> DeleteWorkerJob::extendedPersistentState() const {
-    std::list<std::pair<std::string,std::string>> result;
+list<pair<string,string>> DeleteWorkerJob::extendedPersistentState() const {
+    list<pair<string,string>> result;
     result.emplace_back("worker",           worker());
     result.emplace_back("permanent_delete", permanentDelete() ? "1" : "0");
     return result;
 }
 
 
-std::list<std::pair<std::string,std::string>> DeleteWorkerJob::persistentLogData() const {
+list<pair<string,string>> DeleteWorkerJob::persistentLogData() const {
 
-    std::list<std::pair<std::string,std::string>> result;
+    list<pair<string,string>> result;
 
     auto&& replicaData = getReplicaData();
 
@@ -166,7 +167,7 @@ std::list<std::pair<std::string,std::string>> DeleteWorkerJob::persistentLogData
                     auto&& worker = workerInfo.first;
 
                     result.emplace_back("new-replica",
-                                        "family="    + family   + " chunk="  + std::to_string(chunk) +
+                                        "family="    + family   + " chunk="  + to_string(chunk) +
                                         " database=" + database + " worker=" + worker);
                 }
             }
@@ -182,7 +183,7 @@ std::list<std::pair<std::string,std::string>> DeleteWorkerJob::persistentLogData
             auto&& database = databaseReplicaInfo.first;
 
             result.emplace_back("orphan-replica",
-                                "chunk=" + std::to_string(chunk) + " database=" + database);
+                                "chunk=" + to_string(chunk) + " database=" + database);
         }
     }
     return result;
@@ -200,7 +201,7 @@ void DeleteWorkerJob::startImpl(util::Lock const& lock) {
     // Check the status of the worker service, and if it's still running
     // try to get as much info from it as possible
 
-    std::atomic<bool> statusRequestFinished{false};
+    atomic<bool> statusRequestFinished{false};
 
     auto const statusRequest = controller()->statusOfWorkerService(
         worker(),
@@ -220,7 +221,7 @@ void DeleteWorkerJob::startImpl(util::Lock const& lock) {
             // Make sure the service won't be executing any other "leftover"
             // requests which may be interfering with the current job's requests
 
-            std::atomic<bool> drainRequestFinished{false};
+            atomic<bool> drainRequestFinished{false};
 
             auto const drainRequest = controller()->drainWorkerService(
                 worker(),
@@ -419,8 +420,8 @@ void DeleteWorkerJob::onJobFinish(ReplicateJob::Ptr const& job) {
                 worker()
             );
             for (ReplicaInfo const& replica: replicas) {
-                unsigned int const chunk    = replica.chunk();
-                std::string const& database = replica.database();
+                unsigned int const  chunk    = replica.chunk();
+                string       const& database = replica.database();
 
                 bool replicated = false;
                 for (auto&& databaseFamilyEntry: _replicaData.chunks) {
@@ -433,7 +434,7 @@ void DeleteWorkerJob::onJobFinish(ReplicateJob::Ptr const& job) {
                 }
             }
 
-        } catch (std::invalid_argument const& ex) {
+        } catch (invalid_argument const& ex) {
     
             LOGS(_log, LOG_LVL_ERROR, context() << "onJobFinish(ReplicateJob)  "
                  << "** misconfigured application ** "
@@ -442,7 +443,7 @@ void DeleteWorkerJob::onJobFinish(ReplicateJob::Ptr const& job) {
             
             throw;
 
-        } catch (std::exception const& ex) {
+        } catch (exception const& ex) {
 
             LOGS(_log, LOG_LVL_ERROR, context()
                  << "onJobFinish(ReplicateJob)  ** failed to find replicas ** "

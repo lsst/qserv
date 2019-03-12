@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -73,8 +72,7 @@ struct QservMgtRequestWrapper {
   * Class QservMgtServices is a high-level interface to the Qserv management
   * services used by the replication system.
   */
-class QservMgtServices
-    :   public std::enable_shared_from_this<QservMgtServices> {
+class QservMgtServices : public std::enable_shared_from_this<QservMgtServices> {
 
 public:
 

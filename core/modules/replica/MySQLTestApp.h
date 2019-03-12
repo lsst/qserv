@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -40,7 +39,7 @@ namespace replica {
  * Class MySQLTestApp implements a tool for testing the MySQL API used by
  * the Replication system implementation.
  */
-class MySQLTestApp: public Application {
+class MySQLTestApp : public Application {
 
 public:
 

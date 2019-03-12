@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -82,8 +81,7 @@ struct DeleteWorkerJobResult {
   *        be reactivated to pull those missing replicas from that node
   *        TBC...
   */
-class DeleteWorkerJob
-    :   public Job  {
+class DeleteWorkerJob : public Job  {
 
 public:
 

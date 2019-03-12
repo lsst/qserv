@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -32,6 +31,7 @@
 #include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServicesMySQL.h"
 
+using namespace std;
 using json = nlohmann::json;
 
 namespace {
@@ -39,7 +39,6 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.DatabaseServices");
 
 } /// namespace
-
 
 namespace lsst {
 namespace qserv {
@@ -156,12 +155,12 @@ DatabaseServices::Ptr DatabaseServices::create(Configuration::Ptr const& configu
                  "DatabaseServices::  failed to instantiate MySQL-based database services"
                  << ", error: " << ex.what()
                  << ", no such service will be available to the application.");
-             throw std::runtime_error(
+             throw runtime_error(
                  "DatabaseServices::  failed to instantiate MySQL-based database services, error: " +
-                 std::string(ex.what()));
+                 string(ex.what()));
         }
     }
-    throw std::runtime_error(
+    throw runtime_error(
         "DatabaseServices::  no suitable plugin found for database technology: " +
         configuration->databaseTechnology());
 }

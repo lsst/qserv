@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -31,6 +30,8 @@
 // Qserv headers
 #include "replica/Common.h"
 
+using namespace std;
+
 namespace lsst {
 namespace qserv {
 namespace replica {
@@ -40,21 +41,25 @@ namespace replica {
 // ------------------------------------------------------------
 
 ChunkNumberValidator::ChunkNumberValidator() {
-    static std::atomic<unsigned int> nextId(0);
+    static atomic<unsigned int> nextId(0);
     _id = ++nextId;
 }
+
 
 bool ChunkNumberValidator::operator==(ChunkNumberValidator const& rhs) const {
     return _id == rhs._id;
 }
 
+
 bool ChunkNumberValidator::overflow(unsigned int value) const {
     return value == overflowValue();
 }
 
+
 unsigned int ChunkNumberValidator::overflowValue() const {
     return replica::overflowChunkNumber;
 }
+
 
 // -----------------------------------------------------------------------
 // ------------------- ChunkNumberSingleRangeValidator -------------------
@@ -66,10 +71,12 @@ ChunkNumberSingleRangeValidator::ChunkNumberSingleRangeValidator(unsigned int mi
         _maxValue(maxValue) {
 }
 
+
 bool ChunkNumberSingleRangeValidator::valid(unsigned int value) const {
     return overflow(value) or
            ((_minValue <= value) and (value <= _maxValue));
 }
+
 
 // -----------------------------------------------------------------
 // ------------------- ChunkNumberQservValidator -------------------
@@ -80,9 +87,11 @@ ChunkNumberQservValidator::ChunkNumberQservValidator(int32_t numStripes,
     :   _chunker(numStripes, numSubStripesPerStripe) {
 }
 
+
 bool ChunkNumberQservValidator::valid(unsigned int value) const {
     return overflow(value) or _chunker.valid(static_cast<int32_t>(value));
 }
+
 
 // ---------------------------------------------------
 // ------------------- ChunkNumber -------------------
@@ -93,13 +102,15 @@ ChunkNumber ChunkNumber::makeOverflow(ChunkNumberValidator::Ptr const& validator
                        validator);
 }
 
+
 ChunkNumberValidator::Ptr const& ChunkNumber::defaultValidator() {
     static ChunkNumberValidator::Ptr const validator =
-                std::make_shared<ChunkNumberSingleRangeValidator>(
-                        std::numeric_limits<unsigned int>::min(),
-                        std::numeric_limits<unsigned int>::max());
+                make_shared<ChunkNumberSingleRangeValidator>(
+                        numeric_limits<unsigned int>::min(),
+                        numeric_limits<unsigned int>::max());
     return validator;
 }
+
 
 ChunkNumber::ChunkNumber(ChunkNumberValidator::Ptr const& validator)
     :   _value(0),
@@ -107,6 +118,7 @@ ChunkNumber::ChunkNumber(ChunkNumberValidator::Ptr const& validator)
         _overflow(false),
         _validator(validator) {
 }
+
 
 ChunkNumber::ChunkNumber(unsigned int value,
                          ChunkNumberValidator::Ptr const& validator)
@@ -117,10 +129,11 @@ ChunkNumber::ChunkNumber(unsigned int value,
 
     if (not _valid) {
         throw ChunkNumberNotValid(
-                    "ChunkNumber: input number " + std::to_string(value) +
+                    "ChunkNumber: input number " + to_string(value) +
                     " can't be validated by the validator");
     }
 }
+
 
 unsigned int ChunkNumber::value() const {
     if (not _valid) {
@@ -129,15 +142,18 @@ unsigned int ChunkNumber::value() const {
     return _value;
 }
 
+
 bool ChunkNumber::operator==(ChunkNumber const& rhs) const {
     assertBothValid(*this, rhs);
     return _value == rhs._value;
 }
 
+
 bool ChunkNumber::operator<(ChunkNumber const& rhs) const {
     assertBothValid(*this, rhs);
     return _value <= rhs._value;
 }
+
 
 bool ChunkNumber::operator==(unsigned int value) const {
     ChunkNumber const rhs(value, _validator);
@@ -145,11 +161,13 @@ bool ChunkNumber::operator==(unsigned int value) const {
     return _value == rhs._value;
 }
 
+
 bool ChunkNumber::operator<(unsigned int value) const {
     ChunkNumber const rhs(value, _validator);
     assertBothValid(*this, rhs);
     return _value <= rhs._value;
 }
+
 
 void ChunkNumber::assertBothValid(ChunkNumber const& lhs,
                                   ChunkNumber const& rhs) {
@@ -161,11 +179,12 @@ void ChunkNumber::assertBothValid(ChunkNumber const& lhs,
     }
 }
 
+
 // ---------------------------------------------
 // ------------------- Misc. -------------------
 // ---------------------------------------------
 
-std::ostream& operator<<(std::ostream& os, ChunkNumber const& chunkNumber) {
+ostream& operator<<(ostream& os, ChunkNumber const& chunkNumber) {
     if (chunkNumber.valid()) os << chunkNumber.value();
     else                     os << "invalid";
     return os;

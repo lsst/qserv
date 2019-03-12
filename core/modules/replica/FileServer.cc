@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -34,6 +33,8 @@
 #include "replica/Configuration.h"
 #include "replica/ServiceProvider.h"
 
+using namespace std;
+
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.FileServer");
@@ -45,15 +46,16 @@ namespace qserv {
 namespace replica {
 
 FileServer::Ptr FileServer::create(ServiceProvider::Ptr const& serviceProvider,
-                                       std::string const& workerName) {
+                                   string const& workerName) {
     return FileServer::Ptr(
         new FileServer(
             serviceProvider,
             workerName));
 }
 
+
 FileServer::FileServer(ServiceProvider::Ptr const& serviceProvider,
-                       std::string const& workerName)
+                       string const& workerName)
     :   _serviceProvider(serviceProvider),
         _workerName(workerName),
         _workerInfo(serviceProvider->config()->workerInfo(workerName)),
@@ -69,6 +71,7 @@ FileServer::FileServer(ServiceProvider::Ptr const& serviceProvider,
     _acceptor.set_option(boost::asio::socket_base::reuse_address(true));
 }
 
+
 void FileServer::run() {
 
     // We shall do so before running the io_service. Otherwise it will
@@ -77,22 +80,22 @@ void FileServer::run() {
     beginAccept();
 
     // Launch all threads in the pool
-    std::vector<std::shared_ptr<std::thread>> threads(
-                    _serviceProvider->config()->fsNumProcessingThreads());
+    vector<shared_ptr<thread>> threads(_serviceProvider->config()->fsNumProcessingThreads());
 
-    for (std::size_t i = 0; i < threads.size(); ++i) {
-        std::shared_ptr<std::thread> ptr(
-            new std::thread(
-                boost::bind(&boost::asio::io_service::run,
-                            &_io_service)));
+    for (size_t i = 0; i < threads.size(); ++i) {
+        shared_ptr<thread> ptr(
+            new thread(boost::bind(&boost::asio::io_service::run,
+                       &_io_service))
+        );
         threads[i] = ptr;
     }
 
     // Wait for all threads in the pool to exit.
-    for (std::size_t i = 0; i < threads.size(); ++i) {
+    for (size_t i = 0; i < threads.size(); ++i) {
         threads[i]->join();
     }
 }
+
 
 void FileServer::beginAccept() {
 
@@ -110,6 +113,7 @@ void FileServer::beginAccept() {
             connection,
             boost::asio::placeholders::error));
 }
+
 
 void FileServer::handleAccept(FileServerConnection::Ptr const& connection,
                               boost::system::error_code const& ec) {

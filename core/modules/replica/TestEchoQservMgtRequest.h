@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -44,8 +43,7 @@ namespace replica {
   * Class TestEchoQservMgtRequest implements a special kind of requests
   * for testing Qserv workers.
   */
-class TestEchoQservMgtRequest
-    :   public QservMgtRequest {
+class TestEchoQservMgtRequest : public QservMgtRequest {
 
 public:
 

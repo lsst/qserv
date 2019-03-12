@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -36,6 +35,8 @@
 #include "replica/ProtocolBuffer.h"
 #include "replica/ServiceProvider.h"
 
+using namespace std;
+
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.MessengerConnector");
@@ -46,29 +47,31 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-std::string MessengerConnector::state2string(MessengerConnector::State state) {
+string MessengerConnector::state2string(MessengerConnector::State state) {
     switch (state) {
         case STATE_INITIAL:       return "STATE_INITIAL";
         case STATE_CONNECTING:    return "STATE_CONNECTING";
         case STATE_COMMUNICATING: return "STATE_COMMUNICATING";
     }
-    throw std::logic_error(
-            "incomplete implementation of method MessengerConnector::state2string");
+    throw logic_error(
+                "incomplete implementation of method MessengerConnector::state2string");
 }
+
 
 MessengerConnector::Ptr MessengerConnector::create(
                                         ServiceProvider::Ptr const& serviceProvider,
                                         boost::asio::io_service& io_service,
-                                        std::string const& worker) {
+                                        string const& worker) {
     return MessengerConnector::Ptr(
         new MessengerConnector(serviceProvider,
                                io_service,
                                worker));
 }
 
+
 MessengerConnector::MessengerConnector(ServiceProvider::Ptr const& serviceProvider,
                                        boost::asio::io_service& io_service,
-                                       std::string const& worker)
+                                       string const& worker)
     :   _serviceProvider(serviceProvider),
         _workerInfo(serviceProvider->config()->workerInfo(worker)),
         _bufferCapacityBytes(serviceProvider->config()->requestBufferSizeBytes()),
@@ -80,11 +83,12 @@ MessengerConnector::MessengerConnector(ServiceProvider::Ptr const& serviceProvid
         _inBuffer(serviceProvider->config()->requestBufferSizeBytes()) {
 }
 
+
 void MessengerConnector::stop() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "stop");
 
-    std::list<MessageWrapperBase::Ptr> requests2notify;
+    list<MessageWrapperBase::Ptr> requests2notify;
     {
         util::Lock lock(_mtx, context() + "stop");
     
@@ -120,8 +124,7 @@ void MessengerConnector::stop() {
                 break;
     
             default:
-                throw std::logic_error(
-                    "incomplete implementation of method MessengerConnector::stop");
+                throw logic_error("incomplete implementation of method MessengerConnector::stop");
         }
     }
 
@@ -130,7 +133,8 @@ void MessengerConnector::stop() {
     for (auto&& ptr: requests2notify) ptr->parseAndNotify();
 }
 
-void MessengerConnector::cancel(std::string const& id) {
+
+void MessengerConnector::cancel(string const& id) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancel  id=" << id);
 
@@ -153,7 +157,8 @@ void MessengerConnector::cancel(std::string const& id) {
     }
 }
 
-bool MessengerConnector::exists(std::string const& id) const {
+
+bool MessengerConnector::exists(string const& id) const {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "exists  id=" << id);
 
@@ -162,6 +167,7 @@ bool MessengerConnector::exists(std::string const& id) const {
     return find(lock, id) != nullptr;
 }
 
+
 void MessengerConnector::sendImpl(MessageWrapperBase::Ptr const& ptr) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "sendImpl  id: " << ptr->id() << " _requests.size: " << _requests.size());
@@ -169,8 +175,9 @@ void MessengerConnector::sendImpl(MessageWrapperBase::Ptr const& ptr) {
     util::Lock lock(_mtx, context() + "sendImpl");
 
     if (find(lock, ptr->id()) != nullptr) {
-        throw std::logic_error(
-                "MessengerConnector::sendImpl  the request is already registered for id:" + ptr->id());
+        throw logic_error(
+                    "MessengerConnector::sendImpl  the request is already registered for id:" +
+                    ptr->id());
     }
 
     // Register the request
@@ -193,10 +200,10 @@ void MessengerConnector::sendImpl(MessageWrapperBase::Ptr const& ptr) {
             break;
 
         default:
-            throw std::logic_error(
-                "incomplete implementation of method MessengerConnector::sendImpl");
+            throw logic_error("incomplete implementation of method MessengerConnector::sendImpl");
     }
 }
+
 
 void MessengerConnector::restart(util::Lock const& lock) {
 
@@ -221,11 +228,11 @@ void MessengerConnector::restart(util::Lock const& lock) {
             break;
 
         default:
-            throw std::logic_error(
-                "incomplete implementation of method MessengerConnector::restart");
+            throw logic_error("incomplete implementation of method MessengerConnector::restart");
     }
     resolve(lock);
 }
+
 
 void MessengerConnector::resolve(util::Lock const& lock) {
 
@@ -236,7 +243,7 @@ void MessengerConnector::resolve(util::Lock const& lock) {
 
     boost::asio::ip::tcp::resolver::query query(
         _workerInfo.svcHost,
-        std::to_string(_workerInfo.svcPort)
+        to_string(_workerInfo.svcPort)
     );
     _resolver.async_resolve(
         query,
@@ -249,6 +256,7 @@ void MessengerConnector::resolve(util::Lock const& lock) {
     );
     _state = STATE_CONNECTING;
 }
+
 
 void MessengerConnector::resolved(boost::system::error_code const& ec,
                                   boost::asio::ip::tcp::resolver::iterator iter) {
@@ -266,6 +274,7 @@ void MessengerConnector::resolved(boost::system::error_code const& ec,
         connect(lock, iter);
     }
 }
+
 
 void MessengerConnector::connect(util::Lock const& lock,
                                  boost::asio::ip::tcp::resolver::iterator iter) {
@@ -285,6 +294,7 @@ void MessengerConnector::connect(util::Lock const& lock,
     );
 }
 
+
 void MessengerConnector::connected(boost::system::error_code const& ec,
                                    boost::asio::ip::tcp::resolver::iterator iter) {
 
@@ -303,6 +313,7 @@ void MessengerConnector::connected(boost::system::error_code const& ec,
     }
 }
 
+
 void MessengerConnector::waitBeforeRestart(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "waitBeforeRestart"
@@ -320,6 +331,7 @@ void MessengerConnector::waitBeforeRestart(util::Lock const& lock) {
     );
 }
 
+
 void MessengerConnector::awakenForRestart(boost::system::error_code const& ec) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "awakenForRestart"
@@ -334,6 +346,7 @@ void MessengerConnector::awakenForRestart(boost::system::error_code const& ec) {
 
     restart(lock);
 }
+
 
 void MessengerConnector::sendRequest(util::Lock const& lock) {
 
@@ -367,6 +380,7 @@ void MessengerConnector::sendRequest(util::Lock const& lock) {
         )
     );
 }
+
 
 void MessengerConnector::requestSent(boost::system::error_code const& ec,
                                      size_t bytes_transferred) {
@@ -413,6 +427,7 @@ void MessengerConnector::requestSent(boost::system::error_code const& ec,
     }
 }
 
+
 void MessengerConnector::receiveResponse(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "receiveResponse"
@@ -444,6 +459,7 @@ void MessengerConnector::receiveResponse(util::Lock const& lock) {
         )
     );
 }
+
 
 void MessengerConnector::responseReceived(boost::system::error_code const& ec,
                                           size_t bytes_transferred) {
@@ -480,7 +496,7 @@ void MessengerConnector::responseReceived(boost::system::error_code const& ec,
             // status, or any failures to pull or digest the response data. Hence, removing
             // completely it and getting ready to notify a caller.
 
-            std::swap(request2notify, _currentRequest);
+            swap(request2notify, _currentRequest);
 
             // The requst is still valid
             if (ec.value() != 0) {
@@ -566,6 +582,7 @@ void MessengerConnector::responseReceived(boost::system::error_code const& ec,
     if (request2notify) request2notify->parseAndNotify();
 }
 
+
 boost::system::error_code MessengerConnector::syncReadFrame(util::Lock const& lock,
                                                             replica::ProtocolBuffer& buf,
                                                             size_t& bytes) {
@@ -590,10 +607,11 @@ boost::system::error_code MessengerConnector::syncReadFrame(util::Lock const& lo
     return ec;
 }
 
+
 boost::system::error_code MessengerConnector::syncReadVerifyHeader(util::Lock const& lock,
                                                                    replica::ProtocolBuffer& buf,
                                                                    size_t bytes,
-                                                                   std::string const& id) {
+                                                                   string const& id) {
     boost::system::error_code const ec =
         syncReadMessageImpl(lock,
                             buf,
@@ -602,13 +620,14 @@ boost::system::error_code MessengerConnector::syncReadVerifyHeader(util::Lock co
         proto::ReplicationResponseHeader hdr;
         buf.parse(hdr, bytes);
         if (id != hdr.id()) {
-            throw std::logic_error(
-                    "MessengerConnector::syncReadVerifyHeader  got unexpected id: " + hdr.id() +
-                    " instead of: " + id);
+            throw logic_error(
+                        "MessengerConnector::syncReadVerifyHeader  got unexpected id: " + hdr.id() +
+                        " instead of: " + id);
         }
     }
     return ec;
 }
+
 
 boost::system::error_code MessengerConnector::syncReadMessageImpl(util::Lock const& lock,
                                                                   replica::ProtocolBuffer& buf,
@@ -632,6 +651,7 @@ boost::system::error_code MessengerConnector::syncReadMessageImpl(util::Lock con
     return ec;
 }
 
+
 bool MessengerConnector::isAborted(boost::system::error_code const& ec) const {
 
     if (ec == boost::asio::error::operation_aborted) {
@@ -641,17 +661,19 @@ bool MessengerConnector::isAborted(boost::system::error_code const& ec) const {
     return false;
 }
 
-std::string MessengerConnector::context() const {
+
+string MessengerConnector::context() const {
     return "MESSENGER-CONNECTION [worker=" + _workerInfo.name + ", state=" + state2string(_state) + "]  ";
 }
 
+
 MessageWrapperBase::Ptr MessengerConnector::find(util::Lock const& lock,
-                                                 std::string const& id) const {
-    auto itr = std::find_if(_requests.begin(),
-                            _requests.end(),
-                            [&id] (MessageWrapperBase::Ptr const& ptr) {
-                                return ptr->id() == id;
-                            });
+                                                 string const& id) const {
+    auto itr = find_if(_requests.begin(),
+                       _requests.end(),
+                       [&id] (MessageWrapperBase::Ptr const& ptr) {
+                           return ptr->id() == id;
+                       });
 
     return _requests.end() == itr ? MessageWrapperBase::Ptr() : *itr;
 }

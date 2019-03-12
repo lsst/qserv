@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -56,7 +55,7 @@ class Request;
  * Class DatabaseServicesError is an exception class for reporting errors
  * in database operations.
  */
-class DatabaseServicesError: public std::runtime_error {
+class DatabaseServicesError : public std::runtime_error {
 public:
     DatabaseServicesError(std::string const& msg)
         :   std::runtime_error(std::string(__func__) + ": " + msg) {
@@ -69,7 +68,7 @@ public:
  * which can't be found in the database.
  */
 class DatabaseServicesNotFound: public std::runtime_error {
-public:
+public :
     DatabaseServicesNotFound(std::string const& msg)
         :   std::runtime_error(std::string(__func__) + ": " + msg) {
     }
@@ -283,8 +282,7 @@ struct JobInfo {
   * as general purpose exceptions explained in their documentation
   * below.
   */
-class DatabaseServices
-    :   public std::enable_shared_from_this<DatabaseServices> {
+class DatabaseServices : public std::enable_shared_from_this<DatabaseServices> {
 
 public:
 

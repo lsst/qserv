@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -46,8 +45,7 @@ namespace replica {
   * tools. The class is meant to take care of mundane tasks such as handling
   * command-line parameters, initializing application environment, etc.
   */
-class Application
-    :   public std::enable_shared_from_this<Application> {
+class Application : public std::enable_shared_from_this<Application> {
 
 public:
 

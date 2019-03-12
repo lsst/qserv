@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -68,8 +67,7 @@ struct QservSyncJobResult {
   * that the latest state of replicas is already recorded in the Replication
   * System's database.
   */
-class QservSyncJob
-    :   public Job  {
+class QservSyncJob : public Job  {
 
 public:
 

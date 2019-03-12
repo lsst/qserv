@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -111,8 +110,7 @@ struct FindAllJobResult {
   * Class FindAllJob represents a tool which will find all replicas
   * of all chunks on all worker nodes.
   */
-class FindAllJob
-    :   public Job  {
+class FindAllJob : public Job  {
 
 public:
 

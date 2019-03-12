@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -37,6 +36,8 @@
 #include "replica/ServiceProvider.h"
 #include "util/BlockPost.h"
 
+using namespace std;
+
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.CreateReplicaJob");
@@ -69,7 +70,7 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-std::string CreateReplicaJob::typeName() { return "CreateReplicaJob"; }
+string CreateReplicaJob::typeName() { return "CreateReplicaJob"; }
 
 
 Job::Options const& CreateReplicaJob::defaultOptions() {
@@ -81,14 +82,15 @@ Job::Options const& CreateReplicaJob::defaultOptions() {
     return options;
 }
 
-CreateReplicaJob::Ptr CreateReplicaJob::create(std::string const& databaseFamily,
-                                                   unsigned int chunk,
-                                                   std::string const& sourceWorker,
-                                                   std::string const& destinationWorker,
-                                                   Controller::Ptr const& controller,
-                                                   std::string const& parentJobId,
-                                                   CallbackType const& onFinish,
-                                                   Job::Options const& options) {
+
+CreateReplicaJob::Ptr CreateReplicaJob::create(string const& databaseFamily,
+                                               unsigned int chunk,
+                                               string const& sourceWorker,
+                                               string const& destinationWorker,
+                                               Controller::Ptr const& controller,
+                                               string const& parentJobId,
+                                               CallbackType const& onFinish,
+                                               Job::Options const& options) {
     return CreateReplicaJob::Ptr(
         new CreateReplicaJob(databaseFamily,
                            chunk,
@@ -100,12 +102,13 @@ CreateReplicaJob::Ptr CreateReplicaJob::create(std::string const& databaseFamily
                            options));
 }
 
-CreateReplicaJob::CreateReplicaJob(std::string const& databaseFamily,
+
+CreateReplicaJob::CreateReplicaJob(string const& databaseFamily,
                                    unsigned int chunk,
-                                   std::string const& sourceWorker,
-                                   std::string const& destinationWorker,
+                                   string const& sourceWorker,
+                                   string const& destinationWorker,
                                    Controller::Ptr const& controller,
-                                   std::string const& parentJobId,
+                                   string const& parentJobId,
                                    CallbackType const& onFinish,
                                    Job::Options const& options)
     :   Job(controller,
@@ -119,29 +122,31 @@ CreateReplicaJob::CreateReplicaJob(std::string const& databaseFamily,
         _onFinish(onFinish) {
 }
 
+
 CreateReplicaJobResult const& CreateReplicaJob::getReplicaData() const {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "getReplicaData");
 
     if (state() == State::FINISHED) return _replicaData;
 
-    throw std::logic_error(
+    throw logic_error(
         "CreateReplicaJob::getReplicaData  the method can't be called while the job hasn't finished");
 }
 
-std::list<std::pair<std::string,std::string>> CreateReplicaJob::extendedPersistentState() const {
-    std::list<std::pair<std::string,std::string>> result;
+
+list<pair<string,string>> CreateReplicaJob::extendedPersistentState() const {
+    list<pair<string,string>> result;
     result.emplace_back("database_family",    databaseFamily());
-    result.emplace_back("timeout_sec",        std::to_string(chunk()));
+    result.emplace_back("timeout_sec",        to_string(chunk()));
     result.emplace_back("source_worker",      sourceWorker());
     result.emplace_back("destination_worker", destinationWorker());
     return result;
 }
 
 
-std::list<std::pair<std::string,std::string>> CreateReplicaJob::persistentLogData() const {
+list<pair<string,string>> CreateReplicaJob::persistentLogData() const {
 
-    std::list<std::pair<std::string,std::string>> result;
+    list<pair<string,string>> result;
 
     auto&& replicaData = getReplicaData();
 
@@ -151,21 +156,21 @@ std::list<std::pair<std::string,std::string>> CreateReplicaJob::persistentLogDat
     //     the total number of chunks created on the workers as a result
     //     of the operation
 
-    std::map<std::string,
-             std::map<std::string,
-                      size_t>> workerCategoryCounter;
+    map<string,
+        map<string,
+            size_t>> workerCategoryCounter;
 
     for (auto&& info: replicaData.replicas) {
         workerCategoryCounter[info.worker()]["created-chunks"]++;
     }
     for (auto&& workerItr: workerCategoryCounter) {
         auto&& worker = workerItr.first;
-        std::string val = "worker=" + worker;
+        string val = "worker=" + worker;
 
         for (auto&& categoryItr: workerItr.second) {
             auto&& category = categoryItr.first;
             size_t const counter = categoryItr.second;
-            val += " " + category + "=" + std::to_string(counter);
+            val += " " + category + "=" + to_string(counter);
         }
         result.emplace_back("worker-stats", val);
     }
@@ -199,7 +204,7 @@ void CreateReplicaJob::startImpl(util::Lock const& lock) {
 
     // Make sure no such replicas exist yet at the destination
 
-    std::vector<ReplicaInfo> destinationReplicas;
+    vector<ReplicaInfo> destinationReplicas;
     try {
         controller()->serviceProvider()->databaseServices()->findWorkerReplicas(
             destinationReplicas,
@@ -207,7 +212,7 @@ void CreateReplicaJob::startImpl(util::Lock const& lock) {
             destinationWorker(),
             databaseFamily());
 
-    } catch (std::invalid_argument const& ex) {
+    } catch (invalid_argument const& ex) {
 
         LOGS(_log, LOG_LVL_ERROR, context() << "startImpl  "
              << "** misconfigured application ** "
@@ -218,7 +223,7 @@ void CreateReplicaJob::startImpl(util::Lock const& lock) {
         
         throw;
 
-    } catch (std::exception const& ex) {
+    } catch (exception const& ex) {
 
         LOGS(_log, LOG_LVL_ERROR, context() << "startImpl  "
              << "** failed to find replicas ** "
@@ -255,7 +260,7 @@ void CreateReplicaJob::startImpl(util::Lock const& lock) {
     // 2. launching FindRequest for each member of the database family to
     //    see if the chunk is available on a source node.
 
-    std::vector<ReplicaInfo> sourceReplicas;
+    vector<ReplicaInfo> sourceReplicas;
     try {
         controller()->serviceProvider()->databaseServices()->findWorkerReplicas(
             sourceReplicas,
@@ -263,7 +268,7 @@ void CreateReplicaJob::startImpl(util::Lock const& lock) {
             sourceWorker(),
             databaseFamily());
 
-    } catch (std::invalid_argument const& ex) {
+    } catch (invalid_argument const& ex) {
 
         LOGS(_log, LOG_LVL_ERROR, context() << "startImpl  "
              << "** misconfigured application ** "
@@ -274,7 +279,7 @@ void CreateReplicaJob::startImpl(util::Lock const& lock) {
         
         throw;
 
-    } catch (std::exception const& ex) {
+    } catch (exception const& ex) {
 
         LOGS(_log, LOG_LVL_ERROR, context() << "startImpl  ** failed to find replicas ** "
              << " chunk: "  << chunk()
@@ -328,6 +333,7 @@ void CreateReplicaJob::startImpl(util::Lock const& lock) {
              State::IN_PROGRESS);
 }
 
+
 void CreateReplicaJob::cancelImpl(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
@@ -352,12 +358,14 @@ void CreateReplicaJob::cancelImpl(util::Lock const& lock) {
     _requests.clear();
 }
 
+
 void CreateReplicaJob::notify(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
 
     notifyDefaultImpl<CreateReplicaJob>(lock, _onFinish);
 }
+
 
 void CreateReplicaJob::onRequestFinish(ReplicationRequest::Ptr const& request) {
 
@@ -408,7 +416,7 @@ void CreateReplicaJob::onRequestFinish(ReplicationRequest::Ptr const& request) {
             //       of the operation. Neither any upstream notifications will be
             //       sent to a requester of this job.
 
-            std::vector<std::string> databases;
+            vector<string> databases;
             for (auto&& databaseEntry: _replicaData.chunks[chunk()]) {
                 databases.push_back(databaseEntry.first);
             }

@@ -1,7 +1,5 @@
-// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -159,8 +157,7 @@ protected:
   * Class WorkerRequestFactory is a proxy class which is constructed with
   * a choice of a specific implementation of the factory.
   */
-class WorkerRequestFactory
-    :   public WorkerRequestFactoryBase {
+class WorkerRequestFactory : public WorkerRequestFactoryBase {
 
 public:
 

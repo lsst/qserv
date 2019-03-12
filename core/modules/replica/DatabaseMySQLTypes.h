@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -161,8 +160,7 @@ public:
  * differently than ordinary values of string types. There won't be escape
  * processing or extra quotes of any kind added to the function name strings.
  */
-class Keyword
-    :   public DoNotProcess {
+class Keyword : public DoNotProcess {
 
 public:
 
@@ -191,8 +189,7 @@ public:
  * differently than ordinary values of string types. There won't be escape
  * processing or extra quotes of any kind added to the function name strings.
  */
-class Function
-    :   public DoNotProcess {
+class Function : public DoNotProcess {
 
 public:
 

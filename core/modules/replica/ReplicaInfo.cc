@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -85,6 +84,8 @@ string ReplicaInfo::status2string(Status status) {
     throw logic_error("unhandled status " + to_string(status) +
                       " in ReplicaInfo::status2string()");
 }
+
+
 ReplicaInfo::ReplicaInfo()
     :   _status(Status::NOT_FOUND),
         _worker(""),
@@ -93,6 +94,7 @@ ReplicaInfo::ReplicaInfo()
         _verifyTime(0),
         _fileInfo() {
 }
+
 
 ReplicaInfo::ReplicaInfo(Status status,
                          string const& worker,
@@ -108,6 +110,7 @@ ReplicaInfo::ReplicaInfo(Status status,
         _fileInfo(fileInfo) {
 }
 
+
 ReplicaInfo::ReplicaInfo(Status status,
                          string const& worker,
                          string const& database,
@@ -119,6 +122,7 @@ ReplicaInfo::ReplicaInfo(Status status,
         _chunk(chunk),
         _verifyTime(verifyTime) {
 }
+
 
 ReplicaInfo::ReplicaInfo(proto::ReplicationReplicaInfo const* info) {
 
@@ -153,13 +157,16 @@ ReplicaInfo::ReplicaInfo(proto::ReplicationReplicaInfo const* info) {
     _verifyTime = info->verify_time();
 }
 
+
 void ReplicaInfo::setFileInfo(FileInfoCollection const& fileInfo) {
     _fileInfo = fileInfo;
 }
 
+
 void ReplicaInfo::setFileInfo(FileInfoCollection&& fileInfo) {
     _fileInfo = fileInfo;
 }
+
 
 uint64_t ReplicaInfo::beginTransferTime() const {
     uint64_t t = 0;
@@ -169,6 +176,7 @@ uint64_t ReplicaInfo::beginTransferTime() const {
     return t;
 }
 
+
 uint64_t ReplicaInfo::endTransferTime() const {
     uint64_t t = 0;
     for (auto&& f: _fileInfo) {
@@ -177,15 +185,18 @@ uint64_t ReplicaInfo::endTransferTime() const {
     return t;
 }
 
+
 proto::ReplicationReplicaInfo* ReplicaInfo::info() const {
     proto::ReplicationReplicaInfo* ptr = new proto::ReplicationReplicaInfo();
     ::setInfoImpl(*this, ptr);
     return ptr;
 }
 
+
 void ReplicaInfo::setInfo(lsst::qserv::proto::ReplicationReplicaInfo* info) const {
     ::setInfoImpl(*this, info);
 }
+
 
 map<string, ReplicaInfo::FileInfo> ReplicaInfo::fileInfoMap() const {
     map<string, ReplicaInfo::FileInfo> result;
@@ -194,6 +205,7 @@ map<string, ReplicaInfo::FileInfo> ReplicaInfo::fileInfoMap() const {
     }
     return result;
 }
+
 
 bool ReplicaInfo::equalFileCollections(ReplicaInfo const& other) const {
 
@@ -212,6 +224,7 @@ bool ReplicaInfo::equalFileCollections(ReplicaInfo const& other) const {
     }
     return true;
 }
+
 
 ostream& operator<<(ostream& os, ReplicaInfo::FileInfo const& fi) {
 
@@ -235,6 +248,7 @@ ostream& operator<<(ostream& os, ReplicaInfo::FileInfo const& fi) {
     return os;
 }
 
+
 ostream& operator<<(ostream& os, ReplicaInfo const& ri) {
 
     os  << "ReplicaInfo"
@@ -249,6 +263,7 @@ ostream& operator<<(ostream& os, ReplicaInfo const& ri) {
     }
     return os;
 }
+
 
 ostream& operator<<(ostream &os, ReplicaInfoCollection const& ric) {
 
@@ -396,9 +411,9 @@ bool diff(QservReplicaCollection const& one,
     inFirstOnly.clear();
     
     // Translate the second collection into a dictionary
-    std::map<unsigned int,
-            std::map<std::string,
-                     unsigned int>> replicas;
+    map<unsigned int,
+        map<string,
+            unsigned int>> replicas;
 
     for (auto&& replica: two) {
         replicas[replica.chunk][replica.database] = replica.useCount;
@@ -432,6 +447,5 @@ bool diff2(QservReplicaCollection const& one,
 
     return notEqual1 or notEqual2;
 }
-
 
 }}} // namespace lsst::qserv::replica

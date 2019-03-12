@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -640,7 +639,7 @@ int ConfigApp::_configInitFile() const {
             LOGS(_log, LOG_LVL_ERROR, context << "operation failed, unsupported format: " << _format);
             return 1;
         }
-    } catch (std::exception const& ex) {
+    } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
         return 1;
     }
@@ -670,7 +669,7 @@ int ConfigApp::_updateGeneral() {
         _general.workerNumProcessingThreads .save(_config);
         _general.fsNumProcessingThreads     .save(_config);
         _general.workerFsBufferSizeBytes    .save(_config);
-    } catch (std::exception const& ex) {
+    } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
         return 1;
     }
@@ -741,7 +740,7 @@ int ConfigApp::_updateWorker() const {
         if (_workerReadWrite and info.isReadOnly) {
             _config->setWorkerReadOnly(_workerInfo.name, false);
         }
-    } catch (std::exception const& ex) {
+    } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
         return 1;
     }
@@ -759,7 +758,7 @@ int ConfigApp::_addWorker() const {
     }
     try {
         _config->addWorker(_workerInfo);
-    } catch (std::exception const& ex) {
+    } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
         return 1;
     }
@@ -779,7 +778,7 @@ int ConfigApp::_deleteWorker() const {
     auto const info = _config->workerInfo(_workerInfo.name);
     try {
         _config->deleteWorker(_workerInfo.name);
-    } catch (std::exception const& ex) {
+    } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
         return 1;
     }
@@ -809,7 +808,7 @@ int ConfigApp::_addFamily() {
     }
     try {
         _config->addDatabaseFamily(_familyInfo);
-    } catch (std::exception const& ex) {
+    } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
         return 1;
     }
@@ -827,7 +826,7 @@ int ConfigApp::_deleteFamily() {
     }
     try {
         _config->deleteDatabaseFamily(_familyInfo.name);
-    } catch (std::exception const& ex) {
+    } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
         return 1;
     }
@@ -849,7 +848,7 @@ int ConfigApp::_addDatabase() {
     }
     try {
         _config->addDatabase(_databaseInfo);
-    } catch (std::exception const& ex) {
+    } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
         return 1;
     }
@@ -867,7 +866,7 @@ int ConfigApp::_deleteDatabase() {
     }
     try {
         _config->deleteDatabase(_databaseInfo.name);
-    } catch (std::exception const& ex) {
+    } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
         return 1;
     }
@@ -889,7 +888,7 @@ int ConfigApp::_addTable() {
     }
     try {
         _config->addTable(_database, _table, _isPartitioned);
-    } catch (std::exception const& ex) {
+    } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
         return 1;
     }
@@ -911,7 +910,7 @@ int ConfigApp::_deleteTable() {
     }
     try {
         _config->deleteTable(_database, _table);
-    } catch (std::exception const& ex) {
+    } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
         return 1;
     }

@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -50,8 +49,7 @@ namespace replica {
   *
   * @see class DatabaseServices
   */
-class DatabaseServicesMySQL
-    :   public DatabaseServices {
+class DatabaseServicesMySQL : public DatabaseServices {
 
 public:
 
@@ -235,10 +233,10 @@ private:
      * @param worker    - worker name (as per the request)
      * @param database  - database name (as per the request)
      */
-    void findWorkerReplicasImpl(util::Lock const& lock,
-                                std::vector<ReplicaInfo>& replicas,
-                                std::string const& worker,
-                                std::string const& database);
+    void _findWorkerReplicasImpl(util::Lock const& lock,
+                                 std::vector<ReplicaInfo>& replicas,
+                                 std::string const& worker,
+                                 std::string const& database);
 
     /**
      * Actual implementation of the replica update algorithm.
@@ -246,8 +244,8 @@ private:
      * @param lock - lock on a mutex must be acquired before calling this method
      * @param info - replica to be added/updated or deleted
      */
-    void saveReplicaInfoImpl(util::Lock const& lock,
-                             ReplicaInfo const& info);
+    void _saveReplicaInfoImpl(util::Lock const& lock,
+                              ReplicaInfo const& info);
 
     /**
      * Actual implementation of the multiple replicas update algorithm.
@@ -257,10 +255,10 @@ private:
      * @param database                 - database name (as per the request)
      * @param newReplicaInfoCollection - collection of new replicas
      */
-    void saveReplicaInfoCollectionImpl(util::Lock const& lock,
-                                       std::string const& worker,
-                                       std::string const& database,
-                                       ReplicaInfoCollection const& newReplicaInfoCollection);
+    void _saveReplicaInfoCollectionImpl(util::Lock const& lock,
+                                        std::string const& worker,
+                                        std::string const& database,
+                                        ReplicaInfoCollection const& newReplicaInfoCollection);
 
     /**
      * Delete a replica from the database.
@@ -270,10 +268,10 @@ private:
      * @param database - database name
      * @param chunk    - chunk to be removed
      */
-    void deleteReplicaInfoImpl(util::Lock const& lock,
-                               std::string const& worker,
-                               std::string const& database,
-                               unsigned int chunk);
+    void _deleteReplicaInfoImpl(util::Lock const& lock,
+                                std::string const& worker,
+                                std::string const& database,
+                                unsigned int chunk);
     /**
      * Fetch replicas satisfying the specified query
      *
@@ -281,9 +279,9 @@ private:
      * @param replicas - collection of replicas to be returned
      * @param query    - SQL query against the corresponding table
      */
-    void findReplicasImpl(util::Lock const& lock,
-                          std::vector<ReplicaInfo>& replicas,
-                          std::string const& query);
+    void _findReplicasImpl(util::Lock const& lock,
+                           std::vector<ReplicaInfo>& replicas,
+                           std::string const& query);
 
     /**
      * Fetch files for the replicas
@@ -292,9 +290,9 @@ private:
      * @param id2replica - input collection of incomplete replicas 
      * @param replicas   - output collection of complete replicas
      */
-    void findReplicaFilesImpl(util::Lock const& lock,
-                              std::map<uint64_t, ReplicaInfo> const& id2replica,
-                              std::vector<ReplicaInfo>& replicas);
+    void _findReplicaFilesImpl(util::Lock const& lock,
+                               std::map<uint64_t, ReplicaInfo> const& id2replica,
+                               std::vector<ReplicaInfo>& replicas);
 
     /**
      * Implement the corresponding public method

@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -44,7 +43,7 @@ namespace replica {
  * Class ConfigApp implements a tool for inspecting/modifying configuration
  * records stored in the MySQL/MariaDB database.
  */
-class ConfigApp: public Application {
+class ConfigApp : public Application {
 
 public:
 

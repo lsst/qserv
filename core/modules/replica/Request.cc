@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -37,6 +36,8 @@
 #include "replica/ProtocolBuffer.h"
 #include "replica/ServiceProvider.h"
 
+using namespace std;
+
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.Request");
@@ -47,19 +48,20 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-std::atomic<size_t> Request::_numClassInstances(0);
+atomic<size_t> Request::_numClassInstances(0);
 
-std::string Request::state2string(State state) {
+
+string Request::state2string(State state) {
     switch (state) {
         case CREATED:     return "CREATED";
         case IN_PROGRESS: return "IN_PROGRESS";
         case FINISHED:    return "FINISHED";
     }
-    throw std::logic_error(
-                    "incomplete implementation of method Request::state2string(State)");
+    throw logic_error("incomplete implementation of method Request::state2string(State)");
 }
 
-std::string Request::state2string(ExtendedState state) {
+
+string Request::state2string(ExtendedState state) {
     switch (state) {
         case NONE:                 return "NONE";
         case SUCCESS:              return "SUCCESS";
@@ -73,25 +75,26 @@ std::string Request::state2string(ExtendedState state) {
         case TIMEOUT_EXPIRED:      return "TIMEOUT_EXPIRED";
         case CANCELLED:            return "CANCELLED";
     }
-    throw std::logic_error(
-                    "incomplete implementation of method Request::state2string(ExtendedState)");
+    throw logic_error("incomplete implementation of method Request::state2string(ExtendedState)");
 }
 
-std::string Request::state2string(State state,
-                                  ExtendedState extendedState) {
+
+string Request::state2string(State state,
+                             ExtendedState extendedState) {
     return state2string(state) + "::" + state2string(extendedState);
 }
 
-std::string Request::state2string(State state,
-                                  ExtendedState extendedState,
-                                  replica::ExtendedCompletionStatus serverStatus) {
+
+string Request::state2string(State state,
+                             ExtendedState extendedState,
+                             replica::ExtendedCompletionStatus serverStatus) {
     return state2string(state, extendedState) + "::" + replica::status2string(serverStatus);
 }
 
 Request::Request(ServiceProvider::Ptr const& serviceProvider,
                  boost::asio::io_service& io_service,
-                 std::string const& type,
-                 std::string const& worker,
+                 string const& type,
+                 string const& worker,
                  int  priority,
                  bool keepTracking,
                  bool allowDuplicate)
@@ -120,37 +123,44 @@ Request::Request(ServiceProvider::Ptr const& serviceProvider,
     LOGS(_log, LOG_LVL_DEBUG, context() << "constructed  instances: " << _numClassInstances);
 }
 
+
 Request::~Request() {
     --_numClassInstances;
     LOGS(_log, LOG_LVL_DEBUG, context() << "destructed   instances: " << _numClassInstances);
 }
 
-std::string Request::state2string() const {
+
+string Request::state2string() const {
     util::Lock lock(_mtx, context() + "state2string");
     return state2string(state(), extendedState()) + "::" + replica::status2string(extendedServerStatus());
 }
 
-std::string Request::context() const {
+
+string Request::context() const {
     return "REQUEST " + id() + "  " + type() +
            "  " + state2string(state(), extendedState()) +
            "::" + replica::status2string(extendedServerStatus()) + "  ";
 }
 
-std::string const& Request::remoteId() const {
+
+string const& Request::remoteId() const {
     return _duplicateRequestId.empty() ? _id : _duplicateRequestId;
 }
+
 
 Performance Request::performance() const {
     util::Lock lock(_mtx, context() + "performance");
     return performance(lock);
 }
 
+
 Performance Request::performance(util::Lock const& lock) const {
     return _performance;
 }
 
-void Request::start(std::shared_ptr<Controller> const& controller,
-                    std::string const& jobId,
+
+void Request::start(shared_ptr<Controller> const& controller,
+                    string const& jobId,
                     unsigned int requestExpirationIvalSec) {
 
     util::Lock lock(_mtx, context() + "start");
@@ -197,13 +207,14 @@ void Request::start(std::shared_ptr<Controller> const& controller,
     setState(lock, IN_PROGRESS);
 }
 
-std::string const& Request::jobId() const {
+
+string const& Request::jobId() const {
     if (state() == State::CREATED) {
-        throw std::logic_error(
-            "the Job Id is not available because the request has not started yet");
+        throw logic_error("the Job Id is not available because the request has not started yet");
     }
     return _jobId;
 }
+
 
 void Request::expired(boost::system::error_code const& ec) {
 
@@ -229,6 +240,7 @@ void Request::expired(boost::system::error_code const& ec) {
     finish(lock, TIMEOUT_EXPIRED);
 }
 
+
 void Request::cancel() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancel");
@@ -247,6 +259,7 @@ void Request::cancel() {
 
     finish(lock, CANCELLED);
 }
+
 
 void Request::finish(util::Lock const& lock,
                      ExtendedState extendedState) {
@@ -280,6 +293,7 @@ void Request::finish(util::Lock const& lock,
     notify(lock);
 }
 
+
 bool Request::isAborted(boost::system::error_code const& ec) const {
 
     if (ec == boost::asio::error::operation_aborted) {
@@ -289,15 +303,18 @@ bool Request::isAborted(boost::system::error_code const& ec) const {
     return false;
 }
 
+
 void Request::assertState(util::Lock const& lock,
                           State desiredState,
-                          std::string const& context) const {
+                          string const& context) const {
 
     if (desiredState != state()) {
-        throw std::logic_error(
-            context + ": wrong state " + state2string(state()) + " instead of " + state2string(desiredState));
+        throw logic_error(
+                    context + ": wrong state " + state2string(state()) + " instead of " +
+                    state2string(desiredState));
     }
 }
+
 
 void Request::setState(util::Lock const& lock,
                        State newState,

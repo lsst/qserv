@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -23,6 +22,8 @@
 // Class header
 #include "replica/StopRequest.h"
 
+using namespace std;
+
 namespace lsst {
 namespace qserv {
 namespace replica {
@@ -35,14 +36,17 @@ char const* StopReplicationRequestPolicy::requestName() {
     return "REQUEST_STOP:REPLICA_CREATE";
 }
 
+
 proto::ReplicationReplicaRequestType StopReplicationRequestPolicy::replicaRequestType() {
     return proto::ReplicationReplicaRequestType::REPLICA_CREATE;
 }
+
 
 void StopReplicationRequestPolicy::extractResponseData(ResponseMessageType const& msg,
                                                        ResponseDataType& data) {
     data = ResponseDataType(&(msg.replica_info()));
 }
+
 
 void StopReplicationRequestPolicy::extractTargetRequestParams(ResponseMessageType const& msg,
                                                               TargetRequestParamsType& params) {
@@ -50,6 +54,7 @@ void StopReplicationRequestPolicy::extractTargetRequestParams(ResponseMessageTyp
         params = TargetRequestParamsType(msg.request());
     }
 }
+
 
 // --------------------------------------------
 // --------- StopDeleteRequestPolicy ----------
@@ -59,14 +64,17 @@ char const* StopDeleteRequestPolicy::requestName() {
     return "REQUEST_STOP:REPLICA_DELETE";
 }
 
+
 proto::ReplicationReplicaRequestType StopDeleteRequestPolicy::replicaRequestType() {
     return proto::ReplicationReplicaRequestType::REPLICA_DELETE;
 }
+
 
 void StopDeleteRequestPolicy::extractResponseData(ResponseMessageType const& msg,
                                                   ResponseDataType& data) {
     data = ResponseDataType(&(msg.replica_info()));
 }
+
 
 void StopDeleteRequestPolicy::extractTargetRequestParams(ResponseMessageType const& msg,
                                                          TargetRequestParamsType& params) {
@@ -74,6 +82,7 @@ void StopDeleteRequestPolicy::extractTargetRequestParams(ResponseMessageType con
         params = TargetRequestParamsType(msg.request());
     }
 }
+
 
 // ------------------------------------------
 // --------- StopFindRequestPolicy ----------
@@ -83,9 +92,11 @@ char const* StopFindRequestPolicy::requestName() {
     return "REQUEST_STOP:REPLICA_FIND";
 }
 
+
 proto::ReplicationReplicaRequestType StopFindRequestPolicy::replicaRequestType() {
     return proto::ReplicationReplicaRequestType::REPLICA_FIND;
 }
+
 
 void StopFindRequestPolicy::extractResponseData(ResponseMessageType const& msg,
                                                 ResponseDataType& data) {
@@ -93,12 +104,14 @@ void StopFindRequestPolicy::extractResponseData(ResponseMessageType const& msg,
     data = ResponseDataType(&(msg.replica_info()));
 }
 
+
 void StopFindRequestPolicy::extractTargetRequestParams(ResponseMessageType const& msg,
                                                        TargetRequestParamsType& params) {
     if (msg.has_request()) {
         params = TargetRequestParamsType(msg.request());
     }
 }
+
 
 // ---------------------------------------------
 // --------- StopFindAllRequestPolicy ----------
@@ -108,9 +121,11 @@ char const* StopFindAllRequestPolicy::requestName() {
     return "REQUEST_STOP:REPLICA_FIND_ALL";
 }
 
+
 proto::ReplicationReplicaRequestType StopFindAllRequestPolicy::replicaRequestType() {
     return proto::ReplicationReplicaRequestType::REPLICA_FIND_ALL;
 }
+
 
 void StopFindAllRequestPolicy::extractResponseData(ResponseMessageType const& msg,
                                                    ResponseDataType& data) {
@@ -120,12 +135,14 @@ void StopFindAllRequestPolicy::extractResponseData(ResponseMessageType const& ms
     }
 }
 
+
 void StopFindAllRequestPolicy::extractTargetRequestParams(ResponseMessageType const& msg,
                                                           TargetRequestParamsType& params) {
     if (msg.has_request()) {
         params = TargetRequestParamsType(msg.request());
     }
 }
+
 
 // ------------------------------------------
 // --------- StopEchoRequestPolicy ----------
@@ -135,14 +152,17 @@ char const* StopEchoRequestPolicy::requestName() {
     return "REQUEST_STOP:REPLICA_ECHO";
 }
 
+
 proto::ReplicationReplicaRequestType StopEchoRequestPolicy::replicaRequestType() {
     return proto::ReplicationReplicaRequestType::REPLICA_ECHO;
 }
+
 
 void StopEchoRequestPolicy::extractResponseData(ResponseMessageType const& msg,
                                                 ResponseDataType& data) {
     data = msg.data();
 }
+
 
 void StopEchoRequestPolicy::extractTargetRequestParams(ResponseMessageType const& msg,
                                                        TargetRequestParamsType& params) {

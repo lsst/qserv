@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -36,7 +35,7 @@ namespace replica {
  * from any active use in a replication setup. All chunks hosted by
  * the worker node will be distributed across the cluster.
  */
-class DeleteWorkerApp: public Application {
+class DeleteWorkerApp : public Application {
 
 public:
 

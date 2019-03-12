@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -44,8 +43,7 @@ namespace replica {
   * Class StopRequestBase represents the base class for a family of requests
   * stopping an on-going operation.
   */
-class StopRequestBase
-    :   public RequestMessenger {
+class StopRequestBase : public RequestMessenger {
 
 public:
 

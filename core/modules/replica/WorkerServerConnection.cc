@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -34,6 +33,8 @@
 #include "replica/Performance.h"
 #include "replica/ServiceProvider.h"
 
+using namespace std;
+
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerServerConnection");
@@ -42,13 +43,13 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerServerConnection");
 
 namespace {
 
-using ProtocolBufferPtr = std::shared_ptr<lsst::qserv::replica::ProtocolBuffer>;
+using ProtocolBufferPtr = shared_ptr<lsst::qserv::replica::ProtocolBuffer>;
 
 /// The context for diagnostic & debug printouts
-std::string const context = "CONNECTION  ";
+string const context = "CONNECTION  ";
 
 bool isErrorCode(boost::system::error_code const& ec,
-                 std::string const& scope) {
+                 string const& scope) {
 
     if (ec.value() != 0) {
         if (ec == boost::asio::error::eof) {
@@ -60,6 +61,7 @@ bool isErrorCode(boost::system::error_code const& ec,
     }
     return false;
 }
+
 
 bool readIntoBuffer(boost::asio::ip::tcp::socket& socket,
                     ProtocolBufferPtr const& ptr,
@@ -81,6 +83,7 @@ bool readIntoBuffer(boost::asio::ip::tcp::socket& socket,
     return not ::isErrorCode(ec, "readIntoBuffer");
 }
 
+
 template <class T>
 bool readMessage(boost::asio::ip::tcp::socket& socket,
                  ProtocolBufferPtr const& ptr,
@@ -98,6 +101,7 @@ bool readMessage(boost::asio::ip::tcp::socket& socket,
     ptr->parse(message, bytes);
     return true;
 }
+
 
 bool readLength(boost::asio::ip::tcp::socket& socket,
                 ProtocolBufferPtr const& ptr,
@@ -128,19 +132,22 @@ WorkerServerConnection::Ptr WorkerServerConnection::create(
             io_service));
 }
 
+
 WorkerServerConnection::WorkerServerConnection(ServiceProvider::Ptr const& serviceProvider,
                                                WorkerProcessor::Ptr const& processor,
                                                boost::asio::io_service& io_service)
     :   _serviceProvider(serviceProvider),
         _processor(processor),
         _socket(io_service),
-        _bufferPtr(std::make_shared<ProtocolBuffer>(
+        _bufferPtr(make_shared<ProtocolBuffer>(
                        serviceProvider->config()->requestBufferSizeBytes())) {
 }
+
 
 void WorkerServerConnection::beginProtocol() {
     receive();
 }
+
 
 void WorkerServerConnection::receive() {
 
@@ -174,6 +181,7 @@ void WorkerServerConnection::receive() {
     );
 }
 
+
 void WorkerServerConnection::received(boost::system::error_code const& ec,
                                       size_t bytes_transferred) {
 
@@ -199,11 +207,12 @@ void WorkerServerConnection::received(boost::system::error_code const& ec,
         case proto::ReplicationRequestHeader::SERVICE: processServiceRequest(   hdr); break;
 
         default:
-            throw std::logic_error(
-                  "WorkerServerConnection::received() unhandled request class: '" +
-                  proto::ReplicationRequestHeader::RequestType_Name(hdr.type()));
+            throw logic_error(
+                        "WorkerServerConnection::received() unhandled request class: '" +
+                        proto::ReplicationRequestHeader::RequestType_Name(hdr.type()));
     }
 }
+
 
 void WorkerServerConnection::processReplicaRequest(proto::ReplicationRequestHeader& hdr) {
 
@@ -269,11 +278,12 @@ void WorkerServerConnection::processReplicaRequest(proto::ReplicationRequestHead
             break;
         }
         default:
-            throw std::logic_error(
-                  "WorkerServerConnection::processReplicaRequest() unhandled request type: '" +
-                  proto::ReplicationReplicaRequestType_Name(hdr.replica_type()));
+            throw logic_error(
+                        "WorkerServerConnection::processReplicaRequest() unhandled request type: '" +
+                        proto::ReplicationReplicaRequestType_Name(hdr.replica_type()));
     }
 }
+
 
 void WorkerServerConnection::processManagementRequest(proto::ReplicationRequestHeader& hdr) {
 
@@ -325,9 +335,9 @@ void WorkerServerConnection::processManagementRequest(proto::ReplicationRequestH
                     break;
                 }
                 default:
-                    throw std::logic_error(
-                        "WorkerServerConnection::processManagementRequest() unhandled request type: '" +
-                        proto::ReplicationReplicaRequestType_Name(request.replica_type()));
+                    throw logic_error(
+                                "WorkerServerConnection::processManagementRequest() unhandled request type: '" +
+                                proto::ReplicationReplicaRequestType_Name(request.replica_type()));
             }
             break;
         }
@@ -370,18 +380,19 @@ void WorkerServerConnection::processManagementRequest(proto::ReplicationRequestH
                     break;
                 }
                 default:
-                    throw std::logic_error(
-                        "WorkerServerConnection::processManagementRequest() unhandled request type: '" +
-                        proto::ReplicationReplicaRequestType_Name(request.replica_type()));
+                    throw logic_error(
+                                "WorkerServerConnection::processManagementRequest() unhandled request type: '" +
+                                proto::ReplicationReplicaRequestType_Name(request.replica_type()));
             }
             break;
         }
         default:
-            throw std::logic_error(
-                  "WorkerServerConnection::processManagementRequest() unhandled request type: '" +
-                  proto::ReplicationManagementRequestType_Name(hdr.management_type()));
+            throw logic_error(
+                        "WorkerServerConnection::processManagementRequest() unhandled request type: '" +
+                        proto::ReplicationManagementRequestType_Name(hdr.management_type()));
     }
 }
+
 
 void WorkerServerConnection::processServiceRequest(proto::ReplicationRequestHeader& hdr) {
 
@@ -468,11 +479,12 @@ void WorkerServerConnection::processServiceRequest(proto::ReplicationRequestHead
             break;
         }
         default:
-            throw std::logic_error(
-                  "WorkerServerConnection::processServiceRequest() unhandled request type: '" +
-                  proto::ReplicationServiceRequestType_Name(hdr.service_type()));
+            throw logic_error(
+                        "WorkerServerConnection::processServiceRequest() unhandled request type: '" +
+                        proto::ReplicationServiceRequestType_Name(hdr.service_type()));
     }
 }
+
 
 void WorkerServerConnection::send() {
 
@@ -492,6 +504,7 @@ void WorkerServerConnection::send() {
         )
     );
 }
+
 
 void WorkerServerConnection::sent(boost::system::error_code const& ec,
                                   size_t bytes_transferred) {

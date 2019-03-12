@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -36,6 +35,7 @@
 #include "replica/Performance.h"
 #include "replica/ServiceProvider.h"
 
+using namespace std;
 namespace fs = boost::filesystem;
 
 namespace {
@@ -54,10 +54,10 @@ namespace replica {
 
 WorkerFindAllRequest::Ptr WorkerFindAllRequest::create(
                                     ServiceProvider::Ptr const& serviceProvider,
-                                    std::string const& worker,
-                                    std::string const& id,
-                                    int                priority,
-                                    std::string const& database) {
+                                    string const& worker,
+                                    string const& id,
+                                    int priority,
+                                    string const& database) {
     return WorkerFindAllRequest::Ptr(
         new WorkerFindAllRequest(
                 serviceProvider,
@@ -67,12 +67,13 @@ WorkerFindAllRequest::Ptr WorkerFindAllRequest::create(
                 database));
 }
 
+
 WorkerFindAllRequest::WorkerFindAllRequest(
                             ServiceProvider::Ptr const& serviceProvider,
-                            std::string const& worker,
-                            std::string const& id,
-                            int                priority,
-                            std::string const& database)
+                            string const& worker,
+                            string const& id,
+                            int priority,
+                            string const& database)
     :   WorkerRequest(
             serviceProvider,
             worker,
@@ -81,6 +82,7 @@ WorkerFindAllRequest::WorkerFindAllRequest(
             priority),
         _database(database) {
 }
+
 
 void WorkerFindAllRequest::setInfo(proto::ReplicationResponseFindAll& response) const {
 
@@ -111,6 +113,7 @@ void WorkerFindAllRequest::setInfo(proto::ReplicationResponseFindAll& response) 
     response.set_allocated_request(protoRequestPtr);
 }
 
+
 bool WorkerFindAllRequest::execute() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "execute" << "  database: " << database());
@@ -136,16 +139,17 @@ bool WorkerFindAllRequest::execute() {
     return completed;
 }
 
+
 ////////////////////////////////////////////////////////////////////
 ///////////////////// WorkerFindAllRequestPOSIX ////////////////////
 ////////////////////////////////////////////////////////////////////
 
 WorkerFindAllRequestPOSIX::Ptr WorkerFindAllRequestPOSIX::create(
                                         ServiceProvider::Ptr const& serviceProvider,
-                                        std::string const& worker,
-                                        std::string const& id,
-                                        int                priority,
-                                        std::string const& database) {
+                                        string const& worker,
+                                        string const& id,
+                                        int priority,
+                                        string const& database) {
     return WorkerFindAllRequestPOSIX::Ptr(
         new WorkerFindAllRequestPOSIX(
                 serviceProvider,
@@ -155,12 +159,13 @@ WorkerFindAllRequestPOSIX::Ptr WorkerFindAllRequestPOSIX::create(
                 database));
 }
 
+
 WorkerFindAllRequestPOSIX::WorkerFindAllRequestPOSIX(
                                 ServiceProvider::Ptr const& serviceProvider,
-                                std::string const& worker,
-                                std::string const& id,
-                                int                priority,
-                                std::string const& database)
+                                string const& worker,
+                                string const& id,
+                                int priority,
+                                string const& database)
     :   WorkerFindAllRequest(
             serviceProvider,
             worker,
@@ -168,6 +173,7 @@ WorkerFindAllRequestPOSIX::WorkerFindAllRequestPOSIX(
             priority,
             database) {
 }
+
 
 bool WorkerFindAllRequestPOSIX::execute() {
 
@@ -184,7 +190,7 @@ bool WorkerFindAllRequestPOSIX::execute() {
     WorkerRequest::ErrorContext errorContext;
     boost::system::error_code   ec;
 
-    std::map<unsigned int, ReplicaInfo::FileInfoCollection> chunk2fileInfoCollection;
+    map<unsigned int, ReplicaInfo::FileInfoCollection> chunk2fileInfoCollection;
     {
         util::Lock dataFolderLock(_mtxDataFolderOperations, context() + "execute");
 
@@ -201,7 +207,7 @@ bool WorkerFindAllRequestPOSIX::execute() {
                     "the directory does not exists: " + dataDir.string());
         try {
             for (fs::directory_entry &entry: fs::directory_iterator(dataDir)) {
-                std::tuple<std::string, unsigned int, std::string> parsed;
+                tuple<string, unsigned int, string> parsed;
                 if (FileUtils::parsePartitionedFile(
                         parsed,
                         entry.path().filename().string(),
@@ -210,9 +216,9 @@ bool WorkerFindAllRequestPOSIX::execute() {
                     LOGS(_log, LOG_LVL_DEBUG, context() << "execute"
                         << "  database: " << database()
                         << "  file: "     << entry.path().filename()
-                        << "  table: "    << std::get<0>(parsed)
-                        << "  chunk: "    << std::get<1>(parsed)
-                        << "  ext: "      << std::get<2>(parsed));
+                        << "  table: "    << get<0>(parsed)
+                        << "  chunk: "    << get<1>(parsed)
+                        << "  ext: "      << get<2>(parsed));
 
                     uint64_t const size = fs::file_size(entry.path(), ec);
                     errorContext = errorContext
@@ -221,14 +227,14 @@ bool WorkerFindAllRequestPOSIX::execute() {
                                 ExtendedCompletionStatus::EXT_STATUS_FILE_SIZE,
                                 "failed to read file size: " + entry.path().string());
 
-                    std::time_t const mtime = fs::last_write_time(entry.path(), ec);
+                    time_t const mtime = fs::last_write_time(entry.path(), ec);
                     errorContext = errorContext
                         or reportErrorIf(
                                 ec.value() != 0,
                                 ExtendedCompletionStatus::EXT_STATUS_FILE_MTIME,
                                 "failed to read file mtime: " + entry.path().string());
 
-                    unsigned const chunk = std::get<1>(parsed);
+                    unsigned const chunk = get<1>(parsed);
 
                     chunk2fileInfoCollection[chunk].emplace_back(
                         ReplicaInfo::FileInfo({
@@ -249,7 +255,7 @@ bool WorkerFindAllRequestPOSIX::execute() {
                         true,
                         ExtendedCompletionStatus::EXT_STATUS_FOLDER_READ,
                         "failed to read the directory: " + dataDir.string() +
-                        ", error: " + std::string(ex.what()));
+                        ", error: " + string(ex.what()));
         }
     }
     if (errorContext.failed) {

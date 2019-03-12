@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -32,6 +31,8 @@
 #include "replica/Configuration.h"
 #include "util/BlockPost.h"
 
+using namespace std;
+
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.MoveReplicaJob");
@@ -52,16 +53,16 @@ Job::Options const& MoveReplicaJob::defaultOptions() {
 }
 
 
-std::string MoveReplicaJob::typeName() { return "MoveReplicaJob"; }
+string MoveReplicaJob::typeName() { return "MoveReplicaJob"; }
 
 
-MoveReplicaJob::Ptr MoveReplicaJob::create(std::string const& databaseFamily,
+MoveReplicaJob::Ptr MoveReplicaJob::create(string const& databaseFamily,
                                            unsigned int chunk,
-                                           std::string const& sourceWorker,
-                                           std::string const& destinationWorker,
+                                           string const& sourceWorker,
+                                           string const& destinationWorker,
                                            bool purge,
                                            Controller::Ptr const& controller,
-                                           std::string const& parentJobId,
+                                           string const& parentJobId,
                                            CallbackType const& onFinish,
                                            Job::Options const& options) {
     return MoveReplicaJob::Ptr(
@@ -76,13 +77,14 @@ MoveReplicaJob::Ptr MoveReplicaJob::create(std::string const& databaseFamily,
                            options));
 }
 
-MoveReplicaJob::MoveReplicaJob(std::string const& databaseFamily,
+
+MoveReplicaJob::MoveReplicaJob(string const& databaseFamily,
                                unsigned int chunk,
-                               std::string const& sourceWorker,
-                               std::string const& destinationWorker,
+                               string const& sourceWorker,
+                               string const& destinationWorker,
                                bool purge,
                                Controller::Ptr const& controller,
-                               std::string const& parentJobId,
+                               string const& parentJobId,
                                CallbackType const& onFinish,
                                Job::Options const& options)
     :   Job(controller,
@@ -97,20 +99,23 @@ MoveReplicaJob::MoveReplicaJob(std::string const& databaseFamily,
         _onFinish(onFinish) {
 }
 
+
 MoveReplicaJobResult const& MoveReplicaJob::getReplicaData() const {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "getReplicaData");
 
     if (state() == State::FINISHED) return _replicaData;
 
-    throw std::logic_error(
-        "MoveReplicaJob::getReplicaData  the method can't be called while the job hasn't finished");
+    throw logic_error(
+                "MoveReplicaJob::getReplicaData  the method can't be called while"
+                " the job hasn't finished");
 }
 
-std::list<std::pair<std::string,std::string>> MoveReplicaJob::extendedPersistentState() const {
-    std::list<std::pair<std::string,std::string>> result;
+
+list<pair<string,string>> MoveReplicaJob::extendedPersistentState() const {
+    list<pair<string,string>> result;
     result.emplace_back("database_family",    databaseFamily());
-    result.emplace_back("chunk",              std::to_string(chunk()));
+    result.emplace_back("chunk",              to_string(chunk()));
     result.emplace_back("source_worker",      sourceWorker());
     result.emplace_back("destination_worker", destinationWorker());
     result.emplace_back("purge",              purge() ? "1" : "0");
@@ -118,9 +123,9 @@ std::list<std::pair<std::string,std::string>> MoveReplicaJob::extendedPersistent
 }
 
 
-std::list<std::pair<std::string,std::string>> MoveReplicaJob::persistentLogData() const {
+list<pair<string,string>> MoveReplicaJob::persistentLogData() const {
 
-    std::list<std::pair<std::string,std::string>> result;
+    list<pair<string,string>> result;
 
     auto&& replicaData = getReplicaData();
 
@@ -134,9 +139,9 @@ std::list<std::pair<std::string,std::string>> MoveReplicaJob::persistentLogData(
     //     the total number of chunks deleted from the workers as a result
     //     of the operation
 
-    std::map<std::string,
-             std::map<std::string,
-                      size_t>> workerCategoryCounter;
+    map<string,
+        map<string,
+            size_t>> workerCategoryCounter;
 
     for (auto&& info: replicaData.createdReplicas) {
         workerCategoryCounter[info.worker()]["created-chunks"]++;
@@ -146,12 +151,12 @@ std::list<std::pair<std::string,std::string>> MoveReplicaJob::persistentLogData(
     }
     for (auto&& workerItr: workerCategoryCounter) {
         auto&& worker = workerItr.first;
-        std::string val = "worker=" + worker;
+        string val = "worker=" + worker;
 
         for (auto&& categoryItr: workerItr.second) {
             auto&& category = categoryItr.first;
             size_t const counter = categoryItr.second;
-            val += " " + category + "=" + std::to_string(counter);
+            val += " " + category + "=" + to_string(counter);
         }
         result.emplace_back("worker-stats", val);
     }
@@ -206,6 +211,7 @@ void MoveReplicaJob::startImpl(util::Lock const& lock) {
     setState(lock, State::IN_PROGRESS);
 }
 
+
 void MoveReplicaJob::cancelImpl(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
@@ -218,12 +224,14 @@ void MoveReplicaJob::cancelImpl(util::Lock const& lock) {
     }
 }
 
+
 void MoveReplicaJob::notify(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
 
     notifyDefaultImpl<MoveReplicaJob>(lock, _onFinish);
 }
+
 
 void MoveReplicaJob::onCreateJobFinish() {
 
@@ -278,6 +286,7 @@ void MoveReplicaJob::onCreateJobFinish() {
         finish(lock, _createReplicaJob->extendedState());
     }
 }
+
 
 void MoveReplicaJob::onDeleteJobFinish() {
 

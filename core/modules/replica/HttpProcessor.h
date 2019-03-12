@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -51,8 +50,7 @@ namespace replica {
  * The constructor of the class will register requests handlers an start
  * the server.
  */
-class HttpProcessor
-    :   public std::enable_shared_from_this<HttpProcessor> {
+class HttpProcessor : public std::enable_shared_from_this<HttpProcessor> {
 
 public:
 

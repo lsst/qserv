@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -42,8 +41,7 @@ namespace replica {
  * by the cluster, a desired replication level, and existing replica disposition,
  * removal of a worker could be a lengthy process.
  */
-class DeleteWorkerTask
-    :   public Task {
+class DeleteWorkerTask : public Task {
 
 public:
 

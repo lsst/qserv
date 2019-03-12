@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -182,8 +181,7 @@ protected:
   *   V - the value type
   */
 template <typename V>
-class WorkerMap
-    :   public SemanticMap<std::string,V> {
+class WorkerMap : public SemanticMap<std::string,V> {
 
 public:
 
@@ -247,8 +245,7 @@ public:
   *   V - the value type
   */
 template <typename V>
-class DatabaseMap
-    :   public SemanticMap<std::string,V> {
+class DatabaseMap : public SemanticMap<std::string,V> {
 
 public:
 
@@ -312,8 +309,7 @@ public:
   *   V - the value type
   */
 template <typename V>
-class ChunkMap
-    :   public SemanticMap<unsigned int,V> {
+class ChunkMap : public SemanticMap<unsigned int,V> {
 
 public:
 

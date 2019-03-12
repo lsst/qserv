@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -44,8 +43,7 @@ namespace replica {
   * Class ConfigurationMap loads configuration parameters from a transient
   * key-value map as defined by class util::ConfigStore.
   */
-class ConfigurationMap
-    :   public ConfigurationStore {
+class ConfigurationMap : public ConfigurationStore {
 
 public:
 

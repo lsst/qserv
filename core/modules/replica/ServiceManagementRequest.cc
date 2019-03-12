@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -23,6 +22,8 @@
 // Class header
 #include "replica/ServiceManagementRequest.h"
 
+using namespace std;
+
 namespace lsst {
 namespace qserv {
 namespace replica {
@@ -31,37 +32,46 @@ char const* ServiceSuspendRequestPolicy::requestName() {
     return "SERVICE_SUSPEND";
 }
 
+
 proto::ReplicationServiceRequestType ServiceSuspendRequestPolicy::requestType () {
     return proto::ReplicationServiceRequestType::SERVICE_SUSPEND;
 }
+
 
 char const* ServiceResumeRequestPolicy::requestName() {
     return "SERVICE_RESUME";
 }
 
+
 proto::ReplicationServiceRequestType ServiceResumeRequestPolicy::requestType() {
     return proto::ReplicationServiceRequestType::SERVICE_RESUME;
 }
+
 
 char const* ServiceStatusRequestPolicy::requestName() {
     return "SERVICE_STATUS";
 }
 
+
 proto::ReplicationServiceRequestType ServiceStatusRequestPolicy::requestType() {
     return proto::ReplicationServiceRequestType::SERVICE_STATUS;
 }
+
 
 char const* ServiceRequestsRequestPolicy::requestName() {
     return "SERVICE_REQUESTS";
 }
 
+
 proto::ReplicationServiceRequestType ServiceRequestsRequestPolicy::requestType() {
     return proto::ReplicationServiceRequestType::SERVICE_REQUESTS;
 }
 
+
 char const* ServiceDrainRequestPolicy::requestName() {
     return "SERVICE_DRAIN";
 }
+
 
 proto::ReplicationServiceRequestType ServiceDrainRequestPolicy::requestType() {
     return proto::ReplicationServiceRequestType::SERVICE_DRAIN;

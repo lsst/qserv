@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -40,6 +39,8 @@
 #include "replica/ProtocolBuffer.h"
 #include "replica/ServiceProvider.h"
 
+using namespace std;
+
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.ReplicationRequest");
@@ -53,15 +54,15 @@ namespace replica {
 ReplicationRequest::Ptr ReplicationRequest::create(
                             ServiceProvider::Ptr const& serviceProvider,
                             boost::asio::io_service& io_service,
-                            std::string const& worker,
-                            std::string const& sourceWorker,
-                            std::string const& database,
+                            string const& worker,
+                            string const& sourceWorker,
+                            string const& database,
                             unsigned int  chunk,
                             CallbackType const& onFinish,
                             int  priority,
                             bool keepTracking,
                             bool allowDuplicate,
-                            std::shared_ptr<Messenger> const& messenger) {
+                            shared_ptr<Messenger> const& messenger) {
     return ReplicationRequest::Ptr(
         new ReplicationRequest(
             serviceProvider,
@@ -77,18 +78,19 @@ ReplicationRequest::Ptr ReplicationRequest::create(
             messenger));
 }
 
+
 ReplicationRequest::ReplicationRequest(
                         ServiceProvider::Ptr const& serviceProvider,
                         boost::asio::io_service& io_service,
-                        std::string const& worker,
-                        std::string const& sourceWorker,
-                        std::string const& database,
+                        string const& worker,
+                        string const& sourceWorker,
+                        string const& database,
                         unsigned int  chunk,
                         CallbackType const& onFinish,
                         int  priority,
                         bool keepTracking,
                         bool allowDuplicate,
-                        std::shared_ptr<Messenger> const& messenger)
+                        shared_ptr<Messenger> const& messenger)
     :   RequestMessenger(
             serviceProvider,
             io_service,
@@ -108,6 +110,7 @@ ReplicationRequest::ReplicationRequest(
     Request::serviceProvider()->assertWorkersAreDifferent(sourceWorker, worker);
     Request::serviceProvider()->assertDatabaseIsValid(database);
 }
+
 
 void ReplicationRequest::startImpl(util::Lock const& lock) {
 
@@ -136,6 +139,7 @@ void ReplicationRequest::startImpl(util::Lock const& lock) {
     send(lock);
 }
 
+
 void ReplicationRequest::wait(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "wait");
@@ -151,6 +155,7 @@ void ReplicationRequest::wait(util::Lock const& lock) {
         )
     );
 }
+
 
 void ReplicationRequest::awaken(boost::system::error_code const& ec) {
 
@@ -191,6 +196,7 @@ void ReplicationRequest::awaken(boost::system::error_code const& ec) {
     send(lock);
 }
 
+
 void ReplicationRequest::send(util::Lock const& lock) {
 
     auto self = shared_from_base<ReplicationRequest>();
@@ -199,7 +205,7 @@ void ReplicationRequest::send(util::Lock const& lock) {
         worker(),
         id(),
         buffer(),
-        [self] (std::string const& id,
+        [self] (string const& id,
                 bool success,
                 proto::ReplicationResponseReplicate const& response) {
 
@@ -208,6 +214,7 @@ void ReplicationRequest::send(util::Lock const& lock) {
         }
     );
 }
+
 
 void ReplicationRequest::analyze(bool success,
                                  proto::ReplicationResponseReplicate const& message) {
@@ -307,12 +314,13 @@ void ReplicationRequest::analyze(bool success,
             break;
 
         default:
-            throw std::logic_error(
-                    "ReplicationRequest::analyze() unknown status '" +
-                    proto::ReplicationStatus_Name(message.status()) +
-                    "' received from server");
+            throw logic_error(
+                        "ReplicationRequest::analyze() unknown status '" +
+                        proto::ReplicationStatus_Name(message.status()) +
+                        "' received from server");
     }
 }
+
 
 void ReplicationRequest::notify(util::Lock const& lock) {
 
@@ -321,14 +329,16 @@ void ReplicationRequest::notify(util::Lock const& lock) {
     notifyDefaultImpl<ReplicationRequest>(lock, _onFinish);
 }
 
+
 void ReplicationRequest::savePersistentState(util::Lock const& lock) {
     controller()->serviceProvider()->databaseServices()->saveState(*this, performance(lock));
 }
 
-std::list<std::pair<std::string,std::string>> ReplicationRequest::extendedPersistentState() const {
-    std::list<std::pair<std::string,std::string>> result;
+
+list<pair<string,string>> ReplicationRequest::extendedPersistentState() const {
+    list<pair<string,string>> result;
     result.emplace_back("database",      database());
-    result.emplace_back("chunk",         std::to_string(chunk()));
+    result.emplace_back("chunk",         to_string(chunk()));
     result.emplace_back("source_worker", sourceWorker());
     return result;
 }

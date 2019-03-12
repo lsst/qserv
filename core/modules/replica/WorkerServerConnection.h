@@ -1,7 +1,5 @@
-// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -54,8 +52,7 @@ namespace replica {
   * the processor is serialized and sent back (asynchronously) to
   * the client.
   */
-class WorkerServerConnection
-    :   public std::enable_shared_from_this<WorkerServerConnection> {
+class WorkerServerConnection : public std::enable_shared_from_this<WorkerServerConnection> {
 
 public:
 

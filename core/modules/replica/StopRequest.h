@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -192,8 +191,7 @@ struct StopEchoRequestPolicy {
   * to allow further policy-based customization of specific requests.
   */
 template <typename POLICY>
-class StopRequest
-    :   public StopRequestBase {
+class StopRequest : public StopRequestBase {
 
 public:
 

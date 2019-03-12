@@ -1,6 +1,5 @@
-    /*
+/*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -34,6 +33,7 @@
 #include "replica/QservMgtServices.h"
 #include "replica/ServiceProvider.h"
 
+using namespace std;
 
 namespace {
 
@@ -55,14 +55,14 @@ Job::Options const& QservSyncJob::defaultOptions() {
 }
 
 
-std::string QservSyncJob::typeName() { return "QservSyncJob"; }
+string QservSyncJob::typeName() { return "QservSyncJob"; }
 
 
-QservSyncJob::Ptr QservSyncJob::create(std::string const& databaseFamily,
+QservSyncJob::Ptr QservSyncJob::create(string const& databaseFamily,
                                        unsigned int requestExpirationIvalSec,
                                        bool force,
                                        Controller::Ptr const& controller,
-                                       std::string const& parentJobId,
+                                       string const& parentJobId,
                                        CallbackType const& onFinish,
                                        Job::Options const& options) {
     return QservSyncJob::Ptr(
@@ -75,11 +75,12 @@ QservSyncJob::Ptr QservSyncJob::create(std::string const& databaseFamily,
                          options));
 }
 
-QservSyncJob::QservSyncJob(std::string const& databaseFamily,
+
+QservSyncJob::QservSyncJob(string const& databaseFamily,
                            unsigned int requestExpirationIvalSec,
                            bool force,
                            Controller::Ptr const& controller,
-                           std::string const& parentJobId,
+                           string const& parentJobId,
                            CallbackType const& onFinish,
                            Job::Options const& options)
     :   Job(controller,
@@ -95,27 +96,30 @@ QservSyncJob::QservSyncJob(std::string const& databaseFamily,
         _numSuccess(0) {
 }
 
+
 QservSyncJobResult const& QservSyncJob::getReplicaData() const {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "getReplicaData");
 
     if (state() == State::FINISHED) return _replicaData;
 
-    throw std::logic_error(
-        "QservSyncJob::getReplicaData  the method can't be called while the job hasn't finished");
+    throw logic_error(
+                "QservSyncJob::getReplicaData  the method can't be called while "
+                "the job hasn't finished");
 }
 
-std::list<std::pair<std::string,std::string>> QservSyncJob::extendedPersistentState() const {
-    std::list<std::pair<std::string,std::string>> result;
+
+list<pair<string,string>> QservSyncJob::extendedPersistentState() const {
+    list<pair<string,string>> result;
     result.emplace_back("database_family", databaseFamily());
     result.emplace_back("force",           force() ? "1" : "0");
     return result;
 }
 
 
-std::list<std::pair<std::string,std::string>> QservSyncJob::persistentLogData() const {
+list<pair<string,string>> QservSyncJob::persistentLogData() const {
 
-    std::list<std::pair<std::string,std::string>> result;
+    list<pair<string,string>> result;
 
     auto&& replicaData = getReplicaData();
 
@@ -143,13 +147,14 @@ std::list<std::pair<std::string,std::string>> QservSyncJob::persistentLogData() 
         if (diff2(prevReplicas, newReplicas, inPrevReplicasOnly, inNewReplicasOnly)) {
             auto const val =
                 "worker="            + worker +
-                " removed-replicas=" + std::to_string(inPrevReplicasOnly.size()) +
-                " added-replicas="   + std::to_string(inNewReplicasOnly.size());
+                " removed-replicas=" + to_string(inPrevReplicasOnly.size()) +
+                " added-replicas="   + to_string(inNewReplicasOnly.size());
             result.emplace_back("worker-stats", val);
         }
     }
     return result;
 }
+
 
 void QservSyncJob::startImpl(util::Lock const& lock) {
 
@@ -167,12 +172,12 @@ void QservSyncJob::startImpl(util::Lock const& lock) {
         QservReplicaCollection newReplicas;
         for (auto&& database: databases) {
 
-            std::vector<ReplicaInfo> replicas;
+            vector<ReplicaInfo> replicas;
             try {
                 databaseServices->findWorkerReplicas(replicas,
                                                      worker,
                                                      database);
-            } catch (std::exception const&) {
+            } catch (exception const&) {
 
                 LOGS(_log, LOG_LVL_DEBUG, context()
                      << "startImpl  failed to pull replicas for worker: "
@@ -220,6 +225,7 @@ void QservSyncJob::startImpl(util::Lock const& lock) {
     else                  setState(lock, State::IN_PROGRESS);
 }
 
+
 void QservSyncJob::cancelImpl(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
@@ -234,12 +240,14 @@ void QservSyncJob::cancelImpl(util::Lock const& lock) {
     _numSuccess  = 0;
 }
 
+
 void QservSyncJob::notify(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
 
     notifyDefaultImpl<QservSyncJob>(lock, _onFinish);
 }
+
 
 void QservSyncJob::onRequestFinish(SetReplicasQservMgtRequest::Ptr const& request) {
 

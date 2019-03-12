@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -43,8 +42,7 @@ namespace replica {
   * Class StatusRequestBase represents the base class for a family of requests
   * pulling a status of on-going operation.
   */
-class StatusRequestBase
-    :   public RequestMessenger {
+class StatusRequestBase : public RequestMessenger {
 
 public:
 

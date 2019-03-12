@@ -1,7 +1,5 @@
-// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -30,7 +28,7 @@
 #include <string>
 
 // Qserv headers
-#include "replica/Common.h"        // ExtendedCompletionStatus
+#include "replica/Common.h"
 #include "replica/Performance.h"
 #include "replica/ServiceProvider.h"
 #include "util/Mutex.h"
@@ -45,11 +43,10 @@ namespace replica {
  * Structure WorkerRequestCancelled represent an exception thrown when
  * a replication request is cancelled
  */
-struct WorkerRequestCancelled
-    :   std::exception {
-
+class WorkerRequestCancelled : public std::exception {
+public:
     /// @return a short description of the exception
-    char const* what () const noexcept override {
+    char const* what() const noexcept override {
         return "cancelled";
     }
 };
@@ -60,8 +57,7 @@ struct WorkerRequestCancelled
   * environment (network, disk I/O, etc.). Generally speaking, all requests
   * which can't be implemented instantaneously fall into this category.
   */
-class WorkerRequest
-    :   public std::enable_shared_from_this<WorkerRequest> {
+class WorkerRequest : public std::enable_shared_from_this<WorkerRequest> {
 
 public:
 

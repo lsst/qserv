@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -191,8 +190,7 @@ struct StatusEchoRequestPolicy {
   * to allow further policy-based customization of specific requests.
   */
 template <typename POLICY>
-class StatusRequest
-    :   public StatusRequestBase {
+class StatusRequest : public StatusRequestBase {
 
 public:
 

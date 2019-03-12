@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -48,7 +47,7 @@ class WorkerRequestFactory;
  * system. The files must be read-write enabled for a user account
  * under which the test is run.
  */
-class WorkerAllApp: public Application {
+class WorkerAllApp : public Application {
 
 public:
 

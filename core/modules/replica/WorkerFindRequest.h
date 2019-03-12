@@ -1,7 +1,5 @@
-// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -46,8 +44,7 @@ class MultiFileCsComputeEngine;
   *
   * Real implementations of the request processing must derive from this class.
   */
-class WorkerFindRequest
-    :   public WorkerRequest {
+class WorkerFindRequest : public WorkerRequest {
 
 public:
 

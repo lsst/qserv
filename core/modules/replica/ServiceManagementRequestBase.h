@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -92,8 +91,7 @@ std::ostream& operator<< (std::ostream &os, const ServiceState &ss);
   * of the protocol. All final customizations and type-specific operations are
   * provided via a generic subclass.
   */
-class ServiceManagementRequestBase
-    :   public RequestMessenger {
+class ServiceManagementRequestBase : public RequestMessenger {
 
 public:
 

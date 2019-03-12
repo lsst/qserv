@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -33,6 +32,7 @@
 #include "replica/ProtocolBuffer.h"
 #include "replica/ServiceProvider.h"
 
+using namespace std;
 namespace proto = lsst::qserv::proto;
 
 namespace {
@@ -46,9 +46,9 @@ namespace qserv {
 namespace replica {
 
 FileClient::Ptr FileClient::instance(ServiceProvider::Ptr const& serviceProvider,
-                                     std::string const& workerName,
-                                     std::string const& databaseName,
-                                     std::string const& fileName,
+                                     string const& workerName,
+                                     string const& databaseName,
+                                     string const& fileName,
                                      bool readContent) {
     try {
         FileClient::Ptr ptr(
@@ -60,7 +60,7 @@ FileClient::Ptr FileClient::instance(ServiceProvider::Ptr const& serviceProvider
 
         if (ptr->openImpl()) return ptr;
 
-    } catch (std::exception const& ex) {
+    } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, "FileClient::instance  failed to construct an object for "
              << "worker: " << workerName
              << "database: " << databaseName
@@ -70,10 +70,11 @@ FileClient::Ptr FileClient::instance(ServiceProvider::Ptr const& serviceProvider
     return nullptr;
 }
 
+
 FileClient::FileClient(ServiceProvider::Ptr const& serviceProvider,
-                       std::string const& workerName,
-                       std::string const& databaseName,
-                       std::string const& fileName,
+                       string const& workerName,
+                       string const& databaseName,
+                       string const& fileName,
                        bool readContent)
     :   _workerInfo(serviceProvider->config()->workerInfo(workerName)),
         _databaseInfo(serviceProvider->config()->databaseInfo(databaseName)),
@@ -87,21 +88,25 @@ FileClient::FileClient(ServiceProvider::Ptr const& serviceProvider,
         _eof(false) {
 }
 
-std::string const& FileClient::worker() const {
+
+string const& FileClient::worker() const {
     return _workerInfo.name;
 }
 
-std::string const& FileClient::database() const {
+
+string const& FileClient::database() const {
     return _databaseInfo.name;
 }
 
-std::string const& FileClient::file() const {
+
+string const& FileClient::file() const {
     return _fileName;
 }
 
+
 bool FileClient::openImpl() {
 
-    static std::string const context = "FileClient::openImpl  ";
+    string const context = "FileClient::openImpl  ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
@@ -112,14 +117,14 @@ bool FileClient::openImpl() {
 
     boost::asio::ip::tcp::resolver::query query(
         _workerInfo.svcHost,
-        std::to_string(_workerInfo.fsPort)
+        to_string(_workerInfo.fsPort)
     );
     boost::asio::ip::tcp::resolver resolver(_io_service);
     boost::asio::ip::tcp::resolver::iterator iter =
         resolver.resolve(
             boost::asio::ip::tcp::resolver::query(
                 _workerInfo.svcHost,
-                std::to_string(_workerInfo.fsPort)),
+                to_string(_workerInfo.fsPort)),
         ec
     );
     if (ec.value() != 0) {
@@ -238,7 +243,7 @@ bool FileClient::openImpl() {
             return true;
         }
 
-    } catch (std::exception const& ex) {
+    } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context
              << "an exception occured while processing response from the server: "
              << _workerInfo.svcHost << ":" << _workerInfo.fsPort
@@ -251,19 +256,19 @@ bool FileClient::openImpl() {
 
 size_t FileClient::read(uint8_t* buf, size_t bufSize) {
 
-    static std::string const context = "FileClient::read  ";
+    string const context = "FileClient::read  ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
     if (not _readContent) {
         throw FileClientError(
             context + "this file was open in 'stat' mode, server: "
-            + _workerInfo.svcHost + ":" + std::to_string(_workerInfo.fsPort) +
+            + _workerInfo.svcHost + ":" + to_string(_workerInfo.fsPort) +
             ", database: " + database() +
             ", file: " + file());
     }
     if (not buf or not bufSize) {
-        throw std::invalid_argument(
+        throw invalid_argument(
                     context + "  zero buffer pointer or buffer size passed into the method");
     }
 
@@ -291,11 +296,11 @@ size_t FileClient::read(uint8_t* buf, size_t bufSize) {
         } else {
             throw FileClientError(
                         "failed to receive a data record from the server: " +
-                        _workerInfo.svcHost + ":" + std::to_string(_workerInfo.fsPort) +
+                        _workerInfo.svcHost + ":" + to_string(_workerInfo.fsPort) +
                         ", database: " + database() +
                         ", file: " + file() +
-                        ", bufSize: " + std::to_string(bufSize) +
-                        ", error code: " + std::to_string(ec.value()) +
+                        ", bufSize: " + to_string(bufSize) +
+                        ", error code: " + to_string(ec.value()) +
                         ", error message: " + ec.message());
         }
     } else {

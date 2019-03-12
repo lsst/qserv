@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -39,6 +38,8 @@
 #include "replica/ReplicaInfo.h"
 #include "replica/ServiceProvider.h"
 
+using namespace std;
+
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.EchoRequest");
@@ -51,13 +52,13 @@ namespace replica {
 
 EchoRequest::Ptr EchoRequest::create(ServiceProvider::Ptr const& serviceProvider,
                                      boost::asio::io_service& io_service,
-                                     std::string const& worker,
-                                     std::string const& data,
+                                     string const& worker,
+                                     string const& data,
                                      uint64_t delay,
                                      CallbackType const& onFinish,
                                      int priority,
                                      bool keepTracking,
-                                     std::shared_ptr<Messenger> const& messenger) {
+                                     shared_ptr<Messenger> const& messenger) {
     return EchoRequest::Ptr(
         new EchoRequest(serviceProvider,
                         io_service,
@@ -70,15 +71,16 @@ EchoRequest::Ptr EchoRequest::create(ServiceProvider::Ptr const& serviceProvider
                         messenger));
 }
 
+
 EchoRequest::EchoRequest(ServiceProvider::Ptr const& serviceProvider,
-                           boost::asio::io_service& io_service,
-                           std::string const& worker,
-                           std::string const& data,
-                           uint64_t delay,
-                           CallbackType const& onFinish,
-                           int  priority,
-                           bool keepTracking,
-                           std::shared_ptr<Messenger> const& messenger)
+                         boost::asio::io_service& io_service,
+                         string const& worker,
+                         string const& data,
+                         uint64_t delay,
+                         CallbackType const& onFinish,
+                         int  priority,
+                         bool keepTracking,
+                         shared_ptr<Messenger> const& messenger)
     :   RequestMessenger(serviceProvider,
                          io_service,
                          "REPLICA_ECHO",
@@ -92,9 +94,11 @@ EchoRequest::EchoRequest(ServiceProvider::Ptr const& serviceProvider,
         _onFinish(onFinish) {
 }
 
-std::string const& EchoRequest::responseData() const {
+
+string const& EchoRequest::responseData() const {
     return _responseData;
 }
+
 
 void EchoRequest::startImpl(util::Lock const& lock) {
 
@@ -125,6 +129,7 @@ void EchoRequest::startImpl(util::Lock const& lock) {
     send(lock);
 }
 
+
 void EchoRequest::wait(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "wait");
@@ -140,6 +145,7 @@ void EchoRequest::wait(util::Lock const& lock) {
         )
     );
 }
+
 
 void EchoRequest::awaken(boost::system::error_code const& ec) {
 
@@ -180,6 +186,7 @@ void EchoRequest::awaken(boost::system::error_code const& ec) {
     send(lock);
 }
 
+
 void EchoRequest::send(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "send");
@@ -190,7 +197,7 @@ void EchoRequest::send(util::Lock const& lock) {
         worker(),
         id(),
         buffer(),
-        [self] (std::string const& id,
+        [self] (string const& id,
                 bool success,
                 proto::ReplicationResponseEcho const& response) {
 
@@ -199,6 +206,7 @@ void EchoRequest::send(util::Lock const& lock) {
         }
     );
 }
+
 
 void EchoRequest::analyze(bool success,
                           proto::ReplicationResponseEcho const& message) {
@@ -287,11 +295,12 @@ void EchoRequest::analyze(bool success,
             break;
 
         default:
-            throw std::logic_error(
+            throw logic_error(
                     "EchoRequest::analyze() unknown status '" +
                     proto::ReplicationStatus_Name(message.status()) + "' received from server");
     }
 }
+
 
 void EchoRequest::notify(util::Lock const& lock) {
 
@@ -300,15 +309,17 @@ void EchoRequest::notify(util::Lock const& lock) {
     notifyDefaultImpl<EchoRequest>(lock, _onFinish);
 }
 
+
 void EchoRequest::savePersistentState(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << "savePersistentState");
     controller()->serviceProvider()->databaseServices()->saveState(*this, performance(lock));
 }
 
-std::list<std::pair<std::string,std::string>> EchoRequest::extendedPersistentState() const {
-    std::list<std::pair<std::string,std::string>> result;
-    result.emplace_back("data_length_bytes",  std::to_string(data().size()));
-    result.emplace_back("delay_milliseconds", std::to_string(delay()));
+
+list<pair<string,string>> EchoRequest::extendedPersistentState() const {
+    list<pair<string,string>> result;
+    result.emplace_back("data_length_bytes",  to_string(data().size()));
+    result.emplace_back("delay_milliseconds", to_string(delay()));
     return result;
 }
 

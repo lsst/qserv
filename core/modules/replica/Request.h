@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -52,8 +51,7 @@ class Controller;
   * Class Request is a base class for a family of requests within
   * the master server.
   */
-class Request
-    :   public std::enable_shared_from_this<Request>  {
+class Request : public std::enable_shared_from_this<Request>  {
 
 public:
 

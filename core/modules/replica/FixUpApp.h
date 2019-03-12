@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -37,7 +36,7 @@ namespace replica {
  * effort to leave worker nodes as balanced as possible, and it will also preserve chunk
  * collocation.
  */
-class FixUpApp: public Application {
+class FixUpApp : public Application {
 
 public:
 

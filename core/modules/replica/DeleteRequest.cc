@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -40,6 +39,8 @@
 #include "replica/ProtocolBuffer.h"
 #include "replica/ServiceProvider.h"
 
+using namespace std;
+
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.DeleteRequest");
@@ -52,14 +53,14 @@ namespace replica {
 
 DeleteRequest::Ptr DeleteRequest::create(ServiceProvider::Ptr const& serviceProvider,
                                          boost::asio::io_service& io_service,
-                                         std::string const& worker,
-                                         std::string const& database,
+                                         string const& worker,
+                                         string const& database,
                                          unsigned int  chunk,
                                          CallbackType const& onFinish,
                                          int  priority,
                                          bool keepTracking,
                                          bool allowDuplicate,
-                                         std::shared_ptr<Messenger> const& messenger) {
+                                         shared_ptr<Messenger> const& messenger) {
     return DeleteRequest::Ptr(
         new DeleteRequest(
             serviceProvider,
@@ -74,16 +75,17 @@ DeleteRequest::Ptr DeleteRequest::create(ServiceProvider::Ptr const& serviceProv
             messenger));
 }
 
+
 DeleteRequest::DeleteRequest(ServiceProvider::Ptr const& serviceProvider,
                              boost::asio::io_service& io_service,
-                             std::string const& worker,
-                             std::string const& database,
+                             string const& worker,
+                             string const& database,
                              unsigned int  chunk,
                              CallbackType const& onFinish,
                              int  priority,
                              bool keepTracking,
                              bool allowDuplicate,
-                             std::shared_ptr<Messenger> const& messenger)
+                             shared_ptr<Messenger> const& messenger)
     :   RequestMessenger(serviceProvider,
                          io_service,
                          "REPLICA_DELETE",
@@ -98,6 +100,7 @@ DeleteRequest::DeleteRequest(ServiceProvider::Ptr const& serviceProvider,
 
     Request::serviceProvider()->assertDatabaseIsValid(database);
 }
+
 
 void DeleteRequest::startImpl(util::Lock const& lock) {
 
@@ -125,6 +128,7 @@ void DeleteRequest::startImpl(util::Lock const& lock) {
     send(lock);
 }
 
+
 void DeleteRequest::wait(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "wait");
@@ -140,6 +144,7 @@ void DeleteRequest::wait(util::Lock const& lock) {
         )
     );
 }
+
 
 void DeleteRequest::awaken(boost::system::error_code const& ec) {
 
@@ -180,6 +185,7 @@ void DeleteRequest::awaken(boost::system::error_code const& ec) {
     send(lock);
 }
 
+
 void DeleteRequest::send(util::Lock const& lock) {
 
     auto self = shared_from_base<DeleteRequest>();
@@ -188,7 +194,7 @@ void DeleteRequest::send(util::Lock const& lock) {
         worker(),
         id(),
         buffer(),
-        [self] (std::string const& id,
+        [self] (string const& id,
                 bool success,
                 proto::ReplicationResponseDelete const& response) {
 
@@ -197,6 +203,7 @@ void DeleteRequest::send(util::Lock const& lock) {
         }
     );
 }
+
 
 void DeleteRequest::analyze(bool success,
                             proto::ReplicationResponseDelete const& message) {
@@ -300,12 +307,13 @@ void DeleteRequest::analyze(bool success,
             break;
 
         default:
-            throw std::logic_error(
+            throw logic_error(
                     "DeleteRequest::analyze() unknown status '" +
                     proto::ReplicationStatus_Name(message.status()) +
                     "' received from server");
     }
 }
+
 
 void DeleteRequest::notify(util::Lock const& lock) {
 
@@ -314,14 +322,16 @@ void DeleteRequest::notify(util::Lock const& lock) {
     notifyDefaultImpl<DeleteRequest>(lock, _onFinish);
 }
 
+
 void DeleteRequest::savePersistentState(util::Lock const& lock) {
     controller()->serviceProvider()->databaseServices()->saveState(*this, performance(lock));
 }
 
-std::list<std::pair<std::string,std::string>> DeleteRequest::extendedPersistentState() const {
-    std::list<std::pair<std::string,std::string>> result;
+
+list<pair<string,string>> DeleteRequest::extendedPersistentState() const {
+    list<pair<string,string>> result;
     result.emplace_back("database", database());
-    result.emplace_back("chunk",    std::to_string(chunk()));
+    result.emplace_back("chunk",    to_string(chunk()));
     return result;
 }
 

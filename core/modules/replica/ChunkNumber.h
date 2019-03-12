@@ -100,8 +100,7 @@ private:
  * base class. The class is based on a closed interval of 'valid' chunk
  * numbers whose boundaries are passed into the normal constructor of the class.
  */
-class ChunkNumberSingleRangeValidator
-    :   public ChunkNumberValidator {
+class ChunkNumberSingleRangeValidator : public ChunkNumberValidator {
 
 public:
 
@@ -135,8 +134,7 @@ private:
  * Class ChunkNumberQservValidator extends and completes) its abstract
  * base class. The class is based on the Qserv partitioning algorithm..
  */
-class ChunkNumberQservValidator
-    :   public ChunkNumberValidator {
+class ChunkNumberQservValidator : public ChunkNumberValidator {
 
 public:
 

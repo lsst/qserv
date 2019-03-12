@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -30,9 +29,10 @@
 #include <sstream>
 #include <vector>
 
-
 // Qserv headers
 #include "replica/ChunkNumber.h"
+
+using namespace std;
 
 namespace {
 
@@ -40,15 +40,15 @@ using namespace lsst::qserv::replica;
 
 template <typename T>
 bool tryParameter(database::mysql::Row& row,
-                  std::string const&    desiredCategory,
-                  std::string const&    desiredParam,
+                  string const&    desiredCategory,
+                  string const&    desiredParam,
                   T&                    value) {
 
-    std::string category;
+    string category;
     row.get("category", category);
     if (desiredCategory != category) return false;
 
-    std::string param;
+    string param;
     row.get("param", param);
     if (desiredParam != param) return false;
 
@@ -56,31 +56,34 @@ bool tryParameter(database::mysql::Row& row,
     return true;
 }
 
+
 template <typename T>
 void readMandatoryParameter(database::mysql::Row& row,
-                            std::string const&    name,
+                            string const&    name,
                             T&                    value) {
     if (not row.get(name, value)) {
-        throw std::runtime_error(
-                "ConfigurationMySQL::" + std::string(__func__) + "  the field '" + name +
+        throw runtime_error(
+                "ConfigurationMySQL::" + string(__func__) + "  the field '" + name +
                 "' is not allowed to be NULL");
     }
 }
 
+
 template <typename T>
 void readOptionalParameter(database::mysql::Row& row,
-                           std::string const&    name,
-                           T&                    value,
-                           T const&              defaultValue) {
+                           string const& name,
+                           T& value,
+                           T const& defaultValue) {
     if (not row.get(name, value)) {
         value = defaultValue;
     }
 }
 
+
 template<class T>
-void configInsert(std::ostream& os,
-                  std::string const& category,
-                  std::string const& param,
+void configInsert(ostream& os,
+                  string const& category,
+                  string const& param,
                   T const& val) {
     os << "INSERT INTO `config` VALUES ('" << category << "', '" << param << "', '" << val << "');\n";
 }
@@ -91,8 +94,7 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-
-std::string ConfigurationMySQL::dump2init(Configuration::Ptr const& config) {
+string ConfigurationMySQL::dump2init(Configuration::Ptr const& config) {
 
     using namespace std;
 
@@ -172,20 +174,19 @@ ConfigurationMySQL::ConfigurationMySQL(database::mysql::ConnectionParams const& 
 }
 
 
-std::string ConfigurationMySQL::prefix() const {
+string ConfigurationMySQL::prefix() const {
     return _databaseTechnology;
 }
 
 
-std::string ConfigurationMySQL::configUrl() const {
-    return   _connectionParams.toString();
-    //return  _databaseTechnology + ":" + _connectionParams.toString();
+string ConfigurationMySQL::configUrl() const {
+    return _connectionParams.toString();
 }
 
 
 void ConfigurationMySQL::addWorker(WorkerInfo const& info) {
 
-    std::string const context_ = context() + std::string(__func__);
+    string const context_ = context() + string(__func__);
 
     LOGS(_log, LOG_LVL_DEBUG, context_ << "  name=" << info.name);
 
@@ -226,9 +227,9 @@ void ConfigurationMySQL::addWorker(WorkerInfo const& info) {
 }
 
 
-void ConfigurationMySQL::deleteWorker(std::string const& name) {
+void ConfigurationMySQL::deleteWorker(string const& name) {
 
-    std::string const context_ = context() + std::string(__func__);
+    string const context_ = context() + string(__func__);
 
     LOGS(_log, LOG_LVL_DEBUG, context_ << "  name=" << name);
 
@@ -260,10 +261,10 @@ void ConfigurationMySQL::deleteWorker(std::string const& name) {
 }
 
 
-WorkerInfo ConfigurationMySQL::disableWorker(std::string const& name,
+WorkerInfo ConfigurationMySQL::disableWorker(string const& name,
                                              bool disable) {
 
-    std::string const context_ = context() + std::string(__func__);
+    string const context_ = context() + string(__func__);
 
     LOGS(_log, LOG_LVL_DEBUG, context_ << "  name=" << name
          << " disable=" << (disable ? "true" : "false"));
@@ -280,7 +281,7 @@ WorkerInfo ConfigurationMySQL::disableWorker(std::string const& name,
                 conn->executeSimpleUpdateQuery(
                     "config_worker",
                     conn->sqlEqual("name", name),
-                    std::make_pair("is_enabled", disable ? 0 : 1));
+                    make_pair("is_enabled", disable ? 0 : 1));
                 conn->commit();
             }
         );
@@ -300,10 +301,10 @@ WorkerInfo ConfigurationMySQL::disableWorker(std::string const& name,
 }
 
 
-WorkerInfo ConfigurationMySQL::setWorkerReadOnly(std::string const& name,
+WorkerInfo ConfigurationMySQL::setWorkerReadOnly(string const& name,
                                                  bool readOnly) {
 
-    std::string const context_ = context() + std::string(__func__);
+    string const context_ = context() + string(__func__);
 
     LOGS(_log, LOG_LVL_DEBUG, context_ << "  name=" << name
          << " readOnly=" << (readOnly ? "true" : "false"));
@@ -320,7 +321,7 @@ WorkerInfo ConfigurationMySQL::setWorkerReadOnly(std::string const& name,
                 conn->executeSimpleUpdateQuery(
                     "config_worker",
                     conn->sqlEqual("name", name),
-                    std::make_pair("is_read_only", readOnly ? 1 : 0));
+                    make_pair("is_read_only", readOnly ? 1 : 0));
                 conn->commit();
             }
         );
@@ -340,10 +341,10 @@ WorkerInfo ConfigurationMySQL::setWorkerReadOnly(std::string const& name,
 }
 
 
-WorkerInfo ConfigurationMySQL::setWorkerSvcHost(std::string const& name,
-                                                std::string const& host) {
+WorkerInfo ConfigurationMySQL::setWorkerSvcHost(string const& name,
+                                                string const& host) {
 
-    std::string const context_ = context() + std::string(__func__);
+    string const context_ = context() + string(__func__);
 
     LOGS(_log, LOG_LVL_DEBUG, context_ << "  name=" << name << " host=" << host);
 
@@ -358,7 +359,7 @@ WorkerInfo ConfigurationMySQL::setWorkerSvcHost(std::string const& name,
                 conn->executeSimpleUpdateQuery(
                     "config_worker",
                     conn->sqlEqual("name", name),
-                    std::make_pair("svc_host", host));
+                    make_pair("svc_host", host));
                 conn->commit();
             }
         );
@@ -378,10 +379,10 @@ WorkerInfo ConfigurationMySQL::setWorkerSvcHost(std::string const& name,
 }
 
 
-WorkerInfo ConfigurationMySQL::setWorkerSvcPort(std::string const& name,
+WorkerInfo ConfigurationMySQL::setWorkerSvcPort(string const& name,
                                                 uint16_t port) {
 
-    std::string const context_ = context() + std::string(__func__);
+    string const context_ = context() + string(__func__);
 
     LOGS(_log, LOG_LVL_DEBUG, context_ << "  name=" << name << " port=" << port);
 
@@ -396,7 +397,7 @@ WorkerInfo ConfigurationMySQL::setWorkerSvcPort(std::string const& name,
                 conn->executeSimpleUpdateQuery(
                     "config_worker",
                     conn->sqlEqual("name", name),
-                    std::make_pair("svc_port", port));
+                    make_pair("svc_port", port));
                 conn->commit();
             }
         );
@@ -416,10 +417,10 @@ WorkerInfo ConfigurationMySQL::setWorkerSvcPort(std::string const& name,
 }
 
 
-WorkerInfo ConfigurationMySQL::setWorkerFsHost(std::string const& name,
-                                               std::string const& host) {
+WorkerInfo ConfigurationMySQL::setWorkerFsHost(string const& name,
+                                               string const& host) {
 
-    std::string const context_ = context() + std::string(__func__);
+    string const context_ = context() + string(__func__);
 
     LOGS(_log, LOG_LVL_DEBUG, context_ << "  name=" << name << " host=" << host);
 
@@ -434,7 +435,7 @@ WorkerInfo ConfigurationMySQL::setWorkerFsHost(std::string const& name,
                 conn->executeSimpleUpdateQuery(
                     "config_worker",
                     conn->sqlEqual("name", name),
-                    std::make_pair("fs_host", host));
+                    make_pair("fs_host", host));
                 conn->commit();
             }
         );
@@ -454,10 +455,10 @@ WorkerInfo ConfigurationMySQL::setWorkerFsHost(std::string const& name,
 }
 
 
-WorkerInfo ConfigurationMySQL::setWorkerFsPort(std::string const& name,
+WorkerInfo ConfigurationMySQL::setWorkerFsPort(string const& name,
                                                uint16_t port) {
 
-    std::string const context_ = context() + std::string(__func__);
+    string const context_ = context() + string(__func__);
 
     LOGS(_log, LOG_LVL_DEBUG, context_ << "  name=" << name << " port=" << port);
 
@@ -472,7 +473,7 @@ WorkerInfo ConfigurationMySQL::setWorkerFsPort(std::string const& name,
                 conn->executeSimpleUpdateQuery(
                     "config_worker",
                     conn->sqlEqual("name", name),
-                    std::make_pair("fs_port", port));
+                    make_pair("fs_port", port));
                 conn->commit();
             }
         );
@@ -492,10 +493,10 @@ WorkerInfo ConfigurationMySQL::setWorkerFsPort(std::string const& name,
 }
 
 
-WorkerInfo ConfigurationMySQL::setWorkerDataDir(std::string const& name,
-                                                std::string const& dataDir) {
+WorkerInfo ConfigurationMySQL::setWorkerDataDir(string const& name,
+                                                string const& dataDir) {
 
-    std::string const context_ = context() + std::string(__func__);
+    string const context_ = context() + string(__func__);
 
     LOGS(_log, LOG_LVL_DEBUG, context_ << "  name=" << name << " dataDir=" << dataDir);
 
@@ -510,7 +511,7 @@ WorkerInfo ConfigurationMySQL::setWorkerDataDir(std::string const& name,
                 conn->executeSimpleUpdateQuery(
                     "config_worker",
                     conn->sqlEqual("name", name),
-                    std::make_pair("data_dir", dataDir));
+                    make_pair("data_dir", dataDir));
                 conn->commit();
             }
         );
@@ -532,21 +533,21 @@ WorkerInfo ConfigurationMySQL::setWorkerDataDir(std::string const& name,
 
 DatabaseFamilyInfo ConfigurationMySQL::addDatabaseFamily(DatabaseFamilyInfo const& info) {
 
-    std::string const context_ = context() + std::string(__func__);
+    string const context_ = context() + string(__func__);
 
     LOGS(_log, LOG_LVL_DEBUG, context_ << "  familyInfo: " << info);
     
     if (info.name.empty()) {
-        throw std::invalid_argument(context_ + "  the family name can't be empty");
+        throw invalid_argument(context_ + "  the family name can't be empty");
     }
     if (info.replicationLevel == 0) {
-        throw std::invalid_argument(context_ + "  the replication level can't be 0");
+        throw invalid_argument(context_ + "  the replication level can't be 0");
     }
     if (info.numStripes == 0) {
-        throw std::invalid_argument(context_ + "  the number of stripes level can't be 0");
+        throw invalid_argument(context_ + "  the number of stripes level can't be 0");
     }
     if (info.numSubStripes == 0) {
-        throw std::invalid_argument(context_ + "  the number of sub-stripes level can't be 0");
+        throw invalid_argument(context_ + "  the number of sub-stripes level can't be 0");
     }
 
     database::mysql::ConnectionHandler handler;
@@ -577,7 +578,7 @@ DatabaseFamilyInfo ConfigurationMySQL::addDatabaseFamily(DatabaseFamilyInfo cons
             info.replicationLevel,
             info.numStripes,
             info.numSubStripes,
-            std::make_shared<ChunkNumberQservValidator>(
+            make_shared<ChunkNumberQservValidator>(
                 static_cast<int32_t>(info.numStripes),
                 static_cast<int32_t>(info.numSubStripes))
         };
@@ -590,14 +591,14 @@ DatabaseFamilyInfo ConfigurationMySQL::addDatabaseFamily(DatabaseFamilyInfo cons
 }
 
 
-void ConfigurationMySQL::deleteDatabaseFamily(std::string const& name) {
+void ConfigurationMySQL::deleteDatabaseFamily(string const& name) {
 
-    std::string const context_ = context() + std::string(__func__);
+    string const context_ = context() + string(__func__);
 
     LOGS(_log, LOG_LVL_DEBUG, context_ << "  name: " << name);
 
     if (name.empty()) {
-        throw std::invalid_argument(context_ + "  the family name can't be empty");
+        throw invalid_argument(context_ + "  the family name can't be empty");
     }
 
     database::mysql::ConnectionHandler handler;
@@ -643,18 +644,18 @@ void ConfigurationMySQL::deleteDatabaseFamily(std::string const& name) {
 
 DatabaseInfo ConfigurationMySQL::addDatabase(DatabaseInfo const& info) {
 
-    std::string const context_ = context() + std::string(__func__);
+    string const context_ = context() + string(__func__);
 
     LOGS(_log, LOG_LVL_DEBUG, context_ << "  familyInfo: " << info);
     
     if (info.name.empty()) {
-        throw std::invalid_argument(context_ + "  the database name can't be empty");
+        throw invalid_argument(context_ + "  the database name can't be empty");
     }
     if (info.family.empty()) {
-        throw std::invalid_argument(context_ + "  the family name can't be empty");
+        throw invalid_argument(context_ + "  the family name can't be empty");
     }
     if (not isKnownDatabaseFamily(info.family)) {
-        throw std::invalid_argument(context_ + "  unknown database family: '" + info.family + "'");
+        throw invalid_argument(context_ + "  unknown database family: '" + info.family + "'");
     }
 
     database::mysql::ConnectionHandler handler;
@@ -693,14 +694,14 @@ DatabaseInfo ConfigurationMySQL::addDatabase(DatabaseInfo const& info) {
 }
 
 
-void ConfigurationMySQL::deleteDatabase(std::string const& name) {
+void ConfigurationMySQL::deleteDatabase(string const& name) {
 
-    std::string const context_ = context() + std::string(__func__);
+    string const context_ = context() + string(__func__);
 
     LOGS(_log, LOG_LVL_DEBUG, context_ << "  name: " << name);
 
     if (name.empty()) {
-        throw std::invalid_argument(context_ + "  the database name can't be empty");
+        throw invalid_argument(context_ + "  the database name can't be empty");
     }
 
     database::mysql::ConnectionHandler handler;
@@ -735,23 +736,23 @@ void ConfigurationMySQL::deleteDatabase(std::string const& name) {
 }
 
 
-DatabaseInfo ConfigurationMySQL::addTable(std::string const& database,
-                                          std::string const& table,
+DatabaseInfo ConfigurationMySQL::addTable(string const& database,
+                                          string const& table,
                                           bool isPartitioned) {
 
-    std::string const context_ = context() + std::string(__func__);
+    string const context_ = context() + string(__func__);
 
     LOGS(_log, LOG_LVL_DEBUG, context_ << "  database: " << database
          << " table: " << table << " isPartitioned: " << (isPartitioned ? "true" : "false"));
 
     if (database.empty()) {
-        throw std::invalid_argument(context_ + "  the database name can't be empty");
+        throw invalid_argument(context_ + "  the database name can't be empty");
     }
     if (table.empty()) {
-        throw std::invalid_argument(context_ + "  the table name can't be empty");
+        throw invalid_argument(context_ + "  the table name can't be empty");
     }
     if (not isKnownDatabase(database)) {
-        throw std::invalid_argument(context_ + "  unknown database");
+        throw invalid_argument(context_ + "  unknown database");
     }
 
     database::mysql::ConnectionHandler handler;
@@ -791,22 +792,22 @@ DatabaseInfo ConfigurationMySQL::addTable(std::string const& database,
 }
 
 
-DatabaseInfo ConfigurationMySQL::deleteTable(std::string const& database,
-                                             std::string const& table) {
+DatabaseInfo ConfigurationMySQL::deleteTable(string const& database,
+                                             string const& table) {
 
-    std::string const context_ = context() + std::string(__func__);
+    string const context_ = context() + string(__func__);
 
     LOGS(_log, LOG_LVL_DEBUG, context_ << "  database: " << database
          << " table: " << table);
 
     if (database.empty()) {
-        throw std::invalid_argument(context_ + "  the database name can't be empty");
+        throw invalid_argument(context_ + "  the database name can't be empty");
     }
     if (table.empty()) {
-        throw std::invalid_argument(context_ + "  the table name can't be empty");
+        throw invalid_argument(context_ + "  the table name can't be empty");
     }
     if (not isKnownDatabase(database)) {
-        throw std::invalid_argument(context_ + "  unknown database");
+        throw invalid_argument(context_ + "  unknown database");
     }
 
     database::mysql::ConnectionHandler handler;
@@ -835,15 +836,15 @@ DatabaseInfo ConfigurationMySQL::deleteTable(std::string const& database,
 
         auto& info = _databaseInfo[database];
 
-        auto pTableItr = std::find(info.partitionedTables.cbegin(),
-                                   info.partitionedTables.cend(),
-                                   table);
+        auto pTableItr = find(info.partitionedTables.cbegin(),
+                              info.partitionedTables.cend(),
+                              table);
         if (pTableItr != info.partitionedTables.cend()) {
             info.partitionedTables.erase(pTableItr);
         }
-        auto rTableItr = std::find(info.regularTables.cbegin(),
-                                   info.regularTables.cend(),
-                                   table);
+        auto rTableItr = find(info.regularTables.cbegin(),
+                              info.regularTables.cend(),
+                              table);
         if (rTableItr != info.regularTables.cend()) {
             info.regularTables.erase(rTableItr);
         }
@@ -858,7 +859,7 @@ DatabaseInfo ConfigurationMySQL::deleteTable(std::string const& database,
 
 void ConfigurationMySQL::loadConfiguration() {
 
-    std::string const context_ = context() + std::string(__func__);
+    string const context_ = context() + string(__func__);
 
     LOGS(_log, LOG_LVL_DEBUG, context_);
 
@@ -886,9 +887,9 @@ void ConfigurationMySQL::loadConfigurationImpl(util::Lock const& lock,
     // from table 'config' and be used as defaults when reading worker-specific
     // configurations from table 'config_worker'
 
-    uint16_t    commonWorkerSvcPort = Configuration::defaultWorkerSvcPort;
-    uint16_t    commonWorkerFsPort  = Configuration::defaultWorkerFsPort;
-    std::string commonWorkerDataDir = Configuration::defaultDataDir;
+    uint16_t commonWorkerSvcPort = Configuration::defaultWorkerSvcPort;
+    uint16_t commonWorkerFsPort  = Configuration::defaultWorkerFsPort;
+    string   commonWorkerDataDir = Configuration::defaultDataDir;
 
     database::mysql::Row row;
 
@@ -953,7 +954,7 @@ void ConfigurationMySQL::loadConfigurationImpl(util::Lock const& lock,
 
     while (conn->next(row)) {
 
-        std::string name;
+        string name;
 
         ::readMandatoryParameter(row, "name", name);
         _databaseFamilyInfo[name].name = name;
@@ -963,7 +964,7 @@ void ConfigurationMySQL::loadConfigurationImpl(util::Lock const& lock,
         ::readMandatoryParameter(row, "num_sub_stripes",       _databaseFamilyInfo[name].numSubStripes);
 
         _databaseFamilyInfo[name].chunkNumberValidator =
-            std::make_shared<ChunkNumberQservValidator>(
+            make_shared<ChunkNumberQservValidator>(
                     static_cast<int32_t>(_databaseFamilyInfo[name].numStripes),
                     static_cast<int32_t>(_databaseFamilyInfo[name].numSubStripes));
     }
@@ -974,7 +975,7 @@ void ConfigurationMySQL::loadConfigurationImpl(util::Lock const& lock,
 
     while (conn->next(row)) {
 
-        std::string database;
+        string database;
         ::readMandatoryParameter(row, "database", database);
         _databaseInfo[database].name = database;
 
@@ -987,10 +988,10 @@ void ConfigurationMySQL::loadConfigurationImpl(util::Lock const& lock,
 
     while (conn->next(row)) {
 
-        std::string database;
+        string database;
         ::readMandatoryParameter(row, "database", database);
 
-        std::string table;
+        string table;
         ::readMandatoryParameter(row, "table", table);
 
         bool isPartitioned;
@@ -1014,12 +1015,12 @@ void ConfigurationMySQL::loadConfigurationImpl(util::Lock const& lock,
 }
 
 
-void ConfigurationMySQL::_setImp(std::string const& category,
-                                 std::string const& param,
+void ConfigurationMySQL::_setImp(string const& category,
+                                 string const& param,
                                  SetValueExprFunc const& setValueExprFunc,
-                                 std::function<void()> const& onSuccess) {
+                                 function<void()> const& onSuccess) {
 
-    std::string const context_ = context() + std::string(__func__);
+    string const context_ = context() + string(__func__);
 
     LOGS(_log, LOG_LVL_DEBUG, context_ << "  category: " << category << " param: " << param);
 
@@ -1028,7 +1029,7 @@ void ConfigurationMySQL::_setImp(std::string const& category,
         handler.conn = database::mysql::Connection::open(_connectionParams);
         handler.conn->execute(
             [&category,&param,&setValueExprFunc](decltype(handler.conn) conn) {
-                std::ostringstream query;
+                ostringstream query;
                 query << "UPDATE  " << conn->sqlId("config")
                       << "  SET   " << setValueExprFunc(conn)
                       << "  WHERE " << conn->sqlEqual("category", category)

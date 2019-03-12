@@ -1,7 +1,5 @@
-// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -41,8 +39,7 @@ namespace replica {
   * Requests of this type don't have any side effects (in terms of modifying
   * any files or databases).
   */
-class WorkerEchoRequest
-    :   public WorkerRequest {
+class WorkerEchoRequest : public WorkerRequest {
 
 public:
 

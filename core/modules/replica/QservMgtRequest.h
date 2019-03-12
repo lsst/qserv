@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -51,8 +50,7 @@ namespace replica {
   * Class QservMgtRequest is a base class for a family of the Qserv worker
   * management requests within the master server.
   */
-class QservMgtRequest
-    :   public std::enable_shared_from_this<QservMgtRequest>  {
+class QservMgtRequest : public std::enable_shared_from_this<QservMgtRequest>  {
 
 public:
 

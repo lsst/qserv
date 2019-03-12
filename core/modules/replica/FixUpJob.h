@@ -1,7 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
- *
+= *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
  *
@@ -67,8 +66,7 @@ struct FixUpJobResult {
   * the ('fixup') operation chunks may get a higher number of replicas
   * then others (not affected by the operation).
   */
-class FixUpJob
-    :   public Job  {
+class FixUpJob : public Job  {
 
 public:
 

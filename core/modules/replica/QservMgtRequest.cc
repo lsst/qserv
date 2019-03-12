@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -37,6 +36,7 @@
 #include "replica/DatabaseServices.h"
 #include "replica/ServiceProvider.h"
 
+using namespace std;
 
 namespace {
 
@@ -48,19 +48,21 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-std::atomic<size_t> QservMgtRequest::_numClassInstances(0);
+atomic<size_t> QservMgtRequest::_numClassInstances(0);
 
-std::string QservMgtRequest::state2string(State state) {
+
+string QservMgtRequest::state2string(State state) {
     switch (state) {
         case State::CREATED:     return "CREATED";
         case State::IN_PROGRESS: return "IN_PROGRESS";
         case State::FINISHED:    return "FINISHED";
     }
-    throw std::logic_error(
-                    "incomplete implementation of method QservMgtRequest::state2string(State)");
+    throw logic_error(
+                 "incomplete implementation of method QservMgtRequest::state2string(State)");
 }
 
-std::string QservMgtRequest::state2string(ExtendedState state) {
+
+string QservMgtRequest::state2string(ExtendedState state) {
     switch (state) {
         case ExtendedState::NONE:                return "NONE";
         case ExtendedState::SUCCESS:             return "SUCCESS";
@@ -71,13 +73,14 @@ std::string QservMgtRequest::state2string(ExtendedState state) {
         case ExtendedState::TIMEOUT_EXPIRED:     return "TIMEOUT_EXPIRED";
         case ExtendedState::CANCELLED:           return "CANCELLED";
     }
-    throw std::logic_error(
-                    "incomplete implementation of method QservMgtRequest::state2string(ExtendedState)");
+    throw logic_error(
+                "incomplete implementation of method QservMgtRequest::state2string(ExtendedState)");
 }
 
+
 QservMgtRequest::QservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
-                                 std::string const& type,
-                                 std::string const& worker)
+                                 string const& type,
+                                 string const& worker)
     :   _serviceProvider(serviceProvider),
         _type(type),
         _id(Generators::uniqueId()),
@@ -94,43 +97,51 @@ QservMgtRequest::QservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
     LOGS(_log, LOG_LVL_DEBUG, context() << "constructed  instances: " << _numClassInstances);
 }
 
+
 QservMgtRequest::~QservMgtRequest() {
     --_numClassInstances;
     LOGS(_log, LOG_LVL_DEBUG, context() << "destructed   instances: " << _numClassInstances);
 }
 
-std::string QservMgtRequest::state2string() const {
+
+string QservMgtRequest::state2string() const {
     util::Lock lock(_mtx, context() + "state2string");
     return state2string(state(), extendedState()) + "::" + serverError(lock);
 }
 
-std::string QservMgtRequest::serverError() const {
+
+string QservMgtRequest::serverError() const {
     util::Lock lock(_mtx, context() + "serverError");
     return serverError(lock);
 }
 
-std::string QservMgtRequest::serverError(util::Lock const& lock) const {
+
+string QservMgtRequest::serverError(util::Lock const& lock) const {
     return _serverError;
 }
 
-std::string QservMgtRequest::context() const {
+
+string QservMgtRequest::context() const {
     return id() +
         "  " + type() +
         "  " + state2string(state(), extendedState()) +
         "  ";
 }
 
+
 Performance QservMgtRequest::performance() const {
     util::Lock lock(_mtx, context() + "performance");
     return performance(lock);
 }
 
+
 Performance QservMgtRequest::performance(util::Lock const& lock) const {
     return _performance;
 }
 
+
 void QservMgtRequest::start(XrdSsiService* service,
-                            std::string const& jobId,
+                            string const& jobId,
                             unsigned int requestExpirationIvalSec) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "start");
@@ -196,13 +207,15 @@ void QservMgtRequest::start(XrdSsiService* service,
              State::IN_PROGRESS);
 }
 
-std::string const& QservMgtRequest::jobId() const {
+
+string const& QservMgtRequest::jobId() const {
     if (_state == State::CREATED) {
-        throw std::logic_error(
-            "the Job Id is not available because the request has not started yet");
+        throw logic_error(
+                    "the Job Id is not available because the request has not started yet");
     }
     return _jobId;
 }
+
 
 void QservMgtRequest::expired(boost::system::error_code const& ec) {
 
@@ -228,6 +241,7 @@ void QservMgtRequest::expired(boost::system::error_code const& ec) {
     finish(lock, ExtendedState::TIMEOUT_EXPIRED);
 }
 
+
 void QservMgtRequest::cancel() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancel");
@@ -247,9 +261,10 @@ void QservMgtRequest::cancel() {
     finish(lock, ExtendedState::CANCELLED);
 }
 
+
 void QservMgtRequest::finish(util::Lock const& lock,
                              ExtendedState extendedState,
-                             std::string const& serverError) {
+                             string const& serverError) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "finish");
 
@@ -286,18 +301,21 @@ void QservMgtRequest::finish(util::Lock const& lock,
     notify(lock);
 }
 
+
 void QservMgtRequest::assertState(State desiredState,
-                                  std::string const& context) const {
+                                  string const& context) const {
     if (desiredState != state()) {
-        throw std::logic_error(
-            context + ": wrong state " + state2string(state()) + " instead of " + state2string(desiredState));
+        throw logic_error(
+                    context + ": wrong state " + state2string(state()) + " instead of " +
+                    state2string(desiredState));
     }
 }
 
+
 void QservMgtRequest::setState(util::Lock const& lock,
                                State newState,
-                               ExtendedState newExtendedState)
-{
+                               ExtendedState newExtendedState) {
+
     LOGS(_log, LOG_LVL_DEBUG, context() << "setState  " << state2string(newState, newExtendedState));
 
     // IMPORTANT: the top-level state is the last to be set when performing

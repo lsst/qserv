@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -95,13 +94,13 @@ int MessengerTestApp::runImpl() {
 
     if (_numIterations <= 0) {
         throw invalid_argument(
-                std::string(__func__) + ": the number of iterations must be strictly greater than 0");
+                    string(__func__) + ": the number of iterations must be strictly greater than 0");
     }
     if (_cancelAfterIter > 0 and _cancelAfterIter > _numIterations) {
         throw invalid_argument(
-                std::string(__func__) +
-                ": the number of iteration after which to cancel a message must not exceed"
-                " the total number of iterations");
+                    string(__func__) +
+                    ": the number of iteration after which to cancel a message must not exceed"
+                    " the total number of iterations");
     }
 
     // Instantiate the messenger configured in the same way as Controller 

@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -38,7 +37,7 @@ namespace replica {
  * Class ControllerApp implements a tool for testing all known types of
  * the Controller requests.
  */
-class ControllerApp: public Application {
+class ControllerApp : public Application {
 
 public:
 

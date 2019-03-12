@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -43,8 +42,7 @@ namespace replica {
  * the Replication and Qserv worker services and report worker(s) eligible
  * for eviction if they're not responding within the specified timeout.
  */
-class HealthMonitorTask
-    :   public Task {
+class HealthMonitorTask : public Task {
 
 public:
 

@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -45,8 +44,7 @@ namespace replica {
   * Class SetReplicasQservMgtRequest implements a request for setting new
   * collections Qserv workers.
   */
-class SetReplicasQservMgtRequest
-    :   public QservMgtRequest  {
+class SetReplicasQservMgtRequest : public QservMgtRequest  {
 
 public:
 

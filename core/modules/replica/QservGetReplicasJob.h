@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -68,8 +67,7 @@ struct QservGetReplicasJobResult {
   * Class QservGetReplicasJob represents a tool which will find all replicas
   * of all chunks on all worker nodes.
   */
-class QservGetReplicasJob
-    :   public Job  {
+class QservGetReplicasJob : public Job  {
 
 public:
 

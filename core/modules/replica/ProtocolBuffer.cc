@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -26,7 +25,7 @@
 // System headers
 #include <algorithm>
 
-// Qserv headers
+using namespace std;
 
 namespace lsst {
 namespace qserv {
@@ -35,17 +34,19 @@ namespace replica {
 size_t const ProtocolBuffer::DESIRED_LIMIT =  2000000;
 size_t const ProtocolBuffer::HARD_LIMIT    = 64000000;
 
+
 ProtocolBuffer::ProtocolBuffer(size_t capacity)
     :   _data(new char[capacity]),
         _capacity(capacity),
         _size(0) {
 
     if (_capacity > HARD_LIMIT) {
-        throw std::overflow_error(
-                        "ProtocolBuffer::ProtocolBuffer() requested capacity " + std::to_string(capacity) +
-                        " exceeds the hard limit of Google protobuf: " + std::to_string(HARD_LIMIT));
+        throw overflow_error(
+                    "ProtocolBuffer::ProtocolBuffer() requested capacity " + to_string(capacity) +
+                    " exceeds the hard limit of Google protobuf: " + to_string(HARD_LIMIT));
     }
 }
+
 
 ProtocolBuffer::~ProtocolBuffer() {
     delete [] _data;
@@ -53,6 +54,7 @@ ProtocolBuffer::~ProtocolBuffer() {
     _capacity = 0;
     _size = 0;
 }
+
 
 void ProtocolBuffer::resize(size_t newSizeBytes) {
 
@@ -64,6 +66,7 @@ void ProtocolBuffer::resize(size_t newSizeBytes) {
     _size = newSizeBytes;
 }
 
+
 void ProtocolBuffer::extend(size_t newCapacityBytes) {
 
     if (newCapacityBytes <= _capacity) return;
@@ -71,22 +74,22 @@ void ProtocolBuffer::extend(size_t newCapacityBytes) {
     // Allocate a larger buffer
 
     if (newCapacityBytes > HARD_LIMIT) {
-        throw std::overflow_error(
-                    "ProtocolBuffer::extend() requested capacity " + std::to_string(newCapacityBytes) +
-                    " exceeds the hard limit of Google Protobuf " + std::to_string(HARD_LIMIT));
+        throw overflow_error(
+                    "ProtocolBuffer::extend() requested capacity " + to_string(newCapacityBytes) +
+                    " exceeds the hard limit of Google Protobuf " + to_string(HARD_LIMIT));
     }
 
     char* ptr = new char[newCapacityBytes];
     if (not ptr) {
-        throw std::overflow_error(
+        throw overflow_error(
                     "ProtocolBuffer::extend() failed to allocate a buffer of requested size " +
-                    std::to_string(newCapacityBytes));
+                    to_string(newCapacityBytes));
     }
 
     // Carry over the meaningful content of the older buffer into the new one
     // before disposing the old buffer.
 
-    std::copy(_data, _data + _size, ptr);
+    copy(_data, _data + _size, ptr);
 
     delete [] _data;
     _data = ptr;
@@ -94,10 +97,11 @@ void ProtocolBuffer::extend(size_t newCapacityBytes) {
     _capacity = newCapacityBytes;
 }
 
+
 uint32_t ProtocolBuffer::parseLength() const {
 
     if (_size != sizeof(uint32_t)) {
-        std::overflow_error("not enough data to be interpreted as the frame header");
+        overflow_error("not enough data to be interpreted as the frame header");
     }
     return ntohl(*(reinterpret_cast<uint32_t const*>(_data)));
 }

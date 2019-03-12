@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -47,8 +46,7 @@ class ProtocolBuffer;
  * to and from worker services. It provides connection multiplexing and automatic
  * reconnects.
  */
-class Messenger
-    :   public std::enable_shared_from_this<Messenger> {
+class Messenger : public std::enable_shared_from_this<Messenger> {
 
 public:
 

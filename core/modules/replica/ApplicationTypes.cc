@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -28,6 +27,8 @@
 #include <sstream>
 #include <stdexcept>
 
+using namespace std;
+
 namespace lsst {
 namespace qserv {
 namespace replica {
@@ -35,23 +36,23 @@ namespace detail {
 
 
 ParserError::ParserError(util::Issue::Context const& ctx,
-                         std::string const& message)
+                         string const& message)
     :   util::Issue(ctx, "ParserError: " + message) {
 }
 
 
-std::ostream& operator<<(std::ostream& os, ArgumentParser const& arg) {
+ostream& operator<<(ostream& os, ArgumentParser const& arg) {
     arg.dumpNameValue(os);
     return os;
 }
 
 
-Command& Command::flag(std::string const& name,
-                       std::string const& description,
+Command& Command::flag(string const& name,
+                       string const& description,
                        bool& var) {
     _flags.emplace(
         name,
-        std::make_unique<FlagParser>(
+        make_unique<FlagParser>(
             name,
             description,
             var
@@ -61,20 +62,20 @@ Command& Command::flag(std::string const& name,
 }
 
 
-CommandsSet::CommandsSet(std::vector<std::string> const& commandNames,
-                         std::string& var)
+CommandsSet::CommandsSet(vector<string> const& commandNames,
+                         string& var)
     :   _var(var) {
 
     for (auto&& name: commandNames) {
-        _commands.insert(std::make_pair(name, new Command()));
+        _commands.insert(make_pair(name, new Command()));
     }
 }
 
 
-Command& CommandsSet::command(std::string const& name) {
+Command& CommandsSet::command(string const& name) {
     auto itr = _commands.find(name);
     if (itr == _commands.end()) {
-        throw std::range_error("CommandsSet::command  unknown command name: '" + name + "'");
+        throw range_error("CommandsSet::command  unknown command name: '" + name + "'");
     }
     return *(itr->second);
 }
@@ -82,7 +83,7 @@ Command& CommandsSet::command(std::string const& name) {
 
 Parser::Parser(int argc,
                const char* const argv[],
-               std::string const& description)
+               string const& description)
     :   _argc       (argc),
         _argv       (argv),
         _description(description),
@@ -103,36 +104,36 @@ void Parser::reset() {
 }
 
 
-Parser& Parser::commands(std::string const& name,
-                         std::vector<std::string> const& commandNames,
-                         std::string& var) {
+Parser& Parser::commands(string const& name,
+                         vector<string> const& commandNames,
+                         string& var) {
 
     if (_commands != nullptr) {
-        throw std::logic_error("Parser::commands  the parser is already configured in this way");
+        throw logic_error("Parser::commands  the parser is already configured in this way");
     }
     _verifyArgument(name);
-    _commands = std::make_unique<CommandsSet>(commandNames, var);    
+    _commands = make_unique<CommandsSet>(commandNames, var);    
     return *this;
 }
 
 
-Command& Parser::command(std::string const& name) {
+Command& Parser::command(string const& name) {
     if (_commands == nullptr) {
-        throw std::logic_error("Parser::command  the parser is not configured in this way");
+        throw logic_error("Parser::command  the parser is not configured in this way");
     }
     return _commands->command(name);
 }
 
 
-Parser& Parser::flag(std::string const& name,
-                     std::string const& description,
+Parser& Parser::flag(string const& name,
+                     string const& description,
                      bool& var) {
     _verifyArgument(name);
     _flags.emplace(
-        std::make_pair(
+        make_pair(
             name,
-            std::move(
-                std::make_unique<FlagParser>(
+            move(
+                make_unique<FlagParser>(
                     name,
                     description,
                     var
@@ -153,10 +154,10 @@ int Parser::parse() {
     // any other arguments.
     for (int i = 1; i < _argc; ++i) {
 
-        std::string const arg = _argv[i];
+        string const arg = _argv[i];
 
         if (arg == "--help") {
-            std::cerr << help() << std::endl;
+            cerr << help() << endl;
             return Status::HELP_REQUESTED;
         }
     }
@@ -172,15 +173,15 @@ int Parser::parse() {
         //   flag:      --<flag>
         //   parameter: <value>
 
-        std::map<std::string, std::string> inOptions;    
-        std::set<std::string>              inFlags;
-        std::vector<std::string>           inParameters;
+        map<string, string> inOptions;    
+        set<string>         inFlags;
+        vector<string>      inParameters;
 
         if (commandMode) _commands->_var = "";
 
         for (int i = 1; i < _argc; ++i) {
 
-            std::string const arg = _argv[i];
+            string const arg = _argv[i];
 
             // Positional parameter (or a command name)?
             if ("--" != arg.substr(0, 2)) {
@@ -199,13 +200,13 @@ int Parser::parse() {
             }
 
             // An option with a value?
-            std::string const nameVal = arg.substr(2);
+            string const nameVal = arg.substr(2);
             if (nameVal.empty()) {
                 throw ParserError(ERR_LOC, "standalone '--' can't be used as a flag");
             }
-            std::string::size_type const pos = nameVal.find('=');
-            if (std::string::npos != pos) {
-                std::string const name = nameVal.substr(0, pos);
+            string::size_type const pos = nameVal.find('=');
+            if (string::npos != pos) {
+                string const name = nameVal.substr(0, pos);
                 inOptions[name] = nameVal.substr(pos+1);
                 continue;
             }
@@ -216,7 +217,7 @@ int Parser::parse() {
         if (commandMode and _commands->_var.empty()) {
             throw ParserError(ERR_LOC, "the command name is missing");
         }
-        std::string const commandName = commandMode ? _commands->_var : std::string();
+        string const commandName = commandMode ? _commands->_var : string();
  
         // Parse values of options
         for (auto&& entry: inOptions) {
@@ -254,8 +255,8 @@ int Parser::parse() {
         if (inNumParameters > maxNumParameters) {
             throw ParserError(
                     ERR_LOC,
-                    "too many positional parameters " + std::to_string(inNumParameters) +
-                    ", expected no more than " + std::to_string(maxNumParameters));
+                    "too many positional parameters " + to_string(inNumParameters) +
+                    ", expected no more than " + to_string(maxNumParameters));
         }
 
         size_t const minNumParameters =
@@ -265,8 +266,8 @@ int Parser::parse() {
         if (inNumParameters < minNumParameters) {
             throw ParserError(
                     ERR_LOC,
-                    "insufficient number " + std::to_string(inNumParameters) +
-                    " of positional parameters, expected at least " + std::to_string(minNumParameters));
+                    "insufficient number " + to_string(inNumParameters) +
+                    " of positional parameters, expected at least " + to_string(minNumParameters));
         }
 
         // Then parse values of parameters
@@ -286,16 +287,16 @@ int Parser::parse() {
         _code = Status::SUCCESS;
 
     } catch (ParserError const& ex) {
-        std::cerr << ex.what() << "\n" << usage() << std::endl;
+        cerr << ex.what() << "\n" << usage() << endl;
         _code = Status::PARSING_FAILED;
     }
     return _code;
 }
 
 
-bool Parser::_parseOption(std::map<std::string, std::unique_ptr<ArgumentParser>>& options,
-                          std::string const& name,
-                          std::string const& value) {
+bool Parser::_parseOption(map<string, unique_ptr<ArgumentParser>>& options,
+                          string const& name,
+                          string const& value) {
     auto itr = options.find(name);
     if (itr == options.end()) return false;
     (*itr).second->parse(value);
@@ -303,8 +304,8 @@ bool Parser::_parseOption(std::map<std::string, std::unique_ptr<ArgumentParser>>
 }
 
 
-bool Parser::_parseFlag(std::map<std::string, std::unique_ptr<ArgumentParser>>& flags,
-                        std::string const& name) {
+bool Parser::_parseFlag(map<string, unique_ptr<ArgumentParser>>& flags,
+                        string const& name) {
     auto itr = flags.find(name);
     if (itr == flags.end()) return false;
     (*itr).second->parse();
@@ -312,9 +313,9 @@ bool Parser::_parseFlag(std::map<std::string, std::unique_ptr<ArgumentParser>>& 
 }
 
 
-void Parser::_parseParameters(std::vector<std::unique_ptr<ArgumentParser>>& out,
-                              std::vector<std::string>::const_iterator& inItr,
-                              std::vector<std::string>::const_iterator const& inItrEnd) {
+void Parser::_parseParameters(vector<unique_ptr<ArgumentParser>>& out,
+                              vector<string>::const_iterator& inItr,
+                              vector<string>::const_iterator const& inItrEnd) {
 
     auto outItr = out.cbegin();
     while (outItr != out.cend() and inItr != inItrEnd) {
@@ -324,22 +325,20 @@ void Parser::_parseParameters(std::vector<std::unique_ptr<ArgumentParser>>& out,
 }
 
 
-void Parser::_verifyArgument(std::string const& name) {
+void Parser::_verifyArgument(string const& name) {
 
     if (name.empty()) {
-        throw std::invalid_argument(
-                "empty string passed where argument name was expected");
+        throw invalid_argument("empty string passed where argument name was expected");
     }
     if (name == "help") {
-        throw std::invalid_argument(
-                "`help` is a reserved keyword");
+        throw invalid_argument("`help` is a reserved keyword");
     }
 }
 
 
-std::string const& Parser::usage() {
+string const& Parser::usage() {
 
-    std::string const indent = "  ";
+    string const indent = "  ";
 
     if (_usage.empty()) {
         _usage = "USAGE:\n";
@@ -378,7 +377,7 @@ std::string const& Parser::usage() {
 }
 
 
-std::string const& Parser::help() {
+string const& Parser::help() {
 
     if (_help.empty()) {
 
@@ -472,15 +471,16 @@ std::string const& Parser::help() {
     return _help;
 }
 
-std::string Parser::wrap(std::string const& str,
-                         std::string const& indent,
-                         size_t width) {
+
+string Parser::wrap(string const& str,
+                    string const& indent,
+                    size_t width) {
     
-    std::ostringstream os;
+    ostringstream os;
     size_t lineLength = 0;
 
-    std::istringstream is(str);
-    std::string word;
+    istringstream is(str);
+    string word;
 
     while (is >> word) {
 
@@ -506,14 +506,14 @@ std::string Parser::wrap(std::string const& str,
 }
 
 
-std::string Parser::serializeArguments() const {
+string Parser::serializeArguments() const {
 
     if (Status::SUCCESS != _code) {
-        throw std::logic_error(
+        throw logic_error(
             "Application::Parser::serializeArguments()"
             "  command line arguments have not been parsed yet");
     }
-    std::ostringstream os;
+    ostringstream os;
     for (auto&& arg: _required) os << *arg << " ";
     for (auto&& arg: _optional) os << *arg << " ";
     for (auto&& arg: _options)  os << *arg.second << " ";

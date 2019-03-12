@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -31,6 +30,8 @@
 #include "replica/Performance.h"
 #include "util/BlockPost.h"
 
+using namespace std;
+
 namespace {
 
 /**
@@ -39,20 +40,21 @@ namespace {
  * line options. See the constructor of the application class for further details.
  */
 struct {
-    unsigned int const healthProbeIntervalSec{60};
-    unsigned int const replicationIntervalSec{60};
-    unsigned int const workerResponseTimeoutSec{60};
-    unsigned int const workerEvictTimeoutSec{3600};
-    unsigned int const qservSyncTimeoutSec{1800};
-    unsigned int const numReplicas{0};
+    unsigned int const healthProbeIntervalSec   = 60;
+    unsigned int const replicationIntervalSec   = 60;
+    unsigned int const workerResponseTimeoutSec = 60;
+    unsigned int const workerEvictTimeoutSec    = 3600 ;
+    unsigned int const qservSyncTimeoutSec      = 1800;
+    unsigned int const numReplicas              = 0;
 
-    bool const purge{false};
-    bool const forceQservSync{false};
-    bool const permanentDelete{false};
+    bool const purge           = false;
+    bool const forceQservSync  = false;
+    bool const permanentDelete = false;
 
 } const defaultOptions;
 
-std::string const description =
+
+string const description =
     "This application is the Master Replication Controller which has"
     " a built-in Cluster Health Monitor and a linear Replication loop."
     " The Monitor would track a status of both Qserv and Replication workers"
@@ -66,7 +68,6 @@ std::string const description =
     " or request for information.";
 
 } /// namespace
-
 
 namespace lsst {
 namespace qserv {
@@ -124,7 +125,7 @@ MasterControllerHttpApp::MasterControllerHttpApp(int argc, char* argv[])
         "The maximum number of seconds to wait before Qserv workers respond"
         " to the synchronization requests before bailing out and proceeding"
         " to the next step in the normal replication sequence. A value which"
-        " differs from " + std::to_string(defaultOptions.qservSyncTimeoutSec) +
+        " differs from " + to_string(defaultOptions.qservSyncTimeoutSec) +
         " would override the corresponding parameter specified"
         " in the Configuration.",
         _qservSyncTimeoutSec
@@ -138,7 +139,7 @@ MasterControllerHttpApp::MasterControllerHttpApp(int argc, char* argv[])
     ).option(
         "replicas",
         "The minimal number of replicas when running the replication phase"
-        " This number if provided and if it's not " + std::to_string(defaultOptions.numReplicas) +
+        " This number if provided and if it's not " + to_string(defaultOptions.numReplicas) +
         " will override the corresponding value found"
         " in the Configuration.",
         _numReplicas
@@ -188,7 +189,7 @@ int MasterControllerHttpApp::runImpl() {
         [self] (Task::Ptr const& ptr) {
             self->_isFailed.fail();
         },
-        [self] (std::string const& worker2evict) {
+        [self] (string const& worker2evict) {
             self->_evict(worker2evict);
         },
         _workerEvictTimeoutSec,
@@ -199,7 +200,7 @@ int MasterControllerHttpApp::runImpl() {
 
     _httpProcessor = HttpProcessor::create(
         _controller,
-        [self] (std::string const& worker2evict) {
+        [self] (string const& worker2evict) {
             self->_evict(worker2evict);
         },
         _healthMonitorTask,
@@ -229,7 +230,7 @@ int MasterControllerHttpApp::runImpl() {
 }
 
 
-void MasterControllerHttpApp::_evict(std::string const& worker) {
+void MasterControllerHttpApp::_evict(string const& worker) {
 
     _logWorkerEvictionStartedEvent(worker);
 
@@ -279,17 +280,17 @@ void MasterControllerHttpApp::_logControllerStartedEvent() const {
 
     ControllerEvent event;
     event.status = "STARTED";
-    event.kvInfo.emplace_back("host",                                   _controller->identity().host);
-    event.kvInfo.emplace_back("pid",                     std::to_string(_controller->identity().pid));
-    event.kvInfo.emplace_back("health-probe-interval",   std::to_string(_healthProbeIntervalSec));
-    event.kvInfo.emplace_back("replication-interval",    std::to_string(_replicationIntervalSec));
-    event.kvInfo.emplace_back("worker-response-timeout", std::to_string(_workerResponseTimeoutSec));
-    event.kvInfo.emplace_back("worker-evict-timeout",    std::to_string(_workerEvictTimeoutSec));
-    event.kvInfo.emplace_back("qserv-sync-timeout",      std::to_string(_qservSyncTimeoutSec));
-    event.kvInfo.emplace_back("qserv-sync-force",                       _forceQservSync ? "1" : "0");
-    event.kvInfo.emplace_back("replicas",                std::to_string(_numReplicas));
-    event.kvInfo.emplace_back("purge",                                  _purge ? "1" : "0");
-    event.kvInfo.emplace_back("permanent-worker-delete",                _permanentDelete ? "1" : "0");
+    event.kvInfo.emplace_back("host",                              _controller->identity().host);
+    event.kvInfo.emplace_back("pid",                     to_string(_controller->identity().pid));
+    event.kvInfo.emplace_back("health-probe-interval",   to_string(_healthProbeIntervalSec));
+    event.kvInfo.emplace_back("replication-interval",    to_string(_replicationIntervalSec));
+    event.kvInfo.emplace_back("worker-response-timeout", to_string(_workerResponseTimeoutSec));
+    event.kvInfo.emplace_back("worker-evict-timeout",    to_string(_workerEvictTimeoutSec));
+    event.kvInfo.emplace_back("qserv-sync-timeout",      to_string(_qservSyncTimeoutSec));
+    event.kvInfo.emplace_back("qserv-sync-force",                  _forceQservSync ? "1" : "0");
+    event.kvInfo.emplace_back("replicas",                to_string(_numReplicas));
+    event.kvInfo.emplace_back("purge",                             _purge ? "1" : "0");
+    event.kvInfo.emplace_back("permanent-worker-delete",           _permanentDelete ? "1" : "0");
 
     _logEvent(event);
 }
@@ -305,7 +306,7 @@ void MasterControllerHttpApp::_logControllerStoppedEvent() const {
 }
 
 
-void MasterControllerHttpApp::_logWorkerEvictionStartedEvent(std::string const& worker) const {
+void MasterControllerHttpApp::_logWorkerEvictionStartedEvent(string const& worker) const {
  
     _assertIsStarted(__func__);
 
@@ -318,7 +319,7 @@ void MasterControllerHttpApp::_logWorkerEvictionStartedEvent(std::string const& 
 }
 
 
-void MasterControllerHttpApp::_logWorkerEvictionFinishedEvent(std::string const& worker) const {
+void MasterControllerHttpApp::_logWorkerEvictionFinishedEvent(string const& worker) const {
  
     _assertIsStarted(__func__);
 
@@ -342,16 +343,16 @@ void MasterControllerHttpApp::_logEvent(ControllerEvent& event) const {
     // For now ignore exceptions when logging events. Just report errors.
     try {
         serviceProvider()->databaseServices()->logControllerEvent(event);
-    } catch (std::exception const& ex) {
+    } catch (exception const& ex) {
        LOGS(_log, LOG_LVL_ERROR, name() << "  " << "failed to log event in " << __func__);
     }
 }
 
 
-void MasterControllerHttpApp::_assertIsStarted(std::string const& func) const {
+void MasterControllerHttpApp::_assertIsStarted(string const& func) const {
     if (nullptr == _controller) {
-        throw std::logic_error(
-                "MasterControllerHttpApp::" + func + "  Controller is not running");
+        throw logic_error(
+                    "MasterControllerHttpApp::" + func + "  Controller is not running");
     }
 }
 

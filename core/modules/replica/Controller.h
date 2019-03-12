@@ -1,7 +1,5 @@
-// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -108,8 +106,7 @@ std::ostream& operator <<(std::ostream& os, ControllerIdentity const& identity);
   *   std::invalid_argument if the specified worker names are not found
   *   in the configuration.
   */
-class Controller
-    :   public std::enable_shared_from_this<Controller> {
+class Controller : public std::enable_shared_from_this<Controller> {
 
 public:
 

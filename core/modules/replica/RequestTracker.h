@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -151,8 +150,7 @@ private:
  * the template parameter of the class.
  */
 template <class T>
-class CommonRequestTracker
-    :   public RequestTrackerBase {
+class CommonRequestTracker : public RequestTrackerBase {
 
 public:
 
@@ -241,8 +239,7 @@ public:
  * Class AnyRequestTracker implements a type-aware request tracker for
  * a collection of heterogeneous requests.
  */
-class AnyRequestTracker
-    :   public RequestTrackerBase {
+class AnyRequestTracker : public RequestTrackerBase {
 
 public:
 

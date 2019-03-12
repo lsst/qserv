@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -31,6 +30,8 @@
 #include "replica/Configuration.h"
 #include "replica/ServiceProvider.h"
 
+using namespace std;
+
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.Messenger");
@@ -48,6 +49,7 @@ Messenger::Ptr Messenger::create(ServiceProvider::Ptr const& serviceProvider,
                       io_service));
 }
 
+
 Messenger::Messenger(ServiceProvider::Ptr const& serviceProvider,
                      boost::asio::io_service& io_service) {
 
@@ -58,31 +60,35 @@ Messenger::Messenger(ServiceProvider::Ptr const& serviceProvider,
     }
 }
 
+
 void Messenger::stop() {
     for (auto&& entry: _connector) {
         entry.second->stop();
     }
 }
 
-void Messenger::cancel(std::string const& worker,
-                       std::string const& id) {
+
+void Messenger::cancel(string const& worker,
+                       string const& id) {
 
     // Forward the request to the corresponding worker
     connector(worker)->cancel(id);
 }
 
-bool Messenger::exists(std::string const& worker,
-                       std::string const& id) const {
+
+bool Messenger::exists(string const& worker,
+                       string const& id) const {
 
     // Forward the request to the corresponding worker
     return connector(worker)->exists(id);
 }
 
-MessengerConnector::Ptr const& Messenger::connector(std::string const& worker)  const {
+
+MessengerConnector::Ptr const& Messenger::connector(string const& worker)  const {
 
     if (0 == _connector.count(worker))
-        throw std::invalid_argument(
-            "Messenger::connector(): unknown worker: " + worker);
+        throw invalid_argument(
+                    "Messenger::connector(): unknown worker: " + worker);
     return _connector.at(worker);
 }
 

@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -28,6 +27,8 @@
 // Qserv headers
 #include "lsst/log/Log.h"
 
+using namespace std;
+
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.RequestMessenger");
@@ -40,8 +41,8 @@ namespace replica {
 
 RequestMessenger::RequestMessenger(ServiceProvider::Ptr const& serviceProvider,
                                    boost::asio::io_service& io_service,
-                                   std::string const& type,
-                                   std::string const& worker,
+                                   string const& type,
+                                   string const& worker,
                                    int  priority,
                                    bool keepTracking,
                                    bool allowDuplicate,
@@ -55,6 +56,7 @@ RequestMessenger::RequestMessenger(ServiceProvider::Ptr const& serviceProvider,
                 allowDuplicate),
         _messenger(messenger) {
 }
+
 
 void RequestMessenger::finishImpl(util::Lock const& lock) {
 

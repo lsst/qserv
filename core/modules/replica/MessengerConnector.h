@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -131,8 +130,7 @@ private:
  * treatment (including serialization) of responses from workers.
  */
 template <class RESPONSE_TYPE>
-class MessageWrapper
-    :   public MessageWrapperBase {
+class MessageWrapper : public MessageWrapperBase {
 
 public:
 
@@ -213,8 +211,7 @@ private:
  *   on specific states) are required to be called with a reference to
  *   the lock acquired prior to the calls.
  */
-class MessengerConnector
-    :   public std::enable_shared_from_this<MessengerConnector> {
+class MessengerConnector : public std::enable_shared_from_this<MessengerConnector> {
 
 public:
 

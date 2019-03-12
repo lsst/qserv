@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -55,11 +54,9 @@ namespace mysql {
  * Class Error represents a family of exceptions which are specific
  * to the implementation of this API.
  */
-class Error
-    :   public std::runtime_error {
+class Error : public std::runtime_error {
 
 public:
-
     /**
      * The normal constructor
      *
@@ -70,14 +67,13 @@ public:
     }
 };
 
+
 /**
  * Thrown after failing to connect to a server
  */
-class ConnectError
-    :   public Error {
+class ConnectError : public Error {
 
 public:
-
     /**
      * The normal constructor
      *
@@ -92,11 +88,9 @@ public:
  * Thrown if the connection attempt to a server failed to be established
  * within the specified timeout.
  */
-class ConnectTimeout 
-    :   public Error {
+class ConnectTimeout : public Error {
 
 public:
-
     /**
      * The normal constructor
      *
@@ -116,15 +110,14 @@ private:
     unsigned int _timeoutSec{0};
 };
 
+
 /**
  * Thrown after exceeding an allowed number of failed connection attempts
  * to a server.
  */
-class MaxReconnectsExceeded 
-    :   public Error {
+class MaxReconnectsExceeded : public Error {
 
 public:
-
     /**
      * The normal constructor
      *
@@ -144,17 +137,16 @@ private:
     unsigned int _maxReconnects{0};
 };
 
+
 /**
  * Thrown after a successful reconnection to a server. Normally, after catching
  * this exception, an application should repeat the last attempted transaction.
  * It's guaranteed that all traces of the failed transaction were properly
  * cleaned up.
  */
-class Reconnected
-    :   public Error {
+class Reconnected : public Error {
 
 public:
-
     /**
      * The normal constructor
      *
@@ -165,15 +157,14 @@ public:
     }
 };
 
+
 /**
  * Instances of this exception class are thrown on attempts to insert
  * rows with duplicate keys.
  */
-class DuplicateKeyError
-    :   public Error {
+class DuplicateKeyError : public Error {
 
 public:
-
     /**
      * The normal constructor
      *
@@ -184,15 +175,14 @@ public:
     }
 };
 
+
 /**
  * Instances of this exception class are thrown on failed attempts
  * to interpret the contents of the result set.
  */
-class InvalidTypeError
-    :   public Error {
+class InvalidTypeError : public Error {
 
 public:
-
     /**
      * The normal constructor
      *
@@ -203,15 +193,14 @@ public:
     }
 };
 
+
 /**
  * Instances of this exception class are thrown on empty result sets
  * by some methods when a query is supposed to return at least one row.
  */
-class EmptyResultSetError
-    :   public Error {
+class EmptyResultSetError : public Error {
 
 public:
-
     /**
      * The normal constructor
      *
@@ -221,6 +210,7 @@ public:
         :   Error(what) {
     }
 };
+
 
 }}}}} // namespace lsst::qserv::replica::database::mysql
 

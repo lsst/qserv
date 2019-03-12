@@ -1,7 +1,5 @@
-// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -39,11 +37,12 @@
 #define BOOST_TEST_MODULE ApplicationParser
 #include "boost/test/included/unit_test.hpp"
 
+using namespace std;
 namespace test = boost::test_tools;
 using namespace lsst::qserv::replica::detail;
 
 namespace {
-std::string const descr  = "Unit test application for Parser";
+string const descr  = "Unit test application for Parser";
 }
 BOOST_AUTO_TEST_SUITE(Suite)
 
@@ -63,6 +62,7 @@ BOOST_AUTO_TEST_CASE(ApplicationParser1) {
     LOGS_INFO("ApplicationParser1 test ends");
 }
 
+
 BOOST_AUTO_TEST_CASE(ApplicationParser2) {
 
     LOGS_INFO("ApplicationParser2 test begins");
@@ -77,15 +77,15 @@ BOOST_AUTO_TEST_CASE(ApplicationParser2) {
     //
     //  "1"   "2"   "3"   4.4   5.5   1    "o1"          --o3="o3"      --f1 
 
-    std::string  r1;
+    string       r1;
     int          r2 = -1;
     unsigned int r3 =  1;
     float        r4 = -1.;
     double       r5 = -1.;
     bool         r6 = false;
-    std::string  o1;
-    std::string  o2;
-    std::string  o3;
+    string       o1;
+    string       o2;
+    string       o3;
     bool         f1 = false;
     bool         f2 = false;
 
@@ -116,16 +116,16 @@ BOOST_AUTO_TEST_CASE(ApplicationParser2) {
 
         LOGS_INFO("ApplicationParser: input strings  " + parser.serializeArguments());
         LOGS_INFO("ApplicationParser: parsed values  r1=" + r1 +
-                  " r2=" + std::to_string(r2) +
-                  " r3=" + std::to_string(r3) +
-                  " r4=" + std::to_string(r4) +
-                  " r5=" + std::to_string(r5) +
-                  " r6=" + std::string(r6 ? "true" : "false") +
+                  " r2=" + to_string(r2) +
+                  " r3=" + to_string(r3) +
+                  " r4=" + to_string(r4) +
+                  " r5=" + to_string(r5) +
+                  " r6=" + string(r6 ? "true" : "false") +
                   " o1=" + o1 +
                   " o2=" + o2 +
                   " o3=" + o3 +
-                  " f1=" + std::string(f1 ? "true" : "false") +
-                  " f2=" + std::string(f2 ? "true" : "false"));
+                  " f1=" + string(f1 ? "true" : "false") +
+                  " f2=" + string(f2 ? "true" : "false"));
         
         BOOST_CHECK_EQUAL(r1, "1");
         BOOST_CHECK_EQUAL(r2, 2);
@@ -143,6 +143,7 @@ BOOST_AUTO_TEST_CASE(ApplicationParser2) {
     LOGS_INFO("ApplicationParser2 test ends");
 }
 
+
 BOOST_AUTO_TEST_CASE(ApplicationParser3) {
 
     LOGS_INFO("ApplicationParser3 test begins");
@@ -157,27 +158,28 @@ BOOST_AUTO_TEST_CASE(ApplicationParser3) {
 
     Parser parser(argc, argv, descr);
 
-    BOOST_CHECK_THROW(parser.flag("help", "reserved argument name", isHelp),  std::invalid_argument);
-    BOOST_CHECK_THROW(parser.flag("",     "empty    argument name", isEmpty), std::invalid_argument);
+    BOOST_CHECK_THROW(parser.flag("help", "reserved argument name", isHelp),  invalid_argument);
+    BOOST_CHECK_THROW(parser.flag("",     "empty    argument name", isEmpty), invalid_argument);
 
     LOGS_INFO("ApplicationParser3 test ends");
 }
+
 
 BOOST_AUTO_TEST_CASE(ApplicationParser4) {
 
     LOGS_INFO("ApplicationParser4 test begins");
 
-    std::string command;
+    string command;
 
     // Required by all commands
 
-    std::string  r1;
+    string       r1;
     int          r2 = -1;
     unsigned int r3 =  1;
     float        r4 = -1.;
     double       r5 = -1.;
     bool         r6 = false;
-    std::string  o1;
+    string       o1;
 
     // Running the Parser in the 'commands' mode for command "C1"
     //
@@ -191,8 +193,8 @@ BOOST_AUTO_TEST_CASE(ApplicationParser4) {
     //
     //  "C1" "1"   "2"   "3"   4.4   5.5   1    "c1r1"  "o1"    11
 
-    std::string  c1r1;
-    int          c1o1 = -1;
+    string c1r1;
+    int    c1o1 = -1;
 
     int const         argcC1   = 11;
     char const* const argvC1[] = {
@@ -224,14 +226,14 @@ BOOST_AUTO_TEST_CASE(ApplicationParser4) {
         LOGS_INFO("ApplicationParser: input strings  " + parser.serializeArguments());
         LOGS_INFO("ApplicationParser: parsed values  command=" + command +
                   " r1="   + r1 +
-                  " r2="   + std::to_string(r2) +
-                  " r3="   + std::to_string(r3) +
-                  " r4="   + std::to_string(r4) +
-                  " r5="   + std::to_string(r5) +
-                  " r6="   + std::string(r6 ? "true" : "false") +
+                  " r2="   + to_string(r2) +
+                  " r3="   + to_string(r3) +
+                  " r4="   + to_string(r4) +
+                  " r5="   + to_string(r5) +
+                  " r6="   + string(r6 ? "true" : "false") +
                   " c1r1=" + c1r1 +
                   " o1="   + o1 +
-                  " c1o1=" + std::to_string(c1o1));
+                  " c1o1=" + to_string(c1o1));
         
         BOOST_CHECK_EQUAL(command, "C1");
         BOOST_CHECK_EQUAL(r1, "1");
@@ -257,8 +259,8 @@ BOOST_AUTO_TEST_CASE(ApplicationParser4) {
     //
     //  "C2" "1"   "2"   "3"   4.4   5.5   1    "c2r1"  "o1"    --c2f1
 
-    std::string  c2r1;
-    bool         c2f1 = false;
+    string c2r1;
+    bool   c2f1 = false;
 
     int const         argcC2   = 11;
     char const* const argvC2[] = {
@@ -290,14 +292,14 @@ BOOST_AUTO_TEST_CASE(ApplicationParser4) {
         LOGS_INFO("ApplicationParser: input strings  " + parser.serializeArguments());
         LOGS_INFO("ApplicationParser: parsed values  command=" + command +
                   " r1="   + r1 +
-                  " r2="   + std::to_string(r2) +
-                  " r3="   + std::to_string(r3) +
-                  " r4="   + std::to_string(r4) +
-                  " r5="   + std::to_string(r5) +
-                  " r6="   + std::string(r6 ? "true" : "false") +
+                  " r2="   + to_string(r2) +
+                  " r3="   + to_string(r3) +
+                  " r4="   + to_string(r4) +
+                  " r5="   + to_string(r5) +
+                  " r6="   + string(r6 ? "true" : "false") +
                   " c2r1=" + c2r1 +
                   " o1="   + o1 +
-                  " c2f1=" + std::string(c2f1 ? "true" : "false"));
+                  " c2f1=" + string(c2f1 ? "true" : "false"));
 
         BOOST_CHECK_EQUAL(command, "C2");
         BOOST_CHECK_EQUAL(r1, "1");
@@ -361,13 +363,13 @@ BOOST_AUTO_TEST_CASE(ApplicationParser4) {
         LOGS_INFO("ApplicationParser: input strings  " + parser.serializeArguments());
         LOGS_INFO("ApplicationParser: parsed values  command=" + command +
                   " r1="   + r1 +
-                  " r2="   + std::to_string(r2) +
-                  " r3="   + std::to_string(r3) +
-                  " r4="   + std::to_string(r4) +
-                  " r5="   + std::to_string(r5) +
-                  " r6="   + std::string(r6 ? "true" : "false") +
+                  " r2="   + to_string(r2) +
+                  " r3="   + to_string(r3) +
+                  " r4="   + to_string(r4) +
+                  " r5="   + to_string(r5) +
+                  " r6="   + string(r6 ? "true" : "false") +
                   " o1="   + o1 +
-                  " c3o1=" + std::to_string(c3o1));
+                  " c3o1=" + to_string(c3o1));
 
         BOOST_CHECK_EQUAL(command, "C3");
         BOOST_CHECK_EQUAL(r1, "1");

@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -39,6 +38,7 @@
 #include "replica/ProtocolBuffer.h"
 #include "replica/ServiceProvider.h"
 
+using namespace std;
 
 namespace {
 
@@ -52,13 +52,13 @@ namespace replica {
 
 FindAllRequest::Ptr FindAllRequest::create(ServiceProvider::Ptr const& serviceProvider,
                                            boost::asio::io_service& io_service,
-                                           std::string const& worker,
-                                           std::string const& database,
+                                           string const& worker,
+                                           string const& database,
                                            bool saveReplicaInfo,
                                            CallbackType const& onFinish,
                                            int priority,
                                            bool keepTracking,
-                                           std::shared_ptr<Messenger> const& messenger) {
+                                           shared_ptr<Messenger> const& messenger) {
     return FindAllRequest::Ptr(
         new FindAllRequest(serviceProvider,
                            io_service,
@@ -71,15 +71,16 @@ FindAllRequest::Ptr FindAllRequest::create(ServiceProvider::Ptr const& servicePr
                            messenger));
 }
 
+
 FindAllRequest::FindAllRequest(ServiceProvider::Ptr const& serviceProvider,
                                boost::asio::io_service& io_service,
-                               std::string const& worker,
-                               std::string const& database,
+                               string const& worker,
+                               string const& database,
                                bool saveReplicaInfo,
                                CallbackType const& onFinish,
                                int  priority,
                                bool keepTracking,
-                               std::shared_ptr<Messenger> const& messenger)
+                               shared_ptr<Messenger> const& messenger)
     :   RequestMessenger(serviceProvider,
                          io_service,
                          "REPLICA_FIND_ALL",
@@ -95,9 +96,11 @@ FindAllRequest::FindAllRequest(ServiceProvider::Ptr const& serviceProvider,
     Request::serviceProvider()->assertDatabaseIsValid(database);
 }
 
+
 const ReplicaInfoCollection& FindAllRequest::responseData() const {
     return _replicaInfoCollection;
 }
+
 
 void FindAllRequest::startImpl(util::Lock const& lock) {
 
@@ -124,6 +127,7 @@ void FindAllRequest::startImpl(util::Lock const& lock) {
     send(lock);
 }
 
+
 void FindAllRequest::wait(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "wait");
@@ -139,6 +143,7 @@ void FindAllRequest::wait(util::Lock const& lock) {
         )
     );
 }
+
 
 void FindAllRequest::awaken(boost::system::error_code const& ec) {
 
@@ -181,6 +186,7 @@ void FindAllRequest::awaken(boost::system::error_code const& ec) {
     send(lock);
 }
 
+
 void FindAllRequest::send(util::Lock const& lock) {
 
     auto self = shared_from_base<FindAllRequest>();
@@ -189,7 +195,7 @@ void FindAllRequest::send(util::Lock const& lock) {
         worker(),
         id(),
         buffer(),
-        [self] (std::string const& id,
+        [self] (string const& id,
                 bool success,
                 proto::ReplicationResponseFindAll const& response) {
 
@@ -198,6 +204,7 @@ void FindAllRequest::send(util::Lock const& lock) {
         }
     );
 }
+
 
 void FindAllRequest::analyze(bool success,
                              proto::ReplicationResponseFindAll const& message) {
@@ -294,13 +301,12 @@ void FindAllRequest::analyze(bool success,
             break;
 
         default:
-            throw std::logic_error(
-                    "FindAllRequest::analyze() unknown status '" +
-                    proto::ReplicationStatus_Name(message.status()) + "' received from server");
+            throw logic_error(
+                        "FindAllRequest::analyze() unknown status '" +
+                        proto::ReplicationStatus_Name(message.status()) + "' received from server");
     }
-
-
 }
+
 
 void FindAllRequest::notify(util::Lock const& lock) {
 
@@ -309,12 +315,14 @@ void FindAllRequest::notify(util::Lock const& lock) {
     notifyDefaultImpl<FindAllRequest>(lock, _onFinish);
 }
 
+
 void FindAllRequest::savePersistentState(util::Lock const& lock) {
     controller()->serviceProvider()->databaseServices()->saveState(*this, performance(lock));
 }
 
-std::list<std::pair<std::string,std::string>> FindAllRequest::extendedPersistentState() const {
-    std::list<std::pair<std::string,std::string>> result;
+
+list<pair<string,string>> FindAllRequest::extendedPersistentState() const {
+    list<pair<string,string>> result;
     result.emplace_back("database", database());
     return result;
 }

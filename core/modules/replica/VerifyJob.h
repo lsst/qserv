@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -136,8 +135,7 @@ std::ostream& operator<<(std::ostream& os, ReplicaDiff const& ri);
   * Any differences will get reported to a subscriber via a specific callback
   * function. The new status of a replica will be also recorded within the database.
   */
-class VerifyJob
-    :   public Job  {
+class VerifyJob : public Job  {
 
 public:
 

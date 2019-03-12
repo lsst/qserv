@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -34,6 +33,8 @@
 #include "replica/ServiceProvider.h"
 #include "replica/WorkerProcessor.h"
 
+using namespace std;
+
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerServer");
@@ -45,8 +46,8 @@ namespace qserv {
 namespace replica {
 
 WorkerServer::Ptr WorkerServer::create(ServiceProvider::Ptr const& serviceProvider,
-                                           WorkerRequestFactory& requestFactory,
-                                           std::string const& workerName) {
+                                       WorkerRequestFactory& requestFactory,
+                                       string const& workerName) {
     return WorkerServer::Ptr(
         new WorkerServer(
             serviceProvider,
@@ -54,9 +55,10 @@ WorkerServer::Ptr WorkerServer::create(ServiceProvider::Ptr const& serviceProvid
             workerName));
 }
 
+
 WorkerServer::WorkerServer(ServiceProvider::Ptr const& serviceProvider,
                            WorkerRequestFactory& requestFactory,
-                           std::string const& workerName)
+                           string const& workerName)
     :   _serviceProvider(serviceProvider),
         _workerName(workerName),
         _processor(WorkerProcessor::create(serviceProvider, requestFactory, workerName)),
@@ -72,6 +74,7 @@ WorkerServer::WorkerServer(ServiceProvider::Ptr const& serviceProvider,
     _acceptor.set_option(boost::asio::socket_base::reuse_address(true));
 }
 
+
 void WorkerServer::run() {
 
     // Start the processor to allow processing requests.
@@ -86,6 +89,7 @@ void WorkerServer::run() {
 
     _io_service.run();
 }
+
 
 void WorkerServer::beginAccept() {
 
@@ -106,6 +110,7 @@ void WorkerServer::beginAccept() {
         )
     );
 }
+
 
 void WorkerServer::handleAccept(WorkerServerConnection::Ptr const& connection,
                                 boost::system::error_code const& ec) {

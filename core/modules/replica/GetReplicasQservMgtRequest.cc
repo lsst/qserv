@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -37,6 +36,8 @@
 #include "replica/Configuration.h"
 #include "replica/ServiceProvider.h"
 
+using namespace std;
+
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.GetReplicasQservMgtRequest");
@@ -49,8 +50,8 @@ namespace replica {
 
 GetReplicasQservMgtRequest::Ptr GetReplicasQservMgtRequest::create(
                                         ServiceProvider::Ptr const& serviceProvider,
-                                        std::string const& worker,
-                                        std::string const& databaseFamily,
+                                        string const& worker,
+                                        string const& databaseFamily,
                                         bool inUseOnly,
                                         GetReplicasQservMgtRequest::CallbackType const& onFinish) {
     return GetReplicasQservMgtRequest::Ptr(
@@ -59,12 +60,13 @@ GetReplicasQservMgtRequest::Ptr GetReplicasQservMgtRequest::create(
                                        databaseFamily,
                                        inUseOnly,
                                        onFinish));
- }
+}
+
 
 GetReplicasQservMgtRequest::GetReplicasQservMgtRequest(
                                 ServiceProvider::Ptr const& serviceProvider,
-                                std::string const& worker,
-                                std::string const& databaseFamily,
+                                string const& worker,
+                                string const& databaseFamily,
                                 bool inUseOnly,
                                 GetReplicasQservMgtRequest::CallbackType const& onFinish)
     :   QservMgtRequest(serviceProvider,
@@ -76,21 +78,24 @@ GetReplicasQservMgtRequest::GetReplicasQservMgtRequest(
         _qservRequest(nullptr) {
 }
 
+
 QservReplicaCollection const& GetReplicasQservMgtRequest::replicas() const {
     if (not ((state() == State::FINISHED) and (extendedState() == ExtendedState::SUCCESS))) {
-        throw std::logic_error(
-                "GetReplicasQservMgtRequest::replicas  replicas aren't available in state: " +
-                state2string(state(), extendedState()));
+        throw logic_error(
+                    "GetReplicasQservMgtRequest::replicas  replicas aren't available in state: " +
+                    state2string(state(), extendedState()));
     }
     return _replicas;
 }
 
-std::list<std::pair<std::string,std::string>> GetReplicasQservMgtRequest::extendedPersistentState() const {
-    std::list<std::pair<std::string,std::string>> result;
+
+list<pair<string,string>> GetReplicasQservMgtRequest::extendedPersistentState() const {
+    list<pair<string,string>> result;
     result.emplace_back("database_family", databaseFamily());
     result.emplace_back("in_use_only",     inUseOnly() ? "1" : "0");
     return result;
 }
+
 
 void GetReplicasQservMgtRequest::setReplicas(
             util::Lock const& lock,
@@ -98,7 +103,7 @@ void GetReplicasQservMgtRequest::setReplicas(
 
     // Filter results by databases participating in the family
 
-    std::set<std::string> databases;
+    set<string> databases;
     for (auto&& database: serviceProvider()->config()->databases(databaseFamily())) {
         databases.insert(database);
     }
@@ -111,6 +116,7 @@ void GetReplicasQservMgtRequest::setReplicas(
         }
     }
 }
+
 
 void GetReplicasQservMgtRequest::startImpl(util::Lock const& lock) {
 
@@ -132,7 +138,7 @@ void GetReplicasQservMgtRequest::startImpl(util::Lock const& lock) {
     _qservRequest = wpublish::GetChunkListQservRequest::create(
         inUseOnly(),
         [request] (wpublish::GetChunkListQservRequest::Status status,
-                   std::string const& error,
+                   string const& error,
                    wpublish::GetChunkListQservRequest::ChunkCollection const& collection) {
 
             // IMPORTANT: the final state is required to be tested twice. The first time
@@ -161,15 +167,16 @@ void GetReplicasQservMgtRequest::startImpl(util::Lock const& lock) {
                     break;
 
                 default:
-                    throw std::logic_error(
-                                    "GetReplicasQservMgtRequest:  unhandled server status: " +
-                                    wpublish::GetChunkListQservRequest::status2str(status));
+                    throw logic_error(
+                                "GetReplicasQservMgtRequest:  unhandled server status: " +
+                                wpublish::GetChunkListQservRequest::status2str(status));
             }
         }
     );
     XrdSsiResource resource(ResourceUnit::makeWorkerPath(worker()));
     service()->ProcessRequest(*_qservRequest, resource);
 }
+
 
 void GetReplicasQservMgtRequest::finishImpl(util::Lock const& lock) {
 
@@ -191,6 +198,7 @@ void GetReplicasQservMgtRequest::finishImpl(util::Lock const& lock) {
     }
     _qservRequest = nullptr;
 }
+
 
 void GetReplicasQservMgtRequest::notify(util::Lock const& lock) {
 

@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2019 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -23,6 +22,7 @@
 // Class header
 #include "replica/ConfigurationTypes.h"
 
+using namespace std;
 using json = nlohmann::json;
 
 namespace {
@@ -38,7 +38,8 @@ json paramToJson(T const& struct_,
         {"updatable",   struct_.updatable ? 1 : 0},
         {"description", struct_.description}});
 }
-}
+
+}  // namespace
 
 
 namespace lsst {

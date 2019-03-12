@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -49,7 +48,7 @@ namespace replica {
  * two tasks running in parallel (in dedicated threads): Linear Replication one and
  * the Health Monitoring one. These tasks can be suspended/resumed via the REST API.
  */
-class MasterControllerHttpApp: public Application {
+class MasterControllerHttpApp : public Application {
 
 public:
 

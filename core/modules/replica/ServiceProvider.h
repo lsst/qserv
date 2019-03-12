@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -52,8 +51,7 @@ class QservMgtServices;
   * Class ServiceProvider hosts various services used by both workers
   * and controllers.
   */
-class ServiceProvider
-    :   public std::enable_shared_from_this<ServiceProvider> {
+class ServiceProvider : public std::enable_shared_from_this<ServiceProvider> {
 
 public:
 

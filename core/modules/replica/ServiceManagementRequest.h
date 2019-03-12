@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -22,10 +21,8 @@
 #ifndef LSST_QSERV_REPLICA_SERVICEMANAGEMENTREQUEST_H
 #define LSST_QSERV_REPLICA_SERVICEMANAGEMENTREQUEST_H
 
-/// ServiceManagementRequest.h declares:
-////
 /**
- * This class declares a collection of the worker servers management request
+ * This header declares a collection of the worker servers management request
  * classes as part of the Controller-side Replication Framework.
  *
  * @see class ServiceSuspendRequestPolicy
@@ -91,8 +88,7 @@ struct ServiceDrainRequestPolicy {
   * to allow further policy-based customization of specific requests.
   */
 template <typename POLICY>
-class ServiceManagementRequest
-    :   public ServiceManagementRequestBase {
+class ServiceManagementRequest : public ServiceManagementRequestBase {
 
 public:
 

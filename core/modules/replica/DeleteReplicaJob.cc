@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -37,6 +36,8 @@
 #include "replica/ServiceProvider.h"
 #include "util/BlockPost.h"
 
+using namespace std;
+
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.DeleteReplicaJob");
@@ -69,7 +70,7 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-std::string DeleteReplicaJob::typeName() { return "DeleteReplicaJob"; }
+string DeleteReplicaJob::typeName() { return "DeleteReplicaJob"; }
 
 
 Job::Options const& DeleteReplicaJob::defaultOptions() {
@@ -81,13 +82,14 @@ Job::Options const& DeleteReplicaJob::defaultOptions() {
     return options;
 }
 
-DeleteReplicaJob::Ptr DeleteReplicaJob::create(std::string const& databaseFamily,
-                                                   unsigned int chunk,
-                                                   std::string const& worker,
-                                                   Controller::Ptr const& controller,
-                                                   std::string const& parentJobId,
-                                                   CallbackType const& onFinish,
-                                                   Job::Options const& options) {
+
+DeleteReplicaJob::Ptr DeleteReplicaJob::create(string const& databaseFamily,
+                                               unsigned int chunk,
+                                               string const& worker,
+                                               Controller::Ptr const& controller,
+                                               string const& parentJobId,
+                                               CallbackType const& onFinish,
+                                               Job::Options const& options) {
     return DeleteReplicaJob::Ptr(
         new DeleteReplicaJob(databaseFamily,
                              chunk,
@@ -98,11 +100,12 @@ DeleteReplicaJob::Ptr DeleteReplicaJob::create(std::string const& databaseFamily
                              options));
 }
 
-DeleteReplicaJob::DeleteReplicaJob(std::string const& databaseFamily,
+
+DeleteReplicaJob::DeleteReplicaJob(string const& databaseFamily,
                                    unsigned int chunk,
-                                   std::string const& worker,
+                                   string const& worker,
                                    Controller::Ptr const& controller,
-                                   std::string const& parentJobId,
+                                   string const& parentJobId,
                                    CallbackType const& onFinish,
                                    Job::Options const& options)
     :   Job(controller,
@@ -115,28 +118,30 @@ DeleteReplicaJob::DeleteReplicaJob(std::string const& databaseFamily,
         _onFinish(onFinish) {
 }
 
+
 DeleteReplicaJobResult const& DeleteReplicaJob::getReplicaData() const {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "getReplicaData");
 
     if (state() == State::FINISHED) return _replicaData;
 
-    throw std::logic_error(
+    throw logic_error(
         "DeleteReplicaJob::getReplicaData  the method can't be called while the job hasn't finished");
 }
 
-std::list<std::pair<std::string,std::string>> DeleteReplicaJob::extendedPersistentState() const {
-    std::list<std::pair<std::string,std::string>> result;
+
+list<pair<string,string>> DeleteReplicaJob::extendedPersistentState() const {
+    list<pair<string,string>> result;
     result.emplace_back("database_family", databaseFamily());
-    result.emplace_back("chunk",           std::to_string(chunk()));
+    result.emplace_back("chunk",           to_string(chunk()));
     result.emplace_back("worker",          worker());
     return result;
 }
 
 
-std::list<std::pair<std::string,std::string>> DeleteReplicaJob::persistentLogData() const {
+list<pair<string,string>> DeleteReplicaJob::persistentLogData() const {
 
-    std::list<std::pair<std::string,std::string>> result;
+    list<pair<string,string>> result;
 
     auto&& replicaData = getReplicaData();
 
@@ -146,21 +151,21 @@ std::list<std::pair<std::string,std::string>> DeleteReplicaJob::persistentLogDat
     //     the total number of chunks deleted from the workers as a result
     //     of the operation
 
-    std::map<std::string,
-             std::map<std::string,
-                      size_t>> workerCategoryCounter;
+    map<string,
+        map<string,
+            size_t>> workerCategoryCounter;
 
     for (auto&& info: replicaData.replicas) {
         workerCategoryCounter[info.worker()]["deleted-chunks"]++;
     }
     for (auto&& workerItr: workerCategoryCounter) {
         auto&& worker = workerItr.first;
-        std::string val = "worker=" + worker;
+        string val = "worker=" + worker;
 
         for (auto&& categoryItr: workerItr.second) {
             auto&& category = categoryItr.first;
             size_t const counter = categoryItr.second;
-            val += " " + category + "=" + std::to_string(counter);
+            val += " " + category + "=" + to_string(counter);
         }
         result.emplace_back("worker-stats", val);
     }
@@ -206,7 +211,7 @@ void DeleteReplicaJob::startImpl(util::Lock const& lock) {
             worker(),
             databaseFamily());
 
-    } catch (std::invalid_argument const& ex) {
+    } catch (invalid_argument const& ex) {
 
         LOGS(_log, LOG_LVL_ERROR, context() << "startImpl  "
              << "** misconfigured application ** "
@@ -217,7 +222,7 @@ void DeleteReplicaJob::startImpl(util::Lock const& lock) {
         
         throw;
 
-    } catch (std::exception const& ex) {
+    } catch (exception const& ex) {
 
         LOGS(_log, LOG_LVL_ERROR, context() << "startImpl  ** failed to find replicas ** "
              << " chunk: " << chunk()
@@ -258,7 +263,7 @@ void DeleteReplicaJob::startImpl(util::Lock const& lock) {
 
         // Notify Qserv first. Then start once a confirmation is received
 
-        std::vector<std::string> databases;
+        vector<string> databases;
         for (auto&& replica: _replicas) {
             databases.push_back(replica.database());
         }
@@ -305,6 +310,7 @@ void DeleteReplicaJob::startImpl(util::Lock const& lock) {
     setState(lock, State::IN_PROGRESS);
 }
 
+
 void DeleteReplicaJob::cancelImpl(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
@@ -329,12 +335,14 @@ void DeleteReplicaJob::cancelImpl(util::Lock const& lock) {
     _requests.clear();
 }
 
+
 void DeleteReplicaJob::notify(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
 
     notifyDefaultImpl<DeleteReplicaJob>(lock, _onFinish);
 }
+
 
 void DeleteReplicaJob::beginDeleteReplica(util::Lock const& lock) {
 
@@ -360,6 +368,7 @@ void DeleteReplicaJob::beginDeleteReplica(util::Lock const& lock) {
         _requests.push_back(ptr);
     }
 }
+
 
 void DeleteReplicaJob::onRequestFinish(DeleteRequest::Ptr const& request) {
 

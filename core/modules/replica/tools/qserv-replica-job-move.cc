@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -31,14 +30,15 @@
 // Qserv headers
 #include "replica/MoveApp.h"
 
+using namespace std;
 using namespace lsst::qserv::replica;
 
 int main(int argc, char* argv[]) {
     try {
-        auto app = MoveApp::create(argc, argv);
+        auto const app = MoveApp::create(argc, argv);
         return app->run();
-    } catch (std::exception const& ex) {
-        std::cerr << "main()  the application failed, exception: " << ex.what() << std::endl;
+    } catch (exception const& ex) {
+        cerr << "main()  the application failed, exception: " << ex.what() << endl;
         return 1;
     }
 }

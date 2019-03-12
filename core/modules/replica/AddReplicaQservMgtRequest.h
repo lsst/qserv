@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -42,8 +41,7 @@ namespace replica {
   * Class AddReplicaQservMgtRequest implements a request notifying Qserv workers
   * on new chunks added to the database.
   */
-class AddReplicaQservMgtRequest
-    :   public QservMgtRequest  {
+class AddReplicaQservMgtRequest : public QservMgtRequest  {
 
 public:
 

@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -37,7 +36,7 @@ namespace replica {
  * doing so, the application will make the best effort to leave worker nodes as
  * balanced as possible, and it will also preserve chunk collocation.
  */
-class PurgeApp: public Application {
+class PurgeApp : public Application {
 
 public:
 

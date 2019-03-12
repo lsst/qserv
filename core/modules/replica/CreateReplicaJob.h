@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -61,8 +60,7 @@ struct CreateReplicaJobResult {
   * Class CreateReplicaJob represents a tool which will copy a chunk replica
   * from a source worker to some other (destination) worker.
   */
-class CreateReplicaJob
-    :   public Job  {
+class CreateReplicaJob : public Job  {
 
 public:
 
