@@ -82,6 +82,9 @@ public:
     // Construct a ColumnRef ValueFactor.
     ValueFactor(std::shared_ptr<ColumnRef> const& columnRef);
 
+    // Construct a FuncExpr ValueFactor.
+    ValueFactor(std::shared_ptr<FuncExpr> const& funcExpr);
+
     // Construct a "const" (string value) ValueFactor.
     ValueFactor(std::string const& constVal);
 
@@ -106,12 +109,12 @@ public:
 
     static ValueFactorPtr newColumnRefFactor(std::shared_ptr<ColumnRef const> cr);
     static ValueFactorPtr newStarFactor(std::string const& table);
-    static ValueFactorPtr newAggFactor(std::shared_ptr<FuncExpr> fe);
-    static ValueFactorPtr newFuncFactor(std::shared_ptr<FuncExpr> fe);
+    static ValueFactorPtr newAggFactor(std::shared_ptr<FuncExpr> const& fe);
+    static ValueFactorPtr newFuncFactor(std::shared_ptr<FuncExpr> const& fe);
     /// Makes a new ValueFactor with type=const and value=alnum
     /// Any trailing whitespace is removed.
     static ValueFactorPtr newConstFactor(std::string const& alnum);
-    static ValueFactorPtr newExprFactor(std::shared_ptr<ValueExpr> ve);
+    static ValueFactorPtr newExprFactor(std::shared_ptr<ValueExpr> const& ve);
 
     friend std::ostream& operator<<(std::ostream& os, ValueFactor const& ve);
     friend std::ostream& operator<<(std::ostream& os, ValueFactor const* ve);

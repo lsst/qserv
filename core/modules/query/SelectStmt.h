@@ -42,12 +42,8 @@
 
 
 // Forward declarations
-class SqlSQL2Parser;
 namespace lsst {
 namespace qserv {
-namespace parser {
-    class SelectFactory;
-}
 namespace query {
     class SelectList;
     class FromList;
@@ -122,8 +118,6 @@ public:
      * @brief Get LIMIT value in LIMIT clause for a SQL query
      *
      * @return LIMIT value, lsst::qserv::NOTSET if not specified
-     *
-     * @see lsst::qserv::parser::ModFactory::getLimit()
      */
     int getLimit() const { return _limit; }
 
@@ -171,8 +165,6 @@ public:
     bool operator==(const SelectStmt& rhs) const;
 
 private:
-    // Declarations
-    friend class parser::SelectFactory;
 
     // Fields
     std::shared_ptr<FromList> _fromList; // Data sources

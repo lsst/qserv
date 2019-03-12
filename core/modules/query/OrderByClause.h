@@ -46,9 +46,6 @@
 // Forward declarations
 namespace lsst {
 namespace qserv {
-namespace parser {
-    class ModFactory;
-}
 namespace query {
     class QueryTemplate;
 }}} // End of forward declarations
@@ -87,7 +84,6 @@ public:
 private:
     friend std::ostream& operator<<(std::ostream& os, OrderByTerm const& ob);
     friend class render;
-    friend class parser::ModFactory;
 
     std::shared_ptr<ValueExpr> _expr;
     Order _order;
@@ -122,7 +118,6 @@ public:
 private:
     friend std::ostream& operator<<(std::ostream& os, OrderByClause const& oc);
     friend std::ostream& operator<<(std::ostream& os, OrderByClause const* oc);
-    friend class parser::ModFactory;
 
     void _addTerm(OrderByTerm const& t) {_terms->push_back(t); }
     std::shared_ptr<std::vector<OrderByTerm>> _terms;

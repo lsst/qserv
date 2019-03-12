@@ -42,7 +42,6 @@
 #include "query/PassTerm.h"
 #include "query/QueryContext.h"
 #include "query/SelectStmt.h"
-#include "query/SqlSQL2Tokens.h"
 #include "query/TestFactory.h"
 #include "query/ValueExpr.h"
 #include "query/ValueFactor.h"
@@ -194,7 +193,7 @@ BOOST_AUTO_TEST_CASE(DM_737_REGRESSION) {
     std::shared_ptr<ValueExpr> ve2 = ValueExpr::newSimple(vf2);
     CompPredicate::Ptr cp0 = std::make_shared<CompPredicate>();
     cp0->left = ve1;
-    cp0->op = SqlSQL2Tokens::NOT_EQUALS_OP;
+    cp0->op = query::CompPredicate::NOT_EQUALS_OP;
     cp0->right = ve2;
     BoolFactor::Ptr bf1 = std::make_shared<BoolFactor>();
     bf1->_terms.push_back(cp0);
@@ -211,7 +210,7 @@ BOOST_AUTO_TEST_CASE(DM_737_REGRESSION) {
     std::shared_ptr<ValueExpr> ve4 = ValueExpr::newSimple(vf4);
     CompPredicate::Ptr cp1 = std::make_shared<CompPredicate>();
     cp1->left = ve3;
-    cp1->op = SqlSQL2Tokens::NOT_EQUALS_OP_ALT;
+    cp1->op = query::CompPredicate::NOT_EQUALS_OP_ALT;
     cp1->right = ve4;
     BoolFactor::Ptr bf2 = std::make_shared<BoolFactor>();
     bf2->_terms.push_back(cp1);
@@ -222,7 +221,7 @@ BOOST_AUTO_TEST_CASE(DM_737_REGRESSION) {
     std::shared_ptr<ValueExpr> ve6 = ValueExpr::newSimple(vf6);
     CompPredicate::Ptr cp2 = std::make_shared<CompPredicate>();
     cp2->left = ve5;
-    cp2->op = SqlSQL2Tokens::LESS_THAN_OP;
+    cp2->op = query::CompPredicate::LESS_THAN_OP;
     cp2->right = ve6;
     BoolFactor::Ptr bf3 = std::make_shared<BoolFactor>();
     bf3->_terms.push_back(cp2);

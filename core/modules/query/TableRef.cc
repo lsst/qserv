@@ -63,10 +63,12 @@ namespace query {
 ////////////////////////////////////////////////////////////////////////
 std::ostream& operator<<(std::ostream& os, TableRef const& ref) {
     os << "TableRef(";
-    os << "alias:" << ref._alias;
-    os << ", db:" << ref._db;
-    os << ", table:" << ref._table;
-    os << ", joinRefs:" << util::printable(ref._joinRefs);
+    os << "\"" << ref._db << "\"";
+    os << ", \"" << ref._table << "\"";
+    os << ", \"" << ref._alias << "\"";
+    if (!ref._joinRefs.empty()) {
+        os << ", " << util::printable(ref._joinRefs, "", "");
+    }
     os << ")";
     return os;
 }

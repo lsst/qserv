@@ -31,10 +31,6 @@
 #include "lsst/log/Log.h"
 
 #include "parser/ParseException.h"
-#include "parser/SelectListFactory.h"
-#include "parser/ValueExprFactory.h"
-#include "parser/ValueFactorFactory.h"
-#include "parser/WhereFactory.h"
 #include "query/AndTerm.h"
 #include "query/BetweenPredicate.h"
 #include "query/BoolFactor.h"
@@ -53,10 +49,11 @@
 #include "query/OrderByClause.h"
 #include "query/OrTerm.h"
 #include "query/PassTerm.h"
+#include "query/QsRestrictor.h"
 #include "query/SelectList.h"
 #include "query/SelectStmt.h"
-#include "query/SqlSQL2Tokens.h"
 #include "query/TableRef.h"
+#include "query/typedefs.h"
 #include "query/ValueExpr.h"
 #include "query/ValueFactor.h"
 #include "query/WhereClause.h"
@@ -64,6 +61,14 @@
 
 
 using namespace std;
+
+
+namespace lsst {
+namespace qserv {
+    using query::ValueExprPtr;
+}
+}
+
 
 namespace {
 
@@ -891,24 +896,24 @@ public:
 
     void onEnter() override {
         if (_ctx->star != nullptr) {
-            SelectListFactory::addStarFactor(_selectList);
+            _addStarFactor();
         }
     }
 
     void handleColumnElement(shared_ptr<query::ValueExpr> const & columnElement) override {
-        SelectListFactory::addValueExpr(_selectList, columnElement);
+        _addValueExpr(columnElement);
     }
 
     void handleSelectFunctionElement(shared_ptr<query::ValueExpr> const & selectFunction) override {
-        SelectListFactory::addSelectAggFunction(_selectList, selectFunction);
+        _addSelectAggFunction(selectFunction);
     }
 
     void handleSelectStarElement(shared_ptr<query::ValueExpr> const & valueExpr) override {
-        SelectListFactory::addValueExpr(_selectList, valueExpr);
+        _addValueExpr(valueExpr);
     }
 
     void handleSelectExpressionElement(shared_ptr<query::ValueExpr> const & valueExpr) override {
-        SelectListFactory::addValueExpr(_selectList, valueExpr);
+        _addValueExpr(valueExpr);
     }
 
     void checkContext() const override {
@@ -923,6 +928,19 @@ public:
     string name() const override { return getTypeName(this); }
 
 private:
+    void _addValueExpr(ValueExprPtr valueExpr) const {
+        _selectList->addValueExpr(valueExpr);
+    }
+
+    void _addStarFactor() const {
+        _selectList->addValueExpr(query::ValueExpr::newSimple(
+                query::ValueFactor::newStarFactor("")));
+    }
+
+    void _addSelectAggFunction(std::shared_ptr<query::ValueExpr> const& func) const {
+        _selectList->addValueExpr(func);
+    }
+
     shared_ptr<query::SelectList> _selectList{make_shared<query::SelectList>()};
 };
 
@@ -969,7 +987,7 @@ public:
 
     void handleQservFunctionSpec(string const & functionName,
             vector<shared_ptr<query::ValueFactor>> const & args) override {
-        WhereFactory::addQservRestrictor(_getWhereClause(), functionName, args);
+        _addQservRestrictor(functionName, args);
     }
 
     void handleGroupByItem(shared_ptr<query::ValueExpr> const & valueExpr) override {
@@ -1005,6 +1023,32 @@ public:
     string name() const override { return getTypeName(this); }
 
 private:
+    void _addQservRestrictor(const std::string& function,
+                             const std::vector<std::shared_ptr<query::ValueFactor>>& parameters) {
+        // Here we extract the args from a vector of ValueFactor::ColumnRef
+        // This is a side effect of the current IR, where in most cases a constant string is represented as
+        // a column name. But in a QservRestrictor (aka QservFunction) each par is simply represented by a
+        // string.
+        auto restrictor = std::make_shared<query::QsRestrictor>();
+        for (auto const& valueFactor : parameters) {
+            if (query::ValueFactor::CONST != valueFactor->getType()) {
+                throw std::logic_error("QServFunctionSpec args are (currently) expected as constVal.");
+            }
+            restrictor->_params.push_back(valueFactor->getConstVal());
+        }
+
+        // Add case insensitive behavior in order to mimic MySQL functions/procedures
+        std::string insensitiveFunction(function);
+        if (insensitiveFunction != "sIndex") {
+            std::transform(insensitiveFunction.begin(), insensitiveFunction.end(),
+                           insensitiveFunction.begin(), ::tolower);
+            LOGS(_log, LOG_LVL_DEBUG, "Qserv restrictor changed to lower-case: " << insensitiveFunction);
+        }
+        restrictor->_name = insensitiveFunction;
+        _getWhereClause()->addQsRestrictor(restrictor);
+    }
+
+
     void _addBoolTerm(shared_ptr<query::BoolTerm> const & boolTerm, antlr4::ParserRuleContext* childCtx) {
         if (_ctx->whereExpr == childCtx) {
             shared_ptr<query::AndTerm> andTerm = make_shared<query::AndTerm>(boolTerm);
@@ -1219,23 +1263,24 @@ public:
     }
 
     void onExit() override {
-        shared_ptr<query::ValueFactor> valueFactor;
+        shared_ptr<query::ColumnRef> columnRef;
         switch(_strings.size()) {
         case 1:
             // only 1 value is set in strings; it is the column name.
-            valueFactor = ValueFactorFactory::newColumnColumnFactor("", "", _strings[0]);
+            columnRef = std::make_shared<query::ColumnRef>("", "", _strings[0]);
             break;
         case 2:
             // 2 values are set in strings; they are table and column name.
-            valueFactor = ValueFactorFactory::newColumnColumnFactor("", _strings[0], _strings[1]);
+            columnRef = std::make_shared<query::ColumnRef>("", _strings[0], _strings[1]);
             break;
         case 3:
             // 3 values are set in strings; they are database name, table name, and column name.
-            valueFactor = ValueFactorFactory::newColumnColumnFactor(_strings[0], _strings[1], _strings[2]);
+            columnRef = std::make_shared<query::ColumnRef>(_strings[0], _strings[1], _strings[2]);
             break;
         default:
             ASSERT_EXECUTION_CONDITION(false, "Unhandled number of strings.", _ctx);
         }
+        auto valueFactor = query::ValueFactor::newColumnRefFactor(columnRef);
         lockedParent()->handleFullColumnName(valueFactor);
     }
 
@@ -1306,7 +1351,7 @@ public:
 
     void handleFunctionCallExpressionAtom(shared_ptr<query::ValueFactor> const & valueFactor) override {
         auto valueExpr = make_shared<query::ValueExpr>();
-        ValueExprFactory::addValueFactor(valueExpr, valueFactor);
+        valueExpr->addValueFactor(valueFactor);
         lockedParent()->handleExpressionAtomPredicate(valueExpr, _ctx);
     }
 
@@ -1316,7 +1361,7 @@ public:
 
     void HandleFullColumnNameExpressionAtom(shared_ptr<query::ValueFactor> const & valueFactor) override {
         auto valueExpr = make_shared<query::ValueExpr>();
-        ValueExprFactory::addValueFactor(valueExpr, valueFactor);
+        valueExpr->addValueFactor(valueFactor);
         lockedParent()->handleExpressionAtomPredicate(valueExpr, _ctx);
     }
 
@@ -1526,26 +1571,22 @@ public:
         auto compPredicate = make_shared<query::CompPredicate>();
         compPredicate->left = _left;
 
-        // We need to remove the coupling between the query classes and the parser classes, in this case where
-        // the query classes use the integer token types instead of some other system. For now this if/else
-        // block allows us to go from the token string to the SqlSQL2Tokens type defined by the antlr2/3
-        // grammar and used by the query objects.
         if ("=" == _comparison) {
-            compPredicate->op = SqlSQL2Tokens::EQUALS_OP;
+            compPredicate->op = query::CompPredicate::EQUALS_OP;
         } else if (">" == _comparison) {
-            compPredicate->op = SqlSQL2Tokens::GREATER_THAN_OP;
+            compPredicate->op = query::CompPredicate::GREATER_THAN_OP;
         } else if ("<" == _comparison) {
-            compPredicate->op = SqlSQL2Tokens::LESS_THAN_OP;
+            compPredicate->op = query::CompPredicate::LESS_THAN_OP;
         } else if ("<>" == _comparison) {
-            compPredicate->op = SqlSQL2Tokens::NOT_EQUALS_OP;
+            compPredicate->op = query::CompPredicate::NOT_EQUALS_OP;
         } else if ("!=" == _comparison) {
-            compPredicate->op = SqlSQL2Tokens::NOT_EQUALS_OP_ALT;
+            compPredicate->op = query::CompPredicate::NOT_EQUALS_OP_ALT;
         } else if ("<=>" == _comparison) {
-            compPredicate->op = SqlSQL2Tokens::NULL_SAFE_EQUALS_OP;
+            compPredicate->op = query::CompPredicate::NULL_SAFE_EQUALS_OP;
         } else if ("<=" == _comparison) {
-            compPredicate->op = SqlSQL2Tokens::LESS_THAN_OR_EQUALS_OP;
+            compPredicate->op = query::CompPredicate::LESS_THAN_OR_EQUALS_OP;
         } else if (">=" == _comparison) {
-            compPredicate->op = SqlSQL2Tokens::GREATER_THAN_OR_EQUALS_OP;
+            compPredicate->op = query::CompPredicate::GREATER_THAN_OR_EQUALS_OP;
         } else {
             ASSERT_EXECUTION_CONDITION(false, "unhandled comparison operator type:" + _comparison, _ctx);
         }
@@ -1868,7 +1909,7 @@ public:
         ASSERT_EXECUTION_CONDITION(nullptr == _valueExpr, "_valueExpr should only be set once.", _ctx);
         ASSERT_EXECUTION_CONDITION(uidlist.size() == 1, "Star Elements must be 'tableName.*'", _ctx);
         _valueExpr = make_shared<query::ValueExpr>();
-        ValueExprFactory::addValueFactor(_valueExpr, query::ValueFactor::newStarFactor(uidlist[0]));
+        _valueExpr->addValueFactor(query::ValueFactor::newStarFactor(uidlist[0]));
     }
 
     void checkContext() const override {
@@ -1928,7 +1969,7 @@ public:
         ASSERT_EXECUTION_CONDITION(nullptr != _functionValueFactor,
                 "function value factor not populated.", _ctx);
         auto valueExpr = std::make_shared<query::ValueExpr>();
-        ValueExprFactory::addValueFactor(valueExpr, _functionValueFactor);
+        valueExpr->addValueFactor(_functionValueFactor);
         valueExpr->setAlias(_asName);
         lockedParent()->handleSelectFunctionElement(valueExpr);
     }
@@ -2152,7 +2193,7 @@ public:
 
     void onExit() override {
         auto valueExpr = make_shared<query::ValueExpr>();
-        ValueExprFactory::addValueFactor(valueExpr, _valueFactor);
+        valueExpr->addValueFactor(_valueFactor);
         valueExpr->setAlias(_alias);
         lockedParent()->handleColumnElement(valueExpr);
     }
@@ -2457,12 +2498,12 @@ public:
             string table;
             auto starFactor = query::ValueFactor::newStarFactor(table);
             auto starParExpr = std::make_shared<query::ValueExpr>();
-            ValueExprFactory::addValueFactor(starParExpr, starFactor);
+            starParExpr->addValueFactor(starFactor);
             funcExpr = query::FuncExpr::newArg1(_ctx->COUNT()->getText(), starParExpr);
         } else if (_ctx->AVG() || _ctx->MAX() || _ctx->MIN() || _ctx->SUM() || _ctx->COUNT() ) {
             auto param = std::make_shared<query::ValueExpr>();
             ASSERT_EXECUTION_CONDITION(nullptr != _valueFactor, "ValueFactor must be populated.", _ctx);
-            ValueExprFactory::addValueFactor(param, _valueFactor);
+            param->addValueFactor(_valueFactor);
             antlr4::tree::TerminalNode * terminalNode;
             if (_ctx->AVG()) {
                 terminalNode = _ctx->AVG();
@@ -2558,19 +2599,19 @@ public:
 
     void handleConstant(string const & val) override {
         auto valueExpr = make_shared<query::ValueExpr>();
-        ValueExprFactory::addValueFactor(valueExpr, query::ValueFactor::newConstFactor(val));
+        valueExpr->addValueFactor(query::ValueFactor::newConstFactor(val));
         _args.push_back(valueExpr);
     }
 
     void handleFullColumnName(shared_ptr<query::ValueFactor> const & columnName) override {
         auto valueExpr = make_shared<query::ValueExpr>();
-        ValueExprFactory::addValueFactor(valueExpr, columnName);
+        valueExpr->addValueFactor(columnName);
         _args.push_back(valueExpr);
     }
 
     void handleScalarFunctionCall(shared_ptr<query::ValueFactor> const & valueFactor) {
         auto valueExpr = make_shared<query::ValueExpr>();
-        ValueExprFactory::addValueFactor(valueExpr, valueFactor);
+        valueExpr->addValueFactor(valueFactor);
         _args.push_back(valueExpr);
     }
 
@@ -3027,7 +3068,7 @@ public:
     using AdapterT::AdapterT;
 
     void handleFunctionCallExpressionAtom(shared_ptr<query::ValueFactor> const & valueFactor) override {
-        ValueExprFactory::addValueFactor(_getValueExpr(), valueFactor);
+        _getValueExpr()->addValueFactor(valueFactor);
     }
 
     void handleMathOperator(MathOperatorCBH::OperatorType operatorType) override {
@@ -3037,49 +3078,49 @@ public:
             break;
 
         case MathOperatorCBH::SUBTRACT: {
-            bool success = ValueExprFactory::addOp(_getValueExpr(), query::ValueExpr::MINUS);
+            bool success = _getValueExpr()->addOp(query::ValueExpr::MINUS);
             ASSERT_EXECUTION_CONDITION(success,
                     "Failed to add an operator to valueExpr.", _ctx);
             break;
         }
 
         case MathOperatorCBH::ADD: {
-            bool success = ValueExprFactory::addOp(_getValueExpr(), query::ValueExpr::PLUS);
+            bool success = _getValueExpr()->addOp(query::ValueExpr::PLUS);
             ASSERT_EXECUTION_CONDITION(success,
                     "Failed to add an operator to valueExpr.", _ctx);
             break;
         }
 
         case MathOperatorCBH::DIVIDE: {
-            bool success = ValueExprFactory::addOp(_getValueExpr(), query::ValueExpr::DIVIDE);
+            bool success = _getValueExpr()->addOp(query::ValueExpr::DIVIDE);
             ASSERT_EXECUTION_CONDITION(success,
                     "Failed to add an operator to valueExpr.", _ctx);
             break;
         }
 
         case MathOperatorCBH::MULTIPLY: {
-            bool success = ValueExprFactory::addOp(_getValueExpr(), query::ValueExpr::MULTIPLY);
+            bool success = _getValueExpr()->addOp(query::ValueExpr::MULTIPLY);
             ASSERT_EXECUTION_CONDITION(success,
                     "Failed to add an operator to valueExpr.", _ctx);
             break;
         }
 
         case MathOperatorCBH::DIV: {
-            bool success = ValueExprFactory::addOp(_getValueExpr(), query::ValueExpr::DIV);
+            bool success = _getValueExpr()->addOp(query::ValueExpr::DIV);
             ASSERT_EXECUTION_CONDITION(success,
                     "Failed to add an operator to valueExpr.", _ctx);
             break;
         }
 
         case MathOperatorCBH::MOD: {
-            bool success = ValueExprFactory::addOp(_getValueExpr(), query::ValueExpr::MOD);
+            bool success = _getValueExpr()->addOp(query::ValueExpr::MOD);
             ASSERT_EXECUTION_CONDITION(success,
                     "Failed to add an operator to valueExpr.", _ctx);
             break;
         }
 
         case MathOperatorCBH::MODULO: {
-            bool success = ValueExprFactory::addOp(_getValueExpr(), query::ValueExpr::MODULO);
+            bool success = _getValueExpr()->addOp(query::ValueExpr::MODULO);
             ASSERT_EXECUTION_CONDITION(success,
                     "Failed to add an operator to valueExpr.", _ctx);
             break;
@@ -3088,11 +3129,11 @@ public:
     }
 
     void HandleFullColumnNameExpressionAtom(shared_ptr<query::ValueFactor> const & valueFactor) override {
-        ValueExprFactory::addValueFactor(_getValueExpr(), valueFactor);
+        _getValueExpr()->addValueFactor(valueFactor);
     }
 
     void handleConstantExpressionAtom(shared_ptr<query::ValueFactor> const & valueFactor) override {
-        ValueExprFactory::addValueFactor(_getValueExpr(), valueFactor);
+        _getValueExpr()->addValueFactor(valueFactor);
     }
 
     void handleNestedExpressionAtom(shared_ptr<query::BoolTerm> const & boolTerm) override {
@@ -3101,7 +3142,7 @@ public:
 
     void handleNestedExpressionAtom(shared_ptr<query::ValueExpr> const & valueExpr) override {
         auto valueFactor = query::ValueFactor::newExprFactor(valueExpr);
-        ValueExprFactory::addValueFactor(_getValueExpr(), valueFactor);
+        _getValueExpr()->addValueFactor(valueFactor);
     }
 
     void handleMathExpressionAtom(shared_ptr<query::ValueExpr> const & valueExpr) override {
@@ -3208,10 +3249,10 @@ public:
                 "Not all values were populated, left:" << _left << ", right:" << right << ", didSetOp:" <<
                 _didSetOp, _ctx);
         auto valueExpr = std::make_shared<query::ValueExpr>();
-        ValueExprFactory::addValueFactor(valueExpr, _left);
+        valueExpr->addValueFactor(_left);
         auto valueExprOp = _translateOperator(_operator);
-        ValueExprFactory::addOp(valueExpr, valueExprOp);
-        ValueExprFactory::addValueFactor(valueExpr, _right);
+        valueExpr->addOp(valueExprOp);
+        valueExpr->addValueFactor(_right);
         lockedParent()->handleBitExpressionAtom(valueExpr);
     }
 

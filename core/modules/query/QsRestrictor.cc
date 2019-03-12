@@ -45,8 +45,8 @@ namespace query {
 
 
 std::ostream& operator<<(std::ostream& os, QsRestrictor const& q) {
-    os << "QsRestrictor(name:" << q._name;
-    os << ", params:" << util::printable(q._params);
+    os << "QsRestrictor(" << "\"" <<  q._name << "\"";
+    os << ", " << util::printable(q._params, "", "");
     os << ")";
     return os;
 }

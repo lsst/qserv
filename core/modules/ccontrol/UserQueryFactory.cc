@@ -149,27 +149,7 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
 
         // Parse SELECT
 
-// While the antlr4 parser is still under development we will leave in the code that can be used to generate
-// IR using our antlr v2 parser. It is very useful for debugging & development. At some point the antlr4
-// parser maturity will have obviously passed what we could do with antlr v2 and we should remove all the
-// antlr v2 parser code from qserv.
-#if 0
-    {
-        auto parser = parser::SelectParser::newInstance(query, parser::SelectParser::ANTLR2);
-        try {
-            parser->setup();
-        } catch (parser::ParseException& e) {
-            LOGS(_log, LOG_LVL_DEBUG, "antlr v2 parse exception: " << e.what());
-        }
-        auto stmt = parser->getSelectStmt();
-        if (stmt != nullptr) {
-			LOGS(_log, LOG_LVL_DEBUG, "Old-style generated select statement: " << a2stmt->getQueryTemplate());
-			LOGS(_log, LOG_LVL_DEBUG, "Old-style Hierarchy: " << *a2stmt);
-        }
-    }
-#endif
-
-        auto parser = parser::SelectParser::newInstance(query, parser::SelectParser::ANTLR4);
+        auto parser = parser::SelectParser::newInstance(query);
         try {
             parser->setup();
         } catch (parser::ParseException& e) {

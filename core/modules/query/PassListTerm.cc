@@ -71,7 +71,7 @@ BoolFactorTerm::Ptr PassListTerm::copySyntax() const {
 
 
 void PassListTerm::dbgPrint(std::ostream& os) const {
-    os << "PassListTerm(" << util::printable(_terms) << ")";
+    os << "PassListTerm(" << util::printable(_terms, "", "") << ")";
 }
 
 

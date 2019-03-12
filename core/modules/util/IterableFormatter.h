@@ -94,7 +94,12 @@ public:
             os << "nullptr";
             return os;
         }
-        os << self._open;
+
+        auto next = self._begin;
+        bool printSeparators = (next != self._end && ++next != self._end);
+        if (printSeparators) {
+            os << self._open;
+        }
         auto it = self._begin;
         if (it != self._end) {
             _item_fmt(os, *it);
@@ -104,7 +109,9 @@ public:
             os << self._sep;
             _item_fmt(os, *it);
         }
-        os << self._close;
+        if (printSeparators) {
+            os << self._close;
+        }
         return os;
     }
 

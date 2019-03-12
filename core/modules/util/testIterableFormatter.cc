@@ -62,7 +62,7 @@ BOOST_AUTO_TEST_CASE(EmptyVector) {
     auto formatable = util::printable(iterable);
 
     output << formatable;
-    BOOST_REQUIRE(output.is_equal("[]"));
+    BOOST_REQUIRE(output.is_equal(""));
 }
 
 /** @test

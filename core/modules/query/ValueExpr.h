@@ -47,9 +47,6 @@
 // Forward declarations
 namespace lsst {
 namespace qserv {
-namespace parser {
-    class ValueExprFactory;
-}
 namespace query {
     class QueryTemplate;
     class ValueFactor;
@@ -85,6 +82,10 @@ public:
 
     ValueExpr();
     ValueExpr(FactorOpVector factorOpVec);
+
+    void addValueFactor(std::shared_ptr<query::ValueFactor> valueFactor);
+
+    bool addOp(query::ValueExpr::Op op);
 
     std::string const& getAlias() const { return _alias; }
     void setAlias(std::string const& a) { _alias = a; }
@@ -135,7 +136,6 @@ public:
 
     static ValueExprPtr newSimple(std::shared_ptr<ValueFactor> vt);
 
-    friend class parser::ValueExprFactory;
     class render;
     friend class render;
 

@@ -62,7 +62,6 @@
 #include "query/QsRestrictor.h"
 #include "query/QueryContext.h"
 #include "query/SelectStmt.h"
-#include "query/SqlSQL2Tokens.h" // (generated) SqlSQL2TokenTypes
 #include "query/ValueFactor.h"
 #include "query/ValueExpr.h"
 #include "query/WhereClause.h"
@@ -479,7 +478,7 @@ private:
                 newFuncExpr(fName, e.alias, e.chunkColumns, params);
             cp->left =
                 query::ValueExpr::newSimple(query::ValueFactor::newFuncFactor(fe));
-            cp->op = SqlSQL2Tokens::EQUALS_OP;
+            cp->op = query::CompPredicate::EQUALS_OP;
             cp->right = query::ValueExpr::newSimple(
                            query::ValueFactor::newConstFactor("1"));
             terms.push_back(cp);

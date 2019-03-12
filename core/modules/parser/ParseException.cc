@@ -28,11 +28,10 @@
   * @author Daniel L. Wang, SLAC
   */
 
+
 // Class header
 #include "parser/ParseException.h"
 
-// Qserv headers
-#include "parser/parseTreeUtil.h"
 
 ////////////////////////////////////////////////////////////////////////
 // ParseException
@@ -41,23 +40,12 @@ namespace lsst {
 namespace qserv {
 namespace parser {
 
-ParseException::ParseException(char const* msg, antlr::RefAST subTree)
-    : std::runtime_error(std::string(msg) + ":" + walkSiblingString(subTree))
-{}
-ParseException::ParseException(std::string const& msg, antlr::RefAST subTree)
-    : std::runtime_error(msg + ":" + walkSiblingString(subTree))
-{}
-ParseException::ParseException(std::string const& msg,
-                               antlr::RecognitionException const&)
-    : std::runtime_error(msg)
-{}
-ParseException::ParseException(std::string const& msg,
-                               antlr::ANTLRException const&)
-    : std::runtime_error(msg)
-{}
+
 ParseException::ParseException(Bug const& b)
     : std::runtime_error(std::string("Bug during parse:") + b.what())
 {}
+
+
 ParseException::ParseException(std::string const& msg)
     : std::runtime_error(msg)
 {}

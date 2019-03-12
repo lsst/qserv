@@ -61,7 +61,9 @@ namespace query {
 std::ostream&
 operator<<(std::ostream& os, WhereClause const& wc) {
     os << "WhereClause(" << wc._rootOrTerm;
-    os << ", restrs:" << util::ptrPrintable(wc._restrs);
+    if (nullptr != wc._restrs && !wc._restrs->empty()) {
+        os << ", " << util::ptrPrintable(wc._restrs, "", "");
+    }
     os << ")";
     return os;
 }
@@ -111,6 +113,11 @@ void WhereClause::setRootTerm(std::shared_ptr<LogicalTerm> const& term) {
         orTerm = std::make_shared<OrTerm>(term);
     }
     _rootOrTerm = orTerm;
+}
+
+
+void WhereClause::addQsRestrictor(std::shared_ptr<QsRestrictor> const& qsRestrictor) {
+    _restrs->push_back(qsRestrictor);
 }
 
 

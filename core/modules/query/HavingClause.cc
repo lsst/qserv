@@ -53,7 +53,7 @@ namespace query {
 ////////////////////////////////////////////////////////////////////////
 std::ostream&
 operator<<(std::ostream& os, HavingClause const& c) {
-    os << "HavingClause(tree:" << c._tree << ")";
+    os << "HavingClause(" << c._tree << ")";
     return os;
 }
 

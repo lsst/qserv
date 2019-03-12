@@ -73,10 +73,6 @@ namespace qdisp {
 class QdispPool;
 }
 
-namespace qproc {
-class TaskMsgFactory;
-}
-
 namespace ccontrol {
 
 /// UserQuerySelect : implementation of the UserQuery for regular SELECT statements.

@@ -124,7 +124,7 @@ bool columnRefPtrComparisonPredicate(query::ColumnRef::Ptr lhs, query::ColumnRef
 
 
 BOOST_DATA_TEST_CASE(OrderBy, QUERIES, query) {
-    auto parser = parser::SelectParser::newInstance(query.query, parser::SelectParser::ANTLR4);
+    auto parser = parser::SelectParser::newInstance(query.query);
     try {
         parser->setup();
     } catch(parser::ParseException const& e) {
@@ -153,7 +153,7 @@ static const std::vector<OrderByQueryAndExpectedColumns> ORDER_BY_QUERIES = {
 };
 
 BOOST_DATA_TEST_CASE(UsedOrderBy, ORDER_BY_QUERIES, query) {
-    auto parser = parser::SelectParser::newInstance(query.query, parser::SelectParser::ANTLR4);
+    auto parser = parser::SelectParser::newInstance(query.query);
     try {
         parser->setup();
     } catch(parser::ParseException const& e) {

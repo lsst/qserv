@@ -119,15 +119,15 @@ std::string OrderByTerm::sqlFragment() const {
 std::ostream&
 operator<<(std::ostream& os, OrderByTerm const& t) {
     os << "OrderByTerm(";
-    os << "expr:" << t._expr;
-    os << ", order:";
+    os << t._expr;
+    os << ", ";
     switch (t._order) {
-    case OrderByTerm::DEFAULT: os << "DEFAULT"; break;
-    case OrderByTerm::ASC: os << "ASC"; break;
-    case OrderByTerm::DESC: os << "DESC"; break;
+    case OrderByTerm::DEFAULT: os << "query::OrderByTerm::DEFAULT"; break;
+    case OrderByTerm::ASC: os << "query::OrderByTerm::ASC"; break;
+    case OrderByTerm::DESC: os << "query::OrderByTerm::DESC"; break;
     default: os << "!!unhandled!!"; break;
     }
-    os << ", collate:" <<  t._collate;
+    os << ", \"" <<  t._collate << "\"";
     os << ")";
     return os;
 }
@@ -145,7 +145,7 @@ bool OrderByTerm::operator==(const OrderByTerm& rhs) const {
 ////////////////////////////////////////////////////////////////////////
 std::ostream&
 operator<<(std::ostream& os, OrderByClause const& clause) {
-    os << "OrderByClause(" << util::ptrPrintable(clause._terms) << ")";
+    os << "OrderByClause(" << util::ptrPrintable(clause._terms, "", "") << ")";
     return os;
 }
 

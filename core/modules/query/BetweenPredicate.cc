@@ -77,12 +77,11 @@ BoolFactorTerm::Ptr BetweenPredicate::clone() const {
 
 
 void BetweenPredicate::dbgPrint(std::ostream& os) const {
-    os << "BetweenPredicate(value:" << value;
-    if (hasNot) {
-        os << " NOT,";
-    }
-    os << ", minValue:" << minValue;
-    os << ", maxValue:" << maxValue;
+    os << "BetweenPredicate(";
+    os << value;
+    os << (hasNot ? ", NOT_BETWEEN" : ", BETWEEN");
+    os << ", " << minValue;
+    os << ", " << maxValue;
     os << ")";
 }
 

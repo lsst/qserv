@@ -134,11 +134,11 @@ bool FromList::operator==(const FromList& rhs) {
 
 
 std::ostream& operator<<(std::ostream& os, FromList const& fromList) {
-    os << "FromList(tableRefs:";
+    os << "FromList(";
     if (nullptr == fromList._tableRefs) {
         os << "nullptr";
     } else {
-        os << util::printable(*fromList._tableRefs);
+        os << util::printable(*fromList._tableRefs, "", "");
     }
     os << ")";
     return os;

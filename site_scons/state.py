@@ -164,10 +164,6 @@ def _setEnvWithDependencies():
         (EnumVariable('debug', 'debug gcc output and symbols', 'yes', allowed_values=('yes', 'no'))),
         (PathVariable('PROTOC', 'protoc binary path', _getBinPath('protoc', "Looking for protoc compiler"),
                       PathVariable.PathIsFile)),
-        # antlr is named runantlr on Ubuntu 13.10 and Debian Wheezy
-        (PathVariable('ANTLR', 'antlr binary path',
-                      _getBinPathFromBinList(['antlr', 'runantlr'], 'Looking for antlr parser generator'),
-                      PathVariable.PathIsFile)),
         (PathVariable('ANTLR4', 'antlr4 binary path',
                       _getBinPathFromBinList(['antlr4'], 'Looking for antlr4 parser generator'),
                       PathVariable.PathIsFile)),
@@ -201,20 +197,14 @@ def _setEnvWithDependencies():
     opts.AddVariables(
         (PathVariable('PROTOBUF_DIR', 'protobuf install dir',
                       _findPrefixFromPath('PROTOBUF_DIR', env['PROTOC']), PathVariable.PathIsDir)),
-        (PathVariable('ANTLR_DIR', 'antlr install dir',
-                      _findPrefixFromPath('ANTLR_DIR', env['ANTLR']), PathVariable.PathIsDir)),
         (PathVariable('ANTLR4_DIR', 'antlr4 install dir', _findPrefixFromName('ANTLR4'),
                       PathVariable.PathIsDir)),
     )
     opts.Update(env)
 
     opts.AddVariables(
-        (PathVariable('ANTLR_INC', 'antlr include path',
-                      os.path.join(env['ANTLR_DIR'], "include"), PathVariable.PathIsDir)),
         (PathVariable('ANTLR4_INC', 'antlr4 include path',
                       os.path.join(env['ANTLR4_DIR'], "include/antlr4-runtime"), PathVariable.PathIsDir)),
-        (PathVariable('ANTLR_LIB', 'antlr libraries path',
-         os.path.join(env['ANTLR_DIR'], "lib"), PathVariable.PathIsDir)),
         (PathVariable('ANTLR4_LIB', 'antlr4 libraries path',
          os.path.join(env['ANTLR4_DIR'], "lib"), PathVariable.PathIsDir)),
         (PathVariable('XROOTD_INC', 'xrootd include path', os.path.join(
@@ -282,7 +272,6 @@ def _setBuildEnv():
     env.Tool('compiler')
     env.Tool('recinstall')
     env.Tool('protoc')
-    env.Tool('antlr')
     env.Tool('antlr4')
     env.Tool('unittest')
     env.Tool('dirclean')
@@ -344,7 +333,6 @@ def init(src_dir):
         env['SHCCCOMSTR'] = env['SHCXXCOMSTR'] = "Compiling shared object $TARGET"
         env['SHLINKCOMSTR'] = "Linking shared object $TARGET"
         env['PROTOC_COMSTR'] = "Running protoc on $SOURCE"
-        env['ANTLR_COMSTR'] = "Running antlr on $SOURCE"
 
 
 def initBuild():

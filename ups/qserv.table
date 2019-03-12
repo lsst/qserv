@@ -1,4 +1,3 @@
-setupRequired(antlr)
 setupRequired(antlr4)
 setupRequired(boost)
 setupRequired(db)

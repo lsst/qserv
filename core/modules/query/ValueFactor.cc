@@ -55,17 +55,23 @@ namespace query {
 
 
 ValueFactor::ValueFactor(std::shared_ptr<ColumnRef> const& columnRef)
-: _type(COLUMNREF)
-, _columnRef(columnRef)
+        : _type(COLUMNREF)
+        , _columnRef(columnRef)
 {}
 
 
 ValueFactor::ValueFactor(std::string const& constVal)
-: _type(CONST)
-, _constVal(constVal) {
+        : _type(CONST)
+        , _constVal(constVal) {
     auto&& removeFrom = std::find_if(_constVal.rbegin(), _constVal.rend(),
             [](unsigned char c) {return !std::isspace(c);}).base();
     _constVal.erase(removeFrom, _constVal.end());
+}
+
+
+ValueFactor::ValueFactor(std::shared_ptr<FuncExpr> const& funcExpr)
+        : _type(FUNCTION)
+        , _funcExpr(funcExpr) {
 }
 
 
@@ -84,7 +90,7 @@ ValueFactorPtr ValueFactor::newStarFactor(std::string const& table) {
 }
 
 
-ValueFactorPtr ValueFactor::newFuncFactor(std::shared_ptr<FuncExpr> fe) {
+ValueFactorPtr ValueFactor::newFuncFactor(std::shared_ptr<FuncExpr> const& fe) {
     ValueFactorPtr term = std::make_shared<ValueFactor>();
     term->_type = FUNCTION;
     term->_funcExpr = fe;
@@ -92,7 +98,7 @@ ValueFactorPtr ValueFactor::newFuncFactor(std::shared_ptr<FuncExpr> fe) {
 }
 
 
-ValueFactorPtr ValueFactor::newAggFactor(std::shared_ptr<FuncExpr> fe) {
+ValueFactorPtr ValueFactor::newAggFactor(std::shared_ptr<FuncExpr> const& fe) {
     ValueFactorPtr term = std::make_shared<ValueFactor>();
     term->_type = AGGFUNC;
     term->_funcExpr = fe;
@@ -107,7 +113,7 @@ ValueFactor::newConstFactor(std::string const& alnum) {
 
 
 ValueFactorPtr
-ValueFactor::newExprFactor(std::shared_ptr<ValueExpr> ve) {
+ValueFactor::newExprFactor(std::shared_ptr<ValueExpr> const& ve) {
     ValueFactorPtr factor = std::make_shared<ValueFactor>();
     factor->_type = EXPR;
     factor->_valueExpr = ve;
@@ -153,11 +159,23 @@ ValueFactorPtr ValueFactor::clone() const{
 
 std::ostream& operator<<(std::ostream& os, ValueFactor const& ve) {
     os << "ValueFactor(";
-    if (ve._columnRef != nullptr) os << ve._columnRef;
-    if (ve._funcExpr != nullptr) os <<  ve._funcExpr;
-    if (ve._valueExpr != nullptr) os <<  ve._valueExpr;
-    if (not ve._alias.empty()) os << "alias:" << ve._alias;
-    if (not ve._constVal.empty()) os << "constVal:" << ve._constVal;
+    if (ve._columnRef != nullptr) {
+        os << ve._columnRef;
+    } else if (ve._funcExpr != nullptr) {
+        if (ValueFactor::AGGFUNC == ve._type) {
+            os << "query::ValueFactor::AGGFUNC, ";
+        } else if (ValueFactor::FUNCTION == ve._type) {
+            os << "query::ValueFactor::FUNCTION, ";
+        }
+        os <<  ve._funcExpr;
+    } else if (ve._valueExpr != nullptr) {
+        os <<  ve._valueExpr;
+    } else if (ve._type == ValueFactor::STAR) {
+        os << "STAR, \"" << ve._constVal << "\"";
+    } else {
+        os << "\"" << ve._constVal << "\"";
+    }
+    if (not ve._alias.empty()) os << "\"" << ve._alias << "\"";
     os << ")";
     return os;
 }

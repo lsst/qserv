@@ -41,9 +41,6 @@
 // Forward declarations
 namespace lsst {
 namespace qserv {
-namespace parser {
-    class ModFactory;
-}
 namespace query {
     class BoolTerm;
     class QueryTemplate;
@@ -76,7 +73,6 @@ public:
 private:
     friend std::ostream& operator<<(std::ostream& os, HavingClause const& h);
     friend std::ostream& operator<<(std::ostream& os, HavingClause const* h);
-    friend class parser::ModFactory;
     std::shared_ptr<BoolTerm> _tree;
 };
 

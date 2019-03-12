@@ -152,10 +152,9 @@ std::shared_ptr<BoolTerm> BoolFactor::copySyntax() const {
 
 
 void BoolFactor::dbgPrint(std::ostream& os) const {
-    os << "BoolFactor(" << util::printable(_terms);
-    if (_hasNot) {
-        os << ", has NOT";
-    }
+    os << "BoolFactor(";
+    os << (_hasNot ? "IS_NOT" : "IS") << ", ";
+    os << util::printable(_terms, "", "");
     os << ")";
 }
 

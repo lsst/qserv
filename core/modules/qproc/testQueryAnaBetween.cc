@@ -65,7 +65,7 @@ BOOST_FIXTURE_TEST_SUITE(OrderBy, QueryAnaFixture)
 
 BOOST_AUTO_TEST_CASE(SecondaryIndex) {
     std::string stmt = "select * from Object where objectIdObjTest between 386942193651347 and 386942193651349;";
-    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt, SelectParser::ANTLR4);
+    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
@@ -81,7 +81,7 @@ BOOST_AUTO_TEST_CASE(SecondaryIndex) {
 
 BOOST_AUTO_TEST_CASE(NoSecondaryIndex) {
     std::string stmt = "select * from Object where someField between 386942193651347 and 386942193651349;";
-    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt, SelectParser::ANTLR4);
+    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
@@ -93,7 +93,7 @@ BOOST_AUTO_TEST_CASE(DoubleSecondaryIndexRestrictor) {
     // std::string stmt = "select * from Object where objectIdObjTest between 38 and 40 OR objectIdObjTest IN (10, 30, 70);"
     // but this doesn't work: see DM-4017
     std::string stmt = "select * from Object where objectIdObjTest between 38 and 40 and objectIdObjTest IN (10, 30, 70);";
-    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt, SelectParser::ANTLR4);
+    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
@@ -119,7 +119,7 @@ BOOST_AUTO_TEST_CASE(DoubleSecondaryIndexRestrictorCartesian) {
     // std::string stmt = "select * from Object where objectIdObjTest between 38 and 40 OR objectIdObjTest IN (10, 30, 70);"
     // but this doesn't work: see DM-4017
     std::string stmt = "select * from Object o, Source s where o.objectIdObjTest between 38 and 40 AND s.objectIdSourceTest IN (10, 30, 70);";
-    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt, SelectParser::ANTLR4);
+    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));

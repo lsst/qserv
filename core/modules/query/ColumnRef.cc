@@ -47,9 +47,9 @@ namespace query {
 
 std::ostream& operator<<(std::ostream& os, ColumnRef const& cr) {
     os << "ColumnRef(";
-    os << "db:" << cr.db;
-    os << ", table:" << cr.table;
-    os << ", column:" << cr.column;
+    os << "\"" << cr.db << "\"";
+    os << ", \"" << cr.table << "\"";
+    os << ", \"" << cr.column << "\"";
     os << ")";
     return os;
 }

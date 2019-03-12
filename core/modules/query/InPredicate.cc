@@ -96,11 +96,10 @@ BoolFactorTerm::Ptr InPredicate::clone() const {
 
 
 void InPredicate::dbgPrint(std::ostream& os) const {
-    os << "InPredicate(value:" << value;
-    os << ", cands:" << util::printable(cands);
-    if (hasNot) {
-        os << ", has NOT";
-    }
+    os << "InPredicate(";
+    os << value;
+    os << (hasNot ? ", NOT_IN" : ", IN");
+    os << ", " << util::printable(cands, "", "");
     os << ")";
 }
 

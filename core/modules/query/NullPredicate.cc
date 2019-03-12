@@ -69,10 +69,9 @@ BoolFactorTerm::Ptr NullPredicate::clone() const {
 
 
 void NullPredicate::dbgPrint(std::ostream& os) const {
-    os << "NullPredicate(value:" << value;
-    if (hasNot) {
-        os << ", NOT";
-    }
+    os << "NullPredicate(";
+    os << value;
+    hasNot ? os << ", IS_NOT_NULL" : os << ", IS_NULL";
     os << ")";
 }
 

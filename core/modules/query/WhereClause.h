@@ -70,8 +70,11 @@ public:
     WhereClause() = default;
 
     // Construct a WhereClause that has the given OrTerm as its root term.
-    WhereClause(std::shared_ptr<query::OrTerm> rootOrTerm)
-    : _rootOrTerm(rootOrTerm) {}
+    WhereClause(std::shared_ptr<query::OrTerm> rootOrTerm,
+                std::shared_ptr<std::vector<std::shared_ptr<QsRestrictor>>> qsRestrictor=nullptr)
+            : _rootOrTerm(rootOrTerm)
+            , _restrs(qsRestrictor)
+    {}
 
     ~WhereClause() = default;
 
@@ -83,6 +86,8 @@ public:
     // Set the root term of the where clause. If `term` is an OrTerm, this will be the root term. If not then
     // an OrTerm that contains term will be the root term.
     void setRootTerm(std::shared_ptr<LogicalTerm> const& term);
+
+    void addQsRestrictor(std::shared_ptr<QsRestrictor> const& qsRestrictor);
 
     std::shared_ptr<std::vector<std::shared_ptr<ColumnRef>> const> getColumnRefs() const;
     std::shared_ptr<AndTerm> getRootAndTerm() const;

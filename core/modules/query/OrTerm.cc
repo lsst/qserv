@@ -70,7 +70,7 @@ bool OrTerm::merge(const BoolTerm& other) {
 
 
 void OrTerm::dbgPrint(std::ostream& os) const {
-    os << "OrTerm(" << util::printable(_terms) << ")";
+    os << "OrTerm(" << util::printable(_terms, "", "") << ")";
 }
 
 
