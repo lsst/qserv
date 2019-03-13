@@ -469,8 +469,8 @@ WorkerRequestFactory::WorkerRequestFactory(ServiceProvider::Ptr const& servicePr
     else if (finalTechnology == "FS")    _ptr = new WorkerRequestFactoryFS(   serviceProvider);
     else {
         throw invalid_argument(
-                    "WorkerRequestFactory::WorkerRequestFactory() unknown technology: '" +
-                    finalTechnology);
+                "WorkerRequestFactory::" + string(__func__) +
+                " unknown technology: '" + finalTechnology);
     }
 }
 

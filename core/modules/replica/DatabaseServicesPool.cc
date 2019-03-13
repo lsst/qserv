@@ -320,7 +320,7 @@ list<JobInfo> DatabaseServicesPool::jobs(string const& controllerId,
 
 DatabaseServices::Ptr DatabaseServicesPool::allocateService() {
 
-    string const context = "DatabaseServicesPool::allocateService  ";
+    string const context = "DatabaseServicesPool::" + string(__func__) + "  ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
@@ -344,7 +344,7 @@ DatabaseServices::Ptr DatabaseServicesPool::allocateService() {
 
 void DatabaseServicesPool::releaseService(DatabaseServices::Ptr const& service) {
 
-    string const context = "DatabaseServicesPool::releaseService  ";
+    string const context = "DatabaseServicesPool::" + string(__func__) + "  ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
@@ -363,8 +363,7 @@ void DatabaseServicesPool::releaseService(DatabaseServices::Ptr const& service) 
         }
     );
     if (1 != numRemoved) {
-        throw logic_error(
-                "DatabaseServicesPool::releaseService  inappropriate use of the method");
+        throw logic_error(context + "inappropriate use of the method");
     }
     _availableServices.push_back(service);
 

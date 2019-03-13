@@ -117,7 +117,8 @@ string Connection::escape(string const& inStr) const {
 
     if (nullptr == _mysql) {
         throw Error(
-            "Connection[" + to_string(_id) + "]::escape  not connected to the MySQL service"
+                "Connection[" + to_string(_id) + "]::" + string(__func__) +
+                "  not connected to the MySQL service"
         );
     }
     size_t const inLen = inStr.length();
@@ -155,7 +156,7 @@ string Connection::sqlValue(vector<string> const& coll) const {
 Connection::Ptr Connection::begin() {
 
     string const context =
-        "Connection[" + to_string(_id) + "]::begin(_inTransaction=" +
+        "Connection[" + to_string(_id) + "]::" + string(__func__) + "(_inTransaction=" +
         to_string(_inTransaction ? 1: 0) + "  ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
@@ -170,7 +171,7 @@ Connection::Ptr Connection::begin() {
 Connection::Ptr Connection::commit() {
 
     string const context =
-        "Connection[" + to_string(_id) + "]::commit(_inTransaction=" +
+        "Connection[" + to_string(_id) + "]::" + string(__func__) + "(_inTransaction=" +
         to_string(_inTransaction ? 1: 0) + "  ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
@@ -185,7 +186,7 @@ Connection::Ptr Connection::commit() {
 Connection::Ptr Connection::rollback() {
 
     string const context =
-        "Connection[" + to_string(_id) + "]::rollback(_inTransaction=" +
+        "Connection[" + to_string(_id) + "]::" + string(__func__) + "(_inTransaction=" +
         to_string(_inTransaction ? 1: 0) + "  ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
@@ -217,7 +218,7 @@ void Connection::processLastError(string const& context,
 
         case 0:
             throw logic_error(
-                    "processLastError: inappropriate use of this method from context: " + msg);
+                    string(__func__) + "  inappropriate use of this method from context: " + msg);
 
         case ER_DUP_ENTRY:
             throw DuplicateKeyError(msg);
@@ -271,7 +272,7 @@ void Connection::processLastError(string const& context,
 Connection::Ptr Connection::execute(string const& query) {
 
     string const context =
-        "Connection[" + to_string(_id) + "]::execute(_inTransaction=" +
+        "Connection[" + to_string(_id) + "]::" + string(__func__) + "(_inTransaction=" +
         to_string(_inTransaction ? 1: 0) + ")  ";
 
     LOGS(_log, LOG_LVL_DEBUG, context << query);
@@ -336,7 +337,7 @@ Connection::Ptr Connection::execute(function<void(Connection::Ptr)> const& scrip
                         : Configuration::databaseConnectTimeoutSec();
 
     string const context =
-        "Connection[" + to_string(_id) + "]::execute(_inTransaction=" +
+        "Connection[" + to_string(_id) + "]::" + string(__func__) + "(_inTransaction=" +
         to_string(_inTransaction ? 1: 0) +
         ",effectiveMaxReconnects=" + to_string(effectiveMaxReconnects) +
         ",effectiveTimeoutSec=" + to_string(effectiveTimeoutSec) +")  ";
@@ -403,7 +404,7 @@ vector<string> const& Connection::columnNames() const {
 bool Connection::next(Row& row) {
 
     string const context =
-        "Connection[" + to_string(_id) + "]::next(_inTransaction=" +
+        "Connection[" + to_string(_id) + "]::" + string(__func__) + "(_inTransaction=" +
         to_string(_inTransaction ? 1: 0) + ")  ";
 
     assertQueryContext();
@@ -437,11 +438,11 @@ bool Connection::next(Row& row) {
 void Connection::connect() {
 
     string const context =
-        "Connection[" + to_string(_id) + "]::connect(_inTransaction=" +
+        "Connection[" + to_string(_id) + "]::" + string(__func__) + "(_inTransaction=" +
         to_string(_inTransaction ? 1: 0) +
         ",_connectTimeoutSec=" + to_string(_connectTimeoutSec) + ")  ";
 
-    LOGS(_log, LOG_LVL_DEBUG, context << "started");
+    LOGS(_log, LOG_LVL_DEBUG, context << __func__ << "  started");
 
     // Allow just one shot if no reconnects are allewed by setting the timeout
     // to a value greater than 0.
@@ -483,7 +484,7 @@ void Connection::connect() {
             }
         }
     }
-    LOGS(_log, LOG_LVL_DEBUG, context << "connected");
+    LOGS(_log, LOG_LVL_DEBUG, context << __func__ << "  connected");
 }
 
 
@@ -492,7 +493,7 @@ void Connection::connectOnce() {
     ++_connectionAttempt;
 
     string const context =
-        "Connection[" + to_string(_id) + "]::execute(_inTransaction=" +
+        "Connection[" + to_string(_id) + "]::" + string(__func__) + "(_inTransaction=" +
         to_string(_inTransaction ? 1: 0) +
         ",_connectionAttempt=" + to_string(_connectionAttempt) + ")  ";
 
@@ -569,8 +570,9 @@ void Connection::connectOnce() {
 
     for (auto&& query: queries) {
         if (0 != mysql_query(_mysql, query.c_str())) {
-            throw Error(context + "mysql_query() failed in query:" + query +
-                        ", error: " + string(mysql_error(_mysql)));
+            throw Error(
+                    context + "mysql_query() failed in query:" + query +
+                    ", error: " + string(mysql_error(_mysql)));
         }
     }
     
@@ -583,7 +585,7 @@ void Connection::connectOnce() {
 void Connection::assertQueryContext() const {
 
     string const context =
-        "Connection[" + to_string(_id) + "]::assertQueryContext(_inTransaction=" +
+        "Connection[" + to_string(_id) + "]::" + string(__func__) + "(_inTransaction=" +
         to_string(_inTransaction ? 1: 0) + ")  ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
@@ -596,7 +598,7 @@ void Connection::assertQueryContext() const {
 void Connection::assertTransaction(bool inTransaction) const {
 
     string const context =
-        "Connection[" + to_string(_id) + "]::assertTransaction(_inTransaction=" +
+        "Connection[" + to_string(_id) + "]::" + string(__func__) + "(_inTransaction=" +
         to_string(_inTransaction ? 1: 0) + ",inTransaction=" +
         to_string(inTransaction ? 1: 0) + ")  ";
 

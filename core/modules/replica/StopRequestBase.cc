@@ -70,14 +70,14 @@ StopRequestBase::StopRequestBase(ServiceProvider::Ptr const& serviceProvider,
 
 
 void StopRequestBase::startImpl(util::Lock const& lock) {
-    LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     sendImpl(lock);
 }
 
 
 void StopRequestBase::wait(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "wait");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // Always need to set the interval before launching the timer.
 
@@ -94,7 +94,7 @@ void StopRequestBase::wait(util::Lock const& lock) {
 
 void StopRequestBase::awaken(boost::system::error_code const& ec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "awaken");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (isAborted(ec)) return;
 
@@ -106,7 +106,7 @@ void StopRequestBase::awaken(boost::system::error_code const& ec) {
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + "awaken");
+    util::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return;
 
@@ -116,7 +116,7 @@ void StopRequestBase::awaken(boost::system::error_code const& ec) {
 
 void StopRequestBase::sendImpl(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "sendImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // Serialize the Stop message header and the request itself into
     // the network buffer.
@@ -143,7 +143,7 @@ void StopRequestBase::sendImpl(util::Lock const& lock) {
 void StopRequestBase::analyze(bool success,
                               proto::ReplicationStatus status) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "analyze  success=" << (success ? "true" : "false"));
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  success=" << (success ? "true" : "false"));
 
     // This method is called on behalf of an asynchronous callback fired
     // upon a completion of the request within method send() - the only
@@ -159,7 +159,7 @@ void StopRequestBase::analyze(bool success,
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + "analyze");
+    util::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return;
 
@@ -206,9 +206,8 @@ void StopRequestBase::analyze(bool success,
 
         default:
             throw logic_error(
-                        "StopRequestBase::analyze() unknown status '" +
-                        proto::ReplicationStatus_Name(status) +
-                        "' received from server");
+                    "StopRequestBase::" + string(__func__) + "  unknown status '" +
+                    proto::ReplicationStatus_Name(status) + "' received from server");
     }
 }
 

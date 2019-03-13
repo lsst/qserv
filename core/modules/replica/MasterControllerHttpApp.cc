@@ -351,8 +351,7 @@ void MasterControllerHttpApp::_logEvent(ControllerEvent& event) const {
 
 void MasterControllerHttpApp::_assertIsStarted(string const& func) const {
     if (nullptr == _controller) {
-        throw logic_error(
-                    "MasterControllerHttpApp::" + func + "  Controller is not running");
+        throw logic_error("MasterControllerHttpApp::" + func + "  Controller is not running");
     }
 }
 

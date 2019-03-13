@@ -88,7 +88,7 @@ MessengerConnector::Ptr const& Messenger::connector(string const& worker)  const
 
     if (0 == _connector.count(worker))
         throw invalid_argument(
-                    "Messenger::connector(): unknown worker: " + worker);
+                 "Messenger::" + string(__func__) + "   unknown worker: " + worker);
     return _connector.at(worker);
 }
 

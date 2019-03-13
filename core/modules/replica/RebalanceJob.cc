@@ -98,13 +98,13 @@ RebalanceJob::RebalanceJob(string const& databaseFamily,
 
 RebalanceJobResult const& RebalanceJob::getReplicaData() const {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "getReplicaData");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (state() == State::FINISHED) return _replicaData;
 
     throw logic_error(
-                "RebalanceJob::getReplicaData  the method can't be called while "
-                " the job hasn't finished");
+            "RebalanceJob::" + string(__func__) + "  the method can't be called while "
+            " the job hasn't finished");
 }
 
 
@@ -169,7 +169,7 @@ list<pair<string,string>> RebalanceJob::persistentLogData() const {
 
 void RebalanceJob::startImpl(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // Launch the chained job to get chunk disposition
 
@@ -196,7 +196,7 @@ void RebalanceJob::startImpl(util::Lock const& lock) {
 
 void RebalanceJob::cancelImpl(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // The algorithm will also clear resources taken by various
     // locally created objects.
@@ -218,16 +218,14 @@ void RebalanceJob::cancelImpl(util::Lock const& lock) {
 
 
 void RebalanceJob::notify(util::Lock const& lock) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
-
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     notifyDefaultImpl<RebalanceJob>(lock, _onFinish);
 }
 
 
 void RebalanceJob::onPrecursorJobFinish() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // IMPORTANT: the final state is required to be tested twice. The first time
     // it's done in order to avoid deadlock on the "in-flight" requests reporting
@@ -237,7 +235,7 @@ void RebalanceJob::onPrecursorJobFinish() {
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + "onPrecursorJobFinish");
+    util::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return;
 
@@ -247,8 +245,8 @@ void RebalanceJob::onPrecursorJobFinish() {
 
     if (_findAllJob->extendedState() != ExtendedState::SUCCESS) {
 
-        LOGS(_log, LOG_LVL_ERROR, context()
-             << "onPrecursorJobFinish  failed due to the precursor job failure");
+        LOGS(_log, LOG_LVL_ERROR, context() << __func__
+             << "  failed due to the precursor job failure");
 
         finish(lock, ExtendedState::FAILED);
         return;
@@ -287,8 +285,8 @@ void RebalanceJob::onPrecursorJobFinish() {
     }
     if (not _replicaData.totalWorkers or not _replicaData.totalGoodChunks) {
 
-        LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish:  "
-             << "no eligible 'good' chunks found");
+        LOGS(_log, LOG_LVL_DEBUG, context() << __func__
+             << "  no eligible 'good' chunks found");
 
         finish(lock, ExtendedState::SUCCESS);
         return;
@@ -297,8 +295,8 @@ void RebalanceJob::onPrecursorJobFinish() {
     _replicaData.avgChunks = _replicaData.totalGoodChunks / _replicaData.totalWorkers;
     if (not _replicaData.avgChunks) {
 
-        LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish:  "
-             << "the average number of 'good' chunks per worker is 0. "
+        LOGS(_log, LOG_LVL_DEBUG, context() << __func__
+             << "  the average number of 'good' chunks per worker is 0. "
              << "This won't trigger the operation");
 
         finish(lock, ExtendedState::SUCCESS);
@@ -392,8 +390,8 @@ void RebalanceJob::onPrecursorJobFinish() {
     }
     if (not sourceWorkers.size()) {
 
-        LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish:  "
-             << "no overloaded 'source' workers found");
+        LOGS(_log, LOG_LVL_DEBUG, context() << __func__
+             << "  no overloaded 'source' workers found");
 
         finish(lock, ExtendedState::SUCCESS);
         return;
@@ -428,8 +426,8 @@ void RebalanceJob::onPrecursorJobFinish() {
     }
     if (not destinationWorkers.size()) {
 
-        LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish:  "
-             << "no under-loaded 'destination' workers found");
+        LOGS(_log, LOG_LVL_DEBUG, context() << __func__
+             << "  no under-loaded 'destination' workers found");
 
         finish(lock, ExtendedState::SUCCESS);
         return;
@@ -470,8 +468,8 @@ void RebalanceJob::onPrecursorJobFinish() {
         // looking for chunks to be moved elsewhere.
         size_t numExtraChunks = chunks.size() - _replicaData.avgChunks;
 
-        LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish: "
-             << " sourceWorker: " << sourceWorker
+        LOGS(_log, LOG_LVL_DEBUG, context() << __func__
+             << "  sourceWorker: " << sourceWorker
              << " numExtraChunks: " << numExtraChunks);
 
         for (unsigned int chunk: chunks) {
@@ -581,8 +579,8 @@ void RebalanceJob::onPrecursorJobFinish() {
     if (0 != numJobsLaunched) {
         _numLaunched += numJobsLaunched;
     } else {
-        LOGS(_log, LOG_LVL_ERROR, context()
-             << "onPrecursorJobFinish  unexpected failure when launching " << numJobs
+        LOGS(_log, LOG_LVL_ERROR, context() << __func__
+             << "  unexpected failure when launching " << numJobs
              << " replica migration jobs");
         _jobs.clear();
         finish(lock, ExtendedState::FAILED);
@@ -592,8 +590,7 @@ void RebalanceJob::onPrecursorJobFinish() {
 
 void RebalanceJob::onJobFinish(MoveReplicaJob::Ptr const& job) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context()
-         << "onJobFinish"
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
          << "  databaseFamily="    << databaseFamily()
          << "  chunk="             << job->chunk()
          << "  sourceWorker="      << job->sourceWorker()
@@ -610,7 +607,7 @@ void RebalanceJob::onJobFinish(MoveReplicaJob::Ptr const& job) {
         return;
     }
 
-    util::Lock lock(_mtx, context() + "onJobFinish");
+    util::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) {
         _activeJobs.remove(job);
@@ -671,7 +668,7 @@ void RebalanceJob::onJobFinish(MoveReplicaJob::Ptr const& job) {
 size_t RebalanceJob::launchNextJobs(util::Lock const& lock,
                                     size_t numJobs) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "launchNextJobs  numJobs=" << numJobs);
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  numJobs=" << numJobs);
 
     // Compute the number of jobs which are already active at both ends
     // (destination and source workers).

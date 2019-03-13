@@ -99,12 +99,13 @@ FixUpJob::~FixUpJob() {
 
 FixUpJobResult const& FixUpJob::getReplicaData() const {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "getReplicaData");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (state() == State::FINISHED) return _replicaData;
 
     throw logic_error(
-                "FixUpJob::getReplicaData  the method can't be called while the job hasn't finished");
+            "FixUpJob::" + string(__func__) +
+            "  the method can't be called while the job hasn't finished");
 }
 
 
@@ -162,7 +163,7 @@ list<pair<string,string>> FixUpJob::persistentLogData() const {
 
 void FixUpJob::startImpl(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl  _numIterations=" << _numIterations);
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  _numIterations=" << _numIterations);
 
     ++_numIterations;
 
@@ -190,7 +191,7 @@ void FixUpJob::startImpl(util::Lock const& lock) {
 
 void FixUpJob::cancelImpl(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // The algorithm will also clear resources taken by various
     // locally created objects.
@@ -228,10 +229,10 @@ void FixUpJob::cancelImpl(util::Lock const& lock) {
 
 void FixUpJob::restart(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "restart");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (_findAllJob or (_numLaunched != _numFinished)) {
-        throw logic_error("FixUpJob::restart ()  not allowed in this object state");
+        throw logic_error("FixUpJob::" + string(__func__) + "  not allowed in this object state");
     }
     _requests.clear();
 
@@ -245,7 +246,7 @@ void FixUpJob::restart(util::Lock const& lock) {
 
 void FixUpJob::notify(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     notifyDefaultImpl<FixUpJob>(lock, _onFinish);
 }
@@ -253,7 +254,7 @@ void FixUpJob::notify(util::Lock const& lock) {
 
 void FixUpJob::onPrecursorJobFinish() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // IMPORTANT: the final state is required to be tested twice. The first time
     // it's done in order to avoid deadlock on the "in-flight" requests reporting
@@ -263,7 +264,7 @@ void FixUpJob::onPrecursorJobFinish() {
     
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + "onPrecursorJobFinish");
+    util::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return;
 
@@ -323,7 +324,7 @@ void FixUpJob::onPrecursorJobFinish() {
                     if (sourceWorker.empty()) {
 
                         LOGS(_log, LOG_LVL_ERROR, context()
-                             << "onPrecursorJobFinish  failed to find a source worker for chunk: "
+                             << __func__ << "  failed to find a source worker for chunk: "
                              << chunk << " and database: " << database);
 
                         release(chunk);
@@ -391,11 +392,10 @@ void FixUpJob::onRequestFinish(ReplicationRequest::Ptr const& request) {
     string       const worker   = request->worker();
     unsigned int const chunk    = request->chunk();
 
-    LOGS(_log, LOG_LVL_DEBUG, context()
-         << "onRequestFinish"
-         << "  database=" << database
-         << "  worker="   << worker
-         << "  chunk="    << chunk);
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << " "
+         << " database=" << database
+         << " worker="   << worker
+         << " chunk="    << chunk);
 
     // IMPORTANT: the final state is required to be tested twice. The first time
     // it's done in order to avoid deadlock on the "in-flight" requests reporting
@@ -408,7 +408,7 @@ void FixUpJob::onRequestFinish(ReplicationRequest::Ptr const& request) {
         return;
     }
 
-    util::Lock lock(_mtx, context() + "onRequestFinish");
+    util::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) {
         release(chunk);
@@ -469,7 +469,7 @@ void FixUpJob::release(unsigned int chunk) {
     // a static context of the request with an external service which is guaranteed
     // to be thread-safe.
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "release  chunk=" << chunk);
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  chunk=" << chunk);
 
     Chunk chunkObj {databaseFamily(), chunk};
     controller()->serviceProvider()->chunkLocker().release(chunkObj);

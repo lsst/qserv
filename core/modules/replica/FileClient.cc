@@ -61,7 +61,8 @@ FileClient::Ptr FileClient::instance(ServiceProvider::Ptr const& serviceProvider
         if (ptr->openImpl()) return ptr;
 
     } catch (exception const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, "FileClient::instance  failed to construct an object for "
+        LOGS(_log, LOG_LVL_ERROR, "FileClient::" << __func__
+             << "  failed to construct an object for "
              << "worker: " << workerName
              << "database: " << databaseName
              << "file: " << fileName
@@ -106,7 +107,7 @@ string const& FileClient::file() const {
 
 bool FileClient::openImpl() {
 
-    string const context = "FileClient::openImpl  ";
+    string const context = "FileClient::" + string(__func__) + "  ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
@@ -245,7 +246,7 @@ bool FileClient::openImpl() {
 
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context
-             << "an exception occured while processing response from the server: "
+             << "an exception occurred while processing response from the server: "
              << _workerInfo.svcHost << ":" << _workerInfo.fsPort
              << ", database: " << database() << ", file: " << file()
              << ", error: " << ex.what());
@@ -262,14 +263,14 @@ size_t FileClient::read(uint8_t* buf, size_t bufSize) {
 
     if (not _readContent) {
         throw FileClientError(
-            context + "this file was open in 'stat' mode, server: "
-            + _workerInfo.svcHost + ":" + to_string(_workerInfo.fsPort) +
-            ", database: " + database() +
-            ", file: " + file());
+                context + "this file was open in 'stat' mode, server: "
+                + _workerInfo.svcHost + ":" + to_string(_workerInfo.fsPort) +
+                ", database: " + database() +
+                ", file: " + file());
     }
     if (not buf or not bufSize) {
         throw invalid_argument(
-                    context + "  zero buffer pointer or buffer size passed into the method");
+                context + "  zero buffer pointer or buffer size passed into the method");
     }
 
     // If EOF was detected earlier
@@ -295,13 +296,13 @@ size_t FileClient::read(uint8_t* buf, size_t bufSize) {
             _eof = true;
         } else {
             throw FileClientError(
-                        "failed to receive a data record from the server: " +
-                        _workerInfo.svcHost + ":" + to_string(_workerInfo.fsPort) +
-                        ", database: " + database() +
-                        ", file: " + file() +
-                        ", bufSize: " + to_string(bufSize) +
-                        ", error code: " + to_string(ec.value()) +
-                        ", error message: " + ec.message());
+                    "failed to receive a data record from the server: " +
+                    _workerInfo.svcHost + ":" + to_string(_workerInfo.fsPort) +
+                    ", database: " + database() +
+                    ", file: " + file() +
+                    ", bufSize: " + to_string(bufSize) +
+                    ", error code: " + to_string(ec.value()) +
+                    ", error message: " + ec.message());
         }
     } else {
         if (not num) _eof = true;

@@ -73,14 +73,15 @@ ConnectionParams::ConnectionParams(string const& host_,
 
 ConnectionParams ConnectionParams::parse(string const& params,
                                          string const& defaultHost,
-                                         uint16_t           defaultPort,
+                                         uint16_t defaultPort,
                                          string const& defaultUser,
                                          string const& defaultPassword) {
 
-    string const context = "ConnectionParams::parse  ";
+    string const context = "ConnectionParams::" + string(__func__) + "  ";
 
-    regex re("^mysql://([^:]+)?(:([^:]?.*[^@]?))?@([^:^/]+)?(:([0-9]+))?(/([^/]+))?$", regex::extended);
+    regex  re("^mysql://([^:]+)?(:([^:]?.*[^@]?))?@([^:^/]+)?(:([0-9]+))?(/([^/]+))?$", regex::extended);
     smatch match;
+
     if (not regex_search(params, match, re)) {
         throw invalid_argument(context + "incorrect syntax of the encoded connection parameters string");
     }
@@ -105,8 +106,7 @@ ConnectionParams ConnectionParams::parse(string const& params,
     // no default option for the database
     connectionParams.database = match[8].str();
     if (connectionParams.database.empty()) {
-        throw invalid_argument(
-                context + "database name not found in the encoded parameters string");
+        throw invalid_argument(context + "database name not found in the encoded parameters string");
     }
 
     LOGS(_log, LOG_LVL_DEBUG, context << connectionParams);
@@ -140,7 +140,7 @@ DoNotProcess::DoNotProcess(string const& name_)
 //                Keyword                  //
 /////////////////////////////////////////////
 
-Keyword const Keyword::SQL_NULL {"NULL"};
+Keyword const Keyword::SQL_NULL{"NULL"};
 
 
 Keyword::Keyword(string const& name_)
@@ -152,7 +152,7 @@ Keyword::Keyword(string const& name_)
 //                Function                 //
 /////////////////////////////////////////////
 
-Function const Function::LAST_INSERT_ID {"LAST_INSERT_ID()"};
+Function const Function::LAST_INSERT_ID{"LAST_INSERT_ID()"};
 
 
 Function::Function(string const& name_)

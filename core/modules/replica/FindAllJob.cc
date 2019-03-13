@@ -98,12 +98,13 @@ FindAllJob::FindAllJob(string const& databaseFamily,
 
 FindAllJobResult const& FindAllJob::getReplicaData() const {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "getReplicaData");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (state() == State::FINISHED) return _replicaData;
 
     throw logic_error(
-             "FindAllJob::getReplicaData  the method can't be called while the job hasn't finished");
+             "FindAllJob::" + string(__func__) +
+            "  the method can't be called while the job hasn't finished");
 }
 
 
@@ -185,7 +186,7 @@ list<pair<string,string>> FindAllJob::persistentLogData() const {
 
 void FindAllJob::startImpl(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     auto const self = shared_from_base<FindAllJob>();
 
@@ -224,7 +225,7 @@ void FindAllJob::startImpl(util::Lock const& lock) {
 
 void FindAllJob::cancelImpl(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // To ensure no lingering "side effects" will be left after cancelling this
     // job the request cancellation should be also followed (where it makes a sense)
@@ -251,7 +252,7 @@ void FindAllJob::cancelImpl(util::Lock const& lock) {
 
 void FindAllJob::notify(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     notifyDefaultImpl<FindAllJob>(lock, _onFinish);
 }
@@ -259,8 +260,8 @@ void FindAllJob::notify(util::Lock const& lock) {
 
 void FindAllJob::onRequestFinish(FindAllRequest::Ptr const& request) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context()
-         << "onRequestFinish  database=" << request->database()
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
+         << "  database=" << request->database()
          << " worker=" << request->worker()
          << " state=" << request->state2string());
 
@@ -272,7 +273,7 @@ void FindAllJob::onRequestFinish(FindAllRequest::Ptr const& request) {
     
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + "onRequestFinish[" + request->id() + "]");
+    util::Lock lock(_mtx, context() + "" + string(__func__) + "[" + request->id() + "]");
 
     if (state() == State::FINISHED) return;
 
@@ -290,8 +291,8 @@ void FindAllJob::onRequestFinish(FindAllRequest::Ptr const& request) {
         _workerDatabaseSuccess[request->worker()][request->database()]= true;
     }
 
-    LOGS(_log, LOG_LVL_DEBUG, context()
-         << "onRequestFinish  database=" << request->database()
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
+         << "  database=" << request->database()
          << " worker=" << request->worker()
          << " _numLaunched=" << _numLaunched
          << " _numFinished=" << _numFinished

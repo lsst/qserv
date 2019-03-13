@@ -55,7 +55,7 @@ DeleteRequest::Ptr DeleteRequest::create(ServiceProvider::Ptr const& serviceProv
                                          boost::asio::io_service& io_service,
                                          string const& worker,
                                          string const& database,
-                                         unsigned int  chunk,
+                                         unsigned int chunk,
                                          CallbackType const& onFinish,
                                          int  priority,
                                          bool keepTracking,
@@ -80,7 +80,7 @@ DeleteRequest::DeleteRequest(ServiceProvider::Ptr const& serviceProvider,
                              boost::asio::io_service& io_service,
                              string const& worker,
                              string const& database,
-                             unsigned int  chunk,
+                             unsigned int chunk,
                              CallbackType const& onFinish,
                              int  priority,
                              bool keepTracking,
@@ -104,7 +104,7 @@ DeleteRequest::DeleteRequest(ServiceProvider::Ptr const& serviceProvider,
 
 void DeleteRequest::startImpl(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // Serialize the Request message header and the request itself into
     // the network buffer.
@@ -131,7 +131,7 @@ void DeleteRequest::startImpl(util::Lock const& lock) {
 
 void DeleteRequest::wait(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "wait");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // Always need to set the interval before launching the timer.
 
@@ -148,7 +148,7 @@ void DeleteRequest::wait(util::Lock const& lock) {
 
 void DeleteRequest::awaken(boost::system::error_code const& ec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "awaken");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (isAborted(ec)) return;
 
@@ -160,7 +160,7 @@ void DeleteRequest::awaken(boost::system::error_code const& ec) {
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + "awaken");
+    util::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return;
 
@@ -208,7 +208,7 @@ void DeleteRequest::send(util::Lock const& lock) {
 void DeleteRequest::analyze(bool success,
                             proto::ReplicationResponseDelete const& message) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "analyze  success=" << (success ? "true" : "false"));
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  success=" << (success ? "true" : "false"));
 
     // This method is called on behalf of an asynchronous callback fired
     // upon a completion of the request within method send() - the only
@@ -224,7 +224,7 @@ void DeleteRequest::analyze(bool success,
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + "analyze");
+    util::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return;
 
@@ -308,7 +308,7 @@ void DeleteRequest::analyze(bool success,
 
         default:
             throw logic_error(
-                    "DeleteRequest::analyze() unknown status '" +
+                    "DeleteRequest::" + string(__func__) + "  unknown status '" +
                     proto::ReplicationStatus_Name(message.status()) +
                     "' received from server");
     }
@@ -316,9 +316,7 @@ void DeleteRequest::analyze(bool success,
 
 
 void DeleteRequest::notify(util::Lock const& lock) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
-
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     notifyDefaultImpl<DeleteRequest>(lock, _onFinish);
 }
 

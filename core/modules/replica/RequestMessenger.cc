@@ -60,7 +60,7 @@ RequestMessenger::RequestMessenger(ServiceProvider::Ptr const& serviceProvider,
 
 void RequestMessenger::finishImpl(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "finishImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // Make sure the request (if any) has been eliminated from the messenger
 

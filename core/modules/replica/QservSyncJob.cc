@@ -99,13 +99,13 @@ QservSyncJob::QservSyncJob(string const& databaseFamily,
 
 QservSyncJobResult const& QservSyncJob::getReplicaData() const {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "getReplicaData");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (state() == State::FINISHED) return _replicaData;
 
     throw logic_error(
-                "QservSyncJob::getReplicaData  the method can't be called while "
-                "the job hasn't finished");
+            "QservSyncJob::" + string(__func__) + "  the method can't be called while "
+            "the job hasn't finished");
 }
 
 
@@ -158,7 +158,7 @@ list<pair<string,string>> QservSyncJob::persistentLogData() const {
 
 void QservSyncJob::startImpl(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     auto const databases        = controller()->serviceProvider()->config()->databases(databaseFamily());
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
@@ -179,8 +179,8 @@ void QservSyncJob::startImpl(util::Lock const& lock) {
                                                      database);
             } catch (exception const&) {
 
-                LOGS(_log, LOG_LVL_DEBUG, context()
-                     << "startImpl  failed to pull replicas for worker: "
+                LOGS(_log, LOG_LVL_DEBUG, context() << __func__
+                     << "  failed to pull replicas for worker: "
                      << worker << ", database: " << database);
 
                 // Set this state and cleanup before aborting the job
@@ -228,7 +228,7 @@ void QservSyncJob::startImpl(util::Lock const& lock) {
 
 void QservSyncJob::cancelImpl(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     for (auto&& ptr: _requests) {
         ptr->cancel();
@@ -242,17 +242,15 @@ void QservSyncJob::cancelImpl(util::Lock const& lock) {
 
 
 void QservSyncJob::notify(util::Lock const& lock) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
-
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     notifyDefaultImpl<QservSyncJob>(lock, _onFinish);
 }
 
 
 void QservSyncJob::onRequestFinish(SetReplicasQservMgtRequest::Ptr const& request) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context()
-         << "onRequestFinish  worker=" << request->worker()
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
+         << "  worker=" << request->worker()
          << " state=" << request->state2string());
 
     // IMPORTANT: the final state is required to be tested twice. The first time
@@ -263,7 +261,7 @@ void QservSyncJob::onRequestFinish(SetReplicasQservMgtRequest::Ptr const& reques
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + "onRequestFinish");
+    util::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return;
 
@@ -279,8 +277,8 @@ void QservSyncJob::onRequestFinish(SetReplicasQservMgtRequest::Ptr const& reques
         _replicaData.workers     [request->worker()] = false;
     }
 
-    LOGS(_log, LOG_LVL_DEBUG, context()
-         << "onRequestFinish  worker=" << request->worker()
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
+         << "  worker=" << request->worker()
          << " _numLaunched=" << _numLaunched
          << " _numFinished=" << _numFinished
          << " _numSuccess=" << _numSuccess);

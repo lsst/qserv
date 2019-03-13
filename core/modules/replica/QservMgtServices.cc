@@ -135,7 +135,7 @@ AddReplicaQservMgtRequest::Ptr QservMgtServices::addReplica(
         return request;
     } else {
 
-        util::Lock lock(_mtx, "QservMgtServices::addReplica");
+        util::Lock lock(_mtx, "QservMgtServices::" + string(__func__));
     
         auto const manager = shared_from_this();
     
@@ -186,7 +186,7 @@ RemoveReplicaQservMgtRequest::Ptr QservMgtServices::removeReplica(
         return request;
     } else {
 
-        util::Lock lock(_mtx, "QservMgtServices::removeReplica");
+        util::Lock lock(_mtx, "QservMgtServices::" + string(__func__));
     
         auto const manager = shared_from_this();
     
@@ -237,7 +237,7 @@ GetReplicasQservMgtRequest::Ptr QservMgtServices::getReplicas(
         return request;
     } else {
 
-        util::Lock lock(_mtx, "QservMgtServices::getReplicas");
+        util::Lock lock(_mtx, "QservMgtServices::" + string(__func__));
     
         auto const manager = shared_from_this();
     
@@ -287,7 +287,7 @@ SetReplicasQservMgtRequest::Ptr QservMgtServices::setReplicas(
         return request;
     } else {
 
-        util::Lock lock(_mtx, "QservMgtServices::setReplicas");
+        util::Lock lock(_mtx, "QservMgtServices::" + string(__func__));
     
         auto const manager = shared_from_this();
     
@@ -336,7 +336,7 @@ TestEchoQservMgtRequest::Ptr QservMgtServices::echo(
         return request;
     } else {
 
-        util::Lock lock(_mtx, "QservMgtServices::echo");
+        util::Lock lock(_mtx, "QservMgtServices::" + string(__func__));
     
         auto const manager = shared_from_this();
     
@@ -369,7 +369,7 @@ TestEchoQservMgtRequest::Ptr QservMgtServices::echo(
 
 void QservMgtServices::finish(string const& id) {
 
-    string const context = id + "  QservMgtServices::finish  ";
+    string const context = id + "  QservMgtServices::" + string(__func__) + "  ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
@@ -391,8 +391,8 @@ void QservMgtServices::finish(string const& id) {
         auto&& itr = _registry.find(id);
         if (itr == _registry.end()) {
             throw logic_error(
-                        "QservMgtServices::finish: request identifier " + id +
-                        " is no longer valid. Check the logic of the application.");
+                    "QservMgtServices::" + string(__func__) + "  request identifier " + id +
+                    " is no longer valid. Check the logic of the application.");
         }
         requestWrapper = itr->second;
         _registry.erase(id);
@@ -415,8 +415,8 @@ XrdSsiService* QservMgtServices::xrdSsiService() {
         XrdSsiProviderClient->GetService(errInfo,
                                          serviceProviderLocation);
     if (not service) {
-        LOGS(_log, LOG_LVL_ERROR, "QservMgtServices::xrdSsiService()  "
-             << "failed to contact service provider at: " << serviceProviderLocation
+        LOGS(_log, LOG_LVL_ERROR, "QservMgtServices::" << __func__
+             << "  failed to contact service provider at: " << serviceProviderLocation
              << ", error: " << errInfo.Get());
     }
     return service;

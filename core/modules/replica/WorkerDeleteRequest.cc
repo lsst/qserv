@@ -93,9 +93,9 @@ WorkerDeleteRequest::WorkerDeleteRequest(ServiceProvider::Ptr const& serviceProv
 
 void WorkerDeleteRequest::setInfo(proto::ReplicationResponseDelete& response) const {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "setInfo");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
-    util::Lock lock(_mtx, context() + "setInfo");
+    util::Lock lock(_mtx, context() + __func__);
 
     // Return the performance of the target request
 
@@ -121,7 +121,7 @@ void WorkerDeleteRequest::setInfo(proto::ReplicationResponseDelete& response) co
 
 bool WorkerDeleteRequest::execute() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "execute"
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
         << "  db: "    << database()
         << "  chunk: " << chunk());
 
@@ -171,11 +171,11 @@ WorkerDeleteRequestPOSIX::WorkerDeleteRequestPOSIX(
 
 bool WorkerDeleteRequestPOSIX::execute() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "execute"
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
          << "  db: "    << database()
          << "  chunk: " << chunk());
 
-    util::Lock lock(_mtx, context() + "execute");
+    util::Lock lock(_mtx, context() + __func__);
 
     WorkerInfo   const workerInfo   = _serviceProvider->config()->workerInfo(worker());
     DatabaseInfo const databaseInfo = _serviceProvider->config()->databaseInfo(database());
@@ -189,7 +189,7 @@ bool WorkerDeleteRequestPOSIX::execute() {
     WorkerRequest::ErrorContext errorContext;
     boost::system::error_code   ec;
     {
-        util::Lock dataFolderLock(_mtxDataFolderOperations, context() + "execute");
+        util::Lock dataFolderLock(_mtxDataFolderOperations, context() + __func__);
 
         fs::path        const dataDir = fs::path(workerInfo.dataDir) / database();
         fs::file_status const stat    = fs::status(dataDir, ec);

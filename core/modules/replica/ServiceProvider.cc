@@ -72,9 +72,9 @@ ServiceProvider::ServiceProvider(string const& configUrl)
 
 void ServiceProvider::run() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "run");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
-    util::Lock lock(_mtx, context() + "run");
+    util::Lock lock(_mtx, context() + __func__);
 
     // Check if the service is still not running
 
@@ -105,7 +105,7 @@ void ServiceProvider::run() {
 
 bool ServiceProvider::isRunning() const {
 
-    util::Lock lock(_mtx, context() + "isRunning");
+    util::Lock lock(_mtx, context() + __func__);
 
     return not _threads.empty();
 }
@@ -113,9 +113,9 @@ bool ServiceProvider::isRunning() const {
 
 void ServiceProvider::stop() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "stop");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
-    util::Lock lock(_mtx, context() + "stop");
+    util::Lock lock(_mtx, context() + __func__);
 
     // Check if the service is already stopped
 
@@ -151,7 +151,8 @@ void ServiceProvider::stop() {
 
 void ServiceProvider::assertWorkerIsValid(string const& name) {
     if (not _configuration->isKnownWorker(name)) {
-        throw invalid_argument("Request::assertWorkerIsValid: worker name is not valid: " + name);
+        throw invalid_argument(
+                "ServiceProvider::" + string(__func__) + "  worker name is not valid: " + name);
     }
 }
 
@@ -162,14 +163,16 @@ void ServiceProvider::assertWorkersAreDifferent(string const& firstName,
     assertWorkerIsValid(secondName);
 
     if (firstName == secondName) {
-        throw invalid_argument("Request::assertWorkersAreDifferent: worker names are the same: " + firstName);
+        throw invalid_argument(
+                "Request::" + string(__func__) + "  worker names are the same: " + firstName);
     }
 }
 
 
 void ServiceProvider::assertDatabaseIsValid(string const& name) {
     if (not _configuration->isKnownDatabase(name)) {
-        throw invalid_argument("Request::assertDatabaseIsValid: database name is not valid: " + name);
+        throw invalid_argument(
+                "ServiceProvider::" + string(__func__) + "  database name is not valid: " + name);
     }
 }
 

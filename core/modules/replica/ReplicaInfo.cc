@@ -48,8 +48,8 @@ void setInfoImpl(replica::ReplicaInfo const& ri,
         case replica::ReplicaInfo::Status::COMPLETE:   info->set_status(proto::ReplicationReplicaInfo::COMPLETE);   break;
         default:
             throw logic_error(
-                        "unhandled status " + replica::ReplicaInfo::status2string(ri.status()) +
-                        " in ReplicaInfo::setInfoImpl()");
+                    "ReplicaInfo::" + string(__func__) +
+                    "  unhandled status " + replica::ReplicaInfo::status2string(ri.status()));
     }
     info->set_worker(ri.worker());
     info->set_database(ri.database());
@@ -81,8 +81,8 @@ string ReplicaInfo::status2string(Status status) {
         case Status::INCOMPLETE:                 return "INCOMPLETE";
         case Status::COMPLETE:                   return "COMPLETE";
     }
-    throw logic_error("unhandled status " + to_string(status) +
-                      " in ReplicaInfo::status2string()");
+    throw logic_error(
+            "ReplicaInfo::" + string(__func__) + "  unhandled status " + to_string(status));
 }
 
 
@@ -132,9 +132,9 @@ ReplicaInfo::ReplicaInfo(proto::ReplicationReplicaInfo const* info) {
         case proto::ReplicationReplicaInfo::INCOMPLETE: this->_status = Status::INCOMPLETE; break;
         case proto::ReplicationReplicaInfo::COMPLETE:   this->_status = Status::COMPLETE;   break;
         default:
-            throw logic_error("unhandled status " +
-                              proto::ReplicationReplicaInfo_ReplicaStatus_Name(info->status()) +
-                              " in ReplicaInfo::ReplicaInfo()");
+            throw logic_error(
+                    "ReplicaInfo::" + string(__func__) + "  unhandled status " +
+                    proto::ReplicationReplicaInfo_ReplicaStatus_Name(info->status()));
     }
     _worker   = info->worker();
     _database = info->database();

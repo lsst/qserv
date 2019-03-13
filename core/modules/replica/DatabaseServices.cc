@@ -152,17 +152,20 @@ DatabaseServices::Ptr DatabaseServices::create(Configuration::Ptr const& configu
             return DatabaseServices::Ptr(new DatabaseServicesMySQL(configuration));
         } catch (database::mysql::Error const& ex) {
             LOGS(_log, LOG_LVL_ERROR,
-                 "DatabaseServices::  failed to instantiate MySQL-based database services"
+                 "DatabaseServices::" << __func__
+                 << "  failed to instantiate MySQL-based database services"
                  << ", error: " << ex.what()
                  << ", no such service will be available to the application.");
              throw runtime_error(
-                 "DatabaseServices::  failed to instantiate MySQL-based database services, error: " +
-                 string(ex.what()));
+                    "DatabaseServices::" + string(__func__) +
+                    "  failed to instantiate MySQL-based database services, error: " +
+                    string(ex.what()));
         }
     }
     throw runtime_error(
-        "DatabaseServices::  no suitable plugin found for database technology: " +
-        configuration->databaseTechnology());
+            "DatabaseServices::" + string(__func__) +
+            "  no suitable plugin found for database technology: " +
+            configuration->databaseTechnology());
 }
 
 }}} // namespace lsst::qserv::replica

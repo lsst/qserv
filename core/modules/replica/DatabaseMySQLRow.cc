@@ -22,6 +22,9 @@
 // Class header
 #include "replica/DatabaseMySQLRow.h"
 
+// System headers
+#include <sstream>
+
 // Third party headers
 #include <boost/lexical_cast.hpp>
 
@@ -39,10 +42,8 @@ using Row              = lsst::qserv::replica::database::mysql::Row;
 using InvalidTypeError = lsst::qserv::replica::database::mysql::InvalidTypeError;
 
 template <typename K>
-bool getAsString(Row const& row,
-                 K key,
-                 string& value) {
-
+bool getAsString(Row const& row, K key,
+                string& value) {
     Row::Cell const& cell = row.getDataCell(key);
     if (cell.first) {
         value = string(cell.first);
@@ -53,9 +54,8 @@ bool getAsString(Row const& row,
 
 
 template <typename K, class T>
-bool getAsNumber(Row const& row,
-                 K          key,
-                 T&         value) {
+bool getAsNumber(Row const& row, K key,
+                 T& value) {
     try {
         Row::Cell const& cell = row.getDataCell(key);
         if (cell.first) {
@@ -64,8 +64,11 @@ bool getAsNumber(Row const& row,
         }
         return false;
     } catch (boost::bad_lexical_cast const& ex) {
+        ostringstream os;
+        os << key;
         throw InvalidTypeError(
-                    "DatabaseMySQL::getAsNumber<K,T>()  type conversion failed for key: " + key);
+                "DatabaseMySQL::" + string(__func__) + "<K,T>  type conversion failed for key: " +
+                os.str());
     }
 }
 
@@ -88,7 +91,7 @@ Row::Row()
 
 size_t Row::numColumns() const {
     if (not isValid()) {
-        throw logic_error("Row::numColumns()  the object is not valid");
+        throw logic_error("Row::" + string(__func__) + "  the object is not valid");
     }
     return  _index2cell.size();
 }
@@ -149,7 +152,7 @@ bool Row::get(string const& columnName, bool&  value) const {
 
 Row::Cell const& Row::getDataCell(size_t columnIdx) const {
 
-    string const context = "Row::getDataCell()  ";
+    string const context = "Row::" + string(__func__) + "  ";
 
     if (not isValid()) {
         throw logic_error(context + "the object is not valid");
@@ -165,8 +168,7 @@ Row::Cell const& Row::getDataCell(size_t columnIdx) const {
 
 Row::Cell const& Row::getDataCell(string const& columnName) const {
 
-    string const context = "Row::getDataCell()  ";
-
+    string const context = "Row::" + string(__func__) + "  ";
     if (not isValid()) {
         throw logic_error(context + "the object is not valid");
     }

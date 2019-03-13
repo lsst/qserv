@@ -133,7 +133,8 @@ DeleteWorkerJobResult const& DeleteWorkerJob::getReplicaData() const {
     if (state() == State::FINISHED) return _replicaData;
 
     throw logic_error(
-        "DeleteWorkerJob::getReplicaData()  the method can't be called while the job hasn't finished");
+            "DeleteWorkerJob::" + string(__func__) +
+            "  the method can't be called while the job hasn't finished");
 }
 
 
@@ -192,7 +193,7 @@ list<pair<string,string>> DeleteWorkerJob::persistentLogData() const {
 
 void DeleteWorkerJob::startImpl(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     util::BlockPost blockPost(1000, 2000);  // ~1s
 
@@ -212,7 +213,7 @@ void DeleteWorkerJob::startImpl(util::Lock const& lock) {
         60      /* requestExpirationIvalSec */
     );
     while (not statusRequestFinished) {
-        LOGS(_log, LOG_LVL_DEBUG, context() << "wait for worker service status");
+        LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  wait for worker service status");
         blockPost.wait();
     }
     if (statusRequest->extendedState() == Request::ExtendedState::SUCCESS) {
@@ -232,7 +233,7 @@ void DeleteWorkerJob::startImpl(util::Lock const& lock) {
                 60      /* requestExpirationIvalSec */
             );
             while (not drainRequestFinished) {
-                LOGS(_log, LOG_LVL_DEBUG, context() << "wait for worker service drain");
+                LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  wait for worker service drain");
                 blockPost.wait();
             }
             if (drainRequest->extendedState() == Request::ExtendedState::SUCCESS) {
@@ -279,7 +280,7 @@ void DeleteWorkerJob::startImpl(util::Lock const& lock) {
 
 void DeleteWorkerJob::cancelImpl(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // To ensure no lingering "side effects" will be left after cancelling this
     // job the request cancellation should be also followed (where it makes a sense)
@@ -306,8 +307,7 @@ void DeleteWorkerJob::cancelImpl(util::Lock const& lock) {
 
 void DeleteWorkerJob::onRequestFinish(FindAllRequest::Ptr const& request) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context()
-         << "onRequestFinish"
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
          << "  worker="   << request->worker()
          << "  database=" << request->database());
 
@@ -319,7 +319,7 @@ void DeleteWorkerJob::onRequestFinish(FindAllRequest::Ptr const& request) {
     
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + "onRequestFinish");
+    util::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return;
 
@@ -339,7 +339,7 @@ void DeleteWorkerJob::onRequestFinish(FindAllRequest::Ptr const& request) {
 
 void DeleteWorkerJob::disableWorker(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "disableWorker");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // Temporary disable this worker from the configuration. If it's requested
     // to be permanently deleted this will be done only after all other relevant
@@ -375,7 +375,7 @@ void DeleteWorkerJob::disableWorker(util::Lock const& lock) {
 
 void DeleteWorkerJob::onJobFinish(ReplicateJob::Ptr const& job) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "onJobFinish(ReplicateJob) "
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ <<  "(ReplicateJob) "
          << " databaseFamily: " << job->databaseFamily()
          << " numReplicas: " << job->numReplicas()
          << " state: " << job->state2string());
@@ -388,7 +388,7 @@ void DeleteWorkerJob::onJobFinish(ReplicateJob::Ptr const& job) {
     
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + "onJobFinish(ReplicateJob)");
+    util::Lock lock(_mtx, context() + string(__func__) + "(ReplicateJob)");
 
     if (state() == State::FINISHED) return;
 
@@ -403,7 +403,7 @@ void DeleteWorkerJob::onJobFinish(ReplicateJob::Ptr const& job) {
 
     _numSuccess++;
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "onJobFinish(ReplicateJob)  "
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "(ReplicateJob)  "
          << "job->getReplicaData().chunks.size(): " << job->getReplicaData().chunks.size());
 
     // Merge results into the current job's result object
@@ -436,17 +436,16 @@ void DeleteWorkerJob::onJobFinish(ReplicateJob::Ptr const& job) {
 
         } catch (invalid_argument const& ex) {
     
-            LOGS(_log, LOG_LVL_ERROR, context() << "onJobFinish(ReplicateJob)  "
-                 << "** misconfigured application ** "
+            LOGS(_log, LOG_LVL_ERROR, context() << __func__ << "(ReplicateJob)  "
+                 << "** MISCONFIGURED ** "
                  << " worker: " << worker()
                  << " exception: " << ex.what());
-            
             throw;
 
         } catch (exception const& ex) {
 
-            LOGS(_log, LOG_LVL_ERROR, context()
-                 << "onJobFinish(ReplicateJob)  ** failed to find replicas ** "
+            LOGS(_log, LOG_LVL_ERROR, context() << __func__ << "(ReplicateJob)"
+                 << "  ** failed to find replicas ** "
                  << " worker: " << worker()
                  << " exception: " << ex.what());
 
@@ -474,7 +473,7 @@ void DeleteWorkerJob::onJobFinish(ReplicateJob::Ptr const& job) {
 
 void DeleteWorkerJob::notify(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     notifyDefaultImpl<DeleteWorkerJob>(lock, _onFinish);
 }

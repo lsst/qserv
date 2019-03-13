@@ -100,7 +100,7 @@ PurgeJob::PurgeJob(string const& databaseFamily,
 
     if (not _numReplicas) {
         throw invalid_argument(
-                    "PurgeJob::PurgeJob ()  0 is not allowed for the number of replias");
+                "PurgeJob::" + string(__func__) + "  0 replicas is not allowed");
     }
 }
 
@@ -113,12 +113,13 @@ PurgeJob::~PurgeJob() {
 
 PurgeJobResult const& PurgeJob::getReplicaData() const {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "getReplicaData");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (state() == State::FINISHED) return _replicaData;
 
     throw logic_error (
-                "PurgeJob::getReplicaData  the method can't be called while the job hasn't finished");
+            "PurgeJob::" + string(__func__) +
+            "  the method can't be called while the job hasn't finished");
 }
 
 
@@ -177,7 +178,7 @@ list<pair<string,string>> PurgeJob::persistentLogData() const {
 
 void PurgeJob::startImpl(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl  _numIterations=" << _numIterations);
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  _numIterations=" << _numIterations);
 
     ++_numIterations;
 
@@ -206,7 +207,7 @@ void PurgeJob::startImpl(util::Lock const& lock) {
 
 void PurgeJob::cancelImpl(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // The algorithm will also clear resources taken by various
     // locally created objects.
@@ -234,10 +235,10 @@ void PurgeJob::cancelImpl(util::Lock const& lock) {
 
 void PurgeJob::restart(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "restart");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (_findAllJob or (_numLaunched != _numFinished)) {
-        throw logic_error ("PurgeJob::restart ()  not allowed in this object state");
+        throw logic_error("PurgeJob::" + string(__func__) + "  not allowed in this object state");
     }
     _jobs.clear();
 
@@ -249,16 +250,14 @@ void PurgeJob::restart(util::Lock const& lock) {
 
 
 void PurgeJob::notify(util::Lock const& lock) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
-
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     notifyDefaultImpl<PurgeJob>(lock, _onFinish);
 }
 
 
 void PurgeJob::onPrecursorJobFinish() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // IMPORTANT: the final state is required to be tested twice. The first time
     // it's done in order to avoid deadlock on the "in-flight" requests reporting
@@ -268,7 +267,7 @@ void PurgeJob::onPrecursorJobFinish() {
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + "onPrecursorJobFinish");
+    util::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return;
 
@@ -319,7 +318,7 @@ void PurgeJob::onPrecursorJobFinish() {
 
         size_t const numReplicasFound = replicas.size();
         if (numReplicasFound > numReplicas()) {
-            LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish"
+            LOGS(_log, LOG_LVL_DEBUG, context() << __func__
                  << "  chunk="            << chunk
                  << ", numReplicasFound=" << numReplicasFound
                  << ", numReplicas()="    << numReplicas());
@@ -349,7 +348,7 @@ void PurgeJob::onPrecursorJobFinish() {
         }
     }
     for (auto&& entry: worker2occupancy) {
-        LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish"
+        LOGS(_log, LOG_LVL_DEBUG, context() << __func__
              << "  worker=" << entry.first
              << ", occupancy=" << entry.second);
     }
@@ -365,7 +364,7 @@ void PurgeJob::onPrecursorJobFinish() {
         unsigned int const chunk              = chunk2replicas.first;
         int                numReplicas2delete = chunk2replicas.second;
 
-        LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish"
+        LOGS(_log, LOG_LVL_DEBUG, context() << __func__
              << "  chunk=" << chunk
              << ", numReplicas2delete=" << numReplicas2delete);
 
@@ -374,7 +373,7 @@ void PurgeJob::onPrecursorJobFinish() {
 
         if (not controller()->serviceProvider()->chunkLocker().lock({_databaseFamily, chunk}, id())) {
             ++_numFailedLocks;
-            LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish"
+            LOGS(_log, LOG_LVL_DEBUG, context() << __func__
                  << "  chunk=" << chunk
                  << ", _numFailedLocks=" << _numFailedLocks);
             continue;
@@ -386,11 +385,11 @@ void PurgeJob::onPrecursorJobFinish() {
         for (auto&& entry: replicaData.isGood.at(chunk)) {
             string const& worker = entry.first;
             goodWorkersOfThisChunk.push_back(worker);
-            LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish"
+            LOGS(_log, LOG_LVL_DEBUG, context() << __func__
                  << "  chunk=" << chunk
                  << ", goodWorkersOfThisChunk : worker=" << worker);
         }
-        LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish"
+        LOGS(_log, LOG_LVL_DEBUG, context() << __func__
              << "  chunk=" << chunk
              << ", goodWorkersOfThisChunk.size()=" << goodWorkersOfThisChunk.size());
 
@@ -412,8 +411,8 @@ void PurgeJob::onPrecursorJobFinish() {
             }
             if (targetWorker.empty() or not maxNumChunks) {
 
-                LOGS(_log, LOG_LVL_ERROR, context() << "onPrecursorJobFinish  "
-                     << "failed to find a target worker for chunk: " << chunk);
+                LOGS(_log, LOG_LVL_ERROR, context() << __func__
+                     << "  failed to find a target worker for chunk: " << chunk);
 
                 finish(lock, ExtendedState::FAILED);
                 break;
@@ -482,8 +481,7 @@ void PurgeJob::onPrecursorJobFinish() {
 
 void PurgeJob::onDeleteJobFinish(DeleteReplicaJob::Ptr const& job) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context()
-         << "onDeleteJobFinish"
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
          << "  databaseFamily=" << job->databaseFamily()
          << "  worker="         << job->worker()
          << "  chunk="          << job->chunk());
@@ -499,7 +497,7 @@ void PurgeJob::onDeleteJobFinish(DeleteReplicaJob::Ptr const& job) {
         return;
     }
 
-    util::Lock lock(_mtx, context() + "onDeleteJobFinish");
+    util::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) {
         release(job->chunk());
@@ -573,7 +571,7 @@ void PurgeJob::release(unsigned int chunk) {
     // a static context of the request with an external service which is guaranteed
     // to be thread-safe.
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "release  chunk=" << chunk);
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  chunk=" << chunk);
 
     Chunk chunkObj {databaseFamily(), chunk};
     controller()->serviceProvider()->chunkLocker().release(chunkObj);

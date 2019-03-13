@@ -57,7 +57,7 @@ void RequestTrackerBase::track() const {
     while (_numFinished < _numLaunched) {
         blockPost.wait();
         if (_progressReport) {
-            _os << "RequestTracker::track()  "
+            _os << "RequestTracker::" << __func__ << "  "
                 << "launched: " << _numLaunched << ", "
                 << "finished: " << _numFinished << ", "
                 << "success: "  << _numSuccess
@@ -65,7 +65,7 @@ void RequestTrackerBase::track() const {
         }
     }
     if (_progressReport) {
-        _os << "RequestTracker::track()  "
+        _os << "RequestTracker::" << __func__ << "  "
             << "launched: " << _numLaunched << ", "
             << "finished: " << _numFinished << ", "
             << "success: "  << _numSuccess
@@ -131,8 +131,9 @@ void RequestTrackerBase::reset () {
                                   RequestTrackerBase::_numFinished;
     if (numOutstanding) {
         throw logic_error(
-                    "RequestTrackerBase::reset  the operation is not allowed due to " +
-                    to_string(numOutstanding) + " outstanding requests");
+                "RequestTrackerBase::" + string(__func__) +
+                "  the operation is not allowed due to " +
+                to_string(numOutstanding) + " outstanding requests");
     }
     resetImpl();
 

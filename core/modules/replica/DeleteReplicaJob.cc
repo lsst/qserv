@@ -121,12 +121,13 @@ DeleteReplicaJob::DeleteReplicaJob(string const& databaseFamily,
 
 DeleteReplicaJobResult const& DeleteReplicaJob::getReplicaData() const {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "getReplicaData");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (state() == State::FINISHED) return _replicaData;
 
     throw logic_error(
-        "DeleteReplicaJob::getReplicaData  the method can't be called while the job hasn't finished");
+            "DeleteReplicaJob::" + string(__func__) +
+            "  the method can't be called while the job hasn't finished");
 }
 
 
@@ -175,7 +176,7 @@ list<pair<string,string>> DeleteReplicaJob::persistentLogData() const {
 
 void DeleteReplicaJob::startImpl(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
    // Check if configuration parameters are valid
 
@@ -184,7 +185,8 @@ void DeleteReplicaJob::startImpl(util::Lock const& lock) {
     if (not (config->isKnownDatabaseFamily(databaseFamily()) and
              config->isKnownWorker(worker()))) {
 
-        LOGS(_log, LOG_LVL_ERROR, context() << "startImpl  ** MISCONFIGURED ** "
+        LOGS(_log, LOG_LVL_ERROR, context() << __func__
+             << "  ** MISCONFIGURED ** "
              << " database family: '" << databaseFamily() << "'"
              << " worker: '" << worker() << "'");
 
@@ -213,8 +215,8 @@ void DeleteReplicaJob::startImpl(util::Lock const& lock) {
 
     } catch (invalid_argument const& ex) {
 
-        LOGS(_log, LOG_LVL_ERROR, context() << "startImpl  "
-             << "** misconfigured application ** "
+        LOGS(_log, LOG_LVL_ERROR, context() << __func__
+             << "  ** MISCONFIGURED ** "
              << " chunk: " << chunk()
              << " worker: " << worker()
              << " databaseFamily: " << databaseFamily()
@@ -224,7 +226,8 @@ void DeleteReplicaJob::startImpl(util::Lock const& lock) {
 
     } catch (exception const& ex) {
 
-        LOGS(_log, LOG_LVL_ERROR, context() << "startImpl  ** failed to find replicas ** "
+        LOGS(_log, LOG_LVL_ERROR, context() << __func__
+            << "  ** failed to find replicas ** "
              << " chunk: " << chunk()
              << " worker: " << worker()
              << " databaseFamily: " << databaseFamily()
@@ -236,8 +239,8 @@ void DeleteReplicaJob::startImpl(util::Lock const& lock) {
         return;
     }
     if (not _replicas.size()) {
-        LOGS(_log, LOG_LVL_ERROR, context() << "startImpl  "
-             << "** worker has no replicas to be deleted ** "
+        LOGS(_log, LOG_LVL_ERROR, context() << __func__
+             << "  ** worker has no replicas to be deleted ** "
              << " chunk: " << chunk()
              << " worker: " << worker()
              << " databaseFamily: " << databaseFamily());
@@ -283,7 +286,7 @@ void DeleteReplicaJob::startImpl(util::Lock const& lock) {
             force,
             [self] (RemoveReplicaQservMgtRequest::Ptr const& request) {
 
-                util::Lock lock(self->_mtx, self->context() + "startImpl:qservRemoveReplica");
+                util::Lock lock(self->_mtx, self->context() + string(__func__) + "::qservRemoveReplica");
 
                 switch (request->extendedState()) {
 
@@ -313,7 +316,7 @@ void DeleteReplicaJob::startImpl(util::Lock const& lock) {
 
 void DeleteReplicaJob::cancelImpl(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // The algorithm will also clear resources taken by various
     // locally created objects.
@@ -338,7 +341,7 @@ void DeleteReplicaJob::cancelImpl(util::Lock const& lock) {
 
 void DeleteReplicaJob::notify(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     notifyDefaultImpl<DeleteReplicaJob>(lock, _onFinish);
 }
@@ -373,7 +376,7 @@ void DeleteReplicaJob::beginDeleteReplica(util::Lock const& lock) {
 void DeleteReplicaJob::onRequestFinish(DeleteRequest::Ptr const& request) {
 
     LOGS(_log, LOG_LVL_DEBUG, context()
-         << "onRequestFinish(DeleteRequest)"
+         << __func__ << "(DeleteRequest)"
          << "  database=" << request->database()
          << "  worker=" << worker()
          << "  chunk=" << chunk());
@@ -386,7 +389,7 @@ void DeleteReplicaJob::onRequestFinish(DeleteRequest::Ptr const& request) {
     
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + "onRequestFinish");
+    util::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return;
 

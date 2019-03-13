@@ -102,7 +102,7 @@ void AddReplicaQservMgtRequest::startImpl(util::Lock const& lock) {
 
             if (request->state() == State::FINISHED) return;
         
-            util::Lock lock(request->_mtx, request->context() + "startImpl[callback]");
+            util::Lock lock(request->_mtx, request->context() + string(__func__) + "[callback]");
         
             if (request->state() == State::FINISHED) return;
 
@@ -126,7 +126,7 @@ void AddReplicaQservMgtRequest::startImpl(util::Lock const& lock) {
 
                 default:
                     throw logic_error(
-                        "AddReplicaQservMgtRequest:  unhandled server status: " +
+                        "AddReplicaQservMgtRequest::" + string(__func__) + "  unhandled server status: " +
                         wpublish::ChunkGroupQservRequest::status2str(status));
             }
         }
@@ -160,7 +160,7 @@ void AddReplicaQservMgtRequest::finishImpl(util::Lock const& lock) {
 
 void AddReplicaQservMgtRequest::notify(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     notifyDefaultImpl<AddReplicaQservMgtRequest>(lock, _onFinish);
 }

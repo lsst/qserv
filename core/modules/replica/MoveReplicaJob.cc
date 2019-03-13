@@ -102,13 +102,13 @@ MoveReplicaJob::MoveReplicaJob(string const& databaseFamily,
 
 MoveReplicaJobResult const& MoveReplicaJob::getReplicaData() const {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "getReplicaData");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (state() == State::FINISHED) return _replicaData;
 
     throw logic_error(
-                "MoveReplicaJob::getReplicaData  the method can't be called while"
-                " the job hasn't finished");
+            "MoveReplicaJob::" + string(__func__) + "  the method can't be called while"
+            " the job hasn't finished");
 }
 
 
@@ -166,7 +166,7 @@ list<pair<string,string>> MoveReplicaJob::persistentLogData() const {
 
 void MoveReplicaJob::startImpl(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // Check if configuration parameters are valid
 
@@ -177,7 +177,8 @@ void MoveReplicaJob::startImpl(util::Lock const& lock) {
              config->isKnownWorker(destinationWorker()) and
              (sourceWorker() != destinationWorker()))) {
 
-        LOGS(_log, LOG_LVL_ERROR, context() << "startImpl  ** MISCONFIGURED ** "
+        LOGS(_log, LOG_LVL_ERROR, context() << __func__
+             << "  ** MISCONFIGURED ** "
              << " database family: '" << databaseFamily() << "'"
              << " source worker: '" << sourceWorker() << "'"
              << " destination worker: '" << destinationWorker() << "'");
@@ -214,7 +215,7 @@ void MoveReplicaJob::startImpl(util::Lock const& lock) {
 
 void MoveReplicaJob::cancelImpl(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (_createReplicaJob and (_createReplicaJob->state() != Job::State::FINISHED)) {
         _createReplicaJob->cancel();
@@ -227,7 +228,7 @@ void MoveReplicaJob::cancelImpl(util::Lock const& lock) {
 
 void MoveReplicaJob::notify(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     notifyDefaultImpl<MoveReplicaJob>(lock, _onFinish);
 }
@@ -235,7 +236,7 @@ void MoveReplicaJob::notify(util::Lock const& lock) {
 
 void MoveReplicaJob::onCreateJobFinish() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "onCreateJobFinish");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // IMPORTANT: the final state is required to be tested twice. The first time
     // it's done in order to avoid deadlock on the "in-flight" requests reporting
@@ -245,7 +246,7 @@ void MoveReplicaJob::onCreateJobFinish() {
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + "onCreateJobFinish");
+    util::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return;
 
@@ -290,7 +291,7 @@ void MoveReplicaJob::onCreateJobFinish() {
 
 void MoveReplicaJob::onDeleteJobFinish() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "onDeleteJobFinish()");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // IMPORTANT: the final state is required to be tested twice. The first time
     // it's done in order to avoid deadlock on the "in-flight" requests reporting
@@ -300,7 +301,7 @@ void MoveReplicaJob::onDeleteJobFinish() {
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + "onDeleteJobFinish");
+    util::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return;
 

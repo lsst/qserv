@@ -49,7 +49,6 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.FileServerConnection");
 /// network operations.
 size_t const maxFileBufSizeBytes = 16 * 1024 * 1024;
 
-
 typedef shared_ptr<lsst::qserv::replica::ProtocolBuffer> ProtocolBufferPtr;
 
 /// The context for diagnostic & debug printouts
@@ -85,7 +84,7 @@ bool readIntoBuffer(boost::asio::ip::tcp::socket& socket,
         boost::asio::transfer_at_least(bytes),
         ec
     );
-    return not ::isErrorCode(ec, "readIntoBuffer");
+    return not ::isErrorCode(ec, __func__);
 }
 
 
@@ -138,13 +137,14 @@ FileServerConnection::FileServerConnection(ServiceProvider::Ptr const& servicePr
 
     if (not _fileBufSize or (_fileBufSize > maxFileBufSizeBytes)) {
         throw invalid_argument(
-                  "FileServerConnection: the buffer size must be in a range of: 0-" +
-                  to_string(maxFileBufSizeBytes) + " bytes. Check the configuration.");
+                "FileServerConnection: the buffer size must be in a range of: 0-" +
+                to_string(maxFileBufSizeBytes) + " bytes. Check the configuration.");
     }
     _fileBuf = new uint8_t[_fileBufSize];
     if (not _fileBuf) {
-        throw runtime_error("FileServerConnection: failed to allocate the buffer, size: " +
-                            to_string(maxFileBufSizeBytes) + " bytes.");
+        throw runtime_error(
+                "FileServerConnection: failed to allocate the buffer, size: " +
+                to_string(maxFileBufSizeBytes) + " bytes.");
     }
 }
 
@@ -161,7 +161,7 @@ void FileServerConnection::beginProtocol() {
 
 void FileServerConnection::receiveRequest() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context << "receiveRequest");
+    LOGS(_log, LOG_LVL_DEBUG, context << __func__);
 
     // Start with receiving the fixed length frame carrying
     // the size (in bytes) the length of the subsequent message.
@@ -195,16 +195,16 @@ void FileServerConnection::receiveRequest() {
 void FileServerConnection::requestReceived(boost::system::error_code const& ec,
                                            size_t bytes_transferred) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context << "requestReceived");
+    LOGS(_log, LOG_LVL_DEBUG, context << __func__);
 
-    if (::isErrorCode(ec, "requestReceived")) return;
+    if (::isErrorCode(ec, __func__)) return;
 
     // Now read the body of the request
 
     proto::ReplicationFileRequest request;
     if (not ::readMessage(_socket, _bufferPtr, _bufferPtr->parseLength(), request)) return;
 
-    LOGS(_log, LOG_LVL_INFO, context << "requestReceived  <OPEN> database: " << request.database()
+    LOGS(_log, LOG_LVL_INFO, context << __func__ << "  <OPEN> database: " << request.database()
          << ", file: " << request.file());
 
     // Find a file requested by a client
@@ -214,7 +214,7 @@ void FileServerConnection::requestReceived(boost::system::error_code const& ec,
     time_t   mtime     = 0;
     do {
         if (not _serviceProvider->config()->isKnownDatabase(request.database())) {
-            LOGS(_log, LOG_LVL_ERROR, context << "requestReceived  unknown database: "
+            LOGS(_log, LOG_LVL_ERROR, context << __func__ << "  unknown database: "
                  << request.database());
             break;
         }
@@ -224,24 +224,24 @@ void FileServerConnection::requestReceived(boost::system::error_code const& ec,
         fs::file_status const stat = fs::status(file, ec);
         if (stat.type() == fs::status_error) {
             LOGS(_log, LOG_LVL_ERROR, context
-                 << "requestReceived  failed to check the status of file: " << file);
+                 << __func__ << "  failed to check the status of file: " << file);
             break;
         }
         if (not fs::exists(stat)) {
-            LOGS(_log, LOG_LVL_ERROR, context << "requestReceived  file does not exist: " << file);
+            LOGS(_log, LOG_LVL_ERROR, context << __func__ << "  file does not exist: " << file);
             break;
         }
 
         size = fs::file_size(file, ec);
         if (ec.value() != 0) {
             LOGS(_log, LOG_LVL_ERROR, context
-                 << "requestReceived  failed to get the file size of: " << file);
+                 << __func__ << "  failed to get the file size of: " << file);
             break;
         }
         mtime = fs::last_write_time(file, ec);
         if (ec.value() != 0) {
             LOGS(_log, LOG_LVL_ERROR, context
-                 << "requestReceived  failed to get file mtime of: " << file);
+                 << __func__ << "  failed to get file mtime of: " << file);
             break;
         }
 
@@ -253,7 +253,7 @@ void FileServerConnection::requestReceived(boost::system::error_code const& ec,
             _filePtr  = fopen(file.string().c_str(), "rb");
             if (not _filePtr) {
                 LOGS(_log, LOG_LVL_ERROR, context
-                     << "requestReceived  file open error: " << strerror(errno)
+                     << __func__ << "  file open error: " << strerror(errno)
                      << ", file: " << file);
                 break;
             }
@@ -278,7 +278,7 @@ void FileServerConnection::requestReceived(boost::system::error_code const& ec,
 
 void FileServerConnection::sendResponse() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context << "sendResponse");
+    LOGS(_log, LOG_LVL_DEBUG, context << __func__);
 
     boost::asio::async_write(
         _socket,
@@ -299,9 +299,9 @@ void FileServerConnection::sendResponse() {
 void FileServerConnection::responseSent(boost::system::error_code const& ec,
                                         size_t bytes_transferred) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context << "responseSent");
+    LOGS(_log, LOG_LVL_DEBUG, context << __func__);
 
-    if (::isErrorCode(ec, "sent")) return;
+    if (::isErrorCode(ec, __func__)) return;
 
     // If the file pointer is not set it means one of two reasons:
     //
@@ -319,22 +319,19 @@ void FileServerConnection::responseSent(boost::system::error_code const& ec,
 
 void FileServerConnection::sendData() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context << "sendData  file: " << _fileName);
+    LOGS(_log, LOG_LVL_DEBUG, context << __func__ << "  file: " << _fileName);
 
     // Read next record if possible (a failure or EOF)
 
     size_t const bytes =
-        fread(_fileBuf,
-                   sizeof(uint8_t),
-                   _fileBufSize,
-                   _filePtr);
+        fread(_fileBuf, sizeof(uint8_t), _fileBufSize, _filePtr);
     if (not bytes) {
         if (ferror(_filePtr)) {
             LOGS(_log, LOG_LVL_ERROR, context
-                 << "sendData  file read error: " << strerror(errno)
+                 << __func__ << "  file read error: " << strerror(errno)
                  << ", file: " << _fileName);
         } else if (feof(_filePtr)) {
-            LOGS(_log, LOG_LVL_INFO, context << "sendData  <CLOSE> file: " << _fileName);
+            LOGS(_log, LOG_LVL_INFO, context << __func__ << "  <CLOSE> file: " << _fileName);
         } else {
             ;   // This file was empty, or the previous read was aligned exactly on
                 // the end of the file.
@@ -364,10 +361,8 @@ void FileServerConnection::sendData() {
 void FileServerConnection::dataSent(boost::system::error_code const& ec,
                                     size_t bytes_transferred) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context << "dataSent");
-
-    if (::isErrorCode(ec, "dataSent")) return;
-
+    LOGS(_log, LOG_LVL_DEBUG, context << __func__);
+    if (::isErrorCode(ec, __func__)) return;
     sendData();
 }
 

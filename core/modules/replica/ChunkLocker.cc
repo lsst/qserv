@@ -60,7 +60,7 @@ ostream& operator<<(ostream& os, Chunk const& chunk) {
 /////////////////////////////////////////////
 
 bool ChunkLocker::isLocked(Chunk const& chunk) const {
-    util::Lock mLock(_mtx, "ChunkLocker::isLocked(chunk)");
+    util::Lock mLock(_mtx, "ChunkLocker::" + string(__func__) + "(chunk)");
     return _chunk2owner.count(chunk);
 }
 
@@ -68,7 +68,7 @@ bool ChunkLocker::isLocked(Chunk const& chunk) const {
 bool ChunkLocker::isLocked(Chunk const& chunk,
                            string& owner) const {
 
-    util::Lock mLock(_mtx, "ChunkLocker::isLocked(chunk,owner)");
+    util::Lock mLock(_mtx, "ChunkLocker::" + string(__func__) + "(chunk,owner)");
 
     auto itr = _chunk2owner.find(chunk);
     if (itr != _chunk2owner.end()) {
@@ -81,7 +81,7 @@ bool ChunkLocker::isLocked(Chunk const& chunk,
 
 ChunkLocker::OwnerToChunks ChunkLocker::locked(string const& owner) const {
 
-    util::Lock mLock(_mtx, "ChunkLocker::locked");
+    util::Lock mLock(_mtx, "ChunkLocker::" + string(__func__));
 
     OwnerToChunks owner2chunks;
     lockedImpl(mLock,
@@ -110,10 +110,10 @@ void ChunkLocker::lockedImpl(util::Lock const& mLock,
 bool ChunkLocker::lock(Chunk const& chunk,
                        string const& owner) {
 
-    util::Lock mLock(_mtx, "ChunkLocker::lock");
+    util::Lock mLock(_mtx, "ChunkLocker::" + string(__func__));
 
     if (owner.empty()) {
-        throw invalid_argument("ChunkLocker::lock  empty owner");
+        throw invalid_argument("ChunkLocker::" + string(__func__) + "  empty owner");
     }
     auto itr = _chunk2owner.find(chunk);
     if (itr != _chunk2owner.end()) return owner == itr->second;
@@ -125,7 +125,7 @@ bool ChunkLocker::lock(Chunk const& chunk,
 
 bool ChunkLocker::release(Chunk const& chunk) {
 
-    util::Lock mLock(_mtx, "ChunkLocker::release(chunk)");
+    util::Lock mLock(_mtx, "ChunkLocker::" + string(__func__) + "(chunk)");
 
     // An owner (if set) will be ignored by the current method
 
@@ -136,7 +136,7 @@ bool ChunkLocker::release(Chunk const& chunk) {
 
 bool ChunkLocker::release(Chunk const& chunk,
                           string& owner) {
-    util::Lock mLock(_mtx, "ChunkLocker::release(chunk,owner)");
+    util::Lock mLock(_mtx, "ChunkLocker::" + string(__func__) + "(chunk,owner)");
     return releaseImpl(mLock, chunk, owner);
 }
 
@@ -160,10 +160,10 @@ bool ChunkLocker::releaseImpl(util::Lock const& mLock,
 
 list<Chunk> ChunkLocker::release(string const& owner) {
 
-    util::Lock mLock(_mtx, "ChunkLocker::release(owner)");
+    util::Lock mLock(_mtx, "ChunkLocker::" + string(__func__) + "(owner)");
 
     if (owner.empty()) {
-        throw invalid_argument("ChunkLocker::release  empty owner");
+        throw invalid_argument("ChunkLocker::" + string(__func__) + "  empty owner");
     }
 
     // Get rid of chunks owned by the specified owner, and also collect

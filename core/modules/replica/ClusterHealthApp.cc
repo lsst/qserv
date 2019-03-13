@@ -133,7 +133,7 @@ int ClusterHealthApp::runImpl() {
 
     // Analyze and display results
 
-    cout << "ClusterHealth job finished: " << job->state2string() << endl;
+    cout << "ClusterHealth::" + string(__func__) + " job finished: " << job->state2string() << endl;
 
     if (job->extendedState() == Job::ExtendedState::SUCCESS) {
 

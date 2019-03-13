@@ -147,12 +147,12 @@ ClusterHealthJob::ClusterHealthJob(unsigned int timeoutSec,
 
 ClusterHealth const& ClusterHealthJob::clusterHealth() const {
  
-    util::Lock lock(_mtx, context() + "clusterHealth");
+    util::Lock lock(_mtx, context() + __func__);
  
     if (state() == State::FINISHED) return _health;
 
     throw logic_error(
-            context() + "clusterHealth  can't use this operation before finishing the job");
+            context() + string(__func__) + "  can't use this operation before finishing the job");
 }
 
 
@@ -194,7 +194,7 @@ list<pair<string,string>> ClusterHealthJob::persistentLogData() const {
 
 void ClusterHealthJob::startImpl(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     auto self = shared_from_base<ClusterHealthJob>();
 
@@ -241,7 +241,7 @@ void ClusterHealthJob::startImpl(util::Lock const& lock) {
 
 void ClusterHealthJob::cancelImpl(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     for (auto&& entry: _requests) {
         auto const& request = entry.second;
@@ -259,7 +259,7 @@ void ClusterHealthJob::cancelImpl(util::Lock const& lock) {
 
 void ClusterHealthJob::notify(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     notifyDefaultImpl<ClusterHealthJob>(lock, _onFinish);
 }
@@ -268,7 +268,7 @@ void ClusterHealthJob::notify(util::Lock const& lock) {
 void ClusterHealthJob::onRequestFinish(ServiceStatusRequest::Ptr const& request) {
 
     LOGS(_log, LOG_LVL_DEBUG, context()
-         << "onRequestFinish[replication]  worker=" << request->worker());
+         << string(__func__) + "[replication]  worker=" << request->worker());
 
     // IMPORTANT: the final state is required to be tested twice. The first time
     // it's done in order to avoid deadlock on the "in-flight" requests reporting
@@ -278,7 +278,7 @@ void ClusterHealthJob::onRequestFinish(ServiceStatusRequest::Ptr const& request)
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + "onRequestFinish[replication]");
+    util::Lock lock(_mtx, context() + string(__func__) + "[replication]");
 
     if (state() == State::FINISHED) return;
 
@@ -292,7 +292,7 @@ void ClusterHealthJob::onRequestFinish(ServiceStatusRequest::Ptr const& request)
 void ClusterHealthJob::onRequestFinish(TestEchoQservMgtRequest::Ptr const& request) {
 
     LOGS(_log, LOG_LVL_DEBUG, context()
-         << "onRequestFinish[qserv]  worker=" << request->worker());
+         << string(__func__) + "[qserv]  worker=" << request->worker());
 
     // IMPORTANT: the final state is required to be tested twice. The first time
     // it's done in order to avoid deadlock on the "in-flight" requests reporting
@@ -302,7 +302,7 @@ void ClusterHealthJob::onRequestFinish(TestEchoQservMgtRequest::Ptr const& reque
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + "onRequestFinish[qserv]");
+    util::Lock lock(_mtx, context() + string(__func__) + "[qserv]");
 
     if (state() == State::FINISHED) return;
 

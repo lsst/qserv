@@ -124,7 +124,7 @@ void WorkerServer::handleAccept(WorkerServerConnection::Ptr const& connection,
         //       mechanism since it's safe to ignore problems with
         //       incoming connections due a lack of side effects.
 
-        LOGS(_log, LOG_LVL_DEBUG, context() << "handleAccept  ec:" << ec);
+        LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  ec:" << ec);
     }
     beginAccept();
 }

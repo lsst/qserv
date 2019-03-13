@@ -79,9 +79,9 @@ FindRequest::FindRequest(ServiceProvider::Ptr const& serviceProvider,
                            boost::asio::io_service& io_service,
                            string const& worker,
                            string const& database,
-                           unsigned int  chunk,
+                           unsigned int chunk,
                            CallbackType const& onFinish,
-                           int  priority,
+                           int priority,
                            bool computeCheckSum,
                            bool keepTracking,
                            shared_ptr<Messenger> const& messenger)
@@ -109,7 +109,7 @@ ReplicaInfo const& FindRequest::responseData() const {
 
 void FindRequest::startImpl(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl "
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << " "
          << " worker: "          << worker()
          << " database: "        << database()
          << " chunk: "           << chunk()
@@ -141,7 +141,7 @@ void FindRequest::startImpl(util::Lock const& lock) {
 
 void FindRequest::wait(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "wait");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // Always need to set the interval before launching the timer.
 
@@ -158,7 +158,7 @@ void FindRequest::wait(util::Lock const& lock) {
 
 void FindRequest::awaken(boost::system::error_code const& ec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "awaken");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (isAborted(ec)) return;
 
@@ -170,7 +170,7 @@ void FindRequest::awaken(boost::system::error_code const& ec) {
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + "awaken");
+    util::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return;
 
@@ -198,7 +198,7 @@ void FindRequest::awaken(boost::system::error_code const& ec) {
 
 void FindRequest::send(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "send");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     auto self = shared_from_base<FindRequest>();
 
@@ -220,7 +220,7 @@ void FindRequest::send(util::Lock const& lock) {
 void FindRequest::analyze(bool success,
                           proto::ReplicationResponseFind const& message) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "analyze  success=" << (success ? "true" : "false"));
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  success=" << (success ? "true" : "false"));
 
     // This method is called on behalf of an asynchronous callback fired
     // upon a completion of the request within method send() - the only
@@ -236,7 +236,7 @@ void FindRequest::analyze(bool success,
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + "analyze");
+    util::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return;
 
@@ -307,15 +307,15 @@ void FindRequest::analyze(bool success,
 
         default:
             throw logic_error(
-                        "FindRequest::analyze() unknown status '" +
-                        proto::ReplicationStatus_Name(message.status()) + "' received from server");
+                    "FindRequest::" + string(__func__) + " unknown status '" +
+                    proto::ReplicationStatus_Name(message.status()) + "' received from server");
     }
 }
 
 
 void FindRequest::notify(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     notifyDefaultImpl<FindRequest>(lock, _onFinish);
 }

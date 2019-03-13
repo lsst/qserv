@@ -82,8 +82,8 @@ SetReplicasQservMgtRequest::SetReplicasQservMgtRequest(
 QservReplicaCollection const& SetReplicasQservMgtRequest::replicas() const {
     if (not ((state() == State::FINISHED) and (extendedState() == ExtendedState::SUCCESS))) {
         throw logic_error(
-                    "SetReplicasQservMgtRequest::replicas  replicas aren't available in state: " +
-                    state2string(state(), extendedState()));
+                "SetReplicasQservMgtRequest::" + string(__func__) +
+                "  replicas aren't available in state: " + state2string(state(), extendedState()));
     }
     return _replicas;
 }
@@ -143,7 +143,7 @@ void SetReplicasQservMgtRequest::startImpl(util::Lock const& lock) {
 
             if (request->state() == State::FINISHED) return;
         
-            util::Lock lock(request->_mtx, request->context() + "startImpl[callback]");
+            util::Lock lock(request->_mtx, request->context() + string(__func__) + "[callback]");
         
             if (request->state() == State::FINISHED) return;
 
@@ -159,8 +159,9 @@ void SetReplicasQservMgtRequest::startImpl(util::Lock const& lock) {
 
                 default:
                     throw logic_error(
-                                "SetReplicasQservMgtRequest:  unhandled server status: " +
-                                wpublish::SetChunkListQservRequest::status2str(status));
+                            "SetReplicasQservMgtRequest:: " + string(__func__) +
+                            "  unhandled server status: " +
+                            wpublish::SetChunkListQservRequest::status2str(status));
             }
         }
     );
@@ -192,9 +193,7 @@ void SetReplicasQservMgtRequest::finishImpl(util::Lock const& lock) {
 
 
 void SetReplicasQservMgtRequest::notify(util::Lock const& lock) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
-
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     notifyDefaultImpl<SetReplicasQservMgtRequest>(lock, _onFinish);
 }
 

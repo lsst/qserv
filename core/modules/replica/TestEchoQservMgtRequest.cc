@@ -77,8 +77,8 @@ TestEchoQservMgtRequest::TestEchoQservMgtRequest(
 string const& TestEchoQservMgtRequest::dataEcho() const {
     if (not ((state() == State::FINISHED) and (extendedState() == ExtendedState::SUCCESS))) {
         throw logic_error(
-                    "TestEchoQservMgtRequest::" + string(__func__) + " no data available in state: " +
-                    state2string(state(), extendedState()));
+                "TestEchoQservMgtRequest::" + string(__func__) + "  no data available in state: " +
+                state2string(state(), extendedState()));
     }
     return _dataEcho;
 }
@@ -112,7 +112,7 @@ void TestEchoQservMgtRequest::startImpl(util::Lock const& lock) {
 
             if (request->state() == State::FINISHED) return;
         
-            util::Lock lock(request->_mtx, request->context() + "startImpl[callback]");
+            util::Lock lock(request->_mtx, request->context() + string(__func__) + "[callback]");
         
             if (request->state() == State::FINISHED) return;
 
@@ -131,8 +131,9 @@ void TestEchoQservMgtRequest::startImpl(util::Lock const& lock) {
 
                 default:
                     throw logic_error(
-                                    "TestEchoQservMgtRequest:  unhandled server status: " +
-                                    wpublish::TestEchoQservRequest::status2str(status));
+                            "TestEchoQservMgtRequest::" + string(__func__) +
+                            "  unhandled server status: " +
+                            wpublish::TestEchoQservRequest::status2str(status));
             }
         }
     );
@@ -164,9 +165,7 @@ void TestEchoQservMgtRequest::finishImpl(util::Lock const& lock) {
 
 
 void TestEchoQservMgtRequest::notify(util::Lock const& lock) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
-
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     notifyDefaultImpl<TestEchoQservMgtRequest>(lock, _onFinish);
 }
 

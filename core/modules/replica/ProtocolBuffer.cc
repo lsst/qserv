@@ -42,8 +42,9 @@ ProtocolBuffer::ProtocolBuffer(size_t capacity)
 
     if (_capacity > HARD_LIMIT) {
         throw overflow_error(
-                    "ProtocolBuffer::ProtocolBuffer() requested capacity " + to_string(capacity) +
-                    " exceeds the hard limit of Google protobuf: " + to_string(HARD_LIMIT));
+                "ProtocolBuffer::" + string(__func__) +
+                "  requested capacity " + to_string(capacity) +
+                " exceeds the hard limit of Google protobuf: " + to_string(HARD_LIMIT));
     }
 }
 
@@ -75,15 +76,16 @@ void ProtocolBuffer::extend(size_t newCapacityBytes) {
 
     if (newCapacityBytes > HARD_LIMIT) {
         throw overflow_error(
-                    "ProtocolBuffer::extend() requested capacity " + to_string(newCapacityBytes) +
-                    " exceeds the hard limit of Google Protobuf " + to_string(HARD_LIMIT));
+                "ProtocolBuffer::" + string(__func__) + "  requested capacity " +
+                to_string(newCapacityBytes) + " exceeds the hard limit of Google Protobuf " +
+                to_string(HARD_LIMIT));
     }
 
     char* ptr = new char[newCapacityBytes];
     if (not ptr) {
         throw overflow_error(
-                    "ProtocolBuffer::extend() failed to allocate a buffer of requested size " +
-                    to_string(newCapacityBytes));
+                "ProtocolBuffer::" + string(__func__) +
+                "  failed to allocate a buffer of requested size " + to_string(newCapacityBytes));
     }
 
     // Carry over the meaningful content of the older buffer into the new one
@@ -101,7 +103,9 @@ void ProtocolBuffer::extend(size_t newCapacityBytes) {
 uint32_t ProtocolBuffer::parseLength() const {
 
     if (_size != sizeof(uint32_t)) {
-        overflow_error("not enough data to be interpreted as the frame header");
+        overflow_error(
+                "ProtocolBufferr::" + string(__func__) +
+                "  not enough data to be interpreted as the frame header");
     }
     return ntohl(*(reinterpret_cast<uint32_t const*>(_data)));
 }

@@ -288,8 +288,7 @@ int DatabaseTestApp::runImpl() {
                 _databaseFamilyName
             );
         } else {
-            throw logic_error(
-                    string(__func__) + ": unsupported operation: " + _operation);
+            throw logic_error(string(__func__) + ": unsupported operation: " + _operation);
         }
         ::dump(replicas);
     }

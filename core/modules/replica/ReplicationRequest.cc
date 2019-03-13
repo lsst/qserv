@@ -57,9 +57,9 @@ ReplicationRequest::Ptr ReplicationRequest::create(
                             string const& worker,
                             string const& sourceWorker,
                             string const& database,
-                            unsigned int  chunk,
+                            unsigned int chunk,
                             CallbackType const& onFinish,
-                            int  priority,
+                            int priority,
                             bool keepTracking,
                             bool allowDuplicate,
                             shared_ptr<Messenger> const& messenger) {
@@ -85,9 +85,9 @@ ReplicationRequest::ReplicationRequest(
                         string const& worker,
                         string const& sourceWorker,
                         string const& database,
-                        unsigned int  chunk,
+                        unsigned int chunk,
                         CallbackType const& onFinish,
-                        int  priority,
+                        int priority,
                         bool keepTracking,
                         bool allowDuplicate,
                         shared_ptr<Messenger> const& messenger)
@@ -114,7 +114,7 @@ ReplicationRequest::ReplicationRequest(
 
 void ReplicationRequest::startImpl(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // Serialize the Request message header and the request itself into
     // the network buffer.
@@ -142,7 +142,7 @@ void ReplicationRequest::startImpl(util::Lock const& lock) {
 
 void ReplicationRequest::wait(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "wait");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // Always need to set the interval before launching the timer.
 
@@ -159,7 +159,7 @@ void ReplicationRequest::wait(util::Lock const& lock) {
 
 void ReplicationRequest::awaken(boost::system::error_code const& ec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "awaken");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (isAborted(ec)) return;
 
@@ -171,7 +171,7 @@ void ReplicationRequest::awaken(boost::system::error_code const& ec) {
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + "awaken");
+    util::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return;
 
@@ -219,7 +219,7 @@ void ReplicationRequest::send(util::Lock const& lock) {
 void ReplicationRequest::analyze(bool success,
                                  proto::ReplicationResponseReplicate const& message) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "analyze  success=" << (success ? "true" : "false"));
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  success=" << (success ? "true" : "false"));
 
     // This method is called on behalf of an asynchronous callback fired
     // upon a completion of the request within method send() - the only
@@ -235,7 +235,7 @@ void ReplicationRequest::analyze(bool success,
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + "analyze");
+    util::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return;
 
@@ -315,9 +315,9 @@ void ReplicationRequest::analyze(bool success,
 
         default:
             throw logic_error(
-                        "ReplicationRequest::analyze() unknown status '" +
-                        proto::ReplicationStatus_Name(message.status()) +
-                        "' received from server");
+                    "ReplicationRequest::" + string(__func__) + "  unknown status '" +
+                    proto::ReplicationStatus_Name(message.status()) +
+                    "' received from server");
     }
 }
 

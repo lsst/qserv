@@ -112,7 +112,7 @@ void RemoveReplicaQservMgtRequest::startImpl(util::Lock const& lock) {
 
             if (request->state() == State::FINISHED) return;
         
-            util::Lock lock(request->_mtx, request->context() + "startImpl[callback]");
+            util::Lock lock(request->_mtx, request->context() + string(__func__) + "[callback]");
         
             if (request->state() == State::FINISHED) return;
 
@@ -135,8 +135,9 @@ void RemoveReplicaQservMgtRequest::startImpl(util::Lock const& lock) {
 
                 default:
                     throw logic_error(
-                                "RemoveReplicaQservMgtRequest:  unhandled server status: " +
-                                wpublish::ChunkGroupQservRequest::status2str(status));
+                            "RemoveReplicaQservMgtRequest::" + string(__func__) +
+                            "  unhandled server status: " +
+                            wpublish::ChunkGroupQservRequest::status2str(status));
             }
         }
     );
@@ -168,9 +169,7 @@ void RemoveReplicaQservMgtRequest::finishImpl(util::Lock const& lock) {
 
 
 void RemoveReplicaQservMgtRequest::notify(util::Lock const& lock) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
-
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     notifyDefaultImpl<RemoveReplicaQservMgtRequest>(lock, _onFinish);
 }
 

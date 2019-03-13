@@ -114,8 +114,8 @@ uint16_t getQueryParamUInt16(unordered_map<string,string> const& query,
     unsigned long val = stoul(itr->second);
     if (val >= numeric_limits<uint16_t>::max()) {
         throw out_of_range(
-           "HttpProcessor::" + string(__func__) + " value of parameter: " + param +
-           " exceeds allowed limit for type 'uint16_t'");
+                "HttpProcessor::" + string(__func__) + " value of parameter: " + param +
+                " exceeds allowed limit for type 'uint16_t'");
     }
     return static_cast<uint16_t>(val);
 }
@@ -203,8 +203,8 @@ unsigned int getRequiredQueryParamUInt(unordered_map<string,string> const& query
     unsigned long val = stoul(itr->second);
     if (val > numeric_limits<unsigned int>::max()) {
         throw out_of_range(
-           "HttpProcessor::" + string(__func__) + " value of parameter: " + param +
-           " exceeds allowed limit for type 'unsigned int'");
+                "HttpProcessor::" + string(__func__) + " value of parameter: " + param +
+                " exceeds allowed limit for type 'unsigned int'");
     }
     return static_cast<unsigned int>(val);
 }

@@ -86,9 +86,9 @@ WorkerFindAllRequest::WorkerFindAllRequest(
 
 void WorkerFindAllRequest::setInfo(proto::ReplicationResponseFindAll& response) const {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "setInfo");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
-    util::Lock lock(_mtx, context() + "setInfo");
+    util::Lock lock(_mtx, context() + __func__);
 
     // Return the performance of the target request
 
@@ -116,7 +116,7 @@ void WorkerFindAllRequest::setInfo(proto::ReplicationResponseFindAll& response) 
 
 bool WorkerFindAllRequest::execute() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "execute" << "  database: " << database());
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  database: " << database());
 
     // Set up the result if the operation is over
 
@@ -177,9 +177,9 @@ WorkerFindAllRequestPOSIX::WorkerFindAllRequestPOSIX(
 
 bool WorkerFindAllRequestPOSIX::execute() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "execute" << "  database: " << database());
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  database: " << database());
 
-    util::Lock lock(_mtx, context() + "execute");
+    util::Lock lock(_mtx, context() + __func__);
 
     WorkerInfo   const workerInfo    = _serviceProvider->config()->workerInfo(worker());
     DatabaseInfo const databaseInfo  = _serviceProvider->config()->databaseInfo(database());
@@ -192,7 +192,7 @@ bool WorkerFindAllRequestPOSIX::execute() {
 
     map<unsigned int, ReplicaInfo::FileInfoCollection> chunk2fileInfoCollection;
     {
-        util::Lock dataFolderLock(_mtxDataFolderOperations, context() + "execute");
+        util::Lock dataFolderLock(_mtxDataFolderOperations, context() + __func__);
 
         fs::path        const dataDir = fs::path(workerInfo.dataDir) / database();
         fs::file_status const stat    = fs::status(dataDir, ec);
@@ -213,7 +213,7 @@ bool WorkerFindAllRequestPOSIX::execute() {
                         entry.path().filename().string(),
                         databaseInfo)) {
 
-                    LOGS(_log, LOG_LVL_DEBUG, context() << "execute"
+                    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
                         << "  database: " << database()
                         << "  file: "     << entry.path().filename()
                         << "  table: "    << get<0>(parsed)

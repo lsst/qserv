@@ -57,7 +57,8 @@ string Request::state2string(State state) {
         case IN_PROGRESS: return "IN_PROGRESS";
         case FINISHED:    return "FINISHED";
     }
-    throw logic_error("incomplete implementation of method Request::state2string(State)");
+    throw logic_error(
+            "Request::" + string(__func__) + "(State)  incomplete implementation");
 }
 
 
@@ -75,7 +76,8 @@ string Request::state2string(ExtendedState state) {
         case TIMEOUT_EXPIRED:      return "TIMEOUT_EXPIRED";
         case CANCELLED:            return "CANCELLED";
     }
-    throw logic_error("incomplete implementation of method Request::state2string(ExtendedState)");
+    throw logic_error(
+            "Request::" + string(__func__) + "(ExtendedState)  incomplete implementation");
 }
 
 
@@ -131,7 +133,7 @@ Request::~Request() {
 
 
 string Request::state2string() const {
-    util::Lock lock(_mtx, context() + "state2string");
+    util::Lock lock(_mtx, context() + __func__);
     return state2string(state(), extendedState()) + "::" + replica::status2string(extendedServerStatus());
 }
 
@@ -149,7 +151,7 @@ string const& Request::remoteId() const {
 
 
 Performance Request::performance() const {
-    util::Lock lock(_mtx, context() + "performance");
+    util::Lock lock(_mtx, context() + __func__);
     return performance(lock);
 }
 
@@ -163,17 +165,17 @@ void Request::start(shared_ptr<Controller> const& controller,
                     string const& jobId,
                     unsigned int requestExpirationIvalSec) {
 
-    util::Lock lock(_mtx, context() + "start");
+    util::Lock lock(_mtx, context() + __func__);
 
     assertState(lock,
                 CREATED,
-                context() + "start");
+                context() + __func__);
 
     // Change the expiration interval if requested
     if (requestExpirationIvalSec) {
         _requestExpirationIvalSec = requestExpirationIvalSec;
     }
-    LOGS(_log, LOG_LVL_DEBUG, context() << "start  _requestExpirationIvalSec: "
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  _requestExpirationIvalSec: "
          << _requestExpirationIvalSec);
 
     // Build optional associations with the corresponding Controller and the job
@@ -210,7 +212,9 @@ void Request::start(shared_ptr<Controller> const& controller,
 
 string const& Request::jobId() const {
     if (state() == State::CREATED) {
-        throw logic_error("the Job Id is not available because the request has not started yet");
+        throw logic_error(
+                "Request::" + string(__func__) +
+                "  the Job Id is not available because the request has not started yet");
     }
     return _jobId;
 }
@@ -218,7 +222,7 @@ string const& Request::jobId() const {
 
 void Request::expired(boost::system::error_code const& ec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "expired"
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
          << (ec == boost::asio::error::operation_aborted ? "  ** ABORTED **" : ""));
 
     // Ignore this event if the timer was aborted
@@ -233,7 +237,7 @@ void Request::expired(boost::system::error_code const& ec) {
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + "expired");
+    util::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return;
 
@@ -243,7 +247,7 @@ void Request::expired(boost::system::error_code const& ec) {
 
 void Request::cancel() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "cancel");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // IMPORTANT: the final state is required to be tested twice. The first time
     // it's done in order to avoid deadlock on the "in-flight" callbacks reporting
@@ -253,7 +257,7 @@ void Request::cancel() {
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + "cancel");
+    util::Lock lock(_mtx, context() + __func__);
 
     if (state() == FINISHED) return;
 
@@ -264,7 +268,7 @@ void Request::cancel() {
 void Request::finish(util::Lock const& lock,
                      ExtendedState extendedState) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "finish");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // Check if it's not too late for this operation
 
@@ -297,7 +301,7 @@ void Request::finish(util::Lock const& lock,
 bool Request::isAborted(boost::system::error_code const& ec) const {
 
     if (ec == boost::asio::error::operation_aborted) {
-        LOGS(_log, LOG_LVL_DEBUG, context() << "isAborted  ** ABORTED **");
+        LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  ** ABORTED **");
         return true;
     }
     return false;
@@ -310,8 +314,8 @@ void Request::assertState(util::Lock const& lock,
 
     if (desiredState != state()) {
         throw logic_error(
-                    context + ": wrong state " + state2string(state()) + " instead of " +
-                    state2string(desiredState));
+                context + ": wrong state " + state2string(state()) + " instead of " +
+                state2string(desiredState));
     }
 }
 
@@ -320,7 +324,8 @@ void Request::setState(util::Lock const& lock,
                        State newState,
                        ExtendedState newExtendedState)
 {
-    LOGS(_log, LOG_LVL_DEBUG, context() << "setState  " << state2string(newState, newExtendedState));
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  "
+         << state2string(newState, newExtendedState));
 
     // ATTENTION: ensure the top-level state is the last to change in
     // in the transient state transition in order to guarantee a consistent

@@ -179,7 +179,8 @@ int AdminApp::runImpl() {
                     _requestExpirationIvalSec));
 
         } else {
-            throw logic_error("unsupported operation: " + _operation);
+            throw logic_error(
+                    "AdminApp::" + string(__func__) + "  unsupported operation: " + _operation);
         }
     }
 

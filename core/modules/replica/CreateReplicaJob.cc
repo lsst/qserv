@@ -125,12 +125,13 @@ CreateReplicaJob::CreateReplicaJob(string const& databaseFamily,
 
 CreateReplicaJobResult const& CreateReplicaJob::getReplicaData() const {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "getReplicaData");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (state() == State::FINISHED) return _replicaData;
 
     throw logic_error(
-        "CreateReplicaJob::getReplicaData  the method can't be called while the job hasn't finished");
+            "CreateReplicaJob::" + string(__func__) +
+            "  the method can't be called while the job hasn't finished");
 }
 
 
@@ -191,7 +192,7 @@ void CreateReplicaJob::startImpl(util::Lock const& lock) {
              config->isKnownWorker(destinationWorker()) and
              (sourceWorker() != destinationWorker()))) {
 
-        LOGS(_log, LOG_LVL_ERROR, context() << "startImpl  ** MISCONFIGURED ** "
+        LOGS(_log, LOG_LVL_ERROR, context() << string(__func__) << "  ** MISCONFIGURED ** "
              << " database family: '"    << databaseFamily() << "'"
              << " source worker: '"      << sourceWorker() << "'"
              << " destination worker: '" << destinationWorker() << "'");
@@ -214,8 +215,7 @@ void CreateReplicaJob::startImpl(util::Lock const& lock) {
 
     } catch (invalid_argument const& ex) {
 
-        LOGS(_log, LOG_LVL_ERROR, context() << "startImpl  "
-             << "** misconfigured application ** "
+        LOGS(_log, LOG_LVL_ERROR, context() << string(__func__) << "  ** MISCONFIGURED ** "
              << " chunk: "  << chunk()
              << " destinationWorker: " << destinationWorker()
              << " databaseFamily: " << databaseFamily()
@@ -225,8 +225,8 @@ void CreateReplicaJob::startImpl(util::Lock const& lock) {
 
     } catch (exception const& ex) {
 
-        LOGS(_log, LOG_LVL_ERROR, context() << "startImpl  "
-             << "** failed to find replicas ** "
+        LOGS(_log, LOG_LVL_ERROR, context() << string(__func__)
+             << "  ** failed to find replicas ** "
              << " chunk: "  << chunk()
              << " destinationWorker: " << destinationWorker()
              << " databaseFamily: " << databaseFamily()
@@ -238,8 +238,8 @@ void CreateReplicaJob::startImpl(util::Lock const& lock) {
         return;
     }
     if (destinationReplicas.size()) {
-        LOGS(_log, LOG_LVL_ERROR, context() << "startImpl  "
-             << "** destination worker already has " << destinationReplicas.size() << " replicas ** "
+        LOGS(_log, LOG_LVL_ERROR, context() << string(__func__)
+             << "  ** destination worker already has " << destinationReplicas.size() << " replicas ** "
              << " chunk: "  << chunk()
              << " destinationWorker: " << destinationWorker()
              << " databaseFamily: " << databaseFamily());
@@ -270,8 +270,7 @@ void CreateReplicaJob::startImpl(util::Lock const& lock) {
 
     } catch (invalid_argument const& ex) {
 
-        LOGS(_log, LOG_LVL_ERROR, context() << "startImpl  "
-             << "** misconfigured application ** "
+        LOGS(_log, LOG_LVL_ERROR, context() << string(__func__) << "  ** MISCONFIGURED ** "
              << " chunk: "  << chunk()
              << " sourceWorker: " << sourceWorker()
              << " databaseFamily: " << databaseFamily()
@@ -281,7 +280,8 @@ void CreateReplicaJob::startImpl(util::Lock const& lock) {
 
     } catch (exception const& ex) {
 
-        LOGS(_log, LOG_LVL_ERROR, context() << "startImpl  ** failed to find replicas ** "
+        LOGS(_log, LOG_LVL_ERROR, context() << string(__func__)
+             << "  ** failed to find replicas ** "
              << " chunk: "  << chunk()
              << " sourceWorker: " << sourceWorker()
              << " databaseFamily: " << databaseFamily()
@@ -293,8 +293,8 @@ void CreateReplicaJob::startImpl(util::Lock const& lock) {
         return;
     }
     if (not sourceReplicas.size()) {
-        LOGS(_log, LOG_LVL_ERROR, context() << "startImpl  "
-             << "** source worker has no replicas to be moved ** "
+        LOGS(_log, LOG_LVL_ERROR, context() << string(__func__)
+             << "  ** source worker has no replicas to be moved ** "
              << " chunk: "  << chunk()
              << " worker: " << sourceWorker());
 
@@ -336,7 +336,7 @@ void CreateReplicaJob::startImpl(util::Lock const& lock) {
 
 void CreateReplicaJob::cancelImpl(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // The algorithm will also clear resources taken by various
     // locally created objects.
@@ -361,7 +361,7 @@ void CreateReplicaJob::cancelImpl(util::Lock const& lock) {
 
 void CreateReplicaJob::notify(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     notifyDefaultImpl<CreateReplicaJob>(lock, _onFinish);
 }
@@ -370,7 +370,7 @@ void CreateReplicaJob::notify(util::Lock const& lock) {
 void CreateReplicaJob::onRequestFinish(ReplicationRequest::Ptr const& request) {
 
     LOGS(_log, LOG_LVL_DEBUG, context()
-         << "onRequestFinish(ReplicationeRequest)"
+         << string(__func__) << "(ReplicationeRequest)"
          << "  database="          << request->database()
          << "  destinationWorker=" << destinationWorker()
          << "  sourceWorker="      << sourceWorker()
@@ -385,7 +385,7 @@ void CreateReplicaJob::onRequestFinish(ReplicationRequest::Ptr const& request) {
     
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + "onRequestFinish(ReplicationeRequest)");
+    util::Lock lock(_mtx, context() + string(__func__) + "(ReplicationeRequest)");
 
     if (state() == State::FINISHED) return;
 

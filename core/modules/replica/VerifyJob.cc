@@ -73,7 +73,8 @@ ReplicaDiff::ReplicaDiff(ReplicaInfo const& replica1,
 
     if ((replica1.database() != replica2.database()) or
         (replica1.chunk()    != replica2.chunk())) {
-        throw invalid_argument("ReplicaDiff::ReplicaDiff(r1,r2)  incompatible arguments");
+        throw invalid_argument(
+                "ReplicaDiff::" + string(__func__) + "(r1,r2)  incompatible arguments");
     }
 
     // Status and the number of files are expeted to match
@@ -220,7 +221,7 @@ VerifyJob::VerifyJob(size_t maxReplicas,
         _onReplicaDifference(onReplicaDifference) {
 
     if (0 == maxReplicas) {
-        throw invalid_argument("VerifyJob:  parameter maxReplicas must be greater than 0");
+        throw invalid_argument("VerifyJob::  parameter maxReplicas must be greater than 0");
     }
 }
 
@@ -235,7 +236,7 @@ list<pair<string,string>> VerifyJob::extendedPersistentState() const {
 
 void VerifyJob::startImpl(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     auto self = shared_from_base<VerifyJob>();
 
@@ -251,8 +252,8 @@ void VerifyJob::startImpl(util::Lock const& lock) {
         // In theory this should never happen unless the installation
         // doesn't have a single chunk.
 
-        LOGS(_log, LOG_LVL_ERROR, context()
-             << "startImpl  ** no replicas found in the database **");
+        LOGS(_log, LOG_LVL_ERROR, context() << __func__
+             << "  ** no replicas found in the database **");
 
         setState(lock, State::FINISHED, ExtendedState::FAILED);
         return;
@@ -279,7 +280,7 @@ void VerifyJob::startImpl(util::Lock const& lock) {
 
 void VerifyJob::cancelImpl(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // To ensure no lingering "side effects" will be left after cancelling this
     // job the request cancellation should be also followed (where it makes a sense)
@@ -303,17 +304,15 @@ void VerifyJob::cancelImpl(util::Lock const& lock) {
 
 
 void VerifyJob::notify(util::Lock const& lock) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
-
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     notifyDefaultImpl<VerifyJob>(lock, _onFinish);
 }
 
 
 void VerifyJob::onRequestFinish(FindRequest::Ptr request) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context()
-         << "onRequestFinish  database=" << request->database()
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
+         << "  database=" << request->database()
          << " worker=" << request->worker()
          << " chunk="  << request->chunk());
 
@@ -325,7 +324,7 @@ void VerifyJob::onRequestFinish(FindRequest::Ptr request) {
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + "onRequestFinish");
+    util::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return;
 
@@ -360,7 +359,7 @@ void VerifyJob::onRequestFinish(FindRequest::Ptr request) {
         ReplicaInfo const& oldReplica = _replicas[request->id()];
         selfReplicaDiff = ReplicaDiff(oldReplica, request->responseData());
         if (selfReplicaDiff() and not _onReplicaDifference) {
-            LOGS(_log, LOG_LVL_INFO, context() << "replica missmatch for self\n"
+            LOGS(_log, LOG_LVL_INFO, context() << "replica mismatch for self\n"
                  << selfReplicaDiff);
         }
 
@@ -375,7 +374,7 @@ void VerifyJob::onRequestFinish(FindRequest::Ptr request) {
             if (not diff.isSelf()) {
                 otherReplicaDiff.push_back(diff);
                 if (diff() and not _onReplicaDifference)
-                    LOGS(_log, LOG_LVL_INFO, context() << "replica missmatch for other\n"
+                    LOGS(_log, LOG_LVL_INFO, context() << "replica mismatch for other\n"
                          << diff);
             }
         }
@@ -402,8 +401,8 @@ void VerifyJob::onRequestFinish(FindRequest::Ptr request) {
 
     if (0 == replicas.size()) {
 
-        LOGS(_log, LOG_LVL_ERROR, context()
-             << "onRequestFinish  ** no replicas found in the database **");
+        LOGS(_log, LOG_LVL_ERROR, context() << __func__
+             << "  ** no replicas found in the database **");
 
         // In theory this should never happen unless all replicas are gone
         // from the installation.

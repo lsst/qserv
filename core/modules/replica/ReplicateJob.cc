@@ -100,13 +100,13 @@ ReplicateJob::ReplicateJob(string const& databaseFamily,
 
 ReplicateJobResult const& ReplicateJob::getReplicaData() const {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "getReplicaData");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (state() == State::FINISHED) return _replicaData;
 
     throw logic_error(
-                "ReplicateJob::getReplicaData  the method can't be called while "
-                "the job hasn't finished");
+            "ReplicateJob::" + string(__func__) +
+            "  the method can't be called while the job hasn't finished");
 }
 
 
@@ -165,7 +165,7 @@ list<pair<string,string>> ReplicateJob::persistentLogData() const {
 
 void ReplicateJob::startImpl(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // Launch the chained job to get chunk disposition
 
@@ -192,7 +192,7 @@ void ReplicateJob::startImpl(util::Lock const& lock) {
 
 void ReplicateJob::cancelImpl(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // The algorithm will also clear resources taken by various
     // locally created objects.
@@ -214,16 +214,14 @@ void ReplicateJob::cancelImpl(util::Lock const& lock) {
 
 
 void ReplicateJob::notify(util::Lock const& lock) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
-
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     notifyDefaultImpl<ReplicateJob>(lock, _onFinish);
 }
 
 
 void ReplicateJob::onPrecursorJobFinish() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // IMPORTANT: the final state is required to be tested twice. The first time
     // it's done in order to avoid deadlock on the "in-flight" requests reporting
@@ -233,7 +231,7 @@ void ReplicateJob::onPrecursorJobFinish() {
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + "onPrecursorJobFinish");
+    util::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return;
 
@@ -341,8 +339,8 @@ void ReplicateJob::onPrecursorJobFinish() {
     }
     if (not workers.size()) {
 
-        LOGS(_log, LOG_LVL_ERROR, context()
-             << "onPrecursorJobFinish  not workers are available for new replicas");
+        LOGS(_log, LOG_LVL_ERROR, context() << __func__
+             << "  not workers are available for new replicas");
 
         finish(lock, ExtendedState::FAILED);
         return;
@@ -385,8 +383,8 @@ void ReplicateJob::onPrecursorJobFinish() {
             }
         }
         if (sourceWorker.empty()) {
-            LOGS(_log, LOG_LVL_ERROR, context()
-                 << "onPrecursorJobFinish  no suitable source worker found for chunk: "
+            LOGS(_log, LOG_LVL_ERROR, context() << __func__
+                 << "  no suitable source worker found for chunk: "
                  << chunk);
             finish(lock, ExtendedState::FAILED);
             return;
@@ -423,8 +421,8 @@ void ReplicateJob::onPrecursorJobFinish() {
                 }
             }
             if (destinationWorker.empty()) {
-                LOGS(_log, LOG_LVL_ERROR, context()
-                     << "onPrecursorJobFinish  no suitable destination worker found for chunk: "
+                LOGS(_log, LOG_LVL_ERROR, context() << __func__
+                     << "  no suitable destination worker found for chunk: "
                      << chunk);
                 finish(lock, ExtendedState::FAILED);
                 return;
@@ -479,8 +477,8 @@ void ReplicateJob::onPrecursorJobFinish() {
     if (0 != numJobsLaunched) {
         _numLaunched += numJobsLaunched;
     } else {
-        LOGS(_log, LOG_LVL_ERROR, context()
-             << "onPrecursorJobFinish  unexpected failure when launching " << numJobs
+        LOGS(_log, LOG_LVL_ERROR, context() << __func__
+             << "  unexpected failure when launching " << numJobs
              << " replication jobs");
         _jobs.clear();
         finish(lock, ExtendedState::FAILED);
@@ -490,8 +488,7 @@ void ReplicateJob::onPrecursorJobFinish() {
 
 void ReplicateJob::onCreateJobFinish(CreateReplicaJob::Ptr const& job) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context()
-         << "onCreateJobFinish"
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
          << "  chunk="             << job->chunk()
          << "  databaseFamily="    << job->databaseFamily()
          << "  sourceWorker="      << job->sourceWorker()
@@ -508,7 +505,7 @@ void ReplicateJob::onCreateJobFinish(CreateReplicaJob::Ptr const& job) {
         return;
     }
 
-    util::Lock lock(_mtx, context() + "onCreateJobFinish");
+    util::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) {
         _activeJobs.remove(job);
@@ -569,7 +566,7 @@ void ReplicateJob::onCreateJobFinish(CreateReplicaJob::Ptr const& job) {
 size_t ReplicateJob::launchNextJobs(util::Lock const& lock,
                                     size_t numJobs) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "launchNextJobs  numJobs=" << numJobs);
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  numJobs=" << numJobs);
 
     // Compute the number of jobs which are already active at both ends
     // (destination and source workers).

@@ -129,15 +129,16 @@ ChunkNumber::ChunkNumber(unsigned int value,
 
     if (not _valid) {
         throw ChunkNumberNotValid(
-                    "ChunkNumber: input number " + to_string(value) +
-                    " can't be validated by the validator");
+                "ChunkNumber::" + string(__func__) + "  input number " + to_string(value) +
+                " can't be validated by the validator");
     }
 }
 
 
 unsigned int ChunkNumber::value() const {
     if (not _valid) {
-        throw ChunkNumberNotValid("ChunkNumber: invalid object in a type conversion operation");
+        throw ChunkNumberNotValid(
+                "ChunkNumber::" + string(__func__) + "  invalid object in a type conversion operation");
     }
     return _value;
 }
@@ -175,7 +176,8 @@ void ChunkNumber::assertBothValid(ChunkNumber const& lhs,
     if (not ((*(lhs._validator) == *(rhs._validator)) and
              (lhs._valid and rhs._valid))) {
 
-        throw ChunkNumberNotValid("ChunkNumber: invalid object(s) in a binary operation");
+        throw ChunkNumberNotValid(
+                "ChunkNumber::" + string(__func__) + " invalid object(s) in a binary operation");
     }
 }
 

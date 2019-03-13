@@ -120,7 +120,7 @@ void FileServer::handleAccept(FileServerConnection::Ptr const& connection,
     if (ec.value() == 0) {
         connection->beginProtocol();
     } else {
-        LOGS(_log, LOG_LVL_DEBUG, context() << "handleAccept  ec:" << ec);
+        LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  ec:" << ec);
     }
     beginAccept();
 }

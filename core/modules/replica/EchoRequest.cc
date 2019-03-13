@@ -102,10 +102,8 @@ string const& EchoRequest::responseData() const {
 
 void EchoRequest::startImpl(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl "
-         << " worker: " << worker()
-         << " data.length: " << data().size()
-         << " delay: " << delay());
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
+         << "  worker: " << worker() << " data.length: " << data().size() << " delay: " << delay());
 
     // Serialize the Request message header and the request itself into
     // the network buffer.
@@ -132,7 +130,7 @@ void EchoRequest::startImpl(util::Lock const& lock) {
 
 void EchoRequest::wait(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "wait");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // Allways need to set the interval before launching the timer.
 
@@ -149,7 +147,7 @@ void EchoRequest::wait(util::Lock const& lock) {
 
 void EchoRequest::awaken(boost::system::error_code const& ec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "awaken");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (isAborted(ec)) return;
 
@@ -161,7 +159,7 @@ void EchoRequest::awaken(boost::system::error_code const& ec) {
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + "awaken");
+    util::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return;
 
@@ -189,7 +187,7 @@ void EchoRequest::awaken(boost::system::error_code const& ec) {
 
 void EchoRequest::send(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "send");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     auto self = shared_from_base<EchoRequest>();
 
@@ -211,7 +209,7 @@ void EchoRequest::send(util::Lock const& lock) {
 void EchoRequest::analyze(bool success,
                           proto::ReplicationResponseEcho const& message) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "analyze  success=" << (success ? "true" : "false"));
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  success=" << (success ? "true" : "false"));
 
     // This method is called on behalf of an asynchronous callback fired
     // upon a completion of the request within method send() - the only
@@ -227,7 +225,7 @@ void EchoRequest::analyze(bool success,
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + "analyze");
+    util::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return;
 
@@ -296,7 +294,7 @@ void EchoRequest::analyze(bool success,
 
         default:
             throw logic_error(
-                    "EchoRequest::analyze() unknown status '" +
+                    "EchoRequest::" + string(__func__) + "  unknown status '" +
                     proto::ReplicationStatus_Name(message.status()) + "' received from server");
     }
 }
@@ -304,14 +302,14 @@ void EchoRequest::analyze(bool success,
 
 void EchoRequest::notify(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     notifyDefaultImpl<EchoRequest>(lock, _onFinish);
 }
 
 
 void EchoRequest::savePersistentState(util::Lock const& lock) {
-    LOGS(_log, LOG_LVL_DEBUG, context() << "savePersistentState");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     controller()->serviceProvider()->databaseServices()->saveState(*this, performance(lock));
 }
 

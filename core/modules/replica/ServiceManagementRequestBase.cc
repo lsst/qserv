@@ -73,10 +73,10 @@ void dumpRequestInfo(ostream& os,
                 break;
 
             default:
-                throw logic_error (
-                            "unhandled request type " +
-                            proto::ReplicationReplicaRequestType_Name(r.replica_type()) +
-                            " in  ServiceManagementRequest::dumpRequestInfo");
+                throw logic_error(
+                        "ServiceManagementRequest::" + string(__func__) +
+                        "  unhandled request type " +
+                        proto::ReplicationReplicaRequestType_Name(r.replica_type()));
         }
     }
 }
@@ -98,7 +98,8 @@ string ServiceState::state2string() const {
         case RUNNING:             return "RUNNING";
     default:
         throw runtime_error(
-                    "ServiceState::state2string  unhandled state: " + to_string(state));
+                "ServiceState::" + string(__func__) + "  unhandled state: " +
+                to_string(state));
     }
     return string();
 }
@@ -121,7 +122,9 @@ void ServiceState::set(proto::ReplicationServiceResponse const& message) {
             break;
 
         default:
-            throw runtime_error("ServiceState::set  service state found in protocol is unknown");
+            throw runtime_error(
+                    "ServiceState::" + string(__func__) +
+                    "  service state found in protocol is unknown");
     }
     technology = message.technology();
     startTime  = message.start_time();
@@ -170,7 +173,7 @@ ostream& operator<<(ostream& os, ServiceState const& ss) {
 
 ServiceState const& ServiceManagementRequestBase::getServiceState() const {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "getServiceState");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     switch (Request::state()) {
         case Request::State::FINISHED:
@@ -185,8 +188,8 @@ ServiceState const& ServiceManagementRequestBase::getServiceState() const {
             break;
     }
     throw logic_error(
-                "ServiceManagementRequestBase::getServiceState  not allowed "
-                "in the current state of the request");
+            "ServiceManagementRequestBase::" + string(__func__) +
+            "  not allowed in the current state of the request");
 }
 
 
@@ -211,7 +214,7 @@ ServiceManagementRequestBase::ServiceManagementRequestBase(
 
 void ServiceManagementRequestBase::startImpl(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // Serialize the Request message header and the request itself into
     // the network buffer.
@@ -245,7 +248,7 @@ void ServiceManagementRequestBase::startImpl(util::Lock const& lock) {
 void ServiceManagementRequestBase::analyze(bool success,
                                            proto::ReplicationServiceResponse const& message) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "analyze  success=" << (success ? "true" : "false"));
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  success=" << (success ? "true" : "false"));
 
     // This method is called on behalf of an asynchronous callback fired
     // upon a completion of the request within method send() - the only
@@ -261,7 +264,7 @@ void ServiceManagementRequestBase::analyze(bool success,
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + "analyze");
+    util::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return;
 

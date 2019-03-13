@@ -159,18 +159,20 @@ uint64_t FileUtils::compute_cs(string const& fileName,
                                size_t recordSizeBytes) {
 
     if (fileName.empty()) {
-        throw invalid_argument("empty file name passed into FileUtils::compute_cs");
+        throw invalid_argument(
+                "FileUtils::" + string(__func__) +
+                "  empty file name passed into the method");
     }
     if (not recordSizeBytes or (recordSizeBytes > MAX_RECORD_SIZE_BYTES)) {
         throw invalid_argument(
-                "invalid record size " + to_string(recordSizeBytes) +
-                "passed into FileUtils::compute_cs");
+                "FileUtils::" + string(__func__) + "  invalid record size " +
+                to_string(recordSizeBytes) + "passed into the method");
     }
     FILE* fp = fopen(fileName.c_str(), "rb");
     if (not fp) {
         throw runtime_error(
-                string("file open error: ") + strerror(errno) +
-                string(", file: ") + fileName);
+                "FileUtils::" + string(__func__) + string("  file open error: ") +
+                strerror(errno) + string(", file: ") + fileName);
     }
     uint8_t *buf = new uint8_t[recordSizeBytes];
 
@@ -183,8 +185,8 @@ uint64_t FileUtils::compute_cs(string const& fileName,
     }
     if (ferror(fp)) {
         const string err =
-            string("file read error: ") + strerror(errno) +
-            string(", file: ") + fileName;
+             "FileUtils::" + string(__func__) + string("  file read error: ") +
+            strerror(errno) + string(", file: ") + fileName;
         fclose(fp);
         delete [] buf;
         throw runtime_error(err);
@@ -219,13 +221,13 @@ FileCsComputeEngine::FileCsComputeEngine(string const& fileName,
     }
     if (not _recordSizeBytes or (_recordSizeBytes > FileUtils::MAX_RECORD_SIZE_BYTES)) {
         throw invalid_argument(
-                    "FileCsComputeEngine:  invalid record size " + to_string(_recordSizeBytes));
+                "FileCsComputeEngine:  invalid record size " + to_string(_recordSizeBytes));
     }
     _fp = fopen(_fileName.c_str(), "rb");
     if (not _fp) {
         throw runtime_error(
-                    string("FileCsComputeEngine:  file open error: ") + strerror(errno) +
-                    string(", file: ") + _fileName);
+                string("FileCsComputeEngine:  file open error: ") + strerror(errno) +
+                string(", file: ") + _fileName);
     }
     _buf = new uint8_t[_recordSizeBytes];
 }
@@ -240,7 +242,8 @@ FileCsComputeEngine::~FileCsComputeEngine() {
 bool FileCsComputeEngine::execute() {
 
     if (not _fp) {
-        throw logic_error("FileCsComputeEngine:  file is already closed");
+        throw logic_error(
+                "FileCsComputeEngine::" + string(__func__) + "  file is already closed");
     }
     size_t const num = fread(_buf, sizeof(uint8_t), _recordSizeBytes, _fp);
     if (num) {
@@ -254,8 +257,9 @@ bool FileCsComputeEngine::execute() {
     // I/O error?
     if (ferror(_fp)) {
         string const err =
-            string("FileCsComputeEngine:  file read error: ") + strerror(errno) +
-            string(", file: ") + _fileName;
+            string("FileCsComputeEngine::") + string(__func__) +
+            string(" file read error: ") + strerror(errno) + string(", file: ") +
+            _fileName;
 
         fclose(_fp);
         _fp = nullptr;
@@ -292,7 +296,7 @@ MultiFileCsComputeEngine::MultiFileCsComputeEngine(vector<string> const& fileNam
 
     if (not recordSizeBytes or (_recordSizeBytes > FileUtils::MAX_RECORD_SIZE_BYTES)) {
         throw invalid_argument(
-                    "MultiFileCsComputeEngine:  invalid record size " + to_string(_recordSizeBytes));
+                "MultiFileCsComputeEngine:  invalid record size " + to_string(_recordSizeBytes));
     }
 
     // This will be the very first file (if any) to be processed
@@ -312,7 +316,8 @@ bool MultiFileCsComputeEngine::processed(string const& fileName) const {
                                  _fileNames.end(),
                                  fileName)) {
         throw invalid_argument(
-                    "MultiFileCsComputeEngine::processed() unknown file: " + fileName);
+                "MultiFileCsComputeEngine::" + string(__func__) +
+                " unknown file: " + fileName);
     }
     return _processed.count(fileName);
 }
@@ -321,8 +326,8 @@ bool MultiFileCsComputeEngine::processed(string const& fileName) const {
 size_t  MultiFileCsComputeEngine::bytes(string const& fileName) const {
     if (not processed(fileName)) {
         throw logic_error(
-                    "MultiFileCsComputeEngine::bytes()  the file hasn't been processed: " +
-                    fileName);
+                "MultiFileCsComputeEngine::" + string(__func__) +
+                "  the file hasn't been processed: " + fileName);
     }
     return _processed.at(fileName)->bytes();
 }
@@ -331,7 +336,8 @@ size_t  MultiFileCsComputeEngine::bytes(string const& fileName) const {
 uint64_t MultiFileCsComputeEngine::cs(string const& fileName) const {
     if (not processed(fileName)) {
         throw logic_error(
-                    "MultiFileCsComputeEngine::cs()  the file hasn't been processed: " + fileName);
+                "MultiFileCsComputeEngine::" + string(__func__) +
+                "  the file hasn't been processed: " + fileName);
     }
     return _processed.at(fileName)->cs();
 }

@@ -78,7 +78,7 @@ FindAllRequest::FindAllRequest(ServiceProvider::Ptr const& serviceProvider,
                                string const& database,
                                bool saveReplicaInfo,
                                CallbackType const& onFinish,
-                               int  priority,
+                               int priority,
                                bool keepTracking,
                                shared_ptr<Messenger> const& messenger)
     :   RequestMessenger(serviceProvider,
@@ -104,7 +104,7 @@ const ReplicaInfoCollection& FindAllRequest::responseData() const {
 
 void FindAllRequest::startImpl(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // Serialize the Request message header and the request itself into
     // the network buffer.
@@ -130,7 +130,7 @@ void FindAllRequest::startImpl(util::Lock const& lock) {
 
 void FindAllRequest::wait(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "wait");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // Always need to set the interval before launching the timer.
 
@@ -147,7 +147,7 @@ void FindAllRequest::wait(util::Lock const& lock) {
 
 void FindAllRequest::awaken(boost::system::error_code const& ec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "awaken");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (isAborted(ec)) return;
 
@@ -159,7 +159,7 @@ void FindAllRequest::awaken(boost::system::error_code const& ec) {
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + "awaken");
+    util::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return;
 
@@ -209,7 +209,7 @@ void FindAllRequest::send(util::Lock const& lock) {
 void FindAllRequest::analyze(bool success,
                              proto::ReplicationResponseFindAll const& message) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "analyze  success=" << (success ? "true" : "false"));
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  success=" << (success ? "true" : "false"));
 
     // This method is called on behalf of an asynchronous callback fired
     // upon a completion of the request within method send() - the only
@@ -225,7 +225,7 @@ void FindAllRequest::analyze(bool success,
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + "analyze");
+    util::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return;
 
@@ -302,15 +302,15 @@ void FindAllRequest::analyze(bool success,
 
         default:
             throw logic_error(
-                        "FindAllRequest::analyze() unknown status '" +
-                        proto::ReplicationStatus_Name(message.status()) + "' received from server");
+                    "FindAllRequest::" + string(__func__) + " unknown status '" +
+                    proto::ReplicationStatus_Name(message.status()) + "' received from server");
     }
 }
 
 
 void FindAllRequest::notify(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     notifyDefaultImpl<FindAllRequest>(lock, _onFinish);
 }

@@ -237,7 +237,8 @@ int QservWorkerApp::runImpl() {
         );
 
     } else {
-        throw logic_error("unsupported command: " + _command);
+        throw logic_error(
+                "QservWorkerApp::" + string(__func__) + "  unsupported command: " + _command);
     }
 
     // Block while the request is in progress
@@ -258,7 +259,8 @@ void QservWorkerApp::_readInFile(QservReplicaCollection& replicas) const {
     ifstream infile(_inFileName);
     if (not infile.good()) {
         cerr << "failed to open file: " << _inFileName << endl;
-        throw runtime_error("failed to open file: " + _inFileName);
+        throw runtime_error(
+                "QservWorkerApp::" + string(__func__) + "failed to open file: " + _inFileName);
     }
 
     string databaseAndChunk;
@@ -270,8 +272,9 @@ void QservWorkerApp::_readInFile(QservReplicaCollection& replicas) const {
         if ((pos == string::npos) or
             (pos == 0) or (pos == databaseAndChunk.size() - 1)) {
             throw runtime_error(
-                "failed to parse file: " + _inFileName + ", illegal <database>::<chunk> pair: '" +
-                databaseAndChunk + "'");
+                    "QservWorkerApp::" + string(__func__) +
+                    "  failed to parse file: " + _inFileName +
+                    ", illegal <database>::<chunk> pair: '" + databaseAndChunk + "'");
         }
         unsigned int const chunk    = (unsigned int)(stoul(databaseAndChunk.substr(pos + 1)));
         string  const database = databaseAndChunk.substr(0, pos);

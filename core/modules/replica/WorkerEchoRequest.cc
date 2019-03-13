@@ -77,9 +77,9 @@ WorkerEchoRequest::WorkerEchoRequest(ServiceProvider::Ptr const& serviceProvider
 
 void WorkerEchoRequest::setInfo(proto::ReplicationResponseEcho& response) const {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "setInfo");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
-    util::Lock lock(_mtx, context() + "setInfo");
+    util::Lock lock(_mtx, context() + __func__);
 
     // Return the performance of the target request
 
@@ -90,10 +90,10 @@ void WorkerEchoRequest::setInfo(proto::ReplicationResponseEcho& response) const 
 
 bool WorkerEchoRequest::execute() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "execute"
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
          << "  delay:" << delay() << " _delayLeft:" << _delayLeft);
 
-    util::Lock lock(_mtx, context() + "execute");
+    util::Lock lock(_mtx, context() + __func__);
 
     switch (status()) {
 
@@ -109,8 +109,8 @@ bool WorkerEchoRequest::execute() {
 
         default:
             throw logic_error(
-                        context() + "execute  not allowed while in state: " +
-                        WorkerRequest::status2string(status()));
+                    context() + string(__func__) + "  not allowed while in state: " +
+                    WorkerRequest::status2string(status()));
     }
 
     // Block the thread for the random number of milliseconds in the interval

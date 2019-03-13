@@ -67,8 +67,8 @@ string status2string(ExtendedCompletionStatus status) {
         case ExtendedCompletionStatus::EXT_STATUS_FILE_MTIME:       return "EXT_STATUS_FILE_MTIME";
     }
     throw logic_error(
-                "Common::status2string(ExtendedCompletionStatus) - unhandled status: " +
-                to_string(status));
+            "Common::" + string(__func__) + "(ExtendedCompletionStatus) - unhandled status: " +
+            to_string(status));
 }
 
 
@@ -100,7 +100,7 @@ ExtendedCompletionStatus translate(proto::ReplicationStatusExt status) {
         case proto::ReplicationStatusExt::FILE_MTIME:       return ExtendedCompletionStatus::EXT_STATUS_FILE_MTIME;
     }
     throw logic_error(
-                "Common::translate(proto::ReplicationStatusExt) - unhandled status: " +
+                "Common::" + string(__func__) + "(proto::ReplicationStatusExt) - unhandled status: " +
                 to_string(status));
 }
 
@@ -133,7 +133,7 @@ proto::ReplicationStatusExt translate(ExtendedCompletionStatus status) {
         case ExtendedCompletionStatus::EXT_STATUS_FILE_MTIME:       return proto::ReplicationStatusExt::FILE_MTIME;
     }
     throw logic_error(
-                "Common::translate(ExtendedCompletionStatus) - unhandled status: " +
+                "Common::" + string(__func__) + "(ExtendedCompletionStatus) - unhandled status: " +
                 to_string(status));
 }
 
@@ -145,7 +145,7 @@ proto::ReplicationStatusExt translate(ExtendedCompletionStatus status) {
 util::Mutex Generators::_mtx;
 
 string Generators::uniqueId() {
-    util::Lock lock(_mtx, "Generators::uniqueId");
+    util::Lock lock(_mtx, "Generators::" + string(__func__));
     boost::uuids::uuid id = boost::uuids::random_generator()();
     return boost::uuids::to_string(id);
 }

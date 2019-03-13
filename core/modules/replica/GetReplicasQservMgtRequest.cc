@@ -82,8 +82,9 @@ GetReplicasQservMgtRequest::GetReplicasQservMgtRequest(
 QservReplicaCollection const& GetReplicasQservMgtRequest::replicas() const {
     if (not ((state() == State::FINISHED) and (extendedState() == ExtendedState::SUCCESS))) {
         throw logic_error(
-                    "GetReplicasQservMgtRequest::replicas  replicas aren't available in state: " +
-                    state2string(state(), extendedState()));
+                "GetReplicasQservMgtRequest::" + string(__func__) +
+                "  replicas aren't available in state: " +
+                state2string(state(), extendedState()));
     }
     return _replicas;
 }
@@ -124,7 +125,7 @@ void GetReplicasQservMgtRequest::startImpl(util::Lock const& lock) {
 
     if (not serviceProvider()->config()->isKnownDatabaseFamily(databaseFamily())) {
 
-        LOGS(_log, LOG_LVL_ERROR, context() << "start  ** MISCONFIGURED ** "
+        LOGS(_log, LOG_LVL_ERROR, context() << __func__ << "  ** MISCONFIGURED ** "
              << " database family: '" << databaseFamily() << "'");
 
         finish(lock, ExtendedState::CONFIG_ERROR);
@@ -149,7 +150,7 @@ void GetReplicasQservMgtRequest::startImpl(util::Lock const& lock) {
 
             if (request->state() == State::FINISHED) return;
         
-            util::Lock lock(request->_mtx, request->context() + "startImpl[callback]");
+            util::Lock lock(request->_mtx, request->context() + string(__func__) + "[callback]");
         
             if (request->state() == State::FINISHED) return;
 
@@ -168,8 +169,9 @@ void GetReplicasQservMgtRequest::startImpl(util::Lock const& lock) {
 
                 default:
                     throw logic_error(
-                                "GetReplicasQservMgtRequest:  unhandled server status: " +
-                                wpublish::GetChunkListQservRequest::status2str(status));
+                            "GetReplicasQservMgtRequest::" + string(__func__) +
+                            "  unhandled server status: " +
+                            wpublish::GetChunkListQservRequest::status2str(status));
             }
         }
     );
@@ -201,9 +203,7 @@ void GetReplicasQservMgtRequest::finishImpl(util::Lock const& lock) {
 
 
 void GetReplicasQservMgtRequest::notify(util::Lock const& lock) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
-
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     notifyDefaultImpl<GetReplicasQservMgtRequest>(lock, _onFinish);
 }
 

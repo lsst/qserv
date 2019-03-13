@@ -699,10 +699,12 @@ void DatabaseServicesMySQL::_deleteReplicaInfoImpl(util::Lock const& lock,
                                                    string const& worker,
                                                    string const& database,
                                                    unsigned int chunk) {
-    _conn->execute("DELETE FROM " + _conn->sqlId("replica") +
-                   "  WHERE "     + _conn->sqlEqual("worker",   worker) +
-                   "    AND "     + _conn->sqlEqual("database", database) +
-                   "    AND "     + _conn->sqlEqual("chunk",    chunk));
+    _conn->execute(
+        "DELETE FROM " + _conn->sqlId("replica") +
+        "  WHERE "     + _conn->sqlEqual("worker",   worker) +
+        "    AND "     + _conn->sqlEqual("database", database) +
+        "    AND "     + _conn->sqlEqual("chunk",    chunk)
+    );
 }
 
 
@@ -728,7 +730,7 @@ void DatabaseServicesMySQL::findOldestReplicas(vector<ReplicaInfo>& replicas,
                     replicas,
                     "SELECT * FROM " + conn->sqlId("replica") +
                     (enabledWorkersOnly ?
-                    " WHERE " + conn->sqlIn("worker", _configuration->workers(true)) : "") +
+                    " WHERE "        + conn->sqlIn("worker", _configuration->workers(true)) : "") +
                     " ORDER BY "     + conn->sqlId("verify_time") +
                     " ASC LIMIT "    + to_string(maxReplicas)
                 );

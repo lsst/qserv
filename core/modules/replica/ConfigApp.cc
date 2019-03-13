@@ -356,13 +356,7 @@ int ConfigApp::runImpl() {
     string const context = "ConfigApp::" + string(__func__) + "  ";
 
     _config = Configuration::load(_configUrl);
-    /*
-    if (_config->prefix() != "mysql") {
-        LOGS(_log, LOG_LVL_ERROR, context << "configuration with prefix '" << _config->prefix()
-             << "' is not allowed by this application");
-        return 1;
-    }
-     * */
+
     if (_command == "DUMP")                   return _dump();
     if (_command == "CONFIG_INIT_FILE")       return _configInitFile();
     if (_command == "UPDATE_GENERAL")         return _updateGeneral();
@@ -640,7 +634,8 @@ int ConfigApp::_configInitFile() const {
             return 1;
         }
     } catch (exception const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
+        LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: "
+              << ex.what());
         return 1;
     }
     return 0;

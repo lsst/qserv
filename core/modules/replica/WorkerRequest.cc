@@ -65,7 +65,8 @@ string WorkerRequest::status2string(CompletionStatus status) {
         case STATUS_SUCCEEDED:     return "STATUS_SUCCEEDED";
         case STATUS_FAILED:        return "STATUS_FAILED";
     }
-    throw logic_error("WorkerRequest::status2string - unhandled status: " + to_string(status));
+    throw logic_error(
+            "WorkerRequest::" + string(__func__) + "  unhandled status: " + to_string(status));
 }
 
 
@@ -102,7 +103,7 @@ WorkerRequest::ErrorContext WorkerRequest::reportErrorIf(
     if (errorCondition) {
         errorContext.failed = true;
         errorContext.extendedStatus = extendedStatus;
-        LOGS(_log, LOG_LVL_ERROR, context() << "execute()" << errorMsg);
+        LOGS(_log, LOG_LVL_ERROR, context() << "execute" << errorMsg);
     }
     return errorContext;
 }
@@ -110,9 +111,9 @@ WorkerRequest::ErrorContext WorkerRequest::reportErrorIf(
 
 void WorkerRequest::start() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "start");    
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);    
 
-    util::Lock lock(_mtx, context() + "start");
+    util::Lock lock(_mtx, context() + __func__);
 
     switch (status()) {
 
@@ -122,17 +123,17 @@ void WorkerRequest::start() {
 
         default:
             throw logic_error(
-                        context() + "start  not allowed while in status: " +
-                        WorkerRequest::status2string(status()));
+                    context() + string(__func__) + "  not allowed while in status: " +
+                    WorkerRequest::status2string(status()));
     }
 }
 
 
 bool WorkerRequest::execute() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "execute");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
-    util::Lock lock(_mtx, context() + "execute");
+    util::Lock lock(_mtx, context() + __func__);
 
     // Simulate request 'processing' for some maximum duration of time (milliseconds)
     // while making a progress through increments of random duration of time.
@@ -149,8 +150,8 @@ bool WorkerRequest::execute() {
 
         default:
             throw logic_error(
-                        context() + "execute  not allowed while in status: " +
-                        WorkerRequest::status2string(status()));
+                    context() + string(__func__) + "  not allowed while in status: " +
+                    WorkerRequest::status2string(status()));
     }
 
     _durationMillisec += ::incrementIvalMillisec.wait();
@@ -166,9 +167,9 @@ bool WorkerRequest::execute() {
 
 void WorkerRequest::cancel() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "cancel");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
-    util::Lock lock(_mtx, context() + "cancel");
+    util::Lock lock(_mtx, context() + __func__);
 
     switch (status()) {
 
@@ -192,9 +193,9 @@ void WorkerRequest::cancel() {
 
 void WorkerRequest::rollback() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "rollback");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
-    util::Lock lock(_mtx, context() + "rollback");
+    util::Lock lock(_mtx, context() + __func__);
 
     switch (status()) {
 
@@ -210,18 +211,15 @@ void WorkerRequest::rollback() {
 
         default:
             throw logic_error(
-                        context() + "rollback  not allowed while in status: " +
-                        WorkerRequest::status2string(status()));
+                    context() + string(__func__) + "  not allowed while in status: " +
+                    WorkerRequest::status2string(status()));
     }
 }
 
 
 void WorkerRequest::stop() {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << "stop");    
-
-    util::Lock lock(_mtx, context() + "stop");
-
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);    
+    util::Lock lock(_mtx, context() + __func__);
     setStatus(lock, STATUS_NONE);
 }
 
@@ -230,7 +228,7 @@ void WorkerRequest::setStatus(util::Lock const& lock,
                               CompletionStatus status,
                               ExtendedCompletionStatus extendedStatus) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "setStatus  "
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  "
          << WorkerRequest::status2string(_status, _extendedStatus) << " -> "
          << WorkerRequest::status2string( status,  extendedStatus));
 
@@ -265,8 +263,8 @@ void WorkerRequest::setStatus(util::Lock const& lock,
 
         default:
             throw logic_error(
-                        context() + "setStatus  unhandled status: " +
-                        to_string(status));
+                    context() + string(__func__) + "  unhandled status: " +
+                    to_string(status));
     }
 
     // ATTENTION: the top-level status is the last to be modified in

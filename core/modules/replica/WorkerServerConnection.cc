@@ -80,7 +80,7 @@ bool readIntoBuffer(boost::asio::ip::tcp::socket& socket,
         boost::asio::transfer_at_least(bytes),
         ec
     );
-    return not ::isErrorCode(ec, "readIntoBuffer");
+    return not ::isErrorCode(ec, __func__);
 }
 
 
@@ -151,7 +151,7 @@ void WorkerServerConnection::beginProtocol() {
 
 void WorkerServerConnection::receive() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context << "receive");
+    LOGS(_log, LOG_LVL_DEBUG, context << __func__);
 
     // Start with receiving the fixed length frame carrying
     // the size (in bytes) the length of the subsequent message.
@@ -185,9 +185,9 @@ void WorkerServerConnection::receive() {
 void WorkerServerConnection::received(boost::system::error_code const& ec,
                                       size_t bytes_transferred) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context << "received");
+    LOGS(_log, LOG_LVL_DEBUG, context << __func__);
 
-    if (::isErrorCode(ec, "received")) return;
+    if (::isErrorCode(ec, __func__)) return;
 
     // Now read the request header
     proto::ReplicationRequestHeader hdr;
@@ -208,8 +208,8 @@ void WorkerServerConnection::received(boost::system::error_code const& ec,
 
         default:
             throw logic_error(
-                        "WorkerServerConnection::received() unhandled request class: '" +
-                        proto::ReplicationRequestHeader::RequestType_Name(hdr.type()));
+                    "WorkerServerConnection::" + string(__func__) + " unhandled request class: '" +
+                    proto::ReplicationRequestHeader::RequestType_Name(hdr.type()));
     }
 }
 
@@ -279,8 +279,8 @@ void WorkerServerConnection::processReplicaRequest(proto::ReplicationRequestHead
         }
         default:
             throw logic_error(
-                        "WorkerServerConnection::processReplicaRequest() unhandled request type: '" +
-                        proto::ReplicationReplicaRequestType_Name(hdr.replica_type()));
+                    "WorkerServerConnection::" + string(__func__) + "  unhandled request type: '" +
+                    proto::ReplicationReplicaRequestType_Name(hdr.replica_type()));
     }
 }
 
@@ -336,8 +336,8 @@ void WorkerServerConnection::processManagementRequest(proto::ReplicationRequestH
                 }
                 default:
                     throw logic_error(
-                                "WorkerServerConnection::processManagementRequest() unhandled request type: '" +
-                                proto::ReplicationReplicaRequestType_Name(request.replica_type()));
+                            "WorkerServerConnection::" + string(__func__) + "  unhandled request type: '" +
+                            proto::ReplicationReplicaRequestType_Name(request.replica_type()));
             }
             break;
         }
@@ -381,15 +381,15 @@ void WorkerServerConnection::processManagementRequest(proto::ReplicationRequestH
                 }
                 default:
                     throw logic_error(
-                                "WorkerServerConnection::processManagementRequest() unhandled request type: '" +
-                                proto::ReplicationReplicaRequestType_Name(request.replica_type()));
+                            "WorkerServerConnection::" + string(__func__) + "  unhandled request type: '" +
+                            proto::ReplicationReplicaRequestType_Name(request.replica_type()));
             }
             break;
         }
         default:
             throw logic_error(
-                        "WorkerServerConnection::processManagementRequest() unhandled request type: '" +
-                        proto::ReplicationManagementRequestType_Name(hdr.management_type()));
+                    "WorkerServerConnection::" + string(__func__) + "  unhandled request type: '" +
+                    proto::ReplicationManagementRequestType_Name(hdr.management_type()));
     }
 }
 
@@ -480,8 +480,8 @@ void WorkerServerConnection::processServiceRequest(proto::ReplicationRequestHead
         }
         default:
             throw logic_error(
-                        "WorkerServerConnection::processServiceRequest() unhandled request type: '" +
-                        proto::ReplicationServiceRequestType_Name(hdr.service_type()));
+                    "WorkerServerConnection::" + string(__func__) + "  unhandled request type: '" +
+                    proto::ReplicationServiceRequestType_Name(hdr.service_type()));
     }
 }
 
@@ -509,12 +509,10 @@ void WorkerServerConnection::send() {
 void WorkerServerConnection::sent(boost::system::error_code const& ec,
                                   size_t bytes_transferred) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context << "sent");
-
-    if (::isErrorCode(ec, "sent")) return;
+    LOGS(_log, LOG_LVL_DEBUG, context << __func__);
+    if (::isErrorCode(ec, __func__)) return;
 
     // Go wait for another request
-
     receive();
 }
 

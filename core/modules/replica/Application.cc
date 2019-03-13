@@ -115,7 +115,7 @@ int Application::run() {
         int const code = parser().parse();
         if (Parser::SUCCESS != code) return code;
     } catch (exception const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, "Application::run  command-line parser error: " << ex.what());
+        LOGS(_log, LOG_LVL_ERROR, "Application::" + string(__func__) + "  command-line parser error: " << ex.what());
         return Parser::PARSING_FAILED;
     }
 
@@ -165,7 +165,7 @@ int Application::run() {
 ServiceProvider::Ptr const& Application::serviceProvider() const {
     if (nullptr == _serviceProvider) {
         throw logic_error(
-                "Application::serviceProvider()  this application was not configured to enable this");
+                "Application::" + string(__func__) + "  this application was not configured to enable this");
     }
     return _serviceProvider;
 }

@@ -56,14 +56,14 @@ HealthMonitorTask::Ptr HealthMonitorTask::create(
 
 
 HealthMonitorTask::WorkerResponseDelay HealthMonitorTask::workerResponseDelay() const {
-    util::Lock lock(_mtx, "HealthMonitorTask::workerResponseDelay()");
+    util::Lock lock(_mtx, "HealthMonitorTask::" + string(__func__));
     return _workerServiceNoResponseSec;
 }
 
 
 void HealthMonitorTask::onStart() {
  
-    string const context = "HealthMonitorTask::onStart()";
+    string const context = "HealthMonitorTask::" + string(__func__);
 
     util::Lock lock(_mtx, context);
 
@@ -77,7 +77,7 @@ void HealthMonitorTask::onStart() {
 
 bool HealthMonitorTask::onRun() {
  
-    string const context = "HealthMonitorTask::onRun()";
+    string const context = "HealthMonitorTask::" + string(__func__);
 
     string const parentJobId;  // no parent jobs
 

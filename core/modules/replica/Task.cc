@@ -50,7 +50,7 @@ bool Task::start() {
 
     debug("starting...");
 
-    util::Lock lock(_mtx, context() + "start");
+    util::Lock lock(_mtx, context() + __func__);
 
     if (_isRunning.exchange(true)) return true;
 
@@ -68,7 +68,7 @@ bool Task::stop() {
  
     debug("stopping...");
 
-    util::Lock lock(_mtx, context() + "stop");
+    util::Lock lock(_mtx, context() + __func__);
 
     if (not _isRunning) return true;
 
@@ -186,7 +186,7 @@ void Task::_startImpl() {
     // object guaranteed through a copy of a shared pointer bound as
     // a parameter of the callback.
 
-    util::Lock lock(_mtx, context() + "_startImpl");
+    util::Lock lock(_mtx, context() + __func__);
     
     _stopRequested = false;
     _isRunning     = false;

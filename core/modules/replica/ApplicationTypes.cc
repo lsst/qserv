@@ -37,7 +37,7 @@ namespace detail {
 
 ParserError::ParserError(util::Issue::Context const& ctx,
                          string const& message)
-    :   util::Issue(ctx, "ParserError: " + message) {
+    :   util::Issue(ctx, string(__func__) + ": " + message) {
 }
 
 
@@ -75,7 +75,8 @@ CommandsSet::CommandsSet(vector<string> const& commandNames,
 Command& CommandsSet::command(string const& name) {
     auto itr = _commands.find(name);
     if (itr == _commands.end()) {
-        throw range_error("CommandsSet::command  unknown command name: '" + name + "'");
+        throw range_error(
+                "CommandsSet::" + string(__func__) + "  unknown command name: '" + name + "'");
     }
     return *(itr->second);
 }
@@ -109,7 +110,7 @@ Parser& Parser::commands(string const& name,
                          string& var) {
 
     if (_commands != nullptr) {
-        throw logic_error("Parser::commands  the parser is already configured in this way");
+        throw logic_error("Parser::" + string(__func__) + "  the parser is already configured in this way");
     }
     _verifyArgument(name);
     _commands = make_unique<CommandsSet>(commandNames, var);    
@@ -119,7 +120,8 @@ Parser& Parser::commands(string const& name,
 
 Command& Parser::command(string const& name) {
     if (_commands == nullptr) {
-        throw logic_error("Parser::command  the parser is not configured in this way");
+        throw logic_error(
+                "Parser::" + string(__func__) + "  the parser is not configured in this way");
     }
     return _commands->command(name);
 }
@@ -328,10 +330,12 @@ void Parser::_parseParameters(vector<unique_ptr<ArgumentParser>>& out,
 void Parser::_verifyArgument(string const& name) {
 
     if (name.empty()) {
-        throw invalid_argument("empty string passed where argument name was expected");
+        throw invalid_argument(
+                "Parser::" + string(__func__) + "  empty string passed where argument name "
+                "was expected");
     }
     if (name == "help") {
-        throw invalid_argument("`help` is a reserved keyword");
+        throw invalid_argument("Parser::" + string(__func__) + " `help` is a reserved keyword");
     }
 }
 
@@ -510,8 +514,7 @@ string Parser::serializeArguments() const {
 
     if (Status::SUCCESS != _code) {
         throw logic_error(
-            "Application::Parser::serializeArguments()"
-            "  command line arguments have not been parsed yet");
+                "Parser::" + string(__func__) + "  command line arguments have not been parsed yet");
     }
     ostringstream os;
     for (auto&& arg: _required) os << *arg << " ";

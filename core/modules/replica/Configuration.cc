@@ -156,7 +156,7 @@ Configuration::Ptr Configuration::load(string const& configUrl) {
         }
     }
     throw invalid_argument(
-            "Configuration::load:  configUrl must start with 'file:' or 'mysql:'");
+            "Configuration::" + string(__func__) + "  configUrl must start with 'file:' or 'mysql:'");
 }
 
 
@@ -215,7 +215,7 @@ void Configuration::translateDataDir(string& dataDir,
 
     if (rightPos <= leftPos) {
         throw invalid_argument(
-                "Configuration::translateDataDir  invalid template in the data directory path: '" +
+                "Configuration::" + string(__func__) + "  invalid template in the data directory path: '" +
                 dataDir + "'");
     }
     if (dataDir.substr (leftPos, rightPos - leftPos + 1) == "{worker}") {
@@ -260,7 +260,7 @@ string Configuration::context() const {
 vector<string> Configuration::workers(bool isEnabled,
                                       bool isReadOnly) const {
 
-    util::Lock lock(_mtx, context() + "workers");
+    util::Lock lock(_mtx, context() + __func__);
 
     vector<string> names;
     for (auto&& entry: _workerInfo) {
@@ -281,7 +281,7 @@ vector<string> Configuration::workers(bool isEnabled,
 
 
 vector<string> Configuration::allWorkers() const {
-    util::Lock lock(_mtx, context() + "allWorkers");
+    util::Lock lock(_mtx, context() + __func__);
     vector<string> names;
     for (auto&& entry: _workerInfo) {
         auto const& name = entry.first;
@@ -293,7 +293,7 @@ vector<string> Configuration::allWorkers() const {
 
 vector<string> Configuration::databaseFamilies() const {
 
-    util::Lock lock(_mtx, context() + "databaseFamilies");
+    util::Lock lock(_mtx, context() + __func__);
 
     vector<string> families;
     for (auto&& itr: _databaseFamilyInfo) {
@@ -305,7 +305,7 @@ vector<string> Configuration::databaseFamilies() const {
 
 bool Configuration::isKnownDatabaseFamily(string const& name) const {
 
-    util::Lock lock(_mtx, context() + "isKnownDatabaseFamily");
+    util::Lock lock(_mtx, context() + __func__);
 
     return _databaseFamilyInfo.count(name);
 }
@@ -313,12 +313,12 @@ bool Configuration::isKnownDatabaseFamily(string const& name) const {
 
 size_t Configuration::replicationLevel(string const& family) const {
 
-    util::Lock lock(_mtx, context() + "databaseFamilies");
+    util::Lock lock(_mtx, context() + __func__);
 
     auto const itr = _databaseFamilyInfo.find(family);
     if (itr == _databaseFamilyInfo.end()) {
         throw invalid_argument(
-                "Configuration::replicationLevel  unknown database family: '" +
+                "Configuration::" + string(__func__) + "  unknown database family: '" +
                 family + "'");
     }
     return itr->second.replicationLevel;
@@ -327,12 +327,12 @@ size_t Configuration::replicationLevel(string const& family) const {
 
 DatabaseFamilyInfo Configuration::databaseFamilyInfo(string const& name) const {
 
-    util::Lock lock(_mtx, context() + "databaseFamilyInfo");
+    util::Lock lock(_mtx, context() + __func__);
 
     auto&& itr = _databaseFamilyInfo.find(name);
     if (itr == _databaseFamilyInfo.end()) {
         throw invalid_argument(
-                "Configuration::databaseFamilyInfo  unknown database family: '" + name + "'");
+                "Configuration::" + string(__func__) + "  unknown database family: '" + name + "'");
     }
     return itr->second;
 }
@@ -340,11 +340,11 @@ DatabaseFamilyInfo Configuration::databaseFamilyInfo(string const& name) const {
 
 vector<string> Configuration::databases(string const& family) const {
 
-    util::Lock lock(_mtx, context() + "databases(family)");
+    util::Lock lock(_mtx, context() + string(__func__) + "(family)");
 
     if (not family.empty() and not _databaseFamilyInfo.count(family)) {
         throw invalid_argument(
-                "Configuration::databases  unknown database family: '" +
+                "Configuration::" + string(__func__) + "  unknown database family: '" +
                 family + "'");
     }
     vector<string> names;
@@ -360,7 +360,7 @@ vector<string> Configuration::databases(string const& family) const {
 
 bool Configuration::isKnownWorker(string const& name) const {
 
-    util::Lock lock(_mtx, context() + "isKnownWorker");
+    util::Lock lock(_mtx, context() + __func__);
 
     return _workerInfo.count(name) > 0;
 }
@@ -368,12 +368,12 @@ bool Configuration::isKnownWorker(string const& name) const {
 
 WorkerInfo Configuration::workerInfo(string const& name) const {
 
-    util::Lock lock(_mtx, context() + "workerInfo");
+    util::Lock lock(_mtx, context() + __func__);
 
     auto const itr = _workerInfo.find(name);
     if (itr == _workerInfo.end()) {
         throw invalid_argument(
-                "Configuration::workerInfo() unknown worker: '" + name + "'");
+                "Configuration::" + string(__func__) + "  unknown worker: '" + name + "'");
     }
     return itr->second;
 }
@@ -381,7 +381,7 @@ WorkerInfo Configuration::workerInfo(string const& name) const {
 
 bool Configuration::isKnownDatabase(string const& name) const {
 
-    util::Lock lock(_mtx, context() + "isKnownDatabase");
+    util::Lock lock(_mtx, context() + __func__);
 
     return _databaseInfo.count(name) > 0;
 }
@@ -389,12 +389,12 @@ bool Configuration::isKnownDatabase(string const& name) const {
 
 DatabaseInfo Configuration::databaseInfo(string const& name) const {
 
-    util::Lock lock(_mtx, context() + "databaseInfo");
+    util::Lock lock(_mtx, context() + __func__);
 
     auto&& itr = _databaseInfo.find(name);
     if (itr == _databaseInfo.end()) {
         throw invalid_argument(
-                "Configuration::databaseInfo() unknown database: '" + name + "'");
+                "Configuration::" + string(__func__) + "  unknown database: '" + name + "'");
     }
     return itr->second;
 }
@@ -409,7 +409,7 @@ bool Configuration::setDatabaseAllowReconnect(bool value) {
 unsigned int Configuration::setDatabaseConnectTimeoutSec(unsigned int value) {
     if (0 == value) {
         throw invalid_argument(
-                "Configuration::setDatabaseConnectTimeoutSec:  0 is not allowed");
+                "Configuration::" + string(__func__) + "  0 is not allowed as a value");
     }
     swap(value, defaultDatabaseConnectTimeoutSec);
     return value;
@@ -419,7 +419,7 @@ unsigned int Configuration::setDatabaseConnectTimeoutSec(unsigned int value) {
 unsigned int Configuration::setDatabaseMaxReconnects(unsigned int value) {
     if (0 == value) {
         throw invalid_argument(
-                "Configuration::setDatabaseMaxReconnects:  0 is not allowed");
+                "Configuration::" + string(__func__) + "  0 is not allowed as a value");
     }
     swap(value, defaultDatabaseMaxReconnects);
     return value;
@@ -429,7 +429,7 @@ unsigned int Configuration::setDatabaseMaxReconnects(unsigned int value) {
 unsigned int Configuration::setDatabaseTransactionTimeoutSec(unsigned int value) {
     if (0 == value) {
         throw invalid_argument(
-                "Configuration::setDatabaseTransactionTimeoutSec:  0 is not allowed");
+                "Configuration::" + string(__func__) + "  0 is not allowed as a value");
     }
     swap(value, defaultDatabaseTransactionTimeoutSec);
     return value;
