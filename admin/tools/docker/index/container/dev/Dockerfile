@@ -1,0 +1,50 @@
+# Run the following build command from the qserv base directory (could be ~/work/qserv or ~/development/qserv)
+#   The COPY command can only access files below $PWD in the file tree.
+# docker build -f admin/tools/docker/index/container/dev/Dockerfile -t qserv/indexbase:dev .
+#
+# Using the development toolchain
+FROM centos/devtoolset-7-toolchain-centos7
+
+USER 0
+
+RUN curl -sO http://www.slac.stanford.edu/exp/lsst/qserv/2016_09/_downloads/qserv-install-deps-rhel7.sh
+RUN chmod +x qserv-install-deps-rhel7.sh
+
+RUN yum --assumeyes update && \
+      /bin/bash qserv-install-deps-rhel7.sh && \
+      yum --assumeyes install libuuid-devel
+
+# /opt/app-root gets its permissions set incorrectly (apparently LVM issue?)
+RUN chown -R 1001:0 /opt/app-root && chmod -R ug+rwx /opt/app-root
+RUN mkdir -p /qserv/stack && chown -R 1001:0 /qserv
+
+USER 1001
+
+RUN mkdir -p /qserv/stack && cd /qserv/stack && \
+    curl -sO https://raw.githubusercontent.com/lsst/lsst/master/scripts/newinstall.sh && \
+    chmod +x newinstall.sh && \
+    /bin/bash newinstall.sh -b
+    
+RUN source /qserv/stack/loadLSST.bash && eups distrib install --tag qserv-dev qserv_distrib
+
+COPY --chown=1001:0 . /qserv/dev/qserv
+
+RUN rm -rf /qserv/dev/qserv/build && \
+    cd /qserv/dev/qserv && \
+    source /qserv/stack/loadLSST.bash && \
+    setup -r /qserv/dev/qserv -t qserv-dev && \
+    scons -j10 install && \
+    mkdir -p /qserv/run && \
+    qserv-configure.py --all -R /qserv/run
+    
+#FROM indexbase as indexmaster
+#ENTRYPOINT ["/qserv/dev/qserv/build/index/appMaster"]
+#CMD ["/qserv/dev/qserv/core/modules/index/config/master.cnf"]
+
+#FROM indexbase as indexworker
+#ENTRYPOINT ["/qserv/dev/qserv/build/index/appWorker"]
+#CMD ["/qserv/dev/qserv/core/modules/index/config/worker1.cnf"]
+
+#FROM qserv/indexbase as qserv/indexclientnum
+#ENTRYPOINT ["/qserv/dev/qserv/build/index/appClientNum"]
+#CMD ["1", "100000000", "/qserv/dev/qserv/core/modules/index/config/worker1.cnf"]
