@@ -72,9 +72,9 @@ ServiceProvider::ServiceProvider(string const& configUrl)
 
 void ServiceProvider::run() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
+    LOGS(_log, LOG_LVL_DEBUG, _context() << __func__);
 
-    util::Lock lock(_mtx, context() + __func__);
+    util::Lock lock(_mtx, _context() + __func__);
 
     // Check if the service is still not running
 
@@ -105,7 +105,7 @@ void ServiceProvider::run() {
 
 bool ServiceProvider::isRunning() const {
 
-    util::Lock lock(_mtx, context() + __func__);
+    util::Lock lock(_mtx, _context() + __func__);
 
     return not _threads.empty();
 }
@@ -113,9 +113,9 @@ bool ServiceProvider::isRunning() const {
 
 void ServiceProvider::stop() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
+    LOGS(_log, LOG_LVL_DEBUG, _context() << __func__);
 
-    util::Lock lock(_mtx, context() + __func__);
+    util::Lock lock(_mtx, _context() + __func__);
 
     // Check if the service is already stopped
 
@@ -177,7 +177,7 @@ void ServiceProvider::assertDatabaseIsValid(string const& name) {
 }
 
 
-string ServiceProvider::context() const {
+string ServiceProvider::_context() const {
     return "SERVICE-PROVIDER  ";
 }
 

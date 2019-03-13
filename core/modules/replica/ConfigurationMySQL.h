@@ -367,10 +367,10 @@ private:
      *   std::runtime_error
      *      the configuration is not consistent with expectations of the application
      */
-    void loadConfiguration();
+    void _loadConfiguration();
 
     /**
-     * The actual implementation of method loadConfiguration.
+     * The actual implementation of method _loadConfiguration.
      *
      * @param lock
      *   the lock on a mutex required for the thread safety
@@ -378,8 +378,8 @@ private:
      * @param conn
      *   the reference to the database connector
      */
-    void loadConfigurationImpl(util::Lock const& lock,
-                               database::mysql::Connection::Ptr const& conn);
+    void _loadConfigurationImpl(util::Lock const& lock,
+                                database::mysql::Connection::Ptr const& conn);
 
     /**
      * The setter method for numeric types

@@ -164,18 +164,6 @@ public:
 protected:
 
     /**
-     * Construct the job with the pointer to the services provider.
-     *
-     * @see DeleteWorkerJob::create()
-     */
-    DeleteWorkerJob(std::string const& worker,
-                    bool permanentDelete,
-                    Controller::Ptr const& controller,
-                    std::string const& parentJobId,
-                    CallbackType const& onFinish,
-                    Job::Options const& options);
-
-    /**
      * @see Job::startImpl()
      */
     void startImpl(util::Lock const& lock) final;
@@ -190,27 +178,44 @@ protected:
       */
     void notify(util::Lock const& lock) final;
 
+private:
+
+    /**
+     * Construct the job with the pointer to the services provider.
+     *
+     * @see DeleteWorkerJob::create()
+     */
+    DeleteWorkerJob(std::string const& worker,
+                    bool permanentDelete,
+                    Controller::Ptr const& controller,
+                    std::string const& parentJobId,
+                    CallbackType const& onFinish,
+                    Job::Options const& options);
+
     /**
      * Begin the actual sequence of actions for removing the worker
      *
-     * @param lock - the lock must be acquired by a caller of the method
+     * @param lock
+     *   the lock must be acquired by a caller of the method
      */
-    void disableWorker(util::Lock const& lock);
+    void _disableWorker(util::Lock const& lock);
 
     /**
      * The callback function to be invoked on a completion of each request.
      *
-     * @param request - a pointer to a request
+     * @param request
+     *   a pointer to a request
      */
-    void onRequestFinish(FindAllRequest::Ptr const& request);
+    void _onRequestFinish(FindAllRequest::Ptr const& request);
 
     /**
      * The callback function to be invoked on a completion of a job
      * which ensures the desired replication level after disabling .
      *
-     * @param request - a pointer to a job
+     * @param request
+     *   a pointer to a job
      */
-    void onJobFinish(ReplicateJob::Ptr const& job);
+    void _onJobFinish(ReplicateJob::Ptr const& job);
 
 protected:
 

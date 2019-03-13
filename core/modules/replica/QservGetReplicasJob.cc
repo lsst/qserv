@@ -167,7 +167,7 @@ void QservGetReplicasJob::startImpl(util::Lock const& lock) {
             inUseOnly(),
             id(),
             [self] (GetReplicasQservMgtRequest::Ptr const& request) {
-                self->onRequestFinish(request);
+                self->_onRequestFinish(request);
             }
         );
         if (not request) {
@@ -210,7 +210,7 @@ void QservGetReplicasJob::notify(util::Lock const& lock) {
 }
 
 
-void QservGetReplicasJob::onRequestFinish(GetReplicasQservMgtRequest::Ptr const& request) {
+void QservGetReplicasJob::_onRequestFinish(GetReplicasQservMgtRequest::Ptr const& request) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__
          << "  databaseFamily=" << request->databaseFamily()

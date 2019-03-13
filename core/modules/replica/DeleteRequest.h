@@ -108,6 +108,29 @@ public:
                       bool allowDuplicate,
                       std::shared_ptr<Messenger> const& messenger);
 
+protected:
+
+    /**
+      * @see Request::startImpl()
+      */
+    void startImpl(util::Lock const& lock) final;
+
+    /**
+     * @see Request::notify()
+     */
+    void notify(util::Lock const& lock) final;
+
+    /**
+     * @see Request::savePersistentState()
+     */
+    void savePersistentState(util::Lock const& lock) final;
+
+    /**
+     * @see Request::extendedPersistentState()
+     */
+    std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
+
+
 private:
 
     /**
@@ -127,27 +150,22 @@ private:
                   std::shared_ptr<Messenger> const& messenger);
 
     /**
-      * @see Request::startImpl()
-      */
-    void startImpl(util::Lock const& lock) final;
-
-    /**
      * Start the timer before attempting the previously failed
      * or successful (if a status check is needed) step.
      *
      * @param lock - a lock on a mutex must be acquired before calling this method
      */
-    void wait(util::Lock const& lock);
+    void _wait(util::Lock const& lock);
 
     /// Callback handler for the asynchronous operation
-    void awaken(boost::system::error_code const& ec);
+    void _awaken(boost::system::error_code const& ec);
 
     /**
      * Send the serialized content of the buffer to a worker
      *
      * @param lock - a lock on a mutex must be acquired before calling this method
      */
-    void send(util::Lock const& lock);
+    void _send(util::Lock const& lock);
 
     /**
      * Process the worker response to the requested operation.
@@ -155,23 +173,8 @@ private:
      * @param success - the flag indicating if the operation was successful
      * @param message - a response from the worker service (if success is 'true')
      */
-    void analyze(bool success,
-                 proto::ReplicationResponseDelete const& message);
-
-    /**
-     * @see Request::notify()
-     */
-    void notify(util::Lock const& lock) final;
-
-    /**
-     * @see Request::savePersistentState()
-     */
-    void savePersistentState(util::Lock const& lock) final;
-
-    /**
-     * @see Request::extendedPersistentState()
-     */
-    std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
+    void _analyze(bool success,
+                  proto::ReplicationResponseDelete const& message);
 
 private:
 

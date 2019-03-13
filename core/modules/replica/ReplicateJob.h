@@ -150,6 +150,23 @@ public:
 protected:
 
     /**
+      * @see Job::startImpl()
+      */
+    void startImpl(util::Lock const& lock) final;
+
+    /**
+      * @see Job::cancelImpl()
+      */
+    void cancelImpl(util::Lock const& lock) final;
+
+    /**
+      * @see Job::notify()
+      */
+    void notify(util::Lock const& lock) final;
+
+private:
+
+    /**
      * Construct the job with the pointer to the services provider.
      *
      * @see ReplicateJob::create()
@@ -162,32 +179,17 @@ protected:
                  Job::Options const& options);
 
     /**
-      * @see Job::startImpl()
-      */
-    void startImpl(util::Lock const& lock) final;
-
-    /**
-      * @see Job::startImpl()
-      */
-    void cancelImpl(util::Lock const& lock) final;
-
-    /**
-      * @see Job::notify()
-      */
-    void notify(util::Lock const& lock) final;
-
-    /**
      * The callback function to be invoked on a completion of the precursor job
      * which harvests chunk disposition across relevant worker nodes.
      */
-    void onPrecursorJobFinish();
+    void _onPrecursorJobFinish();
 
     /**
      * The callback function to be invoked on a completion of each replication job
      *
      * @param job - pointer to a job
      */
-    void onCreateJobFinish(CreateReplicaJob::Ptr const& job);
+    void _onCreateJobFinish(CreateReplicaJob::Ptr const& job);
 
     /**
      * Submit a batch of the replica creation job
@@ -201,8 +203,8 @@ protected:
      *
      * @retun actual number of submitted jobs
      */
-    size_t launchNextJobs(util::Lock const& lock,
-                          size_t numJobs);
+    size_t _launchNextJobs(util::Lock const& lock,
+                           size_t numJobs);
 
 protected:
 

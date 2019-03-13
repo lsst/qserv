@@ -57,7 +57,7 @@ public:
     
     ServiceAllocator(DatabaseServicesPool::Ptr const& pool)
         :   _pool(pool),
-            _service(pool->allocateService()) {
+            _service(pool->_allocateService()) {
     }
 
     // Default construction and copy semantics are prohibited
@@ -67,7 +67,7 @@ public:
     ServiceAllocator& operator=(ServiceAllocator const&) = delete;
 
     ~ServiceAllocator() {
-        _pool->releaseService(_service);
+        _pool->_releaseService(_service);
     }
 
     /// @return a reference to the allocated service
@@ -318,7 +318,7 @@ list<JobInfo> DatabaseServicesPool::jobs(string const& controllerId,
 }
 
 
-DatabaseServices::Ptr DatabaseServicesPool::allocateService() {
+DatabaseServices::Ptr DatabaseServicesPool::_allocateService() {
 
     string const context = "DatabaseServicesPool::" + string(__func__) + "  ";
 
@@ -342,7 +342,7 @@ DatabaseServices::Ptr DatabaseServicesPool::allocateService() {
 }
 
 
-void DatabaseServicesPool::releaseService(DatabaseServices::Ptr const& service) {
+void DatabaseServicesPool::_releaseService(DatabaseServices::Ptr const& service) {
 
     string const context = "DatabaseServicesPool::" + string(__func__) + "  ";
 

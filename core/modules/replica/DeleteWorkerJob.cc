@@ -251,7 +251,7 @@ void DeleteWorkerJob::startImpl(util::Lock const& lock) {
                             database,
                             saveReplicInfo,
                             [self] (FindAllRequest::Ptr const& request) {
-                                self->onRequestFinish(request);
+                                self->_onRequestFinish(request);
                             }
                         );
                         _findAllRequests.push_back(request);
@@ -271,7 +271,7 @@ void DeleteWorkerJob::startImpl(util::Lock const& lock) {
     // Since the worker is not available then go straight to a point
     // at which we'll be changing its state within the replication system
 
-    disableWorker(lock);
+    _disableWorker(lock);
 
     setState(lock, State::IN_PROGRESS);
     return;
@@ -305,7 +305,7 @@ void DeleteWorkerJob::cancelImpl(util::Lock const& lock) {
 }
 
 
-void DeleteWorkerJob::onRequestFinish(FindAllRequest::Ptr const& request) {
+void DeleteWorkerJob::_onRequestFinish(FindAllRequest::Ptr const& request) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__
          << "  worker="   << request->worker()
@@ -333,11 +333,11 @@ void DeleteWorkerJob::onRequestFinish(FindAllRequest::Ptr const& request) {
     // because they're related to a worker which is going to be removed, and
     // this worker may already be experiencing problems.
     //
-    if (_numFinished == _numLaunched) disableWorker(lock);
+    if (_numFinished == _numLaunched) _disableWorker(lock);
 }
 
 
-void DeleteWorkerJob::disableWorker(util::Lock const& lock) {
+void DeleteWorkerJob::_disableWorker(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
@@ -363,7 +363,7 @@ void DeleteWorkerJob::disableWorker(util::Lock const& lock) {
             controller(),
             id(),
             [self] (ReplicateJob::Ptr job) {
-                self->onJobFinish(job);
+                self->_onJobFinish(job);
             }
         );
         job->start();
@@ -373,7 +373,7 @@ void DeleteWorkerJob::disableWorker(util::Lock const& lock) {
 }
 
 
-void DeleteWorkerJob::onJobFinish(ReplicateJob::Ptr const& job) {
+void DeleteWorkerJob::_onJobFinish(ReplicateJob::Ptr const& job) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ <<  "(ReplicateJob) "
          << " databaseFamily: " << job->databaseFamily()

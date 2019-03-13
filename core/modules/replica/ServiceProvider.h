@@ -163,7 +163,7 @@ private:
     explicit ServiceProvider(std::string const& configUrl);
 
     /// @return the context string for debugging and diagnostic printouts
-    std::string context() const;
+    std::string _context() const;
 
 private:
 

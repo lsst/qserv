@@ -135,12 +135,17 @@ protected:
                                  std::string const& worker,
                                  proto::ReplicationServiceRequestType requestType,
                                  std::shared_ptr<Messenger> const& messenger);
-private:
-
     /**
       * @see Request::startImpl()
       */
     void startImpl(util::Lock const& lock) final;
+
+    /**
+     * @see Request::savePersistentState()
+     */
+    void savePersistentState(util::Lock const& lock) final;
+
+private:
 
     /**
      * Process the worker response to the requested operation.
@@ -148,13 +153,8 @@ private:
      * @param success - the flag indicating if the operation was successful
      * @param message - a response from the worker service (if success is 'true')
      */
-    void analyze(bool success,
-                 proto::ReplicationServiceResponse const& message);
-
-    /**
-     * @see Request::savePersistentState()
-     */
-    void savePersistentState(util::Lock const& lock) final;
+    void _analyze(bool success,
+                  proto::ReplicationServiceResponse const& message);
 
 private:
 

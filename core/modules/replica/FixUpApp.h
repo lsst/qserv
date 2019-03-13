@@ -66,14 +66,16 @@ public:
 protected:
 
     /**
-     * @see FixUpApp::create()
-     */
-    FixUpApp(int argc, char* argv[]);
-
-    /**
      * @see Application::runImpl()
      */
     int runImpl() final;
+
+private:
+
+    /**
+     * @see FixUpApp::create()
+     */
+    FixUpApp(int argc, char* argv[]);
 
 private:
 

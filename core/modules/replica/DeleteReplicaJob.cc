@@ -259,8 +259,8 @@ void DeleteReplicaJob::startImpl(util::Lock const& lock) {
     ServiceProvider::Ptr const serviceProvider = controller()->serviceProvider();
     if (not serviceProvider->config()->xrootdAutoNotify()) {
 
-        // Start rigth away
-        beginDeleteReplica(lock);
+        // Start right away
+        _beginDeleteReplica(lock);
 
     } else {
 
@@ -295,7 +295,7 @@ void DeleteReplicaJob::startImpl(util::Lock const& lock) {
                     // the second stage of requests to actually eliminate replica's
                     // files from the source worker.
                     case QservMgtRequest::ExtendedState::SUCCESS:
-                        self->beginDeleteReplica(lock);
+                        self->_beginDeleteReplica(lock);
                         return;
 
                     // Otherwise set an appropriate status of the operation, finish them
@@ -347,7 +347,7 @@ void DeleteReplicaJob::notify(util::Lock const& lock) {
 }
 
 
-void DeleteReplicaJob::beginDeleteReplica(util::Lock const& lock) {
+void DeleteReplicaJob::_beginDeleteReplica(util::Lock const& lock) {
 
     auto self = shared_from_base<DeleteReplicaJob>();
 
@@ -361,7 +361,7 @@ void DeleteReplicaJob::beginDeleteReplica(util::Lock const& lock) {
                 replica.database(),
                 chunk(),
                 [self] (DeleteRequest::Ptr ptr) {
-                    self->onRequestFinish(ptr);
+                    self->_onRequestFinish(ptr);
                 },
                 options(lock).priority,
                 true,   /* keepTracking */
@@ -373,7 +373,7 @@ void DeleteReplicaJob::beginDeleteReplica(util::Lock const& lock) {
 }
 
 
-void DeleteReplicaJob::onRequestFinish(DeleteRequest::Ptr const& request) {
+void DeleteReplicaJob::_onRequestFinish(DeleteRequest::Ptr const& request) {
 
     LOGS(_log, LOG_LVL_DEBUG, context()
          << __func__ << "(DeleteRequest)"

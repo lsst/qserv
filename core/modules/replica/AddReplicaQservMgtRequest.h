@@ -91,22 +91,7 @@ public:
      */
      std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
 
-private:
-
-    /**
-     * Construct the request with the pointer to the services provider.
-     *
-     * @param serviceProvider - reference to a provider of services
-     * @param worker          - the name of a worker
-     * @param chunk           - the chunk number
-     * @param databases       - the names of databases
-     * @param onFinish        - callback function to be called upon request completion
-     */
-    AddReplicaQservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
-                              std::string const& worker,
-                              unsigned int chunk,
-                              std::vector<std::string> const& databases,
-                              CallbackType const& onFinish);
+protected:
 
     /**
       * Implement the corresponding method of the base class
@@ -128,6 +113,23 @@ private:
       * @see QservMgtRequest::notify
       */
     void notify(util::Lock const& lock) final;
+
+private:
+
+    /**
+     * Construct the request with the pointer to the services provider.
+     *
+     * @param serviceProvider - reference to a provider of services
+     * @param worker          - the name of a worker
+     * @param chunk           - the chunk number
+     * @param databases       - the names of databases
+     * @param onFinish        - callback function to be called upon request completion
+     */
+    AddReplicaQservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
+                              std::string const& worker,
+                              unsigned int chunk,
+                              std::vector<std::string> const& databases,
+                              CallbackType const& onFinish);
 
 private:
 

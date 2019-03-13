@@ -89,6 +89,13 @@ public:
 protected:
 
     /**
+     * @see Task::onStart()
+     */
+    void onStart() override;
+
+private:
+
+    /**
      * The constructor is available to the class's factory method
      *
      * @see DeleteWorkerTask::create()
@@ -97,13 +104,6 @@ protected:
                      Task::AbnormalTerminationCallbackType const& onTerminated,
                      std::string const& worker,
                      bool permanentDelete);
-
-    /**
-     * @see Task::onStart()
-     */
-    void onStart() override;
-
-private:
 
     /**
      * Log a persistent event on the started job

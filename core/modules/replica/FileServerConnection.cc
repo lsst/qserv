@@ -155,11 +155,11 @@ FileServerConnection::~FileServerConnection() {
 
 
 void FileServerConnection::beginProtocol() {
-    receiveRequest();
+    _receiveRequest();
 }
 
 
-void FileServerConnection::receiveRequest() {
+void FileServerConnection::_receiveRequest() {
 
     LOGS(_log, LOG_LVL_DEBUG, context << __func__);
 
@@ -183,7 +183,7 @@ void FileServerConnection::receiveRequest() {
         ),
         boost::asio::transfer_at_least(bytes),
         boost::bind(
-            &FileServerConnection::requestReceived,
+            &FileServerConnection::_requestReceived,
             shared_from_this(),
             boost::asio::placeholders::error,
             boost::asio::placeholders::bytes_transferred
@@ -192,8 +192,8 @@ void FileServerConnection::receiveRequest() {
 }
 
 
-void FileServerConnection::requestReceived(boost::system::error_code const& ec,
-                                           size_t bytes_transferred) {
+void FileServerConnection::_requestReceived(boost::system::error_code const& ec,
+                                            size_t bytes_transferred) {
 
     LOGS(_log, LOG_LVL_DEBUG, context << __func__);
 
@@ -272,11 +272,11 @@ void FileServerConnection::requestReceived(boost::system::error_code const& ec,
     _bufferPtr->resize();
     _bufferPtr->serialize(response);
 
-    sendResponse();
+    _sendResponse();
 }
 
 
-void FileServerConnection::sendResponse() {
+void FileServerConnection::_sendResponse() {
 
     LOGS(_log, LOG_LVL_DEBUG, context << __func__);
 
@@ -287,7 +287,7 @@ void FileServerConnection::sendResponse() {
             _bufferPtr->size()
         ),
         boost::bind(
-            &FileServerConnection::responseSent,
+            &FileServerConnection::_responseSent,
             shared_from_this(),
             boost::asio::placeholders::error,
             boost::asio::placeholders::bytes_transferred
@@ -296,8 +296,8 @@ void FileServerConnection::sendResponse() {
 }
 
 
-void FileServerConnection::responseSent(boost::system::error_code const& ec,
-                                        size_t bytes_transferred) {
+void FileServerConnection::_responseSent(boost::system::error_code const& ec,
+                                         size_t bytes_transferred) {
 
     LOGS(_log, LOG_LVL_DEBUG, context << __func__);
 
@@ -313,11 +313,11 @@ void FileServerConnection::responseSent(boost::system::error_code const& ec,
     if (not _filePtr) return;
 
     // The file is open. Begin streaming its content.
-    sendData();
+    _sendData();
 }
 
 
-void FileServerConnection::sendData() {
+void FileServerConnection::_sendData() {
 
     LOGS(_log, LOG_LVL_DEBUG, context << __func__ << "  file: " << _fileName);
 
@@ -349,7 +349,7 @@ void FileServerConnection::sendData() {
             bytes
         ),
         boost::bind(
-            &FileServerConnection::dataSent,
+            &FileServerConnection::_dataSent,
             shared_from_this(),
             boost::asio::placeholders::error,
             boost::asio::placeholders::bytes_transferred
@@ -358,12 +358,12 @@ void FileServerConnection::sendData() {
 }
 
 
-void FileServerConnection::dataSent(boost::system::error_code const& ec,
-                                    size_t bytes_transferred) {
+void FileServerConnection::_dataSent(boost::system::error_code const& ec,
+                                     size_t bytes_transferred) {
 
     LOGS(_log, LOG_LVL_DEBUG, context << __func__);
     if (::isErrorCode(ec, __func__)) return;
-    sendData();
+    _sendData();
 }
 
 }}} // namespace lsst::qserv::replica

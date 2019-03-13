@@ -101,6 +101,23 @@ public:
      */
     std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
 
+protected:
+
+    /**
+      * @see QservMgtRequest::startImpl
+      */
+    void startImpl(util::Lock const& lock) final;
+
+    /**
+      * @see QservMgtRequest::finishImpl
+      */
+    void finishImpl(util::Lock const& lock) final;
+
+    /**
+      * @see QservMgtRequest::notify
+      */
+    void notify(util::Lock const& lock) final;
+
 private:
 
     /**
@@ -118,26 +135,14 @@ private:
      * Carry over results of the request into a local collection. Filter results
      * by databases participating in the family.
      * 
-     * @param lock       - lock must be acquired by a caller of the method
-     * @param collection - input collection of replicas
+     * @param lock
+     *   lock must be acquired by a caller of the method
+     *
+     * @param collection
+     *   input collection of replicas
      */
-     void setReplicas(util::Lock const& lock,
+     void _setReplicas(util::Lock const& lock,
                       wpublish::GetChunkListQservRequest::ChunkCollection const& collection);
-
-    /**
-      * @see QservMgtRequest::startImpl
-      */
-    void startImpl(util::Lock const& lock) final;
-
-    /**
-      * @see QservMgtRequest::finishImpl
-      */
-    void finishImpl(util::Lock const& lock) final;
-
-    /**
-      * @see QservMgtRequest::notify
-      */
-    void notify(util::Lock const& lock) final;
 
 private:
 

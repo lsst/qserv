@@ -65,14 +65,16 @@ public:
 protected:
 
     /**
-     * @see ClusterHealthApp::create()
-     */
-    ClusterHealthApp(int argc, char* argv[]);
-
-    /**
      * @see Application::runImpl()
      */
     int runImpl() final;
+
+private:
+
+    /**
+     * @see ClusterHealthApp::create()
+     */
+    ClusterHealthApp(int argc, char* argv[]);
 
 private:
 

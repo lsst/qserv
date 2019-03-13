@@ -170,7 +170,7 @@ ConfigurationMySQL::ConfigurationMySQL(database::mysql::ConnectionParams const& 
         _connectionParams(connectionParams),
         _log(LOG_GET("lsst.qserv.replica.ConfigurationMySQL")) {
 
-    loadConfiguration();
+    _loadConfiguration();
 }
 
 
@@ -857,7 +857,7 @@ DatabaseInfo ConfigurationMySQL::deleteTable(string const& database,
 }
 
 
-void ConfigurationMySQL::loadConfiguration() {
+void ConfigurationMySQL::_loadConfiguration() {
 
     string const context_ = context() + string(__func__);
 
@@ -870,7 +870,7 @@ void ConfigurationMySQL::loadConfiguration() {
         handler.conn = database::mysql::Connection::open(_connectionParams);
         handler.conn->execute(
             [this, &lock](decltype(handler.conn) conn) {
-                this->loadConfigurationImpl(lock, conn);
+                this->_loadConfigurationImpl(lock, conn);
             }
         );
     } catch (database::mysql::Error const& ex) {
@@ -880,8 +880,8 @@ void ConfigurationMySQL::loadConfiguration() {
 }
 
 
-void ConfigurationMySQL::loadConfigurationImpl(util::Lock const& lock,
-                                               database::mysql::Connection::Ptr const& conn) {
+void ConfigurationMySQL::_loadConfigurationImpl(util::Lock const& lock,
+                                                database::mysql::Connection::Ptr const& conn) {
 
     // The common parameters (if any defined) of the workers will be initialize
     // from table 'config' and be used as defaults when reading worker-specific

@@ -54,15 +54,15 @@ Messenger::Messenger(ServiceProvider::Ptr const& serviceProvider,
                      boost::asio::io_service& io_service) {
 
     for (auto&& worker: serviceProvider->config()->allWorkers()) {
-        _connector[worker] = MessengerConnector::create(serviceProvider,
-                                                        io_service,
-                                                        worker);
+        _workerConnector[worker] = MessengerConnector::create(serviceProvider,
+                                                              io_service,
+                                                              worker);
     }
 }
 
 
 void Messenger::stop() {
-    for (auto&& entry: _connector) {
+    for (auto&& entry: _workerConnector) {
         entry.second->stop();
     }
 }
@@ -72,7 +72,7 @@ void Messenger::cancel(string const& worker,
                        string const& id) {
 
     // Forward the request to the corresponding worker
-    connector(worker)->cancel(id);
+    _connector(worker)->cancel(id);
 }
 
 
@@ -80,16 +80,16 @@ bool Messenger::exists(string const& worker,
                        string const& id) const {
 
     // Forward the request to the corresponding worker
-    return connector(worker)->exists(id);
+    return _connector(worker)->exists(id);
 }
 
 
-MessengerConnector::Ptr const& Messenger::connector(string const& worker)  const {
+MessengerConnector::Ptr const& Messenger::_connector(string const& worker)  const {
 
-    if (0 == _connector.count(worker))
+    if (0 == _workerConnector.count(worker))
         throw invalid_argument(
                  "Messenger::" + string(__func__) + "   unknown worker: " + worker);
-    return _connector.at(worker);
+    return _workerConnector.at(worker);
 }
 
 }}} // namespace lsst::qserv::replica

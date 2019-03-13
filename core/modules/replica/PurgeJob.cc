@@ -196,7 +196,7 @@ void PurgeJob::startImpl(util::Lock const& lock) {
         controller(),
         id(),
         [self] (FindAllJob::Ptr job) {
-            self->onPrecursorJobFinish();
+            self->_onPrecursorJobFinish();
         }
     );
     _findAllJob->start();
@@ -233,7 +233,7 @@ void PurgeJob::cancelImpl(util::Lock const& lock) {
 }
 
 
-void PurgeJob::restart(util::Lock const& lock) {
+void PurgeJob::_restart(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
@@ -255,7 +255,7 @@ void PurgeJob::notify(util::Lock const& lock) {
 }
 
 
-void PurgeJob::onPrecursorJobFinish() {
+void PurgeJob::_onPrecursorJobFinish() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
@@ -433,7 +433,7 @@ void PurgeJob::onPrecursorJobFinish() {
                 controller(),
                 id(),
                 [self] (DeleteReplicaJob::Ptr const& job) {
-                    self->onDeleteJobFinish(job);
+                    self->_onDeleteJobFinish(job);
                 },
                 options(lock)   // inherit from the current job
             );
@@ -471,7 +471,7 @@ void PurgeJob::onPrecursorJobFinish() {
                 // lunched. Hence we should start another iteration by requesting
                 // the fresh state of the chunks within the family.
 
-                restart(lock);
+                _restart(lock);
                 return;
             }
         }
@@ -479,7 +479,7 @@ void PurgeJob::onPrecursorJobFinish() {
 }
 
 
-void PurgeJob::onDeleteJobFinish(DeleteReplicaJob::Ptr const& job) {
+void PurgeJob::_onDeleteJobFinish(DeleteReplicaJob::Ptr const& job) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__
          << "  databaseFamily=" << job->databaseFamily()
@@ -493,14 +493,14 @@ void PurgeJob::onDeleteJobFinish(DeleteReplicaJob::Ptr const& job) {
     // has transitioned while acquiring the lock.
 
     if (state() == State::FINISHED) {
-        release(job->chunk());
+        _release(job->chunk());
         return;
     }
 
     util::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) {
-        release(job->chunk());
+        _release(job->chunk());
         return;
     }
 
@@ -539,7 +539,7 @@ void PurgeJob::onDeleteJobFinish(DeleteReplicaJob::Ptr const& job) {
     _chunk2jobs.at(job->chunk()).erase(job->worker());
     if (_chunk2jobs.at(job->chunk()).empty()) {
         _chunk2jobs.erase(job->chunk());
-        release(job->chunk());
+        _release(job->chunk());
     }
 
     // Evaluate the status of on-going operations to see if the job
@@ -552,7 +552,7 @@ void PurgeJob::onDeleteJobFinish(DeleteReplicaJob::Ptr const& job) {
                 // Make another iteration (and another one, etc. as many as needed)
                 // before it succeeds or fails.
 
-                restart(lock);
+                _restart(lock);
                 return;
 
             } else {
@@ -565,7 +565,7 @@ void PurgeJob::onDeleteJobFinish(DeleteReplicaJob::Ptr const& job) {
 }
 
 
-void PurgeJob::release(unsigned int chunk) {
+void PurgeJob::_release(unsigned int chunk) {
 
     // THREAD-SAFETY NOTE: This method is thread-agnostic because it's trading
     // a static context of the request with an external service which is guaranteed

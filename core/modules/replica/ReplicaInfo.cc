@@ -207,7 +207,7 @@ map<string, ReplicaInfo::FileInfo> ReplicaInfo::fileInfoMap() const {
 }
 
 
-bool ReplicaInfo::equalFileCollections(ReplicaInfo const& other) const {
+bool ReplicaInfo::_equalFileCollections(ReplicaInfo const& other) const {
 
     // Files of both collections needs to be map-sorted because objects may
     // have them stored in different order.

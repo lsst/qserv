@@ -153,6 +153,23 @@ public:
 protected:
 
     /**
+      * @see Job::startImpl()
+      */
+    void startImpl(util::Lock const& lock) final;
+
+    /**
+      * @see Job::cancelImpl()
+      */
+    void cancelImpl(util::Lock const& lock) final;
+
+    /**
+      * @see Job::notify()
+      */
+    void notify(util::Lock const& lock) final;
+
+private:
+
+    /**
      * Construct the job with the pointer to the services provider.
      *
      * @see CreateReplicaJob::create()
@@ -167,27 +184,12 @@ protected:
                      Job::Options const& options);
 
     /**
-      * @see Job::startImpl()
-      */
-    void startImpl(util::Lock const& lock) final;
-
-    /**
-      * @see Job::startImpl()
-      */
-    void cancelImpl(util::Lock const& lock) final;
-
-    /**
-      * @see Job::notify()
-      */
-    void notify(util::Lock const& lock) final;
-
-    /**
-     * The calback function to be invoked on a completion of each replica
+     * The callback function to be invoked on a completion of each replica
      * creation request.
      *
      * @param request - a pointer to a request
      */
-    void onRequestFinish(ReplicationRequest::Ptr const& request);
+    void _onRequestFinish(ReplicationRequest::Ptr const& request);
 
 protected:
 

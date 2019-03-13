@@ -847,7 +847,7 @@ public:
      */
     template <class REQUEST_TYPE>
     void requestsOfType(std::vector<typename REQUEST_TYPE::Ptr>& requests) const {
-        util::Lock lock(_mtx, context() + "requestsOfType");
+        util::Lock lock(_mtx, _context() + __func__);
         requests.clear();
         for (auto&& itr: _registry)
             if (typename REQUEST_TYPE::Ptr ptr =
@@ -859,7 +859,7 @@ public:
     /// @return the number of requests of a specific type
     template <class REQUEST_TYPE>
     size_t numRequestsOfType() const {
-        util::Lock lock(_mtx, context() + "numRequestsOfType");
+        util::Lock lock(_mtx, _context() + __func__);
         size_t result(0);
         for (auto&& itr: _registry) {
             if (typename REQUEST_TYPE::Ptr request =
@@ -882,7 +882,7 @@ private:
     explicit Controller(ServiceProvider::Ptr const& serviceProvider);
 
     /// @return the context string for debugging and diagnostic printouts
-    std::string context() const;
+    std::string _context() const;
 
     /**
      * Finalize the completion of the request. This method will notify
@@ -892,7 +892,7 @@ private:
      * @param id
      *   a unique identifier of a request
      */
-    void finish(std::string const& id);
+    void _finish(std::string const& id);
 
     /**
      * Make sure the server is running
@@ -900,7 +900,7 @@ private:
      * @throws std::runtime_error
      *   if the server is not running
      */
-    void assertIsRunning() const;
+    void _assertIsRunning() const;
 
 private:
 

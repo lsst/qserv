@@ -77,7 +77,7 @@ void FileServer::run() {
     // We shall do so before running the io_service. Otherwise it will
     // immediately finish as soon as it will discover that there are
     // outstanding operations.
-    beginAccept();
+    _beginAccept();
 
     // Launch all threads in the pool
     vector<shared_ptr<thread>> threads(_serviceProvider->config()->fsNumProcessingThreads());
@@ -97,7 +97,7 @@ void FileServer::run() {
 }
 
 
-void FileServer::beginAccept() {
+void FileServer::_beginAccept() {
 
     FileServerConnection::Ptr connection =
         FileServerConnection::create(
@@ -108,21 +108,21 @@ void FileServer::beginAccept() {
     _acceptor.async_accept(
         connection->socket(),
         boost::bind(
-            &FileServer::handleAccept,
+            &FileServer::_handleAccept,
             shared_from_this(),
             connection,
             boost::asio::placeholders::error));
 }
 
 
-void FileServer::handleAccept(FileServerConnection::Ptr const& connection,
-                              boost::system::error_code const& ec) {
+void FileServer::_handleAccept(FileServerConnection::Ptr const& connection,
+                               boost::system::error_code const& ec) {
     if (ec.value() == 0) {
         connection->beginProtocol();
     } else {
-        LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  ec:" << ec);
+        LOGS(_log, LOG_LVL_DEBUG, _context() << __func__ << "  ec:" << ec);
     }
-    beginAccept();
+    _beginAccept();
 }
 
 }}} // namespace lsst::qserv::replica

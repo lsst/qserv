@@ -238,9 +238,9 @@ private:
      *
      * @return pointer to a service
      *
-     * @see DatabaseServicesPool::releaseService()
+     * @see DatabaseServicesPool::_releaseService()
      */
-    DatabaseServices::Ptr allocateService();
+    DatabaseServices::Ptr _allocateService();
 
     /**
      * Return a service object back into the pool of the available ones.
@@ -249,9 +249,9 @@ private:
      *
      * @throws std::logic_error if the service object was not previously allocated
      *
-     * @see DatabaseServicesPool::allocateService()
+     * @see DatabaseServicesPool::_allocateService()
      */
-    void releaseService(DatabaseServices::Ptr const& service);
+    void _releaseService(DatabaseServices::Ptr const& service);
 
 private:
 

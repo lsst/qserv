@@ -180,7 +180,7 @@ void FixUpJob::startImpl(util::Lock const& lock) {
         controller(),
         id(),
         [self] (FindAllJob::Ptr job) {
-            self->onPrecursorJobFinish();
+            self->_onPrecursorJobFinish();
         }
     );
     _findAllJob->start();
@@ -227,7 +227,7 @@ void FixUpJob::cancelImpl(util::Lock const& lock) {
 }
 
 
-void FixUpJob::restart(util::Lock const& lock) {
+void FixUpJob::_restart(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
@@ -252,7 +252,7 @@ void FixUpJob::notify(util::Lock const& lock) {
 }
 
 
-void FixUpJob::onPrecursorJobFinish() {
+void FixUpJob::_onPrecursorJobFinish() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
@@ -327,7 +327,7 @@ void FixUpJob::onPrecursorJobFinish() {
                              << __func__ << "  failed to find a source worker for chunk: "
                              << chunk << " and database: " << database);
 
-                        release(chunk);
+                        _release(chunk);
                         finish(lock, ExtendedState::FAILED);
 
                         break;
@@ -343,7 +343,7 @@ void FixUpJob::onPrecursorJobFinish() {
                             database,
                             chunk,
                             [self] (ReplicationRequest::Ptr ptr) {
-                                self->onRequestFinish(ptr);
+                                self->_onRequestFinish(ptr);
                             },
                             0,      /* priority */
                             true,   /* keepTracking */
@@ -379,14 +379,14 @@ void FixUpJob::onPrecursorJobFinish() {
                 // lunched. Hence we should start another iteration by requesting
                 // the fresh state of the chunks within the family.
 
-                restart(lock);
+                _restart(lock);
             }
         }
     }
 }
 
 
-void FixUpJob::onRequestFinish(ReplicationRequest::Ptr const& request) {
+void FixUpJob::_onRequestFinish(ReplicationRequest::Ptr const& request) {
 
     string       const database = request->database();
     string       const worker   = request->worker();
@@ -404,14 +404,14 @@ void FixUpJob::onRequestFinish(ReplicationRequest::Ptr const& request) {
     // has transitioned while acquiring the lock.
 
     if (state() == State::FINISHED)  {
-        release(chunk);
+        _release(chunk);
         return;
     }
 
     util::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) {
-        release(chunk);
+        _release(chunk);
         return;
     }
 
@@ -434,7 +434,7 @@ void FixUpJob::onRequestFinish(ReplicationRequest::Ptr const& request) {
         _chunk2requests.at(chunk).erase(worker);
         if (_chunk2requests.at(chunk).empty()) {
             _chunk2requests.erase(chunk);
-            release(chunk);
+            _release(chunk);
         }
     }
 
@@ -448,7 +448,7 @@ void FixUpJob::onRequestFinish(ReplicationRequest::Ptr const& request) {
                 // Make another iteration (and another one, etc. as many as needed)
                 // before it succeeds or fails.
 
-                restart(lock);
+                _restart(lock);
                 return;
 
             } else {
@@ -463,7 +463,7 @@ void FixUpJob::onRequestFinish(ReplicationRequest::Ptr const& request) {
 }
 
 
-void FixUpJob::release(unsigned int chunk) {
+void FixUpJob::_release(unsigned int chunk) {
 
     // THREAD-SAFETY NOTE: This method is thread-agnostic because it's trading
     // a static context of the request with an external service which is guaranteed

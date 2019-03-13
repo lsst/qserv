@@ -270,7 +270,7 @@ private:
      * @throw std::runtime_error if the input configuration is not consistent
      * with expectations of the application
      */
-    void loadConfiguration(util::ConfigStore const& configStore);
+    void _loadConfiguration(util::ConfigStore const& configStore);
 
     /**
      * The setter method for numeric types

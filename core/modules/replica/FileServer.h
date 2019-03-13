@@ -102,18 +102,18 @@ private:
     /**
      * Begin (asynchronously) accepting connection requests.
      */
-    void beginAccept();
+    void _beginAccept();
     
     /**
      * Handle a connection request once it's detected. The rest of
      * the communication will be forwarded to the connection object
      * specified as a parameter of the method.
      */
-    void handleAccept(FileServerConnection::Ptr const& connection,
-                      boost::system::error_code const& ec);
+    void _handleAccept(FileServerConnection::Ptr const& connection,
+                       boost::system::error_code const& ec);
 
     /// @return the context string
-    std::string context() const { return "FILE-SERVER  "; }
+    std::string _context() const { return "FILE-SERVER  "; }
 
 private:
 

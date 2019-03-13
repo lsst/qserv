@@ -184,9 +184,9 @@ private:
      *
      * @return a collection of chunks grouped by owners
      */
-    void lockedImpl(util::Lock const& mLock,
-                    std::string const& owner,
-                    OwnerToChunks& owner2chunks) const;
+    void _lockedImpl(util::Lock const& mLock,
+                     std::string const& owner,
+                     OwnerToChunks& owner2chunks) const;
 
     /**
      * Actual implementation of the chunk release operation, which will attempt
@@ -204,9 +204,9 @@ private:
      *
      * @return 'true' if the operation was successful
      */
-    bool releaseImpl(util::Lock const& mLock,
-                     Chunk const& chunk,
-                     std::string& owner);
+    bool _releaseImpl(util::Lock const& mLock,
+                      Chunk const& chunk,
+                      std::string& owner);
 
 private:
 

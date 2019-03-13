@@ -224,7 +224,8 @@ protected:
       * This method is supposed to be provided by subclasses for additional
       * subclass-specific actions to begin processing the request.
       *
-      * @param lock - the lock must be acquired by a caller of the method
+      * @param lock
+     *   the lock must be acquired by a caller of the method
       */
     virtual void startImpl(util::Lock const& lock) = 0;
 
@@ -233,7 +234,8 @@ protected:
      * is configured via the configuration service. When the request expires
      * it finishes with completion status FINISHED::TIMEOUT_EXPIRED.
      *
-     * @param ec - error code to be checked
+     * @param ec
+     *   error code to be checked
      */
     void expired(boost::system::error_code const& ec);
 

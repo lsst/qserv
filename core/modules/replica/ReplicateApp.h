@@ -64,14 +64,16 @@ public:
 protected:
 
     /**
-     * @see ReplicateApp::create()
-     */
-    ReplicateApp(int argc, char* argv[]);
-
-    /**
      * @see Application::runImpl()
      */
     int runImpl() final;
+
+private:
+
+    /**
+     * @see ReplicateApp::create()
+     */
+    ReplicateApp(int argc, char* argv[]);
 
 private:
 

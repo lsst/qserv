@@ -98,7 +98,7 @@ list<pair<string,string>> GetReplicasQservMgtRequest::extendedPersistentState() 
 }
 
 
-void GetReplicasQservMgtRequest::setReplicas(
+void GetReplicasQservMgtRequest::_setReplicas(
             util::Lock const& lock,
             wpublish::GetChunkListQservRequest::ChunkCollection const& collection) {
 
@@ -158,7 +158,7 @@ void GetReplicasQservMgtRequest::startImpl(util::Lock const& lock) {
 
                 case wpublish::GetChunkListQservRequest::Status::SUCCESS:
 
-                    request->setReplicas(lock, collection);
+                    request->_setReplicas(lock, collection);
                     request->finish(lock, QservMgtRequest::ExtendedState::SUCCESS);
                     break;
 

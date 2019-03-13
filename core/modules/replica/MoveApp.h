@@ -64,14 +64,16 @@ public:
 protected:
 
     /**
-     * @see MoveApp::create()
-     */
-    MoveApp(int argc, char* argv[]);
-
-    /**
      * @see Application::runImpl()
      */
     int runImpl() final;
+
+private:
+
+    /**
+     * @see MoveApp::create()
+     */
+    MoveApp(int argc, char* argv[]);
 
 private:
 

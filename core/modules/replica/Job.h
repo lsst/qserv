@@ -377,24 +377,6 @@ protected:
                             RemoveReplicaQservMgtRequest::CallbackType const& onFinish=nullptr);
 
     /**
-     * Ensure the object is in the desired internal state. Throw an
-     * exception otherwise.
-     *
-     * NOTES: normally this condition should never been seen unless
-     *        there is a problem with the application implementation
-     *        or the underlying run-time system.
-     *
-     * @param lock         - the lock must be acquired by a caller of the method
-     * @param desiredState - desired state
-     * @param context      - context from which the state test is requested
-     *
-     * @throws std::logic_error
-     */
-    void assertState(util::Lock const& lock,
-                     State desiredState,
-                     std::string const& context) const;
-
-    /**
      * Set the desired primary and extended state.
      *
      * The change of the state is done via a method to allow extra actions
@@ -414,13 +396,32 @@ protected:
 private:
 
     /**
+     * Ensure the object is in the desired internal state. Throw an
+     * exception otherwise.
+     *
+     * NOTES: normally this condition should never been seen unless
+     *        there is a problem with the application implementation
+     *        or the underlying run-time system.
+     *
+     * @param lock         - the lock must be acquired by a caller of the method
+     * @param desiredState - desired state
+     * @param context      - context from which the state test is requested
+     *
+     * @throws std::logic_error
+     */
+    void _assertState(util::Lock const& lock,
+                      State desiredState,
+                      std::string const& context) const;
+
+    /**
      * Start the timer (if the corresponding Configuration parameter is set`).
      * When the time will expire then the callback method heartbeat() which is
      * defined below will be called.
      *
-     * @param lock - the lock must be acquired by a caller of the method
+     * @param lock
+     *   the lock must be acquired by a caller of the method
      */
-    void startHeartbeatTimer(util::Lock const& lock);
+    void _startHeartbeatTimer(util::Lock const& lock);
 
     /**
      * Job heartbeat timer's handler. The heartbeat interval (if any)
@@ -428,27 +429,30 @@ private:
      * the job would update the corresponding field in a database and restart
      * the time.
      *
-     * @param ec - error code to be evaluated
+     * @param ec
+     *   error code to be evaluated
      */
-    void heartbeat(boost::system::error_code const& ec);
+    void _heartbeat(boost::system::error_code const& ec);
 
     /**
      * Start the timer (if the corresponding Configuration parameter is set`).
      * When the time will expire then the callback method expired() which is
      * defined below will be called.
      *
-     * @param lock - the lock must be acquired by a caller of the method
+     * @param lock
+     *   the lock must be acquired by a caller of the method
      */
-    void startExpirationTimer(util::Lock const& lock);
+    void _startExpirationTimer(util::Lock const& lock);
 
     /**
      * Job expiration timer's handler. The expiration interval (if any)
      * is configured via the configuration service. When the job expires
      * it finishes with completion status FINISHED::TIMEOUT_EXPIRED.
      *
-     * @param ec - error code to be evaluated
+     * @param ec
+     *   error code to be evaluated
      */
-    void expired(boost::system::error_code const& ec);
+    void _expired(boost::system::error_code const& ec);
 
 protected:
 

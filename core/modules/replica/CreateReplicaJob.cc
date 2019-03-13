@@ -321,7 +321,7 @@ void CreateReplicaJob::startImpl(util::Lock const& lock) {
                 replica.database(),
                 chunk(),
                 [self] (ReplicationRequest::Ptr ptr) {
-                    self->onRequestFinish(ptr);
+                    self->_onRequestFinish(ptr);
                 },
                 options(lock).priority,
                 true,   /* keepTracking */
@@ -367,7 +367,7 @@ void CreateReplicaJob::notify(util::Lock const& lock) {
 }
 
 
-void CreateReplicaJob::onRequestFinish(ReplicationRequest::Ptr const& request) {
+void CreateReplicaJob::_onRequestFinish(ReplicationRequest::Ptr const& request) {
 
     LOGS(_log, LOG_LVL_DEBUG, context()
          << string(__func__) << "(ReplicationeRequest)"

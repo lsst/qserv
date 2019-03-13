@@ -143,47 +143,56 @@ private:
      * The frame header is presently a 32-bit unsigned integer
      * representing the length of the subsequent message.
      */
-    void receiveRequest();
+    void _receiveRequest();
 
     /**
      * The callback on finishing (either successfully or not) of asynchronous
      * reads. The request will be parsed, analyzed and if everything is right
      * the file transfer will begin.
      *
-     * @param ec                - error code to be evaluated
-     * @param bytes_transferred - number of bytes received from a client
+     * @param ec
+     *   error code to be evaluated
+     * 
+     * @param bytes_transferred
+     *   number of bytes received from a client
      */
-    void requestReceived(boost::system::error_code const& ec,
-                         size_t bytes_transferred);
+    void _requestReceived(boost::system::error_code const& ec,
+                          size_t bytes_transferred);
 
     /**
      * Begin sending (asynchronously) a result back to a client
      */
-    void sendResponse();
+    void _sendResponse();
 
     /**
      * The callback on finishing (either successfully or not) of asynchronous writes.
      *
-     * @param ec                - error code to be evaluated
-     * @param bytes_transferred - number of bytes sent to a client in a response
+     * @param ec
+     *   error code to be evaluated
+     *
+     * @param bytes_transferred
+     *   number of bytes sent to a client in a response
      */
-    void responseSent(boost::system::error_code const& ec,
-                      size_t bytes_transferred);
+    void _responseSent(boost::system::error_code const& ec,
+                       size_t bytes_transferred);
 
     /**
      * Read the next record from the currently open file, and if succeeded
      * then begin streaming (asynchronously) it to a client.
      */
-    void sendData();
+    void _sendData();
 
     /**
      * The callback on finishing (either successfully or not) of asynchronous writes.
      *
-     * @param ec                - error code to be evaluated
-     * @param bytes_transferred - number of bytes of the file payload sent to a client 
+     * @param ec
+     *   error code to be evaluated
+     * 
+     * @param bytes_transferred
+     *   number of bytes of the file payload sent to a client 
      */
-    void dataSent(boost::system::error_code const& ec,
-                  size_t bytes_transferred);
+    void _dataSent(boost::system::error_code const& ec,
+                   size_t bytes_transferred);
 
 private:
 

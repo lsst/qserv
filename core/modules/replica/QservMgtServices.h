@@ -239,14 +239,14 @@ private:
      *
      * @param id - a unique identifier of a completed request
      */
-    void finish(std::string const& id);
+    void _finish(std::string const& id);
 
     /**
      * @return XROOTD/SSI API service for launching worker management requests.
      * The method is allowed to return the null pointer in case if a connection
      * to the service provider could not be established.
      */
-    XrdSsiService* xrdSsiService();
+    XrdSsiService* _xrdSsiService();
 
 private:
 

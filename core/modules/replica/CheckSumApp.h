@@ -68,14 +68,16 @@ public:
 protected:
 
     /**
-     * @see CheckSumApp::create()
-     */
-    CheckSumApp(int argc, char* argv[]);
-
-    /**
      * @see Application::runImpl()
      */
     int runImpl() final;
+
+private:
+
+    /**
+     * @see CheckSumApp::create()
+     */
+    CheckSumApp(int argc, char* argv[]);
 
 private:
 

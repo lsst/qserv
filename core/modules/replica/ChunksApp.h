@@ -67,14 +67,16 @@ public:
 protected:
 
     /**
-     * @see ChunksApp::create()
-     */
-    ChunksApp(int argc, char* argv[]);
-
-    /**
      * @see Application::runImpl()
      */
     int runImpl() final;
+
+private:
+
+    /**
+     * @see ChunksApp::create()
+     */
+    ChunksApp(int argc, char* argv[]);
 
 private:
 

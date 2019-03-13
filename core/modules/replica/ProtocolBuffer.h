@@ -110,7 +110,7 @@ public:
         // Make sure we have enough space to accommodate the frame length
         // and the message body.
 
-        extend(_size + sizeof(uint32_t) + bytes);
+        _extend(_size + sizeof(uint32_t) + bytes);
 
         // Serialize the message header carrying the length of the message
     
@@ -166,9 +166,10 @@ private:
      * Extend it otherwise. The previous contents (as per its 'size') of the buffer
      * as well as its size will be preserved.
      *
-     * @param newCapacityBytes - the number of bytes to be set
+     * @param newCapacityBytes
+     *   the number of bytes to be set
      */
-    void extend(size_t newCapacityBytes);
+    void _extend(size_t newCapacityBytes);
 
 private:
 

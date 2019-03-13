@@ -207,7 +207,7 @@ private:
      *
      * @return 'true' if successful
      */
-    bool openImpl();
+    bool _openImpl();
 
 private:
 

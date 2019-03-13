@@ -72,14 +72,16 @@ public:
 protected:
 
     /**
-     * @see FileReadApp::create()
-     */
-    FileReadApp(int argc, char* argv[]);
-
-    /**
      * @see Application::runImpl()
      */
     int runImpl() final;
+
+private:
+
+    /**
+     * @see FileReadApp::create()
+     */
+    FileReadApp(int argc, char* argv[]);
 
 private:
 

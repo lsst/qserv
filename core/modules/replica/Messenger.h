@@ -106,9 +106,9 @@ public:
                                  RESPONSE_TYPE const&)> onFinish) {
 
         // Forward the request to the corresponding worker
-        connector(worker)->send<RESPONSE_TYPE>(id,
-                                               requestBufferPtr,
-                                               onFinish);
+        _connector(worker)->send<RESPONSE_TYPE>(id,
+                                                requestBufferPtr,
+                                                onFinish);
     }
 
     /**
@@ -159,12 +159,12 @@ private:
      *
      * @throws std::invalid_argument if the worker is unknown.
      */
-    MessengerConnector::Ptr const& connector(std::string const& worker) const;
+    MessengerConnector::Ptr const& _connector(std::string const& worker) const;
 
 private:
 
     /// Connection providers for individual workers
-    std::map<std::string, MessengerConnector::Ptr> _connector;
+    std::map<std::string, MessengerConnector::Ptr> _workerConnector;
 };
 
 }}} // namespace lsst::qserv::replica

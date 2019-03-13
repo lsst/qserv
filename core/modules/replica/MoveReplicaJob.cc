@@ -203,7 +203,7 @@ void MoveReplicaJob::startImpl(util::Lock const& lock) {
         controller(),
         id(),
         [self] (CreateReplicaJob::Ptr const& job) {
-            self->onCreateJobFinish();
+            self->_onCreateJobFinish();
         },
         options(lock)   // inherit from the current job
     );
@@ -234,7 +234,7 @@ void MoveReplicaJob::notify(util::Lock const& lock) {
 }
 
 
-void MoveReplicaJob::onCreateJobFinish() {
+void MoveReplicaJob::_onCreateJobFinish() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
@@ -270,7 +270,7 @@ void MoveReplicaJob::onCreateJobFinish() {
                 controller(),
                 id(),
                 [self] (DeleteReplicaJob::Ptr const& job) {
-                    self->onDeleteJobFinish();
+                    self->_onDeleteJobFinish();
                 },
                 options(lock)   // inherit from the current job
             );
@@ -289,7 +289,7 @@ void MoveReplicaJob::onCreateJobFinish() {
 }
 
 
-void MoveReplicaJob::onDeleteJobFinish() {
+void MoveReplicaJob::_onDeleteJobFinish() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 

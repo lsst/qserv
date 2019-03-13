@@ -73,14 +73,16 @@ public:
 protected:
 
     /**
-     * @see ConfigApp::create()
-     */
-    ConfigApp(int argc, char* argv[]);
-
-    /**
      * @see Application::runImpl()
      */
     int runImpl() final;
+
+private:
+
+    /**
+     * @see ConfigApp::create()
+     */
+    ConfigApp(int argc, char* argv[]);
 
 private:
 

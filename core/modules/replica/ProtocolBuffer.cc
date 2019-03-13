@@ -62,13 +62,13 @@ void ProtocolBuffer::resize(size_t newSizeBytes) {
     // Make sure there is enough space in the buffer to accommodate
     // the request.
 
-    extend(newSizeBytes);
+    _extend(newSizeBytes);
 
     _size = newSizeBytes;
 }
 
 
-void ProtocolBuffer::extend(size_t newCapacityBytes) {
+void ProtocolBuffer::_extend(size_t newCapacityBytes) {
 
     if (newCapacityBytes <= _capacity) return;
 

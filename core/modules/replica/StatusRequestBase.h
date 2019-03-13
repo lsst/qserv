@@ -108,23 +108,6 @@ protected:
     void startImpl(util::Lock const& lock) final;
 
     /**
-     * Start the timer before attempting the previously failed
-     * or successful (if a status check is needed) step.
-     *
-     * @param lock
-     *   a lock on a mutex must be acquired before calling this method
-     */
-    void wait(util::Lock const& lock);
-
-    /**
-     * Callback handler for the asynchronous operation
-     *
-     * @param ec
-     *   error condition to check
-     */
-    void awaken(boost::system::error_code const& ec);
-
-    /**
      * Initiate request-specific send. This method must be implemented
      * by subclasses.
      *
@@ -156,11 +139,29 @@ protected:
 private:
 
     /**
+     * Start the timer before attempting the previously failed
+     * or successful (if a status check is needed) step.
+     *
+     * @param lock
+     *   a lock on a mutex must be acquired before calling this method
+     */
+    void _wait(util::Lock const& lock);
+
+    /**
+     * Callback handler for the asynchronous operation
+     *
+     * @param ec
+     *   error condition to check
+     */
+    void _awaken(boost::system::error_code const& ec);
+
+   /**
      * Serialize request data into a network buffer and send the message to a worker
      *
-     * @param lock - a lock on a mutex must be acquired before calling this method
+     * @param lock
+     *   a lock on a mutex must be acquired before calling this method
      */
-    void sendImpl(util::Lock const& lock);
+    void _sendImpl(util::Lock const& lock);
 
 protected:
 

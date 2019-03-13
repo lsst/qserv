@@ -69,14 +69,16 @@ public:
 protected:
 
     /**
-     * @see QservWorkerApp::create()
-     */
-    QservWorkerApp(int argc, char* argv[]);
-
-    /**
      * @see Application::runImpl()
      */
     int runImpl() final;
+
+private:
+
+    /**
+     * @see QservWorkerApp::create()
+     */
+    QservWorkerApp(int argc, char* argv[]);
 
 private:
 

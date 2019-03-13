@@ -69,16 +69,16 @@ public:
 protected:
 
     /**
-     * @see MySQLTestApp::create()
-     */
-    MySQLTestApp(int argc, char* argv[]);
-
-    /**
      * @see Application::runImpl()
      */
     int runImpl() final;
 
 private:
+
+    /**
+     * @see MySQLTestApp::create()
+     */
+    MySQLTestApp(int argc, char* argv[]);
 
     /**
      * Run various test on transactions

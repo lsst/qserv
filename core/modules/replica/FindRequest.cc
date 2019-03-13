@@ -135,11 +135,11 @@ void FindRequest::startImpl(util::Lock const& lock) {
 
     buffer()->serialize(message);
 
-    send(lock);
+    _send(lock);
 }
 
 
-void FindRequest::wait(util::Lock const& lock) {
+void FindRequest::_wait(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
@@ -148,7 +148,7 @@ void FindRequest::wait(util::Lock const& lock) {
     timer().expires_from_now(boost::posix_time::seconds(timerIvalSec()));
     timer().async_wait(
         boost::bind(
-            &FindRequest::awaken,
+            &FindRequest::_awaken,
             shared_from_base<FindRequest>(),
             boost::asio::placeholders::error
         )
@@ -156,7 +156,7 @@ void FindRequest::wait(util::Lock const& lock) {
 }
 
 
-void FindRequest::awaken(boost::system::error_code const& ec) {
+void FindRequest::_awaken(boost::system::error_code const& ec) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
@@ -192,11 +192,11 @@ void FindRequest::awaken(boost::system::error_code const& ec) {
 
     buffer()->serialize(message);
 
-    send(lock);
+    _send(lock);
 }
 
 
-void FindRequest::send(util::Lock const& lock) {
+void FindRequest::_send(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
@@ -210,15 +210,15 @@ void FindRequest::send(util::Lock const& lock) {
                 bool success,
                 proto::ReplicationResponseFind const& response) {
 
-            self->analyze(success,
+            self->_analyze(success,
                           response);
         }
     );
 }
 
 
-void FindRequest::analyze(bool success,
-                          proto::ReplicationResponseFind const& message) {
+void FindRequest::_analyze(bool success,
+                           proto::ReplicationResponseFind const& message) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  success=" << (success ? "true" : "false"));
 
@@ -279,17 +279,17 @@ void FindRequest::analyze(bool success,
             break;
 
         case proto::ReplicationStatus::QUEUED:
-            if (keepTracking()) wait(lock);
+            if (keepTracking()) _wait(lock);
             else                finish(lock, SERVER_QUEUED);
             break;
 
         case proto::ReplicationStatus::IN_PROGRESS:
-            if (keepTracking()) wait(lock);
+            if (keepTracking()) _wait(lock);
             else                finish(lock, SERVER_IN_PROGRESS);
             break;
 
         case proto::ReplicationStatus::IS_CANCELLING:
-            if (keepTracking()) wait(lock);
+            if (keepTracking()) _wait(lock);
             else                finish(lock, SERVER_IS_CANCELLING);
             break;
 
@@ -314,9 +314,7 @@ void FindRequest::analyze(bool success,
 
 
 void FindRequest::notify(util::Lock const& lock) {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-
     notifyDefaultImpl<FindRequest>(lock, _onFinish);
 }
 

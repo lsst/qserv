@@ -181,7 +181,7 @@ void ReplicateJob::startImpl(util::Lock const& lock) {
         controller(),
         id(),
         [self] (FindAllJob::Ptr job) {
-            self->onPrecursorJobFinish();
+            self->_onPrecursorJobFinish();
         }
     );
     _findAllJob->start();
@@ -219,7 +219,7 @@ void ReplicateJob::notify(util::Lock const& lock) {
 }
 
 
-void ReplicateJob::onPrecursorJobFinish() {
+void ReplicateJob::_onPrecursorJobFinish() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
@@ -438,7 +438,7 @@ void ReplicateJob::onPrecursorJobFinish() {
                 controller(),
                 id(),
                 [self] (CreateReplicaJob::Ptr const& job) {
-                    self->onCreateJobFinish(job);
+                    self->_onCreateJobFinish(job);
                 },
                 options(lock)   // inherit from the current job
             );
@@ -473,7 +473,7 @@ void ReplicateJob::onPrecursorJobFinish() {
     size_t const numJobs = destinationWorkers.size() *
         controller()->serviceProvider()->config()->workerNumProcessingThreads();
 
-    size_t const numJobsLaunched = launchNextJobs(lock, numJobs);
+    size_t const numJobsLaunched = _launchNextJobs(lock, numJobs);
     if (0 != numJobsLaunched) {
         _numLaunched += numJobsLaunched;
     } else {
@@ -486,7 +486,7 @@ void ReplicateJob::onPrecursorJobFinish() {
 }
 
 
-void ReplicateJob::onCreateJobFinish(CreateReplicaJob::Ptr const& job) {
+void ReplicateJob::_onCreateJobFinish(CreateReplicaJob::Ptr const& job) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__
          << "  chunk="             << job->chunk()
@@ -547,7 +547,7 @@ void ReplicateJob::onCreateJobFinish(CreateReplicaJob::Ptr const& job) {
 
     // Try to submit one more job
 
-    size_t const numJobsLaunched = launchNextJobs(lock, 1);
+    size_t const numJobsLaunched = _launchNextJobs(lock, 1);
     if (numJobsLaunched != 0) {
         _numLaunched += numJobsLaunched;
     } else {
@@ -563,8 +563,8 @@ void ReplicateJob::onCreateJobFinish(CreateReplicaJob::Ptr const& job) {
 }
 
 
-size_t ReplicateJob::launchNextJobs(util::Lock const& lock,
-                                    size_t numJobs) {
+size_t ReplicateJob::_launchNextJobs(util::Lock const& lock,
+                                     size_t numJobs) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  numJobs=" << numJobs);
 

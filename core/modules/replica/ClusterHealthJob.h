@@ -96,7 +96,7 @@ private:
      * Recompute and update the summary state (data member 'good')
      * of the object.
      */
-    void updateSummaryState();
+    void _updateSummaryState();
 
 private:
 

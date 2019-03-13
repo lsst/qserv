@@ -124,11 +124,11 @@ void EchoRequest::startImpl(util::Lock const& lock) {
 
     buffer()->serialize(message);
 
-    send(lock);
+    _send(lock);
 }
 
 
-void EchoRequest::wait(util::Lock const& lock) {
+void EchoRequest::_wait(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
@@ -137,7 +137,7 @@ void EchoRequest::wait(util::Lock const& lock) {
     timer().expires_from_now(boost::posix_time::seconds(timerIvalSec()));
     timer().async_wait(
         boost::bind(
-            &EchoRequest::awaken,
+            &EchoRequest::_awaken,
             shared_from_base<EchoRequest>(),
             boost::asio::placeholders::error
         )
@@ -145,7 +145,7 @@ void EchoRequest::wait(util::Lock const& lock) {
 }
 
 
-void EchoRequest::awaken(boost::system::error_code const& ec) {
+void EchoRequest::_awaken(boost::system::error_code const& ec) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
@@ -181,11 +181,11 @@ void EchoRequest::awaken(boost::system::error_code const& ec) {
 
     buffer()->serialize(message);
 
-    send(lock);
+    _send(lock);
 }
 
 
-void EchoRequest::send(util::Lock const& lock) {
+void EchoRequest::_send(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
@@ -199,21 +199,21 @@ void EchoRequest::send(util::Lock const& lock) {
                 bool success,
                 proto::ReplicationResponseEcho const& response) {
 
-            self->analyze(success,
-                          response);
+            self->_analyze(success,
+                           response);
         }
     );
 }
 
 
-void EchoRequest::analyze(bool success,
-                          proto::ReplicationResponseEcho const& message) {
+void EchoRequest::_analyze(bool success,
+                           proto::ReplicationResponseEcho const& message) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  success=" << (success ? "true" : "false"));
 
     // This method is called on behalf of an asynchronous callback fired
-    // upon a completion of the request within method send() - the only
-    // client of analyze(). So, we should take care of proper locking and watch
+    // upon a completion of the request within method _send() - the only
+    // client of _analyze(). So, we should take care of proper locking and watch
     // for possible state transition which might occur while the async I/O was
     // still in a progress.
 
@@ -266,17 +266,17 @@ void EchoRequest::analyze(bool success,
             break;
 
         case proto::ReplicationStatus::QUEUED:
-            if (keepTracking()) wait(lock);
+            if (keepTracking()) _wait(lock);
             else                finish(lock, SERVER_QUEUED);
             break;
 
         case proto::ReplicationStatus::IN_PROGRESS:
-            if (keepTracking()) wait(lock);
+            if (keepTracking()) _wait(lock);
             else                finish(lock, SERVER_IN_PROGRESS);
             break;
 
         case proto::ReplicationStatus::IS_CANCELLING:
-            if (keepTracking()) wait(lock);
+            if (keepTracking()) _wait(lock);
             else                finish(lock, SERVER_IS_CANCELLING);
             break;
 

@@ -162,7 +162,7 @@ MasterControllerHttpApp::MasterControllerHttpApp(int argc, char* argv[])
 
 int MasterControllerHttpApp::runImpl() {
 
-    LOGS(_log, LOG_LVL_INFO, name() << parser().serializeArguments());
+    LOGS(_log, LOG_LVL_INFO, _name() << parser().serializeArguments());
 
     _controller = Controller::create(serviceProvider());
 
@@ -338,13 +338,13 @@ void MasterControllerHttpApp::_logEvent(ControllerEvent& event) const {
 
     event.controllerId = _controller->identity().id;
     event.timeStamp    = PerformanceUtils::now();
-    event.task         = name();
+    event.task         = _name();
 
     // For now ignore exceptions when logging events. Just report errors.
     try {
         serviceProvider()->databaseServices()->logControllerEvent(event);
     } catch (exception const& ex) {
-       LOGS(_log, LOG_LVL_ERROR, name() << "  " << "failed to log event in " << __func__);
+       LOGS(_log, LOG_LVL_ERROR, _name() << "  " << "failed to log event in " << __func__);
     }
 }
 

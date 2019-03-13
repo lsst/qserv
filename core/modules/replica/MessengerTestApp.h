@@ -64,14 +64,16 @@ public:
 protected:
 
     /**
-     * @see MessengerTestApp::create()
-     */
-    MessengerTestApp(int argc, char* argv[]);
-
-    /**
      * @see Application::runImpl()
      */
     int runImpl() final;
+
+private:
+
+    /**
+     * @see MessengerTestApp::create()
+     */
+    MessengerTestApp(int argc, char* argv[]);
 
 private:
 

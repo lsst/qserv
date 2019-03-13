@@ -69,14 +69,16 @@ public:
 protected:
 
     /**
-     * @see AdminApp::create()
-     */
-    AdminApp(int argc, char* argv[]);
-
-    /**
      * @see Application::runImpl()
      */
     int runImpl() final;
+
+private:
+
+    /**
+     * @see AdminApp::create()
+     */
+    AdminApp(int argc, char* argv[]);
 
 private:
 

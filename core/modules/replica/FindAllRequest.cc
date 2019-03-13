@@ -124,11 +124,11 @@ void FindAllRequest::startImpl(util::Lock const& lock) {
 
     buffer()->serialize(message);
 
-    send(lock);
+    _send(lock);
 }
 
 
-void FindAllRequest::wait(util::Lock const& lock) {
+void FindAllRequest::_wait(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
@@ -137,7 +137,7 @@ void FindAllRequest::wait(util::Lock const& lock) {
     timer().expires_from_now(boost::posix_time::seconds(timerIvalSec()));
     timer().async_wait(
         boost::bind(
-            &FindAllRequest::awaken,
+            &FindAllRequest::_awaken,
             shared_from_base<FindAllRequest>(),
             boost::asio::placeholders::error
         )
@@ -145,7 +145,7 @@ void FindAllRequest::wait(util::Lock const& lock) {
 }
 
 
-void FindAllRequest::awaken(boost::system::error_code const& ec) {
+void FindAllRequest::_awaken(boost::system::error_code const& ec) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
@@ -183,11 +183,11 @@ void FindAllRequest::awaken(boost::system::error_code const& ec) {
 
     // Send the message
 
-    send(lock);
+    _send(lock);
 }
 
 
-void FindAllRequest::send(util::Lock const& lock) {
+void FindAllRequest::_send(util::Lock const& lock) {
 
     auto self = shared_from_base<FindAllRequest>();
 
@@ -199,21 +199,21 @@ void FindAllRequest::send(util::Lock const& lock) {
                 bool success,
                 proto::ReplicationResponseFindAll const& response) {
 
-            self->analyze(success,
-                          response);
+            self->_analyze(success,
+                           response);
         }
     );
 }
 
 
-void FindAllRequest::analyze(bool success,
-                             proto::ReplicationResponseFindAll const& message) {
+void FindAllRequest::_analyze(bool success,
+                              proto::ReplicationResponseFindAll const& message) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  success=" << (success ? "true" : "false"));
 
     // This method is called on behalf of an asynchronous callback fired
-    // upon a completion of the request within method send() - the only
-    // client of analyze(). So, we should take care of proper locking and watch
+    // upon a completion of the request within method _send() - the only
+    // client of _analyze(). So, we should take care of proper locking and watch
     // for possible state transition which might occur while the async I/O was
     // still in a progress.
 
@@ -274,17 +274,17 @@ void FindAllRequest::analyze(bool success,
             break;
 
         case proto::ReplicationStatus::QUEUED:
-            if (keepTracking()) wait(lock);
+            if (keepTracking()) _wait(lock);
             else                finish(lock, SERVER_QUEUED);
             break;
 
         case proto::ReplicationStatus::IN_PROGRESS:
-            if (keepTracking()) wait(lock);
+            if (keepTracking()) _wait(lock);
             else                finish(lock, SERVER_IN_PROGRESS);
             break;
 
         case proto::ReplicationStatus::IS_CANCELLING:
-            if (keepTracking()) wait(lock);
+            if (keepTracking()) _wait(lock);
             else                finish(lock, SERVER_IS_CANCELLING);
             break;
 

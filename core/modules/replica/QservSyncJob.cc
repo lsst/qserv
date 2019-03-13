@@ -211,7 +211,7 @@ void QservSyncJob::startImpl(util::Lock const& lock) {
                 force(),
                 id(),   /* jobId */
                 [self] (SetReplicasQservMgtRequest::Ptr const& request) {
-                    self->onRequestFinish(request);
+                    self->_onRequestFinish(request);
                 },
                 _requestExpirationIvalSec
             )
@@ -247,7 +247,7 @@ void QservSyncJob::notify(util::Lock const& lock) {
 }
 
 
-void QservSyncJob::onRequestFinish(SetReplicasQservMgtRequest::Ptr const& request) {
+void QservSyncJob::_onRequestFinish(SetReplicasQservMgtRequest::Ptr const& request) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__
          << "  worker=" << request->worker()

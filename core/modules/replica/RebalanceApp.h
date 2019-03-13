@@ -64,14 +64,16 @@ public:
 protected:
 
     /**
-     * @see RebalanceApp::create()
-     */
-    RebalanceApp(int argc, char* argv[]);
-
-    /**
      * @see Application::runImpl()
      */
     int runImpl() final;
+
+private:
+
+    /**
+     * @see RebalanceApp::create()
+     */
+    RebalanceApp(int argc, char* argv[]);
 
 private:
 

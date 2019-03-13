@@ -273,32 +273,9 @@ public:
                 messenger));
     }
 
-private:
+protected:
 
     /**
-     * Construct the request
-     */
-    StatusRequest(ServiceProvider::Ptr const& serviceProvider,
-                  boost::asio::io_service& io_service,
-                  char const* requestName,
-                  std::string const& worker,
-                  std::string const& targetRequestId,
-                  proto::ReplicationReplicaRequestType replicaRequestType,
-                  CallbackType const& onFinish,
-                  bool keepTracking,
-                  std::shared_ptr<Messenger> const& messenger)
-        :   StatusRequestBase(serviceProvider,
-                              io_service,
-                              requestName,
-                              worker,
-                              targetRequestId,
-                              replicaRequestType,
-                              keepTracking,
-                              messenger),
-            _onFinish(onFinish) {
-    }
-
-     /**
      * @see Request::notify()
      */
     void notify(util::Lock const& lock) final {
@@ -327,7 +304,7 @@ private:
                     bool success,
                     typename POLICY::ResponseMessageType const& response) {
 
-                if (success) self->analyze(true, self->parseResponse(response));
+                if (success) self->analyze(true, self->_parseResponse(response));
                 else         self->analyze(false);
             }
         );
@@ -345,6 +322,31 @@ private:
         POLICY::saveReplicaInfo(self);
     }
 
+private:
+
+    /**
+     * Construct the request
+     */
+    StatusRequest(ServiceProvider::Ptr const& serviceProvider,
+                  boost::asio::io_service& io_service,
+                  char const* requestName,
+                  std::string const& worker,
+                  std::string const& targetRequestId,
+                  proto::ReplicationReplicaRequestType replicaRequestType,
+                  CallbackType const& onFinish,
+                  bool keepTracking,
+                  std::shared_ptr<Messenger> const& messenger)
+        :   StatusRequestBase(serviceProvider,
+                              io_service,
+                              requestName,
+                              worker,
+                              targetRequestId,
+                              replicaRequestType,
+                              keepTracking,
+                              messenger),
+            _onFinish(onFinish) {
+    }
+
     /**
      * Parse request-specific reply
      *
@@ -354,7 +356,7 @@ private:
      * @return
      *    status of the operation reported by a server
      */
-    proto::ReplicationStatus parseResponse(
+    proto::ReplicationStatus _parseResponse(
             typename POLICY::ResponseMessageType const& message) {
 
         // This lock must be acquired because the method is going to modify
@@ -362,7 +364,7 @@ private:
         // about the global state of the request (wether it's already finished
         // or not)
 
-        util::Lock lock(_mtx, context() + "parseResponse");
+        util::Lock lock(_mtx, context() + __func__);
 
         // Extract target request-specific parameters from the response if available
 

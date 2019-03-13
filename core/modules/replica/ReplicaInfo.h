@@ -253,7 +253,7 @@ public:
             _worker   == other._worker and
             _database == other._database and
             _chunk    == other._chunk and
-            equalFileCollections(other);
+            _equalFileCollections(other);
     }
     
     /**
@@ -274,7 +274,7 @@ private:
      * @param other - object whose file collection needs to be compared with the current one's
      * @return 'true' of both collections are semantically equivalent
      */
-    bool equalFileCollections(ReplicaInfo const& other) const;    
+    bool _equalFileCollections(ReplicaInfo const& other) const;    
 
 private:
 

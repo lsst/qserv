@@ -66,14 +66,16 @@ public:
 protected:
 
     /**
-     * @see PurgeApp::create()
-     */
-    PurgeApp(int argc, char* argv[]);
-
-    /**
      * @see Application::runImpl()
      */
     int runImpl() final;
+
+private:
+
+    /**
+     * @see PurgeApp::create()
+     */
+    PurgeApp(int argc, char* argv[]);
 
 private:
 

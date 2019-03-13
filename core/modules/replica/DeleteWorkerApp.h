@@ -65,14 +65,16 @@ public:
 protected:
 
     /**
-     * @see DeleteWorkerApp::create()
-     */
-    DeleteWorkerApp(int argc, char* argv[]);
-
-    /**
      * @see Application::runImpl()
      */
     int runImpl() final;
+
+private:
+
+    /**
+     * @see DeleteWorkerApp::create()
+     */
+    DeleteWorkerApp(int argc, char* argv[]);
 
 private:
 

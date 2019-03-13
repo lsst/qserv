@@ -150,6 +150,23 @@ public:
 protected:
 
     /**
+      * @see Job::startImpl()
+      */
+    void startImpl(util::Lock const& lock) final;
+
+    /**
+      * @see Job::cancelImpl()
+      */
+    void cancelImpl(util::Lock const& lock) final;
+
+    /**
+      * @see Job::notify()
+      */
+    void notify(util::Lock const& lock) final;
+
+private:
+
+    /**
      * Construct the job with the pointer to the services provider.
      *
      * @see DeleteReplicaJob::create()
@@ -163,26 +180,11 @@ protected:
                      Job::Options const& options);
 
     /**
-      * @see Job::startImpl()
-      */
-    void startImpl(util::Lock const& lock) final;
-
-    /**
-      * @see Job::startImpl()
-      */
-    void cancelImpl(util::Lock const& lock) final;
-
-    /**
-      * @see Job::notify()
-      */
-    void notify(util::Lock const& lock) final;
-
-    /**
      * Initiate a process of removing the replica from the source worker
      *
      * @param lock - lock for thread safety
      */
-    void beginDeleteReplica(util::Lock const& lock);
+    void _beginDeleteReplica(util::Lock const& lock);
 
     /**
      * The callback function to be invoked on a completion of each replica
@@ -190,7 +192,7 @@ protected:
      *
      * @param request - a pointer to a request
      */
-    void onRequestFinish(DeleteRequest::Ptr const& request);
+    void _onRequestFinish(DeleteRequest::Ptr const& request);
 
 protected:
 

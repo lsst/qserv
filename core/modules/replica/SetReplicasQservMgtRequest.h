@@ -110,7 +110,24 @@ public:
     /**
      * @see QservMgtRequest::extendedPersistentState()
      */
-    std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
+    std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
+
+protected:
+
+    /**
+      * @see QservMgtRequest::startImpl
+      */
+    void startImpl(util::Lock const& lock) final;
+
+    /**
+      * @see QservMgtRequest::finishImpl
+      */
+    void finishImpl(util::Lock const& lock) final;
+
+    /**
+      * @see QservMgtRequest::notify
+      */
+    void notify(util::Lock const& lock) final;
 
 private:
 
@@ -148,23 +165,8 @@ private:
      * @param collection
      *   input collection of replicas
      */
-     void setReplicas(util::Lock const& lock,
-                      wpublish::SetChunkListQservRequest::ChunkCollection const& collection);
-
-    /**
-      * @see QservMgtRequest::startImpl
-      */
-    void startImpl(util::Lock const& lock) final;
-
-    /**
-      * @see QservMgtRequest::finishImpl
-      */
-    void finishImpl(util::Lock const& lock) final;
-
-    /**
-      * @see QservMgtRequest::notify
-      */
-    void notify(util::Lock const& lock) final;
+     void _setReplicas(util::Lock const& lock,
+                       wpublish::SetChunkListQservRequest::ChunkCollection const& collection);
 
 private:
 

@@ -153,6 +153,23 @@ public:
 protected:
 
     /**
+      * @see Job::startImpl()
+      */
+    void startImpl(util::Lock const& lock) final;
+
+    /**
+      * @see Job::cancelImpl()
+      */
+    void cancelImpl(util::Lock const& lock) final;
+
+    /**
+      * @see Job::notify()
+      */
+    void notify(util::Lock const& lock) final;
+
+private:
+
+    /**
      * Construct the job with the pointer to the services provider.
      *
      * @see QservGetReplicasJob::create()
@@ -166,26 +183,11 @@ protected:
                         Job::Options const& options);
 
     /**
-      * @see Job::startImpl()
-      */
-    void startImpl(util::Lock const& lock) final;
-
-    /**
-      * @see Job::startImpl()
-      */
-    void cancelImpl(util::Lock const& lock) final;
-
-    /**
-      * @see Job::notify()
-      */
-    void notify(util::Lock const& lock) final;
-
-    /**
      * The callback function to be invoked on a completion of each request.
      *
      * @param request - a pointer to a request
      */
-    void onRequestFinish(GetReplicasQservMgtRequest::Ptr const& request);
+    void _onRequestFinish(GetReplicasQservMgtRequest::Ptr const& request);
 
 protected:
 

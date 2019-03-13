@@ -83,7 +83,7 @@ ConfigurationStore::ConfigurationStore(util::ConfigStore const& configStore)
     :   Configuration(),
         _log(LOG_GET("lsst.qserv.replica.ConfigurationStore")) {
 
-    loadConfiguration(configStore);
+    _loadConfiguration(configStore);
 }
 
 
@@ -448,7 +448,7 @@ DatabaseInfo ConfigurationStore::deleteTable(string const& database,
 }
 
 
-void ConfigurationStore::loadConfiguration(util::ConfigStore const& configStore) {
+void ConfigurationStore::_loadConfiguration(util::ConfigStore const& configStore) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 

@@ -112,6 +112,28 @@ public:
                       bool keepTracking,
                       std::shared_ptr<Messenger> const& messenger);
 
+    /**
+     * @see Request::extendedPersistentState()
+     */
+    std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
+
+    /**
+      * @see Request::startImpl()
+      */
+    void startImpl(util::Lock const& lock) final;
+
+protected:
+
+    /**
+     * @see Request::notify()
+     */
+    void notify(util::Lock const& lock) final;
+
+    /**
+     * @see Request::savePersistentState()
+     */
+    void savePersistentState(util::Lock const& lock) final;
+
 private:
 
     /**
@@ -129,31 +151,29 @@ private:
                 std::shared_ptr<Messenger> const& messenger);
 
     /**
-      * @see Request::startImpl()
-      */
-    void startImpl(util::Lock const& lock) final;
-
-    /**
      * Start the timer before attempting the previously failed
      * or successful (if a status check is needed) step.
      *
-     * @param lock - a lock on a mutex must be acquired before calling this method
+     * @param lock
+     *   a lock on a mutex must be acquired before calling this method
      */
-    void wait(util::Lock const& lock);
+    void _wait(util::Lock const& lock);
 
     /**
      * Callback handler for the asynchronous operation
      *
-     * @param ec - error code to be checked
+     * @param ec
+     *   error code to be checked
      */
-    void awaken(boost::system::error_code const& ec);
+    void _awaken(boost::system::error_code const& ec);
 
     /**
      * Send the serialized content of the buffer to a worker
      *
-     * @param lock - a lock on a mutex must be acquired before calling this method
+     * @param lock
+     *   a lock on a mutex must be acquired before calling this method
      */
-    void send(util::Lock const& lock);
+    void _send(util::Lock const& lock);
 
     /**
      * Process the completion of the requested operation
@@ -161,23 +181,8 @@ private:
      * @param success - flag indicating if the response succeeded
      * @param message - response from a worker (if success)
      */
-    void analyze(bool success,
-                 lsst::qserv::proto::ReplicationResponseFind const& message);
-
-    /**
-     * @see Request::notify()
-     */
-    void notify(util::Lock const& lock) final;
-
-    /**
-     * @see Request::savePersistentState()
-     */
-    void savePersistentState(util::Lock const& lock) final;
-
-    /**
-     * @see Request::extendedPersistentState()
-     */
-    std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
+    void _analyze(bool success,
+                  lsst::qserv::proto::ReplicationResponseFind const& message);
 
 private:
 

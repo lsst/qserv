@@ -58,7 +58,7 @@ FileClient::Ptr FileClient::instance(ServiceProvider::Ptr const& serviceProvider
                            fileName,
                            readContent));
 
-        if (ptr->openImpl()) return ptr;
+        if (ptr->_openImpl()) return ptr;
 
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, "FileClient::" << __func__
@@ -105,7 +105,7 @@ string const& FileClient::file() const {
 }
 
 
-bool FileClient::openImpl() {
+bool FileClient::_openImpl() {
 
     string const context = "FileClient::" + string(__func__) + "  ";
 

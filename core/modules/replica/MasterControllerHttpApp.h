@@ -78,19 +78,19 @@ public:
 protected:
 
     /**
-     * @see MasterControllerHttpApp::create()
-     */
-    MasterControllerHttpApp(int argc, char* argv[]);
-
-    /**
      * @see Application::runImpl()
      */
     int runImpl() final;
 
 private:
 
+    /**
+     * @see MasterControllerHttpApp::create()
+     */
+    MasterControllerHttpApp(int argc, char* argv[]);
+
     /// @return the name of the application for the purpose of logging
-    std::string name() const { return "MASTER CONTROLLER"; };
+    std::string _name() const { return "MASTER CONTROLLER"; };
 
     /**
      * Evict the specified worker from the cluster

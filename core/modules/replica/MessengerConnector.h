@@ -267,7 +267,7 @@ public:
               std::shared_ptr<ProtocolBuffer> const& requestBufferPtr,
               typename MessageWrapper<RESPONSE_TYPE>::CallbackType const& onFinish) {
 
-        sendImpl(
+        _sendImpl(
             std::make_shared<MessageWrapper<RESPONSE_TYPE>>(
                 id,
                 requestBufferPtr,
@@ -313,7 +313,7 @@ private:
      *
      * @param ptr  - a pointer to the request wrapper object
      */
-    void sendImpl(MessageWrapperBase::Ptr const& ptr);
+    void _sendImpl(MessageWrapperBase::Ptr const& ptr);
 
     /// State transitions for the connector object
     enum State {
@@ -323,7 +323,7 @@ private:
     };
 
     /// @return the string representation of the connector's state
-    static std::string state2string(State state);
+    static std::string _state2string(State state);
 
     /**
      * Restart the whole operation from scratch.
@@ -336,7 +336,7 @@ private:
      *
      * @param lock - a lock on a mutex must be acquired before calling this method
      */
-    void restart(util::Lock const& lock);
+    void _restart(util::Lock const& lock);
 
     /**
      * Start resolving the destination worker host & port
@@ -344,7 +344,7 @@ private:
      * @param lock - a lock on a mutex must be acquired before calling this method
      *
      */
-    void resolve(util::Lock const& lock);
+    void _resolve(util::Lock const& lock);
 
     /**
      * Callback handler for the asynchronous operation
@@ -352,16 +352,16 @@ private:
      * @param ec   - error code to be checked
      * @param iter - the host resolver iterator
      */
-    void resolved(boost::system::error_code const& ec,
-                  boost::asio::ip::tcp::resolver::iterator iter);
+    void _resolved(boost::system::error_code const& ec,
+                   boost::asio::ip::tcp::resolver::iterator iter);
 
     /**
      * Start resolving the destination worker host & port
      *
      * @param lock - a lock on a mutex must be acquired before calling this method
      */
-    void connect(util::Lock const& lock,
-                 boost::asio::ip::tcp::resolver::iterator iter);
+    void _connect(util::Lock const& lock,
+                  boost::asio::ip::tcp::resolver::iterator iter);
 
     /**
      * Callback handler for the asynchronous operation upon its
@@ -371,22 +371,22 @@ private:
      * @param ec   - error code to be checked
      * @param iter - the host resolver iterator
      */
-    void connected(boost::system::error_code const& ec,
-                   boost::asio::ip::tcp::resolver::iterator iter);
+    void _connected(boost::system::error_code const& ec,
+                    boost::asio::ip::tcp::resolver::iterator iter);
 
     /**
      * Start a timeout before attempting to restart the connection
      * 
      * @param lock - a lock on a mutex must be acquired before calling this method
      */
-    void waitBeforeRestart(util::Lock const& lock);
+    void _waitBeforeRestart(util::Lock const& lock);
 
     /**
      * Callback handler fired for restarting the connection
      *
      * @param ec - error code to be checked
      */
-    void awakenForRestart(boost::system::error_code const& ec);
+    void _awakenForRestart(boost::system::error_code const& ec);
 
     /**
      * Lookup for the next available request and begin sending it
@@ -394,7 +394,7 @@ private:
      * 
      * @param lock - a lock on a mutex must be acquired before calling this method
      */
-    void sendRequest(util::Lock const& lock);
+    void _sendRequest(util::Lock const& lock);
 
     /**
      * Callback handler fired upon a completion of the request sending
@@ -402,15 +402,15 @@ private:
      * @param ec                 - error code to be checked
      * @param bytes_transferred  - the number of bytes sent
      */
-    void requestSent(boost::system::error_code const& ec,
-                     size_t bytes_transferred);
+    void _requestSent(boost::system::error_code const& ec,
+                      size_t bytes_transferred);
 
     /**
      * Begin receiving a response
      * 
      * @param lock - a lock on a mutex must be acquired before calling this method
      */
-    void receiveResponse(util::Lock const& lock);
+    void _receiveResponse(util::Lock const& lock);
 
     /**
      * Callback handler fired upon a completion of the response receiving
@@ -418,8 +418,8 @@ private:
      * @param ec                 - error code to be checked
      * @param bytes_transferred  - the number of bytes sent
      */
-    void responseReceived(boost::system::error_code const& ec,
-                          size_t bytes_transferred);
+    void _responseReceived(boost::system::error_code const& ec,
+                           size_t bytes_transferred);
 
     /**
      * Synchronously read a protocol frame which carries the length
@@ -432,9 +432,9 @@ private:
      *
      * @return the completion code of the operation
      */
-    boost::system::error_code syncReadFrame(util::Lock const& lock,
-                                            ProtocolBuffer& buf,
-                                            size_t& bytes);
+    boost::system::error_code _syncReadFrame(util::Lock const& lock,
+                                             ProtocolBuffer& buf,
+                                             size_t& bytes);
 
    /**
      * Synchronously read a response header of a known size. Then parse it
@@ -452,10 +452,10 @@ private:
      *
      * @return the completion code of the operation
      */
-    boost::system::error_code syncReadVerifyHeader(util::Lock const& lock,
-                                                   ProtocolBuffer& buf,
-                                                   size_t bytes,
-                                                   std::string const& id);
+    boost::system::error_code _syncReadVerifyHeader(util::Lock const& lock,
+                                                    ProtocolBuffer& buf,
+                                                    size_t bytes,
+                                                    std::string const& id);
 
     /**
      * Synchronously read a message of a known size into the specified buffer.
@@ -469,9 +469,9 @@ private:
      *
      * @return the completion code of the operation
      */
-    boost::system::error_code syncReadMessageImpl(util::Lock const& lock,
-                                                  ProtocolBuffer& buf,
-                                                  size_t bytes);
+    boost::system::error_code _syncReadMessageImpl(util::Lock const& lock,
+                                                   ProtocolBuffer& buf,
+                                                   size_t bytes);
 
     /**
      * Return 'true' if the operation was aborted.
@@ -486,10 +486,10 @@ private:
      * 
      * @param ec - error code to be checked
      */
-    bool isAborted(boost::system::error_code const& ec) const;
+    bool _isAborted(boost::system::error_code const& ec) const;
 
     /// @return the worker-specific context string
-    std::string context() const;
+    std::string _context() const;
 
     /**
      * Find a request matching the specified identifier
@@ -499,8 +499,8 @@ private:
      *
      * @return pointer to the request if found, or an empty pointer otherwise
      */
-    MessageWrapperBase::Ptr find(util::Lock const& lock,
-                                 std::string const& id) const;
+    MessageWrapperBase::Ptr _find(util::Lock const& lock,
+                                  std::string const& id) const;
 
 private:
 

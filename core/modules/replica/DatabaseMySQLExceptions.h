@@ -55,8 +55,8 @@ namespace mysql {
  * to the implementation of this API.
  */
 class Error : public std::runtime_error {
-
 public:
+
     /**
      * The normal constructor
      *
@@ -72,8 +72,8 @@ public:
  * Thrown after failing to connect to a server
  */
 class ConnectError : public Error {
-
 public:
+
     /**
      * The normal constructor
      *
@@ -89,8 +89,8 @@ public:
  * within the specified timeout.
  */
 class ConnectTimeout : public Error {
-
 public:
+
     /**
      * The normal constructor
      *
@@ -116,8 +116,8 @@ private:
  * to a server.
  */
 class MaxReconnectsExceeded : public Error {
-
 public:
+
     /**
      * The normal constructor
      *
@@ -145,8 +145,8 @@ private:
  * cleaned up.
  */
 class Reconnected : public Error {
-
 public:
+
     /**
      * The normal constructor
      *
@@ -163,8 +163,8 @@ public:
  * rows with duplicate keys.
  */
 class DuplicateKeyError : public Error {
-
 public:
+
     /**
      * The normal constructor
      *
@@ -181,8 +181,8 @@ public:
  * to interpret the contents of the result set.
  */
 class InvalidTypeError : public Error {
-
 public:
+
     /**
      * The normal constructor
      *
@@ -199,8 +199,8 @@ public:
  * by some methods when a query is supposed to return at least one row.
  */
 class EmptyResultSetError : public Error {
-
 public:
+
     /**
      * The normal constructor
      *

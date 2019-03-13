@@ -67,14 +67,16 @@ public:
 protected:
 
     /**
-     * @see ControllerApp::create()
-     */
-    ControllerApp(int argc, char* argv[]);
-
-    /**
      * @see Application::runImpl()
      */
     int runImpl() final;
+
+private:
+
+    /**
+     * @see ControllerApp::create()
+     */
+    ControllerApp(int argc, char* argv[]);
 
 private:
 

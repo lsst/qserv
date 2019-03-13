@@ -57,8 +57,7 @@ class Parser;
  * Class ParserError represents exceptions throw by the command-line parser
  * during processing arguments as per user requested syntax description.
  */
-class ParserError
-    :   public util::Issue {
+class ParserError : public util::Issue {
 public:
     ParserError(util::Issue::Context const& ctx,
                 std::string const& message);
@@ -168,8 +167,7 @@ std::ostream& operator<<(std::ostream& os, ArgumentParser const& arg);
  * The class representing (mandatory or optional) parameters
  */
 template <typename T>
-class ParameterParser
-    :   public ArgumentParser {
+class ParameterParser : public ArgumentParser {
 
 public:
 
@@ -266,8 +264,7 @@ private:
  * The class representing named options
  */
 template <typename T>
-class OptionParser
-    :   public ArgumentParser {
+class OptionParser : public ArgumentParser {
 
 public:
 
@@ -350,8 +347,7 @@ private:
 /**
  * The class representing named flags
  */
-class FlagParser
-    :   public ArgumentParser {
+class FlagParser : public ArgumentParser {
 
 public:
 

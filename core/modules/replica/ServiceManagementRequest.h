@@ -136,6 +136,15 @@ public:
                 messenger));
     }
 
+protected:
+
+    /**
+     * @see Request::notify()
+     */
+    void notify(util::Lock const& lock) final {
+        notifyDefaultImpl<ServiceManagementRequest<POLICY>>(lock, _onFinish);
+    }
+
 private:
 
     /**
@@ -157,13 +166,6 @@ private:
                                          requestType,
                                          messenger),
             _onFinish(onFinish) {
-    }
-
-    /**
-     * @see Request::notify()
-     */
-    void notify(util::Lock const& lock) final {
-        notifyDefaultImpl<ServiceManagementRequest<POLICY>>(lock, _onFinish);
     }
 
 private:

@@ -171,9 +171,9 @@ void Job::start() {
 
     util::Lock lock(_mtx, context() + __func__);
 
-    assertState(lock,
-                State::CREATED,
-                context() + __func__);
+    _assertState(lock,
+                 State::CREATED,
+                 context() + __func__);
 
     // IMPORTANT: update these before proceeding to the implementation
     // because the later may create children jobs whose performance
@@ -185,8 +185,8 @@ void Job::start() {
 
     // Start timers if configured
 
-    startHeartbeatTimer(lock);
-    startExpirationTimer(lock);
+    _startHeartbeatTimer(lock);
+    _startExpirationTimer(lock);
 
     // Delegate the rest to the specific implementation
 
@@ -201,9 +201,9 @@ void Job::start() {
 
     // Otherwise, the only other state which is allowed here is this
 
-    assertState(lock,
-                State::IN_PROGRESS,
-                context() + __func__);
+    _assertState(lock,
+                 State::IN_PROGRESS,
+                 context() + __func__);
 }
 
 
@@ -340,9 +340,9 @@ void Job::qservRemoveReplica(util::Lock const& lock,
 }
 
 
-void Job::assertState(util::Lock const& lock,
-                      State desiredState,
-                      string const& context) const {
+void Job::_assertState(util::Lock const& lock,
+                       State desiredState,
+                       string const& context) const {
     if (desiredState != state()) {
         throw logic_error(
                 context + ": wrong state " + state2string(state()) + " instead of " +
@@ -372,7 +372,7 @@ void Job::setState(util::Lock const& lock,
 }
 
 
-void Job::startHeartbeatTimer(util::Lock const& lock) {
+void Job::_startHeartbeatTimer(util::Lock const& lock) {
 
     if (_heartbeatTimerIvalSec) {
 
@@ -388,7 +388,7 @@ void Job::startHeartbeatTimer(util::Lock const& lock) {
 
         _heartbeatTimerPtr->async_wait(
             boost::bind(
-                &Job::heartbeat,
+                &Job::_heartbeat,
                 shared_from_this(),
                 boost::asio::placeholders::error
             )
@@ -397,7 +397,7 @@ void Job::startHeartbeatTimer(util::Lock const& lock) {
 }
 
 
-void Job::heartbeat(boost::system::error_code const& ec) {
+void Job::_heartbeat(boost::system::error_code const& ec) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  "
          << (ec == boost::asio::error::operation_aborted ? "** ABORTED **" : ""));
@@ -423,11 +423,11 @@ void Job::heartbeat(boost::system::error_code const& ec) {
 
     // Start another interval
 
-    startHeartbeatTimer(lock);
+    _startHeartbeatTimer(lock);
 }
 
 
-void Job::startExpirationTimer(util::Lock const& lock) {
+void Job::_startExpirationTimer(util::Lock const& lock) {
 
     if (0 != _expirationIvalSec) {
 
@@ -443,7 +443,7 @@ void Job::startExpirationTimer(util::Lock const& lock) {
 
         _expirationTimerPtr->async_wait(
             boost::bind(
-                &Job::expired,
+                &Job::_expired,
                 shared_from_this(),
                 boost::asio::placeholders::error
             )
@@ -452,7 +452,7 @@ void Job::startExpirationTimer(util::Lock const& lock) {
 }
 
 
-void Job::expired(boost::system::error_code const& ec) {
+void Job::_expired(boost::system::error_code const& ec) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  "
          << (ec == boost::asio::error::operation_aborted ? "** ABORTED **" : ""));

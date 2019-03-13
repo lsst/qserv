@@ -61,18 +61,18 @@ ClusterHealth::ClusterHealth(vector<string> const& workers)
 void ClusterHealth::updateReplicationState(string const& worker,
                                            bool state) {
     _replication[worker] = state;
-    updateSummaryState();
+    _updateSummaryState();
 }
 
 
 void ClusterHealth::updateQservState(string const& worker,
                                      bool state) {
     _qserv[worker] = state;
-    updateSummaryState();
+    _updateSummaryState();
 }
 
 
-void ClusterHealth::updateSummaryState() {
+void ClusterHealth::_updateSummaryState() {
     for (auto&& entry: _replication) {
         if (not entry.second) {
             _good = false;

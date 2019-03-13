@@ -185,7 +185,7 @@ void RebalanceJob::startImpl(util::Lock const& lock) {
         controller(),
         id(),
         [self] (FindAllJob::Ptr job) {
-            self->onPrecursorJobFinish();
+            self->_onPrecursorJobFinish();
         }
     );
     _findAllJob->start();
@@ -223,7 +223,7 @@ void RebalanceJob::notify(util::Lock const& lock) {
 }
 
 
-void RebalanceJob::onPrecursorJobFinish() {
+void RebalanceJob::_onPrecursorJobFinish() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
@@ -548,7 +548,7 @@ void RebalanceJob::onPrecursorJobFinish() {
                 controller(),
                 id(),
                 [self](MoveReplicaJob::Ptr job) {
-                    self->onJobFinish(job);
+                    self->_onJobFinish(job);
                 }
             );
             _jobs.push_back(job);
@@ -575,7 +575,7 @@ void RebalanceJob::onPrecursorJobFinish() {
     size_t const numJobs = uniqueDestinationWorkers.size() *
         controller()->serviceProvider()->config()->workerNumProcessingThreads();
 
-    size_t const numJobsLaunched = launchNextJobs(lock, numJobs);
+    size_t const numJobsLaunched = _launchNextJobs(lock, numJobs);
     if (0 != numJobsLaunched) {
         _numLaunched += numJobsLaunched;
     } else {
@@ -588,7 +588,7 @@ void RebalanceJob::onPrecursorJobFinish() {
 }
 
 
-void RebalanceJob::onJobFinish(MoveReplicaJob::Ptr const& job) {
+void RebalanceJob::_onJobFinish(MoveReplicaJob::Ptr const& job) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__
          << "  databaseFamily="    << databaseFamily()
@@ -649,7 +649,7 @@ void RebalanceJob::onJobFinish(MoveReplicaJob::Ptr const& job) {
 
     // Try to submit one more job
 
-    size_t const numJobsLaunched = launchNextJobs(lock, 1);
+    size_t const numJobsLaunched = _launchNextJobs(lock, 1);
     if (numJobsLaunched != 0) {
         _numLaunched += numJobsLaunched;
     } else {
@@ -665,8 +665,8 @@ void RebalanceJob::onJobFinish(MoveReplicaJob::Ptr const& job) {
 }
 
 
-size_t RebalanceJob::launchNextJobs(util::Lock const& lock,
-                                    size_t numJobs) {
+size_t RebalanceJob::_launchNextJobs(util::Lock const& lock,
+                                     size_t numJobs) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  numJobs=" << numJobs);
 

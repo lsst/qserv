@@ -82,7 +82,7 @@ Connection::Ptr Connection::open2(ConnectionParams const& connectionParams,
                             : 0
         )
     );
-    ptr->connect();
+    ptr->_connect();
     return ptr;
 }
 
@@ -161,7 +161,7 @@ Connection::Ptr Connection::begin() {
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    assertTransaction(false);
+    _assertTransaction(false);
     execute("BEGIN");
     _inTransaction = true;
     return shared_from_this();
@@ -176,7 +176,7 @@ Connection::Ptr Connection::commit() {
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    assertTransaction(true);
+    _assertTransaction(true);
     execute("COMMIT");
     _inTransaction = false;
     return shared_from_this();
@@ -191,15 +191,15 @@ Connection::Ptr Connection::rollback() {
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    assertTransaction(true);
+    _assertTransaction(true);
     execute("ROLLBACK");
     _inTransaction = false;
     return shared_from_this();
 }
 
 
-void Connection::processLastError(string const& context,
-                                  bool instantAutoReconnect) {
+void Connection::_processLastError(string const& context,
+                                   bool instantAutoReconnect) {
 
     string const msg =
         context + ", error: " + string(mysql_error(_mysql)) +
@@ -257,7 +257,7 @@ void Connection::processLastError(string const& context,
                 // timeout is enabled during the connector's construction.
  
                 if (_connectTimeoutSec > 0) {
-                    connect();
+                    _connect();
                     throw Reconnected(msg);
                 }
             }
@@ -298,7 +298,7 @@ Connection::Ptr Connection::execute(string const& query) {
     if (0 != mysql_real_query(_mysql,
                               _lastQuery.c_str(),
                               _lastQuery.size())) {
-        processLastError(
+        _processLastError(
             context + "mysql_real_query failed, query: '" + _lastQuery + "'"
         );
     }
@@ -310,7 +310,7 @@ Connection::Ptr Connection::execute(string const& query) {
         // Unbuffered read
 
         if (nullptr == (_res =  mysql_use_result(_mysql))) {
-            processLastError(context + "mysql_use_result failed");
+            _processLastError(context + "mysql_use_result failed");
         }
         _numFields = mysql_num_fields(_res);
         _fields    = mysql_fetch_fields(_res);
@@ -396,7 +396,7 @@ bool Connection::hasResult() const {
 
 
 vector<string> const& Connection::columnNames() const {
-    assertQueryContext();
+    _assertQueryContext();
     return _columnNames;
 }
 
@@ -407,7 +407,7 @@ bool Connection::next(Row& row) {
         "Connection[" + to_string(_id) + "]::" + string(__func__) + "(_inTransaction=" +
         to_string(_inTransaction ? 1: 0) + ")  ";
 
-    assertQueryContext();
+    _assertQueryContext();
 
     _row = mysql_fetch_row(_res);
     if (not _row) {
@@ -415,7 +415,7 @@ bool Connection::next(Row& row) {
         // Just no more rows is no specific error reported
         if (0 == mysql_errno(_mysql)) return false;
 
-        processLastError(
+        _processLastError(
             context + "mysql_fetch_row failed, query: '" + _lastQuery + "'"
         );
     }
@@ -435,7 +435,7 @@ bool Connection::next(Row& row) {
 }
 
 
-void Connection::connect() {
+void Connection::_connect() {
 
     string const context =
         "Connection[" + to_string(_id) + "]::" + string(__func__) + "(_inTransaction=" +
@@ -448,7 +448,7 @@ void Connection::connect() {
     // to a value greater than 0.
 
     if (0 == _connectTimeoutSec) {
-        connectOnce();
+        _connectOnce();
     } else {
 
         // Otherwise keep trying before succeeded or the connection timeout
@@ -460,10 +460,8 @@ void Connection::connect() {
         while (true) {
     
             try {
-    
-                connectOnce();
+                _connectOnce();
                 break;
-    
             } catch (ConnectError const& ex) {
     
                 LOGS(_log, LOG_LVL_DEBUG, context << "connection attempt failed: " << ex.what());
@@ -488,7 +486,7 @@ void Connection::connect() {
 }
 
 
-void Connection::connectOnce() {
+void Connection::_connectOnce() {
 
     ++_connectionAttempt;
 
@@ -536,8 +534,8 @@ void Connection::connectOnce() {
         0)  /* no default client flag */) {
 
         bool const instantAutoReconnect = false;
-        processLastError(context + "mysql_real_connect() failed",
-                         instantAutoReconnect);
+        _processLastError(context + "mysql_real_connect() failed",
+                          instantAutoReconnect);
     }
 
     // Update the current connection identifier, and if reconnecting then also
@@ -582,7 +580,7 @@ void Connection::connectOnce() {
 }
 
 
-void Connection::assertQueryContext() const {
+void Connection::_assertQueryContext() const {
 
     string const context =
         "Connection[" + to_string(_id) + "]::" + string(__func__) + "(_inTransaction=" +
@@ -595,7 +593,7 @@ void Connection::assertQueryContext() const {
 }
 
 
-void Connection::assertTransaction(bool inTransaction) const {
+void Connection::_assertTransaction(bool inTransaction) const {
 
     string const context =
         "Connection[" + to_string(_id) + "]::" + string(__func__) + "(_inTransaction=" +

@@ -204,7 +204,7 @@ void FindAllJob::startImpl(util::Lock const& lock) {
                     database,
                     saveReplicaInfo(),
                     [self] (FindAllRequest::Ptr request) {
-                        self->onRequestFinish(request);
+                        self->_onRequestFinish(request);
                     },
                     options(lock).priority,
                     true,   /* keepTracking*/
@@ -258,7 +258,7 @@ void FindAllJob::notify(util::Lock const& lock) {
 }
 
 
-void FindAllJob::onRequestFinish(FindAllRequest::Ptr const& request) {
+void FindAllJob::_onRequestFinish(FindAllRequest::Ptr const& request) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__
          << "  database=" << request->database()

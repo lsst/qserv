@@ -239,20 +239,20 @@ void ServiceManagementRequestBase::startImpl(util::Lock const& lock) {
         [self] (string const& id,
                 bool success,
                 proto::ReplicationServiceResponse const& response) {
-            self->analyze(success, response);
+            self->_analyze(success, response);
         }
     );
 }
 
 
-void ServiceManagementRequestBase::analyze(bool success,
-                                           proto::ReplicationServiceResponse const& message) {
+void ServiceManagementRequestBase::_analyze(bool success,
+                                            proto::ReplicationServiceResponse const& message) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  success=" << (success ? "true" : "false"));
 
     // This method is called on behalf of an asynchronous callback fired
     // upon a completion of the request within method send() - the only
-    // client of analyze(). So, we should take care of proper locking and watch
+    // client of _analyze(). So, we should take care of proper locking and watch
     // for possible state transition which might occur while the async I/O was
     // still in a progress.
 

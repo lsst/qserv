@@ -98,19 +98,7 @@ public:
      */
     std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
 
-private:
-
-    /**
-     * Construct the request with the pointer to the services provider.
-     *
-     * @see RemoveReplicaQservMgtRequest::create()
-     */
-    RemoveReplicaQservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
-                                 std::string const& worker,
-                                 unsigned int chunk,
-                                 std::vector<std::string> const& databases,
-                                 bool force,
-                                 CallbackType const& onFinish);
+protected:
 
     /**
       * @see QservMgtRequest::startImpl
@@ -126,6 +114,20 @@ private:
       * @see QservMgtRequest::notify
       */
     void notify(util::Lock const& lock) final;
+
+private:
+
+    /**
+     * Construct the request with the pointer to the services provider.
+     *
+     * @see RemoveReplicaQservMgtRequest::create()
+     */
+    RemoveReplicaQservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
+                                 std::string const& worker,
+                                 unsigned int chunk,
+                                 std::vector<std::string> const& databases,
+                                 bool force,
+                                 CallbackType const& onFinish);
 
 private:
 

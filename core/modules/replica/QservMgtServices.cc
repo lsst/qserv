@@ -130,7 +130,7 @@ AddReplicaQservMgtRequest::Ptr QservMgtServices::addReplica(
     // Make sure the XROOTD/SSI service is available before attempting
     // any operations on requests
 
-    XrdSsiService* service = xrdSsiService();
+    XrdSsiService* service = _xrdSsiService();
     if (not service) {
         return request;
     } else {
@@ -145,7 +145,7 @@ AddReplicaQservMgtRequest::Ptr QservMgtServices::addReplica(
             chunk,
             databases,
             [manager] (QservMgtRequest::Ptr const& request) {
-                manager->finish(request->id());
+                manager->_finish(request->id());
             }
         );
     
@@ -181,7 +181,7 @@ RemoveReplicaQservMgtRequest::Ptr QservMgtServices::removeReplica(
     // Make sure the XROOTD/SSI service is available before attempting
     // any operations on requests
 
-    XrdSsiService* service = xrdSsiService();
+    XrdSsiService* service = _xrdSsiService();
     if (not service) {
         return request;
     } else {
@@ -197,7 +197,7 @@ RemoveReplicaQservMgtRequest::Ptr QservMgtServices::removeReplica(
             databases,
             force,
             [manager] (QservMgtRequest::Ptr const& request) {
-                manager->finish(request->id());
+                manager->_finish(request->id());
             }
         );
     
@@ -232,7 +232,7 @@ GetReplicasQservMgtRequest::Ptr QservMgtServices::getReplicas(
     // Make sure the XROOTD/SSI service is available before attempting
     // any operations on requests
 
-    XrdSsiService* service = xrdSsiService();
+    XrdSsiService* service = _xrdSsiService();
     if (not service) {
         return request;
     } else {
@@ -247,7 +247,7 @@ GetReplicasQservMgtRequest::Ptr QservMgtServices::getReplicas(
             databaseFamily,
             inUseOnly,
             [manager] (QservMgtRequest::Ptr const& request) {
-                manager->finish(request->id());
+                manager->_finish(request->id());
             }
         );
     
@@ -282,7 +282,7 @@ SetReplicasQservMgtRequest::Ptr QservMgtServices::setReplicas(
     // Make sure the XROOTD/SSI service is available before attempting
     // any operations on requests
 
-    XrdSsiService* service = xrdSsiService();
+    XrdSsiService* service = _xrdSsiService();
     if (not service) {
         return request;
     } else {
@@ -297,7 +297,7 @@ SetReplicasQservMgtRequest::Ptr QservMgtServices::setReplicas(
             newReplicas,
             force,
             [manager] (QservMgtRequest::Ptr const& request) {
-                manager->finish(request->id());
+                manager->_finish(request->id());
             }
         );
     
@@ -331,7 +331,7 @@ TestEchoQservMgtRequest::Ptr QservMgtServices::echo(
     // Make sure the XROOTD/SSI service is available before attempting
     // any operations on requests
 
-    XrdSsiService* service = xrdSsiService();
+    XrdSsiService* service = _xrdSsiService();
     if (not service) {
         return request;
     } else {
@@ -345,7 +345,7 @@ TestEchoQservMgtRequest::Ptr QservMgtServices::echo(
             worker,
             data,
             [manager] (QservMgtRequest::Ptr const& request) {
-                manager->finish(request->id());
+                manager->_finish(request->id());
             }
         );
     
@@ -367,7 +367,7 @@ TestEchoQservMgtRequest::Ptr QservMgtServices::echo(
 }
 
 
-void QservMgtServices::finish(string const& id) {
+void QservMgtServices::_finish(string const& id) {
 
     string const context = id + "  QservMgtServices::" + string(__func__) + "  ";
 
@@ -401,7 +401,7 @@ void QservMgtServices::finish(string const& id) {
 }
 
 
-XrdSsiService* QservMgtServices::xrdSsiService() {
+XrdSsiService* QservMgtServices::_xrdSsiService() {
 
     // Lazy construction of the locator string to allow dynamic
     // reconfiguration.
