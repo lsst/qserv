@@ -55,14 +55,26 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider  - a host of services for various communications
-     * @param worker           - the name of a worker
-     * @param id               - an identifier of a client request
-     * @param priority         - indicates the importance of the request
-     * @param database         - the name of a database
-     * @param chunk            - the chunk number
+     * @param serviceProvider
+     *   host of services for various communications
      *
-     * @return pointer to the created object
+     * @param worker
+     *   the name of a worker
+     *
+     * @param id
+     *   an identifier of a client request
+     *
+     * @param priority
+     *   indicates the importance of the request
+     *
+     * @param database
+     *   the name of a database
+     *
+     * @param chunk
+     *   the chunk number
+     *
+     * @return
+     *   pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                           std::string const& worker,
@@ -88,7 +100,8 @@ public:
     /**
      * Extract request status into the Protobuf response object.
      *
-     * @param response - Protobuf response to be initialized
+     * @param response
+     *   Protobuf response to be initialized
      */
     void setInfo(proto::ReplicationResponseDelete& response) const;
 
@@ -127,8 +140,7 @@ protected:
   * the replica deletion based on the direct manipulation of files on
   * a POSIX file system.
   */
-class WorkerDeleteRequestPOSIX
-    :   public WorkerDeleteRequest {
+class WorkerDeleteRequestPOSIX : public WorkerDeleteRequest {
 
 public:
 
@@ -140,14 +152,26 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider  - a host of services for various communications
-     * @param worker           - the name of a source worker
-     * @param id               - an identifier of a client request
-     * @param priority         - indicates the importance of the request
-     * @param database         - the name of a database
-     * @param chunk            - the chunk number
+     * @param serviceProvider
+     *   a host of services for various communications
      *
-     * @return pointer to the created object
+     * @param worker
+     *   the name of a source worker
+     *
+     * @param id
+     *   an identifier of a client request
+     *
+     * @param priority
+     *   indicates the importance of the request
+     *
+     * @param database
+     *   the name of a database
+     *
+     * @param chunk
+     *   the chunk number
+     *
+     * @return
+     *   pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& worker,
@@ -189,7 +213,8 @@ private:
   * the replica deletion based on the direct manipulation of files on
   * a POSIX file system.
   *
-  * Note, this is just a typedef to class WorkerDeleteRequestPOSIX.
+  * @note
+ *   This is just a typedef to class WorkerDeleteRequestPOSIX.
   */
 typedef WorkerDeleteRequestPOSIX WorkerDeleteRequestFS;
 

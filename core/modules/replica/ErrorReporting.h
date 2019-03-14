@@ -42,8 +42,11 @@ namespace replica {
 /**
  * Print a report on a state of requests
  *
- * @param requests - an iterable collection of requests
- * @param os       - an output stream
+ * @param requests
+ *   an iterable collection of requests
+ *
+ * @param os
+ *   an output stream
  */
 template <class COLLECTION>
 void reportRequestState(COLLECTION const& requests,

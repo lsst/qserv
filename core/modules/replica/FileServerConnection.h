@@ -79,9 +79,14 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider - provider of various services
-     * @param workerName      - worker name
-     * @param io_service      - service object for the network I/O operations
+     * @param serviceProvider
+     *   provider of various services
+     *
+     * @param workerName
+     *   the name of a worker
+     *
+     * @param io_service
+     *   service object for the network I/O operations
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& workerName,
@@ -112,16 +117,17 @@ public:
      *   - ASYNC: if the request is accepted then begin streaming the content of
      *            a file in a series of records until it's done.
      *
-     * NOTES: A reason why the read phase is split into three steps is
-     *        that a client is expected to send all components of the request
-     *        (frame header and request header) at once. This means
-     *        the whole incoming message will be already available on the server's
-     *        host memory when an asynchronous handler for the frame header will fire.
-     *        However, due to a variable length of the request we should know its length
-     *        before attempting to read the rest of the incoming message as this (the later)
-     *        will require two things: 1) to ensure enough we have enough buffer space
-     *        allocated, and 2) to tell the asynchronous reader function
-     *        how many bytes exactly are we going to read.
+     * @note
+     *   A reason why the read phase is split into three steps is
+     *   that a client is expected to send all components of the request
+     *   (frame header and request header) at once. This means
+     *   the whole incoming message will be already available on the server's
+     *   host memory when an asynchronous handler for the frame header will fire.
+     *   However, due to a variable length of the request we should know its length
+     *   before attempting to read the rest of the incoming message as this (the later)
+     *   will require two things: 1) to ensure enough we have enough buffer space
+     *   allocated, and 2) to tell the asynchronous reader function
+     *   how many bytes exactly are we going to read.
      * 
      * The chain ends when a client disconnects or when an error condition
      * is met.

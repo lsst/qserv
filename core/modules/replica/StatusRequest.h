@@ -214,8 +214,9 @@ public:
     }
 
     /**
-     * @return request-specific extended data reported upon a successful
-     * completion of the request
+     * @return
+     *   request-specific extended data reported upon a successful
+     *   completion of the request
      */
     typename POLICY::ResponseDataType const& responseData() const { return _responseData; }
 

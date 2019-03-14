@@ -64,11 +64,19 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider - reference to a provider of services
-     * @param worker          - the name of a worker
-     * @param chunk           - the chunk number
-     * @param databases       - the names of databases
-     * @param onFinish        - (optional) callback function to be called upon request completion
+     * @param serviceProvider
+     *   reference to a provider of services
+     *
+     * @param worker
+     *   the name of a worker
+     *
+     * @param chunk
+     *   the chunk number
+     * @param databases
+     *   the names of databases
+     *
+     * @param onFinish
+     *   (optional) callback function to be called upon request completion
      *
      * @return pointer to the new object created by the factory
      */
@@ -76,7 +84,7 @@ public:
                       std::string const& worker,
                       unsigned int chunk,
                       std::vector<std::string> const& databases,
-                      CallbackType const& onFinish = nullptr);
+                      CallbackType const& onFinish=nullptr);
 
     /// @return the chunk number
     unsigned int chunk() const { return _chunk; }
@@ -119,11 +127,20 @@ private:
     /**
      * Construct the request with the pointer to the services provider.
      *
-     * @param serviceProvider - reference to a provider of services
-     * @param worker          - the name of a worker
-     * @param chunk           - the chunk number
-     * @param databases       - the names of databases
-     * @param onFinish        - callback function to be called upon request completion
+     * @param serviceProvider
+     *   reference to a provider of services
+     *
+     * @param worker
+     *   the name of a worker
+     *
+     * @param chunk
+     *   the chunk number
+     *
+     * @param databases
+     *   the names of databases
+     *
+     * @param onFinish
+     *   callback function to be called upon request completion
      */
     AddReplicaQservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
                               std::string const& worker,

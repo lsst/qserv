@@ -102,14 +102,24 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param worker          - the name of a worker to be deleted
-     * @param permanentDelete - if set to 'true' the worker record will be completely
-     *                          wiped out from the configuration
-     * @param controller      - for launching requests
-     * @param parentJobId     - optional identifier of a parent job
-     * @param onFinish        - a callback function to be called upon a completion of
-     *                           the job
-     * @param options         - (optional) job options
+     * @param worker
+     *   the name of a worker to be deleted
+     *
+     * @param permanentDelete
+     *   if set to 'true' the worker record will be completely
+     *   wiped out from the configuration
+     *
+     * @param controller
+     *   for launching requests
+     *
+     * @param parentJobId
+     *   optional identifier of a parent job
+     *
+     * @param onFinish
+     *   a callback function to be called upon a completion of the job
+     *
+     * @param options
+     *   (optional) job options
      */
     static Ptr create(std::string const& worker,
                       bool permanentDelete,
@@ -135,19 +145,21 @@ public:
     /**
      * Return the result of the operation.
      *
-     * IMPORTANT NOTES:
-     * - the method should be invoked only after the job has finished (primary
-     *   status is set to Job::Status::FINISHED). Otherwise exception
-     *   std::logic_error will be thrown
+     * @note:
+     *  The method should be invoked only after the job has finished (primary
+     *  status is set to Job::Status::FINISHED). Otherwise exception
+     *  std::logic_error will be thrown
      *
-     * - the result will be extracted from requests which have successfully
-     *   finished. Please, verify the primary and extended status of the object
-     *   to ensure that all requests have finished.
+     * @note
+     *  The result will be extracted from requests which have successfully
+     *  finished. Please, verify the primary and extended status of the object
+     *  to ensure that all requests have finished.
      *
-     * @return the data structure to be filled upon the completion of the job.
+     * @return
+     *   the data structure to be filled upon the completion of the job.
      *
-     * @throws std::logic_error - if the job didn't finished at a time
-     *                            when the method was called
+     * @throws std::logic_error
+     *   if the job didn't finished at a time when the method was called
      */
     DeleteWorkerJobResult const& getReplicaData() const;
 

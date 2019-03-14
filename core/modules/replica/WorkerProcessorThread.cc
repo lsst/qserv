@@ -79,10 +79,10 @@ void WorkerProcessorThread::run() {
             // or the specified timeout expires. In either case this thread has a chance
             // to re-evaluate the stopping condition.
 
-            auto const request = self->_processor->fetchNextForProcessing(self, 1000);
+            auto const request = self->_processor->_fetchNextForProcessing(self, 1000);
 
             if (self->_stop) {
-                if (request) self->_processor->processingRefused(request);
+                if (request) self->_processor->_processingRefused(request);
                 continue;
             }
             if (request) {
@@ -102,7 +102,7 @@ void WorkerProcessorThread::run() {
                                 << "  id: " << request->id());
 
                             request->rollback();
-                            self->_processor->processingRefused(request);
+                            self->_processor->_processingRefused(request);
 
                             break;
                         }
@@ -113,7 +113,7 @@ void WorkerProcessorThread::run() {
                     LOGS(_log, LOG_LVL_DEBUG, self->context() << "cancel processing"
                         << "  id: " << request->id());
 
-                    self->_processor->processingFinished(request);
+                    self->_processor->_processingFinished(request);
                 }
                 if (finished) {
 
@@ -121,13 +121,13 @@ void WorkerProcessorThread::run() {
                         << "  id: " << request->id()
                         << "  status: " << WorkerRequest::status2string(request->status()));
 
-                    self->_processor->processingFinished(request);
+                    self->_processor->_processingFinished(request);
                 }
             }
         }
         LOGS(_log, LOG_LVL_DEBUG, self->context() << "stop");
 
-        self->stopped();
+        self->_stopped();
     });
     _thread->detach();
 }
@@ -139,10 +139,10 @@ void WorkerProcessorThread::stop() {
 }
 
 
-void WorkerProcessorThread::stopped() {
+void WorkerProcessorThread::_stopped() {
     _stop = false;
     _thread.reset(nullptr);
-    _processor->processorThreadStopped(shared_from_this());
+    _processor->_processorThreadStopped(shared_from_this());
 }
 
 }}} // namespace lsst::qserv::replica

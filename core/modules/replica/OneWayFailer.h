@@ -41,7 +41,8 @@ public:
     /**
      * Fail the state.
      *
-     * @return  the previous state of the object
+     * @return
+     *   the previous state of the object
      */
     bool fail() {
         return _failed.exchange(true);

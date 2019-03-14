@@ -153,27 +153,27 @@ public:
      * connection management options of the Configuration.
      *
      * @note
-     *    if the timeout is set to 0 (the default value) and if reconnects are
-     *    allowed then the method will assume a global value defined by
-     *    the Configuration parameter: Configuration::databaseConnectTimeoutSec()
+     *   if the timeout is set to 0 (the default value) and if reconnects are
+     *   allowed then the method will assume a global value defined by
+     *   the Configuration parameter: Configuration::databaseConnectTimeoutSec()
      *
      * @note
-     *    the same value of the timeout would be also assumed if the connection
-     *    is lost when executing queries or pulling the result sets.
+     *   the same value of the timeout would be also assumed if the connection
+     *   is lost when executing queries or pulling the result sets.
      * 
      * @param connectionParams
      *
      * @param allowReconnects
-     *    if set to 'true' then multiple reconnection attempts will be allowed
+     *   if set to 'true' then multiple reconnection attempts will be allowed
      *   
      * @param connectTimeoutSec
-     *    maximum number of seconds to wait before a connection with a database
-     *    server is established.
-      *
+     *   maximum number of seconds to wait before a connection with a database
+     *   server is established.
+     *
      * @return
-     *    a valid object if the connection attempt succeeded (no nullptr
-     *    to be returned under any circumstances)
-      *
+     *  a valid object if the connection attempt succeeded (no nullptr
+     *  to be returned under any circumstances)
+     *
      * @see Configuration::databaseConnectTimeoutSec()
      * @see Connection::open()
      */
@@ -193,11 +193,14 @@ public:
     unsigned int connectTimeoutSec() const { return _connectTimeoutSec; }
 
     /**
-      * A front-end to mysql_real_escape_string()
-      *
-      * @param str - a string to be processed
-      * @return the processed string
-      */
+     * A front-end to mysql_real_escape_string()
+     *
+     * @param str
+     *   a string to be processed
+     *
+     * @return
+     *   the processed string
+     */
     std::string escape(std::string const& str) const;
 
     // -------------------------------------------------
@@ -219,7 +222,8 @@ public:
      * generators. Unlike the standard operator this function allows internal
      * type switching while producing a result of a specific type.
      *
-     * @return an object which doesn't require any further processing
+     * @return
+     *   an object which doesn't require any further processing
      */
     DoNotProcess nullIfEmpty(std::string const& val) {
         return val.empty() ? DoNotProcess(Keyword::SQL_NULL) : DoNotProcess(sqlValue(val));
@@ -255,13 +259,14 @@ public:
      * and 'char const*' will be also escaped and surrounded by single quote.
      *
      * For example, the following call:
-     *   @code
-     *     sqlPackValues("st'r", std::string("c"), 123, 24.5);
-     *   @code
-     * will produce the following output:
-     *   @code
-     *     ('st\'r','c',123,24.5)
-     *   @code
+     * @code
+     *   sqlPackValues("st'r", std::string("c"), 123, 24.5);
+     * @code
+     *
+     * This will produce the following output:
+     * @code
+     *   ('st\'r','c',123,24.5)
+     * @code
      */
     template <typename...Targs>
     std::string sqlPackValues(Targs... Fargs) const {
@@ -277,8 +282,11 @@ public:
      * types 'std::string' and 'char*' will be additionally escaped and surrounded by
      * single quotes as required by the SQL standard.
      *
-     * @param tableName - the name of a table
-     * @param Fargs     - the variadic list of values to be inserted
+     * @param tableName
+     *   the name of a table
+     *
+     * @param Fargs
+     *   the variadic list of values to be inserted
      */
     template <typename...Targs>
     std::string sqlInsertQuery(std::string const& tableName,
@@ -464,8 +472,11 @@ public:
      * - the column name will be surrounded by back ticks
      * - values of string types will be escaped and surrounded by single quotes
      *
-     * @param col    - the name of a column
-     * @param values - an iterable collection of values
+     * @param col
+     *   the name of a column
+     *
+     * @param values
+     *   an iterable collection of values
      */
     template <typename T>
     std::string sqlIn(std::string const& col,
@@ -784,8 +795,9 @@ public:
     /**
      * This is just a convenience method for a typical use case
      *
-     * NOTE: it's up to the 'updateScript' to rollback a previous transaction
-     * if needed.
+     * @note
+     *   it's up to the 'updateScript' to rollback a previous transaction
+     *   if needed.
      */
     Connection::Ptr executeInsertOrUpdate(std::function<void(Ptr)> const& insertScript,
                                           std::function<void(Ptr)> const& updateScript,
@@ -799,8 +811,9 @@ public:
     }
 
     /**
-     * @return 'true' if the last successful query returned a result set
-     * (even though it may be empty)
+     * @return
+     *   'true' if the last successful query returned a result set
+     *   (even though it may be empty)
      */
     bool hasResult() const;
 
@@ -853,20 +866,24 @@ public:
      * The convenience method is for executing a query from which a single value
      * will be extracted (typically a PK). Please, read the notes below.
      *
-     * NOTES:
-     * - by default the method requires a result set to have 0 or 1 rows.
+     * @note
+     *   By default the method requires a result set to have 0 or 1 rows.
      *   If the result set has more than one row exception std::logic_error
      *   will be thrown.
      *
-     * - the previously mentioned requirement can be relaxed by setting
+     * @note
+     *   The previously mentioned requirement can be relaxed by setting
      *   a value of the optional parameter 'noMoreThanOne' to 'false'.
      *   In that case a value from the very first row will be extracted.
      *
-     * - if a result set is empty the method will throw EmptyResultSetError
+     * @note
+     *   If a result set is empty the method will throw EmptyResultSetError
      *
-     * - if the field has 'NULL' the method will return 'false'
+     * @note
+     *   If the field has 'NULL' the method will return 'false'
      *
-     * - if the conversion to a proposed type will fail the method will
+     * @note
+     *   If the conversion to a proposed type will fail the method will
      *   throw InvalidTypeError
      *
      * @param query
@@ -979,7 +996,8 @@ private:
     /**
      * The method is to ensure that the transaction is in the desired state.
      *
-     * @param inTransaction - the desired state of the transaction
+     * @param inTransaction
+     *   the desired state of the transaction
      */
     void _assertTransaction(bool inTransaction) const;
 

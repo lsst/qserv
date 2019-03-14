@@ -54,13 +54,23 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider  - a host of services for various communications
-     * @param worker           - the name of a  worker
-     * @param id               - an identifier of a client request
-     * @param priority         - indicates the importance of the request
-     * @param database         - the name of a database
+     * @param serviceProvider
+     *   a host of services for various communications
      *
-     * @return pointer to the created object
+     * @param worker
+     *   the name of a  worker
+     *
+     * @param id
+     *   an identifier of a client request
+     *
+     * @param priority
+     *   indicates the importance of the request
+     *
+     * @param database
+     *   the name of a database
+     *
+     * @return
+     *   pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& worker,
@@ -119,8 +129,7 @@ protected:
   * the replicas lookup based on the direct manipulation of files on
   * a POSIX file system.
   */
-class WorkerFindAllRequestPOSIX
-    :   public WorkerFindAllRequest {
+class WorkerFindAllRequestPOSIX : public WorkerFindAllRequest {
 
 public:
 
@@ -132,13 +141,23 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider  - a host of services for various communications
-     * @param worker           - the name of a  worker
-     * @param id               - an identifier of a client request
-     * @param priority         - indicates the importance of the request
-     * @param database         - the name of a database
+     * @param serviceProvider
+     *   a host of services for various communications
      *
-     * @return pointer to the created object
+     * @param worker
+     *   the name of a  worker
+     *
+     * @param id
+     *   an identifier of a client request
+     *
+     * @param priority
+     *   indicates the importance of the request
+     *
+     * @param database
+     *   the name of a database
+     *
+     * @return
+     *   pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& worker,
@@ -178,7 +197,8 @@ private:
   * the replica deletion based on the direct manipulation of files on
   * a POSIX file system.
   *
-  * Note, this is just a typedef to class WorkerDeleteRequestPOSIX.
+  * @note
+ *    This is just a typedef to class WorkerDeleteRequestPOSIX.
   */
 typedef WorkerFindAllRequestPOSIX WorkerFindAllRequestFS;
 

@@ -132,12 +132,23 @@ public:
     /**
      * Construct with the specified state.
      *
-     * @param status     - object status (see notes above)
-     * @param worker     - the name of the worker where the replica is located
-     * @param database   - the name of the database
-     * @param chunk      - the chunk number
-     * @param verifyTime - when the replica info was obtainer by a worker
-     * @param fileInfo   - a collection of info on each file of the chunk
+     * @param status
+     *   object status (see notes above)
+     *
+     * @param worker
+     *   the name of the worker where the replica is located
+     *
+     * @param database
+     *   the name of the database
+     *
+     * @param chunk
+     *   the chunk number
+     *
+     * @param verifyTime
+     *   when the replica info was obtainer by a worker
+     *
+     * @param fileInfo
+     *   a collection of info on each file of the chunk
      */
     ReplicaInfo(Status status,
                 std::string const& worker,
@@ -149,11 +160,20 @@ public:
     /**
      * Construct with the specified state (no files provided)
      *
-     * @param status     - object status (see notes above)
-     * @param worker     - the name of the worker where the replica is located
-     * @param database   - the name of the database
-     * @param chunk      - the chunk number
-     * @param verifyTime - when the replica info was obtainer by a worker
+     * @param status
+     *   object status (see notes above)
+     *
+     * @param worker
+     *   the name of the worker where the replica is located
+     *
+     * @param database
+     *   the name of the database
+     *
+     * @param chunk
+     *   the chunk number
+     *
+     * @param verifyTime
+     *   when the replica info was obtainer by a worker
      */
     ReplicaInfo(Status status,
                 std::string const& worker,
@@ -164,7 +184,8 @@ public:
     /**
      * Construct from a Protobuf object
      *
-     * @param info - Protobuf object
+     * @param info
+     *   Protobuf object
      */
     explicit ReplicaInfo(proto::ReplicationReplicaInfo const* info);
 
@@ -176,14 +197,16 @@ public:
     /**
      * Explicitly set a collection of files.
      *
-     * @param fileInfo - collection of files to set (or replace older one)
+     * @param fileInfo
+     *   collection of files to set (or replace older one)
      */
     void setFileInfo(FileInfoCollection const& fileInfo);
 
     /**
      * Explicitly set a collection of files (the move semantics for the input collection)
      *
-     * @param fileInfo - collection of files to set (or replace older one)
+     * @param fileInfo
+     *   collection of files to set (or replace older one)
      */
     void setFileInfo(FileInfoCollection&& fileInfo);
 
@@ -209,43 +232,53 @@ public:
     std::map<std::string, FileInfo> fileInfoMap() const;
 
     /**
-     * @return the minimum start time of the file migration operations of any
-     * file associated with the replica.
+     * @return
+     *   the minimum start time of the file migration operations of any
+     *   file associated with the replica.
      *
-     * NOTE: the method is allowed to return 0 if the ReplicaInfo was not
-     * produced in a context of creating a new replica.
+     * @note
+     *   the method is allowed to return 0 if the ReplicaInfo was not
+     *   produced in a context of creating a new replica.
      */
     uint64_t beginTransferTime() const;
 
     /**
-     * @return the maximum end time of the file migration operations of any
-     * file associated with the replica.
+     * @return
+     *   the maximum end time of the file migration operations of any
+     *   file associated with the replica.
      *
-     * NOTE: the method is allowed to return 0 if the ReplicaInfo was not
-     * produced in a context of creating a new replica.
+     * @note
+     *   the method is allowed to return 0 if the ReplicaInfo was not
+     *   produced in a context of creating a new replica.
      */
     uint64_t endTransferTime() const;
 
     /**
-     * @return a Protobuf object
+     * @return
+     *   a Protobuf object
      *
-     * OWNERSHIP TRANSFER NOTE: this method allocates a new object and
-     * returns a pointer along with its ownership.
+     * @note
+     *   On the OWNERSHIP TRANSFER policy: this method allocates a new object and
+     *   returns a pointer along with its ownership.
      */
     lsst::qserv::proto::ReplicationReplicaInfo* info() const;
 
     /**
      * Initialize a Protobuf object from the object's state
      *
-     * @param info - Protobuf object
+     * @param info
+     *   Protobuf object
      */
     void setInfo(proto::ReplicationReplicaInfo* info) const;
 
     /**
      * Comparision operator
      *
-     * @param other - object to be compared with
-     * @return 'true' if the current object is semantically identical to the other one
+     * @param other
+     *   object to be compared with
+     *
+     * @return
+     *   'true' if the current object is semantically identical to the other one
      */
     bool operator==(ReplicaInfo const& other) const {
         return
@@ -259,8 +292,11 @@ public:
     /**
      * The complementary comparison operator
      * 
-     * @param other - object to be compared with
-     * @return 'true' if the current object is semantically different from the other one
+     * @param other
+     *   object to be compared with
+     *
+     * @return
+     *   'true' if the current object is semantically different from the other one
      */
     bool operator!=(ReplicaInfo const& other) const {
         return not operator==(other);
@@ -271,8 +307,11 @@ private:
     /**
      * Compare this object's file collection with the other's
      *
-     * @param other - object whose file collection needs to be compared with the current one's
-     * @return 'true' of both collections are semantically equivalent
+     * @param other
+     *   object whose file collection needs to be compared with the current one's
+     *
+     * @return
+     *   'true' of both collections are semantically equivalent
      */
     bool _equalFileCollections(ReplicaInfo const& other) const;    
 

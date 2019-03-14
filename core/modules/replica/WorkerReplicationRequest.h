@@ -64,14 +64,27 @@ public:
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
+     *
+     * @param serviceProvider
+     *   a host of services for various communications
+     *
+     * @param worker
+     *   the name of a worker
+     *
+     * @param id
+     *   an identifier of a client request
      * 
-     * @param serviceProvider  - a host of services for various communications
-     * @param worker           - the name of a worker
-     * @param id               - an identifier of a client request
-     * @param priority         - indicates the importance of the request
-     * @param database         - the name of a database
-     * @param chunk            - the chunk number
-     * @param sourceWorker     - the name of a source worker
+     * @param priority 
+     *   indicates the importance of the request
+     *
+     * @param database
+     *   the name of a database
+     *
+     * @param chunk
+     *   the chunk number
+     *
+     * @param sourceWorker
+     *   the name of a source worker
      *
      * @return pointer to the created object
      */
@@ -148,8 +161,7 @@ protected:
   * the replication requests based on the direct manipulation of files on
   * a POSIX file system.
   */
-class WorkerReplicationRequestPOSIX
-    :   public WorkerReplicationRequest {
+class WorkerReplicationRequestPOSIX : public WorkerReplicationRequest {
 
 public:
 
@@ -161,13 +173,26 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider  - a host of services for various communications
-     * @param worker           - the name of a worker
-     * @param id               - an identifier of a client request
-     * @param priority         - indicates the importance of the request
-     * @param database         - the name of a database
-     * @param chunk            - the chunk number
-     * @param sourceWorker     - the name of a source worker
+     * @param serviceProvider
+     *   a host of services for various communications
+     *
+     * @param worker
+     *   the name of a worker
+     *
+     * @param id
+     *   an identifier of a client request
+     * 
+     * @param priority 
+     *   indicates the importance of the request
+     *
+     * @param database
+     *   the name of a database
+     *
+     * @param chunk
+     *   the chunk number
+     *
+     * @param sourceWorker
+     *   the name of a source worker
      *
      * @return pointer to the created object
      */
@@ -214,8 +239,7 @@ protected:
   * on a POSIX file system and for reading remote files using the built-into-worker
   * simple file server.
   */
-class WorkerReplicationRequestFS
-    :   public WorkerReplicationRequest {
+class WorkerReplicationRequestFS : public WorkerReplicationRequest {
 
 public:
 
@@ -227,15 +251,29 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider  - a host of services for various communications
-     * @param worker           - the name of a worker
-     * @param id               - an identifier of a client request
-     * @param priority         - indicates the importance of the request
-     * @param database         - the name of a database
-     * @param chunk            - the chunk number
-     * @param sourceWorker     - the name of a source worker
+     * @param serviceProvider
+     *   a host of services for various communications
      *
-     * @return pointer to the created object
+     * @param worker
+     *   the name of a worker
+     *
+     * @param id
+     *   an identifier of a client request
+     *
+     * @param priority
+     *   indicates the importance of the request
+     *
+     * @param database
+     *   the name of a database
+     *
+     * @param chunk
+     *   the chunk number
+     *
+     * @param sourceWorker
+     *   the name of a source worker
+     *
+     * @return
+     *   pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& worker,
@@ -279,11 +317,13 @@ private:
     /**
      * Open files associated with the current state of iterator _fileItr.
      *
-     * @param lock - lock which must be acquired before calling this method
+     * @param lock
+     *   lock which must be acquired before calling this method
      *
-     * @return 'false' in case of any error
+     * @return
+     *   'false' in case of any error
      */
-    bool openFiles(util::Lock const& lock);
+    bool _openFiles(util::Lock const& lock);
 
     /**
      * The final stage to be executed just once after copying the content
@@ -292,11 +332,13 @@ private:
      *
      * Resources will also be released.
      *
-     * @param lock - lock which must be acquired before calling this method
+     * @param lock
+     *   lock which must be acquired before calling this method
      *
-     * @return always 'true'
+     * @return
+     *   always 'true'
      */
-    bool finalize(util::Lock const& lock);
+    bool _finalize(util::Lock const& lock);
 
     /**
      * Close connections, de-allocate resources, etc.
@@ -306,16 +348,18 @@ private:
      * request objects can stay in the server's memory for an extended
      * period of time.
      *
-     * @param lock - lock which must be acquired before calling this method
+     * @param lock
+     *   lock which must be acquired before calling this method
      */
-    void releaseResources(util::Lock const& lock);
+    void _releaseResources(util::Lock const& lock);
 
     /**
      * Update file migration statistics
      *
-     * @param lock - lock which must be acquired before calling this method
+     * @param lock
+     *   lock which must be acquired before calling this method
      */
-    void updateInfo(util::Lock const& lock);
+    void _updateInfo(util::Lock const& lock);
 
 private:
 

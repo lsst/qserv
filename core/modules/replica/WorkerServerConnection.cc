@@ -145,11 +145,11 @@ WorkerServerConnection::WorkerServerConnection(ServiceProvider::Ptr const& servi
 
 
 void WorkerServerConnection::beginProtocol() {
-    receive();
+    _receive();
 }
 
 
-void WorkerServerConnection::receive() {
+void WorkerServerConnection::_receive() {
 
     LOGS(_log, LOG_LVL_DEBUG, context << __func__);
 
@@ -173,7 +173,7 @@ void WorkerServerConnection::receive() {
         ),
         boost::asio::transfer_at_least(bytes),
         boost::bind(
-            &WorkerServerConnection::received,
+            &WorkerServerConnection::_received,
             shared_from_this(),
             boost::asio::placeholders::error,
             boost::asio::placeholders::bytes_transferred
@@ -182,8 +182,8 @@ void WorkerServerConnection::receive() {
 }
 
 
-void WorkerServerConnection::received(boost::system::error_code const& ec,
-                                      size_t bytes_transferred) {
+void WorkerServerConnection::_received(boost::system::error_code const& ec,
+                                       size_t bytes_transferred) {
 
     LOGS(_log, LOG_LVL_DEBUG, context << __func__);
 
@@ -202,9 +202,9 @@ void WorkerServerConnection::received(boost::system::error_code const& ec,
 
     switch (hdr.type()) {
 
-        case proto::ReplicationRequestHeader::REPLICA: processReplicaRequest(   hdr); break;
-        case proto::ReplicationRequestHeader::REQUEST: processManagementRequest(hdr); break;
-        case proto::ReplicationRequestHeader::SERVICE: processServiceRequest(   hdr); break;
+        case proto::ReplicationRequestHeader::REPLICA: _processReplicaRequest(   hdr); break;
+        case proto::ReplicationRequestHeader::REQUEST: _processManagementRequest(hdr); break;
+        case proto::ReplicationRequestHeader::SERVICE: _processServiceRequest(   hdr); break;
 
         default:
             throw logic_error(
@@ -214,7 +214,7 @@ void WorkerServerConnection::received(boost::system::error_code const& ec,
 }
 
 
-void WorkerServerConnection::processReplicaRequest(proto::ReplicationRequestHeader& hdr) {
+void WorkerServerConnection::_processReplicaRequest(proto::ReplicationRequestHeader& hdr) {
 
     // Read the request length
     uint32_t bytes;
@@ -230,7 +230,7 @@ void WorkerServerConnection::processReplicaRequest(proto::ReplicationRequestHead
 
             proto::ReplicationResponseReplicate response;
             _processor->enqueueForReplication(hdr.id(), request, response);
-            reply(hdr.id(), response);
+            _reply(hdr.id(), response);
             break;
         }
         case proto::ReplicationReplicaRequestType::REPLICA_DELETE: {
@@ -241,7 +241,7 @@ void WorkerServerConnection::processReplicaRequest(proto::ReplicationRequestHead
 
             proto::ReplicationResponseDelete response;
             _processor->enqueueForDeletion(hdr.id(), request, response);
-            reply(hdr.id(), response);
+            _reply(hdr.id(), response);
             break;
         }
         case proto::ReplicationReplicaRequestType::REPLICA_FIND: {
@@ -252,7 +252,7 @@ void WorkerServerConnection::processReplicaRequest(proto::ReplicationRequestHead
 
             proto::ReplicationResponseFind response;
             _processor->enqueueForFind(hdr.id(), request, response);
-            reply(hdr.id(), response);
+            _reply(hdr.id(), response);
             break;
         }
         case proto::ReplicationReplicaRequestType::REPLICA_FIND_ALL: {
@@ -263,7 +263,7 @@ void WorkerServerConnection::processReplicaRequest(proto::ReplicationRequestHead
 
             proto::ReplicationResponseFindAll response;
             _processor->enqueueForFindAll(hdr.id(), request, response);
-            reply(hdr.id(), response);
+            _reply(hdr.id(), response);
             break;
         }
         case proto::ReplicationReplicaRequestType::REPLICA_ECHO: {
@@ -274,7 +274,7 @@ void WorkerServerConnection::processReplicaRequest(proto::ReplicationRequestHead
 
             proto::ReplicationResponseEcho response;
             _processor->enqueueForEcho(hdr.id(), request, response);
-            reply(hdr.id(), response);
+            _reply(hdr.id(), response);
             break;
         }
         default:
@@ -285,7 +285,7 @@ void WorkerServerConnection::processReplicaRequest(proto::ReplicationRequestHead
 }
 
 
-void WorkerServerConnection::processManagementRequest(proto::ReplicationRequestHeader& hdr) {
+void WorkerServerConnection::_processManagementRequest(proto::ReplicationRequestHeader& hdr) {
 
     // Read the request length
     uint32_t bytes;
@@ -307,31 +307,31 @@ void WorkerServerConnection::processManagementRequest(proto::ReplicationRequestH
                 case proto::ReplicationReplicaRequestType::REPLICA_CREATE: {
                     proto::ReplicationResponseReplicate response;
                     _processor->dequeueOrCancel(hdr.id(), request, response);
-                    reply(hdr.id(), response);
+                    _reply(hdr.id(), response);
                     break;
                 }
                 case proto::ReplicationReplicaRequestType::REPLICA_DELETE: {
                     proto::ReplicationResponseDelete response;
                     _processor->dequeueOrCancel(hdr.id(), request, response);
-                    reply(hdr.id(), response);
+                    _reply(hdr.id(), response);
                     break;
                 }
                 case proto::ReplicationReplicaRequestType::REPLICA_FIND: {
                     proto::ReplicationResponseFind response;
                     _processor->dequeueOrCancel(hdr.id(), request, response);
-                    reply(hdr.id(), response);
+                    _reply(hdr.id(), response);
                     break;
                 }
                 case proto::ReplicationReplicaRequestType::REPLICA_FIND_ALL: {
                     proto::ReplicationResponseFindAll response;
                     _processor->dequeueOrCancel(hdr.id(), request, response);
-                    reply(hdr.id(), response);
+                    _reply(hdr.id(), response);
                     break;
                 }
                 case proto::ReplicationReplicaRequestType::REPLICA_ECHO: {
                     proto::ReplicationResponseEcho response;
                     _processor->dequeueOrCancel(hdr.id(), request, response);
-                    reply(hdr.id(), response);
+                    _reply(hdr.id(), response);
                     break;
                 }
                 default:
@@ -352,31 +352,31 @@ void WorkerServerConnection::processManagementRequest(proto::ReplicationRequestH
                 case proto::ReplicationReplicaRequestType::REPLICA_CREATE: {
                     proto::ReplicationResponseReplicate response;
                     _processor->checkStatus(hdr.id(), request, response);
-                    reply(hdr.id(), response);
+                    _reply(hdr.id(), response);
                     break;
                 }
                 case proto::ReplicationReplicaRequestType::REPLICA_DELETE: {
                     proto::ReplicationResponseDelete response;
                     _processor->checkStatus(hdr.id(), request, response);
-                    reply(hdr.id(), response);
+                    _reply(hdr.id(), response);
                     break;
                 }
                 case proto::ReplicationReplicaRequestType::REPLICA_FIND: {
                     proto::ReplicationResponseFind response;
                     _processor->checkStatus(hdr.id(), request, response);
-                    reply(hdr.id(), response);
+                    _reply(hdr.id(), response);
                     break;
                 }
                 case proto::ReplicationReplicaRequestType::REPLICA_FIND_ALL: {
                     proto::ReplicationResponseFindAll response;
                     _processor->checkStatus(hdr.id(), request, response);
-                    reply(hdr.id(), response);
+                    _reply(hdr.id(), response);
                     break;
                 }
                 case proto::ReplicationReplicaRequestType::REPLICA_ECHO: {
                     proto::ReplicationResponseEcho response;
                     _processor->checkStatus(hdr.id(), request, response);
-                    reply(hdr.id(), response);
+                    _reply(hdr.id(), response);
                     break;
                 }
                 default:
@@ -394,7 +394,7 @@ void WorkerServerConnection::processManagementRequest(proto::ReplicationRequestH
 }
 
 
-void WorkerServerConnection::processServiceRequest(proto::ReplicationRequestHeader& hdr) {
+void WorkerServerConnection::_processServiceRequest(proto::ReplicationRequestHeader& hdr) {
 
     proto::ReplicationServiceResponse response;
 
@@ -421,7 +421,7 @@ void WorkerServerConnection::processServiceRequest(proto::ReplicationRequestHead
                       proto::ReplicationServiceResponse::FAILED :
                       proto::ReplicationServiceResponse::SUCCESS
             );
-            reply(hdr.id(), response);
+            _reply(hdr.id(), response);
             break;
         }
         case proto::ReplicationServiceRequestType::SERVICE_RESUME: {
@@ -437,7 +437,7 @@ void WorkerServerConnection::processServiceRequest(proto::ReplicationRequestHead
                       proto::ReplicationServiceResponse::SUCCESS :
                       proto::ReplicationServiceResponse::FAILED);
 
-            reply(hdr.id(), response);
+            _reply(hdr.id(), response);
             break;
         }
         case proto::ReplicationServiceRequestType::SERVICE_STATUS: {
@@ -447,7 +447,7 @@ void WorkerServerConnection::processServiceRequest(proto::ReplicationRequestHead
                   hdr.id(),
                   proto::ReplicationServiceResponse::SUCCESS);
 
-            reply(hdr.id(), response);
+            _reply(hdr.id(), response);
             break;
         }
         case proto::ReplicationServiceRequestType::SERVICE_REQUESTS: {
@@ -460,7 +460,7 @@ void WorkerServerConnection::processServiceRequest(proto::ReplicationRequestHead
                   proto::ReplicationServiceResponse::SUCCESS,
                   extendedReport);
 
-            reply(hdr.id(), response);
+            _reply(hdr.id(), response);
             break;
         }
         case proto::ReplicationServiceRequestType::SERVICE_DRAIN: {
@@ -475,7 +475,7 @@ void WorkerServerConnection::processServiceRequest(proto::ReplicationRequestHead
                   proto::ReplicationServiceResponse::SUCCESS,
                   extendedReport);
 
-            reply(hdr.id(), response);
+            _reply(hdr.id(), response);
             break;
         }
         default:
@@ -486,9 +486,9 @@ void WorkerServerConnection::processServiceRequest(proto::ReplicationRequestHead
 }
 
 
-void WorkerServerConnection::send() {
+void WorkerServerConnection::_send() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context << "send");
+    LOGS(_log, LOG_LVL_DEBUG, context << __func__);
 
     boost::asio::async_write(
         _socket,
@@ -497,7 +497,7 @@ void WorkerServerConnection::send() {
             _bufferPtr->size()
         ),
         boost::bind(
-            &WorkerServerConnection::sent,
+            &WorkerServerConnection::_sent,
             shared_from_this(),
             boost::asio::placeholders::error,
             boost::asio::placeholders::bytes_transferred
@@ -506,14 +506,14 @@ void WorkerServerConnection::send() {
 }
 
 
-void WorkerServerConnection::sent(boost::system::error_code const& ec,
-                                  size_t bytes_transferred) {
+void WorkerServerConnection::_sent(boost::system::error_code const& ec,
+                                   size_t bytes_transferred) {
 
     LOGS(_log, LOG_LVL_DEBUG, context << __func__);
     if (::isErrorCode(ec, __func__)) return;
 
     // Go wait for another request
-    receive();
+    _receive();
 }
 
 }}} // namespace lsst::qserv::replica

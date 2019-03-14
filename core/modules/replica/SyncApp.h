@@ -65,14 +65,16 @@ public:
 protected:
 
     /**
-     * @see SyncApp::create()
-     */
-    SyncApp(int argc, char* argv[]);
-
-    /**
      * @see Application::runImpl()
      */
     int runImpl() final;
+
+private:
+
+    /**
+     * @see SyncApp::create()
+     */
+    SyncApp(int argc, char* argv[]);
 
 private:
 

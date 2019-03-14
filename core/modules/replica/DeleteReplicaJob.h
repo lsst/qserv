@@ -83,15 +83,29 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param databaseFamily - the name of a database family involved into the operation
-     * @param chunk          - the chunk number
-     * @param worker         - the name of a worker where the affected replica is residing
-     * @param controller     - for launching requests
-     * @param parentJobId    - optional identifier of a parent job
-     * @param onFinish       - a callback function to be called upon a completion of the job
-     * @param options        - job options
+     * @param databaseFamily
+     *   the name of a database family involved into the operation
      *
-     * @return pointer to the created object
+     * @param chunk
+     *   the chunk number
+     *
+     * @param worker
+     *   the name of a worker where the affected replica is residing
+     *
+     * @param controller
+     *   for launching requests
+     *
+     * @param parentJobId
+     *   optional identifier of a parent job
+     *
+     * @param onFinish
+     *   a callback function to be called upon a completion of the job
+     *
+     * @param options
+     *   job options
+     *
+     * @return
+     *   pointer to the created object
      */
     static Ptr create(std::string const& databaseFamily,
                       unsigned int chunk,
@@ -121,19 +135,21 @@ public:
     /**
      * Return the result of the operation.
      *
-     * IMPORTANT NOTES:
-     * - the method should be invoked only after the job has finished (primary
-     *   status is set to Job::Status::FINISHED). Otherwise exception
-     *   std::logic_error will be thrown
+     * @note:
+     *  The method should be invoked only after the job has finished (primary
+     *  status is set to Job::Status::FINISHED). Otherwise exception
+     *  std::logic_error will be thrown
      *
-     * - the result will be extracted from requests which have successfully
-     *   finished. Please, verify the primary and extended status of the object
-     *   to ensure that all requests have finished.
+     * @note
+     *  The result will be extracted from requests which have successfully
+     *  finished. Please, verify the primary and extended status of the object
+     *  to ensure that all requests have finished.
      *
-     * @return the data structure to be filled upon the completion of the job.
+     * @return
+     *   the data structure to be filled upon the completion of the job.
      *
-     * @throws std::logic_error - if the job didn't finished at a time
-     *                            when the method was called
+     * @throws std::logic_error
+     *   if the job didn't finished at a time when the method was called
      */
     DeleteReplicaJobResult const& getReplicaData() const;
 
@@ -182,7 +198,8 @@ private:
     /**
      * Initiate a process of removing the replica from the source worker
      *
-     * @param lock - lock for thread safety
+     * @param lock
+     *   lock for thread safety
      */
     void _beginDeleteReplica(util::Lock const& lock);
 
@@ -190,7 +207,8 @@ private:
      * The callback function to be invoked on a completion of each replica
      * deletion request.
      *
-     * @param request - a pointer to a request
+     * @param request
+     *   a pointer to a request
      */
     void _onRequestFinish(DeleteRequest::Ptr const& request);
 

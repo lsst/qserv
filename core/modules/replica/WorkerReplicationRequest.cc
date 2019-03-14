@@ -477,7 +477,7 @@ WorkerReplicationRequestFS::WorkerReplicationRequestFS(
 
 WorkerReplicationRequestFS::~WorkerReplicationRequestFS() {
     util::Lock lock(_mtx, context() + __func__);
-    releaseResources(lock);
+    _releaseResources(lock);
 }
 
 
@@ -550,7 +550,7 @@ bool WorkerReplicationRequestFS::execute () {
 
         boost::system::error_code ec;
         {
-            util::Lock dataFolderLock(_mtxDataFolderOperations, context() + "execute");
+            util::Lock dataFolderLock(_mtxDataFolderOperations, context() + __func__);
 
             // Check for a presence of input files and calculate space requirement
 
@@ -696,7 +696,7 @@ bool WorkerReplicationRequestFS::execute () {
         // Setup the iterator for the name of the very first file to be copied
         _fileItr = _files.begin();
 
-        if (not openFiles(lock)) return true;
+        if (not _openFiles(lock)) return true;
     }
 
     // Copy the next record from the currently open remote file
@@ -724,7 +724,7 @@ bool WorkerReplicationRequestFS::execute () {
 
                     // Keep updating this stats while copying the files
                     _file2descr[*_fileItr].endTransferTime = PerformanceUtils::now();
-                    updateInfo(lock);
+                    _updateInfo(lock);
 
                     // Keep copying the same file
                     return false;
@@ -759,9 +759,10 @@ bool WorkerReplicationRequestFS::execute () {
 
         if (errorContext.failed) {
             setStatus(lock, STATUS_FAILED, errorContext.extendedStatus);
-            releaseResources(lock);
+            _releaseResources(lock);
             return true;
         }
+
         // Flush and close the current file
 
         fflush(_tmpFilePtr);
@@ -770,24 +771,24 @@ bool WorkerReplicationRequestFS::execute () {
 
         // Keep updating this stats after finishing to copy each file
         _file2descr[*_fileItr].endTransferTime = PerformanceUtils::now();
-        updateInfo(lock);
+        _updateInfo(lock);
 
         // Move the iterator to the name of the next file to be copied
         ++_fileItr;
         if (_files.end() != _fileItr) {
-            if (not openFiles(lock)) {
-                releaseResources(lock);
+            if (not _openFiles(lock)) {
+                _releaseResources(lock);
                 return true;
             }
         }
     }
 
     // Finalize the operation, de-allocate resources, etc.
-    return finalize(lock);
+    return _finalize(lock);
 }
 
 
-bool WorkerReplicationRequestFS::openFiles(util::Lock const& lock) {
+bool WorkerReplicationRequestFS::_openFiles(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__
          << "  sourceWorker: " << sourceWorker()
@@ -839,7 +840,7 @@ bool WorkerReplicationRequestFS::openFiles(util::Lock const& lock) {
 }
 
 
-bool WorkerReplicationRequestFS::finalize(util::Lock const& lock) {
+bool WorkerReplicationRequestFS::_finalize(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__
          << "  sourceWorker: " << sourceWorker()
@@ -847,7 +848,7 @@ bool WorkerReplicationRequestFS::finalize(util::Lock const& lock) {
          << "  chunk: "        << chunk());
 
     // Unconditionally regardless of the completion of the file renaming attempt
-    releaseResources(lock);
+    _releaseResources(lock);
 
     // Rename temporary files into the canonical ones
     // Note that this operation changes the directory namespace in a way
@@ -892,7 +893,7 @@ bool WorkerReplicationRequestFS::finalize(util::Lock const& lock) {
 }
 
 
-void WorkerReplicationRequestFS::updateInfo(util::Lock const& lock) {
+void WorkerReplicationRequestFS::_updateInfo(util::Lock const& lock) {
 
     size_t totalInSizeBytes  = 0;
     size_t totalOutSizeBytes = 0;
@@ -931,7 +932,7 @@ void WorkerReplicationRequestFS::updateInfo(util::Lock const& lock) {
 }
 
 
-void WorkerReplicationRequestFS::releaseResources(util::Lock const& lock) {
+void WorkerReplicationRequestFS::_releaseResources(util::Lock const& lock) {
 
     // Drop a connection to the remote server
     _inFilePtr.reset();

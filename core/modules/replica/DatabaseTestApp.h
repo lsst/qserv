@@ -31,8 +31,8 @@ namespace qserv {
 namespace replica {
 
 /**
- * Class DatabaseTestApp implements a tool for testing the DatabaseServices API used by
- * the Replication system implementation.
+ * Class DatabaseTestApp implements a tool for testing the DatabaseServices API
+ * used by the Replication system implementation.
  */
 class DatabaseTestApp : public Application {
 

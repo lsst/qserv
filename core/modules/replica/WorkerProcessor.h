@@ -68,10 +68,9 @@ public:
      * data members 'c' representing the internal container of the base queue
      * in order to implement the iterator protocol.
      */
-    struct PriorityQueueType
-        :   std::priority_queue<WorkerRequest::Ptr,
-                                std::vector<WorkerRequest::Ptr>,
-                                WorkerRequestCompare> {
+    struct PriorityQueueType : std::priority_queue<WorkerRequest::Ptr,
+                                                   std::vector<WorkerRequest::Ptr>,
+                                                   WorkerRequestCompare> {
 
         /// @return iterator to the beginning of the container
         decltype(c.begin()) begin() {
@@ -299,7 +298,7 @@ public:
                          proto::ReplicationRequestStop const& request,
                          RESPONSE_MSG_TYPE& response) {
 
-        util::Lock lock(_mtx, context() + "dequeueOrCancel");
+        util::Lock lock(_mtx, _context() + __func__);
 
         // Set this response unless an exact request (same type and identifier)
         // will be found.
@@ -310,12 +309,12 @@ public:
         // Try to locate a request with specified identifier and make sure
         // its actual type matches expectations.
 
-        if (WorkerRequest::Ptr ptr = dequeueOrCancelImpl(lock, request.id())) {
+        if (WorkerRequest::Ptr const ptr = _dequeueOrCancelImpl(lock, request.id())) {
             try {
 
                 // Set request-specific fields. Note exception handling for scenarios
                 // when request identifiers won't match actual types of requests
-                setInfo(ptr, response);
+                _setInfo(ptr, response);
 
                 // The status field is present in all response types
                 response.set_status(             translate(ptr->status()));
@@ -345,7 +344,7 @@ public:
                      proto::ReplicationRequestStatus const& request,
                      RESPONSE_MSG_TYPE& response) {
 
-        util::Lock lock(_mtx, context() + "checkStatus");
+        util::Lock lock(_mtx, _context() + __func__);
 
         // Set this response unless an exact request (same type and identifier)
         // will be found.
@@ -355,12 +354,12 @@ public:
 
         // Try to locate a request with specified identifier
 
-        if (WorkerRequest::Ptr ptr = checkStatusImpl(lock, request.id())) {
+        if (WorkerRequest::Ptr const ptr = _checkStatusImpl(lock, request.id())) {
             try {
 
                 // Set request-specific fields. Note exception handling for scenarios
                 // when request identifiers won't match actual types of requests
-                setInfo(ptr, response);
+                _setInfo(ptr, response);
 
                 // The status field is present in all response types
                 response.set_status(             translate(ptr->status()));
@@ -379,6 +378,7 @@ public:
      * @param response
      *   the Protobuf object to be initialized and ready to be sent back
      *   to the client
+     *
      * @param id
      *   an identifier of an original request this response is being sent
      * 
@@ -443,108 +443,140 @@ private:
      *   the client-specified timeout unless it's set to 0. In the later
      *   case the method will block indefinitely.
      *
-     * @param processorThread     - reference to a thread which fetches the next request
-     * @param timeoutMilliseconds - (optional) amount of time to wait before to finish if
-     *                              no suitable requests are available for processing
+     * @param processorThread
+     *   reference to a thread which fetches the next request
+     *
+     * @param timeoutMilliseconds
+     *   (optional) amount of time to wait before to finish if
+     *   no suitable requests are available for processing
      */
-    WorkerRequest::Ptr fetchNextForProcessing(
-                                WorkerProcessorThread::Ptr const& processorThread,
-                                unsigned int timeoutMilliseconds=0);
+    WorkerRequest::Ptr _fetchNextForProcessing(
+            WorkerProcessorThread::Ptr const& processorThread,
+            unsigned int timeoutMilliseconds=0);
 
     /**
      * Implement the operation for the specified identifier if such request
      * is still known to the Processor. Return a reference to the request object
      * whose state will be properly updated.
      *
-     * @param lock - lock which must be acquired before calling this method 
-     * @param id   - an identifier of a request
+     * @param lock
+     *   lock which must be acquired before calling this method
+     * 
+     * @param id
+     *   an identifier of a request
      *
-     * @return - a valid reference to the request object (if found)
-     *           or a reference to nullptr otherwise.
+     * @return
+     *   a valid reference to the request object (if found)
+     *   or a reference to nullptr otherwise.
      */
-    WorkerRequest::Ptr dequeueOrCancelImpl(util::Lock const& lock,
-                                           std::string const& id);
+    WorkerRequest::Ptr _dequeueOrCancelImpl(util::Lock const& lock,
+                                            std::string const& id);
 
     /**
      * Find and return a reference to the request object.
      *
-     * @param lock - lock which must be acquired before calling this method 
-     * @param id   - an identifier of a request
+     * @param lock
+     *   lock which must be acquired before calling this method
      *
-     * @return - a valid reference to the request object (if found)
-     *           or a reference to nullptr otherwise.
+     * @param id
+     *   an identifier of a request
+     *
+     * @return
+     *   a valid reference to the request object (if found)
+     *   or a reference to nullptr otherwise.
      */
-    WorkerRequest::Ptr checkStatusImpl(util::Lock const& lock,
-                                       std::string const& id);
+    WorkerRequest::Ptr _checkStatusImpl(util::Lock const& lock,
+                                        std::string const& id);
 
     /**
      * Extract the extra data from the request and put
      * it into the response object.
      *
-     * NOTE: This method expects a correct dynamic type of the request
-     *       object. Otherwise it will throw the std::logic_error exception.
+     * @note
+     *   This method expects a correct dynamic type of the request
+     *   object. Otherwise it will throw the std::logic_error exception.
      */
-    void setInfo(WorkerRequest::Ptr const& request,
-                 proto::ReplicationResponseReplicate& response);
+    void _setInfo(WorkerRequest::Ptr const& request,
+                  proto::ReplicationResponseReplicate& response);
 
     /**
      * Extract the extra data from the request and put it into the response object.
      *
-     * @param request  - finished request
-     * @param response - Google Protobuf object to be initialized
+     * @param request
+     *   finished request
      *
-     * @throws std::logic_error if the dynamic type of the request won't match expectations
+     * @param response
+     *   Google Protobuf object to be initialized
+     *
+     * @throws std::logic_error
+     *   if the dynamic type of the request won't match expectations
      */
-    void setInfo(WorkerRequest::Ptr const& request,
-                 proto::ReplicationResponseDelete& response);
+    void _setInfo(WorkerRequest::Ptr const& request,
+                  proto::ReplicationResponseDelete& response);
 
     /**
      * Extract the replica info (for one chunk) from the request and put
      * it into the response object.
      *
-     * @param request  - finished request
-     * @param response - Google Protobuf object to be initialized
+     * @param request
+     *   finished request
      *
-     * @throws std::logic_error if the dynamic type of the request won't match expectations
+     * @param response
+     *   Google Protobuf object to be initialized
+     *
+     * @throws std::logic_error
+     *   if the dynamic type of the request won't match expectations
      */
-    void setInfo(WorkerRequest::Ptr const& request,
-                 proto::ReplicationResponseFind& response);
+    void _setInfo(WorkerRequest::Ptr const& request,
+                  proto::ReplicationResponseFind& response);
 
     /**
      * Extract the replica info (for multiple chunks) from the request and put
      * it into the response object.
      *
-     * @param request  - finished request
-     * @param response - Google Protobuf object to be initialized
+     * @param request
+     *   finished request
      *
-     * @throws std::logic_error if the dynamic type of the request won't match expectations
+     * @param response
+     *   Google Protobuf object to be initialized
+     *
+     * @throws std::logic_error
+     *   if the dynamic type of the request won't match expectations
      */
-    void setInfo(WorkerRequest::Ptr const& request,
-                 proto::ReplicationResponseFindAll& response);
+    void _setInfo(WorkerRequest::Ptr const& request,
+                  proto::ReplicationResponseFindAll& response);
 
     /**
      * Extract the replica info (for multiple chunks) from the request and put
      * it into the response object.
      *
-     * @param request  - finished request
-     * @param response - Google Protobuf object to be initialized
+     * @param request
+     *   finished request
      *
-     * @throws std::logic_error if the dynamic type of the request won't match expectations
+     * @param response
+     *   Google Protobuf object to be initialized
+     *
+     * @throws std::logic_error
+     *   if the dynamic type of the request won't match expectations
      */
-    void setInfo(WorkerRequest::Ptr const& request,
-                 proto::ReplicationResponseEcho& response);
+    void _setInfo(WorkerRequest::Ptr const& request,
+                  proto::ReplicationResponseEcho& response);
 
     /**
      * Fill in the information object for the specified request based on its
      * actual type.
      *
-     * @param request - a pointer to the request
-     * @param info    - a pointer to the protobuf object to be filled
+     * @param request
+     *   a pointer to the request
      *
-     * @throw std::logic_error for unsupported request types.
+     * @param info
+     *   a pointer to the Protobuf object to be filled
+     *
+     * @throw std::logic_error
+     *   for unsupported request types.
      */
-    void setServiceResponseInfo(WorkerRequest::Ptr const& request,
-                                proto::ReplicationServiceResponseInfo* info) const;
+    void _setServiceResponseInfo(WorkerRequest::Ptr const& request,
+                                 proto::ReplicationServiceResponseInfo* info) const;
 
     /**
      * Report a decision not to process a request
@@ -556,9 +588,10 @@ private:
      * back into the ready-to-be processed request and be picked up later
      * by some other thread.
      *
-     * @param request - a pointer to the request
+     * @param request
+     *   a pointer to the request
      */
-    void processingRefused(WorkerRequest::Ptr const& request);
+    void _processingRefused(WorkerRequest::Ptr const& request);
 
     /**
      * Report a request which has been processed or cancelled.
@@ -567,9 +600,10 @@ private:
      * The request will be moved into the corresponding queue. A proper
      * completion status is expected be stored within the request.
      *
-     * @param request - a pointer to the request
+     * @param request
+     *   a pointer to the request
      */
-    void processingFinished(WorkerRequest::Ptr const& request);
+    void _processingFinished(WorkerRequest::Ptr const& request);
 
     /**
      * For threads reporting their completion
@@ -579,12 +613,13 @@ private:
      * of this processor from the combined State::STATE_IS_STOPPING to
      * State::STATE_IS_STOPPED. The later is achieved when all threads are stopped.
      *
-     * @param processorThread - reference to the processing thread which finished
+     * @param processorThread
+     *   reference to the processing thread which finished
      */
-    void processorThreadStopped(WorkerProcessorThread::Ptr const& processorThread);
+    void _processorThreadStopped(WorkerProcessorThread::Ptr const& processorThread);
 
     /// @return the context string
-    std::string context() const { return "PROCESSOR  "; }
+    std::string _context() const { return "PROCESSOR  "; }
 
 private:
 

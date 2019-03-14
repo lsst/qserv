@@ -84,14 +84,13 @@ void WorkerServer::run() {
     // Begin accepting connections before running the service to allow
     // asynchronous operations. Otherwise the service will finish right
     // away.
-
-    beginAccept();
+    _beginAccept();
 
     _io_service.run();
 }
 
 
-void WorkerServer::beginAccept() {
+void WorkerServer::_beginAccept() {
 
     auto const connection =
         WorkerServerConnection::create(
@@ -103,7 +102,7 @@ void WorkerServer::beginAccept() {
     _acceptor.async_accept(
         connection->socket(),
         boost::bind (
-            &WorkerServer::handleAccept,
+            &WorkerServer::_handleAccept,
             shared_from_this(),
             connection,
             boost::asio::placeholders::error
@@ -112,8 +111,8 @@ void WorkerServer::beginAccept() {
 }
 
 
-void WorkerServer::handleAccept(WorkerServerConnection::Ptr const& connection,
-                                boost::system::error_code const& ec) {
+void WorkerServer::_handleAccept(WorkerServerConnection::Ptr const& connection,
+                                 boost::system::error_code const& ec) {
 
     if (ec.value() == 0) {
         connection->beginProtocol();
@@ -126,7 +125,7 @@ void WorkerServer::handleAccept(WorkerServerConnection::Ptr const& connection,
 
         LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  ec:" << ec);
     }
-    beginAccept();
+    _beginAccept();
 }
 
 }}} // namespace lsst::qserv::replica

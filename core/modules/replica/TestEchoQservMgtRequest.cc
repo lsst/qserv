@@ -120,7 +120,7 @@ void TestEchoQservMgtRequest::startImpl(util::Lock const& lock) {
 
                 case wpublish::TestEchoQservRequest::Status::SUCCESS:
 
-                    request->setData(lock, dataEcho);
+                    request->_setData(lock, dataEcho);
                     request->finish(lock, QservMgtRequest::ExtendedState::SUCCESS);
                     break;
 
@@ -170,8 +170,8 @@ void TestEchoQservMgtRequest::notify(util::Lock const& lock) {
 }
 
 
-void TestEchoQservMgtRequest::setData(util::Lock const& lock,
-                                      string const& data) {
+void TestEchoQservMgtRequest::_setData(util::Lock const& lock,
+                                       string const& data) {
     _dataEcho = data;
 }
 

@@ -68,21 +68,33 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider - reference to a provider of services
-     * @param worker          - the name of a worker
-     * @param chunk           - the chunk number
-     * @param databases       - the names of databases
-     * @param force           - force the removal even if the chunk is in use
-     * @param onFinish        - callback function to be called upon request completion
+     * @param serviceProvider
+     *   reference to a provider of services
      *
-     * @return pointer to the created object
+     * @param worker
+     *   the name of a worker
+     *
+     * @param chunk
+     *   the chunk number
+     *
+     * @param databases
+     *   the names of databases
+     *
+     * @param force
+     *   force the removal even if the chunk is in use
+     * 
+     * @param onFinish
+     *   callback function to be called upon request completion
+     *
+     * @return
+     *   pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& worker,
                       unsigned int chunk,
                       std::vector<std::string> const& databases,
-                      bool force = false,
-                      CallbackType const& onFinish = nullptr);
+                      bool force=false,
+                      CallbackType const& onFinish=nullptr);
 
     /// @return number of a chunk
     unsigned int chunk() const { return _chunk; }

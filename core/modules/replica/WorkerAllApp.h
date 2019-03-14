@@ -77,16 +77,16 @@ public:
 protected:
 
     /**
-     * @see WorkerAllApp::create()
-     */
-    WorkerAllApp(int argc, char* argv[]);
-
-    /**
      * @see Application::runImpl()
      */
     int runImpl() final;
 
 private:
+
+    /**
+     * @see WorkerAllApp::create()
+     */
+    WorkerAllApp(int argc, char* argv[]);
 
     /**
      * Launch all worker servers in dedicated detached threads. Also run

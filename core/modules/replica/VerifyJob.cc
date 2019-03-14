@@ -243,9 +243,9 @@ void VerifyJob::startImpl(util::Lock const& lock) {
     // Launch the first batch of requests
 
     vector<ReplicaInfo> replicas;
-    nextReplicas(lock,
-                 replicas,
-                 maxReplicas());
+    _nextReplicas(lock,
+                  replicas,
+                  maxReplicas());
 
     if (replicas.empty()) {
 
@@ -264,7 +264,7 @@ void VerifyJob::startImpl(util::Lock const& lock) {
             replica.database(),
             replica.chunk(),
             [self] (FindRequest::Ptr request) {
-                self->onRequestFinish(request);
+                self->_onRequestFinish(request);
             },
             options(lock).priority,     /* inherited from the one of the current job */
             computeCheckSum(),
@@ -309,7 +309,7 @@ void VerifyJob::notify(util::Lock const& lock) {
 }
 
 
-void VerifyJob::onRequestFinish(FindRequest::Ptr request) {
+void VerifyJob::_onRequestFinish(FindRequest::Ptr const& request) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__
          << "  database=" << request->database()
@@ -395,9 +395,9 @@ void VerifyJob::onRequestFinish(FindRequest::Ptr request) {
     _requests.erase(request->id());
 
     vector<ReplicaInfo> replicas;
-    nextReplicas(lock,
-                 replicas,
-                 1);
+    _nextReplicas(lock,
+                  replicas,
+                  1);
 
     if (0 == replicas.size()) {
 
@@ -416,7 +416,7 @@ void VerifyJob::onRequestFinish(FindRequest::Ptr request) {
             replica.database(),
             replica.chunk(),
             [self] (FindRequest::Ptr request) {
-                self->onRequestFinish(request);
+                self->_onRequestFinish(request);
             },
             options(lock).priority, /* inherited from the one of the current job */
             computeCheckSum(),
@@ -440,9 +440,9 @@ void VerifyJob::onRequestFinish(FindRequest::Ptr request) {
 }
 
 
-void VerifyJob::nextReplicas(util::Lock const& lock,
-                             vector<ReplicaInfo>& replicas,
-                             size_t numReplicas) {
+void VerifyJob::_nextReplicas(util::Lock const& lock,
+                              vector<ReplicaInfo>& replicas,
+                              size_t numReplicas) {
 
     controller()->serviceProvider()->databaseServices()->findOldestReplicas(
         replicas,

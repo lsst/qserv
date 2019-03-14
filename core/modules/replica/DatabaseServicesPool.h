@@ -60,8 +60,11 @@ public:
      * The factory method for instantiating a proper service object based
      * on an application configuration.
      *
-     * @param configuration - the configuration service
-     * @return pointer to the created object
+     * @param configuration
+     *   the configuration service
+     *
+     * @return
+     *   pointer to the created object
      */
     static Ptr create(ConfigurationPtr const& configuration);
 
@@ -227,16 +230,19 @@ private:
     /**
      * Construct the object.
      *
-     * @param configuration - the configuration service
+     * @param configuration
+     *   the configuration service
      */
     explicit DatabaseServicesPool(ConfigurationPtr const& configuration);
 
     /**
      * Allocate the next available service object.
      *
-     * NOTE: the requester must return the service back after it's no longer needed.
+     * @note
+     *   the requester must return the service back after it's no longer needed.
      *
-     * @return pointer to a service
+     * @return
+     *   pointer to a service
      *
      * @see DatabaseServicesPool::_releaseService()
      */
@@ -245,9 +251,11 @@ private:
     /**
      * Return a service object back into the pool of the available ones.
      *
-     * @param service - service object to be returned back
+     * @param service
+     *   service object to be returned back
      *
-     * @throws std::logic_error if the service object was not previously allocated
+     * @throws std::logic_error
+     *   if the service object was not previously allocated
      *
      * @see DatabaseServicesPool::_allocateService()
      */

@@ -252,10 +252,12 @@ protected:
      * Construct an object by reading the configuration from the input
      * configuration store.
      *
-     * @param configStore - reference to a configuration store object
+     * @param configStore
+     *   reference to a configuration store object
      *
-     * @throw std::runtime_error if the input configuration is not consistent
-     * with expectations of the application
+     * @throw std::runtime_error
+     *   if the input configuration is not consistent with expectations
+     *   of the application
      */
     explicit ConfigurationStore(util::ConfigStore const& configStore);
 
@@ -265,10 +267,12 @@ private:
      * Read and validate input configuration parameters from the specified 
      * store and initialize the object.
      *
-     * @param configStore - reference to a configuration store object
+     * @param configStore
+     *   reference to a configuration store object
      *
-     * @throw std::runtime_error if the input configuration is not consistent
-     * with expectations of the application
+     * @throw std::runtime_error
+     *   if the input configuration is not consistent with expectations
+     *   of the application
      */
     void _loadConfiguration(util::ConfigStore const& configStore);
 

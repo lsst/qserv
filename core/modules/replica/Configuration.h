@@ -244,11 +244,8 @@ public:
     std::vector<std::string> workers(bool isEnabled=true,
                                      bool isReadOnly=false) const;
 
-    /**
-     * @return names of all known workers regardless of their statuses
-     */
+    /// @return names of all known workers regardless of their statuses
     std::vector<std::string> allWorkers() const;
-
 
     /// @return maximum size of the request buffers in bytes
     size_t requestBufferSizeBytes() const { return _requestBufferSizeBytes; }
@@ -439,8 +436,9 @@ public:
     static unsigned int setDatabaseMaxReconnects(unsigned int value);
 
     /**
-     * @return the default timeout for executing transactions at a presence
-     * of server reconnects.
+     * @return
+     *   the default timeout for executing transactions at a presence
+     *   of server reconnects.
      */
     static unsigned int databaseTransactionTimeoutSec() { return defaultDatabaseTransactionTimeoutSec; }
 

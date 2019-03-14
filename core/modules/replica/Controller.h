@@ -95,14 +95,14 @@ std::ostream& operator <<(std::ostream& os, ControllerIdentity const& identity);
   * to the worker replication services. Only one instance of this class is
   * allowed per a thread.
   *
-  * NOTES:
-  *
-  * - all methods launching, stopping or checking status of requests
+  * @note:
+  *   All methods launching, stopping or checking status of requests
   *   require that the server to be running. Otherwise it will throw
   *   std::runtime_error. The current implementation of the server
   *   doesn't support (yet?) an operation queuing mechanism.
-  *
-  * - methods which take worker names as parameters will throw exception
+ *
+  * @node
+  *   Methods which take worker names as parameters will throw exception
   *   std::invalid_argument if the specified worker names are not found
   *   in the configuration.
   */
@@ -124,7 +124,8 @@ public:
      * @param serviceProvider
      *   for configuration, other services
      *
-     * @return pointer to an instance of the Class
+     * @return
+     *   pointer to an instance of the Class
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider);
 

@@ -50,7 +50,8 @@ public:
      * Construct the buffer of some initial capacity, which will be
      * extended later if needed to accommodate larger messages.
      *
-     * @param capacity - initial capacity (bytes) of the buffer
+     * @param capacity
+     *   initial capacity (bytes) of the buffer
      */
     explicit ProtocolBuffer(size_t capacity);
 
@@ -70,10 +71,11 @@ public:
     size_t capacity () const { return _capacity; }
 
     /**
-     * @return current meaningful size (bytes) of the buffer
+     * @return
+     *   current meaningful size (bytes) of the buffer
      *
-     * NOTE: a value return by the method will never exceed the buffer's
-     * capacity.
+     * @note
+     *   a value return by the method will never exceed the buffer's capacity.
      */
     size_t size() const { return _size; }
 
@@ -83,7 +85,8 @@ public:
      * will be extended. In the later case its previous content (if any) will
      * be preserved.
      *
-     * @param newSizeBytes - (optional) new size in bytes
+     * @param newSizeBytes
+     *   (optional) new size in bytes
      *
      * @throws std::overflow_error
      *   if the buffer doesn't have enough space to accommodate the request
@@ -94,7 +97,8 @@ public:
      * Add a message into the buffer. The message will be preceded
      * by a frame header carrying the length of the message.
      *
-     * @param message - Protobuf object to be serialized
+     * @param message
+     *   Protobuf object to be serialized
      *
      * @throws std::overflow_error
      *   if the buffer doesn't have enough space to accommodate the data
@@ -129,10 +133,12 @@ public:
      * Parse and de-serialize the length of a message from the frame header
      * assuming the header is stored at the very beginning of the data buffer.
      *
-     * @return the length of a message
+     * @return
+     *   the length of a message
      *
-     * @throws std::underflow_error if the buffer doesn't have enough data to be
-     * interpreted as the frame header
+     * @throws std::underflow_error
+     *   if the buffer doesn't have enough data to be interpreted as
+     *   the frame header
      */
     uint32_t parseLength() const;
 
@@ -141,11 +147,15 @@ public:
      * the message as informed by a prior frame header. The message is
      * assumed to be stored at the very beginning of the data buffer.
      *
-     * @param message - Protobuf object to be initialized
-     * @param bytes   - number of bytes to be consumed during the operation
+     * @param message
+     *   Protobuf object to be initialized
      *
-     * @throws std::underflow_error if the buffer doesn't have enough data
-     * to be interpreted as the message of the required size
+     * @param bytes
+     *   the number of bytes to be consumed during the operation
+     *
+     * @throws std::underflow_error
+     *   if the buffer doesn't have enough data to be interpreted as the message
+     *   of the required size
      *
      * @throws std::runtime_error if the de-serialization failed
      */

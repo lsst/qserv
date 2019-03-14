@@ -113,11 +113,20 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider  - provides various services for the application
-     * @param worker           - identifier of a worker node (the one to be affected by the request)
-     * @param io_service       - network communication service (BOOST ASIO)
-     * @param onFinish         - callback function to be called upon a completion of the request
-     * @param messenger        - messenger service for workers
+     * @param serviceProvider
+     *   provides various services for the application
+     *
+     * @param worker
+     *   identifier of a worker node (the one to be affected by the request)
+     *
+     * @param io_service
+     *   network communication service (BOOST ASIO)
+     *
+     * @param onFinish
+     *   callback function to be called upon a completion of the request
+     *
+     * @param messenger
+     *   messenger service for workers
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       boost::asio::io_service& io_service,

@@ -67,19 +67,28 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider - reference to a provider of services
-     * @param worker          - the name of a worker
-     * @param databaseFamily  - the name of a database family
-     * @param inUseOnly       - (optional) return replicas which are presently in use
-     * @param onFinish        - (optional) callback function to be called upon request completion
+     * @param serviceProvider
+     *   reference to a provider of services
+     *
+     * @param worker
+     *   the name of a worker
+     *
+     * @param databaseFamily
+     *   the name of a database family
+     *
+     * @param inUseOnly
+     *   (optional) return replicas which are presently in use
+     *
+     * @param onFinish
+     *   (optional) callback function to be called upon request completion
      * 
      * @return pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& worker,
                       std::string const& databaseFamily,
-                      bool inUseOnly = false,
-                      CallbackType const& onFinish = nullptr);
+                      bool inUseOnly=false,
+                      CallbackType const& onFinish=nullptr);
 
     /// @return name of a database family
     std::string const& databaseFamily() const { return _databaseFamily; }
@@ -88,11 +97,12 @@ public:
     bool inUseOnly() const { return _inUseOnly; }
 
     /**
-     * @return collection of replicas reported from the corresponding Qserv worker
+     * @return
+     *   collection of replicas reported from the corresponding Qserv worker
      *
-     * ATTENTION: the method will throw exception std::logic_error if called
-     *            before the request finishes or if it's finished with any
-     *            status but SUCCESS.
+     * @throw std::logic_error
+     *   if called before the request finishes or if it's finished with any
+     *   status but SUCCESS.
      */
     QservReplicaCollection const& replicas() const;
 

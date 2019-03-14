@@ -83,14 +83,15 @@ struct ServiceState {
 std::ostream& operator<< (std::ostream &os, const ServiceState &ss);
 
 /**
-  * Class ServiceManagementRequestBase is the base class for a family of requests
-  * managing worker-side replication service. The only variable parameter of this
-  * class is a specific type of the management request.
-  *
-  * Note that this class can't be instantiated directly. It serves as an implementation
-  * of the protocol. All final customizations and type-specific operations are
-  * provided via a generic subclass.
-  */
+ * Class ServiceManagementRequestBase is the base class for a family of requests
+ * managing worker-side replication service. The only variable parameter of this
+ * class is a specific type of the management request.
+ *
+ * @note
+ *   that this class can't be instantiated directly. It serves as an implementation
+ *   of the protocol. All final customizations and type-specific operations are
+ *   provided via a generic subclass.
+ */
 class ServiceManagementRequestBase : public RequestMessenger {
 
 public:
@@ -121,13 +122,26 @@ protected:
     /**
      * Construct the request with the pointer to the services provider.
      *
-     * @param serviceProvider  - provides various services for the application
-     * @param io_service       - network communication service (BOOST ASIO)
-     * @param requestName      - name of a request
-     * @param worker           - name of a worker
-     * @param requestType      - type of a request
-     * @param onFinish         - callback function to be called upon a completion of the request
-     * @param messenger        - messaging service for workers
+     * @param serviceProvider
+     *   provides various services for the application
+     *
+     * @param io_service
+     *   network communication service (BOOST ASIO)
+     *
+     * @param requestName
+     *   name of a request
+     *
+     * @param worker
+     *   name of a worker
+     *
+     * @param requestType
+     *   type of a request
+     *
+     * @param onFinish
+     *   callback function to be called upon a completion of the request
+     *
+     * @param messenger
+     *   messaging service for workers
      */
     ServiceManagementRequestBase(ServiceProvider::Ptr const& serviceProvider,
                                  boost::asio::io_service& io_service,
@@ -150,8 +164,11 @@ private:
     /**
      * Process the worker response to the requested operation.
      *
-     * @param success - the flag indicating if the operation was successful
-     * @param message - a response from the worker service (if success is 'true')
+     * @param success
+     *   the flag indicating if the operation was successful
+     *
+     * @param message
+     *   a response from the worker service (if success is 'true')
      */
     void _analyze(bool success,
                   proto::ReplicationServiceResponse const& message);

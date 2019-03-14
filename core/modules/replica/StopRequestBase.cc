@@ -71,11 +71,11 @@ StopRequestBase::StopRequestBase(ServiceProvider::Ptr const& serviceProvider,
 
 void StopRequestBase::startImpl(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-    sendImpl(lock);
+    _sendImpl(lock);
 }
 
 
-void StopRequestBase::wait(util::Lock const& lock) {
+void StopRequestBase::_wait(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
@@ -84,7 +84,7 @@ void StopRequestBase::wait(util::Lock const& lock) {
     timer().expires_from_now(boost::posix_time::seconds(timerIvalSec()));
     timer().async_wait(
         boost::bind(
-            &StopRequestBase::awaken,
+            &StopRequestBase::_awaken,
             shared_from_base<StopRequestBase>(),
             boost::asio::placeholders::error
         )
@@ -92,7 +92,7 @@ void StopRequestBase::wait(util::Lock const& lock) {
 }
 
 
-void StopRequestBase::awaken(boost::system::error_code const& ec) {
+void StopRequestBase::_awaken(boost::system::error_code const& ec) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
@@ -110,11 +110,11 @@ void StopRequestBase::awaken(boost::system::error_code const& ec) {
 
     if (state() == State::FINISHED) return;
 
-    sendImpl(lock);
+    _sendImpl(lock);
 }
 
 
-void StopRequestBase::sendImpl(util::Lock const& lock) {
+void StopRequestBase::_sendImpl(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
@@ -178,17 +178,17 @@ void StopRequestBase::analyze(bool success,
             break;
 
         case proto::ReplicationStatus::QUEUED:
-            if (keepTracking()) wait(lock);
+            if (keepTracking()) _wait(lock);
             else                finish(lock, SERVER_QUEUED);
             break;
 
         case proto::ReplicationStatus::IN_PROGRESS:
-            if (keepTracking()) wait(lock);
+            if (keepTracking()) _wait(lock);
             else                finish(lock, SERVER_IN_PROGRESS);
             break;
 
         case proto::ReplicationStatus::IS_CANCELLING:
-            if (keepTracking()) wait(lock);
+            if (keepTracking()) _wait(lock);
             else                finish(lock, SERVER_IS_CANCELLING);
             break;
 

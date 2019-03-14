@@ -84,7 +84,8 @@ public:
      * Construct the object by reading the configuration
      * from the specified file.
      *
-     * @param connectionParams - connection parameters
+     * @param connectionParams
+     *   connection parameters
      */
     ConfigurationMySQL(database::mysql::ConnectionParams const& connectionParams);
 
@@ -362,10 +363,9 @@ private:
     /**
      * Analyze the configuration and initialize the cache of parameters.
      *
-     * The method will throw one of these exceptions:
-     *
-     *   std::runtime_error
-     *      the configuration is not consistent with expectations of the application
+     * @throw std::runtime_error
+     *   if the configuration is not consistent with expectations of
+     *   the application
      */
     void _loadConfiguration();
 

@@ -64,14 +64,16 @@ public:
 protected:
 
     /**
-     * @see VerifyApp::create()
-     */
-    VerifyApp(int argc, char* argv[]);
-
-    /**
      * @see Application::runImpl()
      */
     int runImpl() final;
+
+private:
+
+    /**
+     * @see VerifyApp::create()
+     */
+    VerifyApp(int argc, char* argv[]);
 
 private:
 

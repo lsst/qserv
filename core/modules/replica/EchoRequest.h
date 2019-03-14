@@ -86,16 +86,32 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider  - provider of various services
-     * @param worker           - identifier of a worker node
-     * @param data             - data string to be echoed back by a worker
-     * @param delay            - execution time (milliseconds) of the request at worker
-     * @param onFinish         - (optional) callback function to call upon completion of the request
-     * @param priority         - priority level of the request
-     * @param keepTracking     - keep tracking the request before it finishes or fails
-     * @param messenger        - interface for communicating with workers
+     * @param serviceProvider
+     *   provider of various services
      *
-     * @return pointer to the created object
+     * @param worker
+     *   identifier of a worker node
+     *
+     * @param data
+     *   data string to be echoed back by a worker
+     *
+     * @param delay
+     *   execution time (milliseconds) of the request at worker
+     *
+     * @param onFinish
+     *   (optional) callback function to call upon completion of the request
+     *
+     * @param priority
+     *   priority level of the request
+     *
+     * @param keepTracking
+     *   keep tracking the request before it finishes or fails
+     *
+     * @param messenger
+     *   interface for communicating with workers
+     *
+     * @return
+     *   pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       boost::asio::io_service& io_service,
@@ -106,6 +122,11 @@ public:
                       int  priority,
                       bool keepTracking,
                       std::shared_ptr<Messenger> const& messenger);
+
+    /**
+     * @see Request::extendedPersistentState()
+     */
+    std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
 
 protected:
 
@@ -123,11 +144,6 @@ protected:
      * @see Request::savePersistentState()
      */
     void savePersistentState(util::Lock const& lock) final;
-
-    /**
-     * @see Request::extendedPersistentState()
-     */
-    std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
 
 private:
 

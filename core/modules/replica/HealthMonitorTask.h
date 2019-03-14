@@ -113,9 +113,7 @@ public:
                       unsigned int workerResponseTimeoutSec,
                       unsigned int healthProbeIntervalSec);
 
-    /**
-     * @return delays (seconds) in getting responses from the worker services
-     */
+    /// @return delays (seconds) in getting responses from the worker services
     WorkerResponseDelay workerResponseDelay() const;
 
 protected:

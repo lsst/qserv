@@ -145,7 +145,7 @@ public:
      *   (optional) this functional will be repeatedly (once a second) called
      *   while tracking the task's status
      */
-    bool startAndWait(WaitEvaluatorType const& abortWait = nullptr);
+    bool startAndWait(WaitEvaluatorType const& abortWait=nullptr);
 
 protected:
 

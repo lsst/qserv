@@ -73,10 +73,12 @@ public:
     FindRequestParams const& targetRequestParams() const { return _targetRequestParams; }
 
     /**
-     * @return a reference to a result obtained from a remote service.
+     * @return
+     *   a reference to a result obtained from a remote service.
      *
-     * Note that this operation will return a sensible result only if the operation
-     * finishes with status FINISHED::SUCCESS
+     * @note
+     *   This operation will return a sensible result only if the operation
+     *   finishes with status FINISHED::SUCCESS
      */
     ReplicaInfo const& responseData() const;
 
@@ -87,19 +89,37 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider  - a host of services for various communications
-     * @param worker           - the identifier of a worker node (the one where the chunk is
-     *                           expected to be located) at a destination of the chunk
-     * @param database         - the name of a database
-     * @param chunk            - the number of a chunk to find (implies all relevant tables)
-     * @param onFinish         - an optional callback function to be called upon a completion of
-     *                           the request.
-     * @param priority         - a priority level of the request
-     * @param computeCheckSum  - tell a worker server to compute check/control sum on each file
-     * @param keepTracking     - keep tracking the request before it finishes or fails
-     * @param messenger        - an interface for communicating with workers
+     * @param serviceProvider 
+     *   a host of services for various communications
      *
-     * @return pointer to the created object
+     * @param worker
+     *   the identifier of a worker node (the one where the chunk is
+     *   expected to be located) at a destination of the chunk
+     *
+     * @param database
+     *   the name of a database
+     *
+     * @param chunk
+     *   the number of a chunk to find (implies all relevant tables)
+     *
+     * @param onFinish
+     *   an optional callback function to be called upon a completion of
+     *   the request.
+     *
+     * @param priority
+     *   a priority level of the request
+     *
+     * @param computeCheckSum
+     *   tell a worker server to compute check/control sum on each file
+     *
+     * @param keepTracking
+     *   keep tracking the request before it finishes or fails
+     *
+     * @param messenger
+     *   an interface for communicating with workers
+     *
+     * @return
+     *   pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       boost::asio::io_service& io_service,
@@ -178,8 +198,11 @@ private:
     /**
      * Process the completion of the requested operation
      *
-     * @param success - flag indicating if the response succeeded
-     * @param message - response from a worker (if success)
+     * @param success
+     *   flag indicating if the response succeeded
+     *
+     * @param message
+     *   response from a worker (if success)
      */
     void _analyze(bool success,
                   lsst::qserv::proto::ReplicationResponseFind const& message);

@@ -215,8 +215,9 @@ public:
     }
 
     /**
-     * @return request-specific extended data reported upon a successful
-     * completion of the request
+     * @return
+     *   request-specific extended data reported upon a successful
+     *   completion of the request
      */
     typename POLICY::ResponseDataType const& responseData() const {
         return _responseData;
@@ -275,6 +276,45 @@ public:
                 messenger));
     }
 
+protected:
+
+    /**
+     * @see Request::notify()
+     */
+    void notify(util::Lock const& lock) final {
+        notifyDefaultImpl<StopRequest<POLICY>>(lock, _onFinish);
+    }
+
+    /**
+     * @see StopRequestBase::send()
+     */
+    void send(util::Lock const& lock) final {
+
+        auto self = shared_from_base<StopRequest<POLICY>>();
+
+        std::shared_ptr<Messenger> const m = messenger();
+        m->send<typename POLICY::ResponseMessageType>(
+            worker(),
+            id(),
+            buffer(),
+            [self] (std::string const& id,
+                    bool success,
+                    typename POLICY::ResponseMessageType const& response) {
+
+                if (success) self->analyze(true, self->_parseResponse(response));
+                else         self->analyze(false);
+            }
+        );
+    }
+
+    /**
+     * @see StopRequestBase::saveReplicaInfo()
+     */
+    void saveReplicaInfo() final {
+        auto const self = shared_from_base<StopRequest<POLICY>>();
+        POLICY::saveReplicaInfo(self);
+    }
+
 private:
 
     /**
@@ -303,43 +343,6 @@ private:
     }
 
     /**
-     * @see Request::notify()
-     */
-    void notify(util::Lock const& lock) final {
-        notifyDefaultImpl<StopRequest<POLICY>>(lock, _onFinish);
-    }
-
-    /**
-     * @see StopRequestBase::send()
-     */
-    void send(util::Lock const& lock) final {
-
-        auto self = shared_from_base<StopRequest<POLICY>>();
-
-        std::shared_ptr<Messenger> const m = messenger();
-        m->send<typename POLICY::ResponseMessageType>(
-            worker(),
-            id(),
-            buffer(),
-            [self] (std::string const& id,
-                    bool success,
-                    typename POLICY::ResponseMessageType const& response) {
-
-                if (success) self->analyze(true, self->parseResponse(response));
-                else         self->analyze(false);
-            }
-        );
-    }
-
-    /**
-     * @see StopRequestBase::saveReplicaInfo()
-     */
-    void saveReplicaInfo() final {
-        auto const self = shared_from_base<StopRequest<POLICY>>();
-        POLICY::saveReplicaInfo(self);
-    }
-
-    /**
      * Parse request-specific reply
      *
      * @param message
@@ -348,14 +351,14 @@ private:
      * @return
      *   status of the operation reported by a server
      */
-    proto::ReplicationStatus parseResponse(typename POLICY::ResponseMessageType const& message) {
+    proto::ReplicationStatus _parseResponse(typename POLICY::ResponseMessageType const& message) {
 
         // This lock must be acquired because the method is going to modify
         // results of the request. Note that the operation doesn't care
         // about the global state of the request (wether it's already finished
         // or not)
 
-        util::Lock lock(_mtx, context() + "parseResponse");
+        util::Lock lock(_mtx, context() + __func__);
 
         // Extract target request-specific parameters from the response if available
 

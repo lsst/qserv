@@ -61,8 +61,11 @@ public:
     /**
      * The normal constructor
      *
-     * @param replica1 - a reference to the the 'older' replica object
-     * @param replica2 - a reference to the the 'newer' replica object
+     * @param replica1
+     *   a reference to the the 'older' replica object
+     *
+     * @param replica2
+     *   `a reference to the the 'newer' replica object
      */
     ReplicaDiff(ReplicaInfo const& replica1,
                 ReplicaInfo const& replica2);
@@ -79,16 +82,18 @@ public:
     ReplicaInfo const& replica2() const { return _replica2; }
 
     /**
-     * @return 'true' if the object encapsulates two snapshots referring
-     * to the same replica.
+     * @return
+     *   'true' if the object encapsulates two snapshots referring
+     *   to the same replica.
      */
     bool isSelf() const;
 
     /**
      * The comparison operator
      *
-     * @return 'true' in case if there are differences between replicas. Specific aspects
-     * of the difference can be explored by directly comparing the replica objects.
+     * @return
+     *   'true' in case if there are differences between replicas. Specific aspects
+     *   of the difference can be explored by directly comparing the replica objects.
      */
     bool operator()() const { return _notEqual; }
 
@@ -193,9 +198,9 @@ public:
                       bool computeCheckSum,
                       CallbackTypeOnDiff const& onReplicaDifference,
                       Controller::Ptr const& controller,
-                      std::string const& parentJobId = std::string(),
-                      CallbackType const& onFinish = nullptr,
-                      Job::Options const& options = defaultOptions());
+                      std::string const& parentJobId=std::string(),
+                      CallbackType const& onFinish=nullptr,
+                      Job::Options const& options=defaultOptions());
 
     // Default construction and copy semantics are prohibited
 
@@ -219,6 +224,23 @@ public:
 protected:
 
     /**
+      * @see Job::startImpl()
+      */
+    void startImpl(util::Lock const& lock) final;
+
+    /**
+      * @see Job::cancelImpl()
+      */
+    void cancelImpl(util::Lock const& lock) final;
+
+    /**
+      * @see Job::notify()
+      */
+    void notify(util::Lock const& lock) final;
+
+private:
+
+    /**
      * Construct the job with the pointer to the services provider.
      *
      * @see VerifyJob::create()
@@ -232,37 +254,28 @@ protected:
               Job::Options const& options);
 
     /**
-      * @see Job::startImpl()
-      */
-    void startImpl(util::Lock const& lock) final;
-
-    /**
-      * @see Job::startImpl()
-      */
-    void cancelImpl(util::Lock const& lock) final;
-
-    /**
-      * @see Job::notify()
-      */
-    void notify(util::Lock const& lock) final;
-
-    /**
      * The callback function to be invoked on a completion of each request.
      *
-     * @param request - a pointer to a request
+     * @param request
+     *   a pointer to a request
      */
-    void onRequestFinish(FindRequest::Ptr request);
+    void _onRequestFinish(FindRequest::Ptr const& request);
 
     /**
      * Find the next replicas to be inspected.
      *
-     * @param lock        - the lock must be acquired by a caller of the method
-     * @param replicas    - a collection of replicas returned from the database
-     * @param numReplicas - a desired number of replicas to be pulled from the database
+     * @param lock
+     *   the lock must be acquired by a caller of the method
+     *
+     * @param replicas
+     *   a collection of replicas returned from the database
+     *
+     * @param numReplicas
+     *   a desired number of replicas to be pulled from the database
      */
-    void nextReplicas(util::Lock const& lock,
-                      std::vector<ReplicaInfo>& replicas,
-                      size_t numReplicas);
+    void _nextReplicas(util::Lock const& lock,
+                       std::vector<ReplicaInfo>& replicas,
+                       size_t numReplicas);
 
 protected:
 

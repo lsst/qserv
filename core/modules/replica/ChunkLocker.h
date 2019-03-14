@@ -48,10 +48,10 @@ struct Chunk {
 
     /**
      * The overloaded operator for comparing objects of structure Chunk.
-     *
      * The operator is used where the equality of chunks is needed.
      *
-     * @return 'true' if the chunk is 'equal' to the other one.
+     * @return
+     *   'true' if the chunk is 'equal' to the other one.
      */
     bool operator==(Chunk const& rhs) const;
 
@@ -62,7 +62,8 @@ struct Chunk {
      * as a key in ordered (map, set, ) or unordered (unordered_map,unordered_set,)
      * associative containers.
      *
-     * @return 'true' if the chunk is 'less' than the other one.
+     * @return
+     *   'true' if the chunk is 'less' than the other one.
      */
     bool operator<(Chunk const& rhs) const;
 };
@@ -96,20 +97,26 @@ public:
     ~ChunkLocker() = default;
 
     /**
-     * Return 'true' if a chunk is locked
+     * @param chunk
+     *   a chunk to be tested
      *
-     * @param chunk - a chunk to be tested
+     * @return
+     *   'true' if a chunk is locked
      */
     bool isLocked(Chunk const& chunk) const;
 
     /**
-     * @return 'true' if the chunk is locked and set an identifier of
-     * an owner which locked the chunk.
+     * @param chunk
+     *   a chunk to be tested
      *
-     * @param chunk - a chunk to be tested
-     * @param owner - a reference to a string which will be initialized with
-     *                an identifier of an owner of the chunk if the chunk is found
-     *                locked
+     * @param owner
+     *   a reference to a string which will be initialized with
+     *   an identifier of an owner of the chunk if the chunk is found
+     *   locked
+     *
+     * @return
+     *   'true' if the chunk is locked and set an identifier of
+     *   an owner which locked the chunk.
      */
     bool isLocked(Chunk const& chunk,
                   std::string& ownerId) const;
@@ -118,24 +125,31 @@ public:
      * Find chunks which are locked by a particular owner (if provided),
      * or by all owners.
      *
-     * @param owner - an optional owner. If the owner is not provided then
-     *                all chunks will be returned
+     * @param owner
+     *   an optional owner. If the owner is not provided then
+     *   all chunks will be returned
      *
-     * @return a collection of chunks grouped by owners
+     * @return
+     *   a collection of chunks grouped by owners
      */
     OwnerToChunks locked(std::string const& owner=std::string()) const;
 
     /**
      * Lock a chunk to a specific owner
      *
-     * @param chunk - a chunk to be locked
-     * @param owner - an identifier of an owner claiming the chunk
+     * @param chunk
+     *   a chunk to be locked
      *
-     * @return 'true' of the operation was successful or if the specified
-     * owner already owns it, or 'false' if there is outstanding lock on
-     * a chunk made earlier by another owner.
+     * @param owner
+     *   an identifier of an owner claiming the chunk
      *
-     * @throw std::invalid_argument - if the owner 'id' is an empty string
+     * @return
+     *   'true' of the operation was successful or if the specified
+     *   owner already owns it, or 'false' if there is outstanding lock on
+     *   a chunk made earlier by another owner.
+     *
+     * @throw std::invalid_argument
+     *   if the owner 'id' is an empty string
      */
     bool lock(Chunk const&       chunk,
               std::string const& owner);
@@ -143,9 +157,11 @@ public:
     /**
      * Release a chunk regardless of its owner
      *
-     * @param chunk - a chunk to be released
+     * @param chunk
+     *   a chunk to be released
      *
-     * @return 'true' if the operation was successful
+     * @return
+     *   'true' if the operation was successful
      */
     bool release(Chunk const& chunk);
 
@@ -153,12 +169,16 @@ public:
      * Release a chunk and, if successful, set an identifier of an owner which
      * previously 'claimed' the chunk.
      *
-     * @param chunk - chunk to be released
-     * @param owner - reference to a string which will be initialized with
-     *                an identifier of an owner which had a claim on the chunk
-     *                at a time of the method call
+     * @param chunk
+     *   chunk to be released
      *
-     * @return 'true' if the operation was successful
+     * @param owner
+     *   reference to a string which will be initialized with
+     *   an identifier of an owner which had a claim on the chunk
+     *   at a time of the method call
+     *
+     * @return
+     *   'true' if the operation was successful
      */
     bool release(Chunk const& chunk,
                  std::string& owner);
@@ -177,12 +197,18 @@ private:
      * Find chunks which are locked by a particular owner (if provided),
      * or by all owners.
      *
-     * @param mLock  - a lock on a mutex must be made before calling this method
-     * @param owner  - an optional owner. If the owner is not provided then
-     *                 all chunks will be returned
-     * @owner2chunks - collection of chunks to be initialized
+     * @param mLock
+     *   a lock on a mutex must be made before calling this method
      *
-     * @return a collection of chunks grouped by owners
+     * @param owner
+     *   an optional owner. If the owner is not provided then
+     *   all chunks will be returned.
+     *
+     * @owner2chunks
+     *   collection of chunks to be initialized
+     *
+     * @return
+     *   a collection of chunks grouped by owners
      */
     void _lockedImpl(util::Lock const& mLock,
                      std::string const& owner,
@@ -193,16 +219,23 @@ private:
      * to release a chunk and, if successful, set an identifier of an owner which
      * previously 'claimed' the chunk.
      *
-     * NOTE: this method is not thread-safe. It's up to its callers to ensure
-     *       proper synchronization context before invoking the method.
+     * @note
+     *   This method is not thread-safe. It's up to its callers to ensure
+     *   proper synchronization context before invoking the method.
      *
-     * @param mLock - a lock on a mutex must be made before calling this method
-     * @param chunk - a chunk to be released
-     * @param owner - a reference to a string which will be initialized with
-     *                an identifier of an owner which had a claim on the chunk
-     *                at a time of the method call if the chunk was found locked
+     * @param mLock
+     *   a lock on a mutex must be made before calling this method
      *
-     * @return 'true' if the operation was successful
+     * @param chunk
+     *   a chunk to be released
+     *
+     * @param owner
+     *   a reference to a string which will be initialized with
+     *   an identifier of an owner which had a claim on the chunk
+     *   at a time of the method call if the chunk was found locked
+     *
+     * @return
+     *   'true' if the operation was successful
      */
     bool _releaseImpl(util::Lock const& mLock,
                       Chunk const& chunk,

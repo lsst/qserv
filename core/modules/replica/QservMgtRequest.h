@@ -191,8 +191,9 @@ public:
     std::string context() const;
 
     /**
-     * @return a dictionary of parameters and the corresponding values to
-     * be stored in a database for a request.
+     * @return
+     *   a dictionary of parameters and the corresponding values to
+     *   be stored in a database for a request.
      */
     virtual std::list<std::pair<std::string,std::string>> extendedPersistentState() const {
         return std::list<std::pair<std::string,std::string>>();
@@ -203,9 +204,14 @@ protected:
     /**
      * Construct the request with the pointer to the services provider.
      *
-     * @param serviceProvider - reference to a provider of services
-     * @param type            - its type name (used informally for debugging)
-     * @param worker          - the name of a worker
+     * @param serviceProvider
+     *   reference to a provider of services
+     *
+     * @param type
+     *   its type name (used informally for debugging)
+     *
+     * @param worker
+     *   the name of a worker
      */
     QservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
                     std::string const& type,
@@ -245,9 +251,14 @@ protected:
      * This is supposed to be the last operation to be called by subclasses
      * upon a completion of the request.
      *
-     * @param lock          - the lock must be acquired by a caller of the method
-     * @param extendedState - new extended state
-     * @param serverError   - (optional) error message from a Qserv worker service
+     * @param lock
+     *   the lock must be acquired by a caller of the method
+     *
+     * @param extendedState
+     *   new extended state
+     *
+     * @param serverError
+     *   (optional) error message from a Qserv worker service
      */
     void finish(util::Lock const& lock,
                 ExtendedState extendedState,
@@ -257,7 +268,8 @@ protected:
       * This method is supposed to be provided by subclasses
       * to finalize request processing as required by the subclass.
       *
-      * @param lock - the lock must be acquired by a caller of the method
+      * @param lock
+     *   the lock must be acquired by a caller of the method
       */
     virtual void finishImpl(util::Lock const& lock) = 0;
 
@@ -279,7 +291,8 @@ protected:
      * @code
      * @see QservMgtRequest::notifyDefaultImpl
      *
-     * @param lock - the lock must be acquired by a caller of the method
+     * @param lock
+     *   the lock must be acquired by a caller of the method
      */
     virtual void notify(util::Lock const& lock) = 0;
 
@@ -288,14 +301,18 @@ protected:
      * subclasses. Upon a completion of this method the callback function
      * object will get reset to 'nullptr'.
      *
-     * Note, this default implementation works for callback functions which
-     * accept a single parameter - a smart reference onto an object of
-     * the corresponding subclass. Subclasses with more complex signatures of
-     * their callbacks should have their own implementations which may look
-     * similarly to this one.
+     * @note
+     *   This default implementation works for callback functions which
+     *   accept a single parameter - a smart reference onto an object of
+     *   the corresponding subclass. Subclasses with more complex signatures of
+     *   their callbacks should have their own implementations which may look
+     *   similarly to this one.
      *
-     * @param lock     - the lock must be acquired by a caller of the method
-     * @param onFinish - callback function (if set) to be called
+     * @param lock
+     *   the lock must be acquired by a caller of the method
+     *
+     * @param onFinish
+     *   callback function (if set) to be called
      */
     template <class T>
     void notifyDefaultImpl(util::Lock const& lock,
@@ -324,12 +341,16 @@ protected:
      * Ensure the object is in the desired internal state. Throw an
      * exception otherwise.
      *
-     * NOTES: normally this condition should never been seen unless
-     *        there is a problem with the application implementation
-     *        or the underlying run-time system.
+     * @note
+     *  normally this condition should never been seen unless
+     *  there is a problem with the application implementation
+     *  or the underlying run-time system.
      *
-     * @param desiredState - desired state
-     * @param context      - context from which the state test is requested
+     * @param desiredState
+     *   desired state
+     *
+     * @param context
+     *   context from which the state test is requested
      *
      * @throws std::logic_error
      */
@@ -345,24 +366,35 @@ protected:
      * - reporting change state in a debug stream
      * - verifying the correctness of the state transition
      *
-     * @param lock          - the lock must be acquired by a caller of the method
-     * @param state         - primary state
-     * @param extendedState - extended state
+     * @param lock
+     *   the lock must be acquired by a caller of the method
+     *
+     * @param state
+     *   primary state
+     *
+     * @param extendedState 
+     *   extended state of the request
      */
     void setState(util::Lock const& lock,
                   State state,
                   ExtendedState extendedState=ExtendedState::NONE);
 
     /**
-      * @return server error string (if any)
-      * @param lock - the lock must be acquired by a caller of the method
-      */
+     * @param lock
+     *   the lock must be acquired by a caller of the method
+     *
+     * @return
+     *   server error string (if any)
+     */
     std::string serverError(util::Lock const& lock) const;
 
     /**
-      * @return performance info
-      * @param lock - the lock must be acquired by a caller of the method
-      */
+     * @param lock
+     *   the lock must be acquired by a caller of the method
+     *
+     * @return
+     *   performance info
+     */
     Performance performance(util::Lock const& lock) const;
 
 protected:

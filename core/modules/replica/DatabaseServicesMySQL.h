@@ -228,10 +228,17 @@ private:
      * This operation is supposed to be invoked in a context where proper
      * thread safety synchronization has been taken care of.
      *
-     * @param lock      - lock on a mutex must be acquired before calling this method
-     * @param replicas  - collection of replicas found upon a successful completion
-     * @param worker    - worker name (as per the request)
-     * @param database  - database name (as per the request)
+     * @param lock
+     *   lock on a mutex must be acquired before calling this method
+     *
+     * @param replicas
+     *   collection of replicas found upon a successful completion
+     *
+     * @param worker
+     *   worker name (as per the request)
+     *
+     * @param database
+     *   database name (as per the request)
      */
     void _findWorkerReplicasImpl(util::Lock const& lock,
                                  std::vector<ReplicaInfo>& replicas,
@@ -241,8 +248,11 @@ private:
     /**
      * Actual implementation of the replica update algorithm.
      *
-     * @param lock - lock on a mutex must be acquired before calling this method
-     * @param info - replica to be added/updated or deleted
+     * @param lock
+     *   lock on a mutex must be acquired before calling this method
+     *
+     * @param info
+     *   replica to be added/updated or deleted
      */
     void _saveReplicaInfoImpl(util::Lock const& lock,
                               ReplicaInfo const& info);
@@ -250,10 +260,17 @@ private:
     /**
      * Actual implementation of the multiple replicas update algorithm.
      *
-     * @param lock                     - lock on a mutex must be acquired before calling this method
-     * @param worker                   - worker name (as per the request)
-     * @param database                 - database name (as per the request)
-     * @param newReplicaInfoCollection - collection of new replicas
+     * @param lock
+     *   lock on a mutex must be acquired before calling this method
+     *
+     * @param worker
+     *   worker name (as per the request)
+     *
+     * @param database
+     *   database name (as per the request)
+     *
+     * @param newReplicaInfoCollection
+     *   collection of new replicas
      */
     void _saveReplicaInfoCollectionImpl(util::Lock const& lock,
                                         std::string const& worker,
@@ -263,10 +280,17 @@ private:
     /**
      * Delete a replica from the database.
      *
-     * @param lock     - lock on a mutex must be acquired before calling this method
-     * @param worker   - worker name
-     * @param database - database name
-     * @param chunk    - chunk to be removed
+     * @param lock
+     *   lock on a mutex must be acquired before calling this method
+     *
+     * @param worker
+     *   worker name
+     *
+     * @param database
+     *   database name
+     *
+     * @param chunk
+     *   chunk to be removed
      */
     void _deleteReplicaInfoImpl(util::Lock const& lock,
                                 std::string const& worker,
@@ -275,9 +299,14 @@ private:
     /**
      * Fetch replicas satisfying the specified query
      *
-     * @param lock     - lock on a mutex must be acquired before calling this method
-     * @param replicas - collection of replicas to be returned
-     * @param query    - SQL query against the corresponding table
+     * @param lock
+     *   lock on a mutex must be acquired before calling this method
+     *
+     * @param replicas
+     *   collection of replicas to be returned
+     *
+     * @param query
+     *   SQL query against the corresponding table
      */
     void _findReplicasImpl(util::Lock const& lock,
                            std::vector<ReplicaInfo>& replicas,
@@ -286,9 +315,14 @@ private:
     /**
      * Fetch files for the replicas
      *
-     * @param lock       - lock on a mutex must be acquired before calling this method
-     * @param id2replica - input collection of incomplete replicas 
-     * @param replicas   - output collection of complete replicas
+     * @param lock
+     *   lock on a mutex must be acquired before calling this method
+     *
+     * @param id2replica
+     *   input collection of incomplete replicas
+     *
+     * @param replicas
+     *   output collection of complete replicas
      */
     void _findReplicaFilesImpl(util::Lock const& lock,
                                std::map<uint64_t, ReplicaInfo> const& id2replica,

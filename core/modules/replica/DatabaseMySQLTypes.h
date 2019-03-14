@@ -79,21 +79,32 @@ struct ConnectionParams {
      * The factory method will return an instance of this structure initialized
      * by values of parameters found in the input encoded string. The string is
      * expected to have the following syntax:
-     *
+     * @code
      *   mysql://[user][:password]@[host][:port][/database]
+     * @code
      *
-     * NOTES ON THE SYNTAX:
-     * 1) all keywords are mandatory
-     * 2) the corresponding values for for all but the database are optional
-     * 3) default values for other parameters (if missing in the string) will be assumed.
+     * @note
+     *   1) all keywords are mandatory
+     *   2) the corresponding values for for all but the database are optional
+     *   3) default values for other parameters (if missing in the string) will be assumed.
      *
-     * @param params          - connection parameters packed into a string
-     * @param defaultHost     - default value for a host name
-     * @param defaultPort     - default port number
-     * @param defaultUser     - default value for a database user account
-     * @param defaultPassword - default value for a database user account
+     * @param params
+     *   connection parameters packed into a string
      *
-     * @throw std::invalid_argument - if the string can't be parsed
+     * @param defaultHost
+     *   default value for a host name
+     *
+     * @param defaultPort
+     *   default port number
+     *
+     * @param defaultUser
+     *   default value for a database user account
+     *
+     * @param defaultPassword
+     *   default value for a database user account
+     *
+     * @throw std::invalid_argument
+     *   if the string can't be parsed
      */
     static ConnectionParams parse(std::string const& params,
                                   std::string const& defaultHost,
@@ -113,9 +124,10 @@ struct ConnectionParams {
                      std::string const& database_);
 
     /**
-     * Return a string representation of all (but the password) parameters.
-     * The result will be formatted similarly to the one expected by
-     * the non-default constructor of the class.
+     * @return
+     *   a string representation of all (but the password) parameters.
+     *   The result will be formatted similarly to the one expected by
+     *   the non-default constructor of the class.
      */
     std::string toString() const;
 };
@@ -135,7 +147,8 @@ public:
     /**
      * The normal constructor
      *
-     * @param name_ - the input value
+     * @param name_
+     *   the input value
      */
     explicit DoNotProcess(std::string const& name_);
 

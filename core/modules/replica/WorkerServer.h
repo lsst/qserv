@@ -58,10 +58,17 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider  for configuration, etc. services
-     * @param requestFactory   the factory of requests
-     * @param workerName       the name of a worker this instance represents
-     * @return                 pointer to the new object created by the factory
+     * @param serviceProvider
+     *   for configuration, etc. services
+     *
+     * @param requestFactory
+     *   the factory of requests
+     *
+     * @param workerName
+     *   the name of a worker this instance represents
+     *
+     * @return
+     *   pointer to the new object created by the factory
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       WorkerRequestFactory& requestFactory,
@@ -82,7 +89,8 @@ public:
      * The processor object can be used for detailed monitoring of
      * the on-going activities and statistics collection if needed.
      *
-     * @return reference to the processor
+     * @return
+     *   reference to the processor
      */
     WorkerProcessor::Ptr const& processor() const { return _processor; }
 
@@ -96,9 +104,14 @@ private:
     /**
      * Construct the server with the specified configuration.
      *
-     * @param serviceProvider - for configuration, etc. services
-     * @param requestFactory  - the factory of requests
-     * @workerName            - the name of a worker this instance represents
+     * @param serviceProvider
+     *   for configuration, etc. services
+     *
+     * @param requestFactory
+     *   the factory of requests
+     *
+     * @workerName
+     *   the name of a worker this instance represents
      */
     WorkerServer(ServiceProvider::Ptr const& serviceProvider,
                  WorkerRequestFactory& requestFactory,
@@ -107,18 +120,21 @@ private:
     /**
      * Begin (asynchronously) accepting connection requests.
      */
-    void beginAccept();
+    void _beginAccept();
     
     /**
      * Handle a connection request once it's detected. The rest of
      * the communication will be forwarded to the connection object
      * specified as a parameter of the method.
      *
-     * @param connection - object responsible for communications with a client
-     * @param ec         - error condition to be checked for
+     * @param connection
+     *   object responsible for communications with a client
+     *
+     * @param ec
+     *   error condition to be checked for
      */
-    void handleAccept(WorkerServerConnection::Ptr const& connection,
-                      boost::system::error_code const& ec);
+    void _handleAccept(WorkerServerConnection::Ptr const& connection,
+                       boost::system::error_code const& ec);
 
     /// @return the context string
     std::string context() const { return "SERVER  "; }

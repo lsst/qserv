@@ -87,17 +87,34 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider  - a host of services for various communications
-     * @param worker           - the identifier of a worker node (the one where the chunks
-     *                           expected to be located)
-     * @param database         - the name of a database
-     * @param saveReplicaInfo  - save replica info in a database
-     * @param onFinish         - an optional callback function to be called upon a completion of the request.
-     * @param priority         - a priority level of the request
-     * @param keepTracking     - keep tracking the request before it finishes or fails
-     * @param messenger        - an interface for communicating with workers
+     * @param serviceProvider
+     *   a host of services for various communications
      *
-     * @return pointer to the created object
+     * @param worker
+     *   the identifier of a worker node (the one where the chunks
+     *   expected to be located)
+     *
+     * @param database
+     *   the name of a database
+     *
+     * @param saveReplicaInfo
+     *   save replica info in a database
+     *
+     * @param onFinish
+     *   an optional callback function to be called upon a completion of
+     *   the request
+     * 
+     * @param priority
+     *   a priority level of the request
+     *
+     * @param keepTracking
+     *   keep tracking the request before it finishes or fails
+     *
+     * @param messenger
+     *   an interface for communicating with workers
+     *
+     * @return
+     *   pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       boost::asio::io_service& io_service,
@@ -153,7 +170,8 @@ private:
      * Start the timer before attempting the previously failed
      * or successful (if a status check is needed) step.
      *
-     * @param lock - a lock on a mutex must be acquired before calling this method
+     * @param lock
+     *   a lock on a mutex must be acquired before calling this method
      */
     void _wait(util::Lock const& lock);
 
@@ -167,15 +185,19 @@ private:
     /**
      * Send the serialized content of the buffer to a worker
      *
-     * @param lock - a lock on a mutex must be acquired before calling this method
+     * @param lock
+     *   a lock on a mutex must be acquired before calling this method
      */
     void _send(util::Lock const& lock);
 
     /**
      * Process the completion of the requested operation
      *
-     * @param success - flag indicating if the response succeeded
-     * @param message - response from a worker (if success)
+     * @param success
+     *   flag indicating if the response succeeded
+     *
+     * @param message
+     *   response from a worker (if success)
      */
     void _analyze(bool success,
                   proto::ReplicationResponseFindAll const& message);

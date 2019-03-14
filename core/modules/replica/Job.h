@@ -163,20 +163,25 @@ public:
     /**
      * Modify job options
      *
-     * @param newOptions - new options to be set
-     * @return the previous state of the options
+     * @param newOptions
+     *   new options to be set
+     *
+     * @return
+     *   the previous state of the options
      */
     Options setOptions(Options const& newOptions);
 
     /**
-     * @return a start time (milliseconds since UNIX Epoch) or 0 before method start()
-     * is called to actually begin executing the job.
+     * @return
+     *   a start time (milliseconds since UNIX Epoch) or 0 before method start()
+     *   is called to actually begin executing the job.
      */
     uint64_t beginTime() const { return _beginTime; }
 
     /**
-     * @return the end time (milliseconds since UNIX Epoch) or 0 before job
-     * is finished.
+     * @return
+     *   the end time (milliseconds since UNIX Epoch) or 0 before job
+     *   is finished.
      */
     uint64_t endTime() const { return _endTime; }
 
@@ -195,8 +200,9 @@ public:
     std::string context() const;
 
     /**
-     * @return a collection of parameters and the corresponding values to
-     * be stored in a database for a job.
+     * @return
+     *   a collection of parameters and the corresponding values to
+     *   be stored in a database for a job.
      */
     virtual std::list<std::pair<std::string,std::string>> extendedPersistentState() const {
         return std::list<std::pair<std::string,std::string>>();
@@ -217,18 +223,29 @@ protected:
     /**
      * Construct the request with the pointer to the services provider.
      *
-     * @param controller  - for launching requests
-     * @param parentJobId - optional identifier of a parent job
-     * @param type        - its type name
-     * @param priority    - set the desired job priority (larger values
-     *                      mean higher priorities). A job with the highest
-     *                      priority will be select from an input queue by
-     *                      the JobScheduler.
-     * @param exclusive   - set to 'true' to indicate that the job can't be
-     *                      running simultaneously alongside other jobs.
-     * @param preemptable - set to 'true' to indicate that this job can be
-     *                      interrupted to give a way to some other job with
-     *                      higher priority.
+     * @param controller
+     *   for launching requests
+     *
+     * @param parentJobId
+     *   optional identifier of a parent job
+     *
+     * @param type
+     *   its type name
+     *
+     * @param priority
+     *   set the desired job priority (larger values
+     *   mean higher priorities). A job with the highest
+     *   priority will be select from an input queue by
+     *   the JobScheduler.
+     *
+     * @param exclusive
+     *   set to 'true' to indicate that the job can't be
+     *   running simultaneously alongside other jobs.
+     *
+     * @param preemptable
+     *   set to 'true' to indicate that this job can be
+     *   interrupted to give a way to some other job with
+     *   higher priority.
      */
     Job(Controller::Ptr const& controller,
         std::string const& parentJobId,
@@ -242,8 +259,11 @@ protected:
     }
 
     /**
-     * @return job options
-     * @param lock - the lock must be acquired by a caller of the method
+     * @return
+     *   job options
+     *
+     * @param lock
+     *   the lock must be acquired by a caller of the method
      */
     Options options(util::Lock const& lock) const;
 
@@ -251,7 +271,8 @@ protected:
       * This method is supposed to be provided by subclasses for additional
       * subclass-specific actions to begin processing the request.
       *
-      * @param lock - the lock must be acquired by a caller of the method
+      * @param lock
+     *   the lock must be acquired by a caller of the method
       */
     virtual void startImpl(util::Lock const& lock) = 0;
 
@@ -259,16 +280,20 @@ protected:
      * The sequence of actions to be executed when the job is transitioning into
      * the finished state (regardless of a specific extended state).
      *
-     * NOTES:
-     * 1. normally this is mandatory method which is supposed to be called either
-     *    internally within this class on the job expiration (internal timer) or
-     *    cancellation (as requested externally by a user).
+     * @note:
+     *   Normally this is mandatory method which is supposed to be called either
+     *   internally within this class on the job expiration (internal timer) or
+     *   cancellation (as requested externally by a user).
      * 
-     * 2. the only methods which are allowed to turn objects into the FINISHED
-     *    extended state are user-provided methods startImpl().
+     * @note
+     *   The only methods which are allowed to turn objects into the FINISHED
+     *   extended state are user-provided methods startImpl().
      *
-     * @param lock          - the lock must be acquired by a caller of the method
-     * @param extendedState - specific state to be set upon the completion
+     * @param lock
+     *   the lock must be acquired by a caller of the method
+     *
+     * @param extendedState
+     *   specific state to be set upon the completion
      */
     void finish(util::Lock const& lock,
                 ExtendedState extendedState);
@@ -277,7 +302,8 @@ protected:
       * This method is supposed to be provided by subclasses
       * to finalize request processing as required by the subclass.
       *
-      * @param lock - the lock must be acquired by a caller of the method
+      * @param lock
+     *   the lock must be acquired by a caller of the method
       */
     virtual void cancelImpl(util::Lock const& lock) = 0;
 
@@ -300,7 +326,8 @@ protected:
      * @code
      * @see Job::notifyDefaultImpl
      *
-     * @param lock - the lock must be acquired by a caller of the method
+     * @param lock
+     *   the lock must be acquired by a caller of the method
      */
     virtual void notify(util::Lock const& lock) = 0;
 
@@ -315,8 +342,11 @@ protected:
      * their callbacks should have their own implementations which may look
      * similarly to this one.
      *
-     * @param lock     - the lock must be acquired by a caller of the method
-     * @param onFinish - callback function (if set) to be called
+     * @param lock
+     *   the lock must be acquired by a caller of the method
+     * 
+     * @param onFinish
+     *   callback function (if set) to be called
      */
     template <class T>
     void notifyDefaultImpl(util::Lock const& lock,
@@ -344,12 +374,21 @@ protected:
     /**
      * Notify Qserv about a new chunk added to its database.
      *
-     * @param lock      - the lock must be acquired by a caller of the method
-     * @param chunk     - chunk number
-     * @param databases - the names of databases
-     * @param worker    - the name of a worker to be notified
-     * @param onFinish  - (optional) callback function to be called upon completion
-     *                    of the operation
+     * @param lock
+     *   the lock must be acquired by a caller of the method
+     *
+     * @param chunk
+     *   chunk number
+     *
+     * @param databases
+     *   the names of databases
+     *
+     * @param worker
+     *   the name of a worker to be notified
+     *
+     * @param onFinish
+     *   (optional) callback function to be called upon completion
+     *   of the operation
      */
     void qservAddReplica(util::Lock const& lock,
                          unsigned int chunk,
@@ -358,17 +397,28 @@ protected:
                          AddReplicaQservMgtRequest::CallbackType const& onFinish=nullptr);
 
     /**
-      * Notify Qserv about a new chunk added to its database.
-      *
-      * @param lock      - the lock must be acquired by a caller of the method
-      * @param chunk     - chunk number
-      * @param databases - the names of databases
-      * @param worker    - the name of a worker to be notified
-      * @param force     - the flag indicating of the removal should be done regardless
-      *                    of the usage status of the replica
-      * @param onFinish  - (optional) callback function to be called upon completion
-      *                    of the operation
-      */
+     * Notify Qserv about a new chunk added to its database.
+     *
+     * @param lock
+     *   the lock must be acquired by a caller of the method
+     *
+     * @param chunk
+     *   chunk number
+     *
+     * @param databases
+     *   the names of databases
+     *
+     * @param worker
+     *   the name of a worker to be notified
+     *
+     * @param force
+     *   the flag indicating of the removal should be done regardless
+     *   of the usage status of the replica
+     *
+     * @param onFinish
+     *   (optional) callback function to be called upon completion
+     *   of the operation
+     */
     void qservRemoveReplica(util::Lock const& lock,
                             unsigned int chunk,
                             std::vector<std::string> const& databases,
@@ -385,9 +435,14 @@ protected:
      * - reporting change state in a debug stream
      * - verifying the correctness of the state transition
      *
-     * @param lock          - the lock must be acquired by a caller of the method
-     * @param state         - the new primary state
-     * @param extendedState - (optional) new extended state
+     * @param lock
+     *   the lock must be acquired by a caller of the method
+     *
+     * @param state
+     *   the new primary state
+     *
+     * @param extendedState
+     *   (optional) new extended state
      */
     void setState(util::Lock const& lock,
                   State state,
@@ -399,15 +454,22 @@ private:
      * Ensure the object is in the desired internal state. Throw an
      * exception otherwise.
      *
-     * NOTES: normally this condition should never been seen unless
-     *        there is a problem with the application implementation
-     *        or the underlying run-time system.
+     * @note
+     *   Normally this condition should never been seen unless
+     *   there is a problem with the application implementation
+     *   or the underlying run-time system.
      *
-     * @param lock         - the lock must be acquired by a caller of the method
-     * @param desiredState - desired state
-     * @param context      - context from which the state test is requested
+     * @param lock
+     *   the lock must be acquired by a caller of the method
      *
-     * @throws std::logic_error
+     * @param desiredState
+     *   desired state
+     *
+     * @param context
+     *   context from which the state test is requested
+     *
+     * @throw std::logic_error
+     *   if the desired state requirement is not met
      */
     void _assertState(util::Lock const& lock,
                       State desiredState,

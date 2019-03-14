@@ -71,7 +71,8 @@ public:
      * @see Parser::Status
      * @see Application::runImpl()
      *
-     * @return completion code
+     * @return
+     *   completion code
      */
     int run();
 
@@ -106,10 +107,10 @@ protected:
      */
     Application(int argc,
                 const char* const argv[],
-                std::string const& description = "",
-                bool const injectDatabaseOptions = true,
-                bool const boostProtobufVersionCheck = false,
-                bool const enableServiceProvider = false);
+                std::string const& description="",
+                bool const injectDatabaseOptions=true,
+                bool const boostProtobufVersionCheck=false,
+                bool const enableServiceProvider=false);
 
     /// @return a shared pointer of the desired subclass (no dynamic type checking)
     template <class T>

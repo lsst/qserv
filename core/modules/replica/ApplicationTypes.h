@@ -124,8 +124,11 @@ public:
      * Let a subclass to parse the input string into a value of the corresponding
      * (as defined by the class) type.
      *
-     * @param inStr - (optional) input string to be parsed
-     * @throws ParserError if the text can't be parsed
+     * @param inStr
+     *   (optional) input string to be parsed
+     *
+     * @throws ParserErro
+     *   if the text can't be parsed
      */
     virtual void parse(std::string const& inStr="") = 0;
 
@@ -499,6 +502,7 @@ public:
      * the above defined 'required'.
      *
      * @see method Command::required()
+     *
      * @return
      *   a reference to the command object in order to allow chained calls
      */
@@ -524,6 +528,7 @@ public:
      * show up at any position in the command line.
      *
      * @see method Command::optional()
+     *
      * @return
      *   a reference to the command object in order to allow chained calls
      */
@@ -549,6 +554,7 @@ public:
      * to the ones of the above defined 'add' methods.
      *
      * @see method Command::option()
+     *
      * @return
      *   a reference to the command object in order to allow chained calls
      */
@@ -672,9 +678,14 @@ public:
     /**
      * Construct and initialize the parser
      *
-     * @param arc              - argument count
-     * @parav argv             - vector of argument values
-     * @param description      - description of an application
+     * @param arc
+     *   argument count
+     *
+     * @parav argv
+     *   vector of argument values
+     *
+     * @param description
+     *   description of an application
      */
     Parser(int argc,
            const char* const argv[],
@@ -802,6 +813,7 @@ public:
      * the above defined 'required'.
      *
      * @see method Parser::required()
+     *
      * @return
      *   a reference to the parser object in order to allow chained calls
      */
@@ -830,6 +842,7 @@ public:
      * show up at any position in the command line.
      *
      * @see method Parser::optional()
+     *
      * @return
      *   a reference to the parser object in order to allow chained calls
      */
@@ -860,6 +873,7 @@ public:
      * to the ones of the above defined 'add' methods.
      *
      * @see method Parser::option()
+     *
      * @return
      *   a reference to the parser object in order to allow chained calls
      */
@@ -880,19 +894,23 @@ public:
      * @see Parser::Status
      * @see method Parser::reset()
      *
-     * @return completion code
+     * @return
+     *   completion code
      *
-     * @throws ParserError for any problems occurring during the parsing
+     * @throws ParserError
+     *   for any problems occurring during the parsing
      */
     int parse();
 
     /**
-     * @return serialize names and values of the parsed arguments serialized
-     * into a string
+     * @return
+     *   serialize names and values of the parsed arguments serialized
+     *   into a string
      *
-     * @throws std::logic_error if called before attempted to parse
-     * the command line parameters, or if the parsing didn't successfully
-     * finish with Status::SUCCESS.
+     * @throws std::logic_error
+     *   if called before attempted to parse
+     *   the command line parameters, or if the parsing didn't successfully
+     *   finish with Status::SUCCESS.
      */
     std::string serializeArguments() const;
 
@@ -963,18 +981,20 @@ private:
                           std::vector<std::string>::const_iterator const& inItrEnd);
 
     /**
-     * @return the "Usage" string to be reported in case if any problem
-     * with parsing the command line arguments will be seen. The current
-     * implementation of this method will build and cache the string the
-     * first time the method is invoked.
+     * @return
+     *   the "Usage" string to be reported in case if any problem
+     *   with parsing the command line arguments will be seen. The current
+     *   implementation of this method will build and cache the string the
+     *   first time the method is invoked.
      */
     std::string const& usage();
 
     /**
-     * @return the complete documentation to be returned if flag "--help"
-     * is passed as an argument.  The current implementation of this method
-     * will build and cache the string the first time the method is invoked
-     * regardless if flag "--help" is registered or not for the application.
+     * @return
+     *   the complete documentation to be returned if flag "--help"
+     *   is passed as an argument.  The current implementation of this method
+     *   will build and cache the string the first time the method is invoked
+     *   regardless if flag "--help" is registered or not for the application.
      */
     std::string const& help();
     
@@ -997,8 +1017,8 @@ private:
      *   ends with the newline symbol.
      */
     static std::string wrap(std::string const& str,
-                            std::string const& indent = "      ",
-                            size_t width = 72);
+                            std::string const& indent="      ",
+                            size_t width=72);
 
 private:
 

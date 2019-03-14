@@ -76,8 +76,9 @@ public:
     ReplicationRequestParams const& targetRequestParams() const { return _targetRequestParams; }
 
     /**
-     * @return request-specific extended data reported upon a successful
-     * completion of the request
+     * @return
+     *   request-specific extended data reported upon a successful
+     *   completion of the request
      */
     ReplicaInfo const& responseData() const { return _replicaInfo; }
 
@@ -89,20 +90,42 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider - a host of services for various communications
-     * @param io_service      - BOOST ASIO API
-     * @param worker          - the identifier of a worker node (the one to be affected by the replication)
-     *                          at a destination of the chunk
-     * @param sourceWorker    - the identifier of a worker node at a source of the chunk
-     * @param database        - the name of a database
-     * @param chunk           - the number of a chunk to replicate (implies all relevant tables)
-     * @param onFinish        - an optional callback function to be called upon a completion of the request.
-     * @param priority        - a priority level of the request
-     * @param keepTracking    - keep tracking the request before it finishes or fails
-     * @param allowDuplicate  - follow a previously made request if the current one duplicates it
-     * @param messenger       - worker messaging service
+     * @param serviceProvider
+     *   a host of services for various communications
      *
-     * @return pointer to the created object
+     * @param io_service
+     *   BOOST ASIO API
+     *
+     * @param worker
+     *   the identifier of a worker node (the one to be affected by the replication)
+     *   at a destination of the chunk
+     *
+     * @param sourceWorker
+     *   the identifier of a worker node at a source of the chunk
+     *
+     * @param database
+     *   the name of a database
+     *
+     * @param chunk
+     *   the number of a chunk to replicate (implies all relevant tables)
+     *
+     * @param onFinish
+     *   an optional callback function to be called upon a completion of the request.
+     *
+     * @param priority
+     *   a priority level of the request
+     *
+     * @param keepTracking
+     *   keep tracking the request before it finishes or fails
+     *
+     * @param allowDuplicate
+     *   follow a previously made request if the current one duplicates it
+     *
+     * @param messenger
+     *   worker messaging service
+     *
+     * @return
+     *   pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       boost::asio::io_service& io_service,

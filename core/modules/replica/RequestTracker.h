@@ -81,8 +81,8 @@ public:
      * The method will reset the tracker to the initial (empty) state. Please,
      * make sure there are no outstanding requests which may be still executing.
      *
-     * @throws std::logic_error if there is at least one outstanding
-     * requests.
+     * @throws std::logic_error
+     *   if there is at least one outstanding requests
      */
     void reset();
 
@@ -91,11 +91,16 @@ protected:
     /**
      * The constructor sets up tracking options.
      *
-     * @param os             - an output stream for monitoring and error printouts
-     * @param progressReport - (optional) triggers periodic printout onto an output stream
-     *                         to see the overall progress of the operation
-     * @param errorReport    - (optional) trigger detailed error reporting after the completion
-     *                         of the operation
+     * @param os
+     *   an output stream for monitoring and error printouts
+     *
+     * @param progressReport
+     *   (optional) triggers periodic printout onto an output stream
+     *   to see the overall progress of the operation
+     *
+     * @param errorReport
+     *   (optional) trigger detailed error reporting after the completion
+     *   of the operation
      */
     explicit RequestTrackerBase(std::ostream& os,
                                 bool progressReport=true,
@@ -105,7 +110,8 @@ protected:
      * The method to be implemented by a subclass in order to print
      * type-specific report.
      *
-     * @param os - an output stream for the printout
+     * @param os
+     *   an output stream for the printout
      */
     virtual void printErrorReport(std::ostream& os) const = 0;
 
@@ -113,7 +119,8 @@ protected:
      * The method to be implemented by a subclass is supposed to return all
      * requests which are known to the subclass.
      *
-     * @return collection of requests
+     * @return
+     *   collection of requests
      */
     virtual std::list<Request::Ptr> getRequests() const = 0;
 
@@ -121,8 +128,9 @@ protected:
      * The method to be implemented by a subclass is supposed to clear
      * a collection of all requests known to the subclass.
      *
-     * NOTE: It's guaranteed that the base class's counters will stay
-     * intact when this method is called.
+     * @note
+     *   It's guaranteed that the base class's counters will stay
+     *   intact when this method is called.
      */
     virtual void resetImpl() = 0;
 
@@ -163,11 +171,16 @@ public:
     /**
      * The constructor sets up tracking options.
      *
-     * @param os             - an output stream for monitoring and error printouts
-     * @param progressReport - (optional) triggers periodic printout onto an output stream
-     *                         to see the overall progress of the operation
-     * @param errorReport    - (optional) trigger detailed error reporting after the completion
-     *                         of the operation
+     * @param os
+     *   an output stream for monitoring and error printouts
+     *
+     * @param progressReport
+     *   (optional) triggers periodic printout onto an output stream
+     *   to see the overall progress of the operation
+     *
+     * @param errorReport
+     *   (optional) trigger detailed error reporting after the completion
+     *   of the operation
      */
     explicit CommonRequestTracker(std::ostream& os,
                                   bool progressReport=true,
@@ -183,7 +196,8 @@ public:
      * The callback function to be registered with each request
      * injected into the tracker.
      *
-     * @param ptr - pointer to a completed request
+     * @param ptr
+     *   pointer to a completed request
      */
     void onFinish(typename T::Ptr ptr) {
         RequestTrackerBase::_numFinished++;
@@ -196,7 +210,8 @@ public:
      * Add a request to be tracked. Note that in order to be tracked
      * requests needs to be constructed with the above specified function
      *
-     * @param ptr - pointer to a request to be tracked
+     * @param ptr
+     *   pointer to a request to be tracked
      */
     void add(typename T::Ptr const& ptr) {
         RequestTrackerBase::_numLaunched++;
@@ -252,11 +267,16 @@ public:
     /**
      * The constructor sets up tracking options.
      *
-     * @param os             - an output stream for monitoring and error printouts
-     * @param progressReport - triggers periodic printout onto an output stream
-     *                         to see the overall progress of the operation
-     * @param errorReport    - trigger detailed error reporting after the completion
-     *                         of the operation
+     * @param os
+     *   an output stream for monitoring and error printouts
+     *
+     * @param progressReport
+     *   triggers periodic printout onto an output stream
+     *   to see the overall progress of the operation
+     *
+     * @param errorReport
+     *   trigger detailed error reporting after the completion
+     *   of the operation
      */
     explicit AnyRequestTracker(std::ostream& os,
                                bool progressReport=true,
@@ -268,7 +288,8 @@ public:
      * The callback function to be registered with each request
      * injected into the tracker.
      *
-     * @param ptr - pointer to a completed request
+     * @param ptr
+     *   pointer to a completed request
      */
     void onFinish(Request::Ptr const& ptr);
 
@@ -276,7 +297,8 @@ public:
      * Add a request to be tracked. Note that in order to be tracked
      * requests needs to be constructed with the above specified function
      *
-     * @param ptr - pointer to a request to be tracked
+     * @param ptr
+     *   pointer to a request to be tracked
      */
     void add(Request::Ptr const& ptr);
 

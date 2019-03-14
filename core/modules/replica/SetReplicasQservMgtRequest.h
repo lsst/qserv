@@ -86,8 +86,8 @@ public:
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& worker,
                       QservReplicaCollection const& newReplicas,
-                      bool force = false,
-                      CallbackType const& onFinish = nullptr);
+                      bool force=false,
+                      CallbackType const& onFinish=nullptr);
 
     /// @return collection of new replicas to be set at the Qserv worker
     QservReplicaCollection const& newReplicas() const { return _newReplicas; }

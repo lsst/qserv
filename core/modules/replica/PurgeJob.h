@@ -85,16 +85,28 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param databaseFamily - the name of a database family
-     * @param numReplicas    - the optional (if not 0) override for the maximum number of replicas
-     *                         for each chunk. If the parameter is set to 0 then the corresponding
-     *                         configuration option for the database family will be assumed.
-     * @param controller     - for launching jobs
-     * @param parentJobId    - optional identifier of a parent job
-     * @param onFinish       - callback function to be called upon a completion of the job
-     * @param options        - (optional) job options
+     * @param databaseFamily
+     *   the name of a database family
      *
-     * @return pointer to the created object
+     * @param numReplicas
+     *   the optional (if not 0) override for the maximum number of replicas
+     *   for each chunk. If the parameter is set to 0 then the corresponding
+     *   configuration option for the database family will be assumed.
+     *
+     * @param controller
+     *   for launching jobs
+     *
+     * @param parentJobId
+     *   optional identifier of a parent job
+     *
+     * @param onFinish
+     *   callback function to be called upon a completion of the job
+     *
+     * @param options
+     *   (optional) job options
+     *
+     * @return
+     *   pointer to the created object
      */
     static Ptr create(std::string const& databaseFamily,
                       unsigned int numReplicas,
@@ -113,8 +125,9 @@ public:
     ~PurgeJob() final;
 
     /**
-     * @return maximum number of each chunk's good replicas to be reached when
-     * the job successfully finishes.
+     * @return
+     *   maximum number of each chunk's good replicas to be reached when
+     *   the job successfully finishes.
      */
     unsigned int numReplicas() const { return _numReplicas; }
 
@@ -124,19 +137,21 @@ public:
     /**
      * Return the result of the operation.
      *
-     * IMPORTANT NOTES:
-     * - the method should be invoked only after the job has finished (primary
+     * @note
+     *   The method should be invoked only after the job has finished (primary
      *   status is set to Job::Status::FINISHED). Otherwise exception
      *   std::logic_error will be thrown
      *
-     * - the result will be extracted from jobs which have successfully
+     * @note
+     *   The result will be extracted from jobs which have successfully
      *   finished. Please, verify the primary and extended status of the object
      *   to ensure that all jobs have finished.
      *
-     * @return the data structure to be filled upon the completion of the job.
+     * @return
+     *   the data structure to be filled upon the completion of the job.
      *
-     * @throws std::logic_error - if the job didn't finished at a time
-     *                            when the method was called
+     * @throws std::logic_error
+     *   if the job didn't finished at a time when the method was called
      */
     PurgeJobResult const& getReplicaData() const;
 

@@ -88,7 +88,8 @@ public:
      * stop fetching new requests and finish. The thread can be resumed
      * later by calling method run().
      *
-     * NOTE: This is an asynchronous operation.
+     * @note
+     *   This is an asynchronous operation.
      */
     void stop();
 
@@ -100,8 +101,11 @@ private:
     /**
      * The constructor of the class.
      *
-     * @param processor  pointer to the processor
-     * @param id         a unique identifier of this object
+     * @param processor
+     *   pointer to the processor
+     *
+     * @param id
+     *   a unique identifier of this object
      */
     WorkerProcessorThread(WorkerProcessorPtr const& processor,
                           unsigned int id);
@@ -109,7 +113,7 @@ private:
     /**
      * Event handler called by the thread when it's about to stop
      */
-    void stopped();
+    void _stopped();
  
 private:
 

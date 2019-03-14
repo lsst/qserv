@@ -56,16 +56,30 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider  - a host of services for various communications
-     * @param worker           - the name of a worker
-     * @param id               - an identifier of a client request
-     * @param priority         - indicates the importance of the request
-     * @param database         - the name of a database
-     * @param chunk            - the chunk number
-     * @param computeCheckSum  - flag indicating if check/control sums should be
-     *                           computed on all files of the chunk
+     * @param serviceProvider
+     *   a host of services for various communications
      *
-     * @return pointer to the created object
+     * @param worker
+     *   the name of a worker
+     *
+     * @param id
+     *   an identifier of a client request
+     * 
+     * @param priority
+     *   indicates the importance of the request
+     *
+     * @param database
+     *   the name of a database
+     *
+     * @param chunk
+     *   the chunk number
+     *
+     * @param computeCheckSum
+     *   flag indicating if check/control sums should be
+     *   computed on all files of the chunk
+     *
+     * @return
+     *   pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& worker,
@@ -139,8 +153,7 @@ protected:
   * the replica lookup requests based on the direct manipulation of files on
   * a POSIX file system.
   */
-class WorkerFindRequestPOSIX
-    :   public WorkerFindRequest {
+class WorkerFindRequestPOSIX : public WorkerFindRequest {
 
 public:
 
@@ -152,16 +165,30 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      * 
-     * @param serviceProvider  - a host of services for various communications
-     * @param worker           - the name of a worker
-     * @param id               - an identifier of a client request
-     * @param priority         - indicates the importance of the request
-     * @param database         - the name of a database
-     * @param chunk            - the chunk number
-     * @param computeCheckSum  - flag indicating if check/control sums should be
-     *                           computed on all files of the chunk
+     * @param serviceProvider
+     *   a host of services for various communications
      *
-     * @return pointer to the created object
+     * @param worker
+     *   the name of a worker
+     *
+     * @param id
+     *   an identifier of a client request
+     * 
+     * @param priority
+     *   indicates the importance of the request
+     *
+     * @param database
+     *   the name of a database
+     *
+     * @param chunk
+     *   the chunk number
+     *
+     * @param computeCheckSum
+     *   flag indicating if check/control sums should be
+     *   computed on all files of the chunk
+     *
+     * @return
+     *   pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& worker,
@@ -210,7 +237,8 @@ private:
   * the replica deletion based on the direct manipulation of files on
   * a POSIX file system.
   *
-  * Note, this is just a typedef to class WorkerDeleteRequestPOSIX.
+  * @note
+ *    This is just a typedef to class WorkerDeleteRequestPOSIX.
   */
 typedef WorkerFindRequestPOSIX WorkerFindRequestFS;
 

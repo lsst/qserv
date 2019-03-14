@@ -68,11 +68,12 @@ class Connection;
  *   InvalidTypeError      - when the conversion of row data into a value of
  *                           the requested type is not possible.
  *
- * @note the validity of each object of this class is limited by the life
- * span of the database Connection object and a result set of the last
- * query. Use this object only for short periods of time while iterating over
- * a result set after each successful invocation of the iterator method
- * Connection::next().
+ * @note
+ *   The validity of each object of this class is limited by the life
+ *   span of the database Connection object and a result set of the last
+ *   query. Use this object only for short periods of time while iterating over
+ *   a result set after each successful invocation of the iterator method
+ *   Connection::next().
  *
  * @see Connection::next()
  *
@@ -93,11 +94,12 @@ public:
     /**
      * The default constructor will initialize invalid instances of the class.
      *
-     * @note any attempts to call most (but 'isValid', copy constructor,
-     * assignment operator and destructor) methods of objects constructed
-     * with this state will throw exception std::logic_error. So, make sure
-     * the object is properly set by passing it for initialization to method
-     * Connection::next() when iterating over a result set.
+     * @note
+     *   Any attempts to call most (but 'isValid', copy constructor,
+     *   assignment operator and destructor) methods of objects constructed
+     *   with this state will throw exception std::logic_error. So, make sure
+     *   the object is properly set by passing it for initialization to method
+     *   Connection::next() when iterating over a result set.
      *
      * @see Connection::next()
      * @see Row::isValid()
@@ -172,24 +174,32 @@ public:
     bool get(std::string const& columnName, bool&  value) const;
 
     /**
-     * @return reference to the data cell for the column
-     * @param columnIdx - the index of a column
+     * @return
+     *   reference to the data cell for the column
+     *
+     * @param columnIdx
+     *   the index of a column
      */
     Cell const& getDataCell(size_t columnIdx) const;
 
     /**
-     * @return reference to the data cell for the column
-     * @param columnName - the name of a column
+     * @return
+     *   reference to the data cell for the column
+     *
+     * @param columnName
+     *   the name of a column
      */
     Cell const& getDataCell(std::string const& columnName) const;
 
 private:
 
-    /** Mapping column names to the indexes
+    /**
+     *  Mapping column names to the indexes
      *
-     * NOTE: if the pointer is set to 'nullptr' then the object is not
-     * in the valid state. The valid state is set by class Connection
-     * when iterating over a result set.
+     * @note
+     *   If the pointer is set to 'nullptr' then the object is not
+     *   in the valid state. The valid state is set by class Connection
+     *   when iterating over a result set.
      */
     std::map<std::string, size_t> const* _name2indexPtr;
 

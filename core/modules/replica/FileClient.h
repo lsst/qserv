@@ -59,7 +59,8 @@ public:
     /**
      * Construct an object
      *
-     * @param what - reason for the exception
+     * @param what
+     *   reason for the exception
      */
     FileClientError(std::string const& msg)
         :   std::runtime_error(msg) {
@@ -83,10 +84,17 @@ public:
      * and the file content could be read via method FileClient::read().
      * Otherwise return the null pointer.
      *
-     * @param serviceProvider - for configuration, etc. services
-     * @param workerName      - the name of a worker where the file resides
-     * @param databaseName    - the name of a database the file belongs to
-     * @param fileName        - the file to read or examine
+     * @param serviceProvider
+     *   for configuration, etc. services
+     *
+     * @param workerName
+     *   the name of a worker where the file resides
+     *
+     * @param databaseName
+     *   the name of a database the file belongs to
+     *
+     * @param fileName
+     *   the file to read or examine
      */
     static Ptr open(ServiceProvider::Ptr const& serviceProvider,
                     std::string const& workerName,
@@ -105,7 +113,7 @@ public:
      * If the operation is successful then a valid pointer will be returned.
      * If the operation fails the method will return the null pointer.
      *
-     * ATTENTION:
+     * @note
      *   Unlike the previous method FileClient::open() the returned file object
      *   can't be used to read the file content (via FileClient::read()).
      *   The method of opening files is meant to be used for checking the availability
@@ -113,10 +121,17 @@ public:
      *   Any attempts to call method FileClient::read() will result in
      *   throwing FileClientError.
      *
-     * @param serviceProvider - for configuration, etc. services
-     * @param workerName      - the name of a worker where the file resides
-     * @param databaseName    - the name of a database the file belongs to
-     * @param fileName        - the file to read or examine
+     * @param serviceProvider
+     *   for configuration, etc. services
+     *
+     * @param workerName
+     *   the name of a worker where the file resides
+     *
+     * @param databaseName
+     *   the name of a database the file belongs to
+     *
+     * @param fileName
+     *   the file to read or examine
      */
     static Ptr stat(ServiceProvider::Ptr const& serviceProvider,
                     std::string const& workerName,
@@ -157,11 +172,15 @@ public:
      * occurs during the operation. Illegal parameters (zero buffer pointer
      * or the buffer size of 0) will be reported by std::invalid_argument exception.
      *
-     * @param buf     - a pointer to a valid buffer where the data will be placed
-     * @param bufSize - a size of the buffer (would determine the maximum number of bytes
-     *                  which can be read at a single call to the method)
+     * @param buf
+     *   a pointer to a valid buffer where the data will be placed
      *
-     * @return the actual number of bytes read or 0 if the end of file reached
+     * @param bufSize
+     *   a size of the buffer (would determine the maximum number of bytes
+     *   which can be read at a single call to the method)
+     *
+     * @return
+     *   the actual number of bytes read or 0 if the end of file reached
      */
     size_t read(uint8_t* buf, size_t bufSize);
 
@@ -172,11 +191,20 @@ private:
      * of this class. If the operation is successful then a valid pointer will
      * be returned.
      *
-     * @param serviceProvider - for configuration, etc. services
-     * @param workerName      - the name of a worker where the file resides
-     * @param databaseName    - the name of a database the file belongs to
-     * @param fileName        - the file to read or examine
-     * @param readContent     - the mode in which the file will be used
+     * @param serviceProvider
+     *   for configuration, etc. services
+     *
+     * @param workerName
+     *   the name of a worker where the file resides
+     *
+     * @param databaseName
+     *   the name of a database the file belongs to
+     *
+     * @param fileName
+     *   the file to read or examine
+     *
+     * @param readContent
+     *   the mode in which the file will be used
      */
     static Ptr instance(ServiceProvider::Ptr const& serviceProvider,
                         std::string const& workerName,
@@ -190,11 +218,20 @@ private:
      * The constructor may throw the std::invalid_argument exception after
      * validating its arguments.
      *
-     * @param serviceProvider - for configuration, etc. services
-     * @param workerName      - the name of a worker where the file resides
-     * @param databaseName    - the name of a database the file belongs to
-     * @param fileName        - the file to read or examine
-     * @param readContent     - indicates if a file is open for reading its content
+     * @param serviceProvider
+     *   for configuration, etc. services
+     *
+     * @param workerName
+     *   the name of a worker where the file resides
+     *
+     * @param databaseName
+     *   the name of a database the file belongs to
+     *
+     * @param fileName
+     *   the file to read or examine
+     *
+     * @param readContent
+     *   indicates if a file is open for reading its content
      */
     FileClient(ServiceProvider::Ptr const& serviceProvider,
                std::string const& workerName,

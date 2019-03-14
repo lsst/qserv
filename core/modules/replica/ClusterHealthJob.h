@@ -51,7 +51,8 @@ public:
      * Normal (and the only) constructor requires to know names
      * of all workers contributing into the report.
      *
-     * @param workers - names of the workers
+     * @param workers
+     *   names of the workers
      */
     ClusterHealth(std::vector<std::string> const& workers);
 
@@ -84,8 +85,11 @@ public:
     /**
      * Update a state of a Qserv worker and recompute the summary state
      *
-     * @param worker - the name of a worker
-     * @param state  - new state of the worker
+     * @param worker
+     *   the name of a worker
+     *
+     * @param state
+     *   new state of the worker
      */
     void updateQservState(std::string const& worker,
                           bool state);
@@ -160,7 +164,8 @@ public:
      * @param options
      *   (optional) job options
      *
-     * @return pointer to the created object
+     * @return
+     *   pointer to the created object
      */
     static Ptr create(unsigned int timeoutSec,
                       bool allWorkers,
@@ -185,9 +190,11 @@ public:
     bool allWorkers() const { return _allWorkers; }
 
     /**
-     * @return summary report
+     * @return
+     *   The cluster summary report
      *
-     * @throw std::logic_error if the method is called before the job finishes
+     * @throw std::logic_error
+     *   if the method is called before the job finishes
      */
     ClusterHealth const& clusterHealth() const;
 
@@ -234,7 +241,8 @@ protected:
      * The callback function to be invoked on a completion of the Replication
      * worker probes.
      *
-     * @param request - a pointer to a request
+     * @param request
+     *   a pointer to a request
      */
     void onRequestFinish(ServiceStatusRequest::Ptr const& request);
 
@@ -242,7 +250,8 @@ protected:
      * The callback function to be invoked on a completion of the Qserv
      * worker probes.
      *
-     * @param request - a pointer to a request
+     * @param request
+     *   a pointer to a request
      */
     void onRequestFinish(TestEchoQservMgtRequest::Ptr const& request);
 

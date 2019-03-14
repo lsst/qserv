@@ -61,10 +61,14 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider - for configuration, etc. services
-     * @workerName            - the name of a worker this instance represents
+     * @param serviceProvider
+     *   for configuration, etc. services
      *
-     * @reurn pointer to the created object
+     * @workerName
+     *   the name of a worker this instance represents
+     *
+     * @return
+     *   pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& workerName);
@@ -83,8 +87,9 @@ public:
     /**
      * Run the server in a thread pool (as per the Configuration)
      *
-     * ATTENTION: this is the blocking operation. Please, run it
-     * within its own thread if needed.
+     * @note
+     *   This is the blocking operation. Please, run it within its own thread
+     *   if needed.
      */
     void run();
 
@@ -93,8 +98,11 @@ private:
     /**
      * Construct the server with the specified configuration.
      *
-     * @param serviceProvider - for configuration, etc. services
-     * @workerName            - the name of a worker this instance represents
+     * @param serviceProvider
+     *   for configuration, etc. services
+     *
+     * @workerName
+     *   the name of a worker this instance represents
      */
     FileServer(ServiceProvider::Ptr const& serviceProvider,
                std::string const& workerName);
