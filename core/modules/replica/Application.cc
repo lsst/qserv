@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -31,6 +30,7 @@
 #include "replica/Configuration.h"
 #include "util/Issue.h"
 
+using namespace std;
 
 namespace lsst {
 namespace qserv {
@@ -38,20 +38,16 @@ namespace replica {
 
 Application::Application(int argc,
                          const char* const argv[],
-                         std::string const& description,
+                         string const& description,
                          bool const injectDatabaseOptions,
                          bool const boostProtobufVersionCheck,
                          bool const enableServiceProvider)
-    :    _parser(
-            argc,
-            argv,
-            description
-        ),
-        _injectDatabaseOptions        (injectDatabaseOptions),
-        _boostProtobufVersionCheck    (boostProtobufVersionCheck),
-        _enableServiceProvider        (enableServiceProvider),
-        _debugFlag                    (false),
-        _config                       ("file:replication.cfg"),
+    :   _injectDatabaseOptions    (injectDatabaseOptions),
+        _boostProtobufVersionCheck(boostProtobufVersionCheck),
+        _enableServiceProvider    (enableServiceProvider),
+        _parser   (argc,argv, description),
+        _debugFlag(false),
+        _config   ("file:replication.cfg"),
         _databaseAllowReconnect       (Configuration::databaseAllowReconnect() ? 1 : 0),
         _databaseConnectTimeoutSec    (Configuration::databaseConnectTimeoutSec()),
         _databaseMaxReconnects        (Configuration::databaseMaxReconnects()),
@@ -66,6 +62,7 @@ Application::Application(int argc,
         GOOGLE_PROTOBUF_VERIFY_VERSION;
     }
 }
+
 
 int Application::run() {
 
@@ -113,8 +110,8 @@ int Application::run() {
     try {
         int const code = parser().parse();
         if (Parser::SUCCESS != code) return code;
-    } catch (std::exception const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, "Application::run  command-line parser error: " << ex.what());
+    } catch (exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, "Application::" + string(__func__) + "  command-line parser error: " << ex.what());
         return Parser::PARSING_FAILED;
     }
 
@@ -160,10 +157,11 @@ int Application::run() {
     return exitCode;
 }
 
+
 ServiceProvider::Ptr const& Application::serviceProvider() const {
     if (nullptr == _serviceProvider) {
-        throw std::logic_error(
-                "Application::serviceProvider()  this application was not configured to enable this");
+        throw logic_error(
+                "Application::" + string(__func__) + "  this application was not configured to enable this");
     }
     return _serviceProvider;
 }

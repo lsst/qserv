@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -40,6 +39,8 @@
 #include "replica/ProtocolBuffer.h"
 #include "replica/ServiceProvider.h"
 
+using namespace std;
+
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.ServiceManagementRequest");
@@ -47,8 +48,8 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.ServiceManagementRequest");
 namespace proto = lsst::qserv::proto;
 
 /// Dump a collection of request descriptions onto the output stream
-void dumpRequestInfo(std::ostream& os,
-                     std::vector<proto::ReplicationServiceResponseInfo> const& requests) {
+void dumpRequestInfo(ostream& os,
+                     vector<proto::ReplicationServiceResponseInfo> const& requests) {
 
     for (const auto &r : requests) {
         os  << "\n"
@@ -72,10 +73,10 @@ void dumpRequestInfo(std::ostream& os,
                 break;
 
             default:
-                throw std::logic_error (
-                            "unhandled request type " +
-                            proto::ReplicationReplicaRequestType_Name(r.replica_type()) +
-                            " in  ServiceManagementRequest::dumpRequestInfo");
+                throw logic_error(
+                        "ServiceManagementRequest::" + string(__func__) +
+                        "  unhandled request type " +
+                        proto::ReplicationReplicaRequestType_Name(r.replica_type()));
         }
     }
 }
@@ -90,17 +91,19 @@ namespace replica {
 //         ServiceState          //
 ///////////////////////////////////
 
-std::string ServiceState::state2string() const {
+string ServiceState::state2string() const {
     switch (state) {
         case SUSPEND_IN_PROGRESS: return "SUSPEND_IN_PROGRESS";
         case SUSPENDED:           return "SUSPENDED";
         case RUNNING:             return "RUNNING";
     default:
-        throw std::runtime_error(
-            "ServiceState::state2string  unhandled state: " + std::to_string(state));
+        throw runtime_error(
+                "ServiceState::" + string(__func__) + "  unhandled state: " +
+                to_string(state));
     }
-    return std::string();
+    return string();
 }
+
 
 void ServiceState::set(proto::ReplicationServiceResponse const& message) {
 
@@ -119,8 +122,9 @@ void ServiceState::set(proto::ReplicationServiceResponse const& message) {
             break;
 
         default:
-            throw std::runtime_error(
-                "ServiceState::set  service state found in protocol is unknown");
+            throw runtime_error(
+                    "ServiceState::" + string(__func__) +
+                    "  service state found in protocol is unknown");
     }
     technology = message.technology();
     startTime  = message.start_time();
@@ -140,7 +144,8 @@ void ServiceState::set(proto::ReplicationServiceResponse const& message) {
     }
 }
 
-std::ostream& operator<<(std::ostream& os, ServiceState const& ss) {
+
+ostream& operator<<(ostream& os, ServiceState const& ss) {
 
     unsigned int const secondsAgo = (PerformanceUtils::now() - ss.startTime) / 1000.0f;
 
@@ -165,9 +170,10 @@ std::ostream& operator<<(std::ostream& os, ServiceState const& ss) {
     return os;
 }
 
+
 ServiceState const& ServiceManagementRequestBase::getServiceState() const {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "getServiceState");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     switch (Request::state()) {
         case Request::State::FINISHED:
@@ -181,17 +187,19 @@ ServiceState const& ServiceManagementRequestBase::getServiceState() const {
         default:
             break;
     }
-    throw std::logic_error(
-                    "ServiceManagementRequestBase::getServiceState  not allowed in the current state of the request");
+    throw logic_error(
+            "ServiceManagementRequestBase::" + string(__func__) +
+            "  not allowed in the current state of the request");
 }
+
 
 ServiceManagementRequestBase::ServiceManagementRequestBase(
                                     ServiceProvider::Ptr const& serviceProvider,
                                     boost::asio::io_service& io_service,
                                     char const* requestName,
-                                    std::string const& worker,
+                                    string const& worker,
                                     proto::ReplicationServiceRequestType requestType,
-                                    std::shared_ptr<Messenger> const& messenger)
+                                    shared_ptr<Messenger> const& messenger)
     :   RequestMessenger(serviceProvider,
                          io_service,
                          requestName,
@@ -203,9 +211,10 @@ ServiceManagementRequestBase::ServiceManagementRequestBase(
         _requestType(requestType) {
 }
 
+
 void ServiceManagementRequestBase::startImpl(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // Serialize the Request message header and the request itself into
     // the network buffer.
@@ -227,24 +236,23 @@ void ServiceManagementRequestBase::startImpl(util::Lock const& lock) {
         worker(),
         id(),
         buffer(),
-        [self] (std::string const& id,
+        [self] (string const& id,
                 bool success,
                 proto::ReplicationServiceResponse const& response) {
-
-            self->analyze(success,
-                          response);
+            self->_analyze(success, response);
         }
     );
 }
 
-void ServiceManagementRequestBase::analyze(bool success,
-                                           proto::ReplicationServiceResponse const& message) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "analyze  success=" << (success ? "true" : "false"));
+void ServiceManagementRequestBase::_analyze(bool success,
+                                            proto::ReplicationServiceResponse const& message) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  success=" << (success ? "true" : "false"));
 
     // This method is called on behalf of an asynchronous callback fired
     // upon a completion of the request within method send() - the only
-    // client of analyze(). So, we should take care of proper locking and watch
+    // client of _analyze(). So, we should take care of proper locking and watch
     // for possible state transition which might occur while the async I/O was
     // still in a progress.
 
@@ -256,7 +264,7 @@ void ServiceManagementRequestBase::analyze(bool success,
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + "analyze");
+    util::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return;
 
@@ -289,6 +297,7 @@ void ServiceManagementRequestBase::analyze(bool success,
     }
 
 }
+
 
 void ServiceManagementRequestBase::savePersistentState(util::Lock const& lock) {
     controller()->serviceProvider()->databaseServices()->saveState(*this, performance(lock));

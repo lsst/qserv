@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -47,8 +46,7 @@ namespace replica {
   *
   * @see class DatabaseServices
   */
-class DatabaseServicesPool
-    :   public DatabaseServices {
+class DatabaseServicesPool : public DatabaseServices {
 
 public:
     /// This class which implements the RAII paradigm is used by
@@ -62,8 +60,11 @@ public:
      * The factory method for instantiating a proper service object based
      * on an application configuration.
      *
-     * @param configuration - the configuration service
-     * @return pointer to the created object
+     * @param configuration
+     *   the configuration service
+     *
+     * @return
+     *   pointer to the created object
      */
     static Ptr create(ConfigurationPtr const& configuration);
 
@@ -75,150 +76,104 @@ public:
 
     ~DatabaseServicesPool() override = default;
 
-    /**
-     * @see DatabaseServices::saveState()
-     */
+    /// @see DatabaseServices::saveState()
     void saveState(ControllerIdentity const& identity,
                    uint64_t startTime) final;
 
-    /**
-     * @see DatabaseServices::saveState()
-     */
+    /// @see DatabaseServices::saveState()
     void saveState(Job const& job,
                    Job::Options const& options) final;
 
-    /**
-     * @see DatabaseServices::updateHeartbeatTime()
-     */
+    /// @see DatabaseServices::updateHeartbeatTime()
      void updateHeartbeatTime(Job const& job) final;
 
-    /**
-     * @see DatabaseServices::saveState()
-     */
+    /// @see DatabaseServices::saveState()
     void saveState(QservMgtRequest const& request,
                    Performance const& performance,
                    std::string const& serverError) final;
 
-    /**
-     * @see DatabaseServices::saveState()
-     */
+    /// @see DatabaseServices::saveState()
     void saveState(Request const& request,
                    Performance const& performance) final;
 
-    /**
-     * @see DatabaseServices::updateRequestState()
-     */
+    /// @see DatabaseServices::updateRequestState()
     void updateRequestState(Request const& request,
                             std::string const& targetRequestId,
                             Performance const& targetRequestPerformance) final;
 
-    /**
-     * @see DatabaseServices::saveReplicaInfo()
-     */
+    /// @see DatabaseServices::saveReplicaInfo()
     void saveReplicaInfo(ReplicaInfo const& info) final;
 
-    /**
-     * @see DatabaseServices::saveReplicaInfoCollection()
-     */
+    /// @see DatabaseServices::saveReplicaInfoCollection()
     void saveReplicaInfoCollection(std::string const& worker,
                                    std::string const& database,
                                    ReplicaInfoCollection const& newReplicaInfoCollection) final;
 
-    /**
-     * @see DatabaseServices::findOldestReplica()
-     */
+    /// @see DatabaseServices::findOldestReplica()
     void findOldestReplicas(std::vector<ReplicaInfo>& replicas,
                             size_t maxReplicas,
                             bool enabledWorkersOnly) final;
 
-    /**
-     * @see DatabaseServices::findReplicas()
-     */
+    /// @see DatabaseServices::findReplicas()
     void findReplicas(std::vector<ReplicaInfo>& replicas,
                       unsigned int chunk,
                       std::string const& database,
                       bool enabledWorkersOnly) final;
 
-    /**
-     * @see DatabaseServices::findWorkerReplicas()
-     */
+    /// @see DatabaseServices::findWorkerReplicas()
     void findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
                             std::string const& worker,
                             std::string const& database) final;
 
-    /**
-     * @see DatabaseServices::numWorkerReplicas()
-     */
+    /// @see DatabaseServices::numWorkerReplicas()
     uint64_t numWorkerReplicas(std::string const& worker,
                                std::string const& database=std::string()) final;
 
-    /**
-     * @see DatabaseServices::findWorkerReplicas()
-     */
+    /// @see DatabaseServices::findWorkerReplicas()
     void findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
                             unsigned int chunk,
                             std::string const& worker,
                             std::string const& databaseFamily) final;
 
-    /**
-     * @see DatabaseServices::actualReplicationLevel()
-     */
+    /// @see DatabaseServices::actualReplicationLevel()
     std::map<unsigned int, size_t> actualReplicationLevel(
                                         std::string const& database,
                                         std::vector<std::string> const& workersToExclude) final;
 
-    /**
-     * @see DatabaseServices::numOrphanChunks()
-     */
+    /// @see DatabaseServices::numOrphanChunks()
     size_t numOrphanChunks(std::string const& database,
                            std::vector<std::string> const& uniqueOnWorkers) final;
 
-    /**
-     * @see DatabaseServices::logControllerEvent()
-     */
+    /// @see DatabaseServices::logControllerEvent()
     void logControllerEvent(ControllerEvent const& event) final;
 
-    /**
-     * @see DatabaseServices::readControllerEvents()
-     */
+    /// @see DatabaseServices::readControllerEvents()
     std::list<ControllerEvent> readControllerEvents(std::string const& controllerId,
                                                     uint64_t fromTimeStamp,
                                                     uint64_t toTimeStamp,
                                                     size_t maxEntries) final;
 
-    /**
-     * @see DatabaseServices::controller()
-     */
+    /// @see DatabaseServices::controller()
     ControllerInfo controller(std::string const& id) final;
 
-    /**
-     * @see DatabaseServices::controllers()
-     */
+    /// @see DatabaseServices::controllers()
     std::list<ControllerInfo> controllers(uint64_t fromTimeStamp,
                                           uint64_t toTimeStamp,
                                           size_t maxEntries) final;
 
-    /**
-     * @see DatabaseServices::controller()
-     */
+    /// @see DatabaseServices::controller()
     RequestInfo request(std::string const& id) final;
 
-    /**
-     * @see DatabaseServices::requests()
-     */
+    /// @see DatabaseServices::requests()
     std::list<RequestInfo> requests(std::string const& jobId,
                                     uint64_t fromTimeStamp,
                                     uint64_t toTimeStamp,
                                     size_t maxEntries) final;
 
-    /**
-     * @see DatabaseServices::job()
-     */
+    /// @see DatabaseServices::job()
     JobInfo job(std::string const& id) final;
 
-    /**
-     * @see DatabaseServices::jobs()
-     */
+    /// @see DatabaseServices::jobs()
     std::list<JobInfo> jobs(std::string const& controllerId,
                             std::string const& parentJobId,
                             uint64_t fromTimeStamp,
@@ -229,33 +184,37 @@ private:
     /**
      * Construct the object.
      *
-     * @param configuration - the configuration service
+     * @param configuration
+     *   the configuration service
      */
     explicit DatabaseServicesPool(ConfigurationPtr const& configuration);
 
     /**
      * Allocate the next available service object.
      *
-     * NOTE: the requester must return the service back after it's no longer needed.
+     * @note
+     *   the requester must return the service back after it's no longer needed.
      *
-     * @return pointer to a service
+     * @return
+     *   pointer to a service
      *
-     * @see DatabaseServicesPool::releaseService()
+     * @see DatabaseServicesPool::_releaseService()
      */
-    DatabaseServices::Ptr allocateService();
+    DatabaseServices::Ptr _allocateService();
 
     /**
      * Return a service object back into the pool of the available ones.
      *
-     * @param service - service object to be returned back
+     * @param service
+     *   service object to be returned back
      *
-     * @throws std::logic_error if the service object was not previously allocated
+     * @throws std::logic_error
+     *   if the service object was not previously allocated
      *
-     * @see DatabaseServicesPool::allocateService()
+     * @see DatabaseServicesPool::_allocateService()
      */
-    void releaseService(DatabaseServices::Ptr const& service);
+    void _releaseService(DatabaseServices::Ptr const& service);
 
-private:
 
     /// Service objects which are available
     std::list<DatabaseServices::Ptr> _availableServices;
@@ -264,7 +223,8 @@ private:
     std::list<DatabaseServices::Ptr> _usedServices;
 
     /// The mutex for enforcing thread safety of the class's public API
-    /// and internal operations.
+    /// and internal operations. The mutex is locked by methods _allocateService
+    /// and _releaseService when moving requests between the lists (defined above).
     mutable std::mutex _mtx;
 
     /// The condition variable for notifying clients waiting for the next

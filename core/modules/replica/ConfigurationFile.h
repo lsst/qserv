@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -40,8 +39,7 @@ namespace replica {
   * The implementation of this class relies upon the basic parser
   * of the INI-style configuration files.
   */
-class ConfigurationFile
-    :   public ConfigurationStore {
+class ConfigurationFile : public ConfigurationStore {
 
 public:
 
@@ -68,23 +66,18 @@ public:
      * Construct the object by reading the configuration
      * from the specified file.
      *
-     * @param configFile - the name of a configuration file
+     * @param configFile
+     *   the name of a configuration file
      */
     explicit ConfigurationFile(std::string const& configFile);
 
     ~ConfigurationFile() final = default;
 
-    /**
-     * @see Configuration::prefix()
-     */
+    /// @see Configuration::prefix()
     virtual std::string prefix() const final { return "file"; }
 
-    /**
-     * @see Configuration::configUrl()
-     */
-    std::string configUrl() const final {
-        return prefix() + ":" + _configFile;
-    }
+    /// @see Configuration::configUrl()
+    std::string configUrl() const final { return prefix() + ":" + _configFile; }
 
 private:
 

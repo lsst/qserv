@@ -1,7 +1,5 @@
-// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -42,6 +40,7 @@
 #define BOOST_TEST_MODULE SemanticMaps
 #include "boost/test/included/unit_test.hpp"
 
+using namespace std;
 namespace test = boost::test_tools;
 using namespace lsst::qserv::replica;
 
@@ -52,12 +51,12 @@ BOOST_AUTO_TEST_CASE(SemanticMapsTest) {
     LOGS_INFO("SemanticMaps test begins");
 
     
-    std::vector<unsigned int> chunkNumbers;
+    vector<unsigned int> chunkNumbers;
     for (unsigned int chunk = 0; chunk < 10; ++chunk) {
         chunkNumbers.push_back(chunk);
     }
-    std::vector<std::string> const workerNames{"host-1","host-2","host-3"};
-    std::vector<std::string> const databaseNames{"A","B","C"};
+    vector<string> const workerNames{"host-1","host-2","host-3"};
+    vector<string> const databaseNames{"A","B","C"};
 
     // ----------------------------------------------------
     // Test basic API using a 1-layer map for chunk numbers
@@ -84,8 +83,8 @@ BOOST_AUTO_TEST_CASE(SemanticMapsTest) {
         
         BOOST_CHECK(chunkMap.empty());
     });
-    BOOST_CHECK_THROW(chunkMap.chunk(0), std::out_of_range);
-    BOOST_CHECK_THROW(constChunkMap.chunk(0), std::out_of_range);
+    BOOST_CHECK_THROW(chunkMap.chunk(0), out_of_range);
+    BOOST_CHECK_THROW(constChunkMap.chunk(0), out_of_range);
 
     // Implicit insert-then-modify
 
@@ -126,12 +125,12 @@ BOOST_AUTO_TEST_CASE(SemanticMapsTest) {
 
         // Test if all required keys are reported by the key extraction method
 
-        std::vector<unsigned int> chunksFromMap = chunkMap.chunkNumbers();
-        std::sort(chunksFromMap.begin(), chunksFromMap.end());
+        vector<unsigned int> chunksFromMap = chunkMap.chunkNumbers();
+        sort(chunksFromMap.begin(), chunksFromMap.end());
         BOOST_CHECK(chunksFromMap == chunkNumbers);
 
-        std::vector<unsigned int> chunksFromConstMap = constChunkMap.chunkNumbers();
-        std::sort(chunksFromConstMap.begin(), chunksFromConstMap.end());
+        vector<unsigned int> chunksFromConstMap = constChunkMap.chunkNumbers();
+        sort(chunksFromConstMap.begin(), chunksFromConstMap.end());
         BOOST_CHECK(chunksFromConstMap == chunkNumbers);
     });
 
@@ -222,14 +221,14 @@ BOOST_AUTO_TEST_CASE(SemanticMapsTest) {
     // ---------------------------------------
 
     auto dump = [](WorkerDatabaseChunkMap<int> const& d,
-                   std::string const& indent="  ") {
+                   string const& indent="  ") {
         for (auto&& worker: d.workerNames()) {
             for (auto&& database: d.worker(worker).databaseNames()) {
                 for (auto&& chunk: d.worker(worker).database(database).chunkNumbers()) {
                     LOGLS_INFO(LOG_GET("lsst.qserv.testSemanticMap"),
                                indent
                                << "[" << worker + "][" << database + "][" << chunk << "] = "
-                               << std::to_string(d.worker(worker).database(database).chunk(chunk)));
+                               << to_string(d.worker(worker).database(database).chunk(chunk)));
                 }
             }
         }
@@ -359,7 +358,7 @@ BOOST_AUTO_TEST_CASE(SemanticMapsTest) {
                     LOGLS_INFO(
                         LOG_GET("lsst.qserv.testSemanticMap"),
                         "  [" << workerName + "][" << databaseName + "][" << chunkNumber << "] = "
-                        << std::to_string(value));
+                        << to_string(value));
                 }
             }
         }
@@ -385,7 +384,7 @@ BOOST_AUTO_TEST_CASE(SemanticMapsTest) {
                     LOGLS_INFO(
                         LOG_GET("lsst.qserv.testSemanticMap"),
                         "  [" << workerName + "][" << databaseName + "][" << chunkNumber << "] = "
-                        << std::to_string(value));
+                        << to_string(value));
                 }
             }
         }

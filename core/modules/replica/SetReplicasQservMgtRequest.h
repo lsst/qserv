@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -45,8 +44,7 @@ namespace replica {
   * Class SetReplicasQservMgtRequest implements a request for setting new
   * collections Qserv workers.
   */
-class SetReplicasQservMgtRequest
-    :   public QservMgtRequest  {
+class SetReplicasQservMgtRequest : public QservMgtRequest  {
 
 public:
 
@@ -88,8 +86,8 @@ public:
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& worker,
                       QservReplicaCollection const& newReplicas,
-                      bool force = false,
-                      CallbackType const& onFinish = nullptr);
+                      bool force=false,
+                      CallbackType const& onFinish=nullptr);
 
     /// @return collection of new replicas to be set at the Qserv worker
     QservReplicaCollection const& newReplicas() const { return _newReplicas; }
@@ -109,32 +107,23 @@ public:
       */
     QservReplicaCollection const& replicas() const;
 
-    /**
-     * @see QservMgtRequest::extendedPersistentState()
-     */
-    std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
+    /// @see QservMgtRequest::extendedPersistentState()
+    std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
+
+protected:
+
+    /// @see QservMgtRequest::startImpl
+    void startImpl(util::Lock const& lock) final;
+
+    /// @see QservMgtRequest::finishImpl
+    void finishImpl(util::Lock const& lock) final;
+
+    /// @see QservMgtRequest::notify
+    void notify(util::Lock const& lock) final;
 
 private:
 
-    /**
-     * Construct the request with the pointer to the services provider.
-     *
-     * @param serviceProvider
-     *   reference to a provider of services
-     * 
-     * @param worker
-     *   the name of a worker
-     *
-     * @param newReplicas
-     *   collection of new replicas (NOTE: useCount field is ignored)
-     *
-     * @param force
-     *   proceed with the operation even if some replicas affected by
-     *   the operation are in use.
-     *
-     * @param onFinish
-     *   callback function to be called upon request completion
-     */
+    /// @see SetReplicasQservMgtRequest::create()
     SetReplicasQservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
                                std::string const& worker,
                                QservReplicaCollection const& newReplicas,
@@ -145,38 +134,19 @@ private:
      * Carry over results of the request into a local collection.
      *
      * @param lock
-     *   lock must be acquired by a caller of the method
+     *   a lock on QservMgtRequest::_mtx must be acquired before calling this method
      *
      * @param collection
      *   input collection of replicas
      */
-     void setReplicas(util::Lock const& lock,
+    void _setReplicas(util::Lock const& lock,
                       wpublish::SetChunkListQservRequest::ChunkCollection const& collection);
 
-    /**
-      * @see QservMgtRequest::startImpl
-      */
-    void startImpl(util::Lock const& lock) final;
+    // Input parameters
 
-    /**
-      * @see QservMgtRequest::finishImpl
-      */
-    void finishImpl(util::Lock const& lock) final;
-
-    /**
-      * @see QservMgtRequest::notify
-      */
-    void notify(util::Lock const& lock) final;
-
-private:
-
-    /// A collection of new replicas to be set at the Qserv worker
     QservReplicaCollection const _newReplicas;
 
-    /// Flag indicating to report (if set) the 'force' mode of the operation
-    bool const _force;
-
-    /// The callback function for sending a notification upon request completion
+    bool const   _force;
     CallbackType _onFinish;
 
     /// A request to the remote services

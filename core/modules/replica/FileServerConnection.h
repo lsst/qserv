@@ -1,7 +1,5 @@
-// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -31,7 +29,7 @@
  */
 
 // System headers
-#include <cstdio>       // std::FILE, C-style file I/O
+#include <cstdio>
 #include <memory>
 
 // Third party headers
@@ -69,8 +67,7 @@ namespace replica {
   * or communicating with a client) occurs. When this happens the object
   * stops doing anything.
   */
-class FileServerConnection
-    :   public std::enable_shared_from_this<FileServerConnection> {
+class FileServerConnection : public std::enable_shared_from_this<FileServerConnection> {
 
 public:
 
@@ -82,9 +79,15 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider - provider of various services
-     * @param workerName      - worker name
-     * @param io_service      - service object for the network I/O operations
+     * @param serviceProvider
+     *  is needed to access Configuration
+     *
+     * @param workerName
+     *   The name of a worker this service is acting upon (used for checking
+     *   a consistency of the protocol)
+     *
+     * @param io_service
+     *   service object for the network I/O operations
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& workerName,
@@ -115,16 +118,17 @@ public:
      *   - ASYNC: if the request is accepted then begin streaming the content of
      *            a file in a series of records until it's done.
      *
-     * NOTES: A reason why the read phase is split into three steps is
-     *        that a client is expected to send all components of the request
-     *        (frame header and request header) at once. This means
-     *        the whole incoming message will be already available on the server's
-     *        host memory when an asynchronous handler for the frame header will fire.
-     *        However, due to a variable length of the request we should know its length
-     *        before attempting to read the rest of the incoming message as this (the later)
-     *        will require two things: 1) to ensure enough we have enough buffer space
-     *        allocated, and 2) to tell the asynchronous reader function
-     *        how many bytes exactly are we going to read.
+     * @note
+     *   A reason why the read phase is split into three steps is
+     *   that a client is expected to send all components of the request
+     *   (frame header and request header) at once. This means
+     *   the whole incoming message will be already available on the server's
+     *   host memory when an asynchronous handler for the frame header will fire.
+     *   However, due to a variable length of the request we should know its length
+     *   before attempting to read the rest of the incoming message as this (the later)
+     *   will require two things: 1) to ensure enough we have enough buffer space
+     *   allocated, and 2) to tell the asynchronous reader function
+     *   how many bytes exactly are we going to read.
      * 
      * The chain ends when a client disconnects or when an error condition
      * is met.
@@ -133,9 +137,7 @@ public:
 
 private:
 
-    /**
-     * The constructor of the class.
-     */
+    /// @see FileServerConnection::create()
     FileServerConnection(ServiceProvider::Ptr const& serviceProvider,
                          std::string const& workerName,
                          boost::asio::io_service& io_service);
@@ -146,55 +148,61 @@ private:
      * The frame header is presently a 32-bit unsigned integer
      * representing the length of the subsequent message.
      */
-    void receiveRequest();
+    void _receiveRequest();
 
     /**
      * The callback on finishing (either successfully or not) of asynchronous
      * reads. The request will be parsed, analyzed and if everything is right
      * the file transfer will begin.
      *
-     * @param ec                - error code to be evaluated
-     * @param bytes_transferred - number of bytes received from a client
+     * @param ec
+     *   error code to be evaluated
+     * 
+     * @param bytes_transferred
+     *   number of bytes received from a client
      */
-    void requestReceived(boost::system::error_code const& ec,
-                         size_t bytes_transferred);
+    void _requestReceived(boost::system::error_code const& ec,
+                          size_t bytes_transferred);
 
     /**
      * Begin sending (asynchronously) a result back to a client
      */
-    void sendResponse();
+    void _sendResponse();
 
     /**
      * The callback on finishing (either successfully or not) of asynchronous writes.
      *
-     * @param ec                - error code to be evaluated
-     * @param bytes_transferred - number of bytes sent to a client in a response
+     * @param ec
+     *   error code to be evaluated
+     *
+     * @param bytes_transferred
+     *   number of bytes sent to a client in a response
      */
-    void responseSent(boost::system::error_code const& ec,
-                      size_t bytes_transferred);
+    void _responseSent(boost::system::error_code const& ec,
+                       size_t bytes_transferred);
 
     /**
      * Read the next record from the currently open file, and if succeeded
      * then begin streaming (asynchronously) it to a client.
      */
-    void sendData();
+    void _sendData();
 
     /**
      * The callback on finishing (either successfully or not) of asynchronous writes.
      *
-     * @param ec                - error code to be evaluated
-     * @param bytes_transferred - number of bytes of the file payload sent to a client 
+     * @param ec
+     *   error code to be evaluated
+     * 
+     * @param bytes_transferred
+     *   number of bytes of the file payload sent to a client 
      */
-    void dataSent(boost::system::error_code const& ec,
-                  size_t bytes_transferred);
+    void _dataSent(boost::system::error_code const& ec,
+                   size_t bytes_transferred);
 
-private:
+    // Input parameters
 
     ServiceProvider::Ptr const _serviceProvider;
-
-    /// The name of a worker this service is acting upon (used for checking
-    /// a consistency of the protocol)
-    std::string const _workerName;
+    std::string          const _workerName;
 
     /// Cached worker descriptor obtained from the configuration
     WorkerInfo const _workerInfo;

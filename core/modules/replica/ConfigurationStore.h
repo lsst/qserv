@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -63,8 +62,7 @@ namespace replica {
   *   - sets default values for the optional parameters
   *   - caches parameters in memory
   */
-class ConfigurationStore
-    :   public Configuration {
+class ConfigurationStore : public Configuration {
 
 public:
 
@@ -76,175 +74,111 @@ public:
 
     ~ConfigurationStore() override = default;
 
-    /**
-     * @see Configuration::setRequestBufferSizeBytes()
-     */
+    /// @see Configuration::setRequestBufferSizeBytes()
     void setRequestBufferSizeBytes(size_t val) final { _set(_requestBufferSizeBytes, val); }
 
-    /**
-     * @see Configuration::setRetryTimeoutSec()
-     */
+    /// @see Configuration::setRetryTimeoutSec()
     void setRetryTimeoutSec(unsigned int val) final { _set(_retryTimeoutSec, val); }
 
-    /**
-     * @see Configuration::setControllerThreads()
-     */
+    /// @see Configuration::setControllerThreads()
     void setControllerThreads(size_t val) final { _set(_controllerThreads, val); }
 
-    /**
-     * @see Configuration::setControllerHttpPort()
-     */
+    /// @see Configuration::setControllerHttpPort()
     void setControllerHttpPort(uint16_t val) final { _set(_controllerHttpPort, val); }
 
-    /**
-     * @see Configuration::setControllerHttpThreads()
-     */
+    /// @see Configuration::setControllerHttpThreads()
     void setControllerHttpThreads(size_t val) final { _set(_controllerHttpThreads, val); }
 
-    /**
-     * @see Configuration::setControllerRequestTimeoutSec()
-     */
+    /// @see Configuration::setControllerRequestTimeoutSec()
     void setControllerRequestTimeoutSec(unsigned int val) final { _set(_controllerRequestTimeoutSec, val); }
 
-    /**
-     * @see Configuration::setJobTimeoutSec()
-     */
+    /// @see Configuration::setJobTimeoutSec()
     void setJobTimeoutSec(unsigned int val) final { _set(_jobTimeoutSec, val); }
 
-    /**
-     * @see Configuration::setJobHeartbeatTimeoutSec()
-     */
+    /// @see Configuration::setJobHeartbeatTimeoutSec()
     void setJobHeartbeatTimeoutSec(unsigned int val) final { _set(_jobHeartbeatTimeoutSec, val, true); }
 
-    /**
-     * @see Configuration::setXrootdAutoNotify()
-     */
+    /// @see Configuration::setXrootdAutoNotify()
     void setXrootdAutoNotify(bool val) final { _set(_xrootdAutoNotify, val); }
 
-    /**
-     * @see Configuration::setXrootdHost()
-     */
+    /// @see Configuration::setXrootdHost()
     void setXrootdHost(std::string const& val) final { _set(_xrootdHost, val); }
 
-    /**
-     * @see Configuration::setXrootdPort()
-     */
+    /// @see Configuration::setXrootdPort()
     void setXrootdPort(uint16_t val) final { _set(_xrootdPort, val); }
 
-    /**
-     * @see Configuration::setXrootdTimeoutSec()
-     */
+    /// @see Configuration::setXrootdTimeoutSec()
     void setXrootdTimeoutSec(unsigned int val) final { _set(_xrootdTimeoutSec, val); }
 
-    /**
-     * @see Configuration::setDatabaseServicesPoolSize()
-     */
+    /// @see Configuration::setDatabaseServicesPoolSize()
     void setDatabaseServicesPoolSize(size_t val) final { _set(_databaseServicesPoolSize, val); }
 
-    /**
-     * @see Configuration::addWorker()
-     */
+    /// @see Configuration::addWorker()
     void addWorker(WorkerInfo const& workerInfo) final;
 
-    /**
-     * @see Configuration::deleteWorker()
-     */
+    /// @see Configuration::deleteWorker()
     void deleteWorker(std::string const& name) final;
 
-    /**
-     * @see Configuration::disableWorker()
-     */
+    /// @see Configuration::disableWorker()
     WorkerInfo disableWorker(std::string const& name,
                              bool disable) final;
 
-    /**
-     * @see Configuration::setWorkerReadOnly()
-     */
+    /// @see Configuration::setWorkerReadOnly()
     WorkerInfo setWorkerReadOnly(std::string const& name,
                                  bool readOnly) final;
 
-    /**
-     * @see Configuration::setWorkerSvcHost()
-     */
+    /// @see Configuration::setWorkerSvcHost()
     WorkerInfo setWorkerSvcHost(std::string const& name,
                                 std::string const& host) final;
 
-    /**
-     * @see Configuration::setWorkerSvcPort()
-     */
+    /// @see Configuration::setWorkerSvcPort()
     WorkerInfo setWorkerSvcPort(std::string const& name,
                                 uint16_t port) final;
 
-    /**
-     * @see Configuration::setWorkerFsHost()
-     */
+    /// @see Configuration::setWorkerFsHost()
     WorkerInfo setWorkerFsHost(std::string const& name,
                                std::string const& host) final;
 
-    /**
-     * @see Configuration::setWorkerFsPort()
-     */
+    /// @see Configuration::setWorkerFsPort()
     WorkerInfo setWorkerFsPort(std::string const& name,
                                uint16_t port) final;
 
-    /**
-     * @see Configuration::setWorkerDataDir()
-     */
+    /// @see Configuration::setWorkerDataDir()
     WorkerInfo setWorkerDataDir(std::string const& name,
                                 std::string const& dataDir) final;
 
-    /**
-     * @see Configuration::setWorkerTechnology()
-     */
+    /// @see Configuration::setWorkerTechnology()
     void setWorkerTechnology(std::string const& val) final { _set(_workerTechnology, val); }
 
-    /**
-     * @see Configuration::setWorkerNumProcessingThreads()
-     */
+    /// @see Configuration::setWorkerNumProcessingThreads()
     void setWorkerNumProcessingThreads(size_t val) final { _set(_workerNumProcessingThreads, val); }
 
-    /**
-     * @see Configuration::setFsNumProcessingThreads()
-     */
+    /// @see Configuration::setFsNumProcessingThreads()
     void setFsNumProcessingThreads(size_t val) final { _set(_fsNumProcessingThreads, val); }
 
-    /**
-     * @see Configuration::setWorkerFsBufferSizeBytes()
-     */
+    /// @see Configuration::setWorkerFsBufferSizeBytes()
     void setWorkerFsBufferSizeBytes(size_t val) final { _set(_workerFsBufferSizeBytes, val); }
 
 
-    /**
-     * @see Configuration::addDatabaseFamily()
-     */
+    /// @see Configuration::addDatabaseFamily()
     DatabaseFamilyInfo addDatabaseFamily(DatabaseFamilyInfo const& info) final;
 
-    /**
-     * @see Configuration::deleteDatabaseFamily()
-     */
+    /// @see Configuration::deleteDatabaseFamily()
     void deleteDatabaseFamily(std::string const& name) final;
 
 
-    /**
-     * @see Configuration::addDatabase()
-     */
+    /// @see Configuration::addDatabase()
     DatabaseInfo addDatabase(DatabaseInfo const& info) final;
 
-    /**
-     * @see Configuration::deleteDatabase()
-     */
+    /// @see Configuration::deleteDatabase()
     void deleteDatabase(std::string const& name) final;
 
-    /**
-     * @see Configuration::addTable()
-     */
+    /// @see Configuration::addTable()
     DatabaseInfo addTable(std::string const& database,
                           std::string const& table,
                           bool isPartitioned) final;
 
-    /**
-     * @see Configuration::deleteTable()
-     */
+    /// @see Configuration::deleteTable()
     DatabaseInfo deleteTable(std::string const& database,
                              std::string const& table) final;
 
@@ -254,10 +188,12 @@ protected:
      * Construct an object by reading the configuration from the input
      * configuration store.
      *
-     * @param configStore - reference to a configuration store object
+     * @param configStore
+     *   reference to a configuration store object
      *
-     * @throw std::runtime_error if the input configuration is not consistent
-     * with expectations of the application
+     * @throw std::runtime_error
+     *   if the input configuration is not consistent with expectations
+     *   of the application
      */
     explicit ConfigurationStore(util::ConfigStore const& configStore);
 
@@ -267,12 +203,14 @@ private:
      * Read and validate input configuration parameters from the specified 
      * store and initialize the object.
      *
-     * @param configStore - reference to a configuration store object
+     * @param configStore
+     *   reference to a configuration store object
      *
-     * @throw std::runtime_error if the input configuration is not consistent
-     * with expectations of the application
+     * @throw std::runtime_error
+     *   if the input configuration is not consistent with expectations
+     *   of the application
      */
-    void loadConfiguration(util::ConfigStore const& configStore);
+    void _loadConfiguration(util::ConfigStore const& configStore);
 
     /**
      * The setter method for numeric types
@@ -327,8 +265,6 @@ private:
         }
         var = val;
     }
-
-private:
 
     /// Message logger
     LOG_LOGGER _log;

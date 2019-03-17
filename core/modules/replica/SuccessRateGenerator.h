@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -62,7 +61,8 @@ public:
      * equal to (within the small epsilon) 0.0 would result in the 100% failure rate.
      * The opposite scenario will be seen when choosing  1.0.
      *
-     * @param successRate - probability density for 'success'
+     * @param successRate
+     *   probability density for 'success'
     */
     explicit SuccessRateGenerator(double successRate=0.5);
 

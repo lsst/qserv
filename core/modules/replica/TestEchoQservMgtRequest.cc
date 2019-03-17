@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -37,6 +36,8 @@
 #include "replica/Configuration.h"
 #include "replica/ServiceProvider.h"
 
+using namespace std;
+
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.TestEchoQservMgtRequest");
@@ -49,8 +50,8 @@ namespace replica {
 
 TestEchoQservMgtRequest::Ptr TestEchoQservMgtRequest::create(
                                         ServiceProvider::Ptr const& serviceProvider,
-                                        std::string const& worker,
-                                        std::string const& data,
+                                        string const& worker,
+                                        string const& data,
                                         TestEchoQservMgtRequest::CallbackType const& onFinish) {
     return TestEchoQservMgtRequest::Ptr(
         new TestEchoQservMgtRequest(serviceProvider,
@@ -59,10 +60,11 @@ TestEchoQservMgtRequest::Ptr TestEchoQservMgtRequest::create(
                                     onFinish));
 }
 
+
 TestEchoQservMgtRequest::TestEchoQservMgtRequest(
                                 ServiceProvider::Ptr const& serviceProvider,
-                                std::string const& worker,
-                                std::string const& data,
+                                string const& worker,
+                                string const& data,
                                 TestEchoQservMgtRequest::CallbackType const& onFinish)
     :   QservMgtRequest(serviceProvider,
                         "QSERV_TEST_ECHO",
@@ -71,20 +73,23 @@ TestEchoQservMgtRequest::TestEchoQservMgtRequest(
         _onFinish(onFinish) {
 }
 
-std::string const& TestEchoQservMgtRequest::dataEcho() const {
+
+string const& TestEchoQservMgtRequest::dataEcho() const {
     if (not ((state() == State::FINISHED) and (extendedState() == ExtendedState::SUCCESS))) {
-        throw std::logic_error(
-                "TestEchoQservMgtRequest::replicas  replicas aren't available in state: " +
+        throw logic_error(
+                "TestEchoQservMgtRequest::" + string(__func__) + "  no data available in state: " +
                 state2string(state(), extendedState()));
     }
     return _dataEcho;
 }
 
-std::list<std::pair<std::string,std::string>> TestEchoQservMgtRequest::extendedPersistentState() const {
-    std::list<std::pair<std::string,std::string>> result;
-    result.emplace_back("data_length_bytes", std::to_string(data().size()));
+
+list<pair<string,string>> TestEchoQservMgtRequest::extendedPersistentState() const {
+    list<pair<string,string>> result;
+    result.emplace_back("data_length_bytes", to_string(data().size()));
     return result;
 }
+
 
 void TestEchoQservMgtRequest::startImpl(util::Lock const& lock) {
 
@@ -95,9 +100,9 @@ void TestEchoQservMgtRequest::startImpl(util::Lock const& lock) {
     _qservRequest = wpublish::TestEchoQservRequest::create(
         data(),
         [request] (wpublish::TestEchoQservRequest::Status status,
-                   std::string const& error,
-                   std::string const& data,
-                   std::string const& dataEcho) {
+                   string const& error,
+                   string const& data,
+                   string const& dataEcho) {
 
             // IMPORTANT: the final state is required to be tested twice. The first time
             // it's done in order to avoid deadlock on the "in-flight" callbacks reporting
@@ -107,7 +112,7 @@ void TestEchoQservMgtRequest::startImpl(util::Lock const& lock) {
 
             if (request->state() == State::FINISHED) return;
         
-            util::Lock lock(request->_mtx, request->context() + "startImpl[callback]");
+            util::Lock lock(request->_mtx, request->context() + string(__func__) + "[callback]");
         
             if (request->state() == State::FINISHED) return;
 
@@ -115,7 +120,7 @@ void TestEchoQservMgtRequest::startImpl(util::Lock const& lock) {
 
                 case wpublish::TestEchoQservRequest::Status::SUCCESS:
 
-                    request->setData(lock, dataEcho);
+                    request->_setData(lock, dataEcho);
                     request->finish(lock, QservMgtRequest::ExtendedState::SUCCESS);
                     break;
 
@@ -125,15 +130,17 @@ void TestEchoQservMgtRequest::startImpl(util::Lock const& lock) {
                     break;
 
                 default:
-                    throw std::logic_error(
-                                    "TestEchoQservMgtRequest:  unhandled server status: " +
-                                    wpublish::TestEchoQservRequest::status2str(status));
+                    throw logic_error(
+                            "TestEchoQservMgtRequest::" + string(__func__) +
+                            "  unhandled server status: " +
+                            wpublish::TestEchoQservRequest::status2str(status));
             }
         }
     );
     XrdSsiResource resource(ResourceUnit::makeWorkerPath(worker()));
     service()->ProcessRequest(*_qservRequest, resource);
 }
+
 
 void TestEchoQservMgtRequest::finishImpl(util::Lock const& lock) {
 
@@ -156,15 +163,15 @@ void TestEchoQservMgtRequest::finishImpl(util::Lock const& lock) {
     _qservRequest = nullptr;
 }
 
+
 void TestEchoQservMgtRequest::notify(util::Lock const& lock) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
-
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     notifyDefaultImpl<TestEchoQservMgtRequest>(lock, _onFinish);
 }
 
-void TestEchoQservMgtRequest::setData(util::Lock const& lock,
-                                      std::string const& data) {
+
+void TestEchoQservMgtRequest::_setData(util::Lock const& lock,
+                                       string const& data) {
     _dataEcho = data;
 }
 

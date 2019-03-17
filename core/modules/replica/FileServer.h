@@ -1,7 +1,5 @@
-// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -51,8 +49,7 @@ namespace replica {
   * the file delivery service. Each instance of this class will be running
   * in its own thread.
   */
-class FileServer
-    : public std::enable_shared_from_this<FileServer>  {
+class FileServer : public std::enable_shared_from_this<FileServer>  {
 
 public:
 
@@ -64,10 +61,15 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider - for configuration, etc. services
-     * @workerName            - the name of a worker this instance represents
+     * @param serviceProvider
+     *   for configuration, etc. services
      *
-     * @reurn pointer to the created object
+     * @workerName
+     *   the name of a worker this service is acting upon (used for checking
+     *   consistency of the protocol)
+     *
+     * @return
+     *   pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& workerName);
@@ -86,45 +88,38 @@ public:
     /**
      * Run the server in a thread pool (as per the Configuration)
      *
-     * ATTENTION: this is the blocking operation. Please, run it
-     * within its own thread if needed.
+     * @note
+     *   This is the blocking operation. Please, run it within its own thread
+     *   if needed.
      */
     void run();
 
 private:
 
-    /**
-     * Construct the server with the specified configuration.
-     *
-     * @param serviceProvider - for configuration, etc. services
-     * @workerName            - the name of a worker this instance represents
-     */
+    /// @see FileServer::create()
     FileServer(ServiceProvider::Ptr const& serviceProvider,
                std::string const& workerName);
 
     /**
      * Begin (asynchronously) accepting connection requests.
      */
-    void beginAccept();
+    void _beginAccept();
     
     /**
      * Handle a connection request once it's detected. The rest of
      * the communication will be forwarded to the connection object
      * specified as a parameter of the method.
      */
-    void handleAccept(FileServerConnection::Ptr const& connection,
-                      boost::system::error_code const& ec);
+    void _handleAccept(FileServerConnection::Ptr const& connection,
+                       boost::system::error_code const& ec);
 
-    /// @return the context string
-    std::string context() const { return "FILE-SERVER  "; }
+    /// @return the context string to be used for the message logging
+    std::string _context() const { return "FILE-SERVER  "; }
 
-private:
+    // Input parameters
 
     ServiceProvider::Ptr const _serviceProvider;
-
-    /// The name of a worker this service is acting upon (used for checking
-    /// a consistency of the protocol)
-    std::string const _workerName;
+    std::string          const _workerName;
 
     /// Cached worker descriptor obtained from the configuration
     WorkerInfo const _workerInfo;

@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -84,16 +83,16 @@ struct ServiceState {
 std::ostream& operator<< (std::ostream &os, const ServiceState &ss);
 
 /**
-  * Class ServiceManagementRequestBase is the base class for a family of requests
-  * managing worker-side replication service. The only variable parameter of this
-  * class is a specific type of the management request.
-  *
-  * Note that this class can't be instantiated directly. It serves as an implementation
-  * of the protocol. All final customizations and type-specific operations are
-  * provided via a generic subclass.
-  */
-class ServiceManagementRequestBase
-    :   public RequestMessenger {
+ * Class ServiceManagementRequestBase is the base class for a family of requests
+ * managing worker-side replication service. The only variable parameter of this
+ * class is a specific type of the management request.
+ *
+ * @note
+ *   that this class can't be instantiated directly. It serves as an implementation
+ *   of the protocol. All final customizations and type-specific operations are
+ *   provided via a generic subclass.
+ */
+class ServiceManagementRequestBase : public RequestMessenger {
 
 public:
 
@@ -123,13 +122,26 @@ protected:
     /**
      * Construct the request with the pointer to the services provider.
      *
-     * @param serviceProvider  - provides various services for the application
-     * @param io_service       - network communication service (BOOST ASIO)
-     * @param requestName      - name of a request
-     * @param worker           - name of a worker
-     * @param requestType      - type of a request
-     * @param onFinish         - callback function to be called upon a completion of the request
-     * @param messenger        - messaging service for workers
+     * @param serviceProvider
+     *   provides various services for the application
+     *
+     * @param io_service
+     *   network communication service (BOOST ASIO)
+     *
+     * @param requestName
+     *   name of a request
+     *
+     * @param worker
+     *   name of a worker
+     *
+     * @param requestType
+     *   type of a request
+     *
+     * @param onFinish
+     *   callback function to be called upon a completion of the request
+     *
+     * @param messenger
+     *   messaging service for workers
      */
     ServiceManagementRequestBase(ServiceProvider::Ptr const& serviceProvider,
                                  boost::asio::io_service& io_service,
@@ -137,28 +149,25 @@ protected:
                                  std::string const& worker,
                                  proto::ReplicationServiceRequestType requestType,
                                  std::shared_ptr<Messenger> const& messenger);
-private:
-
-    /**
-      * @see Request::startImpl()
-      */
+    /// @see Request::startImpl()
     void startImpl(util::Lock const& lock) final;
+
+    /// @see Request::savePersistentState()
+    void savePersistentState(util::Lock const& lock) final;
+
+private:
 
     /**
      * Process the worker response to the requested operation.
      *
-     * @param success - the flag indicating if the operation was successful
-     * @param message - a response from the worker service (if success is 'true')
+     * @param success
+     *   'true' indicates a successful response from a worker
+     *
+     * @param message
+     *   a response from the worker service (if success is 'true')
      */
-    void analyze(bool success,
-                 proto::ReplicationServiceResponse const& message);
-
-    /**
-     * @see Request::savePersistentState()
-     */
-    void savePersistentState(util::Lock const& lock) final;
-
-private:
+    void _analyze(bool success,
+                  proto::ReplicationServiceResponse const& message);
 
     /// Request type
     proto::ReplicationServiceRequestType const _requestType;

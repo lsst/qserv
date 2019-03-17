@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -46,8 +45,7 @@ class Messenger;
   * Class FindRequest represents a transient state of the replica lookup
   * requests within the master controller for deleting replicas.
   */
-class FindRequest
-    :   public RequestMessenger  {
+class FindRequest : public RequestMessenger  {
 
 public:
 
@@ -75,10 +73,12 @@ public:
     FindRequestParams const& targetRequestParams() const { return _targetRequestParams; }
 
     /**
-     * @return a reference to a result obtained from a remote service.
+     * @return
+     *   a reference to a result obtained from a remote service.
      *
-     * Note that this operation will return a sensible result only if the operation
-     * finishes with status FINISHED::SUCCESS
+     * @note
+     *   This operation will return a sensible result only if the operation
+     *   finishes with status FINISHED::SUCCESS
      */
     ReplicaInfo const& responseData() const;
 
@@ -89,19 +89,37 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider  - a host of services for various communications
-     * @param worker           - the identifier of a worker node (the one where the chunk is
-     *                           expected to be located) at a destination of the chunk
-     * @param database         - the name of a database
-     * @param chunk            - the number of a chunk to find (implies all relevant tables)
-     * @param onFinish         - an optional callback function to be called upon a completion of
-     *                           the request.
-     * @param priority         - a priority level of the request
-     * @param computeCheckSum  - tell a worker server to compute check/control sum on each file
-     * @param keepTracking     - keep tracking the request before it finishes or fails
-     * @param messenger        - an interface for communicating with workers
+     * @param serviceProvider 
+     *   a host of services for various communications
      *
-     * @return pointer to the created object
+     * @param worker
+     *   the identifier of a worker node (the one where the chunk is
+     *   expected to be located) at a destination of the chunk
+     *
+     * @param database
+     *   the name of a database
+     *
+     * @param chunk
+     *   the number of a chunk to find (implies all relevant tables)
+     *
+     * @param onFinish
+     *   an optional callback function to be called upon a completion of
+     *   the request.
+     *
+     * @param priority
+     *   a priority level of the request
+     *
+     * @param computeCheckSum
+     *   tell a worker server to compute check/control sum on each file
+     *
+     * @param keepTracking
+     *   keep tracking the request before it finishes or fails
+     *
+     * @param messenger
+     *   an interface for communicating with workers
+     *
+     * @return
+     *   pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       boost::asio::io_service& io_service,
@@ -114,11 +132,22 @@ public:
                       bool keepTracking,
                       std::shared_ptr<Messenger> const& messenger);
 
+    /// @see Request::extendedPersistentState()
+    std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
+
+    /// @see Request::startImpl()
+    void startImpl(util::Lock const& lock) final;
+
+protected:
+
+    /// @see Request::notify()
+    void notify(util::Lock const& lock) final;
+
+    /// @see Request::savePersistentState()
+    void savePersistentState(util::Lock const& lock) final;
+
 private:
 
-    /**
-     * Construct the request with the pointer to the services provider.
-     */
     FindRequest(ServiceProvider::Ptr const& serviceProvider,
                 boost::asio::io_service& io_service,
                 std::string const& worker,
@@ -131,69 +160,49 @@ private:
                 std::shared_ptr<Messenger> const& messenger);
 
     /**
-      * @see Request::startImpl()
-      */
-    void startImpl(util::Lock const& lock) final;
-
-    /**
      * Start the timer before attempting the previously failed
      * or successful (if a status check is needed) step.
      *
-     * @param lock - a lock on a mutex must be acquired before calling this method
+     * @param lock
+     *   a lock on Request::_mtx must be acquired before calling this method
      */
-    void wait(util::Lock const& lock);
+    void _wait(util::Lock const& lock);
 
     /**
      * Callback handler for the asynchronous operation
      *
-     * @param ec - error code to be checked
+     * @param ec
+     *   error code to be checked
      */
-    void awaken(boost::system::error_code const& ec);
+    void _awaken(boost::system::error_code const& ec);
 
     /**
      * Send the serialized content of the buffer to a worker
      *
-     * @param lock - a lock on a mutex must be acquired before calling this method
+     * @param lock
+     *   a lock on Request::_mtx must be acquired before calling this method
      */
-    void send(util::Lock const& lock);
+    void _send(util::Lock const& lock);
 
     /**
      * Process the completion of the requested operation
      *
-     * @param success - flag indicating if the response succeeded
-     * @param message - response from a worker (if success)
+     * @param success
+     *   'true' indicates a successful response from a worker
+     *
+     * @param message
+     *   response from a worker (if success)
      */
-    void analyze(bool success,
-                 lsst::qserv::proto::ReplicationResponseFind const& message);
+    void _analyze(bool success,
+                  lsst::qserv::proto::ReplicationResponseFind const& message);
 
-    /**
-     * @see Request::notify()
-     */
-    void notify(util::Lock const& lock) final;
 
-    /**
-     * @see Request::savePersistentState()
-     */
-    void savePersistentState(util::Lock const& lock) final;
+    // Input parameters
 
-    /**
-     * @see Request::extendedPersistentState()
-     */
-    std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
-
-private:
-
-    /// The name of a database for which the replicas will be located
-    std::string const _database;
-
-    /// The number of a chunk
+    std::string  const _database;
     unsigned int const _chunk;
-
-    /// The flag which (if 'true') will result in re-computing a checksum
-    /// of each file of the chunk replica
-    bool const _computeCheckSum;
-
-    CallbackType _onFinish;
+    bool const         _computeCheckSum;
+    CallbackType       _onFinish;       /// @note is reset when the request finishes
 
     /// Request-specific parameters of the target request
     FindRequestParams _targetRequestParams;

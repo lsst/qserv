@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -35,7 +34,7 @@ namespace replica {
  * Class MessengerTestApp implements a tool which tests the Messenger Network
  * w/o leaving side effects on the workers.
  */
-class MessengerTestApp: public Application {
+class MessengerTestApp : public Application {
 
 public:
 
@@ -60,21 +59,17 @@ public:
     MessengerTestApp(MessengerTestApp const&)=delete;
     MessengerTestApp& operator=(MessengerTestApp const&)=delete;
 
-    ~MessengerTestApp() override=default;
+    ~MessengerTestApp() final=default;
 
 protected:
 
-    /**
-     * @see MessengerTestApp::create()
-     */
-    MessengerTestApp(int argc, char* argv[]);
-
-    /**
-     * @see Application::runImpl()
-     */
+    /// @see Application::runImpl()
     int runImpl() final;
 
 private:
+
+    /// @see MessengerTestApp::create()
+    MessengerTestApp(int argc, char* argv[]);
 
     /// The name of a worker to be used during the testing
     std::string _workerName;

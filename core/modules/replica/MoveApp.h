@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -35,7 +34,7 @@ namespace replica {
  * Class MoveApp implements a tool which runs the rebalancing algorithm
  * in a scope of a database family.
  */
-class MoveApp: public Application {
+class MoveApp : public Application {
 
 public:
 
@@ -60,21 +59,17 @@ public:
     MoveApp(MoveApp const&)=delete;
     MoveApp& operator=(MoveApp const&)=delete;
 
-    ~MoveApp() override=default;
+    ~MoveApp() final=default;
 
 protected:
 
-    /**
-     * @see MoveApp::create()
-     */
-    MoveApp(int argc, char* argv[]);
-
-    /**
-     * @see Application::runImpl()
-     */
+    /// @see Application::runImpl()
     int runImpl() final;
 
 private:
+
+    /// @see MoveApp::create()
+    MoveApp(int argc, char* argv[]);
 
     /// The name of a database family
     std::string _databaseFamily;

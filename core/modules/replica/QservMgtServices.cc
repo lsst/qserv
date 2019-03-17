@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -38,6 +37,7 @@
 /// This C++ symbol is provided by the SSI shared library
 extern XrdSsiProvider* XrdSsiProviderClient;
 
+using namespace std;
 
 namespace {
 
@@ -73,7 +73,7 @@ struct QservMgtRequestWrapperImpl
             // 2. it breaks the up-stream dependency on a caller object if a shared
             //    pointer to the object was mentioned as the lambda-function's closure
 
-            auto onFinish = std::move(_onFinish);
+            auto onFinish = move(_onFinish);
             _onFinish = nullptr;
             onFinish(_request);
         }
@@ -90,7 +90,7 @@ struct QservMgtRequestWrapperImpl
     ~QservMgtRequestWrapperImpl() = default;
 
     /// Implement a virtual method of the base class
-    std::shared_ptr<QservMgtRequest> request() const override {
+    shared_ptr<QservMgtRequest> request() const override {
         return _request;
     }
 
@@ -102,6 +102,7 @@ private:
     mutable typename T::CallbackType _onFinish;
 };
 
+
 ////////////////////////////////////////////////////////////////////////
 //////////////////////////  QservMgtServices  //////////////////////////
 ////////////////////////////////////////////////////////////////////////
@@ -110,16 +111,18 @@ QservMgtServices::Ptr QservMgtServices::create(ServiceProvider::Ptr const& servi
     return QservMgtServices::Ptr(new QservMgtServices(serviceProvider));
 }
 
+
 QservMgtServices::QservMgtServices(ServiceProvider::Ptr const& serviceProvider)
     :   _serviceProvider(serviceProvider) {
 }
 
+
 AddReplicaQservMgtRequest::Ptr QservMgtServices::addReplica(
                                         unsigned int chunk,
-                                        std::vector<std::string> const& databases,
-                                        std::string const& worker,
+                                        vector<string> const& databases,
+                                        string const& worker,
                                         AddReplicaQservMgtRequest::CallbackType const& onFinish,
-                                        std::string const& jobId,
+                                        string const& jobId,
                                         unsigned int requestExpirationIvalSec) {
 
     AddReplicaQservMgtRequest::Ptr request;
@@ -127,12 +130,12 @@ AddReplicaQservMgtRequest::Ptr QservMgtServices::addReplica(
     // Make sure the XROOTD/SSI service is available before attempting
     // any operations on requests
 
-    XrdSsiService* service = xrdSsiService();
+    XrdSsiService* service = _xrdSsiService();
     if (not service) {
         return request;
     } else {
 
-        util::Lock lock(_mtx, "QservMgtServices::addReplica");
+        util::Lock lock(_mtx, "QservMgtServices::" + string(__func__));
     
         auto const manager = shared_from_this();
     
@@ -142,7 +145,7 @@ AddReplicaQservMgtRequest::Ptr QservMgtServices::addReplica(
             chunk,
             databases,
             [manager] (QservMgtRequest::Ptr const& request) {
-                manager->finish(request->id());
+                manager->_finish(request->id());
             }
         );
     
@@ -150,7 +153,7 @@ AddReplicaQservMgtRequest::Ptr QservMgtServices::addReplica(
         // identifier in the local registry. Once it's complete it'll
         // be automatically removed from the Registry.
         _registry[request->id()] =
-            std::make_shared<QservMgtRequestWrapperImpl<AddReplicaQservMgtRequest>>(
+            make_shared<QservMgtRequestWrapperImpl<AddReplicaQservMgtRequest>>(
                 request, onFinish);
     }
 
@@ -164,14 +167,13 @@ AddReplicaQservMgtRequest::Ptr QservMgtServices::addReplica(
 }
 
 
-
 RemoveReplicaQservMgtRequest::Ptr QservMgtServices::removeReplica(
                                         unsigned int chunk,
-                                        std::vector<std::string> const& databases,
-                                        std::string const& worker,
+                                        vector<string> const& databases,
+                                        string const& worker,
                                         bool force,
                                         RemoveReplicaQservMgtRequest::CallbackType const& onFinish,
-                                        std::string const& jobId,
+                                        string const& jobId,
                                         unsigned int requestExpirationIvalSec) {
 
     RemoveReplicaQservMgtRequest::Ptr request;
@@ -179,12 +181,12 @@ RemoveReplicaQservMgtRequest::Ptr QservMgtServices::removeReplica(
     // Make sure the XROOTD/SSI service is available before attempting
     // any operations on requests
 
-    XrdSsiService* service = xrdSsiService();
+    XrdSsiService* service = _xrdSsiService();
     if (not service) {
         return request;
     } else {
 
-        util::Lock lock(_mtx, "QservMgtServices::removeReplica");
+        util::Lock lock(_mtx, "QservMgtServices::" + string(__func__));
     
         auto const manager = shared_from_this();
     
@@ -195,7 +197,7 @@ RemoveReplicaQservMgtRequest::Ptr QservMgtServices::removeReplica(
             databases,
             force,
             [manager] (QservMgtRequest::Ptr const& request) {
-                manager->finish(request->id());
+                manager->_finish(request->id());
             }
         );
     
@@ -203,7 +205,7 @@ RemoveReplicaQservMgtRequest::Ptr QservMgtServices::removeReplica(
         // identifier in the local registry. Once it's complete it'll
         // be automatically removed from the Registry.
         _registry[request->id()] =
-            std::make_shared<QservMgtRequestWrapperImpl<RemoveReplicaQservMgtRequest>>(
+            make_shared<QservMgtRequestWrapperImpl<RemoveReplicaQservMgtRequest>>(
                 request, onFinish);
     }
 
@@ -216,11 +218,12 @@ RemoveReplicaQservMgtRequest::Ptr QservMgtServices::removeReplica(
     return request;
 }
 
+
 GetReplicasQservMgtRequest::Ptr QservMgtServices::getReplicas(
-                                        std::string const& databaseFamily,
-                                        std::string const& worker,
+                                        string const& databaseFamily,
+                                        string const& worker,
                                         bool inUseOnly,
-                                        std::string const& jobId,
+                                        string const& jobId,
                                         GetReplicasQservMgtRequest::CallbackType const& onFinish,
                                         unsigned int requestExpirationIvalSec) {
 
@@ -229,12 +232,12 @@ GetReplicasQservMgtRequest::Ptr QservMgtServices::getReplicas(
     // Make sure the XROOTD/SSI service is available before attempting
     // any operations on requests
 
-    XrdSsiService* service = xrdSsiService();
+    XrdSsiService* service = _xrdSsiService();
     if (not service) {
         return request;
     } else {
 
-        util::Lock lock(_mtx, "QservMgtServices::getReplicas");
+        util::Lock lock(_mtx, "QservMgtServices::" + string(__func__));
     
         auto const manager = shared_from_this();
     
@@ -244,7 +247,7 @@ GetReplicasQservMgtRequest::Ptr QservMgtServices::getReplicas(
             databaseFamily,
             inUseOnly,
             [manager] (QservMgtRequest::Ptr const& request) {
-                manager->finish(request->id());
+                manager->_finish(request->id());
             }
         );
     
@@ -252,7 +255,7 @@ GetReplicasQservMgtRequest::Ptr QservMgtServices::getReplicas(
         // identifier in the local registry. Once it's complete it'll
         // be automatically removed from the Registry.
         _registry[request->id()] =
-            std::make_shared<QservMgtRequestWrapperImpl<GetReplicasQservMgtRequest>>(
+            make_shared<QservMgtRequestWrapperImpl<GetReplicasQservMgtRequest>>(
                 request, onFinish);
     }
 
@@ -267,10 +270,10 @@ GetReplicasQservMgtRequest::Ptr QservMgtServices::getReplicas(
 
 
 SetReplicasQservMgtRequest::Ptr QservMgtServices::setReplicas(
-                                        std::string const& worker,
+                                        string const& worker,
                                         QservReplicaCollection const& newReplicas,
                                         bool force,
-                                        std::string const& jobId,
+                                        string const& jobId,
                                         SetReplicasQservMgtRequest::CallbackType const& onFinish,
                                         unsigned int requestExpirationIvalSec) {
 
@@ -279,12 +282,12 @@ SetReplicasQservMgtRequest::Ptr QservMgtServices::setReplicas(
     // Make sure the XROOTD/SSI service is available before attempting
     // any operations on requests
 
-    XrdSsiService* service = xrdSsiService();
+    XrdSsiService* service = _xrdSsiService();
     if (not service) {
         return request;
     } else {
 
-        util::Lock lock(_mtx, "QservMgtServices::setReplicas");
+        util::Lock lock(_mtx, "QservMgtServices::" + string(__func__));
     
         auto const manager = shared_from_this();
     
@@ -294,7 +297,7 @@ SetReplicasQservMgtRequest::Ptr QservMgtServices::setReplicas(
             newReplicas,
             force,
             [manager] (QservMgtRequest::Ptr const& request) {
-                manager->finish(request->id());
+                manager->_finish(request->id());
             }
         );
     
@@ -302,7 +305,7 @@ SetReplicasQservMgtRequest::Ptr QservMgtServices::setReplicas(
         // identifier in the local registry. Once it's complete it'll
         // be automatically removed from the Registry.
         _registry[request->id()] =
-            std::make_shared<QservMgtRequestWrapperImpl<SetReplicasQservMgtRequest>>(
+            make_shared<QservMgtRequestWrapperImpl<SetReplicasQservMgtRequest>>(
                 request, onFinish);
     }
 
@@ -315,10 +318,11 @@ SetReplicasQservMgtRequest::Ptr QservMgtServices::setReplicas(
     return request;
 }
 
+
 TestEchoQservMgtRequest::Ptr QservMgtServices::echo(
-                                    std::string const& worker,
-                                    std::string const& data,
-                                    std::string const& jobId,
+                                    string const& worker,
+                                    string const& data,
+                                    string const& jobId,
                                     TestEchoQservMgtRequest::CallbackType const& onFinish,
                                     unsigned int requestExpirationIvalSec) {
 
@@ -327,12 +331,12 @@ TestEchoQservMgtRequest::Ptr QservMgtServices::echo(
     // Make sure the XROOTD/SSI service is available before attempting
     // any operations on requests
 
-    XrdSsiService* service = xrdSsiService();
+    XrdSsiService* service = _xrdSsiService();
     if (not service) {
         return request;
     } else {
 
-        util::Lock lock(_mtx, "QservMgtServices::echo");
+        util::Lock lock(_mtx, "QservMgtServices::" + string(__func__));
     
         auto const manager = shared_from_this();
     
@@ -341,7 +345,7 @@ TestEchoQservMgtRequest::Ptr QservMgtServices::echo(
             worker,
             data,
             [manager] (QservMgtRequest::Ptr const& request) {
-                manager->finish(request->id());
+                manager->_finish(request->id());
             }
         );
     
@@ -349,7 +353,7 @@ TestEchoQservMgtRequest::Ptr QservMgtServices::echo(
         // identifier in the local registry. Once it's complete it'll
         // be automatically removed from the Registry.
         _registry[request->id()] =
-            std::make_shared<QservMgtRequestWrapperImpl<TestEchoQservMgtRequest>>(
+            make_shared<QservMgtRequestWrapperImpl<TestEchoQservMgtRequest>>(
                 request, onFinish);
     }
 
@@ -362,9 +366,10 @@ TestEchoQservMgtRequest::Ptr QservMgtServices::echo(
     return request;
 }
 
-void QservMgtServices::finish(std::string const& id) {
 
-    std::string const context = id + "  QservMgtServices::finish  ";
+void QservMgtServices::_finish(string const& id) {
+
+    string const context = id + "  QservMgtServices::" + string(__func__) + "  ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
@@ -385,9 +390,9 @@ void QservMgtServices::finish(std::string const& id) {
         util::Lock lock(_mtx, context);
         auto&& itr = _registry.find(id);
         if (itr == _registry.end()) {
-            throw std::logic_error(
-                        "QservMgtServices::finish: request identifier " + id +
-                        " is no longer valid. Check the logic of the application.");
+            throw logic_error(
+                    "QservMgtServices::" + string(__func__) + "  request identifier " + id +
+                    " is no longer valid. Check the logic of the application.");
         }
         requestWrapper = itr->second;
         _registry.erase(id);
@@ -395,13 +400,14 @@ void QservMgtServices::finish(std::string const& id) {
     requestWrapper->notify();
 }
 
-XrdSsiService* QservMgtServices::xrdSsiService() {
+
+XrdSsiService* QservMgtServices::_xrdSsiService() {
 
     // Lazy construction of the locator string to allow dynamic
     // reconfiguration.
-    std::string const serviceProviderLocation =
+    string const serviceProviderLocation =
         _serviceProvider->config()->xrootdHost() + ":" +
-        std::to_string(_serviceProvider->config()->xrootdPort());
+        to_string(_serviceProvider->config()->xrootdPort());
 
     // Connect to a service provider
     XrdSsiErrInfo errInfo;
@@ -409,8 +415,8 @@ XrdSsiService* QservMgtServices::xrdSsiService() {
         XrdSsiProviderClient->GetService(errInfo,
                                          serviceProviderLocation);
     if (not service) {
-        LOGS(_log, LOG_LVL_ERROR, "QservMgtServices::xrdSsiService()  "
-             << "failed to contact service provider at: " << serviceProviderLocation
+        LOGS(_log, LOG_LVL_ERROR, "QservMgtServices::" << __func__
+             << "  failed to contact service provider at: " << serviceProviderLocation
              << ", error: " << errInfo.Get());
     }
     return service;

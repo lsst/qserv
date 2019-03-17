@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -22,10 +21,8 @@
 #ifndef LSST_QSERV_REPLICA_SERVICEMANAGEMENTREQUEST_H
 #define LSST_QSERV_REPLICA_SERVICEMANAGEMENTREQUEST_H
 
-/// ServiceManagementRequest.h declares:
-////
 /**
- * This class declares a collection of the worker servers management request
+ * This header declares a collection of the worker servers management request
  * classes as part of the Controller-side Replication Framework.
  *
  * @see class ServiceSuspendRequestPolicy
@@ -91,8 +88,7 @@ struct ServiceDrainRequestPolicy {
   * to allow further policy-based customization of specific requests.
   */
 template <typename POLICY>
-class ServiceManagementRequest
-    :   public ServiceManagementRequestBase {
+class ServiceManagementRequest : public ServiceManagementRequestBase {
 
 public:
 
@@ -117,11 +113,20 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider  - provides various services for the application
-     * @param worker           - identifier of a worker node (the one to be affected by the request)
-     * @param io_service       - network communication service (BOOST ASIO)
-     * @param onFinish         - callback function to be called upon a completion of the request
-     * @param messenger        - messenger service for workers
+     * @param serviceProvider
+     *   provides various services for the application
+     *
+     * @param worker
+     *   identifier of a worker node (the one to be affected by the request)
+     *
+     * @param io_service
+     *   network communication service (BOOST ASIO)
+     *
+     * @param onFinish
+     *   callback function to be called upon a completion of the request
+     *
+     * @param messenger
+     *   messenger service for workers
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       boost::asio::io_service& io_service,
@@ -140,13 +145,16 @@ public:
                 messenger));
     }
 
+protected:
+
+    /// @see Request::notify()
+    void notify(util::Lock const& lock) final {
+        notifyDefaultImpl<ServiceManagementRequest<POLICY>>(lock, _onFinish);
+    }
+
 private:
 
-    /**
-     * Construct the request
-     *
-     * @see ServiceManagementRequest::create()
-     */
+    /// @see ServiceManagementRequest::create()
     ServiceManagementRequest(ServiceProvider::Ptr const& serviceProvider,
                              boost::asio::io_service& io_service,
                              char const* requestName,
@@ -163,16 +171,9 @@ private:
             _onFinish(onFinish) {
     }
 
-    /**
-     * @see Request::notify()
-     */
-    void notify(util::Lock const& lock) final {
-        notifyDefaultImpl<ServiceManagementRequest<POLICY>>(lock, _onFinish);
-    }
 
-private:
+    // Input parameters
 
-    /// Registered callback to be called when the operation finishes
     CallbackType _onFinish;
 };
 

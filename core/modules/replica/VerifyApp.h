@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -35,7 +34,7 @@ namespace replica {
  * Class VerifyApp implements a tool which runs the replica verification algorithm
  * for all known replicas across all ENABLED workers.
  */
-class VerifyApp: public Application {
+class VerifyApp : public Application {
 
 public:
 
@@ -60,21 +59,17 @@ public:
     VerifyApp(VerifyApp const&)=delete;
     VerifyApp& operator=(VerifyApp const&)=delete;
 
-    ~VerifyApp() override=default;
+    ~VerifyApp() final=default;
 
 protected:
 
-    /**
-     * @see VerifyApp::create()
-     */
-    VerifyApp(int argc, char* argv[]);
-
-    /**
-     * @see Application::runImpl()
-     */
+    /// @see Application::runImpl()
     int runImpl() final;
 
 private:
+
+    /// @see VerifyApp::create()
+    VerifyApp(int argc, char* argv[]);
 
     /// The maximum number of replicas to be processed simultaneously
     size_t _maxReplicas = 1;

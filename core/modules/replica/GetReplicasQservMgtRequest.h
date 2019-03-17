@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -45,8 +44,7 @@ namespace replica {
   * Class GetReplicasQservMgtRequest implements a request retrieving a list of
   * replicas known to Qserv workers.
   */
-class GetReplicasQservMgtRequest
-    :   public QservMgtRequest  {
+class GetReplicasQservMgtRequest : public QservMgtRequest  {
 
 public:
 
@@ -69,19 +67,28 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider - reference to a provider of services
-     * @param worker          - the name of a worker
-     * @param databaseFamily  - the name of a database family
-     * @param inUseOnly       - (optional) return replicas which are presently in use
-     * @param onFinish        - (optional) callback function to be called upon request completion
+     * @param serviceProvider
+     *   reference to a provider of services
+     *
+     * @param worker
+     *   the name of a worker
+     *
+     * @param databaseFamily
+     *   the name of a database family
+     *
+     * @param inUseOnly
+     *   (optional) return replicas which are presently in use
+     *
+     * @param onFinish
+     *   (optional) callback function to be called upon request completion
      * 
      * @return pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& worker,
                       std::string const& databaseFamily,
-                      bool inUseOnly = false,
-                      CallbackType const& onFinish = nullptr);
+                      bool inUseOnly=false,
+                      CallbackType const& onFinish=nullptr);
 
     /// @return name of a database family
     std::string const& databaseFamily() const { return _databaseFamily; }
@@ -90,18 +97,28 @@ public:
     bool inUseOnly() const { return _inUseOnly; }
 
     /**
-     * @return collection of replicas reported from the corresponding Qserv worker
+     * @return
+     *   collection of replicas reported from the corresponding Qserv worker
      *
-     * ATTENTION: the method will throw exception std::logic_error if called
-     *            before the request finishes or if it's finished with any
-     *            status but SUCCESS.
+     * @throw std::logic_error
+     *   if called before the request finishes or if it's finished with any
+     *   status but SUCCESS.
      */
     QservReplicaCollection const& replicas() const;
 
-    /**
-     * @see QservMgtRequest::extendedPersistentState()
-     */
+    /// @see QservMgtRequest::extendedPersistentState()
     std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
+
+protected:
+
+    /// @see QservMgtRequest::startImpl
+    void startImpl(util::Lock const& lock) final;
+
+    /// @see QservMgtRequest::finishImpl
+    void finishImpl(util::Lock const& lock) final;
+
+    /// @see QservMgtRequest::notify
+    void notify(util::Lock const& lock) final;
 
 private:
 
@@ -120,37 +137,21 @@ private:
      * Carry over results of the request into a local collection. Filter results
      * by databases participating in the family.
      * 
-     * @param lock       - lock must be acquired by a caller of the method
-     * @param collection - input collection of replicas
+     * @param lock
+     *   a lock on QservMgtRequest::_mtx must be acquired before calling this method
+     *
+     * @param collection
+     *   input collection of replicas
      */
-     void setReplicas(util::Lock const& lock,
-                      wpublish::GetChunkListQservRequest::ChunkCollection const& collection);
+    void _setReplicas(util::Lock const& lock,
+                     wpublish::GetChunkListQservRequest::ChunkCollection const& collection);
 
-    /**
-      * @see QservMgtRequest::startImpl
-      */
-    void startImpl(util::Lock const& lock) final;
 
-    /**
-      * @see QservMgtRequest::finishImpl
-      */
-    void finishImpl(util::Lock const& lock) final;
+    // Input parameters  
 
-    /**
-      * @see QservMgtRequest::notify
-      */
-    void notify(util::Lock const& lock) final;
-
-private:
-
-    /// The name of a database family
     std::string const _databaseFamily;
-
-    /// Flag indicating to report (if set) a subset of chunks which are in use
-    bool const _inUseOnly;
-
-    /// The callback function for sending a notification upon request completion
-    CallbackType _onFinish;
+    bool        const _inUseOnly;
+    CallbackType      _onFinish;    /// @note is reset when the request finishes
 
     /// A request to the remote services
     wpublish::GetChunkListQservRequest::Ptr _qservRequest;

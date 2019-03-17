@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -37,7 +36,7 @@ namespace replica {
  * doing so, the application will make the best effort to leave worker nodes as
  * balanced as possible, and it will also preserve chunk collocation.
  */
-class PurgeApp: public Application {
+class PurgeApp : public Application {
 
 public:
 
@@ -62,21 +61,17 @@ public:
     PurgeApp(PurgeApp const&)=delete;
     PurgeApp& operator=(PurgeApp const&)=delete;
 
-    ~PurgeApp() override=default;
+    ~PurgeApp() final=default;
 
 protected:
 
-    /**
-     * @see PurgeApp::create()
-     */
-    PurgeApp(int argc, char* argv[]);
-
-    /**
-     * @see Application::runImpl()
-     */
+    /// @see Application::runImpl()
     int runImpl() final;
 
 private:
+
+    /// @see PurgeApp::create()
+    PurgeApp(int argc, char* argv[]);
 
     /// The name of a database family
     std::string _databaseFamily;

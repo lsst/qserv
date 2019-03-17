@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -56,7 +55,7 @@ class Request;
  * Class DatabaseServicesError is an exception class for reporting errors
  * in database operations.
  */
-class DatabaseServicesError: public std::runtime_error {
+class DatabaseServicesError : public std::runtime_error {
 public:
     DatabaseServicesError(std::string const& msg)
         :   std::runtime_error(std::string(__func__) + ": " + msg) {
@@ -69,7 +68,7 @@ public:
  * which can't be found in the database.
  */
 class DatabaseServicesNotFound: public std::runtime_error {
-public:
+public :
     DatabaseServicesNotFound(std::string const& msg)
         :   std::runtime_error(std::string(__func__) + ": " + msg) {
     }
@@ -283,8 +282,7 @@ struct JobInfo {
   * as general purpose exceptions explained in their documentation
   * below.
   */
-class DatabaseServices
-    :   public std::enable_shared_from_this<DatabaseServices> {
+class DatabaseServices : public std::enable_shared_from_this<DatabaseServices> {
 
 public:
 
@@ -314,12 +312,16 @@ public:
      * Save the state of the Controller. Note this operation can be called
      * just once for a particular instance of the Controller.
      *
-     * @param identity  - a data structure encapsulating a unique identity of
-     *                    the Controller instance.
-     * @param startTime - a time (milliseconds since UNIX Epoch) when an instance of
-     *                    the Controller was created.
+     * @param identity
+     *   a data structure encapsulating a unique identity of
+     *   the Controller instance.
      *
-     * @throws std::logic_error - if this Controller's state is already found in a database
+     * @param startTime
+     *   a time (milliseconds since UNIX Epoch) when an instance of
+     *   the Controller was created.
+     *
+     * @throws std::logic_error
+     *   if this Controller's state is already found in a database
      */
     virtual void saveState(ControllerIdentity const& identity,
                            uint64_t startTime) = 0;
@@ -331,8 +333,11 @@ public:
      * The Job::Option object is explicitly passed as a parameter to avoid
      * making a blocked call back to the job which may create a deadlock.
      *
-     * @param job     - reference to a Job object
-     * @param options - reference to a Job options object
+     * @param job
+     *   reference to a Job object
+     *
+     * @param options
+     *   reference to a Job options object
      */
     virtual void saveState(Job const& job,
                            Job::Options const& options) = 0;
@@ -340,7 +345,8 @@ public:
     /**
      * Update the heartbeat timestamp for the job's entry
      *
-     * @param job - reference to a Job object
+     * @param job
+     *   reference to a Job object
      */
      virtual void updateHeartbeatTime(Job const& job) = 0;
 
@@ -351,9 +357,14 @@ public:
      * The Performance object is explicitly passed as a parameter to avoid
      * making a blocked call back to the request which may create a deadlock.
      *
-     * @param request     - reference to a QservMgtRequest object
-     * @param performance - reference to a Performance object
-     * @param serverError - server error message (if any)
+     * @param request
+     *   reference to a QservMgtRequest object
+     *
+     * @param performance
+     *   reference to a Performance object
+     *
+     * @param serverError
+     *   server error message (if any)
      */
     virtual void saveState(QservMgtRequest const& request,
                            Performance const& performance,
@@ -366,8 +377,11 @@ public:
      * The Performance object is explicitly passed as a parameter to avoid
      * making a blocked call back to the request which may create a deadlock.
      *
-     * @param request     - reference to a Request object
-     * @param performance - reference to a Performance object
+     * @param request
+     *   reference to a Request object
+     *
+     * @param performance
+     *   reference to a Performance object
      */
     virtual void saveState(Request const& request,
                            Performance const& performance) = 0;
@@ -378,10 +392,14 @@ public:
      * This method is supposed to be called by monitoring requests (State* and Stop*)
      * to update state of the corresponding target requests.
      *
-     * @param request                  - reference to the monitoring Request object
-     * @param targetRequestId          - identifier of a target request
-     * @param targetRequestPerformance - performance counters of a target request
-     *                                   obtained from a worker
+     * @param request
+     *   reference to the monitoring Request object
+     *
+     * @param targetRequestId
+     *   identifier of a target request
+     *
+     * @param targetRequestPerformance
+     *   performance counters of a target request obtained from a worker
      */
     virtual void updateRequestState(Request const& request,
                                     std::string const& targetRequestId,
@@ -390,7 +408,8 @@ public:
     /**
      * Update the status of replica in the corresponding tables.
      *
-     * @param info - a replica to be added/updated or deleted
+     * @param info
+     *   a replica to be added/updated or deleted
      */
     virtual void saveReplicaInfo(ReplicaInfo const& info) = 0;
 
@@ -405,9 +424,14 @@ public:
      * - new replicas not present in the database will be registered in there
      * - existing replicas will be updated in the database
      *
-     * @param worker         - worker name (as per the request)
-     * @param database       - database name (as per the request)
-     * @param infoCollection - collection of replicas
+     * @param worker
+     *   worker name (as per the request)
+     *
+     * @param database
+     *   database name (as per the request)
+     *
+     * @param infoCollection
+     *   collection of replicas
      */
     virtual void saveReplicaInfoCollection(std::string const& worker,
                                            std::string const& database,
@@ -418,14 +442,20 @@ public:
      * Return 'true' and populate a collection with up to the 'maxReplicas'
      * if any found.
      *
-     * ATTENTION: no assumption on a new status of the replica object
-     * passed into the method should be made if the operation fails
-     * (returns 'false').
+     * @note
+     *   No assumption on a new status of the replica object
+     *   passed into the method should be made if the operation fails
+     *   (returns 'false').
      *
-     * @param replica            - reference to an object to be initialized
-     * @param maxReplicas        - maximum number of replicas to be returned
-     * @param enabledWorkersOnly - (optional) if set to 'true' then only consider known
-     *                             workers which are enabled in the Configuration
+     * @param replica
+     *   reference to an object to be initialized
+     *
+     * @param maxReplicas
+     *   maximum number of replicas to be returned
+     *
+     * @param enabledWorkersOnly
+     *   (optional) if set to 'true' then only consider known
+     *   workers which are enabled in the Configuration
      */
     virtual void findOldestReplicas(std::vector<ReplicaInfo>& replicas,
                                     size_t maxReplicas=1,
@@ -434,17 +464,26 @@ public:
     /**
      * Find all replicas for the specified chunk and the database.
      *
-     * ATTENTION: no assumption on a new status of the replica collection
-     * passed into the method should be made if the operation fails
-     * (returns 'false').
+     * @note
+     *   no assumption on a new status of the replica collection
+     *   passed into the method should be made if the operation fails
+     *   (returns 'false').
      *
-     * @param replicas           - collection of replicas (if any found)
-     * @param chunk              - chunk number
-     * @param database           - database name
-     * @param enabledWorkersOnly - (optional) if set to 'true' then only consider known
-     *                             workers which are enabled in the Configuration
+     * @param replicas
+     *   collection of replicas (if any found)
      *
-     * @throw std::invalid_argument - if the database is unknown or empty
+     * @param chunk
+     *   the chunk whose replicas will be looked for
+     *
+     * @param database
+     *   the name of a database limiting a scope of the lookup operation
+     *
+     * @param enabledWorkersOnly
+     *   (optional) if set to 'true' then only consider known
+     *   workers which are enabled in the Configuration
+     *
+     * @throw std::invalid_argument
+     *   if the database is unknown or empty
      */
     virtual void findReplicas(std::vector<ReplicaInfo>& replicas,
                               unsigned int chunk,
@@ -458,13 +497,18 @@ public:
      * ATTENTION: no assumption on a new status of the replica collection
      * passed into the method should be made if the operation fails.
      *
-     * @param replicas - collection of replicas (if any found)
-     * @param worker   - worker name
-     * @param database - (optional) database name
+     * @param replicas
+     *   collection of replicas (if any found)
      *
-     * @throw std::invalid_argument - if the worker is unknown or its name
-     *                                is empty, or if the database family is
-     *                                unknown (if provided)
+     * @param worker
+     *   worker name
+     *
+     * @param database
+     *   (optional) database name
+     *
+     * @throw std::invalid_argument
+     *   if the worker is unknown or its name is empty, or if the database
+     *   family is unknown (if provided)
      */
     virtual void findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
                                     std::string const& worker,
@@ -477,14 +521,18 @@ public:
      * ATTENTION: no assumption on a new status of the replica collection
      * passed into the method should be made if the operation fails.
      *
-     * @param worker   - worker name
-     * @param database - (optional) database name
+     * @param worker
+     *   worker name
      *
-     * @return the number of replicas
+     * @param database
+     *   (optional) database name
      *
-     * @throw std::invalid_argument - if the worker is unknown or its name
-     *                                is empty, or if the database family is
-     *                                unknown (if provided)
+     * @return
+     *   the number of replicas
+     *
+     * @throw std::invalid_argument
+     *   if the worker is unknown or its name is empty, or if the database
+     *   family is unknown (if provided)
      */
     virtual uint64_t numWorkerReplicas(std::string const& worker,
                                        std::string const& database=std::string()) = 0;
@@ -492,17 +540,26 @@ public:
     /**
      * Find all replicas for the specified chunk on a worker.
      *
-     * ATTENTION: no assumption on a new status of the replica collection
-     * passed into the method should be made if the operation fails
-     * (returns 'false').
+     * @note
+     *   no assumption on a new status of the replica collection
+     *   passed into the method should be made if the operation fails
+     *   (returns 'false').
      *
-     * @param replicas       - collection of replicas (if any found)
-     * @param chunk          - chunk number
-     * @param worker         - worker name of a worker
-     * @param databaseFamily - (optional) database family name
+     * @param replicas
+     *   collection of replicas (if any found)
      *
-     * @throw std::invalid_argument - if the worker is unknown or its name is empty,
-     *                                or if the database family is unknown (if provided)
+     * @param chunk
+     *   the chunk whose replicas will be looked for at the worker
+     *
+     * @param worker
+     *   worker name of a worker
+     *
+     * @param databaseFamily
+     *   (optional) database family name
+     *
+     * @throw std::invalid_argument
+     *   if the worker is unknown or its name is empty,
+     *   or if the database family is unknown (if provided)
      */
     virtual void findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
                                     unsigned int chunk,
@@ -510,10 +567,11 @@ public:
                                     std::string const& databaseFamily=std::string()) = 0;
 
     /**
-     * @return a map (a histogram) of representing the actual replication level
-     * for a database. The key of the map is the replication level (the number of
-     * replicas found for chunks in the group), and the key is the number of
-     * chunks at this replication level.
+     * @return
+     *   a map (a histogram) representing the actual replication level
+     *   for a database. The key of the map is the replication level (the number of
+     *   replicas found for chunks in the group), and the value is the number of
+     *   chunks at this replication level.
      * 
      * @note
      *   the so called 'overflow' chunks will be implicitly excluded
@@ -537,10 +595,11 @@ public:
                                                     std::vector<std::string>()) = 0;
 
     /**
-     * @return a total number of chunks which only exist on any worker of
-     * the specified collection of unique workers, and not any other worker
-     * which is not in this collection. The method will always return 0 if
-     * the collection of workers passed into the method is empty.
+     * @return
+     *   the total number of chunks which only exist on any worker of
+     *   the specified collection of unique workers, and not any other worker
+     *   which is not in this collection. The method will always return 0 if
+     *   the collection of workers passed into the method is empty.
      *
      * @note
      *   this operation is meant to locate so called 'orphan' chunks which only

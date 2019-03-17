@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -46,8 +45,7 @@ namespace replica {
   * tools. The class is meant to take care of mundane tasks such as handling
   * command-line parameters, initializing application environment, etc.
   */
-class Application
-    :   public std::enable_shared_from_this<Application> {
+class Application : public std::enable_shared_from_this<Application> {
 
 public:
 
@@ -73,7 +71,8 @@ public:
      * @see Parser::Status
      * @see Application::runImpl()
      *
-     * @return completion code
+     * @return
+     *   completion code
      */
     int run();
 
@@ -108,10 +107,10 @@ protected:
      */
     Application(int argc,
                 const char* const argv[],
-                std::string const& description = "",
-                bool const injectDatabaseOptions = true,
-                bool const boostProtobufVersionCheck = false,
-                bool const enableServiceProvider = false);
+                std::string const& description="",
+                bool const injectDatabaseOptions=true,
+                bool const boostProtobufVersionCheck=false,
+                bool const enableServiceProvider=false);
 
     /// @return a shared pointer of the desired subclass (no dynamic type checking)
     template <class T>
@@ -145,19 +144,14 @@ protected:
     
 private:
 
+    // Input parameters
+
+    bool const _injectDatabaseOptions;
+    bool const _boostProtobufVersionCheck;
+    bool const _enableServiceProvider;
+
     /// For parsing command-line parameters, options and flags
     Parser _parser;
-
-    /// The flag indicating if database options need to be captured and
-    /// forwarded to the Configuration.
-    bool const _injectDatabaseOptions;
-
-    /// The flag indicating if Google Protobuf version check is forced
-    bool const _boostProtobufVersionCheck;
-
-    /// The flag indicating if the Configuration object and ServiceProvider
-    /// have to be setup.
-    bool const _enableServiceProvider;
 
     /// The standard flag which would turn on the debug output if requested
     bool _debugFlag;

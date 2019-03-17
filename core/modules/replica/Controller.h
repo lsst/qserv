@@ -1,7 +1,5 @@
-// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -97,19 +95,18 @@ std::ostream& operator <<(std::ostream& os, ControllerIdentity const& identity);
   * to the worker replication services. Only one instance of this class is
   * allowed per a thread.
   *
-  * NOTES:
-  *
-  * - all methods launching, stopping or checking status of requests
+  * @note:
+  *   All methods launching, stopping or checking status of requests
   *   require that the server to be running. Otherwise it will throw
   *   std::runtime_error. The current implementation of the server
   *   doesn't support (yet?) an operation queuing mechanism.
-  *
-  * - methods which take worker names as parameters will throw exception
+ *
+  * @node
+  *   Methods which take worker names as parameters will throw exception
   *   std::invalid_argument if the specified worker names are not found
   *   in the configuration.
   */
-class Controller
-    :   public std::enable_shared_from_this<Controller> {
+class Controller : public std::enable_shared_from_this<Controller> {
 
 public:
 
@@ -127,7 +124,8 @@ public:
      * @param serviceProvider
      *   for configuration, other services
      *
-     * @return pointer to an instance of the Class
+     * @return
+     *   pointer to an instance of the Class
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider);
 
@@ -167,7 +165,7 @@ public:
      *   database name
      * 
      * @param chunk
-     *   the chunk number
+     *   the chunk to be replicated
      * 
      * @param onFinish
      *   (optional) callback function to be called upon the completion of the request
@@ -212,7 +210,7 @@ public:
      *   database name
      * 
      * @param chunk
-     *   the chunk number
+     *   the chunk whose replica will be deleted
      * 
      * @param onFinish
      *   (optional) callback function to be called upon the completion of
@@ -263,7 +261,7 @@ public:
      *   database name
      *
      * @param chunk
-     *   the chunk number
+     *   the chunk whose replicas will be looked for
      * 
      * @param onFinish
      *   (optional) callback function to be called upon the completion of
@@ -850,7 +848,7 @@ public:
      */
     template <class REQUEST_TYPE>
     void requestsOfType(std::vector<typename REQUEST_TYPE::Ptr>& requests) const {
-        util::Lock lock(_mtx, context() + "requestsOfType");
+        util::Lock lock(_mtx, _context(__func__));
         requests.clear();
         for (auto&& itr: _registry)
             if (typename REQUEST_TYPE::Ptr ptr =
@@ -862,7 +860,7 @@ public:
     /// @return the number of requests of a specific type
     template <class REQUEST_TYPE>
     size_t numRequestsOfType() const {
-        util::Lock lock(_mtx, context() + "numRequestsOfType");
+        util::Lock lock(_mtx, _context(__func__));
         size_t result(0);
         for (auto&& itr: _registry) {
             if (typename REQUEST_TYPE::Ptr request =
@@ -876,16 +874,17 @@ public:
 
 private:
 
-    /**
-     * Construct the server with the specified configuration.
-     *
-     * @param serviceProvider
-     *   for configuration, other services
-     */
+    /// @see Controller::create()
     explicit Controller(ServiceProvider::Ptr const& serviceProvider);
 
-    /// @return the context string for debugging and diagnostic printouts
-    std::string context() const;
+    /**
+     * @param func
+     *   (optional) the name of a method/function requested the context string
+     *
+     * @return
+     *   the context string for debugging and diagnostic printouts
+     */
+    std::string _context(std::string const& func=std::string()) const;
 
     /**
      * Finalize the completion of the request. This method will notify
@@ -895,7 +894,7 @@ private:
      * @param id
      *   a unique identifier of a request
      */
-    void finish(std::string const& id);
+    void _finish(std::string const& id);
 
     /**
      * Make sure the server is running
@@ -903,9 +902,8 @@ private:
      * @throws std::runtime_error
      *   if the server is not running
      */
-    void assertIsRunning() const;
+    void _assertIsRunning() const;
 
-private:
 
     /// The unique identity of the instance
     ControllerIdentity const _identity;

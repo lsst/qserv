@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -34,6 +33,8 @@
 #include "replica/ServiceProvider.h"
 #include "replica/WorkerProcessor.h"
 
+using namespace std;
+
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerServer");
@@ -45,8 +46,8 @@ namespace qserv {
 namespace replica {
 
 WorkerServer::Ptr WorkerServer::create(ServiceProvider::Ptr const& serviceProvider,
-                                           WorkerRequestFactory& requestFactory,
-                                           std::string const& workerName) {
+                                       WorkerRequestFactory& requestFactory,
+                                       string const& workerName) {
     return WorkerServer::Ptr(
         new WorkerServer(
             serviceProvider,
@@ -54,9 +55,10 @@ WorkerServer::Ptr WorkerServer::create(ServiceProvider::Ptr const& serviceProvid
             workerName));
 }
 
+
 WorkerServer::WorkerServer(ServiceProvider::Ptr const& serviceProvider,
                            WorkerRequestFactory& requestFactory,
-                           std::string const& workerName)
+                           string const& workerName)
     :   _serviceProvider(serviceProvider),
         _workerName(workerName),
         _processor(WorkerProcessor::create(serviceProvider, requestFactory, workerName)),
@@ -72,6 +74,7 @@ WorkerServer::WorkerServer(ServiceProvider::Ptr const& serviceProvider,
     _acceptor.set_option(boost::asio::socket_base::reuse_address(true));
 }
 
+
 void WorkerServer::run() {
 
     // Start the processor to allow processing requests.
@@ -81,13 +84,13 @@ void WorkerServer::run() {
     // Begin accepting connections before running the service to allow
     // asynchronous operations. Otherwise the service will finish right
     // away.
-
-    beginAccept();
+    _beginAccept();
 
     _io_service.run();
 }
 
-void WorkerServer::beginAccept() {
+
+void WorkerServer::_beginAccept() {
 
     auto const connection =
         WorkerServerConnection::create(
@@ -99,7 +102,7 @@ void WorkerServer::beginAccept() {
     _acceptor.async_accept(
         connection->socket(),
         boost::bind (
-            &WorkerServer::handleAccept,
+            &WorkerServer::_handleAccept,
             shared_from_this(),
             connection,
             boost::asio::placeholders::error
@@ -107,8 +110,9 @@ void WorkerServer::beginAccept() {
     );
 }
 
-void WorkerServer::handleAccept(WorkerServerConnection::Ptr const& connection,
-                                boost::system::error_code const& ec) {
+
+void WorkerServer::_handleAccept(WorkerServerConnection::Ptr const& connection,
+                                 boost::system::error_code const& ec) {
 
     if (ec.value() == 0) {
         connection->beginProtocol();
@@ -119,9 +123,9 @@ void WorkerServer::handleAccept(WorkerServerConnection::Ptr const& connection,
         //       mechanism since it's safe to ignore problems with
         //       incoming connections due a lack of side effects.
 
-        LOGS(_log, LOG_LVL_DEBUG, context() << "handleAccept  ec:" << ec);
+        LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  ec:" << ec);
     }
-    beginAccept();
+    _beginAccept();
 }
 
 }}} // namespace lsst::qserv::replica

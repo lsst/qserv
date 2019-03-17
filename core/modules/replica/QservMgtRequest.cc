@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -37,6 +36,7 @@
 #include "replica/DatabaseServices.h"
 #include "replica/ServiceProvider.h"
 
+using namespace std;
 
 namespace {
 
@@ -48,19 +48,21 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-std::atomic<size_t> QservMgtRequest::_numClassInstances(0);
+atomic<size_t> QservMgtRequest::_numClassInstances(0);
 
-std::string QservMgtRequest::state2string(State state) {
+
+string QservMgtRequest::state2string(State state) {
     switch (state) {
         case State::CREATED:     return "CREATED";
         case State::IN_PROGRESS: return "IN_PROGRESS";
         case State::FINISHED:    return "FINISHED";
     }
-    throw std::logic_error(
-                    "incomplete implementation of method QservMgtRequest::state2string(State)");
+    throw logic_error(
+           "QservMgtRequest::" + string(__func__) + "(State)  incomplete implementation");
 }
 
-std::string QservMgtRequest::state2string(ExtendedState state) {
+
+string QservMgtRequest::state2string(ExtendedState state) {
     switch (state) {
         case ExtendedState::NONE:                return "NONE";
         case ExtendedState::SUCCESS:             return "SUCCESS";
@@ -71,13 +73,14 @@ std::string QservMgtRequest::state2string(ExtendedState state) {
         case ExtendedState::TIMEOUT_EXPIRED:     return "TIMEOUT_EXPIRED";
         case ExtendedState::CANCELLED:           return "CANCELLED";
     }
-    throw std::logic_error(
-                    "incomplete implementation of method QservMgtRequest::state2string(ExtendedState)");
+    throw logic_error(
+            "QservMgtRequest::" + string(__func__) + "(ExtendedState)  incomplete implementation");
 }
 
+
 QservMgtRequest::QservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
-                                 std::string const& type,
-                                 std::string const& worker)
+                                 string const& type,
+                                 string const& worker)
     :   _serviceProvider(serviceProvider),
         _type(type),
         _id(Generators::uniqueId()),
@@ -94,50 +97,58 @@ QservMgtRequest::QservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
     LOGS(_log, LOG_LVL_DEBUG, context() << "constructed  instances: " << _numClassInstances);
 }
 
+
 QservMgtRequest::~QservMgtRequest() {
     --_numClassInstances;
     LOGS(_log, LOG_LVL_DEBUG, context() << "destructed   instances: " << _numClassInstances);
 }
 
-std::string QservMgtRequest::state2string() const {
-    util::Lock lock(_mtx, context() + "state2string");
+
+string QservMgtRequest::state2string() const {
+    util::Lock lock(_mtx, context() + __func__);
     return state2string(state(), extendedState()) + "::" + serverError(lock);
 }
 
-std::string QservMgtRequest::serverError() const {
-    util::Lock lock(_mtx, context() + "serverError");
+
+string QservMgtRequest::serverError() const {
+    util::Lock lock(_mtx, context() + __func__);
     return serverError(lock);
 }
 
-std::string QservMgtRequest::serverError(util::Lock const& lock) const {
+
+string QservMgtRequest::serverError(util::Lock const& lock) const {
     return _serverError;
 }
 
-std::string QservMgtRequest::context() const {
+
+string QservMgtRequest::context() const {
     return id() +
         "  " + type() +
         "  " + state2string(state(), extendedState()) +
         "  ";
 }
 
+
 Performance QservMgtRequest::performance() const {
-    util::Lock lock(_mtx, context() + "performance");
+    util::Lock lock(_mtx, context() + __func__);
     return performance(lock);
 }
+
 
 Performance QservMgtRequest::performance(util::Lock const& lock) const {
     return _performance;
 }
 
+
 void QservMgtRequest::start(XrdSsiService* service,
-                            std::string const& jobId,
+                            string const& jobId,
                             unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "start");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
-    util::Lock lock(_mtx, "QservMgtRequest::start");
+    util::Lock lock(_mtx, "QservMgtRequest::" + string(__func__));
 
-    assertState(State::CREATED, "QservMgtRequest::start");
+    assertState(State::CREATED, "QservMgtRequest::" + string(__func__));
 
     // This needs to be updated to override the default value of the counter
     // which was created upon the object construction.
@@ -149,7 +160,8 @@ void QservMgtRequest::start(XrdSsiService* service,
     if (not (serviceProvider()->config()->isKnownWorker(worker()) and
              (service != nullptr))) {
 
-        LOGS(_log, LOG_LVL_ERROR, context() << "start  ** MISCONFIGURED ** "
+        LOGS(_log, LOG_LVL_ERROR, context() << __func__
+             << "  ** MISCONFIGURED ** "
              << " worker: '" << worker() << "'"
              << " XrdSsiService pointer: " << service);
 
@@ -196,17 +208,20 @@ void QservMgtRequest::start(XrdSsiService* service,
              State::IN_PROGRESS);
 }
 
-std::string const& QservMgtRequest::jobId() const {
+
+string const& QservMgtRequest::jobId() const {
     if (_state == State::CREATED) {
-        throw std::logic_error(
-            "the Job Id is not available because the request has not started yet");
+        throw logic_error(
+                "Job::" + string(__func__) +
+                "  the Job Id is not available because the request has not started yet");
     }
     return _jobId;
 }
 
+
 void QservMgtRequest::expired(boost::system::error_code const& ec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "expired"
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
          << (ec == boost::asio::error::operation_aborted ? "  ** ABORTED **" : ""));
 
     // Ignore this event if the timer was aborted
@@ -221,16 +236,17 @@ void QservMgtRequest::expired(boost::system::error_code const& ec) {
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + "expired");
+    util::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return;
 
     finish(lock, ExtendedState::TIMEOUT_EXPIRED);
 }
 
+
 void QservMgtRequest::cancel() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "cancel");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // IMPORTANT: the final state is required to be tested twice. The first time
     // it's done in order to avoid deadlock on the "in-flight" callbacks reporting
@@ -240,18 +256,19 @@ void QservMgtRequest::cancel() {
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + "cancel");
+    util::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return;
 
     finish(lock, ExtendedState::CANCELLED);
 }
 
+
 void QservMgtRequest::finish(util::Lock const& lock,
                              ExtendedState extendedState,
-                             std::string const& serverError) {
+                             string const& serverError) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "finish");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // Set the optional server error state as well
     //
@@ -286,19 +303,23 @@ void QservMgtRequest::finish(util::Lock const& lock,
     notify(lock);
 }
 
+
 void QservMgtRequest::assertState(State desiredState,
-                                  std::string const& context) const {
+                                  string const& context) const {
     if (desiredState != state()) {
-        throw std::logic_error(
-            context + ": wrong state " + state2string(state()) + " instead of " + state2string(desiredState));
+        throw logic_error(
+                context + ": wrong state " + state2string(state()) + " instead of " +
+                state2string(desiredState));
     }
 }
 
+
 void QservMgtRequest::setState(util::Lock const& lock,
                                State newState,
-                               ExtendedState newExtendedState)
-{
-    LOGS(_log, LOG_LVL_DEBUG, context() << "setState  " << state2string(newState, newExtendedState));
+                               ExtendedState newExtendedState) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  "
+         << state2string(newState, newExtendedState));
 
     // IMPORTANT: the top-level state is the last to be set when performing
     // the state transition to insure clients will get a consistent view onto

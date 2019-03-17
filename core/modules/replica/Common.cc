@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -34,11 +33,13 @@
 // Qserv headers
 #include "proto/replication.pb.h"
 
+using namespace std;
+
 namespace lsst {
 namespace qserv {
 namespace replica {
 
-std::string status2string(ExtendedCompletionStatus status) {
+string status2string(ExtendedCompletionStatus status) {
     switch (status) {
         case ExtendedCompletionStatus::EXT_STATUS_NONE:             return "EXT_STATUS_NONE";
         case ExtendedCompletionStatus::EXT_STATUS_INVALID_PARAM:    return "EXT_STATUS_INVALID_PARAM";
@@ -65,10 +66,11 @@ std::string status2string(ExtendedCompletionStatus status) {
         case ExtendedCompletionStatus::EXT_STATUS_NO_SPACE:         return "EXT_STATUS_NO_SPACE";
         case ExtendedCompletionStatus::EXT_STATUS_FILE_MTIME:       return "EXT_STATUS_FILE_MTIME";
     }
-    throw std::logic_error(
-                    "Common::status2string(ExtendedCompletionStatus) - unhandled status: " +
-                    std::to_string(status));
+    throw logic_error(
+            "Common::" + string(__func__) + "(ExtendedCompletionStatus) - unhandled status: " +
+            to_string(status));
 }
+
 
 ExtendedCompletionStatus translate(proto::ReplicationStatusExt status) {
     switch (status) {
@@ -97,10 +99,11 @@ ExtendedCompletionStatus translate(proto::ReplicationStatusExt status) {
         case proto::ReplicationStatusExt::NO_SPACE:         return ExtendedCompletionStatus::EXT_STATUS_NO_SPACE;
         case proto::ReplicationStatusExt::FILE_MTIME:       return ExtendedCompletionStatus::EXT_STATUS_FILE_MTIME;
     }
-    throw std::logic_error(
-                    "Common::translate(proto::ReplicationStatusExt) - unhandled status: " +
-                    std::to_string(status));
+    throw logic_error(
+                "Common::" + string(__func__) + "(proto::ReplicationStatusExt) - unhandled status: " +
+                to_string(status));
 }
+
 
 proto::ReplicationStatusExt translate(ExtendedCompletionStatus status) {
     switch (status) {
@@ -129,10 +132,11 @@ proto::ReplicationStatusExt translate(ExtendedCompletionStatus status) {
         case ExtendedCompletionStatus::EXT_STATUS_NO_SPACE:         return proto::ReplicationStatusExt::NO_SPACE;
         case ExtendedCompletionStatus::EXT_STATUS_FILE_MTIME:       return proto::ReplicationStatusExt::FILE_MTIME;
     }
-    throw std::logic_error(
-                    "Common::translate(ExtendedCompletionStatus) - unhandled status: " +
-                    std::to_string(status));
+    throw logic_error(
+                "Common::" + string(__func__) + "(ExtendedCompletionStatus) - unhandled status: " +
+                to_string(status));
 }
+
 
 ////////////////////////////////////////////
 //                Generators              //
@@ -140,11 +144,12 @@ proto::ReplicationStatusExt translate(ExtendedCompletionStatus status) {
 
 util::Mutex Generators::_mtx;
 
-std::string Generators::uniqueId() {
-    util::Lock lock(_mtx, "Generators::uniqueId");
+string Generators::uniqueId() {
+    util::Lock lock(_mtx, "Generators::" + string(__func__));
     boost::uuids::uuid id = boost::uuids::random_generator()();
     return boost::uuids::to_string(id);
 }
+
 
 ////////////////////////////////////////////
 //        Parameters of requests          //
@@ -155,6 +160,7 @@ ReplicationRequestParams::ReplicationRequestParams()
         chunk(0) {
 }
 
+
 ReplicationRequestParams::ReplicationRequestParams(proto::ReplicationRequestReplicate const& message)
     :   priority(message.priority()),
         database(message.database()),
@@ -162,10 +168,12 @@ ReplicationRequestParams::ReplicationRequestParams(proto::ReplicationRequestRepl
         sourceWorker(message.worker()) {
 }
 
+
 DeleteRequestParams::DeleteRequestParams()
     :   priority(0),
         chunk(0) {
 }
+
 
 DeleteRequestParams::DeleteRequestParams(proto::ReplicationRequestDelete const& message)
     :   priority(message.priority()),
@@ -173,10 +181,12 @@ DeleteRequestParams::DeleteRequestParams(proto::ReplicationRequestDelete const& 
         chunk(message.chunk()) {
 }
 
+
 FindRequestParams::FindRequestParams()
     :   priority(0),
         chunk(0) {
 }
+
 
 FindRequestParams::FindRequestParams(proto::ReplicationRequestFind const& message)
     :   priority(message.priority()),
@@ -184,25 +194,28 @@ FindRequestParams::FindRequestParams(proto::ReplicationRequestFind const& messag
         chunk(message.chunk()) {
 }
 
+
 FindAllRequestParams::FindAllRequestParams()
     :   priority(0) {
 }
+
 
 FindAllRequestParams::FindAllRequestParams(proto::ReplicationRequestFindAll const& message)
     :   priority(message.priority()),
         database(message.database()) {
 }
 
+
 EchoRequestParams::EchoRequestParams()
     :   priority(0),
         delay(0) {
 }
+
 
 EchoRequestParams::EchoRequestParams(proto::ReplicationRequestEcho const& message)
     :   priority(message.priority()),
         data(message.data()),
         delay(message.delay()) {
 }
-
 
 }}} // namespace lsst::qserv::replica

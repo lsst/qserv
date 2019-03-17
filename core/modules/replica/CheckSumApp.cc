@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -37,7 +36,6 @@ string const description =
     "This application calculates and prints a checksum of a file.";
 
 } /// namespace
-
 
 namespace lsst {
 namespace qserv {

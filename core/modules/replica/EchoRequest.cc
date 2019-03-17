@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -39,6 +38,8 @@
 #include "replica/ReplicaInfo.h"
 #include "replica/ServiceProvider.h"
 
+using namespace std;
+
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.EchoRequest");
@@ -51,13 +52,13 @@ namespace replica {
 
 EchoRequest::Ptr EchoRequest::create(ServiceProvider::Ptr const& serviceProvider,
                                      boost::asio::io_service& io_service,
-                                     std::string const& worker,
-                                     std::string const& data,
+                                     string const& worker,
+                                     string const& data,
                                      uint64_t delay,
                                      CallbackType const& onFinish,
                                      int priority,
                                      bool keepTracking,
-                                     std::shared_ptr<Messenger> const& messenger) {
+                                     shared_ptr<Messenger> const& messenger) {
     return EchoRequest::Ptr(
         new EchoRequest(serviceProvider,
                         io_service,
@@ -70,15 +71,16 @@ EchoRequest::Ptr EchoRequest::create(ServiceProvider::Ptr const& serviceProvider
                         messenger));
 }
 
+
 EchoRequest::EchoRequest(ServiceProvider::Ptr const& serviceProvider,
-                           boost::asio::io_service& io_service,
-                           std::string const& worker,
-                           std::string const& data,
-                           uint64_t delay,
-                           CallbackType const& onFinish,
-                           int  priority,
-                           bool keepTracking,
-                           std::shared_ptr<Messenger> const& messenger)
+                         boost::asio::io_service& io_service,
+                         string const& worker,
+                         string const& data,
+                         uint64_t delay,
+                         CallbackType const& onFinish,
+                         int  priority,
+                         bool keepTracking,
+                         shared_ptr<Messenger> const& messenger)
     :   RequestMessenger(serviceProvider,
                          io_service,
                          "REPLICA_ECHO",
@@ -92,16 +94,16 @@ EchoRequest::EchoRequest(ServiceProvider::Ptr const& serviceProvider,
         _onFinish(onFinish) {
 }
 
-std::string const& EchoRequest::responseData() const {
+
+string const& EchoRequest::responseData() const {
     return _responseData;
 }
 
+
 void EchoRequest::startImpl(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl "
-         << " worker: " << worker()
-         << " data.length: " << data().size()
-         << " delay: " << delay());
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
+         << "  worker: " << worker() << " data.length: " << data().size() << " delay: " << delay());
 
     // Serialize the Request message header and the request itself into
     // the network buffer.
@@ -122,28 +124,30 @@ void EchoRequest::startImpl(util::Lock const& lock) {
 
     buffer()->serialize(message);
 
-    send(lock);
+    _send(lock);
 }
 
-void EchoRequest::wait(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "wait");
+void EchoRequest::_wait(util::Lock const& lock) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // Allways need to set the interval before launching the timer.
 
     timer().expires_from_now(boost::posix_time::seconds(timerIvalSec()));
     timer().async_wait(
         boost::bind(
-            &EchoRequest::awaken,
+            &EchoRequest::_awaken,
             shared_from_base<EchoRequest>(),
             boost::asio::placeholders::error
         )
     );
 }
 
-void EchoRequest::awaken(boost::system::error_code const& ec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "awaken");
+void EchoRequest::_awaken(boost::system::error_code const& ec) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (isAborted(ec)) return;
 
@@ -155,7 +159,7 @@ void EchoRequest::awaken(boost::system::error_code const& ec) {
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + "awaken");
+    util::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return;
 
@@ -177,12 +181,13 @@ void EchoRequest::awaken(boost::system::error_code const& ec) {
 
     buffer()->serialize(message);
 
-    send(lock);
+    _send(lock);
 }
 
-void EchoRequest::send(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "send");
+void EchoRequest::_send(util::Lock const& lock) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     auto self = shared_from_base<EchoRequest>();
 
@@ -190,24 +195,25 @@ void EchoRequest::send(util::Lock const& lock) {
         worker(),
         id(),
         buffer(),
-        [self] (std::string const& id,
+        [self] (string const& id,
                 bool success,
                 proto::ReplicationResponseEcho const& response) {
 
-            self->analyze(success,
-                          response);
+            self->_analyze(success,
+                           response);
         }
     );
 }
 
-void EchoRequest::analyze(bool success,
-                          proto::ReplicationResponseEcho const& message) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "analyze  success=" << (success ? "true" : "false"));
+void EchoRequest::_analyze(bool success,
+                           proto::ReplicationResponseEcho const& message) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  success=" << (success ? "true" : "false"));
 
     // This method is called on behalf of an asynchronous callback fired
-    // upon a completion of the request within method send() - the only
-    // client of analyze(). So, we should take care of proper locking and watch
+    // upon a completion of the request within method _send() - the only
+    // client of _analyze(). So, we should take care of proper locking and watch
     // for possible state transition which might occur while the async I/O was
     // still in a progress.
 
@@ -219,7 +225,7 @@ void EchoRequest::analyze(bool success,
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + "analyze");
+    util::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return;
 
@@ -260,17 +266,17 @@ void EchoRequest::analyze(bool success,
             break;
 
         case proto::ReplicationStatus::QUEUED:
-            if (keepTracking()) wait(lock);
+            if (keepTracking()) _wait(lock);
             else                finish(lock, SERVER_QUEUED);
             break;
 
         case proto::ReplicationStatus::IN_PROGRESS:
-            if (keepTracking()) wait(lock);
+            if (keepTracking()) _wait(lock);
             else                finish(lock, SERVER_IN_PROGRESS);
             break;
 
         case proto::ReplicationStatus::IS_CANCELLING:
-            if (keepTracking()) wait(lock);
+            if (keepTracking()) _wait(lock);
             else                finish(lock, SERVER_IS_CANCELLING);
             break;
 
@@ -287,28 +293,31 @@ void EchoRequest::analyze(bool success,
             break;
 
         default:
-            throw std::logic_error(
-                    "EchoRequest::analyze() unknown status '" +
+            throw logic_error(
+                    "EchoRequest::" + string(__func__) + "  unknown status '" +
                     proto::ReplicationStatus_Name(message.status()) + "' received from server");
     }
 }
 
+
 void EchoRequest::notify(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     notifyDefaultImpl<EchoRequest>(lock, _onFinish);
 }
 
+
 void EchoRequest::savePersistentState(util::Lock const& lock) {
-    LOGS(_log, LOG_LVL_DEBUG, context() << "savePersistentState");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     controller()->serviceProvider()->databaseServices()->saveState(*this, performance(lock));
 }
 
-std::list<std::pair<std::string,std::string>> EchoRequest::extendedPersistentState() const {
-    std::list<std::pair<std::string,std::string>> result;
-    result.emplace_back("data_length_bytes",  std::to_string(data().size()));
-    result.emplace_back("delay_milliseconds", std::to_string(delay()));
+
+list<pair<string,string>> EchoRequest::extendedPersistentState() const {
+    list<pair<string,string>> result;
+    result.emplace_back("data_length_bytes",  to_string(data().size()));
+    result.emplace_back("delay_milliseconds", to_string(delay()));
     return result;
 }
 

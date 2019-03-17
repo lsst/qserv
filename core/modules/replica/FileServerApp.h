@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -42,7 +41,7 @@ namespace replica {
  * Class FileServerApp runs an instance of a file server on behalf of
  * the specified (via a command line parameter) worker.
  */
-class FileServerApp: public Application {
+class FileServerApp : public Application {
 
 public:
 
@@ -71,17 +70,13 @@ public:
 
 protected:
 
-    /**
-     * @see FileServerApp::create()
-     */
-    FileServerApp(int argc, char* argv[]);
-
-    /**
-     * @see Application::runImpl()
-     */
+    /// @see Application::runImpl()
     int runImpl() final;
 
 private:
+
+    /// @see FileServerApp::create()
+    FileServerApp(int argc, char* argv[]);
 
     /// The name of a worker
     std::string _workerName;

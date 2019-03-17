@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -37,6 +36,8 @@
 #include "replica/Performance.h"
 #include "util/BlockPost.h"
 
+using namespace std;
+
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.DatabaseMySQL");
@@ -49,7 +50,8 @@ namespace replica {
 namespace database {
 namespace mysql {
 
-std::atomic<size_t> Connection::_nextId{0};
+atomic<size_t> Connection::_nextId{0};
+
 
 unsigned long Connection::max_allowed_packet() {
 
@@ -59,11 +61,13 @@ unsigned long Connection::max_allowed_packet() {
     return 4*1024*1024;
 }
 
+
 Connection::Ptr Connection::open(ConnectionParams const& connectionParams) {
     return open2(connectionParams,
                  Configuration::databaseAllowReconnect(),
                  Configuration::databaseConnectTimeoutSec());
 }
+
 
 Connection::Ptr Connection::open2(ConnectionParams const& connectionParams,
                                   bool allowReconnects,
@@ -79,9 +83,10 @@ Connection::Ptr Connection::open2(ConnectionParams const& connectionParams,
                             : 0
         )
     );
-    ptr->connect();
+    ptr->_connect();
     return ptr;
 }
+
 
 Connection::Connection(ConnectionParams const& connectionParams,
                        unsigned int connectTimeoutSec)
@@ -96,22 +101,25 @@ Connection::Connection(ConnectionParams const& connectionParams,
         _fields(nullptr),
         _numFields(0) {
 
-    LOGS(_log, LOG_LVL_DEBUG, "Connection[" + std::to_string(_id) + "]  constructed");
+    LOGS(_log, LOG_LVL_DEBUG, "Connection[" + to_string(_id) + "]  constructed");
 }
+
 
 Connection::~Connection() {
 
     if (nullptr != _res)   mysql_free_result(_res);
     if (nullptr != _mysql) mysql_close(_mysql);
 
-    LOGS(_log, LOG_LVL_DEBUG, "Connection[" + std::to_string(_id) + "]  destructed");
+    LOGS(_log, LOG_LVL_DEBUG, "Connection[" + to_string(_id) + "]  destructed");
 }
 
-std::string Connection::escape(std::string const& inStr) const {
+
+string Connection::escape(string const& inStr) const {
 
     if (nullptr == _mysql) {
         throw Error(
-            "Connection[" + std::to_string(_id) + "]::escape  not connected to the MySQL service"
+                "Connection[" + to_string(_id) + "]::" + string(__func__) +
+                "  not connected to the MySQL service"
         );
     }
     size_t const inLen = inStr.length();
@@ -125,7 +133,7 @@ std::string Connection::escape(std::string const& inStr) const {
     // The temporary storage will get automatically deconstructed in the end
     // of this block.
 
-    std::unique_ptr<char[]> outStr(new char[outLenMax]);
+    unique_ptr<char[]> outStr(new char[outLenMax]);
     size_t const outLen =
         mysql_real_escape_string(
             _mysql,
@@ -133,26 +141,28 @@ std::string Connection::escape(std::string const& inStr) const {
             inStr.c_str(),
             inLen);
 
-    return std::string(outStr.get(), outLen);
+    return string(outStr.get(), outLen);
 }
 
-std::string Connection::sqlValue(std::vector<std::string> const& coll) const {
-    std::ostringstream values;
+
+string Connection::sqlValue(vector<string> const& coll) const {
+    ostringstream values;
     for (auto&& val: coll) {
         values << val << ',';
     }
     return sqlValue(values.str());
 }
 
+
 Connection::Ptr Connection::begin() {
 
-    std::string const context =
-        "Connection[" + std::to_string(_id) + "]::begin(_inTransaction=" +
-        std::to_string(_inTransaction ? 1: 0) + "  ";
+    string const context =
+        "Connection[" + to_string(_id) + "]::" + string(__func__) + "(_inTransaction=" +
+        to_string(_inTransaction ? 1: 0) + "  ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    assertTransaction(false);
+    _assertTransaction(false);
     execute("BEGIN");
     _inTransaction = true;
     return shared_from_this();
@@ -161,38 +171,40 @@ Connection::Ptr Connection::begin() {
 
 Connection::Ptr Connection::commit() {
 
-    std::string const context =
-        "Connection[" + std::to_string(_id) + "]::commit(_inTransaction=" +
-        std::to_string(_inTransaction ? 1: 0) + "  ";
+    string const context =
+        "Connection[" + to_string(_id) + "]::" + string(__func__) + "(_inTransaction=" +
+        to_string(_inTransaction ? 1: 0) + "  ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    assertTransaction(true);
+    _assertTransaction(true);
     execute("COMMIT");
     _inTransaction = false;
     return shared_from_this();
 }
 
+
 Connection::Ptr Connection::rollback() {
 
-    std::string const context =
-        "Connection[" + std::to_string(_id) + "]::rollback(_inTransaction=" +
-        std::to_string(_inTransaction ? 1: 0) + "  ";
+    string const context =
+        "Connection[" + to_string(_id) + "]::" + string(__func__) + "(_inTransaction=" +
+        to_string(_inTransaction ? 1: 0) + "  ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    assertTransaction(true);
+    _assertTransaction(true);
     execute("ROLLBACK");
     _inTransaction = false;
     return shared_from_this();
 }
 
-void Connection::processLastError(std::string const& context,
-                                  bool instantAutoReconnect) {
 
-    std::string const msg =
-        context + ", error: " + std::string(mysql_error(_mysql)) +
-        ", errno: " + std::to_string(mysql_errno(_mysql));
+void Connection::_processLastError(string const& context,
+                                   bool instantAutoReconnect) {
+
+    string const msg =
+        context + ", error: " + string(mysql_error(_mysql)) +
+        ", errno: " + to_string(mysql_errno(_mysql));
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
@@ -206,8 +218,8 @@ void Connection::processLastError(std::string const& context,
     switch (mysql_errno(_mysql)) {
 
         case 0:
-            throw std::logic_error(
-                    "processLastError: inappropriate use of this method from context: " + msg);
+            throw logic_error(
+                    string(__func__) + "  inappropriate use of this method from context: " + msg);
 
         case ER_DUP_ENTRY:
             throw DuplicateKeyError(msg);
@@ -246,7 +258,7 @@ void Connection::processLastError(std::string const& context,
                 // timeout is enabled during the connector's construction.
  
                 if (_connectTimeoutSec > 0) {
-                    connect();
+                    _connect();
                     throw Reconnected(msg);
                 }
             }
@@ -257,16 +269,17 @@ void Connection::processLastError(std::string const& context,
     }
 }
 
-Connection::Ptr Connection::execute(std::string const& query) {
 
-    std::string const context =
-        "Connection[" + std::to_string(_id) + "]::execute(_inTransaction=" +
-        std::to_string(_inTransaction ? 1: 0) + ")  ";
+Connection::Ptr Connection::execute(string const& query) {
+
+    string const context =
+        "Connection[" + to_string(_id) + "]::" + string(__func__) + "(_inTransaction=" +
+        to_string(_inTransaction ? 1: 0) + ")  ";
 
     LOGS(_log, LOG_LVL_DEBUG, context << query);
 
     if (query.empty()) {
-        throw std::invalid_argument(
+        throw invalid_argument(
                 context + "empty query string passed into the object");
     }
 
@@ -286,7 +299,7 @@ Connection::Ptr Connection::execute(std::string const& query) {
     if (0 != mysql_real_query(_mysql,
                               _lastQuery.c_str(),
                               _lastQuery.size())) {
-        processLastError(
+        _processLastError(
             context + "mysql_real_query failed, query: '" + _lastQuery + "'"
         );
     }
@@ -298,20 +311,21 @@ Connection::Ptr Connection::execute(std::string const& query) {
         // Unbuffered read
 
         if (nullptr == (_res =  mysql_use_result(_mysql))) {
-            processLastError(context + "mysql_use_result failed");
+            _processLastError(context + "mysql_use_result failed");
         }
         _numFields = mysql_num_fields(_res);
         _fields    = mysql_fetch_fields(_res);
 
         for (size_t i = 0; i < _numFields; i++) {
-            _columnNames.push_back(std::string(_fields[i].name));
+            _columnNames.push_back(string(_fields[i].name));
             _name2index[_fields[i].name] = i;
         }
     }
     return shared_from_this();
 }
 
-Connection::Ptr Connection::execute(std::function<void(Connection::Ptr)> const& script,
+
+Connection::Ptr Connection::execute(function<void(Connection::Ptr)> const& script,
                                     unsigned int maxReconnects,
                                     unsigned int timeoutSec) {
 
@@ -323,11 +337,11 @@ Connection::Ptr Connection::execute(std::function<void(Connection::Ptr)> const& 
         0 != timeoutSec ? timeoutSec
                         : Configuration::databaseConnectTimeoutSec();
 
-    std::string const context =
-        "Connection[" + std::to_string(_id) + "]::execute(_inTransaction=" +
-        std::to_string(_inTransaction ? 1: 0) +
-        ",effectiveMaxReconnects=" + std::to_string(effectiveMaxReconnects) +
-        ",effectiveTimeoutSec=" + std::to_string(effectiveTimeoutSec) +")  ";
+    string const context =
+        "Connection[" + to_string(_id) + "]::" + string(__func__) + "(_inTransaction=" +
+        to_string(_inTransaction ? 1: 0) +
+        ",effectiveMaxReconnects=" + to_string(effectiveMaxReconnects) +
+        ",effectiveTimeoutSec=" + to_string(effectiveTimeoutSec) +")  ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
@@ -351,9 +365,9 @@ Connection::Ptr Connection::execute(std::function<void(Connection::Ptr)> const& 
 
             ++numReconnects;
             if (numReconnects > effectiveMaxReconnects) {
-                std::string const msg =
+                string const msg =
                     context + "aborting script, exceeded effectiveMaxReconnects: " +
-                    std::to_string(effectiveMaxReconnects);
+                    to_string(effectiveMaxReconnects);
 
                 LOGS(_log, LOG_LVL_ERROR, msg);
                 throw MaxReconnectsExceeded(msg, effectiveMaxReconnects);
@@ -364,10 +378,10 @@ Connection::Ptr Connection::execute(std::function<void(Connection::Ptr)> const& 
 
         size_t const elapsedTimeMillisec = PerformanceUtils::now() - beginTimeMillisec;
         if (elapsedTimeMillisec / 1000 > effectiveTimeoutSec) {
-            std::string const msg =
+            string const msg =
                 context + "aborting script, expired effectiveTimeoutSec: " +
-                std::to_string(effectiveTimeoutSec) + ", elapsedTimeSec: " +
-                std::to_string(elapsedTimeMillisec/1000);
+                to_string(effectiveTimeoutSec) + ", elapsedTimeSec: " +
+                to_string(elapsedTimeMillisec/1000);
 
             LOGS(_log, LOG_LVL_ERROR, msg);
             throw ConnectTimeout(msg, effectiveTimeoutSec);
@@ -376,22 +390,25 @@ Connection::Ptr Connection::execute(std::function<void(Connection::Ptr)> const& 
     } while (true);
 }
 
+
 bool Connection::hasResult() const {
     return _mysql and _res;
 }
 
-std::vector<std::string> const& Connection::columnNames() const {
-    assertQueryContext();
+
+vector<string> const& Connection::columnNames() const {
+    _assertQueryContext();
     return _columnNames;
 }
 
+
 bool Connection::next(Row& row) {
 
-    std::string const context =
-        "Connection[" + std::to_string(_id) + "]::next(_inTransaction=" +
-        std::to_string(_inTransaction ? 1: 0) + ")  ";
+    string const context =
+        "Connection[" + to_string(_id) + "]::" + string(__func__) + "(_inTransaction=" +
+        to_string(_inTransaction ? 1: 0) + ")  ";
 
-    assertQueryContext();
+    _assertQueryContext();
 
     _row = mysql_fetch_row(_res);
     if (not _row) {
@@ -399,7 +416,7 @@ bool Connection::next(Row& row) {
         // Just no more rows is no specific error reported
         if (0 == mysql_errno(_mysql)) return false;
 
-        processLastError(
+        _processLastError(
             context + "mysql_fetch_row failed, query: '" + _lastQuery + "'"
         );
     }
@@ -418,20 +435,21 @@ bool Connection::next(Row& row) {
     return true;
 }
 
-void Connection::connect() {
 
-    std::string const context =
-        "Connection[" + std::to_string(_id) + "]::connect(_inTransaction=" +
-        std::to_string(_inTransaction ? 1: 0) +
-        ",_connectTimeoutSec=" + std::to_string(_connectTimeoutSec) + ")  ";
+void Connection::_connect() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context << "started");
+    string const context =
+        "Connection[" + to_string(_id) + "]::" + string(__func__) + "(_inTransaction=" +
+        to_string(_inTransaction ? 1: 0) +
+        ",_connectTimeoutSec=" + to_string(_connectTimeoutSec) + ")  ";
+
+    LOGS(_log, LOG_LVL_DEBUG, context << __func__ << "  started");
 
     // Allow just one shot if no reconnects are allewed by setting the timeout
     // to a value greater than 0.
 
     if (0 == _connectTimeoutSec) {
-        connectOnce();
+        _connectOnce();
     } else {
 
         // Otherwise keep trying before succeeded or the connection timeout
@@ -443,10 +461,8 @@ void Connection::connect() {
         while (true) {
     
             try {
-    
-                connectOnce();
+                _connectOnce();
                 break;
-    
             } catch (ConnectError const& ex) {
     
                 LOGS(_log, LOG_LVL_DEBUG, context << "connection attempt failed: " << ex.what());
@@ -455,7 +471,7 @@ void Connection::connect() {
     
                 timeLapsedMilliseconds += delayBetweenReconnects.wait();
                 if (timeLapsedMilliseconds > 1000 * _connectTimeoutSec) {
-                    std::string const msg = context + "connection timeout has expired";
+                    string const msg = context + "connection timeout has expired";
                     LOGS(_log, LOG_LVL_ERROR, msg);
                     throw ConnectTimeout(msg, _connectTimeoutSec);
                 }
@@ -467,17 +483,18 @@ void Connection::connect() {
             }
         }
     }
-    LOGS(_log, LOG_LVL_DEBUG, context << "connected");
+    LOGS(_log, LOG_LVL_DEBUG, context << __func__ << "  connected");
 }
 
-void Connection::connectOnce() {
+
+void Connection::_connectOnce() {
 
     ++_connectionAttempt;
 
-    std::string const context =
-        "Connection[" + std::to_string(_id) + "]::execute(_inTransaction=" +
-        std::to_string(_inTransaction ? 1: 0) +
-        ",_connectionAttempt=" + std::to_string(_connectionAttempt) + ")  ";
+    string const context =
+        "Connection[" + to_string(_id) + "]::" + string(__func__) + "(_inTransaction=" +
+        to_string(_inTransaction ? 1: 0) +
+        ",_connectionAttempt=" + to_string(_connectionAttempt) + ")  ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
@@ -518,42 +535,43 @@ void Connection::connectOnce() {
         0)  /* no default client flag */) {
 
         bool const instantAutoReconnect = false;
-        processLastError(context + "mysql_real_connect() failed",
-                         instantAutoReconnect);
+        _processLastError(context + "mysql_real_connect() failed",
+                          instantAutoReconnect);
     }
 
-    // Update the current connecton identifier, and if reconnecting then also
+    // Update the current connection identifier, and if reconnecting then also
     // tell MySQL to kill the previous thread to ensure any on-going transaction
     // is aborted and no tables are still locked.
     //
     // NOTE: ignore result of the "KILL <thread-id>" query because we're making
-    //       our best attenpt to clear the previous context. And chances are that
+    //       our best attempt to clear the previous context. And chances are that
     //       the server has already disposed that thread.
 
     unsigned long const id = _mysqlThreadId;
     _mysqlThreadId = mysql_thread_id(_mysql);
 
     if ((0 != id) and (id != _mysqlThreadId)) {
-        std::string const query = "KILL " + std::to_string(id);
+        string const query = "KILL " + to_string(id);
         mysql_query(_mysql, query.c_str());
     }
 
     // Set session attributes
 
-    std::vector<std::string> queries;
+    vector<string> queries;
     queries.push_back("SET SESSION SQL_MODE='ANSI'");
     queries.push_back("SET SESSION AUTOCOMMIT=0");
     //
     // TODO: Reconsider this because it won't work in the modern versions
-    //       of MySQL/MariaDB. Perhaps an oposite operation of pulling
-    //       the parameter's value from the server would make more sence here.
+    //       of MySQL/MariaDB. Perhaps an opposite operation of pulling
+    //       the parameter's value from the server would make more sense here.
     //
-    // queries.push_back("SET SESSION max_allowed_packet=" + std::to_string(max_allowed_packet()));
+    // queries.push_back("SET SESSION max_allowed_packet=" + to_string(max_allowed_packet()));
 
     for (auto&& query: queries) {
         if (0 != mysql_query(_mysql, query.c_str())) {
-            throw Error(context + "mysql_query() failed in query:" + query +
-                        ", error: " + std::string(mysql_error(_mysql)));
+            throw Error(
+                    context + "mysql_query() failed in query:" + query +
+                    ", error: " + string(mysql_error(_mysql)));
         }
     }
     
@@ -562,11 +580,12 @@ void Connection::connectOnce() {
     _connectionAttempt = 0;
 }
 
-void Connection::assertQueryContext() const {
 
-    std::string const context =
-        "Connection[" + std::to_string(_id) + "]::assertQueryContext(_inTransaction=" +
-        std::to_string(_inTransaction ? 1: 0) + ")  ";
+void Connection::_assertQueryContext() const {
+
+    string const context =
+        "Connection[" + to_string(_id) + "]::" + string(__func__) + "(_inTransaction=" +
+        to_string(_inTransaction ? 1: 0) + ")  ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
@@ -574,19 +593,20 @@ void Connection::assertQueryContext() const {
     if (_res   == nullptr) throw Error(context + "no prior query made");
 }
 
-void Connection::assertTransaction(bool inTransaction) const {
 
-    std::string const context =
-        "Connection[" + std::to_string(_id) + "]::assertTransaction(_inTransaction=" +
-        std::to_string(_inTransaction ? 1: 0) + ",inTransaction=" +
-        std::to_string(inTransaction ? 1: 0) + ")  ";
+void Connection::_assertTransaction(bool inTransaction) const {
+
+    string const context =
+        "Connection[" + to_string(_id) + "]::" + string(__func__) + "(_inTransaction=" +
+        to_string(_inTransaction ? 1: 0) + ",inTransaction=" +
+        to_string(inTransaction ? 1: 0) + ")  ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
     if (inTransaction != _inTransaction) {
-        throw std::logic_error(
+        throw logic_error(
                 context + "the transaction is" +
-                std::string( _inTransaction ? " " : " not") + " active");
+                string( _inTransaction ? " " : " not") + " active");
     }
 }
 

@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -289,8 +288,7 @@ int DatabaseTestApp::runImpl() {
                 _databaseFamilyName
             );
         } else {
-            throw logic_error(
-                    string(__func__) + ": unsupported operation: " + _operation);
+            throw logic_error(string(__func__) + ": unsupported operation: " + _operation);
         }
         ::dump(replicas);
     }

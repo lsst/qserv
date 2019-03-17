@@ -1,7 +1,5 @@
-// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -46,8 +44,7 @@ class MultiFileCsComputeEngine;
   *
   * Real implementations of the request processing must derive from this class.
   */
-class WorkerFindRequest
-    :   public WorkerRequest {
+class WorkerFindRequest : public WorkerRequest {
 
 public:
 
@@ -59,16 +56,33 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider  - a host of services for various communications
-     * @param worker           - the name of a worker
-     * @param id               - an identifier of a client request
-     * @param priority         - indicates the importance of the request
-     * @param database         - the name of a database
-     * @param chunk            - the chunk number
-     * @param computeCheckSum  - flag indicating if check/control sums should be
-     *                           computed on all files of the chunk
+     * @param serviceProvider
+     *   provider is needed to access the Configuration of a setup
+     *   and for validating the input parameters
      *
-     * @return pointer to the created object
+     * @param worker
+     *   the name of a worker. The name must match the worker which
+     *   is going to execute the request.
+     *
+     * @param id
+     *   an identifier of a client request
+     * 
+     * @param priority
+     *   indicates the importance of the request
+     *
+     * @param database
+     *   the name of a database defines a scope of the replica
+     *   lookup operation
+     *
+     * @param chunk
+     *   the chunk whose replicas will be looked for
+     *
+     * @param computeCheckSum
+     *   flag indicating if check/control sums should be
+     *   computed on all files of the chunk
+     *
+     * @return
+     *   pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& worker,
@@ -102,18 +116,12 @@ public:
      */
     void setInfo(proto::ReplicationResponseFind& response) const;
 
-    /**
-     * @see WorkerRequest::execute
-     */
+    /// @see WorkerRequest::execute
     bool execute() override;
 
 protected:
 
-    /**
-     * The normal constructor of the class
-     *
-     * @see WorkerFindRequest::create()
-     */
+    /// @see WorkerFindRequest::create()
     WorkerFindRequest(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& worker,
                       std::string const& id,
@@ -121,17 +129,13 @@ protected:
                       std::string const& database,
                       unsigned int chunk,
                       bool computeCheckSum);
-protected:
 
-    /// The name of a database
-    std::string const _database;
- 
-    /// The number of a chunk
+
+    // Input parameters
+
+    std::string  const _database;
     unsigned int const _chunk;
-
-    /// The flag indicating if check/control sums should be
-    /// computed on all files of the chunk
-    bool const _computeCheckSum;
+    bool         const _computeCheckSum;
 
     /// Result of the operation
     ReplicaInfo _replicaInfo;
@@ -142,8 +146,7 @@ protected:
   * the replica lookup requests based on the direct manipulation of files on
   * a POSIX file system.
   */
-class WorkerFindRequestPOSIX
-    :   public WorkerFindRequest {
+class WorkerFindRequestPOSIX : public WorkerFindRequest {
 
 public:
 
@@ -155,16 +158,9 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      * 
-     * @param serviceProvider  - a host of services for various communications
-     * @param worker           - the name of a worker
-     * @param id               - an identifier of a client request
-     * @param priority         - indicates the importance of the request
-     * @param database         - the name of a database
-     * @param chunk            - the chunk number
-     * @param computeCheckSum  - flag indicating if check/control sums should be
-     *                           computed on all files of the chunk
-     *
-     * @return pointer to the created object
+     * For a description of parameters:
+     * 
+     * @see WorkerFindRequestPOSIX::create()
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& worker,
@@ -180,20 +176,14 @@ public:
     WorkerFindRequestPOSIX(WorkerFindRequestPOSIX const&) = delete;
     WorkerFindRequestPOSIX& operator=(WorkerFindRequestPOSIX const&) = delete;
 
-    ~WorkerFindRequestPOSIX() override = default;
+    ~WorkerFindRequestPOSIX() final = default;
 
-    /**
-     * @see WorkerFindRequest::execute
-     */
-    bool execute() override;
+    /// @see WorkerFindRequest::execute
+    bool execute() final;
 
 private:
 
-    /**
-     * The normal constructor of the class
-     * 
-     * @see WorkerFindRequestPOSIX::create()
-     */
+    /// @see WorkerFindRequestPOSIX::create()
     WorkerFindRequestPOSIX(ServiceProvider::Ptr const& serviceProvider,
                            std::string const& worker,
                            std::string const& id,
@@ -202,19 +192,16 @@ private:
                            unsigned int chunk,
                            bool computeCheckSum);
 
-private:
     
     /// The engine for incremental control sum calculation
     std::unique_ptr<MultiFileCsComputeEngine> _csComputeEnginePtr;
 };
 
 /**
-  * Class WorkerFindRequestFS provides an actual implementation for
-  * the replica deletion based on the direct manipulation of files on
-  * a POSIX file system.
-  *
-  * Note, this is just a typedef to class WorkerDeleteRequestPOSIX.
-  */
+ * Class WorkerFindRequestFS has the same implementation as the 'typedef'-ed
+ * class for the replica deletion based on the direct manipulation of files on
+ * a POSIX file system.
+ */
 typedef WorkerFindRequestPOSIX WorkerFindRequestFS;
 
 }}} // namespace lsst::qserv::replica

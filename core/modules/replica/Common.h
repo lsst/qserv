@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -113,10 +112,8 @@ struct ReplicationRequestParams {
     unsigned int chunk;
     std::string  sourceWorker;
 
-    /// The default constructor
     ReplicationRequestParams();
 
-    /// The normal constructor
     explicit ReplicationRequestParams(proto::ReplicationRequestReplicate const& message);
 };
 
@@ -131,10 +128,8 @@ struct DeleteRequestParams {
     unsigned int chunk;
     std::string  sourceWorker;
 
-    /// The default constructor
     DeleteRequestParams();
 
-    /// The normal constructor
     explicit DeleteRequestParams(proto::ReplicationRequestDelete const& message);
 };
 
@@ -148,10 +143,8 @@ struct FindRequestParams {
     std::string  database;
     unsigned int chunk;
 
-    /// The default constructor
     FindRequestParams();
 
-    /// The normal constructor
     explicit FindRequestParams(proto::ReplicationRequestFind const& message);
 };
 
@@ -165,10 +158,8 @@ struct FindAllRequestParams {
     int          priority;
     std::string  database;
 
-    /// The default constructor
     FindAllRequestParams();
 
-    /// The normal constructor
     explicit FindAllRequestParams(proto::ReplicationRequestFindAll const& message);
 };
 
@@ -181,10 +172,8 @@ struct EchoRequestParams {
     std::string  data;
     uint64_t     delay;
 
-    /// The default constructor
     EchoRequestParams();
 
-    /// The normal constructor
     explicit EchoRequestParams(proto::ReplicationRequestEcho const& message);
 };
 

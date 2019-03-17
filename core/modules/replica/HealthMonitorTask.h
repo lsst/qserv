@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -43,8 +42,7 @@ namespace replica {
  * the Replication and Qserv worker services and report worker(s) eligible
  * for eviction if they're not responding within the specified timeout.
  */
-class HealthMonitorTask
-    :   public Task {
+class HealthMonitorTask : public Task {
 
 public:
 
@@ -115,21 +113,15 @@ public:
                       unsigned int workerResponseTimeoutSec,
                       unsigned int healthProbeIntervalSec);
 
-    /**
-     * @return delays (seconds) in getting responses from the worker services
-     */
+    /// @return delays (seconds) in getting responses from the worker services
     WorkerResponseDelay workerResponseDelay() const;
 
 protected:
 
-    /**
-     * @see Task::onStart()
-     */
+    /// @see Task::onStart()
     void onStart() final;
 
-    /**
-     * @see Task::onRun()
-     */
+    /// @see Task::onRun()
     bool onRun() final;
 
 private:
@@ -162,25 +154,13 @@ private:
      */
     void _logFinishedEvent(ClusterHealthJob::Ptr const& job) const;
 
-private:
 
-    /// The callback to be called when one or more workers become eligible
-    /// for being evicted from the cluster.
+    // Input parameters
+
     WorkerEvictCallbackType const _onWorkerEvictTimeout;
 
-    /// The maximum number of seconds a couple of Replication and Qserv services
-    /// run on the same worker node are allowed not to respond before evicting
-    /// that worker from the cluster
-    unsigned int _workerEvictTimeoutSec;
-
-    /// The maximum number of seconds to be waited before giving up
-    /// on the worker probe requests (applies to operations with both
-    /// Replication and Qserv workers).
-    unsigned int _workerResponseTimeoutSec;
-
-    /// The number of seconds to wait in the end of each iteration loop before
-    /// to begin the new one.
-    unsigned int _healthProbeIntervalSec;
+    unsigned int const _workerEvictTimeoutSec;
+    unsigned int const _workerResponseTimeoutSec;
 
     /// The thread-safe counter of the finished jobs
     std::atomic<size_t> _numFinishedJobs;

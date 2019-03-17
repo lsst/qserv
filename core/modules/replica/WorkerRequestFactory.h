@@ -1,7 +1,5 @@
-// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -44,9 +42,9 @@ class WorkerFindAllRequest;
 class WorkerEchoRequest;
 
 /**
-  * Class WorkerRequestFactoryBase is an abstract base class for a family of
-  * various implementations of factories for creating request objects.
-  */
+ * Class WorkerRequestFactoryBase is an abstract base class for a family of
+ * various implementations of factories for creating request objects.
+ */
 class WorkerRequestFactoryBase {
 
 public:
@@ -75,7 +73,8 @@ public:
      *
      * @see class WorkerReplicationRequest
      *
-     * @return a pointer to the newly created object
+     * @return
+     *   a pointer to the newly created object
      */
     virtual WorkerReplicationRequestPtr createReplicationRequest(
             std::string const& worker,
@@ -86,12 +85,13 @@ public:
             std::string const& sourceWorker) const = 0;
 
    /**
-     * Create an instance of the replica deletion request
-     *
-     * @see class WorkerDeleteRequest
-     *
-     * @return a pointer to the newly created object
-     */
+    * Create an instance of the replica deletion request
+    *
+    * @see class WorkerDeleteRequest
+    *
+    * @return
+    *   a pointer to the newly created object
+    */
     virtual WorkerDeleteRequestPtr createDeleteRequest(
             std::string const& worker,
             std::string const& id,
@@ -100,12 +100,13 @@ public:
             unsigned int chunk) const = 0;
 
    /**
-     * Create an instance of the replica lookup request
-     *
-     * @see class WorkerFindRequest
-     *
-     * @return a pointer to the newly created object
-     */
+    * Create an instance of the replica lookup request
+    *
+    * @see class WorkerFindRequest
+    *
+    * @return
+    *   a pointer to the newly created object
+    */
     virtual WorkerFindRequestPtr createFindRequest(
             std::string const& worker,
             std::string const& id,
@@ -115,12 +116,13 @@ public:
             bool computeCheckSum) const = 0;
 
    /**
-     * Create an instance of the replicas lookup request
-     *
-     * @see class WorkerFindAllRequest
-     *
-     * @return a pointer to the newly created object
-     */
+    * Create an instance of the replicas lookup request
+    *
+    * @see class WorkerFindAllRequest
+    *
+    * @return
+    *   a pointer to the newly created object
+    */
     virtual WorkerFindAllRequestPtr createFindAllRequest(
             std::string const& worker,
             std::string const& id,
@@ -132,7 +134,8 @@ public:
      *
      * @see class WorkerEchoRequest
      *
-     * @return a pointer to the newly created object
+     * @return
+     *   a pointer to the newly created object
      */
     virtual WorkerEchoRequestPtr createEchoRequest(
             std::string const& worker,
@@ -146,7 +149,8 @@ protected:
     /**
      * The constructor of the class.
      *
-     * @param serviceProvider - a provider of various services
+     * @param serviceProvider
+     *   a provider of various services
      */
     explicit WorkerRequestFactoryBase(ServiceProvider::Ptr const& serviceProvider);
 
@@ -155,12 +159,12 @@ protected:
     ServiceProvider::Ptr const _serviceProvider;
 };
 
+
 /**
   * Class WorkerRequestFactory is a proxy class which is constructed with
   * a choice of a specific implementation of the factory.
   */
-class WorkerRequestFactory
-    :   public WorkerRequestFactoryBase {
+class WorkerRequestFactory : public WorkerRequestFactoryBase {
 
 public:
 
@@ -189,22 +193,21 @@ public:
      *              on a POSIX file system and for reading remote files using
      *              the built-into-worker simple file server.
      *
-     * @param serviceProvider - provider of various services (including configurations)
-     * @param technology      - (optional) the name of a technology
+     * @param serviceProvider
+     *   provider of various services (including configurations)
+     *
+     * @param technology
+     *   (optional) the name of a technology
      */
     explicit WorkerRequestFactory(ServiceProvider::Ptr const& serviceProvider,
                                   std::string const& technology=std::string());
 
     ~WorkerRequestFactory() final { delete _ptr; }
 
-    /**
-     * @see WorkerReplicationRequestBase::technology()
-     */
+    /// @see WorkerReplicationRequestBase::technology()
     std::string technology() const final { return _ptr->technology(); }
 
-    /**
-     * @see WorkerReplicationRequestBase::createReplicationRequest()
-     */
+    /// @see WorkerReplicationRequestBase::createReplicationRequest()
     WorkerReplicationRequestPtr createReplicationRequest(
             std::string const& worker,
             std::string const& id,
@@ -222,9 +225,7 @@ public:
             sourceWorker);
     }
 
-   /**
-     * @see WorkerReplicationRequestBase::createDeleteRequest()
-     */
+   /// @see WorkerReplicationRequestBase::createDeleteRequest()
     WorkerDeleteRequestPtr createDeleteRequest(
             std::string const& worker,
             std::string const& id,
@@ -240,9 +241,7 @@ public:
             chunk);
     }
 
-   /**
-     * @see WorkerReplicationRequestBase::createFindRequest()
-     */
+   /// @see WorkerReplicationRequestBase::createFindRequest()
     WorkerFindRequestPtr createFindRequest(
             std::string const& worker,
             std::string const& id,
@@ -260,9 +259,7 @@ public:
             computeCheckSum);
     }
 
-   /**
-     * @see WorkerReplicationRequestBase::createFindAllRequest()
-     */
+   /// @see WorkerReplicationRequestBase::createFindAllRequest()
     WorkerFindAllRequestPtr createFindAllRequest(
             std::string const& worker,
             std::string const& id,
@@ -276,9 +273,7 @@ public:
             database);
     }
 
-    /**
-     * @see WorkerReplicationRequestBase::createEchoRequest()
-     */
+    /// @see WorkerReplicationRequestBase::createEchoRequest()
     WorkerEchoRequestPtr createEchoRequest(
             std::string const& worker,
             std::string const& id,

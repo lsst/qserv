@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -43,8 +42,11 @@ namespace replica {
 /**
  * Print a report on a state of requests
  *
- * @param requests - an iterable collection of requests
- * @param os       - an output stream
+ * @param requests
+ *   an iterable collection of requests
+ *
+ * @param os
+ *   an output stream
  */
 template <class COLLECTION>
 void reportRequestState(COLLECTION const& requests,

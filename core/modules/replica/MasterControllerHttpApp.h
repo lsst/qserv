@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -49,7 +48,7 @@ namespace replica {
  * two tasks running in parallel (in dedicated threads): Linear Replication one and
  * the Health Monitoring one. These tasks can be suspended/resumed via the REST API.
  */
-class MasterControllerHttpApp: public Application {
+class MasterControllerHttpApp : public Application {
 
 public:
 
@@ -74,24 +73,20 @@ public:
     MasterControllerHttpApp(MasterControllerHttpApp const&) = delete;
     MasterControllerHttpApp& operator=(MasterControllerHttpApp const&) = delete;
 
-    ~MasterControllerHttpApp() override = default;
+    ~MasterControllerHttpApp() final = default;
 
 protected:
 
-    /**
-     * @see MasterControllerHttpApp::create()
-     */
-    MasterControllerHttpApp(int argc, char* argv[]);
-
-    /**
-     * @see Application::runImpl()
-     */
+    /// @see Application::runImpl()
     int runImpl() final;
 
 private:
 
+    /// @see MasterControllerHttpApp::create()
+    MasterControllerHttpApp(int argc, char* argv[]);
+
     /// @return the name of the application for the purpose of logging
-    std::string name() const { return "MASTER CONTROLLER"; };
+    std::string _name() const { return "MASTER CONTROLLER"; };
 
     /**
      * Evict the specified worker from the cluster
@@ -160,7 +155,6 @@ private:
      */
     void _assertIsStarted(std::string const& func) const;
 
-private:
 
     // Command line parameters
 

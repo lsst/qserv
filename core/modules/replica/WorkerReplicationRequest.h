@@ -1,7 +1,5 @@
-// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -24,7 +22,7 @@
 #define LSST_QSERV_REPLICA_WORKERREPLICATIONREQUEST_H
 
 // System headers
-#include <cstdio>               // std::FILE, C-style file I/O
+#include <cstdio>
 #include <ctime>
 #include <map>
 #include <string>
@@ -55,8 +53,7 @@ class FileClient;
   *
   * Real implementations of the request processing must derive from this class.
   */
-class WorkerReplicationRequest
-    :   public WorkerRequest {
+class WorkerReplicationRequest : public WorkerRequest {
 
 public:
 
@@ -67,16 +64,33 @@ public:
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
-     * 
-     * @param serviceProvider  - a host of services for various communications
-     * @param worker           - the name of a worker
-     * @param id               - an identifier of a client request
-     * @param priority         - indicates the importance of the request
-     * @param database         - the name of a database
-     * @param chunk            - the chunk number
-     * @param sourceWorker     - the name of a source worker
      *
-     * @return pointer to the created object
+     * @param serviceProvider
+     *   provider is needed to access the Configuration of a setup
+     *   and for validating the input parameters
+     *
+     * @param worker
+     *   the name of a worker. It must be the same worker where the operation
+     *   is being run.
+     *
+     * @param id
+     *   an identifier of a client request
+     * 
+     * @param priority 
+     *   indicates the importance of the request
+     *
+     * @param database
+     *   the name of a database defining a scope of the operation
+     *
+     * @param chunk
+     *   the chunk to be replicated
+     *
+     * @param sourceWorker
+     *   the name of a source worker where an input replica is expected
+     *   to be located.
+     *
+     * @return
+     *   pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& worker,
@@ -92,7 +106,6 @@ public:
     WorkerReplicationRequest(WorkerReplicationRequest const&) = delete;
     WorkerReplicationRequest& operator=(WorkerReplicationRequest const&) = delete;
 
-    /// Destructor
     ~WorkerReplicationRequest() override = default;
 
     // Trivial get methods
@@ -111,18 +124,12 @@ public:
      */
     void setInfo(proto::ReplicationResponseReplicate& response) const;
 
-    /**
-     * @see WorkerRequest::execute
-     */
+    /// @see WorkerRequest::execute
     bool execute() override;
 
 protected:
 
-    /**
-     * The normal constructor of the class
-     *
-     * @see WorkerReplicationRequest::created()
-     */
+    /// @see WorkerReplicationRequest::created()
     WorkerReplicationRequest(ServiceProvider::Ptr const& serviceProvider,
                              std::string const& worker,
                              std::string const& id,
@@ -131,16 +138,11 @@ protected:
                              unsigned int chunk,
                              std::string const& sourceWorker);
 
-protected:
+    // Input parameters
 
-    /// The name of a database
-    std::string const _database;
-
-    /// The number of a chunk
+    std::string  const _database;
     unsigned int const _chunk;
-
-    /// The name of a source worker for a new replica
-    std::string const _sourceWorker;
+    std::string  const _sourceWorker;
 
     /// Result of the operation
     ReplicaInfo _replicaInfo;
@@ -151,8 +153,7 @@ protected:
   * the replication requests based on the direct manipulation of files on
   * a POSIX file system.
   */
-class WorkerReplicationRequestPOSIX
-    :   public WorkerReplicationRequest {
+class WorkerReplicationRequestPOSIX : public WorkerReplicationRequest {
 
 public:
 
@@ -163,16 +164,10 @@ public:
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
+     * 
+     * For a description of parameters:
      *
-     * @param serviceProvider  - a host of services for various communications
-     * @param worker           - the name of a worker
-     * @param id               - an identifier of a client request
-     * @param priority         - indicates the importance of the request
-     * @param database         - the name of a database
-     * @param chunk            - the chunk number
-     * @param sourceWorker     - the name of a source worker
-     *
-     * @return pointer to the created object
+     * @see WorkerReplicationRequest::created()
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& worker,
@@ -188,20 +183,14 @@ public:
     WorkerReplicationRequestPOSIX(WorkerReplicationRequestPOSIX const&) = delete;
     WorkerReplicationRequestPOSIX& operator=(WorkerReplicationRequestPOSIX const&) = delete;
 
-    ~WorkerReplicationRequestPOSIX() override = default;
+    ~WorkerReplicationRequestPOSIX() final = default;
 
-    /**
-     * @see WorkerReplicationRequest::execute
-     */
-    bool execute() override;
+    /// @see WorkerReplicationRequest::execute
+    bool execute() final;
 
 protected:
 
-    /**
-     * The normal constructor of the class
-     *
-     * @see WorkerReplicationRequestPOSIX::created()
-     */
+    /// @see WorkerReplicationRequestPOSIX::created()
     WorkerReplicationRequestPOSIX(ServiceProvider::Ptr const& serviceProvider,
                                   std::string const& worker,
                                   std::string const& id,
@@ -217,8 +206,7 @@ protected:
   * on a POSIX file system and for reading remote files using the built-into-worker
   * simple file server.
   */
-class WorkerReplicationRequestFS
-    :   public WorkerReplicationRequest {
+class WorkerReplicationRequestFS : public WorkerReplicationRequest {
 
 public:
 
@@ -230,15 +218,9 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider  - a host of services for various communications
-     * @param worker           - the name of a worker
-     * @param id               - an identifier of a client request
-     * @param priority         - indicates the importance of the request
-     * @param database         - the name of a database
-     * @param chunk            - the chunk number
-     * @param sourceWorker     - the name of a source worker
+     * For a description of parameters:
      *
-     * @return pointer to the created object
+     * @see WorkerReplicationRequest::created()
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& worker,
@@ -255,20 +237,14 @@ public:
     WorkerReplicationRequestFS& operator=(WorkerReplicationRequestFS const&) = delete;
 
     /// Destructor (non trivial one is needed to release resources)
-    ~WorkerReplicationRequestFS() override;
+    ~WorkerReplicationRequestFS() final;
 
-    /**
-     * @see WorkerReplicationRequest::execute
-     */
-    bool execute() override;
+    /// @see WorkerReplicationRequest::execute
+    bool execute() final;
 
 protected:
 
-    /**
-     * The normal constructor of the class
-     *
-     * @see WorkerReplicationRequestFS::create()
-     */
+    /// @see WorkerReplicationRequestFS::create()
     WorkerReplicationRequestFS(ServiceProvider::Ptr const& serviceProvider,
                                std::string const& worker,
                                std::string const& id,
@@ -282,11 +258,13 @@ private:
     /**
      * Open files associated with the current state of iterator _fileItr.
      *
-     * @param lock - lock which must be acquired before calling this method
+     * @param lock
+     *   lock which must be acquired before calling this method
      *
-     * @return 'false' in case of any error
+     * @return
+     *   'false' in case of any error
      */
-    bool openFiles(util::Lock const& lock);
+    bool _openFiles(util::Lock const& lock);
 
     /**
      * The final stage to be executed just once after copying the content
@@ -295,11 +273,13 @@ private:
      *
      * Resources will also be released.
      *
-     * @param lock - lock which must be acquired before calling this method
+     * @param lock
+     *   lock which must be acquired before calling this method
      *
-     * @return always 'true'
+     * @return
+     *   always 'true'
      */
-    bool finalize(util::Lock const& lock);
+    bool _finalize(util::Lock const& lock);
 
     /**
      * Close connections, de-allocate resources, etc.
@@ -309,18 +289,19 @@ private:
      * request objects can stay in the server's memory for an extended
      * period of time.
      *
-     * @param lock - lock which must be acquired before calling this method
+     * @param lock
+     *   lock which must be acquired before calling this method
      */
-    void releaseResources(util::Lock const& lock);
+    void _releaseResources(util::Lock const& lock);
 
     /**
      * Update file migration statistics
      *
-     * @param lock - lock which must be acquired before calling this method
+     * @param lock
+     *   lock which must be acquired before calling this method
      */
-    void updateInfo(util::Lock const& lock);
+    void _updateInfo(util::Lock const& lock);
 
-private:
 
     /// Cached descriptor of the input worker obtained from the Configuration
     WorkerInfo const _inWorkerInfo;

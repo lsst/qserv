@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -62,8 +61,11 @@ public:
     /**
      * The normal constructor
      *
-     * @param replica1 - a reference to the the 'older' replica object
-     * @param replica2 - a reference to the the 'newer' replica object
+     * @param replica1
+     *   a reference to the the 'older' replica object
+     *
+     * @param replica2
+     *   `a reference to the the 'newer' replica object
      */
     ReplicaDiff(ReplicaInfo const& replica1,
                 ReplicaInfo const& replica2);
@@ -80,16 +82,18 @@ public:
     ReplicaInfo const& replica2() const { return _replica2; }
 
     /**
-     * @return 'true' if the object encapsulates two snapshots referring
-     * to the same replica.
+     * @return
+     *   'true' if the object encapsulates two snapshots referring
+     *   to the same replica.
      */
     bool isSelf() const;
 
     /**
      * The comparison operator
      *
-     * @return 'true' in case if there are differences between replicas. Specific aspects
-     * of the difference can be explored by directly comparing the replica objects.
+     * @return
+     *   'true' in case if there are differences between replicas. Specific aspects
+     *   of the difference can be explored by directly comparing the replica objects.
      */
     bool operator()() const { return _notEqual; }
 
@@ -136,8 +140,7 @@ std::ostream& operator<<(std::ostream& os, ReplicaDiff const& ri);
   * Any differences will get reported to a subscriber via a specific callback
   * function. The new status of a replica will be also recorded within the database.
   */
-class VerifyJob
-    :   public Job  {
+class VerifyJob : public Job  {
 
 public:
 
@@ -195,9 +198,9 @@ public:
                       bool computeCheckSum,
                       CallbackTypeOnDiff const& onReplicaDifference,
                       Controller::Ptr const& controller,
-                      std::string const& parentJobId = std::string(),
-                      CallbackType const& onFinish = nullptr,
-                      Job::Options const& options = defaultOptions());
+                      std::string const& parentJobId=std::string(),
+                      CallbackType const& onFinish=nullptr,
+                      Job::Options const& options=defaultOptions());
 
     // Default construction and copy semantics are prohibited
 
@@ -213,18 +216,23 @@ public:
     /// @return true if file check/control sums need to be recomputed
     bool computeCheckSum() const { return _computeCheckSum; }
 
-    /**
-     * @see Job::extendedPersistentState()
-     */
+    /// @see Job::extendedPersistentState()
     std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
 
 protected:
 
-    /**
-     * Construct the job with the pointer to the services provider.
-     *
-     * @see VerifyJob::create()
-     */
+    /// @see Job::startImpl()
+    void startImpl(util::Lock const& lock) final;
+
+    /// @see Job::cancelImpl()
+    void cancelImpl(util::Lock const& lock) final;
+
+    /// @see Job::notify()
+    void notify(util::Lock const& lock) final;
+
+private:
+
+    /// @see VerifyJob::create()
     VerifyJob(size_t maxReplicas,
               bool computeCheckSum,
               CallbackTypeOnDiff const& onReplicaDifference,
@@ -234,47 +242,38 @@ protected:
               Job::Options const& options);
 
     /**
-      * @see Job::startImpl()
-      */
-    void startImpl(util::Lock const& lock) final;
-
-    /**
-      * @see Job::startImpl()
-      */
-    void cancelImpl(util::Lock const& lock) final;
-
-    /**
-      * @see Job::notify()
-      */
-    void notify(util::Lock const& lock) final;
-
-    /**
      * The callback function to be invoked on a completion of each request.
      *
-     * @param request - a pointer to a request
+     * @param request
+     *   a pointer to a request
      */
-    void onRequestFinish(FindRequest::Ptr request);
+    void _onRequestFinish(FindRequest::Ptr const& request);
 
     /**
      * Find the next replicas to be inspected.
      *
-     * @param lock        - the lock must be acquired by a caller of the method
-     * @param replicas    - a collection of replicas returned from the database
-     * @param numReplicas - a desired number of replicas to be pulled from the database
+     * @param lock
+     *   the lock on Job::_mtx must be acquired by a caller of the method
+     *
+     * @param replicas
+     *   a collection of replicas returned from the database
+     *
+     * @param numReplicas
+     *   a desired number of replicas to be pulled from the database
+     *   for processing.
      */
-    void nextReplicas(util::Lock const& lock,
-                      std::vector<ReplicaInfo>& replicas,
-                      size_t numReplicas);
+    void _nextReplicas(util::Lock const& lock,
+                       std::vector<ReplicaInfo>& replicas,
+                       size_t numReplicas);
 
-protected:
 
-    /// The maximum number of replicas to be allowed processed simultaneously
+    // Input parameters
+
     size_t const _maxReplicas;
-
-    /// This option will be passed on to the worker services
-    bool const _computeCheckSum;
+    bool   const _computeCheckSum;
 
     /// Client-defined function to be called upon the completion of the job
+    /// @note is reset when the job finishes
     CallbackType _onFinish;
 
     /// Client-defined function to be called when two replicas won't match

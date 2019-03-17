@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -33,6 +32,7 @@
 // Qserv headers
 #include "util/ConfigStore.h"
 
+using namespace std;
 
 namespace lsst {
 namespace qserv {
@@ -49,13 +49,13 @@ namespace replica {
  * @return
  *   a reference to the output stream
  */
-inline std::ostream& operator<<(std::ostream& os, std::vector<std::string> const& c) {
-    copy(c.cbegin(), c.cend(), std::ostream_iterator<std::string>(os, " "));
+inline ostream& operator<<(ostream& os, vector<string> const& c) {
+    copy(c.cbegin(), c.cend(), ostream_iterator<string>(os, " "));
     return os;
 }
 
 
-std::string ConfigurationFile::dump2init(Configuration::Ptr const& config) {
+string ConfigurationFile::dump2init(Configuration::Ptr const& config) {
 
     using namespace std;
 
@@ -146,7 +146,7 @@ std::string ConfigurationFile::dump2init(Configuration::Ptr const& config) {
 }
 
     
-ConfigurationFile::ConfigurationFile(std::string const& configFile)
+ConfigurationFile::ConfigurationFile(string const& configFile)
     :   ConfigurationStore(util::ConfigStore(configFile)),
         _configFile(configFile) {
 }

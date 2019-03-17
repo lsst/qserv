@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -29,17 +28,19 @@
 #include <cstring>
 #include <cstdio>
 #include <stdexcept>
-#include <sys/types.h>  // struct passwd
-#include <pwd.h>        // getpwuid
-#include <unistd.h>     // geteuid
+#include <sys/types.h>
+#include <pwd.h>
+#include <unistd.h>
 
 // Qserv headers
 #include "replica/Configuration.h"
 
+using namespace std;
+
 namespace {
 
 /// Standard file extension of the MyISAM (and derived) engine's table files
-std::vector<std::string> const extensions{"frm", "MYD", "MYI"};
+vector<string> const extensions{"frm", "MYD", "MYI"};
 
 /**
  * Evaluate if an input string corresponds to a valid file extension
@@ -48,9 +49,10 @@ std::vector<std::string> const extensions{"frm", "MYD", "MYI"};
  *
  * @return 'true' if this is a valid file extension
  */
-bool isValidExtention(std::string const& str) {
-    return extensions.end() != std::find(extensions.begin(), extensions.end(), str);
+bool isValidExtention(string const& str) {
+    return extensions.end() != find(extensions.begin(), extensions.end(), str);
 }
+
 
 /**
  * Evaluate if an input string corresponds to a valid partitioned table
@@ -62,7 +64,7 @@ bool isValidExtention(std::string const& str) {
  * @return 'true' if this is a valid table name
  */
 bool isValidPartitionedTable(
-            std::string const& str,
+            string const& str,
             lsst::qserv::replica::DatabaseInfo const& databaseInfo) {
 
     for (auto&& table: databaseInfo.partitionedTables) {
@@ -71,7 +73,6 @@ bool isValidPartitionedTable(
     }
     return false;
 }
-
 } // namespace
 
 namespace lsst {
@@ -82,20 +83,20 @@ namespace replica {
 //    class FileUtils    //
 ///////////////////////////
 
-std::vector<std::string> FileUtils::partitionedFiles(DatabaseInfo const& databaseInfo,
-                                                     unsigned int chunk) {
+vector<string> FileUtils::partitionedFiles(DatabaseInfo const& databaseInfo,
+                                           unsigned int chunk) {
 
-    std::vector<std::string> result;
+    vector<string> result;
 
-    std::string const chunkSuffix = "_" + std::to_string(chunk);
+    string const chunkSuffix = "_" + to_string(chunk);
 
     for (auto&& table: databaseInfo.partitionedTables) {
 
-        std::string const file = table + chunkSuffix;
+        string const file = table + chunkSuffix;
         for (auto&& ext: ::extensions) {
             result.push_back(file + "." + ext);
         }
-        std::string const fileOverlap = table + "FullOverlap" + chunkSuffix;
+        string const fileOverlap = table + "FullOverlap" + chunkSuffix;
         for (auto&& ext: ::extensions) {
             result.push_back(fileOverlap + "." + ext);
         }
@@ -103,12 +104,13 @@ std::vector<std::string> FileUtils::partitionedFiles(DatabaseInfo const& databas
     return result;
 }
 
-std::vector<std::string> FileUtils::regularFiles(DatabaseInfo const& databaseInfo) {
 
-    std::vector<std::string> result;
+vector<string> FileUtils::regularFiles(DatabaseInfo const& databaseInfo) {
+
+    vector<string> result;
 
     for (auto&& table : databaseInfo.regularTables) {
-        std::string const filename = table;
+        string const filename = table;
         for (auto&& ext: ::extensions) {
             result.push_back(filename + "." + ext);
         }
@@ -116,90 +118,96 @@ std::vector<std::string> FileUtils::regularFiles(DatabaseInfo const& databaseInf
     return result;
 }
 
-bool FileUtils::parsePartitionedFile(std::tuple<std::string, unsigned int, std::string> &parsed,
-                                     std::string  const& fileName,
+
+bool FileUtils::parsePartitionedFile(tuple<string, unsigned int, string> &parsed,
+                                     string  const& fileName,
                                      DatabaseInfo const& databaseInfo) {
 
     // Find the extension of the file and evaluate it if found
 
-    std::string::size_type const posBeforeExention = fileName.rfind('.');
-    if (posBeforeExention == std::string::npos) return false;               // not found
+    string::size_type const posBeforeExention = fileName.rfind('.');
+    if (posBeforeExention == string::npos) return false;               // not found
 
-    std::string const extention = fileName.substr(posBeforeExention + 1);   // excluding '.'
+    string const extention = fileName.substr(posBeforeExention + 1);   // excluding '.'
     if (!::isValidExtention(extention)) return false;                       // unknown file extension
 
     // Find and parse the chunk number
 
-    std::string::size_type const posBeforeChunk = fileName.rfind('_');
-    if (posBeforeChunk == std::string::npos) return false;  // not found
+    string::size_type const posBeforeChunk = fileName.rfind('_');
+    if (posBeforeChunk == string::npos) return false;  // not found
     if (posBeforeChunk >= posBeforeExention) return false;  // no room for chunk
 
     unsigned int chunk;
     try {
-        chunk = std::stoul(fileName.substr(posBeforeChunk + 1, posBeforeExention - posBeforeChunk - 1));
-    } catch (std::invalid_argument const&) {
+        chunk = stoul(fileName.substr(posBeforeChunk + 1, posBeforeExention - posBeforeChunk - 1));
+    } catch (invalid_argument const&) {
         return false;
     }
 
     // Find the table name and check if it's allowed for the specified database
 
-    const std::string table = fileName.substr(0, posBeforeChunk);
+    const string table = fileName.substr(0, posBeforeChunk);
     if (!::isValidPartitionedTable(table, databaseInfo)) return false;  // unknown table
 
     // Success
-    parsed = std::make_tuple(table, chunk, extention);
+    parsed = make_tuple(table, chunk, extention);
     return true;
 }
 
 
-uint64_t FileUtils::compute_cs(std::string const& fileName,
-                               size_t             recordSizeBytes) {
+uint64_t FileUtils::compute_cs(string const& fileName,
+                               size_t recordSizeBytes) {
 
     if (fileName.empty()) {
-        throw std::invalid_argument("empty file name passed into FileUtils::compute_cs");
+        throw invalid_argument(
+                "FileUtils::" + string(__func__) +
+                "  empty file name passed into the method");
     }
     if (not recordSizeBytes or (recordSizeBytes > MAX_RECORD_SIZE_BYTES)) {
-        throw std::invalid_argument("invalid record size " + std::to_string(recordSizeBytes) +
-                                    "passed into FileUtils::compute_cs");
+        throw invalid_argument(
+                "FileUtils::" + string(__func__) + "  invalid record size " +
+                to_string(recordSizeBytes) + "passed into the method");
     }
-    std::FILE* fp = std::fopen(fileName.c_str(), "rb");
+    FILE* fp = fopen(fileName.c_str(), "rb");
     if (not fp) {
-        throw std::runtime_error(
-            std::string("file open error: ") + std::strerror(errno) +
-            std::string(", file: ") + fileName);
+        throw runtime_error(
+                "FileUtils::" + string(__func__) + string("  file open error: ") +
+                strerror(errno) + string(", file: ") + fileName);
     }
     uint8_t *buf = new uint8_t[recordSizeBytes];
 
     uint64_t cs = 0;
     size_t num;
-    while ((num = std::fread(buf, sizeof(uint8_t), recordSizeBytes, fp))) {
+    while ((num = fread(buf, sizeof(uint8_t), recordSizeBytes, fp))) {
         for (uint8_t *ptr = buf, *end = buf + num; ptr != end; ++ptr) {
             cs += (uint64_t)(*ptr);
         }
     }
-    if (std::ferror(fp)) {
-        const std::string err =
-            std::string("file read error: ") + std::strerror(errno) +
-            std::string(", file: ") + fileName;
+    if (ferror(fp)) {
+        const string err =
+             "FileUtils::" + string(__func__) + string("  file read error: ") +
+            strerror(errno) + string(", file: ") + fileName;
         fclose(fp);
         delete [] buf;
-        throw std::runtime_error(err);
+        throw runtime_error(err);
     }
-    std::fclose(fp);
+    fclose(fp);
     delete [] buf;
 
     return cs;
 }
 
-std::string FileUtils::getEffectiveUser() {
-    return std::string(getpwuid(geteuid())->pw_name);
+
+string FileUtils::getEffectiveUser() {
+    return string(getpwuid(geteuid())->pw_name);
 }
+
 
 /////////////////////////////////////
 //    class FileCsComputeEngine    //
 /////////////////////////////////////
 
-FileCsComputeEngine::FileCsComputeEngine(std::string const& fileName,
+FileCsComputeEngine::FileCsComputeEngine(string const& fileName,
                                          size_t recordSizeBytes)
     :   _fileName(fileName),
         _recordSizeBytes(recordSizeBytes),
@@ -209,33 +217,35 @@ FileCsComputeEngine::FileCsComputeEngine(std::string const& fileName,
         _cs(0) {
 
     if (_fileName.empty()) {
-        throw std::invalid_argument("FileCsComputeEngine:  empty file name");
+        throw invalid_argument("FileCsComputeEngine:  empty file name");
     }
     if (not _recordSizeBytes or (_recordSizeBytes > FileUtils::MAX_RECORD_SIZE_BYTES)) {
-        throw std::invalid_argument(
-                        "FileCsComputeEngine:  invalid record size " + std::to_string(_recordSizeBytes));
+        throw invalid_argument(
+                "FileCsComputeEngine:  invalid record size " + to_string(_recordSizeBytes));
     }
-    _fp = std::fopen(_fileName.c_str(), "rb");
+    _fp = fopen(_fileName.c_str(), "rb");
     if (not _fp) {
-        throw std::runtime_error(
-            std::string("FileCsComputeEngine:  file open error: ") + std::strerror(errno) +
-            std::string(", file: ") + _fileName);
+        throw runtime_error(
+                string("FileCsComputeEngine:  file open error: ") + strerror(errno) +
+                string(", file: ") + _fileName);
     }
     _buf = new uint8_t[_recordSizeBytes];
 }
 
 
 FileCsComputeEngine::~FileCsComputeEngine() {
-    if (_fp)  std::fclose(_fp);
+    if (_fp)  fclose(_fp);
     if (_buf) delete [] _buf;
 }
+
 
 bool FileCsComputeEngine::execute() {
 
     if (not _fp) {
-        throw std::logic_error("FileCsComputeEngine:  file is already closed");
+        throw logic_error(
+                "FileCsComputeEngine::" + string(__func__) + "  file is already closed");
     }
-    size_t const num = std::fread(_buf, sizeof(uint8_t), _recordSizeBytes, _fp);
+    size_t const num = fread(_buf, sizeof(uint8_t), _recordSizeBytes, _fp);
     if (num) {
         _bytes += num;
         for (uint8_t *ptr = _buf, *end = _buf + num; ptr != end; ++ptr) {
@@ -245,10 +255,11 @@ bool FileCsComputeEngine::execute() {
     }
 
     // I/O error?
-    if (std::ferror(_fp)) {
-        const std::string err =
-            std::string("FileCsComputeEngine:  file read error: ") + std::strerror(errno) +
-            std::string(", file: ") + _fileName;
+    if (ferror(_fp)) {
+        string const err =
+            string("FileCsComputeEngine::") + string(__func__) +
+            string(" file read error: ") + strerror(errno) + string(", file: ") +
+            _fileName;
 
         fclose(_fp);
         _fp = nullptr;
@@ -256,11 +267,11 @@ bool FileCsComputeEngine::execute() {
         delete [] _buf;
         _buf = nullptr;
 
-        throw std::runtime_error(err);
+        throw runtime_error(err);
     }
 
     // EOF
-    std::fclose(_fp);
+    fclose(_fp);
     _fp = nullptr;
 
     delete [] _buf;
@@ -269,6 +280,7 @@ bool FileCsComputeEngine::execute() {
     return true;
 }
 
+
 //////////////////////////////////////////
 //    class MultiFileCsComputeEngine    //
 //////////////////////////////////////////
@@ -276,14 +288,15 @@ bool FileCsComputeEngine::execute() {
 MultiFileCsComputeEngine::~MultiFileCsComputeEngine() {
 }
 
-MultiFileCsComputeEngine::MultiFileCsComputeEngine(std::vector<std::string> const& fileNames,
+
+MultiFileCsComputeEngine::MultiFileCsComputeEngine(vector<string> const& fileNames,
                                                    size_t recordSizeBytes)
     :   _fileNames(fileNames),
         _recordSizeBytes(recordSizeBytes) {
 
     if (not recordSizeBytes or (_recordSizeBytes > FileUtils::MAX_RECORD_SIZE_BYTES)) {
-        throw std::invalid_argument(
-                        "MultiFileCsComputeEngine:  invalid record size " + std::to_string(_recordSizeBytes));
+        throw invalid_argument(
+                "MultiFileCsComputeEngine:  invalid record size " + to_string(_recordSizeBytes));
     }
 
     // This will be the very first file (if any) to be processed
@@ -296,32 +309,39 @@ MultiFileCsComputeEngine::MultiFileCsComputeEngine(std::vector<std::string> cons
     }
 }
 
-bool MultiFileCsComputeEngine::processed(std::string const& fileName) const {
 
-    if (_fileNames.end() == std::find(_fileNames.begin(),
-                                      _fileNames.end(),
-                                      fileName)) {
-        throw std::invalid_argument(
-                "MultiFileCsComputeEngine::processed() unknown file: " + fileName);
+bool MultiFileCsComputeEngine::processed(string const& fileName) const {
+
+    if (_fileNames.end() == find(_fileNames.begin(),
+                                 _fileNames.end(),
+                                 fileName)) {
+        throw invalid_argument(
+                "MultiFileCsComputeEngine::" + string(__func__) +
+                " unknown file: " + fileName);
     }
     return _processed.count(fileName);
 }
 
-size_t  MultiFileCsComputeEngine::bytes(std::string const& fileName) const {
+
+size_t  MultiFileCsComputeEngine::bytes(string const& fileName) const {
     if (not processed(fileName)) {
-        throw std::logic_error(
-            "MultiFileCsComputeEngine::bytes()  the file hasn't been processed: " + fileName);
+        throw logic_error(
+                "MultiFileCsComputeEngine::" + string(__func__) +
+                "  the file hasn't been processed: " + fileName);
     }
     return _processed.at(fileName)->bytes();
 }
 
-uint64_t MultiFileCsComputeEngine::cs(std::string const& fileName) const {
+
+uint64_t MultiFileCsComputeEngine::cs(string const& fileName) const {
     if (not processed(fileName)) {
-        throw std::logic_error(
-            "MultiFileCsComputeEngine::cs()  the file hasn't been processed: " + fileName);
+        throw logic_error(
+                "MultiFileCsComputeEngine::" + string(__func__) +
+                "  the file hasn't been processed: " + fileName);
     }
     return _processed.at(fileName)->cs();
 }
+
 
 bool MultiFileCsComputeEngine::execute() {
 

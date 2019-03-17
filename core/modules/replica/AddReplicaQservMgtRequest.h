@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -42,8 +41,7 @@ namespace replica {
   * Class AddReplicaQservMgtRequest implements a request notifying Qserv workers
   * on new chunks added to the database.
   */
-class AddReplicaQservMgtRequest
-    :   public QservMgtRequest  {
+class AddReplicaQservMgtRequest : public QservMgtRequest  {
 
 public:
 
@@ -66,11 +64,19 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider - reference to a provider of services
-     * @param worker          - the name of a worker
-     * @param chunk           - the chunk number
-     * @param databases       - the names of databases
-     * @param onFinish        - (optional) callback function to be called upon request completion
+     * @param serviceProvider
+     *   reference to a provider of services
+     *
+     * @param worker
+     *   the name of a worker
+     *
+     * @param chunk
+     *   the chunk number
+     * @param databases
+     *   the names of databases
+     *
+     * @param onFinish
+     *   (optional) callback function to be called upon request completion
      *
      * @return pointer to the new object created by the factory
      */
@@ -78,7 +84,7 @@ public:
                       std::string const& worker,
                       unsigned int chunk,
                       std::vector<std::string> const& databases,
-                      CallbackType const& onFinish = nullptr);
+                      CallbackType const& onFinish=nullptr);
 
     /// @return the chunk number
     unsigned int chunk() const { return _chunk; }
@@ -93,22 +99,7 @@ public:
      */
      std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
 
-private:
-
-    /**
-     * Construct the request with the pointer to the services provider.
-     *
-     * @param serviceProvider - reference to a provider of services
-     * @param worker          - the name of a worker
-     * @param chunk           - the chunk number
-     * @param databases       - the names of databases
-     * @param onFinish        - callback function to be called upon request completion
-     */
-    AddReplicaQservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
-                              std::string const& worker,
-                              unsigned int chunk,
-                              std::vector<std::string> const& databases,
-                              CallbackType const& onFinish);
+protected:
 
     /**
       * Implement the corresponding method of the base class
@@ -133,14 +124,19 @@ private:
 
 private:
 
-    /// The chunk number
-    unsigned int const _chunk;
+    /// @see AddReplicaQservMgtRequest::create()
+    AddReplicaQservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
+                              std::string const& worker,
+                              unsigned int chunk,
+                              std::vector<std::string> const& databases,
+                              CallbackType const& onFinish);
 
-    /// The names of databases
+
+    // Input parameters
+
+    unsigned int             const _chunk;
     std::vector<std::string> const _databases;
-
-    /// The callback function for sending a notification upon request completion
-    CallbackType _onFinish;
+    CallbackType                   _onFinish;   /// @note is reset when the request finishes
 
     /// A request to the remote services
     wpublish::AddChunkGroupQservRequest::Ptr _qservRequest;

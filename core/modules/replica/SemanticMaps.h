@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -137,9 +136,14 @@ protected:
     /**
      * Insert a copy of an existing object
      *
-     * @param k  its key
-     * @param v  object to be insert
-     * @return   reference to the object within the collection
+     * @param k
+     *   its key
+     *
+     * @param 
+     *    object to be insert
+     *
+     * @return
+     *   reference to the object within the collection
      */
     V& insert(K const& k, V const& v) {
         coll[k] = v;
@@ -149,9 +153,14 @@ protected:
     /**
      * Insert a copy of an existing object
      *
-     * @param k  its key
-     * @param v  object to be insert
-     * @return   reference to the object within the collection
+     * @param k
+     *   its key
+     *
+     * @param v
+     *   object to be insert
+     * 
+     * @return
+     *   reference to the object within the collection
      */
     V& insertIfNotExists(K const& k, V const& v) {
         if (not exists(k)) coll[k] = v;
@@ -159,8 +168,11 @@ protected:
     }
 
     /**
-     * @param k  object's key
-     * @return   read-only reference to an object for a key
+     * @param k
+     *   object's key
+     *
+     * @return
+     *   read-only reference to an object for a key
      */
     V const& get(K const& k) const { return coll.at(k); }
 
@@ -182,8 +194,7 @@ protected:
   *   V - the value type
   */
 template <typename V>
-class WorkerMap
-    :   public SemanticMap<std::string,V> {
+class WorkerMap : public SemanticMap<std::string,V> {
 
 public:
 
@@ -217,22 +228,35 @@ public:
     /**
      * Insert a copy of an existing worker object
      *
-     * @param k  key for the object
-     * @param v  reference to an object to be copied into the collection
-     * @return   writeable references to the object within the collection
+     * @param k
+     *   key for the object
+     *
+     * @param v
+     *   reference to an object to be copied into the collection
+     *
+     * @return
+     *   writeable references to the object within the collection
      */
     V& insertWorker(KeyType const& k, V const& v) { return MapType::insert(k, v); }
 
     /**
-     * @param k  object's key
-     * @return   'true' if  with the specified key already exists
+     * @param k
+     *   object's key
+     *
+     * @return
+     *   'true' if  with the specified key already exists
      */
     bool workerExists(KeyType const& k) const { return MapType::exists(k); }
 
     /**
-     * @param k  object's key
-     * @return   read-only reference to a worker object for a key
-     * @throws   std::out_of_range if no such key is found in the collection
+     * @param k
+     *   object's key
+     *
+     * @return
+     *   read-only reference to a worker object for a key
+     *
+     * @throws
+     *   std::out_of_range if no such key is found in the collection
      */
     V const& worker(KeyType const& k) const { return MapType::get(k); }
 
@@ -247,8 +271,7 @@ public:
   *   V - the value type
   */
 template <typename V>
-class DatabaseMap
-    :   public SemanticMap<std::string,V> {
+class DatabaseMap : public SemanticMap<std::string,V> {
 
 public:
 
@@ -282,22 +305,35 @@ public:
     /**
      * Insert a copy of an existing database object
      *
-     * @param k  key for the object
-     * @param v  reference to an object to be copied into the collection
-     * @return   writeable references to the object within the collection
+     * @param k
+     *   key for the object
+     *
+     * @param v 
+     *   reference to an object to be copied into the collection
+     *
+     * @return
+     *   writeable references to the object within the collection
      */
     V& insertDatabase(KeyType const& k, V const& v) { return MapType::insert(k, v); }
 
     /**
-     * @param k  object's key
-     * @return   'true' if  with the specified key already exists
+     * @param k
+     *   object's key
+     *
+     * @return
+     *   'true' if  with the specified key already exists
      */
     bool databaseExists(KeyType const& k) const { return MapType::exists(k); }
 
     /**
-     * @param k  object's key
-     * @return   read-only reference to a database object for a key
-     * @throws   std::out_of_range if no such key is found in the collection
+     * @param k
+     *   object's key
+     *
+     * @return
+     *   read-only reference to a database object for a key
+     *
+     * @throws
+     *   std::out_of_range if no such key is found in the collection
      */
     V const& database(KeyType const& k) const { return MapType::get(k); }
 
@@ -312,8 +348,7 @@ public:
   *   V - the value type
   */
 template <typename V>
-class ChunkMap
-    :   public SemanticMap<unsigned int,V> {
+class ChunkMap : public SemanticMap<unsigned int,V> {
 
 public:
 
@@ -347,21 +382,32 @@ public:
     /**
      * Insert a copy of an existing chunk object
      *
-     * @param k  key for the object
-     * @param v  reference to an object to be copied into the collection
-     * @return   writeable references to the object within the collection
+     * @param k
+     *   key for the object
+     *
+     * @param v
+     *   reference to an object to be copied into the collection
+     *
+     * @return
+     *   writeable references to the object within the collection
      */
     V& insertChunk(KeyType const& k, V const& v) { return MapType::insert(k, v); }
 
     /**
-     * @param k  object's key
-     * @return   'true' if  with the specified key already exists
+     * @param k
+     *   object's key
+     * 
+     * @return
+     *   'true' if  with the specified key already exists
      */
     bool chunkExists(KeyType const& k) const { return MapType::exists(k); }
 
     /**
-     * @param k  object's key
-     * @return   read-only reference to a chunk object for a key
+     * @param k
+     *   object's key
+     * 
+     * @return
+     *   read-only reference to a chunk object for a key
      */
     V const& chunk(KeyType const& k) const { return MapType::get(k); }
 
@@ -578,8 +624,12 @@ namespace SemanticMaps {
 
 /**
  * Count the keys in all leaf nodes
- * @param d input dictionary to be tested
- * @return  the total number of keys across all leaf nodes
+ *
+ * @param d
+ *   input dictionary to be tested
+ *
+ * @return
+ *   the total number of keys across all leaf nodes
  */
 template<typename T>
 size_t count(WorkerDatabaseChunkMap<T> const& d) {

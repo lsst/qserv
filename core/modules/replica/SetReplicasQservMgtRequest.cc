@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -37,6 +36,8 @@
 #include "replica/Configuration.h"
 #include "replica/ServiceProvider.h"
 
+using namespace std;
+
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SetReplicasQservMgtRequest");
@@ -49,7 +50,7 @@ namespace replica {
 
 SetReplicasQservMgtRequest::Ptr SetReplicasQservMgtRequest::create(
                                         ServiceProvider::Ptr const& serviceProvider,
-                                        std::string const& worker,
+                                        string const& worker,
                                         QservReplicaCollection const& newReplicas,
                                         bool force,
                                         SetReplicasQservMgtRequest::CallbackType const& onFinish) {
@@ -59,11 +60,12 @@ SetReplicasQservMgtRequest::Ptr SetReplicasQservMgtRequest::create(
                                        newReplicas,
                                        force,
                                        onFinish));
- }
+}
+
 
 SetReplicasQservMgtRequest::SetReplicasQservMgtRequest(
                                 ServiceProvider::Ptr const& serviceProvider,
-                                std::string const& worker,
+                                string const& worker,
                                 QservReplicaCollection const& newReplicas,
                                 bool force,
                                 SetReplicasQservMgtRequest::CallbackType const& onFinish)
@@ -76,23 +78,26 @@ SetReplicasQservMgtRequest::SetReplicasQservMgtRequest(
         _qservRequest(nullptr) {
 }
 
+
 QservReplicaCollection const& SetReplicasQservMgtRequest::replicas() const {
     if (not ((state() == State::FINISHED) and (extendedState() == ExtendedState::SUCCESS))) {
-        throw std::logic_error(
-                "SetReplicasQservMgtRequest::replicas  replicas aren't available in state: " +
-                state2string(state(), extendedState()));
+        throw logic_error(
+                "SetReplicasQservMgtRequest::" + string(__func__) +
+                "  replicas aren't available in state: " + state2string(state(), extendedState()));
     }
     return _replicas;
 }
 
-std::list<std::pair<std::string,std::string>> SetReplicasQservMgtRequest::extendedPersistentState() const {
-    std::list<std::pair<std::string,std::string>> result;
-    result.emplace_back("num_replicas", std::to_string(newReplicas().size()));
+
+list<pair<string,string>> SetReplicasQservMgtRequest::extendedPersistentState() const {
+    list<pair<string,string>> result;
+    result.emplace_back("num_replicas", to_string(newReplicas().size()));
     result.emplace_back("force", force() ? "1" : "0");
     return result;
 }
 
-void SetReplicasQservMgtRequest::setReplicas(
+
+void SetReplicasQservMgtRequest::_setReplicas(
             util::Lock const& lock,
             wpublish::SetChunkListQservRequest::ChunkCollection const& collection) {
 
@@ -107,6 +112,7 @@ void SetReplicasQservMgtRequest::setReplicas(
         );
     }
 }
+
 
 void SetReplicasQservMgtRequest::startImpl(util::Lock const& lock) {
 
@@ -126,7 +132,7 @@ void SetReplicasQservMgtRequest::startImpl(util::Lock const& lock) {
         chunks,
         force(),
         [request] (wpublish::SetChunkListQservRequest::Status status,
-                   std::string const& error,
+                   string const& error,
                    wpublish::SetChunkListQservRequest::ChunkCollection const& collection) {
 
             // IMPORTANT: the final state is required to be tested twice. The first time
@@ -137,13 +143,13 @@ void SetReplicasQservMgtRequest::startImpl(util::Lock const& lock) {
 
             if (request->state() == State::FINISHED) return;
         
-            util::Lock lock(request->_mtx, request->context() + "startImpl[callback]");
+            util::Lock lock(request->_mtx, request->context() + string(__func__) + "[callback]");
         
             if (request->state() == State::FINISHED) return;
 
             switch (status) {
                 case wpublish::SetChunkListQservRequest::Status::SUCCESS:
-                    request->setReplicas(lock, collection);
+                    request->_setReplicas(lock, collection);
                     request->finish(lock, QservMgtRequest::ExtendedState::SUCCESS);
                     break;
 
@@ -152,15 +158,17 @@ void SetReplicasQservMgtRequest::startImpl(util::Lock const& lock) {
                     break;
 
                 default:
-                    throw std::logic_error(
-                        "SetReplicasQservMgtRequest:  unhandled server status: " +
-                        wpublish::SetChunkListQservRequest::status2str(status));
+                    throw logic_error(
+                            "SetReplicasQservMgtRequest:: " + string(__func__) +
+                            "  unhandled server status: " +
+                            wpublish::SetChunkListQservRequest::status2str(status));
             }
         }
     );
     XrdSsiResource resource(ResourceUnit::makeWorkerPath(worker()));
     service()->ProcessRequest(*_qservRequest, resource);
 }
+
 
 void SetReplicasQservMgtRequest::finishImpl(util::Lock const& lock) {
 
@@ -183,10 +191,9 @@ void SetReplicasQservMgtRequest::finishImpl(util::Lock const& lock) {
     _qservRequest = nullptr;
 }
 
+
 void SetReplicasQservMgtRequest::notify(util::Lock const& lock) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
-
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     notifyDefaultImpl<SetReplicasQservMgtRequest>(lock, _onFinish);
 }
 

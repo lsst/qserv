@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -36,7 +35,7 @@ namespace replica {
  * and Qserv workers to see if they respond within the specified (or implied)
  * timeout.
  */
-class ClusterHealthApp: public Application {
+class ClusterHealthApp : public Application {
 
 public:
 
@@ -65,17 +64,14 @@ public:
 
 protected:
 
-    /**
-     * @see ClusterHealthApp::create()
-     */
-    ClusterHealthApp(int argc, char* argv[]);
-
-    /**
-     * @see Application::runImpl()
-     */
+    /// @see Application::runImpl()
     int runImpl() final;
 
 private:
+
+    /// @see ClusterHealthApp::create()
+    ClusterHealthApp(int argc, char* argv[]);
+
 
     /// The timeout (seconds) for status requests sent to the Replication
     /// system's and Qserv workers

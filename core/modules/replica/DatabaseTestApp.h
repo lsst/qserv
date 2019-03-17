@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -32,10 +31,10 @@ namespace qserv {
 namespace replica {
 
 /**
- * Class DatabaseTestApp implements a tool for testing the DatabaseServices API used by
- * the Replication system implementation.
+ * Class DatabaseTestApp implements a tool for testing the DatabaseServices API
+ * used by the Replication system implementation.
  */
-class DatabaseTestApp: public Application {
+class DatabaseTestApp : public Application {
 
 public:
 
@@ -64,17 +63,13 @@ public:
 
 protected:
 
-    /**
-     * @see DatabaseTestApp::create()
-     */
-    DatabaseTestApp(int argc, char* argv[]);
-
-    /**
-     * @see Application::runImpl()
-     */
+    /// @see Application::runImpl()
     int runImpl() final;
 
 private:
+
+    /// @see DatabaseTestApp::create()
+    DatabaseTestApp(int argc, char* argv[]);
 
     /// The name of a test
     std::string _operation;

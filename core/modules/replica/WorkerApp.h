@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -41,7 +40,7 @@ namespace replica {
 /**
  * Class WorkerApp implements represents a worker service.
  */
-class WorkerApp: public Application {
+class WorkerApp : public Application {
 
 public:
 
@@ -66,21 +65,17 @@ public:
     WorkerApp(WorkerApp const&) = delete;
     WorkerApp& operator=(WorkerApp const&) = delete;
 
-    ~WorkerApp() override = default;
+    ~WorkerApp() final = default;
 
 protected:
 
-    /**
-     * @see WorkerApp::create()
-     */
-    WorkerApp(int argc, char* argv[]);
-
-    /**
-     * @see Application::runImpl()
-     */
+    /// @see Application::runImpl()
     int runImpl() final;
 
 private:
+
+    /// @see WorkerApp::create()
+    WorkerApp(int argc, char* argv[]);
 
     /// Logger stream
     LOG_LOGGER _log;

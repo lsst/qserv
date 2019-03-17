@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -23,11 +22,11 @@
 // Class header
 #include "replica/RequestTracker.h"
 
-// System headers
-
 // Qserv headers
 #include "replica/Controller.h"
 #include "util/BlockPost.h"
+
+using namespace std;
 
 namespace lsst {
 namespace qserv {
@@ -37,7 +36,7 @@ namespace replica {
 //          RequestTrackerBase           //
 ///////////////////////////////////////////
 
-RequestTrackerBase::RequestTrackerBase(std::ostream& os,
+RequestTrackerBase::RequestTrackerBase(ostream& os,
                                        bool progressReport,
                                        bool errorReport)
     :   _numLaunched(0),
@@ -48,6 +47,7 @@ RequestTrackerBase::RequestTrackerBase(std::ostream& os,
         _errorReport(errorReport) {
 }
 
+
 void RequestTrackerBase::track() const {
 
     // Wait before all request are finished. Then analyze results
@@ -57,24 +57,25 @@ void RequestTrackerBase::track() const {
     while (_numFinished < _numLaunched) {
         blockPost.wait();
         if (_progressReport) {
-            _os << "RequestTracker::track()  "
+            _os << "RequestTracker::" << __func__ << "  "
                 << "launched: " << _numLaunched << ", "
                 << "finished: " << _numFinished << ", "
                 << "success: "  << _numSuccess
-                << std::endl;
+                << endl;
         }
     }
     if (_progressReport) {
-        _os << "RequestTracker::track()  "
+        _os << "RequestTracker::" << __func__ << "  "
             << "launched: " << _numLaunched << ", "
             << "finished: " << _numFinished << ", "
             << "success: "  << _numSuccess
-            << std::endl;
+            << endl;
     }
     if (_errorReport and (_numLaunched - _numSuccess)) {
         printErrorReport(_os);
     }
 }
+
 
 void RequestTrackerBase::cancel(bool propagateToServers) {
 
@@ -124,13 +125,15 @@ void RequestTrackerBase::cancel(bool propagateToServers) {
     }
 }
 
+
 void RequestTrackerBase::reset () {
     size_t const numOutstanding = RequestTrackerBase::_numLaunched -
                                   RequestTrackerBase::_numFinished;
     if (numOutstanding) {
-        throw std::logic_error(
-                "RequestTrackerBase::reset  the operation is not allowed due to " +
-                std::to_string(numOutstanding) + " outstanding requests");
+        throw logic_error(
+                "RequestTrackerBase::" + string(__func__) +
+                "  the operation is not allowed due to " +
+                to_string(numOutstanding) + " outstanding requests");
     }
     resetImpl();
 
@@ -139,17 +142,19 @@ void RequestTrackerBase::reset () {
     RequestTrackerBase::_numSuccess  = 0;
 }
 
+
 //////////////////////////////////////////
 //          AnyRequestTracker           //
 //////////////////////////////////////////
 
-AnyRequestTracker::AnyRequestTracker(std::ostream& os,
+AnyRequestTracker::AnyRequestTracker(ostream& os,
                                      bool progressReport,
                                      bool errorReport)
     :   RequestTrackerBase(os,
                            progressReport,
                            errorReport) {
 }
+
 
 void AnyRequestTracker::onFinish(Request::Ptr const& ptr) {
     RequestTrackerBase::_numFinished++;
@@ -158,18 +163,22 @@ void AnyRequestTracker::onFinish(Request::Ptr const& ptr) {
     }
 }
 
+
 void AnyRequestTracker::add(Request::Ptr const& ptr) {
     RequestTrackerBase::_numLaunched++;
     requests.push_back(ptr);
 }
 
-void AnyRequestTracker::printErrorReport(std::ostream& os) const {
+
+void AnyRequestTracker::printErrorReport(ostream& os) const {
     replica::reportRequestState(requests, os);
 }
 
-std::list<Request::Ptr> AnyRequestTracker::getRequests() const {
+
+list<Request::Ptr> AnyRequestTracker::getRequests() const {
     return requests;
 }
+
 
 void AnyRequestTracker::resetImpl() {
     requests.clear();

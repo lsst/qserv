@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -40,7 +39,7 @@ namespace replica {
  * Class AdminApp implements a Controller application for launching
  * worker management requests.
  */
-class AdminApp: public Application {
+class AdminApp : public Application {
 
 public:
 
@@ -69,17 +68,14 @@ public:
 
 protected:
 
-    /**
-     * @see AdminApp::create()
-     */
-    AdminApp(int argc, char* argv[]);
-
-    /**
-     * @see Application::runImpl()
-     */
+    /// @see Application::runImpl()
     int runImpl() final;
 
 private:
+
+    /// @see AdminApp::create()
+    AdminApp(int argc, char* argv[]);
+
 
     /// The name of an operation to execute
     std::string _operation;

@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -63,8 +62,7 @@ struct ReplicateJobResult {
   * Class ReplicateJob represents a tool which will increase the minimum
   * number of each chunk's replica up to the requested level.
   */
-class ReplicateJob
-    :   public Job  {
+class ReplicateJob : public Job  {
 
 public:
 
@@ -85,23 +83,35 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param databaseFamily - name of a database family
-     * @param numReplicas    - optional (if not 0) override for the minimum number of replicas
-     *                         for each chunk. If the parameter is set to 0 then the corresponding
-     *                         configuration option for the database family will be assumed.
-     * @param controller     - for launching jobs
-     * @param parentJobId    - (optional) identifier of a parent job
-     * @param onFinish       - (optional) callback function to be called upon job completion
-     * @param options        - (optional) job options
+     * @param databaseFamily
+     *   name of a database family
      *
-     * @return pointer to the created object
+     * @param numReplicas
+     *   optional (if not 0) override for the minimum number of replicas
+     *   for each chunk. If the parameter is set to 0 then the corresponding
+     *   configuration option for the database family will be assumed.
+     *
+     * @param controller
+     *   for launching jobs
+     *
+     * @param parentJobId
+     *   (optional) identifier of a parent job
+     *`
+     * @param onFinish
+     *   (optional) callback function to be called upon job completion
+     *
+     * @param options
+     *   (optional) job options
+     *
+     * @return
+     *   pointer to the created object
      */
     static Ptr create(std::string const& databaseFamily,
                       unsigned int numReplicas,
                       Controller::Ptr const& controller,
-                      std::string const& parentJobId = std::string(),
-                      CallbackType const& onFinish = nullptr,
-                      Job::Options const& options = defaultOptions());
+                      std::string const& parentJobId=std::string(),
+                      CallbackType const& onFinish=nullptr,
+                      Job::Options const& options=defaultOptions());
 
     // Default construction and copy semantics are prohibited
 
@@ -112,8 +122,9 @@ public:
     ~ReplicateJob() final = default;
 
     /**
-     * @return the minimum number of each chunk's replicas to be reached when
-     * the job successfully finishes.
+     * @return
+     *   the minimum number of each chunk's replicas to be reached when
+     *   the job successfully finishes.
      */
     unsigned int numReplicas() const { return _numReplicas; }
 
@@ -123,39 +134,44 @@ public:
     /**
      * Return the result of the operation.
      *
-     * IMPORTANT NOTES:
-     * - the method should be invoked only after the job has finished (primary
+     * @note
+     *   The method should be invoked only after the job has finished (primary
      *   status is set to Job::Status::FINISHED). Otherwise exception
      *   std::logic_error will be thrown
      *
-     * - the result will be extracted from the replica creation which have successfully
+     * @note
+     *   The result will be extracted from the replica creation which have successfully
      *   finished. Please, verify the primary and extended status of the object
      *   to ensure that all jobs have finished.
      *
-     * @return the data structure to be filled upon the completion of the job.
+     * @return
+     *   the data structure to be filled upon the completion of the job.
      *
-     * @throws std::logic_error - if the job didn't finished at a time
-     *                            when the method was called
+     * @throw std::logic_error
+     *   if the job didn't finished at a time when the method was called
      */
     ReplicateJobResult const& getReplicaData() const;
 
-    /**
-     * @see Job::extendedPersistentState()
-     */
+    /// @see Job::extendedPersistentState()
     std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
 
-    /**
-     * @see Job::persistentLogData()
-     */
+    /// @see Job::persistentLogData()
     std::list<std::pair<std::string,std::string>> persistentLogData() const final;
 
 protected:
 
-    /**
-     * Construct the job with the pointer to the services provider.
-     *
-     * @see ReplicateJob::create()
-     */
+    /// @see Job::startImpl()
+    void startImpl(util::Lock const& lock) final;
+
+    /// @see Job::cancelImpl()
+    void cancelImpl(util::Lock const& lock) final;
+
+    /// @see Job::notify()
+    void notify(util::Lock const& lock) final;
+
+private:
+
+    /// @see ReplicateJob::create()
     ReplicateJob(std::string const& databaseFamily,
                  unsigned int numReplicas,
                  Controller::Ptr const& controller,
@@ -164,32 +180,18 @@ protected:
                  Job::Options const& options);
 
     /**
-      * @see Job::startImpl()
-      */
-    void startImpl(util::Lock const& lock) final;
-
-    /**
-      * @see Job::startImpl()
-      */
-    void cancelImpl(util::Lock const& lock) final;
-
-    /**
-      * @see Job::notify()
-      */
-    void notify(util::Lock const& lock) final;
-
-    /**
      * The callback function to be invoked on a completion of the precursor job
      * which harvests chunk disposition across relevant worker nodes.
      */
-    void onPrecursorJobFinish();
+    void _onPrecursorJobFinish();
 
     /**
      * The callback function to be invoked on a completion of each replication job
      *
-     * @param job - pointer to a job
+     * @param job
+     *   pointer to a job
      */
-    void onCreateJobFinish(CreateReplicaJob::Ptr const& job);
+    void _onCreateJobFinish(CreateReplicaJob::Ptr const& job);
 
     /**
      * Submit a batch of the replica creation job
@@ -198,24 +200,25 @@ protected:
      * prevent excessive use of resources by controllers and to avoid
      * "hot spots" or under-utilization at workers.
      *
-     * @param lock    - the lock must be acquired by a caller of the method
-     * @param numJobs - desired number of jobs to submit
+     * @param lock
+     *   a lock on Job::_mtx must be acquired before calling this method
      *
-     * @retun actual number of submitted jobs
+     * @param numJobs
+     *   desired number of jobs to submit
+     *
+     * @retun
+     *   actual number of submitted jobs
      */
-    size_t launchNextJobs(util::Lock const& lock,
-                          size_t numJobs);
+    size_t _launchNextJobs(util::Lock const& lock,
+                           size_t numJobs);
 
 protected:
 
-    /// The name of the database family
-    std::string const _databaseFamily;
+    // Input parameters
 
-    /// The minimum number of replicas for each chunk
+    std::string  const _databaseFamily;
     unsigned int const _numReplicas;
-
-    /// Client-defined function to be called upon the completion of the job
-    CallbackType _onFinish;
+    CallbackType       _onFinish;       /// @note is reset when the job finishes
 
     /// The chained job to be completed first in order to figure out
     /// replica disposition.

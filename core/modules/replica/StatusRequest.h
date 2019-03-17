@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -191,8 +190,7 @@ struct StatusEchoRequestPolicy {
   * to allow further policy-based customization of specific requests.
   */
 template <typename POLICY>
-class StatusRequest
-    :   public StatusRequestBase {
+class StatusRequest : public StatusRequestBase {
 
 public:
 
@@ -216,8 +214,9 @@ public:
     }
 
     /**
-     * @return request-specific extended data reported upon a successful
-     * completion of the request
+     * @return
+     *   request-specific extended data reported upon a successful
+     *   completion of the request
      */
     typename POLICY::ResponseDataType const& responseData() const { return _responseData; }
 
@@ -275,11 +274,56 @@ public:
                 messenger));
     }
 
-private:
+protected:
+
+    /// @see Request::notify()
+    void notify(util::Lock const& lock) final {
+        notifyDefaultImpl<StatusRequest<POLICY>>(lock, _onFinish);
+    }
 
     /**
-     * Construct the request
+     * Initiate request-specific send
+     *
+     * This method implements the corresponding virtual method defined
+     * by the base class.
+     *
+     * @param lock
+     *   a lock on Request::_mtx must be acquired before calling this method
      */
+    void send(util::Lock const& lock) final {
+
+        auto self = shared_from_base<StatusRequest<POLICY>>();
+
+        std::shared_ptr<Messenger> const m = messenger();
+        m->send<typename POLICY::ResponseMessageType>(
+            worker(),
+            id(),
+            buffer(),
+            [self] (std::string const& id,
+                    bool success,
+                    typename POLICY::ResponseMessageType const& response) {
+
+                if (success) self->analyze(true, self->_parseResponse(response));
+                else         self->analyze(false);
+            }
+        );
+    }
+
+    /**
+     * Initiate request-specific operation with the persistent state
+     * service to store replica status.
+     *
+     * This method implements the corresponding virtual method defined
+     * by the base class.
+     */
+    void saveReplicaInfo() final {
+        auto const self = shared_from_base<StatusRequest<POLICY>>();
+        POLICY::saveReplicaInfo(self);
+    }
+
+private:
+
+    /// @see StatusRequest::create()
     StatusRequest(ServiceProvider::Ptr const& serviceProvider,
                   boost::asio::io_service& io_service,
                   char const* requestName,
@@ -300,53 +344,6 @@ private:
             _onFinish(onFinish) {
     }
 
-     /**
-     * @see Request::notify()
-     */
-    void notify(util::Lock const& lock) final {
-        notifyDefaultImpl<StatusRequest<POLICY>>(lock, _onFinish);
-    }
-
-    /**
-     * Initiate request-specific send
-     *
-     * This method implements the corresponding virtual method defined
-     * by the base class.
-     *
-     * @param lock
-     *   a lock on a mutex must be acquired before calling this method
-     */
-    void send(util::Lock const& lock) final {
-
-        auto self = shared_from_base<StatusRequest<POLICY>>();
-
-        std::shared_ptr<Messenger> const m = messenger();
-        m->send<typename POLICY::ResponseMessageType>(
-            worker(),
-            id(),
-            buffer(),
-            [self] (std::string const& id,
-                    bool success,
-                    typename POLICY::ResponseMessageType const& response) {
-
-                if (success) self->analyze(true, self->parseResponse(response));
-                else         self->analyze(false);
-            }
-        );
-    }
-
-    /**
-     * Initiate request-specific operation with the persistent state
-     * service to store replica status.
-     *
-     * This method implements the corresponding virtual method defined
-     * by the base class.
-     */
-    void saveReplicaInfo() final {
-        auto const self = shared_from_base<StatusRequest<POLICY>>();
-        POLICY::saveReplicaInfo(self);
-    }
-
     /**
      * Parse request-specific reply
      *
@@ -356,7 +353,7 @@ private:
      * @return
      *    status of the operation reported by a server
      */
-    proto::ReplicationStatus parseResponse(
+    proto::ReplicationStatus _parseResponse(
             typename POLICY::ResponseMessageType const& message) {
 
         // This lock must be acquired because the method is going to modify
@@ -364,7 +361,7 @@ private:
         // about the global state of the request (wether it's already finished
         // or not)
 
-        util::Lock lock(_mtx, context() + "parseResponse");
+        util::Lock lock(_mtx, context() + __func__);
 
         // Extract target request-specific parameters from the response if available
 
@@ -396,7 +393,7 @@ private:
         return message.status();
     }
 
-private:
+    // Input parameters
 
     CallbackType _onFinish;
 

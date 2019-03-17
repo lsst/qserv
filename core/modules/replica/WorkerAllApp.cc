@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -31,7 +30,6 @@
 #include "replica/WorkerRequestFactory.h"
 #include "replica/WorkerServer.h"
 #include "util/BlockPost.h"
-
 
 using namespace std;
 

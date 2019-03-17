@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -36,6 +35,7 @@
 #include "replica/Performance.h"
 #include "replica/ServiceProvider.h"
 
+using namespace std;
 namespace fs = boost::filesystem;
 
 namespace {
@@ -54,12 +54,12 @@ namespace replica {
 
 WorkerReplicationRequest::Ptr WorkerReplicationRequest::create(
                                         ServiceProvider::Ptr const& serviceProvider,
-                                        std::string const& worker,
-                                        std::string const& id,
-                                        int                priority,
-                                        std::string const& database,
-                                        unsigned int       chunk,
-                                        std::string const& sourceWorker) {
+                                        string const& worker,
+                                        string const& id,
+                                        int priority,
+                                        string const& database,
+                                        unsigned int chunk,
+                                        string const& sourceWorker) {
     return WorkerReplicationRequest::Ptr(
         new WorkerReplicationRequest(
                 serviceProvider,
@@ -71,14 +71,15 @@ WorkerReplicationRequest::Ptr WorkerReplicationRequest::create(
                 sourceWorker));
 }
 
+
 WorkerReplicationRequest::WorkerReplicationRequest(
                                 ServiceProvider::Ptr const& serviceProvider,
-                                std::string const& worker,
-                                std::string const& id,
-                                int                priority,
-                                std::string const& database,
-                                unsigned int       chunk,
-                                std::string const& sourceWorker)
+                                string const& worker,
+                                string const& id,
+                                int priority,
+                                string const& database,
+                                unsigned int chunk,
+                                string const& sourceWorker)
     :   WorkerRequest (
             serviceProvider,
             worker,
@@ -93,11 +94,12 @@ WorkerReplicationRequest::WorkerReplicationRequest(
     serviceProvider->assertWorkersAreDifferent(worker, sourceWorker);
 }
 
+
 void WorkerReplicationRequest::setInfo(proto::ReplicationResponseReplicate& response) const {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "setInfo");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
-    util::Lock lock(_mtx, context() + "setInfo");
+    util::Lock lock(_mtx, context() + __func__);
 
     // Return the performance of the target request
 
@@ -124,7 +126,7 @@ void WorkerReplicationRequest::setInfo(proto::ReplicationResponseReplicate& resp
 
 bool WorkerReplicationRequest::execute() {
 
-   LOGS(_log, LOG_LVL_DEBUG, context() << "execute"
+   LOGS(_log, LOG_LVL_DEBUG, context() << __func__
          << "  sourceWorker: " << sourceWorker()
          << "  db: "           << database()
          << "  chunk: "        << chunk());
@@ -143,18 +145,19 @@ bool WorkerReplicationRequest::execute() {
     return complete;
 }
 
+
 ////////////////////////////////////////////////////////////////////////
 ///////////////////// WorkerReplicationRequestPOSIX ////////////////////
 ////////////////////////////////////////////////////////////////////////
 
 WorkerReplicationRequestPOSIX::Ptr WorkerReplicationRequestPOSIX::create (
                                     ServiceProvider::Ptr const& serviceProvider,
-                                    std::string const& worker,
-                                    std::string const& id,
-                                    int                priority,
-                                    std::string const& database,
-                                    unsigned int       chunk,
-                                    std::string const& sourceWorker) {
+                                    string const& worker,
+                                    string const& id,
+                                    int priority,
+                                    string const& database,
+                                    unsigned int chunk,
+                                    string const& sourceWorker) {
     return WorkerReplicationRequestPOSIX::Ptr(
         new WorkerReplicationRequestPOSIX(
                 serviceProvider,
@@ -166,14 +169,15 @@ WorkerReplicationRequestPOSIX::Ptr WorkerReplicationRequestPOSIX::create (
                 sourceWorker));
 }
 
+
 WorkerReplicationRequestPOSIX::WorkerReplicationRequestPOSIX(
                                     ServiceProvider::Ptr const& serviceProvider,
-                                    std::string const& worker,
-                                    std::string const& id,
-                                    int                priority,
-                                    std::string const& database,
-                                    unsigned int       chunk,
-                                    std::string const& sourceWorker)
+                                    string const& worker,
+                                    string const& id,
+                                    int priority,
+                                    string const& database,
+                                    unsigned int chunk,
+                                    string const& sourceWorker)
     :   WorkerReplicationRequest(
                 serviceProvider,
                 worker,
@@ -184,14 +188,15 @@ WorkerReplicationRequestPOSIX::WorkerReplicationRequestPOSIX(
                 sourceWorker) {
 }
 
+
 bool WorkerReplicationRequestPOSIX::execute () {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "execute"
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
          << "  sourceWorker: " << sourceWorker()
          << "  database: "     << database()
          << "  chunk: "        << chunk());
 
-    util::Lock lock(_mtx, context() + "execute");
+    util::Lock lock(_mtx, context() + __func__);
 
     // Obtain the list of files to be migrated
     //
@@ -217,18 +222,17 @@ bool WorkerReplicationRequestPOSIX::execute () {
     fs::path const inDir  = fs::path(inWorkerInfo.dataDir)  / database();
     fs::path const outDir = fs::path(outWorkerInfo.dataDir) / database();
 
-    std::vector<std::string> const files =
-        FileUtils::partitionedFiles(databaseInfo, chunk());
+    vector<string> const files = FileUtils::partitionedFiles(databaseInfo, chunk());
 
-    std::vector<fs::path> inFiles;
-    std::vector<fs::path> tmpFiles;
-    std::vector<fs::path> outFiles;
+    vector<fs::path> inFiles;
+    vector<fs::path> tmpFiles;
+    vector<fs::path> outFiles;
 
-    std::map<std::string, fs::path> file2inFile;
-    std::map<std::string, fs::path> file2tmpFile;
-    std::map<std::string, fs::path> file2outFile;
+    map<string, fs::path> file2inFile;
+    map<string, fs::path> file2tmpFile;
+    map<string, fs::path> file2outFile;
 
-    std::map<fs::path,std::time_t> inFile2mtime;
+    map<fs::path,time_t> inFile2mtime;
 
     for (auto&& file: files) {
 
@@ -252,7 +256,7 @@ bool WorkerReplicationRequestPOSIX::execute () {
     WorkerRequest::ErrorContext errorContext;
     boost::system::error_code   ec;
     {
-        util::Lock dataFolderLock(_mtxDataFolderOperations, context() + "execute:1");
+        util::Lock dataFolderLock(_mtxDataFolderOperations, context() + string(__func__) + ":1");
 
         // Check for a presence of input files and calculate space requirement
 
@@ -380,7 +384,7 @@ bool WorkerReplicationRequestPOSIX::execute () {
     // acquiring the directory lock to guarantee a consistent view onto the folder.
 
     {
-        util::Lock dataFolderLock(_mtxDataFolderOperations, context() + "execute:2");
+        util::Lock dataFolderLock(_mtxDataFolderOperations, context() + string(__func__) + ":2");
 
         // ATTENTION: as per ISO/IEC 9945 the file rename operation will
         //            remove empty files. Not sure if this should be treated
@@ -419,18 +423,19 @@ bool WorkerReplicationRequestPOSIX::execute () {
     return true;
 }
 
+
 /////////////////////////////////////////////////////////////////////
 ///////////////////// WorkerReplicationRequestFS ////////////////////
 /////////////////////////////////////////////////////////////////////
 
 WorkerReplicationRequestFS::Ptr WorkerReplicationRequestFS::create (
                                             ServiceProvider::Ptr const& serviceProvider,
-                                            std::string const& worker,
-                                            std::string const& id,
-                                            int                priority,
-                                            std::string const& database,
-                                            unsigned int       chunk,
-                                            std::string const& sourceWorker) {
+                                            string const& worker,
+                                            string const& id,
+                                            int priority,
+                                            string const& database,
+                                            unsigned int chunk,
+                                            string const& sourceWorker) {
     return WorkerReplicationRequestFS::Ptr(
         new WorkerReplicationRequestFS(
                 serviceProvider,
@@ -442,14 +447,15 @@ WorkerReplicationRequestFS::Ptr WorkerReplicationRequestFS::create (
                 sourceWorker));
 }
 
+
 WorkerReplicationRequestFS::WorkerReplicationRequestFS(
                                     ServiceProvider::Ptr const& serviceProvider,
-                                    std::string const& worker,
-                                    std::string const& id,
-                                    int                priority,
-                                    std::string const& database,
-                                    unsigned int       chunk,
-                                    std::string const& sourceWorker)
+                                    string const& worker,
+                                    string const& id,
+                                    int priority,
+                                    string const& database,
+                                    unsigned int chunk,
+                                    string const& sourceWorker)
     :   WorkerReplicationRequest(
                 serviceProvider,
                 worker,
@@ -468,19 +474,21 @@ WorkerReplicationRequestFS::WorkerReplicationRequestFS(
         _bufSize(serviceProvider->config()->workerFsBufferSizeBytes()) {
 }
 
+
 WorkerReplicationRequestFS::~WorkerReplicationRequestFS() {
-    util::Lock lock(_mtx, context() + "destructor");
-    releaseResources(lock);
+    util::Lock lock(_mtx, context() + __func__);
+    _releaseResources(lock);
 }
+
 
 bool WorkerReplicationRequestFS::execute () {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "execute"
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
          << "  sourceWorker: " << sourceWorker()
          << "  database: "     << database()
          << "  chunk: "        << chunk());
 
-    util::Lock lock(_mtx, context() + "execute");
+    util::Lock lock(_mtx, context() + __func__);
 
     // Abort the operation right away if that's the case
 
@@ -517,8 +525,8 @@ bool WorkerReplicationRequestFS::execute () {
 
         fs::path const outDir = fs::path(_outWorkerInfo.dataDir) / database();
 
-        std::vector<fs::path> tmpFiles;
-        std::vector<fs::path> outFiles;
+        vector<fs::path> tmpFiles;
+        vector<fs::path> outFiles;
 
         for (auto&& file: _files) {
 
@@ -542,12 +550,12 @@ bool WorkerReplicationRequestFS::execute () {
 
         boost::system::error_code ec;
         {
-            util::Lock dataFolderLock(_mtxDataFolderOperations, context() + "execute");
+            util::Lock dataFolderLock(_mtxDataFolderOperations, context() + __func__);
 
             // Check for a presence of input files and calculate space requirement
 
-            uintmax_t totalBytes = 0;                   // the total number of bytes in all input files to be moved
-            std::map<std::string, uintmax_t> file2size; // the number of bytes in each file
+            uintmax_t totalBytes = 0;           // the total number of bytes in all input files to be moved
+            map<string, uintmax_t> file2size;   // the number of bytes in each file
 
             for (auto&& file: _files) {
 
@@ -650,16 +658,16 @@ bool WorkerReplicationRequestFS::execute () {
 
                 // Create a file of size 0
 
-                std::FILE* tmpFilePtr = std::fopen(tmpFile.string().c_str(), "wb");
+                FILE* tmpFilePtr = fopen(tmpFile.string().c_str(), "wb");
                 errorContext = errorContext
                     or reportErrorIf(
                             not tmpFilePtr,
                             ExtendedCompletionStatus::EXT_STATUS_FILE_CREATE,
                             "failed to open/create temporary file: " + tmpFile.string() +
-                            ", error: " + std::strerror(errno));
+                            ", error: " + strerror(errno));
                 if (tmpFilePtr) {
-                    std::fflush(tmpFilePtr);
-                    std::fclose(tmpFilePtr);
+                    fflush(tmpFilePtr);
+                    fclose(tmpFilePtr);
                 }
 
                 // Resize the file (will be filled with \0)
@@ -680,14 +688,15 @@ bool WorkerReplicationRequestFS::execute () {
         // Allocate the record buffer
         _buf = new uint8_t[_bufSize];
         if (not _buf) {
-            throw std::runtime_error(
-                            "WorkerReplicationRequestFS::execute()  buffer allocation failed");
+            throw runtime_error(
+                    "WorkerReplicationRequestFS::" + string(__func__) +
+                    "  buffer allocation failed");
         }
 
         // Setup the iterator for the name of the very first file to be copied
         _fileItr = _files.begin();
 
-        if (not openFiles(lock)) return true;
+        if (not _openFiles(lock)) return true;
     }
 
     // Copy the next record from the currently open remote file
@@ -704,7 +713,7 @@ bool WorkerReplicationRequestFS::execute () {
         try {
             num = _inFilePtr->read(_buf, _bufSize);
             if (num) {
-                if (num == std::fwrite(_buf, sizeof(uint8_t), num, _tmpFilePtr)) {
+                if (num == fwrite(_buf, sizeof(uint8_t), num, _tmpFilePtr)) {
 
                     // Update the descriptor (the number of bytes copied so far
                     // and the control sum)
@@ -715,7 +724,7 @@ bool WorkerReplicationRequestFS::execute () {
 
                     // Keep updating this stats while copying the files
                     _file2descr[*_fileItr].endTransferTime = PerformanceUtils::now();
-                    updateInfo(lock);
+                    _updateInfo(lock);
 
                     // Keep copying the same file
                     return false;
@@ -725,7 +734,7 @@ bool WorkerReplicationRequestFS::execute () {
                         true,
                         ExtendedCompletionStatus::EXT_STATUS_FILE_WRITE,
                         "failed to write into temporary file: " + _file2descr[*_fileItr].tmpFile.string() +
-                        ", error: " + std::strerror(errno));
+                        ", error: " + strerror(errno));
             }
 
         } catch (FileClientError const& ex) {
@@ -750,36 +759,38 @@ bool WorkerReplicationRequestFS::execute () {
 
         if (errorContext.failed) {
             setStatus(lock, STATUS_FAILED, errorContext.extendedStatus);
-            releaseResources(lock);
+            _releaseResources(lock);
             return true;
         }
+
         // Flush and close the current file
 
-        std::fflush(_tmpFilePtr);
-        std::fclose(_tmpFilePtr);
+        fflush(_tmpFilePtr);
+        fclose(_tmpFilePtr);
         _tmpFilePtr = 0;
 
         // Keep updating this stats after finishing to copy each file
         _file2descr[*_fileItr].endTransferTime = PerformanceUtils::now();
-        updateInfo(lock);
+        _updateInfo(lock);
 
         // Move the iterator to the name of the next file to be copied
         ++_fileItr;
         if (_files.end() != _fileItr) {
-            if (not openFiles(lock)) {
-                releaseResources(lock);
+            if (not _openFiles(lock)) {
+                _releaseResources(lock);
                 return true;
             }
         }
     }
 
-    // Finalize the operation, deallocate resources, etc.
-    return finalize(lock);
+    // Finalize the operation, de-allocate resources, etc.
+    return _finalize(lock);
 }
 
-bool WorkerReplicationRequestFS::openFiles(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "openFiles"
+bool WorkerReplicationRequestFS::_openFiles(util::Lock const& lock) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
          << "  sourceWorker: " << sourceWorker()
          << "  database: "     << database()
          << "  chunk: "        << chunk()
@@ -810,40 +821,41 @@ bool WorkerReplicationRequestFS::openFiles(util::Lock const& lock) {
 
     fs::path const tmpFile = _file2descr[*_fileItr].tmpFile;
 
-    _tmpFilePtr = std::fopen(tmpFile.string().c_str(), "wb");
+    _tmpFilePtr = fopen(tmpFile.string().c_str(), "wb");
     errorContext = errorContext
         or reportErrorIf(
             not _tmpFilePtr,
             ExtendedCompletionStatus::EXT_STATUS_FILE_OPEN,
             "failed to open temporary file: " + tmpFile.string() +
-            ", error: " + std::strerror(errno));
+            ", error: " + strerror(errno));
     if (errorContext.failed) {
         setStatus(lock, STATUS_FAILED, errorContext.extendedStatus);
         return false;
     }
-    std::rewind(_tmpFilePtr);
+    rewind(_tmpFilePtr);
 
     _file2descr[*_fileItr].beginTransferTime = PerformanceUtils::now();
 
     return true;
 }
 
-bool WorkerReplicationRequestFS::finalize(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "finalize"
+bool WorkerReplicationRequestFS::_finalize(util::Lock const& lock) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
          << "  sourceWorker: " << sourceWorker()
          << "  database: "     << database()
          << "  chunk: "        << chunk());
 
     // Unconditionally regardless of the completion of the file renaming attempt
-    releaseResources(lock);
+    _releaseResources(lock);
 
     // Rename temporary files into the canonical ones
     // Note that this operation changes the directory namespace in a way
     // which may affect other users (like replica lookup operations, etc.). Hence we're
     // acquiring the directory lock to guarantee a consistent view onto the folder.
 
-    util::Lock dataFolderLock(_mtxDataFolderOperations, context() + "finalize");
+    util::Lock dataFolderLock(_mtxDataFolderOperations, context() + __func__);
 
     // ATTENTION: as per ISO/IEC 9945 the file rename operation will
     //            remove empty files. Not sure if this should be treated
@@ -880,7 +892,8 @@ bool WorkerReplicationRequestFS::finalize(util::Lock const& lock) {
     return true;
 }
 
-void WorkerReplicationRequestFS::updateInfo(util::Lock const& lock) {
+
+void WorkerReplicationRequestFS::_updateInfo(util::Lock const& lock) {
 
     size_t totalInSizeBytes  = 0;
     size_t totalOutSizeBytes = 0;
@@ -892,7 +905,7 @@ void WorkerReplicationRequestFS::updateInfo(util::Lock const& lock) {
                 file,
                 _file2descr[file].outSizeBytes,
                 _file2descr[file].mtime,
-                std::to_string(_file2descr[file].cs),
+                to_string(_file2descr[file].cs),
                 _file2descr[file].beginTransferTime,
                 _file2descr[file].endTransferTime,
                 _file2descr[file].inSizeBytes
@@ -918,16 +931,16 @@ void WorkerReplicationRequestFS::updateInfo(util::Lock const& lock) {
         fileInfoCollection);
 }
 
-void
-WorkerReplicationRequestFS::releaseResources(util::Lock const& lock) {
+
+void WorkerReplicationRequestFS::_releaseResources(util::Lock const& lock) {
 
     // Drop a connection to the remote server
     _inFilePtr.reset();
 
     // Close the output file
     if (_tmpFilePtr) {
-        std::fflush(_tmpFilePtr);
-        std::fclose(_tmpFilePtr);
+        fflush(_tmpFilePtr);
+        fclose(_tmpFilePtr);
         _tmpFilePtr = nullptr;
     }
 

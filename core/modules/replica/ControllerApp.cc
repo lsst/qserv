@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -439,7 +438,9 @@ int ControllerApp::runImpl() {
                 not _doNotTrackRequest);
 
         } else {
-            throw logic_error("The application doesn't handle request: " + _affectedRequest);
+            throw logic_error(
+                    "ControllerApp::" + string(__func__) + "  unsupported request: " +
+                    _affectedRequest);
             return 1;
         }
 
@@ -500,7 +501,9 @@ int ControllerApp::runImpl() {
                 },
                 not _doNotTrackRequest);
         } else {
-            throw logic_error("The application doesn't handle request: " + _affectedRequest);
+            throw logic_error(
+                    "ControllerApp::" + string(__func__) + "  unsupported request: " +
+                    _affectedRequest);
             return 1;
         }
 
@@ -544,7 +547,9 @@ int ControllerApp::runImpl() {
             });
 
     } else {
-        throw logic_error("The application doesn't handle request: " + _request);
+            throw logic_error(
+                    "ControllerApp::" + string(__func__) + "  unsupported request: " +
+                    _affectedRequest);
         return 1;
     }
     

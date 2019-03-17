@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -33,6 +32,7 @@
 #include "replica/QservMgtServices.h"
 #include "replica/ServiceProvider.h"
 
+using namespace std;
 
 namespace {
 
@@ -54,15 +54,15 @@ Job::Options const& QservGetReplicasJob::defaultOptions() {
 }
 
 
-std::string QservGetReplicasJob::typeName() { return "QservGetReplicasJob"; }
+string QservGetReplicasJob::typeName() { return "QservGetReplicasJob"; }
 
 
 QservGetReplicasJob::Ptr QservGetReplicasJob::create(
-                                    std::string const& databaseFamily,
+                                    string const& databaseFamily,
                                     bool inUseOnly,
                                     bool allWorkers,
                                     Controller::Ptr const& controller,
-                                    std::string const& parentJobId,
+                                    string const& parentJobId,
                                     CallbackType const& onFinish,
                                     Job::Options const& options) {
     return QservGetReplicasJob::Ptr(
@@ -75,12 +75,13 @@ QservGetReplicasJob::Ptr QservGetReplicasJob::create(
                                 options));
 }
 
+
 QservGetReplicasJob::QservGetReplicasJob(
-                       std::string const& databaseFamily,
+                       string const& databaseFamily,
                        bool inUseOnly,
                        bool allWorkers,
                        Controller::Ptr const& controller,
-                       std::string const& parentJobId,
+                       string const& parentJobId,
                        CallbackType const& onFinish,
                        Job::Options const& options)
     :   Job(controller,
@@ -96,18 +97,21 @@ QservGetReplicasJob::QservGetReplicasJob(
         _numSuccess(0) {
 }
 
+
 QservGetReplicasJobResult const& QservGetReplicasJob::getReplicaData() const {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "getReplicaData");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (state() == State::FINISHED) return _replicaData;
 
-    throw std::logic_error(
-        "QservGetReplicasJob::getReplicaData  the method can't be called while the job hasn't finished");
+    throw logic_error(
+            "QservGetReplicasJob::" + string(__func__) + "  the method can't be called while "
+            "the job hasn't finished");
 }
 
-std::list<std::pair<std::string,std::string>> QservGetReplicasJob::extendedPersistentState() const {
-    std::list<std::pair<std::string,std::string>> result;
+
+list<pair<string,string>> QservGetReplicasJob::extendedPersistentState() const {
+    list<pair<string,string>> result;
     result.emplace_back("database_family", databaseFamily());
     result.emplace_back("in_use_only",     inUseOnly()  ? "1" : "0");
     result.emplace_back("all_workers",     allWorkers() ? "1" : "0");
@@ -115,9 +119,9 @@ std::list<std::pair<std::string,std::string>> QservGetReplicasJob::extendedPersi
 }
 
 
-std::list<std::pair<std::string,std::string>> QservGetReplicasJob::persistentLogData() const {
+list<pair<string,string>> QservGetReplicasJob::persistentLogData() const {
 
-    std::list<std::pair<std::string,std::string>> result;
+    list<pair<string,string>> result;
 
     auto&& replicaData = getReplicaData();
 
@@ -138,7 +142,7 @@ std::list<std::pair<std::string,std::string>> QservGetReplicasJob::persistentLog
     for (auto&& itr: replicaData.replicas) {
         auto&& worker        = itr.first;
         auto&& qservReplicas = itr.second;
-        std::string const val = "worker=" + worker + " chunks=" + std::to_string(qservReplicas.size());
+        string const val = "worker=" + worker + " chunks=" + to_string(qservReplicas.size());
         result.emplace_back("worker-stats", val);
     }
     return result;
@@ -147,7 +151,7 @@ std::list<std::pair<std::string,std::string>> QservGetReplicasJob::persistentLog
 
 void QservGetReplicasJob::startImpl(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     auto self = shared_from_base<QservGetReplicasJob>();
 
@@ -163,13 +167,13 @@ void QservGetReplicasJob::startImpl(util::Lock const& lock) {
             inUseOnly(),
             id(),
             [self] (GetReplicasQservMgtRequest::Ptr const& request) {
-                self->onRequestFinish(request);
+                self->_onRequestFinish(request);
             }
         );
         if (not request) {
 
-            LOGS(_log, LOG_LVL_ERROR, context() << "startImpl  "
-                 << "failed to submit GetReplicasQservMgtRequest to Qserv worker: " << worker);
+            LOGS(_log, LOG_LVL_ERROR, context() << __func__
+                 << "  failed to submit GetReplicasQservMgtRequest to Qserv worker: " << worker);
 
             setState(lock, State::FINISHED, ExtendedState::FAILED);
             return;
@@ -184,9 +188,10 @@ void QservGetReplicasJob::startImpl(util::Lock const& lock) {
     else                  setState(lock, State::IN_PROGRESS);
 }
 
+
 void QservGetReplicasJob::cancelImpl(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     for (auto&& ptr: _requests) {
         ptr->cancel();
@@ -198,17 +203,17 @@ void QservGetReplicasJob::cancelImpl(util::Lock const& lock) {
     _numSuccess  = 0;
 }
 
+
 void QservGetReplicasJob::notify(util::Lock const& lock) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
-
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     notifyDefaultImpl<QservGetReplicasJob>(lock, _onFinish);
 }
 
-void QservGetReplicasJob::onRequestFinish(GetReplicasQservMgtRequest::Ptr const& request) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context()
-         << "onRequestFinish  databaseFamily=" << request->databaseFamily()
+void QservGetReplicasJob::_onRequestFinish(GetReplicasQservMgtRequest::Ptr const& request) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
+         << "  databaseFamily=" << request->databaseFamily()
          << " worker=" << request->worker()
          << " state=" << request->state2string());
 
@@ -220,7 +225,7 @@ void QservGetReplicasJob::onRequestFinish(GetReplicasQservMgtRequest::Ptr const&
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + "onRequestFinish");
+    util::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return;
 
@@ -243,8 +248,8 @@ void QservGetReplicasJob::onRequestFinish(GetReplicasQservMgtRequest::Ptr const&
         _replicaData.workers[request->worker()] = true;
     }
 
-    LOGS(_log, LOG_LVL_DEBUG, context()
-         << "onRequestFinish  databaseFamily=" << request->databaseFamily()
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
+         << "  databaseFamily=" << request->databaseFamily()
          << " worker=" << request->worker()
          << " _numLaunched=" << _numLaunched
          << " _numFinished=" << _numFinished

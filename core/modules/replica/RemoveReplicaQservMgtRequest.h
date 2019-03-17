@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -46,8 +45,7 @@ namespace replica {
   * Class RemoveReplicaQservMgtRequest implements a request notifying Qserv workers
   * on new chunks added to the database.
   */
-class RemoveReplicaQservMgtRequest
-    :   public QservMgtRequest  {
+class RemoveReplicaQservMgtRequest : public QservMgtRequest {
 
 public:
 
@@ -70,21 +68,33 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider - reference to a provider of services
-     * @param worker          - the name of a worker
-     * @param chunk           - the chunk number
-     * @param databases       - the names of databases
-     * @param force           - force the removal even if the chunk is in use
-     * @param onFinish        - callback function to be called upon request completion
+     * @param serviceProvider
+     *   reference to a provider of services
      *
-     * @return pointer to the created object
+     * @param worker
+     *   the name of a worker
+     *
+     * @param chunk
+     *   the chunk whose replicas will be disabled at the Qserv worker
+     *
+     * @param databases
+     *   the names of databases
+     *
+     * @param force
+     *   force the removal even if the chunk is in use
+     * 
+     * @param onFinish
+     *   callback function to be called upon request completion
+     *
+     * @return
+     *   pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& worker,
                       unsigned int chunk,
                       std::vector<std::string> const& databases,
-                      bool force = false,
-                      CallbackType const& onFinish = nullptr);
+                      bool force=false,
+                      CallbackType const& onFinish=nullptr);
 
     /// @return number of a chunk
     unsigned int chunk() const { return _chunk; }
@@ -95,18 +105,23 @@ public:
     /// @return flag indicating of the chunk removal should be forced even if in use
     bool force() const { return _force; }
 
-    /**
-     * @see QservMgtRequest::extendedPersistentState()
-     */
+    /// @see QservMgtRequest::extendedPersistentState()
     std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
+
+protected:
+
+    /// @see QservMgtRequest::startImpl
+    void startImpl(util::Lock const& lock) final;
+
+    /// @see QservMgtRequest::finishImpl
+    void finishImpl(util::Lock const& lock) final;
+
+    /// @see QservMgtRequest::notify
+    void notify(util::Lock const& lock) final;
 
 private:
 
-    /**
-     * Construct the request with the pointer to the services provider.
-     *
-     * @see RemoveReplicaQservMgtRequest::create()
-     */
+    /// @see RemoveReplicaQservMgtRequest::create()
     RemoveReplicaQservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
                                  std::string const& worker,
                                  unsigned int chunk,
@@ -114,31 +129,12 @@ private:
                                  bool force,
                                  CallbackType const& onFinish);
 
-    /**
-      * @see QservMgtRequest::startImpl
-      */
-    void startImpl(util::Lock const& lock) final;
 
-    /**
-      * @see QservMgtRequest::finishImpl
-      */
-    void finishImpl(util::Lock const& lock) final;
+    // Input parameters
 
-    /**
-      * @see QservMgtRequest::notify
-      */
-    void notify(util::Lock const& lock) final;
-
-private:
-
-    /// The number of a chunk
-    unsigned int const _chunk;
-
-    /// The names of databases
+    unsigned int             const _chunk;
     std::vector<std::string> const _databases;
-
-    /// Force the removal even if the chunk is in use
-    bool const _force;
+    bool                     const _force;
 
     /// The callback function for sending a notification upon request completion
     CallbackType _onFinish;

@@ -1,7 +1,5 @@
-// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -84,25 +82,26 @@ public:
     /**
      * Update object state with counters from the protocol buffer object
      *
-     * @param workerPerformanceInfo - counters to be carried over into an internal state
+     * @param workerPerformanceInfo
+     *   counters to be carried over into an internal state
      */
     void update(proto::ReplicationPerformance const& workerPerformanceInfo);
 
     /**
      * Update the Controller's 'start' time
      *
-     * @return the previous state of the counter
+     * @return
+     *   the previous state of the counter
      */
     uint64_t setUpdateStart();
 
     /**
      * Update the Controller's 'finish' time
      *
-     * @return the previous state of the counter
+     * @return
+     *   the previous state of the counter
      */
     uint64_t setUpdateFinish();
-
-public:
 
     /// Created by the Controller
     uint64_t c_create_time;
@@ -153,26 +152,27 @@ public:
     /**
      * Update the 'start' time
      *
-     * @return the previous state of the counter
+     * @return
+     *   the previous state of the counter
      */
     uint64_t setUpdateStart();
 
     /**
      * Update the 'finish' time
      *
-     * @return the previous state of the counter
+     * @return
+     *   the previous state of the counter
      */
     uint64_t setUpdateFinish();
 
     /**
-     * @return a Protobuf object
+     * @return
+     *   a Protobuf object
      *
      * OWNERSHIP TRANSFER NOTE: this method allocates a new object and
      * returns a pointer along with its ownership.
      */
     proto::ReplicationPerformance* info() const;
-
-public:
 
     /// Received by a worker service
     uint64_t receive_time;

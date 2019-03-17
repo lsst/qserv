@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -47,8 +46,7 @@ class ProtocolBuffer;
  * to and from worker services. It provides connection multiplexing and automatic
  * reconnects.
  */
-class Messenger
-    :   public std::enable_shared_from_this<Messenger> {
+class Messenger : public std::enable_shared_from_this<Messenger> {
 
 public:
 
@@ -70,12 +68,16 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider  - a host of services for various communications
-     * @param io_service       - the I/O service for communication. The lifespan of
-     *                           the object must exceed the one of this instance
-     *                           of the Messenger.
+     * @param serviceProvider
+     *   a host of services for various communications
      *
-     * @return pointer to the created object
+     * @param io_service
+     *   the I/O service for communication. The lifespan of
+     *   the object must exceed the one of this instance
+     *   of the Messenger.
+     *
+     * @return
+     *   pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       boost::asio::io_service& io_service);
@@ -93,11 +95,18 @@ public:
      * the worker name is not valid, and std::logic_error if the Messenger already
      * has another transaction registered with the same transaction 'id'.
      * 
-     * @param worker            - the name of a worker
-     * @param id                - a unique identifier of a request
-     * @param requestBufferPtr  - a request serialized into a network buffer
-     * @param onFinish          - an asynchronous callback function called upon a completion
-     *                            or failure of the operation
+     * @param worker
+     *   the name of a worker
+     *
+     * @param id
+     *   a unique identifier of a request
+     *
+     * @param requestBufferPtr
+     *   a request serialized into a network buffer
+     *
+     * @param onFinish
+     *   an asynchronous callback function called upon a completion
+     *   or failure of the operation
      */
     template <class RESPONSE_TYPE>
     void send(std::string  const& worker,
@@ -108,9 +117,9 @@ public:
                                  RESPONSE_TYPE const&)> onFinish) {
 
         // Forward the request to the corresponding worker
-        connector(worker)->send<RESPONSE_TYPE>(id,
-                                               requestBufferPtr,
-                                               onFinish);
+        _connector(worker)->send<RESPONSE_TYPE>(id,
+                                                requestBufferPtr,
+                                                onFinish);
     }
 
     /**
@@ -123,10 +132,14 @@ public:
      * thrown. The method may also throw std::logic_error if the Messenger
      * doesn't have a transaction registered with the specified transaction 'id'.
      *
-     * @param worker - the name of a worker
-     * @param id     - a unique identifier of a request
+     * @param worker
+     *   the name of a worker
      *
-     * @return the completion status of the operation
+     * @param id
+     *   a unique identifier of a request
+     *
+     * @return
+     *   the completion status of the operation
      */
     void cancel(std::string const& worker,
                 std::string const& id);
@@ -134,8 +147,11 @@ public:
     /**
      * Return 'true' if the specified request is known to the Messenger
      *
-     * @param worker - the name of a worker
-     * @param id     - a unique identifier of a request
+     * @param worker
+     *   the name of a worker
+     *
+     * @param id
+     *   a unique identifier of a request
      */
     bool exists(std::string const& worker,
                 std::string const& id) const;
@@ -145,10 +161,13 @@ private:
     /**
      * The constructor
      *
-     * @param serviceProvider  - a host of services for various communications
-     * @param io_service       - the I/O service for communication. The lifespan of
-     *                           the object must exceed the one of this instance
-     *                           of the Messenger.
+     * @param serviceProvider
+     *   a host of services for various communications
+     *
+     * @param io_service
+     *   the I/O service for communication. The lifespan of
+     *   the object must exceed the one of this instance
+     *   of the Messenger.
      */
     Messenger(ServiceProvider::Ptr const& serviceProvider,
               boost::asio::io_service& io_service);
@@ -156,17 +175,20 @@ private:
     /**
      * Locate and return a connector for the specified worker
      *
-     * @param - the name of a worker
-     * @return a pointer to the connector
+     * @param
+     *   the name of a worker
      *
-     * @throws std::invalid_argument if the worker is unknown.
+     * @return
+     *   a pointer to the connector
+     *
+     * @throw std::invalid_argument
+     *   if the worker is unknown.
      */
-    MessengerConnector::Ptr const& connector(std::string const& worker) const;
+    MessengerConnector::Ptr const& _connector(std::string const& worker) const;
 
-private:
 
     /// Connection providers for individual workers
-    std::map<std::string, MessengerConnector::Ptr> _connector;
+    std::map<std::string, MessengerConnector::Ptr> _workerConnector;
 };
 
 }}} // namespace lsst::qserv::replica

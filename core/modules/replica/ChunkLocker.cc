@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -26,9 +25,9 @@
 // System headers
 #include <algorithm>
 #include <stdexcept>
-#include <tuple>        // std::tie
+#include <tuple>
 
-// Qserv headers
+using namespace std;
 
 namespace lsst {
 namespace qserv {
@@ -39,33 +38,37 @@ namespace replica {
 ///////////////////////////////////////
 
 bool Chunk::operator==(Chunk const& rhs) const {
-    return  std::tie(databaseFamily, number) ==
-            std::tie(rhs.databaseFamily, rhs.number);
+    return  tie(databaseFamily, number) ==
+            tie(rhs.databaseFamily, rhs.number);
 }
+
 
 bool Chunk::operator<(Chunk const& rhs) const {
-    return  std::tie(databaseFamily, number) <
-            std::tie(rhs.databaseFamily, rhs.number);
+    return  tie(databaseFamily, number) <
+            tie(rhs.databaseFamily, rhs.number);
 }
 
-std::ostream& operator<<(std::ostream& os, Chunk const& chunk) {
+
+ostream& operator<<(ostream& os, Chunk const& chunk) {
     os  << "Chunk (" << chunk.databaseFamily << ":" << chunk.number << ")";
     return os;
 }
+
 
 /////////////////////////////////////////////
 //                ChunkLocker              //
 /////////////////////////////////////////////
 
 bool ChunkLocker::isLocked(Chunk const& chunk) const {
-    util::Lock mLock(_mtx, "ChunkLocker::isLocked(chunk)");
+    util::Lock mLock(_mtx, "ChunkLocker::" + string(__func__) + "(chunk)");
     return _chunk2owner.count(chunk);
 }
 
-bool ChunkLocker::isLocked(Chunk const& chunk,
-                           std::string& owner) const {
 
-    util::Lock mLock(_mtx, "ChunkLocker::isLocked(chunk,owner)");
+bool ChunkLocker::isLocked(Chunk const& chunk,
+                           string& owner) const {
+
+    util::Lock mLock(_mtx, "ChunkLocker::" + string(__func__) + "(chunk,owner)");
 
     auto itr = _chunk2owner.find(chunk);
     if (itr != _chunk2owner.end()) {
@@ -75,25 +78,27 @@ bool ChunkLocker::isLocked(Chunk const& chunk,
     return false;
 }
 
-ChunkLocker::OwnerToChunks ChunkLocker::locked(std::string const& owner) const {
 
-    util::Lock mLock(_mtx, "ChunkLocker::locked");
+ChunkLocker::OwnerToChunks ChunkLocker::locked(string const& owner) const {
+
+    util::Lock mLock(_mtx, "ChunkLocker::" + string(__func__));
 
     OwnerToChunks owner2chunks;
-    lockedImpl(mLock,
-               owner,
-               owner2chunks);
+    _lockedImpl(mLock,
+                owner,
+                owner2chunks);
 
     return owner2chunks;
 }
 
-void ChunkLocker::lockedImpl(util::Lock const& mLock,
-                             std::string const& owner,
-                             ChunkLocker::OwnerToChunks& owner2chunks) const {
+
+void ChunkLocker::_lockedImpl(util::Lock const& mLock,
+                              string const& owner,
+                              ChunkLocker::OwnerToChunks& owner2chunks) const {
 
     for (auto&& entry: _chunk2owner) {
-        Chunk       const& chunk      = entry.first;
-        std::string const& chunkOwner = entry.second;
+        Chunk  const& chunk      = entry.first;
+        string const& chunkOwner = entry.second;
 
         if (owner.empty() or (owner == chunkOwner)) {
             owner2chunks[chunkOwner].push_back(chunk);
@@ -101,13 +106,14 @@ void ChunkLocker::lockedImpl(util::Lock const& mLock,
     }
 }
 
-bool ChunkLocker::lock(Chunk const&       chunk,
-                       std::string const& owner) {
 
-    util::Lock mLock(_mtx, "ChunkLocker::lock");
+bool ChunkLocker::lock(Chunk const& chunk,
+                       string const& owner) {
+
+    util::Lock mLock(_mtx, "ChunkLocker::" + string(__func__));
 
     if (owner.empty()) {
-        throw std::invalid_argument("ChunkLocker::lock  empty owner");
+        throw invalid_argument("ChunkLocker::" + string(__func__) + "  empty owner");
     }
     auto itr = _chunk2owner.find(chunk);
     if (itr != _chunk2owner.end()) return owner == itr->second;
@@ -116,26 +122,28 @@ bool ChunkLocker::lock(Chunk const&       chunk,
     return true;
 }
 
+
 bool ChunkLocker::release(Chunk const& chunk) {
 
-    util::Lock mLock(_mtx, "ChunkLocker::release(chunk)");
+    util::Lock mLock(_mtx, "ChunkLocker::" + string(__func__) + "(chunk)");
 
     // An owner (if set) will be ignored by the current method
 
-    std::string owner;
-    return releaseImpl(mLock, chunk, owner);
+    string owner;
+    return _releaseImpl(mLock, chunk, owner);
 }
+
 
 bool ChunkLocker::release(Chunk const& chunk,
-                          std::string& owner) {
-
-    util::Lock mLock(_mtx, "ChunkLocker::release(chunk,owner)");
-    return releaseImpl(mLock, chunk, owner);
+                          string& owner) {
+    util::Lock mLock(_mtx, "ChunkLocker::" + string(__func__) + "(chunk,owner)");
+    return _releaseImpl(mLock, chunk, owner);
 }
 
-bool ChunkLocker::releaseImpl(util::Lock const& mLock,
-                              Chunk const& chunk,
-                              std::string& owner) {
+
+bool ChunkLocker::_releaseImpl(util::Lock const& mLock,
+                               Chunk const& chunk,
+                               string& owner) {
 
     auto itr = _chunk2owner.find(chunk);
     if (itr == _chunk2owner.end()) return false;
@@ -149,23 +157,24 @@ bool ChunkLocker::releaseImpl(util::Lock const& mLock,
     return true;
 }
 
-std::list<Chunk> ChunkLocker::release(std::string const& owner) {
 
-    util::Lock mLock(_mtx, "ChunkLocker::release(owner)");
+list<Chunk> ChunkLocker::release(string const& owner) {
+
+    util::Lock mLock(_mtx, "ChunkLocker::" + string(__func__) + "(owner)");
 
     if (owner.empty()) {
-        throw std::invalid_argument("ChunkLocker::release  empty owner");
+        throw invalid_argument("ChunkLocker::" + string(__func__) + "  empty owner");
     }
 
     // Get rid of chunks owned by the specified owner, and also collect
     // those (removed) chunks into a vector to be returned to a caller.
 
     OwnerToChunks owner2chunks;
-    lockedImpl(mLock,
-               owner,
-               owner2chunks);
+    _lockedImpl(mLock,
+                owner,
+                owner2chunks);
 
-    std::list<Chunk> chunks = owner2chunks[owner];
+    list<Chunk> chunks = owner2chunks[owner];
     for (auto&& chunk: chunks) {
         _chunk2owner.erase(chunk);
     }

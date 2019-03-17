@@ -1,7 +1,5 @@
-// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -44,8 +42,7 @@ namespace replica {
   *
   * Real implementations of the request processing must derive from this class.
   */
-class WorkerFindAllRequest
-    :   public WorkerRequest {
+class WorkerFindAllRequest : public WorkerRequest {
 
 public:
 
@@ -57,13 +54,26 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider  - a host of services for various communications
-     * @param worker           - the name of a  worker
-     * @param id               - an identifier of a client request
-     * @param priority         - indicates the importance of the request
-     * @param database         - the name of a database
+     * @param serviceProvider
+     *   provider is needed to access the Configuration of a setup
+     *   and for validating the input parameters
      *
-     * @return pointer to the created object
+     * @param worker
+     *   the name of a worker. The name must match the worker which
+     *   is going to execute the request.
+     *
+     * @param id
+     *   an identifier of a client request
+     *
+     * @param priority
+     *   indicates the importance of the request
+     *
+     * @param database
+     *   the name of a database defines a scope of the replica
+     *   lookup operation
+     *
+     * @return
+     *   pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& worker,
@@ -91,26 +101,20 @@ public:
      */
     void setInfo(proto::ReplicationResponseFindAll& response) const;
 
-    /**
-     * @see WorkerRequest::execute
-     */
+    /// @see WorkerRequest::execute
     bool execute() override;
 
 protected:
 
-    /**
-     * The normal constructor of the class
-     *
-     * @see WorkerFindAllRequest::create()
-     */
+    /// @see WorkerFindAllRequest::create()
     WorkerFindAllRequest(ServiceProvider::Ptr const& serviceProvider,
                          std::string const& worker,
                          std::string const& id,
                          int priority,
                          std::string const& database);
-protected:
 
-    /// The name of a database
+    // Input parameters
+
     std::string const _database;
 
     /// Result of the operation
@@ -122,8 +126,7 @@ protected:
   * the replicas lookup based on the direct manipulation of files on
   * a POSIX file system.
   */
-class WorkerFindAllRequestPOSIX
-    :   public WorkerFindAllRequest {
+class WorkerFindAllRequestPOSIX : public WorkerFindAllRequest {
 
 public:
 
@@ -135,13 +138,9 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider  - a host of services for various communications
-     * @param worker           - the name of a  worker
-     * @param id               - an identifier of a client request
-     * @param priority         - indicates the importance of the request
-     * @param database         - the name of a database
+     * For a description of parameters:
      *
-     * @return pointer to the created object
+     * @see WorkerFindAllRequest::create()
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& worker,
@@ -155,20 +154,14 @@ public:
     WorkerFindAllRequestPOSIX(WorkerFindAllRequestPOSIX const&) = delete;
     WorkerFindAllRequestPOSIX& operator=(WorkerFindAllRequestPOSIX const&) = delete;
 
-    ~WorkerFindAllRequestPOSIX() override = default;
+    ~WorkerFindAllRequestPOSIX() final = default;
 
-    /**
-     * @see WorkerRequest::execute
-     */
-    bool execute() override;
+    /// @see WorkerRequest::execute
+    bool execute() final;
 
 private:
 
-    /**
-     * The normal constructor of the class.
-     *
-     * @see WorkerFindAllRequestPOSIX::create()
-     */
+    /// @see WorkerFindAllRequestPOSIX::create()
     WorkerFindAllRequestPOSIX(ServiceProvider::Ptr const& serviceProvider,
                               std::string const& worker,
                               std::string const& id,
@@ -177,12 +170,10 @@ private:
 };
 
 /**
-  * Class WorkerFindAllRequestFS provides an actual implementation for
-  * the replica deletion based on the direct manipulation of files on
-  * a POSIX file system.
-  *
-  * Note, this is just a typedef to class WorkerDeleteRequestPOSIX.
-  */
+ * Class WorkerFindAllRequestFS has the same implementation as the 'typedef'-ed
+ * class for the replica deletion based on the direct manipulation of files on
+ * a POSIX file system.
+ */
 typedef WorkerFindAllRequestPOSIX WorkerFindAllRequestFS;
 
 }}} // namespace lsst::qserv::replica

@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -33,6 +32,7 @@
 // Qserv headers
 #include "replica/Application.h"
 
+using namespace std;
 using namespace lsst::qserv::replica;
 
 namespace {
@@ -42,7 +42,7 @@ class TestApplication: public Application {
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<TestApplication> Ptr;
+    typedef shared_ptr<TestApplication> Ptr;
 
     /**
      * The factory method is the only way of creating objects of this class
@@ -149,7 +149,7 @@ protected:
      * @return completion status
      */
     int runImpl() final {
-        std::cout
+        cout
             << "Hello from TestApplication:\n"
             << "      cmd: " << _cmd << "\n"
             << "      p11: " << _p11 << "\n"
@@ -160,7 +160,7 @@ protected:
             << "      o11: " << _o11 << "\n"
             << "      o12: " << _o12 << "\n"
             << "      f21: " << (_f21     ? "true" : "false") << "\n"
-            << "  verbose: " << (_verbose ? "true" : "false") << std::endl;
+            << "  verbose: " << (_verbose ? "true" : "false") << endl;
         return 0;
     }
 
@@ -168,25 +168,25 @@ private:
 
     // Values of the command line parameters
 
-    std::string  _cmd;
-    int          _p1;
-    std::string  _p11;
-    std::string  _p2;
+    string  _cmd;
+    int     _p1;
+    string  _p11;
+    string  _p2;
     unsigned int _o1;
     unsigned int _o2;
     unsigned int _o11;
-    std::string  _o12;
-    bool         _verbose;
-    bool         _f21;
+    string  _o12;
+    bool    _verbose;
+    bool    _f21;
 };
 } /// namespace
 
 int main(int argc, char* argv[]) {
     try {
-        auto app = ::TestApplication::create(argc, argv);
+        auto const app = ::TestApplication::create(argc, argv);
         return app->run();
-    } catch (std::exception const& ex) {
-        std::cerr << "main()  the application failed, exception: " << ex.what() << std::endl;
+    } catch (exception const& ex) {
+        cerr << "main()  the application failed, exception: " << ex.what() << endl;
         return 1;
     }
 }

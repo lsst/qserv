@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -52,7 +51,8 @@ public:
      * Normal (and the only) constructor requires to know names
      * of all workers contributing into the report.
      *
-     * @param workers - names of the workers
+     * @param workers
+     *   names of the workers
      */
     ClusterHealth(std::vector<std::string> const& workers);
 
@@ -85,8 +85,11 @@ public:
     /**
      * Update a state of a Qserv worker and recompute the summary state
      *
-     * @param worker - the name of a worker
-     * @param state  - new state of the worker
+     * @param worker
+     *   the name of a worker
+     *
+     * @param state
+     *   new state of the worker
      */
     void updateQservState(std::string const& worker,
                           bool state);
@@ -97,7 +100,7 @@ private:
      * Recompute and update the summary state (data member 'good')
      * of the object.
      */
-    void updateSummaryState();
+    void _updateSummaryState();
 
 private:
 
@@ -118,8 +121,7 @@ private:
   *
   * The job is implemented not to have any side effects on either class of services.
   */
-class ClusterHealthJob
-    :   public Job  {
+class ClusterHealthJob : public Job  {
 
 public:
 
@@ -162,7 +164,8 @@ public:
      * @param options
      *   (optional) job options
      *
-     * @return pointer to the created object
+     * @return
+     *   pointer to the created object
      */
     static Ptr create(unsigned int timeoutSec,
                       bool allWorkers,
@@ -187,29 +190,34 @@ public:
     bool allWorkers() const { return _allWorkers; }
 
     /**
-     * @return summary report
+     * @return
+     *   The cluster summary report
      *
-     * @throw std::logic_error if the method is called before the job finishes
+     * @throw std::logic_error
+     *   if the method is called before the job finishes
      */
     ClusterHealth const& clusterHealth() const;
 
-    /**
-     * @see Job::extendedPersistentState()
-     */
+    /// @see Job::extendedPersistentState()
     std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
 
-    /**
-     * @see Job::persistentLogData()
-     */
+    /// @see Job::persistentLogData()
     std::list<std::pair<std::string,std::string>> persistentLogData() const final;
 
 protected:
 
-    /**
-     * Construct the job with the pointer to the services provider.
-     *
-     * @see ClusterHealthJob::create()
-     */
+    /// @see Job::startImpl()
+    void startImpl(util::Lock const& lock) final;
+
+    /// @see Job::cancelImpl()
+    void cancelImpl(util::Lock const& lock) final;
+
+    /// @see Job::notify()
+    void notify(util::Lock const& lock) final;
+
+private:
+
+    /// @see ClusterHealthJob::create()
     ClusterHealthJob(unsigned int timeoutSec,
                      bool allWorkers,
                      Controller::Ptr const& controller,
@@ -218,46 +226,28 @@ protected:
                      Job::Options const& options);
 
     /**
-      * @see Job::startImpl()
-      */
-    void startImpl(util::Lock const& lock) final;
-
-    /**
-      * @see Job::startImpl()
-      */
-    void cancelImpl(util::Lock const& lock) final;
-
-    /**
-      * @see Job::notify()
-      */
-    void notify(util::Lock const& lock) final;
-
-    /**
      * The callback function to be invoked on a completion of the Replication
      * worker probes.
      *
-     * @param request - a pointer to a request
+     * @param request
+     *   a pointer to a request
      */
-    void onRequestFinish(ServiceStatusRequest::Ptr const& request);
+    void _onRequestFinish(ServiceStatusRequest::Ptr const& request);
 
     /**
      * The callback function to be invoked on a completion of the Qserv
      * worker probes.
      *
-     * @param request - a pointer to a request
+     * @param request
+     *   a pointer to a request
      */
-    void onRequestFinish(TestEchoQservMgtRequest::Ptr const& request);
+    void _onRequestFinish(TestEchoQservMgtRequest::Ptr const& request);
 
-protected:
+    // Input parameters
 
-    /// The maximum number life span (seconds) of requests
     unsigned int const _timeoutSec;
-
-    /// The worker selector
-    bool _allWorkers;
-
-    /// Client-defined function to be called upon the completion of the job
-    CallbackType _onFinish;
+    bool         const _allWorkers;
+    CallbackType       _onFinish;
 
     /// Requests sent to the Replication workers registered by their identifiers
     std::map<std::string, ServiceStatusRequest::Ptr> _requests;

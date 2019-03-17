@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -44,8 +43,7 @@ namespace replica {
   * Class RequestMessenger is a base class for a family of requests within
   * the replication Controller server.
   */
-class RequestMessenger
-    :   public Request  {
+class RequestMessenger : public Request  {
 
 public:
 
@@ -65,21 +63,37 @@ protected:
     /**
      * Construct the request with the pointer to the services provider.
      *
-     * NOTE: options 'keepTracking' and 'allowDuplicate' have effect for
-     *       specific request only.
+     * @note
+     *   options 'keepTracking' and 'allowDuplicate' have effect for
+     *   specific request only.
      *
-     * @param serviceProvider - a provider of various services
-     * @param type            - its type name (used informally for debugging)
-     * @param worker          - the name of a worker
-     * @io_service            - BOOST ASIO service
-     * @priority              - may affect an execution order of the request by
-     *                          the worker service. Higher number means higher
-     *                          priority.
-     * @param keepTracking    - keep tracking the request before it finishes or fails
-     * @param allowDuplicate  - follow a previously made request if the current one duplicates it
-     * @param messenger       - an interface for communicating with workers
+     * @param serviceProvider
+     *   a provider of various services
      *
-     * @return pointer to the created object
+     * @param type
+     *   its type name (used informally for debugging)
+     *
+     * @param worker
+     *   the name of a worker
+     *
+     * @io_service
+     *   BOOST ASIO service
+     *
+     * @priority
+     *   may affect an execution order of the request by the worker service.
+     *   Higher number means higher priority.
+     *
+     * @param keepTracking
+     *   keep tracking the request before it finishes or fails
+     *
+     * @param allowDuplicate
+     *   follow a previously made request if the current one duplicates it
+     *
+     * @param messenger
+     *   an interface for communicating with workers
+     *
+     * @return
+     *   pointer to the created object
      */
     RequestMessenger(ServiceProvider::Ptr const& serviceProvider,
                      boost::asio::io_service& io_service,
@@ -93,14 +107,11 @@ protected:
     /// @return pointer to the messaging service
     Messenger::Ptr const& messenger() const { return _messenger; }
 
-    /**
-     * @see Request::finishImpl()
-     */
+    /// @see Request::finishImpl()
     void finishImpl(util::Lock const& lock) override;
     
-protected:
+    // Input parameters
 
-    /// Worker messaging service
     Messenger::Ptr const _messenger;
 };
 

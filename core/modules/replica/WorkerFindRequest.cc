@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -35,6 +34,7 @@
 #include "replica/Performance.h"
 #include "replica/ServiceProvider.h"
 
+using namespace std;
 namespace fs = boost::filesystem;
 
 namespace {
@@ -53,12 +53,12 @@ namespace replica {
 
 WorkerFindRequest::Ptr WorkerFindRequest::create(
                                 ServiceProvider::Ptr const& serviceProvider,
-                                std::string const& worker,
-                                std::string const& id,
-                                int                priority,
-                                std::string const& database,
-                                unsigned int       chunk,
-                                bool               computeCheckSum) {
+                                string const& worker,
+                                string const& id,
+                                int priority,
+                                string const& database,
+                                unsigned int chunk,
+                                bool computeCheckSum) {
     return WorkerFindRequest::Ptr(
         new WorkerFindRequest(
                 serviceProvider,
@@ -70,14 +70,15 @@ WorkerFindRequest::Ptr WorkerFindRequest::create(
                 computeCheckSum));
 }
 
+
 WorkerFindRequest::WorkerFindRequest(
                         ServiceProvider::Ptr const& serviceProvider,
-                        std::string const& worker,
-                        std::string const& id,
-                        int                priority,
-                        std::string const& database,
-                        unsigned int       chunk,
-                        bool               computeCheckSum)
+                        string const& worker,
+                        string const& id,
+                        int priority,
+                        string const& database,
+                        unsigned int chunk,
+                        bool computeCheckSum)
     :   WorkerRequest(
             serviceProvider,
             worker,
@@ -91,11 +92,12 @@ WorkerFindRequest::WorkerFindRequest(
     serviceProvider->assertDatabaseIsValid(database);
 }
 
+
 void WorkerFindRequest::setInfo(proto::ReplicationResponseFind& response) const {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "setInfo");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
-    util::Lock lock(_mtx, context() + "setInfo");
+    util::Lock lock(_mtx, context() + __func__);
 
     // Return the performance of the target request
 
@@ -119,13 +121,14 @@ void WorkerFindRequest::setInfo(proto::ReplicationResponseFind& response) const 
     response.set_allocated_request(protoRequestPtr);
 }
 
+
 bool WorkerFindRequest::execute() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "execute"
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
          << "  database: " << database()
          << "  chunk: "    << chunk());
 
-    util::Lock lock(_mtx, context() + "execute");
+    util::Lock lock(_mtx, context() + __func__);
 
     // Set up the result if the operation is over
 
@@ -141,18 +144,19 @@ bool WorkerFindRequest::execute() {
     return completed;
 }
 
+
 /////////////////////////////////////////////////////////////////
 ///////////////////// WorkerFindRequestPOSIX ////////////////////
 /////////////////////////////////////////////////////////////////
 
 WorkerFindRequestPOSIX::Ptr WorkerFindRequestPOSIX::create(
                                     ServiceProvider::Ptr const& serviceProvider,
-                                    std::string const& worker,
-                                    std::string const& id,
-                                    int                priority,
-                                    std::string const& database,
-                                    unsigned int       chunk,
-                                    bool               computeCheckSum) {
+                                    string const& worker,
+                                    string const& id,
+                                    int priority,
+                                    string const& database,
+                                    unsigned int chunk,
+                                    bool computeCheckSum) {
     return WorkerFindRequestPOSIX::Ptr(
         new WorkerFindRequestPOSIX(
                 serviceProvider,
@@ -164,14 +168,15 @@ WorkerFindRequestPOSIX::Ptr WorkerFindRequestPOSIX::create(
                 computeCheckSum));
 }
 
+
 WorkerFindRequestPOSIX::WorkerFindRequestPOSIX(
                             ServiceProvider::Ptr const& serviceProvider,
-                            std::string const& worker,
-                            std::string const& id,
-                            int                priority,
-                            std::string const& database,
-                            unsigned int       chunk,
-                            bool               computeCheckSum)
+                            string const& worker,
+                            string const& id,
+                            int priority,
+                            string const& database,
+                            unsigned int chunk,
+                            bool computeCheckSum)
     :   WorkerFindRequest(
             serviceProvider,
             worker,
@@ -182,13 +187,14 @@ WorkerFindRequestPOSIX::WorkerFindRequestPOSIX(
             computeCheckSum) {
 }
 
+
 bool WorkerFindRequestPOSIX::execute() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "execute"
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
          << "  database: " << database()
          << "  chunk: "    << chunk());
 
-    util::Lock lock(_mtx, context() + "execute");
+    util::Lock lock(_mtx, context() + __func__);
 
     // Abort the operation right away if that's the case
 
@@ -220,7 +226,7 @@ bool WorkerFindRequestPOSIX::execute() {
 
         // Check if the data directory exists and it can be read
 
-        util::Lock dataFolderLock(_mtxDataFolderOperations, context() + "execute");
+        util::Lock dataFolderLock(_mtxDataFolderOperations, context() + __func__);
 
         fs::path        const dataDir = fs::path(workerInfo.dataDir) / database();
         fs::file_status const stat    = fs::status(dataDir, ec);
@@ -253,7 +259,7 @@ bool WorkerFindRequestPOSIX::execute() {
 
 
         ReplicaInfo::FileInfoCollection fileInfoCollection; // file info if not using the incremental processing
-        std::vector<std::string>        files;              // file paths registered for the incremental processing
+        vector<string> files;   // file paths registered for the incremental processing
 
         for (auto&& file: FileUtils::partitionedFiles(databaseInfo, chunk())) {
 
@@ -279,7 +285,7 @@ bool WorkerFindRequestPOSIX::execute() {
                                 ExtendedCompletionStatus::EXT_STATUS_FILE_SIZE,
                                 "failed to read file size: " + path.string());
 
-                    const std::time_t mtime = fs::last_write_time(path, ec);
+                    const time_t mtime = fs::last_write_time(path, ec);
                     errorContext = errorContext
                         or reportErrorIf(
                                 ec.value() != 0,
@@ -355,7 +361,7 @@ bool WorkerFindRequestPOSIX::execute() {
 
                 uint64_t const size = _csComputeEnginePtr->bytes(file);
 
-                std::time_t const mtime = fs::last_write_time(path, ec);
+                time_t const mtime = fs::last_write_time(path, ec);
                 errorContext = errorContext
                     or reportErrorIf(
                             ec.value() != 0,
@@ -367,7 +373,7 @@ bool WorkerFindRequestPOSIX::execute() {
                         path.filename().string(),
                         size,
                         mtime,
-                        std::to_string(_csComputeEnginePtr->cs(file)),
+                        to_string(_csComputeEnginePtr->cs(file)),
                         0,      /* beginTransferTime */
                         0,      /* endTransferTime */
                         size    /* inSize */
@@ -404,7 +410,7 @@ bool WorkerFindRequestPOSIX::execute() {
             setStatus(lock, STATUS_SUCCEEDED);
         }
 
-    } catch (std::exception const& ex) {
+    } catch (exception const& ex) {
         WorkerRequest::ErrorContext errorContext;
         errorContext = errorContext
             or reportErrorIf(

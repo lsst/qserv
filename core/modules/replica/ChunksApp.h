@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -38,7 +37,7 @@ namespace replica {
  * Class ChunksApp implements a tool which launches a single job Controller in order
  * to acquire, analyze and reports chunk disposition within a database family.
  */
-class ChunksApp: public Application {
+class ChunksApp : public Application {
 
 public:
 
@@ -67,17 +66,14 @@ public:
 
 protected:
 
-    /**
-     * @see ChunksApp::create()
-     */
-    ChunksApp(int argc, char* argv[]);
-
-    /**
-     * @see Application::runImpl()
-     */
+    /// @see Application::runImpl()
     int runImpl() final;
 
 private:
+
+    /// @see ChunksApp::create()
+    ChunksApp(int argc, char* argv[]);
+
 
     /// The name of a database family
     std::string _databaseFamily;

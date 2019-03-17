@@ -1,7 +1,5 @@
-// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -55,14 +53,14 @@ class ProtocolBuffer;
 /**
  * Class FileClientError represents exceptions thrown by FileClient on errors
  */
-class FileClientError
-    :   public std::runtime_error {
+class FileClientError : public std::runtime_error {
 public:
     
     /**
      * Construct an object
      *
-     * @param what - reason for the exception
+     * @param what
+     *   reason for the exception
      */
     FileClientError(std::string const& msg)
         :   std::runtime_error(msg) {
@@ -73,8 +71,7 @@ public:
   * Class FileClient is a client-side API for the point-to-point file migration
   * service.
   */
-class FileClient
-    :   public std::enable_shared_from_this<FileClient>  {
+class FileClient : public std::enable_shared_from_this<FileClient>  {
 
 public:
 
@@ -87,10 +84,17 @@ public:
      * and the file content could be read via method FileClient::read().
      * Otherwise return the null pointer.
      *
-     * @param serviceProvider - for configuration, etc. services
-     * @param workerName      - the name of a worker where the file resides
-     * @param databaseName    - the name of a database the file belongs to
-     * @param fileName        - the file to read or examine
+     * @param serviceProvider
+     *   for configuration, etc. services
+     *
+     * @param workerName
+     *   the name of a worker where the file resides
+     *
+     * @param databaseName
+     *   the name of a database the file belongs to
+     *
+     * @param fileName
+     *   the file to read or examine
      */
     static Ptr open(ServiceProvider::Ptr const& serviceProvider,
                     std::string const& workerName,
@@ -109,7 +113,7 @@ public:
      * If the operation is successful then a valid pointer will be returned.
      * If the operation fails the method will return the null pointer.
      *
-     * ATTENTION:
+     * @note
      *   Unlike the previous method FileClient::open() the returned file object
      *   can't be used to read the file content (via FileClient::read()).
      *   The method of opening files is meant to be used for checking the availability
@@ -117,10 +121,17 @@ public:
      *   Any attempts to call method FileClient::read() will result in
      *   throwing FileClientError.
      *
-     * @param serviceProvider - for configuration, etc. services
-     * @param workerName      - the name of a worker where the file resides
-     * @param databaseName    - the name of a database the file belongs to
-     * @param fileName        - the file to read or examine
+     * @param serviceProvider
+     *   for configuration, etc. services
+     *
+     * @param workerName
+     *   the name of a worker where the file resides
+     *
+     * @param databaseName
+     *   the name of a database the file belongs to
+     *
+     * @param fileName
+     *   the file to read or examine
      */
     static Ptr stat(ServiceProvider::Ptr const& serviceProvider,
                     std::string const& workerName,
@@ -131,7 +142,7 @@ public:
                         workerName,
                         databaseName,
                         fileName,
-                        false /* readContent */);
+                        false /* do NOT readContent */);
     }
 
     // Default construction and copy semantics are prohibited
@@ -161,11 +172,15 @@ public:
      * occurs during the operation. Illegal parameters (zero buffer pointer
      * or the buffer size of 0) will be reported by std::invalid_argument exception.
      *
-     * @param buf     - a pointer to a valid buffer where the data will be placed
-     * @param bufSize - a size of the buffer (would determine the maximum number of bytes
-     *                  which can be read at a single call to the method)
+     * @param buf
+     *   a pointer to a valid buffer where the data will be placed
      *
-     * @return the actual number of bytes read or 0 if the end of file reached
+     * @param bufSize
+     *   a size of the buffer (would determine the maximum number of bytes
+     *   which can be read at a single call to the method)
+     *
+     * @return
+     *   the actual number of bytes read or 0 if the end of file reached
      */
     size_t read(uint8_t* buf, size_t bufSize);
 
@@ -176,11 +191,14 @@ private:
      * of this class. If the operation is successful then a valid pointer will
      * be returned.
      *
-     * @param serviceProvider - for configuration, etc. services
-     * @param workerName      - the name of a worker where the file resides
-     * @param databaseName    - the name of a database the file belongs to
-     * @param fileName        - the file to read or examine
-     * @param readContent     - the mode in which the file will be used
+     * @param readContent
+     *   the mode in which the file will be used
+     *
+     * Other parameters are explained in the comments for the public factory
+     * methods:
+     * 
+     * @see FileClient::open()
+     * @see FileClient::stat()
      */
     static Ptr instance(ServiceProvider::Ptr const& serviceProvider,
                         std::string const& workerName,
@@ -188,18 +206,7 @@ private:
                         std::string const& fileName,
                         bool readContent);
 
-    /**
-     * Construct an object with the specified configuration.
-     *
-     * The constructor may throw the std::invalid_argument exception after
-     * validating its arguments.
-     *
-     * @param serviceProvider - for configuration, etc. services
-     * @param workerName      - the name of a worker where the file resides
-     * @param databaseName    - the name of a database the file belongs to
-     * @param fileName        - the file to read or examine
-     * @param readContent     - indicates if a file is open for reading its content
-     */
+    /// @see FileClient::instance()
     FileClient(ServiceProvider::Ptr const& serviceProvider,
                std::string const& workerName,
                std::string const& databaseName,
@@ -211,22 +218,18 @@ private:
      *
      * @return 'true' if successful
      */
-    bool openImpl();
+    bool _openImpl();
 
-private:
+    // Input parameters
+
+    std::string const _fileName;
+    bool        const _readContent;
 
     /// Cached worker descriptors obtained from the Configuration
     WorkerInfo const _workerInfo;
 
     /// Cached database descriptors obtained from the Configuration
     DatabaseInfo const _databaseInfo;
-
-    /// The name of a file to be read
-    std::string const _fileName;
-
-    /// The flag indicating of the file was open with an intend of reading
-    // its content
-    bool const _readContent;
 
     /// Buffer for data moved over the network
     std::unique_ptr<ProtocolBuffer> _bufferPtr;

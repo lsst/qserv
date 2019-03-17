@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -44,8 +43,7 @@ namespace replica {
   * Class StopRequestBase represents the base class for a family of requests
   * stopping an on-going operation.
   */
-class StopRequestBase
-    :   public RequestMessenger {
+class StopRequestBase : public RequestMessenger {
 
 public:
 
@@ -66,19 +64,24 @@ public:
     /// @return the performance info of the target operation (if available)
     Performance const& targetPerformance() const { return _targetPerformance; }
 
+    /// @see Request::extendedPersistentState()
+    std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
+
 protected:
 
     /**
      * Construct the request
      *
      * @param serviceProvider
-     *   a host of services for various communications
+     *   a host of services for accessing Configuration, saving request's
+     *   state in the database, etc.
      * 
      * @param io_service
      *   network communication service
      * 
      * @param requestName
-     *   the name of a request
+     *   the name of a request (used in reporting messages to the log stream,
+     *   and when saving its state in the database)
      * 
      * @param worker
      *   the name of a worker node (the one to be affected by the request)
@@ -106,46 +109,43 @@ protected:
                      bool keepTracking,
                      std::shared_ptr<Messenger> const& messenger);
 
-    /**
-      * @see Request::startImpl()
-      */
+    /// @see Request::startImpl()
     void startImpl(util::Lock const& lock) final;
-
-    /**
-     * Start the timer before attempting the previously failed
-     * or successful (if a status check is needed) step.
-     *
-     * @param lock - a lock on a mutex must be acquired before calling this method
-     */
-    void wait(util::Lock const& lock);
-
-    /// Callback handler for the asynchronous operation
-    void awaken(boost::system::error_code const& ec);
 
     /**
      * Initiate request-specific send. This method must be implemented
      * by subclasses.
      *
-     * @param lock - a lock on a mutex must be acquired before calling this method
+     * @param lock
+     *   a lock on Request::_mtx must be acquired before calling this method
      */
     virtual void send(util::Lock const& lock) = 0;
 
     /**
      * Process the worker response to the requested operation.
      *
-     * @param success - the flag indicating if the operation was successfull
-     * @param status  - a response from the worker service (only valid if success is 'true')
+     * @param success
+     *   'true' indicates a successful response from a worker
+     *
+     * @param status
+     *   a response from the worker service (only valid if success is 'true')
      */
     void analyze(bool success,
                  proto::ReplicationStatus status = proto::ReplicationStatus::FAILED);
 
-     /**
-      * Initiate request-specific operation with the persistent state
-      * service to store replica status.
-      *
-      * This method must be implemented by subclasses.
-      */
-     virtual void saveReplicaInfo() = 0;
+    /**
+     * Initiate request-specific operation with the persistent state
+     * service to store replica status.
+     *
+     * This method must be implemented by subclasses.
+     */
+    virtual void saveReplicaInfo() = 0;
+
+    /// @see Request::savePersistentState()
+    void savePersistentState(util::Lock const& lock) final;
+
+    /// The performance of the target operation (this object is updated by subclasses)
+    Performance _targetPerformance;
 
 private:
 
@@ -153,31 +153,26 @@ private:
      * Serialize request data into a network buffer and send the message to a worker
      *
      * @param lock
-     *   a lock on a mutex must be acquired before calling this method
+     *   a lock on Request::_mtx must be acquired before calling this method
      */
-    void sendImpl(util::Lock const& lock);
+    void _sendImpl(util::Lock const& lock);
 
     /**
-     * @see Request::savePersistentState()
+     * Start the timer before attempting the previously failed
+     * or successful (if a status check is needed) step.
+     *
+     * @param lock
+     *   a lock on Request::_mtx must be acquired before calling this method
      */
-    void savePersistentState(util::Lock const& lock) final;
+    void _wait(util::Lock const& lock);
 
-    /**
-     * @see Request::extendedPersistentState()
-     */
-    std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
+    /// Callback handler for the asynchronous operation
+    void _awaken(boost::system::error_code const& ec);
 
-protected:
+    // Input parameters
 
-    /// The performance of the target operation
-    Performance _targetPerformance;
-
-private:
-
-    /// An identifier of the target request whose state is to be queried
     std::string const _targetRequestId;
 
-    /// Request type (must match its identifier)
     proto::ReplicationReplicaRequestType const _replicaRequestType;
 };
 

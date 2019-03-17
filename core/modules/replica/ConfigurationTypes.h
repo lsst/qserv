@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2019 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -51,23 +50,28 @@ namespace replica {
  * Each helper is represented by a dedicated
  * structure (w/o any explicitly given type name) which has the following members:
  * 
- * key - the short name of a key to be used in various context when a text-based
- * reference to the corresponding Configuration parameter is needed (within protocols
- * and application's implementations).
+ * key:
+ *   the short name of a key to be used in various context when a text-based
+ *   reference to the corresponding Configuration parameter is needed (within
+ *   protocols and application's implementations).
  * 
- * description - an expanded description of the parameter, its role, etc. A value
- * of this member is used in the command-line and Web UI applications where parameters
- * are presented to users.
+ * description:
+ *   an expanded description of the parameter, its role, etc. A value of this
+ *   member is used in the command-line and Web UI applications where parameters
+ *   are presented to users.
  * 
- * value - is a member storing a transient value of the parameter before forwarding it
- * to the Configuration by method 'save'.
+ * value:
+ *   is a member storing a transient value of the parameter before forwarding
+ *   it to the Configuration by method 'save'.
  * 
- * updatable - a flag indicating if the transient value of the parameter can be
- * saved back into the Configuration. This flag can be used by the command-line tools
- * and Web UI applications.
+ * updatable:
+ *   flag indicating if the transient value of the parameter can be saved back
+ *   into the Configuration. This flag can be used by the command-line tools
+ *   and Web UI applications.
  * 
- * save - a method which stores the transient state of the parameter stored in
- * member 'value' into the Configuration.
+ * save:
+ *   a method which stores the transient state of the parameter stored in
+ *   member 'value' into the Configuration.
  *
  * get - is a type-aware method returning a value of the corresponding parameter
  * retrieved from the Configuration.

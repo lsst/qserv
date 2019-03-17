@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -94,13 +93,14 @@ int SyncApp::runImpl() {
 
     // Run the synchronization algorithm
 
+    string const noParentJobId;
     atomic<bool> finished{false};
     auto const job = QservSyncJob::create(
         _databaseFamily,
         _timeoutSec,
         _force,
         Controller::create(serviceProvider()),
-        std::string(),
+        noParentJobId,
         [&finished] (replica::QservSyncJob::Ptr const& job) {
             finished = true;
         }
@@ -122,8 +122,8 @@ int SyncApp::runImpl() {
 
     for (auto&& workerEntry: replicaData.workers) {
 
-        std::string const& worker    = workerEntry.first;
-        bool        const  succeeded = workerEntry.second;
+        string const& worker    = workerEntry.first;
+        bool   const  succeeded = workerEntry.second;
 
         columnWorker       .push_back(worker);
         columnNumPrevChunks.push_back(succeeded ? to_string(replicaData.prevReplicas.at(worker).size()) : "FAILED");

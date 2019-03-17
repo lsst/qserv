@@ -1,7 +1,5 @@
-// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -54,8 +52,7 @@ namespace replica {
   * the processor is serialized and sent back (asynchronously) to
   * the client.
   */
-class WorkerServerConnection
-    :   public std::enable_shared_from_this<WorkerServerConnection> {
+class WorkerServerConnection : public std::enable_shared_from_this<WorkerServerConnection> {
 
 public:
 
@@ -67,11 +64,17 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider - provider of various services
-     * @param processor       - processor of long (queued) requests
-     * @param io_service      - endpoint for network I/O
+     * @param serviceProvider
+     *   provider is needed to access the Configuration of a setup
      *
-     * @return pointer to the new object created by the factory
+     * @param processor
+     *   processor for long (queued) requests
+     *
+     * @param io_service
+     *   endpoint for network I/O
+     *
+     * @return
+     *   pointer to the new object created by the factory
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       WorkerProcessor::Ptr const& processor,
@@ -98,29 +101,25 @@ public:
      *   - ASYNC: write a frame header of a reply to the request
      *            then write the reply itself
      *
-     * NOTES: A reason why the read phase is split into four steps is
-     *        that a client is expected to send all components of the request
-     *        (frame header, request header and request body) at once. This means
-     *        the whole incoming message will be already available on the server's
-     *        host memory when an asynchronous handler for the frame header will fire.
-     *        However, due to a variable length of the request we should know its length
-     *        before attempting to read the rest of the incoming message as this (the later)
-     *        will require two things: 1) to ensure enough we have enough buffer space
-     *        allocated, and 2) to tell the asynchronous reader function how many bytes
-     *        exactly are we going to read.
+     * @note
+     *   a reason why the read phase is split into four steps is
+     *   that a client is expected to send all components of the request
+     *   (frame header, request header and request body) at once. This means
+     *   the whole incoming message will be already available on the server's
+     *   host memory when an asynchronous handler for the frame header will fire.
+     *   However, due to a variable length of the request we should know its length
+     *   before attempting to read the rest of the incoming message as this (the later)
+     *   will require two things: 1) to ensure enough we have enough buffer space
+     *   allocated, and 2) to tell the asynchronous reader function how many bytes
+     *   exactly are we going to read.
      * 
-     * The chain ends when a client disconnects or when an error condition
-     * is met.
+     * The chain ends when a client disconnects or when an error condition is met.
      */
     void beginProtocol();
 
 private:
 
-    /**
-     * The constructor of the class
-     *
-     * @see WorkerServerConnection::create()
-     */
+    /// @see WorkerServerConnection::create()
     WorkerServerConnection(ServiceProvider::Ptr const& serviceProvider,
                            WorkerProcessor::Ptr const& processor,
                            boost::asio::io_service& io_service);
@@ -131,49 +130,58 @@ private:
      * The frame header is presently a 32-bit unsigned integer
      * representing the length of the subsequent message.
      */
-    void receive();
+    void _receive();
 
     /**
      * The callback on finishing (either successfully or not) of asynchronous reads.
      *
-     * @param ec                - error condition to be checked for
-     * @param bytes_transferred - the number of bytes received (if successful)
+     * @param ec
+     *   error condition to be checked for
+     *
+     * @param bytes_transferred
+     *   the number of bytes received (if successful)
      */
-    void received(boost::system::error_code const& ec,
-                  size_t bytes_transferred);
+    void _received(boost::system::error_code const& ec,
+                   size_t bytes_transferred);
 
     /**
      * Process replication requests (REPLICATE, DELETE, FIND, FIND-ALL)
      *
-     * @param hdr - request header to be inspected
+     * @param hdr
+     *   request header to be inspected
      */
-    void processReplicaRequest(proto::ReplicationRequestHeader& hdr);
+    void _processReplicaRequest(proto::ReplicationRequestHeader& hdr);
 
     /**
      * Process requests about replication requests (STOP, STATUS)
      *
-     * @param hdr - request header to be inspected
+     * @param hdr
+     *   request header to be inspected
      */
-    void processManagementRequest(proto::ReplicationRequestHeader& hdr);
+    void _processManagementRequest(proto::ReplicationRequestHeader& hdr);
 
     /**
      * Process requests affecting the service
      *
-     * @param hdr - request header to be inspected
+     * @param hdr
+     *   request header to be inspected
      */
-    void processServiceRequest(proto::ReplicationRequestHeader& hdr);
+    void _processServiceRequest(proto::ReplicationRequestHeader& hdr);
 
     /**
      * Serialize an identifier of a request into response header
      * followed by the Protobuf response body Protobuf object and
      * send it all back to a client.
      *
-     * @param id    a unique identifier of a request to which the reply is sent
-     * @param body  a body of the response
+     * @param id
+     *   a unique identifier of a request to which the reply is sent
+     *
+     * @param body
+     *   a body of the response
      */
     template <class T>
-    void reply(std::string const& id,
-               T&& body) {
+    void _reply(std::string const& id,
+                T&& body) {
 
         _bufferPtr->resize();
 
@@ -183,24 +191,27 @@ private:
         _bufferPtr->serialize(hdr);
         _bufferPtr->serialize(body);
 
-        send();
+        _send();
     }
 
     /**
      * Begin sending (asynchronously) a result back to a client
      */
-    void send();
+    void _send();
 
     /**
      * The callback on finishing (either successfully or not) of asynchronous writes.
      *
-     * @param ec                - error condition to be checked for
-     * @param bytes_transferred - the number of bytes sent (if successful)
+     * @param ec
+     *   error condition to be checked for
+     *
+     * @param bytes_transferred
+     *   the number of bytes sent (if successful)
      */
-    void sent(boost::system::error_code const& ec,
-              size_t bytes_transferred);
+    void _sent(boost::system::error_code const& ec,
+               size_t bytes_transferred);
 
-private:
+    // Input parameters
 
     ServiceProvider::Ptr const _serviceProvider;
 

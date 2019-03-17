@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -245,11 +244,8 @@ public:
     std::vector<std::string> workers(bool isEnabled=true,
                                      bool isReadOnly=false) const;
 
-    /**
-     * @return names of all known workers regardless of their statuses
-     */
+    /// @return names of all known workers regardless of their statuses
     std::vector<std::string> allWorkers() const;
-
 
     /// @return maximum size of the request buffers in bytes
     size_t requestBufferSizeBytes() const { return _requestBufferSizeBytes; }
@@ -440,8 +436,9 @@ public:
     static unsigned int setDatabaseMaxReconnects(unsigned int value);
 
     /**
-     * @return the default timeout for executing transactions at a presence
-     * of server reconnects.
+     * @return
+     *   the default timeout for executing transactions at a presence
+     *   of server reconnects.
      */
     static unsigned int databaseTransactionTimeoutSec() { return defaultDatabaseTransactionTimeoutSec; }
 
@@ -962,13 +959,19 @@ protected:
      */
     Configuration();
 
-    /// @return the context string for debugging and diagnostic printouts
-    std::string context() const;
+    /**
+     * @param func
+     *   (optional) the name of a method/function requested the context string
+     *
+     * @return
+     *   the context string for debugging and diagnostic printouts
+     */
+    std::string context(std::string const& func=std::string()) const;
 
     /**
      * 
      * @param lock
-     *   the lock on a mutex required for the thread safety
+     *   the lock on Configuration::_mtx required for the thread safety
      *
      * @param name
      *   the name of a worker to find
@@ -987,7 +990,6 @@ protected:
                                                                std::string const& name,
                                                                std::string const& context);
 
-protected:
 
     /// To be used were thread safety is required
     mutable util::Mutex _mtx;

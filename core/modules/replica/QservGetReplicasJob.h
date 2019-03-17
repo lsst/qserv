@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -68,8 +67,7 @@ struct QservGetReplicasJobResult {
   * Class QservGetReplicasJob represents a tool which will find all replicas
   * of all chunks on all worker nodes.
   */
-class QservGetReplicasJob
-    :   public Job  {
+class QservGetReplicasJob : public Job  {
 
 public:
 
@@ -90,15 +88,29 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param databaseFamily - name of a database family
-     * @param inUseOnly      - return replicas which are presently in use
-     * @param allWorkers     - engage all known workers regardless of their status
-     * @param controller     - for launching requests
-     * @param parentJobId    - (optional) identifier of a parent job
-     * @param onFinish       - (optional) callback function to be called upon a job completion
-     * @param options        - (optional) job options
+     * @param databaseFamily
+     *   name of a database family
      *
-     * @return pointer to the created object
+     * @param inUseOnly
+     *   return replicas which are presently in use
+     *
+     * @param allWorkers
+     *   engage all known workers regardless of their status
+     *
+     * @param controller
+     *   for launching requests
+     *
+     * @param parentJobId
+     *   (optional) identifier of a parent job
+     *
+     * @param onFinish
+     *   (optional) callback function to be called upon a job completion
+     *
+     * @param options
+     *   (optional) job options
+     *
+     * @return
+     *   pointer to the created object
      */
     static Ptr create(std::string const& databaseFamily,
                       bool inUseOnly,
@@ -128,37 +140,41 @@ public:
     /**
      * @return the result of the operation (when the job finishes)
      *
-     * IMPORTANT NOTES:
-     * - the method should be invoked only after the job has finished (primary
+     * @note
+     *   The method should be invoked only after the job has finished (primary
      *   status is set to Job::Status::FINISHED). Otherwise exception
      *   std::logic_error will be thrown
      *
-     * - the result will be extracted from requests which have successfully
+     * @note
+     *   The result will be extracted from requests which have successfully
      *   finished. Please, verify the primary and extended status of the object
      *   to ensure that all requests have finished.
      *
-     * @throws std::logic_error - if the job didn't finished at a time
-     *         when the method was called
+     * @throw std::logic_error
+     *   if the job didn't finished at a time when the method was called
      */
     QservGetReplicasJobResult const& getReplicaData() const;
 
-    /**
-     * @see Job::extendedPersistentState()
-     */
+    /// @see Job::extendedPersistentState()
     std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
 
-    /**
-     * @see Job::persistentLogData()
-     */
+    /// @see Job::persistentLogData()
     std::list<std::pair<std::string,std::string>> persistentLogData() const final;
 
 protected:
 
-    /**
-     * Construct the job with the pointer to the services provider.
-     *
-     * @see QservGetReplicasJob::create()
-     */
+    /// @see Job::startImpl()
+    void startImpl(util::Lock const& lock) final;
+
+    /// @see Job::cancelImpl()
+    void cancelImpl(util::Lock const& lock) final;
+
+    /// @see Job::notify()
+    void notify(util::Lock const& lock) final;
+
+private:
+
+    /// @see QservGetReplicasJob::create()
     QservGetReplicasJob(std::string const& databaseFamily,
                         bool inUseOnly,
                         bool allWorkers,
@@ -168,40 +184,20 @@ protected:
                         Job::Options const& options);
 
     /**
-      * @see Job::startImpl()
-      */
-    void startImpl(util::Lock const& lock) final;
-
-    /**
-      * @see Job::startImpl()
-      */
-    void cancelImpl(util::Lock const& lock) final;
-
-    /**
-      * @see Job::notify()
-      */
-    void notify(util::Lock const& lock) final;
-
-    /**
      * The callback function to be invoked on a completion of each request.
      *
-     * @param request - a pointer to a request
+     * @param request
+     *   a pointer to a request
      */
-    void onRequestFinish(GetReplicasQservMgtRequest::Ptr const& request);
+    void _onRequestFinish(GetReplicasQservMgtRequest::Ptr const& request);
 
-protected:
 
-    /// The name of the database family
+    // Input parameters
+
     std::string const _databaseFamily;
-
-    /// Flag indicating to report (if set) a subset of chunks which are in use
-    bool const _inUseOnly;
-
-    /// The flag (if 'true') for engaging all known workers regardless of their status
-    bool const _allWorkers;
-
-    /// Client-defined function to be called upon the completion of the job
-    CallbackType _onFinish;
+    bool        const _inUseOnly;
+    bool        const _allWorkers;
+    CallbackType      _onFinish;    /// @note is reset when the job finishes
 
     /// A collection of requests implementing the operation
     std::list<GetReplicasQservMgtRequest::Ptr> _requests;

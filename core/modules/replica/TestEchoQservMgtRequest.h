@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -44,8 +43,7 @@ namespace replica {
   * Class TestEchoQservMgtRequest implements a special kind of requests
   * for testing Qserv workers.
   */
-class TestEchoQservMgtRequest
-    :   public QservMgtRequest {
+class TestEchoQservMgtRequest : public QservMgtRequest {
 
 public:
 
@@ -68,16 +66,26 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider  reference to a provider of services
-     * @param worker           the name of a worker
-     * @param data             the data string to be echoed back by the worker (if successful)
-     * @param onFinish         (optional) callback function to be called upon request completion
-     * @return                 pointer to the created object
+     * @param serviceProvider
+     *   reference to a provider of services for accessing Configuration,
+     *   saving the request's persistent state to the database
+     *
+     * @param worker
+     *   the name of a worker to send the request to
+     *
+     * @param data
+     *   the data string to be echoed back by the worker (if successful)
+     *
+     * @param onFinish
+     *   (optional) callback function to be called upon request completion
+     *
+     * @return
+     *   pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& worker,
                       std::string const& data,
-                      CallbackType const& onFinish = nullptr);
+                      CallbackType const& onFinish=nullptr);
 
     /// @return input data string sent to the worker
     std::string const& data() const { return _data; }
@@ -93,54 +101,45 @@ public:
      */
     std::string const& dataEcho() const;
 
-    /**
-     * @see QservMgtRequest::extendedPersistentState()
-     */
+    /// @see QservMgtRequest::extendedPersistentState()
     std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
+
+protected:
+
+    /// @see QservMgtRequest::startImpl
+    void startImpl(util::Lock const& lock) final;
+
+    /// @see QservMgtRequest::finishImpl
+    void finishImpl(util::Lock const& lock) final;
+
+    /// @see QservMgtRequest::notify
+    void notify(util::Lock const& lock) final;
 
 private:
 
-    /**
-     * Construct the request with the pointer to the services provider
-     *
-     * @see TestEchoQservMgtRequest::created()
-     */
+    /// @see TestEchoQservMgtRequest::created()
     TestEchoQservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
                             std::string const& worker,
                             std::string const& data,
                             CallbackType const& onFinish);
 
     /**
-      * @see QservMgtRequest::startImpl
-      */
-    void startImpl(util::Lock const& lock) final;
-
-    /**
-      * @see QservMgtRequest::finishImpl
-      */
-    void finishImpl(util::Lock const& lock) final;
-
-    /**
-      * @see QservMgtRequest::notify
-      */
-    void notify(util::Lock const& lock) final;
-
-    /**
      * Carry over results of the request into a local storage.
      * 
-     * @param lock  lock must be acquired by a caller of the method
-     * @param data  data string returned by a worker
+     * @param lock
+     *   lock on QservMgtRequest::_mtx must be acquired by a caller of the method
+     *
+     * @param data
+     *   data string returned by a worker
      */
-     void setData(util::Lock const& lock,
+    void _setData(util::Lock const& lock,
                   std::string const& data);
 
-private:
 
-    /// The data string to be sent to the worker
+    // Input parameters
+
     std::string const _data;
-
-    /// The callback function for sending a notification upon request completion
-    CallbackType _onFinish;
+    CallbackType      _onFinish;    /// @note this object is reset after finishing the request
 
     /// A request to the remote services
     wpublish::TestEchoQservRequest::Ptr _qservRequest;

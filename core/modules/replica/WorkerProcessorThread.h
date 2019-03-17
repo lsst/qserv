@@ -1,7 +1,5 @@
-// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -41,8 +39,7 @@ class WorkerProcessor;
   * Class WorkerProcessorThread is a thread-based request processing engine
   * for replication requests within worker-side services.
   */
-class WorkerProcessorThread
-    : public std::enable_shared_from_this<WorkerProcessorThread> {
+class WorkerProcessorThread : public std::enable_shared_from_this<WorkerProcessorThread> {
 
 public:
 
@@ -58,7 +55,9 @@ public:
      * low-level pointers).
      * 
      * @param processor
-     *   pointer to the processor
+     *   pointer to the processor which launched this thread. This pointer
+     *   will be used for making call backs to the processor on the completed
+     *   or rejected requests.
      *
      * @return
      *   pointer to the created object 
@@ -91,32 +90,27 @@ public:
      * stop fetching new requests and finish. The thread can be resumed
      * later by calling method run().
      *
-     * NOTE: This is an asynchronous operation.
+     * @note
+     *   This is an asynchronous operation.
      */
     void stop();
 
-    /// @return context string
+    /// @return context string for logs
     std::string context() const { return "THREAD: " + std::to_string(_id) + "  "; }
 
 private:
 
-    /**
-     * The constructor of the class.
-     *
-     * @param processor  pointer to the processor
-     * @param id         a unique identifier of this object
-     */
+    /// @see WorkerProcessorThread::create()
     WorkerProcessorThread(WorkerProcessorPtr const& processor,
                           unsigned int id);
 
     /**
      * Event handler called by the thread when it's about to stop
      */
-    void stopped();
+    void _stopped();
  
-private:
+    // Input parameters
 
-    /// The processor
     WorkerProcessorPtr const _processor;
 
     /// The identifier of this thread object   

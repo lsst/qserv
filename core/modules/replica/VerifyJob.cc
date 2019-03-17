@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -33,6 +32,8 @@
 #include "replica/ServiceProvider.h"
 #include "util/BlockPost.h"
 
+using namespace std;
+
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.VerifyJob");
@@ -57,6 +58,7 @@ ReplicaDiff::ReplicaDiff()
         _fileMtimeMismatch(false) {
 }
 
+
 ReplicaDiff::ReplicaDiff(ReplicaInfo const& replica1,
                          ReplicaInfo const& replica2)
     :   _replica1(replica1),
@@ -71,8 +73,8 @@ ReplicaDiff::ReplicaDiff(ReplicaInfo const& replica1,
 
     if ((replica1.database() != replica2.database()) or
         (replica1.chunk()    != replica2.chunk())) {
-        throw std::invalid_argument(
-                        "ReplicaDiff::ReplicaDiff(r1,r2)  incompatible aruments");
+        throw invalid_argument(
+                "ReplicaDiff::" + string(__func__) + "(r1,r2)  incompatible arguments");
     }
 
     // Status and the number of files are expeted to match
@@ -82,13 +84,13 @@ ReplicaDiff::ReplicaDiff(ReplicaInfo const& replica1,
 
     // Corresponding file entries must match
 
-    std::map<std::string, ReplicaInfo::FileInfo> file2info1 = replica1.fileInfoMap();
-    std::map<std::string, ReplicaInfo::FileInfo> file2info2 = replica2.fileInfoMap();
+    map<string, ReplicaInfo::FileInfo> file2info1 = replica1.fileInfoMap();
+    map<string, ReplicaInfo::FileInfo> file2info2 = replica2.fileInfoMap();
 
     for (auto&& f: file2info1) {
 
         // Check if each file is present in both collections
-        std::string const& name = f.first;
+        string const& name = f.first;
 
         // The file name is required to be present in both replicas
         if (not file2info2.count(name)) {
@@ -116,11 +118,13 @@ ReplicaDiff::ReplicaDiff(ReplicaInfo const& replica1,
         _fileMtimeMismatch;
 }
 
+
 bool ReplicaDiff::isSelf() const {
     return _replica1.worker() == _replica2.worker();
 }
 
-std::string const& ReplicaDiff::flags2string() const {
+
+string const& ReplicaDiff::flags2string() const {
     if (_flags.empty()) {
         if (_notEqual) {
             _flags = "DIFF ";
@@ -137,7 +141,8 @@ std::string const& ReplicaDiff::flags2string() const {
     return _flags;
 }
 
-std::ostream& operator<<(std::ostream& os, ReplicaDiff const& ri) {
+
+ostream& operator<<(ostream& os, ReplicaDiff const& ri) {
 
     ReplicaInfo const& r1 = ri.replica1();
     ReplicaInfo const& r2 = ri.replica2();
@@ -163,6 +168,7 @@ std::ostream& operator<<(std::ostream& os, ReplicaDiff const& ri) {
     return os;
 }
 
+
 /////////////////////////////////////////////////
 ///                VerifyJob                  ///
 /////////////////////////////////////////////////
@@ -177,14 +183,14 @@ Job::Options const& VerifyJob::defaultOptions() {
 }
 
 
-std::string VerifyJob::typeName() { return "VerifyJob"; }
+string VerifyJob::typeName() { return "VerifyJob"; }
 
 
 VerifyJob::Ptr VerifyJob::create(size_t maxReplicas,
                                  bool computeCheckSum,
                                  CallbackTypeOnDiff const& onReplicaDifference,
                                  Controller::Ptr const& controller,
-                                 std::string const& parentJobId,
+                                 string const& parentJobId,
                                  CallbackType const& onFinish,
                                  Job::Options const& options) {
     return VerifyJob::Ptr(
@@ -197,11 +203,12 @@ VerifyJob::Ptr VerifyJob::create(size_t maxReplicas,
                       options));
 }
 
+
 VerifyJob::VerifyJob(size_t maxReplicas,
                      bool computeCheckSum,
                      CallbackTypeOnDiff const& onReplicaDifference,
                      Controller::Ptr const& controller,
-                     std::string const& parentJobId,
+                     string const& parentJobId,
                      CallbackType const& onFinish,
                      Job::Options const& options)
     :   Job(controller,
@@ -214,38 +221,39 @@ VerifyJob::VerifyJob(size_t maxReplicas,
         _onReplicaDifference(onReplicaDifference) {
 
     if (0 == maxReplicas) {
-        throw std::invalid_argument(
-                    "VerifyJob:  parameter maxReplicas must be greater than 0");
+        throw invalid_argument("VerifyJob::  parameter maxReplicas must be greater than 0");
     }
 }
 
-std::list<std::pair<std::string,std::string>> VerifyJob::extendedPersistentState() const {
-    std::list<std::pair<std::string,std::string>> result;
-    result.emplace_back("max_replicas",      std::to_string(maxReplicas()));
+
+list<pair<string,string>> VerifyJob::extendedPersistentState() const {
+    list<pair<string,string>> result;
+    result.emplace_back("max_replicas",      to_string(maxReplicas()));
     result.emplace_back("compute_check_sum", computeCheckSum() ? "1" : "0");
     return result;
 }
 
+
 void VerifyJob::startImpl(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     auto self = shared_from_base<VerifyJob>();
 
     // Launch the first batch of requests
 
-    std::vector<ReplicaInfo> replicas;
-    nextReplicas(lock,
-                 replicas,
-                 maxReplicas());
+    vector<ReplicaInfo> replicas;
+    _nextReplicas(lock,
+                  replicas,
+                  maxReplicas());
 
     if (replicas.empty()) {
 
         // In theory this should never happen unless the installation
         // doesn't have a single chunk.
 
-        LOGS(_log, LOG_LVL_ERROR, context()
-             << "startImpl  ** no replicas found in the database **");
+        LOGS(_log, LOG_LVL_ERROR, context() << __func__
+             << "  ** no replicas found in the database **");
 
         setState(lock, State::FINISHED, ExtendedState::FAILED);
         return;
@@ -256,7 +264,7 @@ void VerifyJob::startImpl(util::Lock const& lock) {
             replica.database(),
             replica.chunk(),
             [self] (FindRequest::Ptr request) {
-                self->onRequestFinish(request);
+                self->_onRequestFinish(request);
             },
             options(lock).priority,     /* inherited from the one of the current job */
             computeCheckSum(),
@@ -269,9 +277,10 @@ void VerifyJob::startImpl(util::Lock const& lock) {
     setState(lock, State::IN_PROGRESS);
 }
 
+
 void VerifyJob::cancelImpl(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // To ensure no lingering "side effects" will be left after cancelling this
     // job the request cancellation should be also followed (where it makes a sense)
@@ -293,17 +302,17 @@ void VerifyJob::cancelImpl(util::Lock const& lock) {
     _requests.clear();
 }
 
+
 void VerifyJob::notify(util::Lock const& lock) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
-
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     notifyDefaultImpl<VerifyJob>(lock, _onFinish);
 }
 
-void VerifyJob::onRequestFinish(FindRequest::Ptr request) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context()
-         << "onRequestFinish  database=" << request->database()
+void VerifyJob::_onRequestFinish(FindRequest::Ptr const& request) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
+         << "  database=" << request->database()
          << " worker=" << request->worker()
          << " chunk="  << request->chunk());
 
@@ -315,14 +324,14 @@ void VerifyJob::onRequestFinish(FindRequest::Ptr request) {
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + "onRequestFinish");
+    util::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return;
 
     // The default version of the object won't have any difference
     // reported
-    ReplicaDiff              selfReplicaDiff;   // against the previous state of the current replica
-    std::vector<ReplicaDiff> otherReplicaDiff;  // against other known replicas
+    ReplicaDiff         selfReplicaDiff;    // against the previous state of the current replica
+    vector<ReplicaDiff> otherReplicaDiff;   // against other known replicas
 
     auto self = shared_from_base<VerifyJob>();
 
@@ -350,11 +359,11 @@ void VerifyJob::onRequestFinish(FindRequest::Ptr request) {
         ReplicaInfo const& oldReplica = _replicas[request->id()];
         selfReplicaDiff = ReplicaDiff(oldReplica, request->responseData());
         if (selfReplicaDiff() and not _onReplicaDifference) {
-            LOGS(_log, LOG_LVL_INFO, context() << "replica missmatch for self\n"
+            LOGS(_log, LOG_LVL_INFO, context() << "replica mismatch for self\n"
                  << selfReplicaDiff);
         }
 
-        std::vector<ReplicaInfo> otherReplicas;
+        vector<ReplicaInfo> otherReplicas;
         controller()->serviceProvider()->databaseServices()->findReplicas(
             otherReplicas,
             oldReplica.chunk(),
@@ -365,7 +374,7 @@ void VerifyJob::onRequestFinish(FindRequest::Ptr request) {
             if (not diff.isSelf()) {
                 otherReplicaDiff.push_back(diff);
                 if (diff() and not _onReplicaDifference)
-                    LOGS(_log, LOG_LVL_INFO, context() << "replica missmatch for other\n"
+                    LOGS(_log, LOG_LVL_INFO, context() << "replica mismatch for other\n"
                          << diff);
             }
         }
@@ -385,15 +394,15 @@ void VerifyJob::onRequestFinish(FindRequest::Ptr request) {
     _replicas.erase(request->id());
     _requests.erase(request->id());
 
-    std::vector<ReplicaInfo> replicas;
-    nextReplicas(lock,
-                 replicas,
-                 1);
+    vector<ReplicaInfo> replicas;
+    _nextReplicas(lock,
+                  replicas,
+                  1);
 
     if (0 == replicas.size()) {
 
-        LOGS(_log, LOG_LVL_ERROR, context()
-             << "onRequestFinish  ** no replicas found in the database **");
+        LOGS(_log, LOG_LVL_ERROR, context() << __func__
+             << "  ** no replicas found in the database **");
 
         // In theory this should never happen unless all replicas are gone
         // from the installation.
@@ -407,7 +416,7 @@ void VerifyJob::onRequestFinish(FindRequest::Ptr request) {
             replica.database(),
             replica.chunk(),
             [self] (FindRequest::Ptr request) {
-                self->onRequestFinish(request);
+                self->_onRequestFinish(request);
             },
             options(lock).priority, /* inherited from the one of the current job */
             computeCheckSum(),
@@ -423,16 +432,17 @@ void VerifyJob::onRequestFinish(FindRequest::Ptr request) {
 
     if (_onReplicaDifference) {
         auto self = shared_from_base<VerifyJob>();
-        std::thread notifier([self, selfReplicaDiff, otherReplicaDiff]() {
+        thread notifier([self, selfReplicaDiff, otherReplicaDiff]() {
             self->_onReplicaDifference(self, selfReplicaDiff, otherReplicaDiff);
         });
         notifier.detach();
     }
 }
 
-void VerifyJob::nextReplicas(util::Lock const& lock,
-                             std::vector<ReplicaInfo>& replicas,
-                             size_t numReplicas) {
+
+void VerifyJob::_nextReplicas(util::Lock const& lock,
+                              vector<ReplicaInfo>& replicas,
+                              size_t numReplicas) {
 
     controller()->serviceProvider()->databaseServices()->findOldestReplicas(
         replicas,

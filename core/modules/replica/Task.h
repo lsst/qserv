@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -58,8 +57,7 @@ namespace replica {
  * Class TaskError represents exceptions throw by the method
  * of class Task on various error conditions.
  */
-class TaskError
-    :   public util::Issue {
+class TaskError : public util::Issue {
 public:
     TaskError(util::Issue::Context const& ctx,
               std::string const& message);
@@ -71,8 +69,7 @@ public:
  * activities as a response to activity cancellation requests. Note, that
  * this kind of exception is not considered an error.
  */
-class TaskStopped
-    :   public std::runtime_error {
+class TaskStopped : public std::runtime_error {
 public:
     TaskStopped()
         :   std::runtime_error("task stopped") {
@@ -85,8 +82,7 @@ public:
  * the activities, notifying clients on abnormal termination of the activities,
  * as well as an infrastructure supporting an implementation of these activities.
  */
-class Task
-    :   public std::enable_shared_from_this<Task> {
+class Task : public std::enable_shared_from_this<Task> {
 
 public:
 
@@ -149,7 +145,7 @@ public:
      *   (optional) this functional will be repeatedly (once a second) called
      *   while tracking the task's status
      */
-    bool startAndWait(WaitEvaluatorType const& abortWait = nullptr);
+    bool startAndWait(WaitEvaluatorType const& abortWait=nullptr);
 
 protected:
 
@@ -160,7 +156,8 @@ protected:
      *   a reference to the Controller for launching requests, jobs, etc.
      *
      * @param name
-     *   the name of a task
+     *   the name of a task (used for logging info into the log stream,
+     *   and for logging task events into the persistent log)
      *
      * @param onTerminated
      *   callback function to be called upon abnormal termination
@@ -171,9 +168,9 @@ protected:
      *   method onRun.
      */
     Task(Controller::Ptr const& controller,
-                  std::string const& name,
-                  AbnormalTerminationCallbackType const& onTerminated,
-                  unsigned int waitIntervalSec);
+         std::string const& name,
+         AbnormalTerminationCallbackType const& onTerminated,
+         unsigned int waitIntervalSec);
 
     /// @return a shared pointer of the desired subclass (no dynamic type checking)
     template <class T>
@@ -434,13 +431,11 @@ private:
                               Job::Ptr const& job,
                               std::string const& family) const;
 
-private:
 
-    /// The Controller for launching requests, jobs, etc.
+    // Input parameters
+
     Controller::Ptr const _controller;
-
-    /// The name of the task (used for logging messages)
-    std::string const _name;
+    std::string     const _name;
 
     /// The callback (if provided) to be called upon an abnormal termination
     /// of the user-supplied algorithm run in a context of the task.

@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -31,6 +30,8 @@
 #include "replica/WorkerProcessor.h"
 #include "replica/WorkerRequest.h"
 
+using namespace std;
+
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerProcessorThread");
@@ -47,6 +48,7 @@ WorkerProcessorThread::Ptr WorkerProcessorThread::create(WorkerProcessorPtr cons
         new WorkerProcessorThread(processor, id++));
 }
 
+
 WorkerProcessorThread::WorkerProcessorThread(WorkerProcessorPtr const& processor,
                                              unsigned int id)
     :   _processor(processor),
@@ -54,9 +56,11 @@ WorkerProcessorThread::WorkerProcessorThread(WorkerProcessorPtr const& processor
         _stop(false) {
 }
 
+
 bool WorkerProcessorThread::isRunning() const {
     return _thread != nullptr;
 }
+
 
 void WorkerProcessorThread::run() {
 
@@ -64,7 +68,7 @@ void WorkerProcessorThread::run() {
 
     auto const self = shared_from_this();
 
-    _thread = std::make_unique<std::thread>([self] () {
+    _thread = make_unique<thread>([self] () {
 
         LOGS(_log, LOG_LVL_DEBUG, self->context() << "start");
 
@@ -75,10 +79,10 @@ void WorkerProcessorThread::run() {
             // or the specified timeout expires. In either case this thread has a chance
             // to re-evaluate the stopping condition.
 
-            auto const request = self->_processor->fetchNextForProcessing(self, 1000);
+            auto const request = self->_processor->_fetchNextForProcessing(self, 1000);
 
             if (self->_stop) {
-                if (request) self->_processor->processingRefused(request);
+                if (request) self->_processor->_processingRefused(request);
                 continue;
             }
             if (request) {
@@ -98,7 +102,7 @@ void WorkerProcessorThread::run() {
                                 << "  id: " << request->id());
 
                             request->rollback();
-                            self->_processor->processingRefused(request);
+                            self->_processor->_processingRefused(request);
 
                             break;
                         }
@@ -109,7 +113,7 @@ void WorkerProcessorThread::run() {
                     LOGS(_log, LOG_LVL_DEBUG, self->context() << "cancel processing"
                         << "  id: " << request->id());
 
-                    self->_processor->processingFinished(request);
+                    self->_processor->_processingFinished(request);
                 }
                 if (finished) {
 
@@ -117,26 +121,28 @@ void WorkerProcessorThread::run() {
                         << "  id: " << request->id()
                         << "  status: " << WorkerRequest::status2string(request->status()));
 
-                    self->_processor->processingFinished(request);
+                    self->_processor->_processingFinished(request);
                 }
             }
         }
         LOGS(_log, LOG_LVL_DEBUG, self->context() << "stop");
 
-        self->stopped();
+        self->_stopped();
     });
     _thread->detach();
 }
+
 
 void WorkerProcessorThread::stop() {
     if (not isRunning()) return;
     _stop = true;
 }
 
-void WorkerProcessorThread::stopped() {
+
+void WorkerProcessorThread::_stopped() {
     _stop = false;
     _thread.reset(nullptr);
-    _processor->processorThreadStopped(shared_from_this());
+    _processor->_processorThreadStopped(shared_from_this());
 }
 
 }}} // namespace lsst::qserv::replica

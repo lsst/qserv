@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -32,6 +31,8 @@
 #include "replica/Configuration.h"
 #include "replica/ServiceProvider.h"
 
+using namespace std;
+
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.FindAllJob");
@@ -52,14 +53,14 @@ Job::Options const& FindAllJob::defaultOptions() {
 }
 
 
-std::string FindAllJob::typeName() { return "FindAllJob"; }
+string FindAllJob::typeName() { return "FindAllJob"; }
 
 
-FindAllJob::Ptr FindAllJob::create(std::string const& databaseFamily,
+FindAllJob::Ptr FindAllJob::create(string const& databaseFamily,
                                    bool saveReplicaInfo,
                                    bool allWorkers,
                                    Controller::Ptr const& controller,
-                                   std::string const& parentJobId,
+                                   string const& parentJobId,
                                    CallbackType const& onFinish,
                                    Job::Options const& options) {
     return FindAllJob::Ptr(
@@ -72,11 +73,12 @@ FindAllJob::Ptr FindAllJob::create(std::string const& databaseFamily,
                        options));
 }
 
-FindAllJob::FindAllJob(std::string const& databaseFamily,
+
+FindAllJob::FindAllJob(string const& databaseFamily,
                        bool saveReplicaInfo,
                        bool allWorkers,
                        Controller::Ptr const& controller,
-                       std::string const& parentJobId,
+                       string const& parentJobId,
                        CallbackType const& onFinish,
                        Job::Options const& options)
     :   Job(controller,
@@ -86,25 +88,28 @@ FindAllJob::FindAllJob(std::string const& databaseFamily,
         _databaseFamily(databaseFamily),
         _saveReplicaInfo(saveReplicaInfo),
         _allWorkers(allWorkers),
-        _databases(controller->serviceProvider()->config()->databases(databaseFamily)),
         _onFinish(onFinish),
+        _databases(controller->serviceProvider()->config()->databases(databaseFamily)),
         _numLaunched(0),
         _numFinished(0),
         _numSuccess(0) {
 }
 
+
 FindAllJobResult const& FindAllJob::getReplicaData() const {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "getReplicaData");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (state() == State::FINISHED) return _replicaData;
 
-    throw std::logic_error(
-        "FindAllJob::getReplicaData  the method can't be called while the job hasn't finished");
+    throw logic_error(
+             "FindAllJob::" + string(__func__) +
+            "  the method can't be called while the job hasn't finished");
 }
 
-std::list<std::pair<std::string,std::string>> FindAllJob::extendedPersistentState() const {
-    std::list<std::pair<std::string,std::string>> result;
+
+list<pair<string,string>> FindAllJob::extendedPersistentState() const {
+    list<pair<string,string>> result;
     result.emplace_back("database_family",   databaseFamily());
     result.emplace_back("save_replica_info", saveReplicaInfo() ? "1" : "0");
     result.emplace_back("all_workers",       allWorkers()      ? "1" : "0");
@@ -112,9 +117,9 @@ std::list<std::pair<std::string,std::string>> FindAllJob::extendedPersistentStat
 }
 
 
-std::list<std::pair<std::string,std::string>> FindAllJob::persistentLogData() const {
+list<pair<string,string>> FindAllJob::persistentLogData() const {
 
-    std::list<std::pair<std::string,std::string>> result;
+    list<pair<string,string>> result;
 
     auto&& replicaData = getReplicaData();
 
@@ -141,9 +146,9 @@ std::list<std::pair<std::string,std::string>> FindAllJob::persistentLogData() co
     //   good-replicas:
     //     the number of "good" replicas
 
-    std::map<std::string,
-             std::map<std::string,
-                      size_t>> workerCategoryCounter;
+    map<string,
+        map<string,
+            size_t>> workerCategoryCounter;
 
     for (auto&& infoCollection: replicaData.replicas) {
         for (auto&& info: infoCollection) {
@@ -166,12 +171,12 @@ std::list<std::pair<std::string,std::string>> FindAllJob::persistentLogData() co
     }
     for (auto&& workerItr: workerCategoryCounter) {
         auto&& worker = workerItr.first;
-        std::string val = "worker=" + worker;
+        string val = "worker=" + worker;
 
         for (auto&& categoryItr: workerItr.second) {
             auto&& category = categoryItr.first;
             size_t const counter = categoryItr.second;
-            val += " " + category + "=" + std::to_string(counter);
+            val += " " + category + "=" + to_string(counter);
         }
         result.emplace_back("worker-stats", val);
     }
@@ -181,7 +186,7 @@ std::list<std::pair<std::string,std::string>> FindAllJob::persistentLogData() co
 
 void FindAllJob::startImpl(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     auto const self = shared_from_base<FindAllJob>();
 
@@ -199,7 +204,7 @@ void FindAllJob::startImpl(util::Lock const& lock) {
                     database,
                     saveReplicaInfo(),
                     [self] (FindAllRequest::Ptr request) {
-                        self->onRequestFinish(request);
+                        self->_onRequestFinish(request);
                     },
                     options(lock).priority,
                     true,   /* keepTracking*/
@@ -217,9 +222,10 @@ void FindAllJob::startImpl(util::Lock const& lock) {
     else                  setState(lock, State::IN_PROGRESS);
 }
 
+
 void FindAllJob::cancelImpl(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // To ensure no lingering "side effects" will be left after cancelling this
     // job the request cancellation should be also followed (where it makes a sense)
@@ -243,17 +249,19 @@ void FindAllJob::cancelImpl(util::Lock const& lock) {
     _numSuccess  = 0;
 }
 
+
 void FindAllJob::notify(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     notifyDefaultImpl<FindAllJob>(lock, _onFinish);
 }
 
-void FindAllJob::onRequestFinish(FindAllRequest::Ptr const& request) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context()
-         << "onRequestFinish  database=" << request->database()
+void FindAllJob::_onRequestFinish(FindAllRequest::Ptr const& request) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
+         << "  database=" << request->database()
          << " worker=" << request->worker()
          << " state=" << request->state2string());
 
@@ -265,7 +273,7 @@ void FindAllJob::onRequestFinish(FindAllRequest::Ptr const& request) {
     
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + "onRequestFinish[" + request->id() + "]");
+    util::Lock lock(_mtx, context() + "" + string(__func__) + "[" + request->id() + "]");
 
     if (state() == State::FINISHED) return;
 
@@ -283,8 +291,8 @@ void FindAllJob::onRequestFinish(FindAllRequest::Ptr const& request) {
         _workerDatabaseSuccess[request->worker()][request->database()]= true;
     }
 
-    LOGS(_log, LOG_LVL_DEBUG, context()
-         << "onRequestFinish  database=" << request->database()
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
+         << "  database=" << request->database()
          << " worker=" << request->worker()
          << " _numLaunched=" << _numLaunched
          << " _numFinished=" << _numFinished
@@ -350,7 +358,7 @@ void FindAllJob::onRequestFinish(FindAllRequest::Ptr const& request) {
              // NOTE: Single-database chunks are always collocated. Note that
              //       the loop over databases below has exactly one iteration.
 
-             std::map<std::string, size_t> worker2numDatabases;
+             map<string, size_t> worker2numDatabases;
 
              for (auto&& database: chunkMap.databaseNames()) {
                  auto databaseMap = chunkMap.database(database);
@@ -366,8 +374,8 @@ void FindAllJob::onRequestFinish(FindAllRequest::Ptr const& request) {
              // requirement is met.
 
              for (auto&& entry: worker2numDatabases) {
-                 std::string const& worker       = entry.first;
-                 size_t      const  numDatabases = entry.second;
+                 string const& worker       = entry.first;
+                 size_t const  numDatabases = entry.second;
 
                  _replicaData.isColocated[chunk][worker] =
                     _replicaData.databases[chunk].size() == numDatabases;
@@ -380,8 +388,8 @@ void FindAllJob::onRequestFinish(FindAllRequest::Ptr const& request) {
             unsigned int const chunk = chunk2workers.first;
 
             for (auto&& worker2collocated: chunk2workers.second) {
-                std::string const& worker = worker2collocated.first;
-                bool        const  isColocated = worker2collocated.second;
+                string const& worker      = worker2collocated.first;
+                bool   const  isColocated = worker2collocated.second;
 
                 // Start with the "as good as collocated" assumption, then drill down
                 // into chunk participation in all databases on that worker to see

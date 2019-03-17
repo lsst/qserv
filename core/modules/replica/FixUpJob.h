@@ -1,7 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
- *
+= *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
  *
@@ -67,8 +66,7 @@ struct FixUpJobResult {
   * the ('fixup') operation chunks may get a higher number of replicas
   * then others (not affected by the operation).
   */
-class FixUpJob
-    :   public Job  {
+class FixUpJob : public Job  {
 
 public:
 
@@ -89,11 +87,20 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param databaseFamily - the name of a database family
-     * @param controller     - for launching requests
-     * @param parentJobId    - optional identifier of a parent job
-     * @param onFinish       - callback function to be called upon a completion of the job
-     * @param options        - job options
+     * @param databaseFamily
+     *   the name of a database family
+     *
+     * @param controller
+     *   for launching requests
+     *
+     * @param parentJobId
+     *   optional identifier of a parent job
+     *
+     * @param onFinish
+     *   callback function to be called upon a completion of the job
+     *
+     * @param options
+     *   job options
      *
      * @return pointer to the created object
      */
@@ -118,19 +125,21 @@ public:
     /**
      * Return the result of the operation.
      *
-     * IMPORTANT NOTES:
-     * - the method should be invoked only after the job has finished (primary
+     * @note:
+     *   The method should be invoked only after the job has finished (primary
      *   status is set to Job::Status::FINISHED). Otherwise exception
      *   std::logic_error will be thrown
      *
-     * - the result will be extracted from requests which have successfully
+     * @note
+     *   The result will be extracted from requests which have successfully
      *   finished. Please, verify the primary and extended status of the object
      *   to ensure that all requests have finished.
      *
-     * @return the data structure to be filled upon the completion of the job.
+     * @return
+     *   the data structure to be filled upon the completion of the job.
      *
-     * @throws std::logic_error - if the job didn't finished at a time
-     *                            when the method was called
+     * @throws std::logic_error
+     *   if the job didn't finished at a time when the method was called
      */
     FixUpJobResult const& getReplicaData() const;
 
@@ -141,18 +150,23 @@ public:
      */
     std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
 
-    /**
-     * @see Job::persistentLogData()
-     */
+    /// @see Job::persistentLogData()
     std::list<std::pair<std::string,std::string>> persistentLogData() const final;
 
 protected:
 
-    /**
-     * Construct the job with the pointer to the services provider.
-     *
-     * @see FixUpJob::create()
-     */
+    /// @see Job::startImpl()
+    void startImpl(util::Lock const& lock) final;
+
+    /// @see Job::cancelImpl()
+    void cancelImpl(util::Lock const& lock) final;
+
+    /// @see Job::notify()
+    void notify(util::Lock const& lock) final;
+
+private:
+
+    /// @see FixUpJob::create()
     FixUpJob(std::string const& databaseFamily,
              Controller::Ptr const& controller,
              std::string const& parentJobId,
@@ -160,56 +174,36 @@ protected:
              Job::Options const& options);
 
     /**
-      * @see Job::startImpl()
-      */
-    void startImpl(util::Lock const& lock) final;
-
-    /**
-      * @see Job::startImpl()
-      */
-    void cancelImpl(util::Lock const& lock) final;
-
-    /**
-      * @see Job::notify()
-      */
-    void notify(util::Lock const& lock) final;
-
-    /**
      * The callback function to be invoked on a completion of the precursor job
      * which harvests chunk disposition across relevant worker nodes.
      */
-    void onPrecursorJobFinish();
+    void _onPrecursorJobFinish();
 
     /**
-     * The callback function to be invoked on a completion of each request.
-     *
-     * @param request - a pointer to a request
+     * The callback function to be invoked on a completion of each replica
+     * creation request launched by the job.
      */
-    void onRequestFinish(ReplicationRequest::Ptr const& request);
+    void _onRequestFinish(ReplicationRequest::Ptr const& request);
 
     /**
      * Restart the job from scratch. This method will reset object context
      * to a state it was before method Job::startImpl() called and then call
      * Job::startImpl() again.
      * 
-     * @param lock - the lock must be acquired by a caller of the method
+     * @param lock
+     *   a lock on Job::_mtx must be acquired before calling this method
      */
-    void restart(util::Lock const& lock);
+    void _restart(util::Lock const& lock);
 
     /**
      * Unconditionally release the specified chunk
-     *
-     * @param chunk - the chunk number
      */
-    void release(unsigned int chunk);
+    void _release(unsigned int chunk);
 
-protected:
+    // Input parameters
 
-    /// The name of the database family
     std::string const _databaseFamily;
-
-    /// Client-defined function to be called upon the completion of the job
-    CallbackType _onFinish;
+    CallbackType      _onFinish;        /// @note is reset when the job finishes
 
     /// The chained job to be completed first in order to figure out
     /// replica disposition.

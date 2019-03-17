@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -36,6 +35,8 @@
 #include "replica/WorkerFindRequest.h"
 #include "replica/WorkerReplicationRequest.h"
 
+using namespace std;
+
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerRequestFactory");
@@ -54,6 +55,7 @@ WorkerRequestFactoryBase::WorkerRequestFactoryBase(ServiceProvider::Ptr const& s
     :   _serviceProvider(serviceProvider) {
 }
 
+
 ///////////////////////////////////////////////////////////////////
 ///////////////////// WorkerRequestFactoryTest ////////////////////
 ///////////////////////////////////////////////////////////////////
@@ -62,8 +64,7 @@ WorkerRequestFactoryBase::WorkerRequestFactoryBase(ServiceProvider::Ptr const& s
   * Class WorkerRequestFactory is a factory class constructing the test versions
   * of the request objects which make no persistent side effects.
   */
-class WorkerRequestFactoryTest
-    :   public WorkerRequestFactoryBase {
+class WorkerRequestFactoryTest : public WorkerRequestFactoryBase {
 
 public:
 
@@ -86,19 +87,19 @@ public:
      *
      * @see WorkerReplicationRequestBase::technology
      */
-    std::string technology() const { return "TEST"; }
+    string technology() const { return "TEST"; }
 
     /**
      * Implements the corresponding method of the base class
      *
      * @see WorkerReplicationRequestBase::createReplicationRequest
      */
-    WorkerReplicationRequestPtr createReplicationRequest(std::string const& worker,
-                                                         std::string const& id,
+    WorkerReplicationRequestPtr createReplicationRequest(string const& worker,
+                                                         string const& id,
                                                          int priority,
-                                                         std::string const& database,
+                                                         string const& database,
                                                          unsigned int chunk,
-                                                         std::string const& sourceWorker) const final {
+                                                         string const& sourceWorker) const final {
         return WorkerReplicationRequest::create(
             _serviceProvider,
             worker,
@@ -114,10 +115,10 @@ public:
      *
      * @see WorkerReplicationRequestBase::createDeleteRequest
      */
-    WorkerDeleteRequestPtr createDeleteRequest(std::string const& worker,
-                                               std::string const& id,
+    WorkerDeleteRequestPtr createDeleteRequest(string const& worker,
+                                               string const& id,
                                                int priority,
-                                               std::string const& database,
+                                               string const& database,
                                                unsigned int chunk) const final {
         return WorkerDeleteRequest::create(
             _serviceProvider,
@@ -133,10 +134,10 @@ public:
      *
      * @see WorkerReplicationRequestBase::createFindRequest
      */
-    WorkerFindRequestPtr createFindRequest(std::string const& worker,
-                                           std::string const& id,
+    WorkerFindRequestPtr createFindRequest(string const& worker,
+                                           string const& id,
                                            int priority,
-                                           std::string const& database,
+                                           string const& database,
                                            unsigned int chunk,
                                            bool computeCheckSum) const final {
         return WorkerFindRequest::create(
@@ -154,10 +155,10 @@ public:
      *
      * @see WorkerReplicationRequestBase::createFindAllRequest
      */
-    WorkerFindAllRequestPtr createFindAllRequest(std::string const& worker,
-                                                 std::string const& id,
+    WorkerFindAllRequestPtr createFindAllRequest(string const& worker,
+                                                 string const& id,
                                                  int priority,
-                                                 std::string const& database) const final {
+                                                 string const& database) const final {
         return WorkerFindAllRequest::create(
             _serviceProvider,
             worker,
@@ -171,10 +172,10 @@ public:
      *
      * @see WorkerReplicationRequestBase::createEchoRequest
      */
-    WorkerEchoRequestPtr createEchoRequest(std::string const& worker,
-                                           std::string const& id,
+    WorkerEchoRequestPtr createEchoRequest(string const& worker,
+                                           string const& id,
                                            int priority,
-                                           std::string const& data,
+                                           string const& data,
                                            uint64_t delay) const final {
         return WorkerEchoRequest::create(
             _serviceProvider,
@@ -186,6 +187,7 @@ public:
     }
 };
 
+
 ////////////////////////////////////////////////////////////////////
 ///////////////////// WorkerRequestFactoryPOSIX ////////////////////
 ////////////////////////////////////////////////////////////////////
@@ -194,8 +196,7 @@ public:
   * Class WorkerRequestFactoryPOSIX creates request objects based on the direct
   * manipulation of files on a POSIX file system.
   */
-class WorkerRequestFactoryPOSIX
-    :   public WorkerRequestFactoryBase {
+class WorkerRequestFactoryPOSIX : public WorkerRequestFactoryBase {
 
 public:
 
@@ -218,19 +219,19 @@ public:
      *
      * @see WorkerReplicationRequestBase::technology
      */
-    std::string technology() const { return "POSIX"; }
+    string technology() const { return "POSIX"; }
 
     /**
      * Implements the corresponding method of the base class
      *
      * @see WorkerReplicationRequestBase::createReplicationRequest
      */
-    WorkerReplicationRequestPtr createReplicationRequest(std::string const& worker,
-                                                         std::string const& id,
+    WorkerReplicationRequestPtr createReplicationRequest(string const& worker,
+                                                         string const& id,
                                                          int priority,
-                                                         std::string const& database,
+                                                         string const& database,
                                                          unsigned int chunk,
-                                                         std::string const& sourceWorker) const final {
+                                                         string const& sourceWorker) const final {
         return WorkerReplicationRequestPOSIX::create(
             _serviceProvider,
             worker,
@@ -246,10 +247,10 @@ public:
      *
      * @see WorkerReplicationRequestBase::createDeleteRequest
      */
-    WorkerDeleteRequestPtr createDeleteRequest(std::string const& worker,
-                                               std::string const& id,
+    WorkerDeleteRequestPtr createDeleteRequest(string const& worker,
+                                               string const& id,
                                                int priority,
-                                               std::string const& database,
+                                               string const& database,
                                                unsigned int chunk) const final {
         return WorkerDeleteRequestPOSIX::create(
             _serviceProvider,
@@ -265,10 +266,10 @@ public:
      *
      * @see WorkerReplicationRequestBase::createFindRequest
      */
-    WorkerFindRequestPtr createFindRequest(std::string const& worker,
-                                           std::string const& id,
+    WorkerFindRequestPtr createFindRequest(string const& worker,
+                                           string const& id,
                                            int priority,
-                                           std::string const& database,
+                                           string const& database,
                                            unsigned int chunk,
                                            bool computeCheckSum) const final {
         return WorkerFindRequestPOSIX::create(
@@ -286,10 +287,10 @@ public:
      *
      * @see WorkerReplicationRequestBase::createFindAllRequest
      */
-    WorkerFindAllRequestPtr createFindAllRequest(std::string const& worker,
-                                                 std::string const& id,
+    WorkerFindAllRequestPtr createFindAllRequest(string const& worker,
+                                                 string const& id,
                                                  int priority,
-                                                 std::string const& database) const final {
+                                                 string const& database) const final {
         return WorkerFindAllRequestPOSIX::create(
             _serviceProvider,
             worker,
@@ -303,10 +304,10 @@ public:
      *
      * @see WorkerReplicationRequestBase::createEchoRequest
      */
-    WorkerEchoRequestPtr createEchoRequest(std::string const& worker,
-                                           std::string const& id,
+    WorkerEchoRequestPtr createEchoRequest(string const& worker,
+                                           string const& id,
                                            int priority,
-                                           std::string const& data,
+                                           string const& data,
                                            uint64_t delay) const final {
         return WorkerEchoRequestPOSIX::create(
             _serviceProvider,
@@ -318,6 +319,7 @@ public:
     }
 };
 
+
 /////////////////////////////////////////////////////////////////
 ///////////////////// WorkerRequestFactoryFS ////////////////////
 /////////////////////////////////////////////////////////////////
@@ -327,8 +329,7 @@ public:
   * manipulation of local files on a POSIX file system and for reading remote
   * files using the built-into-worker simple file server.
   */
-class WorkerRequestFactoryFS
-    :   public WorkerRequestFactoryBase {
+class WorkerRequestFactoryFS : public WorkerRequestFactoryBase {
 
 public:
 
@@ -351,19 +352,19 @@ public:
      *
      * @see WorkerReplicationRequestBase::technology
      */
-    std::string technology() const { return "FS"; }
+    string technology() const { return "FS"; }
 
     /**
      * Implements the corresponding method of the base class
      *
      * @see WorkerReplicationRequestBase::createReplicationRequest
      */
-    WorkerReplicationRequestPtr createReplicationRequest(std::string const& worker,
-                                                         std::string const& id,
+    WorkerReplicationRequestPtr createReplicationRequest(string const& worker,
+                                                         string const& id,
                                                          int priority,
-                                                         std::string const& database,
+                                                         string const& database,
                                                          unsigned int chunk,
-                                                         std::string const& sourceWorker) const final {
+                                                         string const& sourceWorker) const final {
         return WorkerReplicationRequestFS::create(
             _serviceProvider,
             worker,
@@ -379,10 +380,10 @@ public:
      *
      * @see WorkerReplicationRequestBase::createDeleteRequest
      */
-    WorkerDeleteRequestPtr createDeleteRequest(std::string const& worker,
-                                               std::string const& id,
+    WorkerDeleteRequestPtr createDeleteRequest(string const& worker,
+                                               string const& id,
                                                int priority,
-                                               std::string const& database,
+                                               string const& database,
                                                unsigned int chunk) const final {
         return WorkerDeleteRequestFS::create(
             _serviceProvider,
@@ -398,10 +399,10 @@ public:
      *
      * @see WorkerReplicationRequestBase::createFindRequest
      */
-    WorkerFindRequestPtr createFindRequest(std::string const& worker,
-                                           std::string const& id,
+    WorkerFindRequestPtr createFindRequest(string const& worker,
+                                           string const& id,
                                            int priority,
-                                           std::string const& database,
+                                           string const& database,
                                            unsigned int chunk,
                                            bool computeCheckSum) const final {
         return WorkerFindRequestFS::create(
@@ -419,10 +420,10 @@ public:
      *
      * @see WorkerReplicationRequestBase::createFindAllRequest
      */
-    WorkerFindAllRequestPtr createFindAllRequest(std::string const& worker,
-                                                 std::string const& id,
+    WorkerFindAllRequestPtr createFindAllRequest(string const& worker,
+                                                 string const& id,
                                                  int priority,
-                                                 std::string const& database) const final {
+                                                 string const& database) const final {
         return WorkerFindAllRequestFS::create(
             _serviceProvider,
             worker,
@@ -436,10 +437,10 @@ public:
      *
      * @see WorkerReplicationRequestBase::createEchoRequest
      */
-    WorkerEchoRequestPtr createEchoRequest(std::string const& worker,
-                                           std::string const& id,
+    WorkerEchoRequestPtr createEchoRequest(string const& worker,
+                                           string const& id,
                                            int priority,
-                                           std::string const& data,
+                                           string const& data,
                                            uint64_t delay) const final {
         return WorkerEchoRequestFS::create(
             _serviceProvider,
@@ -451,24 +452,25 @@ public:
     }
 };
 
+
 ///////////////////////////////////////////////////////////////
 ///////////////////// WorkerRequestFactory ////////////////////
 ///////////////////////////////////////////////////////////////
 
 WorkerRequestFactory::WorkerRequestFactory(ServiceProvider::Ptr const& serviceProvider,
-                                           std::string const& technology)
+                                           string const& technology)
     :   WorkerRequestFactoryBase(serviceProvider) {
 
-    std::string const finalTechnology =
+    string const finalTechnology =
         technology.empty() ? serviceProvider->config()->workerTechnology() : technology;
 
     if      (finalTechnology == "TEST")  _ptr = new WorkerRequestFactoryTest( serviceProvider);
     else if (finalTechnology == "POSIX") _ptr = new WorkerRequestFactoryPOSIX(serviceProvider);
     else if (finalTechnology == "FS")    _ptr = new WorkerRequestFactoryFS(   serviceProvider);
     else {
-        throw std::invalid_argument(
-                        "WorkerRequestFactory::WorkerRequestFactory() unknown technology: '" +
-                        finalTechnology);
+        throw invalid_argument(
+                "WorkerRequestFactory::" + string(__func__) +
+                " unknown technology: '" + finalTechnology);
     }
 }
 

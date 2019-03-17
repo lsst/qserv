@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -180,7 +179,8 @@ int AdminApp::runImpl() {
                     _requestExpirationIvalSec));
 
         } else {
-            throw logic_error("unsupported operation: " + _operation);
+            throw logic_error(
+                    "AdminApp::" + string(__func__) + "  unsupported operation: " + _operation);
         }
     }
 

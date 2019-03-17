@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -37,6 +36,8 @@
 // LSST headers
 #include "lsst/log/Log.h"
 
+using namespace std;
+
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.ServiceProvider");
@@ -47,7 +48,7 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-ServiceProvider::Ptr ServiceProvider::create(std::string const& configUrl) {
+ServiceProvider::Ptr ServiceProvider::create(string const& configUrl) {
 
     auto ptr = ServiceProvider::Ptr(new ServiceProvider(configUrl));
 
@@ -62,16 +63,18 @@ ServiceProvider::Ptr ServiceProvider::create(std::string const& configUrl) {
     return ptr;
 }
 
-ServiceProvider::ServiceProvider(std::string const& configUrl)
+
+ServiceProvider::ServiceProvider(string const& configUrl)
     :   _configuration(Configuration::load(configUrl)),
         _databaseServices(DatabaseServicesPool::create(_configuration)) {
 }
 
+
 void ServiceProvider::run() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "run");
+    LOGS(_log, LOG_LVL_DEBUG, _context() << __func__);
 
-    util::Lock lock(_mtx, context() + "run");
+    util::Lock lock(_mtx, _context() + __func__);
 
     // Check if the service is still not running
 
@@ -86,33 +89,33 @@ void ServiceProvider::run() {
     _threads.clear();
     for (size_t i = 0; i < config()->controllerThreads(); ++i) {
         _threads.push_back(
-            std::move(
-                std::make_unique<std::thread>(
-                    [self] () {
-        
-                        // This will prevent the I/O service from exiting the .run()
-                        // method event when it will run out of any requests to process.
-                        // Unless the service will be explicitly stopped.
-                        self->_io_service.run();
-                    }
-                )
-            )
+            move(make_unique<thread>(
+                [self] () {
+
+                    // This will prevent the I/O service from exiting the .run()
+                    // method event when it will run out of any requests to process.
+                    // Unless the service will be explicitly stopped.
+                    self->_io_service.run();
+                }
+            ))
         );
     }
 }
 
+
 bool ServiceProvider::isRunning() const {
 
-    util::Lock lock(_mtx, context() + "isRunning");
+    util::Lock lock(_mtx, _context() + __func__);
 
     return not _threads.empty();
 }
 
+
 void ServiceProvider::stop() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "stop");
+    LOGS(_log, LOG_LVL_DEBUG, _context() << __func__);
 
-    util::Lock lock(_mtx, context() + "stop");
+    util::Lock lock(_mtx, _context() + __func__);
 
     // Check if the service is already stopped
 
@@ -145,32 +148,36 @@ void ServiceProvider::stop() {
     _threads.clear();
 }
 
-void ServiceProvider::assertWorkerIsValid(std::string const& name) {
+
+void ServiceProvider::assertWorkerIsValid(string const& name) {
     if (not _configuration->isKnownWorker(name)) {
-        throw std::invalid_argument(
-            "Request::assertWorkerIsValid: worker name is not valid: " + name);
+        throw invalid_argument(
+                "ServiceProvider::" + string(__func__) + "  worker name is not valid: " + name);
     }
 }
 
-void ServiceProvider::assertWorkersAreDifferent(std::string const& firstName,
-                                                std::string const& secondName) {
+
+void ServiceProvider::assertWorkersAreDifferent(string const& firstName,
+                                                string const& secondName) {
     assertWorkerIsValid(firstName);
     assertWorkerIsValid(secondName);
 
     if (firstName == secondName) {
-        throw std::invalid_argument(
-            "Request::assertWorkersAreDifferent: worker names are the same: " + firstName);
+        throw invalid_argument(
+                "Request::" + string(__func__) + "  worker names are the same: " + firstName);
     }
 }
 
-void ServiceProvider::assertDatabaseIsValid(std::string const& name) {
+
+void ServiceProvider::assertDatabaseIsValid(string const& name) {
     if (not _configuration->isKnownDatabase(name)) {
-        throw std::invalid_argument(
-            "Request::assertDatabaseIsValid: database name is not valid: " + name);
+        throw invalid_argument(
+                "ServiceProvider::" + string(__func__) + "  database name is not valid: " + name);
     }
 }
 
-std::string ServiceProvider::context() const {
+
+string ServiceProvider::_context() const {
     return "SERVICE-PROVIDER  ";
 }
 

@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -42,8 +41,7 @@ namespace replica {
  * by the cluster, a desired replication level, and existing replica disposition,
  * removal of a worker could be a lengthy process.
  */
-class DeleteWorkerTask
-    :   public Task {
+class DeleteWorkerTask : public Task {
 
 public:
 
@@ -90,22 +88,16 @@ public:
 
 protected:
 
-    /**
-     * The constructor is available to the class's factory method
-     *
-     * @see DeleteWorkerTask::create()
-     */
+    /// @see Task::onStart()
+    void onStart() override;
+
+private:
+
+    /// @see DeleteWorkerTask::create()
     DeleteWorkerTask(Controller::Ptr const& controller,
                      Task::AbnormalTerminationCallbackType const& onTerminated,
                      std::string const& worker,
                      bool permanentDelete);
-
-    /**
-     * @see Task::onStart()
-     */
-    void onStart() override;
-
-private:
 
     /**
      * Log a persistent event on the started job
@@ -123,14 +115,11 @@ private:
      */
     void _logFinishedEvent(DeleteWorkerJob::Ptr const& job) const;
 
-private:
 
-    /// The name of a worker to be evicted
+    // Input parameters
+
     std::string const _worker;
-
-    /// The flag of set to 'true' will result in complete removal of
-    /// the evicted worker from the Replication system's Configuration.
-    bool const _permanentDelete;
+    bool        const _permanentDelete;
 };
     
 }}} // namespace lsst::qserv::replica

@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -52,8 +51,7 @@ class QservMgtServices;
   * Class ServiceProvider hosts various services used by both workers
   * and controllers.
   */
-class ServiceProvider
-    :   public std::enable_shared_from_this<ServiceProvider> {
+class ServiceProvider : public std::enable_shared_from_this<ServiceProvider> {
 
 public:
 
@@ -75,9 +73,11 @@ public:
     /**
      * Static factory for creating objects of the class
      *
-     * @param configUrl - a source of the application configuration parameters
+     * @param configUrl
+     *   a source of the application configuration parameters
      * 
-     * @return pointer to the created object
+     * @return
+     *   pointer to the created object
      */
     static ServiceProvider::Ptr create(std::string const& configUrl);
 
@@ -129,19 +129,25 @@ public:
     /**
      * Make sure this worker is known in the configuration
      *
-     * @param name - the name of a worker
+     * @param name
+     *   the name of a worker
      *
-     * @throws std::invalid_argument if the worker is unknown
+     * @throws std::invalid_argument
+     *   if the worker is unknown
      */
     void assertWorkerIsValid(std::string const& name);
 
     /**
      * Make sure workers are now known in the configuration and they're different
      *
-     * @param workerOneName - name of the first worker in the comparison
-     * @param workerTwoName - name of the second worker in the comparison
+     * @param workerOneName
+     *   name of the first worker in the comparison
      *
-     * @throws std::invalid_argument if either worker is unknown
+     * @param workerTwoName
+     *   name of the second worker in the comparison
+     *
+     * @throws std::invalid_argument
+     *   if either worker is unknown
      */
     void assertWorkersAreDifferent(std::string const& workerOneName,
                                    std::string const& workerTwoName);
@@ -149,9 +155,11 @@ public:
     /**
      * Make sure this database is known in the configuration
      *
-     * @param name - the name of a database
+     * @param name
+     *   the name of a database
      * 
-     * @throws std::invalid_argument if the database is unknown
+     * @throws std::invalid_argument
+     *   if the database is unknown
      */
     void assertDatabaseIsValid(std::string const& name);
 
@@ -165,9 +173,7 @@ private:
     explicit ServiceProvider(std::string const& configUrl);
 
     /// @return the context string for debugging and diagnostic printouts
-    std::string context() const;
-
-private:
+    std::string _context() const;
 
     // The BOOST ASIO communication services & threads which run them
 
@@ -175,7 +181,8 @@ private:
     std::unique_ptr<boost::asio::io_service::work> _work;
     std::vector<std::unique_ptr<std::thread>> _threads;
 
-    /// Configuration manager
+    /// Configuration manager (constructed from the Configuration specification
+    /// URL passed into the constructor of the class).
     ConfigurationPtr const _configuration;
 
     /// Database services

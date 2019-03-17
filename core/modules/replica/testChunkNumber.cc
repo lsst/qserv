@@ -1,7 +1,5 @@
-// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -40,6 +38,7 @@
 #define BOOST_TEST_MODULE ChunkNumber
 #include "boost/test/included/unit_test.hpp"
 
+using namespace std;
 namespace test = boost::test_tools;
 using namespace lsst::qserv::replica;
 
@@ -52,8 +51,8 @@ BOOST_AUTO_TEST_CASE(ChunkNumberTest) {
     // -------------------------
     // Test equality of policies
 
-    ChunkNumberValidator::Ptr const validator1 = std::make_shared<ChunkNumberSingleRangeValidator>(0, 1000);
-    ChunkNumberValidator::Ptr const validator2 = std::make_shared<ChunkNumberSingleRangeValidator>(0, 1000);
+    ChunkNumberValidator::Ptr const validator1 = make_shared<ChunkNumberSingleRangeValidator>(0, 1000);
+    ChunkNumberValidator::Ptr const validator2 = make_shared<ChunkNumberSingleRangeValidator>(0, 1000);
     
     BOOST_CHECK(*validator1 == *validator1);
     BOOST_CHECK(*validator1 != *validator2);
@@ -66,7 +65,7 @@ BOOST_AUTO_TEST_CASE(ChunkNumberTest) {
                          endRange = 20;
 
     ChunkNumberValidator::Ptr const validator10to20 =
-        std::make_shared<ChunkNumberSingleRangeValidator>(beginRange, endRange);
+        make_shared<ChunkNumberSingleRangeValidator>(beginRange, endRange);
 
     // Overflow values are always valid
     
@@ -180,7 +179,7 @@ BOOST_AUTO_TEST_CASE(ChunkNumberTest) {
     // Compare chunks constructed with different validators
 
     ChunkNumberSingleRangeValidator::Ptr const otherValidator10to20 =
-        std::make_shared<ChunkNumberSingleRangeValidator>(beginRange, endRange);
+        make_shared<ChunkNumberSingleRangeValidator>(beginRange, endRange);
 
     BOOST_CHECK(*otherValidator10to20 != *validator10to20);
 
@@ -199,12 +198,12 @@ BOOST_AUTO_TEST_CASE(ChunkNumberTest) {
 
     // Testing the streaming operator
 
-    std::ostringstream ss;
+    ostringstream ss;
     ss << defaultConstrutedChunk;
 
     BOOST_CHECK_EQUAL(ss.str(), "invalid");
 
-    ss.str(std::string());
+    ss.str(string());
     ss << chunk10;
     BOOST_CHECK_EQUAL(ss.str(), "10");
 

@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -40,6 +39,8 @@
 #include "replica/ReplicaInfo.h"
 #include "replica/ServiceProvider.h"
 
+using namespace std;
+
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.FindRequest");
@@ -52,14 +53,14 @@ namespace replica {
 
 FindRequest::Ptr FindRequest::create(ServiceProvider::Ptr const& serviceProvider,
                                      boost::asio::io_service& io_service,
-                                     std::string const& worker,
-                                     std::string const& database,
+                                     string const& worker,
+                                     string const& database,
                                      unsigned int chunk,
                                      CallbackType const& onFinish,
                                      int priority,
                                      bool computeCheckSum,
                                      bool keepTracking,
-                                     std::shared_ptr<Messenger> const& messenger) {
+                                     shared_ptr<Messenger> const& messenger) {
     return FindRequest::Ptr(
         new FindRequest(serviceProvider,
                         io_service,
@@ -73,16 +74,17 @@ FindRequest::Ptr FindRequest::create(ServiceProvider::Ptr const& serviceProvider
                         messenger));
 }
 
+
 FindRequest::FindRequest(ServiceProvider::Ptr const& serviceProvider,
                            boost::asio::io_service& io_service,
-                           std::string const& worker,
-                           std::string const& database,
-                           unsigned int  chunk,
+                           string const& worker,
+                           string const& database,
+                           unsigned int chunk,
                            CallbackType const& onFinish,
-                           int  priority,
+                           int priority,
                            bool computeCheckSum,
                            bool keepTracking,
-                           std::shared_ptr<Messenger> const& messenger)
+                           shared_ptr<Messenger> const& messenger)
     :   RequestMessenger(serviceProvider,
                          io_service,
                          "REPLICA_FIND",
@@ -99,6 +101,7 @@ FindRequest::FindRequest(ServiceProvider::Ptr const& serviceProvider,
     Request::serviceProvider()->assertDatabaseIsValid(database);
 }
 
+
 ReplicaInfo const& FindRequest::responseData() const {
     return _replicaInfo;
 }
@@ -106,7 +109,7 @@ ReplicaInfo const& FindRequest::responseData() const {
 
 void FindRequest::startImpl(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl "
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << " "
          << " worker: "          << worker()
          << " database: "        << database()
          << " chunk: "           << chunk()
@@ -132,28 +135,30 @@ void FindRequest::startImpl(util::Lock const& lock) {
 
     buffer()->serialize(message);
 
-    send(lock);
+    _send(lock);
 }
 
-void FindRequest::wait(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "wait");
+void FindRequest::_wait(util::Lock const& lock) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // Always need to set the interval before launching the timer.
 
     timer().expires_from_now(boost::posix_time::seconds(timerIvalSec()));
     timer().async_wait(
         boost::bind(
-            &FindRequest::awaken,
+            &FindRequest::_awaken,
             shared_from_base<FindRequest>(),
             boost::asio::placeholders::error
         )
     );
 }
 
-void FindRequest::awaken(boost::system::error_code const& ec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "awaken");
+void FindRequest::_awaken(boost::system::error_code const& ec) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (isAborted(ec)) return;
 
@@ -165,7 +170,7 @@ void FindRequest::awaken(boost::system::error_code const& ec) {
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + "awaken");
+    util::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return;
 
@@ -187,12 +192,13 @@ void FindRequest::awaken(boost::system::error_code const& ec) {
 
     buffer()->serialize(message);
 
-    send(lock);
+    _send(lock);
 }
 
-void FindRequest::send(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "send");
+void FindRequest::_send(util::Lock const& lock) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     auto self = shared_from_base<FindRequest>();
 
@@ -200,20 +206,21 @@ void FindRequest::send(util::Lock const& lock) {
         worker(),
         id(),
         buffer(),
-        [self] (std::string const& id,
+        [self] (string const& id,
                 bool success,
                 proto::ReplicationResponseFind const& response) {
 
-            self->analyze(success,
+            self->_analyze(success,
                           response);
         }
     );
 }
 
-void FindRequest::analyze(bool success,
-                          proto::ReplicationResponseFind const& message) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "analyze  success=" << (success ? "true" : "false"));
+void FindRequest::_analyze(bool success,
+                           proto::ReplicationResponseFind const& message) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  success=" << (success ? "true" : "false"));
 
     // This method is called on behalf of an asynchronous callback fired
     // upon a completion of the request within method send() - the only
@@ -229,7 +236,7 @@ void FindRequest::analyze(bool success,
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + "analyze");
+    util::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return;
 
@@ -272,17 +279,17 @@ void FindRequest::analyze(bool success,
             break;
 
         case proto::ReplicationStatus::QUEUED:
-            if (keepTracking()) wait(lock);
+            if (keepTracking()) _wait(lock);
             else                finish(lock, SERVER_QUEUED);
             break;
 
         case proto::ReplicationStatus::IN_PROGRESS:
-            if (keepTracking()) wait(lock);
+            if (keepTracking()) _wait(lock);
             else                finish(lock, SERVER_IN_PROGRESS);
             break;
 
         case proto::ReplicationStatus::IS_CANCELLING:
-            if (keepTracking()) wait(lock);
+            if (keepTracking()) _wait(lock);
             else                finish(lock, SERVER_IS_CANCELLING);
             break;
 
@@ -299,27 +306,28 @@ void FindRequest::analyze(bool success,
             break;
 
         default:
-            throw std::logic_error(
-                    "FindRequest::analyze() unknown status '" +
+            throw logic_error(
+                    "FindRequest::" + string(__func__) + " unknown status '" +
                     proto::ReplicationStatus_Name(message.status()) + "' received from server");
     }
 }
 
+
 void FindRequest::notify(util::Lock const& lock) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
-
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     notifyDefaultImpl<FindRequest>(lock, _onFinish);
 }
+
 
 void FindRequest::savePersistentState(util::Lock const& lock) {
     controller()->serviceProvider()->databaseServices()->saveState(*this, performance(lock));
 }
 
-std::list<std::pair<std::string,std::string>> FindRequest::extendedPersistentState() const {
-    std::list<std::pair<std::string,std::string>> result;
+
+list<pair<string,string>> FindRequest::extendedPersistentState() const {
+    list<pair<string,string>> result;
     result.emplace_back("database", database());
-    result.emplace_back("chunk",    std::to_string(chunk()));
+    result.emplace_back("chunk",    to_string(chunk()));
     return result;
 }
 

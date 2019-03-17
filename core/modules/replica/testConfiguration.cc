@@ -1,7 +1,5 @@
-// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -43,6 +41,7 @@
 #define BOOST_TEST_MODULE Configuration
 #include "boost/test/included/unit_test.hpp"
 
+using namespace std;
 namespace test = boost::test_tools;
 using namespace lsst::qserv::replica;
 
@@ -52,7 +51,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
 
     LOGS_INFO("Configuration test begins");
 
-    std::map<std::string, std::string> kvMap = {
+    map<string, string> kvMap = {
         {"common.workers",                    "worker-A worker-B worker-C"},
         {"common.database_families",          "production test"},
         {"common.databases",                  "db1 db2 db3 db4 db5"},
@@ -150,16 +149,16 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
 
         // Test default assumptions for optional parameters of the method
 
-        std::vector<std::string> workers1 = config->workers();
-        std::sort(workers1.begin(), workers1.end());
+        vector<string> workers1 = config->workers();
+        sort(workers1.begin(), workers1.end());
         BOOST_CHECK(workers1.size() == 1);
-        BOOST_CHECK(workers1 == std::vector<std::string>({"worker-A"}));
+        BOOST_CHECK(workers1 == vector<string>({"worker-A"}));
 
         bool isEnabled  = true;
         bool isReadOnly = false;
 
-        std::vector<std::string> workers2 = config->workers(isEnabled, isReadOnly);
-        std::sort(workers2.begin(), workers2.end());
+        vector<string> workers2 = config->workers(isEnabled, isReadOnly);
+        sort(workers2.begin(), workers2.end());
         BOOST_CHECK(workers2.size() == 1);
         BOOST_CHECK(workers2 == workers1);
 
@@ -168,19 +167,19 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         isEnabled  = true;
         isReadOnly = true;
 
-        std::vector<std::string> workers3 = config->workers(isEnabled, isReadOnly);
-        std::sort(workers3.begin(), workers3.end());
+        vector<string> workers3 = config->workers(isEnabled, isReadOnly);
+        sort(workers3.begin(), workers3.end());
         BOOST_CHECK(workers3.size() == 1);
-        BOOST_CHECK(workers3 == std::vector<std::string>({"worker-B"}));
+        BOOST_CHECK(workers3 == vector<string>({"worker-B"}));
 
         // Fetch names of all the disabled workers
 
         isEnabled  = false;
 
-        std::vector<std::string> workers4 = config->workers(isEnabled);
-        std::sort(workers4.begin(), workers4.end());
+        vector<string> workers4 = config->workers(isEnabled);
+        sort(workers4.begin(), workers4.end());
         BOOST_CHECK(workers4.size() == 1);
-        BOOST_CHECK(workers4 == std::vector<std::string>({"worker-C"}));
+        BOOST_CHECK(workers4 == vector<string>({"worker-C"}));
 
         // Protocol parameters
 
@@ -225,10 +224,10 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
     
         // Database families
 
-        std::vector<std::string> families = config->databaseFamilies();
-        std::sort(families.begin(), families.end());
+        vector<string> families = config->databaseFamilies();
+        sort(families.begin(), families.end());
         BOOST_CHECK(families.size() == 2);
-        BOOST_CHECK(families == std::vector<std::string>({"production", "test"}));
+        BOOST_CHECK(families == vector<string>({"production", "test"}));
 
         for (auto&& name: families) {
             BOOST_CHECK(config->isKnownDatabaseFamily(name));
@@ -268,77 +267,77 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
 
         // Databases
 
-        std::vector<std::string> databases1 = config->databases();
-        std::sort(databases1.begin(), databases1.end());
+        vector<string> databases1 = config->databases();
+        sort(databases1.begin(), databases1.end());
         BOOST_CHECK(databases1.size() == 5);
-        BOOST_CHECK(databases1 == std::vector<std::string>({"db1","db2","db3","db4","db5"}));
+        BOOST_CHECK(databases1 == vector<string>({"db1", "db2", "db3", "db4", "db5"}));
 
-        std::vector<std::string> databases2 = config->databases("production");
-        std::sort(databases2.begin(), databases2.end());
+        vector<string> databases2 = config->databases("production");
+        sort(databases2.begin(), databases2.end());
         BOOST_CHECK(databases2.size() == 3);
-        BOOST_CHECK(databases2 == std::vector<std::string>({"db1","db2","db3"}));
+        BOOST_CHECK(databases2 == vector<string>({"db1", "db2", "db3"}));
 
-        std::vector<std::string> databases3 = config->databases("test");
-        std::sort(databases3.begin(), databases3.end());
+        vector<string> databases3 = config->databases("test");
+        sort(databases3.begin(), databases3.end());
         BOOST_CHECK(databases3.size() == 2);
-        BOOST_CHECK(databases3 == std::vector<std::string>({"db4","db5"}));
+        BOOST_CHECK(databases3 == vector<string>({"db4", "db5"}));
     
-        for (auto&& name: std::vector<std::string>({"db1","db2","db3","db4","db5"})) {
+        for (auto&& name: vector<string>({"db1", "db2", "db3", "db4", "db5"})) {
             BOOST_CHECK(config->isKnownDatabase(name));  
         }
 
-        std::vector<std::string> tables;
+        vector<string> tables;
 
         DatabaseInfo const db1info = config->databaseInfo("db1");
         BOOST_CHECK(db1info.name   == "db1");
         BOOST_CHECK(db1info.family == "production");
 
         tables = db1info.partitionedTables;
-        std::sort(tables.begin(), tables.end());
+        sort(tables.begin(), tables.end());
         BOOST_CHECK(tables.size() == 1);
-        BOOST_CHECK(tables == std::vector<std::string>({"Table11"}));
+        BOOST_CHECK(tables == vector<string>({"Table11"}));
 
         tables = db1info.regularTables;
-        std::sort(tables.begin(), tables.end());
+        sort(tables.begin(), tables.end());
         BOOST_CHECK(tables.size() == 1);
-        BOOST_CHECK(tables == std::vector<std::string>({"MetaTable11"}));
+        BOOST_CHECK(tables == vector<string>({"MetaTable11"}));
 
         DatabaseInfo const db2info = config->databaseInfo("db2");
         BOOST_CHECK(db2info.name   == "db2");
         BOOST_CHECK(db2info.family == "production");
 
         tables = db2info.partitionedTables;
-        std::sort(tables.begin(), tables.end());
+        sort(tables.begin(), tables.end());
         BOOST_CHECK(tables.size() == 2);
-        BOOST_CHECK(tables == std::vector<std::string>({"Table21","Table22"}));
+        BOOST_CHECK(tables == vector<string>({"Table21", "Table22"}));
 
         tables = db2info.regularTables;
-        std::sort(tables.begin(), tables.end());
+        sort(tables.begin(), tables.end());
         BOOST_CHECK(tables.size() == 2);
-        BOOST_CHECK(tables == std::vector<std::string>({"MetaTable21","MetaTable22"}));
+        BOOST_CHECK(tables == vector<string>({"MetaTable21", "MetaTable22"}));
 
         DatabaseInfo const db3info = config->databaseInfo("db3");
         BOOST_CHECK(db3info.name   == "db3");
         BOOST_CHECK(db3info.family == "production");
 
         tables = db3info.partitionedTables;
-        std::sort(tables.begin(), tables.end());
+        sort(tables.begin(), tables.end());
         BOOST_CHECK(tables.size() == 3);
-        BOOST_CHECK(tables == std::vector<std::string>({"Table31","Table32","Table33"}));
+        BOOST_CHECK(tables == vector<string>({"Table31", "Table32", "Table33"}));
 
         tables = db3info.regularTables;
-        std::sort(tables.begin(), tables.end());
+        sort(tables.begin(), tables.end());
         BOOST_CHECK(tables.size() == 3);
-        BOOST_CHECK(tables == std::vector<std::string>({"MetaTable31","MetaTable32","MetaTable33"}));
+        BOOST_CHECK(tables == vector<string>({"MetaTable31", "MetaTable32", "MetaTable33"}));
 
         DatabaseInfo const db4info = config->databaseInfo("db4");
         BOOST_CHECK(db4info.name   == "db4");
         BOOST_CHECK(db4info.family == "test");
 
         tables = db4info.partitionedTables;
-        std::sort(tables.begin(), tables.end());
+        sort(tables.begin(), tables.end());
         BOOST_CHECK(tables.size() == 2);
-        BOOST_CHECK(tables == std::vector<std::string>({"Table41","Table42"}));
+        BOOST_CHECK(tables == vector<string>({"Table41", "Table42"}));
 
         tables = db4info.regularTables;
         BOOST_CHECK(tables.size() == 0);
@@ -348,9 +347,9 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         BOOST_CHECK(db5info.family == "test");
 
         tables = db5info.partitionedTables;
-        std::sort(tables.begin(), tables.end());
+        sort(tables.begin(), tables.end());
         BOOST_CHECK(tables.size() == 1);
-        BOOST_CHECK(tables == std::vector<std::string>({"Table51"}));
+        BOOST_CHECK(tables == vector<string>({"Table51"}));
 
         tables = db5info.regularTables;
         BOOST_CHECK(tables.size() == 0);
@@ -365,39 +364,39 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         BOOST_CHECK(newDatabaseCreated.partitionedTables.size() == 0);
         BOOST_CHECK(newDatabaseCreated.regularTables.size() == 0);
 
-        BOOST_CHECK_THROW(config->addDatabase(newDatabase), std::invalid_argument);
+        BOOST_CHECK_THROW(config->addDatabase(newDatabase), invalid_argument);
 
         newDatabase.name = "";
-        BOOST_CHECK_THROW(config->addDatabase(newDatabase), std::invalid_argument);
+        BOOST_CHECK_THROW(config->addDatabase(newDatabase), invalid_argument);
 
         newDatabase.name   = "another";
         newDatabase.family = "";
-        BOOST_CHECK_THROW(config->addDatabase(newDatabase), std::invalid_argument);
+        BOOST_CHECK_THROW(config->addDatabase(newDatabase), invalid_argument);
 
         newDatabase.family = "unknown";
-        BOOST_CHECK_THROW(config->addDatabase(newDatabase), std::invalid_argument);
+        BOOST_CHECK_THROW(config->addDatabase(newDatabase), invalid_argument);
 
         DatabaseInfo newDatabaseUpdated = config->addTable("new", "T1", true);
         BOOST_CHECK(newDatabaseUpdated.partitionedTables.size() == 1 and
                     newDatabaseUpdated.partitionedTables[0] == "T1");
-        BOOST_CHECK_THROW(config->addTable("new", "T1", true), std::invalid_argument);
+        BOOST_CHECK_THROW(config->addTable("new", "T1", true), invalid_argument);
 
         newDatabaseUpdated = config->addTable("new", "T2", false);
         BOOST_CHECK(newDatabaseUpdated.regularTables.size() == 1 and
                     newDatabaseUpdated.regularTables[0] == "T2");
-        BOOST_CHECK_THROW(config->addTable("new", "T2", false), std::invalid_argument);
+        BOOST_CHECK_THROW(config->addTable("new", "T2", false), invalid_argument);
 
         config->deleteTable("new", "T1");
         config->deleteTable("new", "T2");
 
         config->deleteDatabase("new");
-        BOOST_CHECK_THROW(config->deleteDatabase("new"), std::invalid_argument);
+        BOOST_CHECK_THROW(config->deleteDatabase("new"), invalid_argument);
 
         // -----------------------------------------------------
         // -- Configuration parameters of the worker services --
         // -----------------------------------------------------
     
-        for (auto&& name: std::vector<std::string>({"worker-A","worker-B","worker-C"})) {
+        for (auto&& name: vector<string>({"worker-A", "worker-B", "worker-C"})) {
             BOOST_CHECK(config->isKnownWorker(name));
         }
   
@@ -443,7 +442,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         workerD.dataDir    = "/data/D";
 
         config->addWorker(workerD);
-        BOOST_CHECK_THROW(config->addWorker(workerD), std::invalid_argument);
+        BOOST_CHECK_THROW(config->addWorker(workerD), invalid_argument);
 
         workerD = config->workerInfo("worker-D");
         BOOST_CHECK(workerD.name =="worker-D");
@@ -460,11 +459,11 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
 
         WorkerInfo workerE = workerD;
         workerE.name = "worker-E";
-        BOOST_CHECK_THROW(config->addWorker(workerE), std::invalid_argument);
+        BOOST_CHECK_THROW(config->addWorker(workerE), invalid_argument);
 
         config->deleteWorker("worker-C");
         BOOST_CHECK(not config->isKnownWorker("worker-C"));
-        BOOST_CHECK_THROW(config->deleteWorker("worker-C"), std::invalid_argument);
+        BOOST_CHECK_THROW(config->deleteWorker("worker-C"), invalid_argument);
 
         WorkerInfo const disabledWorker = config->disableWorker("worker-B");
         BOOST_CHECK(disabledWorker.name == "worker-B");
@@ -534,7 +533,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         config->setXrootdHost("localhost");
         BOOST_CHECK(config->xrootdHost() == "localhost");
 
-        BOOST_CHECK_THROW(config->setXrootdHost(""), std::invalid_argument);
+        BOOST_CHECK_THROW(config->setXrootdHost(""), invalid_argument);
 
         config->setXrootdPort(1105);
         BOOST_CHECK(config->xrootdPort() == 1105);
@@ -545,7 +544,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         config->setDatabaseServicesPoolSize(3);
         BOOST_CHECK(config->databaseServicesPoolSize() == 3);
 
-        BOOST_CHECK_THROW(config->setDatabaseServicesPoolSize(0), std::invalid_argument);
+        BOOST_CHECK_THROW(config->setDatabaseServicesPoolSize(0), invalid_argument);
 
         config->setWorkerTechnology("FS");
         BOOST_CHECK(config->workerTechnology() == "FS");
@@ -560,7 +559,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         BOOST_CHECK(config->workerFsBufferSizeBytes() == 1025);
     });
 
-    BOOST_CHECK_THROW(kvMap.at("non-existing-key"), std::out_of_range);
+    BOOST_CHECK_THROW(kvMap.at("non-existing-key"), out_of_range);
 
     LOGS_INFO("Configuration test ends");
 }

@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -36,7 +35,7 @@ namespace replica {
  * collections of chunks at the Qserv workers with what the Replication
  * system sees as "good" chunks in the data directories.
  */
-class SyncApp: public Application {
+class SyncApp : public Application {
 
 public:
 
@@ -61,23 +60,19 @@ public:
     SyncApp(SyncApp const&)=delete;
     SyncApp& operator=(SyncApp const&)=delete;
 
-    ~SyncApp() override=default;
+    ~SyncApp() final=default;
 
 protected:
 
-    /**
-     * @see SyncApp::create()
-     */
-    SyncApp(int argc, char* argv[]);
-
-    /**
-     * @see Application::runImpl()
-     */
+    /// @see Application::runImpl()
     int runImpl() final;
 
 private:
 
-    /// The name of a database family
+    /// @see SyncApp::create()
+    SyncApp(int argc, char* argv[]);
+
+    /// The name of a database family affected by the operation
     std::string _databaseFamily;
 
     /// The maximum timeout for the operations with workers

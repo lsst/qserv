@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -43,7 +42,7 @@ namespace replica {
  * Class FileReadApp implements a tool which acts as a read-only client of
  * the Replication system's file server.
  */
-class FileReadApp: public Application {
+class FileReadApp : public Application {
 
 public:
 
@@ -72,17 +71,13 @@ public:
 
 protected:
 
-    /**
-     * @see FileReadApp::create()
-     */
-    FileReadApp(int argc, char* argv[]);
-
-    /**
-     * @see Application::runImpl()
-     */
+    /// @see Application::runImpl()
     int runImpl() final;
 
 private:
+
+    /// @see FileReadApp::create()
+    FileReadApp(int argc, char* argv[]);
 
     /// The name of a worker
     std::string _workerName;

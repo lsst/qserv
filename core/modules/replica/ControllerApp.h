@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -38,7 +37,7 @@ namespace replica {
  * Class ControllerApp implements a tool for testing all known types of
  * the Controller requests.
  */
-class ControllerApp: public Application {
+class ControllerApp : public Application {
 
 public:
 
@@ -67,17 +66,14 @@ public:
 
 protected:
 
-    /**
-     * @see ControllerApp::create()
-     */
-    ControllerApp(int argc, char* argv[]);
-
-    /**
-     * @see Application::runImpl()
-     */
+    /// @see Application::runImpl()
     int runImpl() final;
 
 private:
+
+    /// @see ControllerApp::create()
+    ControllerApp(int argc, char* argv[]);
+
 
     /// The type of a request
     std::string _request;

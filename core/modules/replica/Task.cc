@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -35,12 +34,14 @@
 #include "replica/ServiceProvider.h"
 #include "util/BlockPost.h"
 
+using namespace std;
+
 namespace lsst {
 namespace qserv {
 namespace replica {
 
 TaskError::TaskError(util::Issue::Context const& ctx,
-                     std::string const& message)
+                     string const& message)
     :   util::Issue(ctx, "Task: " + message) {
 }
 
@@ -49,17 +50,14 @@ bool Task::start() {
 
     debug("starting...");
 
-    util::Lock lock(_mtx, context() + "start");
+    util::Lock lock(_mtx, context() + __func__);
 
-    if (_isRunning.exchange(true)) {
-        return true;
-    }
-    std::thread t(
-        std::bind(
-            &Task::_startImpl,
-            shared_from_this()
-        )
-    );
+    if (_isRunning.exchange(true)) return true;
+
+    thread t(bind(
+        &Task::_startImpl,
+        shared_from_this()
+    ));
     t.detach();
     
     return false;
@@ -70,7 +68,7 @@ bool Task::stop() {
  
     debug("stopping...");
 
-    util::Lock lock(_mtx, context() + "stop");
+    util::Lock lock(_mtx, context() + __func__);
 
     if (not _isRunning) return true;
 
@@ -98,7 +96,7 @@ bool Task::startAndWait(WaitEvaluatorType const& abortWait) {
 
 Task::Task(
         Controller::Ptr const& controller,
-        std::string const& name,
+        string const& name,
         Task::AbnormalTerminationCallbackType const& onTerminated,
         unsigned int const waitIntervalSec)
     :   _controller(controller),
@@ -114,7 +112,7 @@ Task::Task(
 }
 
 
-std::string Task::context() const {
+string Task::context() const {
     return _name + " ";
 }
 
@@ -137,7 +135,7 @@ void Task::logEvent(ControllerEvent& event) const {
     // For now ignore exceptions when logging events. Just report errors.
     try {
         controller()->serviceProvider()->databaseServices()->logControllerEvent(event);
-    } catch (std::exception const& ex) {
+    } catch (exception const& ex) {
        LOGS(_log, LOG_LVL_ERROR, name() << "  " << "failed to log event in " << __func__);
     }
 }
@@ -171,8 +169,8 @@ void Task::_startImpl() {
         _logOnStopEvent();
         onStop();
 
-    } catch (std::exception const& ex) {
-        std::string const msg = ex.what();
+    } catch (exception const& ex) {
+        string const msg = ex.what();
         error("terminated, exception: " + msg);
         _logOnTerminatedEvent(msg);
         terminated = true;
@@ -188,18 +186,16 @@ void Task::_startImpl() {
     // object guaranteed through a copy of a shared pointer bound as
     // a parameter of the callback.
 
-    util::Lock lock(_mtx, context() + "_startImpl");
+    util::Lock lock(_mtx, context() + __func__);
     
     _stopRequested = false;
     _isRunning     = false;
 
     if (terminated) {
-        serviceProvider()->io_service().post(
-            std::bind(
-                _onTerminated,
-                shared_from_this()
-            )
-        );
+        serviceProvider()->io_service().post(bind(
+            _onTerminated,
+            shared_from_this()
+        ));
     }
 }
 
@@ -222,7 +218,7 @@ void Task::_logOnStopEvent() const {
 }
 
 
-void Task::_logOnTerminatedEvent(std::string const& msg) const {
+void Task::_logOnTerminatedEvent(string const& msg) const {
 
     ControllerEvent event;
 
@@ -233,9 +229,9 @@ void Task::_logOnTerminatedEvent(std::string const& msg) const {
 }
 
 
-void Task::_logJobStartedEvent(std::string const& typeName,
+void Task::_logJobStartedEvent(string const& typeName,
                                Job::Ptr const& job,
-                               std::string const& family) const {
+                               string const& family) const {
     ControllerEvent event;
 
     event.operation = typeName;
@@ -248,9 +244,9 @@ void Task::_logJobStartedEvent(std::string const& typeName,
 }
 
 
-void Task::_logJobFinishedEvent(std::string const& typeName,
+void Task::_logJobFinishedEvent(string const& typeName,
                                 Job::Ptr const& job,
-                                std::string const& family) const {
+                                string const& family) const {
     ControllerEvent event;
 
     event.operation = typeName;
@@ -262,6 +258,5 @@ void Task::_logJobFinishedEvent(std::string const& typeName,
 
     logEvent(event);
 }
-
 
 }}} // namespace lsst::qserv::replica

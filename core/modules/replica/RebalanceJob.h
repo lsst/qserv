@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -126,8 +125,7 @@ struct RebalanceJobResult {
   *   of replicas will be processed. Then chunk disposition will be recomputed to adjust
   *   for other parallel activities (replication, purge, etc.).
   */
-class RebalanceJob
-    :   public Job  {
+class RebalanceJob : public Job  {
 
 public:
 
@@ -148,22 +146,34 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param databaseFamily - the name of a database family
-     * @param estimateOnly   - do not perform any changes to chunk disposition. Just produce
-     *                         an estimate report.
-     * @param controller     - for launching requests
-     * @param parentJobId    - (optional) identifier of a parent job
-     * @param onFinish       - (optional) callback function to be called upon job completion
-     * @param options        - (optional) job options
+     * @param databaseFamily
+     *   the name of a database family
      *
-     * @return pointer to the created object
+     * @param estimateOnly
+     *   do not perform any changes to chunk disposition. Just produce
+     *   an estimate report.
+     *
+     * @param controller
+     *   for launching requests
+     *
+     * @param parentJobId
+     *   (optional) identifier of a parent job
+     *
+     * @param onFinish
+     *   (optional) callback function to be called upon job completion
+     *
+     * @param options
+     *   (optional) job options
+     *
+     * @return
+     *   pointer to the created object
      */
     static Ptr create(std::string const& databaseFamily,
                       bool estimateOnly,
                       Controller::Ptr const& controller,
-                      std::string const& parentJobId = std::string(),
-                      CallbackType const& onFinish = nullptr,
-                      Job::Options const& options = defaultOptions());
+                      std::string const& parentJobId=std::string(),
+                      CallbackType const& onFinish=nullptr,
+                      Job::Options const& options=defaultOptions());
 
     // Default construction and copy semantics are prohibited
 
@@ -182,39 +192,44 @@ public:
     /**
      * Return the result of the operation.
      *
-     * IMPORTANT NOTES:
-     * - the method should be invoked only after the job has finished (primary
+     * @note
+     *   The method should be invoked only after the job has finished (primary
      *   status is set to Job::Status::FINISHED). Otherwise exception
      *   std::logic_error will be thrown
      *
-     * - the result will be extracted from requests which have successfully
+     * @note
+     *   The result will be extracted from requests which have successfully
      *   finished. Please, verify the primary and extended status of the object
      *   to ensure that all requests have finished.
      *
-     * @return the data structure to be filled upon the completion of the job.
+     * @return
+     *   the data structure to be filled upon the completion of the job.
      *
-     * @throws std::logic_error - if the job didn't finished at a time
-     *                            when the method was called
+     * @throw std::logic_error
+     *   if the job didn't finished at a time when the method was called
      */
     RebalanceJobResult const& getReplicaData() const;
 
-    /**
-     * @see Job::extendedPersistentState()
-     */
+    /// @see Job::extendedPersistentState()
     std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
 
-    /**
-     * @see Job::persistentLogData()
-     */
+    /// @see Job::persistentLogData()
     std::list<std::pair<std::string,std::string>> persistentLogData() const final;
 
 protected:
 
-    /**
-     * Construct the job with the pointer to the services provider.
-     *
-     * @see RebalanceJob::create()
-     */
+    /// @see Job::startImpl()
+    void startImpl(util::Lock const& lock) final;
+
+    /// @see Job::cancelImpl()
+    void cancelImpl(util::Lock const& lock) final;
+
+    /// @see Job::notify()
+    void notify(util::Lock const& lock) final;
+
+private:
+
+    /// @see RebalanceJob::create()
     RebalanceJob(std::string const& databaseFamily,
                  bool estimateOnly,
                  Controller::Ptr const& controller,
@@ -223,33 +238,19 @@ protected:
                  Job::Options const& options);
 
     /**
-      * @see Job::startImpl()
-      */
-    void startImpl(util::Lock const& lock) final;
-
-    /**
-      * @see Job::startImpl()
-      */
-    void cancelImpl(util::Lock const& lock) final;
-
-    /**
-      * @see Job::notify()
-      */
-    void notify(util::Lock const& lock) final;
-
-    /**
      * The callback function to be invoked on a completion of the precursor job
      * which harvests chunk disposition across relevant worker nodes.
      */
-    void onPrecursorJobFinish();
+    void _onPrecursorJobFinish();
 
     /**
      * The callback function to be invoked on a completion of each replica
      * creation request.
      *
-     * @param request - a pointer to a request
+     * @param request
+     *   a pointer to a request
      */
-    void onJobFinish(MoveReplicaJob::Ptr const& job);
+    void _onJobFinish(MoveReplicaJob::Ptr const& job);
 
     /**
      * Submit a batch of the replica movement job
@@ -258,25 +259,24 @@ protected:
      * prevent excessive use of resources by controllers and to avoid
      * "hot spots" or under-utilization at workers.
      *
-     * @param lock    - the lock must be acquired by a caller of the method
-     * @param numJobs - desired number of jobs to submit
+     * @param lock
+     *   a lock on Job::_mtx must be acquired before calling this method
      *
-     * @retun actual number of submitted jobs
+     * @param numJobs
+     *   desired number of jobs to submit
+     *
+     * @retun
+     *   the actual number of submitted jobs
      */
-    size_t launchNextJobs(util::Lock const& lock,
-                          size_t numJobs);
+    size_t _launchNextJobs(util::Lock const& lock,
+                           size_t numJobs);
 
-protected:
 
-    /// The name of the database
+    // Input parameters
+
     std::string const _databaseFamily;
-
-    /// Estimate mode option (no actual changes will be made to replica disposition
-    /// if 'true')
-    bool const _estimateOnly;
-
-    /// Client-defined function to be called upon the completion of the job
-    CallbackType _onFinish;
+    bool        const _estimateOnly;
+    CallbackType      _onFinish;        /// @note is reset when the job finishes
 
     /// The chained job to be completed first in order to figure out
     /// replica disposition.

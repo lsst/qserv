@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -34,8 +33,7 @@ namespace replica {
 /**
  * Class 
  */
-class ReplicationTask
-    :   public Task {
+class ReplicationTask : public Task {
 
 public:
 
@@ -86,9 +84,7 @@ public:
 
 protected:
 
-    /**
-     * @see Task::onRun()
-     */
+    /// @see Task::onRun()
     bool onRun() final;
 
 private:
@@ -105,7 +101,6 @@ private:
                     unsigned int numReplicas,
                     bool purge);
 
-private:
 
     /// The maximum number of seconds to be waited before giving up
     /// on the Qserv synchronization requests.

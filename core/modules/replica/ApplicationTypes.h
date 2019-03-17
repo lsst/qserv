@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -58,8 +57,7 @@ class Parser;
  * Class ParserError represents exceptions throw by the command-line parser
  * during processing arguments as per user requested syntax description.
  */
-class ParserError
-    :   public util::Issue {
+class ParserError : public util::Issue {
 public:
     ParserError(util::Issue::Context const& ctx,
                 std::string const& message);
@@ -126,8 +124,11 @@ public:
      * Let a subclass to parse the input string into a value of the corresponding
      * (as defined by the class) type.
      *
-     * @param inStr - (optional) input string to be parsed
-     * @throws ParserError if the text can't be parsed
+     * @param inStr
+     *   (optional) input string to be parsed
+     *
+     * @throws ParserErro
+     *   if the text can't be parsed
      */
     virtual void parse(std::string const& inStr="") = 0;
 
@@ -169,8 +170,7 @@ std::ostream& operator<<(std::ostream& os, ArgumentParser const& arg);
  * The class representing (mandatory or optional) parameters
  */
 template <typename T>
-class ParameterParser
-    :   public ArgumentParser {
+class ParameterParser : public ArgumentParser {
 
 public:
 
@@ -213,9 +213,7 @@ public:
 
     virtual ~ParameterParser() = default;
 
-    /**
-     * @see ArgumentParser::parse()
-     */
+    /// @see ArgumentParser::parse()
     void parse(std::string const& inStr) final {
         try {
             _var = boost::lexical_cast<T>(inStr);
@@ -234,18 +232,14 @@ public:
         }
     }
 
-    /**
-     * @see ArgumentParser::defaultValue()
-     */
+    /// @see ArgumentParser::defaultValue()
     std::string defaultValue() const final {
         std::ostringstream os;
         os << _defaultValue;
         return os.str();
     }
 
-    /**
-     * @see ArgumentParser::dumpNameValue()
-     */
+    /// @see ArgumentParser::dumpNameValue()
     void dumpNameValue(std::ostream& os) const final {
         os << name() << "=" << _var;
     }
@@ -267,8 +261,7 @@ private:
  * The class representing named options
  */
 template <typename T>
-class OptionParser
-    :   public ArgumentParser {
+class OptionParser : public ArgumentParser {
 
 public:
 
@@ -309,9 +302,7 @@ public:
 
     virtual ~OptionParser() = default;
 
-    /**
-     * @see ArgumentParser::parse()
-     */
+    /// @see ArgumentParser::parse()
     void parse(std::string const& inStr) final {
         if (inStr.empty()) return;
         try {
@@ -322,18 +313,14 @@ public:
         }
     }
 
-    /**
-     * @see ArgumentParser::defaultValue()
-     */
+    /// @see ArgumentParser::defaultValue()
     std::string defaultValue() const final {
         std::ostringstream os;
         os << _defaultValue;
         return os.str();
     }
 
-    /**
-     * @see ArgumentParser::dumpNameValue()
-     */
+    /// @see ArgumentParser::dumpNameValue()
     void dumpNameValue(std::ostream& os) const final {
         os << name() << "=" << _var;
     }
@@ -351,8 +338,7 @@ private:
 /**
  * The class representing named flags
  */
-class FlagParser
-    :   public ArgumentParser {
+class FlagParser : public ArgumentParser {
 
 public:
 
@@ -392,19 +378,13 @@ public:
 
     virtual ~FlagParser() = default;
 
-    /**
-     * @see ArgumentParser::parse()
-     */
+    /// @see ArgumentParser::parse()
     void parse(std::string const& inStr) final { _var = true; }
 
-    /**
-     * @see ArgumentParser::defaultValue()
-     */
+    /// @see ArgumentParser::defaultValue()
     std::string defaultValue() const final { return "false"; }
 
-    /**
-     * @see ArgumentParser::dumpNameValue()
-     */
+    /// @see ArgumentParser::dumpNameValue()
     void dumpNameValue(std::ostream& os) const final {
         os << name() << "=" << (_var ? "1" : "0");
     }
@@ -504,6 +484,7 @@ public:
      * the above defined 'required'.
      *
      * @see method Command::required()
+     *
      * @return
      *   a reference to the command object in order to allow chained calls
      */
@@ -529,6 +510,7 @@ public:
      * show up at any position in the command line.
      *
      * @see method Command::optional()
+     *
      * @return
      *   a reference to the command object in order to allow chained calls
      */
@@ -554,6 +536,7 @@ public:
      * to the ones of the above defined 'add' methods.
      *
      * @see method Command::option()
+     *
      * @return
      *   a reference to the command object in order to allow chained calls
      */
@@ -677,9 +660,14 @@ public:
     /**
      * Construct and initialize the parser
      *
-     * @param arc              - argument count
-     * @parav argv             - vector of argument values
-     * @param description      - description of an application
+     * @param arc
+     *   argument count
+     *
+     * @parav argv
+     *   vector of argument values
+     *
+     * @param description
+     *   description of an application
      */
     Parser(int argc,
            const char* const argv[],
@@ -807,6 +795,7 @@ public:
      * the above defined 'required'.
      *
      * @see method Parser::required()
+     *
      * @return
      *   a reference to the parser object in order to allow chained calls
      */
@@ -835,6 +824,7 @@ public:
      * show up at any position in the command line.
      *
      * @see method Parser::optional()
+     *
      * @return
      *   a reference to the parser object in order to allow chained calls
      */
@@ -865,6 +855,7 @@ public:
      * to the ones of the above defined 'add' methods.
      *
      * @see method Parser::option()
+     *
      * @return
      *   a reference to the parser object in order to allow chained calls
      */
@@ -885,19 +876,23 @@ public:
      * @see Parser::Status
      * @see method Parser::reset()
      *
-     * @return completion code
+     * @return
+     *   completion code
      *
-     * @throws ParserError for any problems occurring during the parsing
+     * @throws ParserError
+     *   for any problems occurring during the parsing
      */
     int parse();
 
     /**
-     * @return serialize names and values of the parsed arguments serialized
-     * into a string
+     * @return
+     *   serialize names and values of the parsed arguments serialized
+     *   into a string
      *
-     * @throws std::logic_error if called before attempted to parse
-     * the command line parameters, or if the parsing didn't successfully
-     * finish with Status::SUCCESS.
+     * @throws std::logic_error
+     *   if called before attempted to parse
+     *   the command line parameters, or if the parsing didn't successfully
+     *   finish with Status::SUCCESS.
      */
     std::string serializeArguments() const;
 
@@ -968,20 +963,22 @@ private:
                           std::vector<std::string>::const_iterator const& inItrEnd);
 
     /**
-     * @return the "Usage" string to be reported in case if any problem
-     * with parsing the command line arguments will be seen. The current
-     * implementation of this method will build and cache the string the
-     * first time the method is invoked.
+     * @return
+     *   the "Usage" string to be reported in case if any problem
+     *   with parsing the command line arguments will be seen. The current
+     *   implementation of this method will build and cache the string the
+     *   first time the method is invoked.
      */
-    std::string const& usage();
+    std::string const& _usage();
 
     /**
-     * @return the complete documentation to be returned if flag "--help"
-     * is passed as an argument.  The current implementation of this method
-     * will build and cache the string the first time the method is invoked
-     * regardless if flag "--help" is registered or not for the application.
+     * @return
+     *   the complete documentation to be returned if flag "--help"
+     *   is passed as an argument.  The current implementation of this method
+     *   will build and cache the string the first time the method is invoked
+     *   regardless if flag "--help" is registered or not for the application.
      */
-    std::string const& help();
+    std::string const& _help();
     
     /**
      * Read the input string and produce an output one with words
@@ -1001,17 +998,16 @@ private:
      *   the wrapped text, in which each line (including the last one)
      *   ends with the newline symbol.
      */
-    static std::string wrap(std::string const& str,
-                            std::string const& indent = "      ",
-                            size_t width = 72);
+    static std::string _wrap(std::string const& str,
+                             std::string const& indent="      ",
+                             size_t width=72);
 
-private:
 
-    // Parameters of the object
+    // Input parameters
 
-    int const _argc;
+    int         const  _argc;
     const char* const* _argv;
-    std::string const _description;
+    std::string const  _description;
 
     /// A sequence of the mandatory parameters
     std::vector<std::unique_ptr<ArgumentParser>> _required;
@@ -1035,11 +1031,11 @@ private:
 
     /// The "Usage" string is build when all arguments are registered
     /// and method 'parse()' is invoked.
-    std::string _usage;
+    std::string _usageStr;
 
     /// The documentation (invoked with "--help") string is build when all
     /// arguments are registered and method 'parse()' is invoked.
-    std::string _help;
+    std::string _helpStr;
 };
 
 }}}} // namespace lsst::qserv::replica::detail

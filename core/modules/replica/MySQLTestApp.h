@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -40,7 +39,7 @@ namespace replica {
  * Class MySQLTestApp implements a tool for testing the MySQL API used by
  * the Replication system implementation.
  */
-class MySQLTestApp: public Application {
+class MySQLTestApp : public Application {
 
 public:
 
@@ -65,21 +64,17 @@ public:
     MySQLTestApp(MySQLTestApp const&)=delete;
     MySQLTestApp& operator=(MySQLTestApp const&)=delete;
 
-    ~MySQLTestApp() override=default;
+    ~MySQLTestApp() final=default;
 
 protected:
 
-    /**
-     * @see MySQLTestApp::create()
-     */
-    MySQLTestApp(int argc, char* argv[]);
-
-    /**
-     * @see Application::runImpl()
-     */
+    /// @see Application::runImpl()
     int runImpl() final;
 
 private:
+
+    /// @see MySQLTestApp::create()
+    MySQLTestApp(int argc, char* argv[]);
 
     /**
      * Run various test on transactions
@@ -124,8 +119,6 @@ private:
      * @return return a query to be read from the standard input or from a file 
      */
     std::string _getQuery() const;
-
-private:
 
     /// The name of a test
     std::string _operation;

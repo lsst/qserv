@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -48,7 +47,7 @@ class WorkerRequestFactory;
  * system. The files must be read-write enabled for a user account
  * under which the test is run.
  */
-class WorkerAllApp: public Application {
+class WorkerAllApp : public Application {
 
 public:
 
@@ -73,21 +72,17 @@ public:
     WorkerAllApp(WorkerAllApp const&) = delete;
     WorkerAllApp& operator=(WorkerAllApp const&) = delete;
 
-    ~WorkerAllApp() override = default;
+    ~WorkerAllApp() final = default;
 
 protected:
 
-    /**
-     * @see WorkerAllApp::create()
-     */
-    WorkerAllApp(int argc, char* argv[]);
-
-    /**
-     * @see Application::runImpl()
-     */
+    /// @see Application::runImpl()
     int runImpl() final;
 
 private:
+
+    /// @see WorkerAllApp::create()
+    WorkerAllApp(int argc, char* argv[]);
 
     /**
      * Launch all worker servers in dedicated detached threads. Also run
@@ -97,8 +92,6 @@ private:
      *   The factory for the worker requests
      */
     void _runAllWorkers(WorkerRequestFactory& requestFactory);
-
-private:
 
     /// Logger stream
     LOG_LOGGER _log;

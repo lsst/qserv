@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -65,8 +64,7 @@ struct PurgeJobResult {
   * Class PurgeJob represents a tool which will increase the minimum
   * number of each chunk's replica up to the requested level.
   */
-class PurgeJob
-    :   public Job  {
+class PurgeJob : public Job  {
 
 public:
 
@@ -87,16 +85,28 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param databaseFamily - the name of a database family
-     * @param numReplicas    - the optional (if not 0) override for the maximum number of replicas
-     *                         for each chunk. If the parameter is set to 0 then the corresponding
-     *                         configuration option for the database family will be assumed.
-     * @param controller     - for launching jobs
-     * @param parentJobId    - optional identifier of a parent job
-     * @param onFinish       - callback function to be called upon a completion of the job
-     * @param options        - (optional) job options
+     * @param databaseFamily
+     *   the name of a database family
      *
-     * @return pointer to the created object
+     * @param numReplicas
+     *   the optional (if not 0) override for the maximum number of replicas
+     *   for each chunk. If the parameter is set to 0 then the corresponding
+     *   configuration option for the database family will be assumed.
+     *
+     * @param controller
+     *   for launching jobs
+     *
+     * @param parentJobId
+     *   optional identifier of a parent job
+     *
+     * @param onFinish
+     *   callback function to be called upon a completion of the job
+     *
+     * @param options
+     *   (optional) job options
+     *
+     * @return
+     *   pointer to the created object
      */
     static Ptr create(std::string const& databaseFamily,
                       unsigned int numReplicas,
@@ -115,8 +125,9 @@ public:
     ~PurgeJob() final;
 
     /**
-     * @return maximum number of each chunk's good replicas to be reached when
-     * the job successfully finishes.
+     * @return
+     *   maximum number of each chunk's good replicas to be reached when
+     *   the job successfully finishes.
      */
     unsigned int numReplicas() const { return _numReplicas; }
 
@@ -126,39 +137,44 @@ public:
     /**
      * Return the result of the operation.
      *
-     * IMPORTANT NOTES:
-     * - the method should be invoked only after the job has finished (primary
+     * @note
+     *   The method should be invoked only after the job has finished (primary
      *   status is set to Job::Status::FINISHED). Otherwise exception
      *   std::logic_error will be thrown
      *
-     * - the result will be extracted from jobs which have successfully
+     * @note
+     *   The result will be extracted from jobs which have successfully
      *   finished. Please, verify the primary and extended status of the object
      *   to ensure that all jobs have finished.
      *
-     * @return the data structure to be filled upon the completion of the job.
+     * @return
+     *   the data structure to be filled upon the completion of the job.
      *
-     * @throws std::logic_error - if the job didn't finished at a time
-     *                            when the method was called
+     * @throws std::logic_error
+     *   if the job didn't finished at a time when the method was called
      */
     PurgeJobResult const& getReplicaData() const;
 
-    /**
-     * @see Job::extendedPersistentState()
-     */
+    /// @see Job::extendedPersistentState()
     std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
 
-    /**
-     * @see Job::persistentLogData()
-     */
+    /// @see Job::persistentLogData()
     std::list<std::pair<std::string,std::string>> persistentLogData() const final;
 
 protected:
 
-    /**
-     * Construct the job with the pointer to the services provider.
-     *
-     * @see PurgeJob::create()
-     */
+    /// @see Job::startImpl()
+    void startImpl(util::Lock const& lock) final;
+
+    /// @see Job::cancelImpl()
+    void cancelImpl(util::Lock const& lock) final;
+
+    /// @see Job::notify()
+    void notify(util::Lock const& lock) final;
+
+private:
+
+    /// @see PurgeJob::create()
     PurgeJob(std::string const& databaseFamily,
              unsigned int numReplicas,
              Controller::Ptr const& controller,
@@ -167,59 +183,43 @@ protected:
              Job::Options const& options);
 
     /**
-      * @see Job::startImpl()
-      */
-    void startImpl(util::Lock const& lock) final;
-
-    /**
-      * @see Job::startImpl()
-      */
-    void cancelImpl(util::Lock const& lock) final;
-
-    /**
-      * @see Job::notify()
-      */
-    void notify(util::Lock const& lock) final;
-
-    /**
      * The callback function to be invoked on a completion of the precursor job
      * which harvests chunk disposition across relevant worker nodes.
      */
-    void onPrecursorJobFinish();
+    void _onPrecursorJobFinish();
 
     /**
      * The callback function to be invoked on a completion of each job
      *
-     * @param job - pointer to a job
+     * @param job
+     *   pointer to a job
      */
-    void onDeleteJobFinish(DeleteReplicaJob::Ptr const& job);
+    void _onDeleteJobFinish(DeleteReplicaJob::Ptr const& job);
 
     /**
      * Restart the job from scratch. This method will reset object context
      * to a state it was before method Job::startImpl() called and then call
      * Job::startImpl() again.
      *
-     * @param lock - the lock must be acquired by a caller of the method
+     * @param lock
+     *   a lock on Job::_mtx must be acquired before calling this method
      */
-    void restart(util::Lock const& lock);
+    void _restart(util::Lock const& lock);
 
     /**
      * Unconditionally release the specified chunk
      *
-     * @param chunk - the chunk number
+     * @param chunk
+     *   the chunk whose replica will be be removed from the worker
      */
-    void release(unsigned int chunk);
+    void _release(unsigned int chunk);
 
-protected:
 
-    /// The name of the database
-    std::string const _databaseFamily;
+    // Input parameters
 
-    /// The minimum number of (the good) replicas for each chunk
+    std::string  const _databaseFamily;
     unsigned int const _numReplicas;
-
-    /// Client-defined function to be called upon the completion of the job
-    CallbackType _onFinish;
+    CallbackType       _onFinish;       /// @note is reset when the job finishes
 
     /// The chained job to be completed first in order to figure out
     /// replica disposition.

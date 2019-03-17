@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -32,6 +31,8 @@
 #include "replica/SuccessRateGenerator.h"
 #include "util/BlockPost.h"
 
+using namespace std;
+
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerRequest");
@@ -54,7 +55,8 @@ namespace replica {
 util::Mutex WorkerRequest::_mtxDataFolderOperations;
 util::Mutex WorkerRequest::_mtx;
 
-std::string WorkerRequest::status2string(CompletionStatus status) {
+
+string WorkerRequest::status2string(CompletionStatus status) {
     switch (status) {
         case STATUS_NONE:          return "STATUS_NONE";
         case STATUS_IN_PROGRESS:   return "STATUS_IN_PROGRESS";
@@ -63,21 +65,22 @@ std::string WorkerRequest::status2string(CompletionStatus status) {
         case STATUS_SUCCEEDED:     return "STATUS_SUCCEEDED";
         case STATUS_FAILED:        return "STATUS_FAILED";
     }
-    throw std::logic_error(
-                    "WorkerRequest::status2string - unhandled status: " +
-                    std::to_string(status));
+    throw logic_error(
+            "WorkerRequest::" + string(__func__) + "  unhandled status: " + to_string(status));
 }
 
-std::string WorkerRequest::status2string(CompletionStatus status,
-                                         ExtendedCompletionStatus extendedStatus) {
+
+string WorkerRequest::status2string(CompletionStatus status,
+                                    ExtendedCompletionStatus extendedStatus) {
     return status2string(status) + "::" + replica::status2string(extendedStatus);
 }
 
+
 WorkerRequest::WorkerRequest(ServiceProvider::Ptr const& serviceProvider,
-                             std::string const& worker,
-                             std::string const& type,
-                             std::string const& id,
-                             int                priority)
+                             string const& worker,
+                             string const& type,
+                             string const& id,
+                             int priority)
     :   _serviceProvider(serviceProvider),
         _worker(worker),
         _type(type),
@@ -91,24 +94,26 @@ WorkerRequest::WorkerRequest(ServiceProvider::Ptr const& serviceProvider,
     serviceProvider->assertWorkerIsValid(worker);
 }
 
+
 WorkerRequest::ErrorContext WorkerRequest::reportErrorIf(
                                                 bool errorCondition,
                                                 ExtendedCompletionStatus extendedStatus,
-                                                std::string const& errorMsg) {
+                                                string const& errorMsg) {
     WorkerRequest::ErrorContext errorContext;
     if (errorCondition) {
         errorContext.failed = true;
         errorContext.extendedStatus = extendedStatus;
-        LOGS(_log, LOG_LVL_ERROR, context() << "execute()" << errorMsg);
+        LOGS(_log, LOG_LVL_ERROR, context() << "execute" << errorMsg);
     }
     return errorContext;
 }
 
+
 void WorkerRequest::start() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "start");    
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);    
 
-    util::Lock lock(_mtx, context() + "start");
+    util::Lock lock(_mtx, context() + __func__);
 
     switch (status()) {
 
@@ -117,17 +122,18 @@ void WorkerRequest::start() {
             break;
 
         default:
-            throw std::logic_error(
-                            context() + "start  not allowed while in status: " +
-                            WorkerRequest::status2string(status()));
+            throw logic_error(
+                    context() + string(__func__) + "  not allowed while in status: " +
+                    WorkerRequest::status2string(status()));
     }
 }
 
+
 bool WorkerRequest::execute() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "execute");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
-    util::Lock lock(_mtx, context() + "execute");
+    util::Lock lock(_mtx, context() + __func__);
 
     // Simulate request 'processing' for some maximum duration of time (milliseconds)
     // while making a progress through increments of random duration of time.
@@ -143,9 +149,9 @@ bool WorkerRequest::execute() {
             throw WorkerRequestCancelled();
 
         default:
-            throw std::logic_error(
-                            context() + "execute  not allowed while in status: " +
-                            WorkerRequest::status2string(status()));
+            throw logic_error(
+                    context() + string(__func__) + "  not allowed while in status: " +
+                    WorkerRequest::status2string(status()));
     }
 
     _durationMillisec += ::incrementIvalMillisec.wait();
@@ -158,11 +164,12 @@ bool WorkerRequest::execute() {
     return true;
 }
 
+
 void WorkerRequest::cancel() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "cancel");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
-    util::Lock lock(_mtx, context() + "cancel");
+    util::Lock lock(_mtx, context() + __func__);
 
     switch (status()) {
 
@@ -183,11 +190,12 @@ void WorkerRequest::cancel() {
     }
 }
 
+
 void WorkerRequest::rollback() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "rollback");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
-    util::Lock lock(_mtx, context() + "rollback");
+    util::Lock lock(_mtx, context() + __func__);
 
     switch (status()) {
 
@@ -202,26 +210,25 @@ void WorkerRequest::rollback() {
             break;
 
         default:
-            throw std::logic_error(
-                            context() + "rollback  not allowed while in status: " +
-                            WorkerRequest::status2string(status()));
+            throw logic_error(
+                    context() + string(__func__) + "  not allowed while in status: " +
+                    WorkerRequest::status2string(status()));
     }
 }
 
+
 void WorkerRequest::stop() {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << "stop");    
-
-    util::Lock lock(_mtx, context() + "stop");
-
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);    
+    util::Lock lock(_mtx, context() + __func__);
     setStatus(lock, STATUS_NONE);
 }
+
 
 void WorkerRequest::setStatus(util::Lock const& lock,
                               CompletionStatus status,
                               ExtendedCompletionStatus extendedStatus) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "setStatus  "
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  "
          << WorkerRequest::status2string(_status, _extendedStatus) << " -> "
          << WorkerRequest::status2string( status,  extendedStatus));
 
@@ -255,9 +262,9 @@ void WorkerRequest::setStatus(util::Lock const& lock,
             break;
 
         default:
-            throw std::logic_error(
-                            context() + "setStatus  unhandled status: " +
-                            std::to_string(status));
+            throw logic_error(
+                    context() + string(__func__) + "  unhandled status: " +
+                    to_string(status));
     }
 
     // ATTENTION: the top-level status is the last to be modified in

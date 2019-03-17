@@ -1,7 +1,5 @@
-// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -30,7 +28,7 @@
 #include <string>
 
 // Qserv headers
-#include "replica/Common.h"        // ExtendedCompletionStatus
+#include "replica/Common.h"
 #include "replica/Performance.h"
 #include "replica/ServiceProvider.h"
 #include "util/Mutex.h"
@@ -45,11 +43,10 @@ namespace replica {
  * Structure WorkerRequestCancelled represent an exception thrown when
  * a replication request is cancelled
  */
-struct WorkerRequestCancelled
-    :   std::exception {
-
+class WorkerRequestCancelled : public std::exception {
+public:
     /// @return a short description of the exception
-    char const* what () const noexcept override {
+    char const* what() const noexcept override {
         return "cancelled";
     }
 };
@@ -60,8 +57,7 @@ struct WorkerRequestCancelled
   * environment (network, disk I/O, etc.). Generally speaking, all requests
   * which can't be implemented instantaneously fall into this category.
   */
-class WorkerRequest
-    :   public std::enable_shared_from_this<WorkerRequest> {
+class WorkerRequest : public std::enable_shared_from_this<WorkerRequest> {
 
 public:
 
@@ -94,7 +90,7 @@ public:
     /// Destructor (can't 'override' because the base class's one is not virtual)
     virtual ~WorkerRequest() = default;
 
-    // Trivial et methods
+    // Trivial getter methods
 
     ServiceProvider::Ptr const& serviceProvider() { return _serviceProvider; }
 
@@ -136,7 +132,8 @@ public:
      * processing. This can be serve as a foundation for various tests
      * of this framework.
      *
-     * @return result of the operation as explained above
+     * @return
+     *   result of the operation as explained above
      */
     virtual bool execute();
 
@@ -184,11 +181,25 @@ protected:
     /**
      * The normal constructor of the class
      *
-     * @param serviceProvider - provider of various services
-     * @param worker          - the name of a worker
-     * @param type            - the type name of a request
-     * @param id              - an identifier of a client request
-     * @param priority        - indicates the importance of the request
+     * @param serviceProvider
+     *   provider is needed to access the Configuration of a setup
+     *   and for validating the input parameters
+     *
+     * @param worker
+     *   the name of a worker. It must be the same worker as the one
+     *   where the request is going to be processed.
+     *
+     * @param type
+     *   the type name of a request
+     *
+     * @param id
+     *   an identifier of a client request
+     *
+     * @param priority
+     *   indicates the importance of the request
+     *
+     * @throws std::invalid_argument
+     *   if the worker is unknown
      */
     WorkerRequest(ServiceProvider::Ptr const& serviceProvider,
                   std::string const& worker,
@@ -201,13 +212,18 @@ protected:
      * ATTENTION: this method needs to be called within a thread-safe context
      * when moving requests between different queues.
      *
-     * @param lock           - lock must be acquired before calling this method
-     * @param status         - primary status to be set
-     * @param extendedStatus - secondary status to be set
+     * @param lock
+     *   lock must be acquired before calling this method
+     *
+     * @param status
+     *   primary status to be set
+     *
+     * @param extendedStatus
+     *   secondary status to be set
      */
     void setStatus(util::Lock const& lock,
                    CompletionStatus status,
-                   ExtendedCompletionStatus extendedStatus = ExtendedCompletionStatus::EXT_STATUS_NONE);
+                   ExtendedCompletionStatus extendedStatus=ExtendedCompletionStatus::EXT_STATUS_NONE);
 
     /**
      * Structure ErrorContext is used for tracking errors reported by
@@ -226,14 +242,16 @@ protected:
         }
 
         /**
-         *  Merge the context of another object into the current one.
+         * Merge the context of another object into the current one.
          *
-         *  Note, only the first error code will be stored when a error condition
+         * @note
+         *  Only the first error code will be stored when a error condition
          *  is detected. An assumption is that the first error would usually cause
          *  a "chain reaction", hence only the first one typically matters.
          *  Other details could be found in the log files if needed.
          *
-         *  @param ErrorContext - input context to be merged with the current state
+         * @param ErrorContext
+         *   input context to be merged with the current state
          */
         ErrorContext& operator||(const ErrorContext &rhs) {
             if (&rhs != this) {
@@ -251,33 +269,33 @@ protected:
      * The error message will be sent to the corresponding logging
      * stream.
      *
-     * @param condition      - if set to 'true' then there is a error condition
-     * @param extendedStatus - extended status corresponding to the condition
-     *                         (will be ignored if no error condition is present)
-     * @param errorMsg       - a message to be reported into the log stream
+     * @param condition
+     *   if set to 'true' then there is a error condition
      *
-     * @return the context object encapsulating values passed in parameters
-     * 'condition' and 'extendedStatus'
+     * @param extendedStatus
+     *   extended status corresponding to the condition
+     *   (will be ignored if no error condition is present)
+     *
+     * @param errorMsg
+     *   a message to be reported into the log stream
+     *
+     * @return
+     *   the context object encapsulating values passed in parameters
+     *   'condition' and 'extendedStatus'
      */
     ErrorContext reportErrorIf(bool condition,
                                ExtendedCompletionStatus extendedStatus,
                                std::string const& errorMsg);
 
-protected:
 
-    ServiceProvider::Ptr _serviceProvider;
+    // Input parameters
 
-    /// The name of a worker
+    ServiceProvider::Ptr const _serviceProvider;
+
     std::string const _worker;
-
-    /// The name of  request type (depends on a subclass)
     std::string const _type;
-
-    /// A unique identifier of a request
     std::string const _id;
-
-    /// The priority of a request
-    int const _priority;
+    int         const _priority;
 
     // 2-layer state of a request
 
@@ -309,9 +327,14 @@ struct WorkerRequestCompare {
     /**
      * Sort requests by their priorities
      *
-     * @param  lhs  pointer to a request on the left side of a logical comparison
-     * @param  rhs  pointer to a request on the right side of a logical comparison
-     * @return      'true' if the priority of 'lhs' is strictly less than the one of 'rhs'
+     * @param lhs
+     *   pointer to a request on the left side of a logical comparison
+     *
+     * @param rhs
+     *   pointer to a request on the right side of a logical comparison
+     *
+     * @return
+     *   'true' if the priority of 'lhs' is strictly less than the one of 'rhs'
      */
     bool operator()(WorkerRequest::Ptr const& lhs,
                     WorkerRequest::Ptr const& rhs) const {

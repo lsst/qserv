@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -40,6 +39,8 @@
 #include "replica/ProtocolBuffer.h"
 #include "replica/ServiceProvider.h"
 
+using namespace std;
+
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.DeleteRequest");
@@ -52,14 +53,14 @@ namespace replica {
 
 DeleteRequest::Ptr DeleteRequest::create(ServiceProvider::Ptr const& serviceProvider,
                                          boost::asio::io_service& io_service,
-                                         std::string const& worker,
-                                         std::string const& database,
-                                         unsigned int  chunk,
+                                         string const& worker,
+                                         string const& database,
+                                         unsigned int chunk,
                                          CallbackType const& onFinish,
                                          int  priority,
                                          bool keepTracking,
                                          bool allowDuplicate,
-                                         std::shared_ptr<Messenger> const& messenger) {
+                                         shared_ptr<Messenger> const& messenger) {
     return DeleteRequest::Ptr(
         new DeleteRequest(
             serviceProvider,
@@ -74,16 +75,17 @@ DeleteRequest::Ptr DeleteRequest::create(ServiceProvider::Ptr const& serviceProv
             messenger));
 }
 
+
 DeleteRequest::DeleteRequest(ServiceProvider::Ptr const& serviceProvider,
                              boost::asio::io_service& io_service,
-                             std::string const& worker,
-                             std::string const& database,
-                             unsigned int  chunk,
+                             string const& worker,
+                             string const& database,
+                             unsigned int chunk,
                              CallbackType const& onFinish,
                              int  priority,
                              bool keepTracking,
                              bool allowDuplicate,
-                             std::shared_ptr<Messenger> const& messenger)
+                             shared_ptr<Messenger> const& messenger)
     :   RequestMessenger(serviceProvider,
                          io_service,
                          "REPLICA_DELETE",
@@ -99,9 +101,10 @@ DeleteRequest::DeleteRequest(ServiceProvider::Ptr const& serviceProvider,
     Request::serviceProvider()->assertDatabaseIsValid(database);
 }
 
+
 void DeleteRequest::startImpl(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // Serialize the Request message header and the request itself into
     // the network buffer.
@@ -122,28 +125,30 @@ void DeleteRequest::startImpl(util::Lock const& lock) {
 
     buffer()->serialize(message);
 
-    send(lock);
+    _send(lock);
 }
 
-void DeleteRequest::wait(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "wait");
+void DeleteRequest::_wait(util::Lock const& lock) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // Always need to set the interval before launching the timer.
 
     timer().expires_from_now(boost::posix_time::seconds(timerIvalSec()));
     timer().async_wait(
         boost::bind(
-            &DeleteRequest::awaken,
+            &DeleteRequest::_awaken,
             shared_from_base<DeleteRequest>(),
             boost::asio::placeholders::error
         )
     );
 }
 
-void DeleteRequest::awaken(boost::system::error_code const& ec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "awaken");
+void DeleteRequest::_awaken(boost::system::error_code const& ec) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (isAborted(ec)) return;
 
@@ -155,7 +160,7 @@ void DeleteRequest::awaken(boost::system::error_code const& ec) {
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + "awaken");
+    util::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return;
 
@@ -177,10 +182,11 @@ void DeleteRequest::awaken(boost::system::error_code const& ec) {
 
     buffer()->serialize(message);
 
-    send(lock);
+    _send(lock);
 }
 
-void DeleteRequest::send(util::Lock const& lock) {
+
+void DeleteRequest::_send(util::Lock const& lock) {
 
     auto self = shared_from_base<DeleteRequest>();
 
@@ -188,24 +194,25 @@ void DeleteRequest::send(util::Lock const& lock) {
         worker(),
         id(),
         buffer(),
-        [self] (std::string const& id,
+        [self] (string const& id,
                 bool success,
                 proto::ReplicationResponseDelete const& response) {
 
-            self->analyze(success,
-                          response);
+            self->_analyze(success,
+                           response);
         }
     );
 }
 
-void DeleteRequest::analyze(bool success,
-                            proto::ReplicationResponseDelete const& message) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "analyze  success=" << (success ? "true" : "false"));
+void DeleteRequest::_analyze(bool success,
+                             proto::ReplicationResponseDelete const& message) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  success=" << (success ? "true" : "false"));
 
     // This method is called on behalf of an asynchronous callback fired
-    // upon a completion of the request within method send() - the only
-    // client of analyze(). So, we should take care of proper locking and watch
+    // upon a completion of the request within method _send() - the only
+    // client of _analyze(). So, we should take care of proper locking and watch
     // for possible state transition which might occur while the async I/O was
     // still in a progress.
 
@@ -217,7 +224,7 @@ void DeleteRequest::analyze(bool success,
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + "analyze");
+    util::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return;
 
@@ -261,17 +268,17 @@ void DeleteRequest::analyze(bool success,
             break;
 
         case proto::ReplicationStatus::QUEUED:
-            if (keepTracking()) wait(lock);
+            if (keepTracking()) _wait(lock);
             else                finish(lock, SERVER_QUEUED);
             break;
 
         case proto::ReplicationStatus::IN_PROGRESS:
-            if (keepTracking()) wait(lock);
+            if (keepTracking()) _wait(lock);
             else                finish(lock, SERVER_IN_PROGRESS);
             break;
 
         case proto::ReplicationStatus::IS_CANCELLING:
-            if (keepTracking()) wait(lock);
+            if (keepTracking()) _wait(lock);
             else                finish(lock, SERVER_IS_CANCELLING);
             break;
 
@@ -284,7 +291,7 @@ void DeleteRequest::analyze(bool success,
                 setDuplicateRequestId(lock, message.duplicate_request_id());
 
                 if (allowDuplicate() && keepTracking()) {
-                    wait(lock);
+                    _wait(lock);
                     return;
                 }
             }
@@ -300,28 +307,29 @@ void DeleteRequest::analyze(bool success,
             break;
 
         default:
-            throw std::logic_error(
-                    "DeleteRequest::analyze() unknown status '" +
+            throw logic_error(
+                    "DeleteRequest::" + string(__func__) + "  unknown status '" +
                     proto::ReplicationStatus_Name(message.status()) +
                     "' received from server");
     }
 }
 
+
 void DeleteRequest::notify(util::Lock const& lock) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
-
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     notifyDefaultImpl<DeleteRequest>(lock, _onFinish);
 }
+
 
 void DeleteRequest::savePersistentState(util::Lock const& lock) {
     controller()->serviceProvider()->databaseServices()->saveState(*this, performance(lock));
 }
 
-std::list<std::pair<std::string,std::string>> DeleteRequest::extendedPersistentState() const {
-    std::list<std::pair<std::string,std::string>> result;
+
+list<pair<string,string>> DeleteRequest::extendedPersistentState() const {
+    list<pair<string,string>> result;
     result.emplace_back("database", database());
-    result.emplace_back("chunk",    std::to_string(chunk()));
+    result.emplace_back("chunk",    to_string(chunk()));
     return result;
 }
 

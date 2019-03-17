@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -46,8 +45,7 @@ class Messenger;
   * Class DeleteRequest represents a transient state of the replica deletion
   * requests within the master controller for deleting replicas.
   */
-class DeleteRequest
-    :   public RequestMessenger  {
+class DeleteRequest : public RequestMessenger  {
 
 public:
 
@@ -74,8 +72,9 @@ public:
     DeleteRequestParams const& targetRequestParams() const { return _targetRequestParams; }
 
     /**
-     * @return request-specific extended data reported upon a successful
-     * completion of the request
+     * @return
+     *   request-specific extended data reported upon a successful
+     *   completion of the request
      */
     ReplicaInfo const& responseData() const { return _replicaInfo; }
 
@@ -86,18 +85,35 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider  - a host of services for various communications
-     * @param worker           - the identifier of a worker node (the one where the chunk is supposed
-     *                           to be located) at a destination of the chunk
-     * @param database         - the name of a database
-     * @param chunk            - the number of a chunk to replicate (implies all relevant tables)
-     * @param onFinish         - an optional callback function to be called upon a completion of the request.
-     * @param priority         - a priority level of the request
-     * @param keepTracking     - keep tracking the request before it finishes or fails
-     * @param allowDuplicate   - follow a previously made request if the current one duplicates it
-     * @param messenger        - an interface for communicating with workers
+     * @param serviceProvider
+     *   a host of services for various communications
      *
-     * @return pointer to the created object
+     * @param worker
+     *   the identifier of a worker node (the one where the chunk is supposed
+     *   to be located) at a destination of the chunk
+     * @param database
+     *   the name of a database
+     *
+     * @param chun
+     *   the number of a chunk to replicate (implies all relevant tables)
+     *
+     * @param onFinish
+     *   an optional callback function to be called upon a completion of the request.
+     *
+     * @param priority
+     *   a priority level of the request
+     *
+     * @param keepTracking
+     *   keep tracking the request before it finishes or fails
+     *
+     * @param allowDuplicate
+     *   follow a previously made request if the current one duplicates it
+     *
+     * @param messenger
+     *   an interface for communicating with workers
+     *
+     * @return
+     *   pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       boost::asio::io_service& io_service,
@@ -110,13 +126,24 @@ public:
                       bool allowDuplicate,
                       std::shared_ptr<Messenger> const& messenger);
 
+protected:
+
+    /// @see Request::startImpl()
+    void startImpl(util::Lock const& lock) final;
+
+    /// @see Request::notify()
+    void notify(util::Lock const& lock) final;
+
+    /// @see Request::savePersistentState()
+    void savePersistentState(util::Lock const& lock) final;
+
+    /// @see Request::extendedPersistentState()
+    std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
+
+
 private:
 
-    /**
-     * Construct the request with the pointer to the services provider.
-     *
-     * @see DeleteRequest::create()
-     */
+    /// @see DeleteRequest::create()
     DeleteRequest(ServiceProvider::Ptr const& serviceProvider,
                   boost::asio::io_service& io_service,
                   std::string const& worker,
@@ -129,61 +156,43 @@ private:
                   std::shared_ptr<Messenger> const& messenger);
 
     /**
-      * @see Request::startImpl()
-      */
-    void startImpl(util::Lock const& lock) final;
-
-    /**
      * Start the timer before attempting the previously failed
      * or successful (if a status check is needed) step.
      *
-     * @param lock - a lock on a mutex must be acquired before calling this method
+     * @param lock
+     *   a lock on Request::_mtx must be acquired before calling this method
      */
-    void wait(util::Lock const& lock);
+    void _wait(util::Lock const& lock);
 
     /// Callback handler for the asynchronous operation
-    void awaken(boost::system::error_code const& ec);
+    void _awaken(boost::system::error_code const& ec);
 
     /**
      * Send the serialized content of the buffer to a worker
      *
-     * @param lock - a lock on a mutex must be acquired before calling this method
+     * @param lock
+     *   a lock on Request::_mtx must be acquired before calling this method
      */
-    void send(util::Lock const& lock);
+    void _send(util::Lock const& lock);
 
     /**
      * Process the worker response to the requested operation.
      *
-     * @param success - the flag indicating if the operation was successful
-     * @param message - a response from the worker service (if success is 'true')
+     * @param success
+     *   'true' indicates a successful response from a worker
+     *
+     * @param message
+     *   a response from the worker service (if success is 'true')
      */
-    void analyze(bool success,
-                 proto::ReplicationResponseDelete const& message);
+    void _analyze(bool success,
+                  proto::ReplicationResponseDelete const& message);
 
-    /**
-     * @see Request::notify()
-     */
-    void notify(util::Lock const& lock) final;
 
-    /**
-     * @see Request::savePersistentState()
-     */
-    void savePersistentState(util::Lock const& lock) final;
+    // Input parameters
 
-    /**
-     * @see Request::extendedPersistentState()
-     */
-    std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
-
-private:
-
-    /// The name of a database to which the deleted chunk belongs to
-    std::string const _database;
-
-    /// The number of a chunk to be deleted
+    std::string  const _database;
     unsigned int const _chunk;
-
-    CallbackType _onFinish;
+    CallbackType       _onFinish;   /// @note is reset when the job finishes
 
     /// Request-specific parameters of the target request
     DeleteRequestParams _targetRequestParams;

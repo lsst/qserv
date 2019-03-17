@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -35,7 +34,7 @@ namespace replica {
  * Class RebalanceApp implements a tool which runs the rebalancing algorithm
  * in a scope of a database family.
  */
-class RebalanceApp: public Application {
+class RebalanceApp : public Application {
 
 public:
 
@@ -60,21 +59,17 @@ public:
     RebalanceApp(RebalanceApp const&)=delete;
     RebalanceApp& operator=(RebalanceApp const&)=delete;
 
-    ~RebalanceApp() override=default;
+    ~RebalanceApp() final=default;
 
 protected:
 
-    /**
-     * @see RebalanceApp::create()
-     */
-    RebalanceApp(int argc, char* argv[]);
-
-    /**
-     * @see Application::runImpl()
-     */
+    /// @see Application::runImpl()
     int runImpl() final;
 
 private:
+
+    /// @see RebalanceApp::create()
+    RebalanceApp(int argc, char* argv[]);
 
     /// The name of a database family
     std::string _databaseFamily;

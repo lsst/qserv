@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -33,6 +32,8 @@
 #include "replica/Configuration.h"
 #include "replica/ServiceProvider.h"
 
+using namespace std;
+
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.AddReplicaQservMgtRequest");
@@ -45,9 +46,9 @@ namespace replica {
 
 AddReplicaQservMgtRequest::Ptr AddReplicaQservMgtRequest::create(
                                         ServiceProvider::Ptr const& serviceProvider,
-                                        std::string const& worker,
+                                        string const& worker,
                                         unsigned int chunk,
-                                        std::vector<std::string> const& databases,
+                                        vector<string> const& databases,
                                         AddReplicaQservMgtRequest::CallbackType const& onFinish) {
     return AddReplicaQservMgtRequest::Ptr(
         new AddReplicaQservMgtRequest(serviceProvider,
@@ -57,11 +58,12 @@ AddReplicaQservMgtRequest::Ptr AddReplicaQservMgtRequest::create(
                                       onFinish));
 }
 
+
 AddReplicaQservMgtRequest::AddReplicaQservMgtRequest(
                                 ServiceProvider::Ptr const& serviceProvider,
-                                std::string const& worker,
+                                string const& worker,
                                 unsigned int chunk,
-                                std::vector<std::string> const& databases,
+                                vector<string> const& databases,
                                 AddReplicaQservMgtRequest::CallbackType const& onFinish)
     :   QservMgtRequest(serviceProvider,
                         "QSERV_ADD_REPLICA",
@@ -72,14 +74,16 @@ AddReplicaQservMgtRequest::AddReplicaQservMgtRequest(
         _qservRequest(nullptr) {
 }
 
-std::list<std::pair<std::string,std::string>> AddReplicaQservMgtRequest::extendedPersistentState() const {
-    std::list<std::pair<std::string,std::string>> result;
-    result.emplace_back("chunk", std::to_string(chunk()));
+
+list<pair<string,string>> AddReplicaQservMgtRequest::extendedPersistentState() const {
+    list<pair<string,string>> result;
+    result.emplace_back("chunk", to_string(chunk()));
     for (auto&& database: databases()) {
         result.emplace_back("database",database);
     }
     return result;
 }
+
 
 void AddReplicaQservMgtRequest::startImpl(util::Lock const& lock) {
 
@@ -89,7 +93,7 @@ void AddReplicaQservMgtRequest::startImpl(util::Lock const& lock) {
         chunk(),
         databases(),
         [request] (wpublish::ChunkGroupQservRequest::Status status,
-                   std::string const& error) {
+                   string const& error) {
             // IMPORTANT: the final state is required to be tested twice. The first time
             // it's done in order to avoid deadlock on the "in-flight" callbacks reporting
             // their completion while the request termination is in a progress. And the second
@@ -98,7 +102,7 @@ void AddReplicaQservMgtRequest::startImpl(util::Lock const& lock) {
 
             if (request->state() == State::FINISHED) return;
         
-            util::Lock lock(request->_mtx, request->context() + "startImpl[callback]");
+            util::Lock lock(request->_mtx, request->context() + string(__func__) + "[callback]");
         
             if (request->state() == State::FINISHED) return;
 
@@ -121,8 +125,8 @@ void AddReplicaQservMgtRequest::startImpl(util::Lock const& lock) {
                     break;
 
                 default:
-                    throw std::logic_error(
-                        "AddReplicaQservMgtRequest:  unhandled server status: " +
+                    throw logic_error(
+                        "AddReplicaQservMgtRequest::" + string(__func__) + "  unhandled server status: " +
                         wpublish::ChunkGroupQservRequest::status2str(status));
             }
         }
@@ -130,6 +134,7 @@ void AddReplicaQservMgtRequest::startImpl(util::Lock const& lock) {
     XrdSsiResource resource(ResourceUnit::makeWorkerPath(worker()));
     service()->ProcessRequest(*_qservRequest, resource);
 }
+
 
 void AddReplicaQservMgtRequest::finishImpl(util::Lock const& lock) {
 
@@ -152,9 +157,10 @@ void AddReplicaQservMgtRequest::finishImpl(util::Lock const& lock) {
     _qservRequest = nullptr;
 }
 
+
 void AddReplicaQservMgtRequest::notify(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     notifyDefaultImpl<AddReplicaQservMgtRequest>(lock, _onFinish);
 }

@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -82,8 +81,7 @@ struct DeleteWorkerJobResult {
   *        be reactivated to pull those missing replicas from that node
   *        TBC...
   */
-class DeleteWorkerJob
-    :   public Job  {
+class DeleteWorkerJob : public Job  {
 
 public:
 
@@ -104,14 +102,24 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param worker          - the name of a worker to be deleted
-     * @param permanentDelete - if set to 'true' the worker record will be completely
-     *                          wiped out from the configuration
-     * @param controller      - for launching requests
-     * @param parentJobId     - optional identifier of a parent job
-     * @param onFinish        - a callback function to be called upon a completion of
-     *                           the job
-     * @param options         - (optional) job options
+     * @param worker
+     *   the name of a worker to be deleted
+     *
+     * @param permanentDelete
+     *   if set to 'true' the worker record will be completely
+     *   wiped out from the configuration
+     *
+     * @param controller
+     *   for launching requests
+     *
+     * @param parentJobId
+     *   optional identifier of a parent job
+     *
+     * @param onFinish
+     *   a callback function to be called upon a completion of the job
+     *
+     * @param options
+     *   (optional) job options
      */
     static Ptr create(std::string const& worker,
                       bool permanentDelete,
@@ -137,39 +145,44 @@ public:
     /**
      * Return the result of the operation.
      *
-     * IMPORTANT NOTES:
-     * - the method should be invoked only after the job has finished (primary
-     *   status is set to Job::Status::FINISHED). Otherwise exception
-     *   std::logic_error will be thrown
+     * @note:
+     *  The method should be invoked only after the job has finished (primary
+     *  status is set to Job::Status::FINISHED). Otherwise exception
+     *  std::logic_error will be thrown
      *
-     * - the result will be extracted from requests which have successfully
-     *   finished. Please, verify the primary and extended status of the object
-     *   to ensure that all requests have finished.
+     * @note
+     *  The result will be extracted from requests which have successfully
+     *  finished. Please, verify the primary and extended status of the object
+     *  to ensure that all requests have finished.
      *
-     * @return the data structure to be filled upon the completion of the job.
+     * @return
+     *   the data structure to be filled upon the completion of the job.
      *
-     * @throws std::logic_error - if the job didn't finished at a time
-     *                            when the method was called
+     * @throws std::logic_error
+     *   if the job didn't finished at a time when the method was called
      */
     DeleteWorkerJobResult const& getReplicaData() const;
 
-    /**
-     * @see Job::extendedPersistentState()
-     */
+    /// @see Job::extendedPersistentState()
     std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
 
-    /**
-     * @see Job::persistentLogData()
-     */
+    /// @see Job::persistentLogData()
     std::list<std::pair<std::string,std::string>> persistentLogData() const final;
 
 protected:
 
-    /**
-     * Construct the job with the pointer to the services provider.
-     *
-     * @see DeleteWorkerJob::create()
-     */
+    /// @see Job::startImpl()
+    void startImpl(util::Lock const& lock) final;
+
+    /// @see Job::cancelImpl()
+    void cancelImpl(util::Lock const& lock) final;
+
+    /// @see Job::notify()
+    void notify(util::Lock const& lock) final;
+
+private:
+
+    /// @see DeleteWorkerJob::create()
     DeleteWorkerJob(std::string const& worker,
                     bool permanentDelete,
                     Controller::Ptr const& controller,
@@ -178,52 +191,36 @@ protected:
                     Job::Options const& options);
 
     /**
-     * @see Job::startImpl()
-     */
-    void startImpl(util::Lock const& lock) final;
-
-    /**
-     * @see Job::startImpl()
-     */
-    void cancelImpl(util::Lock const& lock) final;
-
-    /**
-      * @see Job::notify()
-      */
-    void notify(util::Lock const& lock) final;
-
-    /**
      * Begin the actual sequence of actions for removing the worker
      *
-     * @param lock - the lock must be acquired by a caller of the method
+     * @param lock
+     *   a lock on Job::_mtx must be acquired before calling this method
      */
-    void disableWorker(util::Lock const& lock);
+    void _disableWorker(util::Lock const& lock);
 
     /**
      * The callback function to be invoked on a completion of each request.
      *
-     * @param request - a pointer to a request
+     * @param request
+     *   a pointer to a request
      */
-    void onRequestFinish(FindAllRequest::Ptr const& request);
+    void _onRequestFinish(FindAllRequest::Ptr const& request);
 
     /**
      * The callback function to be invoked on a completion of a job
      * which ensures the desired replication level after disabling .
      *
-     * @param request - a pointer to a job
+     * @param request
+     *   a pointer to a job
      */
-    void onJobFinish(ReplicateJob::Ptr const& job);
+    void _onJobFinish(ReplicateJob::Ptr const& job);
 
-protected:
 
-    /// The name of a worker to be disabled
+    // Input parameters
+
     std::string const _worker;
-
-    /// Permanently remove from the configuration if set
-    bool const _permanentDelete;
-
-    /// Client-defined function to be called upon the completion of the job
-    CallbackType _onFinish;
+    bool        const _permanentDelete;
+    CallbackType      _onFinish;        /// @note is reset when the job finishes
 
     // The counter of requests/jobs which will be updated. They need to be atomic
     // to avoid race condition between the onFinish() callbacks executed within

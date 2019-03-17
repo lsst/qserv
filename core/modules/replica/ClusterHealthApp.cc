@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -43,7 +42,6 @@ string const description =
     "This application probes and reports a status of the Replication system's"
     " and Qserv workers to see if they respond within the specified (or implied)"
     " timeout.";
-
 
 /**
  * 
@@ -135,7 +133,7 @@ int ClusterHealthApp::runImpl() {
 
     // Analyze and display results
 
-    cout << "ClusterHealth job finished: " << job->state2string() << endl;
+    cout << "ClusterHealth::" + string(__func__) + " job finished: " << job->state2string() << endl;
 
     if (job->extendedState() == Job::ExtendedState::SUCCESS) {
 

@@ -1,7 +1,5 @@
-// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -41,8 +39,7 @@ namespace replica {
   * Requests of this type don't have any side effects (in terms of modifying
   * any files or databases).
   */
-class WorkerEchoRequest
-    :   public WorkerRequest {
+class WorkerEchoRequest : public WorkerRequest {
 
 public:
 
@@ -55,10 +52,12 @@ public:
      * low-level pointers).
      *
      * @param serviceProvider
-     *   a host of services for various communications
+     *   provider is needed to access the Configuration of a setup
+     *   and for validating the input parameters
      *
      * @param worker
-     *   the name of a worker
+     *   the name of a worker. The name must match the worker which
+     *   is going to execute the request.
      * 
      * @param id
      *   an identifier of a client request
@@ -104,31 +103,23 @@ public:
      */
     void setInfo(proto::ReplicationResponseEcho& response) const;
 
-    /**
-     * @see WorkerRequest::execute
-     */
+    /// @see WorkerRequest::execute
     bool execute() override;
 
 protected:
 
-    /**
-     * The normal constructor of the class
-     *
-     * @see WorkerEchoRequest::create()
-     */
+    /// @see WorkerEchoRequest::create()
     WorkerEchoRequest(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& worker,
                       std::string const& id,
                       int priority,
                       std::string const& data,
                       uint64_t delay);
-protected:
 
-    /// The data string to be echoed back
+    // Input parameters
+
     std::string const _data;
-
-    /// The desired minimum execution time (milliseconds) of a request
-    uint64_t const _delay;
+    uint64_t    const _delay;
 
     /// The amount of the initial delay which is still left
     uint64_t _delayLeft;

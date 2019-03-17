@@ -100,16 +100,18 @@ private:
  * base class. The class is based on a closed interval of 'valid' chunk
  * numbers whose boundaries are passed into the normal constructor of the class.
  */
-class ChunkNumberSingleRangeValidator
-    :   public ChunkNumberValidator {
+class ChunkNumberSingleRangeValidator : public ChunkNumberValidator {
 
 public:
 
     /**
      * Construct the validator for a specific range of chunk numbers
      *
-     * @param minValue - the minimal (inclusive) number in the range
-     * @param maxValue - the maximum (inclusive) number in the range
+     * @param minValue
+     *   the minimal (inclusive) number in the range
+     *
+     * @param maxValue
+     *   the maximum (inclusive) number in the range
      */
     ChunkNumberSingleRangeValidator(unsigned int minValue,
                                     unsigned int maxValue);
@@ -126,8 +128,10 @@ public:
 
 private:
 
-    unsigned int _minValue;
-    unsigned int _maxValue;
+    // Input parameters
+
+    unsigned int const _minValue;
+    unsigned int const _maxValue;
 };
 
 
@@ -135,8 +139,7 @@ private:
  * Class ChunkNumberQservValidator extends and completes) its abstract
  * base class. The class is based on the Qserv partitioning algorithm..
  */
-class ChunkNumberQservValidator
-    :   public ChunkNumberValidator {
+class ChunkNumberQservValidator : public ChunkNumberValidator {
 
 public:
 
@@ -203,26 +206,33 @@ public:
     /**
      * Construct the 'overflow' chunk (as per the specified validator)
      *
-     * @param pointer to a validator for a specific validation scheme
+     * @param pointer
+     *   a pointer to a validator for a specific validation scheme
      *
-     * @return valid object which also passes 'overflow()' test
+     * @return
+     *   a valid object which also passes 'overflow()' test
      */
     static ChunkNumber makeOverflow(ChunkNumberValidator::Ptr const& validator=defaultValidator());
 
     /**
      * Construct an empty object which is not 'valid'.
      *
-     * @param pointer to a validator for a specific validation scheme
+     * @param pointer
+     *   a to a validator for a specific validation scheme
      */
     explicit ChunkNumber(ChunkNumberValidator::Ptr const& validator=defaultValidator());
 
     /**
      * Attempt to construct a 'valid' object
      *
-     * @param value     - the number to be associated with the chunk
-     * @param validator - pointer to a validator for a specific validation scheme
+     * @param value
+     *   the number to be associated with the chunk
      *
-     * @throws ChunkNumberNotValid if the input value is not valid
+     * @param validator
+     *   a pointer to a validator for a specific validation scheme
+     *
+     * @throws ChunkNumberNotValid
+     *   if the input value is not valid
      */
     explicit ChunkNumber(unsigned int value,
                          ChunkNumberValidator::Ptr const& validator=defaultValidator());
@@ -247,9 +257,11 @@ public:
     /**
      * Explicit conversion into the numeric integer type
      *
-     * @return numeric value of the chunk
+     * @return
+     *   numeric value of the chunk
      *
-     * @throws ChunkNumberNotValid if the object is not valid
+     * @throws ChunkNumberNotValid
+     *   if the object is not valid
      */
     unsigned int value() const;
 
@@ -272,23 +284,27 @@ public:
 private:
 
     /**
-     * @return validator which is based on ChunkNumberSingleRangeValidator for
-     * all range of numbers of the unsigned integer type.
+     * @return
+     *   validator which is based on ChunkNumberSingleRangeValidator for
+     *   all range of numbers of the unsigned integer type.
      */
     static ChunkNumberValidator::Ptr const& defaultValidator();
 
     /**
      * Checks for validity and compatibility (both are based on the same validator)
      * of the input chunk numbers. The method is used in binary operations over
-     * 
      *
-     * @param lhs - the 'lvalue' object
-     * @param rhs - the 'rvalue' object
+     * @param lhs
+     *   the 'lvalue' object
+     *
+     * @param rhs
+     *   the 'rvalue' object
      */
     static void assertBothValid(ChunkNumber const& lhs,
                                 ChunkNumber const& rhs);
 
-private:
+
+    // Data members
 
     unsigned int _value;
     bool _valid;

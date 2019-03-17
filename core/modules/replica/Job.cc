@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -26,7 +25,7 @@
 // System headers
 #include <sstream>
 #include <stdexcept>
-#include <utility>      // std::swap
+#include <utility>
 
 // Third party headers
 #include <boost/bind.hpp>
@@ -44,6 +43,7 @@
 #include "replica/ServiceProvider.h"
 #include "util/IterableFormatter.h"
 
+using namespace std;
 
 namespace {
 
@@ -55,20 +55,21 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-std::atomic<size_t> Job::_numClassInstances(0);
+atomic<size_t> Job::_numClassInstances(0);
 
-std::string Job::state2string(State state) {
+
+string Job::state2string(State state) {
     switch (state) {
         case CREATED:     return "CREATED";
         case IN_PROGRESS: return "IN_PROGRESS";
         case FINISHED:    return "FINISHED";
     }
-    throw std::logic_error(
+    throw logic_error(
                 "incomplete implementation of method Job::state2string(State)");
 }
 
-std::string
-Job::state2string(ExtendedState state) {
+
+string Job::state2string(ExtendedState state) {
     switch (state) {
         case NONE:               return "NONE";
         case SUCCESS:            return "SUCCESS";
@@ -79,13 +80,13 @@ Job::state2string(ExtendedState state) {
         case TIMEOUT_EXPIRED:    return "TIMEOUT_EXPIRED";
         case CANCELLED:          return "CANCELLED";
     }
-    throw std::logic_error(
-                "incomplete implementation of method Job::state2string(ExtendedState)");
+    throw logic_error("Job::" + string(__func__) + "  incomplete implementation of method");
 }
 
+
 Job::Job(Controller::Ptr const& controller,
-         std::string const& parentJobId,
-         std::string const& type,
+         string const& parentJobId,
+         string const& type,
          Options const& options)
     :   _id(Generators::uniqueId()),
         _controller(controller),
@@ -105,67 +106,74 @@ Job::Job(Controller::Ptr const& controller,
     LOGS(_log, LOG_LVL_DEBUG, context() << "constructed  instances: " << _numClassInstances);
 }
 
+
 Job::~Job() {
     --_numClassInstances;
     LOGS(_log, LOG_LVL_DEBUG, context() << "destructed   instances: " << _numClassInstances);
 }
 
-std::string Job::state2string() const {
-    util::Lock lock(_mtx, context() + "state2string");
+
+string Job::state2string() const {
+    util::Lock lock(_mtx, context() + __func__);
     return state2string(state(), extendedState());
 }
 
+
 Job::Options Job::options() const {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "options");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
-    util::Lock lock(_mtx, context() + "options");
+    util::Lock lock(_mtx, context() + __func__);
 
     return options(lock);
 }
+
 
 Job::Options Job::options(util::Lock const& lock) const {
     return _options;
 }
 
 
-std::list<std::pair<std::string,std::string>> Job::persistentLogData() const {
+list<pair<string,string>> Job::persistentLogData() const {
 
     LOGS(_log, LOG_LVL_DEBUG, context());
 
-    if (state() == State::FINISHED) return std::list<std::pair<std::string,std::string>>();
+    if (state() == State::FINISHED) return list<pair<string,string>>();
 
-    throw std::logic_error(
-        "Job::" + std::string(__func__) + "  the method can't be called while the job hasn't finished");
+    throw logic_error(
+            "Job::" + string(__func__)
+            + "  the method can't be called while the job hasn't finished");
 }
 
 
 Job::Options Job::setOptions(Options const& newOptions) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "setOptions");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
-    util::Lock lock(_mtx, context() + "setOptions");
+    util::Lock lock(_mtx, context() + __func__);
 
     Options options = newOptions;
-    std::swap(_options, options);
+    swap(_options, options);
 
     return options;
 }
 
-std::string Job::context() const {
+
+string Job::context() const {
     return  "JOB     " + id() + "  " + type() +
             "  " + state2string(state(), extendedState()) + "  ";
 }
 
+
 void Job::start() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "start");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
-    util::Lock lock(_mtx, context() + "start");
+    util::Lock lock(_mtx, context() + __func__);
 
-    assertState(lock,
-                State::CREATED,
-                context() + "start");
+    _assertState(lock,
+                 State::CREATED,
+                 context() + __func__);
 
     // IMPORTANT: update these before proceeding to the implementation
     // because the later may create children jobs whose performance
@@ -177,8 +185,8 @@ void Job::start() {
 
     // Start timers if configured
 
-    startHeartbeatTimer(lock);
-    startExpirationTimer(lock);
+    _startHeartbeatTimer(lock);
+    _startExpirationTimer(lock);
 
     // Delegate the rest to the specific implementation
 
@@ -193,14 +201,15 @@ void Job::start() {
 
     // Otherwise, the only other state which is allowed here is this
 
-    assertState(lock,
-                State::IN_PROGRESS,
-                context() + "start");
+    _assertState(lock,
+                 State::IN_PROGRESS,
+                 context() + __func__);
 }
+
 
 void Job::cancel() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "cancel");
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // IMPORTANT: the final state is required to be tested twice. The first time
     // it's done in order to avoid deadlock on the "in-flight" requests reporting
@@ -210,17 +219,18 @@ void Job::cancel() {
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + "cancel");
+    util::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return;
 
     finish(lock, ExtendedState::CANCELLED);
 }
 
+
 void Job::finish(util::Lock const& lock,
                  ExtendedState newExtendedState) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "finish"
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
          << "  newExtendedState=" << state2string(newExtendedState));
 
     // Also ignore this event if the request is over
@@ -250,14 +260,15 @@ void Job::finish(util::Lock const& lock,
     notify(lock);
 }
 
+
 void Job::qservAddReplica(util::Lock const& lock,
                           unsigned int chunk,
-                          std::vector<std::string> const& databases,
-                          std::string const& worker,
+                          vector<string> const& databases,
+                          string const& worker,
                           AddReplicaQservMgtRequest::CallbackType const& onFinish) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context()
-         << "** START ** Qserv notification on ADD replica:"
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
+         << "  ** START ** Qserv notification on ADD replica:"
          << ", chunk="     << chunk
          << ", databases=" << util::printable(databases)
          << "  worker="    << worker);
@@ -270,8 +281,8 @@ void Job::qservAddReplica(util::Lock const& lock,
         worker,
         [self,onFinish] (AddReplicaQservMgtRequest::Ptr const& request) {
 
-            LOGS(_log, LOG_LVL_DEBUG, self->context()
-                 << "** FINISH ** Qserv notification on ADD replica:"
+            LOGS(_log, LOG_LVL_DEBUG, self->context() << __func__
+                 << "  ** FINISH ** Qserv notification on ADD replica:"
                  << "  chunk="     << request->chunk()
                  << ", databases=" << util::printable(request->databases())
                  << ", worker="    << request->worker()
@@ -287,15 +298,16 @@ void Job::qservAddReplica(util::Lock const& lock,
     );
 }
 
+
 void Job::qservRemoveReplica(util::Lock const& lock,
                              unsigned int chunk,
-                             std::vector<std::string> const& databases,
-                             std::string const& worker,
+                             vector<string> const& databases,
+                             string const& worker,
                              bool force,
                              RemoveReplicaQservMgtRequest::CallbackType const& onFinish) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context()
-         << "** START ** Qserv notification on REMOVE replica:"
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
+         << "  ** START ** Qserv notification on REMOVE replica:"
          << "  chunk="     << chunk
          << ", databases=" << util::printable(databases)
          << ", worker="    << worker
@@ -310,8 +322,8 @@ void Job::qservRemoveReplica(util::Lock const& lock,
         force,
         [self,onFinish] (RemoveReplicaQservMgtRequest::Ptr const& request) {
 
-            LOGS(_log, LOG_LVL_DEBUG, self->context()
-                 << "** FINISH ** Qserv notification on REMOVE replica:"
+            LOGS(_log, LOG_LVL_DEBUG, self->context() << __func__
+                 << "  ** FINISH ** Qserv notification on REMOVE replica:"
                  << "  chunk="     << request->chunk()
                  << ", databases=" << util::printable(request->databases())
                  << ", worker="    << request->worker()
@@ -327,20 +339,24 @@ void Job::qservRemoveReplica(util::Lock const& lock,
     );
 }
 
-void Job::assertState(util::Lock const& lock,
-                      State desiredState,
-                      std::string const& context) const {
+
+void Job::_assertState(util::Lock const& lock,
+                       State desiredState,
+                       string const& context) const {
     if (desiredState != state()) {
-        throw std::logic_error(
-            context + ": wrong state " + state2string(state()) + " instead of " + state2string(desiredState));
+        throw logic_error(
+                context + ": wrong state " + state2string(state()) + " instead of " +
+                state2string(desiredState));
     }
 }
+
 
 void Job::setState(util::Lock const& lock,
                    State newState,
                    ExtendedState newExtendedState) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "setState  new state=" << state2string(newState, newExtendedState));
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
+         << "  new state=" << state2string(newState, newExtendedState));
 
     // ATTENTION: changing the top-level state to FINISHED should be last step
     // in the transient state transition in order to ensure a consistent view
@@ -355,11 +371,12 @@ void Job::setState(util::Lock const& lock,
     controller()->serviceProvider()->databaseServices()->saveState(*this, options(lock));
 }
 
-void Job::startHeartbeatTimer(util::Lock const& lock) {
+
+void Job::_startHeartbeatTimer(util::Lock const& lock) {
 
     if (_heartbeatTimerIvalSec) {
 
-        LOGS(_log, LOG_LVL_DEBUG, context() << "startHeartbeatTimer");
+        LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
         // The timer needs to be initialized each time a new interval
         // is about to begin. Otherwise it will immediately expire when
@@ -371,7 +388,7 @@ void Job::startHeartbeatTimer(util::Lock const& lock) {
 
         _heartbeatTimerPtr->async_wait(
             boost::bind(
-                &Job::heartbeat,
+                &Job::_heartbeat,
                 shared_from_this(),
                 boost::asio::placeholders::error
             )
@@ -379,9 +396,10 @@ void Job::startHeartbeatTimer(util::Lock const& lock) {
     }
 }
 
-void Job::heartbeat(boost::system::error_code const& ec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "heartbeat: "
+void Job::_heartbeat(boost::system::error_code const& ec) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  "
          << (ec == boost::asio::error::operation_aborted ? "** ABORTED **" : ""));
 
     // Ignore this event if the timer was aborted
@@ -395,7 +413,7 @@ void Job::heartbeat(boost::system::error_code const& ec) {
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + "heartbeat");
+    util::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return;
 
@@ -405,14 +423,15 @@ void Job::heartbeat(boost::system::error_code const& ec) {
 
     // Start another interval
 
-    startHeartbeatTimer(lock);
+    _startHeartbeatTimer(lock);
 }
 
-void Job::startExpirationTimer(util::Lock const& lock) {
+
+void Job::_startExpirationTimer(util::Lock const& lock) {
 
     if (0 != _expirationIvalSec) {
 
-        LOGS(_log, LOG_LVL_DEBUG, context() << "startExpirationTimer");
+        LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
         // The timer needs to be initialized each time a new interval
         // is about to begin. Otherwise it will immediately expire when
@@ -424,7 +443,7 @@ void Job::startExpirationTimer(util::Lock const& lock) {
 
         _expirationTimerPtr->async_wait(
             boost::bind(
-                &Job::expired,
+                &Job::_expired,
                 shared_from_this(),
                 boost::asio::placeholders::error
             )
@@ -432,9 +451,10 @@ void Job::startExpirationTimer(util::Lock const& lock) {
     }
 }
 
-void Job::expired(boost::system::error_code const& ec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "expired: "
+void Job::_expired(boost::system::error_code const& ec) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  "
          << (ec == boost::asio::error::operation_aborted ? "** ABORTED **" : ""));
 
     // Ignore this event if the timer was aborted
@@ -448,16 +468,17 @@ void Job::expired(boost::system::error_code const& ec) {
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + "expired");
+    util::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return;
 
     finish(lock, ExtendedState::TIMEOUT_EXPIRED);
 }
 
+
 bool JobCompare::operator()(Job::Ptr const& lhs,
                             Job::Ptr const& rhs) const {
-    LOGS(_log, LOG_LVL_DEBUG, "JobCompare::operator<(" << lhs->id() << "," << rhs->id() + ")");
+    LOGS(_log, LOG_LVL_DEBUG, "JobCompare::operator()(" << lhs->id() << "," << rhs->id() + ")");
     return lhs->options().priority < rhs->options().priority;
 }
 

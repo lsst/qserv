@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -26,11 +25,13 @@
 // Qserv headers
 #include "util/ConfigStore.h"
 
+using namespace std;
+
 namespace lsst {
 namespace qserv {
 namespace replica {
 
-ConfigurationMap::ConfigurationMap(std::map<std::string, std::string> const& kvMap)
+ConfigurationMap::ConfigurationMap(map<string, string> const& kvMap)
     :   ConfigurationStore(util::ConfigStore(kvMap)) {
 }
 

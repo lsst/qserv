@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -31,6 +30,8 @@
 #include "lsst/log/Log.h"
 #include "proto/replication.pb.h"
 
+using namespace std;
+
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.Performance");
@@ -46,9 +47,10 @@ namespace replica {
 ////////////////////////////////////////////////////////////
 
 uint64_t PerformanceUtils::now() {
-    return std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::system_clock::now().time_since_epoch()).count();
+    return chrono::duration_cast<chrono::milliseconds>(
+                chrono::system_clock::now().time_since_epoch()).count();
 }
+
 
 ///////////////////////////////////////////////////////
 ///////////////////// Performance /////////////////////
@@ -63,11 +65,13 @@ Performance::Performance()
         c_finish_time(0) {
 }
 
+
 void Performance::update(proto::ReplicationPerformance const& workerPerformanceInfo) {
     w_receive_time = workerPerformanceInfo.receive_time();
     w_start_time   = workerPerformanceInfo.start_time();
     w_finish_time  = workerPerformanceInfo.finish_time();
 }
+
 
 uint64_t Performance::setUpdateStart() {
     uint64_t const t = c_start_time;
@@ -75,13 +79,15 @@ uint64_t Performance::setUpdateStart() {
     return t;
 }
 
+
 uint64_t Performance::setUpdateFinish() {
     uint64_t const t = c_finish_time;
     c_finish_time = PerformanceUtils::now();
     return t;
 }
 
-std::ostream& operator<<(std::ostream& os, Performance const& p) {
+
+ostream& operator<<(ostream& os, Performance const& p) {
     os  << "Performance "
         << " c.create:"   << p.c_create_time
         << " c.start:"    << p.c_start_time
@@ -93,6 +99,7 @@ std::ostream& operator<<(std::ostream& os, Performance const& p) {
     return os;
 }
 
+
 /////////////////////////////////////////////////////////////
 ///////////////////// WorkerPerformance /////////////////////
 /////////////////////////////////////////////////////////////
@@ -103,17 +110,20 @@ WorkerPerformance::WorkerPerformance()
         finish_time(0) {
 }
 
+
 uint64_t WorkerPerformance::setUpdateStart() {
     uint64_t const t = start_time;
     start_time = PerformanceUtils::now();
     return t;
 }
 
+
 uint64_t WorkerPerformance::setUpdateFinish() {
     uint64_t const t = finish_time;
     finish_time = PerformanceUtils::now();
     return t;
 }
+
 
 proto::ReplicationPerformance* WorkerPerformance::info() const {
     auto ptr = new proto::ReplicationPerformance();
@@ -123,7 +133,8 @@ proto::ReplicationPerformance* WorkerPerformance::info() const {
     return ptr;
 }
 
-std::ostream& operator<<(std::ostream& os, WorkerPerformance const& p) {
+
+ostream& operator<<(ostream& os, WorkerPerformance const& p) {
     os  << "WorkerPerformance "
         << " receive:"    << p.receive_time
         << " start:"      << p.start_time

@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -39,7 +38,7 @@ namespace replica {
 /**
  * Class CheckSumApp implements calculates and prints a checksum of a file.
  */
-class CheckSumApp: public Application {
+class CheckSumApp : public Application {
 
 public:
 
@@ -68,17 +67,14 @@ public:
 
 protected:
 
-    /**
-     * @see CheckSumApp::create()
-     */
-    CheckSumApp(int argc, char* argv[]);
-
-    /**
-     * @see Application::runImpl()
-     */
+    /// @see Application::runImpl()
     int runImpl() final;
 
 private:
+
+    /// @see CheckSumApp::create()
+    CheckSumApp(int argc, char* argv[]);
+
 
     /// The name of a worker
     std::string _file;

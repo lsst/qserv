@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -63,8 +62,7 @@ struct DeleteReplicaJobResult {
   * Class DeleteReplicaJob represents a tool which will delete a chunk replica
   * from a worker.
   */
-class DeleteReplicaJob
-    :   public Job  {
+class DeleteReplicaJob : public Job  {
 
 public:
 
@@ -85,15 +83,29 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param databaseFamily - the name of a database family involved into the operation
-     * @param chunk          - the chunk number
-     * @param worker         - the name of a worker where the affected replica is residing
-     * @param controller     - for launching requests
-     * @param parentJobId    - optional identifier of a parent job
-     * @param onFinish       - a callback function to be called upon a completion of the job
-     * @param options        - job options
+     * @param databaseFamily
+     *   the name of a database family involved into the operation
      *
-     * @return pointer to the created object
+     * @param chunk
+     *   the chunk whose replica will be deleted from the target worker
+     *
+     * @param worker
+     *   the name of a worker where the affected replica is residing
+     *
+     * @param controller
+     *   for launching requests
+     *
+     * @param parentJobId
+     *   optional identifier of a parent job
+     *
+     * @param onFinish
+     *   a callback function to be called upon a completion of the job
+     *
+     * @param options
+     *   job options
+     *
+     * @return
+     *   pointer to the created object
      */
     static Ptr create(std::string const& databaseFamily,
                       unsigned int chunk,
@@ -123,39 +135,44 @@ public:
     /**
      * Return the result of the operation.
      *
-     * IMPORTANT NOTES:
-     * - the method should be invoked only after the job has finished (primary
-     *   status is set to Job::Status::FINISHED). Otherwise exception
-     *   std::logic_error will be thrown
+     * @note:
+     *  The method should be invoked only after the job has finished (primary
+     *  status is set to Job::Status::FINISHED). Otherwise exception
+     *  std::logic_error will be thrown
      *
-     * - the result will be extracted from requests which have successfully
-     *   finished. Please, verify the primary and extended status of the object
-     *   to ensure that all requests have finished.
+     * @note
+     *  The result will be extracted from requests which have successfully
+     *  finished. Please, verify the primary and extended status of the object
+     *  to ensure that all requests have finished.
      *
-     * @return the data structure to be filled upon the completion of the job.
+     * @return
+     *   the data structure to be filled upon the completion of the job.
      *
-     * @throws std::logic_error - if the job didn't finished at a time
-     *                            when the method was called
+     * @throws std::logic_error
+     *   if the job didn't finished at a time when the method was called
      */
     DeleteReplicaJobResult const& getReplicaData() const;
 
-    /**
-     * @see Job::extendedPersistentState()
-     */
+    /// @see Job::extendedPersistentState()
     std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
 
-    /**
-     * @see Job::persistentLogData()
-     */
+    /// @see Job::persistentLogData()
     std::list<std::pair<std::string,std::string>> persistentLogData() const final;
 
 protected:
 
-    /**
-     * Construct the job with the pointer to the services provider.
-     *
-     * @see DeleteReplicaJob::create()
-     */
+    /// @see Job::startImpl()
+    void startImpl(util::Lock const& lock) final;
+
+    /// @see Job::cancelImpl()
+    void cancelImpl(util::Lock const& lock) final;
+
+    /// @see Job::notify()
+    void notify(util::Lock const& lock) final;
+
+private:
+
+    /// @see DeleteReplicaJob::create()
     DeleteReplicaJob(std::string const& databaseFamily,
                      unsigned int chunk,
                      std::string const& worker,
@@ -165,48 +182,29 @@ protected:
                      Job::Options const& options);
 
     /**
-      * @see Job::startImpl()
-      */
-    void startImpl(util::Lock const& lock) final;
-
-    /**
-      * @see Job::startImpl()
-      */
-    void cancelImpl(util::Lock const& lock) final;
-
-    /**
-      * @see Job::notify()
-      */
-    void notify(util::Lock const& lock) final;
-
-    /**
      * Initiate a process of removing the replica from the source worker
      *
-     * @param lock - lock for thread safety
+     * @param lock
+     *   a lock on Job::_mtx must be acquired before calling this method
      */
-    void beginDeleteReplica(util::Lock const& lock);
+    void _beginDeleteReplica(util::Lock const& lock);
 
     /**
      * The callback function to be invoked on a completion of each replica
      * deletion request.
      *
-     * @param request - a pointer to a request
+     * @param request
+     *   a pointer to a request
      */
-    void onRequestFinish(DeleteRequest::Ptr const& request);
+    void _onRequestFinish(DeleteRequest::Ptr const& request);
 
-protected:
 
-    /// The name of a database family
-    std::string const _databaseFamily;
+    // Input parameters
 
-    /// The chunk number
+    std::string  const _databaseFamily;
     unsigned int const _chunk;
-
-    /// The name of a worker where the affected replica is residing
-    std::string const _worker;
-
-    /// Client-defined function to be called upon the completion of the job
-    CallbackType _onFinish;
+    std::string  const _worker;
+    CallbackType       _onFinish;       /// @note is reset when the job finishes
 
     /// Cached replicas for determining which databases have contributions in the chunk
     std::vector<ReplicaInfo> _replicas;

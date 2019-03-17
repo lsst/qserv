@@ -1,7 +1,5 @@
-// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -48,8 +46,7 @@ class WorkerRequestFactory;
   * the worker replication service. Only one instance of this class is
   * allowed per a thread.
   */
-class WorkerServer
-    : public std::enable_shared_from_this<WorkerServer>  {
+class WorkerServer : public std::enable_shared_from_this<WorkerServer>  {
 
 public:
 
@@ -61,10 +58,19 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider  for configuration, etc. services
-     * @param requestFactory   the factory of requests
-     * @param workerName       the name of a worker this instance represents
-     * @return                 pointer to the new object created by the factory
+     * @param serviceProvider
+     *   provider is needed to access the Configuration of a setup
+     *   and for validating the input parameters
+     *
+     * @param requestFactory
+     *   the factory of requests which will be created by the server
+     *   and forwarded to the request processor for actual execution.
+     *
+     * @param workerName
+     *   the name of a worker this instance represents
+     *
+     * @return
+     *   pointer to the new object created by the factory
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       WorkerRequestFactory& requestFactory,
@@ -85,24 +91,24 @@ public:
      * The processor object can be used for detailed monitoring of
      * the on-going activities and statistics collection if needed.
      *
-     * @return reference to the processor
+     * @return
+     *   reference to the request processor
      */
     WorkerProcessor::Ptr const& processor() const { return _processor; }
 
     /**
-     * Begin listening for and processing incoming connections
+     * Begin listening for and processing incoming connections.
+     * 
+     * @note
+     *   This method is blocking, so it can be called just once from
+     *   a thread. Calling it from different threads won't work because
+     *   of a port conflict. 
      */
     void run();
 
 private:
 
-    /**
-     * Construct the server with the specified configuration.
-     *
-     * @param serviceProvider - for configuration, etc. services
-     * @param requestFactory  - the factory of requests
-     * @workerName            - the name of a worker this instance represents
-     */
+    /// @see WorkerServer::create()
     WorkerServer(ServiceProvider::Ptr const& serviceProvider,
                  WorkerRequestFactory& requestFactory,
                  std::string const& workerName);
@@ -110,31 +116,34 @@ private:
     /**
      * Begin (asynchronously) accepting connection requests.
      */
-    void beginAccept();
+    void _beginAccept();
     
     /**
      * Handle a connection request once it's detected. The rest of
      * the communication will be forwarded to the connection object
      * specified as a parameter of the method.
      *
-     * @param connection - object responsible for communications with a client
-     * @param ec         - error condition to be checked for
+     * @param connection
+     *   object responsible for communications with a client
+     *
+     * @param ec
+     *   error condition to be checked for
      */
-    void handleAccept(WorkerServerConnection::Ptr const& connection,
-                      boost::system::error_code const& ec);
+    void _handleAccept(WorkerServerConnection::Ptr const& connection,
+                       boost::system::error_code const& ec);
 
     /// @return the context string
     std::string context() const { return "SERVER  "; }
 
-private:
+
+    // Input parameters
 
     ServiceProvider::Ptr const _serviceProvider;
-
-    /// The name of the current worker
-    std::string const _workerName;
+    std::string          const _workerName;
 
     /// This is pointer onto an object where the requests would
-    /// get processed.
+    /// get processed. This object gets created by the constructor of
+    /// the class.
     WorkerProcessor::Ptr const _processor;
 
     boost::asio::io_service        _io_service;

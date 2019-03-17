@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -40,7 +39,7 @@ namespace replica {
  * Class QservWorkerApp represents a command-line tool for operations
  * with Qserv workers.
  */
-class QservWorkerApp: public Application {
+class QservWorkerApp : public Application {
 
 public:
 
@@ -69,17 +68,13 @@ public:
 
 protected:
 
-    /**
-     * @see QservWorkerApp::create()
-     */
-    QservWorkerApp(int argc, char* argv[]);
-
-    /**
-     * @see Application::runImpl()
-     */
+    /// @see Application::runImpl()
     int runImpl() final;
 
 private:
+
+    /// @see QservWorkerApp::create()
+    QservWorkerApp(int argc, char* argv[]);
 
     /**
      * Read and parse a space/newline separated stream of pairs from the input
@@ -105,7 +100,6 @@ private:
       */
     void _dump(QservReplicaCollection const& collection) const;
 
-private:
 
     /// The name of a command (the first mandatory parameter)
     std::string _command;

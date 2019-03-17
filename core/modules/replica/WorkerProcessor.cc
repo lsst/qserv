@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -41,6 +40,8 @@
 #include "replica/WorkerRequestFactory.h"
 #include "util/BlockPost.h"
 
+using namespace std;
+
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerProcessor");
@@ -57,13 +58,13 @@ bool ifDuplicateRequest(PROTOCOL_RESPONSE_TYPE& response,
     bool isDuplicate = false;
 
     if (replica::WorkerReplicationRequest::Ptr ptr =
-        std::dynamic_pointer_cast<replica::WorkerReplicationRequest>(p)) {
+        dynamic_pointer_cast<replica::WorkerReplicationRequest>(p)) {
         isDuplicate =
             (ptr->database() == request.database()) and
             (ptr->chunk()    == request.chunk());
 
     } else if (replica::WorkerDeleteRequest::Ptr ptr =
-             std::dynamic_pointer_cast<replica::WorkerDeleteRequest>(p)) {
+             dynamic_pointer_cast<replica::WorkerDeleteRequest>(p)) {
         isDuplicate =
             (ptr->database() == request.database()) and
             (ptr->chunk()    == request.chunk());
@@ -84,15 +85,16 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-std::string WorkerProcessor::state2string(State state) {
+string WorkerProcessor::state2string(State state) {
     switch (state) {
         case STATE_IS_RUNNING:  return "STATE_IS_RUNNING";
         case STATE_IS_STOPPING: return "STATE_IS_STOPPING";
         case STATE_IS_STOPPED:  return "STATE_IS_STOPPED";
     }
-    throw std::logic_error("unhandled state " + std::to_string(state) +
-                           " in WorkerProcessor::state2string()");
+    throw logic_error(
+            "WorkerProcessor::" + string(__func__) +"  unhandled state " + to_string(state));
 }
+
 
 proto::ReplicationStatus WorkerProcessor::translate(WorkerRequest::CompletionStatus status) {
     switch (status) {
@@ -103,23 +105,25 @@ proto::ReplicationStatus WorkerProcessor::translate(WorkerRequest::CompletionSta
         case WorkerRequest::STATUS_SUCCEEDED:     return proto::ReplicationStatus::SUCCESS;
         case WorkerRequest::STATUS_FAILED:        return proto::ReplicationStatus::FAILED;
         default:
-            throw std::logic_error(
-                "unhandled status " + WorkerRequest::status2string(status) +
-                " at WorkerProcessor::translate()");
+            throw logic_error(
+                    "WorkerProcessor::" + string(__func__) +
+                    "unhandled status " + WorkerRequest::status2string(status));
     }
 }
 
+
 WorkerProcessor::Ptr WorkerProcessor::create(ServiceProvider::Ptr const& serviceProvider,
                                              WorkerRequestFactory const& requestFactory,
-                                             std::string const& worker) {
+                                             string const& worker) {
     return Ptr(new WorkerProcessor(serviceProvider,
                                    requestFactory,
                                    worker));
 }
 
+
 WorkerProcessor::WorkerProcessor(ServiceProvider::Ptr const& serviceProvider,
                                  WorkerRequestFactory const& requestFactory,
-                                 std::string const& worker)
+                                 string const& worker)
     :   _serviceProvider(serviceProvider),
         _requestFactory(requestFactory),
         _worker(worker),
@@ -127,19 +131,21 @@ WorkerProcessor::WorkerProcessor(ServiceProvider::Ptr const& serviceProvider,
         _startTime(PerformanceUtils::now()) {
 }
 
+
 void WorkerProcessor::run() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "run");
+    LOGS(_log, LOG_LVL_DEBUG, _context() << __func__);
 
-    util::Lock lock(_mtx, context() + "run");
+    util::Lock lock(_mtx, _context() + __func__);
 
     if (_state == STATE_IS_STOPPED) {
 
         size_t const numThreads = _serviceProvider->config()->workerNumProcessingThreads();
         if (not numThreads) {
-            throw std::out_of_range(
-                        "invalid configuration parameter for the number of processing threads. "
-                        "The value of the parameter must be greater than 0");
+            throw out_of_range(
+                    "WorkerProcessor::" + string(__func__) +
+                    "invalid configuration parameter for the number of processing threads. "
+                    "The value of the parameter must be greater than 0");
         }
 
         // Create threads if needed
@@ -159,11 +165,12 @@ void WorkerProcessor::run() {
     }
 }
 
+
 void WorkerProcessor::stop() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "stop");
+    LOGS(_log, LOG_LVL_DEBUG, _context() << __func__);
 
-    util::Lock lock(_mtx, context() + "stop");
+    util::Lock lock(_mtx, _context() + __func__);
 
     if (_state == STATE_IS_RUNNING) {
 
@@ -181,33 +188,35 @@ void WorkerProcessor::stop() {
     }
 }
 
+
 void WorkerProcessor::drain() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "drain");
+    LOGS(_log, LOG_LVL_DEBUG, _context() << __func__);
 
-    util::Lock lock(_mtx, context() + "drain");
+    util::Lock lock(_mtx, _context() + __func__);
 
     // Collect identifiers of requests to be affected by the operation
-    std::list<std::string> ids;
+    list<string> ids;
 
     for (auto&& ptr: _newRequests)        ids.push_back(ptr->id());
     for (auto&& ptr: _inProgressRequests) ids.push_back(ptr->id());
 
-    for (auto&& id: ids) dequeueOrCancelImpl(lock, id);
+    for (auto&& id: ids) _dequeueOrCancelImpl(lock, id);
 }
 
+
 void WorkerProcessor::enqueueForReplication(
-                            std::string const& id,
+                            string const& id,
                             proto::ReplicationRequestReplicate const& request,
                             proto::ReplicationResponseReplicate& response) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "enqueueForReplication"
+    LOGS(_log, LOG_LVL_DEBUG, _context() << __func__
         << "  id: "     << id
         << "  db: "     << request.database()
         << "  chunk: "  << request.chunk()
         << "  worker: " << request.worker());
 
-    util::Lock lock(_mtx, context() + "enqueueForReplication");
+    util::Lock lock(_mtx, _context() + __func__);
 
     // Verify a scope of the request to ensure it won't duplicate or interfere (with)
     // existing requests in the active (non-completed) queues. A reason why we're ignoring
@@ -238,10 +247,10 @@ void WorkerProcessor::enqueueForReplication(
         response.set_status_ext(proto::ReplicationStatusExt::NONE);
         response.set_allocated_performance(ptr->performance().info());
 
-        setInfo(ptr, response);
+        _setInfo(ptr, response);
 
-    } catch (std::invalid_argument const& ec) {
-        LOGS(_log, LOG_LVL_ERROR, context() << "enqueueForReplication  " << ec.what());
+    } catch (invalid_argument const& ec) {
+        LOGS(_log, LOG_LVL_ERROR, _context() << __func__ << "  " << ec.what());
 
         setDefaultResponse(response,
                            proto::ReplicationStatus::BAD,
@@ -249,16 +258,17 @@ void WorkerProcessor::enqueueForReplication(
     }
 }
 
-void WorkerProcessor::enqueueForDeletion(std::string const& id,
+
+void WorkerProcessor::enqueueForDeletion(string const& id,
                                          proto::ReplicationRequestDelete const& request,
                                          proto::ReplicationResponseDelete& response) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "enqueueForDeletion"
+    LOGS(_log, LOG_LVL_DEBUG, _context() << __func__
         << "  id: "    << id
         << "  db: "    << request.database()
         << "  chunk: " << request.chunk());
 
-    util::Lock lock(_mtx, context() + "enqueueForDeletion");
+    util::Lock lock(_mtx, _context() + __func__);
 
     // Verify a scope of the request to ensure it won't duplicate or interfere (with)
     // existing requests in the active (non-completed) queues. A reason why we're ignoring
@@ -288,10 +298,10 @@ void WorkerProcessor::enqueueForDeletion(std::string const& id,
         response.set_status_ext(proto::ReplicationStatusExt::NONE);
         response.set_allocated_performance(ptr->performance().info());
 
-        setInfo(ptr, response);
+        _setInfo(ptr, response);
 
-    } catch (std::invalid_argument const& ec) {
-        LOGS(_log, LOG_LVL_ERROR, context() << "enqueueForDeletion  " << ec.what());
+    } catch (invalid_argument const& ec) {
+        LOGS(_log, LOG_LVL_ERROR, _context() << __func__ << "  " << ec.what());
 
         setDefaultResponse(response,
                            proto::ReplicationStatus::BAD,
@@ -299,17 +309,18 @@ void WorkerProcessor::enqueueForDeletion(std::string const& id,
     }
 }
 
-void WorkerProcessor::enqueueForFind(std::string const& id,
+
+void WorkerProcessor::enqueueForFind(string const& id,
                                      proto::ReplicationRequestFind const& request,
                                      proto::ReplicationResponseFind& response) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "enqueueForFind"
+    LOGS(_log, LOG_LVL_DEBUG, _context() << __func__
         << "  id: "    << id
         << "  db: "    << request.database()
         << "  chunk: " << request.chunk()
         << "  compute_cs: " << (request.compute_cs() ? "true" : "false"));
 
-    util::Lock lock(_mtx, context() + "enqueueForFind");
+    util::Lock lock(_mtx, _context() + __func__);
 
     // The code below may catch exceptions if other parameters of the requites
     // won't pass further validation against the present configuration of the request
@@ -329,10 +340,10 @@ void WorkerProcessor::enqueueForFind(std::string const& id,
         response.set_status_ext(proto::ReplicationStatusExt::NONE);
         response.set_allocated_performance(ptr->performance().info());
     
-        setInfo(ptr, response);
+        _setInfo(ptr, response);
 
-    } catch (std::invalid_argument const& ec) {
-        LOGS(_log, LOG_LVL_ERROR, context() << "enqueueForFind  " << ec.what());
+    } catch (invalid_argument const& ec) {
+        LOGS(_log, LOG_LVL_ERROR, _context() << __func__ << "  " << ec.what());
 
         setDefaultResponse(response,
                            proto::ReplicationStatus::BAD,
@@ -340,15 +351,16 @@ void WorkerProcessor::enqueueForFind(std::string const& id,
     }
 }
 
-void WorkerProcessor::enqueueForFindAll(std::string const& id,
+
+void WorkerProcessor::enqueueForFindAll(string const& id,
                                         proto::ReplicationRequestFindAll const& request,
                                         proto::ReplicationResponseFindAll& response) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "enqueueForFindAll"
+    LOGS(_log, LOG_LVL_DEBUG, _context() << __func__
         << "  id: " << id
         << "  db: " << request.database());
 
-    util::Lock lock(_mtx, context() + "enqueueForFindAll");
+    util::Lock lock(_mtx, _context() + __func__);
 
     // The code below may catch exceptions if other parameters of the requites
     // won't pass further validation against the present configuration of the request
@@ -366,10 +378,10 @@ void WorkerProcessor::enqueueForFindAll(std::string const& id,
         response.set_status_ext(proto::ReplicationStatusExt::NONE);
         response.set_allocated_performance(ptr->performance().info());
     
-        setInfo(ptr, response);
+        _setInfo(ptr, response);
 
-    } catch (std::invalid_argument const& ec) {
-        LOGS(_log, LOG_LVL_ERROR, context() << "enqueueForFindAll  " << ec.what());
+    } catch (invalid_argument const& ec) {
+        LOGS(_log, LOG_LVL_ERROR, _context() << __func__ << "  " << ec.what());
 
         setDefaultResponse(response,
                            proto::ReplicationStatus::BAD,
@@ -377,16 +389,17 @@ void WorkerProcessor::enqueueForFindAll(std::string const& id,
     }
 }
 
-void WorkerProcessor::enqueueForEcho(std::string const& id,
+
+void WorkerProcessor::enqueueForEcho(string const& id,
                                      proto::ReplicationRequestEcho const& request,
                                      proto::ReplicationResponseEcho& response) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "enqueueForEcho"
+    LOGS(_log, LOG_LVL_DEBUG, _context() << __func__
         << "  id: " << id
         << "  data.size: " << request.data().size()
         << "  delay: " << request.delay());
 
-    util::Lock lock(_mtx, context() + "enqueueForEcho");
+    util::Lock lock(_mtx, _context() + __func__);
 
     // Instant response if no delay was requested
 
@@ -422,10 +435,10 @@ void WorkerProcessor::enqueueForEcho(std::string const& id,
         response.set_status_ext(proto::ReplicationStatusExt::NONE);
         response.set_allocated_performance(ptr->performance().info());
     
-        setInfo(ptr, response);
+        _setInfo(ptr, response);
 
-    } catch (std::invalid_argument const& ec) {
-        LOGS(_log, LOG_LVL_ERROR, context() << "enqueueForEcho  " << ec.what());
+    } catch (invalid_argument const& ec) {
+        LOGS(_log, LOG_LVL_ERROR, _context() << __func__ << "  " << ec.what());
 
         setDefaultResponse(response,
                            proto::ReplicationStatus::BAD,
@@ -433,10 +446,11 @@ void WorkerProcessor::enqueueForEcho(std::string const& id,
     }
 }
 
-WorkerRequest::Ptr WorkerProcessor::dequeueOrCancelImpl(util::Lock const& lock,
-                                                        std::string const& id) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "dequeueOrCancelImpl" << "  id: " << id);
+WorkerRequest::Ptr WorkerProcessor::_dequeueOrCancelImpl(util::Lock const& lock,
+                                                         string const& id) {
+
+    LOGS(_log, LOG_LVL_DEBUG, _context() << __func__ << "  id: " << id);
 
     // Still waiting in the queue?
     //
@@ -464,9 +478,9 @@ WorkerRequest::Ptr WorkerProcessor::dequeueOrCancelImpl(util::Lock const& lock,
                     return ptr;
                 }
                 default:
-                    throw std::logic_error(
-                        "unexpected request status " + WorkerRequest::status2string(ptr->status()) +
-                        " at WorkerProcessor::dequeueOrCancelImpl among new requests");
+                    throw logic_error(
+                            "WorkerProcessor::" + string(__func__) + "  unexpected request status " +
+                            WorkerRequest::status2string(ptr->status()) + " in new requests");
             }
         }
     }
@@ -495,7 +509,7 @@ WorkerRequest::Ptr WorkerProcessor::dequeueOrCancelImpl(util::Lock const& lock,
                 // The following two states are also allowed here because
                 // in-progress requests are still allowed to progress to the completed
                 // states before reporting their new state via method:
-                //    WorkerProcessor::processingFinished()
+                //    WorkerProcessor::_processingFinished()
                 // Sometimes, the request just can't finish this in time due to
                 // util::Lock lock(_mtx) held by the current method. We shouldn't worry
                 // about this situation here. The request will be moved into the next
@@ -506,9 +520,9 @@ WorkerRequest::Ptr WorkerProcessor::dequeueOrCancelImpl(util::Lock const& lock,
                     return ptr;
 
                 default:
-                    throw std::logic_error(
-                        "unexpected request status " + WorkerRequest::status2string(ptr->status()) +
-                        " at WorkerProcessor::dequeueOrCancelImpl among in-progress requests");
+                    throw logic_error(
+                            "WorkerProcessor::" + string(__func__) + "  unexpected request status " +
+                            WorkerRequest::status2string(ptr->status()) + " in in-progress requests");
             }
         }
     }
@@ -530,9 +544,9 @@ WorkerRequest::Ptr WorkerProcessor::dequeueOrCancelImpl(util::Lock const& lock,
                     return ptr;
 
                 default:
-                    throw std::logic_error(
-                        "unexpected request status " + WorkerRequest::status2string(ptr->status()) +
-                        " at WorkerProcessor::dequeueOrCancelImpl.");
+                    throw logic_error(
+                            "WorkerProcessor::" + string(__func__) + "  unexpected request status " +
+                            WorkerRequest::status2string(ptr->status()) + " in finished requests");
             }
         }
     }
@@ -541,10 +555,11 @@ WorkerRequest::Ptr WorkerProcessor::dequeueOrCancelImpl(util::Lock const& lock,
     return WorkerRequest::Ptr();
 }
 
-WorkerRequest::Ptr WorkerProcessor::checkStatusImpl(util::Lock const& lock,
-                                                    std::string const& id) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "checkStatusImpl" << "  id: " << id);
+WorkerRequest::Ptr WorkerProcessor::_checkStatusImpl(util::Lock const& lock,
+                                                     string const& id) {
+
+    LOGS(_log, LOG_LVL_DEBUG, _context() << __func__ << "  id: " << id);
 
     // Still waiting in the queue?
 
@@ -557,9 +572,9 @@ WorkerRequest::Ptr WorkerProcessor::checkStatusImpl(util::Lock const& lock,
                     return ptr;
 
                 default:
-                    throw std::logic_error(
-                        "unexpected request status " + WorkerRequest::status2string(ptr->status()) +
-                        " at WorkerProcessor::checkStatusImpl among new requests");
+                    throw logic_error(
+                            "WorkerProcessor::" + string(__func__) + "  unexpected request status " +
+                            WorkerRequest::status2string(ptr->status()) + " in new requests");
             }
         }
     }
@@ -578,7 +593,7 @@ WorkerRequest::Ptr WorkerProcessor::checkStatusImpl(util::Lock const& lock,
                 // The following three states are also allowed here because
                 // in-progress requests are still allowed to progress to the completed
                 // states before reporting their new state via method:
-                //    WorkerProcessor::processingFinished()
+                //    WorkerProcessor::_processingFinished()
                 // Sometimes, the request just can't finish this in time due to
                 // util::Lock lock(_mtx) held by the current method. We shouldn't worry
                 // about this situation here. The request will be moved into the next
@@ -590,13 +605,12 @@ WorkerRequest::Ptr WorkerProcessor::checkStatusImpl(util::Lock const& lock,
                     return ptr;
 
                 default:
-                    throw std::logic_error(
-                        "unexpected request status " + WorkerRequest::status2string(ptr->status()) +
-                        " at WorkerProcessor::checkStatusImpl among in-progress requests");
+                    throw logic_error(
+                            "WorkerProcessor::" + string(__func__) + "  unexpected request status " +
+                            WorkerRequest::status2string(ptr->status()) + " in in-progress requests");
             }
         }
     }
-
 
     // Has it finished?
 
@@ -611,9 +625,9 @@ WorkerRequest::Ptr WorkerProcessor::checkStatusImpl(util::Lock const& lock,
                     return ptr;
 
                 default:
-                    throw std::logic_error(
-                        "unexpected request status " + WorkerRequest::status2string(ptr->status()) +
-                        " at WorkerProcessor::checkStatusImpl among finished requests");
+                    throw logic_error(
+                            "WorkerProcessor::" + string(__func__) + "  unexpected request status " +
+                            WorkerRequest::status2string(ptr->status()) + " in finished requests");
             }
         }
     }
@@ -623,15 +637,16 @@ WorkerRequest::Ptr WorkerProcessor::checkStatusImpl(util::Lock const& lock,
     return WorkerRequest::Ptr();
 }
 
+
 void WorkerProcessor::setServiceResponse(
                             proto::ReplicationServiceResponse& response,
-                            std::string const& id,
+                            string const& id,
                             proto::ReplicationServiceResponse::Status status,
                             bool extendedReport) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "setServiceResponse");
+    LOGS(_log, LOG_LVL_DEBUG, _context() << __func__);
 
-    util::Lock lock(_mtx, context() + "setServiceResponse");
+    util::Lock lock(_mtx, _context() + __func__);
 
     response.set_status(    status);
     response.set_technology(_requestFactory.technology());
@@ -657,26 +672,27 @@ void WorkerProcessor::setServiceResponse(
 
     if (extendedReport) {
         for (auto&& request: _newRequests) {
-            setServiceResponseInfo(request,
-                                   response.add_new_requests());
+            _setServiceResponseInfo(request,
+                                    response.add_new_requests());
         }
         for (auto&& request: _inProgressRequests) {
-            setServiceResponseInfo(request,
-                                   response.add_in_progress_requests());
+            _setServiceResponseInfo(request,
+                                    response.add_in_progress_requests());
         }
         for (auto&& request: _finishedRequests) {
-            setServiceResponseInfo(request,
-                                   response.add_finished_requests());
+            _setServiceResponseInfo(request,
+                                    response.add_finished_requests());
         }
     }
 }
 
-void WorkerProcessor::setServiceResponseInfo(
-                            WorkerRequest::Ptr const& request,
-                            proto::ReplicationServiceResponseInfo* info) const {
+
+void WorkerProcessor::_setServiceResponseInfo(
+        WorkerRequest::Ptr const& request,
+        proto::ReplicationServiceResponseInfo* info) const {
 
     if (
-        auto const ptr = std::dynamic_pointer_cast<WorkerReplicationRequest>(request)) {
+        auto const ptr = dynamic_pointer_cast<WorkerReplicationRequest>(request)) {
 
         info->set_replica_type(proto::ReplicationReplicaRequestType::REPLICA_CREATE);
         info->set_id(          ptr->id());
@@ -686,7 +702,7 @@ void WorkerProcessor::setServiceResponseInfo(
         info->set_worker(      ptr->sourceWorker());
 
     } else if (
-        auto const ptr = std::dynamic_pointer_cast<WorkerDeleteRequest>(request)) {
+        auto const ptr = dynamic_pointer_cast<WorkerDeleteRequest>(request)) {
 
         info->set_replica_type(proto::ReplicationReplicaRequestType::REPLICA_DELETE);
         info->set_id(          ptr->id());
@@ -695,7 +711,7 @@ void WorkerProcessor::setServiceResponseInfo(
         info->set_chunk(       ptr->chunk());
 
     } else if (
-        auto const ptr = std::dynamic_pointer_cast<WorkerFindRequest>(request)) {
+        auto const ptr = dynamic_pointer_cast<WorkerFindRequest>(request)) {
 
         info->set_replica_type(proto::ReplicationReplicaRequestType::REPLICA_FIND);
         info->set_id(          ptr->id());
@@ -704,7 +720,7 @@ void WorkerProcessor::setServiceResponseInfo(
         info->set_chunk(       ptr->chunk());
 
     } else if (
-        auto const ptr = std::dynamic_pointer_cast<WorkerFindAllRequest>(request)) {
+        auto const ptr = dynamic_pointer_cast<WorkerFindAllRequest>(request)) {
 
         info->set_replica_type(proto::ReplicationReplicaRequestType::REPLICA_FIND_ALL);
         info->set_id(          ptr->id());
@@ -712,32 +728,36 @@ void WorkerProcessor::setServiceResponseInfo(
         info->set_database(    ptr->database());
 
     } else {
-        throw std::logic_error(
-            "unsupported request type: " + request->type() + " id: " + request->id() +
-            " at WorkerProcessor::setServiceResponseInfo");
+        throw logic_error(
+                "WorkerProcessor::" + string(__func__) +
+                "  unsupported request type: " + request->type() + " id: " + request->id());
     }
 }
 
+
 size_t WorkerProcessor::numNewRequests() const {
-    util::Lock lock(_mtx, context() + "numNewRequests");
+    util::Lock lock(_mtx, _context() + __func__);
     return _newRequests.size();
 }
 
+
 size_t WorkerProcessor::numInProgressRequests() const {
-    util::Lock lock(_mtx, context() + "numInProgressRequests");
+    util::Lock lock(_mtx, _context() + __func__);
     return _inProgressRequests.size();
 }
 
+
 size_t WorkerProcessor::numFinishedRequests() const {
-    util::Lock lock(_mtx, context() + "numFinishedRequests");
+    util::Lock lock(_mtx, _context() + __func__);
     return _finishedRequests.size();
 }
 
-WorkerRequest::Ptr WorkerProcessor::fetchNextForProcessing(
-                                    WorkerProcessorThread::Ptr const& processorThread,
-                                    unsigned int timeoutMilliseconds) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "fetchNextForProcessing"
+WorkerRequest::Ptr WorkerProcessor::_fetchNextForProcessing(
+        WorkerProcessorThread::Ptr const& processorThread,
+        unsigned int timeoutMilliseconds) {
+
+    LOGS(_log, LOG_LVL_DEBUG, _context() << __func__
         << "  thread: " << processorThread->id()
         << "  timeout: " << timeoutMilliseconds);
 
@@ -755,7 +775,7 @@ WorkerRequest::Ptr WorkerProcessor::fetchNextForProcessing(
         // the wait.
 
         {
-            util::Lock lock(_mtx, context() + "fetchNextForProcessing");
+            util::Lock lock(_mtx, _context() + __func__);
 
             if (not _newRequests.empty()) {
 
@@ -777,12 +797,12 @@ WorkerRequest::Ptr WorkerProcessor::fetchNextForProcessing(
     return WorkerRequest::Ptr();
 }
 
-void
-WorkerProcessor::processingRefused(WorkerRequest::Ptr const& request) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "processingRefused" << "  id: " << request->id());
+void WorkerProcessor::_processingRefused(WorkerRequest::Ptr const& request) {
 
-    util::Lock lock(_mtx, context() + "processingRefused");
+    LOGS(_log, LOG_LVL_DEBUG, _context() << __func__ << "  id: " << request->id());
+
+    util::Lock lock(_mtx, _context() + __func__);
 
     // Update request's state before moving it back into
     // the input queue.
@@ -797,13 +817,14 @@ WorkerProcessor::processingRefused(WorkerRequest::Ptr const& request) {
     _newRequests.push(request);
 }
 
-void WorkerProcessor::processingFinished(WorkerRequest::Ptr const& request) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "processingFinished"
+void WorkerProcessor::_processingFinished(WorkerRequest::Ptr const& request) {
+
+    LOGS(_log, LOG_LVL_DEBUG, _context() << __func__
         << "  id: " << request->id()
         << "  status: " << WorkerRequest::status2string(request->status()));
 
-    util::Lock lock(_mtx, context() + "processingFinished");
+    util::Lock lock(_mtx, _context() + __func__);
 
     // Then move it forward into the finished queue.
 
@@ -815,13 +836,13 @@ void WorkerProcessor::processingFinished(WorkerRequest::Ptr const& request) {
     _finishedRequests.push_back(request);
 }
 
-void WorkerProcessor::processorThreadStopped(
-                            WorkerProcessorThread::Ptr const& processorThread) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "processorThreadStopped" << "  thread: "
+void WorkerProcessor::_processorThreadStopped(WorkerProcessorThread::Ptr const& processorThread) {
+
+    LOGS(_log, LOG_LVL_DEBUG, _context() << __func__ << "  thread: "
          << processorThread->id());
 
-    util::Lock lock(_mtx, context() + "processorThreadStopped");
+    util::Lock lock(_mtx, _context() + __func__);
 
     if (_state == STATE_IS_STOPPING) {
 
@@ -834,61 +855,69 @@ void WorkerProcessor::processorThreadStopped(
     }
 }
 
-void WorkerProcessor::setInfo(WorkerRequest::Ptr const& request,
-                              proto::ReplicationResponseReplicate& response) {
 
-    if (not request) return;
+void WorkerProcessor::_setInfo(WorkerRequest::Ptr const& request,
+                               proto::ReplicationResponseReplicate& response) {
 
-    auto ptr = std::dynamic_pointer_cast<WorkerReplicationRequest>(request);
+    if (nullptr == request) return;
+
+    auto ptr = dynamic_pointer_cast<WorkerReplicationRequest>(request);
     if (not ptr) {
-        throw std::logic_error(
-                "incorrect dynamic type of request id: " + request->id() +
-                " in WorkerProcessor::setInfo(WorkerReplicationRequest)");
+        throw logic_error(
+                "WorkerProcessor::" + string(__func__) + "(WorkerReplicationRequest)"
+                "  incorrect dynamic type of request id: " + request->id());
     }
     ptr->setInfo(response);
 }
 
-void WorkerProcessor::setInfo(WorkerRequest::Ptr const& request,
-                             proto::ReplicationResponseDelete& response) {
 
-    auto ptr = std::dynamic_pointer_cast<WorkerDeleteRequest>(request);
+void WorkerProcessor::_setInfo(WorkerRequest::Ptr const& request,
+                               proto::ReplicationResponseDelete& response) {
+
+    auto ptr = dynamic_pointer_cast<WorkerDeleteRequest>(request);
     if (not ptr) {
-        throw std::logic_error(
-                "incorrect dynamic type of request id: " + request->id() +
-                " in WorkerProcessor::setInfo(WorkerDeleteRequest)");
+        throw logic_error(
+                "WorkerProcessor::" + string(__func__) + "(WorkerDeleteRequest)"
+                "  incorrect dynamic type of request id: " + request->id());
     }
     ptr->setInfo(response);
 }
 
-void WorkerProcessor::setInfo(WorkerRequest::Ptr const&   request,
-                              proto::ReplicationResponseFind& response) {
 
-    auto ptr = std::dynamic_pointer_cast<WorkerFindRequest>(request);
+void WorkerProcessor::_setInfo(WorkerRequest::Ptr const&   request,
+                               proto::ReplicationResponseFind& response) {
+
+    auto ptr = dynamic_pointer_cast<WorkerFindRequest>(request);
     if (not ptr) {
-        throw std::logic_error("incorrect dynamic type of request id: " + request->id() +
-                               " in WorkerProcessor::setInfo(WorkerFindRequest)");
+        throw logic_error(
+                "WorkerProcessor::" + string(__func__) + "(WorkerFindRequest)"
+                "  incorrect dynamic type of request id: " + request->id());
     }
     ptr->setInfo(response);
 }
 
-void WorkerProcessor::setInfo(WorkerRequest::Ptr const& request,
-                              proto::ReplicationResponseFindAll& response) {
 
-    auto ptr = std::dynamic_pointer_cast<WorkerFindAllRequest>(request);
+void WorkerProcessor::_setInfo(WorkerRequest::Ptr const& request,
+                               proto::ReplicationResponseFindAll& response) {
+
+    auto ptr = dynamic_pointer_cast<WorkerFindAllRequest>(request);
     if (not ptr) {
-        throw std::logic_error("incorrect dynamic type of request id: " + request->id() +
-                               " in WorkerProcessor::setInfo(WorkerFindAllRequest)");
+        throw logic_error(
+                "WorkerProcessor::" + string(__func__) + "(WorkerFindAllRequest)"
+                "  incorrect dynamic type of request id: " + request->id());
     }
     ptr->setInfo(response);
 }
 
-void WorkerProcessor::setInfo(WorkerRequest::Ptr const& request,
-                              proto::ReplicationResponseEcho& response) {
 
-    auto ptr = std::dynamic_pointer_cast<WorkerEchoRequest>(request);
+void WorkerProcessor::_setInfo(WorkerRequest::Ptr const& request,
+                               proto::ReplicationResponseEcho& response) {
+
+    auto ptr = dynamic_pointer_cast<WorkerEchoRequest>(request);
     if (not ptr) {
-        throw std::logic_error("incorrect dynamic type of request id: " + request->id() +
-                               " in WorkerProcessor::setInfo(WorkerEchoRequest)");
+        throw logic_error(
+                "WorkerProcessor::" + string(__func__) + "(WorkerEchoRequest)"
+                "  incorrect dynamic type of request id: " + request->id());
     }
     ptr->setInfo(response);
 }

@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -111,8 +110,7 @@ struct FindAllJobResult {
   * Class FindAllJob represents a tool which will find all replicas
   * of all chunks on all worker nodes.
   */
-class FindAllJob
-    :   public Job  {
+class FindAllJob : public Job  {
 
 public:
 
@@ -133,15 +131,29 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param databaseFamily  - name of a database family
-     * @param saveReplicaInfo - save replica info in a database
-     * @param allWorkers      - engage all known workers regardless of their status
-     * @param controller      - for launching requests
-     * @param parentJobId     - optional identifier of a parent job
-     * @param onFinish        - callback function to be called upon a completion of the job
-     * @param options         - job options
+     * @param databaseFamily
+     *   name of a database family
      *
-     * @return pointer to the created object
+     * @param saveReplicaInfo
+     *   save replica info in a database
+     *
+     * @param allWorkers
+     *   engage all known workers regardless of their status
+     *
+     * @param controller
+     *   for launching requests
+     *
+     * @param parentJobId
+     *   optional identifier of a parent job
+     *
+     * @param onFinish
+     *   callback function to be called upon a completion of the job
+     *
+     * @param options
+     *   job options
+     *
+     * @return
+     *   pointer to the created object
      */
     static Ptr create(std::string const& databaseFamily,
                       bool saveReplicaInfo,
@@ -171,39 +183,44 @@ public:
     /**
      * Return the result of the operation.
      *
-     * IMPORTANT NOTES:
-     * - the method should be invoked only after the job has finished (primary
+     * @note
+     *   The method should be invoked only after the job has finished (primary
      *   status is set to Job::Status::FINISHED). Otherwise exception
      *   std::logic_error will be thrown
      *
-     * - the result will be extracted from requests which have successfully
+     * @note
+     *   The result will be extracted from requests which have successfully
      *   finished. Please, verify the primary and extended status of the object
      *   to ensure that all requests have finished.
      *
-     * @return the data structure to be filled upon the completion of the job.
+     * @return
+     *   The data structure to be filled upon the completion of the job.
      *
-     * @throws std::logic_error - if the job isn't finished at the time
-     *                            when the method was called
+     * @throws std::logic_error
+     *   if the job isn't finished at the time when the method was called
      */
     FindAllJobResult const& getReplicaData() const;
 
-    /**
-     * @see Job::extendedPersistentState()
-     */
+    /// @see Job::extendedPersistentState()
     std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
 
-    /**
-     * @see Job::persistentLogData()
-     */
+    /// @see Job::persistentLogData()
     std::list<std::pair<std::string,std::string>> persistentLogData() const final;
 
 protected:
 
-    /**
-     * Construct the job with the pointer to the services provider.
-     *
-     * @see FindAllJob::create()
-     */
+    /// @see Job::startImpl()
+    void startImpl(util::Lock const& lock) final;
+
+    /// @see Job::cancelImpl()
+    void cancelImpl(util::Lock const& lock) final;
+
+    /// @see Job::notify()
+    void notify(util::Lock const& lock) final;
+
+private:
+
+    /// @see FindAllJob::create()
     FindAllJob(std::string const& databaseFamily,
                bool saveReplicaInfo,
                bool allWorkers,
@@ -213,43 +230,22 @@ protected:
                Job::Options const& options);
 
     /**
-      * @see Job::startImpl()
-      */
-    void startImpl(util::Lock const& lock) final;
-
-    /**
-      * @see Job::startImpl()
-      */
-    void cancelImpl(util::Lock const& lock) final;
-
-    /**
-      * @see Job::notify()
-      */
-    void notify(util::Lock const& lock) final;
-
-    /**
      * The callback function to be invoked on a completion of each request.
      *
-     * @param request - a pointer to a request
+     * @param request
+     *   a pointer to a request
      */
-    void onRequestFinish(FindAllRequest::Ptr const& request);
+    void _onRequestFinish(FindAllRequest::Ptr const& request);
 
-protected:
+    // Input parameters
 
-    /// The name of a database family defining a scope of the operation
     std::string const _databaseFamily;
+    bool        const _saveReplicaInfo;
+    bool        const _allWorkers;
+    CallbackType      _onFinish;    /// @note is reset when the job finishes
 
-    /// The flag indicating if the replica info has to be saved in the database
-    bool const _saveReplicaInfo;
-
-    /// The flag (if 'true') for engaging all known workers regardless of their status
-    bool const _allWorkers;
-
-    /// Members of the family
+    /// Members of the family pulled from Configuration
     std::vector<std::string> const _databases;
-
-    /// Client-defined function to be called upon the completion of the job
-    CallbackType _onFinish;
 
     /// A collection of requests implementing the operation
     std::list<FindAllRequest::Ptr> _requests;
