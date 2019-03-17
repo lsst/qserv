@@ -85,7 +85,7 @@ public:
      *   the name of a database family involved into the operation
      *
      * @param chunk
-     *   the chunk number
+     *   the chunk whose replica will be created at the destination worker
      *
      * @param sourceWorker
      *   the name of a source worker where the input replica is residing

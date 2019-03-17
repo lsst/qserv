@@ -210,7 +210,7 @@ private:
      * Unconditionally release the specified chunk
      *
      * @param chunk
-     *   the chunk number
+     *   the chunk whose replica will be be removed from the worker
      */
     void _release(unsigned int chunk);
 

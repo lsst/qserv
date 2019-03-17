@@ -53,7 +53,7 @@ string classMethodContext(string const& func) { return "ConfigurationStore::" + 
  * Fetch and parse a value of the specified key into. Return the specified
  * default value if the parameter was not found.
  *
- * @throw std::bad_lexical_cast
+ * @throw boost::bad_lexical_cast
  */
 template<typename T, typename D>
 void parseKeyVal(util::ConfigStore const& configStore,
@@ -269,19 +269,19 @@ DatabaseFamilyInfo ConfigurationStore::addDatabaseFamily(DatabaseFamilyInfo cons
     util::Lock lock(_mtx, context(__func__));
     
     if (info.name.empty()) {
-        throw invalid_argument(context() + string(__func__) + "  the family name can't be empty");
+        throw invalid_argument(::classMethodContext(__func__) + "  the family name can't be empty");
     }
     if (info.replicationLevel == 0) {
-        throw invalid_argument(context() + string(__func__) + "  the replication level can't be 0");
+        throw invalid_argument(::classMethodContext(__func__) + "  the replication level can't be 0");
     }
     if (info.numStripes == 0) {
-        throw invalid_argument(context() + string(__func__) + "  the number of stripes level can't be 0");
+        throw invalid_argument(::classMethodContext(__func__) + "  the number of stripes level can't be 0");
     }
     if (info.numSubStripes == 0) {
-        throw invalid_argument(context() + string(__func__) + "  the number of sub-stripes level can't be 0");
+        throw invalid_argument(::classMethodContext(__func__) + "  the number of sub-stripes level can't be 0");
     }
     if (_databaseFamilyInfo.end() != _databaseFamilyInfo.find(info.name)) {
-        throw invalid_argument(context() + string(__func__) + "  the family already exists");
+        throw invalid_argument(::classMethodContext(__func__) + "  the family already exists");
     }
     _databaseFamilyInfo[info.name] = DatabaseFamilyInfo{
         info.name,
@@ -303,13 +303,13 @@ void ConfigurationStore::deleteDatabaseFamily(string const& name) {
     util::Lock lock(_mtx, context(__func__));
 
     if (name.empty()) {
-        throw invalid_argument(context() + string(__func__) + "  the family name can't be empty");
+        throw invalid_argument(::classMethodContext(__func__) + "  the family name can't be empty");
     }
     
     // Find and delete the family
     auto itr = _databaseFamilyInfo.find(name);
     if (itr == _databaseFamilyInfo.end()) {
-        throw invalid_argument(context() + string(__func__) + "  unknown family");
+        throw invalid_argument(::classMethodContext(__func__) + "  unknown family");
     }
     _databaseFamilyInfo.erase(itr);
 
@@ -331,16 +331,16 @@ DatabaseInfo ConfigurationStore::addDatabase(DatabaseInfo const& info) {
     util::Lock lock(_mtx, context(__func__));
     
     if (info.name.empty()) {
-        throw invalid_argument(context() + string(__func__) + "  the database name can't be empty");
+        throw invalid_argument(::classMethodContext(__func__) + "  the database name can't be empty");
     }
     if (info.family.empty()) {
-        throw invalid_argument(context() + string(__func__) + "  the family name can't be empty");
+        throw invalid_argument(::classMethodContext(__func__) + "  the family name can't be empty");
     }
     if (_databaseFamilyInfo.find(info.family) == _databaseFamilyInfo.end()) {
-        throw invalid_argument(context() + string(__func__) + "  unknown database family: '" + info.family + "'");
+        throw invalid_argument(::classMethodContext(__func__) + "  unknown database family: '" + info.family + "'");
     }
     if (_databaseInfo.find(info.name) != _databaseInfo.end()) {
-        throw invalid_argument(context() + string(__func__) + "  database already exists");
+        throw invalid_argument(::classMethodContext(__func__) + "  database already exists");
     }
     _databaseInfo[info.name] = DatabaseInfo{
         info.name,
@@ -359,13 +359,13 @@ void ConfigurationStore::deleteDatabase(string const& name) {
     util::Lock lock(_mtx, context(__func__));
 
     if (name.empty()) {
-        throw invalid_argument(context() + string(__func__) + "  the database name can't be empty");
+        throw invalid_argument(::classMethodContext(__func__) + "  the database name can't be empty");
     }
     
     // Find and delete the database
     auto itr = _databaseInfo.find(name);
     if (itr == _databaseInfo.end()) {
-        throw invalid_argument(context() + string(__func__) + "  unknown database");
+        throw invalid_argument(::classMethodContext(__func__) + "  unknown database");
     }
     _databaseInfo.erase(itr);
 }
@@ -381,16 +381,16 @@ DatabaseInfo ConfigurationStore::addTable(string const& database,
     util::Lock lock(_mtx, context(__func__));
 
     if (database.empty()) {
-        throw invalid_argument(context() + string(__func__) + "  the database name can't be empty");
+        throw invalid_argument(::classMethodContext(__func__) + "  the database name can't be empty");
     }
     if (table.empty()) {
-        throw invalid_argument(context() + string(__func__) + "  the table name can't be empty");
+        throw invalid_argument(::classMethodContext(__func__) + "  the table name can't be empty");
     }
 
     // Find the database
     auto itr = _databaseInfo.find(database);
     if (itr == _databaseInfo.end()) {
-        throw invalid_argument(context() + string(__func__) + "  unknown database");
+        throw invalid_argument(::classMethodContext(__func__) + "  unknown database");
     }
     DatabaseInfo& info = itr->second;
 
@@ -402,7 +402,7 @@ DatabaseInfo ConfigurationStore::addTable(string const& database,
              info.regularTables.cend(),
              table) != info.regularTables.cend()) {
 
-        throw invalid_argument(context() + string(__func__) + "  table already exists");
+        throw invalid_argument(::classMethodContext(__func__) + "  table already exists");
     }
 
     // Insert the table into the corresponding collection
@@ -424,16 +424,16 @@ DatabaseInfo ConfigurationStore::deleteTable(string const& database,
     util::Lock lock(_mtx, context(__func__));
 
     if (database.empty()) {
-        throw invalid_argument(context() + string(__func__) + "  the database name can't be empty");
+        throw invalid_argument(::classMethodContext(__func__) + "  the database name can't be empty");
     }
     if (table.empty()) {
-        throw invalid_argument(context() + string(__func__) + "  the table name can't be empty");
+        throw invalid_argument(::classMethodContext(__func__) + "  the table name can't be empty");
     }
     
     // Find the database
     auto itr = _databaseInfo.find(database);
     if (itr == _databaseInfo.end()) {
-        throw invalid_argument(context() + string(__func__) + "  unknown database");
+        throw invalid_argument(::classMethodContext(__func__) + "  unknown database");
     }
     DatabaseInfo& info = itr->second;
 
@@ -451,7 +451,7 @@ DatabaseInfo ConfigurationStore::deleteTable(string const& database,
         info.regularTables.erase(rTableItr);
         return info;
     }
-    throw invalid_argument(context() + string(__func__) + "  unknown table");
+    throw invalid_argument(::classMethodContext(__func__) + "  unknown table");
 }
 
 

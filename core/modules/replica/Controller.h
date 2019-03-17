@@ -165,7 +165,7 @@ public:
      *   database name
      * 
      * @param chunk
-     *   the chunk number
+     *   the chunk to be replicated
      * 
      * @param onFinish
      *   (optional) callback function to be called upon the completion of the request
@@ -210,7 +210,7 @@ public:
      *   database name
      * 
      * @param chunk
-     *   the chunk number
+     *   the chunk whose replica will be deleted
      * 
      * @param onFinish
      *   (optional) callback function to be called upon the completion of
@@ -261,7 +261,7 @@ public:
      *   database name
      *
      * @param chunk
-     *   the chunk number
+     *   the chunk whose replicas will be looked for
      * 
      * @param onFinish
      *   (optional) callback function to be called upon the completion of

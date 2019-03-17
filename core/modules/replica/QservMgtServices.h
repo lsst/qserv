@@ -106,7 +106,7 @@ public:
      * Notify Qserv worker on availability of a new replica
      *
      * @param chunk
-     *   the chunk number
+     *   the chunk whose replica will be enabled on the Qserv worker
      *
      * @param databases
      *   the names of databases
@@ -141,7 +141,7 @@ public:
      * Notify Qserv worker on a removal of a replica
      *
      * @param chunk
-     *   the chunk number
+     *   the chunk whose replicas will be disabled at the Qserv worker
      *
      * @param databases
      *   the names of databases

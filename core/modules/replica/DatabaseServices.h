@@ -473,10 +473,10 @@ public:
      *   collection of replicas (if any found)
      *
      * @param chunk
-     *   chunk number
+     *   the chunk whose replicas will be looked for
      *
      * @param database
-     *   database name
+     *   the name of a database limiting a scope of the lookup operation
      *
      * @param enabledWorkersOnly
      *   (optional) if set to 'true' then only consider known
@@ -549,7 +549,7 @@ public:
      *   collection of replicas (if any found)
      *
      * @param chunk
-     *   chunk number
+     *   the chunk whose replicas will be looked for at the worker
      *
      * @param worker
      *   worker name of a worker

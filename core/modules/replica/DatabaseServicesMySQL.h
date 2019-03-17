@@ -247,7 +247,7 @@ private:
      *   database name
      *
      * @param chunk
-     *   chunk to be removed
+     *   the chunk whose replicas will be removed
      */
     void _deleteReplicaInfoImpl(util::Lock const& lock,
                                 std::string const& worker,

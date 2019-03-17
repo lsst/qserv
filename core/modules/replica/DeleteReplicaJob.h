@@ -87,7 +87,7 @@ public:
      *   the name of a database family involved into the operation
      *
      * @param chunk
-     *   the chunk number
+     *   the chunk whose replica will be deleted from the target worker
      *
      * @param worker
      *   the name of a worker where the affected replica is residing

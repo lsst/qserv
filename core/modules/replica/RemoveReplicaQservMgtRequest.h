@@ -75,7 +75,7 @@ public:
      *   the name of a worker
      *
      * @param chunk
-     *   the chunk number
+     *   the chunk whose replicas will be disabled at the Qserv worker
      *
      * @param databases
      *   the names of databases

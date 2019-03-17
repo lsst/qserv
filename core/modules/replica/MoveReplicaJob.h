@@ -89,14 +89,19 @@ public:
      *
      * @param databaseFamily
      *   the name of a database family involved into the operation
+     *
      * @param chunk
-     *   the chunk number
+     *   the chunk whose replicas will be moved between workers
+     *
      * @param sourceWorker
      *   the name of a source worker where the input replica is residing
+     *
      * @param destinationWorker
      *   the name of a destination worker where the output replica will be placed
+     *
      * @param purge
      *   the flag indicating if the input replica should be purged
+     *
      * @param controller
      *   for launching requests
      *

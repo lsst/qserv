@@ -180,10 +180,8 @@ private:
     void _onPrecursorJobFinish();
 
     /**
-     * The callback function to be invoked on a completion of each request.
-     *
-     * @param request
-     *   a pointer to a request
+     * The callback function to be invoked on a completion of each replica
+     * creation request launched by the job.
      */
     void _onRequestFinish(ReplicationRequest::Ptr const& request);
 
@@ -199,9 +197,6 @@ private:
 
     /**
      * Unconditionally release the specified chunk
-     *
-     * @param chunk
-     *   the chunk number
      */
     void _release(unsigned int chunk);
 
