@@ -73,20 +73,16 @@ public:
     MasterControllerHttpApp(MasterControllerHttpApp const&) = delete;
     MasterControllerHttpApp& operator=(MasterControllerHttpApp const&) = delete;
 
-    ~MasterControllerHttpApp() override = default;
+    ~MasterControllerHttpApp() final = default;
 
 protected:
 
-    /**
-     * @see Application::runImpl()
-     */
+    /// @see Application::runImpl()
     int runImpl() final;
 
 private:
 
-    /**
-     * @see MasterControllerHttpApp::create()
-     */
+    /// @see MasterControllerHttpApp::create()
     MasterControllerHttpApp(int argc, char* argv[]);
 
     /// @return the name of the application for the purpose of logging
@@ -159,7 +155,6 @@ private:
      */
     void _assertIsStarted(std::string const& func) const;
 
-private:
 
     // Command line parameters
 

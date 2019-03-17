@@ -64,19 +64,14 @@ public:
 
 protected:
 
-    /**
-     * @see Application::runImpl()
-     */
+    /// @see Application::runImpl()
     int runImpl() final;
 
 private:
 
-    /**
-     * @see ClusterHealthApp::create()
-     */
+    /// @see ClusterHealthApp::create()
     ClusterHealthApp(int argc, char* argv[]);
 
-private:
 
     /// The timeout (seconds) for status requests sent to the Replication
     /// system's and Qserv workers

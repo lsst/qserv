@@ -66,19 +66,14 @@ public:
 
 protected:
 
-    /**
-     * @see Application::runImpl()
-     */
+    /// @see Application::runImpl()
     int runImpl() final;
 
 private:
 
-    /**
-     * @see ChunksApp::create()
-     */
+    /// @see ChunksApp::create()
     ChunksApp(int argc, char* argv[]);
 
-private:
 
     /// The name of a database family
     std::string _databaseFamily;

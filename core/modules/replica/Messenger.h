@@ -186,7 +186,6 @@ private:
      */
     MessengerConnector::Ptr const& _connector(std::string const& worker) const;
 
-private:
 
     /// Connection providers for individual workers
     std::map<std::string, MessengerConnector::Ptr> _workerConnector;

@@ -127,35 +127,23 @@ public:
                       std::shared_ptr<Messenger> const& messenger);
 
 
-    /**
-     * @see Request::extendedPersistentState()
-     */
+    /// @see Request::extendedPersistentState()
     std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
 
 protected:
 
-    /**
-      * @see Request::startImpl()
-      */
+    /// @see Request::startImpl()
     void startImpl(util::Lock const& lock) final;
 
-    /**
-     * @see Request::notify()
-     */
+    /// @see Request::notify()
     void notify(util::Lock const& lock) final;
 
-    /**
-     * @see Request::savePersistentState()
-     */
+    /// @see Request::savePersistentState()
     void savePersistentState(util::Lock const& lock) final;
 
 private:
 
-    /**
-     * Construct the request with the pointer to the services provider.
-     *
-     * @see FindAllRequest::create()
-     */
+    /// @see FindAllRequest::create()
     FindAllRequest(ServiceProvider::Ptr const& serviceProvider,
                    boost::asio::io_service& io_service,
                    std::string const& worker,
@@ -171,14 +159,15 @@ private:
      * or successful (if a status check is needed) step.
      *
      * @param lock
-     *   a lock on a mutex must be acquired before calling this method
+     *   a lock on Request::_mtx must be acquired before calling this method
      */
     void _wait(util::Lock const& lock);
 
     /**
      * Callback handler for the asynchronous operation
      *
-     * @param ec - error code to be checked
+     * @param ec
+     *   error code to be checked
      */
     void _awaken(boost::system::error_code const& ec);
 
@@ -186,7 +175,7 @@ private:
      * Send the serialized content of the buffer to a worker
      *
      * @param lock
-     *   a lock on a mutex must be acquired before calling this method
+     *   a lock on Request::_mtx must be acquired before calling this method
      */
     void _send(util::Lock const& lock);
 
@@ -194,7 +183,7 @@ private:
      * Process the completion of the requested operation
      *
      * @param success
-     *   flag indicating if the response succeeded
+     *   'true' indicates a successful response from a worker
      *
      * @param message
      *   response from a worker (if success)
@@ -202,15 +191,12 @@ private:
     void _analyze(bool success,
                   proto::ReplicationResponseFindAll const& message);
 
-private:
 
-    /// The name of a database for which the replicas will be located
+    // Input parameters
+
     std::string const _database;
-
-    /// The flag indicating if the replica info has to be saved in the database
-    bool const _saveReplicaInfo;
-
-    CallbackType _onFinish;
+    bool        const _saveReplicaInfo;
+    CallbackType      _onFinish;
 
     /// Request-specific parameters of the target request
     FindAllRequestParams _targetRequestParams;

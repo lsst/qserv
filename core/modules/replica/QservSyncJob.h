@@ -158,40 +158,26 @@ public:
      */
     QservSyncJobResult const& getReplicaData() const;
 
-    /**
-     * @see Job::extendedPersistentState()
-     */
+    /// @see Job::extendedPersistentState()
     std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
 
-    /**
-     * @see Job::persistentLogData()
-     */
+    /// @see Job::persistentLogData()
     std::list<std::pair<std::string,std::string>> persistentLogData() const final;
 
 protected:
 
-    /**
-      * @see Job::startImpl()
-      */
+    /// @see Job::startImpl()
     void startImpl(util::Lock const& lock) final;
 
-    /**
-      * @see Job::cancelImpl()
-      */
+    /// @see Job::cancelImpl()
     void cancelImpl(util::Lock const& lock) final;
 
-    /**
-      * @see Job::notify()
-      */
+    /// @see Job::notify()
     void notify(util::Lock const& lock) final;
 
 private:
 
-    /**
-     * Construct the job with the pointer to the services provider.
-     *
-     * @see QservSyncJob::create()
-     */
+    /// @see QservSyncJob::create()
     QservSyncJob(std::string const& databaseFamily,
                  unsigned int requestExpirationIvalSec,
                  bool force,
@@ -208,19 +194,13 @@ private:
      */
     void _onRequestFinish(SetReplicasQservMgtRequest::Ptr const& request);
 
-protected:
 
-    /// The name of the database family
-    std::string const _databaseFamily;
+    // Input parameters
 
-    /// The optional override for the request expiration timeouts
+    std::string  const _databaseFamily;
     unsigned int const _requestExpirationIvalSec;
-
-    /// Flag indicating to report (if set) the 'force' mode of the operation
-    bool const _force;
-
-    /// Client-defined function to be called upon the completion of the job
-    CallbackType _onFinish;
+    bool         const _force;
+    CallbackType       _onFinish;   /// @note is reset when the job finishes
 
     /// A collection of requests implementing the operation
     std::list<SetReplicasQservMgtRequest::Ptr> _requests;

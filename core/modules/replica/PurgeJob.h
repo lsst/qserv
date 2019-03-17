@@ -155,40 +155,26 @@ public:
      */
     PurgeJobResult const& getReplicaData() const;
 
-    /**
-     * @see Job::extendedPersistentState()
-     */
+    /// @see Job::extendedPersistentState()
     std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
 
-    /**
-     * @see Job::persistentLogData()
-     */
+    /// @see Job::persistentLogData()
     std::list<std::pair<std::string,std::string>> persistentLogData() const final;
 
 protected:
 
-    /**
-      * @see Job::startImpl()
-      */
+    /// @see Job::startImpl()
     void startImpl(util::Lock const& lock) final;
 
-    /**
-      * @see Job::cancelImpl()
-      */
+    /// @see Job::cancelImpl()
     void cancelImpl(util::Lock const& lock) final;
 
-    /**
-      * @see Job::notify()
-      */
+    /// @see Job::notify()
     void notify(util::Lock const& lock) final;
 
 private:
 
-    /**
-     * Construct the job with the pointer to the services provider.
-     *
-     * @see PurgeJob::create()
-     */
+    /// @see PurgeJob::create()
     PurgeJob(std::string const& databaseFamily,
              unsigned int numReplicas,
              Controller::Ptr const& controller,
@@ -216,7 +202,7 @@ private:
      * Job::startImpl() again.
      *
      * @param lock
-     *   the lock must be acquired by a caller of the method
+     *   a lock on Job::_mtx must be acquired before calling this method
      */
     void _restart(util::Lock const& lock);
 
@@ -228,16 +214,12 @@ private:
      */
     void _release(unsigned int chunk);
 
-protected:
 
-    /// The name of the database
-    std::string const _databaseFamily;
+    // Input parameters
 
-    /// The minimum number of (the good) replicas for each chunk
+    std::string  const _databaseFamily;
     unsigned int const _numReplicas;
-
-    /// Client-defined function to be called upon the completion of the job
-    CallbackType _onFinish;
+    CallbackType       _onFinish;       /// @note is reset when the job finishes
 
     /// The chained job to be completed first in order to figure out
     /// replica disposition.

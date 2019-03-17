@@ -64,20 +64,16 @@ public:
     MySQLTestApp(MySQLTestApp const&)=delete;
     MySQLTestApp& operator=(MySQLTestApp const&)=delete;
 
-    ~MySQLTestApp() override=default;
+    ~MySQLTestApp() final=default;
 
 protected:
 
-    /**
-     * @see Application::runImpl()
-     */
+    /// @see Application::runImpl()
     int runImpl() final;
 
 private:
 
-    /**
-     * @see MySQLTestApp::create()
-     */
+    /// @see MySQLTestApp::create()
     MySQLTestApp(int argc, char* argv[]);
 
     /**
@@ -123,8 +119,6 @@ private:
      * @return return a query to be read from the standard input or from a file 
      */
     std::string _getQuery() const;
-
-private:
 
     /// The name of a test
     std::string _operation;

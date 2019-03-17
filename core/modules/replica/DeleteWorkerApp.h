@@ -64,19 +64,13 @@ public:
 
 protected:
 
-    /**
-     * @see Application::runImpl()
-     */
+    /// @see Application::runImpl()
     int runImpl() final;
 
 private:
 
-    /**
-     * @see DeleteWorkerApp::create()
-     */
+    /// @see DeleteWorkerApp::create()
     DeleteWorkerApp(int argc, char* argv[]);
-
-private:
 
     /// The name of a worker to be deleted
     std::string _workerName;

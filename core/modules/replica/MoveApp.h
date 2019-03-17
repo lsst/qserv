@@ -59,23 +59,17 @@ public:
     MoveApp(MoveApp const&)=delete;
     MoveApp& operator=(MoveApp const&)=delete;
 
-    ~MoveApp() override=default;
+    ~MoveApp() final=default;
 
 protected:
 
-    /**
-     * @see Application::runImpl()
-     */
+    /// @see Application::runImpl()
     int runImpl() final;
 
 private:
 
-    /**
-     * @see MoveApp::create()
-     */
+    /// @see MoveApp::create()
     MoveApp(int argc, char* argv[]);
-
-private:
 
     /// The name of a database family
     std::string _databaseFamily;

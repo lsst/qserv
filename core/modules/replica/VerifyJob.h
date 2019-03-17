@@ -216,35 +216,23 @@ public:
     /// @return true if file check/control sums need to be recomputed
     bool computeCheckSum() const { return _computeCheckSum; }
 
-    /**
-     * @see Job::extendedPersistentState()
-     */
+    /// @see Job::extendedPersistentState()
     std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
 
 protected:
 
-    /**
-      * @see Job::startImpl()
-      */
+    /// @see Job::startImpl()
     void startImpl(util::Lock const& lock) final;
 
-    /**
-      * @see Job::cancelImpl()
-      */
+    /// @see Job::cancelImpl()
     void cancelImpl(util::Lock const& lock) final;
 
-    /**
-      * @see Job::notify()
-      */
+    /// @see Job::notify()
     void notify(util::Lock const& lock) final;
 
 private:
 
-    /**
-     * Construct the job with the pointer to the services provider.
-     *
-     * @see VerifyJob::create()
-     */
+    /// @see VerifyJob::create()
     VerifyJob(size_t maxReplicas,
               bool computeCheckSum,
               CallbackTypeOnDiff const& onReplicaDifference,
@@ -265,27 +253,27 @@ private:
      * Find the next replicas to be inspected.
      *
      * @param lock
-     *   the lock must be acquired by a caller of the method
+     *   the lock on Job::_mtx must be acquired by a caller of the method
      *
      * @param replicas
      *   a collection of replicas returned from the database
      *
      * @param numReplicas
      *   a desired number of replicas to be pulled from the database
+     *   for processing.
      */
     void _nextReplicas(util::Lock const& lock,
                        std::vector<ReplicaInfo>& replicas,
                        size_t numReplicas);
 
-protected:
 
-    /// The maximum number of replicas to be allowed processed simultaneously
+    // Input parameters
+
     size_t const _maxReplicas;
-
-    /// This option will be passed on to the worker services
-    bool const _computeCheckSum;
+    bool   const _computeCheckSum;
 
     /// Client-defined function to be called upon the completion of the job
+    /// @note is reset when the job finishes
     CallbackType _onFinish;
 
     /// Client-defined function to be called when two replicas won't match

@@ -230,7 +230,8 @@ protected:
      *   optional identifier of a parent job
      *
      * @param type
-     *   its type name
+     *   its type name. The name is reported in the log files, and it's also
+     *   logged into the persistent state of the Replication system.
      *
      * @param priority
      *   set the desired job priority (larger values
@@ -263,7 +264,7 @@ protected:
      *   job options
      *
      * @param lock
-     *   the lock must be acquired by a caller of the method
+     *   the lock on Job::_mtx must be acquired by a caller of the method
      */
     Options options(util::Lock const& lock) const;
 
@@ -272,7 +273,7 @@ protected:
       * subclass-specific actions to begin processing the request.
       *
       * @param lock
-     *   the lock must be acquired by a caller of the method
+     *   the lock on Job::_mtx must be acquired by a caller of the method
       */
     virtual void startImpl(util::Lock const& lock) = 0;
 
@@ -290,7 +291,7 @@ protected:
      *   extended state are user-provided methods startImpl().
      *
      * @param lock
-     *   the lock must be acquired by a caller of the method
+     *   the lock on Job::_mtx must be acquired by a caller of the method
      *
      * @param extendedState
      *   specific state to be set upon the completion
@@ -303,7 +304,7 @@ protected:
       * to finalize request processing as required by the subclass.
       *
       * @param lock
-     *   the lock must be acquired by a caller of the method
+     *   the lock on Job::_mtx must be acquired by a caller of the method
       */
     virtual void cancelImpl(util::Lock const& lock) = 0;
 
@@ -327,7 +328,7 @@ protected:
      * @see Job::notifyDefaultImpl
      *
      * @param lock
-     *   the lock must be acquired by a caller of the method
+     *   the lock on Job::_mtx must be acquired by a caller of the method
      */
     virtual void notify(util::Lock const& lock) = 0;
 
@@ -343,7 +344,7 @@ protected:
      * similarly to this one.
      *
      * @param lock
-     *   the lock must be acquired by a caller of the method
+     *   the lock on Job::_mtx must be acquired by a caller of the method
      * 
      * @param onFinish
      *   callback function (if set) to be called
@@ -375,13 +376,13 @@ protected:
      * Notify Qserv about a new chunk added to its database.
      *
      * @param lock
-     *   the lock must be acquired by a caller of the method
+     *   the lock on Job::_mtx must be acquired by a caller of the method
      *
      * @param chunk
-     *   chunk number
+     *   chunk whose replicas are added
      *
      * @param databases
-     *   the names of databases
+     *   the names of databases involved into the operation
      *
      * @param worker
      *   the name of a worker to be notified
@@ -400,13 +401,13 @@ protected:
      * Notify Qserv about a new chunk added to its database.
      *
      * @param lock
-     *   the lock must be acquired by a caller of the method
+     *   the lock on Job::_mtx must be acquired by a caller of the method
      *
      * @param chunk
-     *   chunk number
+     *   chunk whose replicas are removed from the worker
      *
      * @param databases
-     *   the names of databases
+     *   the names of databases involved into the operation
      *
      * @param worker
      *   the name of a worker to be notified
@@ -436,7 +437,7 @@ protected:
      * - verifying the correctness of the state transition
      *
      * @param lock
-     *   the lock must be acquired by a caller of the method
+     *   the lock on Job::_mtx must be acquired by a caller of the method
      *
      * @param state
      *   the new primary state
@@ -460,7 +461,7 @@ private:
      *   or the underlying run-time system.
      *
      * @param lock
-     *   the lock must be acquired by a caller of the method
+     *   the lock on Job::_mtx must be acquired by a caller of the method
      *
      * @param desiredState
      *   desired state
@@ -481,7 +482,7 @@ private:
      * defined below will be called.
      *
      * @param lock
-     *   the lock must be acquired by a caller of the method
+     *   the lock on Job::_mtx must be acquired by a caller of the method
      */
     void _startHeartbeatTimer(util::Lock const& lock);
 
@@ -489,7 +490,7 @@ private:
      * Job heartbeat timer's handler. The heartbeat interval (if any)
      * is configured via the configuration service. When the timer expires
      * the job would update the corresponding field in a database and restart
-     * the time.
+     * the timer.
      *
      * @param ec
      *   error code to be evaluated
@@ -502,7 +503,7 @@ private:
      * defined below will be called.
      *
      * @param lock
-     *   the lock must be acquired by a caller of the method
+     *   the lock on Job::_mtx must be acquired by a caller of the method
      */
     void _startExpirationTimer(util::Lock const& lock);
 
@@ -518,7 +519,7 @@ private:
 
 protected:
 
-    /// Mutex guarding internal state
+    /// Mutex guarding internal state. This object is also used by subclasses
     mutable util::Mutex _mtx;
 
 private:

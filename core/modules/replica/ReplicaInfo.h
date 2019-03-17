@@ -315,7 +315,6 @@ private:
      */
     bool _equalFileCollections(ReplicaInfo const& other) const;    
 
-private:
 
     // Data members
 

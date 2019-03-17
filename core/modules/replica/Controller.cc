@@ -258,9 +258,9 @@ Controller::Controller(ServiceProvider::Ptr const& serviceProvider)
 }
 
             
-string Controller::_context() const {
+string Controller::_context(string const& func) const {
     return "R-CONTR " + _identity.id + "  " + _identity.host +
-           "[" + to_string(_identity.pid) + "]  ";
+           "[" + to_string(_identity.pid) + "]  " + func;
 }
 
 
@@ -276,9 +276,9 @@ ReplicationRequest::Ptr Controller::replicate(
                                 string const& jobId,
                                 unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context() << __func__);
+    LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
 
-    util::Lock lock(_mtx, _context() + __func__);
+    util::Lock lock(_mtx, _context(__func__));
 
     _assertIsRunning();
 
@@ -326,9 +326,9 @@ DeleteRequest::Ptr Controller::deleteReplica(
                             string const& jobId,
                             unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context() << __func__);
+    LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
 
-    util::Lock lock(_mtx, _context() + __func__);
+    util::Lock lock(_mtx, _context(__func__));
 
     _assertIsRunning();
 
@@ -375,9 +375,9 @@ FindRequest::Ptr Controller::findReplica(
                         string const& jobId,
                         unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context() << __func__);
+    LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
 
-    util::Lock lock(_mtx, _context() + __func__);
+    util::Lock lock(_mtx, _context(__func__));
 
     _assertIsRunning();
 
@@ -423,9 +423,9 @@ FindAllRequest::Ptr Controller::findAllReplicas(
                             string const& jobId,
                             unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context() << __func__);
+    LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
 
-    util::Lock lock(_mtx, _context() + __func__);
+    util::Lock lock(_mtx, _context(__func__));
 
     _assertIsRunning();
 
@@ -469,9 +469,9 @@ EchoRequest::Ptr Controller::echo(string const& workerName,
                                   string const& jobId,
                                   unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context() << __func__);
+    LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
 
-    util::Lock lock(_mtx, _context() + __func__);
+    util::Lock lock(_mtx, _context(__func__));
 
     _assertIsRunning();
 
@@ -514,9 +514,9 @@ StopReplicationRequest::Ptr Controller::stopReplication(
                                     string const& jobId,
                                     unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context() << string(__func__) << "  targetRequestId = " << targetRequestId);
+    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  targetRequestId = " << targetRequestId);
 
-    util::Lock lock(_mtx, _context() + __func__);
+    util::Lock lock(_mtx, _context(__func__));
 
     return ControllerImpl::requestManagementOperation<StopReplicationRequest>(
         shared_from_this(),
@@ -538,9 +538,9 @@ StopDeleteRequest::Ptr Controller::stopReplicaDelete(
                                 string const& jobId,
                                 unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context() << string(__func__) << "  targetRequestId = " << targetRequestId);
+    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  targetRequestId = " << targetRequestId);
 
-    util::Lock lock(_mtx, _context() + __func__);
+    util::Lock lock(_mtx, _context(__func__));
 
     return ControllerImpl::requestManagementOperation<StopDeleteRequest>(
         shared_from_this(),
@@ -562,9 +562,9 @@ StopFindRequest::Ptr Controller::stopReplicaFind(
                             string const& jobId,
                             unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context() << string(__func__) << "  targetRequestId = " << targetRequestId);
+    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  targetRequestId = " << targetRequestId);
 
-    util::Lock lock(_mtx, _context() + __func__);
+    util::Lock lock(_mtx, _context(__func__));
 
     return ControllerImpl::requestManagementOperation<StopFindRequest>(
         shared_from_this(),
@@ -586,9 +586,9 @@ StopFindAllRequest::Ptr Controller::stopReplicaFindAll(
                                 string const& jobId,
                                 unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context() << string(__func__) << "  targetRequestId = " << targetRequestId);
+    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  targetRequestId = " << targetRequestId);
 
-    util::Lock lock(_mtx, _context() + __func__);
+    util::Lock lock(_mtx, _context(__func__));
 
     return ControllerImpl::requestManagementOperation<StopFindAllRequest>(
         shared_from_this(),
@@ -610,9 +610,9 @@ StopEchoRequest::Ptr Controller::stopEcho(
                                     string const& jobId,
                                     unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context() << string(__func__) << "  targetRequestId = " << targetRequestId);
+    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  targetRequestId = " << targetRequestId);
 
-    util::Lock lock(_mtx, _context() + __func__);
+    util::Lock lock(_mtx, _context(__func__));
 
     return ControllerImpl::requestManagementOperation<StopEchoRequest>(
         shared_from_this(),
@@ -634,9 +634,9 @@ StatusReplicationRequest::Ptr Controller::statusOfReplication(
                                         string const& jobId,
                                         unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context() << string(__func__) << "  targetRequestId = " << targetRequestId);
+    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  targetRequestId = " << targetRequestId);
 
-    util::Lock lock(_mtx, _context() + __func__);
+    util::Lock lock(_mtx, _context(__func__));
 
     return ControllerImpl::requestManagementOperation<StatusReplicationRequest>(
         shared_from_this(),
@@ -658,9 +658,9 @@ StatusDeleteRequest::Ptr Controller::statusOfDelete(
                                     string const& jobId,
                                     unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context() << string(__func__) << "  targetRequestId = " << targetRequestId);
+    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  targetRequestId = " << targetRequestId);
 
-    util::Lock lock(_mtx, _context() + __func__);
+    util::Lock lock(_mtx, _context(__func__));
 
     return ControllerImpl::requestManagementOperation<StatusDeleteRequest>(
         shared_from_this(),
@@ -682,9 +682,9 @@ StatusFindRequest::Ptr Controller::statusOfFind(
                                 string const& jobId,
                                 unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context() << string(__func__) << "  targetRequestId = " << targetRequestId);
+    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  targetRequestId = " << targetRequestId);
 
-    util::Lock lock(_mtx, _context() + __func__);
+    util::Lock lock(_mtx, _context(__func__));
 
     return ControllerImpl::requestManagementOperation<StatusFindRequest>(
         shared_from_this(),
@@ -706,9 +706,9 @@ StatusFindAllRequest::Ptr Controller::statusOfFindAll(
                                     string const& jobId,
                                     unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context() << string(__func__) << "  targetRequestId = " << targetRequestId);
+    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  targetRequestId = " << targetRequestId);
 
-    util::Lock lock(_mtx, _context() + __func__);
+    util::Lock lock(_mtx, _context(__func__));
 
     return ControllerImpl::requestManagementOperation<StatusFindAllRequest>(
         shared_from_this(),
@@ -730,9 +730,9 @@ StatusEchoRequest::Ptr Controller::statusOfEcho(
                                     string const& jobId,
                                     unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context() << string(__func__) << "  targetRequestId = " << targetRequestId);
+    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  targetRequestId = " << targetRequestId);
 
-    util::Lock lock(_mtx, _context() + __func__);
+    util::Lock lock(_mtx, _context(__func__));
 
     return ControllerImpl::requestManagementOperation<StatusEchoRequest>(
         shared_from_this(),
@@ -752,9 +752,9 @@ ServiceSuspendRequest::Ptr Controller::suspendWorkerService(
                                     string const& jobId,
                                     unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context() << string(__func__) << "  workerName: " << workerName);
+    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  workerName: " << workerName);
 
-    util::Lock lock(_mtx, _context() + __func__);
+    util::Lock lock(_mtx, _context(__func__));
 
     return ControllerImpl::serviceManagementOperation<ServiceSuspendRequest>(
         shared_from_this(),
@@ -772,9 +772,9 @@ ServiceResumeRequest::Ptr Controller::resumeWorkerService(
                                     string const& jobId,
                                     unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context() << string(__func__) << "  workerName: " << workerName);
+    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  workerName: " << workerName);
 
-    util::Lock lock(_mtx, _context() + __func__);
+    util::Lock lock(_mtx, _context(__func__));
 
     return ControllerImpl::serviceManagementOperation<ServiceResumeRequest>(
         shared_from_this(),
@@ -792,9 +792,9 @@ ServiceStatusRequest::Ptr Controller::statusOfWorkerService(
                                     string const& jobId,
                                     unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context() << string(__func__) << "  workerName: " << workerName);
+    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  workerName: " << workerName);
 
-    util::Lock lock(_mtx, _context() + __func__);
+    util::Lock lock(_mtx, _context(__func__));
 
     return ControllerImpl::serviceManagementOperation<ServiceStatusRequest>(
         shared_from_this(),
@@ -812,9 +812,9 @@ ServiceRequestsRequest::Ptr Controller::requestsOfWorkerService(
                                     string const& jobId,
                                     unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context() << string(__func__) + "  workerName: " << workerName);
+    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) + "  workerName: " << workerName);
 
-    util::Lock lock(_mtx, _context() + __func__);
+    util::Lock lock(_mtx, _context(__func__));
 
     return ControllerImpl::serviceManagementOperation<ServiceRequestsRequest>(
         shared_from_this(),
@@ -832,9 +832,9 @@ ServiceDrainRequest::Ptr Controller::drainWorkerService(
                                     string const& jobId,
                                     unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context() << string(__func__) << "  workerName: " << workerName);
+    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  workerName: " << workerName);
 
-    util::Lock lock(_mtx, _context() + __func__);
+    util::Lock lock(_mtx, _context(__func__));
 
     return ControllerImpl::serviceManagementOperation<ServiceDrainRequest>(
         shared_from_this(),
@@ -847,7 +847,7 @@ ServiceDrainRequest::Ptr Controller::drainWorkerService(
 
 
 size_t Controller::numActiveRequests() const {
-    util::Lock lock(_mtx, _context() + __func__);
+    util::Lock lock(_mtx, _context(__func__));
     return _registry.size();
 }
 
@@ -867,7 +867,7 @@ void Controller::_finish(string const& id) {
 
     ControllerRequestWrapper::Ptr request;
     {
-        util::Lock lock(_mtx, _context() + __func__);
+        util::Lock lock(_mtx, _context(__func__));
         request = _registry[id];
         _registry.erase(id);
     }

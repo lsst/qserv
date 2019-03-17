@@ -213,9 +213,7 @@ public:
 
     virtual ~ParameterParser() = default;
 
-    /**
-     * @see ArgumentParser::parse()
-     */
+    /// @see ArgumentParser::parse()
     void parse(std::string const& inStr) final {
         try {
             _var = boost::lexical_cast<T>(inStr);
@@ -234,18 +232,14 @@ public:
         }
     }
 
-    /**
-     * @see ArgumentParser::defaultValue()
-     */
+    /// @see ArgumentParser::defaultValue()
     std::string defaultValue() const final {
         std::ostringstream os;
         os << _defaultValue;
         return os.str();
     }
 
-    /**
-     * @see ArgumentParser::dumpNameValue()
-     */
+    /// @see ArgumentParser::dumpNameValue()
     void dumpNameValue(std::ostream& os) const final {
         os << name() << "=" << _var;
     }
@@ -308,9 +302,7 @@ public:
 
     virtual ~OptionParser() = default;
 
-    /**
-     * @see ArgumentParser::parse()
-     */
+    /// @see ArgumentParser::parse()
     void parse(std::string const& inStr) final {
         if (inStr.empty()) return;
         try {
@@ -321,18 +313,14 @@ public:
         }
     }
 
-    /**
-     * @see ArgumentParser::defaultValue()
-     */
+    /// @see ArgumentParser::defaultValue()
     std::string defaultValue() const final {
         std::ostringstream os;
         os << _defaultValue;
         return os.str();
     }
 
-    /**
-     * @see ArgumentParser::dumpNameValue()
-     */
+    /// @see ArgumentParser::dumpNameValue()
     void dumpNameValue(std::ostream& os) const final {
         os << name() << "=" << _var;
     }
@@ -390,19 +378,13 @@ public:
 
     virtual ~FlagParser() = default;
 
-    /**
-     * @see ArgumentParser::parse()
-     */
+    /// @see ArgumentParser::parse()
     void parse(std::string const& inStr) final { _var = true; }
 
-    /**
-     * @see ArgumentParser::defaultValue()
-     */
+    /// @see ArgumentParser::defaultValue()
     std::string defaultValue() const final { return "false"; }
 
-    /**
-     * @see ArgumentParser::dumpNameValue()
-     */
+    /// @see ArgumentParser::dumpNameValue()
     void dumpNameValue(std::ostream& os) const final {
         os << name() << "=" << (_var ? "1" : "0");
     }
@@ -987,7 +969,7 @@ private:
      *   implementation of this method will build and cache the string the
      *   first time the method is invoked.
      */
-    std::string const& usage();
+    std::string const& _usage();
 
     /**
      * @return
@@ -996,7 +978,7 @@ private:
      *   will build and cache the string the first time the method is invoked
      *   regardless if flag "--help" is registered or not for the application.
      */
-    std::string const& help();
+    std::string const& _help();
     
     /**
      * Read the input string and produce an output one with words
@@ -1016,17 +998,16 @@ private:
      *   the wrapped text, in which each line (including the last one)
      *   ends with the newline symbol.
      */
-    static std::string wrap(std::string const& str,
-                            std::string const& indent="      ",
-                            size_t width=72);
+    static std::string _wrap(std::string const& str,
+                             std::string const& indent="      ",
+                             size_t width=72);
 
-private:
 
-    // Parameters of the object
+    // Input parameters
 
-    int const _argc;
+    int         const  _argc;
     const char* const* _argv;
-    std::string const _description;
+    std::string const  _description;
 
     /// A sequence of the mandatory parameters
     std::vector<std::unique_ptr<ArgumentParser>> _required;
@@ -1050,11 +1031,11 @@ private:
 
     /// The "Usage" string is build when all arguments are registered
     /// and method 'parse()' is invoked.
-    std::string _usage;
+    std::string _usageStr;
 
     /// The documentation (invoked with "--help") string is build when all
     /// arguments are registered and method 'parse()' is invoked.
-    std::string _help;
+    std::string _helpStr;
 };
 
 }}}} // namespace lsst::qserv::replica::detail

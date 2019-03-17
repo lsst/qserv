@@ -102,9 +102,7 @@ protected:
                       bool keepTracking,
                       std::shared_ptr<Messenger> const& messenger);
 
-    /**
-      * @see Request::startImpl()
-      */
+    /// @see Request::startImpl()
     void startImpl(util::Lock const& lock) final;
 
     /**
@@ -112,7 +110,7 @@ protected:
      * by subclasses.
      *
      * @param lock
-     *   a lock on a mutex must be acquired before calling this method
+     *   a lock on Request::_mtx must be acquired before calling this method
      */
     virtual void send(util::Lock const& lock) = 0;
 
@@ -120,7 +118,7 @@ protected:
      * Process the worker response to the requested operation.
      *
      * @param success
-     *   the flag indicating if the operation was successful
+     *   'true' indicates a successful response from a worker
      * 
      * @param status
      *   a response from the worker service (only valid if success is 'true')
@@ -136,6 +134,9 @@ protected:
       */
      virtual void saveReplicaInfo() = 0;
 
+    /// The performance of the target operation (updated by subclasses)
+    Performance _targetPerformance;
+
 private:
 
     /**
@@ -143,7 +144,7 @@ private:
      * or successful (if a status check is needed) step.
      *
      * @param lock
-     *   a lock on a mutex must be acquired before calling this method
+     *   a lock on Request::_mtx must be acquired before calling this method
      */
     void _wait(util::Lock const& lock);
 
@@ -159,22 +160,14 @@ private:
      * Serialize request data into a network buffer and send the message to a worker
      *
      * @param lock
-     *   a lock on a mutex must be acquired before calling this method
+     *   a lock on Request::_mtx must be acquired before calling this method
      */
     void _sendImpl(util::Lock const& lock);
 
-protected:
+    // Input parameters
 
-    /// The performance of the target operation
-    Performance _targetPerformance;
-
-private:
-
-    /// An identifier of the target request whose state is to be queried
     std::string const _targetRequestId;
 
-    /// Request type to be affected by the operation (must match an identifier
-    /// of the request too)
     proto::ReplicationReplicaRequestType const _replicaRequestType;
 };
 

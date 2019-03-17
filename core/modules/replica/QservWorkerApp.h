@@ -68,19 +68,13 @@ public:
 
 protected:
 
-    /**
-     * @see Application::runImpl()
-     */
+    /// @see Application::runImpl()
     int runImpl() final;
 
 private:
 
-    /**
-     * @see QservWorkerApp::create()
-     */
+    /// @see QservWorkerApp::create()
     QservWorkerApp(int argc, char* argv[]);
-
-private:
 
     /**
      * Read and parse a space/newline separated stream of pairs from the input
@@ -106,7 +100,6 @@ private:
       */
     void _dump(QservReplicaCollection const& collection) const;
 
-private:
 
     /// The name of a command (the first mandatory parameter)
     std::string _command;

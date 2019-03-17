@@ -68,19 +68,14 @@ public:
 
 protected:
 
-    /**
-     * @see Application::runImpl()
-     */
+    /// @see Application::runImpl()
     int runImpl() final;
 
 private:
 
-    /**
-     * @see AdminApp::create()
-     */
+    /// @see AdminApp::create()
     AdminApp(int argc, char* argv[]);
 
-private:
 
     /// The name of an operation to execute
     std::string _operation;

@@ -61,23 +61,17 @@ public:
     PurgeApp(PurgeApp const&)=delete;
     PurgeApp& operator=(PurgeApp const&)=delete;
 
-    ~PurgeApp() override=default;
+    ~PurgeApp() final=default;
 
 protected:
 
-    /**
-     * @see Application::runImpl()
-     */
+    /// @see Application::runImpl()
     int runImpl() final;
 
 private:
 
-    /**
-     * @see PurgeApp::create()
-     */
+    /// @see PurgeApp::create()
     PurgeApp(int argc, char* argv[]);
-
-private:
 
     /// The name of a database family
     std::string _databaseFamily;

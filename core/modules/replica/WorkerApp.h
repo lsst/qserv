@@ -65,21 +65,17 @@ public:
     WorkerApp(WorkerApp const&) = delete;
     WorkerApp& operator=(WorkerApp const&) = delete;
 
-    ~WorkerApp() override = default;
+    ~WorkerApp() final = default;
 
 protected:
 
-    /**
-     * @see WorkerApp::create()
-     */
-    WorkerApp(int argc, char* argv[]);
-
-    /**
-     * @see Application::runImpl()
-     */
+    /// @see Application::runImpl()
     int runImpl() final;
 
 private:
+
+    /// @see WorkerApp::create()
+    WorkerApp(int argc, char* argv[]);
 
     /// Logger stream
     LOG_LOGGER _log;

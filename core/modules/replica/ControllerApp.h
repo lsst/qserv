@@ -66,19 +66,14 @@ public:
 
 protected:
 
-    /**
-     * @see Application::runImpl()
-     */
+    /// @see Application::runImpl()
     int runImpl() final;
 
 private:
 
-    /**
-     * @see ControllerApp::create()
-     */
+    /// @see ControllerApp::create()
     ControllerApp(int argc, char* argv[]);
 
-private:
 
     /// The type of a request
     std::string _request;

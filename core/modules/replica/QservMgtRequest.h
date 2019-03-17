@@ -231,7 +231,7 @@ protected:
       * subclass-specific actions to begin processing the request.
       *
       * @param lock
-     *   the lock must be acquired by a caller of the method
+     *   a lock on QservMgtRequest::_mtx must be acquired before calling this method
       */
     virtual void startImpl(util::Lock const& lock) = 0;
 
@@ -252,7 +252,7 @@ protected:
      * upon a completion of the request.
      *
      * @param lock
-     *   the lock must be acquired by a caller of the method
+     *   a lock on QservMgtRequest::_mtx must be acquired before calling this method
      *
      * @param extendedState
      *   new extended state
@@ -269,7 +269,7 @@ protected:
       * to finalize request processing as required by the subclass.
       *
       * @param lock
-     *   the lock must be acquired by a caller of the method
+     *   a lock on QservMgtRequest::_mtx must be acquired before calling this method
       */
     virtual void finishImpl(util::Lock const& lock) = 0;
 
@@ -292,7 +292,7 @@ protected:
      * @see QservMgtRequest::notifyDefaultImpl
      *
      * @param lock
-     *   the lock must be acquired by a caller of the method
+     *   a lock on QservMgtRequest::_mtx must be acquired before calling this method
      */
     virtual void notify(util::Lock const& lock) = 0;
 
@@ -309,7 +309,7 @@ protected:
      *   similarly to this one.
      *
      * @param lock
-     *   the lock must be acquired by a caller of the method
+     *   a lock on QservMgtRequest::_mtx must be acquired before calling this method
      *
      * @param onFinish
      *   callback function (if set) to be called
@@ -367,7 +367,7 @@ protected:
      * - verifying the correctness of the state transition
      *
      * @param lock
-     *   the lock must be acquired by a caller of the method
+     *   a lock on QservMgtRequest::_mtx must be acquired before calling this method
      *
      * @param state
      *   primary state
@@ -381,7 +381,7 @@ protected:
 
     /**
      * @param lock
-     *   the lock must be acquired by a caller of the method
+     *   a lock on QservMgtRequest::_mtx must be acquired before calling this method
      *
      * @return
      *   server error string (if any)
@@ -390,7 +390,7 @@ protected:
 
     /**
      * @param lock
-     *   the lock must be acquired by a caller of the method
+     *   a lock on QservMgtRequest::_mtx must be acquired before calling this method
      *
      * @return
      *   performance info
@@ -399,7 +399,7 @@ protected:
 
 protected:
 
-    /// Mutex guarding internal state
+    /// Mutex guarding internal state (also used by subclasses)
     mutable util::Mutex _mtx;
 
 private:
@@ -407,15 +407,12 @@ private:
     /// The global counter for the number of instances of any subclass
     static std::atomic<size_t> _numClassInstances;
 
+    // Input parameters
+
     ServiceProvider::Ptr const _serviceProvider;
 
-    /// The type of a request (defined by a subclass)
     std::string const _type;
-
-    /// A unique identifier of a request
     std::string const _id;
-
-    /// The name of a worker
     std::string const _worker;
 
     // Two-level state of a request

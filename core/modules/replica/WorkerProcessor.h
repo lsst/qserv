@@ -125,7 +125,9 @@ public:
      * The factory method for objects of the class
      *
      * @param serviceProvider
-     *   provider of various services
+     *   provider is needed to access the Configuration of a setup
+     *   in order to get a number of the processing threads to be launched
+     *   by the processor.
      *
      * @param requestFactory
      *   reference to a factory of requests (for instantiating request objects)
@@ -404,11 +406,7 @@ public:
 
 private:
 
-    /**
-     * The constructor of the class is available to the factory method only
-     *
-     * @see WorkerProcessor::create
-     */
+    /// @see WorkerProcessor::create
     WorkerProcessor(ServiceProvider::Ptr const& serviceProvider,
                     WorkerRequestFactory const& requestFactory,
                     std::string const& worker);
@@ -460,7 +458,8 @@ private:
      * whose state will be properly updated.
      *
      * @param lock
-     *   lock which must be acquired before calling this method
+     *   lock on WorkerProcessor::_mtx which must be acquired before calling
+     *   this method
      * 
      * @param id
      *   an identifier of a request
@@ -476,7 +475,8 @@ private:
      * Find and return a reference to the request object.
      *
      * @param lock
-     *   lock which must be acquired before calling this method
+     *   lock on WorkerProcessor::_mtx which must be acquired before calling
+     *   this method
      *
      * @param id
      *   an identifier of a request
@@ -621,16 +621,12 @@ private:
     /// @return the context string
     std::string _context() const { return "PROCESSOR  "; }
 
-private:
 
-    /// Services used by the processor
-    ServiceProvider::Ptr const _serviceProvider;
+    // Input parameters
 
-    /// A factory of request objects
+    ServiceProvider::Ptr const  _serviceProvider;
     WorkerRequestFactory const& _requestFactory;
-
-    /// The name of the worker
-    std::string const _worker;
+    std::string          const  _worker;
 
     /// Current state of the processor
     State _state;

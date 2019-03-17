@@ -142,7 +142,7 @@ public:
                         workerName,
                         databaseName,
                         fileName,
-                        false /* readContent */);
+                        false /* do NOT readContent */);
     }
 
     // Default construction and copy semantics are prohibited
@@ -191,20 +191,14 @@ private:
      * of this class. If the operation is successful then a valid pointer will
      * be returned.
      *
-     * @param serviceProvider
-     *   for configuration, etc. services
-     *
-     * @param workerName
-     *   the name of a worker where the file resides
-     *
-     * @param databaseName
-     *   the name of a database the file belongs to
-     *
-     * @param fileName
-     *   the file to read or examine
-     *
      * @param readContent
      *   the mode in which the file will be used
+     *
+     * Other parameters are explained in the comments for the public factory
+     * methods:
+     * 
+     * @see FileClient::open()
+     * @see FileClient::stat()
      */
     static Ptr instance(ServiceProvider::Ptr const& serviceProvider,
                         std::string const& workerName,
@@ -212,27 +206,7 @@ private:
                         std::string const& fileName,
                         bool readContent);
 
-    /**
-     * Construct an object with the specified configuration.
-     *
-     * The constructor may throw the std::invalid_argument exception after
-     * validating its arguments.
-     *
-     * @param serviceProvider
-     *   for configuration, etc. services
-     *
-     * @param workerName
-     *   the name of a worker where the file resides
-     *
-     * @param databaseName
-     *   the name of a database the file belongs to
-     *
-     * @param fileName
-     *   the file to read or examine
-     *
-     * @param readContent
-     *   indicates if a file is open for reading its content
-     */
+    /// @see FileClient::instance()
     FileClient(ServiceProvider::Ptr const& serviceProvider,
                std::string const& workerName,
                std::string const& databaseName,
@@ -246,20 +220,16 @@ private:
      */
     bool _openImpl();
 
-private:
+    // Input parameters
+
+    std::string const _fileName;
+    bool        const _readContent;
 
     /// Cached worker descriptors obtained from the Configuration
     WorkerInfo const _workerInfo;
 
     /// Cached database descriptors obtained from the Configuration
     DatabaseInfo const _databaseInfo;
-
-    /// The name of a file to be read
-    std::string const _fileName;
-
-    /// The flag indicating of the file was open with an intend of reading
-    // its content
-    bool const _readContent;
 
     /// Buffer for data moved over the network
     std::unique_ptr<ProtocolBuffer> _bufferPtr;

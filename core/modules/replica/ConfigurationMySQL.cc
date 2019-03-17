@@ -40,9 +40,9 @@ using namespace lsst::qserv::replica;
 
 template <typename T>
 bool tryParameter(database::mysql::Row& row,
-                  string const&    desiredCategory,
-                  string const&    desiredParam,
-                  T&                    value) {
+                  string const& desiredCategory,
+                  string const& desiredParam,
+                  T& value) {
 
     string category;
     row.get("category", category);
@@ -59,8 +59,8 @@ bool tryParameter(database::mysql::Row& row,
 
 template <typename T>
 void readMandatoryParameter(database::mysql::Row& row,
-                            string const&    name,
-                            T&                    value) {
+                            string const& name,
+                            T& value) {
     if (not row.get(name, value)) {
         throw runtime_error(
                 "ConfigurationMySQL::" + string(__func__) + "  the field '" + name +
@@ -186,7 +186,7 @@ string ConfigurationMySQL::configUrl() const {
 
 void ConfigurationMySQL::addWorker(WorkerInfo const& info) {
 
-    string const context_ = context() + string(__func__);
+    string const context_ = context() + __func__;
 
     LOGS(_log, LOG_LVL_DEBUG, context_ << "  name=" << info.name);
 
@@ -229,7 +229,7 @@ void ConfigurationMySQL::addWorker(WorkerInfo const& info) {
 
 void ConfigurationMySQL::deleteWorker(string const& name) {
 
-    string const context_ = context() + string(__func__);
+    string const context_ = context() + __func__;
 
     LOGS(_log, LOG_LVL_DEBUG, context_ << "  name=" << name);
 
@@ -264,7 +264,7 @@ void ConfigurationMySQL::deleteWorker(string const& name) {
 WorkerInfo ConfigurationMySQL::disableWorker(string const& name,
                                              bool disable) {
 
-    string const context_ = context() + string(__func__);
+    string const context_ = context() + __func__;
 
     LOGS(_log, LOG_LVL_DEBUG, context_ << "  name=" << name
          << " disable=" << (disable ? "true" : "false"));
@@ -304,7 +304,7 @@ WorkerInfo ConfigurationMySQL::disableWorker(string const& name,
 WorkerInfo ConfigurationMySQL::setWorkerReadOnly(string const& name,
                                                  bool readOnly) {
 
-    string const context_ = context() + string(__func__);
+    string const context_ = context() + __func__;
 
     LOGS(_log, LOG_LVL_DEBUG, context_ << "  name=" << name
          << " readOnly=" << (readOnly ? "true" : "false"));
@@ -344,7 +344,7 @@ WorkerInfo ConfigurationMySQL::setWorkerReadOnly(string const& name,
 WorkerInfo ConfigurationMySQL::setWorkerSvcHost(string const& name,
                                                 string const& host) {
 
-    string const context_ = context() + string(__func__);
+    string const context_ = context() + __func__;
 
     LOGS(_log, LOG_LVL_DEBUG, context_ << "  name=" << name << " host=" << host);
 
@@ -382,7 +382,7 @@ WorkerInfo ConfigurationMySQL::setWorkerSvcHost(string const& name,
 WorkerInfo ConfigurationMySQL::setWorkerSvcPort(string const& name,
                                                 uint16_t port) {
 
-    string const context_ = context() + string(__func__);
+    string const context_ = context() + __func__;
 
     LOGS(_log, LOG_LVL_DEBUG, context_ << "  name=" << name << " port=" << port);
 
@@ -420,7 +420,7 @@ WorkerInfo ConfigurationMySQL::setWorkerSvcPort(string const& name,
 WorkerInfo ConfigurationMySQL::setWorkerFsHost(string const& name,
                                                string const& host) {
 
-    string const context_ = context() + string(__func__);
+    string const context_ = context() + __func__;
 
     LOGS(_log, LOG_LVL_DEBUG, context_ << "  name=" << name << " host=" << host);
 
@@ -458,7 +458,7 @@ WorkerInfo ConfigurationMySQL::setWorkerFsHost(string const& name,
 WorkerInfo ConfigurationMySQL::setWorkerFsPort(string const& name,
                                                uint16_t port) {
 
-    string const context_ = context() + string(__func__);
+    string const context_ = context() + __func__;
 
     LOGS(_log, LOG_LVL_DEBUG, context_ << "  name=" << name << " port=" << port);
 
@@ -496,7 +496,7 @@ WorkerInfo ConfigurationMySQL::setWorkerFsPort(string const& name,
 WorkerInfo ConfigurationMySQL::setWorkerDataDir(string const& name,
                                                 string const& dataDir) {
 
-    string const context_ = context() + string(__func__);
+    string const context_ = context() + __func__;
 
     LOGS(_log, LOG_LVL_DEBUG, context_ << "  name=" << name << " dataDir=" << dataDir);
 
@@ -533,7 +533,7 @@ WorkerInfo ConfigurationMySQL::setWorkerDataDir(string const& name,
 
 DatabaseFamilyInfo ConfigurationMySQL::addDatabaseFamily(DatabaseFamilyInfo const& info) {
 
-    string const context_ = context() + string(__func__);
+    string const context_ = context() + __func__;
 
     LOGS(_log, LOG_LVL_DEBUG, context_ << "  familyInfo: " << info);
     
@@ -593,7 +593,7 @@ DatabaseFamilyInfo ConfigurationMySQL::addDatabaseFamily(DatabaseFamilyInfo cons
 
 void ConfigurationMySQL::deleteDatabaseFamily(string const& name) {
 
-    string const context_ = context() + string(__func__);
+    string const context_ = context() + __func__;
 
     LOGS(_log, LOG_LVL_DEBUG, context_ << "  name: " << name);
 
@@ -644,7 +644,7 @@ void ConfigurationMySQL::deleteDatabaseFamily(string const& name) {
 
 DatabaseInfo ConfigurationMySQL::addDatabase(DatabaseInfo const& info) {
 
-    string const context_ = context() + string(__func__);
+    string const context_ = context() + __func__;
 
     LOGS(_log, LOG_LVL_DEBUG, context_ << "  familyInfo: " << info);
     
@@ -696,7 +696,7 @@ DatabaseInfo ConfigurationMySQL::addDatabase(DatabaseInfo const& info) {
 
 void ConfigurationMySQL::deleteDatabase(string const& name) {
 
-    string const context_ = context() + string(__func__);
+    string const context_ = context() + __func__;
 
     LOGS(_log, LOG_LVL_DEBUG, context_ << "  name: " << name);
 
@@ -740,7 +740,7 @@ DatabaseInfo ConfigurationMySQL::addTable(string const& database,
                                           string const& table,
                                           bool isPartitioned) {
 
-    string const context_ = context() + string(__func__);
+    string const context_ = context() + __func__;
 
     LOGS(_log, LOG_LVL_DEBUG, context_ << "  database: " << database
          << " table: " << table << " isPartitioned: " << (isPartitioned ? "true" : "false"));
@@ -795,7 +795,7 @@ DatabaseInfo ConfigurationMySQL::addTable(string const& database,
 DatabaseInfo ConfigurationMySQL::deleteTable(string const& database,
                                              string const& table) {
 
-    string const context_ = context() + string(__func__);
+    string const context_ = context() + __func__;
 
     LOGS(_log, LOG_LVL_DEBUG, context_ << "  database: " << database
          << " table: " << table);
@@ -859,7 +859,7 @@ DatabaseInfo ConfigurationMySQL::deleteTable(string const& database,
 
 void ConfigurationMySQL::_loadConfiguration() {
 
-    string const context_ = context() + string(__func__);
+    string const context_ = context() + __func__;
 
     LOGS(_log, LOG_LVL_DEBUG, context_);
 
@@ -1020,7 +1020,7 @@ void ConfigurationMySQL::_setImp(string const& category,
                                  SetValueExprFunc const& setValueExprFunc,
                                  function<void()> const& onSuccess) {
 
-    string const context_ = context() + string(__func__);
+    string const context_ = context() + __func__;
 
     LOGS(_log, LOG_LVL_DEBUG, context_ << "  category: " << category << " param: " << param);
 

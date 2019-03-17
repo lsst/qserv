@@ -201,40 +201,26 @@ public:
      */
     FindAllJobResult const& getReplicaData() const;
 
-    /**
-     * @see Job::extendedPersistentState()
-     */
+    /// @see Job::extendedPersistentState()
     std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
 
-    /**
-     * @see Job::persistentLogData()
-     */
+    /// @see Job::persistentLogData()
     std::list<std::pair<std::string,std::string>> persistentLogData() const final;
 
 protected:
 
-    /**
-      * @see Job::startImpl()
-      */
+    /// @see Job::startImpl()
     void startImpl(util::Lock const& lock) final;
 
-    /**
-      * @see Job::cancelImpl()
-      */
+    /// @see Job::cancelImpl()
     void cancelImpl(util::Lock const& lock) final;
 
-    /**
-      * @see Job::notify()
-      */
+    /// @see Job::notify()
     void notify(util::Lock const& lock) final;
 
 private:
 
-    /**
-     * Construct the job with the pointer to the services provider.
-     *
-     * @see FindAllJob::create()
-     */
+    /// @see FindAllJob::create()
     FindAllJob(std::string const& databaseFamily,
                bool saveReplicaInfo,
                bool allWorkers,
@@ -251,22 +237,15 @@ private:
      */
     void _onRequestFinish(FindAllRequest::Ptr const& request);
 
-protected:
+    // Input parameters
 
-    /// The name of a database family defining a scope of the operation
     std::string const _databaseFamily;
+    bool        const _saveReplicaInfo;
+    bool        const _allWorkers;
+    CallbackType      _onFinish;    /// @note is reset when the job finishes
 
-    /// The flag indicating if the replica info has to be saved in the database
-    bool const _saveReplicaInfo;
-
-    /// The flag (if 'true') for engaging all known workers regardless of their status
-    bool const _allWorkers;
-
-    /// Members of the family
+    /// Members of the family pulled from Configuration
     std::vector<std::string> const _databases;
-
-    /// Client-defined function to be called upon the completion of the job
-    CallbackType _onFinish;
 
     /// A collection of requests implementing the operation
     std::list<FindAllRequest::Ptr> _requests;

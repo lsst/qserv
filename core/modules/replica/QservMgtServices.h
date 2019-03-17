@@ -307,7 +307,8 @@ private:
      */
     XrdSsiService* _xrdSsiService();
 
-private:
+
+    // Input parameters
 
     ServiceProvider::Ptr const _serviceProvider;
 

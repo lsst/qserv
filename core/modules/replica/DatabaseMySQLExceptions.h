@@ -58,8 +58,6 @@ class Error : public std::runtime_error {
 public:
 
     /**
-     * The normal constructor
-     *
      * @param what
      *   reason for the exception
      */
@@ -76,8 +74,6 @@ class ConnectError : public Error {
 public:
 
     /**
-     * The normal constructor
-     *
      * @param what
      *   reason for the exception
      */
@@ -94,8 +90,6 @@ class ConnectTimeout : public Error {
 public:
 
     /**
-     * The normal constructor
-     *
      * @param what
      *   reason for the exception
      *
@@ -112,7 +106,7 @@ public:
     unsigned int timeoutSec() const { return _timeoutSec; }
 
 private:
-    unsigned int _timeoutSec{0};
+    unsigned int _timeoutSec = 0;
 };
 
 
@@ -124,8 +118,6 @@ class MaxReconnectsExceeded : public Error {
 public:
 
     /**
-     * The normal constructor
-     *
      * @param what
      *   reason for the exception
      *
@@ -142,7 +134,7 @@ public:
     unsigned int maxReconnects() const { return _maxReconnects; }
 
 private:
-    unsigned int _maxReconnects{0};
+    unsigned int _maxReconnects = 0;
 };
 
 
@@ -156,8 +148,6 @@ class Reconnected : public Error {
 public:
 
     /**
-     * The normal constructor
-     *
      * @param what
      *   reason for the exception
      */
@@ -175,10 +165,8 @@ class DuplicateKeyError : public Error {
 public:
 
     /**
-     * The normal constructor
-     *
      * @param what
-     *   reason for the exceptioon
+     *   reason for the exception
      */
     explicit DuplicateKeyError(std::string const& what)
         :   Error(what) {
@@ -194,8 +182,6 @@ class InvalidTypeError : public Error {
 public:
 
     /**
-     * The normal constructor
-     *
      * @param what
      *   reason for the exception
      */
@@ -213,8 +199,6 @@ class EmptyResultSetError : public Error {
 public:
 
     /**
-     * The normal constructor
-     *
      * @param what
      *   reason for the exception
      */

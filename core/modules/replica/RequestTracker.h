@@ -220,25 +220,19 @@ public:
 
 protected:
 
-    /**
-     * @see RequestTrackerBase::printErrorReport
-     */
+    /// @see RequestTrackerBase::printErrorReport
     void printErrorReport(std::ostream& os) const override {
         replica::reportRequestState(requests, os);
     }
 
-    /**
-     * @see RequestTrackerBase::getRequests
-     */
+    /// @see RequestTrackerBase::getRequests
     std::list<Request::Ptr> getRequests() const override {
         std::list<Request::Ptr> result;
         for (auto&& ptr: requests) { result.push_back(ptr); }
         return result;
     }
 
-    /**
-     * @see RequestTrackerBase::resetImpl
-     */
+    /// @see RequestTrackerBase::resetImpl
     void resetImpl() override {
         requests.clear();
     }
@@ -304,19 +298,13 @@ public:
 
 protected:
 
-    /**
-     * @see RequestTrackerBase::printErrorReport
-     */
+    /// @see RequestTrackerBase::printErrorReport
     void printErrorReport(std::ostream& os) const override;
 
-    /**
-     * @see RequestTrackerBase::getRequests
-     */
+    /// @see RequestTrackerBase::getRequests
     std::list<Request::Ptr> getRequests() const override;
 
-    /**
-     * @see RequestTrackerBase::resetImpl
-     */
+    /// @see RequestTrackerBase::resetImpl
     void resetImpl() override;
 
 public:

@@ -84,9 +84,7 @@ public:
 
 protected:
 
-    /**
-     * @see Task::onRun()
-     */
+    /// @see Task::onRun()
     bool onRun() final;
 
 private:
@@ -103,7 +101,6 @@ private:
                     unsigned int numReplicas,
                     bool purge);
 
-private:
 
     /// The maximum number of seconds to be waited before giving up
     /// on the Qserv synchronization requests.

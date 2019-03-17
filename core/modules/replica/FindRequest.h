@@ -132,33 +132,22 @@ public:
                       bool keepTracking,
                       std::shared_ptr<Messenger> const& messenger);
 
-    /**
-     * @see Request::extendedPersistentState()
-     */
+    /// @see Request::extendedPersistentState()
     std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
 
-    /**
-      * @see Request::startImpl()
-      */
+    /// @see Request::startImpl()
     void startImpl(util::Lock const& lock) final;
 
 protected:
 
-    /**
-     * @see Request::notify()
-     */
+    /// @see Request::notify()
     void notify(util::Lock const& lock) final;
 
-    /**
-     * @see Request::savePersistentState()
-     */
+    /// @see Request::savePersistentState()
     void savePersistentState(util::Lock const& lock) final;
 
 private:
 
-    /**
-     * Construct the request with the pointer to the services provider.
-     */
     FindRequest(ServiceProvider::Ptr const& serviceProvider,
                 boost::asio::io_service& io_service,
                 std::string const& worker,
@@ -175,7 +164,7 @@ private:
      * or successful (if a status check is needed) step.
      *
      * @param lock
-     *   a lock on a mutex must be acquired before calling this method
+     *   a lock on Request::_mtx must be acquired before calling this method
      */
     void _wait(util::Lock const& lock);
 
@@ -191,7 +180,7 @@ private:
      * Send the serialized content of the buffer to a worker
      *
      * @param lock
-     *   a lock on a mutex must be acquired before calling this method
+     *   a lock on Request::_mtx must be acquired before calling this method
      */
     void _send(util::Lock const& lock);
 
@@ -199,7 +188,7 @@ private:
      * Process the completion of the requested operation
      *
      * @param success
-     *   flag indicating if the response succeeded
+     *   'true' indicates a successful response from a worker
      *
      * @param message
      *   response from a worker (if success)
@@ -207,19 +196,13 @@ private:
     void _analyze(bool success,
                   lsst::qserv::proto::ReplicationResponseFind const& message);
 
-private:
 
-    /// The name of a database for which the replicas will be located
-    std::string const _database;
+    // Input parameters
 
-    /// The number of a chunk
+    std::string  const _database;
     unsigned int const _chunk;
-
-    /// The flag which (if 'true') will result in re-computing a checksum
-    /// of each file of the chunk replica
-    bool const _computeCheckSum;
-
-    CallbackType _onFinish;
+    bool const         _computeCheckSum;
+    CallbackType       _onFinish;       /// @note is reset when the request finishes
 
     /// Request-specific parameters of the target request
     FindRequestParams _targetRequestParams;

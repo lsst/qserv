@@ -59,23 +59,17 @@ public:
     VerifyApp(VerifyApp const&)=delete;
     VerifyApp& operator=(VerifyApp const&)=delete;
 
-    ~VerifyApp() override=default;
+    ~VerifyApp() final=default;
 
 protected:
 
-    /**
-     * @see Application::runImpl()
-     */
+    /// @see Application::runImpl()
     int runImpl() final;
 
 private:
 
-    /**
-     * @see VerifyApp::create()
-     */
+    /// @see VerifyApp::create()
     VerifyApp(int argc, char* argv[]);
-
-private:
 
     /// The maximum number of replicas to be processed simultaneously
     size_t _maxReplicas = 1;

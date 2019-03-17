@@ -59,23 +59,17 @@ public:
     ReplicateApp(ReplicateApp const&)=delete;
     ReplicateApp& operator=(ReplicateApp const&)=delete;
 
-    ~ReplicateApp() override=default;
+    ~ReplicateApp() final=default;
 
 protected:
 
-    /**
-     * @see Application::runImpl()
-     */
+    /// @see Application::runImpl()
     int runImpl() final;
 
 private:
 
-    /**
-     * @see ReplicateApp::create()
-     */
+    /// @see ReplicateApp::create()
     ReplicateApp(int argc, char* argv[]);
-
-private:
 
     /// The name of a database family
     std::string _databaseFamily;

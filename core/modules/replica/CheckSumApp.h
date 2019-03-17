@@ -67,19 +67,14 @@ public:
 
 protected:
 
-    /**
-     * @see Application::runImpl()
-     */
+    /// @see Application::runImpl()
     int runImpl() final;
 
 private:
 
-    /**
-     * @see CheckSumApp::create()
-     */
+    /// @see CheckSumApp::create()
     CheckSumApp(int argc, char* argv[]);
 
-private:
 
     /// The name of a worker
     std::string _file;

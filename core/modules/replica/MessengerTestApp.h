@@ -59,23 +59,17 @@ public:
     MessengerTestApp(MessengerTestApp const&)=delete;
     MessengerTestApp& operator=(MessengerTestApp const&)=delete;
 
-    ~MessengerTestApp() override=default;
+    ~MessengerTestApp() final=default;
 
 protected:
 
-    /**
-     * @see Application::runImpl()
-     */
+    /// @see Application::runImpl()
     int runImpl() final;
 
 private:
 
-    /**
-     * @see MessengerTestApp::create()
-     */
+    /// @see MessengerTestApp::create()
     MessengerTestApp(int argc, char* argv[]);
-
-private:
 
     /// The name of a worker to be used during the testing
     std::string _workerName;

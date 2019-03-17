@@ -103,8 +103,6 @@ public:
      */
     uint64_t setUpdateFinish();
 
-public:
-
     /// Created by the Controller
     uint64_t c_create_time;
 
@@ -175,8 +173,6 @@ public:
      * returns a pointer along with its ownership.
      */
     proto::ReplicationPerformance* info() const;
-
-public:
 
     /// Received by a worker service
     uint64_t receive_time;

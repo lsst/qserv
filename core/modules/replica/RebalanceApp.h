@@ -59,23 +59,17 @@ public:
     RebalanceApp(RebalanceApp const&)=delete;
     RebalanceApp& operator=(RebalanceApp const&)=delete;
 
-    ~RebalanceApp() override=default;
+    ~RebalanceApp() final=default;
 
 protected:
 
-    /**
-     * @see Application::runImpl()
-     */
+    /// @see Application::runImpl()
     int runImpl() final;
 
 private:
 
-    /**
-     * @see RebalanceApp::create()
-     */
+    /// @see RebalanceApp::create()
     RebalanceApp(int argc, char* argv[]);
-
-private:
 
     /// The name of a database family
     std::string _databaseFamily;

@@ -155,40 +155,26 @@ public:
      */
     QservGetReplicasJobResult const& getReplicaData() const;
 
-    /**
-     * @see Job::extendedPersistentState()
-     */
+    /// @see Job::extendedPersistentState()
     std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
 
-    /**
-     * @see Job::persistentLogData()
-     */
+    /// @see Job::persistentLogData()
     std::list<std::pair<std::string,std::string>> persistentLogData() const final;
 
 protected:
 
-    /**
-      * @see Job::startImpl()
-      */
+    /// @see Job::startImpl()
     void startImpl(util::Lock const& lock) final;
 
-    /**
-      * @see Job::cancelImpl()
-      */
+    /// @see Job::cancelImpl()
     void cancelImpl(util::Lock const& lock) final;
 
-    /**
-      * @see Job::notify()
-      */
+    /// @see Job::notify()
     void notify(util::Lock const& lock) final;
 
 private:
 
-    /**
-     * Construct the job with the pointer to the services provider.
-     *
-     * @see QservGetReplicasJob::create()
-     */
+    /// @see QservGetReplicasJob::create()
     QservGetReplicasJob(std::string const& databaseFamily,
                         bool inUseOnly,
                         bool allWorkers,
@@ -205,19 +191,13 @@ private:
      */
     void _onRequestFinish(GetReplicasQservMgtRequest::Ptr const& request);
 
-protected:
 
-    /// The name of the database family
+    // Input parameters
+
     std::string const _databaseFamily;
-
-    /// Flag indicating to report (if set) a subset of chunks which are in use
-    bool const _inUseOnly;
-
-    /// The flag (if 'true') for engaging all known workers regardless of their status
-    bool const _allWorkers;
-
-    /// Client-defined function to be called upon the completion of the job
-    CallbackType _onFinish;
+    bool        const _inUseOnly;
+    bool        const _allWorkers;
+    CallbackType      _onFinish;    /// @note is reset when the job finishes
 
     /// A collection of requests implementing the operation
     std::list<GetReplicasQservMgtRequest::Ptr> _requests;

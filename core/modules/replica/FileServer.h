@@ -65,7 +65,8 @@ public:
      *   for configuration, etc. services
      *
      * @workerName
-     *   the name of a worker this instance represents
+     *   the name of a worker this service is acting upon (used for checking
+     *   consistency of the protocol)
      *
      * @return
      *   pointer to the created object
@@ -95,15 +96,7 @@ public:
 
 private:
 
-    /**
-     * Construct the server with the specified configuration.
-     *
-     * @param serviceProvider
-     *   for configuration, etc. services
-     *
-     * @workerName
-     *   the name of a worker this instance represents
-     */
+    /// @see FileServer::create()
     FileServer(ServiceProvider::Ptr const& serviceProvider,
                std::string const& workerName);
 
@@ -120,16 +113,13 @@ private:
     void _handleAccept(FileServerConnection::Ptr const& connection,
                        boost::system::error_code const& ec);
 
-    /// @return the context string
+    /// @return the context string to be used for the message logging
     std::string _context() const { return "FILE-SERVER  "; }
 
-private:
+    // Input parameters
 
     ServiceProvider::Ptr const _serviceProvider;
-
-    /// The name of a worker this service is acting upon (used for checking
-    /// a consistency of the protocol)
-    std::string const _workerName;
+    std::string          const _workerName;
 
     /// Cached worker descriptor obtained from the configuration
     WorkerInfo const _workerInfo;

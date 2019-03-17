@@ -54,27 +54,22 @@ public:
     ConfigurationMap& operator=(ConfigurationMap const&) = delete;
 
     /**
-     * Construct the object by reading the configuration
-     * from the specified file.
+     * Initialize the configuration from a map
      *
      * @param kvMap
      *   the key-value map with configuration parameters
+     * 
+     * @see ConfigurationStore::ConfigurationStore()
      */
     explicit ConfigurationMap(std::map<std::string, std::string> const& kvMap);
 
     ~ConfigurationMap() final = default;
 
-    /**
-     * @see Configuration::prefix()
-     */
+    /// @see Configuration::prefix()
     virtual std::string prefix() const final { return "map"; }
 
-    /**
-     * @see Configuration::configUrl()
-     */
-    std::string configUrl() const final {
-        return prefix() + ":";
-    }
+    /// @see Configuration::configUrl()
+    std::string configUrl() const final { return prefix() + ":"; }
 };
 
 }}} // namespace lsst::qserv::replica

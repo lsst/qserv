@@ -278,16 +278,12 @@ public:
 
 protected:
 
-    /**
-     * @see Request::notify()
-     */
+    /// @see Request::notify()
     void notify(util::Lock const& lock) final {
         notifyDefaultImpl<StopRequest<POLICY>>(lock, _onFinish);
     }
 
-    /**
-     * @see StopRequestBase::send()
-     */
+    /// @see StopRequestBase::send()
     void send(util::Lock const& lock) final {
 
         auto self = shared_from_base<StopRequest<POLICY>>();
@@ -307,9 +303,7 @@ protected:
         );
     }
 
-    /**
-     * @see StopRequestBase::saveReplicaInfo()
-     */
+    /// @see StopRequestBase::saveReplicaInfo()
     void saveReplicaInfo() final {
         auto const self = shared_from_base<StopRequest<POLICY>>();
         POLICY::saveReplicaInfo(self);
@@ -317,11 +311,7 @@ protected:
 
 private:
 
-    /**
-     * Construct the request
-     *
-     * @see StopRequest::create()
-     */
+    /// @see StopRequest::create()
     StopRequest(ServiceProvider::Ptr const& serviceProvider,
                 boost::asio::io_service& io_service,
                 char const* requestName,
@@ -390,7 +380,7 @@ private:
         return message.status();
     }
 
-private:
+    // Input parameters
 
     CallbackType _onFinish;
 

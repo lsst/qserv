@@ -270,19 +270,19 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         vector<string> databases1 = config->databases();
         sort(databases1.begin(), databases1.end());
         BOOST_CHECK(databases1.size() == 5);
-        BOOST_CHECK(databases1 == vector<string>({"db1","db2","db3","db4","db5"}));
+        BOOST_CHECK(databases1 == vector<string>({"db1", "db2", "db3", "db4", "db5"}));
 
         vector<string> databases2 = config->databases("production");
         sort(databases2.begin(), databases2.end());
         BOOST_CHECK(databases2.size() == 3);
-        BOOST_CHECK(databases2 == vector<string>({"db1","db2","db3"}));
+        BOOST_CHECK(databases2 == vector<string>({"db1", "db2", "db3"}));
 
         vector<string> databases3 = config->databases("test");
         sort(databases3.begin(), databases3.end());
         BOOST_CHECK(databases3.size() == 2);
-        BOOST_CHECK(databases3 == vector<string>({"db4","db5"}));
+        BOOST_CHECK(databases3 == vector<string>({"db4", "db5"}));
     
-        for (auto&& name: vector<string>({"db1","db2","db3","db4","db5"})) {
+        for (auto&& name: vector<string>({"db1", "db2", "db3", "db4", "db5"})) {
             BOOST_CHECK(config->isKnownDatabase(name));  
         }
 
@@ -309,12 +309,12 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         tables = db2info.partitionedTables;
         sort(tables.begin(), tables.end());
         BOOST_CHECK(tables.size() == 2);
-        BOOST_CHECK(tables == vector<string>({"Table21","Table22"}));
+        BOOST_CHECK(tables == vector<string>({"Table21", "Table22"}));
 
         tables = db2info.regularTables;
         sort(tables.begin(), tables.end());
         BOOST_CHECK(tables.size() == 2);
-        BOOST_CHECK(tables == vector<string>({"MetaTable21","MetaTable22"}));
+        BOOST_CHECK(tables == vector<string>({"MetaTable21", "MetaTable22"}));
 
         DatabaseInfo const db3info = config->databaseInfo("db3");
         BOOST_CHECK(db3info.name   == "db3");
@@ -323,12 +323,12 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         tables = db3info.partitionedTables;
         sort(tables.begin(), tables.end());
         BOOST_CHECK(tables.size() == 3);
-        BOOST_CHECK(tables == vector<string>({"Table31","Table32","Table33"}));
+        BOOST_CHECK(tables == vector<string>({"Table31", "Table32", "Table33"}));
 
         tables = db3info.regularTables;
         sort(tables.begin(), tables.end());
         BOOST_CHECK(tables.size() == 3);
-        BOOST_CHECK(tables == vector<string>({"MetaTable31","MetaTable32","MetaTable33"}));
+        BOOST_CHECK(tables == vector<string>({"MetaTable31", "MetaTable32", "MetaTable33"}));
 
         DatabaseInfo const db4info = config->databaseInfo("db4");
         BOOST_CHECK(db4info.name   == "db4");
@@ -337,7 +337,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         tables = db4info.partitionedTables;
         sort(tables.begin(), tables.end());
         BOOST_CHECK(tables.size() == 2);
-        BOOST_CHECK(tables == vector<string>({"Table41","Table42"}));
+        BOOST_CHECK(tables == vector<string>({"Table41", "Table42"}));
 
         tables = db4info.regularTables;
         BOOST_CHECK(tables.size() == 0);
@@ -396,7 +396,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         // -- Configuration parameters of the worker services --
         // -----------------------------------------------------
     
-        for (auto&& name: vector<string>({"worker-A","worker-B","worker-C"})) {
+        for (auto&& name: vector<string>({"worker-A", "worker-B", "worker-C"})) {
             BOOST_CHECK(config->isKnownWorker(name));
         }
   

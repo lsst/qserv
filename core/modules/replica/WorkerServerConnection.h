@@ -65,10 +65,10 @@ public:
      * low-level pointers).
      *
      * @param serviceProvider
-     *   provider of various services
+     *   provider is needed to access the Configuration of a setup
      *
      * @param processor
-     *   processor of long (queued) requests
+     *   processor for long (queued) requests
      *
      * @param io_service
      *   endpoint for network I/O
@@ -119,11 +119,7 @@ public:
 
 private:
 
-    /**
-     * The constructor of the class
-     *
-     * @see WorkerServerConnection::create()
-     */
+    /// @see WorkerServerConnection::create()
     WorkerServerConnection(ServiceProvider::Ptr const& serviceProvider,
                            WorkerProcessor::Ptr const& processor,
                            boost::asio::io_service& io_service);
@@ -215,7 +211,7 @@ private:
     void _sent(boost::system::error_code const& ec,
                size_t bytes_transferred);
 
-private:
+    // Input parameters
 
     ServiceProvider::Ptr const _serviceProvider;
 

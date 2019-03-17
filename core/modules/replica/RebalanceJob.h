@@ -210,40 +210,26 @@ public:
      */
     RebalanceJobResult const& getReplicaData() const;
 
-    /**
-     * @see Job::extendedPersistentState()
-     */
+    /// @see Job::extendedPersistentState()
     std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
 
-    /**
-     * @see Job::persistentLogData()
-     */
+    /// @see Job::persistentLogData()
     std::list<std::pair<std::string,std::string>> persistentLogData() const final;
 
 protected:
 
-    /**
-      * @see Job::startImpl()
-      */
+    /// @see Job::startImpl()
     void startImpl(util::Lock const& lock) final;
 
-    /**
-      * @see Job::cancelImpl()
-      */
+    /// @see Job::cancelImpl()
     void cancelImpl(util::Lock const& lock) final;
 
-    /**
-      * @see Job::notify()
-      */
+    /// @see Job::notify()
     void notify(util::Lock const& lock) final;
 
 private:
 
-    /**
-     * Construct the job with the pointer to the services provider.
-     *
-     * @see RebalanceJob::create()
-     */
+    /// @see RebalanceJob::create()
     RebalanceJob(std::string const& databaseFamily,
                  bool estimateOnly,
                  Controller::Ptr const& controller,
@@ -274,7 +260,7 @@ private:
      * "hot spots" or under-utilization at workers.
      *
      * @param lock
-     *   the lock must be acquired by a caller of the method
+     *   a lock on Job::_mtx must be acquired before calling this method
      *
      * @param numJobs
      *   desired number of jobs to submit
@@ -285,17 +271,12 @@ private:
     size_t _launchNextJobs(util::Lock const& lock,
                            size_t numJobs);
 
-protected:
 
-    /// The name of the database
+    // Input parameters
+
     std::string const _databaseFamily;
-
-    /// Estimate mode option (no actual changes will be made to replica disposition
-    /// if 'true')
-    bool const _estimateOnly;
-
-    /// Client-defined function to be called upon the completion of the job
-    CallbackType _onFinish;
+    bool        const _estimateOnly;
+    CallbackType      _onFinish;        /// @note is reset when the job finishes
 
     /// The chained job to be completed first in order to figure out
     /// replica disposition.

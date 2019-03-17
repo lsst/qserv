@@ -204,14 +204,10 @@ public:
 
     ~WorkerRequestFactory() final { delete _ptr; }
 
-    /**
-     * @see WorkerReplicationRequestBase::technology()
-     */
+    /// @see WorkerReplicationRequestBase::technology()
     std::string technology() const final { return _ptr->technology(); }
 
-    /**
-     * @see WorkerReplicationRequestBase::createReplicationRequest()
-     */
+    /// @see WorkerReplicationRequestBase::createReplicationRequest()
     WorkerReplicationRequestPtr createReplicationRequest(
             std::string const& worker,
             std::string const& id,
@@ -229,9 +225,7 @@ public:
             sourceWorker);
     }
 
-   /**
-    * @see WorkerReplicationRequestBase::createDeleteRequest()
-    */
+   /// @see WorkerReplicationRequestBase::createDeleteRequest()
     WorkerDeleteRequestPtr createDeleteRequest(
             std::string const& worker,
             std::string const& id,
@@ -247,9 +241,7 @@ public:
             chunk);
     }
 
-   /**
-    * @see WorkerReplicationRequestBase::createFindRequest()
-    */
+   /// @see WorkerReplicationRequestBase::createFindRequest()
     WorkerFindRequestPtr createFindRequest(
             std::string const& worker,
             std::string const& id,
@@ -267,9 +259,7 @@ public:
             computeCheckSum);
     }
 
-   /**
-    * @see WorkerReplicationRequestBase::createFindAllRequest()
-    */
+   /// @see WorkerReplicationRequestBase::createFindAllRequest()
     WorkerFindAllRequestPtr createFindAllRequest(
             std::string const& worker,
             std::string const& id,
@@ -283,9 +273,7 @@ public:
             database);
     }
 
-    /**
-     * @see WorkerReplicationRequestBase::createEchoRequest()
-     */
+    /// @see WorkerReplicationRequestBase::createEchoRequest()
     WorkerEchoRequestPtr createEchoRequest(
             std::string const& worker,
             std::string const& id,

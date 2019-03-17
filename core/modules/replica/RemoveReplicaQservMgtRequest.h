@@ -105,35 +105,23 @@ public:
     /// @return flag indicating of the chunk removal should be forced even if in use
     bool force() const { return _force; }
 
-    /**
-     * @see QservMgtRequest::extendedPersistentState()
-     */
+    /// @see QservMgtRequest::extendedPersistentState()
     std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
 
 protected:
 
-    /**
-      * @see QservMgtRequest::startImpl
-      */
+    /// @see QservMgtRequest::startImpl
     void startImpl(util::Lock const& lock) final;
 
-    /**
-      * @see QservMgtRequest::finishImpl
-      */
+    /// @see QservMgtRequest::finishImpl
     void finishImpl(util::Lock const& lock) final;
 
-    /**
-      * @see QservMgtRequest::notify
-      */
+    /// @see QservMgtRequest::notify
     void notify(util::Lock const& lock) final;
 
 private:
 
-    /**
-     * Construct the request with the pointer to the services provider.
-     *
-     * @see RemoveReplicaQservMgtRequest::create()
-     */
+    /// @see RemoveReplicaQservMgtRequest::create()
     RemoveReplicaQservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
                                  std::string const& worker,
                                  unsigned int chunk,
@@ -141,16 +129,12 @@ private:
                                  bool force,
                                  CallbackType const& onFinish);
 
-private:
 
-    /// The number of a chunk
-    unsigned int const _chunk;
+    // Input parameters
 
-    /// The names of databases
+    unsigned int             const _chunk;
     std::vector<std::string> const _databases;
-
-    /// Force the removal even if the chunk is in use
-    bool const _force;
+    bool                     const _force;
 
     /// The callback function for sending a notification upon request completion
     CallbackType _onFinish;

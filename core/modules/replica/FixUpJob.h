@@ -150,35 +150,23 @@ public:
      */
     std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
 
-    /**
-     * @see Job::persistentLogData()
-     */
+    /// @see Job::persistentLogData()
     std::list<std::pair<std::string,std::string>> persistentLogData() const final;
 
 protected:
 
-    /**
-      * @see Job::startImpl()
-      */
+    /// @see Job::startImpl()
     void startImpl(util::Lock const& lock) final;
 
-    /**
-      * @see Job::cancelImpl()
-      */
+    /// @see Job::cancelImpl()
     void cancelImpl(util::Lock const& lock) final;
 
-    /**
-      * @see Job::notify()
-      */
+    /// @see Job::notify()
     void notify(util::Lock const& lock) final;
 
 private:
 
-    /**
-     * Construct the job with the pointer to the services provider.
-     *
-     * @see FixUpJob::create()
-     */
+    /// @see FixUpJob::create()
     FixUpJob(std::string const& databaseFamily,
              Controller::Ptr const& controller,
              std::string const& parentJobId,
@@ -205,7 +193,7 @@ private:
      * Job::startImpl() again.
      * 
      * @param lock
-     *   the lock must be acquired by a caller of the method
+     *   a lock on Job::_mtx must be acquired before calling this method
      */
     void _restart(util::Lock const& lock);
 
@@ -217,13 +205,10 @@ private:
      */
     void _release(unsigned int chunk);
 
-protected:
+    // Input parameters
 
-    /// The name of the database family
     std::string const _databaseFamily;
-
-    /// Client-defined function to be called upon the completion of the job
-    CallbackType _onFinish;
+    CallbackType      _onFinish;        /// @note is reset when the job finishes
 
     /// The chained job to be completed first in order to figure out
     /// replica disposition.

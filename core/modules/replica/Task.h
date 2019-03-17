@@ -156,7 +156,8 @@ protected:
      *   a reference to the Controller for launching requests, jobs, etc.
      *
      * @param name
-     *   the name of a task
+     *   the name of a task (used for logging info into the log stream,
+     *   and for logging task events into the persistent log)
      *
      * @param onTerminated
      *   callback function to be called upon abnormal termination
@@ -167,9 +168,9 @@ protected:
      *   method onRun.
      */
     Task(Controller::Ptr const& controller,
-                  std::string const& name,
-                  AbnormalTerminationCallbackType const& onTerminated,
-                  unsigned int waitIntervalSec);
+         std::string const& name,
+         AbnormalTerminationCallbackType const& onTerminated,
+         unsigned int waitIntervalSec);
 
     /// @return a shared pointer of the desired subclass (no dynamic type checking)
     template <class T>
@@ -430,13 +431,11 @@ private:
                               Job::Ptr const& job,
                               std::string const& family) const;
 
-private:
 
-    /// The Controller for launching requests, jobs, etc.
+    // Input parameters
+
     Controller::Ptr const _controller;
-
-    /// The name of the task (used for logging messages)
-    std::string const _name;
+    std::string     const _name;
 
     /// The callback (if provided) to be called upon an abnormal termination
     /// of the user-supplied algorithm run in a context of the task.

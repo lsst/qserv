@@ -178,9 +178,7 @@ public:
             _onFinish(onFinish) {
     }
 
-    /**
-     * @see MessageWrapperBase::parseResponseAndNotify
-     */
+    /// @see MessageWrapperBase::parseResponseAndNotify
     void parseAndNotify() override {
         RESPONSE_TYPE response;
         if (success()) {
@@ -202,7 +200,7 @@ public:
 
 private:
 
-    /// The collback fnction to be called upon the completion of the transaction
+    /// The collback function to be called upon the completion of the transaction
     CallbackType _onFinish;
 };
 
@@ -365,7 +363,7 @@ private:
      *   it's possible to do a clean recovery from a failure.
      *
      * @param lock
-     *   a lock on a mutex must be acquired before calling this method
+     *   a lock on MessengerConnector::_mtx must be acquired before calling this method
      */
     void _restart(util::Lock const& lock);
 
@@ -373,7 +371,7 @@ private:
      * Start resolving the destination worker host & port
      *
      * @param lock
-     *   a lock on a mutex must be acquired before calling this method
+     *   a lock on MessengerConnector::_mtx must be acquired before calling this method
      */
     void _resolve(util::Lock const& lock);
 
@@ -393,7 +391,7 @@ private:
      * Start resolving the destination worker host & port
      *
      * @param lock
-     *   a lock on a mutex must be acquired before calling this method
+     *   a lock on MessengerConnector::_mtx must be acquired before calling this method
      */
     void _connect(util::Lock const& lock,
                   boost::asio::ip::tcp::resolver::iterator iter);
@@ -416,7 +414,7 @@ private:
      * Start a timeout before attempting to restart the connection
      * 
      * @param lock
-     *   a lock on a mutex must be acquired before calling this method
+     *   a lock on MessengerConnector::_mtx must be acquired before calling this method
      */
     void _waitBeforeRestart(util::Lock const& lock);
 
@@ -433,7 +431,7 @@ private:
      * unless there is another ongoing request at a time of the call.
      * 
      * @param lock
-     *   a lock on a mutex must be acquired before calling this method
+     *   a lock on MessengerConnector::_mtx must be acquired before calling this method
      */
     void _sendRequest(util::Lock const& lock);
 
@@ -453,7 +451,7 @@ private:
      * Begin receiving a response
      * 
      * @param lock
-     *   a lock on a mutex must be acquired before calling this method
+     *   a lock on MessengerConnector::_mtx must be acquired before calling this method
      */
     void _receiveResponse(util::Lock const& lock);
 
@@ -475,7 +473,7 @@ private:
      * status of the operation.
      *
      * @param lock
-     *   a lock on a mutex must be acquired before calling this method
+     *   a lock on MessengerConnector::_mtx must be acquired before calling this method
      *
      * @param buf
      *   the buffer to use
@@ -499,7 +497,7 @@ private:
     * content won't match expectations.
     *
     * @param lock
-    *   a lock on a mutex must be acquired before calling this method
+     *   a lock on MessengerConnector::_mtx must be acquired before calling this method
     *
     * @param buf
     *   the buffer to use
@@ -525,7 +523,7 @@ private:
      * completion of the operation the content of the network buffer can be parsed.
      *
      * @param lock
-     *   a lock on a mutex must be acquired before calling this method
+     *   a lock on MessengerConnector::_mtx must be acquired before calling this method
      *
      * @param buf
      *   the buffer to use
@@ -567,7 +565,7 @@ private:
      * Find a request matching the specified identifier
      *
      * @param lock
-     *   a lock on a mutex must be acquired before calling this method
+     *   a lock on MessengerConnector::_mtx must be acquired before calling this method
      *
      * @param id
      *   an identifier of the request
@@ -578,7 +576,8 @@ private:
     MessageWrapperBase::Ptr _find(util::Lock const& lock,
                                   std::string const& id) const;
 
-private:
+
+    // Data members
 
     ServiceProvider::Ptr const _serviceProvider;
 

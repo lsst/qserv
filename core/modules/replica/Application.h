@@ -144,19 +144,14 @@ protected:
     
 private:
 
+    // Input parameters
+
+    bool const _injectDatabaseOptions;
+    bool const _boostProtobufVersionCheck;
+    bool const _enableServiceProvider;
+
     /// For parsing command-line parameters, options and flags
     Parser _parser;
-
-    /// The flag indicating if database options need to be captured and
-    /// forwarded to the Configuration.
-    bool const _injectDatabaseOptions;
-
-    /// The flag indicating if Google Protobuf version check is forced
-    bool const _boostProtobufVersionCheck;
-
-    /// The flag indicating if the Configuration object and ServiceProvider
-    /// have to be setup.
-    bool const _enableServiceProvider;
 
     /// The standard flag which would turn on the debug output if requested
     bool _debugFlag;

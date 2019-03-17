@@ -128,8 +128,10 @@ public:
 
 private:
 
-    unsigned int _minValue;
-    unsigned int _maxValue;
+    // Input parameters
+
+    unsigned int const _minValue;
+    unsigned int const _maxValue;
 };
 
 
@@ -301,7 +303,8 @@ private:
     static void assertBothValid(ChunkNumber const& lhs,
                                 ChunkNumber const& rhs);
 
-private:
+
+    // Data members
 
     unsigned int _value;
     bool _valid;

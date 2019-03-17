@@ -198,7 +198,7 @@ private:
      * or by all owners.
      *
      * @param mLock
-     *   a lock on a mutex must be made before calling this method
+     *   a lock on ChunkLocker::_mtx must be made before calling this method
      *
      * @param owner
      *   an optional owner. If the owner is not provided then
@@ -224,15 +224,16 @@ private:
      *   proper synchronization context before invoking the method.
      *
      * @param mLock
-     *   a lock on a mutex must be made before calling this method
+     *   a lock on ChunkLocker::_mtx must be made before calling this method
      *
      * @param chunk
      *   a chunk to be released
      *
      * @param owner
-     *   a reference to a string which will be initialized with
-     *   an identifier of an owner which had a claim on the chunk
-     *   at a time of the method call if the chunk was found locked
+     *   a reference to a string which will be initialized with an identifier
+     *   of an owner which had a claim on the chunk (if if the chunk was locked at
+     *   at a time the method was called) after a completion of the method.
+     *   if the chunk wasn't locked then the value of the parameter won't change.
      *
      * @return
      *   'true' if the operation was successful
@@ -241,7 +242,6 @@ private:
                       Chunk const& chunk,
                       std::string& owner);
 
-private:
 
     /// Mapping a chunk to its "owner" (the one which holds the lock)
     ChunkToOwner _chunk2owner;

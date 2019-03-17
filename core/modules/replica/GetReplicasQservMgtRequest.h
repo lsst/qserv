@@ -106,26 +106,18 @@ public:
      */
     QservReplicaCollection const& replicas() const;
 
-    /**
-     * @see QservMgtRequest::extendedPersistentState()
-     */
+    /// @see QservMgtRequest::extendedPersistentState()
     std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
 
 protected:
 
-    /**
-      * @see QservMgtRequest::startImpl
-      */
+    /// @see QservMgtRequest::startImpl
     void startImpl(util::Lock const& lock) final;
 
-    /**
-      * @see QservMgtRequest::finishImpl
-      */
+    /// @see QservMgtRequest::finishImpl
     void finishImpl(util::Lock const& lock) final;
 
-    /**
-      * @see QservMgtRequest::notify
-      */
+    /// @see QservMgtRequest::notify
     void notify(util::Lock const& lock) final;
 
 private:
@@ -146,24 +138,20 @@ private:
      * by databases participating in the family.
      * 
      * @param lock
-     *   lock must be acquired by a caller of the method
+     *   a lock on QservMgtRequest::_mtx must be acquired before calling this method
      *
      * @param collection
      *   input collection of replicas
      */
-     void _setReplicas(util::Lock const& lock,
-                      wpublish::GetChunkListQservRequest::ChunkCollection const& collection);
+    void _setReplicas(util::Lock const& lock,
+                     wpublish::GetChunkListQservRequest::ChunkCollection const& collection);
 
-private:
 
-    /// The name of a database family
+    // Input parameters  
+
     std::string const _databaseFamily;
-
-    /// Flag indicating to report (if set) a subset of chunks which are in use
-    bool const _inUseOnly;
-
-    /// The callback function for sending a notification upon request completion
-    CallbackType _onFinish;
+    bool        const _inUseOnly;
+    CallbackType      _onFinish;    /// @note is reset when the request finishes
 
     /// A request to the remote services
     wpublish::GetChunkListQservRequest::Ptr _qservRequest;

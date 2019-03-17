@@ -88,18 +88,12 @@ public:
 
 protected:
 
-    /**
-     * @see Task::onStart()
-     */
+    /// @see Task::onStart()
     void onStart() override;
 
 private:
 
-    /**
-     * The constructor is available to the class's factory method
-     *
-     * @see DeleteWorkerTask::create()
-     */
+    /// @see DeleteWorkerTask::create()
     DeleteWorkerTask(Controller::Ptr const& controller,
                      Task::AbnormalTerminationCallbackType const& onTerminated,
                      std::string const& worker,
@@ -121,14 +115,11 @@ private:
      */
     void _logFinishedEvent(DeleteWorkerJob::Ptr const& job) const;
 
-private:
 
-    /// The name of a worker to be evicted
+    // Input parameters
+
     std::string const _worker;
-
-    /// The flag of set to 'true' will result in complete removal of
-    /// the evicted worker from the Replication system's Configuration.
-    bool const _permanentDelete;
+    bool        const _permanentDelete;
 };
     
 }}} // namespace lsst::qserv::replica

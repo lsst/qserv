@@ -70,20 +70,13 @@ public:
 
 protected:
 
-    /**
-     * @see Application::runImpl()
-     */
+    /// @see Application::runImpl()
     int runImpl() final;
 
 private:
 
-    /**
-     * @see FileServerApp::create()
-     */
+    /// @see FileServerApp::create()
     FileServerApp(int argc, char* argv[]);
-
-private:
-    
 
     /// The name of a worker
     std::string _workerName;

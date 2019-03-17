@@ -420,13 +420,11 @@ private:
      */
     nlohmann::json _configToJson() const;
 
-private:
 
-    /// The reference to the Replication Framework's Controller
+    // Input parameters
+
     Controller::Ptr const _controller;
 
-    /// The callback to be called when there is a request to evict one
-    // or many workers from the cluster.
     HealthMonitorTask::WorkerEvictCallbackType const _onWorkerEvict;
 
     // References(!) to smart pointers to the tasks which can be managed

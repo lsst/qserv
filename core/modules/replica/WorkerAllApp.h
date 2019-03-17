@@ -72,20 +72,16 @@ public:
     WorkerAllApp(WorkerAllApp const&) = delete;
     WorkerAllApp& operator=(WorkerAllApp const&) = delete;
 
-    ~WorkerAllApp() override = default;
+    ~WorkerAllApp() final = default;
 
 protected:
 
-    /**
-     * @see Application::runImpl()
-     */
+    /// @see Application::runImpl()
     int runImpl() final;
 
 private:
 
-    /**
-     * @see WorkerAllApp::create()
-     */
+    /// @see WorkerAllApp::create()
     WorkerAllApp(int argc, char* argv[]);
 
     /**
@@ -96,8 +92,6 @@ private:
      *   The factory for the worker requests
      */
     void _runAllWorkers(WorkerRequestFactory& requestFactory);
-
-private:
 
     /// Logger stream
     LOG_LOGGER _log;

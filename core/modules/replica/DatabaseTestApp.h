@@ -63,19 +63,14 @@ public:
 
 protected:
 
-    /**
-     * @see Application::runImpl()
-     */
+    /// @see Application::runImpl()
     int runImpl() final;
 
 private:
 
-    /**
-     * @see DatabaseTestApp::create()
-     */
+    /// @see DatabaseTestApp::create()
     DatabaseTestApp(int argc, char* argv[]);
 
-private:
     /// The name of a test
     std::string _operation;
 

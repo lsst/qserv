@@ -276,9 +276,7 @@ public:
 
 protected:
 
-    /**
-     * @see Request::notify()
-     */
+    /// @see Request::notify()
     void notify(util::Lock const& lock) final {
         notifyDefaultImpl<StatusRequest<POLICY>>(lock, _onFinish);
     }
@@ -290,7 +288,7 @@ protected:
      * by the base class.
      *
      * @param lock
-     *   a lock on a mutex must be acquired before calling this method
+     *   a lock on Request::_mtx must be acquired before calling this method
      */
     void send(util::Lock const& lock) final {
 
@@ -325,9 +323,7 @@ protected:
 
 private:
 
-    /**
-     * Construct the request
-     */
+    /// @see StatusRequest::create()
     StatusRequest(ServiceProvider::Ptr const& serviceProvider,
                   boost::asio::io_service& io_service,
                   char const* requestName,
@@ -397,7 +393,7 @@ private:
         return message.status();
     }
 
-private:
+    // Input parameters
 
     CallbackType _onFinish;
 

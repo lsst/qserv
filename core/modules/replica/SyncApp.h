@@ -60,25 +60,19 @@ public:
     SyncApp(SyncApp const&)=delete;
     SyncApp& operator=(SyncApp const&)=delete;
 
-    ~SyncApp() override=default;
+    ~SyncApp() final=default;
 
 protected:
 
-    /**
-     * @see Application::runImpl()
-     */
+    /// @see Application::runImpl()
     int runImpl() final;
 
 private:
 
-    /**
-     * @see SyncApp::create()
-     */
+    /// @see SyncApp::create()
     SyncApp(int argc, char* argv[]);
 
-private:
-
-    /// The name of a database family
+    /// The name of a database family affected by the operation
     std::string _databaseFamily;
 
     /// The maximum timeout for the operations with workers

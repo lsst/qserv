@@ -72,19 +72,13 @@ public:
 
 protected:
 
-    /**
-     * @see Application::runImpl()
-     */
+    /// @see Application::runImpl()
     int runImpl() final;
 
 private:
 
-    /**
-     * @see ConfigApp::create()
-     */
+    /// @see ConfigApp::create()
     ConfigApp(int argc, char* argv[]);
-
-private:
 
     /**
      * Dump the Configuration into the standard output stream
@@ -217,7 +211,6 @@ private:
      */
     int _deleteTable();
 
-private:
 
     /// Logger stream
     LOG_LOGGER _log;

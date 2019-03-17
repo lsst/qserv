@@ -107,14 +107,11 @@ protected:
     /// @return pointer to the messaging service
     Messenger::Ptr const& messenger() const { return _messenger; }
 
-    /**
-     * @see Request::finishImpl()
-     */
+    /// @see Request::finishImpl()
     void finishImpl(util::Lock const& lock) override;
     
-protected:
+    // Input parameters
 
-    /// Worker messaging service
     Messenger::Ptr const _messenger;
 };
 

@@ -55,7 +55,9 @@ public:
      * low-level pointers).
      * 
      * @param processor
-     *   pointer to the processor
+     *   pointer to the processor which launched this thread. This pointer
+     *   will be used for making call backs to the processor on the completed
+     *   or rejected requests.
      *
      * @return
      *   pointer to the created object 
@@ -93,20 +95,12 @@ public:
      */
     void stop();
 
-    /// @return context string
+    /// @return context string for logs
     std::string context() const { return "THREAD: " + std::to_string(_id) + "  "; }
 
 private:
 
-    /**
-     * The constructor of the class.
-     *
-     * @param processor
-     *   pointer to the processor
-     *
-     * @param id
-     *   a unique identifier of this object
-     */
+    /// @see WorkerProcessorThread::create()
     WorkerProcessorThread(WorkerProcessorPtr const& processor,
                           unsigned int id);
 
@@ -115,9 +109,8 @@ private:
      */
     void _stopped();
  
-private:
+    // Input parameters
 
-    /// The processor
     WorkerProcessorPtr const _processor;
 
     /// The identifier of this thread object   

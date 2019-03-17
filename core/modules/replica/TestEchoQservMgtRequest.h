@@ -67,10 +67,11 @@ public:
      * low-level pointers).
      *
      * @param serviceProvider
-     *   reference to a provider of services
+     *   reference to a provider of services for accessing Configuration,
+     *   saving the request's persistent state to the database
      *
      * @param worker
-     *   the name of a worker\
+     *   the name of a worker to send the request to
      *
      * @param data
      *   the data string to be echoed back by the worker (if successful)
@@ -100,35 +101,23 @@ public:
      */
     std::string const& dataEcho() const;
 
-    /**
-     * @see QservMgtRequest::extendedPersistentState()
-     */
+    /// @see QservMgtRequest::extendedPersistentState()
     std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
 
 protected:
 
-    /**
-      * @see QservMgtRequest::startImpl
-      */
+    /// @see QservMgtRequest::startImpl
     void startImpl(util::Lock const& lock) final;
 
-    /**
-      * @see QservMgtRequest::finishImpl
-      */
+    /// @see QservMgtRequest::finishImpl
     void finishImpl(util::Lock const& lock) final;
 
-    /**
-      * @see QservMgtRequest::notify
-      */
+    /// @see QservMgtRequest::notify
     void notify(util::Lock const& lock) final;
 
 private:
 
-    /**
-     * Construct the request with the pointer to the services provider
-     *
-     * @see TestEchoQservMgtRequest::created()
-     */
+    /// @see TestEchoQservMgtRequest::created()
     TestEchoQservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
                             std::string const& worker,
                             std::string const& data,
@@ -138,21 +127,19 @@ private:
      * Carry over results of the request into a local storage.
      * 
      * @param lock
-     *   lock must be acquired by a caller of the method
+     *   lock on QservMgtRequest::_mtx must be acquired by a caller of the method
      *
      * @param data
      *   data string returned by a worker
      */
-     void _setData(util::Lock const& lock,
-                   std::string const& data);
+    void _setData(util::Lock const& lock,
+                  std::string const& data);
 
-private:
 
-    /// The data string to be sent to the worker
+    // Input parameters
+
     std::string const _data;
-
-    /// The callback function for sending a notification upon request completion
-    CallbackType _onFinish;
+    CallbackType      _onFinish;    /// @note this object is reset after finishing the request
 
     /// A request to the remote services
     wpublish::TestEchoQservRequest::Ptr _qservRequest;

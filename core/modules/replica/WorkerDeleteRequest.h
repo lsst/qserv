@@ -56,9 +56,12 @@ public:
      * low-level pointers).
      *
      * @param serviceProvider
-     *   host of services for various communications
+     *   provider is needed to access the Configuration of a setup
+     *   and for validating the input parameters
      *
      * @param worker
+     *   the name of a worker. The name must match the worker which
+     *   is going to execute the request.
      *   the name of a worker
      *
      * @param id
@@ -68,20 +71,21 @@ public:
      *   indicates the importance of the request
      *
      * @param database
-     *   the name of a database
+     *   the name of a database defines a scope of the replica
+     *   lookup operation
      *
      * @param chunk
-     *   the chunk number
+     *   the chunk whose replicas will be deleted
      *
      * @return
      *   pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                          std::string const& worker,
-                          std::string const& id,
-                          int priority,
-                          std::string const& database,
-                          unsigned int chunk);
+                      std::string const& worker,
+                      std::string const& id,
+                      int priority,
+                      std::string const& database,
+                      unsigned int chunk);
 
     // Default construction and copy semantics are prohibited
 
@@ -105,30 +109,22 @@ public:
      */
     void setInfo(proto::ReplicationResponseDelete& response) const;
 
-    /**
-     * @see WorkerRequest::execute
-     */
+    /// @see WorkerRequest::execute
     bool execute() override;
 
 protected:
 
-    /**
-     * The normal constructor of the class
-     *
-     * @see WorkerDeleteRequest::create()
-     */
+    /// @see WorkerDeleteRequest::create()
     WorkerDeleteRequest(ServiceProvider::Ptr const& serviceProvider,
                         std::string const& worker,
                         std::string const& id,
                         int priority,
                         std::string const& database,
                         unsigned int chunk);
-protected:
 
-    /// The name of a database
-    std::string const _database;
+    // Input parameters
 
-    /// The number of a chunk
+    std::string  const _database;
     unsigned int const _chunk;
 
     /// Extended status of the replica deletion request
@@ -147,32 +143,7 @@ public:
     /// Pointer to self
     typedef std::shared_ptr<WorkerDeleteRequestPOSIX> Ptr;
 
-    /**
-     * Static factory method is needed to prevent issue with the lifespan
-     * and memory management of instances created otherwise (as values or via
-     * low-level pointers).
-     *
-     * @param serviceProvider
-     *   a host of services for various communications
-     *
-     * @param worker
-     *   the name of a source worker
-     *
-     * @param id
-     *   an identifier of a client request
-     *
-     * @param priority
-     *   indicates the importance of the request
-     *
-     * @param database
-     *   the name of a database
-     *
-     * @param chunk
-     *   the chunk number
-     *
-     * @return
-     *   pointer to the created object
-     */
+    /// @see WorkerDeleteRequest::create()
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& worker,
                       std::string const& id,
@@ -186,20 +157,14 @@ public:
     WorkerDeleteRequestPOSIX(WorkerDeleteRequestPOSIX const&) = delete;
     WorkerDeleteRequestPOSIX& operator=(WorkerDeleteRequestPOSIX const&) = delete;
 
-    ~WorkerDeleteRequestPOSIX() override = default;
+    ~WorkerDeleteRequestPOSIX() final = default;
 
-    /**
-     * @see WorkerDeleteRequest::execute()
-     */
-    bool execute() override;
+    /// @see WorkerDeleteRequest::execute()
+    bool execute() final;
 
 private:
 
-    /**
-     * The normal constructor of the class
-     *
-     * @see WorkerDeleteRequestPOSIX::create()
-     */
+    /// @see WorkerDeleteRequestPOSIX::create()
     WorkerDeleteRequestPOSIX(ServiceProvider::Ptr const& serviceProvider,
                              std::string const& worker,
                              std::string const& id,
@@ -209,15 +174,11 @@ private:
 };
 
 /**
-  * Class WorkerDeleteRequestFS provides an actual implementation for
-  * the replica deletion based on the direct manipulation of files on
-  * a POSIX file system.
-  *
-  * @note
- *   This is just a typedef to class WorkerDeleteRequestPOSIX.
-  */
+ * Class WorkerDeleteRequestFS has the same implementation as the 'typedef'-ed
+ * class for the replica deletion based on the direct manipulation of files on
+ * a POSIX file system.
+ */
 typedef WorkerDeleteRequestPOSIX WorkerDeleteRequestFS;
-
 
 }}} // namespace lsst::qserv::replica
 

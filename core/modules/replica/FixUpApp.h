@@ -65,19 +65,13 @@ public:
 
 protected:
 
-    /**
-     * @see Application::runImpl()
-     */
+    /// @see Application::runImpl()
     int runImpl() final;
 
 private:
 
-    /**
-     * @see FixUpApp::create()
-     */
+    /// @see FixUpApp::create()
     FixUpApp(int argc, char* argv[]);
-
-private:
 
     /// The name of a database family
     std::string _databaseFamily;

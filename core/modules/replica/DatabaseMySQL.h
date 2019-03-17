@@ -934,9 +934,8 @@ public:
 private:
 
     /**
-     * Construct an object
-     *
-     * @see Connection::_connect()
+     * @see Connection::open()
+     * @see Connection::open2()
      */
     Connection(ConnectionParams const& connectionParams,
                unsigned int connectTimeoutSec);
@@ -1010,7 +1009,6 @@ private:
      */
     void _assertQueryContext() const;
 
-private:
 
     /// Sequence of the connector identifiers
     static std::atomic<size_t> _nextId;

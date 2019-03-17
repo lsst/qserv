@@ -63,158 +63,111 @@ public:
     DatabaseServicesMySQL& operator=(DatabaseServicesMySQL const&) = delete;
 
     /**
-     * Construct the object.
-     *
-     * @param configuration - the configuration service
+     * @param configuration
+     *    the configuration service
      */
     explicit DatabaseServicesMySQL(Configuration::Ptr const& configuration);
 
     ~DatabaseServicesMySQL() override = default;
 
-    /**
-     * @see DatabaseServices::saveState()
-     */
+    /// @see DatabaseServices::saveState()
     void saveState(ControllerIdentity const& identity,
                    uint64_t startTime) final;
 
-    /**
-     * @see DatabaseServices::saveState()
-     */
+    /// @see DatabaseServices::saveState()
     void saveState(Job const& job,
                    Job::Options const& options) final;
 
-    /**
-     * @see DatabaseServices::updateHeartbeatTime()
-     */
+    /// @see DatabaseServices::updateHeartbeatTime()
      void updateHeartbeatTime(Job const& job) final;
 
-    /**
-     * @see DatabaseServices::saveState()
-     */
+    /// @see DatabaseServices::saveState()
     void saveState(QservMgtRequest const& request,
                    Performance const& performance,
                    std::string const& serverError) final;
 
-    /**
-     * @see DatabaseServices::saveState()
-     */
+    /// @see DatabaseServices::saveState()
     void saveState(Request const& request,
                    Performance const& performance) final;
 
-    /**
-     * @see DatabaseServices::updateRequestState()
-     */
+    /// @see DatabaseServices::updateRequestState()
     void updateRequestState(Request const& request,
                             std::string const& targetRequestId,
                             Performance const& targetRequestPerformance) final;
 
-    /**
-     * @see DatabaseServices::saveReplicaInfo()
-     */
+    /// @see DatabaseServices::saveReplicaInfo()
     void saveReplicaInfo(ReplicaInfo const& info) final;
 
-    /**
-     * @see DatabaseServices::saveReplicaInfoCollection()
-     */
+    /// @see DatabaseServices::saveReplicaInfoCollection()
     void saveReplicaInfoCollection(std::string const& worker,
                                    std::string const& database,
                                    ReplicaInfoCollection const& newReplicaInfoCollection) final;
 
-    /**
-     * @see DatabaseServices::findOldestReplica()
-     */
+    /// @see DatabaseServices::findOldestReplica()
     void findOldestReplicas(std::vector<ReplicaInfo>& replicas,
                             size_t maxReplicas,
                             bool enabledWorkersOnly) final;
 
-    /**
-     * @see DatabaseServices::findReplicas()
-     */
+    /// @see DatabaseServices::findReplicas()
     void findReplicas(std::vector<ReplicaInfo>& replicas,
                       unsigned int chunk,
                       std::string const& database,
                       bool enabledWorkersOnly) final;
 
-    /**
-     * @see DatabaseServices::findWorkerReplicas()
-     */
+    /// @see DatabaseServices::findWorkerReplicas()
     void findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
                             std::string const& worker,
                             std::string const& database) final;
 
-    /**
-     * @see DatabaseServices::numWorkerReplicas()
-     */
+    /// @see DatabaseServices::numWorkerReplicas()
     uint64_t numWorkerReplicas(std::string const& worker,
                                std::string const& database=std::string()) final;
 
-    /**
-     * @see DatabaseServices::findWorkerReplicas()
-     */
+    /// @see DatabaseServices::findWorkerReplicas()
     void findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
                             unsigned int chunk,
                             std::string const& worker,
                             std::string const& databaseFamily) final;
 
-    /**
-     * @see DatabaseServices::actualReplicationLevel()
-     */
+    /// @see DatabaseServices::actualReplicationLevel()
     std::map<unsigned int, size_t> actualReplicationLevel(
                                         std::string const& database,
                                         std::vector<std::string> const& workersToExclude) final;
 
-    /**
-     * @see DatabaseServices::numOrphanChunks()
-     */
+    /// @see DatabaseServices::numOrphanChunks()
     size_t numOrphanChunks(std::string const& database,
                            std::vector<std::string> const& uniqueOnWorkers) final;
 
-    /**
-     * @see DatabaseServices::logControllerEvent()
-     */
+    /// @see DatabaseServices::logControllerEvent()
     void logControllerEvent(ControllerEvent const& event) final;
 
-    /**
-     * @see DatabaseServices::readControllerEvents()
-     */
+    /// @see DatabaseServices::readControllerEvents()
     std::list<ControllerEvent> readControllerEvents(std::string const& controllerId,
                                                     uint64_t fromTimeStamp,
                                                     uint64_t toTimeStamp,
                                                     size_t maxEntries) final;
 
-    /**
-     * @see DatabaseServices::controller()
-     */
+    /// @see DatabaseServices::controller()
     ControllerInfo controller(std::string const& id) final;
 
-    /**
-     * @see DatabaseServices::controllers()
-     */
+    /// @see DatabaseServices::controllers()
     std::list<ControllerInfo> controllers(uint64_t fromTimeStamp,
                                           uint64_t toTimeStamp,
                                           size_t maxEntries) final;
 
-    /**
-     * @see DatabaseServices::controller()
-     */
+    /// @see DatabaseServices::controller()
     RequestInfo request(std::string const& id) final;
 
-    /**
-     * @see DatabaseServices::requests()
-     */
+    /// @see DatabaseServices::requests()
     std::list<RequestInfo> requests(std::string const& jobId,
                                     uint64_t fromTimeStamp,
                                     uint64_t toTimeStamp,
                                     size_t maxEntries) final;
 
-    /**
-     * @see DatabaseServices::job()
-     */
+    /// @see DatabaseServices::job()
     JobInfo job(std::string const& id) final;
 
-    /**
-     * @see DatabaseServices::jobs()
-     */
+    /// @see DatabaseServices::jobs()
     std::list<JobInfo> jobs(std::string const& controllerId,
                             std::string const& parentJobId,
                             uint64_t fromTimeStamp,
@@ -229,7 +182,8 @@ private:
      * thread safety synchronization has been taken care of.
      *
      * @param lock
-     *   lock on a mutex must be acquired before calling this method
+     *   a lock on DatabaseServicesMySQL::_mtx must be acquired before calling
+     *   this method
      *
      * @param replicas
      *   collection of replicas found upon a successful completion
@@ -249,7 +203,8 @@ private:
      * Actual implementation of the replica update algorithm.
      *
      * @param lock
-     *   lock on a mutex must be acquired before calling this method
+     *   a lock on DatabaseServicesMySQL::_mtx must be acquired before calling
+     *   this method
      *
      * @param info
      *   replica to be added/updated or deleted
@@ -261,7 +216,8 @@ private:
      * Actual implementation of the multiple replicas update algorithm.
      *
      * @param lock
-     *   lock on a mutex must be acquired before calling this method
+     *   a lock on DatabaseServicesMySQL::_mtx must be acquired before calling
+     *   this method
      *
      * @param worker
      *   worker name (as per the request)
@@ -281,7 +237,8 @@ private:
      * Delete a replica from the database.
      *
      * @param lock
-     *   lock on a mutex must be acquired before calling this method
+     *   a lock on DatabaseServicesMySQL::_mtx must be acquired before calling
+     *   this method
      *
      * @param worker
      *   worker name
@@ -300,7 +257,8 @@ private:
      * Fetch replicas satisfying the specified query
      *
      * @param lock
-     *   lock on a mutex must be acquired before calling this method
+     *   a lock on DatabaseServicesMySQL::_mtx must be acquired before calling
+     *   this method
      *
      * @param replicas
      *   collection of replicas to be returned
@@ -316,7 +274,8 @@ private:
      * Fetch files for the replicas
      *
      * @param lock
-     *   lock on a mutex must be acquired before calling this method
+     *   a lock on DatabaseServicesMySQL::_mtx must be acquired before calling
+     *   this method
      *
      * @param id2replica
      *   input collection of incomplete replicas
@@ -336,9 +295,7 @@ private:
     void _logControllerEvent(util::Lock const& lock,
                              ControllerEvent const& event);
 
-    /**
-     * @see DatabaseServices::readControllerEvents()
-     */
+    /// @see DatabaseServices::readControllerEvents()
     std::list<ControllerEvent> _readControllerEvents(util::Lock const& lock,
                                                      std::string const& controllerId,
                                                      uint64_t fromTimeStamp,
@@ -402,9 +359,8 @@ private:
                              uint64_t toTimeStamp,
                              size_t maxEntries);
 
-private:
+    // Input parameters
 
-    /// The configuration service
     Configuration::Ptr const _configuration;
 
     /// Database connection

@@ -182,10 +182,12 @@ protected:
      * The normal constructor of the class
      *
      * @param serviceProvider
-     *   provider of various services
+     *   provider is needed to access the Configuration of a setup
+     *   and for validating the input parameters
      *
      * @param worker
-     *   the name of a worker
+     *   the name of a worker. It must be the same worker as the one
+     *   where the request is going to be processed.
      *
      * @param type
      *   the type name of a request
@@ -195,6 +197,9 @@ protected:
      *
      * @param priority
      *   indicates the importance of the request
+     *
+     * @throws std::invalid_argument
+     *   if the worker is unknown
      */
     WorkerRequest(ServiceProvider::Ptr const& serviceProvider,
                   std::string const& worker,
@@ -282,21 +287,15 @@ protected:
                                ExtendedCompletionStatus extendedStatus,
                                std::string const& errorMsg);
 
-protected:
 
-    ServiceProvider::Ptr _serviceProvider;
+    // Input parameters
 
-    /// The name of a worker
+    ServiceProvider::Ptr const _serviceProvider;
+
     std::string const _worker;
-
-    /// The name of  request type (depends on a subclass)
     std::string const _type;
-
-    /// A unique identifier of a request
     std::string const _id;
-
-    /// The priority of a request
-    int const _priority;
+    int         const _priority;
 
     // 2-layer state of a request
 

@@ -198,23 +198,26 @@ public:
      */
     ClusterHealth const& clusterHealth() const;
 
-    /**
-     * @see Job::extendedPersistentState()
-     */
+    /// @see Job::extendedPersistentState()
     std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
 
-    /**
-     * @see Job::persistentLogData()
-     */
+    /// @see Job::persistentLogData()
     std::list<std::pair<std::string,std::string>> persistentLogData() const final;
 
 protected:
 
-    /**
-     * Construct the job with the pointer to the services provider.
-     *
-     * @see ClusterHealthJob::create()
-     */
+    /// @see Job::startImpl()
+    void startImpl(util::Lock const& lock) final;
+
+    /// @see Job::cancelImpl()
+    void cancelImpl(util::Lock const& lock) final;
+
+    /// @see Job::notify()
+    void notify(util::Lock const& lock) final;
+
+private:
+
+    /// @see ClusterHealthJob::create()
     ClusterHealthJob(unsigned int timeoutSec,
                      bool allWorkers,
                      Controller::Ptr const& controller,
@@ -223,28 +226,13 @@ protected:
                      Job::Options const& options);
 
     /**
-      * @see Job::startImpl()
-      */
-    void startImpl(util::Lock const& lock) final;
-
-    /**
-      * @see Job::startImpl()
-      */
-    void cancelImpl(util::Lock const& lock) final;
-
-    /**
-      * @see Job::notify()
-      */
-    void notify(util::Lock const& lock) final;
-
-    /**
      * The callback function to be invoked on a completion of the Replication
      * worker probes.
      *
      * @param request
      *   a pointer to a request
      */
-    void onRequestFinish(ServiceStatusRequest::Ptr const& request);
+    void _onRequestFinish(ServiceStatusRequest::Ptr const& request);
 
     /**
      * The callback function to be invoked on a completion of the Qserv
@@ -253,18 +241,13 @@ protected:
      * @param request
      *   a pointer to a request
      */
-    void onRequestFinish(TestEchoQservMgtRequest::Ptr const& request);
+    void _onRequestFinish(TestEchoQservMgtRequest::Ptr const& request);
 
-protected:
+    // Input parameters
 
-    /// The maximum number life span (seconds) of requests
     unsigned int const _timeoutSec;
-
-    /// The worker selector
-    bool _allWorkers;
-
-    /// Client-defined function to be called upon the completion of the job
-    CallbackType _onFinish;
+    bool         const _allWorkers;
+    CallbackType       _onFinish;
 
     /// Requests sent to the Replication workers registered by their identifiers
     std::map<std::string, ServiceStatusRequest::Ptr> _requests;

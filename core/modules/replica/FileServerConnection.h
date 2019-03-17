@@ -80,10 +80,11 @@ public:
      * low-level pointers).
      *
      * @param serviceProvider
-     *   provider of various services
+     *  is needed to access Configuration
      *
      * @param workerName
-     *   the name of a worker
+     *   The name of a worker this service is acting upon (used for checking
+     *   a consistency of the protocol)
      *
      * @param io_service
      *   service object for the network I/O operations
@@ -136,9 +137,7 @@ public:
 
 private:
 
-    /**
-     * The constructor of the class.
-     */
+    /// @see FileServerConnection::create()
     FileServerConnection(ServiceProvider::Ptr const& serviceProvider,
                          std::string const& workerName,
                          boost::asio::io_service& io_service);
@@ -200,13 +199,10 @@ private:
     void _dataSent(boost::system::error_code const& ec,
                    size_t bytes_transferred);
 
-private:
+    // Input parameters
 
     ServiceProvider::Ptr const _serviceProvider;
-
-    /// The name of a worker this service is acting upon (used for checking
-    /// a consistency of the protocol)
-    std::string const _workerName;
+    std::string          const _workerName;
 
     /// Cached worker descriptor obtained from the configuration
     WorkerInfo const _workerInfo;

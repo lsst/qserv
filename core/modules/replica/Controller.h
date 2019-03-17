@@ -848,7 +848,7 @@ public:
      */
     template <class REQUEST_TYPE>
     void requestsOfType(std::vector<typename REQUEST_TYPE::Ptr>& requests) const {
-        util::Lock lock(_mtx, _context() + __func__);
+        util::Lock lock(_mtx, _context(__func__));
         requests.clear();
         for (auto&& itr: _registry)
             if (typename REQUEST_TYPE::Ptr ptr =
@@ -860,7 +860,7 @@ public:
     /// @return the number of requests of a specific type
     template <class REQUEST_TYPE>
     size_t numRequestsOfType() const {
-        util::Lock lock(_mtx, _context() + __func__);
+        util::Lock lock(_mtx, _context(__func__));
         size_t result(0);
         for (auto&& itr: _registry) {
             if (typename REQUEST_TYPE::Ptr request =
@@ -874,16 +874,17 @@ public:
 
 private:
 
-    /**
-     * Construct the server with the specified configuration.
-     *
-     * @param serviceProvider
-     *   for configuration, other services
-     */
+    /// @see Controller::create()
     explicit Controller(ServiceProvider::Ptr const& serviceProvider);
 
-    /// @return the context string for debugging and diagnostic printouts
-    std::string _context() const;
+    /**
+     * @param func
+     *   (optional) the name of a method/function requested the context string
+     *
+     * @return
+     *   the context string for debugging and diagnostic printouts
+     */
+    std::string _context(std::string const& func=std::string()) const;
 
     /**
      * Finalize the completion of the request. This method will notify
@@ -903,7 +904,6 @@ private:
      */
     void _assertIsRunning() const;
 
-private:
 
     /// The unique identity of the instance
     ControllerIdentity const _identity;

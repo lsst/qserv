@@ -128,34 +128,22 @@ public:
 
 protected:
 
-    /**
-      * @see Request::startImpl()
-      */
+    /// @see Request::startImpl()
     void startImpl(util::Lock const& lock) final;
 
-    /**
-     * @see Request::notify()
-     */
+    /// @see Request::notify()
     void notify(util::Lock const& lock) final;
 
-    /**
-     * @see Request::savePersistentState()
-     */
+    /// @see Request::savePersistentState()
     void savePersistentState(util::Lock const& lock) final;
 
-    /**
-     * @see Request::extendedPersistentState()
-     */
+    /// @see Request::extendedPersistentState()
     std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
 
 
 private:
 
-    /**
-     * Construct the request with the pointer to the services provider.
-     *
-     * @see DeleteRequest::create()
-     */
+    /// @see DeleteRequest::create()
     DeleteRequest(ServiceProvider::Ptr const& serviceProvider,
                   boost::asio::io_service& io_service,
                   std::string const& worker,
@@ -172,7 +160,7 @@ private:
      * or successful (if a status check is needed) step.
      *
      * @param lock
-     *   a lock on a mutex must be acquired before calling this method
+     *   a lock on Request::_mtx must be acquired before calling this method
      */
     void _wait(util::Lock const& lock);
 
@@ -183,7 +171,7 @@ private:
      * Send the serialized content of the buffer to a worker
      *
      * @param lock
-     *   a lock on a mutex must be acquired before calling this method
+     *   a lock on Request::_mtx must be acquired before calling this method
      */
     void _send(util::Lock const& lock);
 
@@ -191,7 +179,7 @@ private:
      * Process the worker response to the requested operation.
      *
      * @param success
-     *   the flag indicating if the operation was successful
+     *   'true' indicates a successful response from a worker
      *
      * @param message
      *   a response from the worker service (if success is 'true')
@@ -199,15 +187,12 @@ private:
     void _analyze(bool success,
                   proto::ReplicationResponseDelete const& message);
 
-private:
 
-    /// The name of a database to which the deleted chunk belongs to
-    std::string const _database;
+    // Input parameters
 
-    /// The number of a chunk to be deleted
+    std::string  const _database;
     unsigned int const _chunk;
-
-    CallbackType _onFinish;
+    CallbackType       _onFinish;   /// @note is reset when the job finishes
 
     /// Request-specific parameters of the target request
     DeleteRequestParams _targetRequestParams;

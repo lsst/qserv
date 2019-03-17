@@ -99,9 +99,9 @@ void Parser::reset() {
     _options.clear();
     _flags.clear();
 
-    _code  = Status::UNDEFINED;
-    _usage = "";
-    _help  = "";
+    _code     = Status::UNDEFINED;
+    _usageStr = "";
+    _helpStr  = "";
 }
 
 
@@ -159,7 +159,7 @@ int Parser::parse() {
         string const arg = _argv[i];
 
         if (arg == "--help") {
-            cerr << help() << endl;
+            cerr << _help() << endl;
             return Status::HELP_REQUESTED;
         }
     }
@@ -289,7 +289,7 @@ int Parser::parse() {
         _code = Status::SUCCESS;
 
     } catch (ParserError const& ex) {
-        cerr << ex.what() << "\n" << usage() << endl;
+        cerr << ex.what() << "\n" << _usage() << endl;
         _code = Status::PARSING_FAILED;
     }
     return _code;
@@ -340,68 +340,68 @@ void Parser::_verifyArgument(string const& name) {
 }
 
 
-string const& Parser::usage() {
+string const& Parser::_usage() {
 
     string const indent = "  ";
 
-    if (_usage.empty()) {
-        _usage = "USAGE:\n";
-        _usage += "\n" + indent + "--help\n";
+    if (_usageStr.empty()) {
+        _usageStr = "USAGE:\n";
+        _usageStr += "\n" + indent + "--help\n";
 
         if (_commands == nullptr) {
             if (not (_required.empty() and _optional.empty())) {
-                _usage += "\n" + indent;
-                for (auto&& arg: _required) _usage += "<" + arg->name() + "> ";
-                for (auto&& arg: _optional) _usage += "[<" + arg->name() + ">] ";
+                _usageStr += "\n" + indent;
+                for (auto&& arg: _required) _usageStr += "<" + arg->name() + "> ";
+                for (auto&& arg: _optional) _usageStr += "[<" + arg->name() + ">] ";
             }
-            for (auto&& arg: _options)      _usage += "\n" + indent + "--" + arg.first + "=[<value>]";
-            for (auto&& arg: _flags)        _usage += "\n" + indent + "--" + arg.first;
-            _usage += "\n";
+            for (auto&& arg: _options)      _usageStr += "\n" + indent + "--" + arg.first + "=[<value>]";
+            for (auto&& arg: _flags)        _usageStr += "\n" + indent + "--" + arg.first;
+            _usageStr += "\n";
         } else {
             for (auto const& entry: _commands->_commands) {
 
                 auto const& name    = entry.first;
                 auto const& command = entry.second;
 
-                _usage += "\n" + indent + name + "  ";
+                _usageStr += "\n" + indent + name + "  ";
 
-                for (auto&& arg: _required)          _usage += "<"  + arg->name() + "> ";
-                for (auto&& arg: command->_required) _usage += "<"  + arg->name() + "> ";
-                for (auto&& arg: _optional)          _usage += "[<" + arg->name() + ">] ";
-                for (auto&& arg: command->_optional) _usage += "[<" + arg->name() + ">] ";
-                for (auto&& arg: _options)           _usage += "\n" + indent + "--" + arg.first + "=[<value>]";
-                for (auto&& arg: command->_options)  _usage += "\n" + indent + "--" + arg.first + "=[<value>]";
-                for (auto&& arg: _flags)             _usage += "\n" + indent + "--" + arg.first;
-                for (auto&& arg: command->_flags)    _usage += "\n" + indent + "--" + arg.first;
-                _usage += "\n";
+                for (auto&& arg: _required)          _usageStr += "<"  + arg->name() + "> ";
+                for (auto&& arg: command->_required) _usageStr += "<"  + arg->name() + "> ";
+                for (auto&& arg: _optional)          _usageStr += "[<" + arg->name() + ">] ";
+                for (auto&& arg: command->_optional) _usageStr += "[<" + arg->name() + ">] ";
+                for (auto&& arg: _options)           _usageStr += "\n" + indent + "--" + arg.first + "=[<value>]";
+                for (auto&& arg: command->_options)  _usageStr += "\n" + indent + "--" + arg.first + "=[<value>]";
+                for (auto&& arg: _flags)             _usageStr += "\n" + indent + "--" + arg.first;
+                for (auto&& arg: command->_flags)    _usageStr += "\n" + indent + "--" + arg.first;
+                _usageStr += "\n";
             }
         }
     }
-    return _usage;
+    return _usageStr;
 }
 
 
-string const& Parser::help() {
+string const& Parser::_help() {
 
-    if (_help.empty()) {
+    if (_helpStr.empty()) {
 
         bool const commandMode = (_commands != nullptr);
 
-        _help += "DESCRIPTION:\n\n" + wrap(_description, "  ") + "\n\n" + usage();
+        _helpStr += "DESCRIPTION:\n\n" + _wrap(_description, "  ") + "\n\n" + _usage();
 
         if (commandMode) {
-            _help += "\nCOMMANDS:\n";
+            _helpStr += "\nCOMMANDS:\n";
             for (auto const& entry: _commands->_commands) {
 
                 auto const& name    = entry.first;
                 auto const& command = entry.second;
 
-                _help += "\n  " + name + "\n" + wrap(command->_description) + "\n";
+                _helpStr += "\n  " + name + "\n" + _wrap(command->_description) + "\n";
             }
         }
-        _help += "\nPARAMETERS:\n";
+        _helpStr += "\nPARAMETERS:\n";
         for (auto&& arg: _required) {
-            _help += "\n  <" + arg->name() + ">\n" + wrap(arg->description()) + "\n";
+            _helpStr += "\n  <" + arg->name() + ">\n" + _wrap(arg->description()) + "\n";
         }
         if (commandMode) {
             for (auto const& entry: _commands->_commands) {
@@ -410,13 +410,13 @@ string const& Parser::help() {
                 auto const& command = entry.second;
 
                 for (auto&& arg: command->_required) {
-                    _help += "\n  <" + arg->name() + ">  [ " + name + " ]\n" + wrap(arg->description()) + "\n";
+                    _helpStr += "\n  <" + arg->name() + ">  [ " + name + " ]\n" + _wrap(arg->description()) + "\n";
                 }
             }
         }
         for (auto&& arg: _optional) {
-            _help += "\n  <" + arg->name() + ">\n" + wrap(arg->description()) + "\n";
-            _help += "\n        DEFAULT: " + arg->defaultValue() + "\n";
+            _helpStr += "\n  <" + arg->name() + ">\n" + _wrap(arg->description()) + "\n";
+            _helpStr += "\n        DEFAULT: " + arg->defaultValue() + "\n";
         }
         if (commandMode) {
             for (auto const& entry: _commands->_commands) {
@@ -425,18 +425,18 @@ string const& Parser::help() {
                 auto const& command = entry.second;
 
                 for (auto&& arg: command->_optional) {
-                    _help += "\n  <" + arg->name() + ">  [ " + name + " ]\n" + wrap(arg->description()) + "\n";
-                    _help += "\n        DEFAULT: " + arg->defaultValue() + "\n";
+                    _helpStr += "\n  <" + arg->name() + ">  [ " + name + " ]\n" + _wrap(arg->description()) + "\n";
+                    _helpStr += "\n        DEFAULT: " + arg->defaultValue() + "\n";
                 }
             }
         }
 
-        _help += "\nOPTIONS:\n";
+        _helpStr += "\nOPTIONS:\n";
 
         for (auto&& entry: _options) {
             auto&& arg = entry.second;
-            _help += "\n  --" + arg->name() + "\n" + wrap(arg->description()) + "\n";
-            _help += "\n        DEFAULT: " + arg->defaultValue() + "\n";
+            _helpStr += "\n  --" + arg->name() + "\n" + _wrap(arg->description()) + "\n";
+            _helpStr += "\n        DEFAULT: " + arg->defaultValue() + "\n";
         }
         if (commandMode) {
             for (auto const& entry: _commands->_commands) {
@@ -446,18 +446,18 @@ string const& Parser::help() {
 
                 for (auto&& entry1: command->_options) {
                     auto&& arg = entry1.second;
-                    _help += "\n  --" + arg->name() + "  [ " + name + " ]\n" + wrap(arg->description()) + "\n";
-                    _help += "\n        DEFAULT: " + arg->defaultValue() + "\n";
+                    _helpStr += "\n  --" + arg->name() + "  [ " + name + " ]\n" + _wrap(arg->description()) + "\n";
+                    _helpStr += "\n        DEFAULT: " + arg->defaultValue() + "\n";
                 }
             }
         }
 
-        _help += "\nFLAGS:\n";
-        _help += "\n  --help\n" + wrap("print this 'help'") + "\n";
+        _helpStr += "\nFLAGS:\n";
+        _helpStr += "\n  --help\n" + _wrap("print this 'help'") + "\n";
 
         for (auto&& entry: _flags) {
             auto&& arg = entry.second;
-            _help += "\n  --" + arg->name() + "\n" + wrap(arg->description()) + "\n";
+            _helpStr += "\n  --" + arg->name() + "\n" + _wrap(arg->description()) + "\n";
         }
         if (commandMode) {
             for (auto const& entry: _commands->_commands) {
@@ -467,18 +467,18 @@ string const& Parser::help() {
 
                 for (auto&& entry1: command->_flags) {
                     auto&& arg = entry1.second;
-                    _help += "\n  --" + arg->name() + "  [ " + name + " ]\n" + wrap(arg->description()) + "\n";
+                    _helpStr += "\n  --" + arg->name() + "  [ " + name + " ]\n" + _wrap(arg->description()) + "\n";
                 }
             }
         }
     }
-    return _help;
+    return _helpStr;
 }
 
 
-string Parser::wrap(string const& str,
-                    string const& indent,
-                    size_t width) {
+string Parser::_wrap(string const& str,
+                     string const& indent,
+                     size_t width) {
     
     ostringstream os;
     size_t lineLength = 0;

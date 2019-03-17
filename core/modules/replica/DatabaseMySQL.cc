@@ -52,6 +52,7 @@ namespace mysql {
 
 atomic<size_t> Connection::_nextId{0};
 
+
 unsigned long Connection::max_allowed_packet() {
 
     // Reasons behind setting this parameter to 4 MB cam be found here:

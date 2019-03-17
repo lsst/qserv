@@ -162,35 +162,23 @@ public:
      */
     std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
 
-    /**
-     * @see Job::persistentLogData()
-     */
+    /// @see Job::persistentLogData()
     std::list<std::pair<std::string,std::string>> persistentLogData() const final;
 
 protected:
 
-    /**
-      * @see Job::startImpl()
-      */
+    /// @see Job::startImpl()
     void startImpl(util::Lock const& lock) final;
 
-    /**
-      * @see Job::cancelImpl()
-      */
+    /// @see Job::cancelImpl()
     void cancelImpl(util::Lock const& lock) final;
 
-    /**
-      * @see Job::notify()
-      */
+    /// @see Job::notify()
     void notify(util::Lock const& lock) final;
 
 private:
 
-    /**
-     * Construct the job with the pointer to the services provider.
-     *
-     * @see CreateReplicaJob::create()
-     */
+    /// @see CreateReplicaJob::create()
     CreateReplicaJob(std::string const& databaseFamily,
                      unsigned int chunk,
                      std::string const& sourceWorker,
@@ -209,22 +197,14 @@ private:
      */
     void _onRequestFinish(ReplicationRequest::Ptr const& request);
 
-protected:
 
-    /// The name of a database family
-    std::string const _databaseFamily;
+    // Input parameters
 
-    /// The chunk number
+    std::string  const _databaseFamily;
     unsigned int const _chunk;
-
-    /// The name of a source worker where the input replica is residing
-    std::string const _sourceWorker;
-
-    /// The name of a destination worker where the output replica will be placed
-    std::string const _destinationWorker;
-
-    /// Client-defined function to be called upon the completion of the job
-    CallbackType _onFinish;
+    std::string  const _sourceWorker;
+    std::string  const _destinationWorker;
+    CallbackType       _onFinish;       /// @note is reset when the job finishes
 
     /// A collection of the replication requests implementing the operation
     std::vector<ReplicationRequest::Ptr> _requests;

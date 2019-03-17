@@ -568,9 +568,9 @@ public:
 
     /**
      * @return
-     *   a map (a histogram) of representing the actual replication level
+     *   a map (a histogram) representing the actual replication level
      *   for a database. The key of the map is the replication level (the number of
-     *   replicas found for chunks in the group), and the key is the number of
+     *   replicas found for chunks in the group), and the value is the number of
      *   chunks at this replication level.
      * 
      * @note
@@ -596,7 +596,7 @@ public:
 
     /**
      * @return
-     *   a total number of chunks which only exist on any worker of
+     *   the total number of chunks which only exist on any worker of
      *   the specified collection of unique workers, and not any other worker
      *   which is not in this collection. The method will always return 0 if
      *   the collection of workers passed into the method is empty.

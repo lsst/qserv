@@ -181,7 +181,8 @@ private:
      */
     void _extend(size_t newCapacityBytes);
 
-private:
+
+    // Data members
 
     char *_data;
 

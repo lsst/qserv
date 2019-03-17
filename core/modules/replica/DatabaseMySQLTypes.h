@@ -159,8 +159,6 @@ public:
 
     virtual ~DoNotProcess() = default;
 
-public:
-
     /**
      * The exact string value as it should appear within queries. It will
      * be extracted by the corresponding query generators.

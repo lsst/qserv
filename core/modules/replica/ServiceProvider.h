@@ -175,15 +175,14 @@ private:
     /// @return the context string for debugging and diagnostic printouts
     std::string _context() const;
 
-private:
-
     // The BOOST ASIO communication services & threads which run them
 
     boost::asio::io_service _io_service;
     std::unique_ptr<boost::asio::io_service::work> _work;
     std::vector<std::unique_ptr<std::thread>> _threads;
 
-    /// Configuration manager
+    /// Configuration manager (constructed from the Configuration specification
+    /// URL passed into the constructor of the class).
     ConfigurationPtr const _configuration;
 
     /// Database services

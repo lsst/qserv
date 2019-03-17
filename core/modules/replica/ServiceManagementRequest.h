@@ -147,20 +147,14 @@ public:
 
 protected:
 
-    /**
-     * @see Request::notify()
-     */
+    /// @see Request::notify()
     void notify(util::Lock const& lock) final {
         notifyDefaultImpl<ServiceManagementRequest<POLICY>>(lock, _onFinish);
     }
 
 private:
 
-    /**
-     * Construct the request
-     *
-     * @see ServiceManagementRequest::create()
-     */
+    /// @see ServiceManagementRequest::create()
     ServiceManagementRequest(ServiceProvider::Ptr const& serviceProvider,
                              boost::asio::io_service& io_service,
                              char const* requestName,
@@ -177,9 +171,9 @@ private:
             _onFinish(onFinish) {
     }
 
-private:
 
-    /// Registered callback to be called when the operation finishes
+    // Input parameters
+
     CallbackType _onFinish;
 };
 

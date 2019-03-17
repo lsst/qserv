@@ -959,13 +959,19 @@ protected:
      */
     Configuration();
 
-    /// @return the context string for debugging and diagnostic printouts
-    std::string context() const;
+    /**
+     * @param func
+     *   (optional) the name of a method/function requested the context string
+     *
+     * @return
+     *   the context string for debugging and diagnostic printouts
+     */
+    std::string context(std::string const& func=std::string()) const;
 
     /**
      * 
      * @param lock
-     *   the lock on a mutex required for the thread safety
+     *   the lock on Configuration::_mtx required for the thread safety
      *
      * @param name
      *   the name of a worker to find
@@ -984,7 +990,6 @@ protected:
                                                                std::string const& name,
                                                                std::string const& context);
 
-protected:
 
     /// To be used were thread safety is required
     mutable util::Mutex _mtx;

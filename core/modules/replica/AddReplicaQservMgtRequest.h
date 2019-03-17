@@ -124,40 +124,19 @@ protected:
 
 private:
 
-    /**
-     * Construct the request with the pointer to the services provider.
-     *
-     * @param serviceProvider
-     *   reference to a provider of services
-     *
-     * @param worker
-     *   the name of a worker
-     *
-     * @param chunk
-     *   the chunk number
-     *
-     * @param databases
-     *   the names of databases
-     *
-     * @param onFinish
-     *   callback function to be called upon request completion
-     */
+    /// @see AddReplicaQservMgtRequest::create()
     AddReplicaQservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
                               std::string const& worker,
                               unsigned int chunk,
                               std::vector<std::string> const& databases,
                               CallbackType const& onFinish);
 
-private:
 
-    /// The chunk number
-    unsigned int const _chunk;
+    // Input parameters
 
-    /// The names of databases
+    unsigned int             const _chunk;
     std::vector<std::string> const _databases;
-
-    /// The callback function for sending a notification upon request completion
-    CallbackType _onFinish;
+    CallbackType                   _onFinish;   /// @note is reset when the request finishes
 
     /// A request to the remote services
     wpublish::AddChunkGroupQservRequest::Ptr _qservRequest;

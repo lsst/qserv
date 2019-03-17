@@ -211,7 +211,7 @@ void ClusterHealthJob::startImpl(util::Lock const& lock) {
         auto const replicationRequest = controller()->statusOfWorkerService(
             worker,
             [self] (ServiceStatusRequest::Ptr request) {
-                self->onRequestFinish(request);
+                self->_onRequestFinish(request);
             },
             id(),   /* jobId */
             timeoutSec()
@@ -224,7 +224,7 @@ void ClusterHealthJob::startImpl(util::Lock const& lock) {
             testData,
             id(),   /* jobId */
             [self] (TestEchoQservMgtRequest::Ptr request) {
-                self->onRequestFinish(request);
+                self->_onRequestFinish(request);
             },
             timeoutSec()
         );
@@ -265,10 +265,10 @@ void ClusterHealthJob::notify(util::Lock const& lock) {
 }
 
 
-void ClusterHealthJob::onRequestFinish(ServiceStatusRequest::Ptr const& request) {
+void ClusterHealthJob::_onRequestFinish(ServiceStatusRequest::Ptr const& request) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context()
-         << string(__func__) + "[replication]  worker=" << request->worker());
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "[replication]"
+         << "  worker=" << request->worker());
 
     // IMPORTANT: the final state is required to be tested twice. The first time
     // it's done in order to avoid deadlock on the "in-flight" requests reporting
@@ -289,10 +289,10 @@ void ClusterHealthJob::onRequestFinish(ServiceStatusRequest::Ptr const& request)
 }
 
 
-void ClusterHealthJob::onRequestFinish(TestEchoQservMgtRequest::Ptr const& request) {
+void ClusterHealthJob::_onRequestFinish(TestEchoQservMgtRequest::Ptr const& request) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context()
-         << string(__func__) + "[qserv]  worker=" << request->worker());
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "[qserv]"
+         << "  worker=" << request->worker());
 
     // IMPORTANT: the final state is required to be tested twice. The first time
     // it's done in order to avoid deadlock on the "in-flight" requests reporting

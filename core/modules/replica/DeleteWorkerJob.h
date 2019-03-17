@@ -163,40 +163,26 @@ public:
      */
     DeleteWorkerJobResult const& getReplicaData() const;
 
-    /**
-     * @see Job::extendedPersistentState()
-     */
+    /// @see Job::extendedPersistentState()
     std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
 
-    /**
-     * @see Job::persistentLogData()
-     */
+    /// @see Job::persistentLogData()
     std::list<std::pair<std::string,std::string>> persistentLogData() const final;
 
 protected:
 
-    /**
-     * @see Job::startImpl()
-     */
+    /// @see Job::startImpl()
     void startImpl(util::Lock const& lock) final;
 
-    /**
-     * @see Job::startImpl()
-     */
+    /// @see Job::cancelImpl()
     void cancelImpl(util::Lock const& lock) final;
 
-    /**
-      * @see Job::notify()
-      */
+    /// @see Job::notify()
     void notify(util::Lock const& lock) final;
 
 private:
 
-    /**
-     * Construct the job with the pointer to the services provider.
-     *
-     * @see DeleteWorkerJob::create()
-     */
+    /// @see DeleteWorkerJob::create()
     DeleteWorkerJob(std::string const& worker,
                     bool permanentDelete,
                     Controller::Ptr const& controller,
@@ -208,7 +194,7 @@ private:
      * Begin the actual sequence of actions for removing the worker
      *
      * @param lock
-     *   the lock must be acquired by a caller of the method
+     *   a lock on Job::_mtx must be acquired before calling this method
      */
     void _disableWorker(util::Lock const& lock);
 
@@ -229,16 +215,12 @@ private:
      */
     void _onJobFinish(ReplicateJob::Ptr const& job);
 
-protected:
 
-    /// The name of a worker to be disabled
+    // Input parameters
+
     std::string const _worker;
-
-    /// Permanently remove from the configuration if set
-    bool const _permanentDelete;
-
-    /// Client-defined function to be called upon the completion of the job
-    CallbackType _onFinish;
+    bool        const _permanentDelete;
+    CallbackType      _onFinish;        /// @note is reset when the job finishes
 
     // The counter of requests/jobs which will be updated. They need to be atomic
     // to avoid race condition between the onFinish() callbacks executed within
