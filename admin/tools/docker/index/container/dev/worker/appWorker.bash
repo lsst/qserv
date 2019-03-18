@@ -13,7 +13,7 @@ source /qserv/stack/loadLSST.bash
 cd /qserv/dev/qserv
 setup -r . -t qserv-dev
 
-/qserv/dev/qserv/build/loader/appWorker /qserv/dev/qserv/core/modules/loader/config/worker1.cnf &
+/qserv/dev/qserv/build/loader/appWorker /qserv/dev/qserv/core/modules/loader/config/worker-k8s-a.cnf &
 
 child=$!
 wait "$child"

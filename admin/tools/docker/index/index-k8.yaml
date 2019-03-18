@@ -30,6 +30,11 @@ spec:
       containers:
       - name: index-worker
         image: qserv/indexworker:dev
+#        ports:
+#        - containerPort: 10043
+#          name: index-worker-udp
+#        - containerPort: 10143
+#          name: index-worker-tcp
 #        imagePullPolicy: Always
 ---
 apiVersion: apps/v1
@@ -50,6 +55,9 @@ spec:
       containers:
       - name: index-master
         image: qserv/indexmaster:dev
+        ports:
+        - containerPort: 10042
+          name: index-master
 #        imagePullPolicy: Always
         
      
