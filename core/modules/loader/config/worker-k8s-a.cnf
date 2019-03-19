@@ -2,7 +2,7 @@
 #
 [worker]
 # Master information
-masterHost = index-master
+masterHost = imaster-sts-0.imaster-svc
 masterPortUdp = 10042
 
 # Worker ports
