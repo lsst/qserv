@@ -121,6 +121,15 @@ string ConfigurationMySQL::dump2init(Configuration::Ptr const& config) {
     ::configInsert(str, "worker",     "num_svc_processing_threads", config->workerNumProcessingThreads());
     ::configInsert(str, "worker",     "num_fs_processing_threads",  config->fsNumProcessingThreads());
     ::configInsert(str, "worker",     "fs_buf_size_bytes",          config->workerFsBufferSizeBytes());
+    ::configInsert(str, "worker",     "svc_host",                   defaultWorkerSvcHost);
+    ::configInsert(str, "worker",     "svc_port",                   defaultWorkerSvcPort);
+    ::configInsert(str, "worker",     "fs_host",                    defaultWorkerFsHost);
+    ::configInsert(str, "worker",     "fs_port",                    defaultWorkerFsPort);
+    ::configInsert(str, "worker",     "data_dir",                   defaultDataDir);
+    ::configInsert(str, "worker",     "db_host",                    defaultWorkerDbHost);
+    ::configInsert(str, "worker",     "db_port",                    defaultWorkerDbPort);
+    ::configInsert(str, "worker",     "db_user",                    defaultWorkerDbUser);
+    ::configInsert(str, "worker",     "db_password",                defaultWorkerDbPassword);
 
     for (auto&& worker: config->allWorkers()) {
         auto&& info = config->workerInfo(worker);
@@ -132,7 +141,11 @@ string ConfigurationMySQL::dump2init(Configuration::Ptr const& config) {
             <<         info.svcPort << ","
             << "'" <<  info.fsHost  << "',"
             <<         info.fsPort  << ","
-            << "'" <<  info.dataDir << "'"
+            << "'" <<  info.dataDir << "',"
+            << "'" <<  info.dbHost  << "',"
+            <<         info.dbPort  << ","
+            << "'" <<  info.dbUser  << "',"
+            << "'" <<  info.dbPassword << "'"
             << ");\n";
     }
     for (auto&& family: config->databaseFamilies()) {
@@ -531,6 +544,155 @@ WorkerInfo ConfigurationMySQL::setWorkerDataDir(string const& name,
 }
 
 
+WorkerInfo ConfigurationMySQL::setWorkerDbHost(std::string const& name,
+                                               std::string const& host) {
+    string const context_ = context() + __func__;
+
+    LOGS(_log, LOG_LVL_DEBUG, context_ << "  name=" << name << " host=" << host);
+
+    database::mysql::ConnectionHandler handler;
+    try {
+
+        // First update the database
+        handler.conn = database::mysql::Connection::open(_connectionParams);
+        handler.conn->execute(
+            [&name,&host](decltype(handler.conn) conn) {
+                conn->begin();
+                conn->executeSimpleUpdateQuery(
+                    "config_worker",
+                    conn->sqlEqual("name", name),
+                    make_pair("db_host", host));
+                conn->commit();
+            }
+        );
+
+        // Then update the transient state 
+
+        util::Lock lock(_mtx, context_);
+
+        auto itr = safeFindWorker(lock, name, context_);
+        itr->second.dbHost = host;
+
+    } catch (database::mysql::Error const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context_ << "MySQL error: " << ex.what());
+        throw;
+    }
+    return workerInfo(name);
+}
+
+
+WorkerInfo ConfigurationMySQL::setWorkerDbPort(std::string const& name,
+                                               uint16_t port) {
+    string const context_ = context() + __func__;
+
+    LOGS(_log, LOG_LVL_DEBUG, context_ << "  name=" << name << " port=" << port);
+
+    database::mysql::ConnectionHandler handler;
+    try {
+
+        // First update the database
+        handler.conn = database::mysql::Connection::open(_connectionParams);
+        handler.conn->execute(
+            [&name,port](decltype(handler.conn) conn) {
+                conn->begin();
+                conn->executeSimpleUpdateQuery(
+                    "config_worker",
+                    conn->sqlEqual("name", name),
+                    make_pair("db_port", port));
+                conn->commit();
+            }
+        );
+
+        // Then update the transient state 
+
+        util::Lock lock(_mtx, context_);
+    
+        auto itr = safeFindWorker(lock, name, context_);
+        itr->second.dbPort = port;
+
+    } catch (database::mysql::Error const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context_ << "MySQL error: " << ex.what());
+        throw;
+    }
+    return workerInfo(name);
+}
+
+
+WorkerInfo ConfigurationMySQL::setWorkerDbUser(std::string const& name,
+                                               std::string const& user)  {
+    string const context_ = context() + __func__;
+
+    LOGS(_log, LOG_LVL_DEBUG, context_ << "  name=" << name << " user=" << user);
+
+    database::mysql::ConnectionHandler handler;
+    try {
+
+        // First update the database
+        handler.conn = database::mysql::Connection::open(_connectionParams);
+        handler.conn->execute(
+            [&name,&user](decltype(handler.conn) conn) {
+                conn->begin();
+                conn->executeSimpleUpdateQuery(
+                    "config_worker",
+                    conn->sqlEqual("name", name),
+                    make_pair("db_user", user));
+                conn->commit();
+            }
+        );
+
+        // Then update the transient state 
+
+        util::Lock lock(_mtx, context_);
+
+        auto itr = safeFindWorker(lock, name, context_);
+        itr->second.dbUser = user;
+
+    } catch (database::mysql::Error const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context_ << "MySQL error: " << ex.what());
+        throw;
+    }
+    return workerInfo(name);
+}
+
+
+WorkerInfo ConfigurationMySQL::setWorkerDbPassword(std::string const& name,
+                                                   std::string const& password)  {
+    string const context_ = context() + __func__;
+
+    LOGS(_log, LOG_LVL_DEBUG, context_ << "  name=" << name << " password=" << password);
+
+    database::mysql::ConnectionHandler handler;
+    try {
+
+        // First update the database
+        handler.conn = database::mysql::Connection::open(_connectionParams);
+        handler.conn->execute(
+            [&name,&password](decltype(handler.conn) conn) {
+                conn->begin();
+                conn->executeSimpleUpdateQuery(
+                    "config_worker",
+                    conn->sqlEqual("name", name),
+                    make_pair("db_password", password));
+                conn->commit();
+            }
+        );
+
+        // Then update the transient state 
+
+        util::Lock lock(_mtx, context_);
+
+        auto itr = safeFindWorker(lock, name, context_);
+        itr->second.dbPassword = password;
+
+    } catch (database::mysql::Error const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context_ << "MySQL error: " << ex.what());
+        throw;
+    }
+    return workerInfo(name);
+
+}
+
+
 DatabaseFamilyInfo ConfigurationMySQL::addDatabaseFamily(DatabaseFamilyInfo const& info) {
 
     string const context_ = context() + __func__;
@@ -887,9 +1049,12 @@ void ConfigurationMySQL::_loadConfigurationImpl(util::Lock const& lock,
     // from table 'config' and be used as defaults when reading worker-specific
     // configurations from table 'config_worker'
 
-    uint16_t commonWorkerSvcPort = Configuration::defaultWorkerSvcPort;
-    uint16_t commonWorkerFsPort  = Configuration::defaultWorkerFsPort;
-    string   commonWorkerDataDir = Configuration::defaultDataDir;
+    uint16_t commonWorkerSvcPort    = Configuration::defaultWorkerSvcPort;
+    uint16_t commonWorkerFsPort     = Configuration::defaultWorkerFsPort;
+    string   commonWorkerDataDir    = Configuration::defaultDataDir;
+    uint16_t commonWorkerDbPort     = Configuration::defaultWorkerDbPort;
+    string   commonWorkerDbUser     = Configuration::defaultWorkerDbUser;
+    string   commonWorkerDbPassword = Configuration::defaultWorkerDbPassword;
 
     database::mysql::Row row;
 
@@ -924,7 +1089,10 @@ void ConfigurationMySQL::_loadConfigurationImpl(util::Lock const& lock,
         ::tryParameter(row, "worker", "fs_buf_size_bytes",          _workerFsBufferSizeBytes) or
         ::tryParameter(row, "worker", "svc_port",                   commonWorkerSvcPort)  or
         ::tryParameter(row, "worker", "fs_port",                    commonWorkerFsPort) or
-        ::tryParameter(row, "worker", "data_dir",                   commonWorkerDataDir);
+        ::tryParameter(row, "worker", "data_dir",                   commonWorkerDataDir) or
+        ::tryParameter(row, "worker", "db_port",                    commonWorkerDbPort);
+        ::tryParameter(row, "worker", "db_user",                    commonWorkerDbUser);
+        ::tryParameter(row, "worker", "db_password",                commonWorkerDbPassword);
     }
 
     // Read worker-specific configurations and construct WorkerInfo.
@@ -938,10 +1106,14 @@ void ConfigurationMySQL::_loadConfigurationImpl(util::Lock const& lock,
         ::readMandatoryParameter(row, "is_enabled",   info.isEnabled);
         ::readMandatoryParameter(row, "is_read_only", info.isReadOnly);
         ::readMandatoryParameter(row, "svc_host",     info.svcHost);
-        ::readOptionalParameter( row, "svc_port",     info.svcPort, commonWorkerSvcPort);
+        ::readOptionalParameter( row, "svc_port",     info.svcPort,    commonWorkerSvcPort);
         ::readMandatoryParameter(row, "fs_host",      info.fsHost);
-        ::readOptionalParameter( row, "fs_port",      info.fsPort,  commonWorkerFsPort);
-        ::readOptionalParameter( row, "data_dir",     info.dataDir, commonWorkerDataDir);
+        ::readOptionalParameter( row, "fs_port",      info.fsPort,     commonWorkerFsPort);
+        ::readOptionalParameter( row, "data_dir",     info.dataDir,    commonWorkerDataDir);
+        ::readMandatoryParameter(row, "db_host",      info.dbHost);
+        ::readOptionalParameter( row, "db_port",      info.dbPort,     commonWorkerDbPort);
+        ::readOptionalParameter( row, "db_user",      info.dbUser,     commonWorkerDbUser);
+        ::readOptionalParameter( row, "db_password",  info.dbPassword, commonWorkerDbPassword);
 
         Configuration::translateDataDir(info.dataDir, info.name);
 

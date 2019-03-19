@@ -165,6 +165,26 @@ ConfigApp::ConfigApp(int argc, char* argv[])
         "The data directory of the worker.",
         _workerInfo.dataDir);
 
+    updateWorkerCmd.option(
+        "worker-db-host",
+        "The new DNS name or an IP address where the worker's database service runs.",
+        _workerInfo.dbHost);
+
+    updateWorkerCmd.option(
+        "worker-db-port",
+        "The port number of the worker's database service.",
+        _workerInfo.dbPort);
+
+    updateWorkerCmd.option(
+        "worker-db-user",
+        "The name of a user account for the worker's database service.",
+        _workerInfo.dbUser);
+
+    updateWorkerCmd.option(
+        "worker-db-password",
+        "A password for the worker's database service.",
+        _workerInfo.dbPassword);
+
     updateWorkerCmd.flag(
         "worker-enable",
         "Enable the worker. ATTENTION: this flag can't be used together with flag --worker-disable.",
@@ -523,28 +543,46 @@ void ConfigApp::_dumpWorkersAsTable(string const& indent) const {
     vector<string> name;
     vector<string> isEnabled;
     vector<string> isReadOnly;
-    vector<string> svcHostPort;
-    vector<string> fsHostPort;
+    vector<string> svcHost;
+    vector<string> svcPort;
+    vector<string> fsHost;
+    vector<string> fsPort;
     vector<string> dataDir;
+    vector<string> dbHost;
+    vector<string> dbPort;
+    vector<string> dbUser;
+    vector<string> dbPassword;
 
     for (auto&& worker: _config->allWorkers()) {
         auto const wi = _config->workerInfo(worker);
         name       .push_back(wi.name);
         isEnabled  .push_back(wi.isEnabled  ? "yes" : "no");
         isReadOnly .push_back(wi.isReadOnly ? "yes" : "no");
-        svcHostPort.push_back(wi.svcHost + ":" + to_string(wi.svcPort));
-        fsHostPort .push_back(wi.fsHost  + ":" + to_string(wi.fsPort));
+        svcHost    .push_back(wi.svcHost);
+        svcPort    .push_back(to_string(wi.svcPort));
+        fsHost     .push_back(wi.fsHost);
+        fsPort     .push_back(to_string(wi.fsPort));
+        dbHost     .push_back(wi.dbHost);
+        dbPort     .push_back(to_string(wi.dbPort));
+        dbUser     .push_back(wi.dbUser);
+        dbPassword .push_back(_dumpDbShowPassword ? wi.dbPassword : "******");
         dataDir    .push_back(wi.dataDir);
     }
 
     util::ColumnTablePrinter table("WORKERS:", indent, _verticalSeparator);
 
-    table.addColumn("name",                name,        util::ColumnTablePrinter::Alignment::LEFT);
-    table.addColumn("enabled",             isEnabled);
-    table.addColumn("read-only",           isReadOnly);
-    table.addColumn("replication service", svcHostPort, util::ColumnTablePrinter::Alignment::LEFT);
-    table.addColumn("file service",        fsHostPort,  util::ColumnTablePrinter::Alignment::LEFT);
-    table.addColumn("MySQL directory",     dataDir,     util::ColumnTablePrinter::Alignment::LEFT);
+    table.addColumn("name",               name,        util::ColumnTablePrinter::Alignment::LEFT);
+    table.addColumn("enabled",            isEnabled);
+    table.addColumn("read-only",          isReadOnly);
+    table.addColumn("Replication server", svcHost,     util::ColumnTablePrinter::Alignment::LEFT);
+    table.addColumn(":port",              svcPort);
+    table.addColumn("File server",        fsHost,      util::ColumnTablePrinter::Alignment::LEFT);
+    table.addColumn(":port",              fsPort);
+    table.addColumn("Database server",    dbHost,      util::ColumnTablePrinter::Alignment::LEFT);
+    table.addColumn(":port",              dbPort);
+    table.addColumn(":user",              dbUser,      util::ColumnTablePrinter::Alignment::LEFT);
+    table.addColumn(":password",          dbPassword,  util::ColumnTablePrinter::Alignment::LEFT);
+    table.addColumn("Data directory",     dataDir,     util::ColumnTablePrinter::Alignment::LEFT);
 
     table.print(cout, false, false);
 }
@@ -722,6 +760,31 @@ int ConfigApp::_updateWorker() const {
 
             _config->setWorkerDataDir(_workerInfo.name,
                                       _workerInfo.dataDir);
+        }
+
+        if (not _workerInfo.dbHost.empty()
+            and _workerInfo.dbHost != info.dbHost) {
+
+            _config->setWorkerDbHost(_workerInfo.name,
+                                     _workerInfo.dbHost);
+        }
+        if (_workerInfo.dbPort != 0 and
+            _workerInfo.dbPort != info.dbPort) {
+
+            _config->setWorkerDbPort(_workerInfo.name,
+                                     _workerInfo.dbPort);
+        }
+        if (not _workerInfo.dbUser.empty()
+            and _workerInfo.dbUser != info.dbUser) {
+
+            _config->setWorkerDbUser(_workerInfo.name,
+                                     _workerInfo.dbUser);
+        }
+        if (not _workerInfo.dbPassword.empty()
+            and _workerInfo.dbPassword != info.dbPassword) {
+
+            _config->setWorkerDbPassword(_workerInfo.name,
+                                         _workerInfo.dbPassword);
         }
         if (_workerEnable and not info.isEnabled) {
             _config->disableWorker(_workerInfo.name, false);

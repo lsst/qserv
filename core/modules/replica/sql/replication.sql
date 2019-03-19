@@ -49,10 +49,18 @@ CREATE TABLE IF NOT EXISTS `config_worker` (
 
   `data_dir`     VARCHAR(255)       DEFAULT NULL ,  -- a file system path to the databases
 
+  -- Connection parameters for the Qserv worker database
+
+  `db_host`      VARCHAR(255)       NOT NULL ,      -- the host name on which the worker database server runs
+  `db_port`      SMALLINT UNSIGNED  DEFAULT NULL ,  -- override for the global default
+  `db_user`      VARCHAR(255)       DEFAULT NULL ,  -- override for the global default
+  `db_password`  VARCHAR(255)       DEFAULT NULL ,  -- override for the global default
+
   PRIMARY KEY (`name`) ,
 
   UNIQUE  KEY (`svc_host`, `svc_port`) ,
-  UNIQUE  KEY (`fs_host`,  `fs_port`)
+  UNIQUE  KEY (`fs_host`,  `fs_port`) ,
+  UNIQUE  KEY (`db_host`,  `db_port`)
 )
 ENGINE = InnoDB;
 

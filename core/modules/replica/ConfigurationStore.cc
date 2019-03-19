@@ -262,6 +262,70 @@ WorkerInfo ConfigurationStore::setWorkerDataDir(string const& name,
 }
 
 
+WorkerInfo ConfigurationStore::setWorkerDbHost(std::string const& name,
+                                               std::string const& host) {
+    LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " host=" << host);
+    util::Lock lock(_mtx, context(__func__));
+
+    auto&& itr = _workerInfo.find(name);
+    if (_workerInfo.end() == itr) {
+        throw invalid_argument(
+                ::classMethodContext(__func__) + "  no such worker: " + name);
+    }
+    itr->second.dbHost = host;
+
+    return itr->second;
+}
+
+
+WorkerInfo ConfigurationStore::setWorkerDbPort(std::string const& name,
+                                               uint16_t port) {
+    LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " port=" << port);
+    util::Lock lock(_mtx, context(__func__));
+
+    auto&& itr = _workerInfo.find(name);
+    if (_workerInfo.end() == itr) {
+        throw invalid_argument(
+                ::classMethodContext(__func__) + "  no such worker: " + name);
+    }
+    itr->second.dbPort = port;
+
+    return itr->second;
+}
+
+
+WorkerInfo ConfigurationStore::setWorkerDbUser(std::string const& name,
+                                               std::string const& user)  {
+    LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " user=" << user);
+    util::Lock lock(_mtx, context(__func__));
+
+    auto&& itr = _workerInfo.find(name);
+    if (_workerInfo.end() == itr) {
+        throw invalid_argument(
+                ::classMethodContext(__func__) + "  no such worker: " + name);
+    }
+    itr->second.dbUser = user;
+
+    return itr->second;
+}
+
+
+WorkerInfo ConfigurationStore::setWorkerDbPassword(std::string const& name,
+                                                   std::string const& password)  {
+    LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " password=" << "*****");
+    util::Lock lock(_mtx, context(__func__));
+
+    auto&& itr = _workerInfo.find(name);
+    if (_workerInfo.end() == itr) {
+        throw invalid_argument(
+                ::classMethodContext(__func__) + "  no such worker: " + name);
+    }
+    itr->second.dbPassword = password;
+
+    return itr->second;
+}
+
+
 DatabaseFamilyInfo ConfigurationStore::addDatabaseFamily(DatabaseFamilyInfo const& info) {
 
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  familyInfo: " << info);
@@ -515,13 +579,17 @@ void ConfigurationStore::_loadConfiguration(util::ConfigStore const& configStore
 
     uint16_t commonWorkerSvcPort;
     uint16_t commonWorkerFsPort;
+    string   commonDataDir;
+    uint16_t commonWorkerDbPort;
+    string   commonWorkerDbUser;
+    string   commonWorkerDbPassword;
 
-    ::parseKeyVal(configStore, "worker.svc_port", commonWorkerSvcPort, defaultWorkerSvcPort);
-    ::parseKeyVal(configStore, "worker.fs_port",  commonWorkerFsPort,  defaultWorkerFsPort);
-
-    string commonDataDir;
-
-    ::parseKeyVal(configStore, "worker.data_dir",  commonDataDir, defaultDataDir);
+    ::parseKeyVal(configStore, "worker.svc_port",    commonWorkerSvcPort,    defaultWorkerSvcPort);
+    ::parseKeyVal(configStore, "worker.fs_port",     commonWorkerFsPort,     defaultWorkerFsPort);
+    ::parseKeyVal(configStore, "worker.data_dir",    commonDataDir,          defaultDataDir);
+    ::parseKeyVal(configStore, "worker.db_port",     commonWorkerDbPort,     defaultWorkerDbPort);
+    ::parseKeyVal(configStore, "worker.db_user",     commonWorkerDbUser,     defaultWorkerDbUser);
+    ::parseKeyVal(configStore, "worker.db_password", commonWorkerDbPassword, defaultWorkerDbPassword);
 
     // Parse optional worker-specific configuration sections. Assume default
     // or (previously parsed) common values if a whole section or individual
@@ -545,6 +613,10 @@ void ConfigurationStore::_loadConfiguration(util::ConfigStore const& configStore
         ::parseKeyVal(configStore, section+".fs_host",      workerInfo.fsHost,     defaultWorkerFsHost);
         ::parseKeyVal(configStore, section+".fs_port",      workerInfo.fsPort,     commonWorkerFsPort);
         ::parseKeyVal(configStore, section+".data_dir",     workerInfo.dataDir,    commonDataDir);
+        ::parseKeyVal(configStore, section+".db_host",      workerInfo.dbHost,     defaultWorkerDbHost);
+        ::parseKeyVal(configStore, section+".db_port",      workerInfo.dbPort,     commonWorkerDbPort);
+        ::parseKeyVal(configStore, section+".db_user",      workerInfo.dbUser,     commonWorkerDbUser);
+        ::parseKeyVal(configStore, section+".db_password",  workerInfo.dbPassword, commonWorkerDbPassword);
 
         Configuration::translateDataDir(workerInfo.dataDir, name);
     }

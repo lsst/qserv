@@ -60,6 +60,9 @@ json WorkerInfo::toJson() const {
     infoJson["fs_host"]      = fsHost;
     infoJson["fs_port"]      = fsPort;
     infoJson["data_dir"]     = dataDir;
+    infoJson["db_host"]      = dbHost;
+    infoJson["db_port"]      = dbPort;
+    infoJson["db_user"]      = dbUser;
 
     return infoJson;
 }
@@ -107,7 +110,10 @@ ostream& operator <<(ostream& os, WorkerInfo const& info) {
         << "svcPort:"    <<      info.svcPort    << ","
         << "fsHost:'"    <<      info.fsHost     << "',"
         << "fsPort:"     <<      info.fsPort     << ","
-        << "dataDir:'"   <<      info.dataDir    << "')";
+        << "dataDir:'"   <<      info.dataDir    << "',"
+        << "dbHost:'"    <<      info.dbHost     << "',"
+        << "dbPort:"     <<      info.dbPort     << ","
+        << "dbUser:'"    <<      info.dbUser     << "')";
     return os;
 }
 
@@ -188,6 +194,10 @@ uint16_t     const Configuration::defaultWorkerSvcPort                (50000);
 string       const Configuration::defaultWorkerFsHost                 ("localhost");
 uint16_t     const Configuration::defaultWorkerFsPort                 (50001);
 string       const Configuration::defaultDataDir                      ("{worker}");
+string       const Configuration::defaultWorkerDbHost                 ("localhost");
+uint16_t     const Configuration::defaultWorkerDbPort                 (3306);
+string       const Configuration::defaultWorkerDbUser                 (FileUtils::getEffectiveUser());
+string       const Configuration::defaultWorkerDbPassword             ("");
 string       const Configuration::defaultDatabaseTechnology           ("mysql");
 string       const Configuration::defaultDatabaseHost                 ("localhost");
 uint16_t     const Configuration::defaultDatabasePort                 (3306);
@@ -465,6 +475,10 @@ string Configuration::asString() const {
     ss << context() << "defaultWorkerFsHost:                  " << defaultWorkerFsHost << "\n";
     ss << context() << "defaultWorkerFsPort:                  " << defaultWorkerFsPort << "\n";
     ss << context() << "defaultDataDir:                       " << defaultDataDir << "\n";
+    ss << context() << "defaultWorkerDbHost:                  " << defaultWorkerDbHost << "\n";
+    ss << context() << "defaultWorkerDbPort:                  " << defaultWorkerDbPort << "\n";
+    ss << context() << "defaultWorkerDbUser:                  " << defaultWorkerDbUser << "\n";
+    ss << context() << "defaultWorkerDbPassword:              " << "*****" << "\n";
     ss << context() << "defaultDatabaseTechnology:            " << defaultDatabaseTechnology << "\n";
     ss << context() << "defaultDatabaseHost:                  " << defaultDatabaseHost << "\n";
     ss << context() << "defaultDatabasePort:                  " << defaultDatabasePort << "\n";

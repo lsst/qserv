@@ -109,6 +109,15 @@ string ConfigurationFile::dump2init(Configuration::Ptr const& config) {
         << "num_svc_processing_threads = " << to_string(config->workerNumProcessingThreads()) << "\n"
         << "num_fs_processing_threads  = " << to_string(config->fsNumProcessingThreads())     << "\n"
         << "fs_buf_size_bytes          = " << to_string(config->workerFsBufferSizeBytes())    << "\n"
+        << "svc_host                   = " <<           defaultWorkerSvcHost                  << "\n"
+        << "svc_port                   = " << to_string(defaultWorkerSvcPort)                 << "\n"
+        << "fs_host                    = " <<           defaultWorkerFsHost                   << "\n"
+        << "fs_port                    = " << to_string(defaultWorkerFsPort)                  << "\n"
+        << "data_dir                   = " <<          defaultDataDir                        << "\n"
+        << "db_host                    = " <<           defaultWorkerDbHost                   << "\n"
+        << "db_port                    = " << to_string(defaultWorkerDbPort)                  << "\n"
+        << "db_user                    = " <<           defaultWorkerDbUser                   << "\n"
+        << "db_password                = " <<           defaultWorkerDbPassword               << "\n"
         << "\n";
 
     for (auto&& worker: config->allWorkers()) {
@@ -122,6 +131,10 @@ string ConfigurationFile::dump2init(Configuration::Ptr const& config) {
             << "fs_host      = " <<           info.fsHost                  << "\n"
             << "fs_port      = " << to_string(info.fsPort)                 << "\n"
             << "data_dir     = " <<           info.dataDir                 << "\n"
+            << "db_host      = " <<           info.dbHost                  << "\n"
+            << "db_port      = " << to_string(info.dbPort)                 << "\n"
+            << "db_user      = " <<           info.dbUser                  << "\n"
+            << "db_password  = " <<           info.dbPassword              << "\n"
             << "\n";
     }
     for (auto&& family: config->databaseFamilies()) {
