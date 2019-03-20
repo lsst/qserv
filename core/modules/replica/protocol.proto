@@ -46,13 +46,13 @@ package lsst.qserv.replica;
 
 // Request types related to operations with replicas
 //
-enum ProtocolReplicaRequestType {
+enum ProtocolQueuedRequestType {
 
     REPLICA_CREATE   = 0;    // replicate a chunk
     REPLICA_DELETE   = 1;    // delete an existing replica of a chunk
     REPLICA_FIND     = 2;    // find out if a replica is present, and report its state
     REPLICA_FIND_ALL = 3;    // find all replicas and report their states
-    REPLICA_ECHO     = 4;    // test the worker-side framework
+    TEST_ECHO        = 4;    // test the worker-side framework
 }
 
 // Request types for managing above defined requests
@@ -95,7 +95,7 @@ message ProtocolRequestHeader {
 
     // Subtypes of requests
 
-    optional ProtocolReplicaRequestType    replica_type    = 3;
+    optional ProtocolQueuedRequestType     queued_type     = 3;
     optional ProtocolManagementRequestType management_type = 4;
     optional ProtocolServiceRequestType    service_type    = 5;
 }
@@ -162,7 +162,7 @@ message ProtocolRequestEcho {
     required string data = 2;
 
     /// The simulated processing time (milliseconds) of the request.
-    /// If the delay is greater tahn 0 then the request will be queued for
+    /// If the delay is greater than 0 then the request will be queued for
     /// delayed processing via the Processor's queue.
     optional uint64 delay = 3 [default = 0];
 }
@@ -177,9 +177,9 @@ message ProtocolRequestStop {
 
     // A specific type of the request will affect a choice of the status
     // object returned in response. The type needs to match a value set
-    // in the preceeding header at: ProtocolRequestHeader::type
+    // in the preceding header at: ProtocolRequestHeader::type
 
-    optional ProtocolReplicaRequestType replica_type = 2;
+    optional ProtocolQueuedRequestType queued_type = 2;
 }
 
 // This request is sent to request a status of an on-going replication (if any
@@ -192,9 +192,9 @@ message ProtocolRequestStatus {
 
     // A specific type of the request will affect a choice of the status
     // object returned in response. The type needs to match a value set
-    // in the preceeding header at: ProtocolRequestHeader::type
+    // in the preceding header at: ProtocolRequestHeader::type
 
-    optional ProtocolReplicaRequestType replica_type = 2;
+    optional ProtocolQueuedRequestType queued_type = 2;
 }
 
 /////////////////////////////////////////////////////////
@@ -208,7 +208,7 @@ message ProtocolRequestStatus {
 // request.
 //
 // The header must be followed by one or more messages which are
-// expected by the Controller in response to a preceeding
+// expected by the Controller in response to a preceding
 // request associated with the original request.
 //
 message ProtocolResponseHeader {
@@ -233,13 +233,13 @@ message ProtocolPerformance {
     /// When request execution started by a worker service
     required uint64 start_time = 2;
 
-    /// When request execution fiished by a worker service
+    /// When request execution finished by a worker service
     required uint64 finish_time = 3;
 }
 
 // Status values returned by all request related to operations with
 // replicas. Request management operations always return messages whose types
-// match the return types of the corresponding (original) replica-related reqiests.
+// match the return types of the corresponding (original) replica-related requests.
 // Service management requests have their own set of status values.
 //
 enum ProtocolStatus {
@@ -484,18 +484,10 @@ message ProtocolResponseEcho {
 message ProtocolServiceResponseInfo {
 
     /// Replication related requests only
-    required ProtocolReplicaRequestType replica_type = 1;
-
-    // Common parameters of all requests
+    required ProtocolQueuedRequestType queued_type = 1;
 
     required string id       = 2;
     required int32  priority = 3;
-    required string database = 4;
-
-    // These parameters vary depending on a request type
-
-    optional uint32 chunk    = 5;
-    optional string worker   = 6;
 }
 
 message ProtocolServiceResponse {

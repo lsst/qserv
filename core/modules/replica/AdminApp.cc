@@ -237,21 +237,15 @@ int AdminApp::runImpl() {
         vector<string>   requestType;
         vector<string>   queue;
         vector<uint32_t> priority;
-        vector<string>   database;
-        vector<uint32_t> chunk;
-        vector<string>   sourceWorkerName;
 
         auto analyzeRemoteRequestInfo = [&](string const& worker,
                                             string const& queueName,
                                             ProtocolServiceResponseInfo const& info) {
             workerName      .push_back(worker);
             requestId       .push_back(info.id());
-            requestType     .push_back(ProtocolReplicaRequestType_Name(info.replica_type()));
+            requestType     .push_back(ProtocolQueuedRequestType_Name(info.queued_type()));
             queue           .push_back(queueName);
             priority        .push_back(info.priority());
-            database        .push_back(info.database());
-            chunk           .push_back(info.chunk());
-            sourceWorkerName.push_back(info.worker());
         };
         for (auto const& ptr: tracker.requests) {
 
@@ -271,14 +265,11 @@ int AdminApp::runImpl() {
         }
         util::ColumnTablePrinter tableRequests("REQUESTS:", "  ", _verticalSeparator);
 
-        tableRequests.addColumn("worker",        workerName,       util::ColumnTablePrinter::Alignment::LEFT);
-        tableRequests.addColumn("id",            requestId,        util::ColumnTablePrinter::Alignment::LEFT);
-        tableRequests.addColumn("type",          requestType,      util::ColumnTablePrinter::Alignment::LEFT);
-        tableRequests.addColumn("queue",         queue,            util::ColumnTablePrinter::Alignment::LEFT);
-        tableRequests.addColumn("priority",      priority);
-        tableRequests.addColumn("database",      database,         util::ColumnTablePrinter::Alignment::LEFT);
-        tableRequests.addColumn("chunk",         chunk);
-        tableRequests.addColumn("source worker", sourceWorkerName, util::ColumnTablePrinter::Alignment::LEFT);
+        tableRequests.addColumn("worker",   workerName,  util::ColumnTablePrinter::Alignment::LEFT);
+        tableRequests.addColumn("id",       requestId,   util::ColumnTablePrinter::Alignment::LEFT);
+        tableRequests.addColumn("type",     requestType, util::ColumnTablePrinter::Alignment::LEFT);
+        tableRequests.addColumn("queue",    queue,       util::ColumnTablePrinter::Alignment::LEFT);
+        tableRequests.addColumn("priority", priority);
 
         cout << "\n";
         tableRequests.print(cout, false, false);

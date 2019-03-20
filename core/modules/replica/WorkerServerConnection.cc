@@ -203,7 +203,7 @@ void WorkerServerConnection::_received(boost::system::error_code const& ec,
 
     switch (hdr.type()) {
 
-        case ProtocolRequestHeader::REPLICA: _processReplicaRequest(   hdr); break;
+        case ProtocolRequestHeader::REPLICA: _processQueuedRequest(    hdr); break;
         case ProtocolRequestHeader::REQUEST: _processManagementRequest(hdr); break;
         case ProtocolRequestHeader::SERVICE: _processServiceRequest(   hdr); break;
 
@@ -215,15 +215,15 @@ void WorkerServerConnection::_received(boost::system::error_code const& ec,
 }
 
 
-void WorkerServerConnection::_processReplicaRequest(ProtocolRequestHeader& hdr) {
+void WorkerServerConnection::_processQueuedRequest(ProtocolRequestHeader& hdr) {
 
     // Read the request length
     uint32_t bytes;
     if (not ::readLength(_socket, _bufferPtr, bytes)) return;
 
-    switch (hdr.replica_type()) {
+    switch (hdr.queued_type()) {
 
-        case ProtocolReplicaRequestType::REPLICA_CREATE: {
+        case ProtocolQueuedRequestType::REPLICA_CREATE: {
 
             // Read the request body
             ProtocolRequestReplicate request;
@@ -234,7 +234,7 @@ void WorkerServerConnection::_processReplicaRequest(ProtocolRequestHeader& hdr) 
             _reply(hdr.id(), response);
             break;
         }
-        case ProtocolReplicaRequestType::REPLICA_DELETE: {
+        case ProtocolQueuedRequestType::REPLICA_DELETE: {
 
             // Read the request body
             ProtocolRequestDelete request;
@@ -245,7 +245,7 @@ void WorkerServerConnection::_processReplicaRequest(ProtocolRequestHeader& hdr) 
             _reply(hdr.id(), response);
             break;
         }
-        case ProtocolReplicaRequestType::REPLICA_FIND: {
+        case ProtocolQueuedRequestType::REPLICA_FIND: {
 
             // Read the request body
             ProtocolRequestFind request;
@@ -256,7 +256,7 @@ void WorkerServerConnection::_processReplicaRequest(ProtocolRequestHeader& hdr) 
             _reply(hdr.id(), response);
             break;
         }
-        case ProtocolReplicaRequestType::REPLICA_FIND_ALL: {
+        case ProtocolQueuedRequestType::REPLICA_FIND_ALL: {
 
             // Read the request body
             ProtocolRequestFindAll request;
@@ -267,7 +267,7 @@ void WorkerServerConnection::_processReplicaRequest(ProtocolRequestHeader& hdr) 
             _reply(hdr.id(), response);
             break;
         }
-        case ProtocolReplicaRequestType::REPLICA_ECHO: {
+        case ProtocolQueuedRequestType::TEST_ECHO: {
 
             // Read the request body
             ProtocolRequestEcho request;
@@ -281,7 +281,7 @@ void WorkerServerConnection::_processReplicaRequest(ProtocolRequestHeader& hdr) 
         default:
             throw logic_error(
                     "WorkerServerConnection::" + string(__func__) + "  unhandled request type: '" +
-                    ProtocolReplicaRequestType_Name(hdr.replica_type()));
+                    ProtocolQueuedRequestType_Name(hdr.queued_type()));
     }
 }
 
@@ -303,33 +303,33 @@ void WorkerServerConnection::_processManagementRequest(ProtocolRequestHeader& hd
             ProtocolRequestStop request;
             if (not ::readMessage(_socket, _bufferPtr, bytes, request)) return;
 
-            switch (request.replica_type()) {
+            switch (request.queued_type()) {
 
-                case ProtocolReplicaRequestType::REPLICA_CREATE: {
+                case ProtocolQueuedRequestType::REPLICA_CREATE: {
                     ProtocolResponseReplicate response;
                     _processor->dequeueOrCancel(hdr.id(), request, response);
                     _reply(hdr.id(), response);
                     break;
                 }
-                case ProtocolReplicaRequestType::REPLICA_DELETE: {
+                case ProtocolQueuedRequestType::REPLICA_DELETE: {
                     ProtocolResponseDelete response;
                     _processor->dequeueOrCancel(hdr.id(), request, response);
                     _reply(hdr.id(), response);
                     break;
                 }
-                case ProtocolReplicaRequestType::REPLICA_FIND: {
+                case ProtocolQueuedRequestType::REPLICA_FIND: {
                     ProtocolResponseFind response;
                     _processor->dequeueOrCancel(hdr.id(), request, response);
                     _reply(hdr.id(), response);
                     break;
                 }
-                case ProtocolReplicaRequestType::REPLICA_FIND_ALL: {
+                case ProtocolQueuedRequestType::REPLICA_FIND_ALL: {
                     ProtocolResponseFindAll response;
                     _processor->dequeueOrCancel(hdr.id(), request, response);
                     _reply(hdr.id(), response);
                     break;
                 }
-                case ProtocolReplicaRequestType::REPLICA_ECHO: {
+                case ProtocolQueuedRequestType::TEST_ECHO: {
                     ProtocolResponseEcho response;
                     _processor->dequeueOrCancel(hdr.id(), request, response);
                     _reply(hdr.id(), response);
@@ -338,7 +338,7 @@ void WorkerServerConnection::_processManagementRequest(ProtocolRequestHeader& hd
                 default:
                     throw logic_error(
                             "WorkerServerConnection::" + string(__func__) + "  unhandled request type: '" +
-                            ProtocolReplicaRequestType_Name(request.replica_type()));
+                            ProtocolQueuedRequestType_Name(request.queued_type()));
             }
             break;
         }
@@ -348,33 +348,33 @@ void WorkerServerConnection::_processManagementRequest(ProtocolRequestHeader& hd
             ProtocolRequestStatus request;
             if (not ::readMessage(_socket, _bufferPtr, bytes, request)) return;
 
-            switch (request.replica_type()) {
+            switch (request.queued_type()) {
 
-                case ProtocolReplicaRequestType::REPLICA_CREATE: {
+                case ProtocolQueuedRequestType::REPLICA_CREATE: {
                     ProtocolResponseReplicate response;
                     _processor->checkStatus(hdr.id(), request, response);
                     _reply(hdr.id(), response);
                     break;
                 }
-                case ProtocolReplicaRequestType::REPLICA_DELETE: {
+                case ProtocolQueuedRequestType::REPLICA_DELETE: {
                     ProtocolResponseDelete response;
                     _processor->checkStatus(hdr.id(), request, response);
                     _reply(hdr.id(), response);
                     break;
                 }
-                case ProtocolReplicaRequestType::REPLICA_FIND: {
+                case ProtocolQueuedRequestType::REPLICA_FIND: {
                     ProtocolResponseFind response;
                     _processor->checkStatus(hdr.id(), request, response);
                     _reply(hdr.id(), response);
                     break;
                 }
-                case ProtocolReplicaRequestType::REPLICA_FIND_ALL: {
+                case ProtocolQueuedRequestType::REPLICA_FIND_ALL: {
                     ProtocolResponseFindAll response;
                     _processor->checkStatus(hdr.id(), request, response);
                     _reply(hdr.id(), response);
                     break;
                 }
-                case ProtocolReplicaRequestType::REPLICA_ECHO: {
+                case ProtocolQueuedRequestType::TEST_ECHO: {
                     ProtocolResponseEcho response;
                     _processor->checkStatus(hdr.id(), request, response);
                     _reply(hdr.id(), response);
@@ -383,7 +383,7 @@ void WorkerServerConnection::_processManagementRequest(ProtocolRequestHeader& hd
                 default:
                     throw logic_error(
                             "WorkerServerConnection::" + string(__func__) + "  unhandled request type: '" +
-                            ProtocolReplicaRequestType_Name(request.replica_type()));
+                            ProtocolQueuedRequestType_Name(request.queued_type()));
             }
             break;
         }

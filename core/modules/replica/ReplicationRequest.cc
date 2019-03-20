@@ -124,7 +124,7 @@ void ReplicationRequest::startImpl(util::Lock const& lock) {
     ProtocolRequestHeader hdr;
     hdr.set_id(id());
     hdr.set_type(ProtocolRequestHeader::REPLICA);
-    hdr.set_replica_type(ProtocolReplicaRequestType::REPLICA_CREATE);
+    hdr.set_queued_type(ProtocolQueuedRequestType::REPLICA_CREATE);
 
     buffer()->serialize(hdr);
 
@@ -189,7 +189,7 @@ void ReplicationRequest::_awaken(boost::system::error_code const& ec) {
 
     ProtocolRequestStatus message;
     message.set_id(remoteId());
-    message.set_replica_type(ProtocolReplicaRequestType::REPLICA_CREATE);
+    message.set_queued_type(ProtocolQueuedRequestType::REPLICA_CREATE);
 
     buffer()->serialize(message);
 

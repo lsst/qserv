@@ -53,7 +53,7 @@ StopRequestBase::StopRequestBase(ServiceProvider::Ptr const& serviceProvider,
                                  char const* requestTypeName,
                                  string const& worker,
                                  string const& targetRequestId,
-                                 ProtocolReplicaRequestType replicaRequestType,
+                                 ProtocolQueuedRequestType targetRequestType,
                                  bool keepTracking,
                                  shared_ptr<Messenger> const& messenger)
     :   RequestMessenger(serviceProvider,
@@ -65,7 +65,7 @@ StopRequestBase::StopRequestBase(ServiceProvider::Ptr const& serviceProvider,
                          false /* allowDuplicate */,
                          messenger),
         _targetRequestId(targetRequestId),
-        _replicaRequestType(replicaRequestType) {
+        _targetRequestType(targetRequestType) {
 }
 
 
@@ -132,7 +132,7 @@ void StopRequestBase::_sendImpl(util::Lock const& lock) {
 
     ProtocolRequestStop message;
     message.set_id(_targetRequestId);
-    message.set_replica_type(_replicaRequestType);
+    message.set_queued_type(_targetRequestType);
 
     buffer()->serialize(message);
 

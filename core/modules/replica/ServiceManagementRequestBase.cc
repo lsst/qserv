@@ -54,31 +54,9 @@ void dumpRequestInfo(ostream& os,
 
     for (auto&& r : requests) {
         os  << "\n"
-            << "    type:     " << ProtocolReplicaRequestType_Name(r.replica_type()) << "\n"
+            << "    type:     " << ProtocolQueuedRequestType_Name(r.queued_type()) << "\n"
             << "    id:       " << r.id() << "\n"
-            << "    priority: " << r.priority() << "\n"
-            << "    database: " << r.database() << "\n";
-
-        switch (r.replica_type()) {
-            case ProtocolReplicaRequestType::REPLICA_CREATE:
-                os  << "    chunk:    " << r.chunk() << "\n"
-                    << "    worker:   " << r.worker() << "\n";
-                break;
-
-            case ProtocolReplicaRequestType::REPLICA_DELETE:
-            case ProtocolReplicaRequestType::REPLICA_FIND:
-                os  << "    chunk:    " << r.chunk() << "\n";
-                break;
-
-            case ProtocolReplicaRequestType::REPLICA_FIND_ALL:
-                break;
-
-            default:
-                throw logic_error(
-                        "ServiceManagementRequest::" + string(__func__) +
-                        "  unhandled request type " +
-                        ProtocolReplicaRequestType_Name(r.replica_type()));
-        }
+            << "    priority: " << r.priority() << "\n";
     }
 }
 

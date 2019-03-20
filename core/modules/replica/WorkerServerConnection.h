@@ -145,12 +145,12 @@ private:
                    size_t bytes_transferred);
 
     /**
-     * Process replication requests (REPLICATE, DELETE, FIND, FIND-ALL)
+     * Process queued requests (REPLICATE, DELETE, FIND, FIND-ALL, ECHO, etc.)
      *
      * @param hdr
      *   request header to be inspected
      */
-    void _processReplicaRequest(ProtocolRequestHeader& hdr);
+    void _processQueuedRequest(ProtocolRequestHeader& hdr);
 
     /**
      * Process requests about replication requests (STOP, STATUS)

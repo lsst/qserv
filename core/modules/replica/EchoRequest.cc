@@ -83,7 +83,7 @@ EchoRequest::EchoRequest(ServiceProvider::Ptr const& serviceProvider,
                          shared_ptr<Messenger> const& messenger)
     :   RequestMessenger(serviceProvider,
                          io_service,
-                         "REPLICA_ECHO",
+                         "ECHO",
                          worker,
                          priority,
                          keepTracking,
@@ -113,7 +113,7 @@ void EchoRequest::startImpl(util::Lock const& lock) {
     ProtocolRequestHeader hdr;
     hdr.set_id(id());
     hdr.set_type(ProtocolRequestHeader::REPLICA);
-    hdr.set_replica_type(ProtocolReplicaRequestType::REPLICA_ECHO);
+    hdr.set_queued_type(ProtocolQueuedRequestType::TEST_ECHO);
 
     buffer()->serialize(hdr);
 
@@ -177,7 +177,7 @@ void EchoRequest::_awaken(boost::system::error_code const& ec) {
 
     ProtocolRequestStatus message;
     message.set_id(id());
-    message.set_replica_type(ProtocolReplicaRequestType::REPLICA_ECHO);
+    message.set_queued_type(ProtocolQueuedRequestType::TEST_ECHO);
 
     buffer()->serialize(message);
 

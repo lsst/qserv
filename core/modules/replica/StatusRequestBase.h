@@ -84,7 +84,7 @@ protected:
      *   an identifier of the target request whose remote status
      *   is going to be inspected
      *
-     * @param replicaRequestType
+     * @param targetRequestType
      *   type of a request affected by the operation
      *
      * @param keepTracking
@@ -98,7 +98,7 @@ protected:
                       char const* requestName,
                       std::string const& worker,
                       std::string const& targetRequestId,
-                      ProtocolReplicaRequestType replicaRequestType,
+                      ProtocolQueuedRequestType targetRequestType,
                       bool keepTracking,
                       std::shared_ptr<Messenger> const& messenger);
 
@@ -168,7 +168,7 @@ private:
 
     std::string const _targetRequestId;
 
-    ProtocolReplicaRequestType const _replicaRequestType;
+    ProtocolQueuedRequestType const _targetRequestType;
 };
 
 }}} // namespace lsst::qserv::replica

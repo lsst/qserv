@@ -114,7 +114,7 @@ void DeleteRequest::startImpl(util::Lock const& lock) {
     ProtocolRequestHeader hdr;
     hdr.set_id(id());
     hdr.set_type(ProtocolRequestHeader::REPLICA);
-    hdr.set_replica_type(ProtocolReplicaRequestType::REPLICA_DELETE);
+    hdr.set_queued_type(ProtocolQueuedRequestType::REPLICA_DELETE);
 
     buffer()->serialize(hdr);
 
@@ -178,7 +178,7 @@ void DeleteRequest::_awaken(boost::system::error_code const& ec) {
 
     ProtocolRequestStatus message;
     message.set_id(remoteId());
-    message.set_replica_type(ProtocolReplicaRequestType::REPLICA_DELETE);
+    message.set_queued_type(ProtocolQueuedRequestType::REPLICA_DELETE);
 
     buffer()->serialize(message);
 

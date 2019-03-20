@@ -123,7 +123,7 @@ void FindRequest::startImpl(util::Lock const& lock) {
     ProtocolRequestHeader hdr;
     hdr.set_id(id());
     hdr.set_type(ProtocolRequestHeader::REPLICA);
-    hdr.set_replica_type(ProtocolReplicaRequestType::REPLICA_FIND);
+    hdr.set_queued_type(ProtocolQueuedRequestType::REPLICA_FIND);
 
     buffer()->serialize(hdr);
 
@@ -188,7 +188,7 @@ void FindRequest::_awaken(boost::system::error_code const& ec) {
 
     ProtocolRequestStatus message;
     message.set_id(id());
-    message.set_replica_type(ProtocolReplicaRequestType::REPLICA_FIND);
+    message.set_queued_type(ProtocolQueuedRequestType::REPLICA_FIND);
 
     buffer()->serialize(message);
 

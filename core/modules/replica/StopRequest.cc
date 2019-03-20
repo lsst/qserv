@@ -37,8 +37,8 @@ char const* StopReplicationRequestPolicy::requestName() {
 }
 
 
-ProtocolReplicaRequestType StopReplicationRequestPolicy::replicaRequestType() {
-    return ProtocolReplicaRequestType::REPLICA_CREATE;
+ProtocolQueuedRequestType StopReplicationRequestPolicy::targetRequestType() {
+    return ProtocolQueuedRequestType::REPLICA_CREATE;
 }
 
 
@@ -65,8 +65,8 @@ char const* StopDeleteRequestPolicy::requestName() {
 }
 
 
-ProtocolReplicaRequestType StopDeleteRequestPolicy::replicaRequestType() {
-    return ProtocolReplicaRequestType::REPLICA_DELETE;
+ProtocolQueuedRequestType StopDeleteRequestPolicy::targetRequestType() {
+    return ProtocolQueuedRequestType::REPLICA_DELETE;
 }
 
 
@@ -93,8 +93,8 @@ char const* StopFindRequestPolicy::requestName() {
 }
 
 
-ProtocolReplicaRequestType StopFindRequestPolicy::replicaRequestType() {
-    return ProtocolReplicaRequestType::REPLICA_FIND;
+ProtocolQueuedRequestType StopFindRequestPolicy::targetRequestType() {
+    return ProtocolQueuedRequestType::REPLICA_FIND;
 }
 
 
@@ -122,8 +122,8 @@ char const* StopFindAllRequestPolicy::requestName() {
 }
 
 
-ProtocolReplicaRequestType StopFindAllRequestPolicy::replicaRequestType() {
-    return ProtocolReplicaRequestType::REPLICA_FIND_ALL;
+ProtocolQueuedRequestType StopFindAllRequestPolicy::targetRequestType() {
+    return ProtocolQueuedRequestType::REPLICA_FIND_ALL;
 }
 
 
@@ -149,12 +149,12 @@ void StopFindAllRequestPolicy::extractTargetRequestParams(ResponseMessageType co
 // ------------------------------------------
 
 char const* StopEchoRequestPolicy::requestName() {
-    return "REQUEST_STOP:REPLICA_ECHO";
+    return "REQUEST_STOP:TEST_ECHO";
 }
 
 
-ProtocolReplicaRequestType StopEchoRequestPolicy::replicaRequestType() {
-    return ProtocolReplicaRequestType::REPLICA_ECHO;
+ProtocolQueuedRequestType StopEchoRequestPolicy::targetRequestType() {
+    return ProtocolQueuedRequestType::TEST_ECHO;
 }
 
 

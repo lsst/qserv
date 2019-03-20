@@ -67,7 +67,7 @@ struct StopReplicationRequestPolicy {
 
     static char const* requestName();
 
-    static ProtocolReplicaRequestType replicaRequestType();
+    static ProtocolQueuedRequestType targetRequestType();
 
     static void extractResponseData(ResponseMessageType const& msg,
                                     ResponseDataType& data);
@@ -92,7 +92,7 @@ struct StopDeleteRequestPolicy {
 
     static char const* requestName();
 
-    static ProtocolReplicaRequestType replicaRequestType();
+    static ProtocolQueuedRequestType targetRequestType();
 
     static void extractResponseData(ResponseMessageType const& msg,
                                     ResponseDataType& data);
@@ -117,7 +117,7 @@ struct StopFindRequestPolicy {
 
     static char const* requestName();
 
-    static ProtocolReplicaRequestType replicaRequestType();
+    static ProtocolQueuedRequestType targetRequestType();
 
     static void extractResponseData(ResponseMessageType const& msg,
                                     ResponseDataType& data);
@@ -142,7 +142,7 @@ struct StopFindAllRequestPolicy {
 
     static char const* requestName();
 
-    static ProtocolReplicaRequestType replicaRequestType();
+    static ProtocolQueuedRequestType targetRequestType();
 
     static void extractResponseData(ResponseMessageType const& msg,
                                     ResponseDataType& data);
@@ -170,7 +170,7 @@ struct StopEchoRequestPolicy {
 
     static char const* requestName();
 
-    static ProtocolReplicaRequestType replicaRequestType();
+    static ProtocolQueuedRequestType targetRequestType();
 
     static void extractResponseData(ResponseMessageType const& msg,
                                     ResponseDataType& data);
@@ -270,7 +270,7 @@ public:
                 POLICY::requestName(),
                 worker,
                 targetRequestId,
-                POLICY::replicaRequestType(),
+                POLICY::targetRequestType(),
                 onFinish,
                 keepTracking,
                 messenger));
@@ -317,7 +317,7 @@ private:
                 char const* requestName,
                 std::string const& worker,
                 std::string const& targetRequestId,
-                ProtocolReplicaRequestType replicaRequestType,
+                ProtocolQueuedRequestType targetRequestType,
                 CallbackType const& onFinish,
                 bool keepTracking,
                 std::shared_ptr<Messenger> const& messenger)
@@ -326,7 +326,7 @@ private:
                             requestName,
                             worker,
                             targetRequestId,
-                            replicaRequestType,
+                            targetRequestType,
                             keepTracking,
                             messenger),
             _onFinish(onFinish) {

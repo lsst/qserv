@@ -690,47 +690,23 @@ void WorkerProcessor::_setServiceResponseInfo(
         WorkerRequest::Ptr const& request,
         ProtocolServiceResponseInfo* info) const {
 
-    if (
-        auto const ptr = dynamic_pointer_cast<WorkerReplicationRequest>(request)) {
-
-        info->set_replica_type(ProtocolReplicaRequestType::REPLICA_CREATE);
-        info->set_id(          ptr->id());
-        info->set_priority(    ptr->priority());
-        info->set_database(    ptr->database());
-        info->set_chunk(       ptr->chunk());
-        info->set_worker(      ptr->sourceWorker());
-
-    } else if (
-        auto const ptr = dynamic_pointer_cast<WorkerDeleteRequest>(request)) {
-
-        info->set_replica_type(ProtocolReplicaRequestType::REPLICA_DELETE);
-        info->set_id(          ptr->id());
-        info->set_priority(    ptr->priority());
-        info->set_database(    ptr->database());
-        info->set_chunk(       ptr->chunk());
-
-    } else if (
-        auto const ptr = dynamic_pointer_cast<WorkerFindRequest>(request)) {
-
-        info->set_replica_type(ProtocolReplicaRequestType::REPLICA_FIND);
-        info->set_id(          ptr->id());
-        info->set_priority(    ptr->priority());
-        info->set_database(    ptr->database());
-        info->set_chunk(       ptr->chunk());
-
-    } else if (
-        auto const ptr = dynamic_pointer_cast<WorkerFindAllRequest>(request)) {
-
-        info->set_replica_type(ProtocolReplicaRequestType::REPLICA_FIND_ALL);
-        info->set_id(          ptr->id());
-        info->set_priority(    ptr->priority());
-        info->set_database(    ptr->database());
-
+    if (nullptr != dynamic_pointer_cast<WorkerReplicationRequest>(request)) {
+        info->set_queued_type(ProtocolQueuedRequestType::REPLICA_CREATE);
+    } else if (nullptr != dynamic_pointer_cast<WorkerDeleteRequest>(request)) {
+        info->set_queued_type(ProtocolQueuedRequestType::REPLICA_DELETE);
+    } else if (nullptr != dynamic_pointer_cast<WorkerFindRequest>(request)) {
+        info->set_queued_type(ProtocolQueuedRequestType::REPLICA_FIND);
+    } else if (nullptr != dynamic_pointer_cast<WorkerFindAllRequest>(request)) {
+        info->set_queued_type(ProtocolQueuedRequestType::REPLICA_FIND_ALL);
+    } else if (nullptr != dynamic_pointer_cast<WorkerEchoRequest>(request)) {
+        info->set_queued_type(ProtocolQueuedRequestType::TEST_ECHO);
     } else {
         throw logic_error(
                 "WorkerProcessor::" + string(__func__) +
                 "  unsupported request type: " + request->type() + " id: " + request->id());
     }
+    info->set_id(request->id());
+    info->set_priority(request->priority());
 }
 
 
