@@ -31,7 +31,7 @@
 #include <vector>
 
 // Qserv headers
-#include "proto/replication.pb.h"
+#include "replica/protocol.pb.h"
 #include "replica/ServiceProvider.h"
 #include "replica/WorkerProcessorThread.h"
 #include "replica/WorkerRequest.h"
@@ -176,8 +176,8 @@ public:
      *   the client
      */
     void enqueueForReplication(std::string const& id,
-                               proto::ReplicationRequestReplicate const& request,
-                               proto::ReplicationResponseReplicate& response);
+                               ProtocolRequestReplicate const& request,
+                               ProtocolResponseReplicate& response);
 
     /**
      * Enqueue the replica deletion request for processing
@@ -193,8 +193,8 @@ public:
      *   to the client
      */
     void enqueueForDeletion(std::string const& id,
-                            proto::ReplicationRequestDelete const& request,
-                            proto::ReplicationResponseDelete& response);
+                            ProtocolRequestDelete const& request,
+                            ProtocolResponseDelete& response);
 
     /**
      * Enqueue the replica lookup request for processing
@@ -210,8 +210,8 @@ public:
      *   to the client
      */
     void enqueueForFind(std::string const& id,
-                        proto::ReplicationRequestFind const& request,
-                        proto::ReplicationResponseFind& response);
+                        ProtocolRequestFind const& request,
+                        ProtocolResponseFind& response);
 
     /**
      * Enqueue the multi-replica lookup request for processing
@@ -227,8 +227,8 @@ public:
      *   to the client
      */
     void enqueueForFindAll(std::string const& id,
-                           proto::ReplicationRequestFindAll const& request,
-                           proto::ReplicationResponseFindAll& response);
+                           ProtocolRequestFindAll const& request,
+                           ProtocolResponseFindAll& response);
 
     /**
      * Enqueue the worker-side testing request for processing
@@ -244,8 +244,8 @@ public:
      *   to the client
      */
     void enqueueForEcho(std::string const& id,
-                        proto::ReplicationRequestEcho const& request,
-                        proto::ReplicationResponseEcho& response);
+                        ProtocolRequestEcho const& request,
+                        ProtocolResponseEcho& response);
 
     /**
      * Set default values to protocol response which has 3 mandatory fields:
@@ -265,8 +265,8 @@ public:
      */
     template <class PROTOCOL_RESPONSE_TYPE>
     static void setDefaultResponse(PROTOCOL_RESPONSE_TYPE& response,
-                                   proto::ReplicationStatus status,
-                                   proto::ReplicationStatusExt extendedStatus) {
+                                   ProtocolStatus status,
+                                   ProtocolStatusExt extendedStatus) {
 
         WorkerPerformance performance;
         performance.setUpdateStart();
@@ -297,7 +297,7 @@ public:
      */
     template <typename RESPONSE_MSG_TYPE>
     void dequeueOrCancel(std::string const& id,
-                         proto::ReplicationRequestStop const& request,
+                         ProtocolRequestStop const& request,
                          RESPONSE_MSG_TYPE& response) {
 
         util::Lock lock(_mtx, _context() + __func__);
@@ -305,8 +305,8 @@ public:
         // Set this response unless an exact request (same type and identifier)
         // will be found.
         setDefaultResponse(response,
-                           proto::ReplicationStatus::BAD,
-                           proto::ReplicationStatusExt::INVALID_ID);
+                           ProtocolStatus::BAD,
+                           ProtocolStatusExt::INVALID_ID);
 
         // Try to locate a request with specified identifier and make sure
         // its actual type matches expectations.
@@ -343,7 +343,7 @@ public:
      */
     template <typename RESPONSE_MSG_TYPE>
     void checkStatus(std::string const& id,
-                     proto::ReplicationRequestStatus const& request,
+                     ProtocolRequestStatus const& request,
                      RESPONSE_MSG_TYPE& response) {
 
         util::Lock lock(_mtx, _context() + __func__);
@@ -351,8 +351,8 @@ public:
         // Set this response unless an exact request (same type and identifier)
         // will be found.
         setDefaultResponse(response,
-                           proto::ReplicationStatus::BAD,
-                           proto::ReplicationStatusExt::INVALID_ID);
+                           ProtocolStatus::BAD,
+                           ProtocolStatusExt::INVALID_ID);
 
         // Try to locate a request with specified identifier
 
@@ -390,10 +390,10 @@ public:
      * @param extendedReport
      *   to return detailed info on all known replica-related requests
      */
-    void setServiceResponse(proto::ReplicationServiceResponse& response,
+    void setServiceResponse(ProtocolServiceResponse& response,
                             std::string const& id,
-                            proto::ReplicationServiceResponse::Status status,
-                            bool extendedReport = false);
+                            ProtocolServiceResponse::Status status,
+                            bool extendedReport=false);
 
     ///@return total number of new unprocessed requests
     size_t numNewRequests() const;
@@ -421,7 +421,7 @@ private:
      * @return
      *   the matching completion status as per a Protobuf definition
      */
-    static proto::ReplicationStatus translate(WorkerRequest::CompletionStatus status);
+    static ProtocolStatus translate(WorkerRequest::CompletionStatus status);
 
     /**
      * Return the next request which is ready to be processed
@@ -497,7 +497,7 @@ private:
      *   object. Otherwise it will throw the std::logic_error exception.
      */
     void _setInfo(WorkerRequest::Ptr const& request,
-                  proto::ReplicationResponseReplicate& response);
+                  ProtocolResponseReplicate& response);
 
     /**
      * Extract the extra data from the request and put it into the response object.
@@ -512,7 +512,7 @@ private:
      *   if the dynamic type of the request won't match expectations
      */
     void _setInfo(WorkerRequest::Ptr const& request,
-                  proto::ReplicationResponseDelete& response);
+                  ProtocolResponseDelete& response);
 
     /**
      * Extract the replica info (for one chunk) from the request and put
@@ -528,7 +528,7 @@ private:
      *   if the dynamic type of the request won't match expectations
      */
     void _setInfo(WorkerRequest::Ptr const& request,
-                  proto::ReplicationResponseFind& response);
+                  ProtocolResponseFind& response);
 
     /**
      * Extract the replica info (for multiple chunks) from the request and put
@@ -544,7 +544,7 @@ private:
      *   if the dynamic type of the request won't match expectations
      */
     void _setInfo(WorkerRequest::Ptr const& request,
-                  proto::ReplicationResponseFindAll& response);
+                  ProtocolResponseFindAll& response);
 
     /**
      * Extract the replica info (for multiple chunks) from the request and put
@@ -560,7 +560,7 @@ private:
      *   if the dynamic type of the request won't match expectations
      */
     void _setInfo(WorkerRequest::Ptr const& request,
-                  proto::ReplicationResponseEcho& response);
+                  ProtocolResponseEcho& response);
 
     /**
      * Fill in the information object for the specified request based on its
@@ -576,7 +576,7 @@ private:
      *   for unsupported request types.
      */
     void _setServiceResponseInfo(WorkerRequest::Ptr const& request,
-                                 proto::ReplicationServiceResponseInfo* info) const;
+                                 ProtocolServiceResponseInfo* info) const;
 
     /**
      * Report a decision not to process a request

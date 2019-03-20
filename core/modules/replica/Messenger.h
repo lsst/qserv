@@ -28,8 +28,8 @@
 #include <string>
 
 // Qserv headers
-#include "proto/replication.pb.h"
 #include "replica/MessengerConnector.h"
+#include "replica/protocol.pb.h"
 #include "replica/ServiceProvider.h"
 
 // This header declarations
@@ -111,7 +111,7 @@ public:
     template <class RESPONSE_TYPE>
     void send(std::string  const& worker,
               std::string  const& id,
-              std::shared_ptr<replica::ProtocolBuffer> const& requestBufferPtr,
+              std::shared_ptr<ProtocolBuffer> const& requestBufferPtr,
               std::function<void(std::string const&,
                                  bool,
                                  RESPONSE_TYPE const&)> onFinish) {

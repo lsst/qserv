@@ -160,7 +160,7 @@ Row::Cell const& Row::getDataCell(size_t columnIdx) const {
     if (columnIdx >= _index2cell.size()) {
         throw invalid_argument(
                 context + "the column index '" + to_string(columnIdx) +
-                "'is not in the result set");
+                "' is not in the result set");
     }
     return _index2cell.at(columnIdx);
 }
@@ -175,7 +175,7 @@ Row::Cell const& Row::getDataCell(string const& columnName) const {
     auto itr = _name2indexPtr->find(columnName);
     if (_name2indexPtr->end() == itr) {
         throw invalid_argument(
-                context + "the column '" + columnName + "'is not in the result set");
+                context + "the column '" + columnName + "' is not in the result set");
     }
     return _index2cell.at(itr->second);
 }

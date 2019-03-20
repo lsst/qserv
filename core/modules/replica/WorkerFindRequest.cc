@@ -93,7 +93,7 @@ WorkerFindRequest::WorkerFindRequest(
 }
 
 
-void WorkerFindRequest::setInfo(proto::ReplicationResponseFind& response) const {
+void WorkerFindRequest::setInfo(ProtocolResponseFind& response) const {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
@@ -111,7 +111,7 @@ void WorkerFindRequest::setInfo(proto::ReplicationResponseFind& response) const 
 
     // Same comment on the ownership transfer applies here
 
-    auto protoRequestPtr = new proto::ReplicationRequestFind();
+    auto protoRequestPtr = new ProtocolRequestFind();
 
     protoRequestPtr->set_priority(  priority());
     protoRequestPtr->set_database(  database());

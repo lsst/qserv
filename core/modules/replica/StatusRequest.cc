@@ -37,8 +37,8 @@ char const* StatusReplicationRequestPolicy::requestName() {
 }
 
 
-proto::ReplicationReplicaRequestType StatusReplicationRequestPolicy::replicaRequestType() {
-    return proto::ReplicationReplicaRequestType::REPLICA_CREATE;
+ProtocolReplicaRequestType StatusReplicationRequestPolicy::replicaRequestType() {
+    return ProtocolReplicaRequestType::REPLICA_CREATE;
 }
 
 
@@ -65,8 +65,8 @@ char const* StatusDeleteRequestPolicy::requestName() {
 }
 
 
-proto::ReplicationReplicaRequestType StatusDeleteRequestPolicy::replicaRequestType() {
-    return proto::ReplicationReplicaRequestType::REPLICA_DELETE;
+ProtocolReplicaRequestType StatusDeleteRequestPolicy::replicaRequestType() {
+    return ProtocolReplicaRequestType::REPLICA_DELETE;
 }
 
 
@@ -93,8 +93,8 @@ char const* StatusFindRequestPolicy::requestName() {
 }
 
 
-proto::ReplicationReplicaRequestType StatusFindRequestPolicy::replicaRequestType() {
-    return proto::ReplicationReplicaRequestType::REPLICA_FIND;
+ProtocolReplicaRequestType StatusFindRequestPolicy::replicaRequestType() {
+    return ProtocolReplicaRequestType::REPLICA_FIND;
 }
 
 
@@ -121,8 +121,8 @@ char const* StatusFindAllRequestPolicy::requestName() {
 }
 
 
-proto::ReplicationReplicaRequestType StatusFindAllRequestPolicy::replicaRequestType() {
-    return proto::ReplicationReplicaRequestType::REPLICA_FIND_ALL;
+ProtocolReplicaRequestType StatusFindAllRequestPolicy::replicaRequestType() {
+    return ProtocolReplicaRequestType::REPLICA_FIND_ALL;
 }
 
 
@@ -152,8 +152,8 @@ char const* StatusEchoRequestPolicy::requestName() {
 }
 
 
-proto::ReplicationReplicaRequestType StatusEchoRequestPolicy::replicaRequestType() {
-    return proto::ReplicationReplicaRequestType::REPLICA_ECHO;
+ProtocolReplicaRequestType StatusEchoRequestPolicy::replicaRequestType() {
+    return ProtocolReplicaRequestType::REPLICA_ECHO;
 }
 
 

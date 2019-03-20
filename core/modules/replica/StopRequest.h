@@ -39,10 +39,10 @@
 #include <string>
 
 // Qserv headers
-#include "proto/replication.pb.h"
 #include "replica/Common.h"
 #include "replica/DatabaseServices.h"
 #include "replica/Messenger.h"
+#include "replica/protocol.pb.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/RequestMessenger.h"
 #include "replica/ProtocolBuffer.h"
@@ -61,13 +61,13 @@ namespace replica {
 
 struct StopReplicationRequestPolicy {
 
-    using ResponseMessageType     = proto::ReplicationResponseReplicate;
+    using ResponseMessageType     = ProtocolResponseReplicate;
     using ResponseDataType        = ReplicaInfo;
     using TargetRequestParamsType = ReplicationRequestParams;
 
     static char const* requestName();
 
-    static proto::ReplicationReplicaRequestType replicaRequestType();
+    static ProtocolReplicaRequestType replicaRequestType();
 
     static void extractResponseData(ResponseMessageType const& msg,
                                     ResponseDataType& data);
@@ -86,13 +86,13 @@ struct StopReplicationRequestPolicy {
 
 struct StopDeleteRequestPolicy {
 
-    using ResponseMessageType     = proto::ReplicationResponseDelete;
+    using ResponseMessageType     = ProtocolResponseDelete;
     using ResponseDataType        = ReplicaInfo;
     using TargetRequestParamsType = DeleteRequestParams;
 
     static char const* requestName();
 
-    static proto::ReplicationReplicaRequestType replicaRequestType();
+    static ProtocolReplicaRequestType replicaRequestType();
 
     static void extractResponseData(ResponseMessageType const& msg,
                                     ResponseDataType& data);
@@ -111,13 +111,13 @@ struct StopDeleteRequestPolicy {
 
 struct StopFindRequestPolicy {
 
-    using ResponseMessageType     = proto::ReplicationResponseFind;
+    using ResponseMessageType     = ProtocolResponseFind;
     using ResponseDataType        = ReplicaInfo;
     using TargetRequestParamsType = FindRequestParams;
 
     static char const* requestName();
 
-    static proto::ReplicationReplicaRequestType replicaRequestType();
+    static ProtocolReplicaRequestType replicaRequestType();
 
     static void extractResponseData(ResponseMessageType const& msg,
                                     ResponseDataType& data);
@@ -136,13 +136,13 @@ struct StopFindRequestPolicy {
 
 struct StopFindAllRequestPolicy {
 
-    using ResponseMessageType     = proto::ReplicationResponseFindAll;
+    using ResponseMessageType     = ProtocolResponseFindAll;
     using ResponseDataType        = ReplicaInfoCollection;
     using TargetRequestParamsType = FindAllRequestParams;
 
     static char const* requestName();
 
-    static proto::ReplicationReplicaRequestType replicaRequestType();
+    static ProtocolReplicaRequestType replicaRequestType();
 
     static void extractResponseData(ResponseMessageType const& msg,
                                     ResponseDataType& data);
@@ -164,13 +164,13 @@ struct StopFindAllRequestPolicy {
 
 struct StopEchoRequestPolicy {
 
-    using ResponseMessageType     = proto::ReplicationResponseEcho;
+    using ResponseMessageType     = ProtocolResponseEcho;
     using ResponseDataType        = std::string;
     using TargetRequestParamsType = EchoRequestParams;
 
     static char const* requestName();
 
-    static proto::ReplicationReplicaRequestType replicaRequestType();
+    static ProtocolReplicaRequestType replicaRequestType();
 
     static void extractResponseData(ResponseMessageType const& msg,
                                     ResponseDataType& data);
@@ -317,7 +317,7 @@ private:
                 char const* requestName,
                 std::string const& worker,
                 std::string const& targetRequestId,
-                proto::ReplicationReplicaRequestType replicaRequestType,
+                ProtocolReplicaRequestType replicaRequestType,
                 CallbackType const& onFinish,
                 bool keepTracking,
                 std::shared_ptr<Messenger> const& messenger)
@@ -341,7 +341,7 @@ private:
      * @return
      *   status of the operation reported by a server
      */
-    proto::ReplicationStatus _parseResponse(typename POLICY::ResponseMessageType const& message) {
+    ProtocolStatus _parseResponse(typename POLICY::ResponseMessageType const& message) {
 
         // This lock must be acquired because the method is going to modify
         // results of the request. Note that the operation doesn't care

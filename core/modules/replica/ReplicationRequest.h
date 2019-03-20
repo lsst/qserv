@@ -30,8 +30,8 @@
 #include <boost/asio.hpp>
 
 // Qserv headers
-#include "proto/replication.pb.h"
 #include "replica/Common.h"
+#include "replica/protocol.pb.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/RequestMessenger.h"
 
@@ -198,7 +198,7 @@ private:
      *   worker response (if success)
      */
     void _analyze(bool success,
-                  proto::ReplicationResponseReplicate const& message);
+                  ProtocolResponseReplicate const& message);
 
 
     // Input parameters

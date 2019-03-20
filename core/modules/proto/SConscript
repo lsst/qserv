@@ -7,9 +7,5 @@ env.Protoc(File("worker.proto"),
     PROTOC_PATH='.',
     PROTOC_CCOUT='.',
     PROTOC_PYOUT='.',)
-env.Protoc(File("replication.proto"),
-    PROTOC_PATH='.',
-    PROTOC_CCOUT='.',
-    PROTOC_PYOUT='.',)
 
 standardModule(env, test_libs='log4cxx')

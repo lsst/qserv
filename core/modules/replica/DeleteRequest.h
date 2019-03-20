@@ -27,8 +27,8 @@
 #include <string>
 
 // Qserv headers
-#include "proto/replication.pb.h"
 #include "replica/Common.h"
+#include "replica/protocol.pb.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/RequestMessenger.h"
 
@@ -185,7 +185,7 @@ private:
      *   a response from the worker service (if success is 'true')
      */
     void _analyze(bool success,
-                  proto::ReplicationResponseDelete const& message);
+                  ProtocolResponseDelete const& message);
 
 
     // Input parameters

@@ -122,7 +122,7 @@ public:
      * @param response
      *   Protobuf response to be initialized
      */
-    void setInfo(proto::ReplicationResponseReplicate& response) const;
+    void setInfo(ProtocolResponseReplicate& response) const;
 
     /// @see WorkerRequest::execute
     bool execute() override;

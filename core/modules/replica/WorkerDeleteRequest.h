@@ -26,7 +26,7 @@
 #include <string>
 
 // Qserv headers
-#include "proto/replication.pb.h"
+#include "replica/protocol.pb.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/WorkerRequest.h"
 
@@ -107,7 +107,7 @@ public:
      * @param response
      *   Protobuf response to be initialized
      */
-    void setInfo(proto::ReplicationResponseDelete& response) const;
+    void setInfo(ProtocolResponseDelete& response) const;
 
     /// @see WorkerRequest::execute
     bool execute() override;

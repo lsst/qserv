@@ -28,7 +28,7 @@
 #include <boost/asio.hpp>
 
 // Qserv headers
-#include "proto/replication.pb.h"
+#include "replica/protocol.pb.h"
 #include "replica/ProtocolBuffer.h"
 #include "replica/ServiceProvider.h"
 #include "replica/WorkerProcessor.h"
@@ -150,7 +150,7 @@ private:
      * @param hdr
      *   request header to be inspected
      */
-    void _processReplicaRequest(proto::ReplicationRequestHeader& hdr);
+    void _processReplicaRequest(ProtocolRequestHeader& hdr);
 
     /**
      * Process requests about replication requests (STOP, STATUS)
@@ -158,7 +158,7 @@ private:
      * @param hdr
      *   request header to be inspected
      */
-    void _processManagementRequest(proto::ReplicationRequestHeader& hdr);
+    void _processManagementRequest(ProtocolRequestHeader& hdr);
 
     /**
      * Process requests affecting the service
@@ -166,7 +166,7 @@ private:
      * @param hdr
      *   request header to be inspected
      */
-    void _processServiceRequest(proto::ReplicationRequestHeader& hdr);
+    void _processServiceRequest(ProtocolRequestHeader& hdr);
 
     /**
      * Serialize an identifier of a request into response header
@@ -185,7 +185,7 @@ private:
 
         _bufferPtr->resize();
 
-        proto::ReplicationResponseHeader hdr;
+        ProtocolResponseHeader hdr;
         hdr.set_id(id);
 
         _bufferPtr->serialize(hdr);

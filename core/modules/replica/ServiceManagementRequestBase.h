@@ -28,8 +28,8 @@
 #include <vector>
 
 // Qserv headers
-#include "proto/replication.pb.h"
 #include "replica/Common.h"
+#include "replica/protocol.pb.h"
 #include "replica/RequestMessenger.h"
 
 // This header declarations
@@ -68,15 +68,15 @@ struct ServiceState {
     uint32_t numInProgressRequests;
     uint32_t numFinishedRequests;
 
-    std::vector<proto::ReplicationServiceResponseInfo> newRequests;
-    std::vector<proto::ReplicationServiceResponseInfo> inProgressRequests;
-    std::vector<proto::ReplicationServiceResponseInfo> finishedRequests;
+    std::vector<ProtocolServiceResponseInfo> newRequests;
+    std::vector<ProtocolServiceResponseInfo> inProgressRequests;
+    std::vector<ProtocolServiceResponseInfo> finishedRequests;
 
     /// @return string representation of the state
     std::string state2string() const;
 
     /// Set parameter values from a protobuf object
-    void set (const proto::ReplicationServiceResponse &message);
+    void set (const ProtocolServiceResponse &message);
 };
 
 /// Overloaded streaming operator for type ServiceState
@@ -147,7 +147,7 @@ protected:
                                  boost::asio::io_service& io_service,
                                  char const* requestName,
                                  std::string const& worker,
-                                 proto::ReplicationServiceRequestType requestType,
+                                 ProtocolServiceRequestType requestType,
                                  std::shared_ptr<Messenger> const& messenger);
     /// @see Request::startImpl()
     void startImpl(util::Lock const& lock) final;
@@ -167,10 +167,10 @@ private:
      *   a response from the worker service (if success is 'true')
      */
     void _analyze(bool success,
-                  proto::ReplicationServiceResponse const& message);
+                  ProtocolServiceResponse const& message);
 
     /// Request type
-    proto::ReplicationServiceRequestType const _requestType;
+    ProtocolServiceRequestType const _requestType;
 
     /// Detailed status of the worker-side service obtained upon completion of
     /// the management request.

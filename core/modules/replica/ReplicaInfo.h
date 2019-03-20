@@ -34,21 +34,15 @@
 #include <string>
 #include <vector>
 
-// Forward declarations
-
-namespace lsst {
-namespace qserv {
-namespace proto {
-
-class ReplicationReplicaInfo;
-
-}}} // namespace lsst::qserv::proto
-
 // This header declarations
 
 namespace lsst {
 namespace qserv {
 namespace replica {
+
+// Forward declarations
+
+class ProtocolReplicaInfo;
 
 /**
   * Class ReplicaInfo represents a status of a replica received from
@@ -187,7 +181,7 @@ public:
      * @param info
      *   Protobuf object
      */
-    explicit ReplicaInfo(proto::ReplicationReplicaInfo const* info);
+    explicit ReplicaInfo(ProtocolReplicaInfo const* info);
 
     ReplicaInfo(ReplicaInfo const& ri) = default;
     ReplicaInfo& operator=(ReplicaInfo const& ri) = default;
@@ -261,7 +255,7 @@ public:
      *   On the OWNERSHIP TRANSFER policy: this method allocates a new object and
      *   returns a pointer along with its ownership.
      */
-    lsst::qserv::proto::ReplicationReplicaInfo* info() const;
+    ProtocolReplicaInfo* info() const;
 
     /**
      * Initialize a Protobuf object from the object's state
@@ -269,7 +263,7 @@ public:
      * @param info
      *   Protobuf object
      */
-    void setInfo(proto::ReplicationReplicaInfo* info) const;
+    void setInfo(ProtocolReplicaInfo* info) const;
 
     /**
      * Comparision operator

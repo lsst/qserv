@@ -27,8 +27,8 @@
 #include <string>
 
 // Qserv headers
-#include "proto/replication.pb.h"
 #include "replica/Common.h"
+#include "replica/protocol.pb.h"
 #include "replica/RequestMessenger.h"
 
 // This header declarations
@@ -185,7 +185,7 @@ private:
      *   response from a worker (if success)
      */
     void _analyze(bool success,
-                  lsst::qserv::proto::ReplicationResponseEcho const& message);
+                  ProtocolResponseEcho const& message);
 
     // Input parameters
 

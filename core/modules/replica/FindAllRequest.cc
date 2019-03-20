@@ -111,14 +111,14 @@ void FindAllRequest::startImpl(util::Lock const& lock) {
 
     buffer()->resize();
 
-    proto::ReplicationRequestHeader hdr;
+    ProtocolRequestHeader hdr;
     hdr.set_id(id());
-    hdr.set_type(proto::ReplicationRequestHeader::REPLICA);
-    hdr.set_replica_type(proto::ReplicationReplicaRequestType::REPLICA_FIND_ALL);
+    hdr.set_type(ProtocolRequestHeader::REPLICA);
+    hdr.set_replica_type(ProtocolReplicaRequestType::REPLICA_FIND_ALL);
 
     buffer()->serialize(hdr);
 
-    proto::ReplicationRequestFindAll message;
+    ProtocolRequestFindAll message;
     message.set_priority(priority());
     message.set_database(database());
 
@@ -168,16 +168,16 @@ void FindAllRequest::_awaken(boost::system::error_code const& ec) {
 
     buffer()->resize();
 
-    proto::ReplicationRequestHeader hdr;
+    ProtocolRequestHeader hdr;
     hdr.set_id(id());
-    hdr.set_type(proto::ReplicationRequestHeader::REQUEST);
-    hdr.set_management_type(proto::ReplicationManagementRequestType::REQUEST_STATUS);
+    hdr.set_type(ProtocolRequestHeader::REQUEST);
+    hdr.set_management_type(ProtocolManagementRequestType::REQUEST_STATUS);
 
     buffer()->serialize(hdr);
 
-    proto::ReplicationRequestStatus message;
+    ProtocolRequestStatus message;
     message.set_id(id());
-    message.set_replica_type(proto::ReplicationReplicaRequestType::REPLICA_FIND_ALL);
+    message.set_replica_type(ProtocolReplicaRequestType::REPLICA_FIND_ALL);
 
     buffer()->serialize(message);
 
@@ -191,13 +191,13 @@ void FindAllRequest::_send(util::Lock const& lock) {
 
     auto self = shared_from_base<FindAllRequest>();
 
-    messenger()->send<proto::ReplicationResponseFindAll>(
+    messenger()->send<ProtocolResponseFindAll>(
         worker(),
         id(),
         buffer(),
         [self] (string const& id,
                 bool success,
-                proto::ReplicationResponseFindAll const& response) {
+                ProtocolResponseFindAll const& response) {
 
             self->_analyze(success,
                            response);
@@ -207,7 +207,7 @@ void FindAllRequest::_send(util::Lock const& lock) {
 
 
 void FindAllRequest::_analyze(bool success,
-                              proto::ReplicationResponseFindAll const& message) {
+                              ProtocolResponseFindAll const& message) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  success=" << (success ? "true" : "false"));
 
@@ -262,7 +262,7 @@ void FindAllRequest::_analyze(bool success,
     }
     switch (message.status()) {
 
-        case proto::ReplicationStatus::SUCCESS:
+        case ProtocolStatus::SUCCESS:
 
             if (saveReplicaInfo()) {
                 serviceProvider()->databaseServices()->saveReplicaInfoCollection(
@@ -273,37 +273,37 @@ void FindAllRequest::_analyze(bool success,
             finish(lock, SUCCESS);
             break;
 
-        case proto::ReplicationStatus::QUEUED:
+        case ProtocolStatus::QUEUED:
             if (keepTracking()) _wait(lock);
             else                finish(lock, SERVER_QUEUED);
             break;
 
-        case proto::ReplicationStatus::IN_PROGRESS:
+        case ProtocolStatus::IN_PROGRESS:
             if (keepTracking()) _wait(lock);
             else                finish(lock, SERVER_IN_PROGRESS);
             break;
 
-        case proto::ReplicationStatus::IS_CANCELLING:
+        case ProtocolStatus::IS_CANCELLING:
             if (keepTracking()) _wait(lock);
             else                finish(lock, SERVER_IS_CANCELLING);
             break;
 
-        case proto::ReplicationStatus::BAD:
+        case ProtocolStatus::BAD:
             finish(lock, SERVER_BAD);
             break;
 
-        case proto::ReplicationStatus::FAILED:
+        case ProtocolStatus::FAILED:
             finish(lock, SERVER_ERROR);
             break;
 
-        case proto::ReplicationStatus::CANCELLED:
+        case ProtocolStatus::CANCELLED:
             finish(lock, SERVER_CANCELLED);
             break;
 
         default:
             throw logic_error(
                     "FindAllRequest::" + string(__func__) + " unknown status '" +
-                    proto::ReplicationStatus_Name(message.status()) + "' received from server");
+                    ProtocolStatus_Name(message.status()) + "' received from server");
     }
 }
 

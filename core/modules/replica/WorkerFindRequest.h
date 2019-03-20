@@ -114,7 +114,7 @@ public:
      * @param response
      *   Protobuf response to be initialized
      */
-    void setInfo(proto::ReplicationResponseFind& response) const;
+    void setInfo(ProtocolResponseFind& response) const;
 
     /// @see WorkerRequest::execute
     bool execute() override;

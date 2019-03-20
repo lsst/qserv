@@ -243,10 +243,10 @@ int AdminApp::runImpl() {
 
         auto analyzeRemoteRequestInfo = [&](string const& worker,
                                             string const& queueName,
-                                            proto::ReplicationServiceResponseInfo const& info) {
+                                            ProtocolServiceResponseInfo const& info) {
             workerName      .push_back(worker);
             requestId       .push_back(info.id());
-            requestType     .push_back(proto::ReplicationReplicaRequestType_Name(info.replica_type()));
+            requestType     .push_back(ProtocolReplicaRequestType_Name(info.replica_type()));
             queue           .push_back(queueName);
             priority        .push_back(info.priority());
             database        .push_back(info.database());

@@ -30,9 +30,6 @@
 #include "boost/uuid/uuid_generators.hpp"
 #include "boost/uuid/uuid_io.hpp"
 
-// Qserv headers
-#include "proto/replication.pb.h"
-
 using namespace std;
 
 namespace lsst {
@@ -72,65 +69,65 @@ string status2string(ExtendedCompletionStatus status) {
 }
 
 
-ExtendedCompletionStatus translate(proto::ReplicationStatusExt status) {
+ExtendedCompletionStatus translate(ProtocolStatusExt status) {
     switch (status) {
-        case proto::ReplicationStatusExt::NONE:             return ExtendedCompletionStatus::EXT_STATUS_NONE;
-        case proto::ReplicationStatusExt::INVALID_PARAM:    return ExtendedCompletionStatus::EXT_STATUS_INVALID_PARAM;
-        case proto::ReplicationStatusExt::INVALID_ID:       return ExtendedCompletionStatus::EXT_STATUS_INVALID_ID;
-        case proto::ReplicationStatusExt::DUPLICATE:        return ExtendedCompletionStatus::EXT_STATUS_DUPLICATE;
-        case proto::ReplicationStatusExt::FOLDER_STAT:      return ExtendedCompletionStatus::EXT_STATUS_FOLDER_STAT;
-        case proto::ReplicationStatusExt::FILE_STAT:        return ExtendedCompletionStatus::EXT_STATUS_FILE_STAT;
-        case proto::ReplicationStatusExt::FILE_SIZE:        return ExtendedCompletionStatus::EXT_STATUS_FILE_SIZE;
-        case proto::ReplicationStatusExt::FOLDER_READ:      return ExtendedCompletionStatus::EXT_STATUS_FOLDER_READ;
-        case proto::ReplicationStatusExt::FILE_READ:        return ExtendedCompletionStatus::EXT_STATUS_FILE_READ;
-        case proto::ReplicationStatusExt::FILE_ROPEN:       return ExtendedCompletionStatus::EXT_STATUS_FILE_ROPEN;
-        case proto::ReplicationStatusExt::FILE_CREATE:      return ExtendedCompletionStatus::EXT_STATUS_FILE_CREATE;
-        case proto::ReplicationStatusExt::FILE_OPEN:        return ExtendedCompletionStatus::EXT_STATUS_FILE_OPEN;
-        case proto::ReplicationStatusExt::FILE_RESIZE:      return ExtendedCompletionStatus::EXT_STATUS_FILE_RESIZE;
-        case proto::ReplicationStatusExt::FILE_WRITE:       return ExtendedCompletionStatus::EXT_STATUS_FILE_WRITE;
-        case proto::ReplicationStatusExt::FILE_COPY:        return ExtendedCompletionStatus::EXT_STATUS_FILE_COPY;
-        case proto::ReplicationStatusExt::FILE_DELETE:      return ExtendedCompletionStatus::EXT_STATUS_FILE_DELETE;
-        case proto::ReplicationStatusExt::FILE_RENAME:      return ExtendedCompletionStatus::EXT_STATUS_FILE_RENAME;
-        case proto::ReplicationStatusExt::FILE_EXISTS:      return ExtendedCompletionStatus::EXT_STATUS_FILE_EXISTS;
-        case proto::ReplicationStatusExt::SPACE_REQ:        return ExtendedCompletionStatus::EXT_STATUS_SPACE_REQ;
-        case proto::ReplicationStatusExt::NO_FOLDER:        return ExtendedCompletionStatus::EXT_STATUS_NO_FOLDER;
-        case proto::ReplicationStatusExt::NO_FILE:          return ExtendedCompletionStatus::EXT_STATUS_NO_FILE;
-        case proto::ReplicationStatusExt::NO_ACCESS:        return ExtendedCompletionStatus::EXT_STATUS_NO_ACCESS;
-        case proto::ReplicationStatusExt::NO_SPACE:         return ExtendedCompletionStatus::EXT_STATUS_NO_SPACE;
-        case proto::ReplicationStatusExt::FILE_MTIME:       return ExtendedCompletionStatus::EXT_STATUS_FILE_MTIME;
+        case ProtocolStatusExt::NONE:          return ExtendedCompletionStatus::EXT_STATUS_NONE;
+        case ProtocolStatusExt::INVALID_PARAM: return ExtendedCompletionStatus::EXT_STATUS_INVALID_PARAM;
+        case ProtocolStatusExt::INVALID_ID:    return ExtendedCompletionStatus::EXT_STATUS_INVALID_ID;
+        case ProtocolStatusExt::DUPLICATE:     return ExtendedCompletionStatus::EXT_STATUS_DUPLICATE;
+        case ProtocolStatusExt::FOLDER_STAT:   return ExtendedCompletionStatus::EXT_STATUS_FOLDER_STAT;
+        case ProtocolStatusExt::FILE_STAT:     return ExtendedCompletionStatus::EXT_STATUS_FILE_STAT;
+        case ProtocolStatusExt::FILE_SIZE:     return ExtendedCompletionStatus::EXT_STATUS_FILE_SIZE;
+        case ProtocolStatusExt::FOLDER_READ:   return ExtendedCompletionStatus::EXT_STATUS_FOLDER_READ;
+        case ProtocolStatusExt::FILE_READ:     return ExtendedCompletionStatus::EXT_STATUS_FILE_READ;
+        case ProtocolStatusExt::FILE_ROPEN:    return ExtendedCompletionStatus::EXT_STATUS_FILE_ROPEN;
+        case ProtocolStatusExt::FILE_CREATE:   return ExtendedCompletionStatus::EXT_STATUS_FILE_CREATE;
+        case ProtocolStatusExt::FILE_OPEN:     return ExtendedCompletionStatus::EXT_STATUS_FILE_OPEN;
+        case ProtocolStatusExt::FILE_RESIZE:   return ExtendedCompletionStatus::EXT_STATUS_FILE_RESIZE;
+        case ProtocolStatusExt::FILE_WRITE:    return ExtendedCompletionStatus::EXT_STATUS_FILE_WRITE;
+        case ProtocolStatusExt::FILE_COPY:     return ExtendedCompletionStatus::EXT_STATUS_FILE_COPY;
+        case ProtocolStatusExt::FILE_DELETE:   return ExtendedCompletionStatus::EXT_STATUS_FILE_DELETE;
+        case ProtocolStatusExt::FILE_RENAME:   return ExtendedCompletionStatus::EXT_STATUS_FILE_RENAME;
+        case ProtocolStatusExt::FILE_EXISTS:   return ExtendedCompletionStatus::EXT_STATUS_FILE_EXISTS;
+        case ProtocolStatusExt::SPACE_REQ:     return ExtendedCompletionStatus::EXT_STATUS_SPACE_REQ;
+        case ProtocolStatusExt::NO_FOLDER:     return ExtendedCompletionStatus::EXT_STATUS_NO_FOLDER;
+        case ProtocolStatusExt::NO_FILE:       return ExtendedCompletionStatus::EXT_STATUS_NO_FILE;
+        case ProtocolStatusExt::NO_ACCESS:     return ExtendedCompletionStatus::EXT_STATUS_NO_ACCESS;
+        case ProtocolStatusExt::NO_SPACE:      return ExtendedCompletionStatus::EXT_STATUS_NO_SPACE;
+        case ProtocolStatusExt::FILE_MTIME:    return ExtendedCompletionStatus::EXT_STATUS_FILE_MTIME;
     }
     throw logic_error(
-                "Common::" + string(__func__) + "(proto::ReplicationStatusExt) - unhandled status: " +
+                "Common::" + string(__func__) + "(ProtocolStatusExt) - unhandled status: " +
                 to_string(status));
 }
 
 
-proto::ReplicationStatusExt translate(ExtendedCompletionStatus status) {
+ProtocolStatusExt translate(ExtendedCompletionStatus status) {
     switch (status) {
-        case ExtendedCompletionStatus::EXT_STATUS_NONE:             return proto::ReplicationStatusExt::NONE;
-        case ExtendedCompletionStatus::EXT_STATUS_INVALID_PARAM:    return proto::ReplicationStatusExt::INVALID_PARAM;
-        case ExtendedCompletionStatus::EXT_STATUS_INVALID_ID:       return proto::ReplicationStatusExt::INVALID_ID;
-        case ExtendedCompletionStatus::EXT_STATUS_DUPLICATE:        return proto::ReplicationStatusExt::DUPLICATE;
-        case ExtendedCompletionStatus::EXT_STATUS_FOLDER_STAT:      return proto::ReplicationStatusExt::FOLDER_STAT;
-        case ExtendedCompletionStatus::EXT_STATUS_FILE_STAT:        return proto::ReplicationStatusExt::FILE_STAT;
-        case ExtendedCompletionStatus::EXT_STATUS_FILE_SIZE:        return proto::ReplicationStatusExt::FILE_SIZE;
-        case ExtendedCompletionStatus::EXT_STATUS_FOLDER_READ:      return proto::ReplicationStatusExt::FOLDER_READ;
-        case ExtendedCompletionStatus::EXT_STATUS_FILE_READ:        return proto::ReplicationStatusExt::FILE_READ;
-        case ExtendedCompletionStatus::EXT_STATUS_FILE_ROPEN:       return proto::ReplicationStatusExt::FILE_ROPEN;
-        case ExtendedCompletionStatus::EXT_STATUS_FILE_CREATE:      return proto::ReplicationStatusExt::FILE_CREATE;
-        case ExtendedCompletionStatus::EXT_STATUS_FILE_OPEN:        return proto::ReplicationStatusExt::FILE_OPEN;
-        case ExtendedCompletionStatus::EXT_STATUS_FILE_RESIZE:      return proto::ReplicationStatusExt::FILE_RESIZE;
-        case ExtendedCompletionStatus::EXT_STATUS_FILE_WRITE:       return proto::ReplicationStatusExt::FILE_WRITE;
-        case ExtendedCompletionStatus::EXT_STATUS_FILE_COPY:        return proto::ReplicationStatusExt::FILE_COPY;
-        case ExtendedCompletionStatus::EXT_STATUS_FILE_DELETE:      return proto::ReplicationStatusExt::FILE_DELETE;
-        case ExtendedCompletionStatus::EXT_STATUS_FILE_RENAME:      return proto::ReplicationStatusExt::FILE_RENAME;
-        case ExtendedCompletionStatus::EXT_STATUS_FILE_EXISTS:      return proto::ReplicationStatusExt::FILE_EXISTS;
-        case ExtendedCompletionStatus::EXT_STATUS_SPACE_REQ:        return proto::ReplicationStatusExt::SPACE_REQ;
-        case ExtendedCompletionStatus::EXT_STATUS_NO_FOLDER:        return proto::ReplicationStatusExt::NO_FOLDER;
-        case ExtendedCompletionStatus::EXT_STATUS_NO_FILE:          return proto::ReplicationStatusExt::NO_FILE;
-        case ExtendedCompletionStatus::EXT_STATUS_NO_ACCESS:        return proto::ReplicationStatusExt::NO_ACCESS;
-        case ExtendedCompletionStatus::EXT_STATUS_NO_SPACE:         return proto::ReplicationStatusExt::NO_SPACE;
-        case ExtendedCompletionStatus::EXT_STATUS_FILE_MTIME:       return proto::ReplicationStatusExt::FILE_MTIME;
+        case ExtendedCompletionStatus::EXT_STATUS_NONE:          return ProtocolStatusExt::NONE;
+        case ExtendedCompletionStatus::EXT_STATUS_INVALID_PARAM: return ProtocolStatusExt::INVALID_PARAM;
+        case ExtendedCompletionStatus::EXT_STATUS_INVALID_ID:    return ProtocolStatusExt::INVALID_ID;
+        case ExtendedCompletionStatus::EXT_STATUS_DUPLICATE:     return ProtocolStatusExt::DUPLICATE;
+        case ExtendedCompletionStatus::EXT_STATUS_FOLDER_STAT:   return ProtocolStatusExt::FOLDER_STAT;
+        case ExtendedCompletionStatus::EXT_STATUS_FILE_STAT:     return ProtocolStatusExt::FILE_STAT;
+        case ExtendedCompletionStatus::EXT_STATUS_FILE_SIZE:     return ProtocolStatusExt::FILE_SIZE;
+        case ExtendedCompletionStatus::EXT_STATUS_FOLDER_READ:   return ProtocolStatusExt::FOLDER_READ;
+        case ExtendedCompletionStatus::EXT_STATUS_FILE_READ:     return ProtocolStatusExt::FILE_READ;
+        case ExtendedCompletionStatus::EXT_STATUS_FILE_ROPEN:    return ProtocolStatusExt::FILE_ROPEN;
+        case ExtendedCompletionStatus::EXT_STATUS_FILE_CREATE:   return ProtocolStatusExt::FILE_CREATE;
+        case ExtendedCompletionStatus::EXT_STATUS_FILE_OPEN:     return ProtocolStatusExt::FILE_OPEN;
+        case ExtendedCompletionStatus::EXT_STATUS_FILE_RESIZE:   return ProtocolStatusExt::FILE_RESIZE;
+        case ExtendedCompletionStatus::EXT_STATUS_FILE_WRITE:    return ProtocolStatusExt::FILE_WRITE;
+        case ExtendedCompletionStatus::EXT_STATUS_FILE_COPY:     return ProtocolStatusExt::FILE_COPY;
+        case ExtendedCompletionStatus::EXT_STATUS_FILE_DELETE:   return ProtocolStatusExt::FILE_DELETE;
+        case ExtendedCompletionStatus::EXT_STATUS_FILE_RENAME:   return ProtocolStatusExt::FILE_RENAME;
+        case ExtendedCompletionStatus::EXT_STATUS_FILE_EXISTS:   return ProtocolStatusExt::FILE_EXISTS;
+        case ExtendedCompletionStatus::EXT_STATUS_SPACE_REQ:     return ProtocolStatusExt::SPACE_REQ;
+        case ExtendedCompletionStatus::EXT_STATUS_NO_FOLDER:     return ProtocolStatusExt::NO_FOLDER;
+        case ExtendedCompletionStatus::EXT_STATUS_NO_FILE:       return ProtocolStatusExt::NO_FILE;
+        case ExtendedCompletionStatus::EXT_STATUS_NO_ACCESS:     return ProtocolStatusExt::NO_ACCESS;
+        case ExtendedCompletionStatus::EXT_STATUS_NO_SPACE:      return ProtocolStatusExt::NO_SPACE;
+        case ExtendedCompletionStatus::EXT_STATUS_FILE_MTIME:    return ProtocolStatusExt::FILE_MTIME;
     }
     throw logic_error(
                 "Common::" + string(__func__) + "(ExtendedCompletionStatus) - unhandled status: " +
@@ -161,7 +158,7 @@ ReplicationRequestParams::ReplicationRequestParams()
 }
 
 
-ReplicationRequestParams::ReplicationRequestParams(proto::ReplicationRequestReplicate const& message)
+ReplicationRequestParams::ReplicationRequestParams(ProtocolRequestReplicate const& message)
     :   priority(message.priority()),
         database(message.database()),
         chunk(message.chunk()),
@@ -175,7 +172,7 @@ DeleteRequestParams::DeleteRequestParams()
 }
 
 
-DeleteRequestParams::DeleteRequestParams(proto::ReplicationRequestDelete const& message)
+DeleteRequestParams::DeleteRequestParams(ProtocolRequestDelete const& message)
     :   priority(message.priority()),
         database(message.database()),
         chunk(message.chunk()) {
@@ -188,7 +185,7 @@ FindRequestParams::FindRequestParams()
 }
 
 
-FindRequestParams::FindRequestParams(proto::ReplicationRequestFind const& message)
+FindRequestParams::FindRequestParams(ProtocolRequestFind const& message)
     :   priority(message.priority()),
         database(message.database()),
         chunk(message.chunk()) {
@@ -200,7 +197,7 @@ FindAllRequestParams::FindAllRequestParams()
 }
 
 
-FindAllRequestParams::FindAllRequestParams(proto::ReplicationRequestFindAll const& message)
+FindAllRequestParams::FindAllRequestParams(ProtocolRequestFindAll const& message)
     :   priority(message.priority()),
         database(message.database()) {
 }
@@ -212,7 +209,7 @@ EchoRequestParams::EchoRequestParams()
 }
 
 
-EchoRequestParams::EchoRequestParams(proto::ReplicationRequestEcho const& message)
+EchoRequestParams::EchoRequestParams(ProtocolRequestEcho const& message)
     :   priority(message.priority()),
         data(message.data()),
         delay(message.delay()) {

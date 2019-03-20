@@ -46,34 +46,33 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerProcessor");
 
-namespace replica = ::lsst::qserv::replica;
-namespace proto   = ::lsst::qserv::proto;
+using namespace lsst::qserv::replica;
 
 template <class PROTOCOL_RESPONSE_TYPE,
           class PROTOCOL_REQUEST_TYPE>
 bool ifDuplicateRequest(PROTOCOL_RESPONSE_TYPE& response,
-                        replica::WorkerRequest::Ptr const& p,
+                        WorkerRequest::Ptr const& p,
                         PROTOCOL_REQUEST_TYPE const& request) {
 
     bool isDuplicate = false;
 
-    if (replica::WorkerReplicationRequest::Ptr ptr =
-        dynamic_pointer_cast<replica::WorkerReplicationRequest>(p)) {
+    if (WorkerReplicationRequest::Ptr ptr =
+        dynamic_pointer_cast<WorkerReplicationRequest>(p)) {
         isDuplicate =
             (ptr->database() == request.database()) and
             (ptr->chunk()    == request.chunk());
 
-    } else if (replica::WorkerDeleteRequest::Ptr ptr =
-             dynamic_pointer_cast<replica::WorkerDeleteRequest>(p)) {
+    } else if (WorkerDeleteRequest::Ptr ptr =
+             dynamic_pointer_cast<WorkerDeleteRequest>(p)) {
         isDuplicate =
             (ptr->database() == request.database()) and
             (ptr->chunk()    == request.chunk());
     }
     if (isDuplicate) {
-        replica::WorkerProcessor::setDefaultResponse(
+        WorkerProcessor::setDefaultResponse(
             response,
-            proto::ReplicationStatus::BAD,
-            proto::ReplicationStatusExt::DUPLICATE);
+            ProtocolStatus::BAD,
+            ProtocolStatusExt::DUPLICATE);
         response.set_duplicate_request_id(p->id());
     }
     return isDuplicate;
@@ -96,14 +95,14 @@ string WorkerProcessor::state2string(State state) {
 }
 
 
-proto::ReplicationStatus WorkerProcessor::translate(WorkerRequest::CompletionStatus status) {
+ProtocolStatus WorkerProcessor::translate(WorkerRequest::CompletionStatus status) {
     switch (status) {
-        case WorkerRequest::STATUS_NONE:          return proto::ReplicationStatus::QUEUED;
-        case WorkerRequest::STATUS_IN_PROGRESS:   return proto::ReplicationStatus::IN_PROGRESS;
-        case WorkerRequest::STATUS_IS_CANCELLING: return proto::ReplicationStatus::IS_CANCELLING;
-        case WorkerRequest::STATUS_CANCELLED:     return proto::ReplicationStatus::CANCELLED;
-        case WorkerRequest::STATUS_SUCCEEDED:     return proto::ReplicationStatus::SUCCESS;
-        case WorkerRequest::STATUS_FAILED:        return proto::ReplicationStatus::FAILED;
+        case WorkerRequest::STATUS_NONE:          return ProtocolStatus::QUEUED;
+        case WorkerRequest::STATUS_IN_PROGRESS:   return ProtocolStatus::IN_PROGRESS;
+        case WorkerRequest::STATUS_IS_CANCELLING: return ProtocolStatus::IS_CANCELLING;
+        case WorkerRequest::STATUS_CANCELLED:     return ProtocolStatus::CANCELLED;
+        case WorkerRequest::STATUS_SUCCEEDED:     return ProtocolStatus::SUCCESS;
+        case WorkerRequest::STATUS_FAILED:        return ProtocolStatus::FAILED;
         default:
             throw logic_error(
                     "WorkerProcessor::" + string(__func__) +
@@ -207,8 +206,8 @@ void WorkerProcessor::drain() {
 
 void WorkerProcessor::enqueueForReplication(
                             string const& id,
-                            proto::ReplicationRequestReplicate const& request,
-                            proto::ReplicationResponseReplicate& response) {
+                            ProtocolRequestReplicate const& request,
+                            ProtocolResponseReplicate& response) {
 
     LOGS(_log, LOG_LVL_DEBUG, _context() << __func__
         << "  id: "     << id
@@ -243,8 +242,8 @@ void WorkerProcessor::enqueueForReplication(
         );
         _newRequests.push(ptr);
 
-        response.set_status(proto::ReplicationStatus::QUEUED);
-        response.set_status_ext(proto::ReplicationStatusExt::NONE);
+        response.set_status(ProtocolStatus::QUEUED);
+        response.set_status_ext(ProtocolStatusExt::NONE);
         response.set_allocated_performance(ptr->performance().info());
 
         _setInfo(ptr, response);
@@ -253,15 +252,15 @@ void WorkerProcessor::enqueueForReplication(
         LOGS(_log, LOG_LVL_ERROR, _context() << __func__ << "  " << ec.what());
 
         setDefaultResponse(response,
-                           proto::ReplicationStatus::BAD,
-                           proto::ReplicationStatusExt::INVALID_PARAM);
+                           ProtocolStatus::BAD,
+                           ProtocolStatusExt::INVALID_PARAM);
     }
 }
 
 
 void WorkerProcessor::enqueueForDeletion(string const& id,
-                                         proto::ReplicationRequestDelete const& request,
-                                         proto::ReplicationResponseDelete& response) {
+                                         ProtocolRequestDelete const& request,
+                                         ProtocolResponseDelete& response) {
 
     LOGS(_log, LOG_LVL_DEBUG, _context() << __func__
         << "  id: "    << id
@@ -294,8 +293,8 @@ void WorkerProcessor::enqueueForDeletion(string const& id,
         );
         _newRequests.push(ptr);
 
-        response.set_status(proto::ReplicationStatus::QUEUED);
-        response.set_status_ext(proto::ReplicationStatusExt::NONE);
+        response.set_status(ProtocolStatus::QUEUED);
+        response.set_status_ext(ProtocolStatusExt::NONE);
         response.set_allocated_performance(ptr->performance().info());
 
         _setInfo(ptr, response);
@@ -304,15 +303,15 @@ void WorkerProcessor::enqueueForDeletion(string const& id,
         LOGS(_log, LOG_LVL_ERROR, _context() << __func__ << "  " << ec.what());
 
         setDefaultResponse(response,
-                           proto::ReplicationStatus::BAD,
-                           proto::ReplicationStatusExt::INVALID_PARAM);
+                           ProtocolStatus::BAD,
+                           ProtocolStatusExt::INVALID_PARAM);
     }
 }
 
 
 void WorkerProcessor::enqueueForFind(string const& id,
-                                     proto::ReplicationRequestFind const& request,
-                                     proto::ReplicationResponseFind& response) {
+                                     ProtocolRequestFind const& request,
+                                     ProtocolResponseFind& response) {
 
     LOGS(_log, LOG_LVL_DEBUG, _context() << __func__
         << "  id: "    << id
@@ -336,8 +335,8 @@ void WorkerProcessor::enqueueForFind(string const& id,
         );
         _newRequests.push(ptr);
     
-        response.set_status(proto::ReplicationStatus::QUEUED);
-        response.set_status_ext(proto::ReplicationStatusExt::NONE);
+        response.set_status(ProtocolStatus::QUEUED);
+        response.set_status_ext(ProtocolStatusExt::NONE);
         response.set_allocated_performance(ptr->performance().info());
     
         _setInfo(ptr, response);
@@ -346,15 +345,15 @@ void WorkerProcessor::enqueueForFind(string const& id,
         LOGS(_log, LOG_LVL_ERROR, _context() << __func__ << "  " << ec.what());
 
         setDefaultResponse(response,
-                           proto::ReplicationStatus::BAD,
-                           proto::ReplicationStatusExt::INVALID_PARAM);
+                           ProtocolStatus::BAD,
+                           ProtocolStatusExt::INVALID_PARAM);
     }
 }
 
 
 void WorkerProcessor::enqueueForFindAll(string const& id,
-                                        proto::ReplicationRequestFindAll const& request,
-                                        proto::ReplicationResponseFindAll& response) {
+                                        ProtocolRequestFindAll const& request,
+                                        ProtocolResponseFindAll& response) {
 
     LOGS(_log, LOG_LVL_DEBUG, _context() << __func__
         << "  id: " << id
@@ -374,8 +373,8 @@ void WorkerProcessor::enqueueForFindAll(string const& id,
         );
         _newRequests.push(ptr);
     
-        response.set_status(proto::ReplicationStatus::QUEUED);
-        response.set_status_ext(proto::ReplicationStatusExt::NONE);
+        response.set_status(ProtocolStatus::QUEUED);
+        response.set_status_ext(ProtocolStatusExt::NONE);
         response.set_allocated_performance(ptr->performance().info());
     
         _setInfo(ptr, response);
@@ -384,15 +383,15 @@ void WorkerProcessor::enqueueForFindAll(string const& id,
         LOGS(_log, LOG_LVL_ERROR, _context() << __func__ << "  " << ec.what());
 
         setDefaultResponse(response,
-                           proto::ReplicationStatus::BAD,
-                           proto::ReplicationStatusExt::INVALID_PARAM);
+                           ProtocolStatus::BAD,
+                           ProtocolStatusExt::INVALID_PARAM);
     }
 }
 
 
 void WorkerProcessor::enqueueForEcho(string const& id,
-                                     proto::ReplicationRequestEcho const& request,
-                                     proto::ReplicationResponseEcho& response) {
+                                     ProtocolRequestEcho const& request,
+                                     ProtocolResponseEcho& response) {
 
     LOGS(_log, LOG_LVL_DEBUG, _context() << __func__
         << "  id: " << id
@@ -409,8 +408,8 @@ void WorkerProcessor::enqueueForEcho(string const& id,
         performance.setUpdateStart();
         performance.setUpdateFinish();
 
-        response.set_status(proto::ReplicationStatus::SUCCESS);
-        response.set_status_ext(proto::ReplicationStatusExt::NONE);
+        response.set_status(ProtocolStatus::SUCCESS);
+        response.set_status_ext(ProtocolStatusExt::NONE);
         response.set_allocated_performance(performance.info());
         response.set_data(request.data());
 
@@ -431,8 +430,8 @@ void WorkerProcessor::enqueueForEcho(string const& id,
         );
         _newRequests.push(ptr);
     
-        response.set_status(proto::ReplicationStatus::QUEUED);
-        response.set_status_ext(proto::ReplicationStatusExt::NONE);
+        response.set_status(ProtocolStatus::QUEUED);
+        response.set_status_ext(ProtocolStatusExt::NONE);
         response.set_allocated_performance(ptr->performance().info());
     
         _setInfo(ptr, response);
@@ -441,8 +440,8 @@ void WorkerProcessor::enqueueForEcho(string const& id,
         LOGS(_log, LOG_LVL_ERROR, _context() << __func__ << "  " << ec.what());
 
         setDefaultResponse(response,
-                           proto::ReplicationStatus::BAD,
-                           proto::ReplicationStatusExt::INVALID_PARAM);
+                           ProtocolStatus::BAD,
+                           ProtocolStatusExt::INVALID_PARAM);
     }
 }
 
@@ -639,9 +638,9 @@ WorkerRequest::Ptr WorkerProcessor::_checkStatusImpl(util::Lock const& lock,
 
 
 void WorkerProcessor::setServiceResponse(
-                            proto::ReplicationServiceResponse& response,
+                            ProtocolServiceResponse& response,
                             string const& id,
-                            proto::ReplicationServiceResponse::Status status,
+                            ProtocolServiceResponse::Status status,
                             bool extendedReport) {
 
     LOGS(_log, LOG_LVL_DEBUG, _context() << __func__);
@@ -655,15 +654,15 @@ void WorkerProcessor::setServiceResponse(
     switch (state()) {
 
         case WorkerProcessor::State::STATE_IS_RUNNING:
-            response.set_service_state(proto::ReplicationServiceResponse::RUNNING);
+            response.set_service_state(ProtocolServiceResponse::RUNNING);
             break;
 
         case WorkerProcessor::State::STATE_IS_STOPPING:
-            response.set_service_state(proto::ReplicationServiceResponse::SUSPEND_IN_PROGRESS);
+            response.set_service_state(ProtocolServiceResponse::SUSPEND_IN_PROGRESS);
             break;
 
         case WorkerProcessor::State::STATE_IS_STOPPED:
-            response.set_service_state(proto::ReplicationServiceResponse::SUSPENDED);
+            response.set_service_state(ProtocolServiceResponse::SUSPENDED);
             break;
     }
     response.set_num_new_requests(        _newRequests.size());
@@ -689,12 +688,12 @@ void WorkerProcessor::setServiceResponse(
 
 void WorkerProcessor::_setServiceResponseInfo(
         WorkerRequest::Ptr const& request,
-        proto::ReplicationServiceResponseInfo* info) const {
+        ProtocolServiceResponseInfo* info) const {
 
     if (
         auto const ptr = dynamic_pointer_cast<WorkerReplicationRequest>(request)) {
 
-        info->set_replica_type(proto::ReplicationReplicaRequestType::REPLICA_CREATE);
+        info->set_replica_type(ProtocolReplicaRequestType::REPLICA_CREATE);
         info->set_id(          ptr->id());
         info->set_priority(    ptr->priority());
         info->set_database(    ptr->database());
@@ -704,7 +703,7 @@ void WorkerProcessor::_setServiceResponseInfo(
     } else if (
         auto const ptr = dynamic_pointer_cast<WorkerDeleteRequest>(request)) {
 
-        info->set_replica_type(proto::ReplicationReplicaRequestType::REPLICA_DELETE);
+        info->set_replica_type(ProtocolReplicaRequestType::REPLICA_DELETE);
         info->set_id(          ptr->id());
         info->set_priority(    ptr->priority());
         info->set_database(    ptr->database());
@@ -713,7 +712,7 @@ void WorkerProcessor::_setServiceResponseInfo(
     } else if (
         auto const ptr = dynamic_pointer_cast<WorkerFindRequest>(request)) {
 
-        info->set_replica_type(proto::ReplicationReplicaRequestType::REPLICA_FIND);
+        info->set_replica_type(ProtocolReplicaRequestType::REPLICA_FIND);
         info->set_id(          ptr->id());
         info->set_priority(    ptr->priority());
         info->set_database(    ptr->database());
@@ -722,7 +721,7 @@ void WorkerProcessor::_setServiceResponseInfo(
     } else if (
         auto const ptr = dynamic_pointer_cast<WorkerFindAllRequest>(request)) {
 
-        info->set_replica_type(proto::ReplicationReplicaRequestType::REPLICA_FIND_ALL);
+        info->set_replica_type(ProtocolReplicaRequestType::REPLICA_FIND_ALL);
         info->set_id(          ptr->id());
         info->set_priority(    ptr->priority());
         info->set_database(    ptr->database());
@@ -857,7 +856,7 @@ void WorkerProcessor::_processorThreadStopped(WorkerProcessorThread::Ptr const& 
 
 
 void WorkerProcessor::_setInfo(WorkerRequest::Ptr const& request,
-                               proto::ReplicationResponseReplicate& response) {
+                               ProtocolResponseReplicate& response) {
 
     if (nullptr == request) return;
 
@@ -872,7 +871,7 @@ void WorkerProcessor::_setInfo(WorkerRequest::Ptr const& request,
 
 
 void WorkerProcessor::_setInfo(WorkerRequest::Ptr const& request,
-                               proto::ReplicationResponseDelete& response) {
+                               ProtocolResponseDelete& response) {
 
     auto ptr = dynamic_pointer_cast<WorkerDeleteRequest>(request);
     if (not ptr) {
@@ -885,7 +884,7 @@ void WorkerProcessor::_setInfo(WorkerRequest::Ptr const& request,
 
 
 void WorkerProcessor::_setInfo(WorkerRequest::Ptr const&   request,
-                               proto::ReplicationResponseFind& response) {
+                               ProtocolResponseFind& response) {
 
     auto ptr = dynamic_pointer_cast<WorkerFindRequest>(request);
     if (not ptr) {
@@ -898,7 +897,7 @@ void WorkerProcessor::_setInfo(WorkerRequest::Ptr const&   request,
 
 
 void WorkerProcessor::_setInfo(WorkerRequest::Ptr const& request,
-                               proto::ReplicationResponseFindAll& response) {
+                               ProtocolResponseFindAll& response) {
 
     auto ptr = dynamic_pointer_cast<WorkerFindAllRequest>(request);
     if (not ptr) {
@@ -911,7 +910,7 @@ void WorkerProcessor::_setInfo(WorkerRequest::Ptr const& request,
 
 
 void WorkerProcessor::_setInfo(WorkerRequest::Ptr const& request,
-                               proto::ReplicationResponseEcho& response) {
+                               ProtocolResponseEcho& response) {
 
     auto ptr = dynamic_pointer_cast<WorkerEchoRequest>(request);
     if (not ptr) {

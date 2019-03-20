@@ -32,7 +32,7 @@
 #include <string>
 
 // Qserv headers
-#include "proto/replication.pb.h"
+#include "replica/protocol.pb.h"
 #include "util/Mutex.h"
 
 // This header declarations
@@ -78,10 +78,10 @@ enum ExtendedCompletionStatus {
 std::string status2string(ExtendedCompletionStatus status);
 
 /// Translate Protobuf status into the transient one
-ExtendedCompletionStatus translate(proto::ReplicationStatusExt status);
+ExtendedCompletionStatus translate(ProtocolStatusExt status);
 
 /// Translate transient extended status into the Protobuf one
-proto::ReplicationStatusExt translate(ExtendedCompletionStatus status);
+ProtocolStatusExt translate(ExtendedCompletionStatus status);
 
 /**
  * Class Generators is the utility class for generating a set of unique
@@ -114,7 +114,7 @@ struct ReplicationRequestParams {
 
     ReplicationRequestParams();
 
-    explicit ReplicationRequestParams(proto::ReplicationRequestReplicate const& message);
+    explicit ReplicationRequestParams(ProtocolRequestReplicate const& message);
 };
 
 /**
@@ -130,7 +130,7 @@ struct DeleteRequestParams {
 
     DeleteRequestParams();
 
-    explicit DeleteRequestParams(proto::ReplicationRequestDelete const& message);
+    explicit DeleteRequestParams(ProtocolRequestDelete const& message);
 };
 
 /**
@@ -145,7 +145,7 @@ struct FindRequestParams {
 
     FindRequestParams();
 
-    explicit FindRequestParams(proto::ReplicationRequestFind const& message);
+    explicit FindRequestParams(ProtocolRequestFind const& message);
 };
 
 /**
@@ -160,7 +160,7 @@ struct FindAllRequestParams {
 
     FindAllRequestParams();
 
-    explicit FindAllRequestParams(proto::ReplicationRequestFindAll const& message);
+    explicit FindAllRequestParams(ProtocolRequestFindAll const& message);
 };
 
 /**
@@ -174,7 +174,7 @@ struct EchoRequestParams {
 
     EchoRequestParams();
 
-    explicit EchoRequestParams(proto::ReplicationRequestEcho const& message);
+    explicit EchoRequestParams(ProtocolRequestEcho const& message);
 };
 
 }}} // namespace lsst::qserv::replica

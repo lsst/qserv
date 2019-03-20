@@ -110,14 +110,14 @@ void EchoRequest::startImpl(util::Lock const& lock) {
 
     buffer()->resize();
 
-    proto::ReplicationRequestHeader hdr;
+    ProtocolRequestHeader hdr;
     hdr.set_id(id());
-    hdr.set_type(proto::ReplicationRequestHeader::REPLICA);
-    hdr.set_replica_type(proto::ReplicationReplicaRequestType::REPLICA_ECHO);
+    hdr.set_type(ProtocolRequestHeader::REPLICA);
+    hdr.set_replica_type(ProtocolReplicaRequestType::REPLICA_ECHO);
 
     buffer()->serialize(hdr);
 
-    proto::ReplicationRequestEcho message;
+    ProtocolRequestEcho message;
     message.set_priority(priority());
     message.set_data(data());
     message.set_delay(delay());
@@ -168,16 +168,16 @@ void EchoRequest::_awaken(boost::system::error_code const& ec) {
 
     buffer()->resize();
 
-    proto::ReplicationRequestHeader hdr;
+    ProtocolRequestHeader hdr;
     hdr.set_id(id());
-    hdr.set_type(proto::ReplicationRequestHeader::REQUEST);
-    hdr.set_management_type(proto::ReplicationManagementRequestType::REQUEST_STATUS);
+    hdr.set_type(ProtocolRequestHeader::REQUEST);
+    hdr.set_management_type(ProtocolManagementRequestType::REQUEST_STATUS);
 
     buffer()->serialize(hdr);
 
-    proto::ReplicationRequestStatus message;
+    ProtocolRequestStatus message;
     message.set_id(id());
-    message.set_replica_type(proto::ReplicationReplicaRequestType::REPLICA_ECHO);
+    message.set_replica_type(ProtocolReplicaRequestType::REPLICA_ECHO);
 
     buffer()->serialize(message);
 
@@ -191,13 +191,13 @@ void EchoRequest::_send(util::Lock const& lock) {
 
     auto self = shared_from_base<EchoRequest>();
 
-    messenger()->send<proto::ReplicationResponseEcho>(
+    messenger()->send<ProtocolResponseEcho>(
         worker(),
         id(),
         buffer(),
         [self] (string const& id,
                 bool success,
-                proto::ReplicationResponseEcho const& response) {
+                ProtocolResponseEcho const& response) {
 
             self->_analyze(success,
                            response);
@@ -207,7 +207,7 @@ void EchoRequest::_send(util::Lock const& lock) {
 
 
 void EchoRequest::_analyze(bool success,
-                           proto::ReplicationResponseEcho const& message) {
+                           ProtocolResponseEcho const& message) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  success=" << (success ? "true" : "false"));
 
@@ -260,42 +260,42 @@ void EchoRequest::_analyze(bool success,
     }
     switch (message.status()) {
 
-        case proto::ReplicationStatus::SUCCESS:
+        case ProtocolStatus::SUCCESS:
 
             finish(lock, SUCCESS);
             break;
 
-        case proto::ReplicationStatus::QUEUED:
+        case ProtocolStatus::QUEUED:
             if (keepTracking()) _wait(lock);
             else                finish(lock, SERVER_QUEUED);
             break;
 
-        case proto::ReplicationStatus::IN_PROGRESS:
+        case ProtocolStatus::IN_PROGRESS:
             if (keepTracking()) _wait(lock);
             else                finish(lock, SERVER_IN_PROGRESS);
             break;
 
-        case proto::ReplicationStatus::IS_CANCELLING:
+        case ProtocolStatus::IS_CANCELLING:
             if (keepTracking()) _wait(lock);
             else                finish(lock, SERVER_IS_CANCELLING);
             break;
 
-        case proto::ReplicationStatus::BAD:
+        case ProtocolStatus::BAD:
             finish(lock, SERVER_BAD);
             break;
 
-        case proto::ReplicationStatus::FAILED:
+        case ProtocolStatus::FAILED:
             finish(lock, SERVER_ERROR);
             break;
 
-        case proto::ReplicationStatus::CANCELLED:
+        case ProtocolStatus::CANCELLED:
             finish(lock, SERVER_CANCELLED);
             break;
 
         default:
             throw logic_error(
                     "EchoRequest::" + string(__func__) + "  unknown status '" +
-                    proto::ReplicationStatus_Name(message.status()) + "' received from server");
+                    ProtocolStatus_Name(message.status()) + "' received from server");
     }
 }
 

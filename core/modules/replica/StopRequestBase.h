@@ -27,9 +27,9 @@
 #include <string>
 
 // Qserv headers
-#include "proto/replication.pb.h"
 #include "replica/Common.h"
 #include "replica/Messenger.h"
+#include "replica/protocol.pb.h"
 #include "replica/RequestMessenger.h"
 #include "replica/ServiceProvider.h"
 
@@ -105,7 +105,7 @@ protected:
                      char const* requestName,
                      std::string const& worker,
                      std::string const& targetRequestId,
-                     proto::ReplicationReplicaRequestType replicaRequestType,
+                     ProtocolReplicaRequestType replicaRequestType,
                      bool keepTracking,
                      std::shared_ptr<Messenger> const& messenger);
 
@@ -131,7 +131,7 @@ protected:
      *   a response from the worker service (only valid if success is 'true')
      */
     void analyze(bool success,
-                 proto::ReplicationStatus status = proto::ReplicationStatus::FAILED);
+                 ProtocolStatus status=ProtocolStatus::FAILED);
 
     /**
      * Initiate request-specific operation with the persistent state
@@ -173,7 +173,7 @@ private:
 
     std::string const _targetRequestId;
 
-    proto::ReplicationReplicaRequestType const _replicaRequestType;
+    ProtocolReplicaRequestType const _replicaRequestType;
 };
 
 }}} // namespace lsst::qserv::replica

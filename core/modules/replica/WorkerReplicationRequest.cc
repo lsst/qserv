@@ -95,7 +95,7 @@ WorkerReplicationRequest::WorkerReplicationRequest(
 }
 
 
-void WorkerReplicationRequest::setInfo(proto::ReplicationResponseReplicate& response) const {
+void WorkerReplicationRequest::setInfo(ProtocolResponseReplicate& response) const {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
@@ -113,7 +113,7 @@ void WorkerReplicationRequest::setInfo(proto::ReplicationResponseReplicate& resp
 
     // Same comment on the ownership transfer applies here
 
-    auto protoRequestPtr = new proto::ReplicationRequestReplicate();
+    auto protoRequestPtr = new ProtocolRequestReplicate();
 
     protoRequestPtr->set_priority(priority());
     protoRequestPtr->set_database(database());

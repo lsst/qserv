@@ -84,7 +84,7 @@ WorkerFindAllRequest::WorkerFindAllRequest(
 }
 
 
-void WorkerFindAllRequest::setInfo(proto::ReplicationResponseFindAll& response) const {
+void WorkerFindAllRequest::setInfo(ProtocolResponseFindAll& response) const {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
@@ -99,13 +99,13 @@ void WorkerFindAllRequest::setInfo(proto::ReplicationResponseFindAll& response) 
     // The Protobuf run-time will take care of deleting those objects.
 
     for (auto&& replicaInfo: _replicaInfoCollection) {
-        proto::ReplicationReplicaInfo* info = response.add_replica_info_many();
+        ProtocolReplicaInfo* info = response.add_replica_info_many();
         replicaInfo.setInfo(info);
     }
 
     // Same comment on the ownership transfer applies here
 
-    auto protoRequestPtr = new proto::ReplicationRequestFindAll();
+    auto protoRequestPtr = new ProtocolRequestFindAll();
 
     protoRequestPtr->set_priority(priority());
     protoRequestPtr->set_database(database());

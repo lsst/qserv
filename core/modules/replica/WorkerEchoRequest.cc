@@ -75,7 +75,7 @@ WorkerEchoRequest::WorkerEchoRequest(ServiceProvider::Ptr const& serviceProvider
 }
 
 
-void WorkerEchoRequest::setInfo(proto::ReplicationResponseEcho& response) const {
+void WorkerEchoRequest::setInfo(ProtocolResponseEcho& response) const {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 

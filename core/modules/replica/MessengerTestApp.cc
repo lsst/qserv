@@ -29,11 +29,11 @@
 #include <vector>
 
 // Qserv headers
-#include "proto/replication.pb.h"
 #include "replica/Configuration.h"
 #include "replica/Controller.h"
 #include "replica/Messenger.h"
 #include "replica/MessengerConnector.h"
+#include "replica/protocol.pb.h"
 #include "replica/ProtocolBuffer.h"
 #include "util/BlockPost.h"
 
@@ -121,20 +121,20 @@ int MessengerTestApp::runImpl() {
 
         requestBufferPtr->resize();
 
-        proto::ReplicationRequestHeader hdr;
+        ProtocolRequestHeader hdr;
         hdr.set_id(id);
-        hdr.set_type(proto::ReplicationRequestHeader::SERVICE);
-        hdr.set_service_type(proto::ReplicationServiceRequestType::SERVICE_STATUS);
+        hdr.set_type(ProtocolRequestHeader::SERVICE);
+        hdr.set_service_type(ProtocolServiceRequestType::SERVICE_STATUS);
 
         requestBufferPtr->serialize(hdr);
 
-        messenger->send<proto::ReplicationServiceResponse>(
+        messenger->send<ProtocolServiceResponse>(
             _workerName,
             id,
             requestBufferPtr,
             [&numFinished] (string const& id,
                             bool success,
-                            proto::ReplicationServiceResponse const& response) {
+                            ProtocolServiceResponse const& response) {
                 numFinished++;
                 cout << setw(32) << id << "  ** finished **  "
                      << (success ? "SUCCEEDED" : "FAILED") << endl;

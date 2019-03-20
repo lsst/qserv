@@ -38,18 +38,17 @@
 #include "replica/ServiceProvider.h"
 
 using namespace std;
-namespace fs    = boost::filesystem;
-namespace proto = lsst::qserv::proto;
+namespace fs = boost::filesystem;
 
 namespace {
+
+using namespace lsst::qserv::replica;
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.FileServerConnection");
 
 /// The limit of 16 MB for the maximum record size for file I/O and
 /// network operations.
 size_t const maxFileBufSizeBytes = 16 * 1024 * 1024;
-
-typedef shared_ptr<lsst::qserv::replica::ProtocolBuffer> ProtocolBufferPtr;
 
 /// The context for diagnostic & debug printouts
 string const context = "FILE-SERVER-CONNECTION  ";
@@ -69,7 +68,7 @@ bool isErrorCode(boost::system::error_code const& ec,
 
 
 bool readIntoBuffer(boost::asio::ip::tcp::socket& socket,
-                    ProtocolBufferPtr const& ptr,
+                    shared_ptr<ProtocolBuffer> const& ptr,
                     size_t bytes) {
 
     ptr->resize(bytes);     // make sure the buffer has enough space to accommodate
@@ -90,7 +89,7 @@ bool readIntoBuffer(boost::asio::ip::tcp::socket& socket,
 
 template <class T>
 bool readMessage(boost::asio::ip::tcp::socket& socket,
-                 ProtocolBufferPtr const& ptr,
+                 shared_ptr<ProtocolBuffer> const& ptr,
                  size_t bytes,
                  T& message) {
 
@@ -201,7 +200,7 @@ void FileServerConnection::_requestReceived(boost::system::error_code const& ec,
 
     // Now read the body of the request
 
-    proto::ReplicationFileRequest request;
+    ProtocolFileRequest request;
     if (not ::readMessage(_socket, _bufferPtr, _bufferPtr->parseLength(), request)) return;
 
     LOGS(_log, LOG_LVL_INFO, context << __func__ << "  <OPEN> database: " << request.database()
@@ -264,7 +263,7 @@ void FileServerConnection::_requestReceived(boost::system::error_code const& ec,
 
     // Serialize the response into the buffer and send it back to a caller
 
-    proto::ReplicationFileResponse response;
+    ProtocolFileResponse response;
     response.set_available(available);
     response.set_size(size);
     response.set_mtime(mtime);

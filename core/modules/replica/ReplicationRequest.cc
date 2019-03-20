@@ -121,14 +121,14 @@ void ReplicationRequest::startImpl(util::Lock const& lock) {
 
     buffer()->resize();
 
-    proto::ReplicationRequestHeader hdr;
+    ProtocolRequestHeader hdr;
     hdr.set_id(id());
-    hdr.set_type(proto::ReplicationRequestHeader::REPLICA);
-    hdr.set_replica_type(proto::ReplicationReplicaRequestType::REPLICA_CREATE);
+    hdr.set_type(ProtocolRequestHeader::REPLICA);
+    hdr.set_replica_type(ProtocolReplicaRequestType::REPLICA_CREATE);
 
     buffer()->serialize(hdr);
 
-    proto::ReplicationRequestReplicate message;
+    ProtocolRequestReplicate message;
     message.set_priority(priority());
     message.set_database(database());
     message.set_chunk(chunk());
@@ -180,16 +180,16 @@ void ReplicationRequest::_awaken(boost::system::error_code const& ec) {
 
     buffer()->resize();
 
-    proto::ReplicationRequestHeader hdr;
+    ProtocolRequestHeader hdr;
     hdr.set_id(id());
-    hdr.set_type(proto::ReplicationRequestHeader::REQUEST);
-    hdr.set_management_type(proto::ReplicationManagementRequestType::REQUEST_STATUS);
+    hdr.set_type(ProtocolRequestHeader::REQUEST);
+    hdr.set_management_type(ProtocolManagementRequestType::REQUEST_STATUS);
 
     buffer()->serialize(hdr);
 
-    proto::ReplicationRequestStatus message;
+    ProtocolRequestStatus message;
     message.set_id(remoteId());
-    message.set_replica_type(proto::ReplicationReplicaRequestType::REPLICA_CREATE);
+    message.set_replica_type(ProtocolReplicaRequestType::REPLICA_CREATE);
 
     buffer()->serialize(message);
 
@@ -201,13 +201,13 @@ void ReplicationRequest::_send(util::Lock const& lock) {
 
     auto self = shared_from_base<ReplicationRequest>();
 
-    messenger()->send<proto::ReplicationResponseReplicate>(
+    messenger()->send<ProtocolResponseReplicate>(
         worker(),
         id(),
         buffer(),
         [self] (string const& id,
                 bool success,
-                proto::ReplicationResponseReplicate const& response) {
+                ProtocolResponseReplicate const& response) {
 
             self->_analyze(success,
                            response);
@@ -217,7 +217,7 @@ void ReplicationRequest::_send(util::Lock const& lock) {
 
 
 void ReplicationRequest::_analyze(bool success,
-                                  proto::ReplicationResponseReplicate const& message) {
+                                  ProtocolResponseReplicate const& message) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  success=" << (success ? "true" : "false"));
 
@@ -267,29 +267,29 @@ void ReplicationRequest::_analyze(bool success,
     }
     switch (message.status()) {
 
-        case proto::ReplicationStatus::SUCCESS:
+        case ProtocolStatus::SUCCESS:
 
             serviceProvider()->databaseServices()->saveReplicaInfo(_replicaInfo);
 
             finish(lock, SUCCESS);
             break;
 
-        case proto::ReplicationStatus::QUEUED:
+        case ProtocolStatus::QUEUED:
             if (keepTracking()) _wait(lock);
             else                finish(lock, SERVER_QUEUED);
             break;
 
-        case proto::ReplicationStatus::IN_PROGRESS:
+        case ProtocolStatus::IN_PROGRESS:
             if (keepTracking()) _wait(lock);
             else                finish(lock, SERVER_IN_PROGRESS);
             break;
 
-        case proto::ReplicationStatus::IS_CANCELLING:
+        case ProtocolStatus::IS_CANCELLING:
             if (keepTracking()) _wait(lock);
             else                finish(lock, SERVER_IS_CANCELLING);
             break;
 
-        case proto::ReplicationStatus::BAD:
+        case ProtocolStatus::BAD:
 
             // Special treatment of the duplicate requests if allowed
 
@@ -305,18 +305,18 @@ void ReplicationRequest::_analyze(bool success,
             finish(lock, SERVER_BAD);
             break;
 
-        case proto::ReplicationStatus::FAILED:
+        case ProtocolStatus::FAILED:
             finish(lock, SERVER_ERROR);
             break;
 
-        case proto::ReplicationStatus::CANCELLED:
+        case ProtocolStatus::CANCELLED:
             finish(lock, SERVER_CANCELLED);
             break;
 
         default:
             throw logic_error(
                     "ReplicationRequest::" + string(__func__) + "  unknown status '" +
-                    proto::ReplicationStatus_Name(message.status()) +
+                    ProtocolStatus_Name(message.status()) +
                     "' received from server");
     }
 }

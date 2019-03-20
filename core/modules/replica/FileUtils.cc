@@ -39,6 +39,8 @@ using namespace std;
 
 namespace {
 
+using namespace lsst::qserv::replica;
+
 /// Standard file extension of the MyISAM (and derived) engine's table files
 vector<string> const extensions{"frm", "MYD", "MYI"};
 
@@ -65,7 +67,7 @@ bool isValidExtention(string const& str) {
  */
 bool isValidPartitionedTable(
             string const& str,
-            lsst::qserv::replica::DatabaseInfo const& databaseInfo) {
+            DatabaseInfo const& databaseInfo) {
 
     for (auto&& table: databaseInfo.partitionedTables) {
         if (str == table) return true;

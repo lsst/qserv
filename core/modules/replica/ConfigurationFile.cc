@@ -113,7 +113,7 @@ string ConfigurationFile::dump2init(Configuration::Ptr const& config) {
         << "svc_port                   = " << to_string(defaultWorkerSvcPort)                 << "\n"
         << "fs_host                    = " <<           defaultWorkerFsHost                   << "\n"
         << "fs_port                    = " << to_string(defaultWorkerFsPort)                  << "\n"
-        << "data_dir                   = " <<          defaultDataDir                        << "\n"
+        << "data_dir                   = " <<           defaultDataDir                        << "\n"
         << "db_host                    = " <<           defaultWorkerDbHost                   << "\n"
         << "db_port                    = " << to_string(defaultWorkerDbPort)                  << "\n"
         << "db_user                    = " <<           defaultWorkerDbUser                   << "\n"

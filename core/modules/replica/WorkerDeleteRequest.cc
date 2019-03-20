@@ -91,7 +91,7 @@ WorkerDeleteRequest::WorkerDeleteRequest(ServiceProvider::Ptr const& serviceProv
 }
                      
 
-void WorkerDeleteRequest::setInfo(proto::ReplicationResponseDelete& response) const {
+void WorkerDeleteRequest::setInfo(ProtocolResponseDelete& response) const {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
@@ -109,7 +109,7 @@ void WorkerDeleteRequest::setInfo(proto::ReplicationResponseDelete& response) co
 
     // Same comment on the ownership transfer applies here
 
-    auto protoRequestPtr = new proto::ReplicationRequestDelete();
+    auto protoRequestPtr = new ProtocolRequestDelete();
 
     protoRequestPtr->set_priority(priority());
     protoRequestPtr->set_database(database());

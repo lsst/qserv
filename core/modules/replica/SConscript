@@ -4,6 +4,11 @@ Import('standardModule')
 
 import os.path
 
+env.Protoc(File("protocol.proto"),
+    PROTOC_PATH='.',
+    PROTOC_CCOUT='.',
+    PROTOC_PYOUT='.',)
+
 # Harvest special binary products - files starting with the package's name
 # followed by underscore:
 #

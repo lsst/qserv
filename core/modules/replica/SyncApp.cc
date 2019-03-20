@@ -101,7 +101,7 @@ int SyncApp::runImpl() {
         _force,
         Controller::create(serviceProvider()),
         noParentJobId,
-        [&finished] (replica::QservSyncJob::Ptr const& job) {
+        [&finished] (QservSyncJob::Ptr const& job) {
             finished = true;
         }
     );

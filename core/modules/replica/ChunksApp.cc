@@ -41,6 +41,8 @@ using namespace std;
 
 namespace {
 
+using namespace lsst::qserv::replica;
+
 string const description =
     "This is a Controller application which launches a single job Controller in order"
     " to acquire, analyze, and report chunk disposition within a database family.";
@@ -48,7 +50,7 @@ string const description =
 /**
  * Dump the replica info
  */
-void dump(lsst::qserv::replica::FindAllJobResult const& replicaData) {
+void dump(FindAllJobResult const& replicaData) {
 
     cout << "*** DETAILED REPORTS ***\n"
          << "\nCO-LOCATION:\n";

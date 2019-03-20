@@ -27,8 +27,10 @@
 #include <stdexcept>
 
 // Qserv headers
+#include "replica/protocol.pb.h"
+
+// LSST headers
 #include "lsst/log/Log.h"
-#include "proto/replication.pb.h"
 
 using namespace std;
 
@@ -66,7 +68,7 @@ Performance::Performance()
 }
 
 
-void Performance::update(proto::ReplicationPerformance const& workerPerformanceInfo) {
+void Performance::update(ProtocolPerformance const& workerPerformanceInfo) {
     w_receive_time = workerPerformanceInfo.receive_time();
     w_start_time   = workerPerformanceInfo.start_time();
     w_finish_time  = workerPerformanceInfo.finish_time();
@@ -125,8 +127,8 @@ uint64_t WorkerPerformance::setUpdateFinish() {
 }
 
 
-proto::ReplicationPerformance* WorkerPerformance::info() const {
-    auto ptr = new proto::ReplicationPerformance();
+ProtocolPerformance* WorkerPerformance::info() const {
+    auto ptr = new ProtocolPerformance();
     ptr->set_receive_time(receive_time);
     ptr->set_start_time(start_time);
     ptr->set_finish_time(finish_time);

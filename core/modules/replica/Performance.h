@@ -22,7 +22,7 @@
 #define LSST_QSERV_REPLICA_PERFORMANCE_H
 
 /**
- * This header declares vaious utilities (classes) which are used
+ * This header declares vairous utilities (classes) which are used
  * for timing and performance measurements of the Replication system's
  * operations.
  */
@@ -30,22 +30,15 @@
 // System headers
 #include <iostream>
 
-// Forward declarations
-
-namespace lsst {
-namespace qserv {
-namespace proto {
-
-/// The protocol class
-class ReplicationPerformance;
-
-}}} // namespace lsst::qserv::proto
-
 // This header declarations
 
 namespace lsst {
 namespace qserv {
 namespace replica {
+
+// Forward declarations
+
+class ProtocolPerformance;
 
 /**
  * Structure PerformanceUtils provides utilities shared by all classes in this scope
@@ -85,7 +78,7 @@ public:
      * @param workerPerformanceInfo
      *   counters to be carried over into an internal state
      */
-    void update(proto::ReplicationPerformance const& workerPerformanceInfo);
+    void update(ProtocolPerformance const& workerPerformanceInfo);
 
     /**
      * Update the Controller's 'start' time
@@ -172,7 +165,7 @@ public:
      * OWNERSHIP TRANSFER NOTE: this method allocates a new object and
      * returns a pointer along with its ownership.
      */
-    proto::ReplicationPerformance* info() const;
+    ProtocolPerformance* info() const;
 
     /// Received by a worker service
     uint64_t receive_time;
