@@ -53,6 +53,7 @@ enum ProtocolQueuedRequestType {
     REPLICA_FIND     = 2;    // find out if a replica is present, and report its state
     REPLICA_FIND_ALL = 3;    // find all replicas and report their states
     TEST_ECHO        = 4;    // test the worker-side framework
+    SQL              = 5;    // execute an SQL statement against the worker's database
 }
 
 // Request types for managing above defined requests
@@ -167,6 +168,22 @@ message ProtocolRequestEcho {
     optional uint64 delay = 3 [default = 0];
 }
 
+// This request is always queued.
+// This message is sent once after the header.
+message ProtocolRequestSql {
+
+    required int32 priority = 1;
+
+    /// The query to be executed
+    required string query = 2;
+
+    /// The name of a database user authorized in a context of the query
+    required string user = 3;
+
+    /// Database password for the user account
+    required string password = 4;
+}
+
 // This request is sent to stop an on-going replication (if any is still in progress).
 // This message is sent once after the header.
 //
@@ -276,6 +293,7 @@ enum ProtocolStatusExt {
     NO_ACCESS     = 21;
     NO_SPACE      = 22;
     FILE_MTIME    = 23;
+    MYSQL_ERROR   = 24;
 }
 
 message ProtocolFileInfo {
@@ -475,6 +493,43 @@ message ProtocolResponseEcho {
 
     /// Parameters of the original request to which this response is related
     optional ProtocolRequestEcho request = 6;
+}
+
+////////////////////////////////////////////////////////////////////
+// The message returned in response to an SQL query executed agianst
+// the worker's database
+
+message ProtocolResponseSql {
+
+    /// The completion status of the operation
+    required ProtocolStatus status = 1;
+
+    /// Extended status of this operation
+    optional ProtocolStatusExt status_ext = 2 [default = NONE];
+
+    /// The performance of this operation
+    required ProtocolPerformance performance = 3;
+
+    // -----------------------------------------------------------------
+    // The following optional field are set upon a successful completion
+    // of the request
+    // -----------------------------------------------------------------
+
+    /// The performance of the target operation. This field represents stats
+    /// of the test request obtained by the request management operations.
+    optional ProtocolPerformance target_performance = 4;
+
+    /// Extended information on the request
+
+    optional bool   has_result   = 5;   // the request produced a result set
+    optional uint32 num_rows     = 6;   // the number of rows in the result set
+    repeated string column_names = 7;   // a vector with column names from a result set
+    repeated bytes  data         = 8;   // 2-d array (by rows) of the raw data from a result set,
+                                        // where the number of elements in the array is
+                                        // a product of the number of columns and the number of rows.
+
+    /// Parameters of the original request to which this response is related
+    optional ProtocolRequestSql request = 9;
 }
 
 /////////////////////////////////////////////////////////////////////////

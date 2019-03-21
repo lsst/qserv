@@ -278,6 +278,17 @@ void WorkerServerConnection::_processQueuedRequest(ProtocolRequestHeader& hdr) {
             _reply(hdr.id(), response);
             break;
         }
+        case ProtocolQueuedRequestType::SQL: {
+
+            // Read the request body
+            ProtocolRequestSql request;
+            if (not ::readMessage(_socket, _bufferPtr, bytes, request)) return;
+
+            ProtocolResponseSql response;
+            _processor->enqueueForSql(hdr.id(), request, response);
+            _reply(hdr.id(), response);
+            break;
+        }
         default:
             throw logic_error(
                     "WorkerServerConnection::" + string(__func__) + "  unhandled request type: '" +
@@ -335,6 +346,12 @@ void WorkerServerConnection::_processManagementRequest(ProtocolRequestHeader& hd
                     _reply(hdr.id(), response);
                     break;
                 }
+                case ProtocolQueuedRequestType::SQL: {
+                    ProtocolResponseSql response;
+                    _processor->dequeueOrCancel(hdr.id(), request, response);
+                    _reply(hdr.id(), response);
+                    break;
+                }
                 default:
                     throw logic_error(
                             "WorkerServerConnection::" + string(__func__) + "  unhandled request type: '" +
@@ -376,6 +393,12 @@ void WorkerServerConnection::_processManagementRequest(ProtocolRequestHeader& hd
                 }
                 case ProtocolQueuedRequestType::TEST_ECHO: {
                     ProtocolResponseEcho response;
+                    _processor->checkStatus(hdr.id(), request, response);
+                    _reply(hdr.id(), response);
+                    break;
+                }
+                case ProtocolQueuedRequestType::SQL: {
+                    ProtocolResponseSql response;
                     _processor->checkStatus(hdr.id(), request, response);
                     _reply(hdr.id(), response);
                     break;

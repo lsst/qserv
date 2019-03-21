@@ -20,7 +20,7 @@
  */
 
 // Class header
-#include "replica/WorkerEchoRequest.h"
+#include "replica/WorkerSqlRequest.h"
 
 // System headers
 #include <stdexcept>
@@ -34,7 +34,7 @@ using namespace std;
 
 namespace {
 
-LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerEchoRequest");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerSqlRequest");
 
 } /// namespace
 
@@ -42,40 +42,43 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-WorkerEchoRequest::Ptr WorkerEchoRequest::create(ServiceProvider::Ptr const& serviceProvider,
-                                                 string const& worker,
-                                                 string const& id,
-                                                 int priority,
-                                                 string const& data,
-                                                 uint64_t delay) {
-    return WorkerEchoRequest::Ptr(
-        new WorkerEchoRequest(serviceProvider,
-                              worker,
-                              id,
-                              priority,
-                              data,
-                              delay));
+WorkerSqlRequest::Ptr WorkerSqlRequest::create(ServiceProvider::Ptr const& serviceProvider,
+                                               string const& worker,
+                                               string const& id,
+                                               int priority,
+                                               std::string const& query,
+                                               std::string const& user,
+                                               std::string const& password) {
+    return WorkerSqlRequest::Ptr(
+        new WorkerSqlRequest(serviceProvider,
+                             worker,
+                             id,
+                             priority,
+                             query,
+                             user,
+                             password));
 }
 
 
-WorkerEchoRequest::WorkerEchoRequest(ServiceProvider::Ptr const& serviceProvider,
+WorkerSqlRequest::WorkerSqlRequest(ServiceProvider::Ptr const& serviceProvider,
                                      string const& worker,
                                      string const& id,
                                      int priority,
-                                     string const& data,
-                                     uint64_t delay)
+                                     std::string const& query,
+                                     std::string const& user,
+                                     std::string const& password)
     :   WorkerRequest(serviceProvider,
                       worker,
-                      "TEST_ECHO",
+                      "SQL",
                       id,
                       priority),
-        _data(data),
-        _delay(delay),
-        _delayLeft(delay) {
+        _query(query),
+        _user(user),
+        _password(password) {
 }
 
 
-void WorkerEchoRequest::setInfo(ProtocolResponseEcho& response) const {
+void WorkerSqlRequest::setInfo(ProtocolResponseSql& response) const {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
@@ -84,14 +87,15 @@ void WorkerEchoRequest::setInfo(ProtocolResponseEcho& response) const {
     // Return the performance of the target request
 
     response.set_allocated_target_performance(performance().info());
-    response.set_data(data());
+
+    // TODO: implement extracting and setting a result set
+    //response.set_data(data());
 }
 
 
-bool WorkerEchoRequest::execute() {
+bool WorkerSqlRequest::execute() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
-         << "  delay:" << delay() << " _delayLeft:" << _delayLeft);
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     util::Lock lock(_mtx, context() + __func__);
 
@@ -113,20 +117,10 @@ bool WorkerEchoRequest::execute() {
                     WorkerRequest::status2string(status()));
     }
 
-    // Block the thread for the random number of milliseconds in the interval
-    // below. Then update the amount of time which is still left.
+    // TODO: implement database connection and query execution
 
-    util::BlockPost blockPost(1000, 2000);
-
-    uint64_t const span = blockPost.wait();
-    _delayLeft -= (span < _delayLeft) ? span : _delayLeft;
-
-    // Done if have reached or exceeded the initial delay
-    if (0 == _delayLeft) {
-        setStatus(lock, STATUS_SUCCEEDED);
-        return true;
-    }
-    return false;
+    setStatus(lock, STATUS_SUCCEEDED);
+    return true;
 }
 
 }}} // namespace lsst::qserv::replica

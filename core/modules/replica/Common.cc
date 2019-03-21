@@ -62,6 +62,7 @@ string status2string(ExtendedCompletionStatus status) {
         case ExtendedCompletionStatus::EXT_STATUS_NO_ACCESS:        return "EXT_STATUS_NO_ACCESS";
         case ExtendedCompletionStatus::EXT_STATUS_NO_SPACE:         return "EXT_STATUS_NO_SPACE";
         case ExtendedCompletionStatus::EXT_STATUS_FILE_MTIME:       return "EXT_STATUS_FILE_MTIME";
+        case ExtendedCompletionStatus::EXT_STATUS_MYSQL_ERROR:      return "EXT_STATUS_MYSQL_ERROR";
     }
     throw logic_error(
             "Common::" + string(__func__) + "(ExtendedCompletionStatus) - unhandled status: " +
@@ -95,6 +96,7 @@ ExtendedCompletionStatus translate(ProtocolStatusExt status) {
         case ProtocolStatusExt::NO_ACCESS:     return ExtendedCompletionStatus::EXT_STATUS_NO_ACCESS;
         case ProtocolStatusExt::NO_SPACE:      return ExtendedCompletionStatus::EXT_STATUS_NO_SPACE;
         case ProtocolStatusExt::FILE_MTIME:    return ExtendedCompletionStatus::EXT_STATUS_FILE_MTIME;
+        case ProtocolStatusExt::MYSQL_ERROR:   return ExtendedCompletionStatus::EXT_STATUS_MYSQL_ERROR;
     }
     throw logic_error(
                 "Common::" + string(__func__) + "(ProtocolStatusExt) - unhandled status: " +
@@ -128,6 +130,7 @@ ProtocolStatusExt translate(ExtendedCompletionStatus status) {
         case ExtendedCompletionStatus::EXT_STATUS_NO_ACCESS:     return ProtocolStatusExt::NO_ACCESS;
         case ExtendedCompletionStatus::EXT_STATUS_NO_SPACE:      return ProtocolStatusExt::NO_SPACE;
         case ExtendedCompletionStatus::EXT_STATUS_FILE_MTIME:    return ProtocolStatusExt::FILE_MTIME;
+        case ExtendedCompletionStatus::EXT_STATUS_MYSQL_ERROR:   return ProtocolStatusExt::MYSQL_ERROR;
     }
     throw logic_error(
                 "Common::" + string(__func__) + "(ExtendedCompletionStatus) - unhandled status: " +

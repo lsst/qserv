@@ -38,6 +38,7 @@
 #include "replica/WorkerFindAllRequest.h"
 #include "replica/WorkerReplicationRequest.h"
 #include "replica/WorkerRequestFactory.h"
+#include "replica/WorkerSqlRequest.h"
 #include "util/BlockPost.h"
 
 using namespace std;
@@ -228,7 +229,7 @@ void WorkerProcessor::enqueueForReplication(
         if (::ifDuplicateRequest(response, ptr,request)) return;
     }
 
-    // The code below may catch exceptions if other parameters of the requites
+    // The code below may catch exceptions if other parameters of the request
     // won't pass further validation against the present configuration of the request
     // processing service.
     try {
@@ -280,7 +281,7 @@ void WorkerProcessor::enqueueForDeletion(string const& id,
         if (::ifDuplicateRequest(response, ptr, request)) return;
     }
 
-    // The code below may catch exceptions if other parameters of the requites
+    // The code below may catch exceptions if other parameters of the request
     // won't pass further validation against the present configuration of the request
     // processing service.
     try {
@@ -321,7 +322,7 @@ void WorkerProcessor::enqueueForFind(string const& id,
 
     util::Lock lock(_mtx, _context() + __func__);
 
-    // The code below may catch exceptions if other parameters of the requites
+    // The code below may catch exceptions if other parameters of the request
     // won't pass further validation against the present configuration of the request
     // processing service.
     try {
@@ -361,7 +362,7 @@ void WorkerProcessor::enqueueForFindAll(string const& id,
 
     util::Lock lock(_mtx, _context() + __func__);
 
-    // The code below may catch exceptions if other parameters of the requites
+    // The code below may catch exceptions if other parameters of the request
     // won't pass further validation against the present configuration of the request
     // processing service.
     try {
@@ -416,7 +417,7 @@ void WorkerProcessor::enqueueForEcho(string const& id,
         return;
     }
 
-    // The code below may catch exceptions if other parameters of the requites
+    // The code below may catch exceptions if other parameters of the request
     // won't pass further validation against the present configuration of the request
     // processing service.
 
@@ -427,6 +428,48 @@ void WorkerProcessor::enqueueForEcho(string const& id,
             request.priority(),
             request.data(),
             request.delay()
+        );
+        _newRequests.push(ptr);
+    
+        response.set_status(ProtocolStatus::QUEUED);
+        response.set_status_ext(ProtocolStatusExt::NONE);
+        response.set_allocated_performance(ptr->performance().info());
+    
+        _setInfo(ptr, response);
+
+    } catch (invalid_argument const& ec) {
+        LOGS(_log, LOG_LVL_ERROR, _context() << __func__ << "  " << ec.what());
+
+        setDefaultResponse(response,
+                           ProtocolStatus::BAD,
+                           ProtocolStatusExt::INVALID_PARAM);
+    }
+}
+
+
+void WorkerProcessor::enqueueForSql(std::string const& id,
+                                    ProtocolRequestSql const& request,
+                                    ProtocolResponseSql& response) {
+
+    LOGS(_log, LOG_LVL_DEBUG, _context() << __func__
+        << "  id: " << id
+        << "  query: " << request.query()
+        << "  user: " << request.user());
+
+    util::Lock lock(_mtx, _context() + __func__);
+
+    // The code below may catch exceptions if other parameters of the request
+    // won't pass further validation against the present configuration of the request
+    // processing service.
+
+    try {
+        auto const ptr = _requestFactory.createSqlRequest(
+            _worker,
+            id,
+            request.priority(),
+            request.query(),
+            request.user(),
+            request.password()
         );
         _newRequests.push(ptr);
     
@@ -700,6 +743,8 @@ void WorkerProcessor::_setServiceResponseInfo(
         info->set_queued_type(ProtocolQueuedRequestType::REPLICA_FIND_ALL);
     } else if (nullptr != dynamic_pointer_cast<WorkerEchoRequest>(request)) {
         info->set_queued_type(ProtocolQueuedRequestType::TEST_ECHO);
+    } else if (nullptr != dynamic_pointer_cast<WorkerSqlRequest>(request)) {
+        info->set_queued_type(ProtocolQueuedRequestType::SQL);
     } else {
         throw logic_error(
                 "WorkerProcessor::" + string(__func__) +
@@ -892,6 +937,19 @@ void WorkerProcessor::_setInfo(WorkerRequest::Ptr const& request,
     if (not ptr) {
         throw logic_error(
                 "WorkerProcessor::" + string(__func__) + "(WorkerEchoRequest)"
+                "  incorrect dynamic type of request id: " + request->id());
+    }
+    ptr->setInfo(response);
+}
+
+
+void WorkerProcessor::_setInfo(WorkerRequest::Ptr const& request,
+                               ProtocolResponseSql& response) {
+
+    auto ptr = dynamic_pointer_cast<WorkerSqlRequest>(request);
+    if (not ptr) {
+        throw logic_error(
+                "WorkerProcessor::" + string(__func__) + "(WorkerSqlRequest)"
                 "  incorrect dynamic type of request id: " + request->id());
     }
     ptr->setInfo(response);

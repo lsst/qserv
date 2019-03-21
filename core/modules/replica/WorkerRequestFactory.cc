@@ -34,6 +34,7 @@
 #include "replica/WorkerFindAllRequest.h"
 #include "replica/WorkerFindRequest.h"
 #include "replica/WorkerReplicationRequest.h"
+#include "replica/WorkerSqlRequest.h"
 
 using namespace std;
 
@@ -74,26 +75,16 @@ public:
     WorkerRequestFactoryTest(WorkerRequestFactoryTest const&) = delete;
     WorkerRequestFactoryTest& operator=(WorkerRequestFactoryTest const&) = delete;
 
-    /// Normal constructor
     WorkerRequestFactoryTest(ServiceProvider::Ptr const& serviceProvider)
         :   WorkerRequestFactoryBase(serviceProvider) {
     }
 
-    /// Destructor
     ~WorkerRequestFactoryTest() final = default;
 
-    /**
-     * Implements the corresponding method of the base class
-     *
-     * @see WorkerReplicationRequestBase::technology
-     */
-    string technology() const { return "TEST"; }
+    /// @see WorkerReplicationRequestBase::technology
+    string technology() const final { return "TEST"; }
 
-    /**
-     * Implements the corresponding method of the base class
-     *
-     * @see WorkerReplicationRequestBase::createReplicationRequest
-     */
+    /// @see WorkerReplicationRequestBase::createReplicationRequest
     WorkerReplicationRequestPtr createReplicationRequest(string const& worker,
                                                          string const& id,
                                                          int priority,
@@ -110,11 +101,7 @@ public:
             sourceWorker);
     }
 
-    /**
-     * Implements the corresponding method of the base class
-     *
-     * @see WorkerReplicationRequestBase::createDeleteRequest
-     */
+    /// @see WorkerReplicationRequestBase::createDeleteRequest
     WorkerDeleteRequestPtr createDeleteRequest(string const& worker,
                                                string const& id,
                                                int priority,
@@ -129,11 +116,7 @@ public:
             chunk);
     }
 
-    /**
-     * Implements the corresponding method of the base class
-     *
-     * @see WorkerReplicationRequestBase::createFindRequest
-     */
+    /// @see WorkerReplicationRequestBase::createFindRequest
     WorkerFindRequestPtr createFindRequest(string const& worker,
                                            string const& id,
                                            int priority,
@@ -150,11 +133,7 @@ public:
             computeCheckSum);
     }
 
-    /**
-     * Implements the corresponding method of the base class
-     *
-     * @see WorkerReplicationRequestBase::createFindAllRequest
-     */
+    /// @see WorkerReplicationRequestBase::createFindAllRequest
     WorkerFindAllRequestPtr createFindAllRequest(string const& worker,
                                                  string const& id,
                                                  int priority,
@@ -167,11 +146,7 @@ public:
             database);
     }
 
-    /**
-     * Implements the corresponding method of the base class
-     *
-     * @see WorkerReplicationRequestBase::createEchoRequest
-     */
+    /// @see WorkerReplicationRequestBase::createEchoRequest
     WorkerEchoRequestPtr createEchoRequest(string const& worker,
                                            string const& id,
                                            int priority,
@@ -184,6 +159,23 @@ public:
             priority,
             data,
             delay);
+    }
+
+    /// @see WorkerReplicationRequestBase::createSqlRequest
+    WorkerSqlRequestPtr createSqlRequest(string const& worker,
+                                         string const& id,
+                                         int priority,
+                                         string const& query,
+                                         string const& user,
+                                         string const& password) const final {
+        return WorkerSqlRequest::create(
+            _serviceProvider,
+            worker,
+            id,
+            priority,
+            query,
+            user,
+            password);
     }
 };
 
@@ -206,26 +198,16 @@ public:
     WorkerRequestFactoryPOSIX(WorkerRequestFactoryPOSIX const&) = delete;
     WorkerRequestFactoryPOSIX& operator=(WorkerRequestFactoryPOSIX const&) = delete;
 
-    /// Normal constructor
     WorkerRequestFactoryPOSIX(ServiceProvider::Ptr const& serviceProvider)
         :   WorkerRequestFactoryBase(serviceProvider) {
     }
 
-    /// Destructor
     ~WorkerRequestFactoryPOSIX() final = default;
 
-    /**
-     * Implements the corresponding method of the base class
-     *
-     * @see WorkerReplicationRequestBase::technology
-     */
-    string technology() const { return "POSIX"; }
+    /// @see WorkerReplicationRequestBase::technology
+    string technology() const final { return "POSIX"; }
 
-    /**
-     * Implements the corresponding method of the base class
-     *
-     * @see WorkerReplicationRequestBase::createReplicationRequest
-     */
+    /// @see WorkerReplicationRequestBase::createReplicationRequest
     WorkerReplicationRequestPtr createReplicationRequest(string const& worker,
                                                          string const& id,
                                                          int priority,
@@ -242,11 +224,7 @@ public:
             sourceWorker);
     }
 
-    /**
-     * Implements the corresponding method of the base class
-     *
-     * @see WorkerReplicationRequestBase::createDeleteRequest
-     */
+    /// @see WorkerReplicationRequestBase::createDeleteRequest
     WorkerDeleteRequestPtr createDeleteRequest(string const& worker,
                                                string const& id,
                                                int priority,
@@ -261,11 +239,7 @@ public:
             chunk);
     }
 
-    /**
-     * Implements the corresponding method of the base class
-     *
-     * @see WorkerReplicationRequestBase::createFindRequest
-     */
+    /// @see WorkerReplicationRequestBase::createFindRequest
     WorkerFindRequestPtr createFindRequest(string const& worker,
                                            string const& id,
                                            int priority,
@@ -282,11 +256,7 @@ public:
             computeCheckSum);
     }
 
-    /**
-     * Implements the corresponding method of the base class
-     *
-     * @see WorkerReplicationRequestBase::createFindAllRequest
-     */
+    /// @see WorkerReplicationRequestBase::createFindAllRequest
     WorkerFindAllRequestPtr createFindAllRequest(string const& worker,
                                                  string const& id,
                                                  int priority,
@@ -299,11 +269,7 @@ public:
             database);
     }
 
-    /**
-     * Implements the corresponding method of the base class
-     *
-     * @see WorkerReplicationRequestBase::createEchoRequest
-     */
+    /// @see WorkerReplicationRequestBase::createEchoRequest
     WorkerEchoRequestPtr createEchoRequest(string const& worker,
                                            string const& id,
                                            int priority,
@@ -316,6 +282,23 @@ public:
             priority,
             data,
             delay);
+    }
+
+    /// @see WorkerReplicationRequestBase::createSqlRequest
+    WorkerSqlRequestPtr createSqlRequest(string const& worker,
+                                         string const& id,
+                                         int priority,
+                                         string const& query,
+                                         string const& user,
+                                         string const& password) const final {
+        return WorkerSqlRequestPOSIX::create(
+            _serviceProvider,
+            worker,
+            id,
+            priority,
+            query,
+            user,
+            password);
     }
 };
 
@@ -339,26 +322,16 @@ public:
     WorkerRequestFactoryFS(WorkerRequestFactoryFS const&) = delete;
     WorkerRequestFactoryFS& operator=(WorkerRequestFactoryFS const&) = delete;
 
-    /// Normal constructor
     WorkerRequestFactoryFS(ServiceProvider::Ptr const& serviceProvider)
         :   WorkerRequestFactoryBase(serviceProvider) {
     }
 
-    /// Destructor
     ~WorkerRequestFactoryFS() final = default;
 
-    /**
-     * Implements the corresponding method of the base class
-     *
-     * @see WorkerReplicationRequestBase::technology
-     */
-    string technology() const { return "FS"; }
+    /// @see WorkerReplicationRequestBase::technology
+    string technology() const final { return "FS"; }
 
-    /**
-     * Implements the corresponding method of the base class
-     *
-     * @see WorkerReplicationRequestBase::createReplicationRequest
-     */
+    /// @see WorkerReplicationRequestBase::createReplicationRequest
     WorkerReplicationRequestPtr createReplicationRequest(string const& worker,
                                                          string const& id,
                                                          int priority,
@@ -375,11 +348,7 @@ public:
             sourceWorker);
     }
 
-    /**
-     * Implements the corresponding method of the base class
-     *
-     * @see WorkerReplicationRequestBase::createDeleteRequest
-     */
+    /// @see WorkerReplicationRequestBase::createDeleteRequest
     WorkerDeleteRequestPtr createDeleteRequest(string const& worker,
                                                string const& id,
                                                int priority,
@@ -394,11 +363,7 @@ public:
             chunk);
     }
 
-    /**
-     * Implements the corresponding method of the base class
-     *
-     * @see WorkerReplicationRequestBase::createFindRequest
-     */
+    /// @see WorkerReplicationRequestBase::createFindRequest
     WorkerFindRequestPtr createFindRequest(string const& worker,
                                            string const& id,
                                            int priority,
@@ -415,11 +380,7 @@ public:
             computeCheckSum);
     }
 
-    /**
-     * Implements the corresponding method of the base class
-     *
-     * @see WorkerReplicationRequestBase::createFindAllRequest
-     */
+    /// @see WorkerReplicationRequestBase::createFindAllRequest
     WorkerFindAllRequestPtr createFindAllRequest(string const& worker,
                                                  string const& id,
                                                  int priority,
@@ -432,11 +393,7 @@ public:
             database);
     }
 
-    /**
-     * Implements the corresponding method of the base class
-     *
-     * @see WorkerReplicationRequestBase::createEchoRequest
-     */
+    /// @see WorkerReplicationRequestBase::createEchoRequest
     WorkerEchoRequestPtr createEchoRequest(string const& worker,
                                            string const& id,
                                            int priority,
@@ -449,6 +406,23 @@ public:
             priority,
             data,
             delay);
+    }
+
+    /// @see WorkerReplicationRequestBase::createSqlRequest
+    WorkerSqlRequestPtr createSqlRequest(string const& worker,
+                                         string const& id,
+                                         int priority,
+                                         string const& query,
+                                         string const& user,
+                                         string const& password) const final {
+        return WorkerSqlRequestFS::create(
+            _serviceProvider,
+            worker,
+            id,
+            priority,
+            query,
+            user,
+            password);
     }
 };
 

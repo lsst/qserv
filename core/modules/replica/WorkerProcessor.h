@@ -248,6 +248,23 @@ public:
                         ProtocolResponseEcho& response);
 
     /**
+     * Enqueue a request for querying the workr database
+     *
+     * @param id
+     *   an identifier of a request
+     *
+     * @param request
+     *   the Protobuf object received from a client
+     *
+     * @param response
+     *   the Protobuf object to be initialized and ready to be sent back
+     *   to the client
+     */
+    void enqueueForSql(std::string const& id,
+                       ProtocolRequestSql const& request,
+                       ProtocolResponseSql& response);
+
+    /**
      * Set default values to protocol response which has 3 mandatory fields:
      *
      *   status
@@ -547,8 +564,8 @@ private:
                   ProtocolResponseFindAll& response);
 
     /**
-     * Extract the replica info (for multiple chunks) from the request and put
-     * it into the response object.
+     * Extract the input data string received with the request and put
+     * it back into the response object.
      *
      * @param request
      *   finished request
@@ -561,6 +578,22 @@ private:
      */
     void _setInfo(WorkerRequest::Ptr const& request,
                   ProtocolResponseEcho& response);
+
+    /**
+     * Extract the result set (if the query has succeeded) and put
+     * it into the response object.
+     *
+     * @param request
+     *   finished request
+     *
+     * @param response
+     *   Google Protobuf object to be initialized
+     *
+     * @throws std::logic_error
+     *   if the dynamic type of the request won't match expectations
+     */
+    void _setInfo(WorkerRequest::Ptr const& request,
+                  ProtocolResponseSql& response);
 
     /**
      * Fill in the information object for the specified request based on its
