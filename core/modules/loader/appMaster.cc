@@ -27,6 +27,7 @@
 
 // qserv headers
 #include "loader/CentralMaster.h"
+#include "loader/Util.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -46,7 +47,8 @@ int main(int argc, char* argv[]) {
     }
     LOGS(_log, LOG_LVL_INFO, "masterCfg=" << mCfgFile);
 
-    std::string const ourHost = boost::asio::ip::host_name();
+    //std::string const ourHost = boost::asio::ip::host_name(); &&&
+    std::string const ourHost = getOurHostName(0);
     boost::asio::io_service ioService;
 
     MasterConfig mCfg(mCfgFile);

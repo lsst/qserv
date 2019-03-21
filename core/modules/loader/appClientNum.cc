@@ -32,6 +32,7 @@
 // qserv headers
 #include "loader/CentralClient.h"
 #include "loader/ClientConfig.h"
+#include "loader/Util.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -139,7 +140,8 @@ int main(int argc, char* argv[]) {
     }
 
 
-    std::string const ourHost = boost::asio::ip::host_name();
+    //std::string const ourHost = boost::asio::ip::host_name(); &&&
+    std::string const ourHost = getOurHostName(0);
     boost::asio::io_service ioService;
 
     ClientConfig cCfg(cCfgFile);
