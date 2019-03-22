@@ -113,7 +113,7 @@ void DeleteRequest::startImpl(util::Lock const& lock) {
 
     ProtocolRequestHeader hdr;
     hdr.set_id(id());
-    hdr.set_type(ProtocolRequestHeader::REPLICA);
+    hdr.set_type(ProtocolRequestHeader::QUEUED);
     hdr.set_queued_type(ProtocolQueuedRequestType::REPLICA_DELETE);
 
     buffer()->serialize(hdr);

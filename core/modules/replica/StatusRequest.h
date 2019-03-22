@@ -46,6 +46,7 @@
 #include "replica/RequestMessenger.h"
 #include "replica/ProtocolBuffer.h"
 #include "replica/ServiceProvider.h"
+#include "replica/SqlResultSet.h"
 #include "replica/StatusRequestBase.h"
 
 // This header declarations
@@ -166,6 +167,31 @@ struct StatusEchoRequestPolicy {
     using ResponseMessageType     = ProtocolResponseEcho;
     using ResponseDataType        = std::string;
     using TargetRequestParamsType = EchoRequestParams;
+
+    static char const* requestName();
+
+    static ProtocolQueuedRequestType targetRequestType();
+
+    static void extractResponseData(ResponseMessageType const& msg,
+                                    ResponseDataType& data);
+
+    static void extractTargetRequestParams(ResponseMessageType const& msg,
+                                           TargetRequestParamsType& params);
+
+    template <class REQUEST_PTR>
+    static void saveReplicaInfo(REQUEST_PTR const& request) {
+        request->serviceProvider()->databaseServices()->updateRequestState(*request,
+                                                                           request->targetRequestId(),
+                                                                           request->targetPerformance());
+    }
+};
+
+
+struct StatusSqlRequestPolicy {
+
+    using ResponseMessageType     = ProtocolResponseSql;
+    using ResponseDataType        = SqlResultSet;
+    using TargetRequestParamsType = SqlRequestParams;
 
     static char const* requestName();
 
@@ -408,6 +434,7 @@ typedef StatusRequest<StatusDeleteRequestPolicy>      StatusDeleteRequest;
 typedef StatusRequest<StatusFindRequestPolicy>        StatusFindRequest;
 typedef StatusRequest<StatusFindAllRequestPolicy>     StatusFindAllRequest;
 typedef StatusRequest<StatusEchoRequestPolicy>        StatusEchoRequest;
+typedef StatusRequest<StatusSqlRequestPolicy>         StatusSqlRequest;
 
 }}} // namespace lsst::qserv::replica
 

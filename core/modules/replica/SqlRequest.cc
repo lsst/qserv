@@ -20,7 +20,7 @@
  */
 
 // Class header
-#include "replica/EchoRequest.h"
+#include "replica/SqlRequest.h"
 
 // System headers
 #include <stdexcept>
@@ -34,15 +34,13 @@
 #include "replica/Controller.h"
 #include "replica/DatabaseServices.h"
 #include "replica/Messenger.h"
-#include "replica/ProtocolBuffer.h"
-#include "replica/ReplicaInfo.h"
 #include "replica/ServiceProvider.h"
 
 using namespace std;
 
 namespace {
 
-LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.EchoRequest");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlRequest");
 
 } /// namespace
 
@@ -50,60 +48,69 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-EchoRequest::Ptr EchoRequest::create(ServiceProvider::Ptr const& serviceProvider,
-                                     boost::asio::io_service& io_service,
-                                     string const& worker,
-                                     string const& data,
-                                     uint64_t delay,
-                                     CallbackType const& onFinish,
-                                     int priority,
-                                     bool keepTracking,
-                                     shared_ptr<Messenger> const& messenger) {
-    return EchoRequest::Ptr(
-        new EchoRequest(serviceProvider,
-                        io_service,
-                        worker,
-                        data,
-                        delay,
-                        onFinish,
-                        priority,
-                        keepTracking,
-                        messenger));
+SqlRequest::Ptr SqlRequest::create(ServiceProvider::Ptr const& serviceProvider,
+                                   boost::asio::io_service& io_service,
+                                   string const& worker,
+                                   std::string const& query,
+                                   std::string const& user,
+                                   std::string const& password,
+                                   uint64_t maxRows,
+                                   CallbackType const& onFinish,
+                                   int priority,
+                                   bool keepTracking,
+                                   shared_ptr<Messenger> const& messenger) {
+    return SqlRequest::Ptr(
+        new SqlRequest(serviceProvider,
+                       io_service,
+                       worker,
+                       query,
+                       user,
+                       password,
+                       maxRows,
+                       onFinish,
+                       priority,
+                       keepTracking,
+                       messenger));
 }
 
 
-EchoRequest::EchoRequest(ServiceProvider::Ptr const& serviceProvider,
+SqlRequest::SqlRequest(ServiceProvider::Ptr const& serviceProvider,
                          boost::asio::io_service& io_service,
                          string const& worker,
-                         string const& data,
-                         uint64_t delay,
+                         std::string const& query,
+                         std::string const& user,
+                         std::string const& password,
+                         uint64_t maxRows,
                          CallbackType const& onFinish,
                          int  priority,
                          bool keepTracking,
                          shared_ptr<Messenger> const& messenger)
     :   RequestMessenger(serviceProvider,
                          io_service,
-                         "ECHO",
+                         "SQL",
                          worker,
                          priority,
                          keepTracking,
                          false /* allowDuplicate */,
                          messenger),
-        _data(data),
-        _delay(delay),
+        _query(query),
+        _user(user),
+        _password(password),
+        _maxRows(maxRows),
         _onFinish(onFinish) {
 }
 
 
-string const& EchoRequest::responseData() const {
+SqlResultSet const& SqlRequest::responseData() const {
     return _responseData;
 }
 
 
-void EchoRequest::startImpl(util::Lock const& lock) {
+void SqlRequest::startImpl(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__
-         << "  worker: " << worker() << " data.length: " << data().size() << " delay: " << delay());
+         << "  worker: " << worker() << " query: " << query() << " user: " << user()
+         << " maxRows: " << maxRows());
 
     // Serialize the Request message header and the request itself into
     // the network buffer.
@@ -113,14 +120,16 @@ void EchoRequest::startImpl(util::Lock const& lock) {
     ProtocolRequestHeader hdr;
     hdr.set_id(id());
     hdr.set_type(ProtocolRequestHeader::QUEUED);
-    hdr.set_queued_type(ProtocolQueuedRequestType::TEST_ECHO);
+    hdr.set_queued_type(ProtocolQueuedRequestType::SQL);
 
     buffer()->serialize(hdr);
 
-    ProtocolRequestEcho message;
+    ProtocolRequestSql message;
     message.set_priority(priority());
-    message.set_data(data());
-    message.set_delay(delay());
+    message.set_query(query());
+    message.set_user(user());
+    message.set_password(password());
+    message.set_max_rows(maxRows());
 
     buffer()->serialize(message);
 
@@ -128,24 +137,24 @@ void EchoRequest::startImpl(util::Lock const& lock) {
 }
 
 
-void EchoRequest::_wait(util::Lock const& lock) {
+void SqlRequest::_wait(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
-    // Allways need to set the interval before launching the timer.
+    // Always need to set the interval before launching the timer.
 
     timer().expires_from_now(boost::posix_time::seconds(timerIvalSec()));
     timer().async_wait(
         boost::bind(
-            &EchoRequest::_awaken,
-            shared_from_base<EchoRequest>(),
+            &SqlRequest::_awaken,
+            shared_from_base<SqlRequest>(),
             boost::asio::placeholders::error
         )
     );
 }
 
 
-void EchoRequest::_awaken(boost::system::error_code const& ec) {
+void SqlRequest::_awaken(boost::system::error_code const& ec) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
@@ -177,7 +186,7 @@ void EchoRequest::_awaken(boost::system::error_code const& ec) {
 
     ProtocolRequestStatus message;
     message.set_id(id());
-    message.set_queued_type(ProtocolQueuedRequestType::TEST_ECHO);
+    message.set_queued_type(ProtocolQueuedRequestType::SQL);
 
     buffer()->serialize(message);
 
@@ -185,19 +194,19 @@ void EchoRequest::_awaken(boost::system::error_code const& ec) {
 }
 
 
-void EchoRequest::_send(util::Lock const& lock) {
+void SqlRequest::_send(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
-    auto self = shared_from_base<EchoRequest>();
+    auto self = shared_from_base<SqlRequest>();
 
-    messenger()->send<ProtocolResponseEcho>(
+    messenger()->send<ProtocolResponseSql>(
         worker(),
         id(),
         buffer(),
         [self] (string const& id,
                 bool success,
-                ProtocolResponseEcho const& response) {
+                ProtocolResponseSql const& response) {
 
             self->_analyze(success,
                            response);
@@ -206,8 +215,8 @@ void EchoRequest::_send(util::Lock const& lock) {
 }
 
 
-void EchoRequest::_analyze(bool success,
-                           ProtocolResponseEcho const& message) {
+void SqlRequest::_analyze(bool success,
+                          ProtocolResponseSql const& message) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  success=" << (success ? "true" : "false"));
 
@@ -252,11 +261,11 @@ void EchoRequest::_analyze(bool success,
     // Always extract extended data regardless of the completion status
     // reported by the worker service.
 
-    _responseData = message.data();
+    _responseData.set(message);
 
     // Extract target request type-specific parameters from the response
     if (message.has_request()) {
-        _targetRequestParams = EchoRequestParams(message.request());
+        _targetRequestParams = SqlRequestParams(message.request());
     }
     switch (message.status()) {
 
@@ -294,30 +303,31 @@ void EchoRequest::_analyze(bool success,
 
         default:
             throw logic_error(
-                    "EchoRequest::" + string(__func__) + "  unknown status '" +
+                    "SqlRequest::" + string(__func__) + "  unknown status '" +
                     ProtocolStatus_Name(message.status()) + "' received from server");
     }
 }
 
 
-void EchoRequest::notify(util::Lock const& lock) {
+void SqlRequest::notify(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
-    notifyDefaultImpl<EchoRequest>(lock, _onFinish);
+    notifyDefaultImpl<SqlRequest>(lock, _onFinish);
 }
 
 
-void EchoRequest::savePersistentState(util::Lock const& lock) {
+void SqlRequest::savePersistentState(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     controller()->serviceProvider()->databaseServices()->saveState(*this, performance(lock));
 }
 
 
-list<pair<string,string>> EchoRequest::extendedPersistentState() const {
+list<pair<string,string>> SqlRequest::extendedPersistentState() const {
     list<pair<string,string>> result;
-    result.emplace_back("data_length_bytes",  to_string(data().size()));
-    result.emplace_back("delay_milliseconds", to_string(delay()));
+    result.emplace_back("query",    query());
+    result.emplace_back("user",     user());
+    result.emplace_back("max_rows", to_string(maxRows()));
     return result;
 }
 

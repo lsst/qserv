@@ -72,10 +72,12 @@ public:
     EchoRequestParams const& targetRequestParams() const { return _targetRequestParams; }
 
     /**
-     * @return a reference to a result obtained from a remote service.
+     * @return
+     *   a reference to a result obtained from a remote service.
      *
-     * Note that this operation will return a sensible result only if the operation
-     * finishes with status FINISHED::SUCCESS
+     * @note
+     *   This operation will return a sensible result only if the operation
+     *   finishes with status FINISHED::SUCCESS
      */
     std::string const& responseData() const;
 

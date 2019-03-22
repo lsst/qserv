@@ -170,4 +170,32 @@ void StatusEchoRequestPolicy::extractTargetRequestParams(ResponseMessageType con
     }
 }
 
+
+// -------------------------------------------
+// --------- StatusSqlRequestPolicy ----------
+// -------------------------------------------
+
+char const* StatusSqlRequestPolicy::requestName() {
+    return "REQUEST_STATUS:SQL";
+}
+
+
+ProtocolQueuedRequestType StatusSqlRequestPolicy::targetRequestType() {
+    return ProtocolQueuedRequestType::SQL;
+}
+
+
+void StatusSqlRequestPolicy::extractResponseData(ResponseMessageType const& msg,
+                                                 ResponseDataType& data) {
+    data.set(msg);
+}
+
+
+void StatusSqlRequestPolicy::extractTargetRequestParams(ResponseMessageType const& msg,
+                                                        TargetRequestParamsType& params) {
+    if (msg.has_request()) {
+        params = TargetRequestParamsType(msg.request());
+    }
+}
+
 }}} // namespace lsst::qserv::replica

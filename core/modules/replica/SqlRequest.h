@@ -18,22 +18,20 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_REPLICATIONREQUEST_H
-#define LSST_QSERV_REPLICA_REPLICATIONREQUEST_H
+#ifndef LSST_QSERV_REPLICA_SQLREQUEST_H
+#define LSST_QSERV_REPLICA_SQLREQUEST_H
 
 // System headers
 #include <functional>
 #include <memory>
 #include <string>
-
-// Third party headers
-#include <boost/asio.hpp>
+#include <vector>
 
 // Qserv headers
 #include "replica/Common.h"
-#include "replica/protocol.pb.h"
-#include "replica/ReplicaInfo.h"
 #include "replica/RequestMessenger.h"
+#include "replica/SqlResultSet.h"
+#include "replica/protocol.pb.h"
 
 // This header declarations
 
@@ -45,42 +43,57 @@ namespace replica {
 class Messenger;
 
 /**
-  * Class ReplicationRequest represents a transient state of requests
-  * within the master controller for creating replicas.
-  */
-class ReplicationRequest : public RequestMessenger  {
+ * Class SqlRequest represents Controller-side requests for initiating
+ * database queries at a remote worker nodes. The requests are sent over
+ * the controller-worker protocol and they are executed by the the worker-side
+ * framework.
+ *
+ * In case of a successful completion of a request an object of this request class
+ * will receive a result set (if any) of the query.
+ */
+class SqlRequest : public RequestMessenger  {
 
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<ReplicationRequest> Ptr;
+    typedef std::shared_ptr<SqlRequest> Ptr;
 
     /// The function type for notifications on the completion of the request
     typedef std::function<void(Ptr)> CallbackType;
 
     // Default construction and copy semantics are prohibited
 
-    ReplicationRequest() = delete;
-    ReplicationRequest(ReplicationRequest const&) = delete;
-    ReplicationRequest& operator=(ReplicationRequest const&) = delete;
+    SqlRequest() = delete;
+    SqlRequest(SqlRequest const&) = delete;
+    SqlRequest& operator=(SqlRequest const&) = delete;
 
-    ~ReplicationRequest() final = default;
+    ~SqlRequest() final = default;
 
     // Trivial get methods
 
-    std::string const& database()     const { return _database; }
-    unsigned int       chunk()        const { return _chunk; }
-    std::string const& sourceWorker() const { return _sourceWorker; }
+    std::string const& query()    const { return _query; }
+    std::string const& user()     const { return _user; }
+    std::string const& password() const { return _password; }
+
+    uint64_t maxRows() const { return _maxRows; }
 
     /// @return target request specific parameters
-    ReplicationRequestParams const& targetRequestParams() const { return _targetRequestParams; }
+    SqlRequestParams const& targetRequestParams() const { return _targetRequestParams; }
 
+    /**
+     * @return
+     *   a reference to a result obtained from a remote service.
+     *
+     * @note
+     *   This operation will return a sensible result only if the operation
+     *   finishes with status FINISHED::SUCCESS
+     */
     /**
      * @return
      *   request-specific extended data reported upon a successful
      *   completion of the request
      */
-    ReplicaInfo const& responseData() const { return _replicaInfo; }
+    SqlResultSet const& responseData() const;
 
     /**
      * Create a new request with specified parameters.
@@ -90,38 +103,38 @@ public:
      * low-level pointers).
      *
      * @param serviceProvider
-     *   a host of services for various communications
-     *
-     * @param io_service
-     *   BOOST ASIO API
+     *   provider of various services
      *
      * @param worker
-     *   the identifier of a worker node (the one to be affected by the replication)
-     *   at a destination of the chunk
+     *   identifier of a worker node
      *
-     * @param sourceWorker
-     *   the identifier of a worker node at a source of the chunk
+     * @param query
+     *   the query to be executed
      *
-     * @param database
-     *   the name of a database
+     * @param user
+     *   the name of a database account for connecting to the database service
      *
-     * @param chunk
-     *   the number of a chunk to replicate (implies all relevant tables)
+     * @param password
+     *   a database for connecting to the database service
+     *
+     * @param maxRows
+     *   (optional) limit for the maximum number of rows to be returned with the request.
+     *   Laving the default value of the parameter to 0 will result in not imposing any
+     *   explicit restrictions on a size of the result set. NOte that other, resource-defined
+     *   restrictions will still apply. The later includes the maximum size of the Google Protobuf
+     *   objects, the amount of available memory, etc.
      *
      * @param onFinish
-     *   an optional callback function to be called upon a completion of the request.
+     *   (optional) callback function to call upon completion of the request
      *
      * @param priority
-     *   a priority level of the request
+     *   priority level of the request
      *
      * @param keepTracking
      *   keep tracking the request before it finishes or fails
      *
-     * @param allowDuplicate
-     *   follow a previously made request if the current one duplicates it
-     *
      * @param messenger
-     *   worker messaging service
+     *   interface for communicating with workers
      *
      * @return
      *   pointer to the created object
@@ -129,13 +142,13 @@ public:
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       boost::asio::io_service& io_service,
                       std::string const& worker,
-                      std::string const& sourceWorker,
-                      std::string const& database,
-                      unsigned int chunk,
+                      std::string const& query,
+                      std::string const& user,
+                      std::string const& password,
+                      uint64_t maxRows,
                       CallbackType const& onFinish,
-                      int priority,
+                      int  priority,
                       bool keepTracking,
-                      bool allowDuplicate,
                       std::shared_ptr<Messenger> const& messenger);
 
     /// @see Request::extendedPersistentState()
@@ -154,18 +167,18 @@ protected:
 
 private:
 
-    /// @see ReplicationRequest::create()
-    ReplicationRequest(ServiceProvider::Ptr const& serviceProvider,
-                       boost::asio::io_service& io_service,
-                       std::string const& worker,
-                       std::string const& sourceWorker,
-                       std::string const& database,
-                       unsigned int  chunk,
-                       CallbackType const& onFinish,
-                       int priority,
-                       bool keepTracking,
-                       bool allowDuplicate,
-                       std::shared_ptr<Messenger> const& messenger);
+    /// @see SqlRequest::create()
+    SqlRequest(ServiceProvider::Ptr const& serviceProvider,
+               boost::asio::io_service& io_service,
+               std::string const& worker,
+               std::string const& query,
+               std::string const& user,
+               std::string const& password,
+               uint64_t maxRows,
+               CallbackType const& onFinish,
+               int  priority,
+               bool keepTracking,
+               std::shared_ptr<Messenger> const& messenger);
 
     /**
      * Start the timer before attempting the previously failed
@@ -176,7 +189,12 @@ private:
      */
     void _wait(util::Lock const& lock);
 
-    /// Callback handler for the asynchronous operation
+    /**
+     * Callback handler for the asynchronous operation
+     *
+     * @param ec
+     *   error code to be checked
+     */
     void _awaken(boost::system::error_code const& ec);
 
     /**
@@ -192,28 +210,28 @@ private:
      *
      * @param success
      *   'true' indicates a successful response from a worker
-     * 
+     *
      * @param message
-     *   worker response (if success)
+     *   response from a worker (if success)
      */
     void _analyze(bool success,
-                  ProtocolResponseReplicate const& message);
-
+                  ProtocolResponseSql const& message);
 
     // Input parameters
 
-    std::string  const _database;
-    unsigned int const _chunk;
-    std::string  const _sourceWorker;
-    CallbackType       _onFinish;       /// @note reset when the request is finished
+    std::string const _query;
+    std::string const _user;
+    std::string const _password;
+    uint64_t    const _maxRows;
+    CallbackType      _onFinish;    /// @note is reset when the request finishes
 
     /// Request-specific parameters of the target request
-    ReplicationRequestParams _targetRequestParams;
+    SqlRequestParams _targetRequestParams;
 
-    /// Detailed info on the replica status
-    ReplicaInfo _replicaInfo;
+    /// The results reported by a worker service
+    SqlResultSet _responseData;
 };
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_REPLICATIONREQUEST_H
+#endif // LSST_QSERV_REPLICA_SQLREQUEST_H

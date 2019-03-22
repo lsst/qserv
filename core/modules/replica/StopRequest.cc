@@ -171,4 +171,32 @@ void StopEchoRequestPolicy::extractTargetRequestParams(ResponseMessageType const
     }
 }
 
+
+// -----------------------------------------
+// --------- StopSqlRequestPolicy ----------
+// -----------------------------------------
+
+char const* StopSqlRequestPolicy::requestName() {
+    return "REQUEST_STOP:SQL";
+}
+
+
+ProtocolQueuedRequestType StopSqlRequestPolicy::targetRequestType() {
+    return ProtocolQueuedRequestType::SQL;
+}
+
+
+void StopSqlRequestPolicy::extractResponseData(ResponseMessageType const& msg,
+                                               ResponseDataType& data) {
+    data.set(msg);
+}
+
+
+void StopSqlRequestPolicy::extractTargetRequestParams(ResponseMessageType const& msg,
+                                                      TargetRequestParamsType& params) {
+    if (msg.has_request()) {
+        params = TargetRequestParamsType(msg.request());
+    }
+}
+
 }}} // namespace lsst::qserv::replica

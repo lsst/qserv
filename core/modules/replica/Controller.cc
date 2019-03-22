@@ -42,6 +42,7 @@
 #include "replica/ReplicationRequest.h"
 #include "replica/ServiceManagementRequest.h"
 #include "replica/ServiceProvider.h"
+#include "replica/SqlRequest.h"
 #include "replica/StatusRequest.h"
 #include "replica/StopRequest.h"
 
@@ -506,6 +507,57 @@ EchoRequest::Ptr Controller::echo(string const& workerName,
 }
 
 
+SqlRequest::Ptr Controller::sql(std::string const& workerName,
+        std::string const& worker,
+        std::string const& query,
+        std::string const& user,
+        std::string const& password,
+        uint64_t maxRows,
+        SqlRequestCallbackType const& onFinish,
+        int  priority,
+        bool keepTracking,
+        std::string const& jobId,
+        unsigned int requestExpirationIvalSec) {
+
+    LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
+
+    util::Lock lock(_mtx, _context(__func__));
+
+    _assertIsRunning();
+
+    Controller::Ptr controller = shared_from_this();
+
+    auto const request = SqlRequest::create(
+        serviceProvider(),
+        serviceProvider()->io_service(),
+        workerName,
+        query,
+        user,
+        password,
+        maxRows,
+        [controller] (SqlRequest::Ptr request) {
+            controller->_finish(request->id());
+        },
+        priority,
+        keepTracking,
+        serviceProvider()->messenger()
+    );
+
+    // Register the request (along with its callback) by its unique
+    // identifier in the local registry. Once it's complete it'll
+    // be automatically removed from the Registry.
+
+    _registry[request->id()] =
+        make_shared<RequestWrapperImpl<SqlRequest>>(request, onFinish);
+
+    // Initiate the request
+
+    request->start(controller, jobId, requestExpirationIvalSec);
+
+    return request;
+}
+
+
 StopReplicationRequest::Ptr Controller::stopReplication(
                                     string const& workerName,
                                     string const& targetRequestId,
@@ -626,6 +678,30 @@ StopEchoRequest::Ptr Controller::stopEcho(
 }
 
 
+StopSqlRequest::Ptr Controller::stopSql(
+                                    string const& workerName,
+                                    string const& targetRequestId,
+                                    StopSqlRequestCallbackType const& onFinish,
+                                    bool keepTracking,
+                                    string const& jobId,
+                                    unsigned int requestExpirationIvalSec) {
+
+    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  targetRequestId = " << targetRequestId);
+
+    util::Lock lock(_mtx, _context(__func__));
+
+    return ControllerImpl::requestManagementOperation<StopSqlRequest>(
+        shared_from_this(),
+        jobId,
+        workerName,
+        targetRequestId,
+        onFinish,
+        keepTracking,
+        serviceProvider()->messenger(),
+        requestExpirationIvalSec);
+}
+
+
 StatusReplicationRequest::Ptr Controller::statusOfReplication(
                                         string const& workerName,
                                         string const& targetRequestId,
@@ -735,6 +811,30 @@ StatusEchoRequest::Ptr Controller::statusOfEcho(
     util::Lock lock(_mtx, _context(__func__));
 
     return ControllerImpl::requestManagementOperation<StatusEchoRequest>(
+        shared_from_this(),
+        jobId,
+        workerName,
+        targetRequestId,
+        onFinish,
+        keepTracking,
+        serviceProvider()->messenger(),
+        requestExpirationIvalSec);
+}
+
+
+StatusSqlRequest::Ptr Controller::statusOfSql(
+                                    string const& workerName,
+                                    string const& targetRequestId,
+                                    StatusSqlRequest::CallbackType const& onFinish,
+                                    bool keepTracking,
+                                    string const& jobId,
+                                    unsigned int requestExpirationIvalSec) {
+
+    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  targetRequestId = " << targetRequestId);
+
+    util::Lock lock(_mtx, _context(__func__));
+
+    return ControllerImpl::requestManagementOperation<StatusSqlRequest>(
         shared_from_this(),
         jobId,
         workerName,

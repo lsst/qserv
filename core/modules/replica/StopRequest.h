@@ -47,6 +47,7 @@
 #include "replica/RequestMessenger.h"
 #include "replica/ProtocolBuffer.h"
 #include "replica/ServiceProvider.h"
+#include "replica/SqlResultSet.h"
 #include "replica/StopRequestBase.h"
 
 // This header declarations
@@ -167,6 +168,30 @@ struct StopEchoRequestPolicy {
     using ResponseMessageType     = ProtocolResponseEcho;
     using ResponseDataType        = std::string;
     using TargetRequestParamsType = EchoRequestParams;
+
+    static char const* requestName();
+
+    static ProtocolQueuedRequestType targetRequestType();
+
+    static void extractResponseData(ResponseMessageType const& msg,
+                                    ResponseDataType& data);
+
+    static void extractTargetRequestParams(ResponseMessageType const& msg,
+                                           TargetRequestParamsType& params);
+
+    template <class REQUEST_PTR>
+    static void saveReplicaInfo(REQUEST_PTR const& request) {
+        request->serviceProvider()->databaseServices()->updateRequestState(*request,
+                                                                           request->targetRequestId(),
+                                                                           request->targetPerformance());
+    }
+};
+
+struct StopSqlRequestPolicy {
+
+    using ResponseMessageType     = ProtocolResponseSql;
+    using ResponseDataType        = SqlResultSet;
+    using TargetRequestParamsType = SqlRequestParams;
 
     static char const* requestName();
 
@@ -396,6 +421,7 @@ typedef StopRequest<StopDeleteRequestPolicy>      StopDeleteRequest;
 typedef StopRequest<StopFindRequestPolicy>        StopFindRequest;
 typedef StopRequest<StopFindAllRequestPolicy>     StopFindAllRequest;
 typedef StopRequest<StopEchoRequestPolicy>        StopEchoRequest;
+typedef StopRequest<StopSqlRequestPolicy>         StopSqlRequest;
 
 }}} // namespace lsst::qserv::replica
 

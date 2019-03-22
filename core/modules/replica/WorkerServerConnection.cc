@@ -203,7 +203,7 @@ void WorkerServerConnection::_received(boost::system::error_code const& ec,
 
     switch (hdr.type()) {
 
-        case ProtocolRequestHeader::REPLICA: _processQueuedRequest(    hdr); break;
+        case ProtocolRequestHeader::QUEUED:  _processQueuedRequest(    hdr); break;
         case ProtocolRequestHeader::REQUEST: _processManagementRequest(hdr); break;
         case ProtocolRequestHeader::SERVICE: _processServiceRequest(   hdr); break;
 

@@ -88,7 +88,7 @@ message ProtocolRequestHeader {
     // The request type selector determines which class of the below specified
     // optional subtypes to use
     enum RequestType {
-        REPLICA = 0;
+        QUEUED  = 0;
         REQUEST = 1;
         SERVICE = 2;
     }
@@ -560,11 +560,17 @@ message ProtocolResponseSqlField {
 /// The message representing data of a row from a result set
 message ProtocolResponseSqlRow {
 
-    /// An array of row (non-null terminated) byte strings,
-    /// where each string represents a cell,
-    /// Also, the number of strings in the array must match
-    /// the number of fields
+    /// An array of the raw (non-null terminated) byte strings, where each string
+    /// represents a cell.
+    /// Note that the number of elements in the array must match
+    /// the number of fields.
     repeated bytes cells = 1;
+
+    /// An array of the boolean flags indicating at which position a value
+    /// of the corresponding cell has SQL NULL.
+    /// Note that the number of elements in the array must match
+    /// the number of fields.
+    repeated bool nulls = 2;
 }
 
 message ProtocolResponseSql {

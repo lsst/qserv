@@ -194,7 +194,14 @@ void Row::exportRow(ProtocolResponseSqlRow* ptr) const {
         invalid_argument(context + "null pointer passed as a parameter");
     }
     for (auto&& cell : _index2cell) {
-        ptr->add_cells(cell.first, cell.second);        
+        auto&& str = cell.first;
+        if (nullptr == str) {
+            ptr->add_cells(string());        
+            ptr->add_nulls(true);
+        } else {
+            ptr->add_cells(cell.first, cell.second);        
+            ptr->add_nulls(false);
+        }
     }
 }
 

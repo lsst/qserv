@@ -114,7 +114,7 @@ struct ReplicationRequestParams {
     unsigned int chunk;
     std::string  sourceWorker;
 
-    ReplicationRequestParams();
+    ReplicationRequestParams() = default;
 
     explicit ReplicationRequestParams(ProtocolRequestReplicate const& message);
 };
@@ -130,7 +130,7 @@ struct DeleteRequestParams {
     unsigned int chunk;
     std::string  sourceWorker;
 
-    DeleteRequestParams();
+    DeleteRequestParams() = default;
 
     explicit DeleteRequestParams(ProtocolRequestDelete const& message);
 };
@@ -145,7 +145,7 @@ struct FindRequestParams {
     std::string  database;
     unsigned int chunk;
 
-    FindRequestParams();
+    FindRequestParams() = default;
 
     explicit FindRequestParams(ProtocolRequestFind const& message);
 };
@@ -160,7 +160,7 @@ struct FindAllRequestParams {
     int          priority;
     std::string  database;
 
-    FindAllRequestParams();
+    FindAllRequestParams() = default;
 
     explicit FindAllRequestParams(ProtocolRequestFindAll const& message);
 };
@@ -174,9 +174,25 @@ struct EchoRequestParams {
     std::string  data;
     uint64_t     delay;
 
-    EchoRequestParams();
+    EchoRequestParams() = default;
 
     explicit EchoRequestParams(ProtocolRequestEcho const& message);
+};
+
+/**
+ * Structure SqlRequestParams represents parameters of the SQL requests.
+ */
+struct SqlRequestParams {
+
+    int          priority;
+    std::string  query;
+    std::string  user;
+    std::string  password;
+    uint64_t     maxRows;
+
+    SqlRequestParams() = default;
+
+    explicit SqlRequestParams(ProtocolRequestSql const& message);
 };
 
 }}} // namespace lsst::qserv::replica

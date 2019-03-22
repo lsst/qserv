@@ -158,23 +158,11 @@ string Generators::uniqueId() {
 //        Parameters of requests          //
 ////////////////////////////////////////////
 
-ReplicationRequestParams::ReplicationRequestParams()
-    :   priority(0),
-        chunk(0) {
-}
-
-
 ReplicationRequestParams::ReplicationRequestParams(ProtocolRequestReplicate const& message)
     :   priority(message.priority()),
         database(message.database()),
         chunk(message.chunk()),
         sourceWorker(message.worker()) {
-}
-
-
-DeleteRequestParams::DeleteRequestParams()
-    :   priority(0),
-        chunk(0) {
 }
 
 
@@ -185,21 +173,10 @@ DeleteRequestParams::DeleteRequestParams(ProtocolRequestDelete const& message)
 }
 
 
-FindRequestParams::FindRequestParams()
-    :   priority(0),
-        chunk(0) {
-}
-
-
 FindRequestParams::FindRequestParams(ProtocolRequestFind const& message)
     :   priority(message.priority()),
         database(message.database()),
         chunk(message.chunk()) {
-}
-
-
-FindAllRequestParams::FindAllRequestParams()
-    :   priority(0) {
 }
 
 
@@ -209,16 +186,19 @@ FindAllRequestParams::FindAllRequestParams(ProtocolRequestFindAll const& message
 }
 
 
-EchoRequestParams::EchoRequestParams()
-    :   priority(0),
-        delay(0) {
-}
-
-
 EchoRequestParams::EchoRequestParams(ProtocolRequestEcho const& message)
     :   priority(message.priority()),
         data(message.data()),
         delay(message.delay()) {
+}
+
+
+SqlRequestParams::SqlRequestParams(ProtocolRequestSql const& message)
+    :   priority(message.priority()),
+        query(message.query()),
+        user(message.user()),
+        password(message.password()),
+        maxRows(message.max_rows()) {
 }
 
 }}} // namespace lsst::qserv::replica

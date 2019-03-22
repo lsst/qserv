@@ -379,6 +379,60 @@ public:
                         unsigned int requestExpirationIvalSec=0);
 
     /**
+     * Create and start a new request for executing queries against worker databases
+     *
+     * @param workerName
+     *   the name of a worker node where the replicas are located
+     * 
+     * @param query
+     *   the query to be executed
+     *
+     * @param user
+     *   the name of a database account for connecting to the database service
+     *
+     * @param password
+     *   a database for connecting to the database service
+     *
+     * @param maxRows
+     *   (optional) limit for the maximum number of rows to be returned with the request.
+     *   Laving the default value of the parameter to 0 will result in not imposing any
+     *   explicit restrictions on a size of the result set. NOte that other, resource-defined
+     *   restrictions will still apply. The later includes the maximum size of the Google Protobuf
+     *   objects, the amount of available memory, etc.
+     *
+     * @param onFinish
+     *   (optional) callback function to be called upon the completion of
+     *   the request
+     *
+     * @param priority
+     *   (optional) priority level of the request
+     *
+     * @param keepTracking
+     *   (optional) keep tracking the request before it finishes or fails
+     *
+     * @param jobId
+     *   (optional) identifier of a job issued the request
+     *
+     * @param requestExpirationIvalSec
+     *   (optional) parameter (if differs from 0) allowing to override the default
+     *   value of the corresponding parameter from the Configuration.
+     *
+     * @return
+     *   a pointer to the new request
+     */
+    SqlRequestPtr sql(std::string const& workerName,
+                      std::string const& worker,
+                      std::string const& query,
+                      std::string const& user,
+                      std::string const& password,
+                      uint64_t maxRows,
+                      SqlRequestCallbackType const& onFinish=nullptr,
+                      int  priority=0,
+                      bool keepTracking=true,
+                      std::string const& jobId="",
+                      unsigned int requestExpirationIvalSec=0);
+
+    /**
      * Stop an outstanding replication request.
      *
      * @param workerName
@@ -544,6 +598,39 @@ public:
                                 unsigned int requestExpirationIvalSec=0);
 
     /**
+     * Stop an outstanding database query request.
+     *
+     * @param workerName
+     *   the name of a worker node where the request was launched
+     *
+     * @param targetRequestId
+     *   an identifier of a request to be stopped
+     *
+     * @param onFinish
+     *   (optional) callback function to be called upon completion of
+     *   the operation
+     *
+     * @param keepTracking
+     *   (optional) keep tracking the request before it finishes or fails
+     *
+     * @param jobId
+     *   (optional) identifier of a job issued the request
+     *
+     * @param requestExpirationIvalSec
+     *   (optional) parameter (if differs from 0) allowing to override the default
+     *   value of the corresponding parameter from the Configuration.
+     *
+     * @return
+     *   a pointer to the new request
+     */
+    StopSqlRequestPtr stopSql(std::string const& workerName,
+                              std::string const& targetRequestId,
+                              StopSqlRequestCallbackType const& onFinish=nullptr,
+                              bool keepTracking=true,
+                              std::string const& jobId="",
+                              unsigned int requestExpirationIvalSec=0);
+
+    /**
      * Check the on-going status of an outstanding replication request.
      *
      * @param workerName
@@ -707,6 +794,40 @@ public:
                             std::string const& workerName,
                             std::string const& targetRequestId,
                             StatusEchoRequestCallbackType const& onFinish=nullptr,
+                            bool keepTracking=false,
+                            std::string const& jobId="",
+                            unsigned int requestExpirationIvalSec=0);
+
+    /**
+     * Check the on-going status of an outstanding databae query
+     *
+     * @param workerName
+     *   the name of a worker node where the request was launched
+     *
+     * @param targetRequestId
+     *   an identifier of a request to be inspected
+     *
+     * @param onFinish
+     *   (optional) callback function to be called upon completion of
+     *   the operation
+     *
+     * @param keepTracking
+     *   (optional) keep tracking the request before it finishes or fails
+     *
+     * @param jobId
+     *   (optional) identifier of a job issued the request
+     *
+     * @param requestExpirationIvalSec
+     *   (optional) parameter (if differs from 0) allowing to override the default
+     *   value of the corresponding parameter from the Configuration.
+     *
+     * @return
+     *   a pointer to the new request
+     */
+    StatusSqlRequestPtr statusOfSql(
+                            std::string const& workerName,
+                            std::string const& targetRequestId,
+                            StatusSqlRequestCallbackType const& onFinish=nullptr,
                             bool keepTracking=false,
                             std::string const& jobId="",
                             unsigned int requestExpirationIvalSec=0);
