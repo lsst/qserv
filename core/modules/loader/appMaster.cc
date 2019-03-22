@@ -49,6 +49,7 @@ int main(int argc, char* argv[]) {
 
     //std::string const ourHost = boost::asio::ip::host_name(); &&&
     std::string const ourHost = getOurHostName(0);
+    LOGS(_log, LOG_LVL_INFO, "ourHost=" << ourHost);
     boost::asio::io_service ioService;
 
     MasterConfig mCfg(mCfgFile);

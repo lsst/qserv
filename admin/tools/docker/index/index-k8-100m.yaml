@@ -113,8 +113,89 @@ spec:
       containers:
       - name: iclientnum-ctr
         image: qserv/indexclientnum:dev
-        args: ["1", "500000", "client-k8s-a1.cnf"]
+        args: ["1", "100000000", "client-k8s-a1.cnf"]
         ports:
         - containerPort: 10050
           protocol: UDP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: iclientnum2-svc
+  labels:
+    app: index
+spec:
+  ports:
+  - port: 10050
+    protocol: UDP
+  clusterIP: None
+  selector:
+    app: iclientnum2-pod
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: iclientnum2-sts
+  labels:
+    app: index
+spec:
+  serviceName: iclientnum2-svc
+  podManagementPolicy: Parallel
+  replicas: 1
+  selector:
+    matchLabels:
+      app: iclientnum2-pod
+  template:
+    metadata:
+      labels:
+        app: iclientnum2-pod
+    spec:
+      containers:
+      - name: iclientnum2-ctr
+        image: qserv/indexclientnum:dev
+        args: ["200000001", "300000001", "client-k8s-a2.cnf"]
+        ports:
+        - containerPort: 10050
+          protocol: UDP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: iclientnum3-svc
+  labels:
+    app: index
+spec:
+  ports:
+  - port: 10050
+    protocol: UDP
+  clusterIP: None
+  selector:
+    app: iclientnum3-pod
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: iclientnum3-sts
+  labels:
+    app: index
+spec:
+  serviceName: iclientnum3-svc
+  podManagementPolicy: Parallel
+  replicas: 1
+  selector:
+    matchLabels:
+      app: iclientnum3-pod
+  template:
+    metadata:
+      labels:
+        app: iclientnum3-pod
+    spec:
+      containers:
+      - name: iclientnum3-ctr
+        image: qserv/indexclientnum:dev
+        args: ["100000001", "200000000", "client-k8s-a3.cnf"]
+        ports:
+        - containerPort: 10050
+          protocol: UDP          
+
 

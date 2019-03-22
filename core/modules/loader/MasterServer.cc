@@ -201,7 +201,7 @@ BufferUdp::Ptr MasterServer::workerKeysInfo(LoaderMsg const& inMsg, BufferUdp::P
         NeighborsInfo nInfo;
         KeyRange strRange;
         ProtoHelper::workerKeysInfoExtractor(*data, name, nInfo, strRange);
-        LOGS(_log, LOG_LVL_INFO, funcName << "name=" << name << " keyCount=" << nInfo.keyCount <<
+        LOGS(_log, LOG_LVL_INFO, funcName << " name=" << name << " keyCount=" << nInfo.keyCount <<
                                  " recentAdds=" << nInfo.recentAdds << " range=" << strRange);
         // TODO move to separate thread.
         _centralMaster->updateWorkerInfo(name, nInfo, strRange);

@@ -142,6 +142,7 @@ int main(int argc, char* argv[]) {
 
     //std::string const ourHost = boost::asio::ip::host_name(); &&&
     std::string const ourHost = getOurHostName(0);
+    LOGS(_log, LOG_LVL_INFO, "ourHost=" << ourHost);
     boost::asio::io_service ioService;
 
     ClientConfig cCfg(cCfgFile);
@@ -255,12 +256,13 @@ int main(int argc, char* argv[]) {
 
     TimeOut::TimePoint lookupEnd = TimeOut::Clock::now();
 
-    LOGS(_log, LOG_LVL_INFO, "inserts seconds=" <<
+    LOGS(_log, LOG_LVL_INFO, "DONE inserts seconds=" <<
          std::chrono::duration_cast<std::chrono::seconds>(insertEnd - insertBegin).count());
-    LOGS(_log, LOG_LVL_INFO, "lookups seconds=" <<
+    LOGS(_log, LOG_LVL_INFO, "DONE lookups seconds=" <<
          std::chrono::duration_cast<std::chrono::seconds>(lookupEnd - insertEnd).count());
     ioService.stop();
     LOGS(_log, LOG_LVL_INFO, "client DONE");
+    while(true) sleep(100); // &&& keep kubernetes from restarting this
     return 0;
 }
 
