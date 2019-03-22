@@ -97,9 +97,9 @@ WorkerReplicationRequest::WorkerReplicationRequest(
 
 void WorkerReplicationRequest::setInfo(ProtocolResponseReplicate& response) const {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
+    LOGS(_log, LOG_LVL_DEBUG, context(__func__));
 
-    util::Lock lock(_mtx, context() + __func__);
+    util::Lock lock(_mtx, context(__func__));
 
     // Return the performance of the target request
 
@@ -126,7 +126,7 @@ void WorkerReplicationRequest::setInfo(ProtocolResponseReplicate& response) cons
 
 bool WorkerReplicationRequest::execute() {
 
-   LOGS(_log, LOG_LVL_DEBUG, context() << __func__
+   LOGS(_log, LOG_LVL_DEBUG, context(__func__)
          << "  sourceWorker: " << sourceWorker()
          << "  db: "           << database()
          << "  chunk: "        << chunk());
@@ -191,12 +191,12 @@ WorkerReplicationRequestPOSIX::WorkerReplicationRequestPOSIX(
 
 bool WorkerReplicationRequestPOSIX::execute () {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
+    LOGS(_log, LOG_LVL_DEBUG, context(__func__)
          << "  sourceWorker: " << sourceWorker()
          << "  database: "     << database()
          << "  chunk: "        << chunk());
 
-    util::Lock lock(_mtx, context() + __func__);
+    util::Lock lock(_mtx, context(__func__));
 
     // Obtain the list of files to be migrated
     //
@@ -256,7 +256,7 @@ bool WorkerReplicationRequestPOSIX::execute () {
     WorkerRequest::ErrorContext errorContext;
     boost::system::error_code   ec;
     {
-        util::Lock dataFolderLock(_mtxDataFolderOperations, context() + string(__func__) + ":1");
+        util::Lock dataFolderLock(_mtxDataFolderOperations, context(__func__) + ":1");
 
         // Check for a presence of input files and calculate space requirement
 
@@ -384,7 +384,7 @@ bool WorkerReplicationRequestPOSIX::execute () {
     // acquiring the directory lock to guarantee a consistent view onto the folder.
 
     {
-        util::Lock dataFolderLock(_mtxDataFolderOperations, context() + string(__func__) + ":2");
+        util::Lock dataFolderLock(_mtxDataFolderOperations, context(__func__) + ":2");
 
         // ATTENTION: as per ISO/IEC 9945 the file rename operation will
         //            remove empty files. Not sure if this should be treated
@@ -476,19 +476,19 @@ WorkerReplicationRequestFS::WorkerReplicationRequestFS(
 
 
 WorkerReplicationRequestFS::~WorkerReplicationRequestFS() {
-    util::Lock lock(_mtx, context() + __func__);
+    util::Lock lock(_mtx, context(__func__));
     _releaseResources(lock);
 }
 
 
 bool WorkerReplicationRequestFS::execute () {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
+    LOGS(_log, LOG_LVL_DEBUG, context(__func__)
          << "  sourceWorker: " << sourceWorker()
          << "  database: "     << database()
          << "  chunk: "        << chunk());
 
-    util::Lock lock(_mtx, context() + __func__);
+    util::Lock lock(_mtx, context(__func__));
 
     // Abort the operation right away if that's the case
 
@@ -550,7 +550,7 @@ bool WorkerReplicationRequestFS::execute () {
 
         boost::system::error_code ec;
         {
-            util::Lock dataFolderLock(_mtxDataFolderOperations, context() + __func__);
+            util::Lock dataFolderLock(_mtxDataFolderOperations, context(__func__));
 
             // Check for a presence of input files and calculate space requirement
 
@@ -790,7 +790,7 @@ bool WorkerReplicationRequestFS::execute () {
 
 bool WorkerReplicationRequestFS::_openFiles(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
+    LOGS(_log, LOG_LVL_DEBUG, context(__func__)
          << "  sourceWorker: " << sourceWorker()
          << "  database: "     << database()
          << "  chunk: "        << chunk()
@@ -842,7 +842,7 @@ bool WorkerReplicationRequestFS::_openFiles(util::Lock const& lock) {
 
 bool WorkerReplicationRequestFS::_finalize(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
+    LOGS(_log, LOG_LVL_DEBUG, context(__func__)
          << "  sourceWorker: " << sourceWorker()
          << "  database: "     << database()
          << "  chunk: "        << chunk());
@@ -855,7 +855,7 @@ bool WorkerReplicationRequestFS::_finalize(util::Lock const& lock) {
     // which may affect other users (like replica lookup operations, etc.). Hence we're
     // acquiring the directory lock to guarantee a consistent view onto the folder.
 
-    util::Lock dataFolderLock(_mtxDataFolderOperations, context() + __func__);
+    util::Lock dataFolderLock(_mtxDataFolderOperations, context(__func__));
 
     // ATTENTION: as per ISO/IEC 9945 the file rename operation will
     //            remove empty files. Not sure if this should be treated

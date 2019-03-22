@@ -26,9 +26,13 @@
 #include <stdexcept>
 
 // Qserv headers
-#include "lsst/log/Log.h"
+#include "replica/Configuration.h"
+#include "replica/DatabaseMySQL.h"
 #include "replica/Performance.h"
 #include "util/BlockPost.h"
+
+// LSST headers
+#include "lsst/log/Log.h"
 
 using namespace std;
 
@@ -48,7 +52,8 @@ WorkerSqlRequest::Ptr WorkerSqlRequest::create(ServiceProvider::Ptr const& servi
                                                int priority,
                                                std::string const& query,
                                                std::string const& user,
-                                               std::string const& password) {
+                                               std::string const& password,
+                                               size_t maxRows) {
     return WorkerSqlRequest::Ptr(
         new WorkerSqlRequest(serviceProvider,
                              worker,
@@ -56,17 +61,19 @@ WorkerSqlRequest::Ptr WorkerSqlRequest::create(ServiceProvider::Ptr const& servi
                              priority,
                              query,
                              user,
-                             password));
+                             password,
+                             maxRows));
 }
 
 
 WorkerSqlRequest::WorkerSqlRequest(ServiceProvider::Ptr const& serviceProvider,
-                                     string const& worker,
-                                     string const& id,
-                                     int priority,
-                                     std::string const& query,
-                                     std::string const& user,
-                                     std::string const& password)
+                                   string const& worker,
+                                   string const& id,
+                                   int priority,
+                                   std::string const& query,
+                                   std::string const& user,
+                                   std::string const& password,
+                                   size_t maxRows)
     :   WorkerRequest(serviceProvider,
                       worker,
                       "SQL",
@@ -74,30 +81,32 @@ WorkerSqlRequest::WorkerSqlRequest(ServiceProvider::Ptr const& serviceProvider,
                       priority),
         _query(query),
         _user(user),
-        _password(password) {
+        _password(password),
+        _maxRows(maxRows) {
 }
 
 
 void WorkerSqlRequest::setInfo(ProtocolResponseSql& response) const {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
+    LOGS(_log, LOG_LVL_DEBUG, context(__func__));
 
-    util::Lock lock(_mtx, context() + __func__);
+    util::Lock lock(_mtx, context(__func__));
 
-    // Return the performance of the target request
+    // Update the performance of the target request before returning it
+    _response.set_allocated_target_performance(performance().info());
 
-    response.set_allocated_target_performance(performance().info());
-
-    // TODO: implement extracting and setting a result set
-    //response.set_data(data());
+    // Note, we shall not invalidate the local state of the cached response
+    // object because, by a design of the Replication Framework,  the state
+    // of a completed request is allowed to be sampled many times.
+    response = _response;
 }
 
 
 bool WorkerSqlRequest::execute() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
+    LOGS(_log, LOG_LVL_DEBUG, context(__func__));
 
-    util::Lock lock(_mtx, context() + __func__);
+    util::Lock lock(_mtx, context(__func__));
 
     switch (status()) {
 
@@ -113,14 +122,67 @@ bool WorkerSqlRequest::execute() {
 
         default:
             throw logic_error(
-                    context() + string(__func__) + "  not allowed while in state: " +
+                    "WorkerSqlRequest::" + context(__func__) + "  not allowed while in state: " +
                     WorkerRequest::status2string(status()));
     }
 
-    // TODO: implement database connection and query execution
+    database::mysql::Connection::Ptr conn;
+    try {
+        auto const workerInfo = serviceProvider()->config()->workerInfo(worker());
+        conn = database::mysql::Connection::open(
+            database::mysql::ConnectionParams(
+                workerInfo.dbHost,
+                workerInfo.dbPort,
+                user(),
+                password(),
+                ""));
+        conn->execute([this](decltype(conn) const& conn_) {
+            conn_->begin();
+            conn_->execute(this->query());
+            conn_->commit();
+            this->_setResponse(conn_);
+        });
+        setStatus(lock, STATUS_SUCCEEDED);
 
-    setStatus(lock, STATUS_SUCCEEDED);
+    } catch(database::mysql::Error const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  MySQL error: " << ex.what());
+        setStatus(lock, STATUS_FAILED, EXT_STATUS_MYSQL_ERROR);
+    } catch (invalid_argument const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  no such worker: " << worker());
+        setStatus(lock, STATUS_FAILED, EXT_STATUS_INVALID_PARAM);
+    } catch (out_of_range const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  exception: " << ex.what());
+        setStatus(lock, STATUS_FAILED, EXT_STATUS_LARGE_RESULT);
+    } catch (exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  exception: " << ex.what());
+        setStatus(lock, STATUS_FAILED);
+    }
+    if (conn->inTransaction()) conn->rollback();
     return true;
+}
+
+
+void WorkerSqlRequest::_setResponse(database::mysql::Connection::Ptr const& conn) {
+
+    _response.set_has_result(conn->hasResult());
+    if (conn->hasResult()) {
+        for (size_t i=0; i < conn->numFields(); ++i) {
+            conn->exportField(_response.add_fields(), i);
+        }
+        size_t numRowsProcessed = 0;
+        database::mysql::Row row;
+        while (conn->next(row)) {
+            if (_maxRows != 0) {
+                if (numRowsProcessed >= _maxRows) {
+                    throw out_of_range(
+                            "WorkerSqlRequest::" + context(__func__) + "  maxRows=" +
+                            to_string(_maxRows) + " limit exceeded");
+                }
+                ++numRowsProcessed;
+            }
+            row.exportRow(_response.add_rows());
+        }
+    }
 }
 
 }}} // namespace lsst::qserv::replica

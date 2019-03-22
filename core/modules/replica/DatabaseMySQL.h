@@ -55,6 +55,14 @@
 #include "replica/DatabaseMySQLTypes.h"
 #include "replica/DatabaseMySQLRow.h"
 
+// Forward declarations
+
+namespace lsst {
+namespace qserv {
+namespace replica {
+    class ProtocolResponseSqlField;
+}}} // namespace lsst::qserv::replica
+
 // This header declarations
 
 namespace lsst {
@@ -830,6 +838,41 @@ public:
      *   if the last query failed.
      */
     std::vector<std::string> const& columnNames() const;
+
+    /**
+     * @return
+     *  the number of columns in the current result set
+     *
+     * @throws std::logic_error
+     *   if no SQL statement has ever been executed, or
+     *   if the last query failed.
+     */
+    size_t numFields() const;
+
+    /**
+     * Fill a Protobuf object representing a field
+     * 
+     * @note
+     *   The method can be called only upon a successful completion of a query
+     *   which has a result set. Otherwise it will throw an exception.
+     *
+     * @see mysql_fetch_field()
+     * @see database::mysql::Connection::hasResult
+     *
+     * @param ptr
+     *   a pointer to the Protobuf object to be populated
+     * 
+     * @param idx
+     *   a relative (0 based) index of the field in a result set
+     *
+     * @throws std::logic_error
+     *   if no SQL statement has ever been executed, or
+     *   if the last query failed.
+     * 
+     * @throws std::out_of_range
+     *   if the specified index exceed the maximum index of a result set.
+     */
+    void exportField(ProtocolResponseSqlField* ptr, size_t idx) const;
 
     /**
      * Move the iterator to the next (first) row of the current result set

@@ -38,31 +38,32 @@ namespace replica {
 
 string status2string(ExtendedCompletionStatus status) {
     switch (status) {
-        case ExtendedCompletionStatus::EXT_STATUS_NONE:             return "EXT_STATUS_NONE";
-        case ExtendedCompletionStatus::EXT_STATUS_INVALID_PARAM:    return "EXT_STATUS_INVALID_PARAM";
-        case ExtendedCompletionStatus::EXT_STATUS_INVALID_ID:       return "EXT_STATUS_INVALID_ID";
-        case ExtendedCompletionStatus::EXT_STATUS_DUPLICATE:        return "EXT_STATUS_DUPLICATE";
-        case ExtendedCompletionStatus::EXT_STATUS_FOLDER_STAT:      return "EXT_STATUS_FOLDER_STAT";
-        case ExtendedCompletionStatus::EXT_STATUS_FILE_STAT:        return "EXT_STATUS_FILE_STAT";
-        case ExtendedCompletionStatus::EXT_STATUS_FILE_SIZE:        return "EXT_STATUS_FILE_SIZE";
-        case ExtendedCompletionStatus::EXT_STATUS_FOLDER_READ:      return "EXT_STATUS_FOLDER_READ";
-        case ExtendedCompletionStatus::EXT_STATUS_FILE_READ:        return "EXT_STATUS_FILE_READ";
-        case ExtendedCompletionStatus::EXT_STATUS_FILE_ROPEN:       return "EXT_STATUS_FILE_ROPEN";
-        case ExtendedCompletionStatus::EXT_STATUS_FILE_CREATE:      return "EXT_STATUS_FILE_CREATE";
-        case ExtendedCompletionStatus::EXT_STATUS_FILE_OPEN:        return "EXT_STATUS_FILE_OPEN";
-        case ExtendedCompletionStatus::EXT_STATUS_FILE_RESIZE:      return "EXT_STATUS_FILE_RESIZE";
-        case ExtendedCompletionStatus::EXT_STATUS_FILE_WRITE:       return "EXT_STATUS_FILE_WRITE";
-        case ExtendedCompletionStatus::EXT_STATUS_FILE_COPY:        return "EXT_STATUS_FILE_COPY";
-        case ExtendedCompletionStatus::EXT_STATUS_FILE_DELETE:      return "EXT_STATUS_FILE_DELETE";
-        case ExtendedCompletionStatus::EXT_STATUS_FILE_RENAME:      return "EXT_STATUS_FILE_RENAME";
-        case ExtendedCompletionStatus::EXT_STATUS_FILE_EXISTS:      return "EXT_STATUS_FILE_EXISTS";
-        case ExtendedCompletionStatus::EXT_STATUS_SPACE_REQ:        return "EXT_STATUS_SPACE_REQ";
-        case ExtendedCompletionStatus::EXT_STATUS_NO_FOLDER:        return "EXT_STATUS_NO_FOLDER";
-        case ExtendedCompletionStatus::EXT_STATUS_NO_FILE:          return "EXT_STATUS_NO_FILE";
-        case ExtendedCompletionStatus::EXT_STATUS_NO_ACCESS:        return "EXT_STATUS_NO_ACCESS";
-        case ExtendedCompletionStatus::EXT_STATUS_NO_SPACE:         return "EXT_STATUS_NO_SPACE";
-        case ExtendedCompletionStatus::EXT_STATUS_FILE_MTIME:       return "EXT_STATUS_FILE_MTIME";
-        case ExtendedCompletionStatus::EXT_STATUS_MYSQL_ERROR:      return "EXT_STATUS_MYSQL_ERROR";
+        case ExtendedCompletionStatus::EXT_STATUS_NONE:          return "EXT_STATUS_NONE";
+        case ExtendedCompletionStatus::EXT_STATUS_INVALID_PARAM: return "EXT_STATUS_INVALID_PARAM";
+        case ExtendedCompletionStatus::EXT_STATUS_INVALID_ID:    return "EXT_STATUS_INVALID_ID";
+        case ExtendedCompletionStatus::EXT_STATUS_DUPLICATE:     return "EXT_STATUS_DUPLICATE";
+        case ExtendedCompletionStatus::EXT_STATUS_FOLDER_STAT:   return "EXT_STATUS_FOLDER_STAT";
+        case ExtendedCompletionStatus::EXT_STATUS_FILE_STAT:     return "EXT_STATUS_FILE_STAT";
+        case ExtendedCompletionStatus::EXT_STATUS_FILE_SIZE:     return "EXT_STATUS_FILE_SIZE";
+        case ExtendedCompletionStatus::EXT_STATUS_FOLDER_READ:   return "EXT_STATUS_FOLDER_READ";
+        case ExtendedCompletionStatus::EXT_STATUS_FILE_READ:     return "EXT_STATUS_FILE_READ";
+        case ExtendedCompletionStatus::EXT_STATUS_FILE_ROPEN:    return "EXT_STATUS_FILE_ROPEN";
+        case ExtendedCompletionStatus::EXT_STATUS_FILE_CREATE:   return "EXT_STATUS_FILE_CREATE";
+        case ExtendedCompletionStatus::EXT_STATUS_FILE_OPEN:     return "EXT_STATUS_FILE_OPEN";
+        case ExtendedCompletionStatus::EXT_STATUS_FILE_RESIZE:   return "EXT_STATUS_FILE_RESIZE";
+        case ExtendedCompletionStatus::EXT_STATUS_FILE_WRITE:    return "EXT_STATUS_FILE_WRITE";
+        case ExtendedCompletionStatus::EXT_STATUS_FILE_COPY:     return "EXT_STATUS_FILE_COPY";
+        case ExtendedCompletionStatus::EXT_STATUS_FILE_DELETE:   return "EXT_STATUS_FILE_DELETE";
+        case ExtendedCompletionStatus::EXT_STATUS_FILE_RENAME:   return "EXT_STATUS_FILE_RENAME";
+        case ExtendedCompletionStatus::EXT_STATUS_FILE_EXISTS:   return "EXT_STATUS_FILE_EXISTS";
+        case ExtendedCompletionStatus::EXT_STATUS_SPACE_REQ:     return "EXT_STATUS_SPACE_REQ";
+        case ExtendedCompletionStatus::EXT_STATUS_NO_FOLDER:     return "EXT_STATUS_NO_FOLDER";
+        case ExtendedCompletionStatus::EXT_STATUS_NO_FILE:       return "EXT_STATUS_NO_FILE";
+        case ExtendedCompletionStatus::EXT_STATUS_NO_ACCESS:     return "EXT_STATUS_NO_ACCESS";
+        case ExtendedCompletionStatus::EXT_STATUS_NO_SPACE:      return "EXT_STATUS_NO_SPACE";
+        case ExtendedCompletionStatus::EXT_STATUS_FILE_MTIME:    return "EXT_STATUS_FILE_MTIME";
+        case ExtendedCompletionStatus::EXT_STATUS_MYSQL_ERROR:   return "EXT_STATUS_MYSQL_ERROR";
+        case ExtendedCompletionStatus::EXT_STATUS_LARGE_RESULT:  return "EXT_STATUS_LARGE_RESULT";
     }
     throw logic_error(
             "Common::" + string(__func__) + "(ExtendedCompletionStatus) - unhandled status: " +
@@ -97,6 +98,7 @@ ExtendedCompletionStatus translate(ProtocolStatusExt status) {
         case ProtocolStatusExt::NO_SPACE:      return ExtendedCompletionStatus::EXT_STATUS_NO_SPACE;
         case ProtocolStatusExt::FILE_MTIME:    return ExtendedCompletionStatus::EXT_STATUS_FILE_MTIME;
         case ProtocolStatusExt::MYSQL_ERROR:   return ExtendedCompletionStatus::EXT_STATUS_MYSQL_ERROR;
+        case ProtocolStatusExt::LARGE_RESULT:  return ExtendedCompletionStatus::EXT_STATUS_LARGE_RESULT;
     }
     throw logic_error(
                 "Common::" + string(__func__) + "(ProtocolStatusExt) - unhandled status: " +
@@ -131,6 +133,7 @@ ProtocolStatusExt translate(ExtendedCompletionStatus status) {
         case ExtendedCompletionStatus::EXT_STATUS_NO_SPACE:      return ProtocolStatusExt::NO_SPACE;
         case ExtendedCompletionStatus::EXT_STATUS_FILE_MTIME:    return ProtocolStatusExt::FILE_MTIME;
         case ExtendedCompletionStatus::EXT_STATUS_MYSQL_ERROR:   return ProtocolStatusExt::MYSQL_ERROR;
+        case ExtendedCompletionStatus::EXT_STATUS_LARGE_RESULT:  return ProtocolStatusExt::LARGE_RESULT;
     }
     throw logic_error(
                 "Common::" + string(__func__) + "(ExtendedCompletionStatus) - unhandled status: " +

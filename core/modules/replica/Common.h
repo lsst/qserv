@@ -72,7 +72,8 @@ enum ExtendedCompletionStatus {
     EXT_STATUS_NO_ACCESS,       // no access to a file or a folder
     EXT_STATUS_NO_SPACE,        // no space left on a device as required by an operation
     EXT_STATUS_FILE_MTIME,      // get/set 'mtime' operation failed
-    EXT_STATUS_MYSQL_ERROR      // MySQL operation failed
+    EXT_STATUS_MYSQL_ERROR,     // MySQL operation failed
+    EXT_STATUS_LARGE_RESULT     // result exceeds a limit set in a request
 };
 
 /// Return the string representation of the extended status

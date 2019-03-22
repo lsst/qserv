@@ -168,12 +168,15 @@ public:
     /**
      * This method is called from *ANY* initial state in order to turn
      * the request back into the initial STATUS_NONE.
+     * 
+     * @param func
+     *   (optional) the name of a function/method which requested the context string
      */
     void stop();
 
     /// @return the context string
-    std::string context() const {
-        return id() + "  " + type() + "  " + status2string(status()) + "  ";
+    std::string context(std::string const& func=std::string()) const {
+        return id() + "  " + type() + "  " + status2string(status()) + "  " + func;
     }
 
 protected:

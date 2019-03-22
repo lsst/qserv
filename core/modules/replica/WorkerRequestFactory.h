@@ -160,7 +160,8 @@ public:
             int priority,
             std::string const& query,
             std::string const& user,
-            std::string const& password) const = 0;
+            std::string const& password,
+            size_t maxRows) const = 0;
  
 protected:
 
@@ -314,7 +315,8 @@ public:
             int priority,
             std::string const& query,
             std::string const& user,
-            std::string const& password) const final {
+            std::string const& password,
+            size_t maxRows) const final {
 
         return _ptr->createSqlRequest(
             worker,
@@ -322,7 +324,8 @@ public:
             priority,
             query,
             user,
-            password);
+            password,
+            maxRows);
     }
 
 protected:

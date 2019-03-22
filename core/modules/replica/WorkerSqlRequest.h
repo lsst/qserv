@@ -28,6 +28,16 @@
 #include "replica/protocol.pb.h"
 #include "replica/WorkerRequest.h"
 
+// Forward declarations
+
+namespace lsst {
+namespace qserv {
+namespace replica {
+namespace database {
+namespace mysql {
+    class Connection;
+}}}}} // namespace lsst::qserv::replica::database::mysql;
+
 // This header declarations
 
 namespace lsst {
@@ -76,6 +86,14 @@ public:
      * @param password
      *   a database for connecting to the database service
      *
+     * @param maxRows
+     *   (optional) limit for the maximum number of rows to be returned with the request.
+     *   Laving the default value of the parameter to 0 will result in not imposing any
+     *   explicit restrictions on a size of the result set. NOte that other, resource-defined
+     *   restrictions will still apply. The later includes the maximum size of the Google Protobuf
+     *   objects, the amount of available memory, etc.
+     *
+     *
      * @return
      *   pointer to the created object
      */
@@ -85,7 +103,8 @@ public:
                       int priority,
                       std::string const& query,
                       std::string const& user,
-                      std::string const& password);
+                      std::string const& password,
+                      size_t maxRows=0);
 
     // Default construction and copy semantics are prohibited
 
@@ -100,7 +119,9 @@ public:
     std::string const& query()    const { return _query; }
     std::string const& user()     const { return _user; }
     std::string const& password() const { return _password; }
-    
+
+    size_t maxRows() const { return _maxRows; }
+
     /**
      * Extract request status into the Protobuf response object.
      *
@@ -116,18 +137,37 @@ protected:
 
     /// @see WorkerSqlRequest::create()
     WorkerSqlRequest(ServiceProvider::Ptr const& serviceProvider,
-                      std::string const& worker,
-                      std::string const& id,
-                      int priority,
-                      std::string const& query,
-                      std::string const& user,
-                      std::string const& password);
+                     std::string const& worker,
+                     std::string const& id,
+                     int priority,
+                     std::string const& query,
+                     std::string const& user,
+                     std::string const& password,
+                     size_t maxRows);
+
+private:
+
+    /**
+     * INitialize the Protobuf response object.
+     * 
+     * @note
+     *   This method is called to extract result set of a query via the connector
+     *   provided and cache the result within the request.
+     * 
+     * @param conn
+     *   a valid database connector for extracting a result set
+     */
+    void _setResponse(std::shared_ptr<database::mysql::Connection> const& conn);
 
     // Input parameters
 
     std::string const _query;
     std::string const _user;
     std::string const _password;
+    size_t      const _maxRows;
+
+    /// Cached result to be sent to a client
+    mutable ProtocolResponseSql _response;
 };
 
 /// Class WorkerSqlRequest provides an actual implementation

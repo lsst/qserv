@@ -167,7 +167,8 @@ public:
                                          int priority,
                                          string const& query,
                                          string const& user,
-                                         string const& password) const final {
+                                         string const& password,
+                                         size_t maxRows) const final {
         return WorkerSqlRequest::create(
             _serviceProvider,
             worker,
@@ -175,7 +176,8 @@ public:
             priority,
             query,
             user,
-            password);
+            password,
+            maxRows);
     }
 };
 
@@ -290,7 +292,8 @@ public:
                                          int priority,
                                          string const& query,
                                          string const& user,
-                                         string const& password) const final {
+                                         string const& password,
+                                         size_t maxRows) const final {
         return WorkerSqlRequestPOSIX::create(
             _serviceProvider,
             worker,
@@ -298,7 +301,8 @@ public:
             priority,
             query,
             user,
-            password);
+            password,
+            maxRows);
     }
 };
 
@@ -414,7 +418,8 @@ public:
                                          int priority,
                                          string const& query,
                                          string const& user,
-                                         string const& password) const final {
+                                         string const& password,
+                                         size_t maxRows) const final {
         return WorkerSqlRequestFS::create(
             _serviceProvider,
             worker,
@@ -422,7 +427,8 @@ public:
             priority,
             query,
             user,
-            password);
+            password,
+            maxRows);
     }
 };
 

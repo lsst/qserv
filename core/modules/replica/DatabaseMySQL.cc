@@ -34,6 +34,7 @@
 #include "lsst/log/Log.h"
 #include "replica/Configuration.h"
 #include "replica/Performance.h"
+#include "replica/protocol.pb.h"
 #include "util/BlockPost.h"
 
 using namespace std;
@@ -399,6 +400,36 @@ bool Connection::hasResult() const {
 vector<string> const& Connection::columnNames() const {
     _assertQueryContext();
     return _columnNames;
+}
+
+
+size_t Connection::numFields() const {
+    _assertQueryContext();
+    return _numFields;
+}
+
+
+void Connection::exportField(ProtocolResponseSqlField* ptr,
+                             size_t idx) const {
+    _assertQueryContext();
+    if (idx >= _numFields) {
+        throw out_of_range(
+                "Connection::" + string(__func__) + "  the field index " + to_string(idx) +
+                " is out of range: [0," + to_string(_numFields) + "]");
+    }
+    auto field = _fields[idx];
+    ptr->set_name(      field.name,      field.name_length);
+    ptr->set_org_name(  field.org_name,  field.org_name_length);
+    ptr->set_table(     field.table,     field.table_length);
+    ptr->set_org_table( field.org_table, field.org_table_length);
+    ptr->set_db(        field.db,        field.db_length);
+    ptr->set_catalog(   field.catalog,   field.catalog_length);
+    ptr->set_def(       field.def,       field.def_length);
+    ptr->set_length(    field.length);
+    ptr->set_max_length(field.max_length);
+    ptr->set_flags(     field.flags);
+    ptr->set_decimals(  field.decimals);
+    ptr->set_type(      field.type);
 }
 
 
