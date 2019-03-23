@@ -54,6 +54,7 @@ SqlResultSet::Row::Row(ProtocolResponseSqlRow const& row) {
 
 void SqlResultSet::set(ProtocolResponseSql const& message) {
 
+    error     = message.error();
     hasResult = message.has_result();
 
     // Translate fields

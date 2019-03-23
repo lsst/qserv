@@ -421,7 +421,6 @@ public:
      *   a pointer to the new request
      */
     SqlRequestPtr sql(std::string const& workerName,
-                      std::string const& worker,
                       std::string const& query,
                       std::string const& user,
                       std::string const& password,

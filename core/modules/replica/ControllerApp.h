@@ -103,6 +103,23 @@ private:
     /// to the ECHO requests
     uint64_t _echoDelayMilliseconds;
 
+    /// An SQL query to be executed by a worker
+    std::string _sqlQuery;
+
+    /// A database user for establishing a connection with the worker's database
+    std::string _sqlUser;
+
+    /// A database password for establishing a connection with the worker's database
+    std::string _sqlPassword;
+
+    /// The optional limit for the total number f rows to be pulled from a result
+    /// set when executing queries against the worker's database. The default value
+    /// of 0 won't enforce any such limit.
+    uint64_t _sqlMaxRows;
+
+    /// If set to 'true' then print types for the data in a result set
+    bool _sqlShowType = false;
+
     /// The optional (milliseconds) to wait before cancelling (if the number of not 0)
     /// the earlier made request.
     uint64_t _cancelDelayMilliseconds;

@@ -412,12 +412,17 @@ size_t Connection::numFields() const {
 void Connection::exportField(ProtocolResponseSqlField* ptr,
                              size_t idx) const {
     _assertQueryContext();
+
+    string const context =
+            "Connection::" + string(__func__) + "  idx: " + to_string(idx) +
+            " range: [0," + to_string(_numFields) + "]  ";
+    
+     LOGS(_log, LOG_LVL_DEBUG, context);
+
     if (idx >= _numFields) {
-        throw out_of_range(
-                "Connection::" + string(__func__) + "  the field index " + to_string(idx) +
-                " is out of range: [0," + to_string(_numFields) + "]");
+        throw out_of_range(context + " error: index is out of range");
     }
-    auto field = _fields[idx];
+    auto&& field = _fields[idx];
     ptr->set_name(      field.name,      field.name_length);
     ptr->set_org_name(  field.org_name,  field.org_name_length);
     ptr->set_table(     field.table,     field.table_length);
@@ -430,6 +435,8 @@ void Connection::exportField(ProtocolResponseSqlField* ptr,
     ptr->set_flags(     field.flags);
     ptr->set_decimals(  field.decimals);
     ptr->set_type(      field.type);
+
+    LOGS(_log, LOG_LVL_DEBUG, context + "  ** DONE **");
 }
 
 

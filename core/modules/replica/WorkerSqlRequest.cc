@@ -93,12 +93,21 @@ void WorkerSqlRequest::setInfo(ProtocolResponseSql& response) const {
     util::Lock lock(_mtx, context(__func__));
 
     // Update the performance of the target request before returning it
-    _response.set_allocated_target_performance(performance().info());
+    response.set_allocated_target_performance(performance().info());
 
-    // Note, we shall not invalidate the local state of the cached response
-    // object because, by a design of the Replication Framework,  the state
-    // of a completed request is allowed to be sampled many times.
-    response = _response;
+    // Carry over the result of the query only after the request
+    // has finished (or failed).
+    switch (status()) {
+        case STATUS_SUCCEEDED:
+        case STATUS_FAILED:
+            response.set_error(            _response.error());
+            response.set_has_result(       _response.has_result());
+            *(response.mutable_fields()) = _response.fields();
+            *(response.mutable_rows())   = _response.rows();
+            break;
+        default:
+            break;
+    }
 }
 
 
@@ -136,33 +145,49 @@ bool WorkerSqlRequest::execute() {
                 user(),
                 password(),
                 ""));
-        conn->execute([this](decltype(conn) const& conn_) {
+
+        auto self = shared_from_base<WorkerSqlRequest>();
+        conn->execute([self](decltype(conn) const& conn_) {
             conn_->begin();
-            conn_->execute(this->query());
+            conn_->execute(self->query());
+            self->_setResponse(conn_);
             conn_->commit();
-            this->_setResponse(conn_);
         });
         setStatus(lock, STATUS_SUCCEEDED);
 
     } catch(database::mysql::Error const& ex) {
+
         LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  MySQL error: " << ex.what());
+        _response.set_error(ex.what());
         setStatus(lock, STATUS_FAILED, EXT_STATUS_MYSQL_ERROR);
+
     } catch (invalid_argument const& ex) {
+
         LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  no such worker: " << worker());
+        _response.set_error("No such worker in the Configuration, worker: " + worker());
         setStatus(lock, STATUS_FAILED, EXT_STATUS_INVALID_PARAM);
+
     } catch (out_of_range const& ex) {
+
         LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  exception: " << ex.what());
+        _response.set_error(ex.what());
         setStatus(lock, STATUS_FAILED, EXT_STATUS_LARGE_RESULT);
+
     } catch (exception const& ex) {
+
         LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  exception: " << ex.what());
+        _response.set_error("Exception: " + string(ex.what()));
         setStatus(lock, STATUS_FAILED);
+
     }
-    if (conn->inTransaction()) conn->rollback();
+    if ((nullptr != conn) and conn->inTransaction()) conn->rollback();
     return true;
 }
 
 
 void WorkerSqlRequest::_setResponse(database::mysql::Connection::Ptr const& conn) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context(__func__));
 
     _response.set_has_result(conn->hasResult());
     if (conn->hasResult()) {
@@ -183,6 +208,10 @@ void WorkerSqlRequest::_setResponse(database::mysql::Connection::Ptr const& conn
             row.exportRow(_response.add_rows());
         }
     }
+    LOGS(_log, LOG_LVL_DEBUG, context(__func__)
+         << " has_result: " << (_response.has_result() ? 1 : 0)
+         << " #fields: " << _response.fields_size()
+         << " #rows: " << _response.rows_size());
 }
 
 }}} // namespace lsst::qserv::replica

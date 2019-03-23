@@ -508,16 +508,15 @@ EchoRequest::Ptr Controller::echo(string const& workerName,
 
 
 SqlRequest::Ptr Controller::sql(std::string const& workerName,
-        std::string const& worker,
-        std::string const& query,
-        std::string const& user,
-        std::string const& password,
-        uint64_t maxRows,
-        SqlRequestCallbackType const& onFinish,
-        int  priority,
-        bool keepTracking,
-        std::string const& jobId,
-        unsigned int requestExpirationIvalSec) {
+                                std::string const& query,
+                                std::string const& user,
+                                std::string const& password,
+                                uint64_t maxRows,
+                                SqlRequestCallbackType const& onFinish,
+                                int  priority,
+                                bool keepTracking,
+                                std::string const& jobId,
+                                unsigned int requestExpirationIvalSec) {
 
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
 

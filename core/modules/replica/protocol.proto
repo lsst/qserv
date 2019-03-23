@@ -595,21 +595,24 @@ message ProtocolResponseSql {
 
     // Extended information on the request
 
+    /// MySQL-specific error
+    optional string error = 5 [default = ""];
+
     /// The request produced a result set
-    optional bool has_result = 5;
+    optional bool has_result = 6;
 
     /// A vector with field definitions from a result set,
     /// where the number of objects in the array represents
     /// the "width" of the result set
-    repeated ProtocolResponseSqlField fields = 6;
+    repeated ProtocolResponseSqlField fields = 7;
 
     /// An array of rows from a result set,
     /// where the number of elements in the array represents
     /// the number of rows.
-    repeated ProtocolResponseSqlRow rows = 7;
+    repeated ProtocolResponseSqlRow rows = 8;
 
     /// Parameters of the original request to which this response is related
-    optional ProtocolRequestSql request = 8;
+    optional ProtocolRequestSql request = 9;
 }
 
 /////////////////////////////////////////////////////////////////////////

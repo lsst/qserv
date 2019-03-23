@@ -36,9 +36,14 @@
 #include "replica/ReplicationRequest.h"
 #include "replica/ServiceManagementRequest.h"
 #include "replica/ServiceProvider.h"
+#include "replica/SqlRequest.h"
 #include "replica/StatusRequest.h"
 #include "replica/StopRequest.h"
 #include "util/BlockPost.h"
+#include "util/TablePrinter.h"
+
+// Third party headers
+#include <mysql/mysql.h>
 
 using namespace std;
 
@@ -50,6 +55,98 @@ string const description =
     " operations in a replication setup.";
 
 using namespace lsst::qserv::replica;
+namespace util = lsst::qserv::util;
+
+void printAsTable(SqlResultSet const& result,
+                  bool sqlShowType) {
+
+    cout << "  error:     " << result.error << "\n"
+         << "  hasResult: " << (result.hasResult ? "yes" : "no") << "\n"
+         << "  #fields:   " << to_string(result.fields.size()) << "\n"
+         << "  #rows:     " << to_string(result.rows.size()) << "\n";
+
+    if (result.hasResult) {
+
+        size_t const numRows = result.rows.size();
+        size_t const numColumns = result.fields.size();
+
+        vector<shared_ptr<vector<string>>> tableDataByColumns;
+        tableDataByColumns.reserve(numColumns);
+
+        for (size_t columnIdx = 0; columnIdx < numColumns; ++columnIdx) {
+            auto tableColumnPtr = make_shared<vector<string>>();
+            tableColumnPtr->reserve(numRows);
+            tableDataByColumns.push_back(tableColumnPtr);
+        }
+        for (auto const& row :  result.rows) {                
+            for (size_t columnIdx = 0; columnIdx < numColumns; ++columnIdx) {
+
+                auto const& field  = result.fields[columnIdx];
+                auto const& cell   = row   .cells [columnIdx];
+
+                auto const& tableColumnPtr = tableDataByColumns[columnIdx];
+                if (row.nulls[columnIdx]) {
+                    tableColumnPtr->push_back("NULL");
+                } else {
+                    if (sqlShowType) {
+                        string typeName ="UNKNOWN MYSQL TYPE:" + to_string(field.type);
+                        switch (field.type) {
+                            case MYSQL_TYPE_DECIMAL:     typeName = "MYSQL_TYPE_DECIMAL";     break;
+                            case MYSQL_TYPE_TINY:        typeName = "MYSQL_TYPE_TINY";        break;
+                            case MYSQL_TYPE_SHORT:       typeName = "MYSQL_TYPE_SHORT";       break;
+                            case MYSQL_TYPE_LONG:        typeName = "MYSQL_TYPE_LONG";        break;
+                            case MYSQL_TYPE_FLOAT:       typeName = "MYSQL_TYPE_FLOAT";       break;
+                            case MYSQL_TYPE_DOUBLE:      typeName = "MYSQL_TYPE_DOUBLE";      break;
+                            case MYSQL_TYPE_NULL:        typeName = "MYSQL_TYPE_NULL";        break;
+                            case MYSQL_TYPE_TIMESTAMP:   typeName = "MYSQL_TYPE_TIMESTAMP";   break;
+                            case MYSQL_TYPE_LONGLONG:    typeName = "MYSQL_TYPE_LONGLONG";    break;
+                            case MYSQL_TYPE_INT24:       typeName = "MYSQL_TYPE_INT24";       break;
+                            case MYSQL_TYPE_DATE:        typeName = "MYSQL_TYPE_DATE";        break;
+                            case MYSQL_TYPE_TIME:        typeName = "MYSQL_TYPE_TIME";        break;
+                            case MYSQL_TYPE_DATETIME:    typeName = "MYSQL_TYPE_DATETIME";    break;
+                            case MYSQL_TYPE_YEAR:        typeName = "MYSQL_TYPE_YEAR";        break;
+                            case MYSQL_TYPE_NEWDATE:     typeName = "MYSQL_TYPE_NEWDATE";     break;
+                            case MYSQL_TYPE_VARCHAR:     typeName = "MYSQL_TYPE_VARCHAR";     break;
+                            case MYSQL_TYPE_BIT:         typeName = "MYSQL_TYPE_BIT";         break;
+                            case MYSQL_TYPE_TIMESTAMP2:  typeName = "MYSQL_TYPE_TIMESTAMP2";  break;
+                            case MYSQL_TYPE_DATETIME2:   typeName = "MYSQL_TYPE_DATETIME2";   break;
+                            case MYSQL_TYPE_TIME2:       typeName = "MYSQL_TYPE_TIME2";       break;
+                            case MYSQL_TYPE_JSON:        typeName = "MYSQL_TYPE_JSON";        break;
+                            case MYSQL_TYPE_NEWDECIMAL:  typeName = "MYSQL_TYPE_NEWDECIMAL";  break;
+                            case MYSQL_TYPE_ENUM:        typeName = "MYSQL_TYPE_ENUM";        break;
+                            case MYSQL_TYPE_SET:         typeName = "MYSQL_TYPE_SET";         break;
+                            case MYSQL_TYPE_TINY_BLOB:   typeName = "MYSQL_TYPE_TINY_BLOB";   break;
+                            case MYSQL_TYPE_MEDIUM_BLOB: typeName = "MYSQL_TYPE_MEDIUM_BLOB"; break;
+                            case MYSQL_TYPE_LONG_BLOB:   typeName = "MYSQL_TYPE_LONG_BLOB";   break;
+                            case MYSQL_TYPE_BLOB:        typeName = "MYSQL_TYPE_BLOB";        break;
+                            case MYSQL_TYPE_VAR_STRING:  typeName = "MYSQL_TYPE_VAR_STRING";  break;
+                            case MYSQL_TYPE_STRING:      typeName = "MYSQL_TYPE_STRING";      break;
+                            case MYSQL_TYPE_GEOMETRY:    typeName = "MYSQL_TYPE_GEOMETRY";    break;
+                        }
+                        tableColumnPtr->push_back(typeName + ": " + cell);
+                    } else {
+                        tableColumnPtr->push_back(cell);
+                    }
+                }
+            }
+        }
+        bool   const topSeparator    = true;
+        bool   const bottomSeparator = true;
+        size_t const pageSize        = 20;
+        bool   const repeatedHeader  = false;
+
+        util::ColumnTablePrinter table("QUERY RESULT SET:", "  ");
+
+        for (size_t columnIdx = 0; columnIdx < numColumns; ++columnIdx) {
+            table.addColumn(result.fields[columnIdx].name,
+                            *(tableDataByColumns[columnIdx]),
+                            util::ColumnTablePrinter::Alignment::LEFT);
+        }
+        table.print(cout, topSeparator, bottomSeparator, pageSize, repeatedHeader);
+    }
+}
+
+
 
 /// Report result of the operation
 template <class T>
@@ -66,6 +163,31 @@ void printRequest<ServiceManagementRequestBase>(ServiceManagementRequestBase::Pt
          << "  servicState: " << request->getServiceState() << "\n"
          << "  performance: " << request->performance() << endl;
 }
+
+void printRequest(SqlRequest::Ptr const& request,
+                  bool sqlShowType) {
+    cout << request->context() << "** DONE **" << "\n"
+         << "  performance: " << request->performance() << endl;
+    printAsTable(request->responseData(),
+                 sqlShowType);
+}
+
+void printRequest(StatusSqlRequest::Ptr const& request,
+                  bool sqlShowType) {
+    cout << request->context() << "** DONE **" << "\n"
+         << "  performance: " << request->performance() << endl;
+    printAsTable(request->responseData(),
+                 sqlShowType);
+}
+
+void printRequest(StopSqlRequest::Ptr const& request,
+                  bool sqlShowType) {
+    cout << request->context() << "** DONE **" << "\n"
+         << "  performance: " << request->performance() << endl;
+    printAsTable(request->responseData(),
+                 sqlShowType);
+}
+
 
 template <class T>
 void printRequestExtra(typename T::Ptr const& request) {
@@ -104,6 +226,7 @@ ControllerApp::ControllerApp(int argc, char* argv[])
             "FIND",
             "FIND_ALL",
             "ECHO",
+            "SQL",
             "STATUS",
             "STOP",
             "SERVICE_SUSPEND",
@@ -245,6 +368,43 @@ ControllerApp::ControllerApp(int argc, char* argv[])
 
     /// Request-specific parameters, options, flags
 
+    auto& sqlCmd = parser().command("SQL");
+
+    echoCmd.description(
+        "Ask a worker service to execute a query against its database, get a result"
+        " set (if any) back and print it as a table");
+
+    sqlCmd.required(
+        "query",
+        "The query to be executed by a worker against its database.",
+        _sqlQuery);
+
+    sqlCmd.required(
+        "user",
+        "The name of a user for establishing a connection with the worker's database.",
+        _sqlUser);
+
+    sqlCmd.required(
+        "password",
+        "A password which is used along with the user name for establishing a connection"
+        " with the worker's database.",
+        _sqlPassword);
+
+    sqlCmd.option(
+        "max-rows",
+        "The optional cap on a number of rows to be extracted by a worker from a result"
+        " set. If a value of the parameter is set to 0 then no explicit limit will be"
+        " be enforced.",
+        _sqlMaxRows);
+
+    sqlCmd.flag(
+        "show-data-type",
+        "If this flag is provided then the application will also print types for"
+        " each data cell of a result set",
+        _sqlShowType);
+
+    /// Request-specific parameters, options, flags
+
     auto& statusCmd = parser().command("STATUS");
 
     statusCmd.description(
@@ -253,9 +413,9 @@ ControllerApp::ControllerApp(int argc, char* argv[])
     statusCmd.required(
         "affected-request",
         "The type of a request affected by the operation. Supported types:"
-        " REPLICATE, DELETE, FIND, FIND_ALL, ECHO.",
+        " REPLICATE, DELETE, FIND, FIND_ALL, ECHO, SQL.",
         _affectedRequest,
-       {"REPLICATE", "DELETE", "FIND", "FIND_ALL", "ECHO"});
+       {"REPLICATE", "DELETE", "FIND", "FIND_ALL", "ECHO", "SQL"});
 
     statusCmd.required(
         "id",
@@ -272,9 +432,9 @@ ControllerApp::ControllerApp(int argc, char* argv[])
     stopCmd.required(
         "affected-request",
         "The type of a request affected by the operation. Supported types:"
-        " REPLICATE, DELETE, FIND, FIND_ALL, ECHO.",
+        " REPLICATE, DELETE, FIND, FIND_ALL, ECHO, SQL.",
         _affectedRequest,
-       {"REPLICATE", "DELETE", "FIND", "FIND_ALL", "ECHO"});
+       {"REPLICATE", "DELETE", "FIND", "FIND_ALL", "ECHO", "SQL"});
 
     stopCmd.required(
         "id",
@@ -287,7 +447,7 @@ ControllerApp::ControllerApp(int argc, char* argv[])
     parser().command("SERVICE_SUSPEND").description(
         "Suspend the worker service. All ongoing requests will be cancelled and put"
         " back into the input queue as if they had never been attempted."
-        " The service will be still accepring new requests which will be landing"
+        " The service will be still accepting new requests which will be landing"
         " in the input queue.");
 
     parser().command("SERVICE_RESUME").description(
@@ -380,6 +540,20 @@ int ControllerApp::runImpl() {
             _priority,
             not _doNotTrackRequest);
 
+    } else if ("SQL" == _request) {
+        request = controller->sql(
+            _workerName,
+            _sqlQuery,
+            _sqlUser,
+            _sqlPassword,
+            _sqlMaxRows,
+            [&] (SqlRequest::Ptr const& request) {
+                ::printRequest(request, _sqlShowType);
+                finished = true;
+            },
+            _priority,
+            not _doNotTrackRequest);
+
     } else if ("STATUS" == _request) {
 
         if ("REPLICATE"  == _affectedRequest) {
@@ -433,6 +607,17 @@ int ControllerApp::runImpl() {
                 [&finished] (StatusEchoRequest::Ptr const& request) {
                     ::printRequest     <StatusEchoRequest>(request);
                     ::printRequestExtra<StatusEchoRequest>(request);
+                    finished = true;
+                },
+                not _doNotTrackRequest);
+
+        } else if ("SQL" == _affectedRequest) {
+            request = controller->statusOfSql(
+                _workerName,
+                _affectedRequestId,
+                [&] (StatusSqlRequest::Ptr const& request) {
+                    ::printRequest(request, _sqlShowType);
+                    ::printRequestExtra<StatusSqlRequest>(request);
                     finished = true;
                 },
                 not _doNotTrackRequest);
@@ -500,6 +685,18 @@ int ControllerApp::runImpl() {
                     finished = true;
                 },
                 not _doNotTrackRequest);
+
+        } else if ("SQL" == _affectedRequest) {
+            request = controller->stopSql(
+                _workerName,
+                _affectedRequestId,
+                [&] (StopSqlRequest::Ptr const& request) {
+                    ::printRequest(request, _sqlShowType);
+                    ::printRequestExtra<StopSqlRequest>(request);
+                    finished = true;
+                },
+                not _doNotTrackRequest);
+
         } else {
             throw logic_error(
                     "ControllerApp::" + string(__func__) + "  unsupported request: " +
@@ -561,14 +758,20 @@ int ControllerApp::runImpl() {
         request->cancel();
     }
 
-    // Wait before the request is finished. Then stop the services
+    // Print periodic heartbeats while waiting before
+    // the request will finish.
 
-    util::BlockPost blockPost(0, 5000);     // for random delays (milliseconds) between iterations
+    util::BlockPost blockPost(100, 200);   // for random delays (in milliseconds) between iterations
 
+    size_t const printIvalMs   = 5000;
+    size_t       currentIvalMs = 0;
     while (not finished) {
-        cout << "HEARTBEAT: " << blockPost.wait() << " msec" << endl;;
+        currentIvalMs += blockPost.wait();
+        if (currentIvalMs >= printIvalMs) {
+            cout << "HEARTBEAT: " << currentIvalMs << " ms" << endl;
+            currentIvalMs = 0;
+        }
     }
-
     return 0;
 }
 

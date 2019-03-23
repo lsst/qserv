@@ -290,6 +290,11 @@ protected:
                                ExtendedCompletionStatus extendedStatus,
                                std::string const& errorMsg);
 
+    /// Return shared pointer of the desired subclass (no dynamic type checking)
+    template <class T>
+    std::shared_ptr<T> shared_from_base() {
+        return std::static_pointer_cast<T>(shared_from_this());
+    }
 
     // Input parameters
 
