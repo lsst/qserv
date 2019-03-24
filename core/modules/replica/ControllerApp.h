@@ -117,8 +117,8 @@ private:
     /// of 0 won't enforce any such limit.
     uint64_t _sqlMaxRows;
 
-    /// If set to 'true' then print types for the data in a result set
-    bool _sqlShowType = false;
+    /// The number of rows in the table of a query result set (0 means no pages)
+    size_t _sqlPageSize = 20;
 
     /// The optional (milliseconds) to wait before cancelling (if the number of not 0)
     /// the earlier made request.
@@ -141,6 +141,9 @@ private:
     /// Automatically compute and store in the database check/control sums of
     /// the replica's files.
     bool _computeCheckSum  = false;
+
+    /// Print 'heartbeats' while waiting before an on-going request finishes
+    bool _enableHeartbeat;
 };
 
 }}} // namespace lsst::qserv::replica

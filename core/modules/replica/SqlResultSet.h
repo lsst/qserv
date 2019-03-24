@@ -30,6 +30,10 @@
 // Qserv headers
 #include "replica/Common.h"
 #include "replica/protocol.pb.h"
+#include "util/TablePrinter.h"
+
+// Third party headers
+#include "nlohmann/json.hpp"
 
 // This header declarations
 
@@ -66,6 +70,9 @@ struct SqlResultSet {
 
         /// The default c-tor is required at a presence of the explicit one
         Field() = default;
+
+        /// @return string representatio of the type
+        std::string type2string() const;
 
         /**
          * Construct the object by carrying over the content of the input protocol
@@ -118,6 +125,26 @@ struct SqlResultSet {
      *   input message to be parsed
      */
     void set(ProtocolResponseSql const& message);
+
+    /**
+     * Translate the structure into JSON
+     *
+     * @return
+     *   JSON array
+     */
+    nlohmann::json toJson() const;
+
+    /**
+     * Package results into a table. For  description of the input parameters:
+     * @see class util::ColumnTablePrinter
+     * 
+     * @throws std::logic_error
+     *    if attempting to use the method when member SqlResultSet::hasResult is
+     *    set to 'false'.
+     */
+    util::ColumnTablePrinter toColumnTable(std::string const& caption=std::string(),
+                                           std::string const& indent=std::string(),
+                                           bool verticalSeparator=true) const;
 };
 
 }}} // namespace lsst::qserv::replica

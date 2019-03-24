@@ -143,7 +143,7 @@ void SqlRequest::_wait(util::Lock const& lock) {
 
     // Always need to set the interval before launching the timer.
 
-    timer().expires_from_now(boost::posix_time::seconds(timerIvalSec()));
+    timer().expires_from_now(boost::posix_time::milliseconds(nextTimeIvalMsec()));
     timer().async_wait(
         boost::bind(
             &SqlRequest::_awaken,
@@ -328,6 +328,13 @@ list<pair<string,string>> SqlRequest::extendedPersistentState() const {
     result.emplace_back("query",    query());
     result.emplace_back("user",     user());
     result.emplace_back("max_rows", to_string(maxRows()));
+    return result;
+}
+
+
+unsigned int SqlRequest::nextTimeIvalMsec() {
+    auto result = _currentTimeIvalMsec;
+    _currentTimeIvalMsec = min( 2 * _currentTimeIvalMsec, 1000 * timerIvalSec());
     return result;
 }
 

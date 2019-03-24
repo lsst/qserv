@@ -40,152 +40,83 @@
 #include "replica/StatusRequest.h"
 #include "replica/StopRequest.h"
 #include "util/BlockPost.h"
-#include "util/TablePrinter.h"
-
-// Third party headers
-#include <mysql/mysql.h>
 
 using namespace std;
 
 namespace {
+
+using namespace lsst::qserv::replica;
 
 string const description =
     "This application allows launching Controller requests, and it's meant"
     " for both testing all known types of requests and for various manual fix up"
     " operations in a replication setup.";
 
-using namespace lsst::qserv::replica;
-namespace util = lsst::qserv::util;
 
 void printAsTable(SqlResultSet const& result,
-                  bool sqlShowType) {
+                  size_t const pageSize) {
 
-    cout << "  error:     " << result.error << "\n"
-         << "  hasResult: " << (result.hasResult ? "yes" : "no") << "\n"
-         << "  #fields:   " << to_string(result.fields.size()) << "\n"
-         << "  #rows:     " << to_string(result.rows.size()) << "\n";
+    cout << "\n"
+         << "error:     " << result.error << "\n"
+         << "hasResult: " << (result.hasResult ? "yes" : "no") << "\n"
+         << "fields:    " << to_string(result.fields.size()) << "\n"
+         << "rows:      " << to_string(result.rows.size()) << "\n"
+         << "\n";
 
     if (result.hasResult) {
 
-        size_t const numRows = result.rows.size();
-        size_t const numColumns = result.fields.size();
+        string const caption = "RESULT SET";
+        string const indent  = "";
 
-        vector<shared_ptr<vector<string>>> tableDataByColumns;
-        tableDataByColumns.reserve(numColumns);
+        auto table = result.toColumnTable(caption, indent, pageSize);
 
-        for (size_t columnIdx = 0; columnIdx < numColumns; ++columnIdx) {
-            auto tableColumnPtr = make_shared<vector<string>>();
-            tableColumnPtr->reserve(numRows);
-            tableDataByColumns.push_back(tableColumnPtr);
-        }
-        for (auto const& row :  result.rows) {                
-            for (size_t columnIdx = 0; columnIdx < numColumns; ++columnIdx) {
+        bool const topSeparator    = false;
+        bool const bottomSeparator = false;
+        bool const repeatedHeader  = false;
 
-                auto const& field  = result.fields[columnIdx];
-                auto const& cell   = row   .cells [columnIdx];
-
-                auto const& tableColumnPtr = tableDataByColumns[columnIdx];
-                if (row.nulls[columnIdx]) {
-                    tableColumnPtr->push_back("NULL");
-                } else {
-                    if (sqlShowType) {
-                        string typeName ="UNKNOWN MYSQL TYPE:" + to_string(field.type);
-                        switch (field.type) {
-                            case MYSQL_TYPE_DECIMAL:     typeName = "MYSQL_TYPE_DECIMAL";     break;
-                            case MYSQL_TYPE_TINY:        typeName = "MYSQL_TYPE_TINY";        break;
-                            case MYSQL_TYPE_SHORT:       typeName = "MYSQL_TYPE_SHORT";       break;
-                            case MYSQL_TYPE_LONG:        typeName = "MYSQL_TYPE_LONG";        break;
-                            case MYSQL_TYPE_FLOAT:       typeName = "MYSQL_TYPE_FLOAT";       break;
-                            case MYSQL_TYPE_DOUBLE:      typeName = "MYSQL_TYPE_DOUBLE";      break;
-                            case MYSQL_TYPE_NULL:        typeName = "MYSQL_TYPE_NULL";        break;
-                            case MYSQL_TYPE_TIMESTAMP:   typeName = "MYSQL_TYPE_TIMESTAMP";   break;
-                            case MYSQL_TYPE_LONGLONG:    typeName = "MYSQL_TYPE_LONGLONG";    break;
-                            case MYSQL_TYPE_INT24:       typeName = "MYSQL_TYPE_INT24";       break;
-                            case MYSQL_TYPE_DATE:        typeName = "MYSQL_TYPE_DATE";        break;
-                            case MYSQL_TYPE_TIME:        typeName = "MYSQL_TYPE_TIME";        break;
-                            case MYSQL_TYPE_DATETIME:    typeName = "MYSQL_TYPE_DATETIME";    break;
-                            case MYSQL_TYPE_YEAR:        typeName = "MYSQL_TYPE_YEAR";        break;
-                            case MYSQL_TYPE_NEWDATE:     typeName = "MYSQL_TYPE_NEWDATE";     break;
-                            case MYSQL_TYPE_VARCHAR:     typeName = "MYSQL_TYPE_VARCHAR";     break;
-                            case MYSQL_TYPE_BIT:         typeName = "MYSQL_TYPE_BIT";         break;
-                            case MYSQL_TYPE_TIMESTAMP2:  typeName = "MYSQL_TYPE_TIMESTAMP2";  break;
-                            case MYSQL_TYPE_DATETIME2:   typeName = "MYSQL_TYPE_DATETIME2";   break;
-                            case MYSQL_TYPE_TIME2:       typeName = "MYSQL_TYPE_TIME2";       break;
-                            case MYSQL_TYPE_JSON:        typeName = "MYSQL_TYPE_JSON";        break;
-                            case MYSQL_TYPE_NEWDECIMAL:  typeName = "MYSQL_TYPE_NEWDECIMAL";  break;
-                            case MYSQL_TYPE_ENUM:        typeName = "MYSQL_TYPE_ENUM";        break;
-                            case MYSQL_TYPE_SET:         typeName = "MYSQL_TYPE_SET";         break;
-                            case MYSQL_TYPE_TINY_BLOB:   typeName = "MYSQL_TYPE_TINY_BLOB";   break;
-                            case MYSQL_TYPE_MEDIUM_BLOB: typeName = "MYSQL_TYPE_MEDIUM_BLOB"; break;
-                            case MYSQL_TYPE_LONG_BLOB:   typeName = "MYSQL_TYPE_LONG_BLOB";   break;
-                            case MYSQL_TYPE_BLOB:        typeName = "MYSQL_TYPE_BLOB";        break;
-                            case MYSQL_TYPE_VAR_STRING:  typeName = "MYSQL_TYPE_VAR_STRING";  break;
-                            case MYSQL_TYPE_STRING:      typeName = "MYSQL_TYPE_STRING";      break;
-                            case MYSQL_TYPE_GEOMETRY:    typeName = "MYSQL_TYPE_GEOMETRY";    break;
-                        }
-                        tableColumnPtr->push_back(typeName + ": " + cell);
-                    } else {
-                        tableColumnPtr->push_back(cell);
-                    }
-                }
-            }
-        }
-        bool   const topSeparator    = true;
-        bool   const bottomSeparator = true;
-        size_t const pageSize        = 20;
-        bool   const repeatedHeader  = false;
-
-        util::ColumnTablePrinter table("QUERY RESULT SET:", "  ");
-
-        for (size_t columnIdx = 0; columnIdx < numColumns; ++columnIdx) {
-            table.addColumn(result.fields[columnIdx].name,
-                            *(tableDataByColumns[columnIdx]),
-                            util::ColumnTablePrinter::Alignment::LEFT);
-        }
         table.print(cout, topSeparator, bottomSeparator, pageSize, repeatedHeader);
+        cout << "\n";
     }
 }
 
 
-
-/// Report result of the operation
 template <class T>
 void printRequest(typename T::Ptr const& request) {
-    cout << request->context() << "** DONE **" << "\n"
+    cout << request->context() << "\n"
          << "  responseData: " << request->responseData() << "\n"
-         << "  performance: "  << request->performance() << endl;
+         << "  performance:  " << request->performance() << endl;
 }
 
 
 template <>
 void printRequest<ServiceManagementRequestBase>(ServiceManagementRequestBase::Ptr const& request) {
-    cout << request->context() << "** DONE **" << "\n"
+    cout << request->context() << "\n"
          << "  servicState: " << request->getServiceState() << "\n"
          << "  performance: " << request->performance() << endl;
 }
 
-void printRequest(SqlRequest::Ptr const& request,
-                  bool sqlShowType) {
-    cout << request->context() << "** DONE **" << "\n"
+
+void printRequest(SqlRequest::Ptr const& request, size_t const pageSize) {
+    cout << request->context() << "\n"
          << "  performance: " << request->performance() << endl;
     printAsTable(request->responseData(),
-                 sqlShowType);
+                 pageSize);
 }
 
-void printRequest(StatusSqlRequest::Ptr const& request,
-                  bool sqlShowType) {
-    cout << request->context() << "** DONE **" << "\n"
+
+void printRequest(StatusSqlRequest::Ptr const& request, size_t const pageSize) {
+    cout << request->context() << "\n"
          << "  performance: " << request->performance() << endl;
     printAsTable(request->responseData(),
-                 sqlShowType);
+                 pageSize);
 }
 
-void printRequest(StopSqlRequest::Ptr const& request,
-                  bool sqlShowType) {
-    cout << request->context() << "** DONE **" << "\n"
+
+void printRequest(StopSqlRequest::Ptr const& request, size_t const pageSize) {
+    cout << request->context() << "\n"
          << "  performance: " << request->performance() << endl;
     printAsTable(request->responseData(),
-                 sqlShowType);
+                 pageSize);
 }
 
 
@@ -277,6 +208,11 @@ ControllerApp::ControllerApp(int argc, char* argv[])
         " automatically compute and store in the database check/control sums for"
         " all files of the found replica.",
         _computeCheckSum);
+
+    parser().flag(
+        "heartbeats",
+        " print 'heartbeats' while waiting before an on-going request finishes",
+        _enableHeartbeat);
 
     /// Request-specific parameters, options, flags
 
@@ -397,11 +333,10 @@ ControllerApp::ControllerApp(int argc, char* argv[])
         " be enforced.",
         _sqlMaxRows);
 
-    sqlCmd.flag(
-        "show-data-type",
-        "If this flag is provided then the application will also print types for"
-        " each data cell of a result set",
-        _sqlShowType);
+    sqlCmd.option(
+        "tables-page-size",
+        "The number of rows in the table of a query result set (0 means no pages).",
+        _sqlPageSize);
 
     /// Request-specific parameters, options, flags
 
@@ -548,7 +483,7 @@ int ControllerApp::runImpl() {
             _sqlPassword,
             _sqlMaxRows,
             [&] (SqlRequest::Ptr const& request) {
-                ::printRequest(request, _sqlShowType);
+                ::printRequest(request, _sqlPageSize);
                 finished = true;
             },
             _priority,
@@ -616,7 +551,7 @@ int ControllerApp::runImpl() {
                 _workerName,
                 _affectedRequestId,
                 [&] (StatusSqlRequest::Ptr const& request) {
-                    ::printRequest(request, _sqlShowType);
+                    ::printRequest(request, _sqlPageSize);
                     ::printRequestExtra<StatusSqlRequest>(request);
                     finished = true;
                 },
@@ -691,7 +626,7 @@ int ControllerApp::runImpl() {
                 _workerName,
                 _affectedRequestId,
                 [&] (StopSqlRequest::Ptr const& request) {
-                    ::printRequest(request, _sqlShowType);
+                    ::printRequest(request, _sqlPageSize);
                     ::printRequestExtra<StopSqlRequest>(request);
                     finished = true;
                 },
@@ -761,14 +696,16 @@ int ControllerApp::runImpl() {
     // Print periodic heartbeats while waiting before
     // the request will finish.
 
-    util::BlockPost blockPost(100, 200);   // for random delays (in milliseconds) between iterations
+    util::BlockPost blockPost(10, 20);  // for random delays (in milliseconds) between iterations
 
     size_t const printIvalMs   = 5000;
     size_t       currentIvalMs = 0;
     while (not finished) {
         currentIvalMs += blockPost.wait();
         if (currentIvalMs >= printIvalMs) {
-            cout << "HEARTBEAT: " << currentIvalMs << " ms" << endl;
+            if (_enableHeartbeat) {
+                cout << "HEARTBEAT: " << currentIvalMs << " ms" << endl;
+            }
             currentIvalMs = 0;
         }
     }

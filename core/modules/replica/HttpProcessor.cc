@@ -25,6 +25,7 @@
 // System headers
 #include <atomic>
 #include <functional>
+#include <iterator>
 #include <map>
 #include <iomanip>
 #include <stdexcept>
@@ -34,11 +35,12 @@
 #include <boost/lexical_cast.hpp>
 
 // Qserv headers
-#include "util/BlockPost.h"
 #include "replica/ConfigurationTypes.h"
 #include "replica/Controller.h"
 #include "replica/DatabaseServices.h"
 #include "replica/Performance.h"
+#include "replica/SqlRequest.h"
+#include "util/BlockPost.h"
 
 
 using namespace std;
@@ -310,6 +312,79 @@ bool saveConfigParameter(T& struct_,
     return false;
 }
 
+
+/**
+ * Helper class HttpRequestBody parses a body of an HTTP request
+ * which has the following header:
+ * 
+ *   Content-Type: application/json
+ * 
+ * Exceptions are thrown 
+ */
+class HttpRequestBody {
+
+public:
+
+    /// Key-value pairs
+    map<string,string> kv;
+
+    HttpRequestBody() = delete;
+
+    /**
+     * The constructor will parse and evaluate a body of an HTTP request
+     * and populate the 'kv' dictionary. Exceptions may be thrown in
+     * the following scenarios:
+     *
+     * - the required HTTP header is not found i nthe request
+     * - the body doesn't have a valid JSON string (unless the body is empty)
+     * 
+     * @param req
+     *   the request to be parsed
+     */
+    explicit HttpRequestBody(qhttp::Request::Ptr req) {
+
+        string const contentType = req->header["Content-Type"];
+        string const requiredContentType = "application/json";
+        if (contentType != requiredContentType) {
+            throw invalid_argument(
+                    "unsupported content type: '" + contentType + "' instead of: '" +
+                    requiredContentType + "'");
+        }
+        json objJson;
+        req->content >> objJson;
+        if (objJson.is_null()) {
+            ;   // empty body detected
+        } else if (objJson.is_object()) {
+            for (auto&& elem : objJson.items()) {
+                kv[elem.key()] = elem.value();
+            }
+        } else {
+            throw invalid_argument(
+                    "invalid format of the request body. A simple JSON object with"
+                    " <key>:<val> pairs of string data types for values"
+                    " was expected");
+        }
+    }
+
+    /// @return a value of a required parameter
+    string required(string const& name) const {
+        auto itr = kv.find(name);
+        if (kv.end() == itr) {
+            throw invalid_argument(
+                    "required parameter " + name + " is missing in the request body");
+        }
+        return itr->second;
+    }
+
+    /// @return a value of an optional parameter if found. Otherwise return
+    /// the default value.
+    string optional(string const& name, string const& defaultValue) const {
+        auto itr = kv.find(name);
+        if (kv.end() == itr) return defaultValue;
+        return itr->second;
+    }
+};
+
 }  // namespace
 
 
@@ -385,7 +460,9 @@ void HttpProcessor::_initialize() {
         {"DELETE", "/replication/v1/config/database/:name", bind(&HttpProcessor::_deleteDatabaseConfig, self, _1, _2)},
         {"POST",   "/replication/v1/config/database",       bind(&HttpProcessor::_addDatabaseConfig,    self, _1, _2)},
         {"DELETE", "/replication/v1/config/table/:name",    bind(&HttpProcessor::_deleteTableConfig,    self, _1, _2)},
-        {"POST",   "/replication/v1/config/table",          bind(&HttpProcessor::_addTableConfig,       self, _1, _2)}
+        {"POST",   "/replication/v1/config/table",          bind(&HttpProcessor::_addTableConfig,       self, _1, _2)},
+
+        {"POST",   "/replication/v1/sql/query", bind(&HttpProcessor::_sqlQuery, self, _1, _2)}
     });
     controller()->serviceProvider()->httpServer()->start();
 }
@@ -1215,6 +1292,61 @@ void HttpProcessor::_addTableConfig(qhttp::Request::Ptr req,
 
         controller()->serviceProvider()->config()->addTable(database, table, isPartitioned);
         resp->send(_configToJson().dump(), "application/json");
+
+    } catch (invalid_argument const& ex) {
+        _error(string(__func__) + " invalid parameters of the request, ex: " + ex.what());
+        resp->sendStatus(400);
+    } catch (exception const& ex) {
+        _error(string(__func__) + " operation failed due to: " + string(ex.what()));
+        resp->sendStatus(500);
+    }
+}
+
+
+void HttpProcessor::_sqlQuery(qhttp::Request::Ptr req,
+                              qhttp::Response::Ptr resp) {
+    _debug(__func__);
+
+    try {
+
+        // All parameters must be provided via the body of the request
+
+        ::HttpRequestBody body(req);
+
+        auto const worker   =        body.required("worker");
+        auto const query    =        body.required("query");
+        auto const user     =        body.required("user");
+        auto const password =        body.required("password");
+        auto const maxRows  = stoull(body.optional("max_rows", "0"));
+
+        _debug(string(__func__) + " worker="   +           worker);
+        _debug(string(__func__) + " query="    +           query);
+        _debug(string(__func__) + " user="     +           user);
+        _debug(string(__func__) + " password=" +           password);
+        _debug(string(__func__) + " maxRows="  + to_string(maxRows));
+
+        atomic<bool> finished{false};
+        auto const request = controller()->sql(
+            worker,
+            query,
+            user,
+            password,
+            maxRows,
+            [&finished] (SqlRequest::Ptr const& request) {
+                finished = true;
+            }
+        );
+        util::BlockPost blockPost(10, 20);  // for random delays (in milliseconds) between iterations
+        while (not finished) {
+            blockPost.wait();
+        }
+
+        json result;
+        result["status"] = request->state2string();
+        result["extended_server_status"] = replica::status2string(request->extendedServerStatus());
+        result["result_set"] = request->responseData().toJson();
+
+        resp->send(result.dump(), "application/json");
 
     } catch (invalid_argument const& ex) {
         _error(string(__func__) + " invalid parameters of the request, ex: " + ex.what());

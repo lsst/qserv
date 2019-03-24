@@ -230,6 +230,35 @@ private:
 
     /// The results reported by a worker service
     SqlResultSet _responseData;
+
+    /**
+     * This request implements an adaptive request tracking algorithm
+     * for following request status on worker nodes. Once the first message
+     * is sent to a worker the request tracking timer is launched with
+     * with the initial value of the interval (stored in the data
+     * member SqlRequest::_currentTimeIvalMsec).
+     * Each subsequent activation of the timer is made with an interval which is
+     * twice as long as the previous one until a limit set in the base class
+     * member is reached:
+     *
+     * @see Request::timerIvalSec()
+     *
+     * After that the above mentioned (fixed) interval will always be used
+     * untill the request finishes or fails (or gets cancelled, expires, etc.)
+     *
+     * This algorithm addresses three problems:
+     * - it allows nearly real-time response for quick requests
+     * - it prevents flooding in the network
+     * - it doesn't cause an excessive use of resources on either ends of
+     *   the Replication system
+     *
+     * @return
+     *   the next value of the delay expressed in milliseconds
+     */
+    unsigned int nextTimeIvalMsec();
+
+    /// @see SqlRequest::nextTimeIvalMsec()
+    unsigned int _currentTimeIvalMsec = 10;
 };
 
 }}} // namespace lsst::qserv::replica

@@ -158,126 +158,71 @@ private:
      */
     void _error(std::string const& msg);
 
-    // --------------------------------
-    // Callback for processing requests
-    // --------------------------------
+    // All request handlers declared hereafter have exactly two
+    // parameters:
+    //
+    //   req:   input request received from a client
+    //   resp:  output response send back
+    //
+    // @see qhttp::Request
+    // @see qhttp::Response
 
     /**
      * Process a request which return status of one worker.
-     *
-     * @param req
-     *   request received from a client
-     *
-     * @param resp
-     *   response to be sent back
      */
     void _getWorkerStatus(qhttp::Request::Ptr req,
                           qhttp::Response::Ptr resp);
 
     /**
      * Process a request which return the status of the replicas.
-     *
-     * @param req
-     *   request received from a client
-     *
-     * @param resp
-     *   response to be sent back
      */
     void _getReplicationLevel(qhttp::Request::Ptr req,
                               qhttp::Response::Ptr resp);
 
     /**
      * Process a request which return status of all workers.
-     *
-     * @param req
-     *   request received from a client
-     *
-     * @param resp
-     *   response to be sent back
      */
     void _listWorkerStatuses(qhttp::Request::Ptr req,
                              qhttp::Response::Ptr resp);
 
     /**
      * Process a request which return info on known Replication Controllers
-     *
-     * @param req
-     *   request received from a client
-     *
-     * @param resp
-     *   response to be sent back
      */
     void _listControllers(qhttp::Request::Ptr req,
                           qhttp::Response::Ptr resp);
 
     /**
      * Process a request which return info on the specified Replication Controller
-     *
-     * @param req
-     *   request received from a client
-     *
-     * @param resp
-     *   response to be sent back
      */
     void _getControllerInfo(qhttp::Request::Ptr req,
                             qhttp::Response::Ptr resp);
 
     /**
      * Process a request which return info on known Replication Requests
-     *
-     * @param req
-     *   request received from a client
-     *
-     * @param resp
-     *   response to be sent back
      */
     void _listRequests(qhttp::Request::Ptr req,
                        qhttp::Response::Ptr resp);
 
     /**
      * Process a request which return info on the specified Replication Request
-     *
-     * @param req
-     *   request received from a client
-     *
-     * @param resp
-     *   response to be sent back
      */
     void _getRequestInfo(qhttp::Request::Ptr req,
                          qhttp::Response::Ptr resp);
 
     /**
      * Process a request which return info on known Replication Jobs
-     *
-     * @param req
-     *   request received from a client
-     *
-     * @param resp
-     *   response to be sent back
      */
     void _listJobs(qhttp::Request::Ptr req,
                    qhttp::Response::Ptr resp);
 
     /**
      * Process a request which return info on the specified Replication Job
-     *
-     * @param req
-     *   request received from a client
-     *
-     * @param resp
-     *   response to be sent back
      */
     void _getJobInfo(qhttp::Request::Ptr req,
                      qhttp::Response::Ptr resp);
 
     /**
      * Process a request which return the Configuration of the Replication system
-     *
-     * @param req
-     *   request received from a client
-     *
-     * @param resp
-     *   response to be sent back
      */
     void _getConfig(qhttp::Request::Ptr req,
                     qhttp::Response::Ptr resp);
@@ -285,12 +230,6 @@ private:
     /**
      * Process a request which updates the Configuration of the Replication system
      * and reports back its new state.
-     *
-     * @param req
-     *   request received from a client
-     *
-     * @param resp
-     *   response to be sent back
      */
     void _updateGeneralConfig(qhttp::Request::Ptr req,
                               qhttp::Response::Ptr resp);
@@ -298,12 +237,6 @@ private:
     /**
      * Process a request which updates parameters of an existing worker in the Configuration
      * of the Replication system and reports back the new state of the system
-     *
-     * @param req
-     *   request received from a client
-     *
-     * @param resp
-     *   response to be sent back
      */
     void _updateWorkerConfig(qhttp::Request::Ptr req,
                              qhttp::Response::Ptr resp);
@@ -311,12 +244,6 @@ private:
     /**
      * Process a request which removes an existing worker from the Configuration
      * of the Replication system and reports back the new state of the system
-     *
-     * @param req
-     *   request received from a client
-     *
-     * @param resp
-     *   response to be sent back
      */
     void _deleteWorkerConfig(qhttp::Request::Ptr req,
                              qhttp::Response::Ptr resp);
@@ -324,12 +251,6 @@ private:
     /**
      * Process a request which adds a new worker into the Configuration
      * of the Replication system and reports back the new state of the system
-     *
-     * @param req
-     *   request received from a client
-     *
-     * @param resp
-     *   response to be sent back
      */
     void _addWorkerConfig(qhttp::Request::Ptr req,
                           qhttp::Response::Ptr resp);
@@ -337,12 +258,6 @@ private:
     /**
      * Process a request which removes an existing database family from the Configuration
      * of the Replication system and reports back the new state of the system
-     *
-     * @param req
-     *   request received from a client
-     *
-     * @param resp
-     *   response to be sent back
      */
     void _deleteFamilyConfig(qhttp::Request::Ptr req,
                              qhttp::Response::Ptr resp);
@@ -350,12 +265,6 @@ private:
     /**
      * Process a request which adds a new database family into the Configuration
      * of the Replication system and reports back the new state of the system
-     *
-     * @param req
-     *   request received from a client
-     *
-     * @param resp
-     *   response to be sent back
      */
     void _addFamilyConfig(qhttp::Request::Ptr req,
                           qhttp::Response::Ptr resp);
@@ -363,12 +272,6 @@ private:
     /**
      * Process a request which removes an existing database from the Configuration
      * of the Replication system and reports back the new state of the system
-     *
-     * @param req
-     *   request received from a client
-     *
-     * @param resp
-     *   response to be sent back
      */
     void _deleteDatabaseConfig(qhttp::Request::Ptr req,
                                qhttp::Response::Ptr resp);
@@ -376,12 +279,6 @@ private:
     /**
      * Process a request which adds a new database into the Configuration
      * of the Replication system and reports back the new state of the system
-     *
-     * @param req
-     *   request received from a client
-     *
-     * @param resp
-     *   response to be sent back
      */
     void _addDatabaseConfig(qhttp::Request::Ptr req,
                             qhttp::Response::Ptr resp);
@@ -389,12 +286,6 @@ private:
     /**
      * Process a request which removes an existing table from the Configuration
      * of the Replication system and reports back the new state of the system
-     *
-     * @param req
-     *   request received from a client
-     *
-     * @param resp
-     *   response to be sent back
      */
     void _deleteTableConfig(qhttp::Request::Ptr req,
                             qhttp::Response::Ptr resp);
@@ -402,15 +293,17 @@ private:
     /**
      * Process a request which adds a new database table into the Configuration
      * of the Replication system and reports back the new state of the system
-     *
-     * @param req
-     *   request received from a client
-     *
-     * @param resp
-     *   response to be sent back
      */
     void _addTableConfig(qhttp::Request::Ptr req,
-                        qhttp::Response::Ptr resp);
+                         qhttp::Response::Ptr resp);
+
+    /**
+     * Process a request for executing a query against a worker database.
+     * A result set of the query will be returned for those query types which
+     * have the one upon a successful completion of a request.
+     */
+    void _sqlQuery(qhttp::Request::Ptr req,
+                   qhttp::Response::Ptr resp);
 
     /**
      * Pull the current Configuration and translate it into a JSON object
