@@ -161,7 +161,7 @@ json SqlResultSet::toJson() const {
         json rowJson;
         rowJson["cells"] = row.cells;
         rowJson["nulls"] = row.nulls;
-        resultJson["fields"].push_back(rowJson);
+        resultJson["rows"].push_back(rowJson);
     }
     return resultJson;
 }
