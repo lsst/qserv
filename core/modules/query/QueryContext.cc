@@ -130,8 +130,8 @@ DbTableSet QueryContext::resolve(std::shared_ptr<ColumnRef> cr) {
     if (!cr) { return dbTableSet; }
 
     // If alias, retrieve real reference.
-    if (cr->db.empty() && !cr->table.empty()) {
-        DbTablePair concrete = tableAliases.get(cr->table);
+    if (cr->getDb().empty() && !cr->getTable().empty()) {
+        DbTablePair concrete = tableAliases.get(cr->getTable());
         if (!concrete.empty()) {
             if (concrete.db.empty()) {
                 concrete.db = defaultDb;
@@ -142,7 +142,7 @@ DbTableSet QueryContext::resolve(std::shared_ptr<ColumnRef> cr) {
     }
     // Set default db and table.
     DbTablePair p;
-    if (cr->table.empty()) { // No db or table.
+    if (cr->getTable().empty()) { // No db or table.
         if (columnToTablesMap.empty()) {
             // This should only be the case if all of the table names in the from statement were invalid
             // or no connection to the database could be made (in which case there would be other errors
@@ -157,25 +157,25 @@ DbTableSet QueryContext::resolve(std::shared_ptr<ColumnRef> cr) {
             if (LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
                 LOGS(_log, LOG_LVL_DEBUG, "columnToTablesMap=" << columnToTablesMapToString());
             }
-            std::string column = cr->column;
+            std::string column = cr->getColumn();
             if (!column.empty()) {
                 auto iter = columnToTablesMap.find(column);
                 if (iter != columnToTablesMap.end()) {
                     auto const& dTSet = iter->second;
                     for (auto const& dT : dTSet) {
                         dbTableSet.insert(dT);
-                        LOGS(_log, LOG_LVL_DEBUG, "cr->table.empty column=" << column
+                        LOGS(_log, LOG_LVL_DEBUG, "cr->getTable().empty column=" << column
                              << " adding " << dT.db << "." << dT.table);
                     }
                 }
             }
             return dbTableSet;
         }
-    } else if (cr->db.empty()) { // Table, but not alias.
+    } else if (cr->getDb().empty()) { // Table, but not alias.
         // Match against resolver stack
         DbTableVector::const_iterator i=resolverTables.begin(), e=resolverTables.end();
         for(; i != e; ++i) {
-            if (i->table == cr->table) {
+            if (i->table == cr->getTable()) {
                 p = *i;
                 break;
             }
@@ -183,7 +183,7 @@ DbTableSet QueryContext::resolve(std::shared_ptr<ColumnRef> cr) {
         LOGS(_log, LOG_LVL_TRACE, "resolve found=" << (i != e) << " db.empty p=" << p.db << "." << p.table);
         if (i == e) return dbTableSet; // No resolution.
     } else { // both table and db exist, so return them
-        DbTablePair dtp(cr->db, cr->table);
+        DbTablePair dtp(cr->getDb(), cr->getTable());
         dbTableSet.insert(dtp);
         return dbTableSet;
     }

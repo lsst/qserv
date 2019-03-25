@@ -199,13 +199,13 @@ public:
 
 private:
     void _patchColumnRef(query::ColumnRef& ref) {
-        std::string newAlias = _getAlias(ref.db, ref.table);
+        std::string newAlias = _getAlias(ref.getDb(), ref.getTable());
         if (newAlias.empty()) { return; } //  Ignore if no replacement
                                          //  exists.
 
         // Eliminate db. Replace table with aliased table.
-        ref.db.assign("");
-        ref.table.assign(newAlias);
+        ref.setDb("");
+        ref.setTable(newAlias);
     }
 
     void _patchFuncExpr(query::FuncExpr& fe) {

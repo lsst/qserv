@@ -47,9 +47,9 @@ namespace query {
 
 std::ostream& operator<<(std::ostream& os, ColumnRef const& cr) {
     os << "ColumnRef(";
-    os << "\"" << cr.db << "\"";
-    os << ", \"" << cr.table << "\"";
-    os << ", \"" << cr.column << "\"";
+    os << "\"" << cr._db << "\"";
+    os << ", \"" << cr._table << "\"";
+    os << ", \"" << cr._column << "\"";
     os << ")";
     return os;
 }
@@ -65,6 +65,21 @@ std::ostream& operator<<(std::ostream& os, ColumnRef const* cr) {
 }
 
 
+void ColumnRef::setDb(std::string const& db) {
+    _db = db;
+}
+
+
+void ColumnRef::setTable(std::string const& table) {
+    _table = table;
+}
+
+
+void ColumnRef::setColumn(std::string const& column) {
+    _column = column;
+}
+
+
 void ColumnRef::renderTo(QueryTemplate& qt) const {
     qt.append(*this);
 }
@@ -72,28 +87,28 @@ void ColumnRef::renderTo(QueryTemplate& qt) const {
 
 bool ColumnRef::isSubsetOf(const ColumnRef::Ptr & rhs) const {
     // the columns can not be empty
-    if (column.empty() || rhs->column.empty()) {
+    if (_column.empty() || rhs->_column.empty()) {
         return false;
     }
-    // if the table is empty, the db must be empty
-    if (table.empty() && !db.empty()) {
+    // if the _table is empty, the _db must be empty
+    if (_table.empty() && !_db.empty()) {
         return false;
     }
-    if (rhs->table.empty() && !rhs->db.empty()) {
+    if (rhs->_table.empty() && !rhs->_db.empty()) {
         return false;
     }
 
-    if (!db.empty()) {
-        if (db != rhs->db) {
+    if (!_db.empty()) {
+        if (_db != rhs->_db) {
             return false;
         }
     }
-    if (!table.empty()) {
-        if (table != rhs->table) {
+    if (!_table.empty()) {
+        if (_table != rhs->_table) {
             return false;
         }
     }
-    if (column != rhs->column) {
+    if (_column != rhs->_column) {
         return false;
     }
     return true;
@@ -101,12 +116,12 @@ bool ColumnRef::isSubsetOf(const ColumnRef::Ptr & rhs) const {
 
 
 bool ColumnRef::operator==(const ColumnRef& rhs) const {
-    return std::tie(db, table, column) == std::tie(rhs.db, rhs.table, rhs.column);
+    return std::tie(_db, _table, _column) == std::tie(rhs._db, rhs._table, rhs._column);
 }
 
 
 bool ColumnRef::operator<(const ColumnRef& rhs) const {
-    return std::tie(db, table, column) < std::tie(rhs.db, rhs.table, rhs.column);
+    return std::tie(_db, _table, _column) < std::tie(rhs._db, rhs._table, rhs._column);
 }
 
 

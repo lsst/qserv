@@ -172,12 +172,12 @@ ColumnRef::Ptr getColumnRef(ValueExprPtr const& ve) {
 /// empty database name (because at this stage, fully qualified names should
 /// have been rewritten to use a table alias).
 void verifyColumnRef(ColumnRef const& c) {
-    if (c.column.empty()) {
+    if (c.getColumn().empty()) {
         throw std::logic_error(
             "Parser/query analysis bug: "
             "ColumnRef with an empty column name.");
-    } else if (!c.db.empty()) {
-        if (c.table.empty()) {
+    } else if (!c.getDb().empty()) {
+        if (c.getTable().empty()) {
             throw std::logic_error(
                 "Parser/query analysis bug: ColumnRef has an empty "
                 "table/alias name but a non-empty database name.");
@@ -402,7 +402,7 @@ size_t RelationGraph::_addOnEqEdges(BoolTerm::Ptr on,
     for (VertIter i1 = v1.begin(), e1 = v1.end(); i1 != e1; ++i1) {
         for (VertIter i2 = v2.begin(), e2 = v2.end(); i2 != e2; ++i2) {
             numEdges += addEqEdge(
-                c.first->column, c.second->column, outer, *i1, *i2);
+                c.first->getColumn(), c.second->getColumn(), outer, *i1, *i2);
         }
     }
     return numEdges;
@@ -445,7 +445,7 @@ size_t RelationGraph::_addUsingEqEdges(ColumnRef const& c,
 {
     typedef std::vector<Vertex*>::const_iterator VertIter;
 
-    if (!c.db.empty() || !c.table.empty()) {
+    if (!c.getDb().empty() || !c.getTable().empty()) {
         throw QueryNotEvaluableError(
             "USING clause contains qualified column name");
     }
@@ -456,7 +456,7 @@ size_t RelationGraph::_addUsingEqEdges(ColumnRef const& c,
     size_t numEdges = 0;
     for (VertIter i1 = v1.begin(), e1 = v1.end(); i1 != e1; ++i1) {
         for (VertIter i2 = v2.begin(), e2 = v2.end(); i2 != e2; ++i2) {
-            numEdges += addEqEdge(c.column, c.column, outer, *i1, *i2);
+            numEdges += addEqEdge(c.getColumn(), c.getColumn(), outer, *i1, *i2);
         }
     }
     return numEdges;
@@ -492,7 +492,7 @@ size_t RelationGraph::_addWhereEqEdges(BoolTerm::Ptr where)
     for (VertIter i1 = v1.begin(), e1 = v1.end(); i1 != e1; ++i1) {
         for (VertIter i2 = v2.begin(), e2 = v2.end(); i2 != e2; ++i2) {
             numEdges += addEqEdge(
-                c.first->column, c.second->column, false, *i1, *i2);
+                c.first->getColumn(), c.second->getColumn(), false, *i1, *i2);
         }
     }
     return numEdges;
@@ -593,8 +593,8 @@ size_t RelationGraph::_addSpEdges(BoolTerm::Ptr bt)
         return 0;
     }
     // Check that the arguments map to the proper director spatial columns
-    if (cr[0]->column != d1->lon || cr[1]->column != d1->lat ||
-        cr[2]->column != d2->lon || cr[3]->column != d2->lat) {
+    if (cr[0]->getColumn() != d1->lon || cr[1]->getColumn() != d1->lat ||
+        cr[2]->getColumn() != d2->lon || cr[3]->getColumn() != d2->lat) {
         return 0;
     }
     // Check that both directors have the same partitioning
@@ -656,7 +656,7 @@ void RelationGraph::_fuse(JoinRef::Type joinType,
     } else if (joinSpec && joinSpec->getUsing()) {
         ColumnRef const& c = *joinSpec->getUsing();
         numEdges += _addUsingEqEdges(c, outer, g);
-        usingCols.push_back(c.column);
+        usingCols.push_back(c.getColumn());
     } else if (joinSpec && joinSpec->getOn()) {
         numEdges += _addOnEqEdges(joinSpec->getOn(), outer, g);
     }
@@ -716,7 +716,7 @@ RelationGraph::RelationGraph(TableRef& tr, TableInfo const* info) :
         Iter middle = begin;
         Iter end = refs.end();
         for (; middle != end; ++middle) {
-            if ((*middle)->column != refs.front()->column) {
+            if ((*middle)->getColumn() != refs.front()->getColumn()) {
                 break;
             }
         }

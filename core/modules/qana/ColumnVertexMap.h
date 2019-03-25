@@ -153,11 +153,11 @@ private:
 struct ColumnRefLt {
     bool operator()(query::ColumnRef const& a,
                     query::ColumnRef const& b) const {
-        int c = a.column.compare(b.column);
+        int c = a.getColumn().compare(b.getColumn());
         if (c == 0) {
-            c = a.table.compare(b.table);
+            c = a.getTable().compare(b.getTable());
             if (c == 0) {
-                c = a.db.compare(b.db);
+                c = a.getDb().compare(b.getDb());
             }
         }
         return c < 0;
@@ -187,7 +187,7 @@ struct ColumnRefLt {
 struct ColumnRefEq {
     bool operator()(query::ColumnRef const& a,
                     query::ColumnRef const& b) const {
-        return a.column == b.column && a.table == b.table && a.db == b.db;
+        return a.getColumn() == b.getColumn() && a.getTable() == b.getTable() && a.getDb() == b.getDb();
     }
     bool operator()(ColumnVertexMap::Entry const& a,
                     ColumnVertexMap::Entry const& b) const {
