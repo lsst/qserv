@@ -32,15 +32,15 @@ set -e
 
 if [ -n "${MASTER_CONTROLLER}" ]; then
     HOST="qserv-${MASTER}"
-    ssh -n $HOST 'echo "["'$MASTER'"] master controller: "$(docker stop '$MASTER_CONTAINER_NAME')" "$(docker rm '$MASTER_CONTAINER_NAME')'
+    ssh -n $HOST 'echo "["'$MASTER'"] master controller: "$(docker stop '$MASTER_CONTAINER_NAME')" "$(docker rm '$MASTER_CONTAINER_NAME')' &
 fi
 
 for WORKER in $WORKERS; do
     HOST="qserv-${WORKER}"
-    ssh -n $HOST 'echo "["'$WORKER'"] worker agent: "$(docker stop '$WORKER_CONTAINER_NAME')" "$(docker rm '$WORKER_CONTAINER_NAME')'
+    ssh -n $HOST 'echo "["'$WORKER'"] worker agent: "$(docker stop '$WORKER_CONTAINER_NAME')" "$(docker rm '$WORKER_CONTAINER_NAME')' &
 done
 
 if [ -n "${DB_SERVICE}" ]; then
     HOST="qserv-${MASTER}"
-    ssh -n $HOST 'echo "["'$MASTER'"] database service: "$(docker stop '$DB_CONTAINER_NAME')" "$(docker rm '$DB_CONTAINER_NAME')'
+    ssh -n $HOST 'echo "["'$MASTER'"] database service: "$(docker stop '$DB_CONTAINER_NAME')" "$(docker rm '$DB_CONTAINER_NAME')' &
 fi

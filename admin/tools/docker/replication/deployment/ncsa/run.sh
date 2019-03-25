@@ -52,7 +52,7 @@ docker run \
     -u ${CONTAINER_UID}:${CONTAINER_GID} \
     -v /etc/passwd:/etc/passwd:ro \
     -v ${CONFIG_DIR}:/qserv/replication/config:ro \
-    -v ${WORK_DIR}:${WORK_DIR} \
+    -v ${WORK_DIR}:/qserv/work \
     -e "TOOL=${TOOL}" \
     -e "PARAMETERS=${PARAMETERS}" \
     -e "LSST_LOG_CONFIG=${LSST_LOG_CONFIG}" \
@@ -60,4 +60,5 @@ docker run \
     -e "WORK_DIR=${WORK_DIR}" \
     --name "${TOOL}" \
     "${REPLICATION_IMAGE_TAG}" \
-    bash -c 'cd ${WORK_DIR}; /qserv/bin/${TOOL} ${PARAMETERS} --config=${CONFIG}'
+    /qserv/bin/${TOOL} "$@" --config=${CONFIG}
+#    bash -c 'cd ${WORK_DIR}; /qserv/bin/${TOOL} ${PARAMETERS} --config=${CONFIG}'
