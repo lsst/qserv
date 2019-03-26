@@ -68,7 +68,7 @@ void printAsTable(SqlResultSet const& result,
         string const caption = "RESULT SET";
         string const indent  = "";
 
-        auto table = result.toColumnTable(caption, indent, pageSize);
+        auto table = result.toColumnTable(caption, indent);
 
         bool const topSeparator    = false;
         bool const bottomSeparator = false;

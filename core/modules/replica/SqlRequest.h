@@ -103,7 +103,8 @@ public:
      * low-level pointers).
      *
      * @param serviceProvider
-     *   provider of various services
+     *   is needed to access the Configuration and the Controller for communicating
+     *   with the worker
      *
      * @param worker
      *   identifier of a worker node

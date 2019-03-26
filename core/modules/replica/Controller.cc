@@ -66,8 +66,7 @@ namespace replica {
  * Request-type specific wrappers
  */
 template <class  T>
-struct RequestWrapperImpl
-    :   ControllerRequestWrapper {
+struct RequestWrapperImpl : ControllerRequestWrapper {
 
     /// The implementation of the virtual method defined in the base class
     virtual void notify() {

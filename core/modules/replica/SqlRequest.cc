@@ -262,6 +262,8 @@ void SqlRequest::_analyze(bool success,
     // reported by the worker service.
 
     _responseData.set(message);
+    _responseData.performanceSec =
+        (PerformanceUtils::now() - performance(lock).c_create_time) / 1000.;
 
     // Extract target request type-specific parameters from the response
     if (message.has_request()) {

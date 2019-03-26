@@ -116,7 +116,13 @@ struct SqlResultSet {
     /// where the number of elements in the array represents
     /// the number of rows.
     std::list<Row> rows;
-    
+
+    /// The duration of a request (in seconds) since it was created
+    /// by the Controller and before its completion was recorded by
+    /// the Controller.
+    /// @see SqlRequst::performance()
+    double performanceSec;
+
     /**
      * Carry over the content of the input protocol message into
      * the corresponding data members of the structure.
