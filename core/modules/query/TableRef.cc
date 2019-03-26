@@ -36,6 +36,9 @@
 #include <algorithm>
 #include <sstream>
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Qserv headers
 #include "query/JoinRef.h"
 #include "query/JoinSpec.h"
@@ -49,6 +52,8 @@ lsst::qserv::query::JoinRef::Ptr
 joinRefClone(lsst::qserv::query::JoinRef::Ptr const& r) {
     return r->clone();
 }
+
+LOG_LOGGER _log = LOG_GET("lsst.qserv.query.TableRef");
 
 } // anonymous namespace
 
@@ -81,6 +86,24 @@ std::ostream& operator<<(std::ostream& os, TableRef const* ref) {
         os << *ref;
     }
     return os;
+}
+
+
+void TableRef::setAlias(std::string const& alias) {
+    LOGS(_log, LOG_LVL_TRACE, *this << "; set alias:" << alias);
+    _alias = alias;
+}
+
+
+void TableRef::setDb(std::string const& db) {
+    LOGS(_log, LOG_LVL_TRACE, *this << "; set db:" << db);
+    _db = db;
+}
+
+
+void TableRef::setTable(std::string const& table) {
+    LOGS(_log, LOG_LVL_TRACE, *this << "; set table:" << table);
+    _table = table;
 }
 
 

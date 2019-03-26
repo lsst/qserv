@@ -90,9 +90,9 @@ public:
     JoinRefPtrVector const& getJoins() const { return _joinRefs; }
 
     // Modifiers
-    void setAlias(std::string const& a) { _alias=a; }
-    void setDb(std::string const& db_) { _db = db_; }
-    void setTable(std::string const& table_) { _table = table_; }
+    void setAlias(std::string const& alias);
+    void setDb(std::string const& db);
+    void setTable(std::string const& table);
     JoinRefPtrVector& getJoins() { return _joinRefs; }
     void addJoin(std::shared_ptr<JoinRef> r);
     void addJoins(const JoinRefPtrVector& r);

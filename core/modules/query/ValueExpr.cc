@@ -45,12 +45,20 @@
 #include <sstream>
 #include <stdexcept>
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Qserv headers
 #include "qana/CheckAggregation.h"
 #include "query/FuncExpr.h"
 #include "query/QueryTemplate.h"
 #include "query/ValueFactor.h"
 #include "util/IterableFormatter.h"
+
+
+namespace {
+    LOG_LOGGER _log = LOG_GET("lsst.qserv.query.ValueExpr");
+}
 
 
 namespace lsst {
@@ -146,6 +154,12 @@ bool ValueExpr::addOp(query::ValueExpr::Op op) {
     }
     _factorOps.back().op = op;
     return true;
+}
+
+
+void ValueExpr::setAlias(std::string const& alias) {
+    LOGS(_log, LOG_LVL_TRACE, *this << "; set alias:" << alias);
+    _alias = alias;
 }
 
 

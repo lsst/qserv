@@ -291,10 +291,9 @@ void QuerySession::_preparePlugins() {
 void QuerySession::_applyLogicPlugins() {
     QueryPluginPtrVector::iterator i;
     for(i=_plugins->begin(); i != _plugins->end(); ++i) {
+        LOGS(_log, LOG_LVL_TRACE, "applyLogical BEGIN: " << (**i).name());
         (**i).applyLogical(*_stmt, *_context);
-        std::ostringstream pluginInfo;
-        print(pluginInfo);
-        LOGS(_log, LOG_LVL_TRACE, "applied logical: " << (**i).name() << " " <<  pluginInfo.str());
+        LOGS(_log, LOG_LVL_TRACE, "applyLogical END: " << (**i).name());
     }
 }
 
@@ -334,10 +333,9 @@ void QuerySession::_applyConcretePlugins() {
     qana::QueryPlugin::Plan p(*_stmt, _stmtParallel, *_stmtMerge, _hasMerge);
     QueryPluginPtrVector::iterator i;
     for(i=_plugins->begin(); i != _plugins->end(); ++i) {
+        LOGS(_log, LOG_LVL_TRACE, "applyPhysical BEGIN: " << (**i).name());
         (**i).applyPhysical(p, *_context);
-        std::ostringstream pluginInfo;
-        print(pluginInfo);
-        LOGS(_log, LOG_LVL_TRACE, "applied physical: " << (**i).name() << " " << pluginInfo.str());
+        LOGS(_log, LOG_LVL_TRACE, "applyPhysical END: " << (**i).name());
     }
 }
 

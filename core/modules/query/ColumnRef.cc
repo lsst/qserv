@@ -36,8 +36,16 @@
 #include <iostream>
 #include <tuple>
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Qserv headers
 #include "query/QueryTemplate.h"
+
+
+namespace {
+    LOG_LOGGER _log = LOG_GET("lsst.qserv.query.ColumnRef");
+}
 
 
 namespace lsst {
@@ -66,16 +74,19 @@ std::ostream& operator<<(std::ostream& os, ColumnRef const* cr) {
 
 
 void ColumnRef::setDb(std::string const& db) {
+    LOGS(_log, LOG_LVL_TRACE, *this << "; set db:" << db);
     _db = db;
 }
 
 
 void ColumnRef::setTable(std::string const& table) {
+    LOGS(_log, LOG_LVL_TRACE, *this << "; set table:" << table);
     _table = table;
 }
 
 
 void ColumnRef::setColumn(std::string const& column) {
+    LOGS(_log, LOG_LVL_TRACE, *this << "; set column:" << column);
     _column = column;
 }
 
