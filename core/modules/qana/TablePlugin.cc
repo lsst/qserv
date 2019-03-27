@@ -105,28 +105,6 @@ public:
     int& _seqN;
 };
 
-class addDbContext : public query::TableRef::Func {
-public:
-    addDbContext(query::QueryContext const& c,
-                 std::string& firstDb_,
-                 std::string& firstTable_)
-        : context(c), firstDb(firstDb_), firstTable(firstTable_)
-        {}
-    void operator()(query::TableRef::Ptr t) {
-        if (t.get()) { t->apply(*this); }
-    }
-    void operator()(query::TableRef& t) {
-        std::string table = t.getTable();
-        if (table.empty()) { throw std::logic_error("No table in TableRef"); }
-        if (t.getDb().empty()) { t.setDb(context.defaultDb); }
-        if (firstDb.empty()) { firstDb = t.getDb(); }
-        if (firstTable.empty()) { firstTable = table; }
-    }
-    query::QueryContext const& context;
-    std::string& firstDb;
-    std::string& firstTable;
-};
-
 template <typename G, typename A>
 class addAlias : public query::TableRef::Func {
 public:
@@ -245,11 +223,15 @@ TablePlugin::applyLogical(query::SelectStmt& stmt,
     LOGS(_log, LOG_LVL_TRACE, "changing resolver tables from " << util::printable(context.resolverTables) <<
             " to " << util::printable(v));
     context.resolverTables.swap(v);
-    query::DbTablePair p;
-    addDbContext adc(context, p.db, p.table);
-    std::for_each(tableRefList.begin(), tableRefList.end(), adc);
-    _dominantDb = context.dominantDb = p.db;
-    context.anonymousTable = p.table;
+
+    for (auto&& tableRef : tableRefList) {
+        tableRef->verifyPopulated(context.defaultDb);
+    }
+
+    if (tableRefList.size() > 0) {
+        context.dominantDb = tableRefList[0]->getDb();
+        _dominantDb = context.dominantDb;
+    }
 
     // Add aliases to all table references in the from-list (if
     // they don't exist already) and then patch the other clauses so

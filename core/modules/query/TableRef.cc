@@ -103,6 +103,9 @@ void TableRef::setDb(std::string const& db) {
 
 void TableRef::setTable(std::string const& table) {
     LOGS(_log, LOG_LVL_TRACE, *this << "; set table:" << table);
+    if (table.empty()) {
+        throw std::logic_error("TableRef::setTable - table can not be empty");
+    }
     _table = table;
 }
 
@@ -150,6 +153,26 @@ void TableRef::addJoin(std::shared_ptr<JoinRef> r) {
 
 void TableRef::addJoins(const JoinRefPtrVector& r) {
     _joinRefs.insert(std::end(_joinRefs), std::begin(r), std::end(r));
+}
+
+
+void TableRef::verifyPopulated(std::string const& defaultDb) {
+    // it should not be possible to construct a TableRef with an empty table, but just to be sure:
+    if (_table.empty()) {
+        throw std::logic_error("No table in TableRef");
+    }
+    if (_db.empty()) {
+        if (defaultDb.empty()) {
+            throw std::logic_error("No db in TableRef");
+        } else {
+            _db = defaultDb;
+        }
+    }
+    for (auto&& joinRef : _joinRefs) {
+        auto&& rightTableRef = joinRef->getRight();
+        if (rightTableRef != nullptr)
+            rightTableRef->verifyPopulated(defaultDb);
+    }
 }
 
 

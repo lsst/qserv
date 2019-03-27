@@ -110,6 +110,16 @@ public:
     void apply(Func& f);
     void apply(FuncC& f) const;
 
+    /**
+     * @brief Verify the table is set and set a database if one is not set. Recurses to all join refs.
+     *
+     * @throws If an empty string is passed for default then this will throw if the value is not set in the
+     *         instance.
+     *
+     * @param defaultDb the default database to assign, or an empty string for no default.
+     */
+    void verifyPopulated(std::string const& defaultDb=std::string());
+
     TableRef::Ptr clone() const;
 
     bool operator==(const TableRef& rhs) const;
