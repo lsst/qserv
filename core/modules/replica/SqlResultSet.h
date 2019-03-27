@@ -96,8 +96,9 @@ struct SqlResultSet {
         /// Values at the cells
         std::vector<std::string> cells;
 
-        /// Flags indicating if the corresponding values of the cells represent SQL NULL
-        std::vector<bool> nulls;
+        /// Flags indicating if the corresponding values of the cells
+        /// represent SQL NULL. Zero value represents 'false'.
+        std::vector<uint8_t> nulls;
 
         /// The default c-tor is required at a presence of the explicit one
         Row() = default;

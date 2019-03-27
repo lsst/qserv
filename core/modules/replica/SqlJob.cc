@@ -51,7 +51,7 @@ Job::Options const& SqlJob::defaultOptions() {
     static Job::Options const options{
         2,      /* priority */
         false,  /* exclusive */
-        true    /* exclusive */
+        true    /* preemptable */
     };
     return options;
 }

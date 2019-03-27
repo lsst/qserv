@@ -83,7 +83,7 @@ EchoRequest::EchoRequest(ServiceProvider::Ptr const& serviceProvider,
                          shared_ptr<Messenger> const& messenger)
     :   RequestMessenger(serviceProvider,
                          io_service,
-                         "ECHO",
+                         "TEST_ECHO",
                          worker,
                          priority,
                          keepTracking,

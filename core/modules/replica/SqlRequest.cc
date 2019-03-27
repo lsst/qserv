@@ -272,7 +272,6 @@ void SqlRequest::_analyze(bool success,
     switch (message.status()) {
 
         case ProtocolStatus::SUCCESS:
-
             finish(lock, SUCCESS);
             break;
 

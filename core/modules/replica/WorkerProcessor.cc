@@ -57,17 +57,19 @@ bool ifDuplicateRequest(PROTOCOL_RESPONSE_TYPE& response,
 
     bool isDuplicate = false;
 
-    if (WorkerReplicationRequest::Ptr ptr =
-        dynamic_pointer_cast<WorkerReplicationRequest>(p)) {
+    auto const ptr = dynamic_pointer_cast<WorkerReplicationRequest>(p);
+    if (nullptr != ptr) {
         isDuplicate =
             (ptr->database() == request.database()) and
             (ptr->chunk()    == request.chunk());
 
-    } else if (WorkerDeleteRequest::Ptr ptr =
-             dynamic_pointer_cast<WorkerDeleteRequest>(p)) {
-        isDuplicate =
-            (ptr->database() == request.database()) and
-            (ptr->chunk()    == request.chunk());
+    } else {
+        auto const ptr = dynamic_pointer_cast<WorkerDeleteRequest>(p);
+        if (nullptr != ptr) {
+            isDuplicate =
+                (ptr->database() == request.database()) and
+                (ptr->chunk()    == request.chunk());
+        }
     }
     if (isDuplicate) {
         WorkerProcessor::setDefaultResponse(

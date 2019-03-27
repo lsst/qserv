@@ -109,7 +109,7 @@ SqlResultSet::Field::Field(ProtocolResponseSqlField const& field)
 SqlResultSet::Row::Row(ProtocolResponseSqlRow const& row) {
     for (int i = 0; i < row.cells_size(); ++i) {
         cells.push_back(row.cells(i));
-        nulls.push_back(row.nulls(i));
+        nulls.push_back(row.nulls(i) ? 1 : 0);
     }
 }
 

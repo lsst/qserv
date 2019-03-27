@@ -91,7 +91,7 @@ SqlApp::SqlApp(int argc, char* argv[])
     parser().option(
         "max-rows",
         "The maximum number of rows to be pulled from result set at workers"
-        " whene processing queries. NOTE: This parameter nothing to do with"
+        " when processing queries. NOTE: This parameter nothing to do with"
         " the SQL's 'LIMIT <num-rows>'. It serves as an additional fail safe"
         " mechanism preventing protocol buffers from being overloaded by huge"
         " result sets which might be accidentally initiated by users.",
@@ -149,11 +149,11 @@ int SqlApp::runImpl() {
 
         bool const succeeded = resultData.workers.at(worker);
         if (not succeeded) {
-            cout << "worker: " << worker << "  error: " << resultSet.error << endl;
+            cout << "worker: " << worker << ",  error: " << resultSet.error << endl;
             continue;
         }
         string const caption =
-            "worker: " + worker + "  performance [sec]: " + to_string(resultSet.performanceSec);
+            "worker: " + worker + ",  performance [sec]: " + to_string(resultSet.performanceSec);
         string const indent = "";
 
         auto table = resultSet.toColumnTable(caption, indent);

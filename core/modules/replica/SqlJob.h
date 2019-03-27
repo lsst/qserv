@@ -106,10 +106,10 @@ public:
      *   (optional) identifier of a parent job
      *
      * @param onFinish
-     *   a callback function to be called upon a completion of the job
+     *   (optional) callback function to be called upon a completion of the job
      *
      * @param options
-     *   defines the job priority, etc.
+     *   (optional) defines the job priority, etc.
      *
      * @return
      *   pointer to the created object
@@ -120,8 +120,8 @@ public:
                       uint64_t maxRows,
                       bool allWorkers,
                       Controller::Ptr const& controller,
-                      std::string const& parentJobId,
-                      CallbackType const& onFinish,
+                      std::string const& parentJobId=std::string(),
+                      CallbackType const& onFinish=nullptr,
                       Job::Options const& options=defaultOptions());
 
     // Default construction and copy semantics are prohibited
