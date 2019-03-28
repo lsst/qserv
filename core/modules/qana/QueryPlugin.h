@@ -76,6 +76,9 @@ public:
 
     /// Apply the plugins's actions when coverage is known
     virtual void applyFinal(query::QueryContext& context) {}
+
+    /// Return the name of the plugin class for logging.
+    virtual std::string name() const = 0;
 };
 
 

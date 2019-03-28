@@ -69,6 +69,9 @@ public:
     void prepare() override {}
     void applyLogical(query::SelectStmt& stmt, query::QueryContext& ctx) override;
     void applyPhysical(QueryPlugin::Plan& p, query::QueryContext& ctx) override {}
+
+    /// Return the name of the plugin class for logging.
+    std::string name() const override { return "MatchTablePlugin"; }
 };
 
 

@@ -222,6 +222,9 @@ void UserQuerySelect::submit() {
 
     auto queryTemplates = _qSession->makeQueryTemplates();
 
+    LOGS(_log, LOG_LVL_DEBUG, "first query template:" <<
+        (queryTemplates.size() > 0 ? queryTemplates[0].sqlFragment() : "none produced."));
+
     std::atomic<int> addTimeSum; // TEMPORARY-timing
 
     // Writing query for each chunk, stop if query is cancelled.
@@ -380,6 +383,9 @@ void UserQuerySelect::_setupMerger() {
     LOGS(_log, LOG_LVL_TRACE, getQueryIdString() << " Setup merger");
     _infileMergerConfig->targetTable = _resultTable;
     _infileMergerConfig->mergeStmt = _qSession->getMergeStmt();
+    LOGS(_log, LOG_LVL_DEBUG, "setting mergeStmt:" <<
+        (_infileMergerConfig->mergeStmt != nullptr ?
+            _infileMergerConfig->mergeStmt->getQueryTemplate().sqlFragment() : "nullptr"));
     _infileMerger = std::make_shared<rproc::InfileMerger>(*_infileMergerConfig);
 }
 

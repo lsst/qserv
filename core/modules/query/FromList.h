@@ -63,6 +63,8 @@ public:
     TableRefList const& getTableRefList() const { return *_tableRefs; }
 
     bool isJoin() const;
+
+    /// @return a list of DbTablePairs that contain the Db and Tables used in the from list
     std::vector<DbTablePair> computeResolverTables() const;
 
     /// @return a flattened string representation.

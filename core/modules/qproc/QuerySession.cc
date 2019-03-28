@@ -292,6 +292,9 @@ void QuerySession::_applyLogicPlugins() {
     QueryPluginPtrVector::iterator i;
     for(i=_plugins->begin(); i != _plugins->end(); ++i) {
         (**i).applyLogical(*_stmt, *_context);
+        std::ostringstream pluginInfo;
+        print(pluginInfo);
+        LOGS(_log, LOG_LVL_TRACE, "applied logical: " << (**i).name() << " " <<  pluginInfo.str());
     }
 }
 
@@ -314,6 +317,8 @@ void QuerySession::_generateConcrete() {
     // version will get updated by plugins. Plugins probably need
     // access to the original as a reference.
     _stmtParallel.push_back(_stmt->clone());
+    LOGS(_log, LOG_LVL_TRACE, "Paralell statement initialized with: \""
+        << _stmtParallel[0]->getQueryTemplate() << "\"");
 
     // Copy SelectList and Mods, but not FROM, and perhaps not
     // WHERE(???). Conceptually, we want to copy the parts that are
@@ -330,13 +335,22 @@ void QuerySession::_applyConcretePlugins() {
     QueryPluginPtrVector::iterator i;
     for(i=_plugins->begin(); i != _plugins->end(); ++i) {
         (**i).applyPhysical(p, *_context);
+        std::ostringstream pluginInfo;
+        print(pluginInfo);
+        LOGS(_log, LOG_LVL_TRACE, "applied physical: " << (**i).name() << " " << pluginInfo.str());
     }
 }
 
 /// Some code useful for debugging.
 void QuerySession::print(std::ostream& os) const {
-    query::QueryTemplate par = _stmtParallel.front()->getQueryTemplate();
-    query::QueryTemplate mer = _stmtMerge->getQueryTemplate();
+    query::QueryTemplate par;
+    if (not _stmtParallel.empty()) {
+        par = _stmtParallel.front()->getQueryTemplate();
+    }
+    query::QueryTemplate mer;
+    if (_stmtMerge != nullptr) {
+         mer = _stmtMerge->getQueryTemplate();
+    }
     os << "QuerySession description:\n";
     os << "  original: " << this->_original << "\n";
     os << "  has chunks: " << this->hasChunks() << "\n";

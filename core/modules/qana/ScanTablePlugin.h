@@ -54,6 +54,9 @@ public:
     void applyLogical(query::SelectStmt& stmt, query::QueryContext&) override;
     void applyFinal(query::QueryContext& context) override;
 
+    /// Return the name of the plugin class for logging.
+    std::string name() const override { return "ScanTablePlugin"; }
+
 private:
     proto::ScanInfo _findScanTables(query::SelectStmt& stmt,
                                     query::QueryContext& context);

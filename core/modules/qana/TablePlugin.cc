@@ -70,6 +70,7 @@
 #include "query/ValueFactor.h"
 #include "query/WhereClause.h"
 #include "util/common.h"
+#include "util/IterableFormatter.h"
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qana.TablePlugin");
@@ -236,12 +237,14 @@ private:
 void
 TablePlugin::applyLogical(query::SelectStmt& stmt,
                           query::QueryContext& context) {
-
-    query::FromList& fList = stmt.getFromList();
-    context.collectTopLevelTableSchema(fList);
-    query::TableRefList& tList = fList.getTableRefList();
+    LOGS(_log, LOG_LVL_TRACE, "applyLogical begin:\n\t" << stmt.getQueryTemplate() << "\n\t" << stmt);
+    query::FromList& fromList = stmt.getFromList();
+    context.collectTopLevelTableSchema(fromList);
+    query::TableRefList& tList = fromList.getTableRefList();
     // Fill-in default db context.
-    query::DbTableVector v = fList.computeResolverTables();
+    query::DbTableVector v = fromList.computeResolverTables();
+    LOGS(_log, LOG_LVL_TRACE, "changing resolver tables from " << util::printable(context.resolverTables) <<
+            " to " << util::printable(v));
     context.resolverTables.swap(v);
     query::DbTablePair p;
     addDbContext adc(context, p.db, p.table);
@@ -319,6 +322,7 @@ TablePlugin::applyLogical(query::SelectStmt& stmt,
             }
         }
     }
+    LOGS(_log, LOG_LVL_TRACE, "applyLogical end:\n\t" << stmt.getQueryTemplate() << "\n\t" << stmt);
 }
 
 void

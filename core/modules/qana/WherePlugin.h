@@ -46,6 +46,9 @@ public:
 
     void applyLogical(query::SelectStmt& stmt, query::QueryContext&) override;
     void applyPhysical(QueryPlugin::Plan& p, query::QueryContext&) override {}
+
+    /// Return the name of the plugin class for logging.
+    std::string name() const override { return "WherePlugin"; }
 };
 
 }}} // namespace lsst::qserv::qana

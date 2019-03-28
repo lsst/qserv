@@ -47,6 +47,10 @@ public:
 
     void applyLogical(query::SelectStmt& stmt, query::QueryContext& context) override;
     void applyPhysical(QueryPlugin::Plan& p, query::QueryContext& context) override;
+
+    /// Return the name of the plugin class for logging.
+    std::string name() const override { return "TablePlugin"; }
+
 private:
     int _rewriteTables(SelectStmtPtrVector& outList,
                        query::SelectStmt& in,
