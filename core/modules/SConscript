@@ -240,7 +240,7 @@ shlibs["xrdlog"] = dict(mods="""xrdlog""",
 
 # library implementing xrootd services (worker side)
 shlibs["xrdsvc"] = dict(mods="""wbase wcontrol wconfig wdb wpublish wsched xrdsvc""",
-                        libs="""qserv_common boost_regex boost_signals
+                        libs="""qserv_common boost_regex
                              mysqlclient_r protobuf log """ + sslLib + " " +
                              cryptoLib + """ XrdSsiLib""")
 
