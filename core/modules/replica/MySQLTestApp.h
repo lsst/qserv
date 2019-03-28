@@ -30,7 +30,6 @@
 #include "replica/DatabaseMySQL.h"
 
 // This header declarations
-
 namespace lsst {
 namespace qserv {
 namespace replica {

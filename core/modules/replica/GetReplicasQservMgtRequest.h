@@ -35,7 +35,6 @@
 #include "wpublish/GetChunkListQservRequest.h"
 
 // This header declarations
-
 namespace lsst {
 namespace qserv {
 namespace replica {

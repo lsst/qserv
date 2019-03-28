@@ -34,12 +34,9 @@
 #include "wpublish/ChunkGroupQservRequest.h"
 
 // This header declarations
-
 namespace lsst {
 namespace qserv {
 namespace replica {
-
-// Forward declarations
 
 /**
   * Class RemoveReplicaQservMgtRequest implements a request notifying Qserv workers

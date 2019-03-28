@@ -34,9 +34,7 @@
 #include <string>
 #include <vector>
 
-
 // This header declarations
-
 namespace lsst {
 namespace qserv {
 namespace replica {

@@ -56,15 +56,13 @@
 #include "replica/DatabaseMySQLRow.h"
 
 // Forward declarations
-
 namespace lsst {
 namespace qserv {
 namespace replica {
     class ProtocolResponseSqlField;
-}}} // namespace lsst::qserv::replica
+}}} // Forward declarations
 
 // This header declarations
-
 namespace lsst {
 namespace qserv {
 namespace replica {

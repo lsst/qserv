@@ -40,15 +40,13 @@
 #include "lsst/log/Log.h"
 
 // Forward declarations
-
 namespace lsst {
 namespace qserv {
 namespace replica {
     struct ControllerEvent;
-}}} // namespace lsst::qserv::replica
+}}} // Forward declarations
 
 // This header declarations
-
 namespace lsst {
 namespace qserv {
 namespace replica {

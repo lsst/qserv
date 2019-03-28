@@ -34,7 +34,6 @@
 #include "wpublish/TestEchoQservRequest.h"
 
 // This header declarations
-
 namespace lsst {
 namespace qserv {
 namespace replica {

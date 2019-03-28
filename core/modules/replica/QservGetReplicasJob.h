@@ -35,7 +35,6 @@
 #include "replica/SemanticMaps.h"
 
 // This header declarations
-
 namespace lsst {
 namespace qserv {
 namespace replica {

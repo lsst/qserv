@@ -30,15 +30,17 @@
 // System headers
 #include <iostream>
 
-// This header declarations
-
+// Forward declarations
 namespace lsst {
 namespace qserv {
 namespace replica {
+    class ProtocolPerformance;
+}}}  // Forward declarations
 
-// Forward declarations
-
-class ProtocolPerformance;
+// This header declarations
+namespace lsst {
+namespace qserv {
+namespace replica {
 
 /**
  * Structure PerformanceUtils provides utilities shared by all classes in this scope

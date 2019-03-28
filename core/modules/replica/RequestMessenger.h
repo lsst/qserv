@@ -34,7 +34,6 @@
 #include "replica/ServiceProvider.h"
 
 // This header declarations
-
 namespace lsst {
 namespace qserv {
 namespace replica {

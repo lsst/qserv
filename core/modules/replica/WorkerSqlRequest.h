@@ -29,17 +29,15 @@
 #include "replica/WorkerRequest.h"
 
 // Forward declarations
-
 namespace lsst {
 namespace qserv {
 namespace replica {
 namespace database {
 namespace mysql {
     class Connection;
-}}}}} // namespace lsst::qserv::replica::database::mysql;
+}}}}} // Forward declaration
 
 // This header declarations
-
 namespace lsst {
 namespace qserv {
 namespace replica {

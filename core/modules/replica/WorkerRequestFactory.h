@@ -28,19 +28,22 @@
 // Qserv headers
 #include "replica/ServiceProvider.h"
 
-// This header declarations
-
+// Forward declarations
 namespace lsst {
 namespace qserv {
 namespace replica {
+    class WorkerDeleteRequest;
+    class WorkerEchoRequest;
+    class WorkerFindAllRequest;
+    class WorkerFindRequest;
+    class WorkerSqlRequest;
+    class WorkerReplicationRequest;
+}}}  // Forward declarations
 
-// Forward declarations
-class WorkerDeleteRequest;
-class WorkerEchoRequest;
-class WorkerFindAllRequest;
-class WorkerFindRequest;
-class WorkerSqlRequest;
-class WorkerReplicationRequest;
+// This header declarations
+namespace lsst {
+namespace qserv {
+namespace replica {
 
 /**
  * Class WorkerRequestFactoryBase is an abstract base class for a family of

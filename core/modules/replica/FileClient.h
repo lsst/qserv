@@ -41,24 +41,26 @@
 // Qserv headers
 #include "replica/ServiceProvider.h"
 
-// This header declarations
-
+// Forward declarations
 namespace lsst {
 namespace qserv {
 namespace replica {
+    class ProtocolBuffer;
+}}}  // Forward declarations
 
-// Forward declarations
-class ProtocolBuffer;
+// This header declarations
+namespace lsst {
+namespace qserv {
+namespace replica {
 
 /**
  * Class FileClientError represents exceptions thrown by FileClient on errors
  */
 class FileClientError : public std::runtime_error {
+
 public:
     
     /**
-     * Construct an object
-     *
      * @param what
      *   reason for the exception
      */

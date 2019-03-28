@@ -45,14 +45,17 @@
 #include "replica/protocol.pb.h"
 #include "replica/ServiceManagementRequestBase.h"
 
-// This header declarations
-
+// Forward declarations
 namespace lsst {
 namespace qserv {
 namespace replica {
+    class Messenger;
+}}}  // Forward declarations
 
-// Forward declarations
-class Messenger;
+// This header declarations
+namespace lsst {
+namespace qserv {
+namespace replica {
 
 // ========================================================================
 //   Customizations for specific request types require dedicated policies

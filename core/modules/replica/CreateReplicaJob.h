@@ -34,7 +34,6 @@
 #include "replica/ReplicationRequest.h"
 
 // This header declarations
-
 namespace lsst {
 namespace qserv {
 namespace replica {

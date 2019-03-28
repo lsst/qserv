@@ -37,14 +37,17 @@
 #include "replica/WorkerRequest.h"
 #include "util/Mutex.h"
 
-// This header declarations
-
+// Forward declarations
 namespace lsst {
 namespace qserv {
 namespace replica {
+    class WorkerRequestFactory;
+}}}  // Forward declarations
 
-// Forward declarations
-class WorkerRequestFactory;
+// This header declarations
+namespace lsst {
+namespace qserv {
+namespace replica {
 
 /**
   * Class WorkerProcessor is a front-end interface for processing

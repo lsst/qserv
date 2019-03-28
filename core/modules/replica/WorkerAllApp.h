@@ -30,14 +30,17 @@
 // LSST headers
 #include "lsst/log/Log.h"
 
-// This header declarations
-
+// Forward declarations
 namespace lsst {
 namespace qserv {
 namespace replica {
+    class WorkerRequestFactory;
+}}}  // Forward declarations
 
-// Forward declarations
-class WorkerRequestFactory;
+// This header declarations
+namespace lsst {
+namespace qserv {
+namespace replica {
 
 /**
  * Class WorkerAllApp runs all worker servers within a single process.

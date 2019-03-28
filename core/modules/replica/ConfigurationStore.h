@@ -37,15 +37,13 @@
 #include "lsst/log/Log.h"
 
 // Forward declarations
-
 namespace lsst {
 namespace qserv {
 namespace util {
-class ConfigStore;
-}}} // namespace lsst::qserv::util
+    class ConfigStore;
+}}} // Forward declarations
 
 // This header declarations
-
 namespace lsst {
 namespace qserv {
 namespace replica {

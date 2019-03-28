@@ -41,17 +41,19 @@
 // Qserv headers
 #include "util/Issue.h"
 
-// This header declarations
-
+// Forward declarations
 namespace lsst {
 namespace qserv {
 namespace replica {
 namespace detail {
+    class Parser;
+}}}}  // Forward declarations
 
-// Forward declarations
-
-class Parser;
-
+// This header declarations
+namespace lsst {
+namespace qserv {
+namespace replica {
+namespace detail {
 
 /**
  * Class ParserError represents exceptions throw by the command-line parser

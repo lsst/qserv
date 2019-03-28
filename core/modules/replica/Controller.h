@@ -38,15 +38,17 @@
 #include "replica/ServiceProvider.h"
 #include "util/Mutex.h"
 
-// This header declarations
-
+// Forward declarations
 namespace lsst {
 namespace qserv {
 namespace replica {
+    class ControllerImpl;
+}}}  // Forward declarations
 
-// Forward declarations
-
-class ControllerImpl;
+// This header declarations
+namespace lsst {
+namespace qserv {
+namespace replica {
 
 /**
  * Class ControllerRequestWrapper is the base class for implementing requests

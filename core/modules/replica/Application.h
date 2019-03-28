@@ -25,7 +25,6 @@
 #include <memory>
 #include <string>
 
-
 // Qserv headers
 #include "replica/ApplicationTypes.h"
 #include "replica/ServiceProvider.h"
@@ -33,9 +32,7 @@
 // LSST headers
 #include "lsst/log/Log.h"
 
-
 // This header declarations
-
 namespace lsst {
 namespace qserv {
 namespace replica {

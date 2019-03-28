@@ -29,7 +29,6 @@
 #include "replica/WorkerRequest.h"
 
 // This header declarations
-
 namespace lsst {
 namespace qserv {
 namespace replica {

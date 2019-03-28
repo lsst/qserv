@@ -34,10 +34,7 @@
 #include "replica/ReplicaInfo.h"
 #include "replica/SemanticMaps.h"
 
-// Forward declarations
-
 // This header declarations
-
 namespace lsst {
 namespace qserv {
 namespace replica {

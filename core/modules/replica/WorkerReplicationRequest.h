@@ -36,15 +36,16 @@
 #include "replica/WorkerRequest.h"
 
 // Forward declarations
-
-// This header declarations
-
 namespace lsst {
 namespace qserv {
 namespace replica {
+    class FileClient;
+}}}  // Forward declarations
 
-// Forward declarations
-class FileClient;
+// This header declarations
+namespace lsst {
+namespace qserv {
+namespace replica {
 
 /**
   * Class WorkerReplicationRequest represents a context and a state of replication

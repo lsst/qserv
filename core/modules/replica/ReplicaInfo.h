@@ -34,15 +34,17 @@
 #include <string>
 #include <vector>
 
-// This header declarations
-
+// Forward declarations
 namespace lsst {
 namespace qserv {
 namespace replica {
+    class ProtocolReplicaInfo;
+}}}  // Forward declarations
 
-// Forward declarations
-
-class ProtocolReplicaInfo;
+// This header declarations
+namespace lsst {
+namespace qserv {
+namespace replica {
 
 /**
   * Class ReplicaInfo represents a status of a replica received from

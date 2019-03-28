@@ -33,14 +33,17 @@
 #include "replica/SqlResultSet.h"
 #include "replica/protocol.pb.h"
 
-// This header declarations
-
+// Forward declarations
 namespace lsst {
 namespace qserv {
 namespace replica {
+    class Messenger;
+}}}  // Forward declarations
 
-// Forward declarations
-class Messenger;
+// This header declarations
+namespace lsst {
+namespace qserv {
+namespace replica {
 
 /**
  * Class SqlRequest represents Controller-side requests for initiating

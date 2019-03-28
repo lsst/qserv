@@ -38,14 +38,17 @@
 #include "replica/ServiceProvider.h"
 #include "util/Mutex.h"
 
-// This header declarations
-
+// Forward declarations
 namespace lsst {
 namespace qserv {
 namespace replica {
+    class Controller;
+}}}  // Forward declarations
 
-// Forward declarations
-class Controller;
+// This header declarations
+namespace lsst {
+namespace qserv {
+namespace replica {
 
 /**
   * Class Request is a base class for a family of requests within

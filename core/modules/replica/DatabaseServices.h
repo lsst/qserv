@@ -37,19 +37,21 @@
 #include "replica/Job.h"
 #include "replica/ReplicaInfo.h"
 
-// This header declarations
-
+// Forward declarations
 namespace lsst {
 namespace qserv {
 namespace replica {
+    class Configuration;
+    struct ControllerIdentity;
+    class QservMgtRequest;
+    class Performance;
+    class Request;
+}}}  // Forward declarations
 
-// Forward declarations
-class Configuration;
-struct ControllerIdentity;
-class QservMgtRequest;
-class Performance;
-class Request;
-
+// This header declarations
+namespace lsst {
+namespace qserv {
+namespace replica {
 
 /**
  * Class DatabaseServicesError is an exception class for reporting errors

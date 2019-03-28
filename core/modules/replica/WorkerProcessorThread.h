@@ -26,14 +26,17 @@
 #include <memory>
 #include <thread>
 
-// This header declarations
-
+// Forward declarations
 namespace lsst {
 namespace qserv {
 namespace replica {
+    class WorkerProcessor;
+}}}  // Forward declarations
 
-/// Forward declaration for the class
-class WorkerProcessor;
+// This header declarations
+namespace lsst {
+namespace qserv {
+namespace replica {
 
 /**
   * Class WorkerProcessorThread is a thread-based request processing engine

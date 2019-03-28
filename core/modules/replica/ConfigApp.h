@@ -34,7 +34,6 @@
 #include "lsst/log/Log.h"
 
 // This header declarations
-
 namespace lsst {
 namespace qserv {
 namespace replica {

@@ -32,14 +32,17 @@
 #include "replica/protocol.pb.h"
 #include "replica/ServiceProvider.h"
 
-// This header declarations
-
+// Forward declarations
 namespace lsst {
 namespace qserv {
 namespace replica {
+    class ProtocolBuffer;
+}}}  // Forward declarations
 
-// Forward declarations
-class ProtocolBuffer;
+// This header declarations
+namespace lsst {
+namespace qserv {
+namespace replica {
 
 /**
  * Class Messenger provides a communication interface for sending/receiving messages

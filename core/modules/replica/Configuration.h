@@ -41,14 +41,17 @@
 // Qserv headers
 #include "util/Mutex.h"
 
-// This header declarations
-
+// Forward declarations
 namespace lsst {
 namespace qserv {
 namespace replica {
+    class ChunkNumberValidator;
+}}}  // Forward declarations
 
-/// Forward declarations
-class ChunkNumberValidator;
+// This header declarations
+namespace lsst {
+namespace qserv {
+namespace replica {
 
 /**
  * Structure WorkerInfo encapsulates various parameters describing a worker.

@@ -36,7 +36,6 @@
 #include "nlohmann/json.hpp"
 
 // This header declarations
-
 namespace lsst {
 namespace qserv {
 namespace replica {

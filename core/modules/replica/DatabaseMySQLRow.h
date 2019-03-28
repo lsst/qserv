@@ -38,23 +38,21 @@
 #include <vector>
 
 // Forward declarations
-
 namespace lsst {
 namespace qserv {
 namespace replica {
     class ProtocolResponseSqlRow;
-}}} // namespace lsst::qserv::replica
+namespace database {
+namespace mysql {
+    class Connection;
+}}}}} // Forward declarations
 
 // This header declarations
-
 namespace lsst {
 namespace qserv {
 namespace replica {
 namespace database {
 namespace mysql {
-
-/// Forward declarations
-class Connection;
 
 /**
  * Class Row represents the current row obtained from the last result set.
