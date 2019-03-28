@@ -93,9 +93,6 @@ struct WorkerInfo {
     /// The name of a user account for connecting to the database service
     std::string dbUser;
 
-    /// Database password for the user above
-    std::string dbPassword;
-
     /**
      * Translate the structure into JSON
      *
@@ -935,29 +932,6 @@ public:
     virtual WorkerInfo setWorkerDbUser(std::string const& name,
                                        std::string const& user) = 0;
 
-    /**
-     * Change the user password for the worker's database service
-     *
-     * @note
-     *   This operation may throw implementation-specific exceptions
-     *   which are not covered by this technology-neutral interface.
-     * @note
-     *
-     * @param name
-     *   the name of a worker affected by the operation
-     *
-     * @param password
-     *   the new password to be set
-     *
-     * @return
-     *   updated worker descriptor
-     *
-     * @throw std::invalid_argument
-     *   if the specified worker was not found in the configuration.
-     */
-    virtual WorkerInfo setWorkerDbPassword(std::string const& name,
-                                           std::string const& password) = 0;
-
     /// @return the name of the default technology for implementing requests
     std::string const& workerTechnology() const { return _workerTechnology; }
 
@@ -1033,7 +1007,6 @@ protected:
     static std::string  const defaultWorkerDbHost;
     static uint16_t     const defaultWorkerDbPort;
     static std::string  const defaultWorkerDbUser;
-    static std::string  const defaultWorkerDbPassword;
     static std::string  const defaultDatabaseTechnology;
     static std::string  const defaultDatabaseHost;
     static uint16_t     const defaultDatabasePort;

@@ -41,15 +41,6 @@ namespace {
 using namespace lsst::qserv;
 
 /**
- * @param func
- *   the name of a method/function requested the context string
- *
- * @return
- *   the context string for debugging and diagnostic printouts
- */
-string classMethodContext(string const& func) { return "ConfigurationStore::" + func; }
-
-/**
  * Fetch and parse a value of the specified key into. Return the specified
  * default value if the parameter was not found.
  *
@@ -86,6 +77,10 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
+string ConfigurationStore::_classMethodContext(string const& func) {
+    return "ConfigurationStore::" + func;
+}
+
 ConfigurationStore::ConfigurationStore(util::ConfigStore const& configStore)
     :   Configuration(),
         _log(LOG_GET("lsst.qserv.replica.ConfigurationStore")) {
@@ -98,10 +93,10 @@ void ConfigurationStore::addWorker(WorkerInfo const& info) {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << info.name);
     util::Lock lock(_mtx, context(__func__));
 
-    auto&& itr = _workerInfo.find(info.name);
+    auto itr = _workerInfo.find(info.name);
     if (_workerInfo.end() != itr) {
         throw invalid_argument(
-                ::classMethodContext(__func__) + "  worker: " + info.name +
+                _classMethodContext(__func__) + "  worker: " + info.name +
                 " already exists");
     }
     
@@ -111,19 +106,19 @@ void ConfigurationStore::addWorker(WorkerInfo const& info) {
     for (auto const& itr: _workerInfo) {
         if (itr.first == info.name) {
             throw invalid_argument(
-                    ::classMethodContext(__func__) + "  worker: " + info.name +
+                    _classMethodContext(__func__) + "  worker: " + info.name +
                     " already exists");
         }
         if (itr.second.svcHost == info.svcHost and itr.second.svcPort == info.svcPort) {
             throw invalid_argument(
-                    ::classMethodContext(__func__) + "  worker: " + itr.first +
+                    _classMethodContext(__func__) + "  worker: " + itr.first +
                     " with a conflicting combination of the service host/port " +
                     itr.second.svcHost + ":" + to_string(itr.second.svcPort) +
                     " already exists");
         }
         if (itr.second.fsHost == info.fsHost and itr.second.fsPort == info.fsPort) {
             throw invalid_argument(
-                    ::classMethodContext(__func__) + "  worker: " + itr.first +
+                    _classMethodContext(__func__) + "  worker: " + itr.first +
                     " with a conflicting combination of the file service host/port " +
                     itr.second.fsHost + ":" + to_string(itr.second.fsPort) +
                     " already exists");
@@ -135,13 +130,9 @@ void ConfigurationStore::addWorker(WorkerInfo const& info) {
 
 void ConfigurationStore::deleteWorker(string const& name) {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name);
-    util::Lock lock(_mtx, context(__func__));
 
-    auto&& itr = _workerInfo.find(name);
-    if (_workerInfo.end() == itr) {
-        throw invalid_argument(
-                ::classMethodContext(__func__) + "  no such worker: " + name);
-    }
+    util::Lock lock(_mtx, context(__func__));
+    auto itr = safeFindWorker(lock, name, _classMethodContext(__func__));
     _workerInfo.erase(itr);
 }
 
@@ -150,13 +141,9 @@ WorkerInfo ConfigurationStore::disableWorker(string const& name,
                                              bool disable) {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name
          << " disable=" << (disable ? "true" : "false"));
-    util::Lock lock(_mtx, context(__func__));
 
-    auto&& itr = _workerInfo.find(name);
-    if (_workerInfo.end() == itr) {
-        throw invalid_argument(
-                ::classMethodContext(__func__) + "  no such worker: " + name);
-    }
+    util::Lock lock(_mtx, context(__func__));
+    auto itr = safeFindWorker(lock, name, _classMethodContext(__func__));
     itr->second.isEnabled = not disable;
 
     return itr->second;
@@ -167,13 +154,9 @@ WorkerInfo ConfigurationStore::setWorkerReadOnly(string const& name,
                                                  bool readOnly) {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name
          << " readOnly=" << (readOnly ? "true" : "false"));
-    util::Lock lock(_mtx, context(__func__));
 
-    auto&& itr = _workerInfo.find(name);
-    if (_workerInfo.end() == itr) {
-        throw invalid_argument(
-                ::classMethodContext(__func__) + "  no such worker: " + name);
-    }
+    util::Lock lock(_mtx, context(__func__));
+    auto itr = safeFindWorker(lock, name, _classMethodContext(__func__));
     itr->second.isReadOnly = readOnly;
 
     return itr->second;
@@ -183,13 +166,9 @@ WorkerInfo ConfigurationStore::setWorkerReadOnly(string const& name,
 WorkerInfo ConfigurationStore::setWorkerSvcHost(string const& name,
                                                 string const& host) {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " host=" << host);
-    util::Lock lock(_mtx, context(__func__));
 
-    auto&& itr = _workerInfo.find(name);
-    if (_workerInfo.end() == itr) {
-        throw invalid_argument(
-                ::classMethodContext(__func__) + "  no such worker: " + name);
-    }
+    util::Lock lock(_mtx, context(__func__));
+    auto itr = safeFindWorker(lock, name, _classMethodContext(__func__));
     itr->second.svcHost = host;
 
     return itr->second;
@@ -199,13 +178,9 @@ WorkerInfo ConfigurationStore::setWorkerSvcHost(string const& name,
 WorkerInfo ConfigurationStore::setWorkerSvcPort(string const& name,
                                                 uint16_t port) {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " port=" << port);
-    util::Lock lock(_mtx, context(__func__));
 
-    auto&& itr = _workerInfo.find(name);
-    if (_workerInfo.end() == itr) {
-        throw invalid_argument(
-                ::classMethodContext(__func__) + "  no such worker: " + name);
-    }
+    util::Lock lock(_mtx, context(__func__));
+    auto itr = safeFindWorker(lock, name, _classMethodContext(__func__));
     itr->second.svcPort = port;
 
     return itr->second;
@@ -215,13 +190,9 @@ WorkerInfo ConfigurationStore::setWorkerSvcPort(string const& name,
 WorkerInfo ConfigurationStore::setWorkerFsHost(string const& name,
                                                string const& host) {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " host=" << host);
-    util::Lock lock(_mtx, context(__func__));
 
-    auto&& itr = _workerInfo.find(name);
-    if (_workerInfo.end() == itr) {
-        throw invalid_argument(
-                ::classMethodContext(__func__) + "  no such worker: " + name);
-    }
+    util::Lock lock(_mtx, context(__func__));
+    auto itr = safeFindWorker(lock, name, _classMethodContext(__func__));
     itr->second.fsHost = host;
 
     return itr->second;
@@ -231,13 +202,9 @@ WorkerInfo ConfigurationStore::setWorkerFsHost(string const& name,
 WorkerInfo ConfigurationStore::setWorkerFsPort(string const& name,
                                                uint16_t port) {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " port=" << port);
-    util::Lock lock(_mtx, context(__func__));
 
-    auto&& itr = _workerInfo.find(name);
-    if (_workerInfo.end() == itr) {
-        throw invalid_argument(
-                ::classMethodContext(__func__) + "  no such worker: " + name);
-    }
+    util::Lock lock(_mtx, context(__func__));
+    auto itr = safeFindWorker(lock, name, _classMethodContext(__func__));
     itr->second.fsPort = port;
 
     return itr->second;
@@ -248,13 +215,9 @@ WorkerInfo ConfigurationStore::setWorkerDataDir(string const& name,
                                                 string const& dataDir) {
 
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " dataDir=" << dataDir);
-    util::Lock lock(_mtx, context(__func__));
 
-    auto&& itr = _workerInfo.find(name);
-    if (_workerInfo.end() == itr) {
-        throw invalid_argument(
-                ::classMethodContext(__func__) + "  no such worker: " + name);
-    }
+    util::Lock lock(_mtx, context(__func__));
+    auto itr = safeFindWorker(lock, name, _classMethodContext(__func__));
     itr->second.dataDir = dataDir;
 
     return itr->second;
@@ -265,15 +228,10 @@ WorkerInfo ConfigurationStore::setWorkerDataDir(string const& name,
 WorkerInfo ConfigurationStore::setWorkerDbHost(std::string const& name,
                                                std::string const& host) {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " host=" << host);
+
     util::Lock lock(_mtx, context(__func__));
-
-    auto&& itr = _workerInfo.find(name);
-    if (_workerInfo.end() == itr) {
-        throw invalid_argument(
-                ::classMethodContext(__func__) + "  no such worker: " + name);
-    }
+    auto itr = safeFindWorker(lock, name, _classMethodContext(__func__));
     itr->second.dbHost = host;
-
     return itr->second;
 }
 
@@ -281,15 +239,10 @@ WorkerInfo ConfigurationStore::setWorkerDbHost(std::string const& name,
 WorkerInfo ConfigurationStore::setWorkerDbPort(std::string const& name,
                                                uint16_t port) {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " port=" << port);
+
     util::Lock lock(_mtx, context(__func__));
-
-    auto&& itr = _workerInfo.find(name);
-    if (_workerInfo.end() == itr) {
-        throw invalid_argument(
-                ::classMethodContext(__func__) + "  no such worker: " + name);
-    }
+    auto itr = safeFindWorker(lock, name, _classMethodContext(__func__));
     itr->second.dbPort = port;
-
     return itr->second;
 }
 
@@ -297,30 +250,10 @@ WorkerInfo ConfigurationStore::setWorkerDbPort(std::string const& name,
 WorkerInfo ConfigurationStore::setWorkerDbUser(std::string const& name,
                                                std::string const& user)  {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " user=" << user);
-    util::Lock lock(_mtx, context(__func__));
 
-    auto&& itr = _workerInfo.find(name);
-    if (_workerInfo.end() == itr) {
-        throw invalid_argument(
-                ::classMethodContext(__func__) + "  no such worker: " + name);
-    }
+    util::Lock lock(_mtx, context(__func__));
+    auto itr = safeFindWorker(lock, name, _classMethodContext(__func__));
     itr->second.dbUser = user;
-
-    return itr->second;
-}
-
-
-WorkerInfo ConfigurationStore::setWorkerDbPassword(std::string const& name,
-                                                   std::string const& password)  {
-    LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " password=" << "*****");
-    util::Lock lock(_mtx, context(__func__));
-
-    auto&& itr = _workerInfo.find(name);
-    if (_workerInfo.end() == itr) {
-        throw invalid_argument(
-                ::classMethodContext(__func__) + "  no such worker: " + name);
-    }
-    itr->second.dbPassword = password;
 
     return itr->second;
 }
@@ -333,19 +266,19 @@ DatabaseFamilyInfo ConfigurationStore::addDatabaseFamily(DatabaseFamilyInfo cons
     util::Lock lock(_mtx, context(__func__));
     
     if (info.name.empty()) {
-        throw invalid_argument(::classMethodContext(__func__) + "  the family name can't be empty");
+        throw invalid_argument(_classMethodContext(__func__) + "  the family name can't be empty");
     }
     if (info.replicationLevel == 0) {
-        throw invalid_argument(::classMethodContext(__func__) + "  the replication level can't be 0");
+        throw invalid_argument(_classMethodContext(__func__) + "  the replication level can't be 0");
     }
     if (info.numStripes == 0) {
-        throw invalid_argument(::classMethodContext(__func__) + "  the number of stripes level can't be 0");
+        throw invalid_argument(_classMethodContext(__func__) + "  the number of stripes level can't be 0");
     }
     if (info.numSubStripes == 0) {
-        throw invalid_argument(::classMethodContext(__func__) + "  the number of sub-stripes level can't be 0");
+        throw invalid_argument(_classMethodContext(__func__) + "  the number of sub-stripes level can't be 0");
     }
     if (_databaseFamilyInfo.end() != _databaseFamilyInfo.find(info.name)) {
-        throw invalid_argument(::classMethodContext(__func__) + "  the family already exists");
+        throw invalid_argument(_classMethodContext(__func__) + "  the family already exists");
     }
     _databaseFamilyInfo[info.name] = DatabaseFamilyInfo{
         info.name,
@@ -367,13 +300,13 @@ void ConfigurationStore::deleteDatabaseFamily(string const& name) {
     util::Lock lock(_mtx, context(__func__));
 
     if (name.empty()) {
-        throw invalid_argument(::classMethodContext(__func__) + "  the family name can't be empty");
+        throw invalid_argument(_classMethodContext(__func__) + "  the family name can't be empty");
     }
     
     // Find and delete the family
     auto itr = _databaseFamilyInfo.find(name);
     if (itr == _databaseFamilyInfo.end()) {
-        throw invalid_argument(::classMethodContext(__func__) + "  unknown family");
+        throw invalid_argument(_classMethodContext(__func__) + "  unknown family");
     }
     _databaseFamilyInfo.erase(itr);
 
@@ -395,16 +328,16 @@ DatabaseInfo ConfigurationStore::addDatabase(DatabaseInfo const& info) {
     util::Lock lock(_mtx, context(__func__));
     
     if (info.name.empty()) {
-        throw invalid_argument(::classMethodContext(__func__) + "  the database name can't be empty");
+        throw invalid_argument(_classMethodContext(__func__) + "  the database name can't be empty");
     }
     if (info.family.empty()) {
-        throw invalid_argument(::classMethodContext(__func__) + "  the family name can't be empty");
+        throw invalid_argument(_classMethodContext(__func__) + "  the family name can't be empty");
     }
     if (_databaseFamilyInfo.find(info.family) == _databaseFamilyInfo.end()) {
-        throw invalid_argument(::classMethodContext(__func__) + "  unknown database family: '" + info.family + "'");
+        throw invalid_argument(_classMethodContext(__func__) + "  unknown database family: '" + info.family + "'");
     }
     if (_databaseInfo.find(info.name) != _databaseInfo.end()) {
-        throw invalid_argument(::classMethodContext(__func__) + "  database already exists");
+        throw invalid_argument(_classMethodContext(__func__) + "  database already exists");
     }
     _databaseInfo[info.name] = DatabaseInfo{
         info.name,
@@ -423,13 +356,13 @@ void ConfigurationStore::deleteDatabase(string const& name) {
     util::Lock lock(_mtx, context(__func__));
 
     if (name.empty()) {
-        throw invalid_argument(::classMethodContext(__func__) + "  the database name can't be empty");
+        throw invalid_argument(_classMethodContext(__func__) + "  the database name can't be empty");
     }
     
     // Find and delete the database
     auto itr = _databaseInfo.find(name);
     if (itr == _databaseInfo.end()) {
-        throw invalid_argument(::classMethodContext(__func__) + "  unknown database");
+        throw invalid_argument(_classMethodContext(__func__) + "  unknown database");
     }
     _databaseInfo.erase(itr);
 }
@@ -445,16 +378,16 @@ DatabaseInfo ConfigurationStore::addTable(string const& database,
     util::Lock lock(_mtx, context(__func__));
 
     if (database.empty()) {
-        throw invalid_argument(::classMethodContext(__func__) + "  the database name can't be empty");
+        throw invalid_argument(_classMethodContext(__func__) + "  the database name can't be empty");
     }
     if (table.empty()) {
-        throw invalid_argument(::classMethodContext(__func__) + "  the table name can't be empty");
+        throw invalid_argument(_classMethodContext(__func__) + "  the table name can't be empty");
     }
 
     // Find the database
     auto itr = _databaseInfo.find(database);
     if (itr == _databaseInfo.end()) {
-        throw invalid_argument(::classMethodContext(__func__) + "  unknown database");
+        throw invalid_argument(_classMethodContext(__func__) + "  unknown database");
     }
     DatabaseInfo& info = itr->second;
 
@@ -466,7 +399,7 @@ DatabaseInfo ConfigurationStore::addTable(string const& database,
              info.regularTables.cend(),
              table) != info.regularTables.cend()) {
 
-        throw invalid_argument(::classMethodContext(__func__) + "  table already exists");
+        throw invalid_argument(_classMethodContext(__func__) + "  table already exists");
     }
 
     // Insert the table into the corresponding collection
@@ -488,16 +421,16 @@ DatabaseInfo ConfigurationStore::deleteTable(string const& database,
     util::Lock lock(_mtx, context(__func__));
 
     if (database.empty()) {
-        throw invalid_argument(::classMethodContext(__func__) + "  the database name can't be empty");
+        throw invalid_argument(_classMethodContext(__func__) + "  the database name can't be empty");
     }
     if (table.empty()) {
-        throw invalid_argument(::classMethodContext(__func__) + "  the table name can't be empty");
+        throw invalid_argument(_classMethodContext(__func__) + "  the table name can't be empty");
     }
     
     // Find the database
     auto itr = _databaseInfo.find(database);
     if (itr == _databaseInfo.end()) {
-        throw invalid_argument(::classMethodContext(__func__) + "  unknown database");
+        throw invalid_argument(_classMethodContext(__func__) + "  unknown database");
     }
     DatabaseInfo& info = itr->second;
 
@@ -515,7 +448,7 @@ DatabaseInfo ConfigurationStore::deleteTable(string const& database,
         info.regularTables.erase(rTableItr);
         return info;
     }
-    throw invalid_argument(::classMethodContext(__func__) + "  unknown table");
+    throw invalid_argument(_classMethodContext(__func__) + "  unknown table");
 }
 
 
@@ -560,7 +493,7 @@ void ConfigurationStore::_loadConfiguration(util::ConfigStore const& configStore
     ::parseKeyVal(configStore, "database.host",               _databaseHost,             defaultDatabaseHost);
     ::parseKeyVal(configStore, "database.port",               _databasePort,             defaultDatabasePort);
     ::parseKeyVal(configStore, "database.user",               _databaseUser,             defaultDatabaseUser);
-    ::parseKeyVal(configStore, "database.password",           _databasePassword,         defaultDatabasePassword);
+    ::parseKeyVal(configStore, "database.password",           _databasePassword,         "");
     ::parseKeyVal(configStore, "database.name",               _databaseName,             defaultDatabaseName);
     ::parseKeyVal(configStore, "database.services_pool_size", _databaseServicesPoolSize, defaultDatabaseServicesPoolSize);
 
@@ -582,14 +515,12 @@ void ConfigurationStore::_loadConfiguration(util::ConfigStore const& configStore
     string   commonDataDir;
     uint16_t commonWorkerDbPort;
     string   commonWorkerDbUser;
-    string   commonWorkerDbPassword;
 
     ::parseKeyVal(configStore, "worker.svc_port",    commonWorkerSvcPort,    defaultWorkerSvcPort);
     ::parseKeyVal(configStore, "worker.fs_port",     commonWorkerFsPort,     defaultWorkerFsPort);
     ::parseKeyVal(configStore, "worker.data_dir",    commonDataDir,          defaultDataDir);
     ::parseKeyVal(configStore, "worker.db_port",     commonWorkerDbPort,     defaultWorkerDbPort);
     ::parseKeyVal(configStore, "worker.db_user",     commonWorkerDbUser,     defaultWorkerDbUser);
-    ::parseKeyVal(configStore, "worker.db_password", commonWorkerDbPassword, defaultWorkerDbPassword);
 
     // Parse optional worker-specific configuration sections. Assume default
     // or (previously parsed) common values if a whole section or individual
@@ -600,7 +531,7 @@ void ConfigurationStore::_loadConfiguration(util::ConfigStore const& configStore
         string const section = "worker:" + name;
         if (_workerInfo.count(name)) {
             throw range_error(
-                    ::classMethodContext(__func__) + "  duplicate worker entry: '" +
+                    _classMethodContext(__func__) + "  duplicate worker entry: '" +
                     name + "' in: [common] or ["+section+"]");
         }
         auto& workerInfo = _workerInfo[name];
@@ -616,7 +547,6 @@ void ConfigurationStore::_loadConfiguration(util::ConfigStore const& configStore
         ::parseKeyVal(configStore, section+".db_host",      workerInfo.dbHost,     defaultWorkerDbHost);
         ::parseKeyVal(configStore, section+".db_port",      workerInfo.dbPort,     commonWorkerDbPort);
         ::parseKeyVal(configStore, section+".db_user",      workerInfo.dbUser,     commonWorkerDbUser);
-        ::parseKeyVal(configStore, section+".db_password",  workerInfo.dbPassword, commonWorkerDbPassword);
 
         Configuration::translateDataDir(workerInfo.dataDir, name);
     }
@@ -627,7 +557,7 @@ void ConfigurationStore::_loadConfiguration(util::ConfigStore const& configStore
         string const section = "database_family:" + name;
         if (_databaseFamilyInfo.count(name)) {
             throw range_error(
-                    ::classMethodContext(__func__) + "  duplicate database family entry: '" +
+                    _classMethodContext(__func__) + "  duplicate database family entry: '" +
                     name + "' in: [common] or ["+section+"]");
         }
         _databaseFamilyInfo[name].name = name;
@@ -665,14 +595,14 @@ void ConfigurationStore::_loadConfiguration(util::ConfigStore const& configStore
         string const section = "database:" + name;
         if (_databaseInfo.count(name)) {
             throw range_error(
-                    ::classMethodContext(__func__) + "  duplicate database entry: '" +
+                    _classMethodContext(__func__) + "  duplicate database entry: '" +
                     name + "' in: [common] or ["+section+"]");
         }
         _databaseInfo[name].name = name;
         _databaseInfo[name].family = configStore.getRequired(section+".family");
         if (not _databaseFamilyInfo.count(_databaseInfo[name].family)) {
             throw range_error(
-                    ::classMethodContext(__func__) + "  unknown database family: '" +
+                    _classMethodContext(__func__) + "  unknown database family: '" +
                     _databaseInfo[name].family + "' in section ["+section+"]");
         }
         {

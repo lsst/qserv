@@ -41,3 +41,4 @@ for n in $MASTER $WORKERS; do
     HOST="qserv-${n}"
     ssh -n $HOST docker pull $REPLICATION_IMAGE_TAG &
 done
+wait

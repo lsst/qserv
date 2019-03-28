@@ -191,7 +191,7 @@ void Row::exportRow(ProtocolResponseSqlRow* ptr) const {
         throw logic_error(context + "the object is not valid");
     }
     if (nullptr == ptr) {
-        invalid_argument(context + "null pointer passed as a parameter");
+        throw invalid_argument(context + "null pointer passed as a parameter");
     }
     for (auto&& cell : _index2cell) {
         auto&& str = cell.first;

@@ -200,9 +200,6 @@ public:
 
     /**
      * Fill a Protobuf object representing a row.
-     * 
-     * @note
-     *   The previous content of the 
      *
      * @param ptr
      *   a valid pointer to the Protobuf object to be populated.

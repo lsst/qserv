@@ -61,4 +61,3 @@ docker run \
     --name "${TOOL}" \
     "${REPLICATION_IMAGE_TAG}" \
     /qserv/bin/${TOOL} "$@" --config=${CONFIG}
-#    bash -c 'cd ${WORK_DIR}; /qserv/bin/${TOOL} ${PARAMETERS} --config=${CONFIG}'

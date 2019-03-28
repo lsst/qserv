@@ -157,10 +157,6 @@ public:
     WorkerInfo setWorkerDbUser(std::string const& name,
                                std::string const& user) final;
 
-    /// @see Configuration::setWorkerDbPassword()
-    WorkerInfo setWorkerDbPassword(std::string const& name,
-                                   std::string const& password) final;
-
     /// @see Configuration::setWorkerTechnology()
     void setWorkerTechnology(std::string const& val) final { _set(_workerTechnology, val); }
 
@@ -212,6 +208,15 @@ protected:
     explicit ConfigurationStore(util::ConfigStore const& configStore);
 
 private:
+
+    /**
+     * @param func
+     *   the name of a method/function requested the context string
+     *
+     * @return
+     *   the context string for debugging and diagnostic printouts
+     */
+    static std::string _classMethodContext(std::string const& func);
 
     /**
      * Read and validate input configuration parameters from the specified 

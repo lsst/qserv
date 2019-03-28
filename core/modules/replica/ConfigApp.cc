@@ -180,11 +180,6 @@ ConfigApp::ConfigApp(int argc, char* argv[])
         "The name of a user account for the worker's database service.",
         _workerInfo.dbUser);
 
-    updateWorkerCmd.option(
-        "worker-db-password",
-        "A password for the worker's database service.",
-        _workerInfo.dbPassword);
-
     updateWorkerCmd.flag(
         "worker-enable",
         "Enable the worker. ATTENTION: this flag can't be used together with flag --worker-disable.",
@@ -551,7 +546,6 @@ void ConfigApp::_dumpWorkersAsTable(string const& indent) const {
     vector<string> dbHost;
     vector<string> dbPort;
     vector<string> dbUser;
-    vector<string> dbPassword;
 
     for (auto&& worker: _config->allWorkers()) {
         auto const wi = _config->workerInfo(worker);
@@ -565,7 +559,6 @@ void ConfigApp::_dumpWorkersAsTable(string const& indent) const {
         dbHost     .push_back(wi.dbHost);
         dbPort     .push_back(to_string(wi.dbPort));
         dbUser     .push_back(wi.dbUser);
-        dbPassword .push_back(_dumpDbShowPassword ? wi.dbPassword : "******");
         dataDir    .push_back(wi.dataDir);
     }
 
@@ -581,7 +574,6 @@ void ConfigApp::_dumpWorkersAsTable(string const& indent) const {
     table.addColumn("Database server",    dbHost,      util::ColumnTablePrinter::Alignment::LEFT);
     table.addColumn(":port",              dbPort);
     table.addColumn(":user",              dbUser,      util::ColumnTablePrinter::Alignment::LEFT);
-    table.addColumn(":password",          dbPassword,  util::ColumnTablePrinter::Alignment::LEFT);
     table.addColumn("Data directory",     dataDir,     util::ColumnTablePrinter::Alignment::LEFT);
 
     table.print(cout, false, false);
@@ -779,12 +771,6 @@ int ConfigApp::_updateWorker() const {
 
             _config->setWorkerDbUser(_workerInfo.name,
                                      _workerInfo.dbUser);
-        }
-        if (not _workerInfo.dbPassword.empty()
-            and _workerInfo.dbPassword != info.dbPassword) {
-
-            _config->setWorkerDbPassword(_workerInfo.name,
-                                         _workerInfo.dbPassword);
         }
         if (_workerEnable and not info.isEnabled) {
             _config->disableWorker(_workerInfo.name, false);

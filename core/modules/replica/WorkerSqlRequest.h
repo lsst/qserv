@@ -47,7 +47,11 @@ namespace replica {
  * and return results sets (if any) back to a caller.
  *
  * @note
- *   queries passed into this operation must be well formed.
+ *   queries passed into this operation are supposed to be well formed.
+ *   If a MySQL error would occur during an attempt to execute an incorrectly
+ *   formed query then the corresponding MySQL error will be recorded
+ *   and report to a caller in the reponse structure which is set
+ *   by method WorkerSqlRequest::setInfo().
  */
 class WorkerSqlRequest : public WorkerRequest {
 
@@ -82,7 +86,7 @@ public:
      *   the name of a database account for connecting to the database service
      *
      * @param password
-     *   a database for connecting to the database service
+     *   a password for connecting to the database service
      *
      * @param maxRows
      *   (optional) limit for the maximum number of rows to be returned with the request.

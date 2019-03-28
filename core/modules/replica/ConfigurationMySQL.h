@@ -249,10 +249,6 @@ public:
     WorkerInfo setWorkerDbUser(std::string const& name,
                                std::string const& user) final;
 
-    /// @see Configuration::setWorkerDbPassword()
-    WorkerInfo setWorkerDbPassword(std::string const& name,
-                                   std::string const& password) final;
-
     /// @see Configuration::setWorkerTechnology()
     void setWorkerTechnology(std::string const& val) final {
         _set(_workerTechnology,

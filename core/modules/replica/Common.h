@@ -108,9 +108,9 @@ private:
  */
 struct ReplicationRequestParams {
 
-    int          priority;
+    int          priority = 0;
     std::string  database;
-    unsigned int chunk;
+    unsigned int chunk = 0;
     std::string  sourceWorker;
 
     ReplicationRequestParams() = default;
@@ -124,9 +124,9 @@ struct ReplicationRequestParams {
  */
 struct DeleteRequestParams {
 
-    int          priority;
+    int          priority = 0;
     std::string  database;
-    unsigned int chunk;
+    unsigned int chunk = 0;
     std::string  sourceWorker;
 
     DeleteRequestParams() = default;
@@ -140,9 +140,9 @@ struct DeleteRequestParams {
  */
 struct FindRequestParams {
 
-    int          priority;
+    int          priority = 0;
     std::string  database;
-    unsigned int chunk;
+    unsigned int chunk = 0;
 
     FindRequestParams() = default;
 
@@ -156,7 +156,7 @@ struct FindRequestParams {
  */
 struct FindAllRequestParams {
 
-    int          priority;
+    int          priority = 0;
     std::string  database;
 
     FindAllRequestParams() = default;
@@ -169,9 +169,9 @@ struct FindAllRequestParams {
  */
 struct EchoRequestParams {
 
-    int          priority;
+    int          priority = 0;
     std::string  data;
-    uint64_t     delay;
+    uint64_t     delay = 0;
 
     EchoRequestParams() = default;
 
@@ -183,11 +183,11 @@ struct EchoRequestParams {
  */
 struct SqlRequestParams {
 
-    int          priority;
+    int          priority = 0;
     std::string  query;
     std::string  user;
     std::string  password;
-    uint64_t     maxRows;
+    uint64_t     maxRows = 0;
 
     SqlRequestParams() = default;
 

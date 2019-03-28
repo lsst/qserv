@@ -3,10 +3,10 @@ FROM centos/devtoolset-6-toolchain-centos7
 
 USER 0
 
-RUN mkdir -p /qserv/bin
-RUN mkdir -p /qserv/lib
-RUN mkdir -p /qserv/work
-RUN chown -R 1001:1001 /qserv
+RUN mkdir -p /qserv/bin && \
+    mkdir -p /qserv/lib && \
+    mkdir -p /qserv/work && \
+    chown -R 1001:1001 /qserv
 
 USER 1001
 

@@ -54,7 +54,6 @@ CREATE TABLE IF NOT EXISTS `config_worker` (
   `db_host`      VARCHAR(255)       NOT NULL ,      -- the host name on which the worker database server runs
   `db_port`      SMALLINT UNSIGNED  DEFAULT NULL ,  -- override for the global default
   `db_user`      VARCHAR(255)       DEFAULT NULL ,  -- override for the global default
-  `db_password`  VARCHAR(255)       DEFAULT NULL ,  -- override for the global default
 
   PRIMARY KEY (`name`) ,
 

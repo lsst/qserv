@@ -83,7 +83,6 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         {"worker.data_dir",                   "/tmp/{worker}"},
         {"worker.db_port",                    "3306"},
         {"worker.db_user",                    "root"},
-        {"worker.db_password",                ""},
 
         {"worker:worker-A.is_enabled",   "1"},
         {"worker:worker-A.is_read_only", "0"},
@@ -95,7 +94,6 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         {"worker:worker-A.db_host",      "host-A"},
         {"worker:worker-A.db_port",      "53306"},
         {"worker:worker-A.db_user",      "qsmaster"},
-        {"worker:worker-A.db_password",  "CHANGEME"},
 
         {"worker:worker-B.is_enabled",   "1"},
         {"worker:worker-B.is_read_only", "1"},
@@ -107,7 +105,6 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         {"worker:worker-B.db_host",      "host-B"},
      // {"worker:worker-B.db_port",      "3306"},       // assuming default
      // {"worker:worker-B.db_user",      "root"},       // assuming default
-     // {"worker:worker-B.db_password",  ""},           // assuming default
 
         {"worker:worker-C.is_enabled",   "0"},
         {"worker:worker-C.is_read_only", "0"},
@@ -119,7 +116,6 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         {"worker:worker-C.db_host",      "host-C"},
      // {"worker:worker-C.db_port",      "3306"},       // assuming default
      // {"worker:worker-C.db_user",      "root"},       // assuming default
-     // {"worker:worker-C.db_password",  ""},           // assuming default
 
         {"database_family:production.min_replication_level", "10"},
         {"database_family:production.num_stripes",           "11"},
@@ -427,7 +423,6 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         BOOST_CHECK(workerA.dbHost  == "host-A");
         BOOST_CHECK(workerA.dbPort  == 53306);
         BOOST_CHECK(workerA.dbUser  == "qsmaster");
-        BOOST_CHECK(workerA.dbPassword == "CHANGEME");
 
         WorkerInfo const workerB = config->workerInfo("worker-B");
         BOOST_CHECK(workerB.name =="worker-B");
@@ -441,7 +436,6 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         BOOST_CHECK(workerB.dbHost  == "host-B");
         BOOST_CHECK(workerB.dbPort  == 3306);
         BOOST_CHECK(workerB.dbUser  == "root");
-        BOOST_CHECK(workerB.dbPassword.empty());
 
         WorkerInfo const workerC = config->workerInfo("worker-C");
         BOOST_CHECK(workerC.name =="worker-C");
@@ -454,7 +448,6 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         BOOST_CHECK(workerC.dbHost  == "host-C");
         BOOST_CHECK(workerC.dbPort  == 3306);
         BOOST_CHECK(workerC.dbUser  == "root");
-        BOOST_CHECK(workerC.dbPassword.empty());
 
         // Adding a new worker with well formed and unique parameters
 
@@ -470,7 +463,6 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         workerD.dbHost     = "host-D";
         workerD.dbPort     = 13306;
         workerD.dbUser     = "default";
-        workerD.dbPassword = "changeme";
 
         config->addWorker(workerD);
         BOOST_CHECK_THROW(config->addWorker(workerD), invalid_argument);
@@ -487,7 +479,6 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         BOOST_CHECK(workerD.dbHost  == "host-D");
         BOOST_CHECK(workerD.dbPort  == 13306);
         BOOST_CHECK(workerD.dbUser  == "default");
-        BOOST_CHECK(workerD.dbPassword == "changeme");
 
         // Adding a new worker with parameters conflicting with the ones of
         // some existing worker

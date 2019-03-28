@@ -42,33 +42,49 @@
 #include "util/BlockPost.h"
 
 using namespace std;
+using namespace lsst::qserv::replica;
 
 namespace {
-
-using namespace lsst::qserv::replica;
 
 string const description =
     "This application allows launching Controller requests, and it's meant"
     " for both testing all known types of requests and for various manual fix up"
     " operations in a replication setup.";
 
+template <class T>
+void printRequest(typename T::Ptr const& request) {
+    cout << request->context() << "\n"
+         << "responseData: " << request->responseData() << "\n"
+         << "performance:  " << request->performance() << endl;
+}
 
-void printAsTable(SqlResultSet const& result,
+
+template <>
+void printRequest<ServiceManagementRequestBase>(ServiceManagementRequestBase::Ptr const& request) {
+    cout << request->context() << "\n"
+         << "serviceState: " << request->getServiceState() << "\n"
+         << "performance: " << request->performance() << endl;
+}
+
+
+void printRequest(Request::Ptr const& request,
+                  SqlResultSet const& resultSet,
+                  Performance const& performance,
                   size_t const pageSize) {
-
-    cout << "\n"
-         << "error:     " << result.error << "\n"
-         << "hasResult: " << (result.hasResult ? "yes" : "no") << "\n"
-         << "fields:    " << to_string(result.fields.size()) << "\n"
-         << "rows:      " << to_string(result.rows.size()) << "\n"
+    cout << request->context() << "\n"
+         << "performance: " << performance << "\n"
+         << "error:     " << resultSet.error << "\n"
+         << "hasResult: " << (resultSet.hasResult ? "yes" : "no") << "\n"
+         << "fields:    " << resultSet.fields.size() << "\n"
+         << "rows:      " << resultSet.rows.size() << "\n"
          << "\n";
 
-    if (result.hasResult) {
+    if (resultSet.hasResult) {
 
         string const caption = "RESULT SET";
         string const indent  = "";
 
-        auto table = result.toColumnTable(caption, indent);
+        auto table = resultSet.toColumnTable(caption, indent);
 
         bool const topSeparator    = false;
         bool const bottomSeparator = false;
@@ -81,48 +97,8 @@ void printAsTable(SqlResultSet const& result,
 
 
 template <class T>
-void printRequest(typename T::Ptr const& request) {
-    cout << request->context() << "\n"
-         << "  responseData: " << request->responseData() << "\n"
-         << "  performance:  " << request->performance() << endl;
-}
-
-
-template <>
-void printRequest<ServiceManagementRequestBase>(ServiceManagementRequestBase::Ptr const& request) {
-    cout << request->context() << "\n"
-         << "  servicState: " << request->getServiceState() << "\n"
-         << "  performance: " << request->performance() << endl;
-}
-
-
-void printRequest(SqlRequest::Ptr const& request, size_t const pageSize) {
-    cout << request->context() << "\n"
-         << "  performance: " << request->performance() << endl;
-    printAsTable(request->responseData(),
-                 pageSize);
-}
-
-
-void printRequest(StatusSqlRequest::Ptr const& request, size_t const pageSize) {
-    cout << request->context() << "\n"
-         << "  performance: " << request->performance() << endl;
-    printAsTable(request->responseData(),
-                 pageSize);
-}
-
-
-void printRequest(StopSqlRequest::Ptr const& request, size_t const pageSize) {
-    cout << request->context() << "\n"
-         << "  performance: " << request->performance() << endl;
-    printAsTable(request->responseData(),
-                 pageSize);
-}
-
-
-template <class T>
 void printRequestExtra(typename T::Ptr const& request) {
-    cout << "  targetPerformance: " << request->targetPerformance() << endl;
+    cout << "targetPerformance: " << request->targetPerformance() << endl;
 }
 
 } /// namespace
@@ -306,7 +282,7 @@ ControllerApp::ControllerApp(int argc, char* argv[])
 
     auto& sqlCmd = parser().command("SQL");
 
-    echoCmd.description(
+    sqlCmd.description(
         "Ask a worker service to execute a query against its database, get a result"
         " set (if any) back and print it as a table");
 
@@ -483,7 +459,10 @@ int ControllerApp::runImpl() {
             _sqlPassword,
             _sqlMaxRows,
             [&] (SqlRequest::Ptr const& request) {
-                ::printRequest(request, _sqlPageSize);
+                ::printRequest(request,
+                               request->responseData(),
+                               request->performance(),
+                               _sqlPageSize);
                 finished = true;
             },
             _priority,
@@ -551,7 +530,10 @@ int ControllerApp::runImpl() {
                 _workerName,
                 _affectedRequestId,
                 [&] (StatusSqlRequest::Ptr const& request) {
-                    ::printRequest(request, _sqlPageSize);
+                    ::printRequest(request,
+                                   request->responseData(),
+                                   request->performance(),
+                                   _sqlPageSize);
                     ::printRequestExtra<StatusSqlRequest>(request);
                     finished = true;
                 },
@@ -626,7 +608,10 @@ int ControllerApp::runImpl() {
                 _workerName,
                 _affectedRequestId,
                 [&] (StopSqlRequest::Ptr const& request) {
-                    ::printRequest(request, _sqlPageSize);
+                    ::printRequest(request,
+                                   request->responseData(),
+                                   request->performance(),
+                                   _sqlPageSize);
                     ::printRequestExtra<StopSqlRequest>(request);
                     finished = true;
                 },
@@ -703,7 +688,7 @@ int ControllerApp::runImpl() {
     while (not finished) {
         currentIvalMs += blockPost.wait();
         if (currentIvalMs >= printIvalMs) {
-            if (_enableHeartbeat) {
+            if (_enableHeartbeat and not finished) {
                 cout << "HEARTBEAT: " << currentIvalMs << " ms" << endl;
             }
             currentIvalMs = 0;

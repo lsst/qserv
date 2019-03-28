@@ -3,10 +3,10 @@ FROM centos/devtoolset-6-toolchain-centos7
 
 USER 0
 
-RUN useradd qserv -u 1000 -U -d /qserv -c "Qserv Account"
-RUN mkdir -p /qserv/bin
-RUN mkdir -p /qserv/lib
-RUN chown -R 1000:1000 /qserv
+RUN useradd qserv -u 1000 -U -d /qserv -c "Qserv Account" && \
+    mkdir -p /qserv/bin && \
+    mkdir -p /qserv/lib && \
+    chown -R 1000:1000 /qserv
 
 USER 1000
 

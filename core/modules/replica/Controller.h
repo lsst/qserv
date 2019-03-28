@@ -393,7 +393,7 @@ public:
      *   the name of a database account for connecting to the database service
      *
      * @param password
-     *   a database for connecting to the database service
+     *   a password for connecting to the database service
      *
      * @param maxRows
      *   (optional) limit for the maximum number of rows to be returned with the request.

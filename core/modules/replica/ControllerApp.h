@@ -111,7 +111,7 @@ private:
     /// A database password for establishing a connection with the worker's database
     std::string _sqlPassword;
 
-    /// The optional limit for the total number f rows to be pulled from a result
+    /// The optional limit for the total number of rows to be pulled from a result
     /// set when executing queries against the worker's database. The default value
     /// of 0 won't enforce any such limit.
     uint64_t _sqlMaxRows;

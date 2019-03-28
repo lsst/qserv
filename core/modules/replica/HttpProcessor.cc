@@ -319,7 +319,9 @@ bool saveConfigParameter(T& struct_,
  * 
  *   Content-Type: application/json
  * 
- * Exceptions are thrown 
+ * Exceptions may be thrown by the constructor of the class if
+ * the request has an unexpected content type, or if its payload
+ * is not a proper JSON object.
  */
 class HttpRequestBody {
 
@@ -335,13 +337,13 @@ public:
      * and populate the 'kv' dictionary. Exceptions may be thrown in
      * the following scenarios:
      *
-     * - the required HTTP header is not found i nthe request
+     * - the required HTTP header is not found in the request
      * - the body doesn't have a valid JSON string (unless the body is empty)
      * 
      * @param req
      *   the request to be parsed
      */
-    explicit HttpRequestBody(qhttp::Request::Ptr req) {
+    explicit HttpRequestBody(qhttp::Request::Ptr const& req) {
 
         string const contentType = req->header["Content-Type"];
         string const requiredContentType = "application/json";
@@ -436,32 +438,26 @@ void HttpProcessor::_initialize() {
 
     controller()->serviceProvider()->httpServer()->addHandlers({
 
-        {"GET",    "/replication/v1/level",          bind(&HttpProcessor::_getReplicationLevel, self, _1, _2)},
-
-        {"GET",    "/replication/v1/worker",         bind(&HttpProcessor::_listWorkerStatuses,  self, _1, _2)},
-        {"GET",    "/replication/v1/worker/:name",   bind(&HttpProcessor::_getWorkerStatus,     self, _1, _2)},
-
-        {"GET",    "/replication/v1/controller",     bind(&HttpProcessor::_listControllers,     self, _1, _2)},
-        {"GET",    "/replication/v1/controller/:id", bind(&HttpProcessor::_getControllerInfo,   self, _1, _2)},
-
-        {"GET",    "/replication/v1/request",        bind(&HttpProcessor::_listRequests,        self, _1, _2)},
-        {"GET",    "/replication/v1/request/:id",    bind(&HttpProcessor::_getRequestInfo,      self, _1, _2)},
-
-        {"GET",    "/replication/v1/job",            bind(&HttpProcessor::_listJobs,            self, _1, _2)},
-        {"GET",    "/replication/v1/job/:id",        bind(&HttpProcessor::_getJobInfo,          self, _1, _2)},
-
-        {"GET",    "/replication/v1/config",                bind(&HttpProcessor::_getConfig,            self, _1, _2)},
-        {"PUT",    "/replication/v1/config/general",        bind(&HttpProcessor::_updateGeneralConfig,  self, _1, _2)},
-        {"PUT",    "/replication/v1/config/worker/:name",   bind(&HttpProcessor::_updateWorkerConfig,   self, _1, _2)},
-        {"DELETE", "/replication/v1/config/worker/:name",   bind(&HttpProcessor::_deleteWorkerConfig,   self, _1, _2)},
-        {"POST",   "/replication/v1/config/worker",         bind(&HttpProcessor::_addWorkerConfig,      self, _1, _2)},
-        {"DELETE", "/replication/v1/config/family/:name",   bind(&HttpProcessor::_deleteFamilyConfig,   self, _1, _2)},
-        {"POST",   "/replication/v1/config/family",         bind(&HttpProcessor::_addFamilyConfig,      self, _1, _2)},
+        {"GET",    "/replication/v1/level", bind(&HttpProcessor::_getReplicationLevel, self, _1, _2)},
+        {"GET",    "/replication/v1/worker", bind(&HttpProcessor::_listWorkerStatuses, self, _1, _2)},
+        {"GET",    "/replication/v1/worker/:name", bind(&HttpProcessor::_getWorkerStatus, self, _1, _2)},
+        {"GET",    "/replication/v1/controller", bind(&HttpProcessor::_listControllers, self, _1, _2)},
+        {"GET",    "/replication/v1/controller/:id", bind(&HttpProcessor::_getControllerInfo, self, _1, _2)},
+        {"GET",    "/replication/v1/request", bind(&HttpProcessor::_listRequests, self, _1, _2)},
+        {"GET",    "/replication/v1/request/:id", bind(&HttpProcessor::_getRequestInfo, self, _1, _2)},
+        {"GET",    "/replication/v1/job", bind(&HttpProcessor::_listJobs, self, _1, _2)},
+        {"GET",    "/replication/v1/job/:id", bind(&HttpProcessor::_getJobInfo, self, _1, _2)},
+        {"GET",    "/replication/v1/config", bind(&HttpProcessor::_getConfig, self, _1, _2)},
+        {"PUT",    "/replication/v1/config/general", bind(&HttpProcessor::_updateGeneralConfig, self, _1, _2)},
+        {"PUT",    "/replication/v1/config/worker/:name", bind(&HttpProcessor::_updateWorkerConfig, self, _1, _2)},
+        {"DELETE", "/replication/v1/config/worker/:name", bind(&HttpProcessor::_deleteWorkerConfig, self, _1, _2)},
+        {"POST",   "/replication/v1/config/worker", bind(&HttpProcessor::_addWorkerConfig, self, _1, _2)},
+        {"DELETE", "/replication/v1/config/family/:name", bind(&HttpProcessor::_deleteFamilyConfig,   self, _1, _2)},
+        {"POST",   "/replication/v1/config/family", bind(&HttpProcessor::_addFamilyConfig, self, _1, _2)},
         {"DELETE", "/replication/v1/config/database/:name", bind(&HttpProcessor::_deleteDatabaseConfig, self, _1, _2)},
-        {"POST",   "/replication/v1/config/database",       bind(&HttpProcessor::_addDatabaseConfig,    self, _1, _2)},
-        {"DELETE", "/replication/v1/config/table/:name",    bind(&HttpProcessor::_deleteTableConfig,    self, _1, _2)},
-        {"POST",   "/replication/v1/config/table",          bind(&HttpProcessor::_addTableConfig,       self, _1, _2)},
-
+        {"POST",   "/replication/v1/config/database", bind(&HttpProcessor::_addDatabaseConfig, self, _1, _2)},
+        {"DELETE", "/replication/v1/config/table/:name", bind(&HttpProcessor::_deleteTableConfig, self, _1, _2)},
+        {"POST",   "/replication/v1/config/table", bind(&HttpProcessor::_addTableConfig, self, _1, _2)},
         {"POST",   "/replication/v1/sql/query", bind(&HttpProcessor::_sqlQuery, self, _1, _2)}
     });
     controller()->serviceProvider()->httpServer()->start();
@@ -1286,8 +1282,8 @@ void HttpProcessor::_addTableConfig(qhttp::Request::Ptr req,
         auto const database      = ::getRequiredQueryParamStr( req->query, "database");
         auto const isPartitioned = ::getRequiredQueryParamBool(req->query, "is_partitioned");
 
-        _debug(string(__func__) + " name="           +           table);
-        _debug(string(__func__) + " database="       +           database);
+        _debug(string(__func__) + " name="           + table);
+        _debug(string(__func__) + " database="       + database);
         _debug(string(__func__) + " is_partitioned=" + to_string(isPartitioned ? 1 : 0));
 
         controller()->serviceProvider()->config()->addTable(database, table, isPartitioned);
@@ -1313,19 +1309,18 @@ void HttpProcessor::_sqlQuery(qhttp::Request::Ptr req,
 
         ::HttpRequestBody body(req);
 
-        auto const worker   =        body.required("worker");
-        auto const query    =        body.required("query");
-        auto const user     =        body.required("user");
-        auto const password =        body.required("password");
+        auto const worker   = body.required("worker");
+        auto const query    = body.required("query");
+        auto const user     = body.required("user");
+        auto const password = body.required("password");
         auto const maxRows  = stoull(body.optional("max_rows", "0"));
 
-        _debug(string(__func__) + " worker="   +           worker);
-        _debug(string(__func__) + " query="    +           query);
-        _debug(string(__func__) + " user="     +           user);
-        _debug(string(__func__) + " password=" +           password);
+        _debug(string(__func__) + " worker="   + worker);
+        _debug(string(__func__) + " query="    + query);
+        _debug(string(__func__) + " user="     + user);
         _debug(string(__func__) + " maxRows="  + to_string(maxRows));
 
-        atomic<bool> finished{false};
+        atomic<bool> finished(false);
         auto const request = controller()->sql(
             worker,
             query,
@@ -1342,8 +1337,7 @@ void HttpProcessor::_sqlQuery(qhttp::Request::Ptr req,
         }
 
         json result;
-        result["status"] = request->state2string();
-        result["extended_server_status"] = replica::status2string(request->extendedServerStatus());
+        result["success"]    = request->extendedState() == Request::SUCCESS ? 1 : 0;
         result["result_set"] = request->responseData().toJson();
 
         resp->send(result.dump(), "application/json");

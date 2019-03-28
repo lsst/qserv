@@ -521,40 +521,8 @@ message ProtocolResponseSqlField {
     required uint32 max_length =  9;    // unsigned int           The maximum length of the column value
     required uint32 flags      = 10;    // unsigned int           Flags
     required uint32 decimals   = 11;    // unsigned int           Number of decimals
-    required int32  type       = 12;    // enum enum_field_types  Field type. These are known variants
-                                        //                        of the type:
-                                        //
-                                        //   MYSQL_TYPE_DECIMAL
-                                        //   MYSQL_TYPE_TINY
-                                        //   MYSQL_TYPE_SHORT
-                                        //   MYSQL_TYPE_LONG
-                                        //   MYSQL_TYPE_FLOAT
-                                        //   MYSQL_TYPE_DOUBLE
-                                        //   MYSQL_TYPE_NULL
-                                        //   MYSQL_TYPE_TIMESTAMP
-                                        //   MYSQL_TYPE_LONGLONG
-                                        //   MYSQL_TYPE_INT24
-                                        //   MYSQL_TYPE_DATE
-                                        //   MYSQL_TYPE_TIME
-                                        //   MYSQL_TYPE_DATETIME
-                                        //   MYSQL_TYPE_YEAR
-                                        //   MYSQL_TYPE_NEWDATE
-                                        //   MYSQL_TYPE_VARCHAR
-                                        //   MYSQL_TYPE_BIT
-                                        //   MYSQL_TYPE_TIMESTAMP2
-                                        //   MYSQL_TYPE_DATETIME2
-                                        //   MYSQL_TYPE_TIME2
-                                        //   MYSQL_TYPE_JSON
-                                        //   MYSQL_TYPE_NEWDECIMAL
-                                        //   MYSQL_TYPE_ENUM
-                                        //   MYSQL_TYPE_SET
-                                        //   MYSQL_TYPE_TINY_BLOB
-                                        //   MYSQL_TYPE_MEDIUM_BLOB
-                                        //   MYSQL_TYPE_LONG_BLOB
-                                        //   MYSQL_TYPE_BLOB
-                                        //   MYSQL_TYPE_VAR_STRING
-                                        //   MYSQL_TYPE_STRING
-                                        //   MYSQL_TYPE_GEOMETRY
+    required int32  type       = 12;    // enum enum_field_types  Field type. See all known types at:
+                                        //                        https://dev.mysql.com/doc/refman/8.0/en/c-api-data-structures.html
 }
 
 /// The message representing data of a row from a result set
