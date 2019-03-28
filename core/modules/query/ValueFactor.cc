@@ -175,7 +175,6 @@ std::ostream& operator<<(std::ostream& os, ValueFactor const& ve) {
     } else {
         os << "\"" << ve._constVal << "\"";
     }
-    if (not ve._alias.empty()) os << "\"" << ve._alias << "\"";
     os << ")";
     return os;
 }
@@ -207,7 +206,6 @@ void ValueFactor::render::applyToQT(ValueFactor const& ve) {
         break;
     default: break;
     }
-    if (!ve._alias.empty()) { _qt.append("AS"); _qt.append(ve._alias); }
 }
 
 
@@ -216,7 +214,6 @@ bool ValueFactor::operator==(const ValueFactor& rhs) const {
             util::ptrCompare<ColumnRef>(_columnRef, rhs._columnRef) &&
             util::ptrCompare<FuncExpr>(_funcExpr, rhs._funcExpr) &&
             util::ptrCompare<ValueExpr>(_valueExpr, rhs._valueExpr) &&
-            _alias == rhs._alias &&
             _constVal == rhs._constVal);
 }
 
