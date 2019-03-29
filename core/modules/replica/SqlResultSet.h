@@ -49,6 +49,9 @@ struct SqlResultSet {
     /// Optional error code received from a server
     std::string error;
 
+    /// Of the connection
+    std::string charSetName;
+
     /// The request produced a result set
     bool hasResult;
 

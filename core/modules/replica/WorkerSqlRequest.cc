@@ -92,8 +92,7 @@ void WorkerSqlRequest::setInfo(ProtocolResponseSql& response) const {
 
     util::Lock lock(_mtx, context(__func__));
 
-    // Update the performance of the target request before returning it
-    response.set_allocated_target_performance(performance().info());
+    response.set_allocated_target_performance(performance().info().release());
 
     // Carry over the result of the query only after the request
     // has finished (or failed).
@@ -101,6 +100,7 @@ void WorkerSqlRequest::setInfo(ProtocolResponseSql& response) const {
         case STATUS_SUCCEEDED:
         case STATUS_FAILED:
             response.set_error(            _response.error());
+            response.set_char_set_name(    _response.char_set_name());
             response.set_has_result(       _response.has_result());
             *(response.mutable_fields()) = _response.fields();
             *(response.mutable_rows())   = _response.rows();
@@ -189,7 +189,9 @@ void WorkerSqlRequest::_setResponse(database::mysql::Connection::Ptr const& conn
 
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));
 
+    _response.set_char_set_name(conn->charSetName());
     _response.set_has_result(conn->hasResult());
+
     if (conn->hasResult()) {
         for (size_t i=0; i < conn->numFields(); ++i) {
             conn->exportField(_response.add_fields(), i);
@@ -209,6 +211,7 @@ void WorkerSqlRequest::_setResponse(database::mysql::Connection::Ptr const& conn
         }
     }
     LOGS(_log, LOG_LVL_DEBUG, context(__func__)
+         << " char_set_name: " << _response.char_set_name()
          << " has_result: " << (_response.has_result() ? 1 : 0)
          << " #fields: " << _response.fields_size()
          << " #rows: " << _response.rows_size());

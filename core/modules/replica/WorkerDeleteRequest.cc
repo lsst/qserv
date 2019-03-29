@@ -97,25 +97,14 @@ void WorkerDeleteRequest::setInfo(ProtocolResponseDelete& response) const {
 
     util::Lock lock(_mtx, context(__func__));
 
-    // Return the performance of the target request
+    response.set_allocated_target_performance(performance().info().release());
+    response.set_allocated_replica_info(_replicaInfo.info().release());
 
-    response.set_allocated_target_performance(performance().info());
-
-    // Note the ownership transfer of an intermediate Protobuf object obtained
-    // from ReplicaInfo object in the call below. The Protobuf run-time will take
-    // care of deleting the intermediate object.
-
-    response.set_allocated_replica_info(_replicaInfo.info());
-
-    // Same comment on the ownership transfer applies here
-
-    auto protoRequestPtr = new ProtocolRequestDelete();
-
-    protoRequestPtr->set_priority(priority());
-    protoRequestPtr->set_database(database());
-    protoRequestPtr->set_chunk(   chunk());
-
-    response.set_allocated_request(protoRequestPtr);
+    auto ptr = make_unique<ProtocolRequestDelete>();
+    ptr->set_priority(priority());
+    ptr->set_database(database());
+    ptr->set_chunk(   chunk());
+    response.set_allocated_request(ptr.release());
 }
 
 

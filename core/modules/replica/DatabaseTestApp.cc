@@ -38,6 +38,7 @@
 #include "replica/ReplicaInfo.h"
 
 using namespace std;
+using namespace lsst::qserv::replica;
 
 namespace {
 
@@ -66,9 +67,6 @@ string asString(uint64_t ms) {
 
 
 string asStringIf(uint64_t ms) { return 0 == ms ? "" : asString(ms); }
-
-
-using namespace lsst::qserv::replica;
 
 
 void dump(vector<ReplicaInfo> const& replicas) {

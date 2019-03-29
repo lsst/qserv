@@ -291,7 +291,7 @@ public:
         WorkerPerformance performance;
         performance.setUpdateStart();
         performance.setUpdateFinish();
-        response.set_allocated_performance(performance.info());
+        response.set_allocated_performance(performance.info().release());
 
         response.set_status(status);
         response.set_status_ext(extendedStatus);
@@ -304,32 +304,18 @@ public:
      * from the ready-to-be-processed queue. If it's being processed an attempt
      * to cancel processing will be made. If it has already processed this will
      * be reported.
-     *
-     * @param id
-     *   an identifier of a request
-     *
-     * @param request
-     *   the Protobuf object representing the request
-     *
-     * @param response
-     *   the Protobuf object to be initialized and ready to be sent back
-     *   to the client
      */
     template <typename RESPONSE_MSG_TYPE>
-    void dequeueOrCancel(std::string const& id,
-                         ProtocolRequestStop const& request,
+    void dequeueOrCancel(ProtocolRequestStop const& request,
                          RESPONSE_MSG_TYPE& response) {
 
-        util::Lock lock(_mtx, _context() + __func__);
+        util::Lock lock(_mtx, _context(__func__));
 
         // Set this response unless an exact request (same type and identifier)
         // will be found.
         setDefaultResponse(response,
                            ProtocolStatus::BAD,
                            ProtocolStatusExt::INVALID_ID);
-
-        // Try to locate a request with specified identifier and make sure
-        // its actual type matches expectations.
 
         if (WorkerRequest::Ptr const ptr = _dequeueOrCancelImpl(lock, request.id())) {
             try {
@@ -350,31 +336,18 @@ public:
 
     /**
      * Return the status of an on-going replication request
-     *
-     * @param id
-     *   an identifier of a request
-     *
-     * @param request
-     *   the Protobuf object representing the request
-     *
-     * @param response
-     *   the Protobuf object to be initialized and ready to be sent back
-     *   to the client
      */
     template <typename RESPONSE_MSG_TYPE>
-    void checkStatus(std::string const& id,
-                     ProtocolRequestStatus const& request,
+    void checkStatus(ProtocolRequestStatus const& request,
                      RESPONSE_MSG_TYPE& response) {
 
-        util::Lock lock(_mtx, _context() + __func__);
+        util::Lock lock(_mtx, _context(__func__));
 
         // Set this response unless an exact request (same type and identifier)
         // will be found.
         setDefaultResponse(response,
                            ProtocolStatus::BAD,
                            ProtocolStatusExt::INVALID_ID);
-
-        // Try to locate a request with specified identifier
 
         if (WorkerRequest::Ptr const ptr = _checkStatusImpl(lock, request.id())) {
             try {
@@ -415,32 +388,19 @@ public:
                             ProtocolServiceResponse::Status status,
                             bool extendedReport=false);
 
-    ///@return total number of new unprocessed requests
     size_t numNewRequests() const;
-
-    /// @return total number of requests which are being processed
     size_t numInProgressRequests() const;
-
-    /// @return total number of completed (succeeded or otherwise) requests
     size_t numFinishedRequests() const;
 
 private:
 
-    /// @see WorkerProcessor::create
     WorkerProcessor(ServiceProvider::Ptr const& serviceProvider,
                     WorkerRequestFactory const& requestFactory,
                     std::string const& worker);
 
-    /**
-     * Translate the completion status for replication requests and return
-     * its Protobuf counterpart
-     *
-     * @param status
-     *   a completion status of a request processing object
-     *
-     * @return
-     *   the matching completion status as per a Protobuf definition
-     */
+
+    static std::string _classMethodContext(std::string const& func);
+
     static ProtocolStatus translate(WorkerRequest::CompletionStatus status);
 
     /**
@@ -654,35 +614,24 @@ private:
      */
     void _processorThreadStopped(WorkerProcessorThread::Ptr const& processorThread);
 
-    /// @return the context string
-    std::string _context() const { return "PROCESSOR  "; }
+    std::string _context(std::string const& func=std::string()) const { return "PROCESSOR  " + func; }
 
-
-    // Input parameters
 
     ServiceProvider::Ptr const  _serviceProvider;
     WorkerRequestFactory const& _requestFactory;
     std::string          const  _worker;
 
-    /// Current state of the processor
     State _state;
 
-    /// When the processor started (milliseconds since UNIX Epoch)
-    uint64_t _startTime;
+    uint64_t _startTime;    /// When the processor started (milliseconds since UNIX Epoch)
 
-    /// A pool of threads for processing requests
     std::vector<WorkerProcessorThread::Ptr> _threads;
 
-    /// Mutex guarding the queues
-    mutable util::Mutex _mtx;
+    mutable util::Mutex _mtx;   /// Mutex guarding the queues
 
-    /// New unprocessed requests
     PriorityQueueType _newRequests;
 
-    /// Requests which are being processed
     CollectionType _inProgressRequests;
-
-    /// Completed (succeeded or otherwise) requests
     CollectionType _finishedRequests;
 };
 

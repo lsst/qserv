@@ -41,16 +41,6 @@ public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<SqlApp> Ptr;
 
-    /**
-     * The factory method is the only way of creating objects of this class
-     * because of the very base class's inheritance from 'enable_shared_from_this'.
-     *
-     * @param argc
-     *   the number of command-line arguments
-     *
-     * @param argv
-     *   the vector of command-line arguments
-     */
     static Ptr create(int argc, char* argv[]);
 
     // Default construction and copy semantics are prohibited
@@ -63,40 +53,23 @@ public:
 
 protected:
 
-    /// @see Application::runImpl()
     int runImpl() final;
 
 private:
 
-    /// @see SqlApp::create()
     SqlApp(int argc, char* argv[]);
 
-    /// Worker-side MySQL user account for executing the query
-    std::string _user;
-
-    /// Password for the MySQL account
-    std::string _password;
-
-    /// The query to be executed
+    std::string _mysqlUser;
+    std::string _mysqlPassword;
     std::string _query;
 
-    /// The maximum number of rows to be pulled from result
-    /// sets at workers
-    /// @note
-    ///   This parameter nothing to do with the SQL's 'LIMIT <num-rows>'.
-    ///   It serves as an additional fail safe mechanism preventing
-    ///   protocol buffers from being overloaded by huge result sets
-    ///   which might be accidentally initiated by users.
-    uint64_t _maxRows = 10000;
+    uint64_t _maxRows = 10000;  /// the "hard" limit for the result set extractor.
+                                /// This is not the same as SQL's 'LIMIT <num-rows>'.
+    bool _allWorkers = false;   /// send the query to all workers regardless of their status
 
-    /// Permanently delete a worker from the Configuration
-    bool _allWorkers = false;
+    unsigned int _timeoutSec = 300; /// When waiting for the completion of the queries
 
-    /// The maximum timeout to wait for the completion of the queries
-    unsigned int _timeoutSec = 300;
-
-    /// The number of rows in the table of replicas (0 means no pages)
-    size_t _pageSize = 100;
+    size_t _pageSize = 100; /// Rows per page in the printout
 };
 
 }}} // namespace lsst::qserv::replica

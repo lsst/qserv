@@ -39,10 +39,9 @@
 
 using namespace std;
 namespace fs = boost::filesystem;
+using namespace lsst::qserv::replica;
 
 namespace {
-
-using namespace lsst::qserv::replica;
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.FileServerConnection");
 

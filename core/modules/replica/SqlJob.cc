@@ -139,10 +139,11 @@ list<pair<string,string>> SqlJob::persistentLogData() const {
         result.emplace_back(
             "worker-stats",
             "worker=" + worker +
-            " has_result=" + string(   resultSet.hasResult ? "1" : "0") +
-            " fields="     + to_string(resultSet.fields.size()) +
-            " rows="       + to_string(resultSet.rows.size()) +
-            " error="      +           resultSet.error
+            " char_set_name=" + resultSet.charSetName +
+            " has_result="    + string(   resultSet.hasResult ? "1" : "0") +
+            " fields="        + to_string(resultSet.fields.size()) +
+            " rows="          + to_string(resultSet.rows.size()) +
+            " error="         +           resultSet.error
         );
     }
     return result;

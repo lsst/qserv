@@ -29,6 +29,7 @@
 
 // System headers
 #include <iostream>
+#include <memory>
 
 // Forward declarations
 namespace lsst {
@@ -132,11 +133,6 @@ class WorkerPerformance {
 
 public:
 
-    /**
-     * The default constructor
-     *
-     * All (but the request 'receive' one) timestamps will be initialized with 0.
-     */
     WorkerPerformance();
     
     WorkerPerformance(WorkerPerformance const&) = default;
@@ -144,42 +140,16 @@ public:
 
     ~WorkerPerformance() = default;
 
-    /**
-     * Update the 'start' time
-     *
-     * @return
-     *   the previous state of the counter
-     */
     uint64_t setUpdateStart();
-
-    /**
-     * Update the 'finish' time
-     *
-     * @return
-     *   the previous state of the counter
-     */
     uint64_t setUpdateFinish();
 
-    /**
-     * @return
-     *   a Protobuf object
-     *
-     * OWNERSHIP TRANSFER NOTE: this method allocates a new object and
-     * returns a pointer along with its ownership.
-     */
-    ProtocolPerformance* info() const;
+    std::unique_ptr<ProtocolPerformance> info() const;
 
-    /// Received by a worker service
-    uint64_t receive_time;
-
-    /// Execution started by a worker service
-    uint64_t start_time;
-
-    /// Execution finished by a worker service
-    uint64_t finish_time;
+    uint64_t receive_time = 0;  /// Received by a worker service
+    uint64_t start_time   = 0;  /// Execution started by a worker service
+    uint64_t finish_time  = 0;  /// Execution finished by a worker service
 };
 
-/// Overloaded streaming operator for class WorkerPerformance
 std::ostream& operator<<(std::ostream& os, WorkerPerformance const&p);
 
 }}} // namespace lsst::qserv::replica

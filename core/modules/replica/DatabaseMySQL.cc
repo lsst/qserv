@@ -146,6 +146,18 @@ string Connection::escape(string const& inStr) const {
 }
 
 
+string Connection::charSetName() const {
+    if (nullptr == _mysql) {
+        throw Error(
+                "Connection[" + to_string(_id) + "]::" + string(__func__) +
+                "  not connected to the MySQL service"
+        );
+    }
+    return _charSetName;
+
+}
+
+
 string Connection::sqlValue(vector<string> const& coll) const {
     ostringstream values;
     for (auto&& val: coll) {
@@ -592,6 +604,10 @@ void Connection::_connectOnce() {
         string const query = "KILL " + to_string(id);
         mysql_query(_mysql, query.c_str());
     }
+
+    // Get the default character set name
+
+    _charSetName = mysql_character_set_name(_mysql);
 
     // Set session attributes
 

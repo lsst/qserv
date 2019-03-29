@@ -44,19 +44,11 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-////////////////////////////////////////////////////////////
-///////////////////// PerformanceUtils /////////////////////
-////////////////////////////////////////////////////////////
-
-uint64_t PerformanceUtils::now() {
+    uint64_t PerformanceUtils::now() {
     return chrono::duration_cast<chrono::milliseconds>(
                 chrono::system_clock::now().time_since_epoch()).count();
 }
 
-
-///////////////////////////////////////////////////////
-///////////////////// Performance /////////////////////
-///////////////////////////////////////////////////////
 
 Performance::Performance()
     :   c_create_time(PerformanceUtils::now()),
@@ -102,10 +94,6 @@ ostream& operator<<(ostream& os, Performance const& p) {
 }
 
 
-/////////////////////////////////////////////////////////////
-///////////////////// WorkerPerformance /////////////////////
-/////////////////////////////////////////////////////////////
-
 WorkerPerformance::WorkerPerformance()
     :   receive_time(PerformanceUtils::now()),
         start_time(0),
@@ -127,8 +115,8 @@ uint64_t WorkerPerformance::setUpdateFinish() {
 }
 
 
-ProtocolPerformance* WorkerPerformance::info() const {
-    auto ptr = new ProtocolPerformance();
+unique_ptr<ProtocolPerformance> WorkerPerformance::info() const {
+    auto ptr = make_unique<ProtocolPerformance>();
     ptr->set_receive_time(receive_time);
     ptr->set_start_time(start_time);
     ptr->set_finish_time(finish_time);

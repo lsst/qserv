@@ -37,32 +37,11 @@
 #include "util/BlockPost.h"
 
 using namespace std;
+using namespace lsst::qserv::replica;
 
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.DeleteReplicaJob");
-
-template <class COLLECTION>
-void countRequestStates(size_t& numLaunched,
-                        size_t& numFinished,
-                        size_t& numSuccess,
-                        COLLECTION const& collection) {
-
-    using namespace lsst::qserv::replica;
-
-    numLaunched = collection.size();
-    numFinished = 0;
-    numSuccess  = 0;
-
-    for (auto&& ptr: collection) {
-        if (ptr->state() == Request::State::FINISHED) {
-            numFinished++;
-            if (ptr->extendedState() == Request::ExtendedState::SUCCESS) {
-                numSuccess++;
-            }
-        }
-    }
-}
 
 } /// namespace
 
@@ -340,9 +319,7 @@ void DeleteReplicaJob::cancelImpl(util::Lock const& lock) {
 
 
 void DeleteReplicaJob::notify(util::Lock const& lock) {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-
     notifyDefaultImpl<DeleteReplicaJob>(lock, _onFinish);
 }
 
@@ -354,8 +331,8 @@ void DeleteReplicaJob::_beginDeleteReplica(util::Lock const& lock) {
     // VERY IMPORTANT: the requests are sent for participating databases
     // only because some catalogs may not have a full coverage
 
-    for (auto&& replica: _replicas) {
-        DeleteRequest::Ptr ptr =
+    for (auto&& replica : _replicas) {
+        _requests.push_back(
             controller()->deleteReplica(
                 worker(),
                 replica.database(),
@@ -367,8 +344,8 @@ void DeleteReplicaJob::_beginDeleteReplica(util::Lock const& lock) {
                 true,   /* keepTracking */
                 true,   /* allowDuplicate */
                 id()    /* jobId */
-            );
-        _requests.push_back(ptr);
+            )
+        );
     }
 }
 
@@ -393,8 +370,9 @@ void DeleteReplicaJob::_onRequestFinish(DeleteRequest::Ptr const& request) {
 
     if (state() == State::FINISHED) return;
 
-    // Update stats
+    ++_numRequestsFinished;
     if (request->extendedState() == Request::ExtendedState::SUCCESS) {
+        ++_numRequestsSuccess;
         _replicaData.replicas.push_back(request->responseData());
         _replicaData.chunks[chunk()][request->database()][worker()] = request->responseData();
     }
@@ -402,16 +380,9 @@ void DeleteReplicaJob::_onRequestFinish(DeleteRequest::Ptr const& request) {
     // Evaluate the status of on-going operations to see if the job
     // has finished.
 
-    size_t numLaunched;
-    size_t numFinished;
-    size_t numSuccess;
-
-    ::countRequestStates(numLaunched, numFinished, numSuccess,
-                         _requests);
-
-    if (numFinished == numLaunched) {
-        finish(lock, numSuccess == numLaunched ? ExtendedState::SUCCESS :
-                                                 ExtendedState::FAILED);
+    if (_numRequestsFinished == _requests.size()) {
+        finish(lock, _numRequestsSuccess == _requests.size() ? ExtendedState::SUCCESS :
+                                                               ExtendedState::FAILED);
     }
 }
 

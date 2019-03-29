@@ -38,10 +38,9 @@
 #include "util/TablePrinter.h"
 
 using namespace std;
+using namespace lsst::qserv::replica;
 
 namespace {
-
-using namespace lsst::qserv::replica;
 
 string const description =
     "This is a Controller application which launches a single job Controller in order"

@@ -46,11 +46,10 @@
 using namespace std;
 using namespace std::placeholders;
 using json = nlohmann::json;
-
-namespace {
-
 namespace qhttp = lsst::qserv::qhttp;
 using namespace lsst::qserv::replica;
+
+namespace {
 
 /**
  * Extract a value of an optional parameter of a query (string value)
@@ -484,8 +483,8 @@ void HttpProcessor::_error(string const& msg) {
 }
 
 
-void HttpProcessor::_getReplicationLevel(qhttp::Request::Ptr req,
-                                         qhttp::Response::Ptr resp) {
+void HttpProcessor::_getReplicationLevel(qhttp::Request::Ptr const& req,
+                                         qhttp::Response::Ptr const& resp) {
     _debug(__func__);
 
     util::Lock lock(_replicationLevelMtx, "HttpProcessor::" + string(__func__));
@@ -686,8 +685,8 @@ void HttpProcessor::_getReplicationLevel(qhttp::Request::Ptr req,
 }
 
 
-void HttpProcessor::_listWorkerStatuses(qhttp::Request::Ptr req,
-                                        qhttp::Response::Ptr resp) {
+void HttpProcessor::_listWorkerStatuses(qhttp::Request::Ptr const& req,
+                                        qhttp::Response::Ptr const& resp) {
     _debug(__func__);
 
     try {
@@ -730,15 +729,15 @@ void HttpProcessor::_listWorkerStatuses(qhttp::Request::Ptr req,
 }
 
 
-void HttpProcessor::_getWorkerStatus(qhttp::Request::Ptr req,
-                                     qhttp::Response::Ptr resp) {
+void HttpProcessor::_getWorkerStatus(qhttp::Request::Ptr const& req,
+                                     qhttp::Response::Ptr const& resp) {
     _debug(__func__);
     resp->sendStatus(404);
 }
 
 
-void HttpProcessor::_listControllers(qhttp::Request::Ptr req,
-                                     qhttp::Response::Ptr resp) {
+void HttpProcessor::_listControllers(qhttp::Request::Ptr const& req,
+                                     qhttp::Response::Ptr const& resp) {
     _debug(__func__);
     
     try {
@@ -779,8 +778,8 @@ void HttpProcessor::_listControllers(qhttp::Request::Ptr req,
 }
 
 
-void HttpProcessor::_getControllerInfo(qhttp::Request::Ptr req,
-                                       qhttp::Response::Ptr resp) {
+void HttpProcessor::_getControllerInfo(qhttp::Request::Ptr const& req,
+                                       qhttp::Response::Ptr const& resp) {
     _debug(__func__);
 
     try {
@@ -838,8 +837,8 @@ void HttpProcessor::_getControllerInfo(qhttp::Request::Ptr req,
 }
 
 
-void HttpProcessor::_listRequests(qhttp::Request::Ptr req,
-                                  qhttp::Response::Ptr resp) {
+void HttpProcessor::_listRequests(qhttp::Request::Ptr const& req,
+                                  qhttp::Response::Ptr const& resp) {
     _debug(__func__);
 
     try {
@@ -884,8 +883,8 @@ void HttpProcessor::_listRequests(qhttp::Request::Ptr req,
 }
 
 
-void HttpProcessor::_getRequestInfo(qhttp::Request::Ptr req,
-                                    qhttp::Response::Ptr resp) {
+void HttpProcessor::_getRequestInfo(qhttp::Request::Ptr const& req,
+                                    qhttp::Response::Ptr const& resp) {
     _debug(__func__);
 
     try {
@@ -910,8 +909,8 @@ void HttpProcessor::_getRequestInfo(qhttp::Request::Ptr req,
 }
 
 
-void HttpProcessor::_listJobs(qhttp::Request::Ptr req,
-                              qhttp::Response::Ptr resp) {
+void HttpProcessor::_listJobs(qhttp::Request::Ptr const& req,
+                              qhttp::Response::Ptr const& resp) {
     _debug(__func__);
 
     try {
@@ -959,8 +958,8 @@ void HttpProcessor::_listJobs(qhttp::Request::Ptr req,
 }
 
 
-void HttpProcessor::_getJobInfo(qhttp::Request::Ptr req,
-                                qhttp::Response::Ptr resp) {
+void HttpProcessor::_getJobInfo(qhttp::Request::Ptr const& req,
+                                qhttp::Response::Ptr const& resp) {
     _debug(__func__);
 
     try {
@@ -985,8 +984,8 @@ void HttpProcessor::_getJobInfo(qhttp::Request::Ptr req,
 }
 
 
-void HttpProcessor::_getConfig(qhttp::Request::Ptr req,
-                               qhttp::Response::Ptr resp) {
+void HttpProcessor::_getConfig(qhttp::Request::Ptr const& req,
+                               qhttp::Response::Ptr const& resp) {
     _debug(__func__);
 
     try {
@@ -998,8 +997,8 @@ void HttpProcessor::_getConfig(qhttp::Request::Ptr req,
 }
 
 
-void HttpProcessor::_updateGeneralConfig(qhttp::Request::Ptr req,
-                                         qhttp::Response::Ptr resp) {
+void HttpProcessor::_updateGeneralConfig(qhttp::Request::Ptr const& req,
+                                         qhttp::Response::Ptr const& resp) {
     _debug(__func__);
 
     try {
@@ -1041,8 +1040,8 @@ void HttpProcessor::_updateGeneralConfig(qhttp::Request::Ptr req,
 }
 
 
-void HttpProcessor::_updateWorkerConfig(qhttp::Request::Ptr req,
-                                        qhttp::Response::Ptr resp) {
+void HttpProcessor::_updateWorkerConfig(qhttp::Request::Ptr const& req,
+                                        qhttp::Response::Ptr const& resp) {
     _debug(__func__);
 
     try {
@@ -1096,8 +1095,8 @@ void HttpProcessor::_updateWorkerConfig(qhttp::Request::Ptr req,
 }
 
 
-void HttpProcessor::_deleteWorkerConfig(qhttp::Request::Ptr req,
-                                        qhttp::Response::Ptr resp) {
+void HttpProcessor::_deleteWorkerConfig(qhttp::Request::Ptr const& req,
+                                        qhttp::Response::Ptr const& resp) {
     _debug(__func__);
 
     try {
@@ -1114,8 +1113,8 @@ void HttpProcessor::_deleteWorkerConfig(qhttp::Request::Ptr req,
 }
 
 
-void HttpProcessor::_addWorkerConfig(qhttp::Request::Ptr req,
-                                     qhttp::Response::Ptr resp) {
+void HttpProcessor::_addWorkerConfig(qhttp::Request::Ptr const& req,
+                                     qhttp::Response::Ptr const& resp) {
     _debug(__func__);
 
     try {
@@ -1153,8 +1152,8 @@ void HttpProcessor::_addWorkerConfig(qhttp::Request::Ptr req,
 }
 
 
-void HttpProcessor::_deleteFamilyConfig(qhttp::Request::Ptr req,
-                                 qhttp::Response::Ptr resp) {
+void HttpProcessor::_deleteFamilyConfig(qhttp::Request::Ptr const& req,
+                                 qhttp::Response::Ptr const& resp) {
     _debug(__func__);
 
     try {
@@ -1171,8 +1170,8 @@ void HttpProcessor::_deleteFamilyConfig(qhttp::Request::Ptr req,
 }
 
 
-void HttpProcessor::_addFamilyConfig(qhttp::Request::Ptr req,
-                                     qhttp::Response::Ptr resp) {
+void HttpProcessor::_addFamilyConfig(qhttp::Request::Ptr const& req,
+                                     qhttp::Response::Ptr const& resp) {
     _debug(__func__);
 
     try {
@@ -1206,8 +1205,8 @@ void HttpProcessor::_addFamilyConfig(qhttp::Request::Ptr req,
 }
 
 
-void HttpProcessor::_deleteDatabaseConfig(qhttp::Request::Ptr req,
-                                          qhttp::Response::Ptr resp) {
+void HttpProcessor::_deleteDatabaseConfig(qhttp::Request::Ptr const& req,
+                                          qhttp::Response::Ptr const& resp) {
     _debug(__func__);
 
     try {
@@ -1224,8 +1223,8 @@ void HttpProcessor::_deleteDatabaseConfig(qhttp::Request::Ptr req,
 }
 
 
-void HttpProcessor::_addDatabaseConfig(qhttp::Request::Ptr req,
-                                       qhttp::Response::Ptr resp) {
+void HttpProcessor::_addDatabaseConfig(qhttp::Request::Ptr const& req,
+                                       qhttp::Response::Ptr const& resp) {
     _debug(__func__);
 
     try {
@@ -1252,8 +1251,8 @@ void HttpProcessor::_addDatabaseConfig(qhttp::Request::Ptr req,
 }
 
 
-void HttpProcessor::_deleteTableConfig(qhttp::Request::Ptr req,
-                                       qhttp::Response::Ptr resp) {
+void HttpProcessor::_deleteTableConfig(qhttp::Request::Ptr const& req,
+                                       qhttp::Response::Ptr const& resp) {
     _debug(__func__);
 
     try {
@@ -1271,8 +1270,8 @@ void HttpProcessor::_deleteTableConfig(qhttp::Request::Ptr req,
 }
 
 
-void HttpProcessor::_addTableConfig(qhttp::Request::Ptr req,
-                                    qhttp::Response::Ptr resp) {
+void HttpProcessor::_addTableConfig(qhttp::Request::Ptr const& req,
+                                    qhttp::Response::Ptr const& resp) {
     _debug(__func__);
 
     try {
@@ -1299,8 +1298,8 @@ void HttpProcessor::_addTableConfig(qhttp::Request::Ptr req,
 }
 
 
-void HttpProcessor::_sqlQuery(qhttp::Request::Ptr req,
-                              qhttp::Response::Ptr resp) {
+void HttpProcessor::_sqlQuery(qhttp::Request::Ptr const& req,
+                              qhttp::Response::Ptr const& resp) {
     _debug(__func__);
 
     try {

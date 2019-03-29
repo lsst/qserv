@@ -90,27 +90,15 @@ void WorkerFindAllRequest::setInfo(ProtocolResponseFindAll& response) const {
 
     util::Lock lock(_mtx, context(__func__));
 
-    // Return the performance of the target request
-
-    response.set_allocated_target_performance(performance().info());
-
-    // Note that a new Info object is allocated and appended to
-    // the 'replica_info_many' series at each step of the iteration below.
-    // The Protobuf run-time will take care of deleting those objects.
+    response.set_allocated_target_performance(performance().info().release());
 
     for (auto&& replicaInfo: _replicaInfoCollection) {
-        ProtocolReplicaInfo* info = response.add_replica_info_many();
-        replicaInfo.setInfo(info);
+        replicaInfo.setInfo(response.add_replica_info_many());
     }
-
-    // Same comment on the ownership transfer applies here
-
-    auto protoRequestPtr = new ProtocolRequestFindAll();
-
-    protoRequestPtr->set_priority(priority());
-    protoRequestPtr->set_database(database());
-
-    response.set_allocated_request(protoRequestPtr);
+    auto ptr = make_unique<ProtocolRequestFindAll>();
+    ptr->set_priority(priority());
+    ptr->set_database(database());
+    response.set_allocated_request(ptr.release());
 }
 
 

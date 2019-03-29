@@ -58,17 +58,9 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-//////////////////////////////////////////////////////////////////////////
-//////////////////////////  RequestWrapperImpl  //////////////////////////
-//////////////////////////////////////////////////////////////////////////
-
-/**
- * Request-type specific wrappers
- */
 template <class  T>
-struct RequestWrapperImpl : ControllerRequestWrapper {
+struct RequestWrapperImpl : Controller::RequestWrapper {
 
-    /// The implementation of the virtual method defined in the base class
     virtual void notify() {
 
         if (nullptr != _onFinish) {
@@ -88,15 +80,13 @@ struct RequestWrapperImpl : ControllerRequestWrapper {
 
     RequestWrapperImpl(typename T::Ptr const& request,
                        typename T::CallbackType const& onFinish)
-        :   ControllerRequestWrapper(),
+        :   Controller::RequestWrapper(),
             _request(request),
             _onFinish(onFinish) {
     }
 
-    /// Destructor
     ~RequestWrapperImpl() override = default;
 
-    /// @see ControllerRequestWrapper::request()
     shared_ptr<Request> request() const override {
         return _request;
     }
@@ -107,10 +97,6 @@ private:
     typename T::CallbackType _onFinish;
 };
 
-
-//////////////////////////////////////////////////////////////////////
-//////////////////////////  ControllerImpl  //////////////////////////
-//////////////////////////////////////////////////////////////////////
 
 /**
  * The utility class implementing operations on behalf of certain
@@ -123,24 +109,16 @@ class ControllerImpl {
 
 public:
 
-    /// Default constructor
     ControllerImpl() = default;
-
-    // Default copy semantics is prohibited
 
     ControllerImpl(ControllerImpl const&) = delete;
     ControllerImpl& operator=(ControllerImpl const&) = delete;
 
-    /// Destructor
     ~ControllerImpl() = default;
 
     /**
      * Generic method for managing requests such as stopping an outstanding
      * request or obtaining an updated status of a request.
-     *
-     * @param workerName      - the name of a worker node where the request was launched
-     * @param targetRequestId - an identifier of a request to be affected
-     * @param onFinish        - a callback function to be called upon completion of the operation
      */
     template <class REQUEST_TYPE>
     static typename REQUEST_TYPE::Ptr requestManagementOperation(
@@ -185,9 +163,6 @@ public:
    /**
      * Generic method for launching worker service management requests such as suspending,
      * resuming or inspecting a status of the worker-side replication service.
-     *
-     * @param workerName - the name of a worker node where the service is run
-     * @param onFinish   - a callback function to be called upon completion of the operation
      */
     template <class REQUEST_TYPE>
     static typename REQUEST_TYPE::Ptr serviceManagementOperation(
@@ -227,19 +202,11 @@ public:
 };
 
 
-//////////////////////////////////////////////////////////////////////////
-//////////////////////////  ControllerIdentity  //////////////////////////
-//////////////////////////////////////////////////////////////////////////
-
 ostream& operator <<(ostream& os, ControllerIdentity const& identity) {
     os  << "ControllerIdentity(id=" << identity.id << ",host=" << identity.host << ",pid=" << identity.pid << ")";
     return os;
 }
 
-
-//////////////////////////////////////////////////////////////////
-//////////////////////////  Controller  //////////////////////////
-//////////////////////////////////////////////////////////////////
 
 Controller::Ptr Controller::create(ServiceProvider::Ptr const& serviceProvider) {
     return Controller::Ptr(new Controller(serviceProvider));
@@ -963,7 +930,7 @@ void Controller::_finish(string const& id) {
     //   - to reduce the controller API dead-time due to a prolonged
     //     execution time of of the callback function.
 
-    ControllerRequestWrapper::Ptr request;
+    RequestWrapper::Ptr request;
     {
         util::Lock lock(_mtx, _context(__func__));
         request = _registry[id];

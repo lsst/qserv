@@ -208,6 +208,9 @@ private:
     /// A collection of the replication requests implementing the operation
     std::vector<ReplicationRequest::Ptr> _requests;
 
+    size_t _numRequestsFinished = 0;    // gets incremented for each completed request
+    size_t _numRequestsSuccess  = 0;    // gets incremented for each successfully completed request
+
     /// The result of the operation (gets updated as requests are finishing)
     CreateReplicaJobResult _replicaData;
 };

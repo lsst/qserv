@@ -41,12 +41,11 @@
 #include "lsst/log/Log.h"
 
 using namespace std;
+using namespace lsst::qserv::replica;
 
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.ServiceManagementRequest");
-
-using namespace lsst::qserv::replica;
 
 /// Dump a collection of request descriptions onto the output stream
 void dumpRequestInfo(ostream& os,

@@ -31,10 +31,9 @@
 #include "util/TablePrinter.h"
 
 using namespace std;
+using namespace lsst::qserv::replica;
 
 namespace {
-
-using namespace lsst::qserv::replica;
 
 /// State translation
 void setInfoImpl(ReplicaInfo const& ri,
@@ -185,9 +184,9 @@ uint64_t ReplicaInfo::endTransferTime() const {
 }
 
 
-ProtocolReplicaInfo* ReplicaInfo::info() const {
-    ProtocolReplicaInfo* ptr = new ProtocolReplicaInfo();
-    ::setInfoImpl(*this, ptr);
+unique_ptr<ProtocolReplicaInfo> ReplicaInfo::info() const {
+    auto ptr = make_unique<ProtocolReplicaInfo>();
+    ::setInfoImpl(*this, ptr.get());
     return ptr;
 }
 

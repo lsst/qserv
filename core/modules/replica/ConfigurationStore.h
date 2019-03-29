@@ -209,13 +209,6 @@ protected:
 
 private:
 
-    /**
-     * @param func
-     *   the name of a method/function requested the context string
-     *
-     * @return
-     *   the context string for debugging and diagnostic printouts
-     */
     static std::string _classMethodContext(std::string const& func);
 
     /**

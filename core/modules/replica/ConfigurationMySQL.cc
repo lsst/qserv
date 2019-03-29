@@ -33,10 +33,9 @@
 #include "replica/ChunkNumber.h"
 
 using namespace std;
+using namespace lsst::qserv::replica;
 
 namespace {
-
-using namespace lsst::qserv::replica;
 
 template <typename T>
 bool tryParameter(database::mysql::Row& row,

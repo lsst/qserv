@@ -198,16 +198,10 @@ public:
     /// @return maximum amount of time to wait while making reconnection attempts
     unsigned int connectTimeoutSec() const { return _connectTimeoutSec; }
 
-    /**
-     * A front-end to mysql_real_escape_string()
-     *
-     * @param str
-     *   a string to be processed
-     *
-     * @return
-     *   the processed string
-     */
+
     std::string escape(std::string const& str) const;
+
+    std::string charSetName() const;
 
     // -------------------------------------------------
     // Helper methods for simplifying query preparation
@@ -1085,6 +1079,8 @@ private:
     std::vector<std::string> _columnNames;
 
     std::map<std::string, size_t> _name2index;
+
+    std::string _charSetName;   // of the current connection
 
     // Get updated after fetching each row of the result set
 

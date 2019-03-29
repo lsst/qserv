@@ -44,7 +44,7 @@ string const description =
     " select workers. Result sets will be reported upon a completion of"
     " the application.";
 
-} /// namespace
+} // namespace
 
 namespace lsst {
 namespace qserv {
@@ -71,12 +71,12 @@ SqlApp::SqlApp(int argc, char* argv[])
     parser().required(
         "user",
         "Worker-side MySQL user account for executing the query.",
-        _user);
+        _mysqlUser);
 
     parser().required(
         "password",
         "Password for the MySQL account.",
-        _password);
+        _mysqlPassword);
 
     parser().required(
         "query",
@@ -91,7 +91,7 @@ SqlApp::SqlApp(int argc, char* argv[])
     parser().option(
         "max-rows",
         "The maximum number of rows to be pulled from result set at workers"
-        " when processing queries. NOTE: This parameter nothing to do with"
+        " when processing queries. NOTE: This parameter has nothing to do with"
         " the SQL's 'LIMIT <num-rows>'. It serves as an additional fail safe"
         " mechanism preventing protocol buffers from being overloaded by huge"
         " result sets which might be accidentally initiated by users.",
@@ -123,8 +123,8 @@ int SqlApp::runImpl() {
     atomic<bool> finished{false};
     auto const job = SqlJob::create(
         _query,
-        _user,
-        _password,
+        _mysqlUser,
+        _mysqlPassword,
         _maxRows,
         _allWorkers,
         Controller::create(serviceProvider()),

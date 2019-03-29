@@ -30,6 +30,7 @@
 // System headers
 #include <ctime>
 #include <map>
+#include <memory>
 #include <ostream>
 #include <string>
 #include <vector>
@@ -59,37 +60,19 @@ class ReplicaInfo {
 
 public:
 
-    /// Structure FileInfo represents an information entry for a file
     struct FileInfo {
 
-        /// The short name of the file
-        std::string name;
+        std::string name;   /// The short name
+        uint64_t size;      /// The current (or final) size (bytes)
+        std::time_t mtime;  /// The (file content) modification timestamp in seconds (since the UNIX Epoch)
+        std::string cs;     /// The control/check sum of the file's content
 
-        /// The current (or final) size of the file in bytes
-        uint64_t size;
+        uint64_t beginTransferTime; /// The time in milliseconds when the file creation began (where applies)
+        uint64_t endTransferTime;   /// The time in milliseconds when the file creation finished
+                                    ///  or when the last recording to the file was made (where applies)
 
-        /// The (file content) modification timestamp in seconds (since the UNIX Epoch)
-        std::time_t mtime;
+        uint64_t inSize;    /// Of the input file
 
-        /// The control/check sum of the file's content
-        std::string cs;
-
-        /// The time in milliseconds when the file creation began (where applies)
-        uint64_t beginTransferTime;
-
-        /// The time in milliseconds when the file creation finished or when
-        /// the last recording to the file was made (where applies)
-        uint64_t endTransferTime;
-
-        /// The size of the input file
-        uint64_t inSize;
-
-        /**
-         * Comparison operator
-         *
-         * @param other - object to be compared with
-         * @return 'true' if the current object is semantically identical to the other one
-         */
         bool operator==(FileInfo const& other) const {
             return
                 name == other.name and
@@ -97,19 +80,12 @@ public:
                 cs   == other.cs;
         }
 
-        /**
-         * The complementary comparison operator
-         * 
-         * @param other - object to be compared with
-         * @return 'true' if the current object is semantically different from the other one
-         */
         bool operator!=(FileInfo const& other) const {
             return not operator==(other);
         }
     };
     typedef std::vector<FileInfo> FileInfoCollection;
 
-    /// Type Status defines possible states of a replica
     enum Status {
         NOT_FOUND,
         CORRUPT,
@@ -117,35 +93,11 @@ public:
         COMPLETE
     };
 
-    /// @return the string representation of the status
     static std::string status2string(Status status);
 
-    /**
-     * Construct with the default state NOT_FOUND
-     */
+    /// _status = NOT_FOUND
     ReplicaInfo();
 
-    /**
-     * Construct with the specified state.
-     *
-     * @param status
-     *   object status (see notes above)
-     *
-     * @param worker
-     *   the name of the worker where the replica is located
-     *
-     * @param database
-     *   the name of the database
-     *
-     * @param chunk
-     *   the chunk number
-     *
-     * @param verifyTime
-     *   when the replica info was obtainer by a worker
-     *
-     * @param fileInfo
-     *   a collection of info on each file of the chunk
-     */
     ReplicaInfo(Status status,
                 std::string const& worker,
                 std::string const& database,
@@ -153,36 +105,12 @@ public:
                 uint64_t verifyTime,
                 FileInfoCollection const& fileInfo);
 
-    /**
-     * Construct with the specified state (no files provided)
-     *
-     * @param status
-     *   object status (see notes above)
-     *
-     * @param worker
-     *   the name of the worker where the replica is located
-     *
-     * @param database
-     *   the name of the database
-     *
-     * @param chunk
-     *   the chunk number
-     *
-     * @param verifyTime
-     *   when the replica info was obtainer by a worker
-     */
     ReplicaInfo(Status status,
                 std::string const& worker,
                 std::string const& database,
                 unsigned int chunk,
                 uint64_t verifyTime);
 
-    /**
-     * Construct from a Protobuf object
-     *
-     * @param info
-     *   Protobuf object
-     */
     explicit ReplicaInfo(ProtocolReplicaInfo const* info);
 
     ReplicaInfo(ReplicaInfo const& ri) = default;
@@ -190,23 +118,8 @@ public:
 
     ~ReplicaInfo() = default;
 
-    /**
-     * Explicitly set a collection of files.
-     *
-     * @param fileInfo
-     *   collection of files to set (or replace older one)
-     */
     void setFileInfo(FileInfoCollection const& fileInfo);
-
-    /**
-     * Explicitly set a collection of files (the move semantics for the input collection)
-     *
-     * @param fileInfo
-     *   collection of files to set (or replace older one)
-     */
     void setFileInfo(FileInfoCollection&& fileInfo);
-
-    // Trivial get methods
 
     Status status() const { return _status; }
 
@@ -215,16 +128,11 @@ public:
 
     unsigned int chunk() const { return _chunk; }
 
-    /// @return the last time when the replica status was checked
     uint64_t verifyTime() const { return _verifyTime; }
 
-    /// @return a collection of files associated with the replica
     FileInfoCollection const& fileInfo() const { return _fileInfo; }
 
-    /**
-     * @return a collection of files associated with the replica as a map,
-     * in which the file name is the key.
-     */
+    /// file name is the key
     std::map<std::string, FileInfo> fileInfoMap() const;
 
     /**
@@ -249,33 +157,10 @@ public:
      */
     uint64_t endTransferTime() const;
 
-    /**
-     * @return
-     *   a Protobuf object
-     *
-     * @note
-     *   On the OWNERSHIP TRANSFER policy: this method allocates a new object and
-     *   returns a pointer along with its ownership.
-     */
-    ProtocolReplicaInfo* info() const;
+    std::unique_ptr<ProtocolReplicaInfo> info() const;
 
-    /**
-     * Initialize a Protobuf object from the object's state
-     *
-     * @param info
-     *   Protobuf object
-     */
     void setInfo(ProtocolReplicaInfo* info) const;
 
-    /**
-     * Comparision operator
-     *
-     * @param other
-     *   object to be compared with
-     *
-     * @return
-     *   'true' if the current object is semantically identical to the other one
-     */
     bool operator==(ReplicaInfo const& other) const {
         return
             _status   == other._status and
@@ -284,35 +169,14 @@ public:
             _chunk    == other._chunk and
             _equalFileCollections(other);
     }
-    
-    /**
-     * The complementary comparison operator
-     * 
-     * @param other
-     *   object to be compared with
-     *
-     * @return
-     *   'true' if the current object is semantically different from the other one
-     */
+
     bool operator!=(ReplicaInfo const& other) const {
         return not operator==(other);
     }
 
 private:
 
-    /**
-     * Compare this object's file collection with the other's
-     *
-     * @param other
-     *   object whose file collection needs to be compared with the current one's
-     *
-     * @return
-     *   'true' of both collections are semantically equivalent
-     */
     bool _equalFileCollections(ReplicaInfo const& other) const;    
-
-
-    // Data members
 
     Status _status;
 
@@ -326,16 +190,12 @@ private:
     FileInfoCollection _fileInfo;
 };
 
-/// Overloaded streaming operator for type ReplicaInfo::FileInfo
 std::ostream& operator<<(std::ostream& os, ReplicaInfo::FileInfo const& fi);
 
-/// Overloaded streaming operator for type ReplicaInfo
 std::ostream& operator<<(std::ostream& os, ReplicaInfo const& ri);
 
-/// The collection type for transient representations
 typedef std::vector<ReplicaInfo> ReplicaInfoCollection;
 
-/// Overloaded streaming operator for type ReplicaInfoCollection
 std::ostream& operator<<(std::ostream& os, ReplicaInfoCollection const& ric);
 
 

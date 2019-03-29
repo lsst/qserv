@@ -81,9 +81,7 @@ void WorkerEchoRequest::setInfo(ProtocolResponseEcho& response) const {
 
     util::Lock lock(_mtx, context(__func__));
 
-    // Return the performance of the target request
-
-    response.set_allocated_target_performance(performance().info());
+    response.set_allocated_target_performance(performance().info().release());
     response.set_data(data());
 }
 

@@ -36,10 +36,9 @@
 #include "replica/Configuration.h"
 
 using namespace std;
+using namespace lsst::qserv::replica;
 
 namespace {
-
-using namespace lsst::qserv::replica;
 
 /// Standard file extension of the MyISAM (and derived) engine's table files
 vector<string> const extensions{"frm", "MYD", "MYI"};

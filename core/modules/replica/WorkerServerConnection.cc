@@ -35,6 +35,7 @@
 #include "replica/ServiceProvider.h"
 
 using namespace std;
+using namespace lsst::qserv::replica;
 
 namespace {
 
@@ -43,8 +44,6 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerServerConnection");
 } /// namespace
 
 namespace {
-
-using namespace lsst::qserv::replica;
 
 /// The context for diagnostic & debug printouts
 string const context = "CONNECTION  ";
@@ -318,37 +317,37 @@ void WorkerServerConnection::_processManagementRequest(ProtocolRequestHeader& hd
 
                 case ProtocolQueuedRequestType::REPLICA_CREATE: {
                     ProtocolResponseReplicate response;
-                    _processor->dequeueOrCancel(hdr.id(), request, response);
+                    _processor->dequeueOrCancel(request, response);
                     _reply(hdr.id(), response);
                     break;
                 }
                 case ProtocolQueuedRequestType::REPLICA_DELETE: {
                     ProtocolResponseDelete response;
-                    _processor->dequeueOrCancel(hdr.id(), request, response);
+                    _processor->dequeueOrCancel(request, response);
                     _reply(hdr.id(), response);
                     break;
                 }
                 case ProtocolQueuedRequestType::REPLICA_FIND: {
                     ProtocolResponseFind response;
-                    _processor->dequeueOrCancel(hdr.id(), request, response);
+                    _processor->dequeueOrCancel(request, response);
                     _reply(hdr.id(), response);
                     break;
                 }
                 case ProtocolQueuedRequestType::REPLICA_FIND_ALL: {
                     ProtocolResponseFindAll response;
-                    _processor->dequeueOrCancel(hdr.id(), request, response);
+                    _processor->dequeueOrCancel(request, response);
                     _reply(hdr.id(), response);
                     break;
                 }
                 case ProtocolQueuedRequestType::TEST_ECHO: {
                     ProtocolResponseEcho response;
-                    _processor->dequeueOrCancel(hdr.id(), request, response);
+                    _processor->dequeueOrCancel(request, response);
                     _reply(hdr.id(), response);
                     break;
                 }
                 case ProtocolQueuedRequestType::SQL: {
                     ProtocolResponseSql response;
-                    _processor->dequeueOrCancel(hdr.id(), request, response);
+                    _processor->dequeueOrCancel(request, response);
                     _reply(hdr.id(), response);
                     break;
                 }
@@ -369,37 +368,37 @@ void WorkerServerConnection::_processManagementRequest(ProtocolRequestHeader& hd
 
                 case ProtocolQueuedRequestType::REPLICA_CREATE: {
                     ProtocolResponseReplicate response;
-                    _processor->checkStatus(hdr.id(), request, response);
+                    _processor->checkStatus(request, response);
                     _reply(hdr.id(), response);
                     break;
                 }
                 case ProtocolQueuedRequestType::REPLICA_DELETE: {
                     ProtocolResponseDelete response;
-                    _processor->checkStatus(hdr.id(), request, response);
+                    _processor->checkStatus(request, response);
                     _reply(hdr.id(), response);
                     break;
                 }
                 case ProtocolQueuedRequestType::REPLICA_FIND: {
                     ProtocolResponseFind response;
-                    _processor->checkStatus(hdr.id(), request, response);
+                    _processor->checkStatus(request, response);
                     _reply(hdr.id(), response);
                     break;
                 }
                 case ProtocolQueuedRequestType::REPLICA_FIND_ALL: {
                     ProtocolResponseFindAll response;
-                    _processor->checkStatus(hdr.id(), request, response);
+                    _processor->checkStatus(request, response);
                     _reply(hdr.id(), response);
                     break;
                 }
                 case ProtocolQueuedRequestType::TEST_ECHO: {
                     ProtocolResponseEcho response;
-                    _processor->checkStatus(hdr.id(), request, response);
+                    _processor->checkStatus(request, response);
                     _reply(hdr.id(), response);
                     break;
                 }
                 case ProtocolQueuedRequestType::SQL: {
                     ProtocolResponseSql response;
-                    _processor->checkStatus(hdr.id(), request, response);
+                    _processor->checkStatus(request, response);
                     _reply(hdr.id(), response);
                     break;
                 }
@@ -428,7 +427,7 @@ void WorkerServerConnection::_processServiceRequest(ProtocolRequestHeader& hdr) 
     WorkerPerformance performance;
     performance.setUpdateStart();
     performance.setUpdateFinish();
-    response.set_allocated_performance(performance.info());
+    response.set_allocated_performance(performance.info().release());
 
     switch (hdr.service_type()) {
 

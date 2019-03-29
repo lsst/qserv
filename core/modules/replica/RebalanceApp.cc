@@ -37,6 +37,8 @@
 #include "util/TablePrinter.h"
 
 using namespace std;
+using namespace lsst::qserv::replica;
+namespace util = lsst::qserv::util;
 
 namespace {
 
@@ -45,10 +47,6 @@ string const description =
     " equally among the worker nodes. And while doing so the re-balancing algorithm"
     " will both preserve the replication level of chunks and to keep the chunk"
     " collocation intact.";
-
-using namespace lsst::qserv::replica;
-namespace util = lsst::qserv::util;
-
 
 void printPlan(RebalanceJobResult const& r) {
 

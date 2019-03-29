@@ -116,7 +116,8 @@ SqlResultSet::Row::Row(ProtocolResponseSqlRow const& row) {
 
 void SqlResultSet::set(ProtocolResponseSql const& message) {
 
-    error     = message.error();
+    error = message.error();
+    charSetName = message.char_set_name();
     hasResult = message.has_result();
 
     // Translate fields
@@ -138,6 +139,7 @@ json SqlResultSet::toJson() const {
     json resultJson;
 
     resultJson["error"] = error;
+    resultJson["char_set_name"] = charSetName;
     resultJson["has_result"] = hasResult;
     
     for (size_t columnIdx = 0; columnIdx < fields.size(); ++columnIdx) {
