@@ -45,6 +45,11 @@ RUN bash -lc "mkdir $STACK_DIR && cd $STACK_DIR && \
               https://raw.githubusercontent.com/lsst/lsst/master/scripts/newinstall.sh && \
               bash newinstall.sh -bt"
 
+RUN bash -lc ". $STACK_DIR/loadLSST.bash && eups distrib install pytest -t '$EUPS_TAG'"
+
+RUN bash -lc ". $STACK_DIR/loadLSST.bash && \
+              curl -sSL https://raw.githubusercontent.com/lsst/shebangtron/master/shebangtron | python"
+
 RUN bash -lc ". $STACK_DIR/loadLSST.bash && eups distrib install qserv_distrib -t '$EUPS_TAG'"
 
 COPY scripts/*.sh /qserv/scripts/
