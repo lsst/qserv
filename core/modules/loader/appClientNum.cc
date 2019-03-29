@@ -163,19 +163,21 @@ int main(int argc, char* argv[]) {
 
     TimeOut::TimePoint insertBegin = TimeOut::Clock::now();
 
+    int modInsertCheck = cClient.getDoListMaxInserts()/4;
+    if (modInsertCheck < 1) modInsertCheck = 1;
     if (numEnd >= numStart) {
         totalKeyCount = (numEnd - numStart) + 1;
         for (uint64_t j=numStart; j<=numEnd; ++j) {
             kList.push_back(clientAdd(cClient, j));
             // occasionally trim the list
-            if (j%10000 == 0) keyInsertListClean(kList, successCount, failedCount);
+            if (j%modInsertCheck == 0) keyInsertListClean(kList, successCount, failedCount);
         }
     } else {
         totalKeyCount = (numStart - numEnd) + 1;
         for (uint64_t j=numStart; j>=numEnd; --j) {
             kList.push_back(clientAdd(cClient, j));
             // occasionally trim the list
-            if (j%10000 == 0) keyInsertListClean(kList, successCount, failedCount);
+            if (j%modInsertCheck == 0) keyInsertListClean(kList, successCount, failedCount);
         }
     }
 
@@ -183,7 +185,7 @@ int main(int argc, char* argv[]) {
     // If all the requests are done, the list should be empty.
     // Wait up to 1 second per 1000 keys. (System does a bit better than 1000keys per second.)
     int waitForKeysCount = totalKeyCount/1000;
-    int maxWaitCount = 16; // minimum wait to allow for 3 or 4 retries.
+    int maxWaitCount = 16; // minimum wait to allow for a few retries.
     if (waitForKeysCount > maxWaitCount) maxWaitCount = waitForKeysCount;
     while (!keyInsertListClean(kList, successCount, failedCount) && count < waitForKeysCount) {
         LOGS(_log, LOG_LVL_INFO, "waiting for inserts to finish count=" << count);
@@ -221,10 +223,12 @@ int main(int argc, char* argv[]) {
     }
     successCount = 0;
     failedCount = 0;
+    int modLookupCheck = cClient.getDoListMaxLookups()/4;
+    if (modLookupCheck < 1) modLookupCheck = 1;
     for (uint64_t j=nStart; j<=nEnd; ++j) {
         kList.push_back(clientAddLookup(cClient, j));
         // occasionally trim the list
-        if (j%10000 == 0) keyLookupListClean(kList, successCount, failedCount);
+        if (j%modLookupCheck == 0) keyLookupListClean(kList, successCount, failedCount);
     }
 
     count = 0;

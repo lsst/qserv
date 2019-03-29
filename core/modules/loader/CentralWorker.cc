@@ -514,6 +514,7 @@ StringElement::UPtr CentralWorker::buildKeyList(int keysToShift) {
 void CentralWorker::_rightConnect(std::lock_guard<std::mutex> const& rightMtxLG) {
     std::string const funcName("CentralWorker::_rightConnect");
     if(_rightConnectStatus == VOID0) {
+        LOGS(_log, LOG_LVL_INFO, funcName + " starting rightConnection");
         _rightConnectStatus = STARTING1;
         // Connect to the right neighbor server
         AsioTcp::resolver resolver(_ioContext);
@@ -552,6 +553,7 @@ void CentralWorker::_rightConnect(std::lock_guard<std::mutex> const& rightMtxLG)
         _determineRange();
 
         _rightConnectStatus = ESTABLISHED2;
+        LOGS(_log, LOG_LVL_INFO, funcName + " established rightConnection");
         _neighborRight.setEstablished(true);
     }
 }

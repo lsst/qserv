@@ -102,6 +102,9 @@ public:
     /// Handle a workers response to the keyInfoReq call.
     void handleKeyLookup(LoaderMsg const& inMsg, BufferUdp::Ptr const& data);
 
+    int getDoListMaxLookups() { return _doListMaxLookups; }
+    int getDoListMaxInserts() { return _doListMaxInserts; }
+
     std::string getOurLogId() const override { return "client"; }
 
 private:

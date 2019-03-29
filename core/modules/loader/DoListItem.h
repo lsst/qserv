@@ -105,6 +105,7 @@ public:
             if ((_needInfo || _timeOut.due(now)) && _timeRequest.due(now)) {
                 _timeRequest.triggered();
                 _command = createCommand();
+                if (_oneShot) ++_commandsCreated;
                 return _command;
             }
         } else if (_command->isFinished()) {
@@ -144,6 +145,8 @@ public:
 
     void setTimeOut(std::chrono::milliseconds timeOut) { _timeOut.setTimeOut(timeOut); }
 
+    int getCommandsCreated() { return _commandsCreated; }
+
     virtual util::CommandTracked::Ptr createCommand()=0;
 
 protected:
@@ -162,16 +165,19 @@ private:
         return (!_needInfo && _oneShot);
     }
 
-    std::atomic<bool>    _addedToList{false}; ///< True when added to a DoList
-    bool    _oneShot{false}; ///< True if after the needed information is gathered, this item can be dropped.
-    bool    _needInfo{true}; ///< True if information is needed.
-    bool    _remove{false}; ///< set to true if this item should no longer be checked.
+    std::atomic<bool> _addedToList{false}; ///< True when added to a DoList
+    bool _oneShot  = false; ///< True if after the needed information is gathered, this item can be dropped.
+    bool _needInfo = true;  ///< True if information is needed.
+    bool _remove   = false; ///< set to true if this item should no longer be checked.
     /// If no info is needed, check for info after this period of time.
     TimeOut _timeOut{std::chrono::minutes(5)};
     /// Rate limiter, no more than 1 message every few seconds
     TimeOut _timeRequest{std::chrono::seconds(4)};  // TODO: DM-17453 set via config
     util::CommandTracked::Ptr _command;
     std::mutex _mtx; ///< protects _timeOut, _timeRequest, _command, _oneShot, _needInfo
+    /// Number of times the command needed to be created. It's only tracked for oneShots as
+    /// it indicates how many times it needed to be run before it worked.
+    std::atomic<int> _commandsCreated{0};
 };
 
 

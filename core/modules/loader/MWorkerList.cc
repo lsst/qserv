@@ -351,7 +351,7 @@ void MWorkerListItem::setRightNeighbor(MWorkerListItem::Ptr const& item) {
                                               LoaderMsg::WORKER_RIGHT_NEIGHBOR,
                                               item->getId(),
                                               _neighborsInfo.neighborRight);
-    _central->addDoListItem(oneShot);
+    _central->runAndAddDoListItem(oneShot);
 }
 
 
@@ -368,7 +368,7 @@ void MWorkerListItem::setLeftNeighbor(MWorkerListItem::Ptr const& item) {
                                               item->getId(),
                                               _neighborsInfo.neighborLeft);
 
-    _central->addDoListItem(oneShot);
+    _central->runAndAddDoListItem(oneShot);
 }
 
 

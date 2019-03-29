@@ -18,10 +18,13 @@ clientPortUdp = 10050
 loopSleepTime = 100000
 
 # Maximum number of lookups that can be on the DoList at a time.
-doListMaxLookups = 99000 
+doListMaxLookups = 50 
 
 # Maximum number of inserts that can be on the DoList at a time.
-doListMaxInserts = 99000
+doListMaxInserts = 10
+
+# How long to sleep before checking if any lookups or inserts have completed.
+maxRequestSleepTime = 10000
 
 # Client thread pool size
 threadPoolSize = 5
