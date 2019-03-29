@@ -30,14 +30,17 @@
 #include <tuple>
 #include <vector>
 
-// This header declarations
-
+// Forward declarations
 namespace lsst {
 namespace qserv {
 namespace replica {
+    class DatabaseInfo;
+}}}  // Forward declarations
 
-// Forward declarations
-class DatabaseInfo;
+// This header declarations
+namespace lsst {
+namespace qserv {
+namespace replica {
 
 /**
   * The utility class encapsulating various operations with file systems.

@@ -42,6 +42,7 @@
 #include "replica/ReplicationRequest.h"
 #include "replica/ServiceManagementRequest.h"
 #include "replica/ServiceProvider.h"
+#include "replica/SqlRequest.h"
 #include "replica/StatusRequest.h"
 #include "replica/StopRequest.h"
 
@@ -57,18 +58,9 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-//////////////////////////////////////////////////////////////////////////
-//////////////////////////  RequestWrapperImpl  //////////////////////////
-//////////////////////////////////////////////////////////////////////////
-
-/**
- * Request-type specific wrappers
- */
 template <class  T>
-struct RequestWrapperImpl
-    :   ControllerRequestWrapper {
+struct RequestWrapperImpl : Controller::RequestWrapper {
 
-    /// The implementation of the virtual method defined in the base class
     virtual void notify() {
 
         if (nullptr != _onFinish) {
@@ -88,15 +80,13 @@ struct RequestWrapperImpl
 
     RequestWrapperImpl(typename T::Ptr const& request,
                        typename T::CallbackType const& onFinish)
-        :   ControllerRequestWrapper(),
+        :   Controller::RequestWrapper(),
             _request(request),
             _onFinish(onFinish) {
     }
 
-    /// Destructor
     ~RequestWrapperImpl() override = default;
 
-    /// @see ControllerRequestWrapper::request()
     shared_ptr<Request> request() const override {
         return _request;
     }
@@ -107,10 +97,6 @@ private:
     typename T::CallbackType _onFinish;
 };
 
-
-//////////////////////////////////////////////////////////////////////
-//////////////////////////  ControllerImpl  //////////////////////////
-//////////////////////////////////////////////////////////////////////
 
 /**
  * The utility class implementing operations on behalf of certain
@@ -123,24 +109,16 @@ class ControllerImpl {
 
 public:
 
-    /// Default constructor
     ControllerImpl() = default;
-
-    // Default copy semantics is prohibited
 
     ControllerImpl(ControllerImpl const&) = delete;
     ControllerImpl& operator=(ControllerImpl const&) = delete;
 
-    /// Destructor
     ~ControllerImpl() = default;
 
     /**
      * Generic method for managing requests such as stopping an outstanding
      * request or obtaining an updated status of a request.
-     *
-     * @param workerName      - the name of a worker node where the request was launched
-     * @param targetRequestId - an identifier of a request to be affected
-     * @param onFinish        - a callback function to be called upon completion of the operation
      */
     template <class REQUEST_TYPE>
     static typename REQUEST_TYPE::Ptr requestManagementOperation(
@@ -185,9 +163,6 @@ public:
    /**
      * Generic method for launching worker service management requests such as suspending,
      * resuming or inspecting a status of the worker-side replication service.
-     *
-     * @param workerName - the name of a worker node where the service is run
-     * @param onFinish   - a callback function to be called upon completion of the operation
      */
     template <class REQUEST_TYPE>
     static typename REQUEST_TYPE::Ptr serviceManagementOperation(
@@ -227,19 +202,11 @@ public:
 };
 
 
-//////////////////////////////////////////////////////////////////////////
-//////////////////////////  ControllerIdentity  //////////////////////////
-//////////////////////////////////////////////////////////////////////////
-
 ostream& operator <<(ostream& os, ControllerIdentity const& identity) {
     os  << "ControllerIdentity(id=" << identity.id << ",host=" << identity.host << ",pid=" << identity.pid << ")";
     return os;
 }
 
-
-//////////////////////////////////////////////////////////////////
-//////////////////////////  Controller  //////////////////////////
-//////////////////////////////////////////////////////////////////
 
 Controller::Ptr Controller::create(ServiceProvider::Ptr const& serviceProvider) {
     return Controller::Ptr(new Controller(serviceProvider));
@@ -506,6 +473,56 @@ EchoRequest::Ptr Controller::echo(string const& workerName,
 }
 
 
+SqlRequest::Ptr Controller::sql(std::string const& workerName,
+                                std::string const& query,
+                                std::string const& user,
+                                std::string const& password,
+                                uint64_t maxRows,
+                                SqlRequestCallbackType const& onFinish,
+                                int  priority,
+                                bool keepTracking,
+                                std::string const& jobId,
+                                unsigned int requestExpirationIvalSec) {
+
+    LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
+
+    util::Lock lock(_mtx, _context(__func__));
+
+    _assertIsRunning();
+
+    Controller::Ptr controller = shared_from_this();
+
+    auto const request = SqlRequest::create(
+        serviceProvider(),
+        serviceProvider()->io_service(),
+        workerName,
+        query,
+        user,
+        password,
+        maxRows,
+        [controller] (SqlRequest::Ptr request) {
+            controller->_finish(request->id());
+        },
+        priority,
+        keepTracking,
+        serviceProvider()->messenger()
+    );
+
+    // Register the request (along with its callback) by its unique
+    // identifier in the local registry. Once it's complete it'll
+    // be automatically removed from the Registry.
+
+    _registry[request->id()] =
+        make_shared<RequestWrapperImpl<SqlRequest>>(request, onFinish);
+
+    // Initiate the request
+
+    request->start(controller, jobId, requestExpirationIvalSec);
+
+    return request;
+}
+
+
 StopReplicationRequest::Ptr Controller::stopReplication(
                                     string const& workerName,
                                     string const& targetRequestId,
@@ -615,6 +632,30 @@ StopEchoRequest::Ptr Controller::stopEcho(
     util::Lock lock(_mtx, _context(__func__));
 
     return ControllerImpl::requestManagementOperation<StopEchoRequest>(
+        shared_from_this(),
+        jobId,
+        workerName,
+        targetRequestId,
+        onFinish,
+        keepTracking,
+        serviceProvider()->messenger(),
+        requestExpirationIvalSec);
+}
+
+
+StopSqlRequest::Ptr Controller::stopSql(
+                                    string const& workerName,
+                                    string const& targetRequestId,
+                                    StopSqlRequestCallbackType const& onFinish,
+                                    bool keepTracking,
+                                    string const& jobId,
+                                    unsigned int requestExpirationIvalSec) {
+
+    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  targetRequestId = " << targetRequestId);
+
+    util::Lock lock(_mtx, _context(__func__));
+
+    return ControllerImpl::requestManagementOperation<StopSqlRequest>(
         shared_from_this(),
         jobId,
         workerName,
@@ -746,6 +787,30 @@ StatusEchoRequest::Ptr Controller::statusOfEcho(
 }
 
 
+StatusSqlRequest::Ptr Controller::statusOfSql(
+                                    string const& workerName,
+                                    string const& targetRequestId,
+                                    StatusSqlRequest::CallbackType const& onFinish,
+                                    bool keepTracking,
+                                    string const& jobId,
+                                    unsigned int requestExpirationIvalSec) {
+
+    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  targetRequestId = " << targetRequestId);
+
+    util::Lock lock(_mtx, _context(__func__));
+
+    return ControllerImpl::requestManagementOperation<StatusSqlRequest>(
+        shared_from_this(),
+        jobId,
+        workerName,
+        targetRequestId,
+        onFinish,
+        keepTracking,
+        serviceProvider()->messenger(),
+        requestExpirationIvalSec);
+}
+
+
 ServiceSuspendRequest::Ptr Controller::suspendWorkerService(
                                     string const& workerName,
                                     ServiceSuspendRequest::CallbackType const& onFinish,
@@ -865,7 +930,7 @@ void Controller::_finish(string const& id) {
     //   - to reduce the controller API dead-time due to a prolonged
     //     execution time of of the callback function.
 
-    ControllerRequestWrapper::Ptr request;
+    RequestWrapper::Ptr request;
     {
         util::Lock lock(_mtx, _context(__func__));
         request = _registry[id];

@@ -37,15 +37,13 @@
 #include "lsst/log/Log.h"
 
 // Forward declarations
-
 namespace lsst {
 namespace qserv {
 namespace util {
-class ConfigStore;
-}}} // namespace lsst::qserv::util
+    class ConfigStore;
+}}} // Forward declarations
 
 // This header declarations
-
 namespace lsst {
 namespace qserv {
 namespace replica {
@@ -147,6 +145,18 @@ public:
     WorkerInfo setWorkerDataDir(std::string const& name,
                                 std::string const& dataDir) final;
 
+    /// @see Configuration::setWorkerDbHost()
+    WorkerInfo setWorkerDbHost(std::string const& name,
+                               std::string const& host)final;
+
+    /// @see Configuration::setWorkerDbPort()
+    WorkerInfo setWorkerDbPort(std::string const& name,
+                               uint16_t port) final;
+
+    /// @see Configuration::setWorkerDbUser()
+    WorkerInfo setWorkerDbUser(std::string const& name,
+                               std::string const& user) final;
+
     /// @see Configuration::setWorkerTechnology()
     void setWorkerTechnology(std::string const& val) final { _set(_workerTechnology, val); }
 
@@ -198,6 +208,8 @@ protected:
     explicit ConfigurationStore(util::ConfigStore const& configStore);
 
 private:
+
+    static std::string _classMethodContext(std::string const& func);
 
     /**
      * Read and validate input configuration parameters from the specified 

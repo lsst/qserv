@@ -581,7 +581,7 @@ void MessengerConnector::_responseReceived(boost::system::error_code const& ec,
 
 
 boost::system::error_code MessengerConnector::_syncReadFrame(util::Lock const& lock,
-                                                             replica::ProtocolBuffer& buf,
+                                                             ProtocolBuffer& buf,
                                                              size_t& bytes) {
     size_t const frameLength = sizeof(uint32_t);
     buf.resize(frameLength);
@@ -606,7 +606,7 @@ boost::system::error_code MessengerConnector::_syncReadFrame(util::Lock const& l
 
 
 boost::system::error_code MessengerConnector::_syncReadVerifyHeader(util::Lock const& lock,
-                                                                    replica::ProtocolBuffer& buf,
+                                                                    ProtocolBuffer& buf,
                                                                     size_t bytes,
                                                                     string const& id) {
     boost::system::error_code const ec =
@@ -614,7 +614,7 @@ boost::system::error_code MessengerConnector::_syncReadVerifyHeader(util::Lock c
                              buf,
                              bytes);
     if (ec.value() == 0) {
-        proto::ReplicationResponseHeader hdr;
+        ProtocolResponseHeader hdr;
         buf.parse(hdr, bytes);
         if (id != hdr.id()) {
             throw logic_error(
@@ -627,7 +627,7 @@ boost::system::error_code MessengerConnector::_syncReadVerifyHeader(util::Lock c
 
 
 boost::system::error_code MessengerConnector::_syncReadMessageImpl(util::Lock const& lock,
-                                                                   replica::ProtocolBuffer& buf,
+                                                                   ProtocolBuffer& buf,
                                                                    size_t bytes) {
     buf.resize(bytes);
 

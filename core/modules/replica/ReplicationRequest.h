@@ -30,19 +30,22 @@
 #include <boost/asio.hpp>
 
 // Qserv headers
-#include "proto/replication.pb.h"
 #include "replica/Common.h"
+#include "replica/protocol.pb.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/RequestMessenger.h"
 
-// This header declarations
-
+// Forward declarations
 namespace lsst {
 namespace qserv {
 namespace replica {
+    class Messenger;
+}}}  // Forward declarations
 
-// Forward declarations
-class Messenger;
+// This header declarations
+namespace lsst {
+namespace qserv {
+namespace replica {
 
 /**
   * Class ReplicationRequest represents a transient state of requests
@@ -81,7 +84,6 @@ public:
      *   completion of the request
      */
     ReplicaInfo const& responseData() const { return _replicaInfo; }
-
 
     /**
      * Create a new request with specified parameters.
@@ -198,7 +200,7 @@ private:
      *   worker response (if success)
      */
     void _analyze(bool success,
-                  proto::ReplicationResponseReplicate const& message);
+                  ProtocolResponseReplicate const& message);
 
 
     // Input parameters

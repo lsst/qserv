@@ -27,29 +27,27 @@
 #include <stdexcept>
 
 // Qserv headers
-#include "proto/replication.pb.h"
+#include "replica/protocol.pb.h"
 #include "util/TablePrinter.h"
 
 using namespace std;
+using namespace lsst::qserv::replica;
 
 namespace {
 
-namespace proto   = lsst::qserv::proto;
-namespace replica = lsst::qserv::replica;
-
 /// State translation
-void setInfoImpl(replica::ReplicaInfo const& ri,
-                 proto::ReplicationReplicaInfo* info) {
+void setInfoImpl(ReplicaInfo const& ri,
+                 ProtocolReplicaInfo* info) {
 
     switch (ri.status()) {
-        case replica::ReplicaInfo::Status::NOT_FOUND:  info->set_status(proto::ReplicationReplicaInfo::NOT_FOUND);  break;
-        case replica::ReplicaInfo::Status::CORRUPT:    info->set_status(proto::ReplicationReplicaInfo::CORRUPT);    break;
-        case replica::ReplicaInfo::Status::INCOMPLETE: info->set_status(proto::ReplicationReplicaInfo::INCOMPLETE); break;
-        case replica::ReplicaInfo::Status::COMPLETE:   info->set_status(proto::ReplicationReplicaInfo::COMPLETE);   break;
+        case ReplicaInfo::Status::NOT_FOUND:  info->set_status(ProtocolReplicaInfo::NOT_FOUND);  break;
+        case ReplicaInfo::Status::CORRUPT:    info->set_status(ProtocolReplicaInfo::CORRUPT);    break;
+        case ReplicaInfo::Status::INCOMPLETE: info->set_status(ProtocolReplicaInfo::INCOMPLETE); break;
+        case ReplicaInfo::Status::COMPLETE:   info->set_status(ProtocolReplicaInfo::COMPLETE);   break;
         default:
             throw logic_error(
                     "ReplicaInfo::" + string(__func__) +
-                    "  unhandled status " + replica::ReplicaInfo::status2string(ri.status()));
+                    "  unhandled status " + ReplicaInfo::status2string(ri.status()));
     }
     info->set_worker(ri.worker());
     info->set_database(ri.database());
@@ -57,7 +55,7 @@ void setInfoImpl(replica::ReplicaInfo const& ri,
     info->set_verify_time(ri.verifyTime());
 
     for (auto&& fi: ri.fileInfo()) {
-        proto::ReplicationFileInfo* fileInfo = info->add_file_info_many();
+        ProtocolFileInfo* fileInfo = info->add_file_info_many();
         fileInfo->set_name(fi.name);
         fileInfo->set_size(fi.size);
         fileInfo->set_mtime(fi.mtime);
@@ -124,24 +122,24 @@ ReplicaInfo::ReplicaInfo(Status status,
 }
 
 
-ReplicaInfo::ReplicaInfo(proto::ReplicationReplicaInfo const* info) {
+ReplicaInfo::ReplicaInfo(ProtocolReplicaInfo const* info) {
 
     switch (info->status()) {
-        case proto::ReplicationReplicaInfo::NOT_FOUND:  this->_status = Status::NOT_FOUND;  break;
-        case proto::ReplicationReplicaInfo::CORRUPT:    this->_status = Status::CORRUPT;    break;
-        case proto::ReplicationReplicaInfo::INCOMPLETE: this->_status = Status::INCOMPLETE; break;
-        case proto::ReplicationReplicaInfo::COMPLETE:   this->_status = Status::COMPLETE;   break;
+        case ProtocolReplicaInfo::NOT_FOUND:  this->_status = Status::NOT_FOUND;  break;
+        case ProtocolReplicaInfo::CORRUPT:    this->_status = Status::CORRUPT;    break;
+        case ProtocolReplicaInfo::INCOMPLETE: this->_status = Status::INCOMPLETE; break;
+        case ProtocolReplicaInfo::COMPLETE:   this->_status = Status::COMPLETE;   break;
         default:
             throw logic_error(
                     "ReplicaInfo::" + string(__func__) + "  unhandled status " +
-                    proto::ReplicationReplicaInfo_ReplicaStatus_Name(info->status()));
+                    ProtocolReplicaInfo_ReplicaStatus_Name(info->status()));
     }
     _worker   = info->worker();
     _database = info->database();
     _chunk    = info->chunk();
 
     for (int idx = 0; idx < info->file_info_many_size(); ++idx) {
-        proto::ReplicationFileInfo const& fileInfo = info->file_info_many(idx);
+        ProtocolFileInfo const& fileInfo = info->file_info_many(idx);
         _fileInfo.emplace_back(
             FileInfo({
                 fileInfo.name(),
@@ -186,14 +184,14 @@ uint64_t ReplicaInfo::endTransferTime() const {
 }
 
 
-proto::ReplicationReplicaInfo* ReplicaInfo::info() const {
-    proto::ReplicationReplicaInfo* ptr = new proto::ReplicationReplicaInfo();
-    ::setInfoImpl(*this, ptr);
+unique_ptr<ProtocolReplicaInfo> ReplicaInfo::info() const {
+    auto ptr = make_unique<ProtocolReplicaInfo>();
+    ::setInfoImpl(*this, ptr.get());
     return ptr;
 }
 
 
-void ReplicaInfo::setInfo(lsst::qserv::proto::ReplicationReplicaInfo* info) const {
+void ReplicaInfo::setInfo(ProtocolReplicaInfo* info) const {
     ::setInfoImpl(*this, info);
 }
 

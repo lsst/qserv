@@ -38,6 +38,7 @@
 #include "util/TablePrinter.h"
 
 using namespace std;
+using namespace lsst::qserv::replica;
 
 namespace {
 
@@ -48,7 +49,7 @@ string const description =
 /**
  * Dump the replica info
  */
-void dump(lsst::qserv::replica::FindAllJobResult const& replicaData) {
+void dump(FindAllJobResult const& replicaData) {
 
     cout << "*** DETAILED REPORTS ***\n"
          << "\nCO-LOCATION:\n";

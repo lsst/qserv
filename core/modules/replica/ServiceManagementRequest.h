@@ -41,46 +41,49 @@
 #include <vector>
 
 // Qserv headers
-#include "proto/replication.pb.h"
 #include "replica/Common.h"
+#include "replica/protocol.pb.h"
 #include "replica/ServiceManagementRequestBase.h"
 
-// This header declarations
-
+// Forward declarations
 namespace lsst {
 namespace qserv {
 namespace replica {
+    class Messenger;
+}}}  // Forward declarations
 
-// Forward declarations
-class Messenger;
+// This header declarations
+namespace lsst {
+namespace qserv {
+namespace replica {
 
 // ========================================================================
 //   Customizations for specific request types require dedicated policies
 // ========================================================================
 
 struct ServiceSuspendRequestPolicy {
-    static char const*                          requestName();
-    static proto::ReplicationServiceRequestType requestType();
+    static char const* requestName();
+    static ProtocolServiceRequestType requestType();
 };
 
 struct ServiceResumeRequestPolicy {
-    static char const*                          requestName();
-    static proto::ReplicationServiceRequestType requestType();
+    static char const* requestName();
+    static ProtocolServiceRequestType requestType();
 };
 
 struct ServiceStatusRequestPolicy {
-    static char const*                          requestName();
-    static proto::ReplicationServiceRequestType requestType();
+    static char const* requestName();
+    static ProtocolServiceRequestType requestType();
 };
 
 struct ServiceRequestsRequestPolicy {
-    static char const*                          requestName();
-    static proto::ReplicationServiceRequestType requestType();
+    static char const* requestName();
+    static ProtocolServiceRequestType requestType();
 };
 
 struct ServiceDrainRequestPolicy {
-    static char const*                          requestName();
-    static proto::ReplicationServiceRequestType requestType();
+    static char const* requestName();
+    static ProtocolServiceRequestType requestType();
 };
 
 /**
@@ -159,7 +162,7 @@ private:
                              boost::asio::io_service& io_service,
                              char const* requestName,
                              std::string const& worker,
-                             proto::ReplicationServiceRequestType requestType,
+                             ProtocolServiceRequestType requestType,
                              CallbackType const& onFinish,
                              std::shared_ptr<Messenger> const& messenger)
         :   ServiceManagementRequestBase(serviceProvider,

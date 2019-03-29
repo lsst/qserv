@@ -55,8 +55,14 @@
 #include "replica/DatabaseMySQLTypes.h"
 #include "replica/DatabaseMySQLRow.h"
 
-// This header declarations
+// Forward declarations
+namespace lsst {
+namespace qserv {
+namespace replica {
+    class ProtocolResponseSqlField;
+}}} // Forward declarations
 
+// This header declarations
 namespace lsst {
 namespace qserv {
 namespace replica {
@@ -192,16 +198,10 @@ public:
     /// @return maximum amount of time to wait while making reconnection attempts
     unsigned int connectTimeoutSec() const { return _connectTimeoutSec; }
 
-    /**
-     * A front-end to mysql_real_escape_string()
-     *
-     * @param str
-     *   a string to be processed
-     *
-     * @return
-     *   the processed string
-     */
+
     std::string escape(std::string const& str) const;
+
+    std::string charSetName() const;
 
     // -------------------------------------------------
     // Helper methods for simplifying query preparation
@@ -832,6 +832,41 @@ public:
     std::vector<std::string> const& columnNames() const;
 
     /**
+     * @return
+     *  the number of columns in the current result set
+     *
+     * @throws std::logic_error
+     *   if no SQL statement has ever been executed, or
+     *   if the last query failed.
+     */
+    size_t numFields() const;
+
+    /**
+     * Fill a Protobuf object representing a field
+     * 
+     * @note
+     *   The method can be called only upon a successful completion of a query
+     *   which has a result set. Otherwise it will throw an exception.
+     *
+     * @see mysql_fetch_field()
+     * @see database::mysql::Connection::hasResult
+     *
+     * @param ptr
+     *   a pointer to the Protobuf object to be populated
+     * 
+     * @param idx
+     *   a relative (0 based) index of the field in a result set
+     *
+     * @throws std::logic_error
+     *   if no SQL statement has ever been executed, or
+     *   if the last query failed.
+     * 
+     * @throws std::out_of_range
+     *   if the specified index exceed the maximum index of a result set.
+     */
+    void exportField(ProtocolResponseSqlField* ptr, size_t idx) const;
+
+    /**
      * Move the iterator to the next (first) row of the current result set
      * and if the iterator is not beyond the last row then initialize an object
      * passed as a parameter.
@@ -1044,6 +1079,8 @@ private:
     std::vector<std::string> _columnNames;
 
     std::map<std::string, size_t> _name2index;
+
+    std::string _charSetName;   // of the current connection
 
     // Get updated after fetching each row of the result set
 

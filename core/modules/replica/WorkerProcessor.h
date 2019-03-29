@@ -31,20 +31,23 @@
 #include <vector>
 
 // Qserv headers
-#include "proto/replication.pb.h"
+#include "replica/protocol.pb.h"
 #include "replica/ServiceProvider.h"
 #include "replica/WorkerProcessorThread.h"
 #include "replica/WorkerRequest.h"
 #include "util/Mutex.h"
 
-// This header declarations
-
+// Forward declarations
 namespace lsst {
 namespace qserv {
 namespace replica {
+    class WorkerRequestFactory;
+}}}  // Forward declarations
 
-// Forward declarations
-class WorkerRequestFactory;
+// This header declarations
+namespace lsst {
+namespace qserv {
+namespace replica {
 
 /**
   * Class WorkerProcessor is a front-end interface for processing
@@ -176,8 +179,8 @@ public:
      *   the client
      */
     void enqueueForReplication(std::string const& id,
-                               proto::ReplicationRequestReplicate const& request,
-                               proto::ReplicationResponseReplicate& response);
+                               ProtocolRequestReplicate const& request,
+                               ProtocolResponseReplicate& response);
 
     /**
      * Enqueue the replica deletion request for processing
@@ -193,8 +196,8 @@ public:
      *   to the client
      */
     void enqueueForDeletion(std::string const& id,
-                            proto::ReplicationRequestDelete const& request,
-                            proto::ReplicationResponseDelete& response);
+                            ProtocolRequestDelete const& request,
+                            ProtocolResponseDelete& response);
 
     /**
      * Enqueue the replica lookup request for processing
@@ -210,8 +213,8 @@ public:
      *   to the client
      */
     void enqueueForFind(std::string const& id,
-                        proto::ReplicationRequestFind const& request,
-                        proto::ReplicationResponseFind& response);
+                        ProtocolRequestFind const& request,
+                        ProtocolResponseFind& response);
 
     /**
      * Enqueue the multi-replica lookup request for processing
@@ -227,8 +230,8 @@ public:
      *   to the client
      */
     void enqueueForFindAll(std::string const& id,
-                           proto::ReplicationRequestFindAll const& request,
-                           proto::ReplicationResponseFindAll& response);
+                           ProtocolRequestFindAll const& request,
+                           ProtocolResponseFindAll& response);
 
     /**
      * Enqueue the worker-side testing request for processing
@@ -244,8 +247,25 @@ public:
      *   to the client
      */
     void enqueueForEcho(std::string const& id,
-                        proto::ReplicationRequestEcho const& request,
-                        proto::ReplicationResponseEcho& response);
+                        ProtocolRequestEcho const& request,
+                        ProtocolResponseEcho& response);
+
+    /**
+     * Enqueue a request for querying the workr database
+     *
+     * @param id
+     *   an identifier of a request
+     *
+     * @param request
+     *   the Protobuf object received from a client
+     *
+     * @param response
+     *   the Protobuf object to be initialized and ready to be sent back
+     *   to the client
+     */
+    void enqueueForSql(std::string const& id,
+                       ProtocolRequestSql const& request,
+                       ProtocolResponseSql& response);
 
     /**
      * Set default values to protocol response which has 3 mandatory fields:
@@ -265,13 +285,13 @@ public:
      */
     template <class PROTOCOL_RESPONSE_TYPE>
     static void setDefaultResponse(PROTOCOL_RESPONSE_TYPE& response,
-                                   proto::ReplicationStatus status,
-                                   proto::ReplicationStatusExt extendedStatus) {
+                                   ProtocolStatus status,
+                                   ProtocolStatusExt extendedStatus) {
 
         WorkerPerformance performance;
         performance.setUpdateStart();
         performance.setUpdateFinish();
-        response.set_allocated_performance(performance.info());
+        response.set_allocated_performance(performance.info().release());
 
         response.set_status(status);
         response.set_status_ext(extendedStatus);
@@ -284,32 +304,18 @@ public:
      * from the ready-to-be-processed queue. If it's being processed an attempt
      * to cancel processing will be made. If it has already processed this will
      * be reported.
-     *
-     * @param id
-     *   an identifier of a request
-     *
-     * @param request
-     *   the Protobuf object representing the request
-     *
-     * @param response
-     *   the Protobuf object to be initialized and ready to be sent back
-     *   to the client
      */
     template <typename RESPONSE_MSG_TYPE>
-    void dequeueOrCancel(std::string const& id,
-                         proto::ReplicationRequestStop const& request,
+    void dequeueOrCancel(ProtocolRequestStop const& request,
                          RESPONSE_MSG_TYPE& response) {
 
-        util::Lock lock(_mtx, _context() + __func__);
+        util::Lock lock(_mtx, _context(__func__));
 
         // Set this response unless an exact request (same type and identifier)
         // will be found.
         setDefaultResponse(response,
-                           proto::ReplicationStatus::BAD,
-                           proto::ReplicationStatusExt::INVALID_ID);
-
-        // Try to locate a request with specified identifier and make sure
-        // its actual type matches expectations.
+                           ProtocolStatus::BAD,
+                           ProtocolStatusExt::INVALID_ID);
 
         if (WorkerRequest::Ptr const ptr = _dequeueOrCancelImpl(lock, request.id())) {
             try {
@@ -330,31 +336,18 @@ public:
 
     /**
      * Return the status of an on-going replication request
-     *
-     * @param id
-     *   an identifier of a request
-     *
-     * @param request
-     *   the Protobuf object representing the request
-     *
-     * @param response
-     *   the Protobuf object to be initialized and ready to be sent back
-     *   to the client
      */
     template <typename RESPONSE_MSG_TYPE>
-    void checkStatus(std::string const& id,
-                     proto::ReplicationRequestStatus const& request,
+    void checkStatus(ProtocolRequestStatus const& request,
                      RESPONSE_MSG_TYPE& response) {
 
-        util::Lock lock(_mtx, _context() + __func__);
+        util::Lock lock(_mtx, _context(__func__));
 
         // Set this response unless an exact request (same type and identifier)
         // will be found.
         setDefaultResponse(response,
-                           proto::ReplicationStatus::BAD,
-                           proto::ReplicationStatusExt::INVALID_ID);
-
-        // Try to locate a request with specified identifier
+                           ProtocolStatus::BAD,
+                           ProtocolStatusExt::INVALID_ID);
 
         if (WorkerRequest::Ptr const ptr = _checkStatusImpl(lock, request.id())) {
             try {
@@ -390,38 +383,25 @@ public:
      * @param extendedReport
      *   to return detailed info on all known replica-related requests
      */
-    void setServiceResponse(proto::ReplicationServiceResponse& response,
+    void setServiceResponse(ProtocolServiceResponse& response,
                             std::string const& id,
-                            proto::ReplicationServiceResponse::Status status,
-                            bool extendedReport = false);
+                            ProtocolServiceResponse::Status status,
+                            bool extendedReport=false);
 
-    ///@return total number of new unprocessed requests
     size_t numNewRequests() const;
-
-    /// @return total number of requests which are being processed
     size_t numInProgressRequests() const;
-
-    /// @return total number of completed (succeeded or otherwise) requests
     size_t numFinishedRequests() const;
 
 private:
 
-    /// @see WorkerProcessor::create
     WorkerProcessor(ServiceProvider::Ptr const& serviceProvider,
                     WorkerRequestFactory const& requestFactory,
                     std::string const& worker);
 
-    /**
-     * Translate the completion status for replication requests and return
-     * its Protobuf counterpart
-     *
-     * @param status
-     *   a completion status of a request processing object
-     *
-     * @return
-     *   the matching completion status as per a Protobuf definition
-     */
-    static proto::ReplicationStatus translate(WorkerRequest::CompletionStatus status);
+
+    static std::string _classMethodContext(std::string const& func);
+
+    static ProtocolStatus translate(WorkerRequest::CompletionStatus status);
 
     /**
      * Return the next request which is ready to be processed
@@ -497,7 +477,7 @@ private:
      *   object. Otherwise it will throw the std::logic_error exception.
      */
     void _setInfo(WorkerRequest::Ptr const& request,
-                  proto::ReplicationResponseReplicate& response);
+                  ProtocolResponseReplicate& response);
 
     /**
      * Extract the extra data from the request and put it into the response object.
@@ -512,7 +492,7 @@ private:
      *   if the dynamic type of the request won't match expectations
      */
     void _setInfo(WorkerRequest::Ptr const& request,
-                  proto::ReplicationResponseDelete& response);
+                  ProtocolResponseDelete& response);
 
     /**
      * Extract the replica info (for one chunk) from the request and put
@@ -528,7 +508,7 @@ private:
      *   if the dynamic type of the request won't match expectations
      */
     void _setInfo(WorkerRequest::Ptr const& request,
-                  proto::ReplicationResponseFind& response);
+                  ProtocolResponseFind& response);
 
     /**
      * Extract the replica info (for multiple chunks) from the request and put
@@ -544,10 +524,26 @@ private:
      *   if the dynamic type of the request won't match expectations
      */
     void _setInfo(WorkerRequest::Ptr const& request,
-                  proto::ReplicationResponseFindAll& response);
+                  ProtocolResponseFindAll& response);
 
     /**
-     * Extract the replica info (for multiple chunks) from the request and put
+     * Extract the input data string received with the request and put
+     * it back into the response object.
+     *
+     * @param request
+     *   finished request
+     *
+     * @param response
+     *   Google Protobuf object to be initialized
+     *
+     * @throws std::logic_error
+     *   if the dynamic type of the request won't match expectations
+     */
+    void _setInfo(WorkerRequest::Ptr const& request,
+                  ProtocolResponseEcho& response);
+
+    /**
+     * Extract the result set (if the query has succeeded) and put
      * it into the response object.
      *
      * @param request
@@ -560,7 +556,7 @@ private:
      *   if the dynamic type of the request won't match expectations
      */
     void _setInfo(WorkerRequest::Ptr const& request,
-                  proto::ReplicationResponseEcho& response);
+                  ProtocolResponseSql& response);
 
     /**
      * Fill in the information object for the specified request based on its
@@ -576,7 +572,7 @@ private:
      *   for unsupported request types.
      */
     void _setServiceResponseInfo(WorkerRequest::Ptr const& request,
-                                 proto::ReplicationServiceResponseInfo* info) const;
+                                 ProtocolServiceResponseInfo* info) const;
 
     /**
      * Report a decision not to process a request
@@ -618,35 +614,24 @@ private:
      */
     void _processorThreadStopped(WorkerProcessorThread::Ptr const& processorThread);
 
-    /// @return the context string
-    std::string _context() const { return "PROCESSOR  "; }
+    std::string _context(std::string const& func=std::string()) const { return "PROCESSOR  " + func; }
 
-
-    // Input parameters
 
     ServiceProvider::Ptr const  _serviceProvider;
     WorkerRequestFactory const& _requestFactory;
     std::string          const  _worker;
 
-    /// Current state of the processor
     State _state;
 
-    /// When the processor started (milliseconds since UNIX Epoch)
-    uint64_t _startTime;
+    uint64_t _startTime;    /// When the processor started (milliseconds since UNIX Epoch)
 
-    /// A pool of threads for processing requests
     std::vector<WorkerProcessorThread::Ptr> _threads;
 
-    /// Mutex guarding the queues
-    mutable util::Mutex _mtx;
+    mutable util::Mutex _mtx;   /// Mutex guarding the queues
 
-    /// New unprocessed requests
     PriorityQueueType _newRequests;
 
-    /// Requests which are being processed
     CollectionType _inProgressRequests;
-
-    /// Completed (succeeded or otherwise) requests
     CollectionType _finishedRequests;
 };
 

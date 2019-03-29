@@ -34,7 +34,6 @@
 #include "replica/Common.h"
 
 // This header declarations
-
 namespace lsst {
 namespace qserv {
 namespace replica {
@@ -75,6 +74,16 @@ typedef std::shared_ptr<EchoRequest> EchoRequestPtr;
 
 typedef std::function<void(EchoRequestPtr)> EchoRequestCallbackType;
 
+/////////////////////////////////////////////////
+// Operations agaist worker databases requests //
+/////////////////////////////////////////////////
+
+class SqlRequest;
+
+typedef std::shared_ptr<SqlRequest> SqlRequestPtr;
+
+typedef std::function<void(SqlRequestPtr)> SqlRequestCallbackType;
+
 ////////////////////////////////////
 // Replication request management //
 ////////////////////////////////////
@@ -84,6 +93,7 @@ class StopDeleteRequestPolicy;
 class StopFindRequestPolicy;
 class StopFindAllRequestPolicy;
 class StopEchoRequestPolicy;
+class StopSqlRequestPolicy;
 
 template <typename POLICY> class StopRequest;
 
@@ -92,18 +102,21 @@ using StopDeleteRequest      = StopRequest<StopDeleteRequestPolicy>;
 using StopFindRequest        = StopRequest<StopFindRequestPolicy>;
 using StopFindAllRequest     = StopRequest<StopFindAllRequestPolicy>;
 using StopEchoRequest        = StopRequest<StopEchoRequestPolicy>;
+using StopSqlRequest         = StopRequest<StopSqlRequestPolicy>;
 
 typedef std::shared_ptr<StopReplicationRequest> StopReplicationRequestPtr;
 typedef std::shared_ptr<StopDeleteRequest>      StopDeleteRequestPtr;
 typedef std::shared_ptr<StopFindRequest>        StopFindRequestPtr;
 typedef std::shared_ptr<StopFindAllRequest>     StopFindAllRequestPtr;
 typedef std::shared_ptr<StopEchoRequest>        StopEchoRequestPtr;
+typedef std::shared_ptr<StopSqlRequest>         StopSqlRequestPtr;
 
 typedef std::function<void(StopReplicationRequestPtr)> StopReplicationRequestCallbackType;
 typedef std::function<void(StopDeleteRequestPtr)>      StopDeleteRequestCallbackType;
 typedef std::function<void(StopFindRequestPtr)>        StopFindRequestCallbackType;
 typedef std::function<void(StopFindAllRequestPtr)>     StopFindAllRequestCallbackType;
 typedef std::function<void(StopEchoRequestPtr)>        StopEchoRequestCallbackType;
+typedef std::function<void(StopSqlRequestPtr)>         StopSqlRequestCallbackType;
 
 ////////////////////////////////////
 
@@ -112,6 +125,7 @@ class StatusDeleteRequestPolicy;
 class StatusFindRequestPolicy;
 class StatusFindAllRequestPolicy;
 class StatusEchoRequestPolicy;
+class StatusSqlRequestPolicy;
 
 template <typename POLICY> class StatusRequest;
 
@@ -120,18 +134,21 @@ using StatusDeleteRequest      = StatusRequest<StatusDeleteRequestPolicy>;
 using StatusFindRequest        = StatusRequest<StatusFindRequestPolicy>;
 using StatusFindAllRequest     = StatusRequest<StatusFindAllRequestPolicy>;
 using StatusEchoRequest        = StatusRequest<StatusEchoRequestPolicy>;
+using StatusSqlRequest         = StatusRequest<StatusSqlRequestPolicy>;
 
 typedef std::shared_ptr<StatusReplicationRequest> StatusReplicationRequestPtr;
 typedef std::shared_ptr<StatusDeleteRequest>      StatusDeleteRequestPtr;
 typedef std::shared_ptr<StatusFindRequest>        StatusFindRequestPtr;
 typedef std::shared_ptr<StatusFindAllRequest>     StatusFindAllRequestPtr;
 typedef std::shared_ptr<StatusEchoRequest>        StatusEchoRequestPtr;
+typedef std::shared_ptr<StatusSqlRequest>         StatusSqlRequestPtr;
 
 typedef std::function<void(StatusReplicationRequestPtr)> StatusReplicationRequestCallbackType;
 typedef std::function<void(StatusDeleteRequestPtr)>      StatusDeleteRequestCallbackType;
 typedef std::function<void(StatusFindRequestPtr)>        StatusFindRequestCallbackType;
 typedef std::function<void(StatusFindAllRequestPtr)>     StatusFindAllRequestCallbackType;
 typedef std::function<void(StatusEchoRequestPtr)>        StatusEchoRequestCallbackType;
+typedef std::function<void(StatusSqlRequestPtr)>         StatusSqlRequestCallbackType;
 
 
 ////////////////////////////////////////

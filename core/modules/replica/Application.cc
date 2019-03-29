@@ -26,8 +26,8 @@
 #include <stdexcept>
 
 // Qserv headers
-#include "proto/replication.pb.h"
 #include "replica/Configuration.h"
+#include "replica/protocol.pb.h"
 #include "util/Issue.h"
 
 using namespace std;

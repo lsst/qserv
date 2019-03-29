@@ -30,8 +30,6 @@
 #include <boost/date_time/posix_time/posix_time.hpp>
 
 // Qserv headers
-#include "lsst/log/Log.h"
-#include "proto/replication.pb.h"
 #include "replica/Controller.h"
 #include "replica/DatabaseServices.h"
 #include "replica/Messenger.h"
@@ -39,45 +37,25 @@
 #include "replica/ProtocolBuffer.h"
 #include "replica/ServiceProvider.h"
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 using namespace std;
+using namespace lsst::qserv::replica;
 
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.ServiceManagementRequest");
 
-namespace proto = lsst::qserv::proto;
-
 /// Dump a collection of request descriptions onto the output stream
 void dumpRequestInfo(ostream& os,
-                     vector<proto::ReplicationServiceResponseInfo> const& requests) {
+                     vector<ProtocolServiceResponseInfo> const& requests) {
 
-    for (const auto &r : requests) {
+    for (auto&& r : requests) {
         os  << "\n"
-            << "    type:     " << proto::ReplicationReplicaRequestType_Name(r.replica_type()) << "\n"
+            << "    type:     " << ProtocolQueuedRequestType_Name(r.queued_type()) << "\n"
             << "    id:       " << r.id() << "\n"
-            << "    priority: " << r.priority() << "\n"
-            << "    database: " << r.database() << "\n";
-
-        switch (r.replica_type()) {
-            case proto::ReplicationReplicaRequestType::REPLICA_CREATE:
-                os  << "    chunk:    " << r.chunk() << "\n"
-                    << "    worker:   " << r.worker() << "\n";
-                break;
-
-            case proto::ReplicationReplicaRequestType::REPLICA_DELETE:
-            case proto::ReplicationReplicaRequestType::REPLICA_FIND:
-                os  << "    chunk:    " << r.chunk() << "\n";
-                break;
-
-            case proto::ReplicationReplicaRequestType::REPLICA_FIND_ALL:
-                break;
-
-            default:
-                throw logic_error(
-                        "ServiceManagementRequest::" + string(__func__) +
-                        "  unhandled request type " +
-                        proto::ReplicationReplicaRequestType_Name(r.replica_type()));
-        }
+            << "    priority: " << r.priority() << "\n";
     }
 }
 
@@ -105,19 +83,19 @@ string ServiceState::state2string() const {
 }
 
 
-void ServiceState::set(proto::ReplicationServiceResponse const& message) {
+void ServiceState::set(ProtocolServiceResponse const& message) {
 
     switch (message.service_state()) {
 
-        case proto::ReplicationServiceResponse::SUSPEND_IN_PROGRESS:
+        case ProtocolServiceResponse::SUSPEND_IN_PROGRESS:
             state = ServiceState::State::SUSPEND_IN_PROGRESS;
             break;
 
-        case proto::ReplicationServiceResponse::SUSPENDED:
+        case ProtocolServiceResponse::SUSPENDED:
             state = ServiceState::State::SUSPENDED;
             break;
 
-        case proto::ReplicationServiceResponse::RUNNING:
+        case ProtocolServiceResponse::RUNNING:
             state = ServiceState::State::RUNNING;
             break;
 
@@ -198,7 +176,7 @@ ServiceManagementRequestBase::ServiceManagementRequestBase(
                                     boost::asio::io_service& io_service,
                                     char const* requestName,
                                     string const& worker,
-                                    proto::ReplicationServiceRequestType requestType,
+                                    ProtocolServiceRequestType requestType,
                                     shared_ptr<Messenger> const& messenger)
     :   RequestMessenger(serviceProvider,
                          io_service,
@@ -221,9 +199,9 @@ void ServiceManagementRequestBase::startImpl(util::Lock const& lock) {
 
     buffer()->resize();
 
-    proto::ReplicationRequestHeader hdr;
+    ProtocolRequestHeader hdr;
     hdr.set_id(id());
-    hdr.set_type(proto::ReplicationRequestHeader::SERVICE);
+    hdr.set_type(ProtocolRequestHeader::SERVICE);
     hdr.set_service_type(_requestType);
 
     buffer()->serialize(hdr);
@@ -232,13 +210,13 @@ void ServiceManagementRequestBase::startImpl(util::Lock const& lock) {
 
     auto self = shared_from_base<ServiceManagementRequestBase>();
 
-    messenger()->send<proto::ReplicationServiceResponse>(
+    messenger()->send<ProtocolServiceResponse>(
         worker(),
         id(),
         buffer(),
         [self] (string const& id,
                 bool success,
-                proto::ReplicationServiceResponse const& response) {
+                ProtocolServiceResponse const& response) {
             self->_analyze(success, response);
         }
     );
@@ -246,7 +224,7 @@ void ServiceManagementRequestBase::startImpl(util::Lock const& lock) {
 
 
 void ServiceManagementRequestBase::_analyze(bool success,
-                                            proto::ReplicationServiceResponse const& message) {
+                                            ProtocolServiceResponse const& message) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  success=" << (success ? "true" : "false"));
 
@@ -281,7 +259,7 @@ void ServiceManagementRequestBase::_analyze(bool success,
 
     switch (message.status()) {
 
-        case proto::ReplicationServiceResponse::SUCCESS:
+        case ProtocolServiceResponse::SUCCESS:
 
             // Transfer the state of the remote service into a local data member
             // before initiating state transition of the request object.

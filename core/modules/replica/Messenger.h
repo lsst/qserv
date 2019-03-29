@@ -28,18 +28,21 @@
 #include <string>
 
 // Qserv headers
-#include "proto/replication.pb.h"
 #include "replica/MessengerConnector.h"
+#include "replica/protocol.pb.h"
 #include "replica/ServiceProvider.h"
 
-// This header declarations
-
+// Forward declarations
 namespace lsst {
 namespace qserv {
 namespace replica {
+    class ProtocolBuffer;
+}}}  // Forward declarations
 
-// Forward declarations
-class ProtocolBuffer;
+// This header declarations
+namespace lsst {
+namespace qserv {
+namespace replica {
 
 /**
  * Class Messenger provides a communication interface for sending/receiving messages
@@ -111,7 +114,7 @@ public:
     template <class RESPONSE_TYPE>
     void send(std::string  const& worker,
               std::string  const& id,
-              std::shared_ptr<replica::ProtocolBuffer> const& requestBufferPtr,
+              std::shared_ptr<ProtocolBuffer> const& requestBufferPtr,
               std::function<void(std::string const&,
                                  bool,
                                  RESPONSE_TYPE const&)> onFinish) {

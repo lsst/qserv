@@ -36,15 +36,16 @@
 #include "replica/WorkerRequest.h"
 
 // Forward declarations
-
-// This header declarations
-
 namespace lsst {
 namespace qserv {
 namespace replica {
+    class FileClient;
+}}}  // Forward declarations
 
-// Forward declarations
-class FileClient;
+// This header declarations
+namespace lsst {
+namespace qserv {
+namespace replica {
 
 /**
   * Class WorkerReplicationRequest represents a context and a state of replication
@@ -122,7 +123,7 @@ public:
      * @param response
      *   Protobuf response to be initialized
      */
-    void setInfo(proto::ReplicationResponseReplicate& response) const;
+    void setInfo(ProtocolResponseReplicate& response) const;
 
     /// @see WorkerRequest::execute
     bool execute() override;

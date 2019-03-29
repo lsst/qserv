@@ -27,8 +27,10 @@
 #include <stdexcept>
 
 // Qserv headers
+#include "replica/protocol.pb.h"
+
+// LSST headers
 #include "lsst/log/Log.h"
-#include "proto/replication.pb.h"
 
 using namespace std;
 
@@ -42,19 +44,11 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-////////////////////////////////////////////////////////////
-///////////////////// PerformanceUtils /////////////////////
-////////////////////////////////////////////////////////////
-
-uint64_t PerformanceUtils::now() {
+    uint64_t PerformanceUtils::now() {
     return chrono::duration_cast<chrono::milliseconds>(
                 chrono::system_clock::now().time_since_epoch()).count();
 }
 
-
-///////////////////////////////////////////////////////
-///////////////////// Performance /////////////////////
-///////////////////////////////////////////////////////
 
 Performance::Performance()
     :   c_create_time(PerformanceUtils::now()),
@@ -66,7 +60,7 @@ Performance::Performance()
 }
 
 
-void Performance::update(proto::ReplicationPerformance const& workerPerformanceInfo) {
+void Performance::update(ProtocolPerformance const& workerPerformanceInfo) {
     w_receive_time = workerPerformanceInfo.receive_time();
     w_start_time   = workerPerformanceInfo.start_time();
     w_finish_time  = workerPerformanceInfo.finish_time();
@@ -100,10 +94,6 @@ ostream& operator<<(ostream& os, Performance const& p) {
 }
 
 
-/////////////////////////////////////////////////////////////
-///////////////////// WorkerPerformance /////////////////////
-/////////////////////////////////////////////////////////////
-
 WorkerPerformance::WorkerPerformance()
     :   receive_time(PerformanceUtils::now()),
         start_time(0),
@@ -125,8 +115,8 @@ uint64_t WorkerPerformance::setUpdateFinish() {
 }
 
 
-proto::ReplicationPerformance* WorkerPerformance::info() const {
-    auto ptr = new proto::ReplicationPerformance();
+unique_ptr<ProtocolPerformance> WorkerPerformance::info() const {
+    auto ptr = make_unique<ProtocolPerformance>();
     ptr->set_receive_time(receive_time);
     ptr->set_start_time(start_time);
     ptr->set_finish_time(finish_time);

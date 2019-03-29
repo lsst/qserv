@@ -28,18 +28,22 @@
 // Qserv headers
 #include "replica/ServiceProvider.h"
 
-// This header declarations
-
+// Forward declarations
 namespace lsst {
 namespace qserv {
 namespace replica {
+    class WorkerDeleteRequest;
+    class WorkerEchoRequest;
+    class WorkerFindAllRequest;
+    class WorkerFindRequest;
+    class WorkerSqlRequest;
+    class WorkerReplicationRequest;
+}}}  // Forward declarations
 
-// Forward declarations
-class WorkerReplicationRequest;
-class WorkerDeleteRequest;
-class WorkerFindRequest;
-class WorkerFindAllRequest;
-class WorkerEchoRequest;
+// This header declarations
+namespace lsst {
+namespace qserv {
+namespace replica {
 
 /**
  * Class WorkerRequestFactoryBase is an abstract base class for a family of
@@ -51,11 +55,12 @@ public:
 
     // Pointers to specific request types
 
-    typedef std::shared_ptr<WorkerReplicationRequest> WorkerReplicationRequestPtr;
     typedef std::shared_ptr<WorkerDeleteRequest>      WorkerDeleteRequestPtr;
+    typedef std::shared_ptr<WorkerEchoRequest>        WorkerEchoRequestPtr;
     typedef std::shared_ptr<WorkerFindRequest>        WorkerFindRequestPtr;
     typedef std::shared_ptr<WorkerFindAllRequest>     WorkerFindAllRequestPtr;
-    typedef std::shared_ptr<WorkerEchoRequest>        WorkerEchoRequestPtr;
+    typedef std::shared_ptr<WorkerReplicationRequest> WorkerReplicationRequestPtr;
+    typedef std::shared_ptr<WorkerSqlRequest>         WorkerSqlRequestPtr;
 
     // The default constructor and copy semantics are prohibited
 
@@ -143,6 +148,23 @@ public:
             int priority,
             std::string const& data,
             uint64_t delay) const = 0;
+ 
+    /**
+     * Create an instance of the query execution request
+     *
+     * @see class WorkerSqlRequest
+     *
+     * @return
+     *   a pointer to the newly created object
+     */
+    virtual WorkerSqlRequestPtr createSqlRequest(
+            std::string const& worker,
+            std::string const& id,
+            int priority,
+            std::string const& query,
+            std::string const& user,
+            std::string const& password,
+            size_t maxRows) const = 0;
  
 protected:
 
@@ -287,6 +309,26 @@ public:
             priority,
             data,
             delay);
+    }
+
+    /// @see WorkerReplicationRequestBase::createSqlRequest()
+    WorkerSqlRequestPtr createSqlRequest(
+            std::string const& worker,
+            std::string const& id,
+            int priority,
+            std::string const& query,
+            std::string const& user,
+            std::string const& password,
+            size_t maxRows) const final {
+
+        return _ptr->createSqlRequest(
+            worker,
+            id,
+            priority,
+            query,
+            user,
+            password,
+            maxRows);
     }
 
 protected:

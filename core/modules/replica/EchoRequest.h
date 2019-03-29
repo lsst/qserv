@@ -27,18 +27,21 @@
 #include <string>
 
 // Qserv headers
-#include "proto/replication.pb.h"
 #include "replica/Common.h"
+#include "replica/protocol.pb.h"
 #include "replica/RequestMessenger.h"
 
-// This header declarations
-
+// Forward declarations
 namespace lsst {
 namespace qserv {
 namespace replica {
+    class Messenger;
+}}}  // Forward declarations
 
-// Forward declarations
-class Messenger;
+// This header declarations
+namespace lsst {
+namespace qserv {
+namespace replica {
 
 /**
   * Class EchoRequest represents Controller-side requests for testing
@@ -72,10 +75,12 @@ public:
     EchoRequestParams const& targetRequestParams() const { return _targetRequestParams; }
 
     /**
-     * @return a reference to a result obtained from a remote service.
+     * @return
+     *   a reference to a result obtained from a remote service.
      *
-     * Note that this operation will return a sensible result only if the operation
-     * finishes with status FINISHED::SUCCESS
+     * @note
+     *   This operation will return a sensible result only if the operation
+     *   finishes with status FINISHED::SUCCESS
      */
     std::string const& responseData() const;
 
@@ -185,7 +190,7 @@ private:
      *   response from a worker (if success)
      */
     void _analyze(bool success,
-                  lsst::qserv::proto::ReplicationResponseEcho const& message);
+                  ProtocolResponseEcho const& message);
 
     // Input parameters
 

@@ -24,10 +24,9 @@
 
 using namespace std;
 using json = nlohmann::json;
+using namespace lsst::qserv::replica;
 
 namespace {
-
-using namespace lsst::qserv::replica;
     
 template <typename T>
 json paramToJson(T const& struct_,

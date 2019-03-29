@@ -39,10 +39,7 @@
 #include "replica/ServiceProvider.h"
 #include "util/Mutex.h"
 
-// Forward declarations
-
 // This header declarations
-
 namespace lsst {
 namespace qserv {
 namespace replica {

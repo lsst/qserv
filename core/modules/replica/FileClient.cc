@@ -27,13 +27,12 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
-#include "proto/replication.pb.h"
 #include "replica/Configuration.h"
+#include "replica/protocol.pb.h"
 #include "replica/ProtocolBuffer.h"
 #include "replica/ServiceProvider.h"
 
 using namespace std;
-namespace proto = lsst::qserv::proto;
 
 namespace {
 
@@ -157,7 +156,7 @@ bool FileClient::_openImpl() {
 
         _bufferPtr->resize();
 
-        proto::ReplicationFileRequest request;
+        ProtocolFileRequest request;
         request.set_database(database());
         request.set_file(file());
         request.set_send_content(_readContent);
@@ -233,9 +232,9 @@ bool FileClient::_openImpl() {
             return false;
         }
 
-        // Parse na analyze the response
+        // Parse and analyze the response
 
-        proto::ReplicationFileResponse response;
+        ProtocolFileResponse response;
         _bufferPtr->parse(response, responseLengthBytes);
 
         if (response.available()) {

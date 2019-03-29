@@ -29,10 +29,7 @@
 #include "replica/Job.h"
 #include "replica/FindRequest.h"
 
-// Forward declarations
-
 // This header declarations
-
 namespace lsst {
 namespace qserv {
 namespace replica {

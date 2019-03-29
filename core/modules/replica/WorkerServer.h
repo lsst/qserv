@@ -32,14 +32,17 @@
 #include "replica/WorkerProcessor.h"
 #include "replica/WorkerServerConnection.h"
 
-// This header declarations
-
+// Forward declarations
 namespace lsst {
 namespace qserv {
 namespace replica {
+    class WorkerRequestFactory;
+}}}  // Forward declarations
 
-// Forward declarations
-class WorkerRequestFactory;
+// This header declarations
+namespace lsst {
+namespace qserv {
+namespace replica {
 
 /**
   * Class WorkerServer is used for handling incoming connections to

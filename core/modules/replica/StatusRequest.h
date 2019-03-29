@@ -38,18 +38,18 @@
 #include <string>
 
 // Qserv headers
-#include "proto/replication.pb.h"
 #include "replica/Common.h"
 #include "replica/DatabaseServices.h"
 #include "replica/Messenger.h"
+#include "replica/protocol.pb.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/RequestMessenger.h"
 #include "replica/ProtocolBuffer.h"
 #include "replica/ServiceProvider.h"
+#include "replica/SqlResultSet.h"
 #include "replica/StatusRequestBase.h"
 
 // This header declarations
-
 namespace lsst {
 namespace qserv {
 namespace replica {
@@ -60,13 +60,13 @@ namespace replica {
 
 struct StatusReplicationRequestPolicy {
 
-    using ResponseMessageType     = proto::ReplicationResponseReplicate;
+    using ResponseMessageType     = ProtocolResponseReplicate;
     using ResponseDataType        = ReplicaInfo;
     using TargetRequestParamsType = ReplicationRequestParams;
 
     static char const* requestName();
 
-    static proto::ReplicationReplicaRequestType replicaRequestType();
+    static ProtocolQueuedRequestType targetRequestType();
 
     static void extractResponseData(ResponseMessageType const& msg,
                                     ResponseDataType& data);
@@ -85,13 +85,13 @@ struct StatusReplicationRequestPolicy {
 
 struct StatusDeleteRequestPolicy {
 
-    using ResponseMessageType     = proto::ReplicationResponseDelete;
+    using ResponseMessageType     = ProtocolResponseDelete;
     using ResponseDataType        = ReplicaInfo;
     using TargetRequestParamsType = DeleteRequestParams;
 
     static char const* requestName();
 
-    static proto::ReplicationReplicaRequestType replicaRequestType();
+    static ProtocolQueuedRequestType targetRequestType();
 
     static void extractResponseData(ResponseMessageType const& msg,
                                     ResponseDataType& data);
@@ -110,13 +110,13 @@ struct StatusDeleteRequestPolicy {
 
 struct StatusFindRequestPolicy {
 
-    using ResponseMessageType     = proto::ReplicationResponseFind;
+    using ResponseMessageType     = ProtocolResponseFind;
     using ResponseDataType        = ReplicaInfo;
     using TargetRequestParamsType = FindRequestParams;
 
     static char const* requestName();
 
-    static proto::ReplicationReplicaRequestType replicaRequestType();
+    static ProtocolQueuedRequestType targetRequestType();
 
     static void extractResponseData(ResponseMessageType const& msg,
                                     ResponseDataType& data);
@@ -135,13 +135,13 @@ struct StatusFindRequestPolicy {
 
 struct StatusFindAllRequestPolicy {
 
-    using ResponseMessageType     = proto::ReplicationResponseFindAll;
+    using ResponseMessageType     = ProtocolResponseFindAll;
     using ResponseDataType        = ReplicaInfoCollection;
     using TargetRequestParamsType = FindAllRequestParams;
 
     static char const* requestName();
 
-    static proto::ReplicationReplicaRequestType replicaRequestType();
+    static ProtocolQueuedRequestType targetRequestType();
 
     static void extractResponseData(ResponseMessageType const& msg,
                                     ResponseDataType& data);
@@ -163,13 +163,38 @@ struct StatusFindAllRequestPolicy {
 
 struct StatusEchoRequestPolicy {
 
-    using ResponseMessageType     = proto::ReplicationResponseEcho;
+    using ResponseMessageType     = ProtocolResponseEcho;
     using ResponseDataType        = std::string;
     using TargetRequestParamsType = EchoRequestParams;
 
     static char const* requestName();
 
-    static proto::ReplicationReplicaRequestType replicaRequestType();
+    static ProtocolQueuedRequestType targetRequestType();
+
+    static void extractResponseData(ResponseMessageType const& msg,
+                                    ResponseDataType& data);
+
+    static void extractTargetRequestParams(ResponseMessageType const& msg,
+                                           TargetRequestParamsType& params);
+
+    template <class REQUEST_PTR>
+    static void saveReplicaInfo(REQUEST_PTR const& request) {
+        request->serviceProvider()->databaseServices()->updateRequestState(*request,
+                                                                           request->targetRequestId(),
+                                                                           request->targetPerformance());
+    }
+};
+
+
+struct StatusSqlRequestPolicy {
+
+    using ResponseMessageType     = ProtocolResponseSql;
+    using ResponseDataType        = SqlResultSet;
+    using TargetRequestParamsType = SqlRequestParams;
+
+    static char const* requestName();
+
+    static ProtocolQueuedRequestType targetRequestType();
 
     static void extractResponseData(ResponseMessageType const& msg,
                                     ResponseDataType& data);
@@ -268,7 +293,7 @@ public:
                 POLICY::requestName(),
                 worker,
                 targetRequestId,
-                POLICY::replicaRequestType(),
+                POLICY::targetRequestType(),
                 onFinish,
                 keepTracking,
                 messenger));
@@ -329,7 +354,7 @@ private:
                   char const* requestName,
                   std::string const& worker,
                   std::string const& targetRequestId,
-                  proto::ReplicationReplicaRequestType replicaRequestType,
+                  ProtocolQueuedRequestType targetRequestType,
                   CallbackType const& onFinish,
                   bool keepTracking,
                   std::shared_ptr<Messenger> const& messenger)
@@ -338,7 +363,7 @@ private:
                               requestName,
                               worker,
                               targetRequestId,
-                              replicaRequestType,
+                              targetRequestType,
                               keepTracking,
                               messenger),
             _onFinish(onFinish) {
@@ -353,8 +378,7 @@ private:
      * @return
      *    status of the operation reported by a server
      */
-    proto::ReplicationStatus _parseResponse(
-            typename POLICY::ResponseMessageType const& message) {
+    ProtocolStatus _parseResponse(typename POLICY::ResponseMessageType const& message) {
 
         // This lock must be acquired because the method is going to modify
         // results of the request. Note that the operation doesn't care
@@ -409,6 +433,7 @@ typedef StatusRequest<StatusDeleteRequestPolicy>      StatusDeleteRequest;
 typedef StatusRequest<StatusFindRequestPolicy>        StatusFindRequest;
 typedef StatusRequest<StatusFindAllRequestPolicy>     StatusFindAllRequest;
 typedef StatusRequest<StatusEchoRequestPolicy>        StatusEchoRequest;
+typedef StatusRequest<StatusSqlRequestPolicy>         StatusSqlRequest;
 
 }}} // namespace lsst::qserv::replica
 

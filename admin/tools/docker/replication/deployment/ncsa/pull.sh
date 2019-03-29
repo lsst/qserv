@@ -33,11 +33,12 @@ set -e
 # Database container
 
 HOST="qserv-${MASTER}"
-ssh -n $HOST docker pull $DB_IMAGE_TAG
+ssh -n $HOST docker pull $DB_IMAGE_TAG &
 
 # Replication System's tools
 
 for n in $MASTER $WORKERS; do
     HOST="qserv-${n}"
-    ssh -n $HOST docker pull $REPLICATION_IMAGE_TAG
+    ssh -n $HOST docker pull $REPLICATION_IMAGE_TAG &
 done
+wait

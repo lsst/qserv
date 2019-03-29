@@ -36,7 +36,6 @@
 #include <string>
 
 // This header declarations
-
 namespace lsst {
 namespace qserv {
 namespace replica {

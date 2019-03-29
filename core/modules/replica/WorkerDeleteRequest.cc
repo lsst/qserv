@@ -91,37 +91,26 @@ WorkerDeleteRequest::WorkerDeleteRequest(ServiceProvider::Ptr const& serviceProv
 }
                      
 
-void WorkerDeleteRequest::setInfo(proto::ReplicationResponseDelete& response) const {
+void WorkerDeleteRequest::setInfo(ProtocolResponseDelete& response) const {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
+    LOGS(_log, LOG_LVL_DEBUG, context(__func__));
 
-    util::Lock lock(_mtx, context() + __func__);
+    util::Lock lock(_mtx, context(__func__));
 
-    // Return the performance of the target request
+    response.set_allocated_target_performance(performance().info().release());
+    response.set_allocated_replica_info(_replicaInfo.info().release());
 
-    response.set_allocated_target_performance(performance().info());
-
-    // Note the ownership transfer of an intermediate Protobuf object obtained
-    // from ReplicaInfo object in the call below. The Protobuf run-time will take
-    // care of deleting the intermediate object.
-
-    response.set_allocated_replica_info(_replicaInfo.info());
-
-    // Same comment on the ownership transfer applies here
-
-    auto protoRequestPtr = new proto::ReplicationRequestDelete();
-
-    protoRequestPtr->set_priority(priority());
-    protoRequestPtr->set_database(database());
-    protoRequestPtr->set_chunk(   chunk());
-
-    response.set_allocated_request(protoRequestPtr);
+    auto ptr = make_unique<ProtocolRequestDelete>();
+    ptr->set_priority(priority());
+    ptr->set_database(database());
+    ptr->set_chunk(   chunk());
+    response.set_allocated_request(ptr.release());
 }
 
 
 bool WorkerDeleteRequest::execute() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
+    LOGS(_log, LOG_LVL_DEBUG, context(__func__)
         << "  db: "    << database()
         << "  chunk: " << chunk());
 
@@ -171,11 +160,11 @@ WorkerDeleteRequestPOSIX::WorkerDeleteRequestPOSIX(
 
 bool WorkerDeleteRequestPOSIX::execute() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
+    LOGS(_log, LOG_LVL_DEBUG, context(__func__)
          << "  db: "    << database()
          << "  chunk: " << chunk());
 
-    util::Lock lock(_mtx, context() + __func__);
+    util::Lock lock(_mtx, context(__func__));
 
     WorkerInfo   const workerInfo   = _serviceProvider->config()->workerInfo(worker());
     DatabaseInfo const databaseInfo = _serviceProvider->config()->databaseInfo(database());
@@ -189,7 +178,7 @@ bool WorkerDeleteRequestPOSIX::execute() {
     WorkerRequest::ErrorContext errorContext;
     boost::system::error_code   ec;
     {
-        util::Lock dataFolderLock(_mtxDataFolderOperations, context() + __func__);
+        util::Lock dataFolderLock(_mtxDataFolderOperations, context(__func__));
 
         fs::path        const dataDir = fs::path(workerInfo.dataDir) / database();
         fs::file_status const stat    = fs::status(dataDir, ec);

@@ -42,12 +42,11 @@
 #include "replica/SemanticMaps.h"
 
 using namespace std;
+using namespace lsst::qserv::replica;
 
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.DatabaseServicesMySQL");
-
-using namespace lsst::qserv::replica;
 
 /**
  * Return 'true' if the specified state is found in a collection.

@@ -38,14 +38,17 @@
 #include "replica/ServiceProvider.h"
 #include "util/Mutex.h"
 
-// This header declarations
-
+// Forward declarations
 namespace lsst {
 namespace qserv {
 namespace replica {
+    class Controller;
+}}}  // Forward declarations
 
-// Forward declarations
-class Controller;
+// This header declarations
+namespace lsst {
+namespace qserv {
+namespace replica {
 
 /**
   * Class Request is a base class for a family of requests within
@@ -576,12 +579,13 @@ private:
     /// which may require multiple retries or any time spacing between network
     /// operation.
     ///
-    /// The current class doesn't manager this time. It's here just because
-    /// it's required by virtually all implementations of requests. And it's
-    /// up to subclasses to manage this timer.
+    /// The current class doesn't manage the timer. The object is stored here
+    /// since it's required by virtually all implementations of requests. And
+    /// it's up to subclasses to manage this timer.
     ///
-    /// The only role of this class (apart from providing the objects)
-    /// is to set up the default timer interval from a configuration.
+    /// The only responsibility of the current class (apart from providing
+    /// these objects to its subclasses) is to set up the default timer interval
+    /// from a configuration.
     unsigned int                _timerIvalSec;
     boost::asio::deadline_timer _timer;
 

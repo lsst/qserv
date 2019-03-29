@@ -27,19 +27,22 @@
 #include <string>
 
 // Qserv headers
-#include "proto/replication.pb.h"
 #include "replica/Common.h"
+#include "replica/protocol.pb.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/RequestMessenger.h"
 
-// This header declarations
-
+// Forward declarations
 namespace lsst {
 namespace qserv {
 namespace replica {
+    class Messenger;
+}}}  // Forward declarations
 
-// Forward declarations
-class Messenger;
+// This header declarations
+namespace lsst {
+namespace qserv {
+namespace replica {
 
 /**
   * Class FindAllRequest represents known replicas lookup requests within
@@ -189,7 +192,7 @@ private:
      *   response from a worker (if success)
      */
     void _analyze(bool success,
-                  proto::ReplicationResponseFindAll const& message);
+                  ProtocolResponseFindAll const& message);
 
 
     // Input parameters

@@ -84,39 +84,27 @@ WorkerFindAllRequest::WorkerFindAllRequest(
 }
 
 
-void WorkerFindAllRequest::setInfo(proto::ReplicationResponseFindAll& response) const {
+void WorkerFindAllRequest::setInfo(ProtocolResponseFindAll& response) const {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
+    LOGS(_log, LOG_LVL_DEBUG, context(__func__));
 
-    util::Lock lock(_mtx, context() + __func__);
+    util::Lock lock(_mtx, context(__func__));
 
-    // Return the performance of the target request
-
-    response.set_allocated_target_performance(performance().info());
-
-    // Note that a new Info object is allocated and appended to
-    // the 'replica_info_many' series at each step of the iteration below.
-    // The Protobuf run-time will take care of deleting those objects.
+    response.set_allocated_target_performance(performance().info().release());
 
     for (auto&& replicaInfo: _replicaInfoCollection) {
-        proto::ReplicationReplicaInfo* info = response.add_replica_info_many();
-        replicaInfo.setInfo(info);
+        replicaInfo.setInfo(response.add_replica_info_many());
     }
-
-    // Same comment on the ownership transfer applies here
-
-    auto protoRequestPtr = new proto::ReplicationRequestFindAll();
-
-    protoRequestPtr->set_priority(priority());
-    protoRequestPtr->set_database(database());
-
-    response.set_allocated_request(protoRequestPtr);
+    auto ptr = make_unique<ProtocolRequestFindAll>();
+    ptr->set_priority(priority());
+    ptr->set_database(database());
+    response.set_allocated_request(ptr.release());
 }
 
 
 bool WorkerFindAllRequest::execute() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  database: " << database());
+    LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  database: " << database());
 
     // Set up the result if the operation is over
 
@@ -177,9 +165,9 @@ WorkerFindAllRequestPOSIX::WorkerFindAllRequestPOSIX(
 
 bool WorkerFindAllRequestPOSIX::execute() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  database: " << database());
+    LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  database: " << database());
 
-    util::Lock lock(_mtx, context() + __func__);
+    util::Lock lock(_mtx, context(__func__));
 
     WorkerInfo   const workerInfo    = _serviceProvider->config()->workerInfo(worker());
     DatabaseInfo const databaseInfo  = _serviceProvider->config()->databaseInfo(database());
@@ -192,7 +180,7 @@ bool WorkerFindAllRequestPOSIX::execute() {
 
     map<unsigned int, ReplicaInfo::FileInfoCollection> chunk2fileInfoCollection;
     {
-        util::Lock dataFolderLock(_mtxDataFolderOperations, context() + __func__);
+        util::Lock dataFolderLock(_mtxDataFolderOperations, context(__func__));
 
         fs::path        const dataDir = fs::path(workerInfo.dataDir) / database();
         fs::file_status const stat    = fs::status(dataDir, ec);
@@ -213,7 +201,7 @@ bool WorkerFindAllRequestPOSIX::execute() {
                         entry.path().filename().string(),
                         databaseInfo)) {
 
-                    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
+                    LOGS(_log, LOG_LVL_DEBUG, context(__func__)
                         << "  database: " << database()
                         << "  file: "     << entry.path().filename()
                         << "  table: "    << get<0>(parsed)

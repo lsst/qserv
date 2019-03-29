@@ -32,11 +32,10 @@
 #include <string>
 
 // Qserv headers
-#include "proto/replication.pb.h"
+#include "replica/protocol.pb.h"
 #include "util/Mutex.h"
 
 // This header declarations
-
 namespace lsst {
 namespace qserv {
 namespace replica {
@@ -71,17 +70,19 @@ enum ExtendedCompletionStatus {
     EXT_STATUS_NO_FILE,         // file doesn't exist
     EXT_STATUS_NO_ACCESS,       // no access to a file or a folder
     EXT_STATUS_NO_SPACE,        // no space left on a device as required by an operation
-    EXT_STATUS_FILE_MTIME       // get/set 'mtime' operation failed
+    EXT_STATUS_FILE_MTIME,      // get/set 'mtime' operation failed
+    EXT_STATUS_MYSQL_ERROR,     // MySQL operation failed
+    EXT_STATUS_LARGE_RESULT     // result exceeds a limit set in a request
 };
 
 /// Return the string representation of the extended status
 std::string status2string(ExtendedCompletionStatus status);
 
 /// Translate Protobuf status into the transient one
-ExtendedCompletionStatus translate(proto::ReplicationStatusExt status);
+ExtendedCompletionStatus translate(ProtocolStatusExt status);
 
 /// Translate transient extended status into the Protobuf one
-proto::ReplicationStatusExt translate(ExtendedCompletionStatus status);
+ProtocolStatusExt translate(ExtendedCompletionStatus status);
 
 /**
  * Class Generators is the utility class for generating a set of unique
@@ -107,14 +108,14 @@ private:
  */
 struct ReplicationRequestParams {
 
-    int          priority;
+    int          priority = 0;
     std::string  database;
-    unsigned int chunk;
+    unsigned int chunk = 0;
     std::string  sourceWorker;
 
-    ReplicationRequestParams();
+    ReplicationRequestParams() = default;
 
-    explicit ReplicationRequestParams(proto::ReplicationRequestReplicate const& message);
+    explicit ReplicationRequestParams(ProtocolRequestReplicate const& message);
 };
 
 /**
@@ -123,14 +124,14 @@ struct ReplicationRequestParams {
  */
 struct DeleteRequestParams {
 
-    int          priority;
+    int          priority = 0;
     std::string  database;
-    unsigned int chunk;
+    unsigned int chunk = 0;
     std::string  sourceWorker;
 
-    DeleteRequestParams();
+    DeleteRequestParams() = default;
 
-    explicit DeleteRequestParams(proto::ReplicationRequestDelete const& message);
+    explicit DeleteRequestParams(ProtocolRequestDelete const& message);
 };
 
 /**
@@ -139,13 +140,13 @@ struct DeleteRequestParams {
  */
 struct FindRequestParams {
 
-    int          priority;
+    int          priority = 0;
     std::string  database;
-    unsigned int chunk;
+    unsigned int chunk = 0;
 
-    FindRequestParams();
+    FindRequestParams() = default;
 
-    explicit FindRequestParams(proto::ReplicationRequestFind const& message);
+    explicit FindRequestParams(ProtocolRequestFind const& message);
 };
 
 /**
@@ -155,12 +156,12 @@ struct FindRequestParams {
  */
 struct FindAllRequestParams {
 
-    int          priority;
+    int          priority = 0;
     std::string  database;
 
-    FindAllRequestParams();
+    FindAllRequestParams() = default;
 
-    explicit FindAllRequestParams(proto::ReplicationRequestFindAll const& message);
+    explicit FindAllRequestParams(ProtocolRequestFindAll const& message);
 };
 
 /**
@@ -168,13 +169,29 @@ struct FindAllRequestParams {
  */
 struct EchoRequestParams {
 
-    int          priority;
+    int          priority = 0;
     std::string  data;
-    uint64_t     delay;
+    uint64_t     delay = 0;
 
-    EchoRequestParams();
+    EchoRequestParams() = default;
 
-    explicit EchoRequestParams(proto::ReplicationRequestEcho const& message);
+    explicit EchoRequestParams(ProtocolRequestEcho const& message);
+};
+
+/**
+ * Structure SqlRequestParams represents parameters of the SQL requests.
+ */
+struct SqlRequestParams {
+
+    int          priority = 0;
+    std::string  query;
+    std::string  user;
+    std::string  password;
+    uint64_t     maxRows = 0;
+
+    SqlRequestParams() = default;
+
+    explicit SqlRequestParams(ProtocolRequestSql const& message);
 };
 
 }}} // namespace lsst::qserv::replica

@@ -36,15 +36,12 @@
 #include <boost/asio.hpp>
 
 // Qserv headers
-#include "proto/replication.pb.h"
 #include "replica/Configuration.h"
+#include "replica/protocol.pb.h"
 #include "replica/ProtocolBuffer.h"
 #include "replica/ServiceProvider.h"
 
-namespace proto = lsst::qserv::proto;
-
 // This header declarations
-
 namespace lsst {
 namespace qserv {
 namespace replica {

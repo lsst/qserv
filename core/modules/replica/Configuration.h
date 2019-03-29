@@ -41,14 +41,17 @@
 // Qserv headers
 #include "util/Mutex.h"
 
-// This header declarations
-
+// Forward declarations
 namespace lsst {
 namespace qserv {
 namespace replica {
+    class ChunkNumberValidator;
+}}}  // Forward declarations
 
-/// Forward declarations
-class ChunkNumberValidator;
+// This header declarations
+namespace lsst {
+namespace qserv {
+namespace replica {
 
 /**
  * Structure WorkerInfo encapsulates various parameters describing a worker.
@@ -80,6 +83,15 @@ struct WorkerInfo {
     /// An absolute path to the data directory under which the MySQL database
     /// folders are residing.
     std::string dataDir;
+
+    /// The port number of the worker database service
+    uint16_t dbPort;
+
+    /// The host name (or IP address) of the database service for the worker
+    std::string dbHost;
+
+    /// The name of a user account for connecting to the database service
+    std::string dbUser;
 
     /**
      * Translate the structure into JSON
@@ -851,6 +863,74 @@ public:
     virtual WorkerInfo setWorkerDataDir(std::string const& name,
                                         std::string const& dataDir) = 0;
 
+    /**
+     * Change the host name of the worker's database service
+     *
+     * @note
+     *   This operation may throw implementation-specific exceptions
+     *   which are not covered by this technology-neutral interface.
+     * @note
+     *
+     * @param name
+     *   the name of a worker affected by the operation
+     *
+     * @param host
+     *   the name of a new host
+     *
+     * @return
+     *   updated worker descriptor
+     *
+     * @throw std::invalid_argument
+     *   if the specified worker was not found in the configuration.
+     */
+    virtual WorkerInfo setWorkerDbHost(std::string const& name,
+                                       std::string const& host) = 0;
+
+    /**
+     * Change the port number of the worker's database service
+     *
+     * @note
+     *   This operation may throw implementation-specific exceptions
+     *   which are not covered by this technology-neutral interface.
+     * @note
+     *
+     * @param name
+     *   the name of a worker affected by the operation
+     *
+     * @param port
+     *   the number of a new port
+     *
+     * @return
+     *   updated worker descriptor
+     *
+     * @throw std::invalid_argument
+     *   if the specified worker was not found in the configuration.
+     */
+    virtual WorkerInfo setWorkerDbPort(std::string const& name,
+                                       uint16_t port) = 0;
+
+    /**
+     * Change the user account name of the worker's database service
+     *
+     * @note
+     *   This operation may throw implementation-specific exceptions
+     *   which are not covered by this technology-neutral interface.
+     * @note
+     *
+     * @param name
+     *   the name of a worker affected by the operation
+     *
+     * @param user
+     *   the name of a new user
+     *
+     * @return
+     *   updated worker descriptor
+     *
+     * @throw std::invalid_argument
+     *   if the specified worker was not found in the configuration.
+     */
+    virtual WorkerInfo setWorkerDbUser(std::string const& name,
+                                       std::string const& user) = 0;
 
     /// @return the name of the default technology for implementing requests
     std::string const& workerTechnology() const { return _workerTechnology; }
@@ -924,6 +1004,9 @@ protected:
     static std::string  const defaultWorkerFsHost;
     static uint16_t     const defaultWorkerFsPort;
     static std::string  const defaultDataDir;
+    static std::string  const defaultWorkerDbHost;
+    static uint16_t     const defaultWorkerDbPort;
+    static std::string  const defaultWorkerDbUser;
     static std::string  const defaultDatabaseTechnology;
     static std::string  const defaultDatabaseHost;
     static uint16_t     const defaultDatabasePort;

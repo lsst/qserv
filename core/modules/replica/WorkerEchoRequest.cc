@@ -66,7 +66,7 @@ WorkerEchoRequest::WorkerEchoRequest(ServiceProvider::Ptr const& serviceProvider
                                      uint64_t delay)
     :   WorkerRequest(serviceProvider,
                       worker,
-                      "ECHO",
+                      "TEST_ECHO",
                       id,
                       priority),
         _data(data),
@@ -75,25 +75,23 @@ WorkerEchoRequest::WorkerEchoRequest(ServiceProvider::Ptr const& serviceProvider
 }
 
 
-void WorkerEchoRequest::setInfo(proto::ReplicationResponseEcho& response) const {
+void WorkerEchoRequest::setInfo(ProtocolResponseEcho& response) const {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
+    LOGS(_log, LOG_LVL_DEBUG, context(__func__));
 
-    util::Lock lock(_mtx, context() + __func__);
+    util::Lock lock(_mtx, context(__func__));
 
-    // Return the performance of the target request
-
-    response.set_allocated_target_performance(performance().info());
+    response.set_allocated_target_performance(performance().info().release());
     response.set_data(data());
 }
 
 
 bool WorkerEchoRequest::execute() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
+    LOGS(_log, LOG_LVL_DEBUG, context(__func__)
          << "  delay:" << delay() << " _delayLeft:" << _delayLeft);
 
-    util::Lock lock(_mtx, context() + __func__);
+    util::Lock lock(_mtx, context(__func__));
 
     switch (status()) {
 
@@ -109,7 +107,7 @@ bool WorkerEchoRequest::execute() {
 
         default:
             throw logic_error(
-                    context() + string(__func__) + "  not allowed while in state: " +
+                    context(__func__) + "  not allowed while in state: " +
                     WorkerRequest::status2string(status()));
     }
 

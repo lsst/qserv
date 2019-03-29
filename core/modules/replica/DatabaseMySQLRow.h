@@ -37,16 +37,22 @@
 #include <string>
 #include <vector>
 
-// This header declarations
+// Forward declarations
+namespace lsst {
+namespace qserv {
+namespace replica {
+    class ProtocolResponseSqlRow;
+namespace database {
+namespace mysql {
+    class Connection;
+}}}}} // Forward declarations
 
+// This header declarations
 namespace lsst {
 namespace qserv {
 namespace replica {
 namespace database {
 namespace mysql {
-
-/// Forward declarations
-class Connection;
 
 /**
  * Class Row represents the current row obtained from the last result set.
@@ -64,6 +70,7 @@ class Connection;
  *
  * Methods may also throw the following exceptions:
  *
+ *   std::logic_error      - when attempting to use methods of an invalid object
  *   std::invalid_argument - for unknown column names
  *   InvalidTypeError      - when the conversion of row data into a value of
  *                           the requested type is not possible.
@@ -190,6 +197,17 @@ public:
      *   the name of a column
      */
     Cell const& getDataCell(std::string const& columnName) const;
+
+    /**
+     * Fill a Protobuf object representing a row.
+     *
+     * @param ptr
+     *   a valid pointer to the Protobuf object to be populated.
+     * 
+     * @param std::invalid_argument
+     *   if the input pointer is 0
+     */
+    void exportRow(ProtocolResponseSqlRow* ptr) const;
 
 private:
 

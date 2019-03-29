@@ -35,17 +35,20 @@
 #include "replica/ChunkLocker.h"
 #include "util/Mutex.h"
 
-// This header declarations
-
+// Forward declarations
 namespace lsst {
 namespace qserv {
 namespace replica {
+    class Configuration;
+    class DatabaseServices;
+    class Messenger;
+    class QservMgtServices;
+}}}  // Forward declarations
 
-// Forward declarations
-class Configuration;
-class DatabaseServices;
-class Messenger;
-class QservMgtServices;
+// This header declarations
+namespace lsst {
+namespace qserv {
+namespace replica {
 
 /**
   * Class ServiceProvider hosts various services used by both workers

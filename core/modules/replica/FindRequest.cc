@@ -120,14 +120,14 @@ void FindRequest::startImpl(util::Lock const& lock) {
 
     buffer()->resize();
 
-    proto::ReplicationRequestHeader hdr;
+    ProtocolRequestHeader hdr;
     hdr.set_id(id());
-    hdr.set_type(proto::ReplicationRequestHeader::REPLICA);
-    hdr.set_replica_type(proto::ReplicationReplicaRequestType::REPLICA_FIND);
+    hdr.set_type(ProtocolRequestHeader::QUEUED);
+    hdr.set_queued_type(ProtocolQueuedRequestType::REPLICA_FIND);
 
     buffer()->serialize(hdr);
 
-    proto::ReplicationRequestFind message;
+    ProtocolRequestFind message;
     message.set_priority(priority());
     message.set_database(database());
     message.set_chunk(chunk());
@@ -179,16 +179,16 @@ void FindRequest::_awaken(boost::system::error_code const& ec) {
 
     buffer()->resize();
 
-    proto::ReplicationRequestHeader hdr;
+    ProtocolRequestHeader hdr;
     hdr.set_id(id());
-    hdr.set_type(proto::ReplicationRequestHeader::REQUEST);
-    hdr.set_management_type(proto::ReplicationManagementRequestType::REQUEST_STATUS);
+    hdr.set_type(ProtocolRequestHeader::REQUEST);
+    hdr.set_management_type(ProtocolManagementRequestType::REQUEST_STATUS);
 
     buffer()->serialize(hdr);
 
-    proto::ReplicationRequestStatus message;
+    ProtocolRequestStatus message;
     message.set_id(id());
-    message.set_replica_type(proto::ReplicationReplicaRequestType::REPLICA_FIND);
+    message.set_queued_type(ProtocolQueuedRequestType::REPLICA_FIND);
 
     buffer()->serialize(message);
 
@@ -202,13 +202,13 @@ void FindRequest::_send(util::Lock const& lock) {
 
     auto self = shared_from_base<FindRequest>();
 
-    messenger()->send<proto::ReplicationResponseFind>(
+    messenger()->send<ProtocolResponseFind>(
         worker(),
         id(),
         buffer(),
         [self] (string const& id,
                 bool success,
-                proto::ReplicationResponseFind const& response) {
+                ProtocolResponseFind const& response) {
 
             self->_analyze(success,
                           response);
@@ -218,7 +218,7 @@ void FindRequest::_send(util::Lock const& lock) {
 
 
 void FindRequest::_analyze(bool success,
-                           proto::ReplicationResponseFind const& message) {
+                           ProtocolResponseFind const& message) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  success=" << (success ? "true" : "false"));
 
@@ -271,44 +271,44 @@ void FindRequest::_analyze(bool success,
     }
     switch (message.status()) {
 
-        case proto::ReplicationStatus::SUCCESS:
+        case ProtocolStatus::SUCCESS:
 
             serviceProvider()->databaseServices()->saveReplicaInfo(_replicaInfo);
 
             finish(lock, SUCCESS);
             break;
 
-        case proto::ReplicationStatus::QUEUED:
+        case ProtocolStatus::QUEUED:
             if (keepTracking()) _wait(lock);
             else                finish(lock, SERVER_QUEUED);
             break;
 
-        case proto::ReplicationStatus::IN_PROGRESS:
+        case ProtocolStatus::IN_PROGRESS:
             if (keepTracking()) _wait(lock);
             else                finish(lock, SERVER_IN_PROGRESS);
             break;
 
-        case proto::ReplicationStatus::IS_CANCELLING:
+        case ProtocolStatus::IS_CANCELLING:
             if (keepTracking()) _wait(lock);
             else                finish(lock, SERVER_IS_CANCELLING);
             break;
 
-        case proto::ReplicationStatus::BAD:
+        case ProtocolStatus::BAD:
             finish(lock, SERVER_BAD);
             break;
 
-        case proto::ReplicationStatus::FAILED:
+        case ProtocolStatus::FAILED:
             finish(lock, SERVER_ERROR);
             break;
 
-        case proto::ReplicationStatus::CANCELLED:
+        case ProtocolStatus::CANCELLED:
             finish(lock, SERVER_CANCELLED);
             break;
 
         default:
             throw logic_error(
                     "FindRequest::" + string(__func__) + " unknown status '" +
-                    proto::ReplicationStatus_Name(message.status()) + "' received from server");
+                    ProtocolStatus_Name(message.status()) + "' received from server");
     }
 }
 

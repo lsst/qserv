@@ -25,6 +25,7 @@
 // System headers
 #include <atomic>
 #include <functional>
+#include <iterator>
 #include <map>
 #include <iomanip>
 #include <stdexcept>
@@ -34,21 +35,21 @@
 #include <boost/lexical_cast.hpp>
 
 // Qserv headers
-#include "util/BlockPost.h"
 #include "replica/ConfigurationTypes.h"
 #include "replica/Controller.h"
 #include "replica/DatabaseServices.h"
 #include "replica/Performance.h"
+#include "replica/SqlRequest.h"
+#include "util/BlockPost.h"
 
 
 using namespace std;
 using namespace std::placeholders;
 using json = nlohmann::json;
-
-namespace {
-
 namespace qhttp = lsst::qserv::qhttp;
 using namespace lsst::qserv::replica;
+
+namespace {
 
 /**
  * Extract a value of an optional parameter of a query (string value)
@@ -310,6 +311,81 @@ bool saveConfigParameter(T& struct_,
     return false;
 }
 
+
+/**
+ * Helper class HttpRequestBody parses a body of an HTTP request
+ * which has the following header:
+ * 
+ *   Content-Type: application/json
+ * 
+ * Exceptions may be thrown by the constructor of the class if
+ * the request has an unexpected content type, or if its payload
+ * is not a proper JSON object.
+ */
+class HttpRequestBody {
+
+public:
+
+    /// Key-value pairs
+    map<string,string> kv;
+
+    HttpRequestBody() = delete;
+
+    /**
+     * The constructor will parse and evaluate a body of an HTTP request
+     * and populate the 'kv' dictionary. Exceptions may be thrown in
+     * the following scenarios:
+     *
+     * - the required HTTP header is not found in the request
+     * - the body doesn't have a valid JSON string (unless the body is empty)
+     * 
+     * @param req
+     *   the request to be parsed
+     */
+    explicit HttpRequestBody(qhttp::Request::Ptr const& req) {
+
+        string const contentType = req->header["Content-Type"];
+        string const requiredContentType = "application/json";
+        if (contentType != requiredContentType) {
+            throw invalid_argument(
+                    "unsupported content type: '" + contentType + "' instead of: '" +
+                    requiredContentType + "'");
+        }
+        json objJson;
+        req->content >> objJson;
+        if (objJson.is_null()) {
+            ;   // empty body detected
+        } else if (objJson.is_object()) {
+            for (auto&& elem : objJson.items()) {
+                kv[elem.key()] = elem.value();
+            }
+        } else {
+            throw invalid_argument(
+                    "invalid format of the request body. A simple JSON object with"
+                    " <key>:<val> pairs of string data types for values"
+                    " was expected");
+        }
+    }
+
+    /// @return a value of a required parameter
+    string required(string const& name) const {
+        auto itr = kv.find(name);
+        if (kv.end() == itr) {
+            throw invalid_argument(
+                    "required parameter " + name + " is missing in the request body");
+        }
+        return itr->second;
+    }
+
+    /// @return a value of an optional parameter if found. Otherwise return
+    /// the default value.
+    string optional(string const& name, string const& defaultValue) const {
+        auto itr = kv.find(name);
+        if (kv.end() == itr) return defaultValue;
+        return itr->second;
+    }
+};
+
 }  // namespace
 
 
@@ -361,31 +437,27 @@ void HttpProcessor::_initialize() {
 
     controller()->serviceProvider()->httpServer()->addHandlers({
 
-        {"GET",    "/replication/v1/level",          bind(&HttpProcessor::_getReplicationLevel, self, _1, _2)},
-
-        {"GET",    "/replication/v1/worker",         bind(&HttpProcessor::_listWorkerStatuses,  self, _1, _2)},
-        {"GET",    "/replication/v1/worker/:name",   bind(&HttpProcessor::_getWorkerStatus,     self, _1, _2)},
-
-        {"GET",    "/replication/v1/controller",     bind(&HttpProcessor::_listControllers,     self, _1, _2)},
-        {"GET",    "/replication/v1/controller/:id", bind(&HttpProcessor::_getControllerInfo,   self, _1, _2)},
-
-        {"GET",    "/replication/v1/request",        bind(&HttpProcessor::_listRequests,        self, _1, _2)},
-        {"GET",    "/replication/v1/request/:id",    bind(&HttpProcessor::_getRequestInfo,      self, _1, _2)},
-
-        {"GET",    "/replication/v1/job",            bind(&HttpProcessor::_listJobs,            self, _1, _2)},
-        {"GET",    "/replication/v1/job/:id",        bind(&HttpProcessor::_getJobInfo,          self, _1, _2)},
-
-        {"GET",    "/replication/v1/config",                bind(&HttpProcessor::_getConfig,            self, _1, _2)},
-        {"PUT",    "/replication/v1/config/general",        bind(&HttpProcessor::_updateGeneralConfig,  self, _1, _2)},
-        {"PUT",    "/replication/v1/config/worker/:name",   bind(&HttpProcessor::_updateWorkerConfig,   self, _1, _2)},
-        {"DELETE", "/replication/v1/config/worker/:name",   bind(&HttpProcessor::_deleteWorkerConfig,   self, _1, _2)},
-        {"POST",   "/replication/v1/config/worker",         bind(&HttpProcessor::_addWorkerConfig,      self, _1, _2)},
-        {"DELETE", "/replication/v1/config/family/:name",   bind(&HttpProcessor::_deleteFamilyConfig,   self, _1, _2)},
-        {"POST",   "/replication/v1/config/family",         bind(&HttpProcessor::_addFamilyConfig,      self, _1, _2)},
+        {"GET",    "/replication/v1/level", bind(&HttpProcessor::_getReplicationLevel, self, _1, _2)},
+        {"GET",    "/replication/v1/worker", bind(&HttpProcessor::_listWorkerStatuses, self, _1, _2)},
+        {"GET",    "/replication/v1/worker/:name", bind(&HttpProcessor::_getWorkerStatus, self, _1, _2)},
+        {"GET",    "/replication/v1/controller", bind(&HttpProcessor::_listControllers, self, _1, _2)},
+        {"GET",    "/replication/v1/controller/:id", bind(&HttpProcessor::_getControllerInfo, self, _1, _2)},
+        {"GET",    "/replication/v1/request", bind(&HttpProcessor::_listRequests, self, _1, _2)},
+        {"GET",    "/replication/v1/request/:id", bind(&HttpProcessor::_getRequestInfo, self, _1, _2)},
+        {"GET",    "/replication/v1/job", bind(&HttpProcessor::_listJobs, self, _1, _2)},
+        {"GET",    "/replication/v1/job/:id", bind(&HttpProcessor::_getJobInfo, self, _1, _2)},
+        {"GET",    "/replication/v1/config", bind(&HttpProcessor::_getConfig, self, _1, _2)},
+        {"PUT",    "/replication/v1/config/general", bind(&HttpProcessor::_updateGeneralConfig, self, _1, _2)},
+        {"PUT",    "/replication/v1/config/worker/:name", bind(&HttpProcessor::_updateWorkerConfig, self, _1, _2)},
+        {"DELETE", "/replication/v1/config/worker/:name", bind(&HttpProcessor::_deleteWorkerConfig, self, _1, _2)},
+        {"POST",   "/replication/v1/config/worker", bind(&HttpProcessor::_addWorkerConfig, self, _1, _2)},
+        {"DELETE", "/replication/v1/config/family/:name", bind(&HttpProcessor::_deleteFamilyConfig,   self, _1, _2)},
+        {"POST",   "/replication/v1/config/family", bind(&HttpProcessor::_addFamilyConfig, self, _1, _2)},
         {"DELETE", "/replication/v1/config/database/:name", bind(&HttpProcessor::_deleteDatabaseConfig, self, _1, _2)},
-        {"POST",   "/replication/v1/config/database",       bind(&HttpProcessor::_addDatabaseConfig,    self, _1, _2)},
-        {"DELETE", "/replication/v1/config/table/:name",    bind(&HttpProcessor::_deleteTableConfig,    self, _1, _2)},
-        {"POST",   "/replication/v1/config/table",          bind(&HttpProcessor::_addTableConfig,       self, _1, _2)}
+        {"POST",   "/replication/v1/config/database", bind(&HttpProcessor::_addDatabaseConfig, self, _1, _2)},
+        {"DELETE", "/replication/v1/config/table/:name", bind(&HttpProcessor::_deleteTableConfig, self, _1, _2)},
+        {"POST",   "/replication/v1/config/table", bind(&HttpProcessor::_addTableConfig, self, _1, _2)},
+        {"POST",   "/replication/v1/sql/query", bind(&HttpProcessor::_sqlQuery, self, _1, _2)}
     });
     controller()->serviceProvider()->httpServer()->start();
 }
@@ -411,8 +483,8 @@ void HttpProcessor::_error(string const& msg) {
 }
 
 
-void HttpProcessor::_getReplicationLevel(qhttp::Request::Ptr req,
-                                         qhttp::Response::Ptr resp) {
+void HttpProcessor::_getReplicationLevel(qhttp::Request::Ptr const& req,
+                                         qhttp::Response::Ptr const& resp) {
     _debug(__func__);
 
     util::Lock lock(_replicationLevelMtx, "HttpProcessor::" + string(__func__));
@@ -613,8 +685,8 @@ void HttpProcessor::_getReplicationLevel(qhttp::Request::Ptr req,
 }
 
 
-void HttpProcessor::_listWorkerStatuses(qhttp::Request::Ptr req,
-                                        qhttp::Response::Ptr resp) {
+void HttpProcessor::_listWorkerStatuses(qhttp::Request::Ptr const& req,
+                                        qhttp::Response::Ptr const& resp) {
     _debug(__func__);
 
     try {
@@ -657,15 +729,15 @@ void HttpProcessor::_listWorkerStatuses(qhttp::Request::Ptr req,
 }
 
 
-void HttpProcessor::_getWorkerStatus(qhttp::Request::Ptr req,
-                                     qhttp::Response::Ptr resp) {
+void HttpProcessor::_getWorkerStatus(qhttp::Request::Ptr const& req,
+                                     qhttp::Response::Ptr const& resp) {
     _debug(__func__);
     resp->sendStatus(404);
 }
 
 
-void HttpProcessor::_listControllers(qhttp::Request::Ptr req,
-                                     qhttp::Response::Ptr resp) {
+void HttpProcessor::_listControllers(qhttp::Request::Ptr const& req,
+                                     qhttp::Response::Ptr const& resp) {
     _debug(__func__);
     
     try {
@@ -706,8 +778,8 @@ void HttpProcessor::_listControllers(qhttp::Request::Ptr req,
 }
 
 
-void HttpProcessor::_getControllerInfo(qhttp::Request::Ptr req,
-                                       qhttp::Response::Ptr resp) {
+void HttpProcessor::_getControllerInfo(qhttp::Request::Ptr const& req,
+                                       qhttp::Response::Ptr const& resp) {
     _debug(__func__);
 
     try {
@@ -765,8 +837,8 @@ void HttpProcessor::_getControllerInfo(qhttp::Request::Ptr req,
 }
 
 
-void HttpProcessor::_listRequests(qhttp::Request::Ptr req,
-                                  qhttp::Response::Ptr resp) {
+void HttpProcessor::_listRequests(qhttp::Request::Ptr const& req,
+                                  qhttp::Response::Ptr const& resp) {
     _debug(__func__);
 
     try {
@@ -811,8 +883,8 @@ void HttpProcessor::_listRequests(qhttp::Request::Ptr req,
 }
 
 
-void HttpProcessor::_getRequestInfo(qhttp::Request::Ptr req,
-                                    qhttp::Response::Ptr resp) {
+void HttpProcessor::_getRequestInfo(qhttp::Request::Ptr const& req,
+                                    qhttp::Response::Ptr const& resp) {
     _debug(__func__);
 
     try {
@@ -837,8 +909,8 @@ void HttpProcessor::_getRequestInfo(qhttp::Request::Ptr req,
 }
 
 
-void HttpProcessor::_listJobs(qhttp::Request::Ptr req,
-                              qhttp::Response::Ptr resp) {
+void HttpProcessor::_listJobs(qhttp::Request::Ptr const& req,
+                              qhttp::Response::Ptr const& resp) {
     _debug(__func__);
 
     try {
@@ -886,8 +958,8 @@ void HttpProcessor::_listJobs(qhttp::Request::Ptr req,
 }
 
 
-void HttpProcessor::_getJobInfo(qhttp::Request::Ptr req,
-                                qhttp::Response::Ptr resp) {
+void HttpProcessor::_getJobInfo(qhttp::Request::Ptr const& req,
+                                qhttp::Response::Ptr const& resp) {
     _debug(__func__);
 
     try {
@@ -912,8 +984,8 @@ void HttpProcessor::_getJobInfo(qhttp::Request::Ptr req,
 }
 
 
-void HttpProcessor::_getConfig(qhttp::Request::Ptr req,
-                               qhttp::Response::Ptr resp) {
+void HttpProcessor::_getConfig(qhttp::Request::Ptr const& req,
+                               qhttp::Response::Ptr const& resp) {
     _debug(__func__);
 
     try {
@@ -925,8 +997,8 @@ void HttpProcessor::_getConfig(qhttp::Request::Ptr req,
 }
 
 
-void HttpProcessor::_updateGeneralConfig(qhttp::Request::Ptr req,
-                                         qhttp::Response::Ptr resp) {
+void HttpProcessor::_updateGeneralConfig(qhttp::Request::Ptr const& req,
+                                         qhttp::Response::Ptr const& resp) {
     _debug(__func__);
 
     try {
@@ -968,8 +1040,8 @@ void HttpProcessor::_updateGeneralConfig(qhttp::Request::Ptr req,
 }
 
 
-void HttpProcessor::_updateWorkerConfig(qhttp::Request::Ptr req,
-                                        qhttp::Response::Ptr resp) {
+void HttpProcessor::_updateWorkerConfig(qhttp::Request::Ptr const& req,
+                                        qhttp::Response::Ptr const& resp) {
     _debug(__func__);
 
     try {
@@ -1023,8 +1095,8 @@ void HttpProcessor::_updateWorkerConfig(qhttp::Request::Ptr req,
 }
 
 
-void HttpProcessor::_deleteWorkerConfig(qhttp::Request::Ptr req,
-                                        qhttp::Response::Ptr resp) {
+void HttpProcessor::_deleteWorkerConfig(qhttp::Request::Ptr const& req,
+                                        qhttp::Response::Ptr const& resp) {
     _debug(__func__);
 
     try {
@@ -1041,8 +1113,8 @@ void HttpProcessor::_deleteWorkerConfig(qhttp::Request::Ptr req,
 }
 
 
-void HttpProcessor::_addWorkerConfig(qhttp::Request::Ptr req,
-                                     qhttp::Response::Ptr resp) {
+void HttpProcessor::_addWorkerConfig(qhttp::Request::Ptr const& req,
+                                     qhttp::Response::Ptr const& resp) {
     _debug(__func__);
 
     try {
@@ -1080,8 +1152,8 @@ void HttpProcessor::_addWorkerConfig(qhttp::Request::Ptr req,
 }
 
 
-void HttpProcessor::_deleteFamilyConfig(qhttp::Request::Ptr req,
-                                 qhttp::Response::Ptr resp) {
+void HttpProcessor::_deleteFamilyConfig(qhttp::Request::Ptr const& req,
+                                 qhttp::Response::Ptr const& resp) {
     _debug(__func__);
 
     try {
@@ -1098,8 +1170,8 @@ void HttpProcessor::_deleteFamilyConfig(qhttp::Request::Ptr req,
 }
 
 
-void HttpProcessor::_addFamilyConfig(qhttp::Request::Ptr req,
-                                     qhttp::Response::Ptr resp) {
+void HttpProcessor::_addFamilyConfig(qhttp::Request::Ptr const& req,
+                                     qhttp::Response::Ptr const& resp) {
     _debug(__func__);
 
     try {
@@ -1133,8 +1205,8 @@ void HttpProcessor::_addFamilyConfig(qhttp::Request::Ptr req,
 }
 
 
-void HttpProcessor::_deleteDatabaseConfig(qhttp::Request::Ptr req,
-                                          qhttp::Response::Ptr resp) {
+void HttpProcessor::_deleteDatabaseConfig(qhttp::Request::Ptr const& req,
+                                          qhttp::Response::Ptr const& resp) {
     _debug(__func__);
 
     try {
@@ -1151,8 +1223,8 @@ void HttpProcessor::_deleteDatabaseConfig(qhttp::Request::Ptr req,
 }
 
 
-void HttpProcessor::_addDatabaseConfig(qhttp::Request::Ptr req,
-                                       qhttp::Response::Ptr resp) {
+void HttpProcessor::_addDatabaseConfig(qhttp::Request::Ptr const& req,
+                                       qhttp::Response::Ptr const& resp) {
     _debug(__func__);
 
     try {
@@ -1179,8 +1251,8 @@ void HttpProcessor::_addDatabaseConfig(qhttp::Request::Ptr req,
 }
 
 
-void HttpProcessor::_deleteTableConfig(qhttp::Request::Ptr req,
-                                       qhttp::Response::Ptr resp) {
+void HttpProcessor::_deleteTableConfig(qhttp::Request::Ptr const& req,
+                                       qhttp::Response::Ptr const& resp) {
     _debug(__func__);
 
     try {
@@ -1198,8 +1270,8 @@ void HttpProcessor::_deleteTableConfig(qhttp::Request::Ptr req,
 }
 
 
-void HttpProcessor::_addTableConfig(qhttp::Request::Ptr req,
-                                    qhttp::Response::Ptr resp) {
+void HttpProcessor::_addTableConfig(qhttp::Request::Ptr const& req,
+                                    qhttp::Response::Ptr const& resp) {
     _debug(__func__);
 
     try {
@@ -1209,12 +1281,65 @@ void HttpProcessor::_addTableConfig(qhttp::Request::Ptr req,
         auto const database      = ::getRequiredQueryParamStr( req->query, "database");
         auto const isPartitioned = ::getRequiredQueryParamBool(req->query, "is_partitioned");
 
-        _debug(string(__func__) + " name="           +           table);
-        _debug(string(__func__) + " database="       +           database);
+        _debug(string(__func__) + " name="           + table);
+        _debug(string(__func__) + " database="       + database);
         _debug(string(__func__) + " is_partitioned=" + to_string(isPartitioned ? 1 : 0));
 
         controller()->serviceProvider()->config()->addTable(database, table, isPartitioned);
         resp->send(_configToJson().dump(), "application/json");
+
+    } catch (invalid_argument const& ex) {
+        _error(string(__func__) + " invalid parameters of the request, ex: " + ex.what());
+        resp->sendStatus(400);
+    } catch (exception const& ex) {
+        _error(string(__func__) + " operation failed due to: " + string(ex.what()));
+        resp->sendStatus(500);
+    }
+}
+
+
+void HttpProcessor::_sqlQuery(qhttp::Request::Ptr const& req,
+                              qhttp::Response::Ptr const& resp) {
+    _debug(__func__);
+
+    try {
+
+        // All parameters must be provided via the body of the request
+
+        ::HttpRequestBody body(req);
+
+        auto const worker   = body.required("worker");
+        auto const query    = body.required("query");
+        auto const user     = body.required("user");
+        auto const password = body.required("password");
+        auto const maxRows  = stoull(body.optional("max_rows", "0"));
+
+        _debug(string(__func__) + " worker="   + worker);
+        _debug(string(__func__) + " query="    + query);
+        _debug(string(__func__) + " user="     + user);
+        _debug(string(__func__) + " maxRows="  + to_string(maxRows));
+
+        atomic<bool> finished(false);
+        auto const request = controller()->sql(
+            worker,
+            query,
+            user,
+            password,
+            maxRows,
+            [&finished] (SqlRequest::Ptr const& request) {
+                finished = true;
+            }
+        );
+        util::BlockPost blockPost(10, 20);  // for random delays (in milliseconds) between iterations
+        while (not finished) {
+            blockPost.wait();
+        }
+
+        json result;
+        result["success"]    = request->extendedState() == Request::SUCCESS ? 1 : 0;
+        result["result_set"] = request->responseData().toJson();
+
+        resp->send(result.dump(), "application/json");
 
     } catch (invalid_argument const& ex) {
         _error(string(__func__) + " invalid parameters of the request, ex: " + ex.what());

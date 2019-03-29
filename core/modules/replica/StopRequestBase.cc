@@ -53,7 +53,7 @@ StopRequestBase::StopRequestBase(ServiceProvider::Ptr const& serviceProvider,
                                  char const* requestTypeName,
                                  string const& worker,
                                  string const& targetRequestId,
-                                 proto::ReplicationReplicaRequestType replicaRequestType,
+                                 ProtocolQueuedRequestType targetRequestType,
                                  bool keepTracking,
                                  shared_ptr<Messenger> const& messenger)
     :   RequestMessenger(serviceProvider,
@@ -65,7 +65,7 @@ StopRequestBase::StopRequestBase(ServiceProvider::Ptr const& serviceProvider,
                          false /* allowDuplicate */,
                          messenger),
         _targetRequestId(targetRequestId),
-        _replicaRequestType(replicaRequestType) {
+        _targetRequestType(targetRequestType) {
 }
 
 
@@ -123,16 +123,16 @@ void StopRequestBase::_sendImpl(util::Lock const& lock) {
 
     buffer()->resize();
 
-    proto::ReplicationRequestHeader hdr;
+    ProtocolRequestHeader hdr;
     hdr.set_id(id());
-    hdr.set_type(proto::ReplicationRequestHeader::REQUEST);
-    hdr.set_management_type(proto::ReplicationManagementRequestType::REQUEST_STOP);
+    hdr.set_type(ProtocolRequestHeader::REQUEST);
+    hdr.set_management_type(ProtocolManagementRequestType::REQUEST_STOP);
 
     buffer()->serialize(hdr);
 
-    proto::ReplicationRequestStop message;
+    ProtocolRequestStop message;
     message.set_id(_targetRequestId);
-    message.set_replica_type(_replicaRequestType);
+    message.set_queued_type(_targetRequestType);
 
     buffer()->serialize(message);
 
@@ -141,7 +141,7 @@ void StopRequestBase::_sendImpl(util::Lock const& lock) {
 
 
 void StopRequestBase::analyze(bool success,
-                              proto::ReplicationStatus status) {
+                              ProtocolStatus status) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  success=" << (success ? "true" : "false"));
 
@@ -170,44 +170,44 @@ void StopRequestBase::analyze(bool success,
 
     switch (status) {
 
-        case proto::ReplicationStatus::SUCCESS:
+        case ProtocolStatus::SUCCESS:
 
             saveReplicaInfo();
 
             finish(lock, SUCCESS);
             break;
 
-        case proto::ReplicationStatus::QUEUED:
+        case ProtocolStatus::QUEUED:
             if (keepTracking()) _wait(lock);
             else                finish(lock, SERVER_QUEUED);
             break;
 
-        case proto::ReplicationStatus::IN_PROGRESS:
+        case ProtocolStatus::IN_PROGRESS:
             if (keepTracking()) _wait(lock);
             else                finish(lock, SERVER_IN_PROGRESS);
             break;
 
-        case proto::ReplicationStatus::IS_CANCELLING:
+        case ProtocolStatus::IS_CANCELLING:
             if (keepTracking()) _wait(lock);
             else                finish(lock, SERVER_IS_CANCELLING);
             break;
 
-        case proto::ReplicationStatus::BAD:
+        case ProtocolStatus::BAD:
             finish(lock, SERVER_BAD);
             break;
 
-        case proto::ReplicationStatus::FAILED:
+        case ProtocolStatus::FAILED:
             finish(lock, SERVER_ERROR);
             break;
 
-        case proto::ReplicationStatus::CANCELLED:
+        case ProtocolStatus::CANCELLED:
             finish(lock, SERVER_CANCELLED);
             break;
 
         default:
             throw logic_error(
                     "StopRequestBase::" + string(__func__) + "  unknown status '" +
-                    proto::ReplicationStatus_Name(status) + "' received from server");
+                    ProtocolStatus_Name(status) + "' received from server");
     }
 }
 

@@ -29,8 +29,11 @@
 #include <boost/lexical_cast.hpp>
 
 // Qserv headers
-#include "lsst/log/Log.h"
 #include "replica/DatabaseMySQLExceptions.h"
+#include "replica/protocol.pb.h"
+
+// LSST headers
+#include "lsst/log/Log.h"
 
 using namespace std;
 
@@ -160,7 +163,7 @@ Row::Cell const& Row::getDataCell(size_t columnIdx) const {
     if (columnIdx >= _index2cell.size()) {
         throw invalid_argument(
                 context + "the column index '" + to_string(columnIdx) +
-                "'is not in the result set");
+                "' is not in the result set");
     }
     return _index2cell.at(columnIdx);
 }
@@ -175,9 +178,31 @@ Row::Cell const& Row::getDataCell(string const& columnName) const {
     auto itr = _name2indexPtr->find(columnName);
     if (_name2indexPtr->end() == itr) {
         throw invalid_argument(
-                context + "the column '" + columnName + "'is not in the result set");
+                context + "the column '" + columnName + "' is not in the result set");
     }
     return _index2cell.at(itr->second);
+}
+
+
+void Row::exportRow(ProtocolResponseSqlRow* ptr) const {
+
+    string const context = "Row::" + string(__func__) + "  ";
+    if (not isValid()) {
+        throw logic_error(context + "the object is not valid");
+    }
+    if (nullptr == ptr) {
+        throw invalid_argument(context + "null pointer passed as a parameter");
+    }
+    for (auto&& cell : _index2cell) {
+        auto&& str = cell.first;
+        if (nullptr == str) {
+            ptr->add_cells(string());        
+            ptr->add_nulls(true);
+        } else {
+            ptr->add_cells(cell.first, cell.second);        
+            ptr->add_nulls(false);
+        }
+    }
 }
 
 }}}}} // namespace lsst::qserv::replica::database::mysql

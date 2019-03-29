@@ -67,79 +67,90 @@ string ConfigurationFile::dump2init(Configuration::Ptr const& config) {
 
     str << "[common]\n"
         << "\n"
-        << "workers                    = " <<           config->allWorkers()              << "\n"
-        << "database_families          = " <<           config->databaseFamilies()        << "\n"
-        << "databases                  = " <<           config->databases()               << "\n"
-        << "request_buf_size_bytes     = " << to_string(config->requestBufferSizeBytes()) << "\n"
-        << "request_retry_interval_sec = " << to_string(config->retryTimeoutSec())        << "\n"
+        << "workers                    = " << config->allWorkers() << "\n"
+        << "database_families          = " << config->databaseFamilies() << "\n"
+        << "databases                  = " << config->databases() << "\n"
+        << "request_buf_size_bytes     = " << config->requestBufferSizeBytes() << "\n"
+        << "request_retry_interval_sec = " << config->retryTimeoutSec() << "\n"
         << "\n";
 
     str << "[controller]\n"
         << "\n"
-        << "num_threads         = " << to_string(config->controllerThreads())           << "\n"
-        << "http_server_port    = " << to_string(config->controllerHttpPort())          << "\n"
-        << "http_server_threads = " << to_string(config->controllerHttpThreads())       << "\n"
-        << "request_timeout_sec = " << to_string(config->controllerRequestTimeoutSec()) << "\n"
-        << "job_timeout_sec     = " << to_string(config->jobTimeoutSec())               << "\n"
-        << "job_heartbeat_sec   = " << to_string(config->jobHeartbeatTimeoutSec())      << "\n"
+        << "num_threads         = " << config->controllerThreads() << "\n"
+        << "http_server_port    = " << config->controllerHttpPort() << "\n"
+        << "http_server_threads = " << config->controllerHttpThreads() << "\n"
+        << "request_timeout_sec = " << config->controllerRequestTimeoutSec() << "\n"
+        << "job_timeout_sec     = " << config->jobTimeoutSec() << "\n"
+        << "job_heartbeat_sec   = " << config->jobHeartbeatTimeoutSec() << "\n"
         << "\n";
 
     str << "[database]\n"
         << "\n"
-        << "technology         = " <<           config->databaseTechnology()        << "\n"
-        << "host               = " <<           config->databaseHost()              << "\n"
-        << "port               = " << to_string(config->databasePort())             << "\n"
-        << "user               = " <<           config->databaseUser()              << "\n"
-        << "password           = " <<           config->databasePassword()          << "\n"
-        << "name               = " <<           config->databaseName()              << "\n"
-        << "services_pool_size = " << to_string(config->databaseServicesPoolSize()) << "\n"
+        << "technology         = " << config->databaseTechnology() << "\n"
+        << "host               = " << config->databaseHost() << "\n"
+        << "port               = " << config->databasePort() << "\n"
+        << "user               = " << config->databaseUser() << "\n"
+        << "password           = " << "" << "\n"
+        << "name               = " << config->databaseName() << "\n"
+        << "services_pool_size = " << config->databaseServicesPoolSize() << "\n"
         << "\n";
 
     str << "[xrootd]\n"
         << "\n"
-        << "auto_notify         = " <<          (config->xrootdAutoNotify() ? "1" : "0") << "\n"
-        << "host                = " <<           config->xrootdHost()                    << "\n"
-        << "port                = " << to_string(config->xrootdPort())                   << "\n"
-        << "request_timeout_sec = " << to_string(config->xrootdTimeoutSec())             << "\n"
+        << "auto_notify         = " << (config->xrootdAutoNotify() ? "1" : "0") << "\n"
+        << "host                = " << config->xrootdHost() << "\n"
+        << "port                = " << config->xrootdPort() << "\n"
+        << "request_timeout_sec = " << config->xrootdTimeoutSec() << "\n"
         << "\n";
 
     str << "[worker]\n"
         << "\n"
-        << "technology                 = " <<           config->workerTechnology()            << "\n"
-        << "num_svc_processing_threads = " << to_string(config->workerNumProcessingThreads()) << "\n"
-        << "num_fs_processing_threads  = " << to_string(config->fsNumProcessingThreads())     << "\n"
-        << "fs_buf_size_bytes          = " << to_string(config->workerFsBufferSizeBytes())    << "\n"
+        << "technology                 = " << config->workerTechnology() << "\n"
+        << "num_svc_processing_threads = " << config->workerNumProcessingThreads() << "\n"
+        << "num_fs_processing_threads  = " << config->fsNumProcessingThreads() << "\n"
+        << "fs_buf_size_bytes          = " << config->workerFsBufferSizeBytes() << "\n"
+        << "svc_host                   = " << defaultWorkerSvcHost << "\n"
+        << "svc_port                   = " << defaultWorkerSvcPort << "\n"
+        << "fs_host                    = " << defaultWorkerFsHost << "\n"
+        << "fs_port                    = " << defaultWorkerFsPort << "\n"
+        << "data_dir                   = " << defaultDataDir << "\n"
+        << "db_host                    = " << defaultWorkerDbHost << "\n"
+        << "db_port                    = " << defaultWorkerDbPort << "\n"
+        << "db_user                    = " << defaultWorkerDbUser << "\n"
         << "\n";
 
     for (auto&& worker: config->allWorkers()) {
         auto&& info = config->workerInfo(worker);
         str << "[worker:" << info.name << "]\n"
             << "\n"
-            << "is_enabled   = " <<          (info.isEnabled  ? "1" : "0") << "\n"
-            << "is_read_only = " <<          (info.isReadOnly ? "1" : "0") << "\n"
-            << "svc_host     = " <<           info.svcHost                 << "\n"
-            << "svc_port     = " << to_string(info.svcPort)                << "\n"
-            << "fs_host      = " <<           info.fsHost                  << "\n"
-            << "fs_port      = " << to_string(info.fsPort)                 << "\n"
-            << "data_dir     = " <<           info.dataDir                 << "\n"
+            << "is_enabled   = " << (info.isEnabled  ? "1" : "0") << "\n"
+            << "is_read_only = " << (info.isReadOnly ? "1" : "0") << "\n"
+            << "svc_host     = " << info.svcHost << "\n"
+            << "svc_port     = " << info.svcPort << "\n"
+            << "fs_host      = " << info.fsHost << "\n"
+            << "fs_port      = " << info.fsPort << "\n"
+            << "data_dir     = " << info.dataDir << "\n"
+            << "db_host      = " << info.dbHost << "\n"
+            << "db_port      = " << info.dbPort << "\n"
+            << "db_user      = " << info.dbUser << "\n"
             << "\n";
     }
     for (auto&& family: config->databaseFamilies()) {
         auto&& info = config->databaseFamilyInfo(family);
         str << "[database_family:" << info.name << "]\n"
             << "\n"
-            << "min_replication_level = " << to_string(info.replicationLevel) << "\n"
-            << "num_stripes           = " << to_string(info.numStripes)       << "\n"
-            << "num_sub_stripes       = " << to_string(info.numSubStripes)    << "\n"
+            << "min_replication_level = " << info.replicationLevel << "\n"
+            << "num_stripes           = " << info.numStripes << "\n"
+            << "num_sub_stripes       = " << info.numSubStripes << "\n"
             << "\n";
     }
     for (auto&& database: config->databases()) {
         auto&& info = config->databaseInfo(database);
         str << "[database:" << info.name << "]\n"
             << "\n"
-            << "family             = " << info.family            << "\n"
+            << "family             = " << info.family << "\n"
             << "partitioned_tables = " << info.partitionedTables << "\n"
-            << "regular_tables     = " << info.regularTables     << "\n"
+            << "regular_tables     = " << info.regularTables << "\n"
             << "\n";
     }
     return str.str();

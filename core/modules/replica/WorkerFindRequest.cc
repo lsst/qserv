@@ -93,42 +93,31 @@ WorkerFindRequest::WorkerFindRequest(
 }
 
 
-void WorkerFindRequest::setInfo(proto::ReplicationResponseFind& response) const {
+void WorkerFindRequest::setInfo(ProtocolResponseFind& response) const {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
+    LOGS(_log, LOG_LVL_DEBUG, context(__func__));
 
-    util::Lock lock(_mtx, context() + __func__);
+    util::Lock lock(_mtx, context(__func__));
 
-    // Return the performance of the target request
+    response.set_allocated_target_performance(performance().info().release());
+    response.set_allocated_replica_info(_replicaInfo.info().release());
 
-    response.set_allocated_target_performance(performance().info());
-
-    // Note the ownership transfer of an intermediate Protobuf object obtained
-    // from ReplicaInfo object in the call below. The Protobuf run-time will take
-    // care of deleting the intermediate object.
-
-    response.set_allocated_replica_info(_replicaInfo.info());
-
-    // Same comment on the ownership transfer applies here
-
-    auto protoRequestPtr = new proto::ReplicationRequestFind();
-
-    protoRequestPtr->set_priority(  priority());
-    protoRequestPtr->set_database(  database());
-    protoRequestPtr->set_chunk(     chunk());
-    protoRequestPtr->set_compute_cs(computeCheckSum());
-
-    response.set_allocated_request(protoRequestPtr);
+    auto ptr = make_unique<ProtocolRequestFind>();
+    ptr->set_priority(  priority());
+    ptr->set_database(  database());
+    ptr->set_chunk(     chunk());
+    ptr->set_compute_cs(computeCheckSum());
+    response.set_allocated_request(ptr.release());
 }
 
 
 bool WorkerFindRequest::execute() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
+    LOGS(_log, LOG_LVL_DEBUG, context(__func__)
          << "  database: " << database()
          << "  chunk: "    << chunk());
 
-    util::Lock lock(_mtx, context() + __func__);
+    util::Lock lock(_mtx, context(__func__));
 
     // Set up the result if the operation is over
 
@@ -190,11 +179,11 @@ WorkerFindRequestPOSIX::WorkerFindRequestPOSIX(
 
 bool WorkerFindRequestPOSIX::execute() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
+    LOGS(_log, LOG_LVL_DEBUG, context(__func__)
          << "  database: " << database()
          << "  chunk: "    << chunk());
 
-    util::Lock lock(_mtx, context() + __func__);
+    util::Lock lock(_mtx, context(__func__));
 
     // Abort the operation right away if that's the case
 
@@ -226,7 +215,7 @@ bool WorkerFindRequestPOSIX::execute() {
 
         // Check if the data directory exists and it can be read
 
-        util::Lock dataFolderLock(_mtxDataFolderOperations, context() + __func__);
+        util::Lock dataFolderLock(_mtxDataFolderOperations, context(__func__));
 
         fs::path        const dataDir = fs::path(workerInfo.dataDir) / database();
         fs::file_status const stat    = fs::status(dataDir, ec);

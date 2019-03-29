@@ -34,6 +34,7 @@
 #include "lsst/log/Log.h"
 #include "replica/Configuration.h"
 #include "replica/Performance.h"
+#include "replica/protocol.pb.h"
 #include "util/BlockPost.h"
 
 using namespace std;
@@ -142,6 +143,18 @@ string Connection::escape(string const& inStr) const {
             inLen);
 
     return string(outStr.get(), outLen);
+}
+
+
+string Connection::charSetName() const {
+    if (nullptr == _mysql) {
+        throw Error(
+                "Connection[" + to_string(_id) + "]::" + string(__func__) +
+                "  not connected to the MySQL service"
+        );
+    }
+    return _charSetName;
+
 }
 
 
@@ -402,6 +415,43 @@ vector<string> const& Connection::columnNames() const {
 }
 
 
+size_t Connection::numFields() const {
+    _assertQueryContext();
+    return _numFields;
+}
+
+
+void Connection::exportField(ProtocolResponseSqlField* ptr,
+                             size_t idx) const {
+    _assertQueryContext();
+
+    string const context =
+            "Connection::" + string(__func__) + "  idx: " + to_string(idx) +
+            " range: [0," + to_string(_numFields) + "]  ";
+    
+     LOGS(_log, LOG_LVL_DEBUG, context);
+
+    if (idx >= _numFields) {
+        throw out_of_range(context + " error: index is out of range");
+    }
+    auto&& field = _fields[idx];
+    ptr->set_name(      field.name);
+    ptr->set_org_name(  field.org_name);
+    ptr->set_table(     field.table);
+    ptr->set_org_table( field.org_table);
+    ptr->set_db(        field.db);
+    ptr->set_catalog(   field.catalog);
+    ptr->set_def(       field.def);
+    ptr->set_length(    field.length);
+    ptr->set_max_length(field.max_length);
+    ptr->set_flags(     field.flags);
+    ptr->set_decimals(  field.decimals);
+    ptr->set_type(      field.type);
+
+    LOGS(_log, LOG_LVL_DEBUG, context + "  ** DONE **");
+}
+
+
 bool Connection::next(Row& row) {
 
     string const context =
@@ -554,6 +604,10 @@ void Connection::_connectOnce() {
         string const query = "KILL " + to_string(id);
         mysql_query(_mysql, query.c_str());
     }
+
+    // Get the default character set name
+
+    _charSetName = mysql_character_set_name(_mysql);
 
     // Set session attributes
 

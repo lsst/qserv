@@ -60,6 +60,9 @@ json WorkerInfo::toJson() const {
     infoJson["fs_host"]      = fsHost;
     infoJson["fs_port"]      = fsPort;
     infoJson["data_dir"]     = dataDir;
+    infoJson["db_host"]      = dbHost;
+    infoJson["db_port"]      = dbPort;
+    infoJson["db_user"]      = dbUser;
 
     return infoJson;
 }
@@ -107,7 +110,10 @@ ostream& operator <<(ostream& os, WorkerInfo const& info) {
         << "svcPort:"    <<      info.svcPort    << ","
         << "fsHost:'"    <<      info.fsHost     << "',"
         << "fsPort:"     <<      info.fsPort     << ","
-        << "dataDir:'"   <<      info.dataDir    << "')";
+        << "dataDir:'"   <<      info.dataDir    << "',"
+        << "dbHost:'"    <<      info.dbHost     << "',"
+        << "dbPort:"     <<      info.dbPort     << ","
+        << "dbUser:'"    <<      info.dbUser     << "')";
     return os;
 }
 
@@ -167,41 +173,44 @@ Configuration::Ptr Configuration::load(map<string, string> const& kvMap) {
 
 // Set some reasonable defaults
 
-size_t       const Configuration::defaultRequestBufferSizeBytes       (1024);
-unsigned int const Configuration::defaultRetryTimeoutSec              (1);
-size_t       const Configuration::defaultControllerThreads            (1);
-uint16_t     const Configuration::defaultControllerHttpPort           (80);
-size_t       const Configuration::defaultControllerHttpThreads        (1);
-unsigned int const Configuration::defaultControllerRequestTimeoutSec  (3600);
-unsigned int const Configuration::defaultJobTimeoutSec                (6000);
-unsigned int const Configuration::defaultJobHeartbeatTimeoutSec       (60);
-bool         const Configuration::defaultXrootdAutoNotify             (false);
-string       const Configuration::defaultXrootdHost                   ("localhost");
-uint16_t     const Configuration::defaultXrootdPort                   (1094);
-unsigned int const Configuration::defaultXrootdTimeoutSec             (3600);
-string       const Configuration::defaultWorkerTechnology             ("TEST");
-size_t       const Configuration::defaultWorkerNumProcessingThreads   (1);
-size_t       const Configuration::defaultFsNumProcessingThreads       (1);
-size_t       const Configuration::defaultWorkerFsBufferSizeBytes      (1048576);
-string       const Configuration::defaultWorkerSvcHost                ("localhost");
-uint16_t     const Configuration::defaultWorkerSvcPort                (50000);
-string       const Configuration::defaultWorkerFsHost                 ("localhost");
-uint16_t     const Configuration::defaultWorkerFsPort                 (50001);
-string       const Configuration::defaultDataDir                      ("{worker}");
-string       const Configuration::defaultDatabaseTechnology           ("mysql");
-string       const Configuration::defaultDatabaseHost                 ("localhost");
-uint16_t     const Configuration::defaultDatabasePort                 (3306);
-string       const Configuration::defaultDatabaseUser                 (FileUtils::getEffectiveUser());
-string       const Configuration::defaultDatabasePassword             ("");
-string       const Configuration::defaultDatabaseName                 ("qservReplica");
-size_t       const Configuration::defaultDatabaseServicesPoolSize     (1);
-bool               Configuration::defaultDatabaseAllowReconnect       (true);
-unsigned int       Configuration::defaultDatabaseConnectTimeoutSec    (3600);
-unsigned int       Configuration::defaultDatabaseMaxReconnects        (1);
-unsigned int       Configuration::defaultDatabaseTransactionTimeoutSec(3600);
-size_t       const Configuration::defaultReplicationLevel             (1);
-unsigned int const Configuration::defaultNumStripes                   (340);
-unsigned int const Configuration::defaultNumSubStripes                (12);
+size_t       const Configuration::defaultRequestBufferSizeBytes       = 1024;
+unsigned int const Configuration::defaultRetryTimeoutSec              = 1;
+size_t       const Configuration::defaultControllerThreads            = 1;
+uint16_t     const Configuration::defaultControllerHttpPort           = 80;
+size_t       const Configuration::defaultControllerHttpThreads        = 1;
+unsigned int const Configuration::defaultControllerRequestTimeoutSec  = 3600;
+unsigned int const Configuration::defaultJobTimeoutSec                = 6000;
+unsigned int const Configuration::defaultJobHeartbeatTimeoutSec       = 60;
+bool         const Configuration::defaultXrootdAutoNotify             = false;
+string       const Configuration::defaultXrootdHost                   = "localhost";
+uint16_t     const Configuration::defaultXrootdPort                   = 1094;
+unsigned int const Configuration::defaultXrootdTimeoutSec             = 3600;
+string       const Configuration::defaultWorkerTechnology             = "TEST";
+size_t       const Configuration::defaultWorkerNumProcessingThreads   = 1;
+size_t       const Configuration::defaultFsNumProcessingThreads       = 1;
+size_t       const Configuration::defaultWorkerFsBufferSizeBytes      = 1048576;
+string       const Configuration::defaultWorkerSvcHost                = "localhost";
+uint16_t     const Configuration::defaultWorkerSvcPort                = 50000;
+string       const Configuration::defaultWorkerFsHost                 = "localhost";
+uint16_t     const Configuration::defaultWorkerFsPort                 = 50001;
+string       const Configuration::defaultDataDir                      = "{worker}";
+string       const Configuration::defaultWorkerDbHost                 = "localhost";
+uint16_t     const Configuration::defaultWorkerDbPort                 = 3306;
+string       const Configuration::defaultWorkerDbUser                 = FileUtils::getEffectiveUser();
+string       const Configuration::defaultDatabaseTechnology           = "mysql";
+string       const Configuration::defaultDatabaseHost                 = "localhost";
+uint16_t     const Configuration::defaultDatabasePort                 = 3306;
+string       const Configuration::defaultDatabaseUser                 = FileUtils::getEffectiveUser();
+string       const Configuration::defaultDatabasePassword             = "";
+string       const Configuration::defaultDatabaseName                 = "qservReplica";
+size_t       const Configuration::defaultDatabaseServicesPoolSize     = 1;
+bool               Configuration::defaultDatabaseAllowReconnect       = true;
+unsigned int       Configuration::defaultDatabaseConnectTimeoutSec    = 3600;
+unsigned int       Configuration::defaultDatabaseMaxReconnects        = 1;
+unsigned int       Configuration::defaultDatabaseTransactionTimeoutSec= 3600;
+size_t       const Configuration::defaultReplicationLevel             = 1;
+unsigned int const Configuration::defaultNumStripes                   = 340;
+unsigned int const Configuration::defaultNumSubStripes                = 12;
 
 
 void Configuration::translateDataDir(string& dataDir,
@@ -465,6 +474,9 @@ string Configuration::asString() const {
     ss << context() << "defaultWorkerFsHost:                  " << defaultWorkerFsHost << "\n";
     ss << context() << "defaultWorkerFsPort:                  " << defaultWorkerFsPort << "\n";
     ss << context() << "defaultDataDir:                       " << defaultDataDir << "\n";
+    ss << context() << "defaultWorkerDbHost:                  " << defaultWorkerDbHost << "\n";
+    ss << context() << "defaultWorkerDbPort:                  " << defaultWorkerDbPort << "\n";
+    ss << context() << "defaultWorkerDbUser:                  " << defaultWorkerDbUser << "\n";
     ss << context() << "defaultDatabaseTechnology:            " << defaultDatabaseTechnology << "\n";
     ss << context() << "defaultDatabaseHost:                  " << defaultDatabaseHost << "\n";
     ss << context() << "defaultDatabasePort:                  " << defaultDatabasePort << "\n";
@@ -499,7 +511,6 @@ string Configuration::asString() const {
     ss << context() << "_databaseHost:                        " << _databaseHost << "\n";
     ss << context() << "_databasePort:                        " << _databasePort << "\n";
     ss << context() << "_databaseUser:                        " << _databaseUser << "\n";
-    ss << context() << "_databasePassword:                    " << "*****" << "\n";
     ss << context() << "_databaseName:                        " << _databaseName << "\n";
     ss << context() << "_databaseServicesPoolSize:            " << _databaseServicesPoolSize << "\n";
     for (auto&& elem: _workerInfo) {

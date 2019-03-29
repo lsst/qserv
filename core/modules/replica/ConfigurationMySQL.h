@@ -40,7 +40,6 @@
 #include "lsst/log/Log.h"
 
 // This header declarations
-
 namespace lsst {
 namespace qserv {
 namespace replica {
@@ -237,6 +236,18 @@ public:
     /// @see Configuration::setWorkerDataDir()
     WorkerInfo setWorkerDataDir(std::string const& name,
                                 std::string const& dataDir) final;
+
+    /// @see Configuration::setWorkerDbHost()
+    WorkerInfo setWorkerDbHost(std::string const& name,
+                               std::string const& host)final;
+
+    /// @see Configuration::setWorkerDbPort()
+    WorkerInfo setWorkerDbPort(std::string const& name,
+                               uint16_t port) final;
+
+    /// @see Configuration::setWorkerDbUser()
+    WorkerInfo setWorkerDbUser(std::string const& name,
+                               std::string const& user) final;
 
     /// @see Configuration::setWorkerTechnology()
     void setWorkerTechnology(std::string const& val) final {

@@ -27,19 +27,22 @@
 #include <string>
 
 // Qserv headers
-#include "proto/replication.pb.h"
 #include "replica/Common.h"
+#include "replica/protocol.pb.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/RequestMessenger.h"
 
-// This header declarations
-
+// Forward declarations
 namespace lsst {
 namespace qserv {
 namespace replica {
+    class Messenger;
+}}}  // Forward declarations
 
-// Forward declarations
-class Messenger;
+// This header declarations
+namespace lsst {
+namespace qserv {
+namespace replica {
 
 /**
   * Class DeleteRequest represents a transient state of the replica deletion
@@ -185,7 +188,7 @@ private:
      *   a response from the worker service (if success is 'true')
      */
     void _analyze(bool success,
-                  proto::ReplicationResponseDelete const& message);
+                  ProtocolResponseDelete const& message);
 
 
     // Input parameters

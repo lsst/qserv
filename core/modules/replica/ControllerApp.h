@@ -28,7 +28,6 @@
 #include "replica/Application.h"
 
 // This header declarations
-
 namespace lsst {
 namespace qserv {
 namespace replica {
@@ -103,6 +102,23 @@ private:
     /// to the ECHO requests
     uint64_t _echoDelayMilliseconds;
 
+    /// An SQL query to be executed by a worker
+    std::string _sqlQuery;
+
+    /// A database user for establishing a connection with the worker's database
+    std::string _sqlUser;
+
+    /// A database password for establishing a connection with the worker's database
+    std::string _sqlPassword;
+
+    /// The optional limit for the total number of rows to be pulled from a result
+    /// set when executing queries against the worker's database. The default value
+    /// of 0 won't enforce any such limit.
+    uint64_t _sqlMaxRows;
+
+    /// The number of rows in the table of a query result set (0 means no pages)
+    size_t _sqlPageSize = 20;
+
     /// The optional (milliseconds) to wait before cancelling (if the number of not 0)
     /// the earlier made request.
     uint64_t _cancelDelayMilliseconds;
@@ -124,6 +140,9 @@ private:
     /// Automatically compute and store in the database check/control sums of
     /// the replica's files.
     bool _computeCheckSum  = false;
+
+    /// Print 'heartbeats' while waiting before an on-going request finishes
+    bool _enableHeartbeat;
 };
 
 }}} // namespace lsst::qserv::replica

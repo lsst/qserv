@@ -81,6 +81,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         {"worker.svc_port",                   "51000"},
         {"worker.fs_port",                    "52000"},
         {"worker.data_dir",                   "/tmp/{worker}"},
+        {"worker.db_port",                    "3306"},
+        {"worker.db_user",                    "root"},
 
         {"worker:worker-A.is_enabled",   "1"},
         {"worker:worker-A.is_read_only", "0"},
@@ -89,6 +91,9 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         {"worker:worker-A.fs_host",      "host-A"},
         {"worker:worker-A.fs_port",      "52001"},
         {"worker:worker-A.data_dir",     "/data/A"},
+        {"worker:worker-A.db_host",      "host-A"},
+        {"worker:worker-A.db_port",      "53306"},
+        {"worker:worker-A.db_user",      "qsmaster"},
 
         {"worker:worker-B.is_enabled",   "1"},
         {"worker:worker-B.is_read_only", "1"},
@@ -97,6 +102,9 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         {"worker:worker-B.fs_host",      "host-B"},
      // {"worker:worker-B.fs_port",      "52002"},      // assuming default
         {"worker:worker-B.data_dir",     "/data/B"},
+        {"worker:worker-B.db_host",      "host-B"},
+     // {"worker:worker-B.db_port",      "3306"},       // assuming default
+     // {"worker:worker-B.db_user",      "root"},       // assuming default
 
         {"worker:worker-C.is_enabled",   "0"},
         {"worker:worker-C.is_read_only", "0"},
@@ -105,6 +113,9 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         {"worker:worker-C.fs_host",      "host-C"},
      // {"worker:worker-C.fs_port",      "52003"},      // assuming default
      // {"worker:worker-C.data_dir",     "/data/C"},    // assuming default
+        {"worker:worker-C.db_host",      "host-C"},
+     // {"worker:worker-C.db_port",      "3306"},       // assuming default
+     // {"worker:worker-C.db_user",      "root"},       // assuming default
 
         {"database_family:production.min_replication_level", "10"},
         {"database_family:production.num_stripes",           "11"},
@@ -409,6 +420,9 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         BOOST_CHECK(workerA.fsHost  == "host-A");
         BOOST_CHECK(workerA.fsPort  == 52001);
         BOOST_CHECK(workerA.dataDir == "/data/A");
+        BOOST_CHECK(workerA.dbHost  == "host-A");
+        BOOST_CHECK(workerA.dbPort  == 53306);
+        BOOST_CHECK(workerA.dbUser  == "qsmaster");
 
         WorkerInfo const workerB = config->workerInfo("worker-B");
         BOOST_CHECK(workerB.name =="worker-B");
@@ -419,6 +433,9 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         BOOST_CHECK(workerB.fsHost  == "host-B");
         BOOST_CHECK(workerB.fsPort  == 52000);
         BOOST_CHECK(workerB.dataDir == "/data/B");
+        BOOST_CHECK(workerB.dbHost  == "host-B");
+        BOOST_CHECK(workerB.dbPort  == 3306);
+        BOOST_CHECK(workerB.dbUser  == "root");
 
         WorkerInfo const workerC = config->workerInfo("worker-C");
         BOOST_CHECK(workerC.name =="worker-C");
@@ -428,6 +445,9 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         BOOST_CHECK(workerC.fsHost  == "host-C");
         BOOST_CHECK(workerC.fsPort  == 52000);
         BOOST_CHECK(workerC.dataDir == "/tmp/worker-C");
+        BOOST_CHECK(workerC.dbHost  == "host-C");
+        BOOST_CHECK(workerC.dbPort  == 3306);
+        BOOST_CHECK(workerC.dbUser  == "root");
 
         // Adding a new worker with well formed and unique parameters
 
@@ -440,6 +460,9 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         workerD.fsHost     = "host-D";
         workerD.fsPort     = 52001;
         workerD.dataDir    = "/data/D";
+        workerD.dbHost     = "host-D";
+        workerD.dbPort     = 13306;
+        workerD.dbUser     = "default";
 
         config->addWorker(workerD);
         BOOST_CHECK_THROW(config->addWorker(workerD), invalid_argument);
@@ -453,6 +476,9 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         BOOST_CHECK(workerD.fsHost  == "host-D");
         BOOST_CHECK(workerD.fsPort  == 52001);
         BOOST_CHECK(workerD.dataDir == "/data/D");
+        BOOST_CHECK(workerD.dbHost  == "host-D");
+        BOOST_CHECK(workerD.dbPort  == 13306);
+        BOOST_CHECK(workerD.dbUser  == "default");
 
         // Adding a new worker with parameters conflicting with the ones of
         // some existing worker

@@ -37,8 +37,8 @@ char const* StopReplicationRequestPolicy::requestName() {
 }
 
 
-proto::ReplicationReplicaRequestType StopReplicationRequestPolicy::replicaRequestType() {
-    return proto::ReplicationReplicaRequestType::REPLICA_CREATE;
+ProtocolQueuedRequestType StopReplicationRequestPolicy::targetRequestType() {
+    return ProtocolQueuedRequestType::REPLICA_CREATE;
 }
 
 
@@ -65,8 +65,8 @@ char const* StopDeleteRequestPolicy::requestName() {
 }
 
 
-proto::ReplicationReplicaRequestType StopDeleteRequestPolicy::replicaRequestType() {
-    return proto::ReplicationReplicaRequestType::REPLICA_DELETE;
+ProtocolQueuedRequestType StopDeleteRequestPolicy::targetRequestType() {
+    return ProtocolQueuedRequestType::REPLICA_DELETE;
 }
 
 
@@ -93,8 +93,8 @@ char const* StopFindRequestPolicy::requestName() {
 }
 
 
-proto::ReplicationReplicaRequestType StopFindRequestPolicy::replicaRequestType() {
-    return proto::ReplicationReplicaRequestType::REPLICA_FIND;
+ProtocolQueuedRequestType StopFindRequestPolicy::targetRequestType() {
+    return ProtocolQueuedRequestType::REPLICA_FIND;
 }
 
 
@@ -122,8 +122,8 @@ char const* StopFindAllRequestPolicy::requestName() {
 }
 
 
-proto::ReplicationReplicaRequestType StopFindAllRequestPolicy::replicaRequestType() {
-    return proto::ReplicationReplicaRequestType::REPLICA_FIND_ALL;
+ProtocolQueuedRequestType StopFindAllRequestPolicy::targetRequestType() {
+    return ProtocolQueuedRequestType::REPLICA_FIND_ALL;
 }
 
 
@@ -149,12 +149,12 @@ void StopFindAllRequestPolicy::extractTargetRequestParams(ResponseMessageType co
 // ------------------------------------------
 
 char const* StopEchoRequestPolicy::requestName() {
-    return "REQUEST_STOP:REPLICA_ECHO";
+    return "REQUEST_STOP:TEST_ECHO";
 }
 
 
-proto::ReplicationReplicaRequestType StopEchoRequestPolicy::replicaRequestType() {
-    return proto::ReplicationReplicaRequestType::REPLICA_ECHO;
+ProtocolQueuedRequestType StopEchoRequestPolicy::targetRequestType() {
+    return ProtocolQueuedRequestType::TEST_ECHO;
 }
 
 
@@ -166,6 +166,34 @@ void StopEchoRequestPolicy::extractResponseData(ResponseMessageType const& msg,
 
 void StopEchoRequestPolicy::extractTargetRequestParams(ResponseMessageType const& msg,
                                                        TargetRequestParamsType& params) {
+    if (msg.has_request()) {
+        params = TargetRequestParamsType(msg.request());
+    }
+}
+
+
+// -----------------------------------------
+// --------- StopSqlRequestPolicy ----------
+// -----------------------------------------
+
+char const* StopSqlRequestPolicy::requestName() {
+    return "REQUEST_STOP:SQL";
+}
+
+
+ProtocolQueuedRequestType StopSqlRequestPolicy::targetRequestType() {
+    return ProtocolQueuedRequestType::SQL;
+}
+
+
+void StopSqlRequestPolicy::extractResponseData(ResponseMessageType const& msg,
+                                               ResponseDataType& data) {
+    data.set(msg);
+}
+
+
+void StopSqlRequestPolicy::extractTargetRequestParams(ResponseMessageType const& msg,
+                                                      TargetRequestParamsType& params) {
     if (msg.has_request()) {
         params = TargetRequestParamsType(msg.request());
     }

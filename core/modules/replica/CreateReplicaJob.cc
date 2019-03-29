@@ -37,32 +37,11 @@
 #include "util/BlockPost.h"
 
 using namespace std;
+using namespace lsst::qserv::replica;
 
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.CreateReplicaJob");
-
-template <class COLLECTION>
-void countRequestStates(size_t& numLaunched,
-                        size_t& numFinished,
-                        size_t& numSuccess,
-                        COLLECTION const& collection) {
-
-    using namespace lsst::qserv::replica;
-
-    numLaunched = collection.size();
-    numFinished = 0;
-    numSuccess  = 0;
-
-    for (auto&& ptr: collection) {
-        if (ptr->state() == Request::State::FINISHED) {
-            numFinished++;
-            if (ptr->extendedState() == Request::ExtendedState::SUCCESS) {
-                numSuccess++;
-            }
-        }
-    }
-}
 
 } /// namespace
 
@@ -313,8 +292,8 @@ void CreateReplicaJob::startImpl(util::Lock const& lock) {
 
     auto self = shared_from_base<CreateReplicaJob>();
 
-    for (auto&& replica: sourceReplicas) {
-        ReplicationRequest::Ptr const ptr =
+    for (auto&& replica : sourceReplicas) {
+        _requests.push_back(
             controller()->replicate(
                 destinationWorker(),
                 sourceWorker(),
@@ -326,8 +305,9 @@ void CreateReplicaJob::startImpl(util::Lock const& lock) {
                 options(lock).priority,
                 true,   /* keepTracking */
                 true,   /* allowDuplicate */
-                id()    /* jobId */);
-        _requests.push_back(ptr);
+                id()    /* jobId */
+            )
+        );
     }
     setState(lock,
              State::IN_PROGRESS);
@@ -360,9 +340,7 @@ void CreateReplicaJob::cancelImpl(util::Lock const& lock) {
 
 
 void CreateReplicaJob::notify(util::Lock const& lock) {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-
     notifyDefaultImpl<CreateReplicaJob>(lock, _onFinish);
 }
 
@@ -389,8 +367,9 @@ void CreateReplicaJob::_onRequestFinish(ReplicationRequest::Ptr const& request) 
 
     if (state() == State::FINISHED) return;
 
-    // Update stats
+    ++_numRequestsFinished;
     if (request->extendedState() == Request::ExtendedState::SUCCESS) {
+        ++_numRequestsSuccess;
         _replicaData.replicas.push_back(request->responseData());
         _replicaData.chunks[chunk()][request->database()][destinationWorker()] = request->responseData();
     }
@@ -398,15 +377,8 @@ void CreateReplicaJob::_onRequestFinish(ReplicationRequest::Ptr const& request) 
     // Evaluate the status of on-going operations to see if the replica creation
     // stage has finished.
 
-    size_t numLaunched;
-    size_t numFinished;
-    size_t numSuccess;
-
-    ::countRequestStates(numLaunched, numFinished, numSuccess,
-                         _requests);
-
-    if (numFinished == numLaunched) {
-        if (numSuccess == numLaunched) {
+    if (_numRequestsFinished == _requests.size()) {
+        if (_numRequestsSuccess == _requests.size()) {
 
             // Notify Qserv about the change in a disposition of replicas.
             //

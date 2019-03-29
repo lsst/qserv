@@ -33,8 +33,8 @@ char const* ServiceSuspendRequestPolicy::requestName() {
 }
 
 
-proto::ReplicationServiceRequestType ServiceSuspendRequestPolicy::requestType () {
-    return proto::ReplicationServiceRequestType::SERVICE_SUSPEND;
+ProtocolServiceRequestType ServiceSuspendRequestPolicy::requestType () {
+    return ProtocolServiceRequestType::SERVICE_SUSPEND;
 }
 
 
@@ -43,8 +43,8 @@ char const* ServiceResumeRequestPolicy::requestName() {
 }
 
 
-proto::ReplicationServiceRequestType ServiceResumeRequestPolicy::requestType() {
-    return proto::ReplicationServiceRequestType::SERVICE_RESUME;
+ProtocolServiceRequestType ServiceResumeRequestPolicy::requestType() {
+    return ProtocolServiceRequestType::SERVICE_RESUME;
 }
 
 
@@ -53,8 +53,8 @@ char const* ServiceStatusRequestPolicy::requestName() {
 }
 
 
-proto::ReplicationServiceRequestType ServiceStatusRequestPolicy::requestType() {
-    return proto::ReplicationServiceRequestType::SERVICE_STATUS;
+ProtocolServiceRequestType ServiceStatusRequestPolicy::requestType() {
+    return ProtocolServiceRequestType::SERVICE_STATUS;
 }
 
 
@@ -63,8 +63,8 @@ char const* ServiceRequestsRequestPolicy::requestName() {
 }
 
 
-proto::ReplicationServiceRequestType ServiceRequestsRequestPolicy::requestType() {
-    return proto::ReplicationServiceRequestType::SERVICE_REQUESTS;
+ProtocolServiceRequestType ServiceRequestsRequestPolicy::requestType() {
+    return ProtocolServiceRequestType::SERVICE_REQUESTS;
 }
 
 
@@ -73,8 +73,8 @@ char const* ServiceDrainRequestPolicy::requestName() {
 }
 
 
-proto::ReplicationServiceRequestType ServiceDrainRequestPolicy::requestType() {
-    return proto::ReplicationServiceRequestType::SERVICE_DRAIN;
+ProtocolServiceRequestType ServiceDrainRequestPolicy::requestType() {
+    return ProtocolServiceRequestType::SERVICE_DRAIN;
 }
 
 }}} // namespace lsst::qserv::replica

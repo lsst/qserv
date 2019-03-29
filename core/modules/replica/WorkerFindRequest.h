@@ -28,14 +28,17 @@
 #include "replica/ReplicaInfo.h"
 #include "replica/WorkerRequest.h"
 
-// This header declarations
-
+// Forward declarations
 namespace lsst {
 namespace qserv {
 namespace replica {
+    class MultiFileCsComputeEngine;
+}}}  // Forward declarations
 
-// Forward declarations
-class MultiFileCsComputeEngine;
+// This header declarations
+namespace lsst {
+namespace qserv {
+namespace replica {
 
 /**
   * Class WorkerFindRequest represents a context and a state of replica lookup
@@ -114,7 +117,7 @@ public:
      * @param response
      *   Protobuf response to be initialized
      */
-    void setInfo(proto::ReplicationResponseFind& response) const;
+    void setInfo(ProtocolResponseFind& response) const;
 
     /// @see WorkerRequest::execute
     bool execute() override;

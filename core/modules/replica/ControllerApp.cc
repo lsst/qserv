@@ -36,11 +36,13 @@
 #include "replica/ReplicationRequest.h"
 #include "replica/ServiceManagementRequest.h"
 #include "replica/ServiceProvider.h"
+#include "replica/SqlRequest.h"
 #include "replica/StatusRequest.h"
 #include "replica/StopRequest.h"
 #include "util/BlockPost.h"
 
 using namespace std;
+using namespace lsst::qserv::replica;
 
 namespace {
 
@@ -49,27 +51,54 @@ string const description =
     " for both testing all known types of requests and for various manual fix up"
     " operations in a replication setup.";
 
-using namespace lsst::qserv::replica;
-
-/// Report result of the operation
 template <class T>
 void printRequest(typename T::Ptr const& request) {
-    cout << request->context() << "** DONE **" << "\n"
-         << "  responseData: " << request->responseData() << "\n"
-         << "  performance: "  << request->performance() << endl;
+    cout << request->context() << "\n"
+         << "responseData: " << request->responseData() << "\n"
+         << "performance:  " << request->performance() << endl;
 }
 
 
 template <>
 void printRequest<ServiceManagementRequestBase>(ServiceManagementRequestBase::Ptr const& request) {
-    cout << request->context() << "** DONE **" << "\n"
-         << "  servicState: " << request->getServiceState() << "\n"
-         << "  performance: " << request->performance() << endl;
+    cout << request->context() << "\n"
+         << "serviceState: " << request->getServiceState() << "\n"
+         << "performance: " << request->performance() << endl;
 }
+
+
+void printRequest(Request::Ptr const& request,
+                  SqlResultSet const& resultSet,
+                  Performance const& performance,
+                  size_t const pageSize) {
+    cout << request->context() << "\n"
+         << "performance: " << performance << "\n"
+         << "error:     " << resultSet.error << "\n"
+         << "hasResult: " << (resultSet.hasResult ? "yes" : "no") << "\n"
+         << "fields:    " << resultSet.fields.size() << "\n"
+         << "rows:      " << resultSet.rows.size() << "\n"
+         << "\n";
+
+    if (resultSet.hasResult) {
+
+        string const caption = "RESULT SET";
+        string const indent  = "";
+
+        auto table = resultSet.toColumnTable(caption, indent);
+
+        bool const topSeparator    = false;
+        bool const bottomSeparator = false;
+        bool const repeatedHeader  = false;
+
+        table.print(cout, topSeparator, bottomSeparator, pageSize, repeatedHeader);
+        cout << "\n";
+    }
+}
+
 
 template <class T>
 void printRequestExtra(typename T::Ptr const& request) {
-    cout << "  targetPerformance: " << request->targetPerformance() << endl;
+    cout << "targetPerformance: " << request->targetPerformance() << endl;
 }
 
 } /// namespace
@@ -104,6 +133,7 @@ ControllerApp::ControllerApp(int argc, char* argv[])
             "FIND",
             "FIND_ALL",
             "ECHO",
+            "SQL",
             "STATUS",
             "STOP",
             "SERVICE_SUSPEND",
@@ -154,6 +184,11 @@ ControllerApp::ControllerApp(int argc, char* argv[])
         " automatically compute and store in the database check/control sums for"
         " all files of the found replica.",
         _computeCheckSum);
+
+    parser().flag(
+        "heartbeats",
+        " print 'heartbeats' while waiting before an on-going request finishes",
+        _enableHeartbeat);
 
     /// Request-specific parameters, options, flags
 
@@ -245,6 +280,42 @@ ControllerApp::ControllerApp(int argc, char* argv[])
 
     /// Request-specific parameters, options, flags
 
+    auto& sqlCmd = parser().command("SQL");
+
+    sqlCmd.description(
+        "Ask a worker service to execute a query against its database, get a result"
+        " set (if any) back and print it as a table");
+
+    sqlCmd.required(
+        "query",
+        "The query to be executed by a worker against its database.",
+        _sqlQuery);
+
+    sqlCmd.required(
+        "user",
+        "The name of a user for establishing a connection with the worker's database.",
+        _sqlUser);
+
+    sqlCmd.required(
+        "password",
+        "A password which is used along with the user name for establishing a connection"
+        " with the worker's database.",
+        _sqlPassword);
+
+    sqlCmd.option(
+        "max-rows",
+        "The optional cap on a number of rows to be extracted by a worker from a result"
+        " set. If a value of the parameter is set to 0 then no explicit limit will be"
+        " be enforced.",
+        _sqlMaxRows);
+
+    sqlCmd.option(
+        "tables-page-size",
+        "The number of rows in the table of a query result set (0 means no pages).",
+        _sqlPageSize);
+
+    /// Request-specific parameters, options, flags
+
     auto& statusCmd = parser().command("STATUS");
 
     statusCmd.description(
@@ -253,9 +324,9 @@ ControllerApp::ControllerApp(int argc, char* argv[])
     statusCmd.required(
         "affected-request",
         "The type of a request affected by the operation. Supported types:"
-        " REPLICATE, DELETE, FIND, FIND_ALL, ECHO.",
+        " REPLICATE, DELETE, FIND, FIND_ALL, ECHO, SQL.",
         _affectedRequest,
-       {"REPLICATE", "DELETE", "FIND", "FIND_ALL", "ECHO"});
+       {"REPLICATE", "DELETE", "FIND", "FIND_ALL", "ECHO", "SQL"});
 
     statusCmd.required(
         "id",
@@ -272,9 +343,9 @@ ControllerApp::ControllerApp(int argc, char* argv[])
     stopCmd.required(
         "affected-request",
         "The type of a request affected by the operation. Supported types:"
-        " REPLICATE, DELETE, FIND, FIND_ALL, ECHO.",
+        " REPLICATE, DELETE, FIND, FIND_ALL, ECHO, SQL.",
         _affectedRequest,
-       {"REPLICATE", "DELETE", "FIND", "FIND_ALL", "ECHO"});
+       {"REPLICATE", "DELETE", "FIND", "FIND_ALL", "ECHO", "SQL"});
 
     stopCmd.required(
         "id",
@@ -287,7 +358,7 @@ ControllerApp::ControllerApp(int argc, char* argv[])
     parser().command("SERVICE_SUSPEND").description(
         "Suspend the worker service. All ongoing requests will be cancelled and put"
         " back into the input queue as if they had never been attempted."
-        " The service will be still accepring new requests which will be landing"
+        " The service will be still accepting new requests which will be landing"
         " in the input queue.");
 
     parser().command("SERVICE_RESUME").description(
@@ -380,6 +451,23 @@ int ControllerApp::runImpl() {
             _priority,
             not _doNotTrackRequest);
 
+    } else if ("SQL" == _request) {
+        request = controller->sql(
+            _workerName,
+            _sqlQuery,
+            _sqlUser,
+            _sqlPassword,
+            _sqlMaxRows,
+            [&] (SqlRequest::Ptr const& request) {
+                ::printRequest(request,
+                               request->responseData(),
+                               request->performance(),
+                               _sqlPageSize);
+                finished = true;
+            },
+            _priority,
+            not _doNotTrackRequest);
+
     } else if ("STATUS" == _request) {
 
         if ("REPLICATE"  == _affectedRequest) {
@@ -433,6 +521,20 @@ int ControllerApp::runImpl() {
                 [&finished] (StatusEchoRequest::Ptr const& request) {
                     ::printRequest     <StatusEchoRequest>(request);
                     ::printRequestExtra<StatusEchoRequest>(request);
+                    finished = true;
+                },
+                not _doNotTrackRequest);
+
+        } else if ("SQL" == _affectedRequest) {
+            request = controller->statusOfSql(
+                _workerName,
+                _affectedRequestId,
+                [&] (StatusSqlRequest::Ptr const& request) {
+                    ::printRequest(request,
+                                   request->responseData(),
+                                   request->performance(),
+                                   _sqlPageSize);
+                    ::printRequestExtra<StatusSqlRequest>(request);
                     finished = true;
                 },
                 not _doNotTrackRequest);
@@ -500,6 +602,21 @@ int ControllerApp::runImpl() {
                     finished = true;
                 },
                 not _doNotTrackRequest);
+
+        } else if ("SQL" == _affectedRequest) {
+            request = controller->stopSql(
+                _workerName,
+                _affectedRequestId,
+                [&] (StopSqlRequest::Ptr const& request) {
+                    ::printRequest(request,
+                                   request->responseData(),
+                                   request->performance(),
+                                   _sqlPageSize);
+                    ::printRequestExtra<StopSqlRequest>(request);
+                    finished = true;
+                },
+                not _doNotTrackRequest);
+
         } else {
             throw logic_error(
                     "ControllerApp::" + string(__func__) + "  unsupported request: " +
@@ -561,14 +678,22 @@ int ControllerApp::runImpl() {
         request->cancel();
     }
 
-    // Wait before the request is finished. Then stop the services
+    // Print periodic heartbeats while waiting before
+    // the request will finish.
 
-    util::BlockPost blockPost(0, 5000);     // for random delays (milliseconds) between iterations
+    util::BlockPost blockPost(10, 20);  // for random delays (in milliseconds) between iterations
 
+    size_t const printIvalMs   = 5000;
+    size_t       currentIvalMs = 0;
     while (not finished) {
-        cout << "HEARTBEAT: " << blockPost.wait() << " msec" << endl;;
+        currentIvalMs += blockPost.wait();
+        if (currentIvalMs >= printIvalMs) {
+            if (_enableHeartbeat and not finished) {
+                cout << "HEARTBEAT: " << currentIvalMs << " ms" << endl;
+            }
+            currentIvalMs = 0;
+        }
     }
-
     return 0;
 }
 

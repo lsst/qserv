@@ -36,6 +36,7 @@
 #include "replica/Configuration.h"
 
 using namespace std;
+using namespace lsst::qserv::replica;
 
 namespace {
 
@@ -65,7 +66,7 @@ bool isValidExtention(string const& str) {
  */
 bool isValidPartitionedTable(
             string const& str,
-            lsst::qserv::replica::DatabaseInfo const& databaseInfo) {
+            DatabaseInfo const& databaseInfo) {
 
     for (auto&& table: databaseInfo.partitionedTables) {
         if (str == table) return true;

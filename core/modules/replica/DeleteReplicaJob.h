@@ -34,7 +34,6 @@
 #include "replica/DeleteRequest.h"
 
 // This header declarations
-
 namespace lsst {
 namespace qserv {
 namespace replica {
@@ -212,7 +211,9 @@ private:
     /// A collection of the replica deletion requests implementing the operation
     std::vector<DeleteRequest::Ptr> _requests;
 
-    /// The result of the operation (gets updated as requests are finishing)
+    size_t _numRequestsFinished = 0;    // gets incremented for each completed request
+    size_t _numRequestsSuccess  = 0;    // gets incremented for each successfully completed request
+
     DeleteReplicaJobResult _replicaData;
 };
 
