@@ -23,6 +23,7 @@
 
 // System headers
 #include <atomic>
+#include <condition_variable>
 #include <list>
 #include <memory>
 #include <ostream>
@@ -186,6 +187,9 @@ public:
      * Reset the state (if needed) and begin processing the job.
      */
     void start();
+
+    /// Wait for the completion of the job
+    void wait();
 
     /**
      * Explicitly cancel the job and all relevant requests which may be still
@@ -563,6 +567,11 @@ private:
     /// with status: FINISHED::TIMEOUT_EXPIRED.
     unsigned int _expirationIvalSec;
     std::unique_ptr<boost::asio::deadline_timer> _expirationTimerPtr;
+
+    // Synchronization primitives for implementing Job::wait()
+
+    std::mutex _onFinishMtx;
+    std::condition_variable _onFinishCv;
 };
 
 /// Comparison type for strict weak ordering required by std::priority_queue

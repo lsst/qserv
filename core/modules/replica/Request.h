@@ -23,6 +23,7 @@
 
 // System headers
 #include <atomic>
+#include <condition_variable>
 #include <map>
 #include <memory>
 #include <string>
@@ -209,6 +210,9 @@ public:
     void start(std::shared_ptr<Controller> const& controller=nullptr,
                std::string const& jobId="",
                unsigned int requestExpirationIvalSec=0);
+
+    /// Wait for the completion of the request
+    void wait();
 
     /**
      * Return an identifier if the owning job (if the request has started)
@@ -603,6 +607,11 @@ private:
 
     /// The job context of a request
     std::string _jobId;
+
+    // Synchronization primitives for implementing Request::wait()
+
+    std::mutex _onFinishMtx;
+    std::condition_variable _onFinishCv;
 };
 
 }}} // namespace lsst::qserv::replica

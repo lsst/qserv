@@ -210,6 +210,19 @@ void Request::start(shared_ptr<Controller> const& controller,
 }
 
 
+void Request::wait() {
+ 
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
+
+    if (state() == State::FINISHED) return;
+
+    unique_lock<mutex> lock(_onFinishMtx);
+    _onFinishCv.wait(lock, [this] {
+        return state() == State::FINISHED;
+    });
+}
+
+
 string const& Request::jobId() const {
     if (state() == State::CREATED) {
         throw logic_error(
@@ -295,6 +308,11 @@ void Request::finish(util::Lock const& lock,
     finishImpl(lock);
 
     notify(lock);
+
+    // Unblock threads (if any) waiting on the synchronization call
+    // to method Request::wait()
+
+    _onFinishCv.notify_all();
 }
 
 
