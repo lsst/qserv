@@ -34,7 +34,6 @@
 #include "replica/FindAllJob.h"
 #include "replica/QservGetReplicasJob.h"
 #include "replica/ReplicaInfo.h"
-#include "util/BlockPost.h"
 #include "util/TablePrinter.h"
 
 using namespace std;
@@ -172,7 +171,7 @@ ChunksApp::ChunksApp(int argc, char* argv[])
 
     parser().option(
         "worker-response-timeout",
-        "Maximum timeout (seconds) to wait before the replica scanning requests will finish."
+        "Maximum timeout (seconds) to wait before the replica scanning requests sent to workers will finish."
         " Setting this timeout to some reasonably low number would prevent the application from"
         " hanging for a substantial duration of time (which depends on the default Configuration)"
         " in case if some workers were down. The parameter applies to operations with both"
@@ -217,9 +216,10 @@ int ChunksApp::runImpl() {
         serviceProvider()->config()->allWorkers() :
         serviceProvider()->config()->workers();
 
-    // Limit request execution time if such limit was provided
+    // Limit execution timeout for requests if such limit was provided
     if (_timeoutSec != 0) {
         serviceProvider()->config()->setControllerRequestTimeoutSec(_timeoutSec);
+        serviceProvider()->config()->setXrootdTimeoutSec(_timeoutSec);
     }
 
     ///////////////////////////////////////////////////////////////////
@@ -230,52 +230,29 @@ int ChunksApp::runImpl() {
     // ATTENTION: jobs are allowed to be partially successful if some
     // workers are offline.
 
-    // The delay of 1 second for periodic checking of the completion status
-    // of the launched jobs.
-    util::BlockPost blockPost(1000,1001);
 
-    atomic<bool> replicaJobFinished{false};
     auto findAllJob = FindAllJob::create(
         _databaseFamily,
         not _doNotSaveReplicaInfo,
         _allWorkers,
-        controller,
-        string(),
-        [&replicaJobFinished] (FindAllJob::Ptr const& job) {
-            replicaJobFinished = true;
-        }
+        controller
     );
     findAllJob->start();
 
     QservGetReplicasJob::Ptr qservGetReplicasJob;
     if (_pullQservReplicas) {
-        atomic<bool> qservJobFinished{false};
         bool const inUseOnly = false;
         qservGetReplicasJob = QservGetReplicasJob::create(
             _databaseFamily,
             inUseOnly,
             _allWorkers,
-            controller,
-            string(),
-            [&qservJobFinished] (QservGetReplicasJob::Ptr const& job) {
-                qservJobFinished = true;
-            }
+            controller
         );
         qservGetReplicasJob->start();
-
-        while (not (replicaJobFinished and qservJobFinished)) {
-            blockPost.wait();
-        }
-        cout << "qserv-replica-job-chunks:\n"
-             << "   FindAllJob          finished: " << findAllJob->state2string() << "\n"
-             << "   QservGetReplicasJob finished: " << qservGetReplicasJob->state2string() << "\n";
-    } else {
-        while (not replicaJobFinished) {
-            blockPost.wait();
-        }
-        cout << "qserv-replica-job-chunks:\n"
-             << "   FindAllJob          finished: " << findAllJob->state2string() << "\n";
+        qservGetReplicasJob->wait();
     }
+    findAllJob->wait();
+
 
     //////////////////////////////
     // Analyze and display results
@@ -355,8 +332,11 @@ int ChunksApp::runImpl() {
                     "*";
             columnNumReplicasDiff.push_back(numReplicasDiffStr == "0" ? "" : numReplicasDiffStr);
         }
-        util::ColumnTablePrinter table("NUMBER OF CHUNKS REPORTED BY WORKERS ('R'eplication, 'Q'serv):", "  ", _verticalSeparator);
-
+        util::ColumnTablePrinter table(
+            "NUMBER OF CHUNKS REPORTED BY WORKERS ('R'eplication, 'Q'serv, '*' - no response):",
+            "  ",
+            _verticalSeparator
+        );
         table.addColumn("idx",    columnWorkerIdx);
         table.addColumn("worker", columnWorkerName, util::ColumnTablePrinter::LEFT);
         table.addColumn("R",      columnNumReplicas);

@@ -23,7 +23,6 @@
 #include "replica/VerifyApp.h"
 
 // System headers
-#include <atomic>
 #include <iomanip>
 #include <iostream>
 #include <vector>
@@ -33,7 +32,6 @@
 #include "replica/Controller.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/VerifyJob.h"
-#include "util/BlockPost.h"
 
 using namespace std;
 
@@ -87,7 +85,6 @@ int VerifyApp::runImpl() {
     // Once started this job will run indefinitely or until it fails and throws
     // an exception.
 
-    atomic<bool> finished{false};
     auto const job = VerifyJob::create (
         _maxReplicas,
         _computeCheckSum,
@@ -113,18 +110,11 @@ int VerifyApp::runImpl() {
                          << endl;
                 }
         },
-        Controller::create(serviceProvider()),
-        string(),
-        [&finished] (VerifyJob::Ptr const& job) {
-            finished = true;
-        }
+        Controller::create(serviceProvider())
     );
     job->start();
+    job->wait();
 
-    util::BlockPost blockPost(1000,2000);
-    while (not finished) {
-        blockPost.wait();
-    }
     return 0;
 }
 

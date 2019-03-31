@@ -23,7 +23,6 @@
 #include "replica/ClusterHealthApp.h"
 
 // System headers
-#include <atomic>
 #include <iomanip>
 #include <iostream>
 #include <vector>
@@ -31,7 +30,6 @@
 // Qserv headers
 #include "replica/Controller.h"
 #include "replica/ClusterHealthJob.h"
-#include "util/BlockPost.h"
 #include "util/TablePrinter.h"
 
 using namespace std;
@@ -114,22 +112,13 @@ int ClusterHealthApp::runImpl() {
 
     // Send probes to workers of both types
 
-    atomic<bool> finished{false};
     auto const job = ClusterHealthJob::create(
         _timeoutSec,
         _allWorkers,
-        Controller::create(serviceProvider()),
-        string(),
-        [&finished] (ClusterHealthJob::Ptr const& job) {
-            finished = true;
-        }
+        Controller::create(serviceProvider())
     );
     job->start();
-
-    util::BlockPost blockPost(1000,2000);
-    while (not finished) {
-        blockPost.wait();
-    }
+    job->wait();
 
     // Analyze and display results
 

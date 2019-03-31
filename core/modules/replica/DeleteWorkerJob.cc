@@ -24,7 +24,6 @@
 
 // System headers
 #include <algorithm>
-#include <atomic>
 #include <future>
 #include <stdexcept>
 #include <tuple>
@@ -36,7 +35,6 @@
 #include "replica/ErrorReporting.h"
 #include "replica/ServiceManagementRequest.h"
 #include "replica/ServiceProvider.h"
-#include "util/BlockPost.h"
 
 using namespace std;
 
@@ -195,47 +193,33 @@ void DeleteWorkerJob::startImpl(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
-    util::BlockPost blockPost(1000, 2000);  // ~1s
-
     auto self = shared_from_base<DeleteWorkerJob>();
 
     // Check the status of the worker service, and if it's still running
     // try to get as much info from it as possible
 
-    atomic<bool> statusRequestFinished{false};
-
     auto const statusRequest = controller()->statusOfWorkerService(
         worker(),
-        [&statusRequestFinished](ServiceStatusRequest::Ptr const& request) {
-            statusRequestFinished = true;
-        },
+        nullptr,/* onFinish */
         id(),   /* jobId */
         60      /* requestExpirationIvalSec */
     );
-    while (not statusRequestFinished) {
-        LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  wait for worker service status");
-        blockPost.wait();
-    }
+    statusRequest->wait();
+
     if (statusRequest->extendedState() == Request::ExtendedState::SUCCESS) {
         if (statusRequest->getServiceState().state == ServiceState::State::RUNNING) {
 
             // Make sure the service won't be executing any other "leftover"
             // requests which may be interfering with the current job's requests
 
-            atomic<bool> drainRequestFinished{false};
-
             auto const drainRequest = controller()->drainWorkerService(
                 worker(),
-                [&drainRequestFinished](ServiceDrainRequest::Ptr const& request) {
-                    drainRequestFinished = true;
-                },
+                nullptr,/* onFinish */
                 id(),   /* jobId */
                 60      /* requestExpirationIvalSec */
             );
-            while (not drainRequestFinished) {
-                LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  wait for worker service drain");
-                blockPost.wait();
-            }
+            drainRequest->wait();
+
             if (drainRequest->extendedState() == Request::ExtendedState::SUCCESS) {
                 if (drainRequest->getServiceState().state == ServiceState::State::RUNNING) {
 

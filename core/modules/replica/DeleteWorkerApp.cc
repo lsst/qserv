@@ -23,7 +23,6 @@
 #include "replica/DeleteWorkerApp.h"
 
 // System headers
-#include <atomic>
 #include <iomanip>
 #include <iostream>
 #include <vector>
@@ -33,7 +32,6 @@
 #include "replica/Controller.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/DeleteWorkerJob.h"
-#include "util/BlockPost.h"
 
 using namespace std;
 
@@ -87,22 +85,13 @@ DeleteWorkerApp::DeleteWorkerApp(int argc, char* argv[])
 
 int DeleteWorkerApp::runImpl() {
 
-    atomic<bool> finished{false};
     auto const job = DeleteWorkerJob::create(
         _workerName,
         _permanentDelete,
-        Controller::create(serviceProvider()),
-        string(),
-        [&finished] (DeleteWorkerJob::Ptr const& job) {
-            finished = true;
-        }
+        Controller::create(serviceProvider())
     );
     job->start();
-
-    util::BlockPost blockPost(1000,2000);
-    while (not finished) {
-        blockPost.wait();
-    }
+    job->wait();
 
     // Analyze and display results
 

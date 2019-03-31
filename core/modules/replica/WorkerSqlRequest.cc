@@ -29,7 +29,6 @@
 #include "replica/Configuration.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/Performance.h"
-#include "util/BlockPost.h"
 
 // LSST headers
 #include "lsst/log/Log.h"

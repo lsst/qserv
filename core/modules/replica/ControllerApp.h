@@ -139,10 +139,7 @@ private:
 
     /// Automatically compute and store in the database check/control sums of
     /// the replica's files.
-    bool _computeCheckSum  = false;
-
-    /// Print 'heartbeats' while waiting before an on-going request finishes
-    bool _enableHeartbeat;
+    bool _computeCheckSum = false;
 };
 
 }}} // namespace lsst::qserv::replica

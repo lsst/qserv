@@ -24,7 +24,6 @@
 
 // System headers
 #include <algorithm>
-#include <atomic>
 #include <iostream>
 #include <fstream>
 #include <stdexcept>
@@ -35,7 +34,6 @@
 #include "replica/GetReplicasQservMgtRequest.h"
 #include "replica/QservMgtServices.h"
 #include "replica/SetReplicasQservMgtRequest.h"
-#include "util/BlockPost.h"
 #include "util/TablePrinter.h"
 
 using namespace std;
@@ -167,28 +165,21 @@ QservWorkerApp::QservWorkerApp(int argc, char* argv[])
 
 int QservWorkerApp::runImpl() {
 
-    // Launch the request and wait for its completion
-    //
-    // Note that omFinish callbacks which are activated upon a completion
-    // of the requests will be run in a different thread.
-
-    atomic<bool> finished(false);
-
     if (_command == "GET_REPLICAS") {
 
-        serviceProvider()->qservMgtServices()->getReplicas(
+        auto const request = serviceProvider()->qservMgtServices()->getReplicas(
             _familyName,
             _workerName,
             _inUseOnly,
             string(),
-            [&finished,this] (GetReplicasQservMgtRequest::Ptr const& request) {
+            [this] (GetReplicasQservMgtRequest::Ptr const& request) {
                 cout << "state: " << request->state2string() << endl;
                 if (request->extendedState() == QservMgtRequest::SUCCESS) {
                     this->_dump(request->replicas());
                 }
-                finished = true;
             }
         );
+        request->wait();
 
     } else if (_command == "SET_REPLICAS") {
 
@@ -197,57 +188,49 @@ int QservWorkerApp::runImpl() {
 
         cout << "replicas read: " << replicas.size() << endl;
 
-        serviceProvider()->qservMgtServices()->setReplicas(
+        auto const request = serviceProvider()->qservMgtServices()->setReplicas(
             _workerName,
             replicas,
             _forceRemove,
             string(),
-            [&finished,this] (SetReplicasQservMgtRequest::Ptr const& request) {
+            [this] (SetReplicasQservMgtRequest::Ptr const& request) {
                 cout << "state: " << request->state2string() << endl;
                 if (request->extendedState() == QservMgtRequest::SUCCESS) {
                     this->_dump(request->replicas());
                 }
-                finished = true;
             }
         );
+        request->wait();
 
     } else if (_command == "ADD_REPLICA") {
 
-        serviceProvider()->qservMgtServices()->addReplica(
+        auto const request = serviceProvider()->qservMgtServices()->addReplica(
             _chunkNumber,
             {_databaseName},
             _workerName,
-            [&finished] (AddReplicaQservMgtRequest::Ptr const& request) {
+            [] (AddReplicaQservMgtRequest::Ptr const& request) {
                 cout << "state: " << request->state2string() << endl;
-                finished = true;
             }
         );
+        request->wait();
 
     } else if (_command == "REMOVE_REPLICA") {
 
-        serviceProvider()->qservMgtServices()->removeReplica(
+        auto const request = serviceProvider()->qservMgtServices()->removeReplica(
             _chunkNumber,
             {_databaseName},
             _workerName,
             _forceRemove,
-            [&finished] (RemoveReplicaQservMgtRequest::Ptr const& request) {
+            [] (RemoveReplicaQservMgtRequest::Ptr const& request) {
                 cout << "state: " << request->state2string() << endl;
-                finished = true;
             }
         );
+        request->wait();
 
     } else {
         throw logic_error(
                 "QservWorkerApp::" + string(__func__) + "  unsupported command: " + _command);
     }
-
-    // Block while the request is in progress
-
-    util::BlockPost blockPost(1000, 2000);
-    while (not finished) {
-        blockPost.wait();
-    }
-
     return 0;
 }
 

@@ -28,7 +28,6 @@
 
 // Qserv headers
 #include "replica/DatabaseServices.h"
-#include "util/BlockPost.h"
 
 using namespace std;
 

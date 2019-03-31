@@ -29,7 +29,6 @@
 // Qserv headers
 #include "lsst/log/Log.h"
 #include "replica/Configuration.h"
-#include "util/BlockPost.h"
 
 using namespace std;
 
