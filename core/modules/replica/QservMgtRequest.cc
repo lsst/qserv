@@ -209,6 +209,19 @@ void QservMgtRequest::start(XrdSsiService* service,
 }
 
 
+void QservMgtRequest::wait() {
+ 
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
+
+    if (state() == State::FINISHED) return;
+
+    unique_lock<mutex> lock(_onFinishMtx);
+    _onFinishCv.wait(lock, [this] {
+        return state() == State::FINISHED;
+    });
+}
+
+
 string const& QservMgtRequest::jobId() const {
     if (_state == State::CREATED) {
         throw logic_error(
@@ -301,6 +314,11 @@ void QservMgtRequest::finish(util::Lock const& lock,
     serviceProvider()->databaseServices()->saveState(*this, _performance, _serverError);
 
     notify(lock);
+
+    // Unblock threads (if any) waiting on the synchronization call
+    // to method QservMgtRequest::wait()
+
+    _onFinishCv.notify_all();
 }
 
 
