@@ -70,6 +70,7 @@
 #include "query/ValueFactor.h"
 #include "query/WhereClause.h"
 #include "util/common.h"
+#include "util/IterableFormatter.h"
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qana.TablePlugin");
@@ -102,28 +103,6 @@ public:
         return ss.str();
     }
     int& _seqN;
-};
-
-class addDbContext : public query::TableRef::Func {
-public:
-    addDbContext(query::QueryContext const& c,
-                 std::string& firstDb_,
-                 std::string& firstTable_)
-        : context(c), firstDb(firstDb_), firstTable(firstTable_)
-        {}
-    void operator()(query::TableRef::Ptr t) {
-        if (t.get()) { t->apply(*this); }
-    }
-    void operator()(query::TableRef& t) {
-        std::string table = t.getTable();
-        if (table.empty()) { throw std::logic_error("No table in TableRef"); }
-        if (t.getDb().empty()) { t.setDb(context.defaultDb); }
-        if (firstDb.empty()) { firstDb = t.getDb(); }
-        if (firstTable.empty()) { firstTable = table; }
-    }
-    query::QueryContext const& context;
-    std::string& firstDb;
-    std::string& firstTable;
 };
 
 template <typename G, typename A>
@@ -167,30 +146,29 @@ public:
         }
         // For each factor in the expr, patch for aliasing:
         query::ValueExpr::FactorOpVector& factorOps = vep->getFactorOps();
-        for(query::ValueExpr::FactorOpVector::iterator i=factorOps.begin();
-            i != factorOps.end(); ++i) {
-            if (!i->factor) {
+        for (auto&& factorOp : factorOps) {
+            if (nullptr == factorOp.factor) {
                 throw std::logic_error("Bad ValueExpr::FactorOps");
             }
-            query::ValueFactor& t = *i->factor;
-            switch(t.getType()) {
+            auto valueFactor = factorOp.factor;
+            switch(valueFactor->getType()) {
             case query::ValueFactor::COLUMNREF:
                 // check columnref.
-                _patchColumnRef(*t.getColumnRef());
+                _patchColumnRef(*valueFactor->getColumnRef());
                 break;
             case query::ValueFactor::FUNCTION:
             case query::ValueFactor::AGGFUNC:
                 // recurse for func params (aggfunc is special case of function)
-                _patchFuncExpr(*t.getFuncExpr());
+                _patchFuncExpr(*valueFactor->getFuncExpr());
                 break;
             case query::ValueFactor::STAR:
                 // Patch db/table name if applicable
-                _patchStar(t);
+                _patchStar(*valueFactor);
                 break;
             case query::ValueFactor::CONST:
                 break; // Constants don't need patching.
             default:
-                LOGS(_log, LOG_LVL_WARN, "Unhandled ValueFactor:" << t);
+                LOGS(_log, LOG_LVL_WARN, "Unhandled ValueFactor:" << *valueFactor);
                 break;
             }
         }
@@ -198,13 +176,13 @@ public:
 
 private:
     void _patchColumnRef(query::ColumnRef& ref) {
-        std::string newAlias = _getAlias(ref.db, ref.table);
+        std::string newAlias = _getAlias(ref.getDb(), ref.getTable());
         if (newAlias.empty()) { return; } //  Ignore if no replacement
                                          //  exists.
 
         // Eliminate db. Replace table with aliased table.
-        ref.db.assign("");
-        ref.table.assign(newAlias);
+        ref.setDb("");
+        ref.setTable(newAlias);
     }
 
     void _patchFuncExpr(query::FuncExpr& fe) {
@@ -236,18 +214,24 @@ private:
 void
 TablePlugin::applyLogical(query::SelectStmt& stmt,
                           query::QueryContext& context) {
-
-    query::FromList& fList = stmt.getFromList();
-    context.collectTopLevelTableSchema(fList);
-    query::TableRefList& tList = fList.getTableRefList();
+    LOGS(_log, LOG_LVL_TRACE, "applyLogical begin:\n\t" << stmt.getQueryTemplate() << "\n\t" << stmt);
+    query::FromList& fromList = stmt.getFromList();
+    context.collectTopLevelTableSchema(fromList);
+    query::TableRefList& tableRefList = fromList.getTableRefList();
     // Fill-in default db context.
-    query::DbTableVector v = fList.computeResolverTables();
+    query::DbTableVector v = fromList.computeResolverTables();
+    LOGS(_log, LOG_LVL_TRACE, "changing resolver tables from " << util::printable(context.resolverTables) <<
+            " to " << util::printable(v));
     context.resolverTables.swap(v);
-    query::DbTablePair p;
-    addDbContext adc(context, p.db, p.table);
-    std::for_each(tList.begin(), tList.end(), adc);
-    _dominantDb = context.dominantDb = p.db;
-    context.anonymousTable = p.table;
+
+    for (auto&& tableRef : tableRefList) {
+        tableRef->verifyPopulated(context.defaultDb);
+    }
+
+    if (tableRefList.size() > 0) {
+        context.dominantDb = tableRefList[0]->getDb();
+        _dominantDb = context.dominantDb;
+    }
 
     // Add aliases to all table references in the from-list (if
     // they don't exist already) and then patch the other clauses so
@@ -263,12 +247,12 @@ TablePlugin::applyLogical(query::SelectStmt& stmt,
     // For each tableref, modify to add alias.
     int seq=0;
     addMap addMapContext(context.tableAliases, context.tableAliasReverses);
-    std::for_each(tList.begin(), tList.end(),
+    std::for_each(tableRefList.begin(), tableRefList.end(),
                   addAlias<generateAlias,addMap>(generateAlias(seq), addMapContext));
 
     // Patch table references in the select list,
-    query::SelectList& sList = stmt.getSelectList();
-    query::ValueExprPtrVector& exprList = *sList.getValueExprList();
+    query::SelectList& selectlist = stmt.getSelectList();
+    query::ValueExprPtrVector& exprList = *selectlist.getValueExprList();
     std::for_each(exprList.begin(), exprList.end(), fixExprAlias(
         context.defaultDb, context.tableAliasReverses));
     // where clause,
@@ -302,7 +286,7 @@ TablePlugin::applyLogical(query::SelectStmt& stmt,
     // and in the on clauses of all join specifications.
     typedef query::TableRefList::iterator TableRefIter;
     typedef query::JoinRefPtrVector::iterator JoinRefIter;
-    for (TableRefIter t = tList.begin(), te = tList.end(); t != te; ++t) {
+    for (TableRefIter t = tableRefList.begin(), te = tableRefList.end(); t != te; ++t) {
         query::JoinRefPtrVector& joinRefs = (*t)->getJoins();
         for (JoinRefIter j = joinRefs.begin(), je = joinRefs.end(); j != je; ++j) {
             std::shared_ptr<query::JoinSpec> spec = (*j)->getSpec();
@@ -319,6 +303,7 @@ TablePlugin::applyLogical(query::SelectStmt& stmt,
             }
         }
     }
+    LOGS(_log, LOG_LVL_TRACE, "applyLogical end:\n\t" << stmt.getQueryTemplate() << "\n\t" << stmt);
 }
 
 void

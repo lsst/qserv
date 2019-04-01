@@ -91,6 +91,11 @@ public:
      */
     virtual void applyLogical(query::SelectStmt& stmt, query::QueryContext&);
 
+    /**
+    * Return the name of the plugin class for logging.
+    */
+    std::string name() const override { return "DuplSelectExprPlugin"; }
+
 private:
 
     /**

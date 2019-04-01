@@ -97,9 +97,6 @@ public:
     std::shared_ptr<ValueExpr> getExpr() { return _valueExpr; }
     Type getType() const { return _type; }
 
-    std::string const& getAlias() const { return _alias; }
-    void setAlias(std::string const& a) { _alias = a; }
-
     std::string const& getConstVal() const { return _constVal; }
     void setConstVal(std::string const& a) { _constVal = a; }
 
@@ -129,7 +126,6 @@ private:
     std::shared_ptr<ColumnRef> _columnRef;
     std::shared_ptr<FuncExpr> _funcExpr;
     std::shared_ptr<ValueExpr> _valueExpr;
-    std::string _alias;
     std::string _constVal;  // formerly named "tablestar"
                             // seems to often contain a string representation of a number. Can also contain
                             // `*` (presumably as in `SELECT *`. It would probably be good to factor it so

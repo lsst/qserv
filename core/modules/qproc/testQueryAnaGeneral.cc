@@ -162,7 +162,6 @@ BOOST_AUTO_TEST_CASE(RestrictorBox) {
     BOOST_CHECK_EQUAL_COLLECTIONS(r._params.begin(), r._params.end(),
                                   params, params+4);
     BOOST_CHECK(!context->needsMerge);
-    BOOST_CHECK_EQUAL(context->anonymousTable, "Object");
     BOOST_CHECK(!context->hasSubChunks());
 }
 

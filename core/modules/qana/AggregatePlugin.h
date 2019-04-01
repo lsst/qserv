@@ -46,6 +46,10 @@ public:
     void prepare() override {}
 
     void applyPhysical(QueryPlugin::Plan& plan, query::QueryContext&) override;
+
+    /// Return the name of the plugin class for logging.
+    std::string name() const override { return "AggregatePlugin"; }
+
 private:
     query::AggOp::Mgr _aMgr;
 };

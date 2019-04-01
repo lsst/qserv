@@ -88,7 +88,7 @@ public:
     bool addOp(query::ValueExpr::Op op);
 
     std::string const& getAlias() const { return _alias; }
-    void setAlias(std::string const& a) { _alias = a; }
+    void setAlias(std::string const& alias);
 
     /// @return a list of ValueFactor-Op
     FactorOpVector& getFactorOps() { return _factorOps; }

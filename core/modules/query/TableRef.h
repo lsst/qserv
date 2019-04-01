@@ -90,9 +90,9 @@ public:
     JoinRefPtrVector const& getJoins() const { return _joinRefs; }
 
     // Modifiers
-    void setAlias(std::string const& a) { _alias=a; }
-    void setDb(std::string const& db_) { _db = db_; }
-    void setTable(std::string const& table_) { _table = table_; }
+    void setAlias(std::string const& alias);
+    void setDb(std::string const& db);
+    void setTable(std::string const& table);
     JoinRefPtrVector& getJoins() { return _joinRefs; }
     void addJoin(std::shared_ptr<JoinRef> r);
     void addJoins(const JoinRefPtrVector& r);
@@ -109,6 +109,16 @@ public:
     };
     void apply(Func& f);
     void apply(FuncC& f) const;
+
+    /**
+     * @brief Verify the table is set and set a database if one is not set. Recurses to all join refs.
+     *
+     * @throws If an empty string is passed for default then this will throw if the value is not set in the
+     *         instance.
+     *
+     * @param defaultDb the default database to assign, or an empty string for no default.
+     */
+    void verifyPopulated(std::string const& defaultDb=std::string());
 
     TableRef::Ptr clone() const;
 

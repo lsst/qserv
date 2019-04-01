@@ -98,14 +98,14 @@ void ColumnVertexMap::fuse(ColumnVertexMap& m,
             if (eq(*cur, *i)) {
                 // Found an entry with the same column reference as the
                 // currrent entry
-                if (!cur->cr->table.empty() || (!natural &&
-                    std::find(firstCol, endCol, cur->cr->column) == endCol)) {
+                if (!cur->cr->getTable().empty() || (!natural &&
+                    std::find(firstCol, endCol, cur->cr->getColumn()) == endCol)) {
                     // The column reference is qualified or is not a natural
                     // join or using column, so mark it as ambiguous.
                     cur->markAmbiguous();
                 } else if (cur->isAmbiguous() || i->isAmbiguous()) {
                     throw QueryNotEvaluableError(
-                        "Join column " + cur->cr->column + " is ambiguous");
+                        "Join column " + cur->cr->getColumn() + " is ambiguous");
                 } else {
                     // Add the vertices from i to the current entry (for
                     // natural join and using columns).
@@ -144,14 +144,14 @@ std::vector<std::string> const ColumnVertexMap::computeCommonColumns(
             ++j;
         } else {
             // Found a pair of identical column references.
-            if (i->cr->table.empty()) {
+            if (i->cr->getTable().empty()) {
                 // If the reference is unqualified and unambiguous in
                 // both entry lists, add it to the list of common columns.
                 if (i->isAmbiguous() || j->isAmbiguous()) {
                     throw QueryNotEvaluableError(
-                        "Join column " + i->cr->column + " is ambiguous");
+                        "Join column " + i->cr->getColumn() + " is ambiguous");
                 }
-                cols.push_back(i->cr->column);
+                cols.push_back(i->cr->getColumn());
             }
             ++i;
             ++j;

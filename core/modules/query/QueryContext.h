@@ -81,9 +81,11 @@ public:
     std::shared_ptr<css::CssAccess> css;  ///< interface to CSS
     std::string defaultDb; ///< User session db context
     std::string dominantDb; ///< "dominant" database for this query
-    std::string anonymousTable; ///< Implicit table context
     std::string userName{"default"}; ///< unused, but reserved.
-    std::vector<DbTablePair> resolverTables; ///< Implicit column resolution context. Will obsolete anonymousTable.
+
+    // contains the tables (db.table, where db may be an empty string) that are used in the FROM list.
+    std::vector<DbTablePair> resolverTables; ///< Implicit column resolution context.
+
     mysql::MySqlConfig const mysqlSchemaConfig; ///< Used to connect to a database with the schema.
     std::map<std::string, DbTableSet> columnToTablesMap;
 

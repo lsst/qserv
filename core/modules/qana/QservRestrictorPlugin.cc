@@ -97,7 +97,7 @@ query::ColumnRef::Vector resolveAsColumnRef(query::QueryContext& context, query:
     if (!cr) {
         return columnRefs;
     }
-    std::string column = cr->column;
+    std::string column = cr->getColumn();
     query::DbTableSet set = context.resolve(cr);
     for (auto const& dbTblPair : set) {
         columnRefs.push_back(std::make_shared<query::ColumnRef>(dbTblPair.db, dbTblPair.table, column));
@@ -113,16 +113,16 @@ lookupSecIndex(query::QueryContext& context,
     // Match cr as a column ref against the secondary index column for a
     // database's partitioning strategy.
     if ((!cr) || !context.css) { return false; }
-    if (!context.css->containsDb(cr->db)
-       || !context.css->containsTable(cr->db, cr->table)) {
-        throw AnalysisError("Invalid db/table:" + cr->db + "." + cr->table);
+    if (!context.css->containsDb(cr->getDb())
+       || !context.css->containsTable(cr->getDb(), cr->getTable())) {
+        throw AnalysisError("Invalid db/table:" + cr->getDb() + "." + cr->getTable());
     }
-    if (cr->column.empty()) {
+    if (cr->getColumn().empty()) {
         return false;
     }
     std::vector<std::string> sics = context.css->getPartTableParams(
-        cr->db, cr->table).secIndexColNames();
-    return std::find(sics.begin(), sics.end(), cr->column) != sics.end();
+        cr->getDb(), cr->getTable()).secIndexColNames();
+    return std::find(sics.begin(), sics.end(), cr->getColumn()) != sics.end();
 }
 
 
@@ -181,27 +181,27 @@ query::QsRestrictor::Ptr newRestrictor(
     // sIndex and sIndexBetween have parameters as follows:
     // db, table, column, val1, val2, ...
 
-    css::PartTableParams const partParam = context.css->getPartTableParams(cr->db, cr->table);
+    css::PartTableParams const partParam = context.css->getPartTableParams(cr->getDb(), cr->getTable());
     // Get the director column name
     std::string dirCol = partParam.dirColName;
-    if (cr->column == dirCol) {
+    if (cr->getColumn() == dirCol) {
         // cr may be a column in a child table, in which case we must figure
         // out the corresponding column in the child's director to properly
         // generate a secondary index constraint.
         std::string dirDb = partParam.dirDb;
         std::string dirTable = partParam.dirTable;
         if (dirTable.empty()) {
-            dirTable = cr->table;
-            if (!dirDb.empty() && dirDb != cr->db) {
+            dirTable = cr->getTable();
+            if (!dirDb.empty() && dirDb != cr->getDb()) {
                 LOGS(_log, LOG_LVL_ERROR, "dirTable missing, but dirDb is set inconsistently for "
-                     << cr->db << "." << cr->table);
+                     << cr->getDb() << "." << cr->getTable());
                 return query::QsRestrictor::Ptr();
             }
-            dirDb = cr->db;
+            dirDb = cr->getDb();
         } else if (dirDb.empty()) {
-            dirDb = cr->db;
+            dirDb = cr->getDb();
         }
-        if (dirDb != cr->db || dirTable != cr->table) {
+        if (dirDb != cr->getDb() || dirTable != cr->getTable()) {
             // Lookup the name of the director column in the director table
             dirCol = context.css->getPartTableParams(dirDb, dirTable).dirColName;
             if (dirCol.empty()) {
@@ -210,17 +210,17 @@ query::QsRestrictor::Ptr newRestrictor(
             }
         }
         LOGS(_log, LOG_LVL_DEBUG, "Restrictor dirDb " << dirDb << ", dirTable " << dirTable
-             << ", dirCol " << dirCol << " as sIndex for " << cr->db << "." << cr->table
-             << "." << cr->column);
+             << ", dirCol " << dirCol << " as sIndex for " << cr->getDb() << "." << cr->getTable()
+             << "." << cr->getColumn());
         restrictor->_params.push_back(dirDb);
         restrictor->_params.push_back(dirTable);
         restrictor->_params.push_back(dirCol);
     } else {
-        LOGS_DEBUG("Restrictor " << cr->db << "." << cr->table <<  "." << cr->column
+        LOGS_DEBUG("Restrictor " << cr->getDb() << "." << cr->getTable() <<  "." << cr->getColumn()
                    << " as sIndex");
-        restrictor->_params.push_back(cr->db);
-        restrictor->_params.push_back(cr->table);
-        restrictor->_params.push_back(cr->column);
+        restrictor->_params.push_back(cr->getDb());
+        restrictor->_params.push_back(cr->getTable());
+        restrictor->_params.push_back(cr->getColumn());
     }
     std::transform(values.begin(), values.end(),
                    std::back_inserter(restrictor->_params), extractLiteral());

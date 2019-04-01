@@ -69,6 +69,9 @@ public:
     static bool verifyColumnsForOrderBy(query::ColumnRef::Vector const & available,
                                         query::ColumnRef::Vector const & required,
                                         query::ColumnRef::Vector & missing);
+
+    /// Return the name of the plugin class for logging.
+    std::string name() const override { return "PostPlugin"; }
 };
 
 }}} // namespace lsst::qserv::qana

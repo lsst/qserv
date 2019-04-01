@@ -52,6 +52,10 @@ struct DbTablePair {
     std::string table;
 };
 
+inline std::ostream& operator<<(std::ostream& out, DbTablePair const& dbTablePair) {
+    return out << "DbTablePair(" << dbTablePair.db << ", " << dbTablePair.table << ")";
+}
+
 typedef std::vector<DbTablePair> DbTableVector;
 using DbTableSet=std::set<DbTablePair>;
 

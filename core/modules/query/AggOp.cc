@@ -159,7 +159,6 @@ public:
         feSum = FuncExpr::newArg1("SUM", sAlias);
         feCount = FuncExpr::newArg1("SUM", cAlias);
         ve = std::make_shared<ValueExpr>();
-        ve->setAlias(orig.getAlias());
         ValueExpr::FactorOpVector& factorOps = ve->getFactorOps();
         factorOps.clear();
         ValueExpr::FactorOp fo;

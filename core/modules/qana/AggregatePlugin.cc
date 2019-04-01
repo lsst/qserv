@@ -180,10 +180,6 @@ AggregatePlugin::applyPhysical(QueryPlugin::Plan& plan,
                                              *mList.getValueExprList(),
                                              m);
     std::for_each(vlist->begin(), vlist->end(), ca);
-    query::QueryTemplate qt;
-    pList.renderTo(qt);
-    qt.clear();
-    mList.renderTo(qt);
     // Also need to operate on GROUP BY.
     // update context.
     if (plan.stmtOriginal.getDistinct() || m.hasAggregate()) {

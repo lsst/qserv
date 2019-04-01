@@ -135,7 +135,7 @@ DuplSelectExprPlugin::getDuplicateSelectErrors(query::SelectStmt const& stmt) co
         if (!alias.empty()) {
             name = alias;
         } else if (ve.isColumnRef()) {
-            name = ve.getColumnRef()->column;
+            name = ve.getColumnRef()->getColumn();
         } else {
             name = ve.sqlFragment();
         }

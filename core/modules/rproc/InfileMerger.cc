@@ -498,6 +498,7 @@ bool InfileMerger::_setupTable(proto::WorkerResponse const& response) {
 
             sch.columns.push_back(scs);
         }
+        LOGS(_log, LOG_LVL_DEBUG, _getQueryIdStr() << "got (unaltered) schema from worker: " << sch);
         // Add jobId column that does not conflict with existing columns.
         for (auto iter = sch.columns.begin(), end = sch.columns.end(); iter != end; ++iter) {
             auto const& col = *iter;

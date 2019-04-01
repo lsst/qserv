@@ -291,7 +291,9 @@ void QuerySession::_preparePlugins() {
 void QuerySession::_applyLogicPlugins() {
     QueryPluginPtrVector::iterator i;
     for(i=_plugins->begin(); i != _plugins->end(); ++i) {
+        LOGS(_log, LOG_LVL_TRACE, "applyLogical BEGIN: " << (**i).name());
         (**i).applyLogical(*_stmt, *_context);
+        LOGS(_log, LOG_LVL_TRACE, "applyLogical END: " << (**i).name());
     }
 }
 
@@ -314,6 +316,8 @@ void QuerySession::_generateConcrete() {
     // version will get updated by plugins. Plugins probably need
     // access to the original as a reference.
     _stmtParallel.push_back(_stmt->clone());
+    LOGS(_log, LOG_LVL_TRACE, "Paralell statement initialized with: \""
+        << _stmtParallel[0]->getQueryTemplate() << "\"");
 
     // Copy SelectList and Mods, but not FROM, and perhaps not
     // WHERE(???). Conceptually, we want to copy the parts that are
@@ -329,14 +333,22 @@ void QuerySession::_applyConcretePlugins() {
     qana::QueryPlugin::Plan p(*_stmt, _stmtParallel, *_stmtMerge, _hasMerge);
     QueryPluginPtrVector::iterator i;
     for(i=_plugins->begin(); i != _plugins->end(); ++i) {
+        LOGS(_log, LOG_LVL_TRACE, "applyPhysical BEGIN: " << (**i).name());
         (**i).applyPhysical(p, *_context);
+        LOGS(_log, LOG_LVL_TRACE, "applyPhysical END: " << (**i).name());
     }
 }
 
 /// Some code useful for debugging.
 void QuerySession::print(std::ostream& os) const {
-    query::QueryTemplate par = _stmtParallel.front()->getQueryTemplate();
-    query::QueryTemplate mer = _stmtMerge->getQueryTemplate();
+    query::QueryTemplate par;
+    if (not _stmtParallel.empty()) {
+        par = _stmtParallel.front()->getQueryTemplate();
+    }
+    query::QueryTemplate mer;
+    if (_stmtMerge != nullptr) {
+         mer = _stmtMerge->getQueryTemplate();
+    }
     os << "QuerySession description:\n";
     os << "  original: " << this->_original << "\n";
     os << "  has chunks: " << this->hasChunks() << "\n";

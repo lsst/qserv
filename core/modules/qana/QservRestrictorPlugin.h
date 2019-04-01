@@ -76,6 +76,9 @@ public:
     void applyLogical(query::SelectStmt& stmt, query::QueryContext&) override;
     void applyPhysical(QueryPlugin::Plan& p, query::QueryContext& context) override;
 
+    /// Return the name of the plugin class for logging.
+    std::string name() const override { return "QservRestrictorPlugin"; }
+
 private:
     std::shared_ptr<query::BoolTerm> _makeCondition(std::shared_ptr<query::QsRestrictor> const restr,
                                                     RestrictorEntry const& restrictorEntry);

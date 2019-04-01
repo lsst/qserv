@@ -32,6 +32,8 @@
 #include <string>
 #include <vector>
 
+// Qserv headers
+#include "util/IterableFormatter.h"
 namespace lsst {
 namespace qserv {
 namespace sql {
@@ -69,6 +71,11 @@ inline std::ostream& operator<<(std::ostream& os, ColSchema const& cs) {
 struct Schema {
     ColSchemaVector columns;
 };
+
+inline std::ostream& operator<<(std::ostream& os, Schema const& s) {
+    os << util::printable(s.columns);
+    return os;
+}
 
 }}} // namespace lsst::qserv::sql
 #endif // LSST_QSERV_SQL_SCHEMA_H

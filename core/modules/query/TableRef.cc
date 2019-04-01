@@ -36,6 +36,9 @@
 #include <algorithm>
 #include <sstream>
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Qserv headers
 #include "query/JoinRef.h"
 #include "query/JoinSpec.h"
@@ -49,6 +52,8 @@ lsst::qserv::query::JoinRef::Ptr
 joinRefClone(lsst::qserv::query::JoinRef::Ptr const& r) {
     return r->clone();
 }
+
+LOG_LOGGER _log = LOG_GET("lsst.qserv.query.TableRef");
 
 } // anonymous namespace
 
@@ -81,6 +86,27 @@ std::ostream& operator<<(std::ostream& os, TableRef const* ref) {
         os << *ref;
     }
     return os;
+}
+
+
+void TableRef::setAlias(std::string const& alias) {
+    LOGS(_log, LOG_LVL_TRACE, *this << "; set alias:" << alias);
+    _alias = alias;
+}
+
+
+void TableRef::setDb(std::string const& db) {
+    LOGS(_log, LOG_LVL_TRACE, *this << "; set db:" << db);
+    _db = db;
+}
+
+
+void TableRef::setTable(std::string const& table) {
+    LOGS(_log, LOG_LVL_TRACE, *this << "; set table:" << table);
+    if (table.empty()) {
+        throw std::logic_error("TableRef::setTable - table can not be empty");
+    }
+    _table = table;
 }
 
 
@@ -127,6 +153,26 @@ void TableRef::addJoin(std::shared_ptr<JoinRef> r) {
 
 void TableRef::addJoins(const JoinRefPtrVector& r) {
     _joinRefs.insert(std::end(_joinRefs), std::begin(r), std::end(r));
+}
+
+
+void TableRef::verifyPopulated(std::string const& defaultDb) {
+    // it should not be possible to construct a TableRef with an empty table, but just to be sure:
+    if (_table.empty()) {
+        throw std::logic_error("No table in TableRef");
+    }
+    if (_db.empty()) {
+        if (defaultDb.empty()) {
+            throw std::logic_error("No db in TableRef");
+        } else {
+            _db = defaultDb;
+        }
+    }
+    for (auto&& joinRef : _joinRefs) {
+        auto&& rightTableRef = joinRef->getRight();
+        if (rightTableRef != nullptr)
+            rightTableRef->verifyPopulated(defaultDb);
+    }
 }
 
 
