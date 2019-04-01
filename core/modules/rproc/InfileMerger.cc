@@ -92,6 +92,9 @@ std::string getTimeStampId() {
     // Alternative (for production?) Use boost::uuid to construct ids that are
     // guaranteed to be unique.
 }
+
+const char JOB_ID_BASE_NAME[] = "jobId";
+
 } // anonymous namespace
 
 namespace lsst {
@@ -104,8 +107,8 @@ namespace rproc {
 ////////////////////////////////////////////////////////////////////////
 InfileMerger::InfileMerger(InfileMergerConfig const& c)
     : _config(c),
-      _mysqlConn(_config.mySqlConfig) {
-    _alterJobIdColName(); // initialize jobIdColName.
+      _mysqlConn(_config.mySqlConfig),
+      _jobIdColName(JOB_ID_BASE_NAME) {
     _fixupTargetName();
     _maxResultTableSizeMB = _config.mySqlConfig.maxTableSizeMB;
 
@@ -355,6 +358,25 @@ int InfileMerger::makeJobIdAttempt(int jobId, int attemptCount) {
 }
 
 
+void InfileMerger::_addJobIdColumnToSchema(sql::Schema& schema) {
+    unsigned int attempt = 0;
+    auto columnItr = schema.columns.begin();
+    while (columnItr != schema.columns.end()) {
+        if (columnItr->name == _jobIdColName) {
+            _jobIdColName = JOB_ID_BASE_NAME + std::to_string(attempt++);
+            columnItr = schema.columns.begin(); // start over
+        } else {
+            ++columnItr;
+        }
+    }
+    sql::ColSchema scs;
+    scs.name              = _jobIdColName;
+    scs.colType.mysqlType = _jobIdMysqlType;
+    scs.colType.sqlType   = _jobIdSqlType;
+    schema.columns.insert(schema.columns.begin(), scs);
+}
+
+
 bool InfileMerger::prepScrub(int jobId, int attemptCount) {
     int jobIdAttempt = makeJobIdAttempt(jobId, attemptCount);
     return _invalidJobAttemptMgr.prepScrub(jobIdAttempt);
@@ -484,15 +506,18 @@ bool InfileMerger::_verifySession(int sessionId) {
 }
 
 
+
+
 /// Create a table with the appropriate schema according to the
 /// supplied Protobufs message
 bool InfileMerger::_setupTable(proto::WorkerResponse const& response) {
     // Create table, using schema
     std::lock_guard<std::mutex> lock(_createTableMutex);
     if (_needCreateTable) {
-        // create schema
+
+        // create schema from response
         proto::RowSchema const& rs = response.result.rowschema();
-        sql::Schema sch;
+        sql::Schema schema;
         for(int i=0, e=rs.columnschema_size(); i != e; ++i) {
             proto::ColumnSchema const& cs = rs.columnschema(i);
             sql::ColSchema scs;
@@ -502,28 +527,12 @@ bool InfileMerger::_setupTable(proto::WorkerResponse const& response) {
             }
             scs.colType.sqlType = cs.sqltype();
 
-            sch.columns.push_back(scs);
-        }
-        LOGS(_log, LOG_LVL_DEBUG, _getQueryIdStr() << "got (unaltered) schema from worker: " << sch);
-        // Add jobId column that does not conflict with existing columns.
-        for (auto iter = sch.columns.begin(), end = sch.columns.end(); iter != end; ++iter) {
-            auto const& col = *iter;
-            if (col.name == _jobIdColName) {
-                _alterJobIdColName();
-                iter = sch.columns.begin(); // start over
-            }
-        }
-
-
-        sql::Schema schema;
-        {
-            sql::ColSchema scs;
-            scs.name              = _jobIdColName;
-            scs.colType.mysqlType = _jobIdMysqlType;
-            scs.colType.sqlType   = _jobIdSqlType;
             schema.columns.push_back(scs);
-            schema.columns.insert(schema.columns.end(), sch.columns.begin(), sch.columns.end());
         }
+        LOGS(_log, LOG_LVL_DEBUG, _getQueryIdStr() << "got (unaltered) schema from worker: " << schema);
+
+        _addJobIdColumnToSchema(schema);
+
         std::string createStmt = sql::formCreateTable(_mergeTable, schema);
         // Specifying engine. There is some question about whether InnoDB or MyISAM is the better
         // choice when multiple threads are writing to the result table.

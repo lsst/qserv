@@ -61,7 +61,9 @@ namespace query {
     class SelectStmt;
 }
 namespace sql {
+    class Schema;
     class SqlConnection;
+    class SqlResults;
 }
 }} // End of forward declarations
 
@@ -132,6 +134,7 @@ public:
     bool isJobAttemptInvalid(int jobIdAttempt);
 
     bool prepScrub(int jobIdAttempt);
+
 private:
     /// Precondition: must hold _iJAMtx before calling.
     /// @return true if jobIdAttempt is in the invalid set.
@@ -224,10 +227,21 @@ private:
     std::mutex _sqlMutex; ///< Protection for SQL connection
     bool _needCreateTable{true}; ///< Does the target table need creating?
     size_t _getResultTableSizeMB(); ///< Return the size of the result table in MB.
-    /// Alter the jobId column name in hopes that it will be unique.
-    void _alterJobIdColName() {
-        _jobIdColName = "jobId" + std::to_string(_jobIdColNameAdj++);
-    }
+
+    /**
+     * @brief Put a "jobId" column first in the provided schema.
+     *
+     * The jobId column is used to keep track of what job number and attempt number each row in the results
+     * table came from.
+     *
+     * The schema must match the schema of the results returned by workers (and workers add the JobId column
+     * first in the schema).
+     *
+     * @note This will change _jobIdColName if it conflicts with a column name in the user query.
+     *
+     * @param schema The schema to be modified.
+     */
+    void _addJobIdColumnToSchema(sql::Schema& schema);
 
     mysql::MySqlConnection _mysqlConn;
 
@@ -240,7 +254,6 @@ private:
 
     /// Name of the jobId column in the result table. Protected by _createTableMutex
     std::string _jobIdColName;
-    int _jobIdColNameAdj{0}; ///< Adjustment to make if _jobIdColName is not unique.
     int const _jobIdMysqlType{MYSQL_TYPE_LONG}; ///< 4 byte integer.
     std::string const _jobIdSqlType{"INT(9)"}; ///< The 9 only affects '0' padding with ZEROFILL.
 
