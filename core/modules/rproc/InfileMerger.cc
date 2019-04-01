@@ -361,9 +361,9 @@ bool InfileMerger::prepScrub(int jobId, int attemptCount) {
 }
 
 
-bool InfileMerger::_applySqlLocal(std::string const& sql, std::string const& logMsg) {
+bool InfileMerger::_applySqlLocal(std::string const& sql, std::string const& logMsg, sql::SqlResults& results) {
     auto begin = std::chrono::system_clock::now();
-    bool success = _applySqlLocal(sql);
+    bool success = _applySqlLocal(sql, results);
     auto end = std::chrono::system_clock::now();
     LOGS(_log, LOG_LVL_DEBUG, logMsg << " success=" << success
          << " microseconds="
@@ -372,15 +372,21 @@ bool InfileMerger::_applySqlLocal(std::string const& sql, std::string const& log
 }
 
 
+bool InfileMerger::_applySqlLocal(std::string const& sql, std::string const& logMsg) {
+    sql::SqlResults results(true); // true = throw results away immediately
+    return _applySqlLocal(sql, logMsg, results);
+}
+
+
 /// Apply a SQL query, setting the appropriate error upon failure.
-bool InfileMerger::_applySqlLocal(std::string const& sql) {
+bool InfileMerger::_applySqlLocal(std::string const& sql, sql::SqlResults& results) {
     std::lock_guard<std::mutex> m(_sqlMutex);
     sql::SqlErrorObject errObj;
 
     if (not _sqlConnect(errObj)) {
         return false;
     }
-    if (not _sqlConn->runQuery(sql, errObj)) {
+    if (not _sqlConn->runQuery(sql, results, errObj)) {
         _error = util::Error(errObj.errNo(), "Error applying sql: " + errObj.printErrMsg(),
                        util::ErrorCode::MYSQLEXEC);
         LOGS(_log, LOG_LVL_ERROR, "InfileMerger error: " << _error.getMsg());

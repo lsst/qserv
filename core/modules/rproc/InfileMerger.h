@@ -199,8 +199,9 @@ private:
     bool _setupTable(proto::WorkerResponse const& response);
     void _setupRow();
     bool _applySql(std::string const& sql);
-    bool _applySqlLocal(std::string const& sql);
+    bool _applySqlLocal(std::string const& sql, std::string const& logMsg, sql::SqlResults& results);
     bool _applySqlLocal(std::string const& sql, std::string const& logMsg);
+    bool _applySqlLocal(std::string const& sql, sql::SqlResults& results);
     bool _sqlConnect(sql::SqlErrorObject& errObj);
     std::string _getQueryIdStr();
     void _setQueryIdStr(std::string const& qIdStr);
