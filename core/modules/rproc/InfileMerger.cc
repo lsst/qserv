@@ -130,11 +130,6 @@ InfileMerger::InfileMerger(InfileMergerConfig const& c)
         return _deleteInvalidRows(jobAttempts);
     });
 
-    _invalidJobAttemptMgr.setTableExistsFunc([this]() -> bool {
-        std::lock_guard<std::mutex> lockTable(_createTableMutex);
-        return !_needCreateTable;
-    });
-
     if (!_setupConnection()) {
         throw InfileMergerError(util::ErrorCode::MYSQLCONNECT, "InfileMerger mysql connect failure.");
     }
@@ -184,11 +179,6 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
         _error = util::Error(response->result.errorcode(), response->result.errormsg(), util::ErrorCode::MYSQLEXEC);
         LOGS(_log, LOG_LVL_ERROR, "Error in response data: " << _error);
         return false;
-    }
-    if (_needCreateTable) {
-        if (!_setupTable(*response)) {
-            return false;
-        }
     }
 
     // Nothing to do if size is zero.
@@ -392,7 +382,6 @@ bool InfileMerger::makeResultsTableForQuery(query::SelectStmt const& stmt) {
         LOGS(_log, LOG_LVL_ERROR, _getQueryIdStr() << "InfileMerger sql error: " << _error.getMsg());
         return false;
     }
-    _needCreateTable = false;
 
     return true;
 }
@@ -546,55 +535,6 @@ bool InfileMerger::_verifySession(int sessionId) {
 }
 
 
-
-
-/// Create a table with the appropriate schema according to the
-/// supplied Protobufs message
-bool InfileMerger::_setupTable(proto::WorkerResponse const& response) {
-    // Create table, using schema
-    std::lock_guard<std::mutex> lock(_createTableMutex);
-    if (_needCreateTable) {
-
-        // create schema from response
-        proto::RowSchema const& rs = response.result.rowschema();
-        sql::Schema schema;
-        for(int i=0, e=rs.columnschema_size(); i != e; ++i) {
-            proto::ColumnSchema const& cs = rs.columnschema(i);
-            sql::ColSchema scs;
-            scs.name = cs.name();
-            if (cs.has_mysqltype()) {
-                scs.colType.mysqlType = cs.mysqltype();
-            }
-            scs.colType.sqlType = cs.sqltype();
-
-            schema.columns.push_back(scs);
-        }
-        LOGS(_log, LOG_LVL_DEBUG, _getQueryIdStr() << "got (unaltered) schema from worker: " << schema);
-
-        _addJobIdColumnToSchema(schema);
-
-        std::string createStmt = sql::formCreateTable(_mergeTable, schema);
-        // Specifying engine. There is some question about whether InnoDB or MyISAM is the better
-        // choice when multiple threads are writing to the result table.
-        createStmt += " ENGINE=MyISAM";
-        LOGS(_log, LOG_LVL_DEBUG, _getQueryIdStr() << "InfileMerger query prepared: " << createStmt);
-
-        if (not _applySqlLocal(createStmt, "setupTable")) {
-            _error = InfileMergerError(util::ErrorCode::CREATE_TABLE,
-                                       "Error creating table (" + _mergeTable + ")");
-            _isFinished = true; // Cannot continue.
-            LOGS(_log, LOG_LVL_ERROR, _getQueryIdStr() << "InfileMerger sql error: " << _error.getMsg());
-            return false;
-        }
-        _needCreateTable = false;
-    } else {
-        // Do nothing, table already created.
-    }
-    LOGS(_log, LOG_LVL_DEBUG, _getQueryIdStr() << "InfileMerger table " << _mergeTable << " ready");
-    return true;
-}
-
-
 /// Choose the appropriate target name, depending on whether post-processing is
 /// needed on the result rows.
 void InfileMerger::_fixupTargetName() {
@@ -678,16 +618,7 @@ bool InvalidJobAttemptMgr::holdMergingForRowDelete(std::string const& msg) {
         _cleanupIJA();
         return true;
     }
-    lockJA.unlock();
-    /// If the table hasn't been made yet, just return true, nothing to remove.
-    /// Rows with jobIdAttempt should be prevented from joining the result table.
-    if (!_tableExistsFunc()) {
-        LOGS(_log, LOG_LVL_INFO, msg << " Nothing to do as no table yet made");
-        _cleanupIJA();
-        return true;
-    }
 
-    lockJA.lock();
     if (_concurrentMergeCount > 0) {
         _cv.wait(lockJA, [this](){ return _concurrentMergeCount == 0;});
     }

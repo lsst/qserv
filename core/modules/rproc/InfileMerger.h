@@ -113,7 +113,6 @@ public:
 
     InvalidJobAttemptMgr() {}
     void setDeleteFunc(deleteFuncType func) {_deleteFunc = func; }
-    void setTableExistsFunc(std::function<bool(void)> func) {_tableExistsFunc = func; }
 
     /// @return true if jobIdAttempt is invalid.
     /// Wait if rows need to be deleted.
@@ -149,7 +148,6 @@ private:
     bool _waitFlag{false};
     std::condition_variable  _cv;
     deleteFuncType _deleteFunc;
-    std::function<bool(void)> _tableExistsFunc;
 };
 
 /// InfileMerger is a row-based merger that imports rows from result messages
@@ -201,7 +199,6 @@ private:
     int _readHeader(proto::ProtoHeader& header, char const* buffer, int length);
     int _readResult(proto::Result& result, char const* buffer, int length);
     bool _verifySession(int sessionId);
-    bool _setupTable(proto::WorkerResponse const& response);
     void _setupRow();
     bool _applySql(std::string const& sql);
     bool _applySqlLocal(std::string const& sql, std::string const& logMsg, sql::SqlResults& results);
@@ -225,9 +222,7 @@ private:
     std::string _mergeTable; ///< Table for result loading
     InfileMergerError _error; ///< Error state
     bool _isFinished{false}; ///< Completed?
-    std::mutex _createTableMutex; ///< protection from creating tables
     std::mutex _sqlMutex; ///< Protection for SQL connection
-    bool _needCreateTable{true}; ///< Does the target table need creating?
     size_t _getResultTableSizeMB(); ///< Return the size of the result table in MB.
 
     /**
@@ -254,8 +249,7 @@ private:
     std::atomic<bool> _queryIdStrSet{false};
     std::string _queryIdStr{"QI=?"}; ///< Unknown until results start coming back from workers.
 
-    /// Name of the jobId column in the result table. Protected by _createTableMutex
-    std::string _jobIdColName;
+    std::string _jobIdColName; ///< Name of the jobId column in the result table.
     int const _jobIdMysqlType{MYSQL_TYPE_LONG}; ///< 4 byte integer.
     std::string const _jobIdSqlType{"INT(9)"}; ///< The 9 only affects '0' padding with ZEROFILL.
 
