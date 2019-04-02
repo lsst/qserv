@@ -89,7 +89,7 @@ void ServiceProvider::run() {
     _threads.clear();
     for (size_t i = 0; i < config()->controllerThreads(); ++i) {
         _threads.push_back(
-            move(make_unique<thread>(
+            make_unique<thread>(
                 [self] () {
 
                     // This will prevent the I/O service from exiting the .run()
@@ -97,7 +97,7 @@ void ServiceProvider::run() {
                     // Unless the service will be explicitly stopped.
                     self->_io_service.run();
                 }
-            ))
+            )
         );
     }
 }

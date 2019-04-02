@@ -134,12 +134,10 @@ Parser& Parser::flag(string const& name,
     _flags.emplace(
         make_pair(
             name,
-            move(
-                make_unique<FlagParser>(
-                    name,
-                    description,
-                    var
-                )
+            make_unique<FlagParser>(
+                name,
+                description,
+                var
             )
         )
     );
