@@ -43,7 +43,7 @@ class ProtoRowBuffer : public mysql::RowBuffer {
 public:
     ProtoRowBuffer(proto::Result& res, int jobId, std::string const& jobIdColName,
                    std::string const& jobIdSqlType, int jobIdMysqlType);
-    virtual unsigned fetch(char* buffer, unsigned bufLen);
+    unsigned fetch(char* buffer, unsigned bufLen) override;
     std::string dump() const override;
 
     /// Escape a bytestring for LOAD DATA INFILE, as specified by MySQL doc:

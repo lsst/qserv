@@ -727,7 +727,7 @@ public:
         // MINUSMINUS (ignored, it indicates a comment)
     }
 
-    void onEnter(QSMySqlParser::RootContext* ctx, QSMySqlListener const * const listener) {
+    virtual void onEnter(QSMySqlParser::RootContext* ctx, QSMySqlListener const * const listener) {
         _ctx = ctx;
         checkContext();
         qsMySqlListener = listener;
@@ -739,10 +739,10 @@ public:
 
     string name() const override { return getTypeName(this); }
 
-    std::string adapterStackToString() const { return qsMySqlListener->adapterStackToString(); }
-    std::string getStringTree() const { return qsMySqlListener->getStringTree(); }
-    std::string getTokens() const { return qsMySqlListener->getTokens(); }
-    std::string getStatementString() const { return qsMySqlListener->getStatementString(); }
+    std::string adapterStackToString() const override { return qsMySqlListener->adapterStackToString(); }
+    std::string getStringTree() const override { return qsMySqlListener->getStringTree(); }
+    std::string getTokens() const override { return qsMySqlListener->getTokens(); }
+    std::string getStatementString() const override { return qsMySqlListener->getStatementString(); }
 
 private:
     shared_ptr<query::SelectStmt> _selectStatement;
@@ -849,7 +849,7 @@ public:
         _havingClause = havingClause;
     }
 
-    void handleOrderByClause(shared_ptr<query::OrderByClause> const & orderByClause) {
+    void handleOrderByClause(shared_ptr<query::OrderByClause> const & orderByClause) override {
         _orderByClause = orderByClause;
     }
 
@@ -1633,7 +1633,7 @@ class OrderByClauseAdapter :
 public:
     using AdapterT::AdapterT;
 
-    void handleOrderByExpression(query::OrderByTerm const & orderByTerm) {
+    void handleOrderByExpression(query::OrderByTerm const & orderByTerm) override {
         _orderByClause->addTerm(orderByTerm);
     }
 
@@ -2212,7 +2212,7 @@ class UidAdapter :
 public:
     using AdapterT::AdapterT;
 
-    void handleSimpleId(string const & val) {
+    void handleSimpleId(string const & val) override {
         _val = val;
     }
 
@@ -2609,7 +2609,7 @@ public:
         _args.push_back(valueExpr);
     }
 
-    void handleScalarFunctionCall(shared_ptr<query::ValueFactor> const & valueFactor) {
+    void handleScalarFunctionCall(shared_ptr<query::ValueFactor> const & valueFactor) override {
         auto valueExpr = make_shared<query::ValueExpr>();
         valueExpr->addValueFactor(valueFactor);
         _args.push_back(valueExpr);
@@ -2672,14 +2672,14 @@ class NotExpressionAdapter :
 public:
     using AdapterT::AdapterT;
 
-    virtual void handlePredicateExpression(shared_ptr<query::BoolTerm> const & boolTerm,
-            antlr4::ParserRuleContext* childCtx) {
+    void handlePredicateExpression(shared_ptr<query::BoolTerm> const & boolTerm,
+            antlr4::ParserRuleContext* childCtx) override {
         ASSERT_EXECUTION_CONDITION(nullptr == _boolFactor, "BoolFactor already set.", _ctx);
         _boolFactor = dynamic_pointer_cast<query::BoolFactor>(boolTerm);
         ASSERT_EXECUTION_CONDITION(nullptr != _boolFactor, "Could not cast BoolTerm to a BoolFactor:" << *boolTerm, _ctx);
     }
 
-    virtual void handlePredicateExpression(shared_ptr<query::ValueExpr> const & valueExpr) {
+    void handlePredicateExpression(shared_ptr<query::ValueExpr> const & valueExpr) override {
         ASSERT_EXECUTION_CONDITION(false, "Unhandled PredicateExpression with ValueExpr.", _ctx);
     }
 
@@ -2728,7 +2728,7 @@ public:
         lockedParent()->handleQservFunctionSpec(functionName, args);
     }
 
-    void handleLogicalOperator(LogicalOperatorCBH::OperatorType operatorType) {
+    void handleLogicalOperator(LogicalOperatorCBH::OperatorType operatorType) override {
         TRACE_CALLBACK_INFO(LogicalOperatorCBH::OperatorTypeToStr(operatorType));
         ASSERT_EXECUTION_CONDITION(false == _logicalOperatorIsSet,
                 "logical operator must be set only once.", _ctx);
@@ -2743,7 +2743,7 @@ public:
     }
 
     void handleNotExpression(shared_ptr<query::BoolTerm> const & boolTerm,
-            antlr4::ParserRuleContext* childCtx) {
+            antlr4::ParserRuleContext* childCtx) override {
         _terms.push_back(boolTerm);
     }
 

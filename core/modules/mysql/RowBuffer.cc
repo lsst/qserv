@@ -109,7 +109,7 @@ inline int addColumn(char* cursor, char* colData, int colSize) {
 class ResRowBuffer : public RowBuffer {
 public:
     ResRowBuffer(MYSQL_RES* result);
-    unsigned fetch(char* buffer, unsigned bufLen);
+    unsigned fetch(char* buffer, unsigned bufLen) override;
     unsigned int _addRow(Row r, char* cursor, int remaining);
     bool _fetchRow(Row& r);
     unsigned _fetchFromLargeRow(char* buffer, int bufLen);

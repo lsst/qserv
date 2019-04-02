@@ -62,19 +62,19 @@ public:
     typedef std::shared_ptr<BoolFactor> Ptr;
 
     /// Get the class name.
-    virtual char const* getName() const { return "BoolFactor"; }
+    char const* getName() const override { return "BoolFactor"; }
 
     /// Get the operator precidence for this class.
-    virtual OpPrecedence getOpPrecedence() const { return OTHER_PRECEDENCE; }
+    OpPrecedence getOpPrecedence() const override { return OTHER_PRECEDENCE; }
 
     /// Add a BoolFactorTerm.
     void addBoolFactorTerm(std::shared_ptr<BoolFactorTerm> boolFactorTerm);
 
     /// Get a vector of the ValueExprs this contains.
-    virtual void findValueExprs(std::vector<std::shared_ptr<ValueExpr>>& vector) const;
+    void findValueExprs(std::vector<std::shared_ptr<ValueExpr>>& vector) const override;
 
     /// Get a vector of the ColumnRefs this contains.
-    virtual void findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& vector) const;
+    void findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& vector) const override;
 
     /// Set if this term is 'not', as in `NOT <something>` in SQL.
     void setHasNot(bool hasNot) { _hasNot = hasNot; }
@@ -94,7 +94,7 @@ public:
     /// Make a shallow copy of this term.
     std::shared_ptr<BoolTerm> copySyntax() const override;
 
-    bool operator==(const BoolTerm& rhs) const;
+    bool operator==(const BoolTerm& rhs) const override;
 
     // prepend _terms with an open parenthesis PassTerm and append it with a close parenthesis PassTerm.
     void addParenthesis();

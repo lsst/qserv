@@ -57,7 +57,7 @@ public:
     void queryStatsTmpChunkUpdate(QueryId queryId, int completedChunks) override;
 
     /// @see QStatus::queryStatsTmpGet(QueryId queryId)
-    QStats queryStatsTmpGet(QueryId queryId);
+    QStats queryStatsTmpGet(QueryId queryId) override;
 
     /// @see QStatus::queryStatsTmpRemove(QueryId queryId)
     void queryStatsTmpRemove(QueryId queryId) override;

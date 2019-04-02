@@ -73,7 +73,7 @@ public:
 
     void Finished(XrdSsiRequest&        rqstR,
                   XrdSsiRespInfo const& rInfo,
-                  bool cancel) {
+                  bool cancel) override {
         const char *how = (cancel ? " cancelled" : "");
         LOGS(_log, LOG_LVL_DEBUG, "Finished: " << _rNum
                                   << " rName=" << _rName << how);

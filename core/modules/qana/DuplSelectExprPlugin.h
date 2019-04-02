@@ -81,7 +81,7 @@ public:
      */
     static std::string const ERR_MSG;
 
-    virtual ~DuplSelectExprPlugin() {}
+    ~DuplSelectExprPlugin() override {}
 
     /**
      * Prevent execution of queries which have duplicated select fields names.
@@ -89,7 +89,7 @@ public:
      * @throw AnalysisError if duplicated select fields name are detected
      * @see QueryPlugin::applyLogical()
      */
-    virtual void applyLogical(query::SelectStmt& stmt, query::QueryContext&);
+    void applyLogical(query::SelectStmt& stmt, query::QueryContext&) override;
 
     /**
     * Return the name of the plugin class for logging.

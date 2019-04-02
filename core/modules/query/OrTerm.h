@@ -42,13 +42,13 @@ public:
     typedef std::shared_ptr<OrTerm> Ptr;
 
     /// Get the class name.
-    virtual char const* getName() const { return "OrTerm"; }
+    char const* getName() const override { return "OrTerm"; }
 
-    /// Get the operator precidence for this class.
-    virtual OpPrecedence getOpPrecedence() const { return OR_PRECEDENCE; }
+    /// Get the operator precedence for this class.
+    OpPrecedence getOpPrecedence() const override { return OR_PRECEDENCE; }
 
-    /// Serialze this instance as SQL to the QueryTemplate.
-    virtual void renderTo(QueryTemplate& qt) const;
+    /// Serialize this instance as SQL to the QueryTemplate.
+    void renderTo(QueryTemplate& qt) const override;
 
     /// Make a deep copy of this term.
     std::shared_ptr<BoolTerm> clone() const override;

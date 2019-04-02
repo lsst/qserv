@@ -47,10 +47,10 @@ public:
     LogicalTerm(std::shared_ptr<BoolTerm> const & term) : _terms({term}) {}
 
     /// Get an iterator to the beginning of the terms this contains.
-    virtual std::vector<std::shared_ptr<BoolTerm>>::iterator iterBegin() { return _terms.begin(); }
+    std::vector<std::shared_ptr<BoolTerm>>::iterator iterBegin() override { return _terms.begin(); }
 
     /// Get an iterator to the end of the list of terms this contains.
-    virtual std::vector<std::shared_ptr<BoolTerm>>::iterator iterEnd() { return _terms.end(); }
+    std::vector<std::shared_ptr<BoolTerm>>::iterator iterEnd() override { return _terms.end(); }
 
     /// Add a BoolTerm
     void addBoolTerm(std::shared_ptr<BoolTerm> boolTerm);
