@@ -418,8 +418,6 @@ HttpProcessor::HttpProcessor(Controller::Ptr const& controller,
     :   _controller(controller),
         _onWorkerEvict(onWorkerEvict),
         _healthMonitorTask(healthMonitorTask),
-        _replicationTask(replicationTask),
-        _deleteWorkerTask(deleteWorkerTask),
         _log(LOG_GET("lsst.qserv.replica.HttpProcessor")) {
 }
 

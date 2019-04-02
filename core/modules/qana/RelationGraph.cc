@@ -891,7 +891,6 @@ void resetVertices(std::list<Vertex>& vertices)
 /// is evaluable.
 bool RelationGraph::_validate()
 {
-    typedef std::list<Vertex>::iterator Iter;
     size_t numStarts = 0;
     for (Vertex& vtx: _vertices) {
         if (vtx.info->kind != TableInfo::MATCH) {

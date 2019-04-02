@@ -248,8 +248,6 @@ private:
     // the reference counters to the pointed objects.
 
     HealthMonitorTask::Ptr const& _healthMonitorTask;
-    ReplicationTask::Ptr   const& _replicationTask;
-    DeleteWorkerTask::Ptr  const& _deleteWorkerTask;
 
     std::string _replicationLevelReport; /// The cached state of the last replication levels report
     
