@@ -107,6 +107,13 @@ public:
 
     query::SelectStmtPtrVector const& getStmtParallel() const { return _stmtParallel; }
 
+    /**
+     * @brief Get the SelectStmt that will be executed on workers, without chunking annotations.
+     *
+     * @return std::shared_ptr<query::SelectStmt> const&
+     */
+    std::shared_ptr<query::SelectStmt> const& getPreFlightStmt() const { return _stmtPreFlight; }
+
     /** @brief Return the ORDER BY clause to run on mysql-proxy at result retrieval.
      *
      *  Indeed, MySQL results order is undefined with simple "SELECT *" clause.
@@ -200,6 +207,13 @@ private:
     *
     */
     query::SelectStmtPtrVector _stmtParallel;
+
+    /**
+     * Store the query used on local workers, but it does not get modified for chunking the way the worker
+     * query templates do (with e.g. `%CC%`). This is used to run the "preflight" query on the local copy of
+     * the data table, to get the schema used to create the results table.
+     */
+    query::SelectStmtPtr _stmtPreFlight;
 
     /**
     * Store the query used to aggregate results on the czar.

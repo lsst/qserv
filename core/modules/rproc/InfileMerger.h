@@ -193,6 +193,8 @@ public:
     bool scrubResults(int jobId, int attempt);
     int makeJobIdAttempt(int jobId, int attemptCount);
 
+    bool makeResultsTableForQuery(query::SelectStmt const& stmt);
+
 private:
     bool _applyMysql(std::string const& query);
     bool _merge(std::shared_ptr<proto::WorkerResponse>& response);

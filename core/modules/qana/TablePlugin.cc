@@ -314,6 +314,12 @@ TablePlugin::applyPhysical(QueryPlugin::Plan& p,
     if (!context.queryMapping) {
         context.queryMapping = std::make_shared<QueryMapping>();
     }
+
+    if ((not p.stmtParallel.empty()) && p.stmtParallel.front() != nullptr) {
+        p.stmtPreFlight = p.stmtParallel.front()->clone();
+        LOGS(_log, LOG_LVL_TRACE, "set local worker query:" << p.stmtPreFlight->getQueryTemplate().sqlFragment());
+    }
+
     // Process each entry in the parallel select statement set.
     typedef SelectStmtPtrVector::iterator Iter;
     SelectStmtPtrVector newList;

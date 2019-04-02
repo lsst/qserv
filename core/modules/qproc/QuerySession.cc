@@ -330,7 +330,7 @@ void QuerySession::_generateConcrete() {
 }
 
 void QuerySession::_applyConcretePlugins() {
-    qana::QueryPlugin::Plan p(*_stmt, _stmtParallel, *_stmtMerge, _hasMerge);
+    qana::QueryPlugin::Plan p(*_stmt, _stmtParallel, _stmtPreFlight, *_stmtMerge, _hasMerge);
     QueryPluginPtrVector::iterator i;
     for(i=_plugins->begin(); i != _plugins->end(); ++i) {
         LOGS(_log, LOG_LVL_TRACE, "applyPhysical BEGIN: " << (**i).name());
