@@ -307,6 +307,26 @@ public:
 
     size_t numActiveRequests() const;
 
+    /**
+     * Class RequestWrapper is the base class for implementing requests
+     * registry as a polymorphic collection to store active requests. Pure virtual
+     * methods of the class will be overridden by request-type-specific implementations
+     * (see structure RequestWrappeImpl<REQUEST_TYPE> in the .cc file) capturing
+     * type-dependent pointer and a callback function.
+     */
+    struct RequestWrapper {
+
+        typedef std::shared_ptr<RequestWrapper> Ptr;
+
+        virtual ~RequestWrapper() = default;
+
+        /// on completion of a request
+        virtual void notify() = 0;
+
+        /// stored request object
+        virtual std::shared_ptr<Request> request() const = 0;
+    };
+
 private:
 
     explicit Controller(ServiceProvider::Ptr const& serviceProvider);
@@ -327,26 +347,6 @@ private:
 
     mutable util::Mutex _mtx;   /// for thread safety of the class's public API
                                 /// and internal operations.
-
-    /**
-     * Class RequestWrapper is the base class for implementing requests
-     * registry as a polymorphic collection to store active requests. Pure virtual
-     * methods of the class will be overridden by request-type-specific implementations
-     * (see structure RequestWrappeImpl<REQUEST_TYPE> in the .cc file) capturing
-     * type-dependent pointer and a callback function.
-     */
-    struct RequestWrapper {
-
-        typedef std::shared_ptr<RequestWrapper> Ptr;
-
-        virtual ~RequestWrapper() = default;
-
-        /// on completion of a request
-        virtual void notify() = 0;
-
-        /// stored request object
-        virtual std::shared_ptr<Request> request() const = 0;
-    };
 
     std::map<std::string, std::shared_ptr<RequestWrapper>> _registry;
 };
