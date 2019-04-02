@@ -122,7 +122,8 @@ protected:
     void changeState(State to) {
         switch (_state) {
             default:
-                throw ParseException("Parse error(INTERNAL): unhandled state transition value: " + _state);
+                throw ParseException("Parse error(INTERNAL): unhandled state transition value: "
+                        + std::to_string(_state));
 
             case INIT:
                 if (SETUP_DONE != to) {

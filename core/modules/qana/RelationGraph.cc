@@ -555,7 +555,7 @@ size_t RelationGraph::_addSpEdges(BoolTerm::Ptr bt)
             }
             break;
         default:
-            throw QueryNotEvaluableError("Unhandled comparison operator:" + cp->op);
+            throw QueryNotEvaluableError("Unhandled comparison operator:" + std::to_string(cp->op));
     }
     if (!fe || boost::math::isnan(angSep)) {
         // The scisql_angSep() call and/or numeric constant is missing,
