@@ -61,27 +61,32 @@ namespace replica {
 //   Customizations for specific request types require dedicated policies
 // ========================================================================
 
-struct ServiceSuspendRequestPolicy {
+class ServiceSuspendRequestPolicy {
+public:
     static char const* requestName();
     static ProtocolServiceRequestType requestType();
 };
 
-struct ServiceResumeRequestPolicy {
+class ServiceResumeRequestPolicy {
+public:
     static char const* requestName();
     static ProtocolServiceRequestType requestType();
 };
 
-struct ServiceStatusRequestPolicy {
+class ServiceStatusRequestPolicy {
+public:
     static char const* requestName();
     static ProtocolServiceRequestType requestType();
 };
 
-struct ServiceRequestsRequestPolicy {
+class ServiceRequestsRequestPolicy {
+public:
     static char const* requestName();
     static ProtocolServiceRequestType requestType();
 };
 
-struct ServiceDrainRequestPolicy {
+class ServiceDrainRequestPolicy {
+public:
     static char const* requestName();
     static ProtocolServiceRequestType requestType();
 };

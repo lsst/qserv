@@ -54,9 +54,10 @@ namespace qserv {
 namespace replica {
 
 /**
- * Structure WorkerInfo encapsulates various parameters describing a worker.
+ * class WorkerInfo encapsulates various parameters describing a worker.
  */
-struct WorkerInfo {
+class WorkerInfo {
+public:
 
     /// The logical name of a worker
     std::string name;
@@ -106,9 +107,10 @@ struct WorkerInfo {
 std::ostream& operator <<(std::ostream& os, WorkerInfo const& info);
 
 /**
- * Structure DatabaseInfo encapsulates various parameters describing databases.
+ * class DatabaseInfo encapsulates various parameters describing databases.
  */
-struct DatabaseInfo {
+class DatabaseInfo {
+public:
 
     /// The name of a database
     std::string name;
