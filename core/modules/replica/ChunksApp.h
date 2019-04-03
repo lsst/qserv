@@ -87,7 +87,8 @@ private:
     bool _pullQservReplicas = false;
 
     /// The maximum timeout for the completion of requests sent to
-    /// the Replication System's and Qserv workers
+    /// the Replication System's and Qserv workers. The default value (0)
+    /// implies using the timeout found in the Configuration.
     unsigned int _timeoutSec = 0;
 
     /// Dump the detailed report on the replicas if 'true'
