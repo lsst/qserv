@@ -216,8 +216,8 @@ void Request::wait() {
 
     if (state() == State::FINISHED) return;
 
-    unique_lock<mutex> lock(_onFinishMtx);
-    _onFinishCv.wait(lock, [this] {
+    unique_lock<mutex> onFinishLock(_onFinishMtx);
+    _onFinishCv.wait(onFinishLock, [this] {
         return state() == State::FINISHED;
     });
 }
@@ -349,9 +349,11 @@ void Request::setState(util::Lock const& lock,
     // in the transient state transition in order to guarantee a consistent
     // view on to the object's state from the client's prospective.
 
-    _extendedState = newExtendedState;
-    _state = newState;
-
+    {
+        unique_lock<mutex> onFinishLock(_onFinishMtx);
+        _extendedState = newExtendedState;
+        _state = newState;
+    }
     savePersistentState(lock);
 }
 

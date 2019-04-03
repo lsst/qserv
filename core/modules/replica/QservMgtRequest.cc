@@ -215,8 +215,8 @@ void QservMgtRequest::wait() {
 
     if (state() == State::FINISHED) return;
 
-    unique_lock<mutex> lock(_onFinishMtx);
-    _onFinishCv.wait(lock, [this] {
+    unique_lock<mutex> onFinishLock(_onFinishMtx);
+    _onFinishCv.wait(onFinishLock, [this] {
         return state() == State::FINISHED;
     });
 }
@@ -342,10 +342,11 @@ void QservMgtRequest::setState(util::Lock const& lock,
     // IMPORTANT: the top-level state is the last to be set when performing
     // the state transition to insure clients will get a consistent view onto
     // the object state.
-
-    _extendedState = newExtendedState;
-    _state = newState;
-
+    {
+        unique_lock<mutex> onFinishLock(_onFinishMtx);
+        _extendedState = newExtendedState;
+        _state = newState;
+    }
     serviceProvider()->databaseServices()->saveState(*this, _performance, _serverError);
 }
 
