@@ -61,7 +61,9 @@ namespace query {
     class SelectStmt;
 }
 namespace sql {
+    class Schema;
     class SqlConnection;
+    class SqlResults;
 }
 }} // End of forward declarations
 
@@ -111,7 +113,6 @@ public:
 
     InvalidJobAttemptMgr() {}
     void setDeleteFunc(deleteFuncType func) {_deleteFunc = func; }
-    void setTableExistsFunc(std::function<bool(void)> func) {_tableExistsFunc = func; }
 
     /// @return true if jobIdAttempt is invalid.
     /// Wait if rows need to be deleted.
@@ -132,6 +133,7 @@ public:
     bool isJobAttemptInvalid(int jobIdAttempt);
 
     bool prepScrub(int jobIdAttempt);
+
 private:
     /// Precondition: must hold _iJAMtx before calling.
     /// @return true if jobIdAttempt is in the invalid set.
@@ -146,7 +148,6 @@ private:
     bool _waitFlag{false};
     std::condition_variable  _cv;
     deleteFuncType _deleteFunc;
-    std::function<bool(void)> _tableExistsFunc;
 };
 
 /// InfileMerger is a row-based merger that imports rows from result messages
@@ -190,17 +191,19 @@ public:
     bool scrubResults(int jobId, int attempt);
     int makeJobIdAttempt(int jobId, int attemptCount);
 
+    bool makeResultsTableForQuery(query::SelectStmt const& stmt);
+
 private:
     bool _applyMysql(std::string const& query);
     bool _merge(std::shared_ptr<proto::WorkerResponse>& response);
     int _readHeader(proto::ProtoHeader& header, char const* buffer, int length);
     int _readResult(proto::Result& result, char const* buffer, int length);
     bool _verifySession(int sessionId);
-    bool _setupTable(proto::WorkerResponse const& response);
     void _setupRow();
     bool _applySql(std::string const& sql);
-    bool _applySqlLocal(std::string const& sql);
+    bool _applySqlLocal(std::string const& sql, std::string const& logMsg, sql::SqlResults& results);
     bool _applySqlLocal(std::string const& sql, std::string const& logMsg);
+    bool _applySqlLocal(std::string const& sql, sql::SqlResults& results);
     bool _sqlConnect(sql::SqlErrorObject& errObj);
     std::string _getQueryIdStr();
     void _setQueryIdStr(std::string const& qIdStr);
@@ -219,14 +222,23 @@ private:
     std::string _mergeTable; ///< Table for result loading
     InfileMergerError _error; ///< Error state
     bool _isFinished{false}; ///< Completed?
-    std::mutex _createTableMutex; ///< protection from creating tables
     std::mutex _sqlMutex; ///< Protection for SQL connection
-    bool _needCreateTable{true}; ///< Does the target table need creating?
     size_t _getResultTableSizeMB(); ///< Return the size of the result table in MB.
-    /// Alter the jobId column name in hopes that it will be unique.
-    void _alterJobIdColName() {
-        _jobIdColName = "jobId" + std::to_string(_jobIdColNameAdj++);
-    }
+
+    /**
+     * @brief Put a "jobId" column first in the provided schema.
+     *
+     * The jobId column is used to keep track of what job number and attempt number each row in the results
+     * table came from.
+     *
+     * The schema must match the schema of the results returned by workers (and workers add the JobId column
+     * first in the schema).
+     *
+     * @note This will change _jobIdColName if it conflicts with a column name in the user query.
+     *
+     * @param schema The schema to be modified.
+     */
+    void _addJobIdColumnToSchema(sql::Schema& schema);
 
     mysql::MySqlConnection _mysqlConn;
 
@@ -237,9 +249,7 @@ private:
     std::atomic<bool> _queryIdStrSet{false};
     std::string _queryIdStr{"QI=?"}; ///< Unknown until results start coming back from workers.
 
-    /// Name of the jobId column in the result table. Protected by _createTableMutex
-    std::string _jobIdColName;
-    int _jobIdColNameAdj{0}; ///< Adjustment to make if _jobIdColName is not unique.
+    std::string _jobIdColName; ///< Name of the jobId column in the result table.
     int const _jobIdMysqlType{MYSQL_TYPE_LONG}; ///< 4 byte integer.
     std::string const _jobIdSqlType{"INT(9)"}; ///< The 9 only affects '0' padding with ZEROFILL.
 

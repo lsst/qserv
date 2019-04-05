@@ -92,6 +92,9 @@ std::string getTimeStampId() {
     // Alternative (for production?) Use boost::uuid to construct ids that are
     // guaranteed to be unique.
 }
+
+const char JOB_ID_BASE_NAME[] = "jobId";
+
 } // anonymous namespace
 
 namespace lsst {
@@ -104,8 +107,8 @@ namespace rproc {
 ////////////////////////////////////////////////////////////////////////
 InfileMerger::InfileMerger(InfileMergerConfig const& c)
     : _config(c),
-      _mysqlConn(_config.mySqlConfig) {
-    _alterJobIdColName(); // initialize jobIdColName.
+      _mysqlConn(_config.mySqlConfig),
+      _jobIdColName(JOB_ID_BASE_NAME) {
     _fixupTargetName();
     _maxResultTableSizeMB = _config.mySqlConfig.maxTableSizeMB;
 
@@ -125,11 +128,6 @@ InfileMerger::InfileMerger(InfileMergerConfig const& c)
 
     _invalidJobAttemptMgr.setDeleteFunc([this](InvalidJobAttemptMgr::jASetType const& jobAttempts) -> bool {
         return _deleteInvalidRows(jobAttempts);
-    });
-
-    _invalidJobAttemptMgr.setTableExistsFunc([this]() -> bool {
-        std::lock_guard<std::mutex> lockTable(_createTableMutex);
-        return !_needCreateTable;
     });
 
     if (!_setupConnection()) {
@@ -181,11 +179,6 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
         _error = util::Error(response->result.errorcode(), response->result.errormsg(), util::ErrorCode::MYSQLEXEC);
         LOGS(_log, LOG_LVL_ERROR, "Error in response data: " << _error);
         return false;
-    }
-    if (_needCreateTable) {
-        if (!_setupTable(*response)) {
-            return false;
-        }
     }
 
     // Nothing to do if size is zero.
@@ -355,15 +348,73 @@ int InfileMerger::makeJobIdAttempt(int jobId, int attemptCount) {
 }
 
 
+bool InfileMerger::makeResultsTableForQuery(query::SelectStmt const& stmt) {
+    // run query
+    sql::SqlResults results;
+    std::string query = stmt.getQueryTemplate().sqlFragment();
+    bool ok = _applySqlLocal(query, "query for schema", results);
+    if (not ok) {
+        LOGS(_log, LOG_LVL_ERROR, "Failed to get schema with with query" << query);
+        return false;
+    }
+
+    sql::SqlErrorObject errObj;
+    auto schema = results.makeSchema(errObj);
+    if (errObj.isSet()) {
+        LOGS(_log, LOG_LVL_ERROR, "failed to extract schema from result: " << errObj.errMsg());
+        return false;
+    }
+    LOGS(_log, LOG_LVL_DEBUG, "InfileMerger extracted schema: " << schema);
+
+    _addJobIdColumnToSchema(schema);
+
+    std::string createStmt = sql::formCreateTable(_mergeTable, schema);
+
+    // As we are not prepared to handle failures in LOAD DATA, it makes sense to use faster non-transactional
+    // engine
+    createStmt += " ENGINE=MyISAM";
+
+    LOGS(_log, LOG_LVL_DEBUG, _getQueryIdStr() << "InfileMerger query prepared: " << createStmt);
+
+    if (not _applySqlLocal(createStmt, "makeResultsTableForQuery")) {
+        _error = InfileMergerError(util::ErrorCode::CREATE_TABLE, "Error creating table:" + _mergeTable);
+        _isFinished = true; // Cannot continue.
+        LOGS(_log, LOG_LVL_ERROR, _getQueryIdStr() << "InfileMerger sql error: " << _error.getMsg());
+        return false;
+    }
+
+    return true;
+}
+
+
+void InfileMerger::_addJobIdColumnToSchema(sql::Schema& schema) {
+    unsigned int attempt = 0;
+    auto columnItr = schema.columns.begin();
+    while (columnItr != schema.columns.end()) {
+        if (columnItr->name == _jobIdColName) {
+            _jobIdColName = JOB_ID_BASE_NAME + std::to_string(attempt++);
+            columnItr = schema.columns.begin(); // start over
+        } else {
+            ++columnItr;
+        }
+    }
+    sql::ColSchema scs;
+    scs.name              = _jobIdColName;
+    scs.colType.mysqlType = _jobIdMysqlType;
+    scs.colType.sqlType   = _jobIdSqlType;
+    schema.columns.insert(schema.columns.begin(), scs);
+}
+
+
 bool InfileMerger::prepScrub(int jobId, int attemptCount) {
     int jobIdAttempt = makeJobIdAttempt(jobId, attemptCount);
     return _invalidJobAttemptMgr.prepScrub(jobIdAttempt);
 }
 
 
-bool InfileMerger::_applySqlLocal(std::string const& sql, std::string const& logMsg) {
+bool InfileMerger::_applySqlLocal(std::string const& sql, std::string const& logMsg, sql::SqlResults& results) {
     auto begin = std::chrono::system_clock::now();
-    bool success = _applySqlLocal(sql);
+    bool success = _applySqlLocal(sql, results);
     auto end = std::chrono::system_clock::now();
     LOGS(_log, LOG_LVL_DEBUG, logMsg << " success=" << success
          << " microseconds="
@@ -372,15 +423,21 @@ bool InfileMerger::_applySqlLocal(std::string const& sql, std::string const& log
 }
 
 
+bool InfileMerger::_applySqlLocal(std::string const& sql, std::string const& logMsg) {
+    sql::SqlResults results(true); // true = throw results away immediately
+    return _applySqlLocal(sql, logMsg, results);
+}
+
+
 /// Apply a SQL query, setting the appropriate error upon failure.
-bool InfileMerger::_applySqlLocal(std::string const& sql) {
+bool InfileMerger::_applySqlLocal(std::string const& sql, sql::SqlResults& results) {
     std::lock_guard<std::mutex> m(_sqlMutex);
     sql::SqlErrorObject errObj;
 
     if (not _sqlConnect(errObj)) {
         return false;
     }
-    if (not _sqlConn->runQuery(sql, errObj)) {
+    if (not _sqlConn->runQuery(sql, results, errObj)) {
         _error = util::Error(errObj.errNo(), "Error applying sql: " + errObj.printErrMsg(),
                        util::ErrorCode::MYSQLEXEC);
         LOGS(_log, LOG_LVL_ERROR, "InfileMerger error: " << _error.getMsg());
@@ -478,68 +535,6 @@ bool InfileMerger::_verifySession(int sessionId) {
 }
 
 
-/// Create a table with the appropriate schema according to the
-/// supplied Protobufs message
-bool InfileMerger::_setupTable(proto::WorkerResponse const& response) {
-    // Create table, using schema
-    std::lock_guard<std::mutex> lock(_createTableMutex);
-    if (_needCreateTable) {
-        // create schema
-        proto::RowSchema const& rs = response.result.rowschema();
-        sql::Schema sch;
-        for(int i=0, e=rs.columnschema_size(); i != e; ++i) {
-            proto::ColumnSchema const& cs = rs.columnschema(i);
-            sql::ColSchema scs;
-            scs.name = cs.name();
-            if (cs.has_mysqltype()) {
-                scs.colType.mysqlType = cs.mysqltype();
-            }
-            scs.colType.sqlType = cs.sqltype();
-
-            sch.columns.push_back(scs);
-        }
-        LOGS(_log, LOG_LVL_DEBUG, _getQueryIdStr() << "got (unaltered) schema from worker: " << sch);
-        // Add jobId column that does not conflict with existing columns.
-        for (auto iter = sch.columns.begin(), end = sch.columns.end(); iter != end; ++iter) {
-            auto const& col = *iter;
-            if (col.name == _jobIdColName) {
-                _alterJobIdColName();
-                iter = sch.columns.begin(); // start over
-            }
-        }
-
-
-        sql::Schema schema;
-        {
-            sql::ColSchema scs;
-            scs.name              = _jobIdColName;
-            scs.colType.mysqlType = _jobIdMysqlType;
-            scs.colType.sqlType   = _jobIdSqlType;
-            schema.columns.push_back(scs);
-            schema.columns.insert(schema.columns.end(), sch.columns.begin(), sch.columns.end());
-        }
-        std::string createStmt = sql::formCreateTable(_mergeTable, schema);
-        // Specifying engine. There is some question about whether InnoDB or MyISAM is the better
-        // choice when multiple threads are writing to the result table.
-        createStmt += " ENGINE=MyISAM";
-        LOGS(_log, LOG_LVL_DEBUG, _getQueryIdStr() << "InfileMerger query prepared: " << createStmt);
-
-        if (not _applySqlLocal(createStmt, "setupTable")) {
-            _error = InfileMergerError(util::ErrorCode::CREATE_TABLE,
-                                       "Error creating table (" + _mergeTable + ")");
-            _isFinished = true; // Cannot continue.
-            LOGS(_log, LOG_LVL_ERROR, _getQueryIdStr() << "InfileMerger sql error: " << _error.getMsg());
-            return false;
-        }
-        _needCreateTable = false;
-    } else {
-        // Do nothing, table already created.
-    }
-    LOGS(_log, LOG_LVL_DEBUG, _getQueryIdStr() << "InfileMerger table " << _mergeTable << " ready");
-    return true;
-}
-
-
 /// Choose the appropriate target name, depending on whether post-processing is
 /// needed on the result rows.
 void InfileMerger::_fixupTargetName() {
@@ -623,16 +618,7 @@ bool InvalidJobAttemptMgr::holdMergingForRowDelete(std::string const& msg) {
         _cleanupIJA();
         return true;
     }
-    lockJA.unlock();
-    /// If the table hasn't been made yet, just return true, nothing to remove.
-    /// Rows with jobIdAttempt should be prevented from joining the result table.
-    if (!_tableExistsFunc()) {
-        LOGS(_log, LOG_LVL_INFO, msg << " Nothing to do as no table yet made");
-        _cleanupIJA();
-        return true;
-    }
 
-    lockJA.lock();
     if (_concurrentMergeCount > 0) {
         _cv.wait(lockJA, [this](){ return _concurrentMergeCount == 0;});
     }

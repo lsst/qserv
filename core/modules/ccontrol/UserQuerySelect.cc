@@ -387,6 +387,11 @@ void UserQuerySelect::_setupMerger() {
         (_infileMergerConfig->mergeStmt != nullptr ?
             _infileMergerConfig->mergeStmt->getQueryTemplate().sqlFragment() : "nullptr"));
     _infileMerger = std::make_shared<rproc::InfileMerger>(*_infileMergerConfig);
+
+    auto&& preFlightStmt = _qSession->getPreFlightStmt();
+    if (preFlightStmt == nullptr || not _infileMerger->makeResultsTableForQuery(*preFlightStmt)) {
+        throw UserQueryError(getQueryIdString() + " Could not create results table for query (no worker queries).");
+    }
 }
 
 void UserQuerySelect::setupChunking() {

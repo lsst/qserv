@@ -85,18 +85,43 @@ public:
 /// A bundle of references to a components that form a "plan"
 class QueryPlugin::Plan {
 public:
+
+    /**
+     * @brief Construct a new Plan object
+     *
+     * Objects that are stored by reference are owned by the caller and are changed by the plugins.
+     *
+     * @param stmtOriginal_ the original SelectStmt
+     * @param stmtParallel_ the SelectStmt that gets sent to workers.
+     * @param stmtPreFlight_ the SelectStmt that is used locally to get schema to create the result table.
+     * @param stmtMerge_ the aggregation SelectStmt run on the merge table after results are delivered.
+     * @param hasMerge_ if there is an aggregation step to perform.
+     */
     Plan(query::SelectStmt& stmtOriginal_, SelectStmtPtrVector& stmtParallel_,
-         query::SelectStmt& stmtMerge_, bool hasMerge_)
+        std::shared_ptr<query::SelectStmt>& stmtPreFlight_, query::SelectStmt& stmtMerge_,
+        bool hasMerge_)
         :  stmtOriginal(stmtOriginal_),
            stmtParallel(stmtParallel_),
-          stmtMerge(stmtMerge_),
-          hasMerge(hasMerge_) {}
+           stmtPreFlight(stmtPreFlight_),
+           stmtMerge(stmtMerge_),
+           hasMerge(hasMerge_) {}
 
     // Each of these should become a sequence for two-step queries.
     query::SelectStmt& stmtOriginal;
-    SelectStmtPtrVector& stmtParallel; //< Group of parallel statements (not a sequence)
+
+    // Group of parallel statements (not a sequence)
+    SelectStmtPtrVector& stmtParallel;
+
+    // The statement used to 'preflight' the worker queries, to get the schema to generate the result table.
+    std::shared_ptr<query::SelectStmt>& stmtPreFlight;
+
+    // The statement used to run the aggregation step on the merge table.
     query::SelectStmt& stmtMerge;
+
     std::string dominantDb;
+
+    // True if an aggregation step must be performed on the merge table after worker queries
+    // complete.
     bool const hasMerge;
 };
 

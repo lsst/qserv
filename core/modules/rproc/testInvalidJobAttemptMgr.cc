@@ -56,9 +56,6 @@ public:
                 return deleteFunc(jobAttempts);
             }
         );
-        iJAMgr.setTableExistsFunc([this]() -> bool {
-            return tableExists_;
-        });
     }
 
     bool deleteFunc(std::set<int> const& jobAttempts) {
