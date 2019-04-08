@@ -336,17 +336,17 @@ private:
     struct FileDescr {
 
         /// The input file size as reported by a remote server
-        size_t inSizeBytes;
+        size_t inSizeBytes = 0;
 
         /// The actual number of bytes read so far (changes as the operation
         /// is progressing)
-        size_t outSizeBytes;
+        size_t outSizeBytes = 0;
         
         /// The last modification time of the file (seconds since UNISX Epoch)
-        std::time_t mtime;
+        std::time_t mtime = 0;
 
         /// Control sum computed locally while copying the file
-        uint64_t cs;
+        uint64_t cs = 0;
 
         /// The absolute path of a temporary file at a local directory.
         boost::filesystem::path tmpFile;
@@ -356,10 +356,10 @@ private:
         boost::filesystem::path outFile;
 
         /// When the file transfer started
-        uint64_t beginTransferTime;
+        uint64_t beginTransferTime = 0;
 
         /// When the file transfer ended
-        uint64_t endTransferTime;
+        uint64_t endTransferTime = 0;
     };
 
     /// Cached file descriptions mapping from short file names into

@@ -93,14 +93,14 @@ private:
     std::string _affectedRequestId;
 
     /// The number of a chunk
-    unsigned int _chunkNumber;
+    unsigned int _chunkNumber = 0;
 
     /// The data string to be sent to a worker in the ECHO request
     std::string _echoData;
 
     /// The optional delay (milliseconds) to be made by a worker before replying
     /// to the ECHO requests
-    uint64_t _echoDelayMilliseconds;
+    uint64_t _echoDelayMilliseconds = 0;
 
     /// An SQL query to be executed by a worker
     std::string _sqlQuery;
@@ -114,17 +114,17 @@ private:
     /// The optional limit for the total number of rows to be pulled from a result
     /// set when executing queries against the worker's database. The default value
     /// of 0 won't enforce any such limit.
-    uint64_t _sqlMaxRows;
+    uint64_t _sqlMaxRows = 0;
 
     /// The number of rows in the table of a query result set (0 means no pages)
     size_t _sqlPageSize = 20;
 
     /// The optional (milliseconds) to wait before cancelling (if the number of not 0)
     /// the earlier made request.
-    uint64_t _cancelDelayMilliseconds;
+    uint64_t _cancelDelayMilliseconds = 0;
 
     /// The priority level of a request
-    int  _priority;
+    int  _priority = 0;
 
     /// Do not track requests waiting before they finish
     bool _doNotTrackRequest = false;

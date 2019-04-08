@@ -42,34 +42,6 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.DeleteWorkerJob");
 
-/**
- * Count the total number of entries in the input collection,
- * the number of finished entries, and the total number of succeeded
- * entries.
- *
- * The "entries" in this context are either derivatives of the Request
- * or Job types.
- *
- * @param collection - a collection of entries to be analyzed
- * @return - a tuple of three elements
- */
-template <class T>
-tuple<size_t,size_t,size_t> counters(list<typename T::Ptr> const& collection) {
-    size_t total    = 0;
-    size_t finished = 0;
-    size_t success  = 0;
-    for (auto&& ptr: collection) {
-        total++;
-        if (ptr->state() == T::State::FINISHED) {
-            finished++;
-            if (ptr->extendedState() == T::ExtendedState::SUCCESS) {
-                success++;
-            }
-        }
-    }
-    return make_tuple(total, finished, success);
-}
-
 } /// namespace
 
 namespace lsst {

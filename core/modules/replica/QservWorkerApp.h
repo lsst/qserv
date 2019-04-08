@@ -113,7 +113,7 @@ private:
     std::string _familyName;
 
     /// The number of a chunk
-    unsigned int _chunkNumber;
+    unsigned int _chunkNumber = 0;
 
     /// The name of a file with space-separated pairs of <database>:<chunk>
     std::string _inFileName;

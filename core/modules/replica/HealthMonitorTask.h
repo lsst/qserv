@@ -172,7 +172,7 @@ private:
     /// reach the "eviction" threshold. Then trigger worker eviction sequence.
     WorkerResponseDelay _workerServiceNoResponseSec;
 
-    /// LAast time the workers response delays were updated
+    /// Last time the workers response delays were updated
     uint64_t _prevUpdateTimeMs;
 };
     

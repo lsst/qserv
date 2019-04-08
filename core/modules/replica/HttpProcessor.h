@@ -253,7 +253,7 @@ private:
 
     std::string _replicationLevelReport; /// The cached state of the last replication levels report
     
-    uint64_t _replicationLevelReportTimeMs; /// The time of the last cached report
+    uint64_t _replicationLevelReportTimeMs = 0; /// The time of the last cached report
 
     util::Mutex _replicationLevelMtx; /// Protects the replication level cache
 
