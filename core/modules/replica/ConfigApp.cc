@@ -180,27 +180,17 @@ ConfigApp::ConfigApp(int argc, char* argv[])
         "The name of a user account for the worker's database service.",
         _workerInfo.dbUser);
 
-    updateWorkerCmd.flag(
+    updateWorkerCmd.option(
         "worker-enable",
-        "Enable the worker. ATTENTION: this flag can't be used together with flag --worker-disable.",
+        "Enable the worker if 1 (or any positive number), disable if 0."
+        " Negative numbers are ignored.",
         _workerEnable);
 
-    updateWorkerCmd.flag(
-        "worker-disable",
-        "Disable the worker. ATTENTION: this flag can't be used together with flag --worker-enable.",
-        _workerDisable);
-
-    updateWorkerCmd.flag(
+    updateWorkerCmd.option(
         "worker-read-only",
-        "Turn the worker into the read-only mode. ATTENTION: this flag can't be"
-        " used together with flag --worker-read-write.",
+        "Turn the worker into the read-write mode if 1 (or any positive number),"
+        ", turn it int the read-write mode if 0.",
         _workerReadOnly);
-
-    updateWorkerCmd.flag(
-        "worker-read-write",
-        "Turn the worker into the read-write mode. ATTENTION: this flag can't be"
-        " used together with flag --worker-read-only.",
-        _workerReadWrite);
 
     // Command-specific parameters, options and flags
 
@@ -706,16 +696,6 @@ int ConfigApp::_updateWorker() const {
 
     string const context = "ConfigApp::" + string(__func__) + "  ";
 
-    if (_workerEnable and _workerDisable) {
-        LOGS(_log, LOG_LVL_ERROR, context << "flags --worker-enable and --worker-disable"
-             << " can't be used simultaneously");
-        return 1;
-    }
-    if (_workerReadOnly and _workerReadWrite) {
-        LOGS(_log, LOG_LVL_ERROR, context << "flags --worker-read-only and --worker-read-write"
-             << " can't be used simultaneously");
-        return 1;
-    }
     if (not _config->isKnownWorker(_workerInfo.name)) {
         LOGS(_log, LOG_LVL_ERROR, context << "unknown worker: '" << _workerInfo.name << "'");
         return 1;
@@ -772,16 +752,16 @@ int ConfigApp::_updateWorker() const {
             _config->setWorkerDbUser(_workerInfo.name,
                                      _workerInfo.dbUser);
         }
-        if (_workerEnable and not info.isEnabled) {
+        if (_workerEnable > 0 and not info.isEnabled) {
             _config->disableWorker(_workerInfo.name, false);
         }
-        if (_workerDisable and info.isEnabled) {
+        if (_workerEnable == 0 and info.isEnabled) {
             _config->disableWorker(_workerInfo.name);
         }
-        if (_workerReadOnly and not info.isReadOnly) {
+        if (_workerReadOnly > 0 and not info.isReadOnly) {
             _config->setWorkerReadOnly(_workerInfo.name);
         }
-        if (_workerReadWrite and info.isReadOnly) {
+        if (_workerReadOnly == 0 and info.isReadOnly) {
             _config->setWorkerReadOnly(_workerInfo.name, false);
         }
     } catch (exception const& ex) {
