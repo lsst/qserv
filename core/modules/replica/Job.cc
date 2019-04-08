@@ -195,7 +195,13 @@ void Job::start() {
     // Allow the job to be fully accomplished right away
 
     if (state() == State::FINISHED) {
+
         notify(lock);
+
+        // Unblock threads (if any) waiting on the synchronization call
+        // to method Job::wait()
+
+        _onFinishCv.notify_all();
         return;
     }
 
@@ -204,6 +210,19 @@ void Job::start() {
     _assertState(lock,
                  State::IN_PROGRESS,
                  context() + __func__);
+}
+
+
+void Job::wait() {
+ 
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
+
+    if (state() == State::FINISHED) return;
+
+    unique_lock<mutex> onFinishLock(_onFinishMtx);
+    _onFinishCv.wait(onFinishLock, [this] {
+        return state() == State::FINISHED;
+    });
 }
 
 
@@ -258,6 +277,11 @@ void Job::finish(util::Lock const& lock,
     if(_expirationTimerPtr) _expirationTimerPtr->cancel();
 
     notify(lock);
+
+    // Unblock threads (if any) waiting on the synchronization call
+    // to method Job::wait()
+
+    _onFinishCv.notify_all();
 }
 
 
@@ -365,9 +389,11 @@ void Job::setState(util::Lock const& lock,
     if (newState == State::FINISHED) {
         _endTime = PerformanceUtils::now();
     }
-    _extendedState = newExtendedState;
-    _state = newState;
-
+    {
+        unique_lock<mutex> onFinishLock(_onFinishMtx);
+        _extendedState = newExtendedState;
+        _state = newState;
+    }
     controller()->serviceProvider()->databaseServices()->saveState(*this, options(lock));
 }
 

@@ -238,17 +238,17 @@ private:
     /// Parameters of a worker to be updated
     WorkerInfo _workerInfo;
 
-    /// The flag for enabling a select worker
-    bool _workerEnable;
+    /// The flag for enabling a select worker. The default value of -1 or any
+    /// negative number) means that the flag wasn't used. A value of 0 means - disable
+    /// the worker, and a value of 1 (or any positive number) means - enable the worker.
+    int _workerEnable = -1;
 
-    /// The flag for disabling a select worker
-    bool _workerDisable;
 
-    /// The flag for turning a worker into the read-only mode
-    bool _workerReadOnly;
-
-    /// The flag for turning a worker into the read-write mode
-    bool _workerReadWrite;
+    /// The flag for turning a worker into the read-only mode. The default value
+    /// of -1 (or any negative number) means that the flag wasn't used. A value
+    /// of 0 means - turn the worker into the read-only state, and a value
+    /// of 1 (or any positive number) means - enable the read-write mode for the worker .
+    int _workerReadOnly = -1;
 
     /// General parameters
     ConfigurationGeneralParams _general;

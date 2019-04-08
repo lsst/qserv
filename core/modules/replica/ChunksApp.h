@@ -86,8 +86,10 @@ private:
     /// The flag (if set) for pulling chunk disposition from Qserv workers for the combined analysis
     bool _pullQservReplicas = false;
 
-    /// The maximum timeout for the replica disposition requests
-    unsigned int _timeoutSec = 60;
+    /// The maximum timeout for the completion of requests sent to
+    /// the Replication System's and Qserv workers. The default value (0)
+    /// implies using the timeout found in the Configuration.
+    unsigned int _timeoutSec = 0;
 
     /// Dump the detailed report on the replicas if 'true'
     bool _detailedReport = false;

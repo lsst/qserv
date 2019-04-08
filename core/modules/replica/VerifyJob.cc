@@ -30,7 +30,6 @@
 #include "lsst/log/Log.h"
 #include "replica/DatabaseServices.h"
 #include "replica/ServiceProvider.h"
-#include "util/BlockPost.h"
 
 using namespace std;
 

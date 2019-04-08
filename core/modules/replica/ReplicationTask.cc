@@ -28,7 +28,6 @@
 #include "replica/ReplicateJob.h"
 #include "replica/RebalanceJob.h"
 #include "replica/PurgeJob.h"
-#include "util/BlockPost.h"
 
 using namespace std;
 

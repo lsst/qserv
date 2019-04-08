@@ -23,7 +23,6 @@
 #include "replica/RebalanceApp.h"
 
 // System headers
-#include <atomic>
 #include <iomanip>
 #include <iostream>
 #include <vector>
@@ -33,7 +32,6 @@
 #include "replica/Controller.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/RebalanceJob.h"
-#include "util/BlockPost.h"
 #include "util/TablePrinter.h"
 
 using namespace std;
@@ -129,24 +127,13 @@ RebalanceApp::RebalanceApp(int argc, char* argv[])
 
 int RebalanceApp::runImpl() {
 
-    atomic<bool> finished{false};
     auto const job = RebalanceJob::create(
         _databaseFamily,
         _estimateOnly,
-        Controller::create(serviceProvider()),
-        string(),
-        [&finished] (RebalanceJob::Ptr const& job) {
-            finished = true;
-        }
+        Controller::create(serviceProvider())
     );
     job->start();
-
-    util::BlockPost blockPost(1000,2000);
-    while (not finished) {
-        blockPost.wait();
-    }
-
-    // Analyze and display results
+    job->wait();
 
     auto&& jobResult = job->getReplicaData();
 

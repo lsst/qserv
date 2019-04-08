@@ -23,7 +23,6 @@
 #include "replica/SqlApp.h"
 
 // System headers
-#include <atomic>
 #include <iomanip>
 #include <iostream>
 #include <vector>
@@ -33,7 +32,6 @@
 #include "replica/Controller.h"
 #include "replica/SqlResultSet.h"
 #include "replica/SqlJob.h"
-#include "util/BlockPost.h"
 
 using namespace std;
 
@@ -120,25 +118,16 @@ int SqlApp::runImpl() {
         serviceProvider()->config()->setControllerRequestTimeoutSec(_timeoutSec);
     }
 
-    atomic<bool> finished{false};
     auto const job = SqlJob::create(
         _query,
         _mysqlUser,
         _mysqlPassword,
         _maxRows,
         _allWorkers,
-        Controller::create(serviceProvider()),
-        string(),
-        [&finished] (SqlJob::Ptr const& job) {
-            finished = true;
-        }
+        Controller::create(serviceProvider())
     );
     job->start();
-
-    util::BlockPost blockPost(1000,2000);
-    while (not finished) {
-        blockPost.wait();
-    }
+    job->wait();
 
     // Analyze and display results for each worker
 

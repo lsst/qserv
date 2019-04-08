@@ -115,7 +115,7 @@ public:
      *   optional identifier of a parent job
      *
      * @param onFinish
-     *   a callback function to be called upon a completion of the job
+     *   optional callback function to be called upon a completion of the job
      *
      * @param options
      *   (optional) job options

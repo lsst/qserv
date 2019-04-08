@@ -62,16 +62,16 @@ public:
 
     struct FileInfo {
 
-        std::string name;   /// The short name
-        uint64_t size;      /// The current (or final) size (bytes)
-        std::time_t mtime;  /// The (file content) modification timestamp in seconds (since the UNIX Epoch)
-        std::string cs;     /// The control/check sum of the file's content
+        std::string name;       /// The short name
+        uint64_t size = 0;      /// The current (or final) size (bytes)
+        std::time_t mtime = 0;  /// The (file content) modification timestamp in seconds (since the UNIX Epoch)
+        std::string cs;         /// The control/check sum of the file's content
 
-        uint64_t beginTransferTime; /// The time in milliseconds when the file creation began (where applies)
-        uint64_t endTransferTime;   /// The time in milliseconds when the file creation finished
-                                    ///  or when the last recording to the file was made (where applies)
+        uint64_t beginTransferTime = 0; /// The time in milliseconds when the file creation began (where applies)
+        uint64_t endTransferTime = 0;   /// The time in milliseconds when the file creation finished
+                                        ///  or when the last recording to the file was made (where applies)
 
-        uint64_t inSize;    /// Of the input file
+        uint64_t inSize = 0;    /// Of the input file
 
         bool operator==(FileInfo const& other) const {
             return

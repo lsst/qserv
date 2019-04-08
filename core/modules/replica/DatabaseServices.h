@@ -88,13 +88,13 @@ struct ControllerEvent {
 
     /// A unique identifier of the event in the persistent log. Note, that
     /// a value of this field is retrieved from the database. 
-    uint32_t id;
+    uint32_t id = 0;
 
     /// Unique identifier of the Controller instance
     std::string controllerId;
 
     /// 64-bit timestamp (nanoseconds) of the event
-    uint64_t timeStamp;
+    uint64_t timeStamp = 0;
 
     /// The name of a Controller task defining a scope of the operation
     std::string task;
@@ -131,13 +131,13 @@ struct ControllerInfo {
     std::string id;
 
     /// 64-bit timestamp (nanoseconds) for its start time
-    uint64_t started;
+    uint64_t started = 0;
 
     /// The name of a host where the Controller was run
     std::string hostname;
 
     /// the PID of the Controller's process
-    int pid;
+    int pid = 0;
 
     /**
      * Translate the structure into a JSON object
@@ -185,23 +185,23 @@ struct RequestInfo {
     std::string serverStatus;
 
     /// The timestamp (nanoseconds) when the request was created by Controller
-    uint64_t controllerCreateTime;
+    uint64_t controllerCreateTime = 0;
     
     /// The timestamp (nanoseconds) when the request was started by Controller
-    uint64_t controllerStartTime;
+    uint64_t controllerStartTime = 0;
     
     /// The timestamp (nanoseconds) when the request was declared as FINISHED by Controller
-    uint64_t controllerFinishTime;
+    uint64_t controllerFinishTime = 0;
 
     /// The timestamp (nanoseconds) when the request was received by the corresponding worker
-    uint64_t workerReceiveTime;
+    uint64_t workerReceiveTime = 0;
     
     /// The timestamp (nanoseconds) when the request was started by the corresponding worker
-    uint64_t workerStartTime;
+    uint64_t workerStartTime = 0;
     
     /// The timestamp (nanoseconds) when the request was declared as FINISHED by
     /// the corresponding worker
-    uint64_t workerFinishTime;
+    uint64_t workerFinishTime = 0;
     
     /// The optional collection (key-value pairs) of extended attributes
     std::list<std::pair<std::string, std::string>> kvInfo;
@@ -241,24 +241,24 @@ struct JobInfo {
     std::string extendedState;
 
     /// The timestamp (nanoseconds) when the job started
-    uint64_t beginTime;
+    uint64_t beginTime = 0;
     
     /// The timestamp (nanoseconds) when the job finished
-    uint64_t endTime;
+    uint64_t endTime = 0;
 
     /// The optional timestamp (nanoseconds) when the job refreshed its state as "still alive"
-    uint64_t heartbeatTime;
+    uint64_t heartbeatTime = 0;
 
     /// The priority level
-    int priority;
+    int priority = 0;
 
     /// The scheduling parameter of the job allowing it to run w/o interfering
     /// with other jobs in relevant execution contexts
-    bool exclusive;
+    bool exclusive = false;
 
     /// The scheduling parameter allowing the job to be cancelled by job
     /// schedulers if needed
-    bool preemptable;
+    bool preemptable = true;
 
     /// The optional collection (key-value pairs) of extended attributes
     std::list<std::pair<std::string, std::string>> kvInfo;

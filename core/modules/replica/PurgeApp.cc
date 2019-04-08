@@ -23,7 +23,6 @@
 #include "replica/PurgeApp.h"
 
 // System headers
-#include <atomic>
 #include <iomanip>
 #include <iostream>
 #include <vector>
@@ -33,7 +32,6 @@
 #include "replica/Controller.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/PurgeJob.h"
-#include "util/BlockPost.h"
 
 using namespace std;
 
@@ -92,24 +90,13 @@ PurgeApp::PurgeApp(int argc, char* argv[])
 
 int PurgeApp::runImpl() {
 
-    atomic<bool> finished{false};
     auto const job = PurgeJob::create(
         _databaseFamily,
         _replicas,
-        Controller::create(serviceProvider()),
-        string(),
-        [&finished] (PurgeJob::Ptr const& job) {
-            finished = true;
-        }
+        Controller::create(serviceProvider())
     );
     job->start();
-
-    util::BlockPost blockPost(1000,2000);
-    while (not finished) {
-        blockPost.wait();
-    }
-
-    // Analyze and display results
+    job->wait();
 
     cout << "\n";
     replica::printAsTable("DELETED REPLICAS", "  ", job->getReplicaData().chunks, cout, _pageSize);

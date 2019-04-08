@@ -23,7 +23,6 @@
 #include "replica/ReplicateApp.h"
 
 // System headers
-#include <atomic>
 #include <iomanip>
 #include <iostream>
 #include <vector>
@@ -33,7 +32,6 @@
 #include "replica/Controller.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/ReplicateJob.h"
-#include "util/BlockPost.h"
 
 using namespace std;
 
@@ -93,24 +91,13 @@ ReplicateApp::ReplicateApp(int argc, char* argv[])
 
 int ReplicateApp::runImpl() {
 
-    atomic<bool> finished{false};
     auto const job = ReplicateJob::create(
         _databaseFamily,
         _replicas,
-        Controller::create(serviceProvider()),
-        string(),
-        [&finished] (ReplicateJob::Ptr const& job) {
-            finished = true;
-        }
+        Controller::create(serviceProvider())
     );
     job->start();
-
-    util::BlockPost blockPost(1000,2000);
-    while (not finished) {
-        blockPost.wait();
-    }
-
-    // Analyze and display results
+    job->wait();
 
     cout << "\n";
     replica::printAsTable("CREATED REPLICAS", "  ", job->getReplicaData().chunks, cout, _pageSize);

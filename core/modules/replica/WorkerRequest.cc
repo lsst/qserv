@@ -41,7 +41,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerRequest");
 unsigned int const maxDurationMillisec = 10000;
 
 /// Random interval for the incremental execution
-lsst::qserv::util::BlockPost incrementIvalMillisec (1000, 2000);
+lsst::qserv::util::BlockPost incrementIvalMillisec(1000, 2000);
 
 /// Random generator of success/failure rates
 lsst::qserv::replica::SuccessRateGenerator successRateGenerator(0.9);

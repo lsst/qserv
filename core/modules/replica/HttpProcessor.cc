@@ -23,7 +23,6 @@
 #include "replica/HttpProcessor.h"
 
 // System headers
-#include <atomic>
 #include <functional>
 #include <iterator>
 #include <map>
@@ -40,7 +39,6 @@
 #include "replica/DatabaseServices.h"
 #include "replica/Performance.h"
 #include "replica/SqlRequest.h"
-#include "util/BlockPost.h"
 
 
 using namespace std;
@@ -1319,21 +1317,14 @@ void HttpProcessor::_sqlQuery(qhttp::Request::Ptr const& req,
         _debug(string(__func__) + " user="     + user);
         _debug(string(__func__) + " maxRows="  + to_string(maxRows));
 
-        atomic<bool> finished(false);
         auto const request = controller()->sql(
             worker,
             query,
             user,
             password,
-            maxRows,
-            [&finished] (SqlRequest::Ptr const& request) {
-                finished = true;
-            }
+            maxRows
         );
-        util::BlockPost blockPost(10, 20);  // for random delays (in milliseconds) between iterations
-        while (not finished) {
-            blockPost.wait();
-        }
+        request->wait();
 
         json result;
         result["success"]    = request->extendedState() == Request::SUCCESS ? 1 : 0;

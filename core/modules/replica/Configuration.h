@@ -62,30 +62,30 @@ struct WorkerInfo {
     std::string name;
 
     /// The worker is allowed to participate in the replication operations
-    bool isEnabled;
+    bool isEnabled = true;
 
     /// The worker can only server as a source of replicas. New replicas can't
     /// be placed on it.
-    bool isReadOnly;
+    bool isReadOnly = false;
 
     /// The host name (or IP address) of the worker service
     std::string svcHost;
 
     /// The port number of the worker service
-    uint16_t svcPort;
+    uint16_t svcPort = 0;
 
     /// The host name (or IP address) of the file service for the worker
     std::string fsHost;
 
     /// The port number for the file service for the worker
-    uint16_t fsPort;
+    uint16_t fsPort = 0;
 
     /// An absolute path to the data directory under which the MySQL database
     /// folders are residing.
     std::string dataDir;
 
     /// The port number of the worker database service
-    uint16_t dbPort;
+    uint16_t dbPort = 0;
 
     /// The host name (or IP address) of the database service for the worker
     std::string dbHost;
@@ -144,13 +144,13 @@ struct DatabaseFamilyInfo {
     std::string name;
 
     /// The minimum replication level desired (1..N)
-    size_t replicationLevel;
+    size_t replicationLevel = 0;
 
     /// The number of stripes (from the CSS partitioning configuration)
-    unsigned int numStripes;
+    unsigned int numStripes = 0;
 
     /// The number of sub-stripes (from the CSS partitioning configuration)
-    unsigned int numSubStripes;
+    unsigned int numSubStripes = 0;
 
     /// A validator for chunk numbers
     std::shared_ptr<ChunkNumberValidator> chunkNumberValidator;

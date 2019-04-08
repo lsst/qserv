@@ -23,6 +23,7 @@
 
 // System headers
 #include <atomic>
+#include <condition_variable>
 #include <functional>
 #include <map>
 #include <memory>
@@ -178,6 +179,9 @@ public:
     void start(XrdSsiService* service,
                std::string const& jobId="",
                unsigned int requestExpirationIvalSec=0);
+
+    /// Wait for the completion of the request
+    void wait();
 
     /**
      * Explicitly cancel any asynchronous operation(s) and put the object into
@@ -439,6 +443,11 @@ private:
     /// with status: FINISHED::TIMEOUT_EXPIRED.
     unsigned int                _requestExpirationIvalSec;
     boost::asio::deadline_timer _requestExpirationTimer;
+
+    // Synchronization primitives for implementing QservMgtRequest::wait()
+
+    std::mutex _onFinishMtx;
+    std::condition_variable _onFinishCv;
 };
 
 }}} // namespace lsst::qserv::replica

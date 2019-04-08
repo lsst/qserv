@@ -23,7 +23,6 @@
 #include "replica/SyncApp.h"
 
 // System headers
-#include <atomic>
 #include <iostream>
 #include <vector>
 
@@ -31,7 +30,6 @@
 #include "replica/Configuration.h"
 #include "replica/Controller.h"
 #include "replica/QservSyncJob.h"
-#include "util/BlockPost.h"
 #include "util/TablePrinter.h"
 
 using namespace std;
@@ -91,28 +89,14 @@ SyncApp::SyncApp(int argc, char* argv[])
 
 int SyncApp::runImpl() {
 
-    // Run the synchronization algorithm
-
-    string const noParentJobId;
-    atomic<bool> finished{false};
     auto const job = QservSyncJob::create(
         _databaseFamily,
         _timeoutSec,
         _force,
-        Controller::create(serviceProvider()),
-        noParentJobId,
-        [&finished] (QservSyncJob::Ptr const& job) {
-            finished = true;
-        }
+        Controller::create(serviceProvider())
     );
     job->start();
-
-    util::BlockPost blockPost(1000,2000);
-    while (not finished) {
-        blockPost.wait();
-    }
-
-    // Analyze and display results
+    job->wait();
 
     QservSyncJobResult const& replicaData = job->getReplicaData();
 

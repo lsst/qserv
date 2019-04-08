@@ -34,7 +34,6 @@
 #include "replica/ErrorReporting.h"
 #include "replica/QservMgtServices.h"
 #include "replica/ServiceProvider.h"
-#include "util/BlockPost.h"
 
 using namespace std;
 using namespace lsst::qserv::replica;

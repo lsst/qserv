@@ -53,22 +53,22 @@ struct SqlResultSet {
     std::string charSetName;
 
     /// The request produced a result set
-    bool hasResult;
+    bool hasResult = false;
 
     /// Structure Field stores a content captured from MYSQL_FIELD
     struct Field {
-        std::string name;       /// The name of the column
-        std::string orgName;    /// The original name of the column
-        std::string table;      /// The name of the table
-        std::string orgTable;   /// The original name of the table
-        std::string db;         /// The name of the database (schema)
-        std::string catalog;    /// The catalog name (always 'def')
-        std::string def;        /// default value
-        uint32_t    length;     /// The length (width) of the column definition
-        uint32_t    maxLength;  /// The maximum length of the column value
-        uint32_t    flags;      /// Flags
-        uint32_t    decimals;   /// Number of decimals
-        int32_t     type;       /// Field type (see MySQL headers for enum enum_field_types)
+        std::string name;           /// The name of the column
+        std::string orgName;        /// The original name of the column
+        std::string table;          /// The name of the table
+        std::string orgTable;       /// The original name of the table
+        std::string db;             /// The name of the database (schema)
+        std::string catalog;        /// The catalog name (always 'def')
+        std::string def;            /// default value
+        uint32_t    length = 0;     /// The length (width) of the column definition
+        uint32_t    maxLength = 0;  /// The maximum length of the column value
+        uint32_t    flags = 0;      /// Flags
+        uint32_t    decimals = 0;   /// Number of decimals
+        int32_t     type = 0;       /// Field type (see MySQL headers for enum enum_field_types)
 
         /// The default c-tor is required at a presence of the explicit one
         Field() = default;
@@ -124,7 +124,7 @@ struct SqlResultSet {
     /// by the Controller and before its completion was recorded by
     /// the Controller.
     /// @see SqlRequst::performance()
-    double performanceSec;
+    double performanceSec = 0.;
 
     /**
      * Carry over the content of the input protocol message into

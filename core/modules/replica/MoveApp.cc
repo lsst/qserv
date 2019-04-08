@@ -23,7 +23,6 @@
 #include "replica/MoveApp.h"
 
 // System headers
-#include <atomic>
 #include <iomanip>
 #include <iostream>
 #include <vector>
@@ -32,7 +31,6 @@
 #include "replica/Controller.h"
 #include "replica/MoveReplicaJob.h"
 #include "replica/ReplicaInfo.h"
-#include "util/BlockPost.h"
 
 using namespace std;
 
@@ -105,25 +103,16 @@ MoveApp::MoveApp(int argc, char* argv[])
 
 int MoveApp::runImpl() {
 
-    atomic<bool> finished{false};
     auto const job = MoveReplicaJob::create(
         _databaseFamily,
         _chunk,
         _sourceWorker,
         _destinationWorker,
         _purge,
-        Controller::create(serviceProvider()),
-        string(),
-        [&finished] (MoveReplicaJob::Ptr const& job) {
-            finished = true;
-        }
+        Controller::create(serviceProvider())
     );
     job->start();
-
-    util::BlockPost blockPost(1000,2000);
-    while (not finished) {
-        blockPost.wait();
-    }
+    job->wait();
 
     // Analyze and display results
 

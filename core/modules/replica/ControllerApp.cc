@@ -23,7 +23,6 @@
 #include "replica/ControllerApp.h"
 
 // System headers
-#include <atomic>
 #include <iostream>
 #include <stdexcept>
 
@@ -184,11 +183,6 @@ ControllerApp::ControllerApp(int argc, char* argv[])
         " automatically compute and store in the database check/control sums for"
         " all files of the found replica.",
         _computeCheckSum);
-
-    parser().flag(
-        "heartbeats",
-        " print 'heartbeats' while waiting before an on-going request finishes",
-        _enableHeartbeat);
 
     /// Request-specific parameters, options, flags
 
@@ -381,318 +375,245 @@ ControllerApp::ControllerApp(int argc, char* argv[])
 
 int ControllerApp::runImpl() {
 
-    auto const controller = Controller::create(serviceProvider());
+    string const context = "ControllerApp::" + string(__func__) + " ";
 
-    atomic<bool> finished(false);
-    Request::Ptr request;
+    auto const controller = Controller::create(serviceProvider());
+    Request::Ptr ptr;
 
     if ("REPLICATE" == _request) {
-        request = controller->replicate(
+        ptr = controller->replicate(
             _workerName,
             _sourceWorkerName,
             _databaseName,
             _chunkNumber,
-            [&finished] (ReplicationRequest::Ptr const& request) {
-                ::printRequest<ReplicationRequest>(request);
-                finished = true;
+            [] (ReplicationRequest::Ptr const& ptr_) {
+                ::printRequest<ReplicationRequest>(ptr_);
             },
             _priority,
             not _doNotTrackRequest,
             _allowDuplicates);
-
-
     } else if ("DELETE" == _request) {
-        request = controller->deleteReplica(
+        ptr = controller->deleteReplica(
             _workerName,
             _databaseName,
             _chunkNumber,
-            [&finished] (DeleteRequest::Ptr const& request) {
-                ::printRequest<DeleteRequest>(request);
-                finished = true;
+            [] (DeleteRequest::Ptr const& ptr_) {
+                ::printRequest<DeleteRequest>(ptr_);
             },
             _priority,
             not _doNotTrackRequest,
             _allowDuplicates);
-
     } else if ("FIND" == _request) {
-        request = controller->findReplica(
+        ptr = controller->findReplica(
             _workerName,
             _databaseName,
             _chunkNumber,
-            [&finished] (FindRequest::Ptr const& request) {
-                ::printRequest<FindRequest>(request);
-                finished = true;
+            [] (FindRequest::Ptr const& ptr_) {
+                ::printRequest<FindRequest>(ptr_);
             },
             _priority,
             _computeCheckSum,
             not _doNotTrackRequest);
-
     } else if ("FIND_ALL" == _request) {
-        request = controller->findAllReplicas(
+        ptr = controller->findAllReplicas(
             _workerName,
             _databaseName,
             not _doNotSaveReplicaInfo,
-            [&finished] (FindAllRequest::Ptr const& request) {
-                ::printRequest<FindAllRequest>(request);
-                finished = true;
+            [] (FindAllRequest::Ptr const& ptr_) {
+                ::printRequest<FindAllRequest>(ptr_);
             },
             _priority,
             not _doNotTrackRequest);
-
     } else if ("ECHO" == _request) {
-        request = controller->echo(
+        ptr = controller->echo(
             _workerName,
             _echoData,
             _echoDelayMilliseconds,
-            [&finished] (EchoRequest::Ptr const& request) {
-                ::printRequest<EchoRequest>(request);
-                finished = true;
+            [] (EchoRequest::Ptr const& ptr_) {
+                ::printRequest<EchoRequest>(ptr_);
             },
             _priority,
             not _doNotTrackRequest);
-
     } else if ("SQL" == _request) {
-        request = controller->sql(
+        ptr = controller->sql(
             _workerName,
             _sqlQuery,
             _sqlUser,
             _sqlPassword,
             _sqlMaxRows,
-            [&] (SqlRequest::Ptr const& request) {
-                ::printRequest(request,
-                               request->responseData(),
-                               request->performance(),
+            [&] (SqlRequest::Ptr const& ptr_) {
+                ::printRequest(ptr_,
+                               ptr_->responseData(),
+                               ptr_->performance(),
                                _sqlPageSize);
-                finished = true;
             },
             _priority,
             not _doNotTrackRequest);
-
     } else if ("STATUS" == _request) {
-
         if ("REPLICATE"  == _affectedRequest) {
-            request = controller->statusOfReplication(
+            ptr = controller->statusOfReplication(
                 _workerName,
                 _affectedRequestId,
-                [&finished] (StatusReplicationRequest::Ptr const& request) {
-                    ::printRequest     <StatusReplicationRequest>(request);
-                    ::printRequestExtra<StatusReplicationRequest>(request);
-                    finished = true;
+                [] (StatusReplicationRequest::Ptr const& ptr_) {
+                    ::printRequest     <StatusReplicationRequest>(ptr_);
+                    ::printRequestExtra<StatusReplicationRequest>(ptr_);
                 },
                 not _doNotTrackRequest);
-
         } else if ("DELETE"  == _affectedRequest) {
-            request = controller->statusOfDelete(
+            ptr = controller->statusOfDelete(
                 _workerName,
                 _affectedRequestId,
-                [&finished] (StatusDeleteRequest::Ptr const& request) {
-                    ::printRequest     <StatusDeleteRequest>(request);
-                    ::printRequestExtra<StatusDeleteRequest>(request);
-                    finished = true;
+                [] (StatusDeleteRequest::Ptr const& ptr_) {
+                    ::printRequest     <StatusDeleteRequest>(ptr_);
+                    ::printRequestExtra<StatusDeleteRequest>(ptr_);
                 },
                 not _doNotTrackRequest);
-
         } else if ("FIND"  == _affectedRequest) {
-            request = controller->statusOfFind(
+            ptr = controller->statusOfFind(
                 _workerName,
                 _affectedRequestId,
-                [&finished] (StatusFindRequest::Ptr const& request) {
-                    ::printRequest     <StatusFindRequest>(request);
-                    ::printRequestExtra<StatusFindRequest>(request);
-                    finished = true;
+                [] (StatusFindRequest::Ptr const& ptr_) {
+                    ::printRequest     <StatusFindRequest>(ptr_);
+                    ::printRequestExtra<StatusFindRequest>(ptr_);
                 },
                 not _doNotTrackRequest);
-
         } else if ("FIND_ALL"  == _affectedRequest) {
-            request = controller->statusOfFindAll(
+            ptr = controller->statusOfFindAll(
                 _workerName,
                 _affectedRequestId,
-                [&finished] (StatusFindAllRequest::Ptr const& request) {
-                    ::printRequest     <StatusFindAllRequest>(request);
-                    ::printRequestExtra<StatusFindAllRequest>(request);
-                    finished = true;
+                [] (StatusFindAllRequest::Ptr const& ptr_) {
+                    ::printRequest     <StatusFindAllRequest>(ptr_);
+                    ::printRequestExtra<StatusFindAllRequest>(ptr_);
                 },
                 not _doNotTrackRequest);
-
         } else if ("ECHO" == _affectedRequest) {
-            request = controller->statusOfEcho(
+            ptr = controller->statusOfEcho(
                 _workerName,
                 _affectedRequestId,
-                [&finished] (StatusEchoRequest::Ptr const& request) {
-                    ::printRequest     <StatusEchoRequest>(request);
-                    ::printRequestExtra<StatusEchoRequest>(request);
-                    finished = true;
+                [] (StatusEchoRequest::Ptr const& ptr_) {
+                    ::printRequest     <StatusEchoRequest>(ptr_);
+                    ::printRequestExtra<StatusEchoRequest>(ptr_);
                 },
                 not _doNotTrackRequest);
-
         } else if ("SQL" == _affectedRequest) {
-            request = controller->statusOfSql(
+            ptr = controller->statusOfSql(
                 _workerName,
                 _affectedRequestId,
-                [&] (StatusSqlRequest::Ptr const& request) {
-                    ::printRequest(request,
-                                   request->responseData(),
-                                   request->performance(),
+                [&] (StatusSqlRequest::Ptr const& ptr_) {
+                    ::printRequest(ptr_,
+                                   ptr_->responseData(),
+                                   ptr_->performance(),
                                    _sqlPageSize);
-                    ::printRequestExtra<StatusSqlRequest>(request);
-                    finished = true;
+                    ::printRequestExtra<StatusSqlRequest>(ptr_);
                 },
                 not _doNotTrackRequest);
-
         } else {
-            throw logic_error(
-                    "ControllerApp::" + string(__func__) + "  unsupported request: " +
-                    _affectedRequest);
-            return 1;
+            throw logic_error(context + "unsupported request: " + _affectedRequest);
         }
-
     } else if ("STOP" == _request) {
-
         if ("REPLICATE" == _affectedRequest) {
-            request = controller->stopReplication(
+            ptr = controller->stopReplication(
                 _workerName,
                 _affectedRequestId,
-                [&finished] (StopReplicationRequest::Ptr const& request) {
-                    ::printRequest     <StopReplicationRequest>(request);
-                    ::printRequestExtra<StopReplicationRequest>(request);
-                    finished = true;
+                [] (StopReplicationRequest::Ptr const& ptr_) {
+                    ::printRequest     <StopReplicationRequest>(ptr_);
+                    ::printRequestExtra<StopReplicationRequest>(ptr_);
                 },
                 not _doNotTrackRequest);
-
         } else if ("DELETE" == _affectedRequest) {
-            request = controller->stopReplicaDelete(
+            ptr = controller->stopReplicaDelete(
                 _workerName,
                 _affectedRequestId,
-                [&finished] (StopDeleteRequest::Ptr const& request) {
-                    ::printRequest     <StopDeleteRequest>(request);
-                    ::printRequestExtra<StopDeleteRequest>(request);
-                    finished = true;
+                [] (StopDeleteRequest::Ptr const& ptr_) {
+                    ::printRequest     <StopDeleteRequest>(ptr_);
+                    ::printRequestExtra<StopDeleteRequest>(ptr_);
                 },
                 not _doNotTrackRequest);
-
         } else if ("FIND" == _affectedRequest) {
-            request = controller->stopReplicaFind(
+            ptr = controller->stopReplicaFind(
                 _workerName,
                 _affectedRequestId,
-                [&finished] (StopFindRequest::Ptr const& request) {
-                    ::printRequest     <StopFindRequest>(request);
-                    ::printRequestExtra<StopFindRequest>(request);
-                    finished = true;
+                [] (StopFindRequest::Ptr const& ptr_) {
+                    ::printRequest     <StopFindRequest>(ptr_);
+                    ::printRequestExtra<StopFindRequest>(ptr_);
                 },
                 not _doNotTrackRequest);
-
         } else if ("FIND_ALL" == _affectedRequest) {
-            request = controller->stopReplicaFindAll(
+            ptr = controller->stopReplicaFindAll(
                 _workerName,
                 _affectedRequestId,
-                [&finished] (StopFindAllRequest::Ptr const& request) {
-                    ::printRequest     <StopFindAllRequest>(request);
-                    ::printRequestExtra<StopFindAllRequest>(request);
-                    finished = true;
+                [] (StopFindAllRequest::Ptr const& ptr_) {
+                    ::printRequest     <StopFindAllRequest>(ptr_);
+                    ::printRequestExtra<StopFindAllRequest>(ptr_);
                 },
                 not _doNotTrackRequest);
-
         } else if ("ECHO" == _affectedRequest) {
-            request = controller->stopEcho(
+            ptr = controller->stopEcho(
                 _workerName,
                 _affectedRequestId,
-                [&finished] (StopEchoRequest::Ptr const& request) {
-                    ::printRequest     <StopEchoRequest>(request);
-                    ::printRequestExtra<StopEchoRequest>(request);
-                    finished = true;
+                [] (StopEchoRequest::Ptr const& ptr_) {
+                    ::printRequest     <StopEchoRequest>(ptr_);
+                    ::printRequestExtra<StopEchoRequest>(ptr_);
                 },
                 not _doNotTrackRequest);
-
         } else if ("SQL" == _affectedRequest) {
-            request = controller->stopSql(
+            ptr = controller->stopSql(
                 _workerName,
                 _affectedRequestId,
-                [&] (StopSqlRequest::Ptr const& request) {
-                    ::printRequest(request,
-                                   request->responseData(),
-                                   request->performance(),
+                [&] (StopSqlRequest::Ptr const& ptr_) {
+                    ::printRequest(ptr_,
+                                   ptr_->responseData(),
+                                   ptr_->performance(),
                                    _sqlPageSize);
-                    ::printRequestExtra<StopSqlRequest>(request);
-                    finished = true;
+                    ::printRequestExtra<StopSqlRequest>(ptr_);
                 },
                 not _doNotTrackRequest);
-
         } else {
-            throw logic_error(
-                    "ControllerApp::" + string(__func__) + "  unsupported request: " +
-                    _affectedRequest);
-            return 1;
+            throw logic_error(context + "unsupported request: " + _affectedRequest);
         }
-
     } else if ("SERVICE_SUSPEND" == _request) {
-        request = controller->suspendWorkerService(
+        ptr = controller->suspendWorkerService(
             _workerName,
-            [&finished] (ServiceSuspendRequest::Ptr const& request) {
-                ::printRequest<ServiceManagementRequestBase>(request);
-                finished = true;
+            [] (ServiceSuspendRequest::Ptr const& ptr_) {
+                ::printRequest<ServiceManagementRequestBase>(ptr_);
             });
-
     } else if ("SERVICE_RESUME" == _request) {
-        request = controller->resumeWorkerService(
+        ptr = controller->resumeWorkerService(
             _workerName,
-            [&finished] (ServiceResumeRequest::Ptr const& request) {
-                ::printRequest<ServiceManagementRequestBase>(request);
-                finished = true;
+            [] (ServiceResumeRequest::Ptr const& ptr_) {
+                ::printRequest<ServiceManagementRequestBase>(ptr_);
             });
-
     } else if ("SERVICE_STATUS" == _request) {
-        request = controller->statusOfWorkerService(
+        ptr = controller->statusOfWorkerService(
             _workerName,
-            [&finished] (ServiceStatusRequest::Ptr const& request) {
-                ::printRequest<ServiceManagementRequestBase>(request);
-                finished = true;
+            [] (ServiceStatusRequest::Ptr const& ptr_) {
+                ::printRequest<ServiceManagementRequestBase>(ptr_);
             });
-
     } else if ("SERVICE_REQUESTS" == _request) {
-        request = controller->requestsOfWorkerService(
+        ptr = controller->requestsOfWorkerService(
             _workerName,
-            [&finished] (ServiceRequestsRequest::Ptr const& request) {
-                ::printRequest<ServiceManagementRequestBase>(request);
-                finished = true;
+            [] (ServiceRequestsRequest::Ptr const& ptr_) {
+                ::printRequest<ServiceManagementRequestBase>(ptr_);
             });
     } else if ("SERVICE_DRAIN" == _request) {
-        request = controller->drainWorkerService(
+        ptr = controller->drainWorkerService(
             _workerName,
-            [&finished] (ServiceDrainRequest::Ptr const& request) {
-                ::printRequest<ServiceManagementRequestBase>(request);
-                finished = true;
+            [] (ServiceDrainRequest::Ptr const& ptr_) {
+                ::printRequest<ServiceManagementRequestBase>(ptr_);
             });
-
     } else {
-            throw logic_error(
-                    "ControllerApp::" + string(__func__) + "  unsupported request: " +
-                    _affectedRequest);
-        return 1;
+        throw logic_error(context + "unsupported request: " + _affectedRequest);
     }
     
-    // Cancel the last request if required
+    // Cancel the last request if required, or just block the thread waiting
+    // before it will finish.
     
     if (_cancelDelayMilliseconds != 0) {
         util::BlockPost blockPost(_cancelDelayMilliseconds, _cancelDelayMilliseconds + 1);
         blockPost.wait();
-        request->cancel();
-    }
-
-    // Print periodic heartbeats while waiting before
-    // the request will finish.
-
-    util::BlockPost blockPost(10, 20);  // for random delays (in milliseconds) between iterations
-
-    size_t const printIvalMs   = 5000;
-    size_t       currentIvalMs = 0;
-    while (not finished) {
-        currentIvalMs += blockPost.wait();
-        if (currentIvalMs >= printIvalMs) {
-            if (_enableHeartbeat and not finished) {
-                cout << "HEARTBEAT: " << currentIvalMs << " ms" << endl;
-            }
-            currentIvalMs = 0;
-        }
+        ptr->cancel();
+    } else {
+        ptr->wait();
     }
     return 0;
 }

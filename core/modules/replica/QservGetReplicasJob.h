@@ -115,8 +115,8 @@ public:
                       bool inUseOnly,
                       bool allWorkers,
                       Controller::Ptr const& controller,
-                      std::string const& parentJobId,
-                      CallbackType const& onFinish,
+                      std::string const& parentJobId=std::string(),
+                      CallbackType const& onFinish=nullptr,
                       Job::Options const& options=defaultOptions());
 
     // Default construction and copy semantics are prohibited

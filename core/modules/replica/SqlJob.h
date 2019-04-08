@@ -209,9 +209,9 @@ private:
     // Request counters are used for tracking a condition for
     // completing the job and for computing its final state.
 
-    size_t _numLaunched;
-    size_t _numFinished;
-    size_t _numSuccess;
+    size_t _numLaunched = 0;
+    size_t _numFinished = 0;
+    size_t _numSuccess = 0;
 
     /// The result of the operation (gets updated as requests are finishing)
     SqlJobResult _resultData;

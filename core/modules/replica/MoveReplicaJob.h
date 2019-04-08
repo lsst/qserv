@@ -108,7 +108,7 @@ public:
      *   optional identifier of a parent job
      *
      * @param onFinish
-     *   callback function to be called upon a completion of the job
+     *   optional callback function to be called upon a completion of the job
      *
      * @param options
      *   (optional) job options
@@ -122,8 +122,8 @@ public:
                       std::string const& destinationWorker,
                       bool purge,
                       Controller::Ptr const& controller,
-                      std::string const& parentJobId,
-                      CallbackType const& onFinish,
+                      std::string const& parentJobId=std::string(),
+                      CallbackType const& onFinish=nullptr,
                       Job::Options const& options=defaultOptions());
 
     // Default construction and copy semantics are prohibited

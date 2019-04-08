@@ -239,7 +239,8 @@ HealthMonitorTask::HealthMonitorTask(
         _onWorkerEvictTimeout(onWorkerEvictTimeout),
         _workerEvictTimeoutSec(workerEvictTimeoutSec),
         _workerResponseTimeoutSec(workerResponseTimeoutSec),
-        _numFinishedJobs(0) {
+        _numFinishedJobs(0),
+        _prevUpdateTimeMs(0) {
 }
 
 
