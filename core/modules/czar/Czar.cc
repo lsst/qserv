@@ -217,7 +217,7 @@ Czar::submitQuery(std::string const& query,
     }
     LOGS(_log, LOG_LVL_DEBUG, queryIdStr << " returning result to proxy: resultTable="
          << result.resultTable << " messageTable=" << result.messageTable
-         << " orderBy=" << result.orderBy << " resultQuery=" << result.resultQuery);
+         << " resultQuery=" << result.resultQuery);
 
     return result;
 }

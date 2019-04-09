@@ -283,7 +283,6 @@ function queryProcessing()
 
     local self = { msgTableName = nil,
                    resultTableName = nil,
-                   orderByClause = nil,
                    resultQuery = nil,
                    initialized = false }
 
@@ -339,12 +338,10 @@ function queryProcessing()
 
         self.resultTableName = res.resultTable
         self.msgTableName = res.messageTable
-        self.orderByClause = res.orderBy
         self.resultQuery = res.resultQuery
 
         czarProxy.log("mysql-proxy", "INFO", "Czar response: [result: " .. self.resultTableName ..
                ", message: " .. self.msgTableName ..
-               ", order_by: \"" .. self.orderByClause ..
                ", resultQuery: \"" .. self.resultQuery .. "\"]")
 
         return SUCCESS

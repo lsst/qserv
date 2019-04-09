@@ -46,7 +46,6 @@ struct SubmitResult {
     std::string errorMessage;  ///< empty if there is no error
     std::string resultTable;   ///< Result table name
     std::string messageTable;  ///< Message table name
-    std::string orderBy;       ///< Order by clause for proxy-side SELECT
     std::string resultQuery;   ///< The query to execute to get results
 };
 
