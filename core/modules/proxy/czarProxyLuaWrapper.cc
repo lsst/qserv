@@ -113,6 +113,8 @@ int luaSubmitQuery(lua_State *L) {
         lua_setfield(L, -2, "messageTable");
         lua_pushlstring (L, res.orderBy.data(), res.orderBy.size());
         lua_setfield(L, -2, "orderBy");
+        lua_pushlstring (L, res.resultQuery.data(), res.resultQuery.size());
+        lua_setfield(L, -2, "resultQuery");
 
         return 1;
 

@@ -47,6 +47,7 @@ struct SubmitResult {
     std::string resultTable;   ///< Result table name
     std::string messageTable;  ///< Message table name
     std::string orderBy;       ///< Order by clause for proxy-side SELECT
+    std::string resultQuery;   ///< The query to execute to get results
 };
 
 }}} // namespace lsst::qserv::czar
