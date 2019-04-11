@@ -283,7 +283,7 @@ function queryProcessing()
 
     local self = { msgTableName = nil,
                    resultTableName = nil,
-                   orderByClause = nil,
+                   resultQuery = nil,
                    initialized = false }
 
     ---------------------------------------------------------------------------
@@ -338,11 +338,11 @@ function queryProcessing()
 
         self.resultTableName = res.resultTable
         self.msgTableName = res.messageTable
-        self.orderByClause = res.orderBy
+        self.resultQuery = res.resultQuery
 
         czarProxy.log("mysql-proxy", "INFO", "Czar response: [result: " .. self.resultTableName ..
                ", message: " .. self.msgTableName ..
-               ", order_by: \"" .. self.orderByClause .. "\"]")
+               ", resultQuery: \"" .. self.resultQuery .. "\"]")
 
         return SUCCESS
      end
@@ -405,6 +405,10 @@ function queryProcessing()
             return err.set(ERR_BAD_RES_TNAME, "Invalid result table name")
         end
 
+        if not self.resultQuery then
+            return err.set(ERR_BAD_RES_TNAME, "Invalid result query")
+        end
+
         -- Severity is stored in a MySQL enum
         local q1 = "SELECT chunkId, code, message, severity+0, timeStamp FROM " .. self.msgTableName
         proxy.queries:append(1, string.char(proxy.COM_QUERY) .. q1,
@@ -423,8 +427,8 @@ function queryProcessing()
 
         -- if no result table then do something that returns empty result set
         local q2 = "SELECT NULL FROM DUAL LIMIT 0"
-        if self.resultTableName ~= "" then
-            q2 = "SELECT * FROM " .. self.resultTableName .. " " .. self.orderByClause
+        if self.resultQuery ~= "" then
+            q2 = self.resultQuery
         end
         proxy.queries:append(2, string.char(proxy.COM_QUERY) .. q2,
                              {resultset_is_needed = false})

@@ -185,7 +185,6 @@ Czar::submitQuery(std::string const& query,
 
     // return all info to caller
     if (uq->isAsync()) {
-
         // make separate message and result tables to return info about ASYNC query,
         // we do not need to lock message because result is ready before we return
         std::string const resultTableName = resultDb + ".result_async_" + userQueryId;
@@ -201,19 +200,24 @@ Czar::submitQuery(std::string const& query,
 
         result.resultTable = resultTableName;
         result.messageTable = asyncLockName;
-
+        if (not resultTableName.empty()) {
+            result.resultQuery = std::string("SELECT * FROM ") + resultTableName;
+        }
     } else {
-
+        result.messageTable = lockName;
         if (not uq->getResultTableName().empty()) {
             result.resultTable = resultDb + "." + uq->getResultTableName();
+            result.resultQuery = std::string("SELECT * FROM ") + result.resultTable;
+            auto&& orderBy = uq->getProxyOrderBy();
+            if (not orderBy.empty()) {
+                result.resultQuery += ' ';
+                result.resultQuery += orderBy;
+            }
         }
-        result.messageTable = lockName;
-        result.orderBy = uq->getProxyOrderBy();
-
     }
     LOGS(_log, LOG_LVL_DEBUG, queryIdStr << " returning result to proxy: resultTable="
          << result.resultTable << " messageTable=" << result.messageTable
-         << " orderBy=" << result.orderBy);
+         << " resultQuery=" << result.resultQuery);
 
     return result;
 }
