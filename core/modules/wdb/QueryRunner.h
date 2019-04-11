@@ -46,10 +46,21 @@
 
 namespace lsst {
 namespace qserv {
+
 namespace proto {
 class ProtoHeader;
 class Result;
-}}}
+}
+
+namespace util {
+class TimerHistogram;
+}
+
+namespace xrdsvc {
+class StreamBuffer;
+}
+
+}}
 
 namespace lsst {
 namespace qserv {
@@ -85,6 +96,10 @@ private:
     void _fillSchema(MYSQL_RES* result);
     void _initMsgs();
     void _initMsg();
+
+    /// Send result 'streamBuf' to the czar. 'histo' and 'note' are for logging purposes only.
+    void _sendBuf(std::shared_ptr<xrdsvc::StreamBuffer>& streamBuf,
+                  util::TimerHistogram& histo, std::string const& note);
     void _transmit(bool last, uint rowCount, size_t size);
     void _transmitHeader(std::string& msg);
 

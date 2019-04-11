@@ -192,6 +192,7 @@ bool QueryRunner::runQuery() {
 MYSQL_RES* QueryRunner::_primeResult(std::string const& query) {
         bool queryOk = _mysqlConn->queryUnbuffered(query);
         if (!queryOk) {
+            LOGS(_log, LOG_LVL_ERROR, "primeResult " << _mysqlConn->getError());
             util::Error error(_mysqlConn->getErrno(), _mysqlConn->getError());
             _multiError.push_back(error);
             return nullptr;
@@ -314,24 +315,31 @@ void QueryRunner::_transmit(bool last, uint rowCount, size_t tSize) {
     if (!_cancelled) {
         // StreamBuffer::create invalidates resultString by using std::move()
         xrdsvc::StreamBuffer::Ptr streamBuf(xrdsvc::StreamBuffer::createWithMove(resultString));
-        bool sent = _task->sendChannel->sendStream(streamBuf, last);
-        if (!sent) {
-            LOGS(_log, LOG_LVL_ERROR, _task->getIdStr() << " Failed to transmit message!");
-        }
-        // Block on the buffer being sent.
-        auto totalBytes = xrdsvc::StreamBuffer::getTotalBytes();
-        LOGS(_log, LOG_LVL_INFO, _task->getIdStr() << " waiting for buffer largeResult=" << _largeResult
-                << " totalBytes=" << totalBytes);
-        util::Timer t;
-        t.start();
-        streamBuf->waitForDoneWithThis(); // Block until this buffer has been sent.
-        t.stop();
-        auto logMsg = transmitHisto.addTime(t.getElapsed(), _task->getIdStr());
-        LOGS(_log, LOG_LVL_DEBUG, logMsg);
+        _sendBuf(streamBuf, transmitHisto, "body");
     } else {
         LOGS(_log, LOG_LVL_DEBUG, "_transmit cancelled");
     }
     _largeResult = true; // Transmits after the first are considered large results.
+}
+
+
+void QueryRunner::_sendBuf(xrdsvc::StreamBuffer::Ptr& streamBuf,
+                           util::TimerHistogram& histo, std::string const& note) {
+    bool sent = _task->sendChannel->sendStream(streamBuf, false);
+    if (!sent) {
+        LOGS(_log, LOG_LVL_ERROR, _task->getIdStr() << " Failed to transmit " << note << "!");
+        _cancelled = true;
+        // Normally, sendStream calls Recycle(), but if this path is taken, it may not have been called.
+        // Calling Recycle() twice should be harmless.
+        streamBuf->Recycle();
+    } else {
+        util::Timer t;
+        t.start();
+        streamBuf->waitForDoneWithThis(); // Block until this buffer has been sent.
+        t.stop();
+        auto logMsg = histo.addTime(t.getElapsed(), _task->getIdStr());
+        LOGS(_log, LOG_LVL_DEBUG, logMsg);
+    }
 }
 
 
@@ -356,16 +364,7 @@ void QueryRunner::_transmitHeader(std::string& msg) {
     if (!_cancelled) {
         auto msgBuf = proto::ProtoHeaderWrap::wrap(protoHeaderString);
         xrdsvc::StreamBuffer::Ptr streamBuf(xrdsvc::StreamBuffer::createWithMove(msgBuf)); // invalidates msgBuf
-        bool sent = _task->sendChannel->sendStream(streamBuf, false);
-        if (!sent) {
-            LOGS(_log, LOG_LVL_ERROR, _task->getIdStr() << " Failed to transmit header!");
-        }
-        util::Timer t;
-        t.start();
-        streamBuf->waitForDoneWithThis(); // Block until this buffer has been sent.
-        t.stop();
-        auto logMsg = transHeaderHisto.addTime(t.getElapsed(), _task->getIdStr());
-        LOGS(_log, LOG_LVL_DEBUG, logMsg);
+        _sendBuf(streamBuf, transHeaderHisto, "header");
     } else {
         LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " _transmitHeader cancelled");
     }
@@ -477,6 +476,7 @@ bool QueryRunner::_dispatchChannel() {
             } // Each query in a fragment
         } // Each fragment in a msg.
     } catch(sql::SqlErrorObject const& e) {
+        LOGS(_log, LOG_LVL_ERROR, "dispatchChannel " << e.errMsg());
         util::Error worker_err(e.errNo(), e.errMsg());
         _multiError.push_back(worker_err);
     }
@@ -486,6 +486,7 @@ bool QueryRunner::_dispatchChannel() {
     } else {
         erred = true;
         // Send poison error.
+        LOGS(_log, LOG_LVL_ERROR, "dispatchChannel Poisoned");
         _multiError.push_back(util::Error(-1, "Poisoned."));
         // Do we need to do any cleanup?
     }
@@ -493,7 +494,7 @@ bool QueryRunner::_dispatchChannel() {
 }
 
 void QueryRunner::cancel() {
-    LOGS(_log, LOG_LVL_WARN, "Trying QueryRunner::cancel() call, experimental");
+    LOGS(_log, LOG_LVL_WARN, "Trying QueryRunner::cancel() call");
     _cancelled.store(true);
     if (!_mysqlConn.get()) {
         LOGS(_log, LOG_LVL_WARN, "QueryRunner::cancel() no MysqlConn");
