@@ -84,10 +84,10 @@ private:
         ConfigElement::create(cfgList, header, "loopSleepTime", ConfigElement::INT, false, "100000")};
     /// Maximum number of lookup requests allowed in the DoList.
     ConfigElement::Ptr _maxLookups{
-        ConfigElement::create(cfgList, header, "maxLookups", ConfigElement::INT, false, "90000")};
+        ConfigElement::create(cfgList, header, "maxLookups", ConfigElement::INT, true)};
     /// Maximum number of insert requests allowed in the DoList.
     ConfigElement::Ptr _maxInserts{
-        ConfigElement::create(cfgList, header, "maxInserts", ConfigElement::INT, false, "90000")};
+        ConfigElement::create(cfgList, header, "maxInserts", ConfigElement::INT, true)};
     /// When reaching maxInserts or maxLookups, sleep this long before trying to add more,
     /// in micro seconds. 100000micro = 0.1sec
     ConfigElement::Ptr _maxRequestSleepTime{

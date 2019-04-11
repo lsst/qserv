@@ -102,8 +102,8 @@ public:
         std::lock_guard<std::mutex> lock(_mtx);
         if (_command == nullptr) {
             if (_isOneShotDone()) return nullptr;
-            if ((_needInfo || _timeOut.due(now)) && _timeRequest.due(now)) {
-                _timeRequest.triggered();
+            if ((_needInfo || _timeOut.due(now)) && _timeRateLimit.due(now)) {
+                _timeRateLimit.triggered();
                 _command = createCommand();
                 if (_oneShot) ++_commandsCreated;
                 return _command;
@@ -144,6 +144,7 @@ public:
     }
 
     void setTimeOut(std::chrono::milliseconds timeOut) { _timeOut.setTimeOut(timeOut); }
+    void setTimeRateLimit(std::chrono::milliseconds rateLimit) { _timeRateLimit.setTimeOut(rateLimit); }
 
     int getCommandsCreated() { return _commandsCreated; }
 
@@ -172,7 +173,7 @@ private:
     /// If no info is needed, check for info after this period of time.
     TimeOut _timeOut{std::chrono::minutes(5)};
     /// Rate limiter, no more than 1 message every few seconds
-    TimeOut _timeRequest{std::chrono::seconds(4)};  // TODO: DM-17453 set via config
+    TimeOut _timeRateLimit{std::chrono::seconds(4)};  // TODO: DM-17453 set via config
     util::CommandTracked::Ptr _command;
     std::mutex _mtx; ///< protects _timeOut, _timeRequest, _command, _oneShot, _needInfo
     /// Number of times the command needed to be created. It's only tracked for oneShots as

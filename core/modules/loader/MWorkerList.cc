@@ -70,6 +70,8 @@ public:
         neighborPtr_->registerNotify(updatePtr); // Must do this so it will call our updateNotify().
         LOGS(_log, LOG_LVL_INFO, "SetNeighborOneShot neighborId=" <<
                                  neighborId_ << " " << neighborPtr_->get());
+        // Send this message frequently as the target node could be getting spammed.
+        oneShot->setTimeRateLimit(std::chrono::milliseconds(100)); // TODO: DM-17453 set via config
         return oneShot;
     }
 

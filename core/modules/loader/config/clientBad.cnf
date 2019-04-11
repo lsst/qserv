@@ -7,5 +7,5 @@ defWorkerHost = 127.0.0.1
 defWorkerPortUdp = 10043
 clientortUdp = 10050
 loopSleepTime = 100000
-doListMaxLookups = 99000 
-doListMaxInserts = 99000
+maxLookups = 99000 
+maxInserts = 99000

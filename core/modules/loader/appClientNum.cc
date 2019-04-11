@@ -81,6 +81,7 @@ KeyInfoData::Ptr clientAdd(CentralClient& central, uint64_t j) {
     CompositeKey cKey(j);
     int chunk = calcChunkFrom(j);
     int subchunk = calcSubchunkFrom(j);
+    LOGS(_log, LOG_LVL_INFO, "clientAdd " << cKey);
     return central.keyInsertReq(cKey, chunk, subchunk);
 }
 
@@ -146,6 +147,7 @@ int main(int argc, char* argv[]) {
     boost::asio::io_service ioService;
 
     ClientConfig cCfg(cCfgFile);
+    LOGS(_log, LOG_LVL_INFO, "ClientConfig cCfg=" << cCfg);
     CentralClient cClient(ioService, ourHost, cCfg);
     try {
         cClient.start();

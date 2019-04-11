@@ -576,18 +576,18 @@ void TcpBaseConnection::_handleShiftFromRight(uint32_t bytesInMsg) {
 
 
 void TcpBaseConnection::_handleShiftFromRight1(boost::system::error_code const& ec, size_t bytesTrans) {
-    std::string const funcName = "_handleShiftFromRight1";
+    std::string const fName = "_handleShiftFromRight1";
     if (ec) {
-        LOGS(_log, LOG_LVL_ERROR, funcName << " ec=" << ec);
+        LOGS(_log, LOG_LVL_ERROR, fName << " ec=" << ec);
         _freeConnect();
         return;
     }
     // Fix the buffer with the information given.
     _buf.advanceWriteCursor(bytesTrans);
-    LOGS(_log, LOG_LVL_INFO, funcName << " bytes=" << bytesTrans << " _buf" << _buf.dumpStr(false));
+    LOGS(_log, LOG_LVL_INFO, fName << " bytes=" << bytesTrans << " _buf" << _buf.dumpStr(false));
     try {
         // TODO move as much of this to CentralWorker as possible
-        LOGS(_log, LOG_LVL_INFO, funcName << " parsing bytes=" << bytesTrans << " _buf" << _buf.dumpStr(false));
+        LOGS(_log, LOG_LVL_INFO, fName << " parsing bytes=" << bytesTrans << " _buf" << _buf.dumpStr(false));
         auto protoKeyShiftReq = StringElement::protoParse<proto::KeyShiftRequest>(_buf);
         if (protoKeyShiftReq == nullptr) {
             throw LoaderMsgErr(ERR_LOC, " KeyShiftRequest parse failure ");
@@ -601,26 +601,36 @@ void TcpBaseConnection::_handleShiftFromRight1(boost::system::error_code const& 
         StringElement::UPtr keyList = _serverTcpBase->getCentralWorker()->buildKeyList(keyShiftReq);
         auto keyListTransmitSz = keyList->transmitSize();
         BufferUdp data(keyListTransmitSz);
+        if (data.getMaxLength() > TcpBaseConnection::getMaxBufSize()) {
+            std::string errMsg = fName + " SHIFT_FROM_RIGHT FAILED message too big sz=" +
+                    std::to_string(data.getMaxLength()) +
+                    " max=" + std::to_string(TcpBaseConnection::getMaxBufSize());
+            LOGS(_log, LOG_LVL_ERROR, errMsg);
+            // This will keep getting thrown and never work, but at least it will show up
+            // in the logs.
+            // &&& create new exception, catch it and halve the number of keys to shift ???
+            throw LoaderMsgErr(ERR_LOC, errMsg);
+        }
         keyList->appendToData(data);
         ServerTcpBase::writeData(_socket, data);
 
         // Wait for the SHIFT_FROM_RIGHT_KEYS_RECEIVED response back.
         _buf.reset();
-        auto msgElem = _buf.readFromSocket(_socket, funcName +" waiting for SHIFT_FROM_RIGHT_KEYS_RECEIVED");
+        auto msgElem = _buf.readFromSocket(_socket, fName +" waiting for SHIFT_FROM_RIGHT_KEYS_RECEIVED");
         UInt32Element::Ptr received = std::dynamic_pointer_cast<UInt32Element>(msgElem);
         if (received == nullptr || received->element !=  LoaderMsg::SHIFT_FROM_RIGHT_RECEIVED) {
-            LOGS(_log, LOG_LVL_INFO, funcName << " did not get SHIFT_FROM_RIGHT_RECEIVED");
+            LOGS(_log, LOG_LVL_INFO, fName << " did not get SHIFT_FROM_RIGHT_RECEIVED");
             throw LoaderMsgErr(ERR_LOC, " receive failure");
         }
         _serverTcpBase->getCentralWorker()->finishShiftFromRight();
-        LOGS(_log, LOG_LVL_INFO, funcName << " done dumpKeys " <<
+        LOGS(_log, LOG_LVL_INFO, fName << " done dumpKeys " <<
                                  _serverTcpBase->getCentralWorker()->dumpKeysStr(2));
     } catch (LoaderMsgErr const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, funcName << " keyShift failed " << ex.what());
+        LOGS(_log, LOG_LVL_ERROR, fName << " keyShift failed " << ex.what());
         _freeConnect();
         return;
     } catch (boost::system::system_error const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, funcName << " keyShift write failed " << ex.what());
+        LOGS(_log, LOG_LVL_ERROR, fName << " keyShift write failed " << ex.what());
         _freeConnect();
         return;
     }

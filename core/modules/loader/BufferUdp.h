@@ -52,10 +52,13 @@ public:
 
     /// The absolute largest UDP message we would send.
     /// Usually, they should be much smaller.
-    static int const MAX_MSG_SIZE = 6000;
+    static size_t const MAX_MSG_SIZE_UDP = 6000;
+
+    /// These are also being used for TCP messages, which can be much bigger.
+    static size_t const MAX_MSG_SIZE_TCP = 10000000;
 
     /// Create the object with a new _buffer with 'length' bytes.
-    explicit BufferUdp(size_t length = MAX_MSG_SIZE) : _length(length) {
+    explicit BufferUdp(size_t length = MAX_MSG_SIZE_UDP) : _length(length) {
         _buffer = new char[length];
         _ourBuffer = true;
         _setupBuffer();

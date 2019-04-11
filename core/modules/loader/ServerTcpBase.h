@@ -41,6 +41,7 @@ namespace loader {
 
 typedef boost::asio::ip::tcp AsioTcp;
 
+class CentralWorker;
 class ServerTcpBase;
 
 class TcpBaseConnection : public std::enable_shared_from_this<TcpBaseConnection> {
@@ -60,6 +61,9 @@ public:
     void start();
     void shutdown();
 
+    /// @return the maximum size of _buf.
+    static size_t getMaxBufSize() { return BufferUdp::MAX_MSG_SIZE_TCP; }
+
 private:
     TcpBaseConnection(boost::asio::io_context& io_context, ServerTcpBase* tcpBase) :
         _socket(io_context), _serverTcpBase(tcpBase) {}
@@ -72,7 +76,7 @@ private:
 
     AsioTcp::socket _socket;
     ServerTcpBase* _serverTcpBase; // _serverTcpBase controls this class' lifetime.
-    BufferUdp _buf{1000000};
+    BufferUdp _buf{BufferUdp::MAX_MSG_SIZE_TCP};
 
     /// Handle the series of messages where another worker is claiming to be our left neighbor.
     void _handleImYourLNeighbor(uint32_t bytes);
@@ -93,9 +97,6 @@ private:
     void _handleTest2b(boost::system::error_code const& ec, size_t bytesTrans);
     void _handleTest2c(boost::system::error_code const& ec, size_t bytesTrans);
 };
-
-
-class CentralWorker;
 
 
 class ServerTcpBase {
@@ -159,8 +160,6 @@ private:
 
     CentralWorker* _centralWorker{nullptr}; // not too thrilled with this
 };
-
-
 
 
 }}} // namespace lsst:qserv:loader

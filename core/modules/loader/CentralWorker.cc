@@ -346,7 +346,8 @@ bool CentralWorker::_shiftIfNeeded(std::lock_guard<std::mutex> const& rightMtxLG
 
 
 void CentralWorker::_shift(Direction direction, int keysToShift) {
-    LOGS(_log, LOG_LVL_DEBUG, "CentralWorker::_shift");
+    std::string const fName("CentralWorker::_shift");
+    LOGS(_log, LOG_LVL_DEBUG, fName);
     if (direction == FROMRIGHT2) {
         BufferUdp data(1000000);
         // Construct a message asking for keys to shift (it will shift its lowest keys, which will be our highest keys)
@@ -362,21 +363,21 @@ void CentralWorker::_shift(Direction direction, int keysToShift) {
             kindShiftFromRight.appendToData(data);
             bytesInMsg.appendToData(data);
             keyShiftReq.appendToData(data);
-            LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift FROMRIGHT " << keysToShift);
+            LOGS(_log, LOG_LVL_INFO, fName << " FROMRIGHT " << keysToShift);
             ServerTcpBase::writeData(*_rightSocket, data);
         }
         // Wait for the KeyList response
         {
             data.reset();
             auto msgElem = data.readFromSocket(*_rightSocket,
-                                               "CentralWorker::_shift waiting for FROMRIGHT KeyList");
+                                               fName + " waiting for FROMRIGHT KeyList");
             auto keyListElem = std::dynamic_pointer_cast<StringElement>(msgElem);
             if (keyListElem == nullptr) {
-                throw LoaderMsgErr(ERR_LOC, "_shift FROMRIGHT failure to get KeyList");
+                throw LoaderMsgErr(ERR_LOC, fName +" FROMRIGHT failure to get KeyList");
             }
             auto protoKeyList = keyListElem->protoParse<proto::KeyList>();
             if (protoKeyList == nullptr) {
-                throw LoaderMsgErr(ERR_LOC, "_shift FROMRIGHT failure to parse KeyList size=" +
+                throw LoaderMsgErr(ERR_LOC, fName + " FROMRIGHT failure to parse KeyList size=" +
                                    std::to_string(keyListElem->element.size()));
             }
 
@@ -395,10 +396,10 @@ void CentralWorker::_shift(Direction direction, int keysToShift) {
         UInt32Element elem(LoaderMsg::SHIFT_FROM_RIGHT_RECEIVED);
         elem.appendToData(data);
         ServerTcpBase::writeData(*_rightSocket, data);
-        LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift  direction=" << direction << " keys=" << keysToShift);
+        LOGS(_log, LOG_LVL_INFO, fName << " direction=" << direction << " keys=" << keysToShift);
 
     } else if (direction == TORIGHT1) {
-        LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift TORIGHT " << keysToShift);
+        LOGS(_log, LOG_LVL_INFO, fName << " TORIGHT " << keysToShift);
         // TODO this is very similar to CentralWorker::buildKeyList() and should be merged with that.
         // Construct a message with that many keys and send it (sending the highest keys)
         proto::KeyList protoKeyList;
@@ -407,7 +408,7 @@ void CentralWorker::_shift(Direction direction, int keysToShift) {
         {
             std::lock_guard<std::mutex> lck(_idMapMtx);
             if (not _transferListToRight.empty()) {
-                throw LoaderMsgErr(ERR_LOC, "_shift _transferList not empty");
+                throw LoaderMsgErr(ERR_LOC, fName + " _transferList not empty");
             }
             for (int j=0; j < keysToShift && _keyValueMap.size() > 1; ++j) {
                 auto iter = _keyValueMap.end();
@@ -430,27 +431,41 @@ void CentralWorker::_shift(Direction direction, int keysToShift) {
         UInt32Element kindShiftRight(LoaderMsg::SHIFT_TO_RIGHT);
         UInt32Element bytesInMsg(keyList.transmitSize());
         BufferUdp data(kindShiftRight.transmitSize() + bytesInMsg.transmitSize() + keyList.transmitSize());
+        if (data.getMaxLength() > TcpBaseConnection::getMaxBufSize()) {
+            std::string errMsg = fName + " SHIFT_TO_RIGHT FAILED message too big sz=" +
+                    std::to_string(data.getMaxLength()) +
+                    " max=" + std::to_string(TcpBaseConnection::getMaxBufSize());
+            LOGS(_log, LOG_LVL_ERROR, errMsg);
+            // This will keep getting thrown and never work, but at least it will show up
+            // in the logs.
+            // &&& create new exception, catch it and halve the number of keys to shift ???
+            throw LoaderMsgErr(ERR_LOC, errMsg);
+        }
         kindShiftRight.appendToData(data);
         bytesInMsg.appendToData(data);
         keyList.appendToData(data);
-        LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift TORIGHT sending keys");
+
+        LOGS(_log, LOG_LVL_INFO, fName << " TORIGHT sending keys");
         ServerTcpBase::writeData(*_rightSocket, data);
 
         // read back LoaderMsg::SHIFT_TO_RIGHT_KEYS_RECEIVED
         data.reset();
         auto msgElem = data.readFromSocket(*_rightSocket,
-                                           "CentralWorker::_shift SHIFT_TO_RIGHT_KEYS_RECEIVED");
+                                           fName + " SHIFT_TO_RIGHT_KEYS_RECEIVED");
         UInt32Element::Ptr received = std::dynamic_pointer_cast<UInt32Element>(msgElem);
-        LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift TORIGHT keys were received");
+        LOGS(_log, LOG_LVL_INFO, fName << " TORIGHT keys were received");
         if (received == nullptr || received->element !=  LoaderMsg::SHIFT_TO_RIGHT_RECEIVED) {
-            throw LoaderMsgErr(ERR_LOC, "_shift receive failure");
+            throw LoaderMsgErr(ERR_LOC, fName +" receive failure");
         }
         _finishShiftToRight();
-        LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift end direction=" << direction << " keys=" << keysToShift);
+        LOGS(_log, LOG_LVL_INFO, fName + " end direction=" << direction << " keys=" << keysToShift);
     }
     LOGS(_log, LOG_LVL_INFO, "CentralWorker::_shift DumpKeys " << dumpKeysStr(2));
     _shiftAsClientInProgress = false;
 }
+
+
+
 
 
 void CentralWorker::_finishShiftToRight() {
