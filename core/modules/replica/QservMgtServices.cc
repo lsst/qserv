@@ -367,6 +367,52 @@ TestEchoQservMgtRequest::Ptr QservMgtServices::echo(
 }
 
 
+GetStatusQservMgtRequest::Ptr QservMgtServices::status(
+                                std::string const& worker,
+                                std::string const& jobId,
+                                GetStatusQservMgtRequest::CallbackType const& onFinish,
+                                unsigned int requestExpirationIvalSec) {
+
+    GetStatusQservMgtRequest::Ptr request;
+
+    // Make sure the XROOTD/SSI service is available before attempting
+    // any operations on requests
+
+    XrdSsiService* service = _xrdSsiService();
+    if (not service) {
+        return request;
+    } else {
+
+        util::Lock lock(_mtx, "QservMgtServices::" + string(__func__));
+    
+        auto const manager = shared_from_this();
+    
+        request = GetStatusQservMgtRequest::create(
+            serviceProvider(),
+            worker,
+            [manager] (QservMgtRequest::Ptr const& request) {
+                manager->_finish(request->id());
+            }
+        );
+    
+        // Register the request (along with its callback) by its unique
+        // identifier in the local registry. Once it's complete it'll
+        // be automatically removed from the Registry.
+        _registry[request->id()] =
+            make_shared<QservMgtRequestWrapperImpl<GetStatusQservMgtRequest>>(
+                request, onFinish);
+    }
+
+    // Initiate the request in the lock-free zone to avoid blocking the service
+    // from initiating other requests which this one is starting.
+    request->start(service,
+                   jobId,
+                   requestExpirationIvalSec);
+
+    return request;
+}
+
+
 void QservMgtServices::_finish(string const& id) {
 
     string const context = id + "  QservMgtServices::" + string(__func__) + "  ";

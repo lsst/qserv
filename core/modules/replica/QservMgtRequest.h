@@ -103,6 +103,9 @@ public:
         /// server-side error.
         SERVER_ERROR,
 
+        /// Data received from a server can't be correctly interpreted
+        SERVER_BAD_RESPONSE,
+
         /// Expired due to a timeout (as per the Configuration)
         TIMEOUT_EXPIRED,
 

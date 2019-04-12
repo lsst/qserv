@@ -29,6 +29,7 @@
 // Qserv headers
 #include "replica/AddReplicaQservMgtRequest.h"
 #include "replica/GetReplicasQservMgtRequest.h"
+#include "replica/GetStatusQservMgtRequest.h"
 #include "replica/RemoveReplicaQservMgtRequest.h"
 #include "replica/ServiceProvider.h"
 #include "replica/SetReplicasQservMgtRequest.h"
@@ -277,6 +278,32 @@ public:
                                       std::string const& jobId="",
                                       TestEchoQservMgtRequest::CallbackType const& onFinish=nullptr,
                                       unsigned int requestExpirationIvalSec=0);
+
+    /**
+     * Request detailed status of a Qserv worker
+     *
+     * @param worker
+     *   the name of a worker
+     *
+     * @param onFinish
+     *   callback function to be called upon request completion
+     *
+     * @param jobId
+     *   an optional identifier of a job specifying a context
+     *   in which a request will be executed.
+     *
+     * @param requestExpirationIvalSec
+     *   an optional parameter (if differs from 0) allowing to override the default
+     *   value of the corresponding parameter from the Configuration.
+     *
+     * @return
+     *   pointer to the request object if the request was made. Return
+     *   nullptr otherwise.
+     */
+    GetStatusQservMgtRequest::Ptr status(std::string const& worker,
+                                         std::string const& jobId="",
+                                         GetStatusQservMgtRequest::CallbackType const& onFinish=nullptr,
+                                         unsigned int requestExpirationIvalSec=0);
 
 private:
 

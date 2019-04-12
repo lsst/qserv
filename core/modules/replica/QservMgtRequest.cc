@@ -70,6 +70,7 @@ string QservMgtRequest::state2string(ExtendedState state) {
         case ExtendedState::SERVER_BAD:          return "SERVER_BAD";
         case ExtendedState::SERVER_CHUNK_IN_USE: return "SERVER_CHUNK_IN_USE";
         case ExtendedState::SERVER_ERROR:        return "SERVER_ERROR";
+        case ExtendedState::SERVER_BAD_RESPONSE: return "SERVER_BAD_RESPONSE";
         case ExtendedState::TIMEOUT_EXPIRED:     return "TIMEOUT_EXPIRED";
         case ExtendedState::CANCELLED:           return "CANCELLED";
     }
