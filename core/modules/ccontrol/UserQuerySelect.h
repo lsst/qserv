@@ -143,8 +143,15 @@ public:
 
     void setupChunking();
 
+    /**
+     * @brief set up the merge table (stores results from workers)
+     *
+     * @param errMsg if creating the merge table fails this will contain an error message.
+     * @return bool true if success, false if there was an error.
+     */
+    bool setupMerger(std::string& errMsg) override;
+
 private:
-    void _setupMerger();
     void _discardMerger();
     void _qMetaUpdateStatus(qmeta::QInfo::QStatus qStatus);
     void _qMetaAddChunks(std::vector<int> const& chunks);

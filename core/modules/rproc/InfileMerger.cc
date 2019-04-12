@@ -348,13 +348,15 @@ int InfileMerger::makeJobIdAttempt(int jobId, int attemptCount) {
 }
 
 
-bool InfileMerger::makeResultsTableForQuery(query::SelectStmt const& stmt) {
+bool InfileMerger::makeResultsTableForQuery(query::SelectStmt const& stmt, std::string& errMsg) {
     // run query
     sql::SqlResults results;
+    sql::SqlErrorObject getSchemaErrObj;
     std::string query = stmt.getQueryTemplate().sqlFragment();
-    bool ok = _applySqlLocal(query, "query for schema", results);
+    bool ok = _applySqlLocal(query, results, getSchemaErrObj);
     if (not ok) {
-        LOGS(_log, LOG_LVL_ERROR, "Failed to get schema with with query" << query);
+        LOGS(_log, LOG_LVL_ERROR, "Failed to get schema:" << getSchemaErrObj.errMsg());
+        errMsg = getSchemaErrObj.errMsg();
         return false;
     }
 
@@ -362,6 +364,7 @@ bool InfileMerger::makeResultsTableForQuery(query::SelectStmt const& stmt) {
     auto schema = results.makeSchema(errObj);
     if (errObj.isSet()) {
         LOGS(_log, LOG_LVL_ERROR, "failed to extract schema from result: " << errObj.errMsg());
+        errMsg = errObj.errMsg();
         return false;
     }
     LOGS(_log, LOG_LVL_DEBUG, "InfileMerger extracted schema: " << schema);
@@ -429,10 +432,15 @@ bool InfileMerger::_applySqlLocal(std::string const& sql, std::string const& log
 }
 
 
-/// Apply a SQL query, setting the appropriate error upon failure.
 bool InfileMerger::_applySqlLocal(std::string const& sql, sql::SqlResults& results) {
-    std::lock_guard<std::mutex> m(_sqlMutex);
     sql::SqlErrorObject errObj;
+    return _applySqlLocal(sql, results, errObj);
+}
+
+
+/// Apply a SQL query, setting the appropriate error upon failure.
+bool InfileMerger::_applySqlLocal(std::string const& sql, sql::SqlResults& results, sql::SqlErrorObject& errObj) {
+    std::lock_guard<std::mutex> m(_sqlMutex);
 
     if (not _sqlConnect(errObj)) {
         return false;

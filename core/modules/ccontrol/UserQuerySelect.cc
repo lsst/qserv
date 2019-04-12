@@ -206,9 +206,6 @@ UserQuerySelect::getProxyOrderBy() const {
 void UserQuerySelect::submit() {
     _qSession->finalize();
 
-    // has to be done after result table name
-    _setupMerger();
-
     // Using the QuerySession, generate query specs (text, db, chunkId) and then
     // create query messages and send them to the async query manager.
     LOGS(_log, LOG_LVL_DEBUG, getQueryIdString() << " UserQuerySelect beginning submission");
@@ -379,7 +376,7 @@ void UserQuerySelect::discard() {
 }
 
 /// Setup merger (for results handling and aggregation)
-void UserQuerySelect::_setupMerger() {
+bool UserQuerySelect::setupMerger(std::string& errMsg) {
     LOGS(_log, LOG_LVL_TRACE, getQueryIdString() << " Setup merger");
     _infileMergerConfig->targetTable = _resultTable;
     _infileMergerConfig->mergeStmt = _qSession->getMergeStmt();
@@ -389,9 +386,16 @@ void UserQuerySelect::_setupMerger() {
     _infileMerger = std::make_shared<rproc::InfileMerger>(*_infileMergerConfig);
 
     auto&& preFlightStmt = _qSession->getPreFlightStmt();
-    if (preFlightStmt == nullptr || not _infileMerger->makeResultsTableForQuery(*preFlightStmt)) {
-        throw UserQueryError(getQueryIdString() + " Could not create results table for query (no worker queries).");
+    if (preFlightStmt == nullptr) {
+        errMsg = " Could not create results table for query (no worker queries).";
+        _qMetaUpdateStatus(qmeta::QInfo::FAILED);
+        return false;
     }
+    if (not _infileMerger->makeResultsTableForQuery(*preFlightStmt, errMsg)) {
+        _qMetaUpdateStatus(qmeta::QInfo::FAILED);
+        return false;
+    }
+    return true;
 }
 
 void UserQuerySelect::setupChunking() {
