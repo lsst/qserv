@@ -44,7 +44,7 @@ namespace wpublish {
     class ChunkInventory;
 }}}
 
-// This header declaratons
+// This header declarations
 namespace lsst {
 namespace qserv {
 namespace wpublish {
@@ -52,7 +52,7 @@ namespace wpublish {
 /**
   * Class AddChunkGroupCommand reloads a list of chunks from the database
   */
-class AddChunkGroupCommand :public wbase::WorkerCommand {
+class AddChunkGroupCommand : public wbase::WorkerCommand {
 
 public:
 

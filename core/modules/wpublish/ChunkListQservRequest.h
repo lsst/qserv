@@ -20,7 +20,6 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-/// ReloadChunkListQservRequest.h
 #ifndef LSST_QSERV_WPUBLISH_CHUNK_LIST_QSERV_REQUEST_H
 #define LSST_QSERV_WPUBLISH_CHUNK_LIST_QSERV_REQUEST_H
 
@@ -31,7 +30,6 @@
 
 // Qserv headers
 #include "wpublish/QservRequest.h"
-
 
 namespace lsst {
 namespace qserv {

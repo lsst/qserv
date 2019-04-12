@@ -20,10 +20,6 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// ChunkInventory is a class that implements the capability to retrieve
-// table publishing information from a qserv worker's associated mysqld.
-// It includes helper functions for checking the resulting data structure for
-// the existence of certain xrootd paths.
 
 #ifndef LSST_QSERV_WPUBLISH_CHUNKINVENTORY_H
 #define LSST_QSERV_WPUBLISH_CHUNKINVENTORY_H
@@ -70,8 +66,10 @@ public:
 };
 
 /**
- * class ChunkInventory contains a record of what chunks are available
- * for execution on a worker node.
+ * ChunkInventory is a class that implements the capability to retrieve
+ * table publishing information from a qserv worker's associated mysqld.
+ * It includes helper functions for checking the resulting data structure for
+ * the existence of certain xrootd paths.
  */
 class ChunkInventory {
 

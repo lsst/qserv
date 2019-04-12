@@ -36,7 +36,7 @@ namespace wbase {
     class SendChannel;
 }}}
 
-// This class headers
+// This header declarations
 namespace lsst {
 namespace qserv {
 namespace wpublish {
@@ -54,8 +54,8 @@ public:
     TestEchoCommand() = delete;
 
     /**
-     * @param sendChannel - communication channel for reporting results
-     * @param value       - value to be send back to a client
+     * @param sendChannel  communication channel for reporting results
+     * @param value        value to be send back to a client
      */
     explicit TestEchoCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
                              std::string const& value);

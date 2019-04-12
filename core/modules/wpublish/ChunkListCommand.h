@@ -20,7 +20,6 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-/// ChunkListCommand.h
 #ifndef LSST_QSERV_WPUBLISH_CHUNK_LIST_COMMAND_H
 #define LSST_QSERV_WPUBLISH_CHUNK_LIST_COMMAND_H
 
@@ -96,8 +95,7 @@ private:
 /**
   * Class ReloadChunkListCommand reloads a list of chunks from the database
   */
-class ReloadChunkListCommand
-    :   public ChunkListCommand {
+class ReloadChunkListCommand : public ChunkListCommand {
 
 public:
 

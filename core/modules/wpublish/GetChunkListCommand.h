@@ -20,7 +20,6 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-/// GetChunkListCommand.h
 #ifndef LSST_QSERV_WPUBLISH_GET_CHUNK_LIST_COMMAND_H
 #define LSST_QSERV_WPUBLISH_GET_CHUNK_LIST_COMMAND_H
 
