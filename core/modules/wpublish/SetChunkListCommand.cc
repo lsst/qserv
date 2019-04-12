@@ -24,41 +24,37 @@
 // Class header
 #include "wpublish/SetChunkListCommand.h"
 
-// System headers
-
 // Third-party headers
 #include "XrdSsi/XrdSsiCluster.hh"
 
-// LSST headers
-#include "lsst/log/Log.h"
+// Qserv headers
 #include "wbase/SendChannel.h"
 #include "wpublish/ResourceMonitor.h"
 #include "xrdsvc/SsiProvider.h"
 #include "xrdsvc/XrdName.h"
 
-/******************************************************************************/
-/*                               G l o b a l s                                */
-/******************************************************************************/
+// LSST headers
+#include "lsst/log/Log.h"
 
 extern XrdSsiProvider* XrdSsiProviderLookup;
 
-// Qserv headers
+using namespace std;
 
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.SetChunkListCommand");
 
-} // annonymous namespace
+} // ann\onymous namespace
 
 namespace lsst {
 namespace qserv {
 namespace wpublish {
 
-SetChunkListCommand::SetChunkListCommand(std::shared_ptr<wbase::SendChannel>     const& sendChannel,
-                                         std::shared_ptr<ChunkInventory>         const& chunkInventory,
-                                         std::shared_ptr<ResourceMonitor>        const& resourceMonitor,
-                                         mysql::MySqlConfig                      const& mySqlConfig,
-                                         std::vector<SetChunkListCommand::Chunk> const& chunks,
+SetChunkListCommand::SetChunkListCommand(shared_ptr<wbase::SendChannel> const& sendChannel,
+                                         shared_ptr<ChunkInventory> const& chunkInventory,
+                                         shared_ptr<ResourceMonitor> const& resourceMonitor,
+                                         mysql::MySqlConfig const& mySqlConfig,
+                                         vector<SetChunkListCommand::Chunk> const& chunks,
                                          bool force)
     :   wbase::WorkerCommand(sendChannel),
         _chunkInventory(chunkInventory),
@@ -68,11 +64,12 @@ SetChunkListCommand::SetChunkListCommand(std::shared_ptr<wbase::SendChannel>    
         _force(force) {
 }
 
-void SetChunkListCommand::setChunks(proto::WorkerCommandSetChunkListR& reply,
-                                    ChunkInventory::ExistMap const& prevExistMap) {
+
+void SetChunkListCommand::_setChunks(proto::WorkerCommandSetChunkListR& reply,
+                                     ChunkInventory::ExistMap const& prevExistMap) {
 
     for (auto const& entry: prevExistMap) {
-        std::string const& database = entry.first;
+        string const& database = entry.first;
 
         for (int chunk: entry.second) {
             proto::WorkerCommandChunk* ptr = reply.add_chunks();
@@ -83,29 +80,33 @@ void SetChunkListCommand::setChunks(proto::WorkerCommandSetChunkListR& reply,
     }
 }
 
-void SetChunkListCommand::reportError(proto::WorkerCommandSetChunkListR::Status status,
-                                      std::string const& message,
-                                      ChunkInventory::ExistMap const& prevExistMap) {
 
-    LOGS(_log, LOG_LVL_ERROR, "SetChunkListCommand::reportError  " << message);
+void SetChunkListCommand::_reportError(proto::WorkerCommandSetChunkListR::Status status,
+                                       string const& message,
+                                       ChunkInventory::ExistMap const& prevExistMap) {
+
+    LOGS(_log, LOG_LVL_ERROR, "SetChunkListCommand::" << __func__ << "  " << message);
 
     proto::WorkerCommandSetChunkListR reply;
 
     reply.set_status(status);
     reply.set_error(message);
-    setChunks(reply, prevExistMap);
+    _setChunks(reply, prevExistMap);
 
     _frameBuf.serialize(reply);
-    std::string str(_frameBuf.data(), _frameBuf.size());
+    string str(_frameBuf.data(), _frameBuf.size());
     auto streamBuffer = xrdsvc::StreamBuffer::createWithMove(str);
     _sendChannel->sendStream(streamBuffer, true);
 }
 
+
 void SetChunkListCommand::run() {
 
-    LOGS(_log, LOG_LVL_DEBUG, "SetChunkListCommand::run");
+    string const context = "SetChunkListCommand::" + string(__func__) + "  ";
 
-    // Store the current collection of chnuks
+    LOGS(_log, LOG_LVL_DEBUG, context);
+
+    // Store the current collection of chunks
     ChunkInventory::ExistMap const prevExistMap = _chunkInventory->existMap();
 
     // Build a temporary object representing a desired chunk list and
@@ -125,11 +126,11 @@ void SetChunkListCommand::run() {
     // unless in the 'force' mode
     if (not _force) {
         for (auto const& entry: toBeRemovedExistMap) {
-            std::string const& database = entry.first;
+            string const& database = entry.first;
             for (auto chunk: entry.second) {
                 if (_resourceMonitor->count(chunk, database)) {
-                    reportError(proto::WorkerCommandSetChunkListR::IN_USE,
-                                "some chunks of the group are in use",
+                    _reportError(proto::WorkerCommandSetChunkListR::IN_USE,
+                                 "some chunks of the group are in use",
                                 prevExistMap);
                     return;
                 }
@@ -143,13 +144,13 @@ void SetChunkListCommand::run() {
     XrdSsiCluster*             clusterManager = providerServer->GetClusterManager();
 
     for (auto const& entry: toBeRemovedExistMap) {
-        std::string const& database = entry.first;
+        string const& database = entry.first;
 
         for (auto chunk: entry.second) {
 
-            std::string const resource = "/chk/" + database + "/" + std::to_string(chunk);
+            string const resource = "/chk/" + database + "/" + to_string(chunk);
 
-            LOGS(_log, LOG_LVL_DEBUG, "SetChunkListCommand::run  removing the chunk resource: "
+            LOGS(_log, LOG_LVL_DEBUG, context << "removing the chunk resource: "
                  << resource << " in DataContext=" << clusterManager->DataContext());
 
             try {
@@ -164,31 +165,31 @@ void SetChunkListCommand::run() {
                 _chunkInventory->remove(database, chunk, _mySqlConfig);
 
             } catch (InvalidParamError const& ex) {
-                reportError(proto::WorkerCommandSetChunkListR::INVALID,
-                            ex.what(),
-                            prevExistMap);
+                _reportError(proto::WorkerCommandSetChunkListR::INVALID,
+                             ex.what(),
+                             prevExistMap);
                 return;
             } catch (QueryError const& ex) {
-                reportError(proto::WorkerCommandSetChunkListR::ERROR,
-                            ex.what(),
-                            prevExistMap);
+                _reportError(proto::WorkerCommandSetChunkListR::ERROR,
+                             ex.what(),
+                             prevExistMap);
                 return;
-            } catch (std::exception const& ex) {
-                reportError(proto::WorkerCommandSetChunkListR::ERROR,
-                            "failed to remove the chunk: " + std::string(ex.what()),
-                            prevExistMap);
+            } catch (exception const& ex) {
+                _reportError(proto::WorkerCommandSetChunkListR::ERROR,
+                             "failed to remove the chunk: " + string(ex.what()),
+                             prevExistMap);
                 return;
             }
         }
     }
     for (auto const& entry: toBeAddedExistMap) {
-        std::string const& database = entry.first;
+        string const& database = entry.first;
 
         for (auto chunk: entry.second) {
 
-            std::string const resource = "/chk/" + database + "/" + std::to_string(chunk);
+            string const resource = "/chk/" + database + "/" + to_string(chunk);
 
-            LOGS(_log, LOG_LVL_DEBUG, "SetChunkListCommand::run  adding the chunk resource: "
+            LOGS(_log, LOG_LVL_DEBUG, context << "adding the chunk resource: "
                  << resource << " in DataContext=" << clusterManager->DataContext());
 
             try {
@@ -203,19 +204,19 @@ void SetChunkListCommand::run() {
                 _chunkInventory->add(database, chunk, _mySqlConfig);
 
             } catch (InvalidParamError const& ex) {
-                reportError(proto::WorkerCommandSetChunkListR::INVALID,
-                            ex.what(),
-                            prevExistMap);
+                _reportError(proto::WorkerCommandSetChunkListR::INVALID,
+                             ex.what(),
+                             prevExistMap);
                 return;
             } catch (QueryError const& ex) {
-                reportError(proto::WorkerCommandSetChunkListR::ERROR,
-                            ex.what(),
-                            prevExistMap);
+                _reportError(proto::WorkerCommandSetChunkListR::ERROR,
+                             ex.what(),
+                             prevExistMap);
                 return;
-            } catch (std::exception const& ex) {
-                reportError(proto::WorkerCommandSetChunkListR::ERROR,
-                            "failed to add the chunk: " + std::string(ex.what()),
-                            prevExistMap);
+            } catch (exception const& ex) {
+                _reportError(proto::WorkerCommandSetChunkListR::ERROR,
+                             "failed to add the chunk: " + string(ex.what()),
+                             prevExistMap);
                 return;
             }
         }
@@ -224,10 +225,10 @@ void SetChunkListCommand::run() {
     // Send back a reply
     proto::WorkerCommandSetChunkListR reply;
     reply.set_status(proto::WorkerCommandSetChunkListR::SUCCESS);
-    setChunks(reply, prevExistMap);
+    _setChunks(reply, prevExistMap);
 
     _frameBuf.serialize(reply);
-    std::string str(_frameBuf.data(), _frameBuf.size());
+    string str(_frameBuf.data(), _frameBuf.size());
     _sendChannel->sendStream(xrdsvc::StreamBuffer::createWithMove(str), true);
 }
 

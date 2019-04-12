@@ -24,26 +24,22 @@
 // Class header
 #include "wpublish/RemoveChunkGroupCommand.h"
 
-// System headers
-
 // Third-party headers
 #include "XrdSsi/XrdSsiCluster.hh"
 
-// LSST headers
-#include "lsst/log/Log.h"
+// Qserv headers
 #include "wbase/SendChannel.h"
 #include "wpublish/ChunkInventory.h"
 #include "wpublish/ResourceMonitor.h"
 #include "xrdsvc/SsiProvider.h"
 #include "xrdsvc/XrdName.h"
 
-/******************************************************************************/
-/*                               G l o b a l s                                */
-/******************************************************************************/
+// LSST headers
+#include "lsst/log/Log.h"
 
 extern XrdSsiProvider* XrdSsiProviderLookup;
 
-// Qserv headers
+using namespace std;
 
 namespace {
 
@@ -55,12 +51,12 @@ namespace lsst {
 namespace qserv {
 namespace wpublish {
 
-RemoveChunkGroupCommand::RemoveChunkGroupCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
-                                                 std::shared_ptr<ChunkInventory>     const& chunkInventory,
-                                                 std::shared_ptr<ResourceMonitor>    const& resourceMonitor,
-                                                 mysql::MySqlConfig                  const& mySqlConfig,
+RemoveChunkGroupCommand::RemoveChunkGroupCommand(shared_ptr<wbase::SendChannel> const& sendChannel,
+                                                 shared_ptr<ChunkInventory> const& chunkInventory,
+                                                 shared_ptr<ResourceMonitor> const& resourceMonitor,
+                                                 mysql::MySqlConfig const& mySqlConfig,
                                                  int chunk,
-                                                 std::vector<std::string> const& dbs,
+                                                 vector<string> const& dbs,
                                                  bool force)
     :   wbase::WorkerCommand(sendChannel),
         _chunkInventory(chunkInventory),
@@ -72,10 +68,10 @@ RemoveChunkGroupCommand::RemoveChunkGroupCommand(std::shared_ptr<wbase::SendChan
 }
 
 
-void RemoveChunkGroupCommand::reportError(proto::WorkerCommandChunkGroupR::Status status,
-                                          std::string const& message) {
+void RemoveChunkGroupCommand::_reportError(proto::WorkerCommandChunkGroupR::Status status,
+                                           string const& message) {
 
-    LOGS(_log, LOG_LVL_ERROR, "RemoveChunkGroupCommand::reportError  " << message);
+    LOGS(_log, LOG_LVL_ERROR, "RemoveChunkGroupCommand::" << __func__ << "  " << message);
 
     proto::WorkerCommandChunkGroupR reply;
 
@@ -83,18 +79,21 @@ void RemoveChunkGroupCommand::reportError(proto::WorkerCommandChunkGroupR::Statu
     reply.set_error(message);
 
     _frameBuf.serialize(reply);
-    std::string str(_frameBuf.data(), _frameBuf.size());
+    string str(_frameBuf.data(), _frameBuf.size());
     auto streamBuffer = xrdsvc::StreamBuffer::createWithMove(str);
     _sendChannel->sendStream(streamBuffer, true);
 }
 
+
 void RemoveChunkGroupCommand::run() {
 
-    LOGS(_log, LOG_LVL_DEBUG, "RemoveChunkGroupCommand::run");
+    string const context = "RemoveChunkGroupCommand::" + string(__func__) + "  ";
+
+    LOGS(_log, LOG_LVL_DEBUG, context);
 
     if (not _dbs.size()) {
-        reportError(proto::WorkerCommandChunkGroupR::INVALID,
-                    "the list of database names in the group was found empty");
+        _reportError(proto::WorkerCommandChunkGroupR::INVALID,
+                     "the list of database names in the group was found empty");
         return;
     }
 
@@ -102,8 +101,8 @@ void RemoveChunkGroupCommand::run() {
     // unless in the 'force' mode
     if (not _force) {
         if (_resourceMonitor->count(_chunk, _dbs)) {
-            reportError(proto::WorkerCommandChunkGroupR::IN_USE,
-                        "some chunks of the group are in use");
+            _reportError(proto::WorkerCommandChunkGroupR::IN_USE,
+                         "some chunks of the group are in use");
             return;
         }
     }
@@ -111,11 +110,11 @@ void RemoveChunkGroupCommand::run() {
     xrdsvc::SsiProviderServer* providerServer = dynamic_cast<xrdsvc::SsiProviderServer*>(XrdSsiProviderLookup);
     XrdSsiCluster*             clusterManager = providerServer->GetClusterManager();
 
-    for (std::string const& db: _dbs) {
+    for (string const& db: _dbs) {
 
-        std::string const resource = "/chk/" + db + "/" + std::to_string(_chunk);
+        string const resource = "/chk/" + db + "/" + to_string(_chunk);
 
-        LOGS(_log, LOG_LVL_DEBUG, "RemoveChunkGroupCommand::run  removing the chunk resource: "
+        LOGS(_log, LOG_LVL_DEBUG, context << "removing the chunk resource: "
              << resource << " in DataContext=" << clusterManager->DataContext());
 
         try {
@@ -130,14 +129,14 @@ void RemoveChunkGroupCommand::run() {
             _chunkInventory->remove(db, _chunk, _mySqlConfig);
 
         } catch (InvalidParamError const& ex) {
-            reportError(proto::WorkerCommandChunkGroupR::INVALID, ex.what());
+            _reportError(proto::WorkerCommandChunkGroupR::INVALID, ex.what());
             return;
         } catch (QueryError const& ex) {
-            reportError(proto::WorkerCommandChunkGroupR::ERROR, ex.what());
+            _reportError(proto::WorkerCommandChunkGroupR::ERROR, ex.what());
             return;
-        } catch (std::exception const& ex) {
-            reportError(proto::WorkerCommandChunkGroupR::ERROR,
-                        "failed to remove the chunk: " + std::string(ex.what()));
+        } catch (exception const& ex) {
+            _reportError(proto::WorkerCommandChunkGroupR::ERROR,
+                         "failed to remove the chunk: " + string(ex.what()));
             return;
         }
     }
@@ -148,7 +147,7 @@ void RemoveChunkGroupCommand::run() {
         // Tell a caller that some of the associated resources are still
         // in use by this worker even though they've been blocked from use for any
         // further requests. It's up to a caller of this service to correctly
-        // interpret the effect of th eoperation based on a presence of the "force"
+        // interpret the effect of the operation based on a presence of the "force"
         // flag in the request.
 
         reply.set_status(proto::WorkerCommandChunkGroupR::IN_USE);
@@ -159,7 +158,7 @@ void RemoveChunkGroupCommand::run() {
     }
 
     _frameBuf.serialize(reply);
-    std::string str(_frameBuf.data(), _frameBuf.size());
+    string str(_frameBuf.data(), _frameBuf.size());
     _sendChannel->sendStream(xrdsvc::StreamBuffer::createWithMove(str), true);
 }
 

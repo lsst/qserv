@@ -30,18 +30,19 @@
 // Qserv headers
 #include "lsst/log/Log.h"
 
+using namespace lsst::qserv;
+using namespace std;
+
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.ChunkListQservRequest");
-
-using namespace lsst::qserv;
 
 wpublish::ChunkListQservRequest::Status translate(proto::WorkerCommandUpdateChunkListR::Status status) {
     switch (status) {
         case proto::WorkerCommandUpdateChunkListR::SUCCESS: return wpublish::ChunkListQservRequest::SUCCESS;
         case proto::WorkerCommandUpdateChunkListR::ERROR:   return wpublish::ChunkListQservRequest::ERROR;
     }
-    throw std::domain_error (
+    throw domain_error (
             "ChunkListQservRequest::translate  no match for Protobuf status: " +
             proto::WorkerCommandUpdateChunkListR_Status_Name(status));
 }
@@ -51,15 +52,16 @@ namespace lsst {
 namespace qserv {
 namespace wpublish {
 
-std::string ChunkListQservRequest::status2str(Status status) {
+string ChunkListQservRequest::status2str(Status status) {
     switch (status) {
         case SUCCESS: return "SUCCESS";
         case ERROR:   return "ERROR";
     }
-    throw std::domain_error(
+    throw domain_error(
             "ChunkListQservRequest::status2str  no match for status: " +
-            std::to_string(status));
+            to_string(status));
 }
+
 
 ChunkListQservRequest::ChunkListQservRequest(bool rebuild,
                                              bool reload,
@@ -71,9 +73,11 @@ ChunkListQservRequest::ChunkListQservRequest(bool rebuild,
     LOGS(_log, LOG_LVL_DEBUG, "ChunkListQservRequest  ** CONSTRUCTED **");
 }
 
+
 ChunkListQservRequest::~ChunkListQservRequest() {
     LOGS(_log, LOG_LVL_DEBUG, "ChunkListQservRequest  ** DELETED **");
 }
+
 
 void ChunkListQservRequest::onRequest(proto::FrameBuffer& buf) {
 
@@ -87,9 +91,10 @@ void ChunkListQservRequest::onRequest(proto::FrameBuffer& buf) {
     buf.serialize(message);
 }
 
+
 void ChunkListQservRequest::onResponse(proto::FrameBufferView& view) {
 
-    static std::string const context = "ChunkListQservRequest  ";
+    string const context = "ChunkListQservRequest  ";
 
     proto::WorkerCommandUpdateChunkListR reply;
     view.parse(reply);
@@ -127,7 +132,7 @@ void ChunkListQservRequest::onResponse(proto::FrameBufferView& view) {
         // 2. it breaks the up-stream dependency on a caller object if a shared
         //    pointer to the object was mentioned as the lambda-function's closure
 
-        auto onFinish = std::move(_onFinish);
+        auto onFinish = move(_onFinish);
         _onFinish = nullptr;
         onFinish(::translate(reply.status()),
                  reply.error(),
@@ -136,7 +141,8 @@ void ChunkListQservRequest::onResponse(proto::FrameBufferView& view) {
     }
 }
 
-void ChunkListQservRequest::onError(std::string const& error) {
+
+void ChunkListQservRequest::onError(string const& error) {
 
     if (nullptr != _onFinish) {
 
@@ -147,7 +153,7 @@ void ChunkListQservRequest::onError(std::string const& error) {
         // 2. it breaks the up-stream dependency on a caller object if a shared
         //    pointer to the object was mentioned as the lambda-function's closure
 
-        auto onFinish = std::move(_onFinish);
+        auto onFinish = move(_onFinish);
         _onFinish = nullptr;
         onFinish(Status::ERROR,
                  error,
@@ -156,30 +162,34 @@ void ChunkListQservRequest::onError(std::string const& error) {
     }
 }
 
+
 ReloadChunkListQservRequest::Ptr ReloadChunkListQservRequest::create(
-                                            ChunkListQservRequest::CallbackType onFinish) {
+                                        ChunkListQservRequest::CallbackType onFinish) {
     return ReloadChunkListQservRequest::Ptr(
         new ReloadChunkListQservRequest(onFinish));
 }
 
+
 ReloadChunkListQservRequest::ReloadChunkListQservRequest(
-                                            ChunkListQservRequest::CallbackType onFinish)
+                                    ChunkListQservRequest::CallbackType onFinish)
    :   ChunkListQservRequest(false,
                              true,
                              onFinish) {
 }
 
+
 RebuildChunkListQservRequest::Ptr RebuildChunkListQservRequest::create(
-                                            bool reload,
-                                            ChunkListQservRequest::CallbackType onFinish) {
+                                        bool reload,
+                                        ChunkListQservRequest::CallbackType onFinish) {
     return RebuildChunkListQservRequest::Ptr(
         new RebuildChunkListQservRequest(reload,
                                          onFinish));
 }
 
+
 RebuildChunkListQservRequest::RebuildChunkListQservRequest(
-                                            bool reload,
-                                            ChunkListQservRequest::CallbackType onFinish)
+                                    bool reload,
+                                    ChunkListQservRequest::CallbackType onFinish)
     :   ChunkListQservRequest(true,
                               reload,
                               onFinish) {

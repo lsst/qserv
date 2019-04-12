@@ -23,14 +23,16 @@
 
 // Class header
 #include "wpublish/QueriesAndChunks.h"
-// LSST headers
-#include "lsst/log/Log.h"
 
 // Qserv headers
 #include "wsched/BlendScheduler.h"
 #include "wsched/SchedulerBase.h"
 #include "wsched/ScanScheduler.h"
 
+// LSST headers
+#include "lsst/log/Log.h"
+
+using namespace std;
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.QueriesAndChunks");
@@ -41,17 +43,17 @@ namespace qserv {
 namespace wpublish {
 
 
-QueriesAndChunks::QueriesAndChunks(std::chrono::seconds deadAfter,
-                                   std::chrono::seconds examineAfter, int maxTasksBooted)
+QueriesAndChunks::QueriesAndChunks(chrono::seconds deadAfter,
+                                   chrono::seconds examineAfter, int maxTasksBooted)
      : _deadAfter{deadAfter}, _examineAfter{examineAfter}, _maxTasksBooted{maxTasksBooted} {
     auto rDead = [this](){
         while (_loopRemoval) {
             removeDead();
-            std::this_thread::sleep_for(_deadAfter);
+            this_thread::sleep_for(_deadAfter);
         }
     };
-    std::thread td(rDead);
-    _removalThread = std::move(td);
+    thread td(rDead);
+    _removalThread = move(td);
 
     if (_examineAfter.count() == 0) {
         LOGS(_log, LOG_LVL_DEBUG, "QueriesAndChunks turning off examineThread");
@@ -60,12 +62,12 @@ QueriesAndChunks::QueriesAndChunks(std::chrono::seconds deadAfter,
 
     auto rExamine = [this](){
         while (_loopExamine) {
-            std::this_thread::sleep_for(_examineAfter);
+            this_thread::sleep_for(_examineAfter);
             if (_loopExamine) examineAll();
         }
     };
-    std::thread te(rExamine);
-    _examineThread = std::move(te);
+    thread te(rExamine);
+    _examineThread = move(te);
 }
 
 
@@ -75,13 +77,13 @@ QueriesAndChunks::~QueriesAndChunks() {
     try {
         _removalThread.join();
         _examineThread.join();
-    } catch (std::system_error const& e) {
+    } catch (system_error const& e) {
         LOGS(_log, LOG_LVL_ERROR, "~QueriesAndChunks " << e.what());
     }
 }
 
 
-void QueriesAndChunks::setBlendScheduler(std::shared_ptr<wsched::BlendScheduler> const& blendSched) {
+void QueriesAndChunks::setBlendScheduler(shared_ptr<wsched::BlendScheduler> const& blendSched) {
     _blendSched = blendSched;
 }
 
@@ -93,11 +95,11 @@ void QueriesAndChunks::setRequiredTasksCompleted(unsigned int value) {
 /// Add statistics for the Task, creating a QueryStatistics object if needed.
 void QueriesAndChunks::addTask(wbase::Task::Ptr const& task) {
     auto qid = task->getQueryId();
-    std::unique_lock<std::mutex> guardStats(_queryStatsMtx);
+    unique_lock<mutex> guardStats(_queryStatsMtx);
     auto itr = _queryStats.find(qid);
     QueryStatistics::Ptr stats;
     if (_queryStats.end() == itr) {
-        stats = std::make_shared<QueryStatistics>(qid);
+        stats = make_shared<QueryStatistics>(qid);
         _queryStats[qid] = stats;
     } else {
         stats = itr->second;
@@ -109,12 +111,12 @@ void QueriesAndChunks::addTask(wbase::Task::Ptr const& task) {
 
 /// Update statistics for the Task that was just queued.
 void QueriesAndChunks::queuedTask(wbase::Task::Ptr const& task) {
-    auto now = std::chrono::system_clock::now();
+    auto now = chrono::system_clock::now();
     task->queued(now);
 
     QueryStatistics::Ptr stats = getStats(task->getQueryId());
     if (stats != nullptr) {
-        std::lock_guard<std::mutex>(stats->_qStatsMtx);
+        lock_guard<mutex>(stats->_qStatsMtx);
         stats->_touched = now;
         stats->_size += 1;
     }
@@ -123,12 +125,12 @@ void QueriesAndChunks::queuedTask(wbase::Task::Ptr const& task) {
 
 /// Update statistics for the Task that just started.
 void QueriesAndChunks::startedTask(wbase::Task::Ptr const& task) {
-    auto now = std::chrono::system_clock::now();
+    auto now = chrono::system_clock::now();
     task->started(now);
 
     QueryStatistics::Ptr stats = getStats(task->getQueryId());
     if (stats != nullptr) {
-        std::lock_guard<std::mutex>(stats->_qStatsMtx);
+        lock_guard<mutex>(stats->_qStatsMtx);
         stats->_touched = now;
         stats->_tasksRunning += 1;
     }
@@ -137,7 +139,7 @@ void QueriesAndChunks::startedTask(wbase::Task::Ptr const& task) {
 
 /// Update statistics for the Task that finished and the chunk it was querying.
 void QueriesAndChunks::finishedTask(wbase::Task::Ptr const& task) {
-    auto now = std::chrono::system_clock::now();
+    auto now = chrono::system_clock::now();
     double taskDuration = (double)(task->finished(now).count());
     taskDuration /= 60000.0; // convert to minutes.
 
@@ -146,7 +148,7 @@ void QueriesAndChunks::finishedTask(wbase::Task::Ptr const& task) {
     if (stats != nullptr) {
         bool mostlyDead = false;
         {
-            std::lock_guard<std::mutex> gs(stats->_qStatsMtx);
+            lock_guard<mutex> gs(stats->_qStatsMtx);
             stats->_touched = now;
             stats->_tasksRunning -= 1;
             stats->_tasksCompleted += 1;
@@ -154,7 +156,7 @@ void QueriesAndChunks::finishedTask(wbase::Task::Ptr const& task) {
             mostlyDead = stats->_isMostlyDead();
         }
         if (mostlyDead) {
-            std::lock_guard<std::mutex> gd(_newlyDeadMtx);
+            lock_guard<mutex> gd(_newlyDeadMtx);
             (*_newlyDeadQueries)[qId] = stats;
         }
     }
@@ -165,16 +167,16 @@ void QueriesAndChunks::finishedTask(wbase::Task::Ptr const& task) {
 
 /// Update statistics for the Task that finished and the chunk it was querying.
 void QueriesAndChunks::_finishedTaskForChunk(wbase::Task::Ptr const& task, double minutes) {
-    std::unique_lock<std::mutex> ul(_chunkMtx);
-    std::pair<int, ChunkStatistics::Ptr> ele(task->getChunkId(), nullptr);
+    unique_lock<mutex> ul(_chunkMtx);
+    pair<int, ChunkStatistics::Ptr> ele(task->getChunkId(), nullptr);
     auto res = _chunkStats.insert(ele);
     if (res.second) {
-        res.first->second = std::make_shared<ChunkStatistics>(task->getChunkId());
+        res.first->second = make_shared<ChunkStatistics>(task->getChunkId());
     }
     ul.unlock();
     auto iter = res.first->second;
     proto::ScanInfo& scanInfo = task->getScanInfo();
-    std::string tblName;
+    string tblName;
     if (!scanInfo.infoTables.empty()) {
         proto::ScanTableInfo& sti = scanInfo.infoTables.at(0);
         tblName = ChunkTableStats::makeTableName(sti.db, sti.table);
@@ -185,17 +187,17 @@ void QueriesAndChunks::_finishedTaskForChunk(wbase::Task::Ptr const& task, doubl
 
 /// Go through the list of possibly dead queries and remove those that are too old.
 void QueriesAndChunks::removeDead() {
-    std::vector<QueryStatistics::Ptr> dList;
-    auto now = std::chrono::system_clock::now();
+    vector<QueryStatistics::Ptr> dList;
+    auto now = chrono::system_clock::now();
     {
-        std::shared_ptr<DeadQueriesType> newlyDead;
+        shared_ptr<DeadQueriesType> newlyDead;
         {
-            std::lock_guard<std::mutex> gnd(_newlyDeadMtx);
+            lock_guard<mutex> gnd(_newlyDeadMtx);
             newlyDead = _newlyDeadQueries;
             _newlyDeadQueries.reset(new DeadQueriesType);
         }
 
-        std::lock_guard<std::mutex> gd(_deadMtx);
+        lock_guard<mutex> gd(_deadMtx);
         // Copy newlyDead into dead.
         for(auto const& elem : *newlyDead) {
             _deadQueries[elem.first] = elem.second;
@@ -225,18 +227,18 @@ void QueriesAndChunks::removeDead() {
 /// Query Ids should be unique for the life of the system, so erasing
 /// a qId multiple times from _queryStats should be harmless.
 void QueriesAndChunks::removeDead(QueryStatistics::Ptr const& queryStats) {
-    std::unique_lock<std::mutex> gS(queryStats->_qStatsMtx);
+    unique_lock<mutex> gS(queryStats->_qStatsMtx);
     QueryId qId = queryStats->_queryId;
     gS.unlock();
     LOGS(_log, LOG_LVL_DEBUG, QueryIdHelper::makeIdStr(qId) << " Queries::removeDead");
 
-    std::lock_guard<std::mutex> gQ(_queryStatsMtx);
+    lock_guard<mutex> gQ(_queryStatsMtx);
     _queryStats.erase(qId);
 }
 
 /// @return the statistics for a user query.
 QueryStatistics::Ptr QueriesAndChunks::getStats(QueryId const& qId) const {
-    std::lock_guard<std::mutex> g(_queryStatsMtx);
+    lock_guard<mutex> g(_queryStatsMtx);
     auto iter = _queryStats.find(qId);
     if (iter != _queryStats.end()) {
         return iter->second;
@@ -255,9 +257,9 @@ void QueriesAndChunks::examineAll() {
 
     // Copy a vector of the Queries in the map and work with the copy
     // to free up the mutex.
-    std::vector<QueryStatistics::Ptr> uqs;
+    vector<QueryStatistics::Ptr> uqs;
     {
-        std::lock_guard<std::mutex> g(_queryStatsMtx);
+        lock_guard<mutex> g(_queryStatsMtx);
         for (auto const& ele : _queryStats) {
             auto const q = ele.second;
             uqs.push_back(q);
@@ -270,13 +272,13 @@ void QueriesAndChunks::examineAll() {
     // to the snail scan.
     for (auto const& uq : uqs) {
         // Copy all the running tasks that are on ScanSchedulers.
-        std::vector<wbase::Task::Ptr> runningTasks;
+        vector<wbase::Task::Ptr> runningTasks;
         {
-            std::lock_guard<std::mutex> lock(uq->_qStatsMtx);
+            lock_guard<mutex> lock(uq->_qStatsMtx);
             for (auto const& ele : uq->_taskMap) {
                 auto const& task = ele.second;
                 if (task->getState() == wbase::Task::State::RUNNING) {
-                    auto const& sched = std::dynamic_pointer_cast<wsched::ScanScheduler>(task->getTaskScheduler());
+                    auto const& sched = dynamic_pointer_cast<wsched::ScanScheduler>(task->getTaskScheduler());
                     if (sched != nullptr) {
                         runningTasks.push_back(task);
                     }
@@ -286,7 +288,7 @@ void QueriesAndChunks::examineAll() {
 
         // For each running task, check if it is taking too long, or if the query is taking too long.
         for (auto const& task : runningTasks) {
-            auto const& sched = std::dynamic_pointer_cast<wsched::ScanScheduler>(task->getTaskScheduler());
+            auto const& sched = dynamic_pointer_cast<wsched::ScanScheduler>(task->getTaskScheduler());
             if (sched == nullptr) {
                 continue;
             }
@@ -296,7 +298,7 @@ void QueriesAndChunks::examineAll() {
             if (begin == task->getScanInfo().infoTables.end()) {
                 continue;
             }
-            std::string const& slowestTable = begin->db + ":" + begin->table;
+            string const& slowestTable = begin->db + ":" + begin->table;
             auto iterTbl = scanTblSums.find(slowestTable);
             if (iterTbl != scanTblSums.end()) {
                 LOGS(_log, LOG_LVL_DEBUG, "examineAll " << slowestTable
@@ -334,9 +336,9 @@ void QueriesAndChunks::examineAll() {
 /// The table names are based on the slowest scan table in each task.
 QueriesAndChunks::ScanTableSumsMap QueriesAndChunks::_calcScanTableSums() {
     // Copy a vector of all the chunks in the map;
-    std::vector<ChunkStatistics::Ptr> chks;
+    vector<ChunkStatistics::Ptr> chks;
     {
-        std::lock_guard<std::mutex> g(_chunkMtx);
+        lock_guard<mutex> g(_chunkMtx);
         for (auto const& ele : _chunkStats) {
             auto const& chk = ele.second;
             chks.push_back(chk);
@@ -346,7 +348,7 @@ QueriesAndChunks::ScanTableSumsMap QueriesAndChunks::_calcScanTableSums() {
     QueriesAndChunks::ScanTableSumsMap scanTblSums;
     for (auto const& chunkStats : chks) {
         auto chunkId = chunkStats->_chunkId;
-        std::lock_guard<std::mutex> lock(chunkStats->_tStatsMtx);
+        lock_guard<mutex> lock(chunkStats->_tStatsMtx);
         for (auto const& ele : chunkStats->_tableStats) {
             auto const& tblName = ele.first;
             if (!tblName.empty()) {
@@ -413,21 +415,21 @@ void QueriesAndChunks::_bootTask(QueryStatistics::Ptr const& uq, wbase::Task::Pt
 
 /// Add a Task to the user query statistics.
 void QueryStatistics::addTask(wbase::Task::Ptr const& task) {
-    std::lock_guard<std::mutex> guard(_qStatsMtx);
-    _taskMap.insert(std::make_pair(task->getJobId(), task));
+    lock_guard<mutex> guard(_qStatsMtx);
+    _taskMap.insert(make_pair(task->getJobId(), task));
 }
 
 
 /// @return the number of Tasks that have been booted for this user query.
 int QueryStatistics::getTasksBooted() {
-    std::lock_guard<std::mutex> guard(_qStatsMtx);
+    lock_guard<mutex> guard(_qStatsMtx);
     return _tasksBooted;
 }
 
 
 /// @return true if this query is done and has not been touched for deadTime.
-bool QueryStatistics::isDead(std::chrono::seconds deadTime, std::chrono::system_clock::time_point now) {
-    std::lock_guard<std::mutex> guard(_qStatsMtx);
+bool QueryStatistics::isDead(chrono::seconds deadTime, chrono::system_clock::time_point now) {
+    lock_guard<mutex> guard(_qStatsMtx);
     if (_isMostlyDead()) {
         if (now - _touched > deadTime) {
             return true;
@@ -443,8 +445,8 @@ bool QueryStatistics::_isMostlyDead() const {
     return _tasksCompleted >= _size;
 }
 
-std::ostream& operator<<(std::ostream& os, QueryStatistics const& q) {
-    std::lock_guard<std::mutex> gd(q._qStatsMtx);
+ostream& operator<<(ostream& os, QueryStatistics const& q) {
+    lock_guard<mutex> gd(q._qStatsMtx);
     os << QueryIdHelper::makeIdStr(q._queryId)
        << " time="           << q._totalTimeMinutes
        << " size="           << q._size
@@ -461,12 +463,12 @@ std::ostream& operator<<(std::ostream& os, QueryStatistics const& q) {
 /// Tasks that are already running continue, but are marked as complete on their
 /// current scheduler. Stopping and rescheduling them would be difficult at best, and
 /// probably not very helpful.
-std::vector<wbase::Task::Ptr>
+vector<wbase::Task::Ptr>
 QueriesAndChunks::removeQueryFrom(QueryId const& qId, wsched::SchedulerBase::Ptr const& sched) {
-    std::vector<wbase::Task::Ptr> removedList; // Return value;
+    vector<wbase::Task::Ptr> removedList; // Return value;
 
     // Find the user query.
-    std::unique_lock<std::mutex> lock(_queryStatsMtx);
+    unique_lock<mutex> lock(_queryStatsMtx);
     auto query = _queryStats.find(qId);
     if (query == _queryStats.end()) {
         LOGS(_log, LOG_LVL_DEBUG, QueryIdHelper::makeIdStr(qId) << " was not found by removeQueryFrom");
@@ -477,16 +479,16 @@ QueriesAndChunks::removeQueryFrom(QueryId const& qId, wsched::SchedulerBase::Ptr
     // Remove Tasks from their scheduler put them on 'removedList', but only if their Scheduler is the same
     // as 'sched' or if sched == nullptr.
     auto& taskMap = query->second->_taskMap;
-    std::vector<wbase::Task::Ptr> taskList;
+    vector<wbase::Task::Ptr> taskList;
     {
-        std::lock_guard<std::mutex> taskLock(query->second->_qStatsMtx);
+        lock_guard<mutex> taskLock(query->second->_qStatsMtx);
         for (auto const& elem : taskMap) {
             taskList.push_back(elem.second);
         }
     }
 
     auto moveTasks = [&sched, &taskList, &removedList](bool moveRunning) {
-        std::vector<wbase::Task::Ptr> taskListNotRemoved;
+        vector<wbase::Task::Ptr> taskListNotRemoved;
         for(auto const& task : taskList) {
             auto taskSched = task->getTaskScheduler();
             if (taskSched != nullptr && (taskSched == sched || sched == nullptr)) {
@@ -513,8 +515,8 @@ QueriesAndChunks::removeQueryFrom(QueryId const& qId, wsched::SchedulerBase::Ptr
 }
 
 
-std::ostream& operator<<(std::ostream& os, QueriesAndChunks const& qc) {
-    std::lock_guard<std::mutex> g(qc._chunkMtx);
+ostream& operator<<(ostream& os, QueriesAndChunks const& qc) {
+    lock_guard<mutex> g(qc._chunkMtx);
     os << "Chunks(";
     for (auto const& ele : qc._chunkStats) {
         os << *(ele.second) << ";";
@@ -527,13 +529,13 @@ std::ostream& operator<<(std::ostream& os, QueriesAndChunks const& qc) {
 
 /// Add the duration to the statistics for the table. Create a statistics object if needed.
 /// @return the statistics for the table.
-ChunkTableStats::Ptr ChunkStatistics::add(std::string const& scanTableName, double minutes) {
-    std::pair<std::string, ChunkTableStats::Ptr> ele(scanTableName, nullptr);
-    std::unique_lock<std::mutex> ul(_tStatsMtx);
+ChunkTableStats::Ptr ChunkStatistics::add(string const& scanTableName, double minutes) {
+    pair<string, ChunkTableStats::Ptr> ele(scanTableName, nullptr);
+    unique_lock<mutex> ul(_tStatsMtx);
     auto res = _tableStats.insert(ele);
     auto iter = res.first;
     if (res.second) {
-        iter->second = std::make_shared<ChunkTableStats>(_chunkId, scanTableName);
+        iter->second = make_shared<ChunkTableStats>(_chunkId, scanTableName);
     }
     ul.unlock();
     iter->second->addTaskFinished(minutes);
@@ -542,8 +544,8 @@ ChunkTableStats::Ptr ChunkStatistics::add(std::string const& scanTableName, doub
 
 
 /// @return the statistics for a table. nullptr if the table is not found.
-ChunkTableStats::Ptr ChunkStatistics::getStats(std::string const& scanTableName) const {
-    std::lock_guard<std::mutex> g(_tStatsMtx);
+ChunkTableStats::Ptr ChunkStatistics::getStats(string const& scanTableName) const {
+    lock_guard<mutex> g(_tStatsMtx);
     auto iter = _tableStats.find(scanTableName);
     if (iter != _tableStats.end()) {
         return iter->second;
@@ -552,8 +554,8 @@ ChunkTableStats::Ptr ChunkStatistics::getStats(std::string const& scanTableName)
 }
 
 
-std::ostream& operator<<(std::ostream& os, ChunkStatistics const& cs) {
-    std::lock_guard<std::mutex> g(cs._tStatsMtx);
+ostream& operator<<(ostream& os, ChunkStatistics const& cs) {
+    lock_guard<mutex> g(cs._tStatsMtx);
     os << "ChunkStatsistics(" << cs._chunkId << "(";
     for (auto const& ele : cs._tableStats) {
         os << *(ele.second) << ";";
@@ -565,7 +567,7 @@ std::ostream& operator<<(std::ostream& os, ChunkStatistics const& cs) {
 
 /// Use the duration of the last Task completed to adjust the average completion time.
 void ChunkTableStats::addTaskFinished(double minutes) {
-    std::lock_guard<std::mutex> g(_dataMtx);
+    lock_guard<mutex> g(_dataMtx);
     ++_data.tasksCompleted;
     if (_data.tasksCompleted > 1) {
         _data.avgCompletionTime = (_data.avgCompletionTime*_weightAvg + minutes*_weightNew)/_weightSum;
@@ -578,8 +580,8 @@ void ChunkTableStats::addTaskFinished(double minutes) {
 }
 
 
-std::ostream& operator<<(std::ostream& os, ChunkTableStats const& cts) {
-    std::lock_guard<std::mutex> g(cts._dataMtx);
+ostream& operator<<(ostream& os, ChunkTableStats const& cts) {
+    lock_guard<mutex> g(cts._dataMtx);
     os << "ChunkTableStats(" << cts._chunkId << ":" << cts._scanTableName
        << " tasks(completed=" << cts._data.tasksCompleted << ",avgTime=" << cts._data.avgCompletionTime
        << ",booted=" << cts._data.tasksBooted << "))";

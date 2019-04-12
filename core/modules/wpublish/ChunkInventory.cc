@@ -31,8 +31,6 @@
 #include <deque>
 #include <iostream>
 
-// Third-party headers
-
 // LSST headers
 #include "lsst/log/Log.h"
 
@@ -40,31 +38,30 @@
 #include "global/constants.h"
 #include "sql/SqlConnection.h"
 
-// This macro to appear witin each block which requires thread safety
-
-#define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)
-
-namespace { // File-scope helpers
-
-LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.ChunkInventory");
-
 using lsst::qserv::sql::SqlConnection;
 using lsst::qserv::sql::SqlErrorObject;
 using lsst::qserv::sql::SqlResultIter;
 using lsst::qserv::wpublish::ChunkInventory;
 
+using namespace std;
+
+namespace {
+
+LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.ChunkInventory");
+
+
 
 /// get a list of published databases
 template <class C>
-void fetchDbs(std::string const& instanceName,
+void fetchDbs(string const& instanceName,
               SqlConnection& sc,
               C& dbs) {
 
-    std::string const query = "SELECT db FROM qservw_" + instanceName + ".Dbs";
+    string const query = "SELECT db FROM qservw_" + instanceName + ".Dbs";
 
     LOGS(_log, LOG_LVL_DEBUG, "Launching query: " << query);
 
-    std::shared_ptr<SqlResultIter> resultP = sc.getQueryIter(query);
+    shared_ptr<SqlResultIter> resultP = sc.getQueryIter(query);
     assert(resultP.get());
 
     if (resultP->getErrorObject().isSet()) {
@@ -82,17 +79,18 @@ void fetchDbs(std::string const& instanceName,
         LOGS(_log, LOG_LVL_WARN, "ChunkInventory couldn't find databases to export");
 }
 
+
 /// Fetch a list of chunks published for a database
-void fetchChunks(std::string const& instanceName,
-                 std::string const& db,
+void fetchChunks(string const& instanceName,
+                 string const& db,
                  SqlConnection& sc,
                  ChunkInventory::ChunkMap& chunkMap) {
 
-    std::string const query = "SELECT db,chunk FROM qservw_" + instanceName + ".Chunks WHERE db='" + db + "'";
+    string const query = "SELECT db,chunk FROM qservw_" + instanceName + ".Chunks WHERE db='" + db + "'";
 
     LOGS(_log, LOG_LVL_DEBUG, "Launching query: " << query);
 
-    std::shared_ptr<SqlResultIter> resultP = sc.getQueryIter(query);
+    shared_ptr<SqlResultIter> resultP = sc.getQueryIter(query);
     assert(resultP.get());
 
     if (resultP->getErrorObject().isSet()) {
@@ -103,7 +101,7 @@ void fetchChunks(std::string const& instanceName,
     }
     bool nothing = true;
     for(; !resultP->done(); ++(*resultP)) {
-        int const chunk = std::stoi((**resultP)[1]);
+        int const chunk = stoi((**resultP)[1]);
         chunkMap.insert(chunk);
         nothing = false;
     }
@@ -111,18 +109,19 @@ void fetchChunks(std::string const& instanceName,
         LOGS(_log, LOG_LVL_WARN, "ChunkInventory couldn't find any published chunks for db: " << db);
 }
 
+
 /// Fetch a unique identifier of a worker
-void fetchId(std::string const& instanceName,
+void fetchId(string const& instanceName,
              SqlConnection& sc,
-             std::string& id) {
+             string& id) {
 
     // Look for the newest one
     // FIXME: perhaps we should allow multiple identifiers?
-    std::string const query = "SELECT id FROM qservw_" + instanceName + ".Id WHERE `type`='UUID'";
+    string const query = "SELECT id FROM qservw_" + instanceName + ".Id WHERE `type`='UUID'";
 
     LOGS(_log, LOG_LVL_DEBUG, "Launching query: " << query);
 
-    std::shared_ptr<SqlResultIter> resultP = sc.getQueryIter(query);
+    shared_ptr<SqlResultIter> resultP = sc.getQueryIter(query);
     assert(resultP.get());
 
     if (resultP->getErrorObject().isSet()) {
@@ -137,6 +136,7 @@ void fetchId(std::string const& instanceName,
     }
     LOGS(_log, LOG_LVL_WARN, "ChunkInventory couldn't find any a unique identifier of the worker");
 }
+
 
 class Validator : public lsst::qserv::ResourceUnit::Checker {
 public:
@@ -154,40 +154,45 @@ public:
 } // anonymous namespace
 
 
+
 namespace lsst {
 namespace qserv {
 namespace wpublish {
 
-ChunkInventory::ChunkInventory(std::string const& name,
-                               std::shared_ptr<SqlConnection> sc)
+ChunkInventory::ChunkInventory(string const& name,
+                               shared_ptr<SqlConnection> sc)
     : _name(name) {
     _init(*sc);
 }
 
+
 ChunkInventory::ChunkInventory(ChunkInventory::ExistMap const& existMap,
-                               std::string const& name,
-                               std::string const& id)
+                               string const& name,
+                               string const& id)
     :   _existMap(existMap),
         _name(name),
         _id(id) {
 }
 
-void ChunkInventory::init(std::string const& name, mysql::MySqlConfig const& mySqlConfig) {
+
+void ChunkInventory::init(string const& name, mysql::MySqlConfig const& mySqlConfig) {
     _name = name;
     SqlConnection sc(mySqlConfig, true);
     _init(sc);
 }
 
-void ChunkInventory::rebuild(std::string const& name, mysql::MySqlConfig const& mySqlConfig) {
+
+void ChunkInventory::rebuild(string const& name, mysql::MySqlConfig const& mySqlConfig) {
     _name = name;
     SqlConnection sc(mySqlConfig, true);
     _rebuild(sc);
     _init(sc);
 }
 
-void ChunkInventory::add(std::string const& db, int chunk) {
 
-    LOCK_GUARD;
+void ChunkInventory::add(string const& db, int chunk) {
+
+    lock_guard<mutex> lock(_mtx);
 
     LOGS(_log, LOG_LVL_DEBUG, "ChunkInventory::add()  db: " << db << ", chunk: " << chunk);
 
@@ -197,9 +202,10 @@ void ChunkInventory::add(std::string const& db, int chunk) {
 
 }
 
-void ChunkInventory::add(std::string const& db, int chunk, mysql::MySqlConfig const& mySqlConfig) {
 
-    LOCK_GUARD;
+void ChunkInventory::add(string const& db, int chunk, mysql::MySqlConfig const& mySqlConfig) {
+
+    lock_guard<mutex> lock(_mtx);
 
     LOGS(_log, LOG_LVL_DEBUG, "ChunkInventory::add()  db: " << db << ", chunk: " << chunk);
 
@@ -207,25 +213,25 @@ void ChunkInventory::add(std::string const& db, int chunk, mysql::MySqlConfig co
 
     // Validate parameters of the request
 
-    std::deque<std::string> dbs;
+    deque<string> dbs;
     ::fetchDbs(_name, sc, dbs);
 
-    if (std::find(dbs.begin(), dbs.end(), db) == dbs.end()) {
-        std::string const error = "ChunkInventory::add()  invalid database: " + db;
+    if (find(dbs.begin(), dbs.end(), db) == dbs.end()) {
+        string const error = "ChunkInventory::add()  invalid database: " + db;
         LOGS(_log, LOG_LVL_ERROR, error);
         throw InvalidParamError(error);
     }
 
-    std::vector<std::string> const queries = {
-        "DELETE FROM qservw_" + _name + ".Chunks WHERE db='" + db + "' AND chunk=" + std::to_string(chunk),
-        "INSERT INTO qservw_" + _name + ".Chunks (db,chunk) VALUES ('" + db + "'," + std::to_string(chunk) +")"
+    vector<string> const queries = {
+        "DELETE FROM qservw_" + _name + ".Chunks WHERE db='" + db + "' AND chunk=" + to_string(chunk),
+        "INSERT INTO qservw_" + _name + ".Chunks (db,chunk) VALUES ('" + db + "'," + to_string(chunk) +")"
     };
     for (auto const& query: queries) {
         LOGS(_log, LOG_LVL_DEBUG, "Launching query:\n" << query);
 
         SqlErrorObject seo;
         if (not sc.runQuery(query, seo)) {
-            std::string const error = "ChunkInventory failed to add a chunk, error: " + seo.printErrMsg();
+            string const error = "ChunkInventory failed to add a chunk, error: " + seo.printErrMsg();
             LOGS(_log, LOG_LVL_ERROR, error);
             throw QueryError(error);
         }
@@ -236,9 +242,10 @@ void ChunkInventory::add(std::string const& db, int chunk, mysql::MySqlConfig co
     _existMap[db].insert(chunk);
 }
 
-void ChunkInventory::remove(std::string const& db, int chunk) {
 
-    LOCK_GUARD;
+void ChunkInventory::remove(string const& db, int chunk) {
+
+    lock_guard<mutex> lock(_mtx);
 
     LOGS(_log, LOG_LVL_DEBUG, "ChunkInventory::remove()  db: " << db << ", chunk: " << chunk);
 
@@ -255,14 +262,15 @@ void ChunkInventory::remove(std::string const& db, int chunk) {
     _existMap[db].erase(chunk);
 }
 
-void ChunkInventory::remove(std::string const& db, int chunk, mysql::MySqlConfig const& mySqlConfig) {
 
-    LOCK_GUARD;
+void ChunkInventory::remove(string const& db, int chunk, mysql::MySqlConfig const& mySqlConfig) {
+
+    lock_guard<mutex> lock(_mtx);
 
     LOGS(_log, LOG_LVL_DEBUG, "ChunkInventory::remove()  db: " << db << ", chunk: " << chunk);
 
-    std::vector<std::string> const queries = {
-        "DELETE FROM qservw_" + _name + ".Chunks WHERE db='" + db + "' AND chunk=" + std::to_string(chunk)
+    vector<string> const queries = {
+        "DELETE FROM qservw_" + _name + ".Chunks WHERE db='" + db + "' AND chunk=" + to_string(chunk)
     };
 
     SqlConnection sc(mySqlConfig, true);
@@ -272,7 +280,7 @@ void ChunkInventory::remove(std::string const& db, int chunk, mysql::MySqlConfig
 
         SqlErrorObject seo;
         if (not sc.runQuery(query, seo)) {
-            std::string const error = "ChunkInventory failed to remove a chunk, error: " + seo.printErrMsg();
+            string const error = "ChunkInventory failed to remove a chunk, error: " + seo.printErrMsg();
             LOGS(_log, LOG_LVL_ERROR, error);
             throw QueryError(error);
         }
@@ -291,9 +299,10 @@ void ChunkInventory::remove(std::string const& db, int chunk, mysql::MySqlConfig
     _existMap[db].erase(chunk);
 }
 
-bool ChunkInventory::has(std::string const& db, int chunk) const {
 
-    LOCK_GUARD;
+bool ChunkInventory::has(string const& db, int chunk) const {
+
+    lock_guard<mutex> lock(_mtx);
 
     auto dbItr = _existMap.find(db);
     if (dbItr == _existMap.end()) return false;
@@ -305,20 +314,22 @@ bool ChunkInventory::has(std::string const& db, int chunk) const {
     return true;
 }
 
-std::shared_ptr<ResourceUnit::Checker> ChunkInventory::newValidator() {
-    return std::shared_ptr<ResourceUnit::Checker>(new Validator(*this));
+
+shared_ptr<ResourceUnit::Checker> ChunkInventory::newValidator() {
+    return shared_ptr<ResourceUnit::Checker>(new Validator(*this));
 }
 
-void ChunkInventory::dbgPrint(std::ostream& os) const {
 
-    LOCK_GUARD;
+void ChunkInventory::dbgPrint(ostream& os) const {
+
+    lock_guard<mutex> lock(_mtx);
 
     os << "ChunkInventory(";
     for(auto dbItr      = _existMap.begin(),
              dbItrBegin = _existMap.begin(),
              dbItrEnd   = _existMap.end(); dbItr != dbItrEnd; ++dbItr) {
 
-        if (dbItr != dbItrBegin) os << std::endl;
+        if (dbItr != dbItrBegin) os << endl;
 
         auto const& db     = dbItr->first;
         auto const& chunks = dbItr->second;
@@ -338,29 +349,31 @@ void ChunkInventory::dbgPrint(std::ostream& os) const {
     os << ")";
 }
 
+
 void ChunkInventory::_init(SqlConnection& sc) {
 
-    LOCK_GUARD;
+    lock_guard<mutex> lock(_mtx);
 
     // Check metadata for databases to track
 
-    std::deque<std::string> dbs;
+    deque<string> dbs;
     ::fetchDbs(_name, sc, dbs);
 
     // get chunkList
     _existMap.clear();
-    for (std::string const& db: dbs)
+    for (string const& db: dbs)
         ::fetchChunks(_name, db, sc, _existMap[db]);
 
     // get unique identifier of a worker
     ::fetchId(_name, sc, _id);
 }
 
+
 void ChunkInventory::_rebuild(SqlConnection& sc) {
 
-    LOCK_GUARD;
+    lock_guard<mutex> lock(_mtx);
 
-    std::vector<std::string> const queries = {
+    vector<string> const queries = {
         "DELETE FROM qservw_" + _name + ".Chunks",
         "INSERT INTO qservw_" + _name + ".Chunks"
         "  SELECT DISTINCT TABLE_SCHEMA,SUBSTRING_INDEX(TABLE_NAME,'_',-1)"
@@ -374,7 +387,7 @@ void ChunkInventory::_rebuild(SqlConnection& sc) {
 
         SqlErrorObject seo;
         if (not sc.runQuery(query, seo)) {
-            std::string const error =
+            string const error =
                 "ChunkInventory failed to rebuild a list of published chunks, error: " +
                 seo.printErrMsg();
             LOGS(_log, LOG_LVL_ERROR, error);
@@ -383,11 +396,12 @@ void ChunkInventory::_rebuild(SqlConnection& sc) {
     }
 }
 
+
 ChunkInventory::ExistMap ChunkInventory::existMap() const {
 
     ChunkInventory::ExistMap result;
 
-    LOCK_GUARD;
+    lock_guard<mutex> lock(_mtx);
 
     // Make this copy while holding the mutex too guarantee a consistent
     // result o fthe operation.
@@ -395,6 +409,7 @@ ChunkInventory::ExistMap ChunkInventory::existMap() const {
 
     return result;
 }
+
 
 ChunkInventory::ExistMap operator-(ChunkInventory const& lhs, ChunkInventory const& rhs) {
 
@@ -405,8 +420,8 @@ ChunkInventory::ExistMap operator-(ChunkInventory const& lhs, ChunkInventory con
     ChunkInventory::ExistMap const rhs_existMap = rhs.existMap();
     ChunkInventory::ExistMap result;
 
-    for (auto const& entry: lhs_existMap) {
-        std::string const& db = entry.first;
+    for (auto&& entry: lhs_existMap) {
+        string const& db = entry.first;
         ChunkInventory::ChunkMap const& chunks = entry.second;
         if (rhs_existMap.count(db)) {
             for (int chunk: chunks)

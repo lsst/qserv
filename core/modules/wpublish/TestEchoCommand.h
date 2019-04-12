@@ -20,7 +20,6 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-/// TestEchoCommand.h
 #ifndef LSST_QSERV_WPUBLISH_TEST_ECHO_COMMAND_H
 #define LSST_QSERV_WPUBLISH_TEST_ECHO_COMMAND_H
 
@@ -34,9 +33,10 @@
 namespace lsst {
 namespace qserv {
 namespace wbase {
-class SendChannel;
+    class SendChannel;
 }}}
 
+// This class headers
 namespace lsst {
 namespace qserv {
 namespace wpublish {
@@ -44,8 +44,7 @@ namespace wpublish {
 /**
   * Class TestEchoCommand reloads a list of chunks from the database
   */
-class TestEchoCommand
-    :   public wbase::WorkerCommand {
+class TestEchoCommand : public wbase::WorkerCommand {
 
 public:
 
@@ -55,22 +54,14 @@ public:
     TestEchoCommand() = delete;
 
     /**
-     * The normal constructor of the class
-     *
      * @param sendChannel - communication channel for reporting results
      * @param value       - value to be send back to a client
      */
     explicit TestEchoCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
                              std::string const& value);
 
-    /// The destructor
     ~TestEchoCommand() override = default;
 
-    /**
-     * Implement the corresponding method of the base class
-     *
-     * @see WorkerCommand::run()
-     */
     void run() override;
 
 private:

@@ -38,21 +38,21 @@
 namespace lsst {
 namespace qserv {
 namespace wbase {
-class SendChannel;
+    class SendChannel;
+}
+namespace wpublish {
+    class ChunkInventory;
 }}}
 
+// This header declaratons
 namespace lsst {
 namespace qserv {
 namespace wpublish {
 
-// Forward declarations
-class ChunkInventory;
-
 /**
   * Class AddChunkGroupCommand reloads a list of chunks from the database
   */
-class AddChunkGroupCommand
-    :   public wbase::WorkerCommand {
+class AddChunkGroupCommand :public wbase::WorkerCommand {
 
 public:
 
@@ -64,11 +64,11 @@ public:
     /**
      * The normal constructor of the class
      *
-     * @param sendChannel    - communication channel for reporting results
-     * @param chunkInventory - chunks known to the application
-     * @param mySqlConfig    - database connection parameters
-     * @param chunk          - chunk number
-     * @param databases      - names of databases in the group
+     * @param sendChannel     communication channel for reporting results
+     * @param chunkInventory  chunks known to the application
+     * @param mySqlConfig     database connection parameters
+     * @param chunk           chunk number
+     * @param databases       names of databases in the group
      */
     AddChunkGroupCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
                          std::shared_ptr<ChunkInventory>     const& chunkInventory,
@@ -76,14 +76,8 @@ public:
                          int chunk,
                          std::vector<std::string> const& databases);
 
-    /// The destructor
     ~AddChunkGroupCommand() override = default;
 
-    /**
-     * Implement the corresponding method of the base class
-     *
-     * @see WorkerCommand::run()
-     */
     void run() override;
 
 private:
@@ -92,11 +86,11 @@ private:
      * Report error condition to the logging stream and reply back to
      * a service caller.
      *
-     * @param status  - error status
-     * @param message - message to be reported
+     * @param status   error status
+     * @param message  message to be reported
      */
-    void reportError(proto::WorkerCommandChunkGroupR::Status status,
-                     std::string const& message);
+    void _reportError(proto::WorkerCommandChunkGroupR::Status status,
+                      std::string const& message);
 
 private:
 

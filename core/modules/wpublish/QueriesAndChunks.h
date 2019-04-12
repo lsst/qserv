@@ -24,27 +24,25 @@
 #ifndef LSST_QSERV_WPUBLISH_QUERIESANDCHUNKS_H
 #define LSST_QSERV_WPUBLISH_QUERIESANDCHUNKS_H
 
-// System headers
-
 // Qserv headers
 #include "wbase/Task.h"
 
+// Forward declarations
 namespace lsst {
 namespace qserv {
 namespace wsched {
     class SchedulerBase;
     class BlendScheduler;
     class ScanScheduler;
+}
+namespace wpublish {
+    class QueriesAndChunks;
 }}}
 
-
+// This header declarations
 namespace lsst {
 namespace qserv {
 namespace wpublish {
-
-
-class QueriesAndChunks;
-
 
 /// Statistics for a single user query.
 class QueryStatistics {
@@ -68,15 +66,15 @@ private:
 
     mutable std::mutex _qStatsMtx;
     QueryId const _queryId;
-    std::chrono::system_clock::time_point _touched{std::chrono::system_clock::now()};
+    std::chrono::system_clock::time_point _touched = std::chrono::system_clock::now();
 
-    int _size{0};
-    int _tasksCompleted{0};
-    int _tasksRunning{0};
-    int _tasksBooted{0}; ///< Number of Tasks booted for being too slow.
-    std::atomic<bool> _queryBooted{false}; ///< True when the entire query booted.
+    int _size = 0;
+    int _tasksCompleted = 0;
+    int _tasksRunning = 0;
+    int _tasksBooted = 0;   ///< Number of Tasks booted for being too slow.
+    std::atomic<bool> _queryBooted{false};  ///< True when the entire query booted.
 
-    double _totalTimeMinutes{0.0};
+    double _totalTimeMinutes = 0.0;
 
     std::map<int, wbase::Task::Ptr> _taskMap; ///< Map of Tasks keyed by job id.
 };
@@ -91,9 +89,9 @@ public:
 
     /// Contains statistics data for this table in this chunk.
     struct Data {
-        std::uint64_t tasksCompleted{0}; ///< Number of Tasks that have completed on this chunk/table.
-        std::uint64_t tasksBooted{0}; ///< Number of Tasks that have been booted for taking too long.
-        double avgCompletionTime{0.0}; ///< weighted average of completion time in minutes.
+        std::uint64_t tasksCompleted = 0;   ///< Number of Tasks that have completed on this chunk/table.
+        std::uint64_t tasksBooted = 0;  ///< Number of Tasks that have been booted for taking too long.
+        double avgCompletionTime = 0.0; ///< weighted average of completion time in minutes.
     };
 
     static std::string makeTableName(std::string const& db, std::string const& table) {
@@ -118,9 +116,9 @@ private:
     std::string const _scanTableName;
 
     Data _data; ///< Statistics for this table in this chunk.
-    double _weightAvg{49.0}; ///< weight of previous average
-    double _weightNew{1.0}; ///< weight of new measurement
-    double _weightSum{_weightAvg + _weightNew}; ///< denominator
+    double _weightAvg = 49.0; ///< weight of previous average
+    double _weightNew = 1.0; ///< weight of new measurement
+    double _weightSum = _weightAvg + _weightNew;    ///< denominator
 };
 
 
@@ -172,13 +170,13 @@ public:
     // Figure out each chunkTable's percentage of time.
     // Store average time for a task to run on this table for this chunk.
     struct ChunkTimePercent {
-        double shardTime{0.0};
-        double percent{0.0};
-        bool valid{false};
+        double shardTime = 0.0;
+        double percent = 0.0;
+        bool valid = false;
     };
     // Store the time to scan entire table with time for each chunk within that table.
     struct ScanTableSums {
-        double totalTime{0.0};
+        double totalTime = 0.0;
         std::map<int, ChunkTimePercent> chunkPercentages;
     };
     using ScanTableSumsMap = std::map<std::string, ScanTableSums>;
@@ -202,9 +200,9 @@ private:
     // Query removal thread members. A user query is dead if all its tasks are complete and it hasn't
     // been touched for a period of time.
     std::thread _removalThread;
-    std::atomic<bool> _loopRemoval{true}; ///< While true, check to see if any Queries can be removed.
+    std::atomic<bool> _loopRemoval{true};   ///< While true, check to see if any Queries can be removed.
     /// A user query must be complete and inactive this long before it can be considered dead.
-    std::chrono::seconds _deadAfter{std::chrono::minutes(5)};
+    std::chrono::seconds _deadAfter = std::chrono::minutes(5);
 
     std::mutex _deadMtx; ///< Protects _deadQueries.
     std::mutex _newlyDeadMtx; ///< Protects _newlyDeadQueries.
@@ -220,14 +218,14 @@ private:
     // them allows the scheduler to move onto other queries.
     std::thread _examineThread;
     std::atomic<bool> _loopExamine{true};
-    std::chrono::seconds _examineAfter{std::chrono::minutes(5)};
+    std::chrono::seconds _examineAfter = std::chrono::minutes(5);
 
     /// Maximum number of tasks that can be booted until entire UserQuery is put on snailScan.
-    int _maxTasksBooted{25};
+    int _maxTasksBooted = 25;
 
     /// Number of completed Tasks needed before ChunkTableStats::_avgCompletionTime can be
     /// considered valid enough to boot a Task.
-    unsigned int _requiredTasksCompleted{50};
+    unsigned int _requiredTasksCompleted = 50;
 };
 
 

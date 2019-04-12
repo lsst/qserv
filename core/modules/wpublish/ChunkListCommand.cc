@@ -38,13 +38,9 @@
 #include "xrdsvc/SsiProvider.h"
 #include "xrdsvc/XrdName.h"
 
-/******************************************************************************/
-/*                               G l o b a l s                                */
-/******************************************************************************/
-
 extern XrdSsiProvider* XrdSsiProviderLookup;
 
-// Qserv headers
+using namespace std;
 
 namespace {
 
@@ -52,8 +48,8 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.ChunkListCommand");
 
 /// Print the inventory status onto the logging stream
 void dumpInventory(lsst::qserv::wpublish::ChunkInventory const& inventory,
-                   std::string                           const& context) {
-    std::ostringstream os;
+                   string const& context) {
+    ostringstream os;
     inventory.dbgPrint(os);
     LOGS(_log, LOG_LVL_DEBUG, context << os.str());
 }
@@ -64,21 +60,22 @@ namespace lsst {
 namespace qserv {
 namespace wpublish {
 
-ChunkListCommand::ChunkListCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
-                                   std::shared_ptr<ChunkInventory>     const& chunkInventory,
-                                   mysql::MySqlConfig                  const& mySqlConfig,
+ChunkListCommand::ChunkListCommand(shared_ptr<wbase::SendChannel> const& sendChannel,
+                                   shared_ptr<ChunkInventory> const& chunkInventory,
+                                   mysql::MySqlConfig const& mySqlConfig,
                                    bool rebuild,
                                    bool reload)
     :   wbase::WorkerCommand(sendChannel),
         _chunkInventory(chunkInventory),
-        _mySqlConfig   (mySqlConfig),
-        _rebuild       (rebuild),
-        _reload        (reload) {
+        _mySqlConfig(mySqlConfig),
+        _rebuild(rebuild),
+        _reload(reload) {
 }
 
-void ChunkListCommand::reportError(std::string const& message) {
 
-    LOGS(_log, LOG_LVL_ERROR, "ChunkListCommand::run  " << message);
+void ChunkListCommand::_reportError(string const& message) {
+
+    LOGS(_log, LOG_LVL_ERROR, "ChunkListCommand::" << __func__ << "  " << message);
 
     proto::WorkerCommandUpdateChunkListR reply;
 
@@ -86,13 +83,16 @@ void ChunkListCommand::reportError(std::string const& message) {
     reply.set_error(message);
 
     _frameBuf.serialize(reply);
-    std::string str(_frameBuf.data(), _frameBuf.size());
+    string str(_frameBuf.data(), _frameBuf.size());
     _sendChannel->sendStream(xrdsvc::StreamBuffer::createWithMove(str), true);
 }
 
+
 void ChunkListCommand::run() {
 
-    LOGS(_log, LOG_LVL_DEBUG, "ChunkListCommand::run");
+    string const context = "ChunkListCommand::" + string(__func__) + "  ";
+
+    LOGS(_log, LOG_LVL_DEBUG, context);
 
     proto::WorkerCommandUpdateChunkListR reply;
     reply.set_status(proto::WorkerCommandUpdateChunkListR::SUCCESS);
@@ -103,13 +103,13 @@ void ChunkListCommand::run() {
         try {
             xrdsvc::XrdName x;
             newChunkInventory.rebuild(x.getName(), _mySqlConfig);
-        } catch (std::exception const& ex) {
-            reportError("database operation failed: " + std::string(ex.what()));
+        } catch (exception const& ex) {
+            _reportError("database operation failed: " + string(ex.what()));
             return;
         }
     }
 
-    // Rebuild the transient list and notify the caller if requsted
+    // Rebuild the transient list and notify the caller if requested
     if (_reload) {
 
         // Load the new map from the database into a local variable
@@ -117,12 +117,12 @@ void ChunkListCommand::run() {
         try {
             xrdsvc::XrdName x;
             newChunkInventory.init(x.getName(), _mySqlConfig);
-        } catch (std::exception const& ex) {
-            reportError("database operation failed: " + std::string(ex.what()));
+        } catch (exception const& ex) {
+            _reportError("database operation failed: " + string(ex.what()));
             return;
         }
-        ::dumpInventory(*_chunkInventory,  "ChunkListCommand::run  _chunkInventory: ");
-        ::dumpInventory(newChunkInventory, "ChunkListCommand::run  newChunkInventory: ");
+        ::dumpInventory(*_chunkInventory,  context + "_chunkInventory: ");
+        ::dumpInventory(newChunkInventory, context + "newChunkInventory: ");
 
         // Compare two maps and worker identifiers to see which resources were
         // were added or removed. Then Update the current map and notify XRootD
@@ -136,13 +136,13 @@ void ChunkListCommand::run() {
 
         if (not removedChunks.empty()) {
 
-            for (auto const& entry: removedChunks) {
-                std::string const& database = entry.first;
+            for (auto&& entry: removedChunks) {
+                string const& database = entry.first;
 
                 for (int chunk: entry.second) {
-                    std::string const resource = "/chk/" + database + "/" + std::to_string(chunk);
+                    string const resource = "/chk/" + database + "/" + to_string(chunk);
 
-                    LOGS(_log, LOG_LVL_DEBUG, "ChunkListCommand::run  removing resource: " << resource <<
+                    LOGS(_log, LOG_LVL_DEBUG, context << "removing resource: " << resource <<
                          " in DataContext=" << clusterManager->DataContext());
 
                     try {
@@ -156,8 +156,8 @@ void ChunkListCommand::run() {
                         // Notify QServ
                         _chunkInventory->remove(database, chunk);
 
-                    } catch (std::exception const& ex) {
-                        reportError("failed to remove the chunk: " + std::string(ex.what()));
+                    } catch (exception const& ex) {
+                        _reportError("failed to remove the chunk: " + string(ex.what()));
                         return;
                     }
 
@@ -170,13 +170,13 @@ void ChunkListCommand::run() {
         }
         if (not addedChunks.empty()) {
 
-            for (auto const& entry: addedChunks) {
-                std::string const& database = entry.first;
+            for (auto&& entry: addedChunks) {
+                string const& database = entry.first;
 
                 for (int chunk: entry.second) {
-                    std::string const resource = "/chk/" + database + "/" + std::to_string(chunk);
+                    string const resource = "/chk/" + database + "/" + to_string(chunk);
 
-                    LOGS(_log, LOG_LVL_DEBUG, "ChunkListCommand::run  adding resource: " << resource <<
+                    LOGS(_log, LOG_LVL_DEBUG, context + "adding resource: " << resource <<
                          " in DataContext=" << clusterManager->DataContext());
 
                     try {
@@ -190,8 +190,8 @@ void ChunkListCommand::run() {
                         // Notify QServ
                         _chunkInventory->add(database, chunk);
 
-                    } catch (std::exception const& ex) {
-                        reportError("failed to add the chunk: " + std::string(ex.what()));
+                    } catch (exception const& ex) {
+                        _reportError("failed to add the chunk: " + string(ex.what()));
                         return;
                     }
 
@@ -204,7 +204,7 @@ void ChunkListCommand::run() {
         }
     }
     _frameBuf.serialize(reply);
-    std::string str(_frameBuf.data(), _frameBuf.size());
+    string str(_frameBuf.data(), _frameBuf.size());
     _sendChannel->sendStream(xrdsvc::StreamBuffer::createWithMove(str), true);
 }
 

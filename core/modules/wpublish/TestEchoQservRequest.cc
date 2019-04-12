@@ -27,8 +27,10 @@
 #include <stdexcept>
 #include <string>
 
-// Qserv headers
+// LSST headers
 #include "lsst/log/Log.h"
+
+using namespace std;
 
 namespace {
 
@@ -41,8 +43,8 @@ wpublish::TestEchoQservRequest::Status translate(proto::WorkerCommandTestEchoR::
         case proto::WorkerCommandTestEchoR::SUCCESS: return wpublish::TestEchoQservRequest::SUCCESS;
         case proto::WorkerCommandTestEchoR::ERROR:   return wpublish::TestEchoQservRequest::ERROR;
     }
-    throw std::domain_error(
-            "TestEchoQservRequest::translate  no match for Protobuf status: " +
+    throw domain_error(
+            "TestEchoQservRequest::" + string(__func__) + "  no match for Protobuf status: " +
             proto::WorkerCommandTestEchoR_Status_Name(status));
 }
 }  // namespace
@@ -51,26 +53,28 @@ namespace lsst {
 namespace qserv {
 namespace wpublish {
 
-std::string TestEchoQservRequest::status2str(Status status) {
+string TestEchoQservRequest::status2str(Status status) {
     switch (status) {
         case SUCCESS: return "SUCCESS";
         case ERROR:   return "ERROR";
     }
-    throw std::domain_error(
-            "TestEchoQservRequest::status2str  no match for status: " +
-            std::to_string(status));
+    throw domain_error(
+            "TestEchoQservRequest::" + string(__func__) + "  no match for status: " +
+            to_string(status));
 }
 
+
 TestEchoQservRequest::Ptr TestEchoQservRequest::create(
-                                    std::string const& value,
+                                    string const& value,
                                     TestEchoQservRequest::CallbackType onFinish) {
     return TestEchoQservRequest::Ptr(
         new TestEchoQservRequest(value,
                                  onFinish));
 }
 
+
 TestEchoQservRequest::TestEchoQservRequest(
-                                    std::string const& value,
+                                    string const& value,
                                     TestEchoQservRequest::CallbackType onFinish)
     :   _value(value),
         _onFinish(onFinish) {
@@ -78,9 +82,11 @@ TestEchoQservRequest::TestEchoQservRequest(
     LOGS(_log, LOG_LVL_DEBUG, "TestEchoQservRequest  ** CONSTRUCTED **");
 }
 
+
 TestEchoQservRequest::~TestEchoQservRequest() {
     LOGS(_log, LOG_LVL_DEBUG, "TestEchoQservRequest  ** DELETED **");
 }
+
 
 void TestEchoQservRequest::onRequest(proto::FrameBuffer& buf) {
 
@@ -92,6 +98,7 @@ void TestEchoQservRequest::onRequest(proto::FrameBuffer& buf) {
     echo.set_value(_value);
     buf.serialize(echo);
 }
+
 
 void TestEchoQservRequest::onResponse(proto::FrameBufferView& view) {
 
@@ -110,7 +117,7 @@ void TestEchoQservRequest::onResponse(proto::FrameBufferView& view) {
         // 2. it breaks the up-stream dependency on a caller object if a shared
         //    pointer to the object was mentioned as the lambda-function's closure
 
-        auto onFinish = std::move(_onFinish);
+        auto onFinish = move(_onFinish);
         _onFinish = nullptr;
         onFinish(::translate(reply.status()),
                  reply.error(),
@@ -119,7 +126,8 @@ void TestEchoQservRequest::onResponse(proto::FrameBufferView& view) {
     }
 }
 
-void TestEchoQservRequest::onError(std::string const& error) {
+
+void TestEchoQservRequest::onError(string const& error) {
 
     if (nullptr != _onFinish) {
 
@@ -130,12 +138,12 @@ void TestEchoQservRequest::onError(std::string const& error) {
         // 2. it breaks the up-stream dependency on a caller object if a shared
         //    pointer to the object was mentioned as the lambda-function's closure
 
-        auto onFinish = std::move(_onFinish);
+        auto onFinish = move(_onFinish);
         _onFinish = nullptr;
         onFinish(Status::ERROR,
                  error,
                  _value,
-                 std::string());
+                 string());
     }
 }
 

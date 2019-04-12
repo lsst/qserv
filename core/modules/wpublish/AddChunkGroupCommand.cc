@@ -36,14 +36,9 @@
 #include "xrdsvc/SsiProvider.h"
 #include "xrdsvc/XrdName.h"
 
-/******************************************************************************/
-/*                               G l o b a l s                                */
-/******************************************************************************/
-
 extern XrdSsiProvider* XrdSsiProviderLookup;
 
-
-// Qserv headers
+using namespace std;
 
 namespace {
 
@@ -55,11 +50,11 @@ namespace lsst {
 namespace qserv {
 namespace wpublish {
 
-AddChunkGroupCommand::AddChunkGroupCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
-                                           std::shared_ptr<ChunkInventory>     const& chunkInventory,
-                                           mysql::MySqlConfig                  const& mySqlConfig,
+AddChunkGroupCommand::AddChunkGroupCommand(shared_ptr<wbase::SendChannel> const& sendChannel,
+                                           shared_ptr<ChunkInventory> const& chunkInventory,
+                                           mysql::MySqlConfig const& mySqlConfig,
                                            int chunk,
-                                           std::vector<std::string> const& databases)
+                                           vector<string> const& databases)
     :   wbase::WorkerCommand(sendChannel),
         _chunkInventory(chunkInventory),
         _mySqlConfig(mySqlConfig),
@@ -67,9 +62,10 @@ AddChunkGroupCommand::AddChunkGroupCommand(std::shared_ptr<wbase::SendChannel> c
         _databases(databases) {
 }
 
-void AddChunkGroupCommand::reportError(proto::WorkerCommandChunkGroupR::Status status,
-                                       std::string const& message) {
-    LOGS(_log, LOG_LVL_ERROR, "AddChunkGroupCommand::reportError  " << message);
+void AddChunkGroupCommand::_reportError(proto::WorkerCommandChunkGroupR::Status status,
+                                        string const& message) {
+
+    LOGS(_log, LOG_LVL_ERROR, "AddChunkGroupCommand::" << __func__ << "  " << message);
 
     proto::WorkerCommandChunkGroupR reply;
 
@@ -77,16 +73,19 @@ void AddChunkGroupCommand::reportError(proto::WorkerCommandChunkGroupR::Status s
     reply.set_error (message);
 
     _frameBuf.serialize(reply);
-    std::string str(_frameBuf.data(), _frameBuf.size());
+    string str(_frameBuf.data(), _frameBuf.size());
     _sendChannel->sendStream(xrdsvc::StreamBuffer::createWithMove(str), true);
 }
 
+
 void AddChunkGroupCommand::run() {
 
-    LOGS(_log, LOG_LVL_DEBUG, "AddChunkGroupCommand::run");
+    string const context = "AddChunkGroupCommand::" + string(__func__) + "  ";
+
+    LOGS(_log, LOG_LVL_DEBUG, context);
 
     if (not _databases.size()) {
-        reportError(proto::WorkerCommandChunkGroupR::INVALID,
+        _reportError(proto::WorkerCommandChunkGroupR::INVALID,
                     "the list of database names in the group was found empty");
         return;
     }
@@ -97,11 +96,11 @@ void AddChunkGroupCommand::run() {
     proto::WorkerCommandChunkGroupR reply;
     reply.set_status(proto::WorkerCommandChunkGroupR::SUCCESS);
 
-    for (std::string const& database: _databases) {
+    for (auto&& database: _databases) {
 
-        std::string const resource = "/chk/" + database + "/" + std::to_string(_chunk);
+        string const resource = "/chk/" + database + "/" + to_string(_chunk);
 
-        LOGS(_log, LOG_LVL_DEBUG, "AddChunkGroupCommand::run  adding the chunk resource: "
+        LOGS(_log, LOG_LVL_DEBUG, context << "  adding the chunk resource: "
              << resource << " in DataContext=" << clusterManager->DataContext());
 
         try {
@@ -116,19 +115,19 @@ void AddChunkGroupCommand::run() {
             _chunkInventory->add(database, _chunk, _mySqlConfig);
 
         } catch (InvalidParamError const& ex) {
-            reportError(proto::WorkerCommandChunkGroupR::INVALID, ex.what());
+            _reportError(proto::WorkerCommandChunkGroupR::INVALID, ex.what());
             return;
         } catch (QueryError const& ex) {
-            reportError(proto::WorkerCommandChunkGroupR::ERROR, ex.what());
+            _reportError(proto::WorkerCommandChunkGroupR::ERROR, ex.what());
             return;
-        } catch (std::exception const& ex) {
-            reportError(proto::WorkerCommandChunkGroupR::ERROR,
-                        "failed to add the chunk: " + std::string(ex.what()));
+        } catch (exception const& ex) {
+            _reportError(proto::WorkerCommandChunkGroupR::ERROR,
+                         "failed to add the chunk: " + string(ex.what()));
             return;
         }
     }
     _frameBuf.serialize(reply);
-    std::string str(_frameBuf.data(), _frameBuf.size());
+    string str(_frameBuf.data(), _frameBuf.size());
     _sendChannel->sendStream(xrdsvc::StreamBuffer::createWithMove(str), true);
 }
 

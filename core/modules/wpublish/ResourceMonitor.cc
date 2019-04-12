@@ -24,71 +24,64 @@
 // Class header
 #include "wpublish/ResourceMonitor.h"
 
-// Third-party headers
+// Qserv headers
+#include "global/ResourceUnit.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
 
-// Qserv headers
-#include "global/ResourceUnit.h"
-
-// This macro to appear witin each block which requires thread safety
-#define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)
+using namespace std;
 
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.ResourceMonitor");
 
-} // annonymous namespace
+} // anonymous namespace
 
 namespace lsst {
 namespace qserv {
 namespace wpublish {
 
-void ResourceMonitor::increment(std::string const& resource) {
-
-    LOCK_GUARD;
-
+void ResourceMonitor::increment(string const& resource) {
+    lock_guard<mutex> lock(_mtx);
     _resourceCounter[resource]++;
 }
 
-void ResourceMonitor::decrement(std::string const& resource) {
 
-    LOCK_GUARD;
-
+void ResourceMonitor::decrement(string const& resource) {
+    lock_guard<mutex> lock(_mtx);
     if (not _resourceCounter.count(resource)) return;
     if (not --(_resourceCounter[resource])) _resourceCounter.erase(resource);
 }
 
-unsigned int ResourceMonitor::count(std::string const& resource) const {
 
-    LOCK_GUARD;
-
+unsigned int ResourceMonitor::count(string const& resource) const {
+    lock_guard<mutex> lock(_mtx);
     return _resourceCounter.count(resource) ? _resourceCounter.at(resource) : 0;
 }
 
+
 unsigned int ResourceMonitor::count(int chunk,
-                                    std::string const& db) const {
+                                    string const& db) const {
     return count(ResourceUnit::makePath(chunk, db));
 }
 
+
 unsigned int ResourceMonitor::count(int chunk,
-                                    std::vector<std::string> const& dbs) const {
+                                    vector<string> const& dbs) const {
     unsigned int result = 0;
-    for (std::string const& db: dbs) {
+    for (string const& db: dbs) {
         result += count(chunk, db);
     }
     return result;
 }
 
+
 ResourceMonitor::ResourceCounter ResourceMonitor::resourceCounter() const {
 
     // Make a copy of the map while under protection of the lock guard.
-
-    LOCK_GUARD;
-
+    lock_guard<mutex> lock(_mtx);
     ResourceCounter result = _resourceCounter;
-    
     return result;
 }
 

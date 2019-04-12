@@ -30,41 +30,44 @@
 // Third-party headers
 #include "XrdSsi/XrdSsiCluster.hh"
 
-// LSST headers
-#include "lsst/log/Log.h"
-
 // Qserv headers
 #include "proto/worker.pb.h"
 #include "wbase/SendChannel.h"
 #include "xrdsvc/SsiProvider.h"
 #include "xrdsvc/XrdName.h"
 
+// LSST headers
+#include "lsst/log/Log.h"
+
+using namespace std;
+
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.TestEchoCommand");
 
-} // annonymous namespace
+} // anonymous namespace
 
 namespace lsst {
 namespace qserv {
 namespace wpublish {
 
-TestEchoCommand::TestEchoCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
-                                 std::string const& value)
+TestEchoCommand::TestEchoCommand(shared_ptr<wbase::SendChannel> const& sendChannel,
+                                 string const& value)
     :   wbase::WorkerCommand(sendChannel),
         _value(value) {
 }
 
+
 void TestEchoCommand::run() {
 
-    LOGS(_log, LOG_LVL_DEBUG, "TestEchoCommand::run");
+    LOGS(_log, LOG_LVL_DEBUG, "TestEchoCommand::" << __func__);
 
     proto::WorkerCommandTestEchoR reply;
     reply.set_status(proto::WorkerCommandTestEchoR::SUCCESS);
     reply.set_value(_value);
 
     _frameBuf.serialize(reply);
-    std::string str(_frameBuf.data(), _frameBuf.size());
+    string str(_frameBuf.data(), _frameBuf.size());
     _sendChannel->sendStream(xrdsvc::StreamBuffer::createWithMove(str), true);
 }
 

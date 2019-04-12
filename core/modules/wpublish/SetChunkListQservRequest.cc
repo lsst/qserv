@@ -27,14 +27,15 @@
 #include <stdexcept>
 #include <string>
 
-// Qserv headers
+// LSST headers
 #include "lsst/log/Log.h"
+
+using namespace std;
+using namespace lsst::qserv;
 
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.SetChunkListQservRequest");
-
-using namespace lsst::qserv;
 
 wpublish::SetChunkListQservRequest::Status translate(proto::WorkerCommandSetChunkListR::Status status) {
     switch (status) {
@@ -43,7 +44,7 @@ wpublish::SetChunkListQservRequest::Status translate(proto::WorkerCommandSetChun
         case proto::WorkerCommandSetChunkListR::IN_USE:  return wpublish::SetChunkListQservRequest::IN_USE;
         case proto::WorkerCommandSetChunkListR::ERROR:   return wpublish::SetChunkListQservRequest::ERROR;
     }
-    throw std::domain_error(
+    throw domain_error(
             "SetChunkListQservRequest::translate  no match for Protobuf status: " +
             proto::WorkerCommandSetChunkListR_Status_Name(status));
 }
@@ -53,17 +54,19 @@ namespace lsst {
 namespace qserv {
 namespace wpublish {
 
-std::string SetChunkListQservRequest::status2str(Status status) {
+string SetChunkListQservRequest::status2str(Status status) {
     switch (status) {
         case SUCCESS: return "SUCCESS";
         case INVALID: return "INVALID";
         case IN_USE:  return "IN_USE";
         case ERROR:   return "ERROR";
     }
-    throw std::domain_error(
+    throw domain_error(
             "SetChunkListQservRequest::status2str  no match for status: " +
-            std::to_string(status));
+            to_string(status));
 }
+
+
 SetChunkListQservRequest::Ptr SetChunkListQservRequest::create(
                                 SetChunkListQservRequest::ChunkCollection const& chunks,
                                 bool force,
@@ -73,7 +76,9 @@ SetChunkListQservRequest::Ptr SetChunkListQservRequest::create(
         force,
         onFinish
     ));
-                                }
+}
+
+
 SetChunkListQservRequest::SetChunkListQservRequest(
                                 SetChunkListQservRequest::ChunkCollection const& chunks,
                                 bool force,
@@ -85,9 +90,11 @@ SetChunkListQservRequest::SetChunkListQservRequest(
     LOGS(_log, LOG_LVL_DEBUG, "SetChunkListQservRequest  ** CONSTRUCTED **");
 }
 
+
 SetChunkListQservRequest::~SetChunkListQservRequest() {
     LOGS(_log, LOG_LVL_DEBUG, "SetChunkListQservRequest  ** DELETED **");
 }
+
 
 void SetChunkListQservRequest::onRequest(proto::FrameBuffer& buf) {
 
@@ -105,9 +112,10 @@ void SetChunkListQservRequest::onRequest(proto::FrameBuffer& buf) {
     buf.serialize(message);
 }
 
+
 void SetChunkListQservRequest::onResponse(proto::FrameBufferView& view) {
 
-    static std::string const context = "SetChunkListQservRequest  ";
+    static string const context = "SetChunkListQservRequest  ";
 
     proto::WorkerCommandSetChunkListR reply;
     view.parse(reply);
@@ -135,7 +143,7 @@ void SetChunkListQservRequest::onResponse(proto::FrameBufferView& view) {
         // 2. it breaks the up-stream dependency on a caller object if a shared
         //    pointer to the object was mentioned as the lambda-function's closure
 
-        auto onFinish = std::move(_onFinish);
+        auto onFinish = move(_onFinish);
         _onFinish = nullptr;
         onFinish(::translate(reply.status()),
                  reply.error(),
@@ -143,7 +151,8 @@ void SetChunkListQservRequest::onResponse(proto::FrameBufferView& view) {
     }
 }
 
-void SetChunkListQservRequest::onError(std::string const& error) {
+
+void SetChunkListQservRequest::onError(string const& error) {
 
     if (nullptr != _onFinish) {
 
@@ -154,7 +163,7 @@ void SetChunkListQservRequest::onError(std::string const& error) {
         // 2. it breaks the up-stream dependency on a caller object if a shared
         //    pointer to the object was mentioned as the lambda-function's closure
 
-        auto onFinish = std::move(_onFinish);
+        auto onFinish = move(_onFinish);
         _onFinish = nullptr;
         onFinish(Status::ERROR,
                  error,

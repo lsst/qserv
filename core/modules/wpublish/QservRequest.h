@@ -20,7 +20,6 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-/// QservRequest.h
 #ifndef LSST_QSERV_WPUBLISH_QSERV_REQUEST_H
 #define LSST_QSERV_WPUBLISH_QSERV_REQUEST_H
 
@@ -34,8 +33,6 @@
 #include "proto/FrameBuffer.h"
 #include "proto/worker.pb.h"
 
-// Forward declarations
-
 namespace lsst {
 namespace qserv {
 namespace wpublish {
@@ -44,8 +41,7 @@ namespace wpublish {
   * Class QservRequest is a base class for a family of the client-side requests
   * (classes) to the Qserv worker management services.
   */
-class QservRequest
-    :   public XrdSsiRequest {
+class QservRequest : public XrdSsiRequest {
 
 public:
 
@@ -53,49 +49,44 @@ public:
     QservRequest(QservRequest const&) = delete;
     QservRequest& operator=(QservRequest const&) = delete;
 
-    /// Destructor
     ~QservRequest() override;
 
 protected:
 
-    /// Default construtor
     QservRequest();
 
     /**
      * Serialize a request into the provided buffer. The method is required to be
      * provided by a subclass.
      *
-     * @param buf - request buffer for serializing a request 
+     * @param buf  request buffer for serializing a request 
      */
     virtual void onRequest(proto::FrameBuffer& buf) = 0;
 
     /**
-     * Process response from Qserv. The method is required to be rovided by a subclass.
+     * Process response from Qserv. The method is required to be provided by a subclass.
      *
-     * @param view - buffer view for parsing results
+     * @param view  buffer view for parsing results
      */
     virtual void onResponse(proto::FrameBufferView& view) = 0;
 
     /**
-     * Notify a base class about a failure occured when sending a request data
+     * Notify a base class about a failure occurred when sending a request data
      * or receiving a response.
      *
-     * @param error - message explaining a reson of the failure
+     * @param error  message explaining a reason of the failure
      */
     virtual void onError(std::string const& msg) = 0;
 
-    /// Implements the corresponidng method of the base class
     char* GetRequest(int& dlen) override;
 
-    /// Implements the corresponidng method of the base class
-    bool ProcessResponse(const XrdSsiErrInfo&  eInfo,
+    bool ProcessResponse(const XrdSsiErrInfo& eInfo,
                          const XrdSsiRespInfo& rInfo) override;
 
-    /// Implements the corresponidng method of the base class
     XrdSsiRequest::PRD_Xeq ProcessResponseData(const XrdSsiErrInfo& eInfo,
                                                char* buff,
-                                               int   blen,
-                                               bool  last) override;
+                                               int blen,
+                                               bool last) override;
 
 private:
 

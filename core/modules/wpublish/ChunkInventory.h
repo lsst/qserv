@@ -46,16 +46,15 @@ namespace lsst {
 namespace qserv {
 namespace sql {
     class SqlConnection;
-}}} // End of forward declarations
+}}}
 
-
+// This header declarations
 namespace lsst {
 namespace qserv {
 namespace wpublish {
 
-/// Excepion class for reporting problems with parameters' values
-class InvalidParamError
-    :   public std::runtime_error {
+/// Exception class for reporting problems with parameter values
+class InvalidParamError : public std::runtime_error {
 public:
     InvalidParamError (std::string const& msg)
         :   std::runtime_error(msg) {
@@ -63,16 +62,17 @@ public:
 };
 
 /// Exception class for reporting problems during query processing
-class QueryError
-    :   public std::runtime_error {
+class QueryError : public std::runtime_error {
 public:
     QueryError (std::string const& msg)
         :   std::runtime_error(msg) {
     }
 };
 
-/// ChunkInventory contains a record of what chunks are available for execution
-/// on a worker node.
+/**
+ * class ChunkInventory contains a record of what chunks are available
+ * for execution on a worker node.
+ */
 class ChunkInventory {
 
 public:
@@ -84,7 +84,7 @@ public:
     typedef std::shared_ptr<ChunkInventory>       Ptr;
     typedef std::shared_ptr<ChunkInventory const> CPtr;
 
-    ChunkInventory() {}
+    ChunkInventory() = default;
     ChunkInventory(std::string const& name, std::shared_ptr<sql::SqlConnection> sc);
     ChunkInventory(ExistMap const& existMap, std::string const& name, std::string const& id);
 
@@ -133,8 +133,6 @@ private:
 
     void _init(sql::SqlConnection& sc);
     void _rebuild(sql::SqlConnection& sc);
-
-private:
 
     ExistMap _existMap;
     std::string _name;

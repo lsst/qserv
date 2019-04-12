@@ -20,7 +20,6 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-/// ResourceeMonitor.h
 #ifndef LSST_QSERV_WPUBLISH_RESOURCE_MONITOR_H
 #define LSST_QSERV_WPUBLISH_RESOURCE_MONITOR_H
 
@@ -30,23 +29,19 @@
 #include <string>
 #include <vector>
 
-// Qserv headers
-
-// Forward declarations
-
 namespace lsst {
 namespace qserv {
 namespace wpublish {
 
 /**
   * Class ResourceMonitor is a thread-safe implementation for a counter of resources
-  * which are in use at any givem moment by the application.
+  * which are in use at any given moment by the application.
   */
 class ResourceMonitor {
 
 public:
 
-    /// The ResourceCounter type definition mnaps resources to the number of uses
+    /// The ResourceCounter type definition maps resources to the number of uses
     /// of each resource.
     using ResourceCounter = std::map<std::string, unsigned int>;
 
@@ -55,38 +50,36 @@ public:
     ResourceMonitor(ResourceMonitor const&) = delete;
 
 
-    // Default constructor
     ResourceMonitor() = default;
 
-    /// The destructor
     ~ResourceMonitor() = default;
 
     /**
      * Increment resource usage counter by 1
      *
-     * @param resource - name of a resource affected by the operation
+     * @param resource  name of a resource affected by the operation
      */
     void increment(std::string const& resource);
 
     /**
      * Decrement resource usage counter by 1
      *
-     * @param resource - name of a resource affected by the operation
+     * @param resource  name of a resource affected by the operation
      */
     void decrement(std::string const& resource);
 
     /**
      * Return the counter of resource uses (by resource name)
      *
-     * @param resource - name of a resource
+     * @param resource  name of a resource
      */
     unsigned int count(std::string const& resource) const;
 
     /**
      * Return the counter of resource uses (by database name and chunk number)
      *
-     * @param chunk - chunk number
-     * @param db    - name of a database
+     * @param chunk  chunk number
+     * @param db     name of a database
      */
     unsigned int count(int chunk,
                        std::string const& db) const;
@@ -97,15 +90,13 @@ public:
      * ATTENTION: the method will return a sum of counters for all uses
      * of the chunk across all databases.
      * 
-     * @param chunk - chunk number
-     * @param dbs   - names of database
+     * @param chunk  chunk number
+     * @param dbs    names of database
      */
     unsigned int count(int chunk,
                        std::vector<std::string> const& dbs) const;
 
-    /**
-     * @return resource usage counter
-     */
+    /// @return resource usage counter
     ResourceCounter resourceCounter() const;
 
 private:

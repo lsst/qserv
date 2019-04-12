@@ -24,62 +24,47 @@
 // Class header
 #include "wpublish/GetChunkListCommand.h"
 
-// System headers
-
-// Third-party headers
-
-// LSST headers
-#include "lsst/log/Log.h"
+// Qserv headers
 #include "proto/worker.pb.h"
 #include "wbase/SendChannel.h"
 #include "wpublish/ChunkInventory.h"
 #include "wpublish/ResourceMonitor.h"
 
-// Qserv headers
+// LSST headers
+#include "lsst/log/Log.h"
+
+using namespace std;
 
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.GetChunkListCommand");
 
-} // annonymous namespace
+} // anonymous namespace
 
 namespace lsst {
 namespace qserv {
 namespace wpublish {
 
-GetChunkListCommand::GetChunkListCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
-                                         std::shared_ptr<ChunkInventory>     const& chunkInventory,
-                                         std::shared_ptr<ResourceMonitor>    const& resourceMonitor)
+GetChunkListCommand::GetChunkListCommand(shared_ptr<wbase::SendChannel> const& sendChannel,
+                                         shared_ptr<ChunkInventory> const& chunkInventory,
+                                         shared_ptr<ResourceMonitor> const& resourceMonitor)
     :   wbase::WorkerCommand(sendChannel),
         _chunkInventory(chunkInventory),
         _resourceMonitor(resourceMonitor) {
 }
 
-void GetChunkListCommand::reportError(std::string const& message) {
-
-    LOGS(_log, LOG_LVL_ERROR, "GetChunkListCommand::run  " << message);
-
-    proto::WorkerCommandGetChunkListR reply;
-
-    reply.set_status(proto::WorkerCommandGetChunkListR::ERROR);
-    reply.set_error(message);
-
-    _frameBuf.serialize(reply);
-    std::string str(_frameBuf.data(), _frameBuf.size());
-    _sendChannel->sendStream(xrdsvc::StreamBuffer::createWithMove(str), true);
-}
 
 void GetChunkListCommand::run() {
 
-    LOGS(_log, LOG_LVL_DEBUG, "GetChunkListCommand::run");
+    LOGS(_log, LOG_LVL_DEBUG, "GetChunkListCommand::" << __func__);
 
     proto::WorkerCommandGetChunkListR reply;
     reply.set_status(proto::WorkerCommandGetChunkListR::SUCCESS);
 
     ChunkInventory::ExistMap const existMap = _chunkInventory->existMap();
 
-    for (auto const& entry: existMap) {
-        std::string const& db = entry.first;
+    for (auto&& entry: existMap) {
+        string const& db = entry.first;
 
         for (int chunk: entry.second) {
             proto::WorkerCommandChunk* ptr = reply.add_chunks();
@@ -90,7 +75,7 @@ void GetChunkListCommand::run() {
     }
 
     _frameBuf.serialize(reply);
-    std::string str(_frameBuf.data(), _frameBuf.size());
+    string str(_frameBuf.data(), _frameBuf.size());
     _sendChannel->sendStream(xrdsvc::StreamBuffer::createWithMove(str), true);
 }
 

@@ -20,7 +20,6 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-/// SetChunkListQservRequest.h
 #ifndef LSST_QSERV_WPUBLISH_SET_CHUNK_LIST_QSERV_REQUEST_H
 #define LSST_QSERV_WPUBLISH_SET_CHUNK_LIST_QSERV_REQUEST_H
 
@@ -29,23 +28,18 @@
 #include <list>
 #include <memory>
 
-// Third party headers
-
 // Qserv headers
 #include "wpublish/QservRequest.h"
-
-// Forward declarations
 
 namespace lsst {
 namespace qserv {
 namespace wpublish {
 
 /**
-  * Class SetChunkListQservRequest inplements the client-side requests
+  * Class SetChunkListQservRequest implements the client-side requests
   * the Qserv worker services for a status of chunk lists.
   */
-class SetChunkListQservRequest
-    :    public QservRequest {
+class SetChunkListQservRequest : public QservRequest {
 
 public:
 
@@ -68,7 +62,7 @@ public:
         unsigned int use_count;
     };
 
-    /// The ChunkCollection type refresens a collection of chunks
+    /// The ChunkCollection type represents a collection of chunks
     using ChunkCollection = std::list<Chunk>;
 
     /// The pointer type for instances of the class
@@ -88,57 +82,50 @@ public:
      * ATTENTION: the 'use_count' field of structure Chunk is ignored by this
      * class when used on its input.
      *
-     * @param chunks    - collection of chunks to be transferred to the worker
-     * @param force     - force the proposed change even if the chunk is in use
-     * @param onFinish  - optional callback function to be called upon the completion
-     *                    (successful or not) of the request.
+     * @param chunks     collection of chunks to be transferred to the worker
+     * @param force      force the proposed change even if the chunk is in use
+     * @param onFinish   optional callback function to be called upon the completion
+     *                   (successful or not) of the request.
      * @return smart pointer to the object of the class
      */
    static Ptr create(ChunkCollection const& chunks,
-                     bool force = false,
-                     CallbackType onFinish = nullptr);
+                     bool force=false,
+                     CallbackType onFinish=nullptr);
 
-    // Default onstruction and copy semantics are prohibited
+    // Default construction and copy semantics are prohibited
     SetChunkListQservRequest() = delete;
     SetChunkListQservRequest(SetChunkListQservRequest const&) = delete;
     SetChunkListQservRequest& operator=(SetChunkListQservRequest const&) = delete;
 
-    /// Destructor
     ~SetChunkListQservRequest() override;
 
 protected:
 
     /**
-     * Normal constructor
-     *
      * ATTENTION: the 'use_count' field of structure Chunk is ignored by this
      * class when used on its input.
      *
-     * @param chunks    - collection of chunks to be transferred to the worker
-     * @param force     - force the proposed change even if the chunk is in use
-     * @param onFinish  - optional callback function to be called upon the completion
-     *                    (successful or not) of the request.
+     * @param chunks     collection of chunks to be transferred to the worker
+     * @param force      force the proposed change even if the chunk is in use
+     * @param onFinish   optional callback function to be called upon the completion
+     *                   (successful or not) of the request.
      */
     SetChunkListQservRequest(ChunkCollection const& chunks,
                              bool force,
                              CallbackType onFinish);
 
-    /// Implement the corresponding method of the base class
     void onRequest(proto::FrameBuffer& buf) override;
 
-    /// Implement the corresponding method of the base class
     void onResponse(proto::FrameBufferView& view) override;
 
-    /// Implement the corresponding method of the base class
     void onError(std::string const& error) override;
 
 private:
 
+    // Parameters of the object
+
     ChunkCollection _chunks;
     bool _force;
-
-    /// Optional callback function to be called upon the completion
-    /// (successfull or not) of the request.
     CallbackType _onFinish;
 };
 

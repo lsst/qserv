@@ -29,12 +29,9 @@
 #include <list>
 #include <memory>
 
-// Third party headers
-
 // Qserv headers
 #include "wpublish/QservRequest.h"
 
-// Forward declarations
 
 namespace lsst {
 namespace qserv {
@@ -44,8 +41,7 @@ namespace wpublish {
   * Class ChunkListQservRequest the base class for client-side requests
   * the Qserv worker services affecting chunk lists.
   */
-class ChunkListQservRequest
-    :    public QservRequest {
+class ChunkListQservRequest : public QservRequest {
 
 public:
 
@@ -65,7 +61,7 @@ public:
         std::string  database;
     };
 
-    /// The ChunkCollection type refresens a collection of chunks
+    /// The ChunkCollection type represents a collection of chunks
     using ChunkCollection = std::list<Chunk>;
 
     /// The callback function type to be used for notifications on
@@ -81,42 +77,32 @@ public:
     ChunkListQservRequest(ChunkListQservRequest const&) = delete;
     ChunkListQservRequest& operator=(ChunkListQservRequest const&) = delete;
 
-    /// Destructor
     ~ChunkListQservRequest() override;
 
 protected:
 
     /**
-     * Normal constructor
-     *
-     * @param rebuild  - rebuild the list from actual database tables
-     * @param reload   - reload the list in worker's memory
-     * @param onFinish - optional callback function to be called upon the completion
-     *                   (successful or not) of the request.
+     * @param rebuild   rebuild the list from actual database tables
+     * @param reload    reload the list in worker's memory
+     * @param onFinish  optional callback function to be called upon the completion
+     *                  (successful or not) of the request.
      */
      ChunkListQservRequest(bool rebuild,
                            bool reload,
                            CallbackType onFinish = nullptr);
 
-    /// Implement the corresponding method of the base class
     void onRequest(proto::FrameBuffer& buf) override;
 
-    /// Implement the corresponding method of the base class
     void onResponse(proto::FrameBufferView& view) override;
 
-    /// Implement the corresponding method of the base class
     void onError(std::string const& error) override;
 
 private:
 
-    /// Rebuild the list from actual database tables
+    // Parameters of the object
+
     bool _rebuild;
-
-    /// Reload the list in worker's memory
     bool _reload;
-
-    /// Optional callback function to be called upon the completion
-    /// (successfull or not) of the request.
     CallbackType _onFinish;
 };
 
@@ -125,8 +111,7 @@ private:
   * Class ReloadChunkListQservRequest implements a client-side request to
   * the Qserv worker management services.
   */
-class ReloadChunkListQservRequest
-    :    public ChunkListQservRequest {
+class ReloadChunkListQservRequest : public ChunkListQservRequest {
 
 public:
 
@@ -138,36 +123,33 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param onFinish - optional callback function to be called upon the completion
-     *                   (successful or not) of the request.
+     * @param onFinish  optional callback function to be called upon the completion
+     *                  (successful or not) of the request.
      */
-    static Ptr create(CallbackType onFinish = nullptr);
+    static Ptr create(CallbackType onFinish=nullptr);
 
     // Default construction and copy semantics are prohibited
     ReloadChunkListQservRequest() = delete;
     ReloadChunkListQservRequest(ReloadChunkListQservRequest const&) = delete;
     ReloadChunkListQservRequest& operator=(ReloadChunkListQservRequest const&) = delete;
 
-    /// Destructor
     ~ReloadChunkListQservRequest() override = default;
 
 protected:
 
-    /**
-     * Normal constructor
-     *
-     * @param onFinish - optional callback function to be called upon the completion
-     *                   (successful or not) of the request.
+    /**     *
+     * @param onFinish optional callback function to be called upon the completion
+     *                 (successful or not) of the request.
      */
      ReloadChunkListQservRequest(CallbackType onFinish);
 };
+
 
 /**
   * Class RebuildChunkListQservRequest implements a client-side request to
   * the Qserv worker management services.
   */
-class RebuildChunkListQservRequest
-    :    public ChunkListQservRequest {
+class RebuildChunkListQservRequest : public ChunkListQservRequest {
 
 public:
 
@@ -179,29 +161,26 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param reload   - reload the list in worker's memory
-     * @param onFinish - optional callback function to be called upon the completion
-     *                   (successful or not) of the request.
+     * @param reload    reload the list in worker's memory
+     * @param onFinish  optional callback function to be called upon the completion
+     *                  (successful or not) of the request.
      */
     static Ptr create(bool reload,
-                      CallbackType onFinish = nullptr);
+                      CallbackType onFinish=nullptr);
 
     // Default construction and copy semantics are prohibited
     RebuildChunkListQservRequest() = delete;
     RebuildChunkListQservRequest(RebuildChunkListQservRequest const&) = delete;
     RebuildChunkListQservRequest& operator=(RebuildChunkListQservRequest const&) = delete;
 
-    /// Destructor
     ~RebuildChunkListQservRequest() override = default;
 
 protected:
 
     /**
-     * Normal constructor
-     *
-     * @param reload   - reload the list in worker's memory
-     * @param onFinish - optional callback function to be called upon the completion
-     *                   (successful or not) of the request.
+     * @param reload    reload the list in worker's memory
+     * @param onFinish  optional callback function to be called upon the completion
+     *                  (successful or not) of the request.
      */
     RebuildChunkListQservRequest(bool reload,
                                  CallbackType onFinish);

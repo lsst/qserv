@@ -20,7 +20,6 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-/// RemoveChunkGroupCommand.h
 #ifndef LSST_QSERV_PUBLISH_REMOVE_CHUNK_GROUP_COMMAND_H
 #define LSST_QSERV_PUBLISH_REMOVE_CHUNK_GROUP_COMMAND_H
 
@@ -38,23 +37,23 @@
 namespace lsst {
 namespace qserv {
 namespace wbase {
-class SendChannel;
+    class SendChannel;
+}
+namespace wpublish {
+    class ChunkInventory;
+    class ResourceMonitor;
 }}}
 
+// This header declarations
 namespace lsst {
 namespace qserv {
 namespace wpublish {
-
-// Forward declarations
-class ChunkInventory;
-class ResourceMonitor;
 
 /**
   * Class RemoveChunkGroupCommand removes a group of chunks from XRootD
   * and the worker's list of chunks.
   */
-class RemoveChunkGroupCommand
-    :   public wbase::WorkerCommand {
+class RemoveChunkGroupCommand : public wbase::WorkerCommand {
 
 public:
 
@@ -64,32 +63,24 @@ public:
     RemoveChunkGroupCommand(const RemoveChunkGroupCommand&) = delete;
 
     /**
-     * The normal constructor of the class
-     *
-     * @param sendChannel     - communication channel for reporting results
-     * @param chunkInventory  - chunks known to the application
-     * @param resourceMonitor - counters of resources which are being used
-     * @param mySqlConfig     - database connection parameters
-     * @param chunk           - chunk number
-     * @param dbs             - names of databases in the group
-     * @param force           - force chunk removal even if this chunk is in use
+     * @param sendChannel      communication channel for reporting results
+     * @param chunkInventory   chunks known to the application
+     * @param resourceMonitor  counters of resources which are being used
+     * @param mySqlConfig      database connection parameters
+     * @param chunk            chunk number
+     * @param dbs              names of databases in the group
+     * @param force            force chunk removal even if this chunk is in use
      */
     RemoveChunkGroupCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
-                            std::shared_ptr<ChunkInventory>     const& chunkInventory,
-                            std::shared_ptr<ResourceMonitor>    const& resourceMonitor,
-                            mysql::MySqlConfig                  const& mySqlConfig,
+                            std::shared_ptr<ChunkInventory> const& chunkInventory,
+                            std::shared_ptr<ResourceMonitor> const& resourceMonitor,
+                            mysql::MySqlConfig const& mySqlConfig,
                             int chunk,
                             std::vector<std::string> const& dbs,
                             bool force);
 
-    /// The destructor
     ~RemoveChunkGroupCommand() override = default;
 
-    /**
-     * Implement the corresponding method of the base class
-     *
-     * @see WorkerCommand::run()
-     */
     void run() override;
 
 private:
@@ -98,13 +89,14 @@ private:
      * Report error condition to the logging stream and reply back to
      * a service caller.
      *
-     * @param status  - error status
-     * @param message - message to be reported
+     * @param status   error status
+     * @param message  message to be reported
      */
-    void reportError(proto::WorkerCommandChunkGroupR::Status status,
-                     std::string const& message);
+    void _reportError(proto::WorkerCommandChunkGroupR::Status status,
+                      std::string const& message);
 
-private:
+
+    // Parameters of the object
 
     std::shared_ptr<ChunkInventory> _chunkInventory;
     std::shared_ptr<ResourceMonitor> _resourceMonitor;

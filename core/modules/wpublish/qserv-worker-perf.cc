@@ -24,34 +24,35 @@ namespace global   = lsst::qserv;
 namespace util     = lsst::qserv::util;
 namespace wpublish = lsst::qserv::wpublish;
 
+using namespace std;
+
 namespace {
 
 // Command line parameters
 
-std::string  workersFileName;
+string workersFileName;
 unsigned int numRequests;
-std::string  value;
-std::string  serviceProviderLocation;
+string value;
+string serviceProviderLocation;
 unsigned int numWorkers;
 bool workerFirst;
 
-
-std::vector<std::string> workers;
+vector<string> workers;
 
 bool readWorkersFile() {
-    std::ifstream file(workersFileName);
+    ifstream file(workersFileName);
     if (not file.good()) {
-        std::cerr << "error: failed to open a file with worker identifiers: "
-                  << workersFileName << std::endl;
+        cerr << "error: failed to open a file with worker identifiers: "
+             << workersFileName << endl;
         return false;
     }
-    std::string worker;
+    string worker;
     while (file >> worker)
         workers.push_back(worker);
 
     if (not workers.size()) {
-        std::cerr << "error: no workers found in file with worker identifiers: "
-                  << workersFileName << std::endl;
+        cerr << "error: no workers found in file with worker identifiers: "
+             << workersFileName << endl;
         return false;
     }
     return true;
@@ -62,8 +63,8 @@ int test() {
 
     if (not readWorkersFile()) return 1;
     if (not numWorkers or (workers.size() < numWorkers)) {
-        std::cerr << "error: specified number of workers not in the valid range: 1.."
-                  << numWorkers << std::endl;
+        cerr << "error: specified number of workers not in the valid range: 1.."
+             << numWorkers << endl;
         return 1;
     }
 
@@ -72,39 +73,36 @@ int test() {
     auto serviceProvider =
         XrdSsiProviderClient->GetService(errInfo,
                                          serviceProviderLocation);
-    if (!serviceProvider) {
-        std::cerr
-            << "failed to contact service provider at: " << serviceProviderLocation
-            << ", error: " << errInfo.Get() << std::endl;
+    if (nullptr == serviceProvider) {
+        cerr << "failed to contact service provider at: " << serviceProviderLocation
+             << ", error: " << errInfo.Get() << endl;
         return 1;
     }
-    std::cout << "connected to service provider at: " << serviceProviderLocation << std::endl;
+    cout << "connected to service provider at: " << serviceProviderLocation << endl;
 
     // Instantiate a request object
 
-    std::atomic<unsigned int> finished(0);
-
+    atomic<unsigned int> finished(0);
 
     if (workerFirst) {
-
         for (unsigned int j = 0; j < numWorkers; ++j) {
-            std::string const& worker = workers[j];
+            string const& worker = workers[j];
 
             for (unsigned int i = 0; i < numRequests; ++i) {
 
                 auto request = wpublish::TestEchoQservRequest::create(
                     value,
                     [&finished] (wpublish::TestEchoQservRequest::Status status,
-                                 std::string const& error,
-                                 std::string const& sent,
-                                 std::string const& received) {
+                                 string const& error,
+                                 string const& sent,
+                                 string const& received) {
 
                         if (status != wpublish::TestEchoQservRequest::Status::SUCCESS) {
-                            std::cout << "status: " << wpublish::TestEchoQservRequest::status2str(status) << "\n"
-                                      << "error:  " << error << std::endl;
+                            cout << "status: " << wpublish::TestEchoQservRequest::status2str(status) << "\n"
+                                 << "error:  " << error << endl;
                         } else {
-                            std::cout << "value sent:     " << sent     << "\n"
-                                      << "value received: " << received << std::endl;
+                            cout << "value sent:     " << sent     << "\n"
+                                 << "value received: " << received << endl;
                         }
                         finished--;
                     });
@@ -121,22 +119,20 @@ int test() {
         for (unsigned int i = 0; i < numRequests; ++i) {
 
             for (unsigned int j = 0; j < numWorkers; ++j) {
-                std::string const& worker = workers[j];
-
-
+                string const& worker = workers[j];
                 auto request = wpublish::TestEchoQservRequest::create(
                     value,
                     [&finished] (wpublish::TestEchoQservRequest::Status status,
-                                 std::string const& error,
-                                 std::string const& sent,
-                                 std::string const& received) {
+                                 string const& error,
+                                 string const& sent,
+                                 string const& received) {
 
                         if (status != wpublish::TestEchoQservRequest::Status::SUCCESS) {
-                            std::cout << "status: " << wpublish::TestEchoQservRequest::status2str(status) << "\n"
-                                      << "error:  " << error << std::endl;
+                            cout << "status: " << wpublish::TestEchoQservRequest::status2str(status) << "\n"
+                                 << "error:  " << error << endl;
                         } else {
-                            std::cout << "value sent:     " << sent     << "\n"
-                                      << "value received: " << received << std::endl;
+                            cout << "value sent:     " << sent     << "\n"
+                                 << "value received: " << received << endl;
                         }
                         finished--;
                     });
@@ -157,6 +153,7 @@ int test() {
     return 0;
 }
 } // namespace
+
 
 int main(int argc, const char* const argv[]) {
 
@@ -187,15 +184,15 @@ int main(int argc, const char* const argv[]) {
             "  <num-requests>       - chunk number\n"
             "  <value>              - arbitrary string\n");
 
-        ::workersFileName = parser.parameter<std::string>(1);
+        ::workersFileName = parser.parameter<string>(1);
         ::numRequests     = parser.parameter<unsigned int>(2);
-        ::value           = parser.parameter<std::string>(3);
+        ::value           = parser.parameter<string>(3);
 
-        ::serviceProviderLocation = parser.option<std::string>("service", "localhost:1094");
+        ::serviceProviderLocation = parser.option<string>("service", "localhost:1094");
         ::numWorkers              = parser.option<unsigned int>("num-workers", 1);
         ::workerFirst             = parser.flag("worker-first");
 
-    } catch (std::exception const& ex) {
+    } catch (exception const& ex) {
         return 1;
     }
     return ::test();
