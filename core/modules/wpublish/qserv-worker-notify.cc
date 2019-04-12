@@ -18,6 +18,7 @@
 #include "wpublish/ChunkGroupQservRequest.h"
 #include "wpublish/ChunkListQservRequest.h"
 #include "wpublish/GetChunkListQservRequest.h"
+#include "wpublish/GetStatusQservRequest.h"
 #include "wpublish/SetChunkListQservRequest.h"
 #include "wpublish/TestEchoQservRequest.h"
 
@@ -243,6 +244,21 @@ int test() {
                 finished = true;
             });
 
+    } else if ("GET_STATUS" == operation) {
+        request = wpublish::GetStatusQservRequest::create(
+            [&finished] (wpublish::GetStatusQservRequest::Status status,
+                         string const& error,
+                         string const& info) {
+
+                if (status != wpublish::GetStatusQservRequest::Status::SUCCESS) {
+                    cout << "status: " << wpublish::GetStatusQservRequest::status2str(status) << "\n"
+                         << "error:  " << error << endl;
+                } else {
+                    cout << "worker info: " << info << endl;
+                }
+                finished = true;
+            });
+
     } else {
         return 1;
     }
@@ -300,6 +316,7 @@ int main(int argc, const char* const argv[]) {
             "    ADD_CHUNK_GROUP    <worker> <chunk> <db> [<db> [<db> ... ]]\n"
             "    REMOVE_CHUNK_GROUP <worker> <chunk> <db> [<db> [<db> ... ]]\n"
             "    TEST_ECHO          <worker> <value>\n"
+            "    GET_STATUS         <worker>\n"
             "\n"
             "Flags an options:\n"
             "  --service=<provider>  - location of a service provider (default: 'localhost:1094')\n"
@@ -323,7 +340,8 @@ int main(int argc, const char* const argv[]) {
             "RELOAD_CHUNK_LIST",
             "ADD_CHUNK_GROUP",
             "REMOVE_CHUNK_GROUP",
-            "TEST_ECHO"});
+            "TEST_ECHO",
+            "GET_STATUS"});
 
         ::worker = parser.parameter<string>(2);
 

@@ -160,6 +160,9 @@ message WorkerCommandH {
 
         // Set a new list of chunks
         SET_CHUNK_LIST = 6;
+
+        // Return various status info on a worker
+        GET_STATUS = 7;
     }
     required Command command = 1;
 }
@@ -308,4 +311,12 @@ message WorkerCommandSetChunkListR {
 
     // The previous list of chunks
     repeated WorkerCommandChunk chunks = 3;
+}
+
+// The message to be sent back in response to the 'GET_STATUS' command
+//
+message WorkerCommandGetStatusR {
+
+    // Status info serialized from a JSON object
+    required string info = 1;
 }

@@ -44,6 +44,7 @@
 #include "wpublish/AddChunkGroupCommand.h"
 #include "wpublish/ChunkListCommand.h"
 #include "wpublish/GetChunkListCommand.h"
+#include "wpublish/GetStatusCommand.h"
 #include "wpublish/RemoveChunkGroupCommand.h"
 #include "wpublish/ResourceMonitor.h"
 #include "wpublish/SetChunkListCommand.h"
@@ -287,6 +288,10 @@ wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(char const* reqData, in
                                     _mySqlConfig,
                                     chunks,
                                     force);
+                break;
+            }
+            case proto::WorkerCommandH::GET_STATUS: {
+                command = std::make_shared<wpublish::GetStatusCommand>(sendChannel);
                 break;
             }
             default:
