@@ -114,4 +114,11 @@ void Foreman::processCommand(std::shared_ptr<wbase::WorkerCommand> const& comman
     _workerCommandQueue->queCmd(command);
 }
 
+
+nlohmann::json Foreman::statusToJson() {
+    nlohmann::json status;
+    status["queries"] = _queries->statusToJson();
+    return status;
+}
+
 }}} // namespace

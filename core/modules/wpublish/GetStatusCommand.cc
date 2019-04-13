@@ -26,6 +26,7 @@
 
 // Qserv headers
 #include "proto/worker.pb.h"
+#include "wbase/MsgProcessor.h"
 #include "wbase/SendChannel.h"
 
 // LSST headers
@@ -43,8 +44,10 @@ namespace lsst {
 namespace qserv {
 namespace wpublish {
 
-GetStatusCommand::GetStatusCommand(shared_ptr<wbase::SendChannel> const& sendChannel)
-    :   wbase::WorkerCommand(sendChannel) {
+GetStatusCommand::GetStatusCommand(shared_ptr<wbase::SendChannel> const& sendChannel,
+                                   shared_ptr<wbase::MsgProcessor> const& processor)
+    :   wbase::WorkerCommand(sendChannel),
+        _processor(processor) {
 }
 
 
@@ -53,7 +56,7 @@ void GetStatusCommand::run() {
     LOGS(_log, LOG_LVL_DEBUG, "GetStatusCommand::" << __func__);
 
     proto::WorkerCommandGetStatusR reply;
-    reply.set_info("{}");
+    reply.set_info(_processor->statusToJson().dump());
 
     _frameBuf.serialize(reply);
     string str(_frameBuf.data(), _frameBuf.size());

@@ -33,6 +33,7 @@
 namespace lsst {
 namespace qserv {
 namespace wbase {
+    class MsgProcessor;
     class SendChannel;
 }}}
 
@@ -56,12 +57,18 @@ public:
 
     /**
      * @param sendChannel  communication channel for reporting results
+     * @param processor    message processor for extracting status info
      */
-    explicit GetStatusCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel);
+    explicit GetStatusCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
+                              std::shared_ptr<wbase::MsgProcessor> const& processor);
 
     ~GetStatusCommand() override = default;
 
     void run() override;
+
+private:
+    
+    std::shared_ptr<wbase::MsgProcessor> const _processor;
 };
 
 }}} // namespace lsst::qserv::wpublish

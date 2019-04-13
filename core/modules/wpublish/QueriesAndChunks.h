@@ -23,6 +23,9 @@
 #ifndef LSST_QSERV_WPUBLISH_QUERIESANDCHUNKS_H
 #define LSST_QSERV_WPUBLISH_QUERIESANDCHUNKS_H
 
+// Third party headers
+#include "nlohmann/json.hpp"
+
 // Qserv headers
 #include "wbase/Task.h"
 
@@ -165,6 +168,9 @@ public:
     void finishedTask(wbase::Task::Ptr const& task);
 
     void examineAll();
+
+    /// @return a JSON representation of the object's status for the monitoring
+    nlohmann::json statusToJson();
 
     // Figure out each chunkTable's percentage of time.
     // Store average time for a task to run on this table for this chunk.

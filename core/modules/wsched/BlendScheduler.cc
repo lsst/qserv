@@ -417,6 +417,21 @@ void BlendScheduler::_logChunkStatus() {
 }
 
 
+nlohmann::json BlendScheduler::statusToJson() {
+    nlohmann::json status;
+    status["name"] = getName();
+    status["priority"] = getPriority();
+    status["num_tasks_in_queue"] = getSize();
+    status["num_tasks_in_flight"] = getInFlight();
+    nlohmann::json schedulers = nlohmann::json::array();
+    for (auto&& sched: _schedulers) {
+        schedulers.push_back(sched->statusToJson());
+    }
+    status["schedulers"] = schedulers;
+    return status;
+}
+
+
 bool BlendScheduler::isScanSnail(SchedulerBase::Ptr const& scan) {
     return scan == _scanSnail;
 }

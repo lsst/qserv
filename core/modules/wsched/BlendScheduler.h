@@ -26,6 +26,9 @@
 // System headers
 #include <map>
 
+// Third party headers
+#include "nlohmann/json.hpp"
+
 // Qserv headers
 #include "wpublish/QueriesAndChunks.h"
 #include "wsched/SchedulerBase.h"
@@ -126,6 +129,9 @@ public:
     int moveUserQuery(QueryId qId, SchedulerBase::Ptr const& source, SchedulerBase::Ptr const& destination);
 
     void setPrioritizeByInFlight(bool val) { _prioritizeByInFlight = val; }
+
+    /// @return a JSON representation of the object's status for the monitoring
+    nlohmann::json statusToJson();
 
 private:
     int _getAdjustedMaxThreads(int oldAdjMax, int inFlight);

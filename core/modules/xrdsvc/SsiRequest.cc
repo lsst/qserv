@@ -291,7 +291,7 @@ wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(char const* reqData, in
                 break;
             }
             case proto::WorkerCommandH::GET_STATUS: {
-                command = std::make_shared<wpublish::GetStatusCommand>(sendChannel);
+                command = std::make_shared<wpublish::GetStatusCommand>(sendChannel, _processor);
                 break;
             }
             default:

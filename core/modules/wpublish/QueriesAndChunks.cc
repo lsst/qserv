@@ -328,6 +328,18 @@ void QueriesAndChunks::examineAll() {
 }
 
 
+nlohmann::json QueriesAndChunks::statusToJson() {
+    nlohmann::json status;
+    auto bSched = _blendSched.lock();
+    if (bSched == nullptr) {
+        LOGS(_log, LOG_LVL_WARN, "blendSched undefined, can't check user query");
+    } else {
+        status["blend_scheduler"] = bSched->statusToJson();
+    }
+    return status;
+}
+
+
 /// @return a map that contains time totals for all chunks for tasks running on specific
 /// tables. The map is sorted by table name and contains sub-maps ordered by chunk id.
 /// The sub-maps contain information about how long tasks take to complete on that table

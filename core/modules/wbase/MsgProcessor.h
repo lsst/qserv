@@ -28,7 +28,8 @@
 // System headers
 #include <memory>
 
-// Qserv headers
+// Third party headers
+#include "nlohmann/json.hpp"
 
 // Forward declarations
 namespace lsst {
@@ -54,6 +55,9 @@ struct MsgProcessor {
 
     /// Process a managememt command
     virtual void processCommand(std::shared_ptr<wbase::WorkerCommand> const& command) = 0;
+
+    /// @return a JSON representation of the object's status for the monitoring
+    virtual nlohmann::json statusToJson() = 0;
 };
 
 }}} // namespace lsst::qserv::wbase
