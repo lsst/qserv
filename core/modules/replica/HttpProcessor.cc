@@ -38,6 +38,8 @@
 #include "replica/Controller.h"
 #include "replica/DatabaseServices.h"
 #include "replica/Performance.h"
+#include "replica/QservMgtServices.h"
+#include "replica/QservStatusJob.h"
 #include "replica/SqlRequest.h"
 
 
@@ -453,7 +455,9 @@ void HttpProcessor::_initialize() {
         {"POST",   "/replication/v1/config/database", bind(&HttpProcessor::_addDatabaseConfig, self, _1, _2)},
         {"DELETE", "/replication/v1/config/table/:name", bind(&HttpProcessor::_deleteTableConfig, self, _1, _2)},
         {"POST",   "/replication/v1/config/table", bind(&HttpProcessor::_addTableConfig, self, _1, _2)},
-        {"POST",   "/replication/v1/sql/query", bind(&HttpProcessor::_sqlQuery, self, _1, _2)}
+        {"POST",   "/replication/v1/sql/query", bind(&HttpProcessor::_sqlQuery, self, _1, _2)},
+        {"GET",    "/replication/v1/qserv/worker/status", bind(&HttpProcessor::_getQservManyWorkersStatus, self, _1, _2)},
+        {"GET",    "/replication/v1/qserv/worker/status/:name", bind(&HttpProcessor::_getQservWorkerStatus, self, _1, _2)}
     });
     controller()->serviceProvider()->httpServer()->start();
 }
@@ -1332,6 +1336,79 @@ void HttpProcessor::_sqlQuery(qhttp::Request::Ptr const& req,
 
     } catch (invalid_argument const& ex) {
         _error(string(__func__) + " invalid parameters of the request, ex: " + ex.what());
+        resp->sendStatus(400);
+    } catch (exception const& ex) {
+        _error(string(__func__) + " operation failed due to: " + string(ex.what()));
+        resp->sendStatus(500);
+    }
+}
+
+void HttpProcessor::_getQservManyWorkersStatus(qhttp::Request::Ptr const& req,
+                                               qhttp::Response::Ptr const& resp) {
+    _debug(__func__);
+
+    try {
+        unsigned int const timeoutSec = 10;
+        bool const allWorkers = true;
+        auto const job = QservStatusJob::create(timeoutSec, allWorkers, controller());
+        job->wait();
+
+        json result;
+        auto&& status = job->qservStatus();
+        for (auto&& entry: status.workers) {
+            auto&& worker = entry.first;
+            bool success = entry.second;
+            if (success) {
+                result["status"][worker]["success"] = 1;
+                result["status"][worker]["info"] = status.info.at(worker);
+            } else {
+                result["status"][worker]["success"] = 0;
+            }        
+        }
+        resp->send(result.dump(), "application/json");
+
+    } catch (invalid_argument const& ex) {
+        _error(string(__func__) + " invalid parameters of the request");
+        resp->sendStatus(400);
+    } catch (exception const& ex) {
+        _error(string(__func__) + " operation failed due to: " + string(ex.what()));
+        resp->sendStatus(500);
+    }
+}
+
+
+void HttpProcessor::_getQservWorkerStatus(qhttp::Request::Ptr const& req,
+                                          qhttp::Response::Ptr const& resp) {
+    _debug(__func__);
+
+    try {
+        auto const worker = req->params.at("name");
+
+        _debug(string(__func__) + " worker="   + worker);
+
+        string const noParentJobId;
+        GetStatusQservMgtRequest::CallbackType const onFinish = nullptr;
+        unsigned int const requestExpirationIvalSec = 10;
+
+        auto const request =
+            controller()->serviceProvider()->qservMgtServices()->status(
+                worker,
+                noParentJobId,
+                onFinish,
+                requestExpirationIvalSec);
+        request->wait();
+
+        json result;
+        if (request->extendedState() == QservMgtRequest::ExtendedState::SUCCESS) {
+            result["status"][worker]["success"] = 1;
+            result["status"][worker]["info"] = request->info();
+        } else {
+            result["status"][worker]["success"] = 0;
+        }        
+        resp->send(result.dump(), "application/json");
+
+    } catch (invalid_argument const& ex) {
+        _error(string(__func__) + " invalid parameters of the request");
         resp->sendStatus(400);
     } catch (exception const& ex) {
         _error(string(__func__) + " operation failed due to: " + string(ex.what()));

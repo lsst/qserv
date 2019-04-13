@@ -156,11 +156,11 @@ private:
 
     /// @see QservStatusJob::create()
     QservStatusJob(unsigned int timeoutSec,
-                     bool allWorkers,
-                     Controller::Ptr const& controller,
-                     std::string const& parentJobId,
-                     CallbackType const& onFinish,
-                     Job::Options const& options);
+                   bool allWorkers,
+                   Controller::Ptr const& controller,
+                   std::string const& parentJobId,
+                   CallbackType const& onFinish,
+                   Job::Options const& options);
 
     /**
      * The callback function to be invoked on a completion of the Qserv

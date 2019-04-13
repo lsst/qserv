@@ -235,6 +235,19 @@ private:
                    qhttp::Response::Ptr const& resp);
 
     /**
+     * Process a request for extracting various status info from Qserv workers
+     * (all of them or a subset of those as per parameters of a request).
+     */
+    void _getQservManyWorkersStatus(qhttp::Request::Ptr const& req,
+                                    qhttp::Response::Ptr const& resp);
+
+    /**
+     * Process a request for extracting various status info from one Qserv worker.
+     */
+    void _getQservWorkerStatus(qhttp::Request::Ptr const& req,
+                               qhttp::Response::Ptr const& resp);
+
+    /**
      * Pull the current Configuration and translate it into a JSON object
      */
     nlohmann::json _configToJson() const;
