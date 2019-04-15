@@ -160,7 +160,10 @@ Czar::submitQuery(std::string const& query,
     }
 
     // create the result table
-    if (not uq->setupMerger(result.errorMessage)){
+    try {
+        uq->setupMerger();
+    } catch (std::exception const& exc) {
+        result.errorMessage = exc.what();
         return result;
     }
 

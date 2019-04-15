@@ -376,7 +376,7 @@ void UserQuerySelect::discard() {
 }
 
 /// Setup merger (for results handling and aggregation)
-bool UserQuerySelect::setupMerger(std::string& errMsg) {
+void UserQuerySelect::setupMerger() {
     LOGS(_log, LOG_LVL_TRACE, getQueryIdString() << " Setup merger");
     _infileMergerConfig->targetTable = _resultTable;
     _infileMergerConfig->mergeStmt = _qSession->getMergeStmt();
@@ -387,15 +387,15 @@ bool UserQuerySelect::setupMerger(std::string& errMsg) {
 
     auto&& preFlightStmt = _qSession->getPreFlightStmt();
     if (preFlightStmt == nullptr) {
-        errMsg = " Could not create results table for query (no worker queries).";
         _qMetaUpdateStatus(qmeta::QInfo::FAILED);
-        return false;
+        throw UserQueryError(getQueryIdString() +
+            "Could not create results table for query (no worker queries).");
     }
+    std::string errMsg;
     if (not _infileMerger->makeResultsTableForQuery(*preFlightStmt, errMsg)) {
         _qMetaUpdateStatus(qmeta::QInfo::FAILED);
-        return false;
+        throw UserQueryError(getQueryIdString() + errMsg);
     }
-    return true;
 }
 
 void UserQuerySelect::setupChunking() {

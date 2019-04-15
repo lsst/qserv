@@ -143,13 +143,10 @@ public:
 
     void setupChunking();
 
-    /**
-     * @brief set up the merge table (stores results from workers)
-     *
-     * @param errMsg if creating the merge table fails this will contain an error message.
-     * @return bool true if success, false if there was an error.
-     */
-    bool setupMerger(std::string& errMsg) override;
+    /// set up the merge table (stores results from workers)
+    /// @throw UserQueryError if the merge table can't be set up (maybe the user query is not valid?). The
+    /// exception's what() message will be returned to the user.
+    void setupMerger() override;
 
 private:
     void _discardMerger();
