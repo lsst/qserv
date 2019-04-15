@@ -143,8 +143,12 @@ public:
 
     void setupChunking();
 
+    /// set up the merge table (stores results from workers)
+    /// @throw UserQueryError if the merge table can't be set up (maybe the user query is not valid?). The
+    /// exception's what() message will be returned to the user.
+    void setupMerger() override;
+
 private:
-    void _setupMerger();
     void _discardMerger();
     void _qMetaUpdateStatus(qmeta::QInfo::QStatus qStatus);
     void _qMetaAddChunks(std::vector<int> const& chunks);

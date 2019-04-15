@@ -105,6 +105,11 @@ public:
 
     /// @return True if query is async query
     virtual bool isAsync() const { return false; }
+
+    /// set up the merge table (stores results from workers)
+    /// @throw UserQueryError if the merge table can't be set up (maybe the user query is not valid?). The
+    /// exception's what() message will be returned to the user.
+    virtual void setupMerger() {}
 };
 
 }}} // namespace lsst::qserv:ccontrol

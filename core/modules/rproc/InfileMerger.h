@@ -191,7 +191,7 @@ public:
     bool scrubResults(int jobId, int attempt);
     int makeJobIdAttempt(int jobId, int attemptCount);
 
-    bool makeResultsTableForQuery(query::SelectStmt const& stmt);
+    bool makeResultsTableForQuery(query::SelectStmt const& stmt, std::string& errMsg);
 
 private:
     bool _applyMysql(std::string const& query);
@@ -204,6 +204,7 @@ private:
     bool _applySqlLocal(std::string const& sql, std::string const& logMsg, sql::SqlResults& results);
     bool _applySqlLocal(std::string const& sql, std::string const& logMsg);
     bool _applySqlLocal(std::string const& sql, sql::SqlResults& results);
+    bool _applySqlLocal(std::string const& sql, sql::SqlResults& results, sql::SqlErrorObject& errObj);
     bool _sqlConnect(sql::SqlErrorObject& errObj);
     std::string _getQueryIdStr();
     void _setQueryIdStr(std::string const& qIdStr);

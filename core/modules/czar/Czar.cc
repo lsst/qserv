@@ -143,7 +143,6 @@ Czar::submitQuery(std::string const& query,
         return result;
     }
 
-
     // make new UserQuery
     // this is atomic
     ccontrol::UserQuery::Ptr uq;
@@ -157,6 +156,14 @@ Czar::submitQuery(std::string const& query,
     auto error = uq->getError();
     if (not error.empty()) {
         result.errorMessage = queryIdStr + " Failed to instantiate query: " + error;
+        return result;
+    }
+
+    // create the result table
+    try {
+        uq->setupMerger();
+    } catch (std::exception const& exc) {
+        result.errorMessage = exc.what();
         return result;
     }
 
