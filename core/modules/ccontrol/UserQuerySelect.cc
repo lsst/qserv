@@ -242,6 +242,8 @@ void UserQuerySelect::submit() {
         LOGS(_log, LOG_LVL_WARN, "Failed queryStatsTmpRegister " << getQueryIdString() << " " << e.what());
     }
 
+    _executive->setScanInteractive(_qSession->getScanInteractive());
+
     for(auto i = _qSession->cQueryBegin(), e = _qSession->cQueryEnd();
             i != e && !_executive->getCancelled(); ++i) {
         auto& chunkSpec = *i;
@@ -276,7 +278,8 @@ void UserQuerySelect::submit() {
         };
 
         auto cmd = std::make_shared<qdisp::PriorityCommand>(funcBuildJob);
-        _executive->queueJobStart(cmd, _qSession->getScanInteractive());
+        // _executive->queueJobStart(cmd, _qSession->getScanInteractive()); &&&
+        _executive->queueJobStart(cmd);
         ++sequence;
     }
 

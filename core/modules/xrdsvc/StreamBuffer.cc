@@ -71,26 +71,27 @@ StreamBuffer::~StreamBuffer() {
 }
 
 
- /// xrdssi calls this to recycle the buffer when finished.
- void StreamBuffer::Recycle() {
-     {
-         std::lock_guard<std::mutex> lg(_mtx);
-         _doneWithThis = true;
-     }
-     _cv.notify_all();
+/// xrdssi calls this to recycle the buffer when finished.
+void StreamBuffer::Recycle() {
+    {
+        std::lock_guard<std::mutex> lg(_mtx);
+        _doneWithThis = true;
+    }
+    _cv.notify_all();
 
-     // delete this;
-     // Effectively reset _selfKeepAlive, and if nobody else was
-     // referencing this, this object will delete itself when
-     // this function is done.
-     // std::move is used instead of reset() as reset() could
-     // result in _keepalive deleting itself while still in use.
-     Ptr keepAlive = std::move(_selfKeepAlive);
- }
+    // delete this;
+    // Effectively reset _selfKeepAlive, and if nobody else was
+    // referencing this, this object will delete itself when
+    // this function is done.
+    // std::move is used instead of reset() as reset() could
+    // result in _keepalive deleting itself while still in use.
+    Ptr keepAlive = std::move(_selfKeepAlive);
+}
 
- // Wait until recycle is called.
- void StreamBuffer::waitForDoneWithThis() {
-     std::unique_lock<std::mutex> uLock(_mtx);
-     _cv.wait(uLock, [this](){ return _doneWithThis == true; });
- }
+// Wait until recycle is called.
+void StreamBuffer::waitForDoneWithThis() {
+    std::unique_lock<std::mutex> uLock(_mtx);
+    _cv.wait(uLock, [this](){ return _doneWithThis == true; });
+}
+
 }}} // namespace lsst::qserv::xrdsvc

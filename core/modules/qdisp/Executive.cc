@@ -186,9 +186,9 @@ JobQuery::Ptr Executive::add(JobDescription::Ptr const& jobDesc) {
 }
 
 
-void Executive::queueJobStart(PriorityCommand::Ptr const& cmd, bool scanInteractive) {
+void Executive::queueJobStart(PriorityCommand::Ptr const& cmd) {
     _jobStartCmdList.push_back(cmd);
-    if (scanInteractive) {
+    if (_scanInteractive) {
         _qdispPool->queCmd(cmd, 0);
     } else {
         _qdispPool->queCmd(cmd, 1);
@@ -223,9 +223,11 @@ bool Executive::startQuery(std::shared_ptr<JobQuery> const& jobQuery) {
     if (_cancelled) return false;
 
     // Construct a temporary resource object to pass to ProcessRequest().
-    // For now, we don't set any other attributes except the resource name.
-    //
-    XrdSsiResource jobResource(jobQuery->getDescription()->resource().path());
+    //   Interactive Queries should have an Affinity of XrdSsiResource::None or Weak while
+    //   Scans should have an affinity of Strong
+    XrdSsiResource::Affinity affinity = (_scanInteractive) ? XrdSsiResource::Weak : XrdSsiResource::Strong;
+    XrdSsiResource jobResource(jobQuery->getDescription()->resource().path(), "", jobQuery->getIdStr(),
+                               "", 0, affinity);
 
     // Now construct the actual query request and tie it to the jobQuery. The
     // shared pointer is used by QueryRequest to keep itself alive, sloppy design.
@@ -311,7 +313,7 @@ void Executive::markCompleted(int jobId, bool success) {
                 return;
             }
         }
-        LOGS(_log, LOG_LVL_ERROR, "Executive: error executing " << idStr
+        LOGS(_log, LOG_LVL_WARN, "Executive: error executing " << idStr
              << " " << err << " (status: " << err.getStatus() << ")");
         {
             std::lock_guard<std::recursive_mutex> lockJobMap(_jobMapMtx);
