@@ -122,20 +122,17 @@ nlohmann::json SchedulerBase::statusToJson() {
     nlohmann::json status;
     status["name"] = getName();
     status["priority"] = getPriority();
+    
     status["num_tasks_in_queue"] = getSize();
     status["num_tasks_in_flight"] = getInFlight();
     nlohmann::json queryIdToCount = nlohmann::json::array();
     for (auto&& entry: _userQueryCounts) {
-        nlohmann::json id2count;
-        id2count[entry.first] = entry.second;
-        queryIdToCount.push_back(id2count);
+        queryIdToCount.push_back({entry.first, entry.second});
     }
     status["query_id_to_count"] = queryIdToCount;
     nlohmann::json chunkToNumTasks = nlohmann::json::array();
     for (auto&& entry: _chunkTasks) {
-        nlohmann::json chunk2num;
-        chunk2num[entry.first] = entry.second;
-        chunkToNumTasks.push_back(chunk2num);
+        chunkToNumTasks.push_back({entry.first, entry.second});
     }
     status["chunk_to_num_tasks"] = chunkToNumTasks;
     return status;

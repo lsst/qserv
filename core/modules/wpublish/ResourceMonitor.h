@@ -29,6 +29,9 @@
 #include <string>
 #include <vector>
 
+// Third party headers
+#include "nlohmann/json.hpp"
+
 namespace lsst {
 namespace qserv {
 namespace wpublish {
@@ -98,6 +101,9 @@ public:
 
     /// @return resource usage counter
     ResourceCounter resourceCounter() const;
+
+    /// @return a JSON representation of the object's status for the monitoring
+    nlohmann::json statusToJson() const;
 
 private:
 

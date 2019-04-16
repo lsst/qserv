@@ -31,6 +31,7 @@
 #include "lsst/log/Log.h"
 
 using namespace std;
+using namespace nlohmann;
 
 namespace {
 
@@ -82,6 +83,15 @@ ResourceMonitor::ResourceCounter ResourceMonitor::resourceCounter() const {
     // Make a copy of the map while under protection of the lock guard.
     lock_guard<mutex> lock(_mtx);
     ResourceCounter result = _resourceCounter;
+    return result;
+}
+
+
+json ResourceMonitor::statusToJson() const {
+    json result = json::array();
+    for (auto&& entry: _resourceCounter) {
+        result.push_back({entry.first, entry.second});
+    }
     return result;
 }
 

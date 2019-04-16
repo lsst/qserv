@@ -35,6 +35,9 @@ namespace qserv {
 namespace wbase {
     class MsgProcessor;
     class SendChannel;
+}
+namespace wpublish {
+    class ResourceMonitor;
 }}}
 
 // This header declarations
@@ -56,19 +59,24 @@ public:
     GetStatusCommand() = delete;
 
     /**
-     * @param sendChannel  communication channel for reporting results
-     * @param processor    message processor for extracting status info
+     * @param sendChannel      communication channel for reporting results
+     * @param processor        message processor for extracting status info
+     * @param resourceMonitor  XRootD resource monitor for finding which chunks are in use
      */
     explicit GetStatusCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
-                              std::shared_ptr<wbase::MsgProcessor> const& processor);
+                              std::shared_ptr<wbase::MsgProcessor> const& processor,
+                              std::shared_ptr<ResourceMonitor> const& resourceMonitor);
 
     ~GetStatusCommand() override = default;
 
     void run() override;
 
 private:
-    
+
+    // Parameters of the object
+
     std::shared_ptr<wbase::MsgProcessor> const _processor;
+    std::shared_ptr<ResourceMonitor> _resourceMonitor;
 };
 
 }}} // namespace lsst::qserv::wpublish

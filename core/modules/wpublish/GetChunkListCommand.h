@@ -59,7 +59,7 @@ public:
     /**
      * @param sendChannel     communication channel for reporting results
      * @param chunkInventory  transient collection of available chunks to be reloaded (if requested)
-     * @param mySqlConfig     database connection parameters
+     * @param resourceMonitor XRootD resource monitor for finding which chunks are in use
      */
     GetChunkListCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
                         std::shared_ptr<ChunkInventory> const& chunkInventory,

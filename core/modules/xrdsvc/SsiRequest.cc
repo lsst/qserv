@@ -244,13 +244,13 @@ wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(char const* reqData, in
                 view.parse(message);
 
                 if (message.rebuild())
-                    command = std::make_shared<wpublish::RebuildChunkListCommand> (
+                    command = std::make_shared<wpublish::RebuildChunkListCommand>(
                                     sendChannel,
                                     _chunkInventory,
                                     _mySqlConfig,
                                     message.reload());
                 else
-                    command = std::make_shared<wpublish::ReloadChunkListCommand> (
+                    command = std::make_shared<wpublish::ReloadChunkListCommand>(
                                     sendChannel,
                                     _chunkInventory,
                                     _mySqlConfig);
@@ -258,7 +258,7 @@ wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(char const* reqData, in
             }
             case proto::WorkerCommandH::GET_CHUNK_LIST: {
 
-                command = std::make_shared<wpublish::GetChunkListCommand> (
+                command = std::make_shared<wpublish::GetChunkListCommand>(
                                     sendChannel,
                                     _chunkInventory,
                                     _resourceMonitor);
@@ -281,7 +281,7 @@ wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(char const* reqData, in
                 }
                 bool const force = message.force();
 
-                command = std::make_shared<wpublish::SetChunkListCommand> (
+                command = std::make_shared<wpublish::SetChunkListCommand>(
                                     sendChannel,
                                     _chunkInventory,
                                     _resourceMonitor,
@@ -291,7 +291,10 @@ wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(char const* reqData, in
                 break;
             }
             case proto::WorkerCommandH::GET_STATUS: {
-                command = std::make_shared<wpublish::GetStatusCommand>(sendChannel, _processor);
+                command = std::make_shared<wpublish::GetStatusCommand>(
+                                sendChannel,
+                                _processor,
+                                _resourceMonitor);
                 break;
             }
             default:
