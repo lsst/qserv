@@ -1351,6 +1351,7 @@ void HttpProcessor::_getQservManyWorkersStatus(qhttp::Request::Ptr const& req,
         unsigned int const timeoutSec = 10;
         bool const allWorkers = true;
         auto const job = QservStatusJob::create(timeoutSec, allWorkers, controller());
+        job->start();
         job->wait();
 
         json result;
