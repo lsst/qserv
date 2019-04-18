@@ -204,6 +204,12 @@ string       const Configuration::defaultDatabaseUser                 = FileUtil
 string       const Configuration::defaultDatabasePassword             = "";
 string       const Configuration::defaultDatabaseName                 = "qservReplica";
 size_t       const Configuration::defaultDatabaseServicesPoolSize     = 1;
+string       const Configuration::defaultQservMasterDatabaseHost      = "localhost";
+uint16_t     const Configuration::defaultQservMasterDatabasePort      = 3306;
+string       const Configuration::defaultQservMasterDatabaseUser      = FileUtils::getEffectiveUser();
+string       const Configuration::defaultQservMasterDatabasePassword  = "";
+string       const Configuration::defaultQservMasterDatabaseName      = "qservMeta";
+size_t       const Configuration::defaultQservMasterDatabaseServicesPoolSize = 1;
 bool               Configuration::defaultDatabaseAllowReconnect       = true;
 unsigned int       Configuration::defaultDatabaseConnectTimeoutSec    = 3600;
 unsigned int       Configuration::defaultDatabaseMaxReconnects        = 1;
@@ -256,7 +262,13 @@ Configuration::Configuration()
         _databaseUser               (defaultDatabaseUser),
         _databasePassword           (defaultDatabasePassword),
         _databaseName               (defaultDatabaseName),
-        _databaseServicesPoolSize   (defaultDatabaseServicesPoolSize) {
+        _databaseServicesPoolSize   (defaultDatabaseServicesPoolSize),
+        _qservMasterDatabaseHost    (defaultQservMasterDatabaseHost),
+        _qservMasterDatabasePort    (defaultQservMasterDatabasePort),
+        _qservMasterDatabaseUser    (defaultQservMasterDatabaseUser),
+        _qservMasterDatabasePassword(defaultQservMasterDatabasePassword),
+        _qservMasterDatabaseName    (defaultQservMasterDatabaseName),
+        _qservMasterDatabaseServicesPoolSize(defaultQservMasterDatabaseServicesPoolSize) {
 }
 
 
@@ -481,9 +493,13 @@ string Configuration::asString() const {
     ss << context() << "defaultDatabaseHost:                  " << defaultDatabaseHost << "\n";
     ss << context() << "defaultDatabasePort:                  " << defaultDatabasePort << "\n";
     ss << context() << "defaultDatabaseUser:                  " << defaultDatabaseUser << "\n";
-    ss << context() << "defaultDatabasePassword:              " << "*****" << "\n";
     ss << context() << "defaultDatabaseName:                  " << defaultDatabaseName << "\n";
     ss << context() << "defaultDatabaseServicesPoolSize:      " << defaultDatabaseServicesPoolSize << "\n";
+    ss << context() << "defaultQservMasterDatabaseHost:             " << defaultQservMasterDatabaseHost << "\n";
+    ss << context() << "defaultQservMasterDatabasePort:             " << defaultQservMasterDatabasePort << "\n";
+    ss << context() << "defaultQservMasterDatabaseUser:             " << defaultQservMasterDatabaseUser << "\n";
+    ss << context() << "defaultQservMasterDatabaseName:             " << defaultQservMasterDatabaseName << "\n";
+    ss << context() << "defaultQservMasterDatabaseServicesPoolSize: " << defaultQservMasterDatabaseServicesPoolSize << "\n";
     ss << context() << "defaultDatabaseAllowReconnect:        " << (defaultDatabaseAllowReconnect ? "1" : "0") << "\n";
     ss << context() << "defaultDatabaseConnectTimeoutSec:     " << defaultDatabaseConnectTimeoutSec << "\n";
     ss << context() << "defaultDatabaseMaxReconnects:         " << defaultDatabaseMaxReconnects << "\n";
@@ -513,6 +529,11 @@ string Configuration::asString() const {
     ss << context() << "_databaseUser:                        " << _databaseUser << "\n";
     ss << context() << "_databaseName:                        " << _databaseName << "\n";
     ss << context() << "_databaseServicesPoolSize:            " << _databaseServicesPoolSize << "\n";
+    ss << context() << "_qservMasterDatabaseHost:             " << _qservMasterDatabaseHost << "\n";
+    ss << context() << "_qservMasterDatabasePort:             " << _qservMasterDatabasePort << "\n";
+    ss << context() << "_qservMasterDatabaseUser:             " << _qservMasterDatabaseUser << "\n";
+    ss << context() << "_qservMasterDatabaseName:             " << _qservMasterDatabaseName << "\n";
+    ss << context() << "_qservMasterDatabaseServicesPoolSize: " << _qservMasterDatabaseServicesPoolSize << "\n";
     for (auto&& elem: _workerInfo) {
         ss << context() << elem.second << "\n";
     }

@@ -22,7 +22,12 @@ INSERT INTO `config` VALUES ('controller', 'job_heartbeat_sec',       '0');   --
 
 -- Database service-specific parameters
 
-INSERT INTO `config` VALUES ('database', 'services_pool_size', '32');
+INSERT INTO `config` VALUES ('database', 'services_pool_size',                     '32');
+INSERT INTO `config` VALUES ('database', 'qserv_master_host',               '127.0.0.1');
+INSERT INTO `config` VALUES ('database', 'qserv_master_port',                    '3306');
+INSERT INTO `config` VALUES ('database', 'qserv_master_user',                'qsmaster');
+INSERT INTO `config` VALUES ('database', 'qserv_master_name',               'qservMeta');
+INSERT INTO `config` VALUES ('database', 'qserv_master_services_pool_size',         '4');
 
 -- Connection parameters for the Qserv Management Services
 

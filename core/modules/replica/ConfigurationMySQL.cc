@@ -1036,6 +1036,14 @@ void ConfigurationMySQL::_loadConfigurationImpl(util::Lock const& lock,
 
         ::tryParameter(row, "database", "services_pool_size", _databaseServicesPoolSize) or
 
+        ::tryParameter(row, "database", "qserv_master_host",     _qservMasterDatabaseHost) or
+        ::tryParameter(row, "database", "qserv_master_port",     _qservMasterDatabasePort) or
+        ::tryParameter(row, "database", "qserv_master_user",     _qservMasterDatabaseUser) or
+        ::tryParameter(row, "database", "qserv_master_password", _qservMasterDatabasePassword) or
+        ::tryParameter(row, "database", "qserv_master_name",     _qservMasterDatabaseName) or
+
+        ::tryParameter(row, "database", "qserv_master_services_pool_size", _qservMasterDatabaseServicesPoolSize) or
+
         ::tryParameter(row, "xrootd", "auto_notify",         _xrootdAutoNotify) or
         ::tryParameter(row, "xrootd", "host",                _xrootdHost) or
         ::tryParameter(row, "xrootd", "port",                _xrootdPort) or

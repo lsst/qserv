@@ -68,6 +68,12 @@ json ConfigurationGeneralParams::toJson(Configuration::Ptr const& config) const 
     result.push_back(::paramToJson(databasePassword,            config));
     result.push_back(::paramToJson(databaseName,                config));
     result.push_back(::paramToJson(databaseServicesPoolSize,    config));
+    result.push_back(::paramToJson(qservMasterDatabaseHost,     config));
+    result.push_back(::paramToJson(qservMasterDatabasePort,     config));
+    result.push_back(::paramToJson(qservMasterDatabaseUser,     config));
+    result.push_back(::paramToJson(qservMasterDatabasePassword, config));
+    result.push_back(::paramToJson(qservMasterDatabaseName,     config));
+    result.push_back(::paramToJson(qservMasterDatabaseServicesPoolSize, config));
     result.push_back(::paramToJson(workerTechnology,            config));
     result.push_back(::paramToJson(workerNumProcessingThreads,  config));
     result.push_back(::paramToJson(fsNumProcessingThreads,      config));
