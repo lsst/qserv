@@ -31,11 +31,19 @@
 #include <algorithm>
 #include <utility>
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Qserv headers
 #include "qana/QueryNotEvaluableError.h"
 #include "qana/RelationGraph.h"
-
 #include "query/QueryTemplate.h"
+#include "util/IterableFormatter.h"
+
+
+namespace {
+    LOG_LOGGER _log = LOG_GET("lsst.qserv.qana.ColumnVertexMap");
+}
 
 
 namespace lsst {
@@ -43,6 +51,7 @@ namespace qserv {
 namespace qana {
 
 ColumnVertexMap::ColumnVertexMap(Vertex& v) {
+    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
     std::vector<ColumnRefConstPtr> c = v.info->makeColumnRefs(v.tr.getAlias());
     _init(v, c.begin(), c.end());
 }
@@ -70,6 +79,8 @@ void ColumnVertexMap::fuse(ColumnVertexMap& m,
                            bool natural,
                            std::vector<std::string> const& cols)
 {
+    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " " << m << ", natural:" << natural <<
+        ", cols:" << util::printable(cols) << " into this:" << *this);
     typedef std::vector<Entry>::iterator EntryIter;
     typedef std::vector<std::string>::const_iterator StringIter;
 
@@ -129,6 +140,7 @@ void ColumnVertexMap::fuse(ColumnVertexMap& m,
 std::vector<std::string> const ColumnVertexMap::computeCommonColumns(
     ColumnVertexMap const& m) const
 {
+    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
     typedef std::vector<Entry>::const_iterator EntryIter;
     std::vector<std::string> cols;
     // The entries for this map and m are both sorted, so we can find
@@ -159,5 +171,18 @@ std::vector<std::string> const ColumnVertexMap::computeCommonColumns(
     }
     return cols;
 }
+
+
+std::ostream& operator<<(std::ostream& os, ColumnVertexMap::Entry const& e) {
+    os << "Entry(" << *e.cr << util::printable(e.vertices) << ")";
+    return os;
+}
+
+
+std::ostream& operator<<(std::ostream& os, ColumnVertexMap const& cvm) {
+    os << "ColumnVertexMap(" << util::printable(cvm._entries) << ")";
+    return os;
+}
+
 
 }}} // namespace lsst::qserv::qana

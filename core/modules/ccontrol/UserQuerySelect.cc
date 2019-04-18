@@ -91,10 +91,15 @@
 #include "qproc/IndexMap.h"
 #include "qproc/QuerySession.h"
 #include "qproc/TaskMsgFactory.h"
+#include "query/ColumnRef.h"
 #include "query/FromList.h"
 #include "query/JoinRef.h"
+#include "query/SelectList.h"
 #include "query/SelectStmt.h"
+#include "query/ValueExpr.h"
+#include "query/ValueFactor.h"
 #include "rproc/InfileMerger.h"
+#include "sql/Schema.h"
 #include "util/IterableFormatter.h"
 #include "util/ThreadPriority.h"
 
@@ -199,6 +204,41 @@ void UserQuerySelect::kill() {
 std::string
 UserQuerySelect::getProxyOrderBy() const {
     return _qSession->getProxyOrderBy();
+}
+
+
+std::string UserQuerySelect::getResultQuery() const {
+    auto selectList = std::make_shared<query::SelectList>();
+    auto const& valueExprList = *_qSession->getStmt().getSelectList().getValueExprList();
+    for (auto const& valueExpr : valueExprList) {
+        if (valueExpr->isStar()) {
+            std::string errMsg;
+            auto useSelectList = std::make_shared<query::SelectList>();
+            useSelectList->addValueExpr(valueExpr);
+            query::SelectStmt starStmt(useSelectList, _qSession->getStmt().getFromList().clone());
+            auto schema = _infileMerger->getSchemaForQueryResults(starStmt, errMsg);
+            for (auto const& column : schema.columns) {
+                auto newColumnRef = query::ColumnRef::newShared("", "", column.name);
+                auto newValueFactor = query::ValueFactor::newColumnRefFactor(newColumnRef);
+                auto newValueExpr = std::make_shared<query::ValueExpr>();
+                newValueExpr->addValueFactor(newValueFactor);
+                selectList->addValueExpr(newValueExpr);
+            }
+        } else {
+            // add a column that describes the top-level ValueExpr
+            auto newValueExpr = std::make_shared<query::ValueExpr>();
+            auto newColumnRef = query::ColumnRef::newShared("", "", valueExpr->getAlias());
+            auto newValueFactor = query::ValueFactor::newColumnRefFactor(newColumnRef);
+            newValueExpr->addValueFactor(newValueFactor);
+            if (valueExpr->isColumnRef()) {
+                if (not valueExpr->getAliasIsUserDefined()) {
+                    newValueExpr->setAlias(valueExpr->getColumnRef()->getColumn());
+                }
+            }
+            selectList->addValueExpr(newValueExpr);
+        }
+    }
+    return "SELECT " + selectList->getGenerated() + " FROM " + getResultDb() + "." + getResultTableName();
 }
 
 
@@ -539,6 +579,12 @@ void UserQuerySelect::qMetaRegister(std::string const& resultLocation, std::stri
         }
     }
 }
+
+
+void UserQuerySelect::saveResultQuery(std::string const& resultQuery) {
+    _queryMetadata->saveResultQuery(_qMetaQueryId, resultQuery);
+}
+
 
 // update query status in QMeta
 void UserQuerySelect::_qMetaUpdateStatus(qmeta::QInfo::QStatus qStatus)

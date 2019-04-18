@@ -233,6 +233,10 @@ void UserQueryProcessList::submit() {
     _qState = SUCCESS;
 }
 
+std::string UserQueryProcessList::getResultQuery() const {
+    return "SELECT * FROM " + getResultDb() + "." + getResultTableName();
+}
+
 // Block until a submit()'ed query completes.
 QueryState UserQueryProcessList::join() {
     // everything should be done in submit()

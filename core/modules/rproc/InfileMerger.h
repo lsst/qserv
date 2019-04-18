@@ -191,6 +191,10 @@ public:
     bool scrubResults(int jobId, int attempt);
     int makeJobIdAttempt(int jobId, int attemptCount);
 
+    /// Make a schema that matches the results of the given query.
+    sql::Schema getSchemaForQueryResults(query::SelectStmt const& stmt, std::string& errMsg);
+
+    /// Make the results table for the given query.
     bool makeResultsTableForQuery(query::SelectStmt const& stmt, std::string& errMsg);
 
 private:

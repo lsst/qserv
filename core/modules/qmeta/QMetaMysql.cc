@@ -817,4 +817,70 @@ QMetaMysql::_checkDb() {
 
 }
 
+
+void QMetaMysql::saveResultQuery(QueryId queryId, std::string const& query) {
+    std::lock_guard<std::mutex> sync(_dbMutex);
+
+    QMetaTransaction trans(_conn);
+
+    // find and update query info
+    std::string sqlQuery = "UPDATE QInfo SET resultQuery = '" + _conn->escapeString(query);
+    sqlQuery += "' WHERE queryId = ";
+    sqlQuery += boost::lexical_cast<std::string>(queryId);
+
+    LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << sqlQuery);
+    sql::SqlErrorObject errObj;
+    sql::SqlResults results;
+    if (not _conn.runQuery(sqlQuery, results, errObj)) {
+        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << sqlQuery);
+        throw SqlError(ERR_LOC, errObj);
+    }
+
+    // check number of rows updated, expect exactly one
+    if (results.getAffectedRows() == 0) {
+        throw QueryIdError(ERR_LOC, queryId);
+    } else if (results.getAffectedRows() > 1) {
+        throw ConsistencyError(ERR_LOC, "More than one row updated for query ID " +
+                               boost::lexical_cast<std::string>(queryId) + ": " +
+                               boost::lexical_cast<std::string>(results.getAffectedRows()));
+    }
+
+    trans.commit();
+}
+
+
+std::string QMetaMysql::getResultQuery(QueryId queryId) {
+    std::lock_guard<std::mutex> sync(_dbMutex);
+
+    QMetaTransaction trans(_conn);
+
+    // run query
+    sql::SqlErrorObject errObj;
+    sql::SqlResults results;
+    std::string query = "SELECT resultQuery FROM QInfo WHERE queryId = " +
+        boost::lexical_cast<std::string>(queryId);
+    LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
+    if (not _conn.runQuery(query, results, errObj)) {
+        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
+        throw SqlError(ERR_LOC, errObj);
+    }
+
+    // check number of rows updated, expect exactly one
+    if (results.getAffectedRows() == 0) {
+        throw QueryIdError(ERR_LOC, queryId);
+    }
+    // get results of the query
+    std::vector<std::string> ids;
+    std::string queryStr;
+    if (not results.extractFirstValue(queryStr, errObj)) {
+        LOGS(_log, LOG_LVL_ERROR, "Failed to extract query string from query result");
+        throw SqlError(ERR_LOC, errObj);
+    }
+
+    trans.commit();
+
+    return queryStr;
+}
+
+
 }}} // namespace lsst::qserv::qmeta

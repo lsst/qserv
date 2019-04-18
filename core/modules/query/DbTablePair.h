@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2014-2019 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -27,7 +27,9 @@
 
 
 // System headers
+#include <ostream>
 #include <set>
+#include <string>
 #include <vector>
 
 
@@ -53,7 +55,7 @@ struct DbTablePair {
 };
 
 inline std::ostream& operator<<(std::ostream& out, DbTablePair const& dbTablePair) {
-    return out << "DbTablePair(" << dbTablePair.db << ", " << dbTablePair.table << ")";
+    return out << std::string("DbTablePair(") << dbTablePair.db << ", " << dbTablePair.table << ")";
 }
 
 typedef std::vector<DbTablePair> DbTableVector;

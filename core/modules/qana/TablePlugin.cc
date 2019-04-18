@@ -67,6 +67,9 @@
 #include "query/SelectList.h"
 #include "query/SelectStmt.h"
 #include "query/TableAlias.h"
+#include "query/TableRef.h"
+#include "query/typedefs.h"
+#include "query/ValueExpr.h"
 #include "query/ValueFactor.h"
 #include "query/WhereClause.h"
 #include "util/common.h"
@@ -74,139 +77,59 @@
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qana.TablePlugin");
+
+template <typename CLAUSE_T>
+void matchValueExprs(lsst::qserv::query::QueryContext& context, CLAUSE_T & clause) {
+    lsst::qserv::query::ValueExprPtrRefVector valueExprRefs;
+    clause.findValueExprRefs(valueExprRefs);
+    for (auto&& valueExprRef : valueExprRefs) {
+        auto&& valueExprMatch = context.selectListAliases.getValueExprMatch(valueExprRef.get());
+        if (nullptr != valueExprMatch) {
+            valueExprRef.get() = valueExprMatch;
+        }
+    }
 }
+
+
+// Change the contents of the ValueExprs to use the TableRef objects that are stored in the context, instead
+// of allowing these ValueExprs to own their own unique TableRef objects.
+void matchTableRefs(lsst::qserv::query::QueryContext& context,
+                    lsst::qserv::query::ValueExprPtrVector& valueExprs) {
+    for (auto&& valueExpr : valueExprs) {
+        if (valueExpr->isStar()) {
+            auto valueFactor = valueExpr->getFactor();
+            auto tableRefMatch = context.tableAliases.getTableRefMatch(valueFactor->getTableStar());
+            if (nullptr != tableRefMatch) {
+                valueFactor->setStar(tableRefMatch);
+            }
+            continue;
+        }
+        // Otherwise, get all the contained column refs and handle them.
+        std::vector<std::shared_ptr<lsst::qserv::query::ColumnRef>> columnRefs;
+        valueExpr->findColumnRefs(columnRefs);
+        for (auto& columnRef : columnRefs) {
+            std::shared_ptr<lsst::qserv::query::TableRefBase>& tableRef = columnRef->getTableRef();
+            auto&& tableRefMatch = context.tableAliases.getTableRefMatch(tableRef);
+            if (nullptr != tableRefMatch) {
+                tableRef = tableRefMatch;
+            }
+        }
+    }
+}
+
+template <typename CLAUSE_T>
+void matchTableRefs(lsst::qserv::query::QueryContext& context, CLAUSE_T & clause) {
+    lsst::qserv::query::ValueExprPtrVector valueExprs;
+    clause.findValueExprs(valueExprs);
+    matchTableRefs(context, valueExprs);
+}
+
+} // namespace
 
 namespace lsst {
 namespace qserv {
 namespace qana {
 
-class addMap {
-public:
-    addMap(query::TableAlias& t, query::TableAliasReverse& r)
-        : _tableAlias(t), _tableAliasReverse(r) {}
-    void operator()(std::string const& alias,
-                    std::string const& db, std::string const& table) {
-        _tableAlias.set(db, table, alias);
-        _tableAliasReverse.set(db, table, alias);
-    }
-
-    query::TableAlias& _tableAlias;
-    query::TableAliasReverse& _tableAliasReverse;
-};
-
-class generateAlias {
-public:
-    explicit generateAlias(int& seqN) : _seqN(seqN) {}
-    std::string operator()() {
-        std::stringstream ss;
-        ss << "QST_" << ++_seqN << "_";
-        return ss.str();
-    }
-    int& _seqN;
-};
-
-template <typename G, typename A>
-class addAlias : public query::TableRef::Func {
-public:
-    addAlias(G g, A a) : _generate(g), _addMap(a) {}
-    void operator()(query::TableRef::Ptr t) {
-        if (t.get()) { t->apply(*this); }
-    }
-    void operator()(query::TableRef& t) {
-        // If no alias, then add one.
-        std::string alias = t.getAlias();
-        if (alias.empty()) {
-            alias = _generate();
-            t.setAlias(alias);
-        }
-        // Save ref
-        _addMap(alias, t.getDb(), t.getTable());
-    }
-private:
-    G _generate; // Functor that creates a new alias name
-    A _addMap; // Functor that adds a new alias mapping for matching
-               // later clauses.
-};
-
-////////////////////////////////////////////////////////////////////////
-// fixExprAlias is a functor that acts on ValueExpr objects and
-// modifys them in-place, altering table names to use an aliased name
-// that is mapped via TableAliasReverse.
-// It does not add table qualifiers where none already exist, because
-// there is no compelling reason to do so (yet).
-////////////////////////////////////////////////////////////////////////
-class fixExprAlias {
-public:
-    fixExprAlias(std::string const& db, query::TableAliasReverse& r) :
-        _defaultDb(db), _tableAliasReverse(r) {}
-
-    void operator()(query::ValueExprPtr& vep) {
-        if (!vep.get()) {
-            return;
-        }
-        // For each factor in the expr, patch for aliasing:
-        query::ValueExpr::FactorOpVector& factorOps = vep->getFactorOps();
-        for (auto&& factorOp : factorOps) {
-            if (nullptr == factorOp.factor) {
-                throw std::logic_error("Bad ValueExpr::FactorOps");
-            }
-            auto valueFactor = factorOp.factor;
-            switch(valueFactor->getType()) {
-            case query::ValueFactor::COLUMNREF:
-                // check columnref.
-                _patchColumnRef(*valueFactor->getColumnRef());
-                break;
-            case query::ValueFactor::FUNCTION:
-            case query::ValueFactor::AGGFUNC:
-                // recurse for func params (aggfunc is special case of function)
-                _patchFuncExpr(*valueFactor->getFuncExpr());
-                break;
-            case query::ValueFactor::STAR:
-                // Patch db/table name if applicable
-                _patchStar(*valueFactor);
-                break;
-            case query::ValueFactor::CONST:
-                break; // Constants don't need patching.
-            default:
-                LOGS(_log, LOG_LVL_WARN, "Unhandled ValueFactor:" << *valueFactor);
-                break;
-            }
-        }
-    }
-
-private:
-    void _patchColumnRef(query::ColumnRef& ref) {
-        std::string newAlias = _getAlias(ref.getDb(), ref.getTable());
-        if (newAlias.empty()) { return; } //  Ignore if no replacement
-                                         //  exists.
-
-        // Eliminate db. Replace table with aliased table.
-        ref.setDb("");
-        ref.setTable(newAlias);
-    }
-
-    void _patchFuncExpr(query::FuncExpr& fe) {
-        std::for_each(fe.params.begin(), fe.params.end(),
-                      fixExprAlias(_defaultDb, _tableAliasReverse));
-    }
-
-    void _patchStar(query::ValueFactor& vt) {
-        // TODO: No support for <db>.<table>.* in framework
-        // Only <table>.* is supported.
-        std::string newAlias = _getAlias("", vt.getConstVal());
-        if (newAlias.empty()) { return; } //  Ignore if no replacement
-                                         //  exists.
-        else { vt.setConstVal(newAlias); }
-    }
-
-    std::string _getAlias(std::string const& db,
-                          std::string const& table) {
-        return _tableAliasReverse.get(db.empty() ? _defaultDb : db, table);
-    }
-
-    std::string const& _defaultDb;
-    query::TableAliasReverse& _tableAliasReverse;
-};
 
 ////////////////////////////////////////////////////////////////////////
 // TablePlugin implementation
@@ -217,19 +140,31 @@ TablePlugin::applyLogical(query::SelectStmt& stmt,
     LOGS(_log, LOG_LVL_TRACE, "applyLogical begin:\n\t" << stmt.getQueryTemplate() << "\n\t" << stmt);
     query::FromList& fromList = stmt.getFromList();
     context.collectTopLevelTableSchema(fromList);
-    query::TableRefList& tableRefList = fromList.getTableRefList();
-    // Fill-in default db context.
-    query::DbTableVector v = fromList.computeResolverTables();
-    LOGS(_log, LOG_LVL_TRACE, "changing resolver tables from " << util::printable(context.resolverTables) <<
-            " to " << util::printable(v));
-    context.resolverTables.swap(v);
 
-    for (auto&& tableRef : tableRefList) {
+    // for each top-level ValueExpr in the SELECT list that does not have an alias, assign an alias that
+    // matches the original user query and add that item to the selectListAlias list.
+    for (auto& valueExpr : *(stmt.getSelectList().getValueExprList())) {
+        if (not valueExpr->hasAlias()) {
+            if (not valueExpr->isStar()) {
+                valueExpr->setAlias(valueExpr->sqlFragment(false));
+                if (not context.selectListAliases.set(valueExpr, valueExpr->getAlias())) {
+                    throw std::logic_error("could not set alias for " + valueExpr->sqlFragment(false));
+                }
+            }
+        } else {
+            valueExpr->setAliasIsUserDefined(true);
+        }
+    }
+
+    // make sure the TableRefs in the from list are all completetly populated (db AND table)
+    query::TableRefList& fromListTableRefs = fromList.getTableRefList();
+    for (auto&& tableRef : fromListTableRefs) {
         tableRef->verifyPopulated(context.defaultDb);
     }
 
-    if (tableRefList.size() > 0) {
-        context.dominantDb = tableRefList[0]->getDb();
+    // update the dominant db in the context ("dominant" is not the same as the default db)
+    if (fromListTableRefs.size() > 0) {
+        context.dominantDb = fromListTableRefs[0]->getDb();
         _dominantDb = context.dominantDb;
     }
 
@@ -244,61 +179,53 @@ TablePlugin::applyLogical(query::SelectStmt& stmt,
     // Note also that this must happen after the default db context
     // has been filled in, or alias lookups will be incorrect.
 
-    // For each tableref, modify to add alias.
-    int seq=0;
-    addMap addMapContext(context.tableAliases, context.tableAliasReverses);
-    std::for_each(tableRefList.begin(), tableRefList.end(),
-                  addAlias<generateAlias,addMap>(generateAlias(seq), addMapContext));
+    std::function<void(query::TableRef::Ptr)> aliasSetter = [&] (query::TableRef::Ptr tableRef) {
+        if (nullptr == tableRef) {
+            return;
+        }
+        if (not tableRef->hasAlias()) {
+            tableRef->setAlias(tableRef->getDb() + "." + tableRef->getTable());
+        }
+        if (not context.tableAliases.set(tableRef, tableRef->getAlias())) {
+            throw std::logic_error("could not set alias for " + tableRef->sqlFragment());
+        }
+        for (auto&& joinRef : tableRef->getJoins()){
+            aliasSetter(joinRef->getRight());
+        }
+    };
+    std::for_each(fromListTableRefs.begin(), fromListTableRefs.end(), aliasSetter);
 
-    // Patch table references in the select list,
-    query::SelectList& selectlist = stmt.getSelectList();
-    query::ValueExprPtrVector& exprList = *selectlist.getValueExprList();
-    std::for_each(exprList.begin(), exprList.end(), fixExprAlias(
-        context.defaultDb, context.tableAliasReverses));
-    // where clause,
-    if (stmt.hasWhereClause()) {
-        query::ValueExprPtrVector e;
-        stmt.getWhereClause().findValueExprs(e);
-        std::for_each(e.begin(), e.end(), fixExprAlias(
-            context.defaultDb, context.tableAliasReverses));
-    }
-    // group by clause,
-    if (stmt.hasGroupBy()) {
-        query::ValueExprPtrVector e;
-        stmt.getGroupBy().findValueExprs(e);
-        std::for_each(e.begin(), e.end(), fixExprAlias(
-            context.defaultDb, context.tableAliasReverses));
-    }
-    // having clause,
-    if (stmt.hasHaving()) {
-        query::ValueExprPtrVector e;
-        stmt.getHaving().findValueExprs(e);
-        std::for_each(e.begin(), e.end(), fixExprAlias(
-            context.defaultDb, context.tableAliasReverses));
-    }
-    // order by clause,
+    matchTableRefs(context, *stmt.getSelectList().getValueExprList());
+
     if (stmt.hasOrderBy()) {
-        query::ValueExprPtrVector e;
-        stmt.getOrderBy().findValueExprs(e);
-        std::for_each(e.begin(), e.end(), fixExprAlias(
-            context.defaultDb, context.tableAliasReverses));
+        matchTableRefs(context, stmt.getOrderBy());
+        matchValueExprs(context, stmt.getOrderBy());
     }
+    if (stmt.hasWhereClause()) {
+        matchTableRefs(context, stmt.getWhereClause());
+        matchValueExprs(context, stmt.getWhereClause());
+    }
+    if (stmt.hasGroupBy()) {
+        matchTableRefs(context, stmt.getGroupBy());
+        matchValueExprs(context, stmt.getGroupBy());
+    }
+    if (stmt.hasHaving()) {
+        matchTableRefs(context, stmt.getHaving());
+        matchValueExprs(context, stmt.getHaving());
+    }
+
+    LOGS(_log, LOG_LVL_TRACE, "OnClauses of Join:");
     // and in the on clauses of all join specifications.
-    typedef query::TableRefList::iterator TableRefIter;
-    typedef query::JoinRefPtrVector::iterator JoinRefIter;
-    for (TableRefIter t = tableRefList.begin(), te = tableRefList.end(); t != te; ++t) {
-        query::JoinRefPtrVector& joinRefs = (*t)->getJoins();
-        for (JoinRefIter j = joinRefs.begin(), je = joinRefs.end(); j != je; ++j) {
-            std::shared_ptr<query::JoinSpec> spec = (*j)->getSpec();
-            if (spec) {
-                fixExprAlias fix(context.defaultDb, context.tableAliasReverses);
+    for (auto&& tableRef : fromListTableRefs) {
+        for (auto&& joinRef : tableRef->getJoins()) {
+            auto&& joinSpec = joinRef->getSpec();
+            if (joinSpec) {
                 // A column name in a using clause should be unqualified,
                 // so only patch on clauses.
-                std::shared_ptr<query::BoolTerm> on = spec->getOn();
-                if (on) {
-                    query::ValueExprPtrVector e;
-                    on->findValueExprs(e);
-                    std::for_each(e.begin(), e.end(), fix);
+                auto&& onBoolTerm = joinSpec->getOn();
+                if (onBoolTerm) {
+                    matchTableRefs(context, *onBoolTerm);
+                    matchValueExprs(context, *onBoolTerm);
                 }
             }
         }

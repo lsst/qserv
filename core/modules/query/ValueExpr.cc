@@ -54,6 +54,7 @@
 #include "query/QueryTemplate.h"
 #include "query/ValueFactor.h"
 #include "util/IterableFormatter.h"
+#include "util/PointerCompare.h"
 
 
 namespace {
@@ -114,6 +115,13 @@ std::ostream& operator<<(std::ostream& os, const ValueExpr::FactorOp& factorOp) 
 
 bool ValueExpr::FactorOp::operator==(const FactorOp& rhs) const {
     return util::ptrCompare<ValueFactor>(factor, rhs.factor) && op == rhs.op;
+}
+
+
+bool ValueExpr::FactorOp::isSubsetOf(FactorOp const& rhs) const {
+    if (op != rhs.op)
+        return false;
+    return factor->isSubsetOf(*rhs.factor);
 }
 
 
@@ -274,6 +282,14 @@ std::shared_ptr<ValueFactor const> ValueExpr::getFactor() const {
 }
 
 
+std::shared_ptr<ValueFactor> ValueExpr::getFactor() {
+    if (_factorOps.empty()) {
+        throw std::logic_error("ValueExpr::getFactor no factors");
+    }
+    return _factorOps.front().factor;
+}
+
+
 /// @return true if holding a single ValueFactor
 bool ValueExpr::isColumnRef() const {
     if (_factorOps.size() == 1) {
@@ -310,13 +326,21 @@ ValueExprPtr ValueExpr::clone() const {
 }
 
 
+bool ValueExpr::isSubsetOf(ValueExpr const& valueExpr) const {
+    if (not _alias.empty() && _alias != valueExpr._alias)
+        return false;
+    return util::isSubsetOf(_factorOps, valueExpr._factorOps);
+}
+
+
 /** Return a string representation of the object
  *
  * @return a string representation of the object
  */
-std::string ValueExpr::sqlFragment() const {
+std::string ValueExpr::sqlFragment(bool preferAlias) const {
     // Reuse QueryTemplate-based rendering
     QueryTemplate qt;
+    qt.setAliasMode(preferAlias ? QueryTemplate::USE : QueryTemplate::DEFINE);
     ValueExpr::render render(qt, false);
     render.applyToQT(this);
     std::ostringstream os;
@@ -344,8 +368,22 @@ std::ostream& operator<<(std::ostream& os, ValueExpr const* ve) {
 // ValueExpr::render
 ////////////////////////////////////////////////////////////////////////
 void ValueExpr::render::applyToQT(ValueExpr const& ve) {
+
     if (_needsComma && _count++ > 0) { _qt.append(","); }
+    if (_qt.getAliasMode() == QueryTemplate::USE && ve.hasAlias()) {
+        _qt.append(ve._alias);
+        return;
+    }
+    auto previousAliasMode = _qt.getAliasMode();
+
+    // If we are defining this ValueExpr's alias, we still must USE the alias of any contained ValueFactor.
+    // If the mode is DONT_USE then we can leave it as is.
+    if (_qt.getAliasMode() == QueryTemplate::DEFINE) {
+        _qt.setAliasMode(QueryTemplate::USE);
+    }
+
     ValueFactor::render render(_qt);
+
     bool needsClose = false;
     if (!_isProtected && ve._factorOps.size() > 1) { // Need opening parenthesis
         _qt.append("(");
@@ -379,14 +417,30 @@ void ValueExpr::render::applyToQT(ValueExpr const& ve) {
     if (needsClose) { // Need closing parenthesis
         _qt.append(")");
     }
-    if (!ve._alias.empty()) { _qt.append("AS"); _qt.append(ve._alias); }
+    _qt.setAliasMode(previousAliasMode);
+    if (_qt.getAliasMode() == QueryTemplate::DEFINE) {
+        if (!ve._alias.empty()) { _qt.append("AS"); _qt.append(ve._alias); }
+    }
 }
 
 
 bool ValueExpr::operator==(const ValueExpr& rhs) const {
-    return (_alias == rhs._alias &&
-            _factorOps == rhs._factorOps);
+    return (_alias == rhs._alias && compareValue(rhs));
 }
+
+
+bool ValueExpr::compareValue(const ValueExpr& rhs) const {
+    return _factorOps == rhs._factorOps;
+}
+
+
+bool ValueExpr::isConstVal() const {
+    if (_factorOps.size() == 1 && _factorOps[0].factor->isConstVal()) {
+        return true;
+    }
+    return false;
+}
+
 
 
 // Miscellaneous

@@ -43,6 +43,7 @@
 #include "query/ValueExpr.h"
 #include "query/ValueFactor.h"
 #include "util/IterableFormatter.h"
+#include "util/PointerCompare.h"
 
 
 namespace lsst {
@@ -111,6 +112,14 @@ FuncExpr::clone() const {
     e->setName(getName());
     cloneValueExprPtrVector(e->params, params);
     return e;
+}
+
+
+// determine if this object is the same as or a less complete description of the passed in object.
+bool FuncExpr::isSubsetOf(FuncExpr const& rhs) const {
+    if (_name != rhs._name)
+        return false;
+    return util::isSubsetOf(params, rhs.params);
 }
 
 

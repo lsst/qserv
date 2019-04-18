@@ -66,6 +66,7 @@
 #include "qana/WherePlugin.h"
 #include "qproc/QueryProcessingBug.h"
 #include "query/Constraint.h"
+#include "query/SelectList.h"
 #include "query/QsRestrictor.h"
 #include "query/QueryContext.h"
 #include "query/SelectStmt.h"
@@ -73,9 +74,36 @@
 #include "query/typedefs.h"
 #include "util/IterableFormatter.h"
 
+
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qproc.QuerySession");
+
+std::string printParallel(lsst::qserv::query::SelectStmtPtrVector const& p) {
+    std::string ret;
+    for (auto&& selectStmtPtr : p) {
+        ret += "        ";
+        ret += selectStmtPtr->getQueryTemplate().sqlFragment();
+        ret += "\n";
+    }
+    return ret;
 }
+
+#define LOG_STATEMENTS(LEVEL, PRETEXT) \
+LOGS(_log, LEVEL, '\n' \
+    << "  " << PRETEXT << '\n' \
+    << "    stmt:" \
+        << (_stmt != nullptr ? _stmt->getQueryTemplate().sqlFragment() : "nullptr") << '\n' \
+    << "    stmtParallel:" << '\n' \
+        << printParallel(_stmtParallel) \
+    << "    stmtPreFlight:" \
+        << (_stmtPreFlight != nullptr ? _stmtPreFlight->getQueryTemplate().sqlFragment() : "nullptr") \
+        << '\n' \
+    << "    stmtMerge:" \
+        << (_stmtMerge != nullptr ? _stmtMerge->getQueryTemplate().sqlFragment() : "nullptr") \
+        << '\n' \
+    << "    needsMerge:" << (needsMerge() ? "true" : "false"));
+}
+
 
 namespace lsst {
 namespace qserv {
@@ -173,12 +201,14 @@ std::shared_ptr<query::ConstraintVector> QuerySession::getConstraints() const {
     return cv;
 }
 
+
 // return the ORDER BY clause to run on mysql-proxy at result retrieval
 std::string QuerySession::getProxyOrderBy() const {
     std::string orderBy;
     if (_stmt->hasOrderBy()) {
         orderBy = _stmt->getOrderBy().sqlFragment();
     }
+    LOGS(_log, LOG_LVL_TRACE, "getProxyOrderBy: " << orderBy);
     return orderBy;
 }
 
@@ -288,12 +318,12 @@ void QuerySession::_preparePlugins() {
     }
 }
 
+
 void QuerySession::_applyLogicPlugins() {
     QueryPluginPtrVector::iterator i;
-    for(i=_plugins->begin(); i != _plugins->end(); ++i) {
-        LOGS(_log, LOG_LVL_TRACE, "applyLogical BEGIN: " << (**i).name());
-        (**i).applyLogical(*_stmt, *_context);
-        LOGS(_log, LOG_LVL_TRACE, "applyLogical END: " << (**i).name());
+    for (auto&& plugin : *_plugins) {
+        plugin->applyLogical(*_stmt, *_context);
+        LOG_STATEMENTS(LOG_LVL_TRACE, "applied logical:" << plugin->name());
     }
 }
 
@@ -326,16 +356,17 @@ void QuerySession::_generateConcrete() {
     LOGS(_log, LOG_LVL_TRACE, "Merge statement initialized with: \""
          << _stmtMerge->getQueryTemplate() << "\"");
 
+    LOG_STATEMENTS(LOG_LVL_TRACE, "did generateConcrete:");
     // TableMerger needs to be integrated into this design.
 }
 
+
+
 void QuerySession::_applyConcretePlugins() {
     qana::QueryPlugin::Plan p(*_stmt, _stmtParallel, _stmtPreFlight, *_stmtMerge, _hasMerge);
-    QueryPluginPtrVector::iterator i;
-    for(i=_plugins->begin(); i != _plugins->end(); ++i) {
-        LOGS(_log, LOG_LVL_TRACE, "applyPhysical BEGIN: " << (**i).name());
-        (**i).applyPhysical(p, *_context);
-        LOGS(_log, LOG_LVL_TRACE, "applyPhysical END: " << (**i).name());
+    for (auto&& plugin : *_plugins) {
+        plugin->applyPhysical(p, *_context);
+        LOG_STATEMENTS(LOG_LVL_TRACE, "did applyConcretePlugins:" << plugin->name());
     }
 }
 

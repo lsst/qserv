@@ -53,6 +53,7 @@ UserQueryAsyncResult::UserQueryAsyncResult(QueryId queryId,
     : UserQuery(),
       _queryId(queryId),
       _qMetaCzarId(qMetaCzarId),
+      _qMeta(qMeta),
       _resultDbConn(resultDbConn),
       _messageStore(std::make_shared<qdisp::MessageStore>()) {
 
@@ -212,5 +213,10 @@ std::string UserQueryAsyncResult::getResultLocation() const {
 std::string UserQueryAsyncResult::getProxyOrderBy() const {
     return _qInfo.proxyOrderBy();
 }
+
+std::string UserQueryAsyncResult::getResultQuery() const {
+    return _qMeta->getResultQuery(_queryId);
+}
+
 
 }}} // namespace lsst::qserv::ccontrol

@@ -77,4 +77,72 @@ BOOST_AUTO_TEST_CASE(verifyPopulated_dbIsSetIgnoreDefault) {
     BOOST_REQUIRE_EQUAL(tableRef, expectedTableRef);
 }
 
+
+struct TestTableRefs {
+    TestTableRefs(std::shared_ptr<TableRefBase> const& TRa, std::shared_ptr<TableRefBase> const& TRb, bool p)
+    : a(TRa), b(TRb), pass(p)  {}
+
+    TestTableRefs(std::string aDb, std::string aTable, std::string aAlias,
+                  std::string bDb, std::string bTable, std::string bAlias, bool p)
+    : a(std::make_shared<TableRefBase>(aDb, aTable, aAlias))
+    , b(std::make_shared<TableRefBase>(bDb, bTable, bAlias))
+    , pass(p)
+    {}
+
+    std::shared_ptr<TableRefBase> a;
+    std::shared_ptr<TableRefBase> b;
+    bool pass; // if the test should pass;
+};
+
+std::ostream& operator<<(std::ostream& os, TestTableRefs const& self) {
+    os << "TestTableRefs(";
+    os << "a:" << self.a;
+    os << ", b:" << self.b;
+    os << ", expected match" << self.pass;
+    os << ")";
+    return os;
+}
+
+static const std::vector<TestTableRefs> TABLE_REF_SUBSET_TEST_DATA = {
+    TestTableRefs("foo", "bar", "", "foo", "bar", "", true),  // match
+    TestTableRefs("baz", "bar", "", "foo", "bar", "", false), // database mismatch
+    TestTableRefs("foo", "baz", "", "foo", "bar", "", false), // table mismatch
+
+    TestTableRefs("", "bar", "", "",    "bar", "", true),     // match
+    TestTableRefs("", "bar", "", "foo", "bar", "", true),     // match
+    TestTableRefs("", "baz", "", "",    "bar", "", false),    // table mismatch
+
+    TestTableRefs("foo", "bar", "o", "foo", "bar", "o", true),  // match
+    TestTableRefs("",    "bar", "o", "foo", "bar", "o", true),  // match
+    TestTableRefs("",    "bar", "o", "",    "bar", "s", false), // alias mismatch
+    TestTableRefs("",    "baz", "o", "",    "bar", "o", false), // column mismatch
+                                                                // (but alias match! other consistency checks should catch this)
+
+    TestTableRefs("", "Object", "", "database", "Object", "`database.Object`", true),  // match
+
+
+};
+
+BOOST_DATA_TEST_CASE(TableRefSubset, TABLE_REF_SUBSET_TEST_DATA, tables) {
+    BOOST_REQUIRE_MESSAGE(tables.pass == tables.a->isSubsetOf(*tables.b), tables.a <<
+            (tables.pass ? "should " : "should NOT ") << "be a subset of " << tables.b);
+}
+
+
+static const std::vector<TestTableRefs> TABLE_REF_ALIASED_BY_TEST_DATA = {
+    TestTableRefs("", "o", "", "database", "Object", "o", true),  // match
+    TestTableRefs("other_database", "o", "", "database", "Object", "o", false),  // mismatched database
+    TestTableRefs("database", "Object", "o", "database", "Object", "o", false),  // they match, but the former is not the latter in alias form
+    TestTableRefs("", "Object", "", "database", "Object", "`database.Object`", false),  // it is a subset match, not an alias match
+
+
+};
+
+BOOST_DATA_TEST_CASE(TableRefAliasedBy, TABLE_REF_ALIASED_BY_TEST_DATA, tables) {
+    BOOST_REQUIRE_MESSAGE(tables.pass == tables.a->isAliasedBy(*tables.b), tables.a <<
+            (tables.pass ? "should " : "should NOT ") << "be aliased by " << tables.b);
+}
+
+
+
 BOOST_AUTO_TEST_SUITE_END()

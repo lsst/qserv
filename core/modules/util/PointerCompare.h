@@ -134,6 +134,34 @@ struct Compare
     }
 };
 
+
+// nptodo decide if this is the right file or make a different one.
+template <typename T>
+bool isSubsetOf(std::vector<std::shared_ptr<T>> const& a, std::vector<std::shared_ptr<T>> const& b) {
+    if (a.size() != b.size()) {
+        return false;
+    }
+    size_t size = a.size();
+    for (size_t i=0; i<size; ++i) {
+        if (not a[i]->isSubsetOf(*b[i])) // nptodo pass in function to call? rename to for_each_i or something?
+            return false;
+    }
+    return true;
+}
+
+template <typename T>
+bool isSubsetOf(std::vector<T> const& a, std::vector<T> const& b) {
+    if (a.size() != b.size()) {
+        return false;
+    }
+    size_t size = a.size();
+    for (size_t i=0; i<size; ++i) {
+        if (not a[i].isSubsetOf(b[i])) // nptodo pass in function to call? rename to for_each_i or something?
+            return false;
+    }
+    return true;
+}
+
 }}} // namespace lsst::qserv::util
 
 #endif // LSST_QSERV_UTIL_POINTER_COMPARE_H

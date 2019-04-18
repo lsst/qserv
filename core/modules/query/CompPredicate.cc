@@ -93,6 +93,12 @@ void CompPredicate::findValueExprs(std::vector<std::shared_ptr<ValueExpr>>& vect
 }
 
 
+void CompPredicate::findValueExprRefs(ValueExprPtrRefVector& vector) {
+    vector.push_back(left);
+    vector.push_back(right);
+}
+
+
 CompPredicate::OpType CompPredicate::lookupOp(char const* op) {
     switch(op[0]) {
         case '<':

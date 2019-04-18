@@ -52,6 +52,7 @@ inline std::ostream& operator<<(std::ostream& os, ColType const& ct) {
 
 /// Schema for a single column
 struct ColSchema {
+    std::string table; ///< Table name
     std::string name; ///< Column name
     ColType colType; ///< Column type
 };
@@ -61,6 +62,8 @@ typedef std::vector<ColSchema> ColSchemaVector;
 typedef ColSchemaVector::const_iterator ColumnsIter;
 
 inline std::ostream& operator<<(std::ostream& os, ColSchema const& cs) {
+    if (not cs.table.empty())
+        os << "`" << cs.table << "`.";
     os << "`" << cs.name << "` " << cs.colType;
     return os;
 }

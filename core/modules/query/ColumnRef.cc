@@ -41,10 +41,15 @@
 
 // Qserv headers
 #include "query/QueryTemplate.h"
+#include "query/TableRef.h"
 
 
 namespace {
-    LOG_LOGGER _log = LOG_GET("lsst.qserv.query.ColumnRef");
+
+LOG_LOGGER _log = LOG_GET("lsst.qserv.query.ColumnRef");
+
+typedef std::tuple<lsst::qserv::query::TableRefBase const&, std::string const&> TableRefStringTuple;
+
 }
 
 
@@ -55,8 +60,7 @@ namespace query {
 
 std::ostream& operator<<(std::ostream& os, ColumnRef const& cr) {
     os << "ColumnRef(";
-    os << "\"" << cr._db << "\"";
-    os << ", \"" << cr._table << "\"";
+    os << "\"" << *cr._tableRef << "\"";
     os << ", \"" << cr._column << "\"";
     os << ")";
     return os;
@@ -73,15 +77,60 @@ std::ostream& operator<<(std::ostream& os, ColumnRef const* cr) {
 }
 
 
+ColumnRef::ColumnRef(std::string db_, std::string table_, std::string column_)
+    : _tableRef(std::make_shared<TableRefBase>(db_, table_, "")), _column(column_) {
+}
+
+
+ColumnRef::ColumnRef(std::string db_, std::string table_, std::string tableAlias_, std::string column_)
+    : _tableRef(std::make_shared<TableRefBase>(db_, table_, tableAlias_)), _column(column_) {
+}
+
+
+ColumnRef::ColumnRef(std::shared_ptr<TableRefBase> const& table, std::string const& column)
+    : _tableRef(table), _column(column) {
+}
+
+
+std::string const& ColumnRef::getDb() const {
+    return _tableRef->getDb();
+}
+
+
+std::string const& ColumnRef::getTable() const {
+    return _tableRef->getTable();
+}
+
+
+std::string const& ColumnRef::getColumn() const {
+    return _column;
+}
+
+
+std::string const& ColumnRef::getTableAlias() const {
+    return _tableRef->getAlias();
+}
+
+
+std::shared_ptr<TableRefBase> ColumnRef::getTableRef() const {
+    return _tableRef;
+}
+
+
+std::shared_ptr<TableRefBase>& ColumnRef::getTableRef() {
+    return _tableRef;
+}
+
+
 void ColumnRef::setDb(std::string const& db) {
     LOGS(_log, LOG_LVL_TRACE, *this << "; set db:" << db);
-    _db = db;
+    _tableRef->setDb(db);
 }
 
 
 void ColumnRef::setTable(std::string const& table) {
     LOGS(_log, LOG_LVL_TRACE, *this << "; set table:" << table);
-    _table = table;
+    _tableRef->setTable(table);
 }
 
 
@@ -91,33 +140,26 @@ void ColumnRef::setColumn(std::string const& column) {
 }
 
 
+void ColumnRef::set(std::string const& db, std::string const& table, std::string const& column) {
+    setDb(db);
+    setTable(table);
+    setColumn(column);
+}
+
+
 void ColumnRef::renderTo(QueryTemplate& qt) const {
     qt.append(*this);
 }
 
 
 bool ColumnRef::isSubsetOf(const ColumnRef::Ptr & rhs) const {
-    // the columns can not be empty
-    if (_column.empty() || rhs->_column.empty()) {
-        return false;
-    }
-    // if the _table is empty, the _db must be empty
-    if (_table.empty() && !_db.empty()) {
-        return false;
-    }
-    if (rhs->_table.empty() && !rhs->_db.empty()) {
+    if (not _tableRef->isSubsetOf(*rhs->_tableRef)) {
         return false;
     }
 
-    if (!_db.empty()) {
-        if (_db != rhs->_db) {
-            return false;
-        }
-    }
-    if (!_table.empty()) {
-        if (_table != rhs->_table) {
-            return false;
-        }
+    // the columns can not be empty
+    if (_column.empty() || rhs->_column.empty()) {
+        return false;
     }
     if (_column != rhs->_column) {
         return false;
@@ -126,13 +168,33 @@ bool ColumnRef::isSubsetOf(const ColumnRef::Ptr & rhs) const {
 }
 
 
+bool ColumnRef::equal(ColumnRef const& rhs, bool useAlias) const {
+    return _tableRef->equal(*rhs._tableRef, useAlias);
+    if (_column != rhs._column) {
+        return false;
+    }
+}
+
+
+bool ColumnRef::lessThan(ColumnRef const& rhs, bool useAlias) const {
+    if (_tableRef->lessThan(*rhs._tableRef, useAlias)) {
+        return true;
+    } else if (rhs._tableRef->lessThan(*_tableRef, useAlias)) {
+        return false;
+    }
+    return _column < rhs._column;
+}
+
+
 bool ColumnRef::operator==(const ColumnRef& rhs) const {
-    return std::tie(_db, _table, _column) == std::tie(rhs._db, rhs._table, rhs._column);
+    throw std::runtime_error("fixme?");
+    return TableRefStringTuple(*_tableRef, _column) == TableRefStringTuple(*rhs._tableRef, rhs._column);
 }
 
 
 bool ColumnRef::operator<(const ColumnRef& rhs) const {
-    return std::tie(_db, _table, _column) < std::tie(rhs._db, rhs._table, rhs._column);
+    throw std::runtime_error("fixme?");
+    return TableRefStringTuple(*_tableRef, _column) < TableRefStringTuple(*rhs._tableRef, rhs._column);
 }
 
 

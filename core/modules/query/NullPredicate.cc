@@ -63,6 +63,11 @@ void NullPredicate::findValueExprs(std::vector<std::shared_ptr<ValueExpr>>& vect
 }
 
 
+void NullPredicate::findValueExprRefs(ValueExprPtrRefVector& vector) {
+    vector.push_back(value);
+}
+
+
 BoolFactorTerm::Ptr NullPredicate::clone() const {
     return std::make_shared<NullPredicate>(((nullptr != value) ? value->clone() : nullptr), hasNot);
 }

@@ -7,18 +7,18 @@
 
 -- -----------------------------------------------------
 -- Table `QStatsTmp`
--- MEMORY table - will be recreated(but empty) by mariadb every time server starts. 
+-- MEMORY table - will be recreated(but empty) by mariadb every time server starts.
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `QStatsTmp` (
   `queryId` BIGINT NOT NULL COMMENT 'Query ID',
   `totalChunks` INT COMMENT 'Total number of cunks in the query',
   `completedChunks` INT COMMENT 'Number of completed chunks in the query',
-  `queryBegin` TIMESTAMP DEFAULT 0 COMMENT 'When the query was started', 
+  `queryBegin` TIMESTAMP DEFAULT 0 COMMENT 'When the query was started',
   `lastUpdate` TIMESTAMP DEFAULT 0 COMMENT 'Last time completedChunks was updated',
   PRIMARY KEY (`queryId`))
 ENGINE = MEMORY
 COMMENT = 'Table to track statistics of running queries.';
- 
+
  -- -----------------------------------------------------
 -- View `ShowProcessList`
 -- This shows abbreviated Qmeta info suitable for "SHOW PROCESSLIST"
@@ -81,4 +81,4 @@ CREATE OR REPLACE
 
 
 -- Update record for schema version, migration script expects this record to exist
-UPDATE `QMetadata` SET `value` = '2' WHERE `metakey` = 'version'; 
+UPDATE `QMetadata` SET `value` = '2' WHERE `metakey` = 'version';

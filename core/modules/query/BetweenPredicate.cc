@@ -66,6 +66,13 @@ void BetweenPredicate::findValueExprs(std::vector<std::shared_ptr<ValueExpr>>& v
 }
 
 
+void BetweenPredicate::findValueExprRefs(ValueExprPtrRefVector& vector) {
+    vector.push_back(value);
+    vector.push_back(minValue);
+    vector.push_back(maxValue);
+}
+
+
 BoolFactorTerm::Ptr BetweenPredicate::clone() const {
     BetweenPredicate::Ptr p = std::make_shared<BetweenPredicate>();
     if (value) p->value = value->clone();

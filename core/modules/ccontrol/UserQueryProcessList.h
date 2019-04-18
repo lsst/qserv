@@ -122,6 +122,8 @@ public:
     /// @return ORDER BY part of SELECT statement to be executed by proxy
     std::string getProxyOrderBy() const override { return _orderBy; }
 
+    std::string getResultQuery() const override;
+
 private:
 
     sql::SqlConnection* _resultDbConn;

@@ -84,6 +84,12 @@ void InPredicate::findValueExprs(std::vector<std::shared_ptr<ValueExpr>>& vector
 }
 
 
+void InPredicate::findValueExprRefs(ValueExprPtrRefVector& vector) {
+    vector.push_back(value);
+    vector.insert(vector.end(), cands.begin(), cands.end());
+}
+
+
 BoolFactorTerm::Ptr InPredicate::clone() const {
     InPredicate::Ptr p  = std::make_shared<InPredicate>();
     if (value) p->value = value->clone();

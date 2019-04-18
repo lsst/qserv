@@ -36,6 +36,7 @@
 
 // Qserv headers
 #include "ccontrol/ConfigMap.h"
+#include "ccontrol/UserQuerySelect.h"
 #include "ccontrol/UserQueryType.h"
 #include "czar/CzarErrors.h"
 #include "czar/MessageTable.h"
@@ -151,6 +152,7 @@ Czar::submitQuery(std::string const& query,
         uq = _uqFactory->newUserQuery(query, defaultDb, getQdispPool(), userQueryId, msgTableName);
     }
     auto queryIdStr = uq->getQueryIdString();
+    uq->setResultDb(resultDb);
 
     // check for errors
     auto error = uq->getError();
@@ -166,6 +168,8 @@ Czar::submitQuery(std::string const& query,
         result.errorMessage = exc.what();
         return result;
     }
+
+    auto resultQuery = uq->getResultQuery();
 
     // spawn background thread to wait until query finishes to unlock,
     // note that lambda stores copies of uq and msgTable.
@@ -208,13 +212,15 @@ Czar::submitQuery(std::string const& query,
         result.resultTable = resultTableName;
         result.messageTable = asyncLockName;
         if (not resultTableName.empty()) {
-            result.resultQuery = std::string("SELECT * FROM ") + resultTableName;
+            // respond with info about the results table.
+            result.resultQuery = "SELECT * FROM " + resultTableName;
         }
+        uq->saveResultQuery(resultQuery);
     } else {
         result.messageTable = lockName;
-        if (not uq->getResultTableName().empty()) {
+        if (not resultQuery.empty()) {
             result.resultTable = resultDb + "." + uq->getResultTableName();
-            result.resultQuery = std::string("SELECT * FROM ") + result.resultTable;
+            result.resultQuery = resultQuery;
             auto&& orderBy = uq->getProxyOrderBy();
             if (not orderBy.empty()) {
                 result.resultQuery += ' ';

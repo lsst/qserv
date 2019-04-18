@@ -248,6 +248,28 @@ public:
     virtual std::vector<QueryId> getQueriesForTable(std::string const& dbName,
                                                     std::string const& tableName) override;
 
+    /**
+     * @brief Save the result query in metadata, to give to the proxy when fetching results from an async
+     *        query.
+     *
+     *  This method will throw if query ID is not known.
+     *
+     * @param queryId: Query ID, non-negative number.
+     * @param query : string, the query.
+     */
+    void saveResultQuery(QueryId queryId, std::string const& query) override;
+
+    /**
+     * @brief Get the result query from metadata, to give to the proxy when fetching results from an async
+     *        query.
+     *
+     *  This method will throw if query ID is not known.
+     *
+     * @param queryId: Query ID, non-negative number.
+     * @query the query string
+     */
+     std::string getResultQuery(QueryId queryId) override;
+
 protected:
 
     ///  Check that all necessary tables exist

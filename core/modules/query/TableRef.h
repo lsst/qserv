@@ -63,36 +63,110 @@ namespace query {
 typedef std::vector<std::shared_ptr<JoinRef> > JoinRefPtrVector;
 
 
+// TableRefBase is a TableRef without joins. It contains the database, table, and alias.
+class TableRefBase {
+public:
+    TableRefBase(std::string const& db, std::string const& table, std::string const& alias);
+
+    virtual ~TableRefBase() = default;
+
+    std::string const& getDb() const;
+    std::string const& getTable() const;
+    std::string const& getAlias() const;
+
+    void setDb(std::string const& db);
+    void setTable(std::string const& table);
+    void setAlias(std::string const& alias);
+
+    bool hasDb() const;
+    bool hasTable() const;
+    bool hasAlias() const;
+
+    virtual void verifyPopulated(std::string const& defaultDb);
+
+    // nptodo this doesn't really work with the TableRef subclass (which has JoinRefs)
+    // maybe there needs to be another subclass TableRefWithoutJoin or something more
+    // elegant
+    /**
+     * @brief Find out if this TableRefBase is the same as another TableRefBase, where the database & column fields
+     *        in this table ref may not be populated.
+     *
+     * For example, if the database is not populated in this it is ignored during comparison.
+     * It is required that if the database is populated that the Table also be populated.
+     * If the alias is populated it is included in the check.
+     *
+     * @return true if the populated fields of this match the populated fields of rhs *and* if database is
+     *         populated that table is populated as well.
+     * @return false if populated fields of this do not match popualted fields of rhs or if database is
+     *         populated but table is not.
+     */
+    virtual bool isSubsetOf(TableRefBase const& rhs) const;
+
+    /**
+     * @brief Find out if this TableRefBase is using the alias of another TableRefBase
+     *
+     * If only the table is populated in this object and it matches the alias of the other object then this
+     * object is the same as, the alias of, the other object.
+     *
+     * @param rhs
+     * @return bool
+     */
+    virtual bool isAliasedBy(TableRefBase const& rhs) const;
+
+    virtual std::ostream& putStream(std::ostream& os) const;
+    virtual void putTemplate(QueryTemplate& qt) const;
+    virtual std::string sqlFragment() const;
+
+    bool operator==(TableRefBase const& rhs) const;
+
+    bool operator<(const TableRefBase& rhs) const;
+
+    // Compare this TableRef to rhs and return true if it is less than the other. If useAlias is true this
+    // will use the alias and igore the db and table.
+    // That is, "x.y AS a" will be less than "a.b as b" because a < b.
+    virtual bool lessThan(TableRefBase const& rhs, bool useAlias) const;
+
+    virtual bool equal(TableRefBase const& rhs, bool useAlias) const;
+
+protected:
+    std::string _db;
+    std::string _table;
+    std::string _alias;
+
+private:
+    friend std::ostream& operator<<(std::ostream& os, TableRefBase const& refN);
+    friend std::ostream& operator<<(std::ostream& os, TableRefBase const* refN);
+};
+
+
 /// TableRefN is a parsed table reference node
 // table_ref :
 //   table_ref_aux (options{greedy=true;}:qualified_join | cross_join)*
 // table_ref_aux :
 //   (n:table_name | /*derived_table*/q:table_subquery) ((as:"as")? c:correlation_name (LEFT_PAREN derived_column_list RIGHT_PAREN)?)?
-class TableRef {
+class TableRef : public TableRefBase {
 public:
     typedef std::shared_ptr<TableRef> Ptr;
     typedef std::shared_ptr<TableRef const> CPtr;
 
     TableRef(std::string const& db_, std::string const& table_,
                std::string const& alias_)
-        : _alias(alias_), _db(db_), _table(table_)  {
+            : TableRefBase(db_, table_, alias_) {
         if(table_.empty()) { throw std::logic_error("TableRef without table"); }
     }
+
     virtual ~TableRef() {}
 
-    std::ostream& putStream(std::ostream& os) const;
-    void putTemplate(QueryTemplate& qt) const;
+    std::ostream& putStream(std::ostream& os) const override;
+    void putTemplate(QueryTemplate& qt) const override;
+    std::string sqlFragment() const override;
 
     bool isSimple() const { return _joinRefs.empty(); }
-    std::string const& getDb() const { return _db; }
-    std::string const& getTable() const { return _table; }
-    std::string const& getAlias() const { return _alias; }
     JoinRefPtrVector const& getJoins() const { return _joinRefs; }
+    /// Get all the db+table names used by this TableRef and all of its joins.
+    void getRelatedDbTableInfo(std::vector<DbTablePair>& dbTablePairs) const;
 
     // Modifiers
-    void setAlias(std::string const& alias);
-    void setDb(std::string const& db);
-    void setTable(std::string const& table);
     JoinRefPtrVector& getJoins() { return _joinRefs; }
     void addJoin(std::shared_ptr<JoinRef> r);
     void addJoins(const JoinRefPtrVector& r);
@@ -118,20 +192,19 @@ public:
      *
      * @param defaultDb the default database to assign, or an empty string for no default.
      */
-    void verifyPopulated(std::string const& defaultDb=std::string());
+    void verifyPopulated(std::string const& defaultDb=std::string()) override;
 
     TableRef::Ptr clone() const;
 
-    bool operator==(const TableRef& rhs) const;
+    bool operator==(TableRef const& rhs) const;
+
+    // bool lessThan(TableRefBase const& rhs, bool useAlias) const override;
 
     class render;
 private:
     friend std::ostream& operator<<(std::ostream& os, TableRef const& refN);
     friend std::ostream& operator<<(std::ostream& os, TableRef const* refN);
 
-    std::string _alias;
-    std::string _db;
-    std::string _table;
     JoinRefPtrVector _joinRefs;
 };
 

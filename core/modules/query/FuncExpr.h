@@ -103,6 +103,9 @@ public:
 
     bool operator==(const FuncExpr& rhs) const;
 
+    // determine if this object is the same as or a less complete description of the passed in object.
+    bool isSubsetOf(FuncExpr const& rhs) const;
+
     // Fields
     ValueExprPtrVector params;
 

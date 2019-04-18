@@ -63,6 +63,7 @@ public:
     char const* getName() const override { return "LikePredicate"; }
     void findValueExprs(std::vector<std::shared_ptr<ValueExpr>>& vector) const override;
     void findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& vector) const override;
+    void findValueExprRefs(ValueExprPtrRefVector& vector) override;
     std::ostream& putStream(std::ostream& os) const override;
     void renderTo(QueryTemplate& qt) const override;
     BoolFactorTerm::Ptr clone() const override;

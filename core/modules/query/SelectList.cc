@@ -117,7 +117,8 @@ std::string
 SelectList::getGenerated() {
     QueryTemplate qt;
     renderTo(qt);
-    return qt.sqlFragment();
+    auto generated = qt.sqlFragment();
+    return generated;
 }
 
 

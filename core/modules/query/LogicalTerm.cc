@@ -80,6 +80,16 @@ void LogicalTerm::findValueExprs(std::vector<std::shared_ptr<ValueExpr>>& vector
 }
 
 
+void LogicalTerm::findValueExprRefs(ValueExprPtrRefVector& vector) {
+    for (auto&& boolTerm : _terms) {
+        if (boolTerm) {
+            boolTerm->findValueExprRefs(vector);
+        }
+    }
+}
+
+
+
 void LogicalTerm::findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& vector) const {
     for (auto&& boolTerm : _terms) {
         if (boolTerm) {

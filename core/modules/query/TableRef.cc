@@ -35,6 +35,7 @@
 // System headers
 #include <algorithm>
 #include <sstream>
+#include <stdexcept>
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -64,8 +65,210 @@ namespace query {
 
 
 ////////////////////////////////////////////////////////////////////////
+// TableRefBase
+////////////////////////////////////////////////////////////////////////
+
+
+TableRefBase::TableRefBase(std::string const& db, std::string const& table, std::string const& alias)
+        : _db(db), _table(table), _alias(alias) {
+}
+
+
+std::string const& TableRefBase::getDb() const {
+    return _db;
+}
+
+
+std::string const& TableRefBase::getTable() const {
+    return _table;
+}
+
+
+std::string const& TableRefBase::getAlias() const {
+    return _alias;
+}
+
+
+void TableRefBase::setAlias(std::string const& alias) {
+    LOGS(_log, LOG_LVL_TRACE, *this << "; set alias:" << alias);
+    _alias = alias;
+}
+
+
+void TableRefBase::setDb(std::string const& db) {
+    LOGS(_log, LOG_LVL_TRACE, *this << "; set db:" << db);
+    _db = db;
+}
+
+
+void TableRefBase::setTable(std::string const& table) {
+    LOGS(_log, LOG_LVL_TRACE, *this << "; set table:" << table);
+    if (table.empty()) {
+        throw std::logic_error("TableRef::setTable - table can not be empty");
+    }
+    _table = table;
+}
+
+
+bool TableRefBase::hasDb() const {
+    return not _db.empty();
+}
+
+
+bool TableRefBase::hasTable() const {
+    return not _table.empty();
+}
+
+
+bool TableRefBase::hasAlias() const{
+    return not _alias.empty();
+}
+
+
+void TableRefBase::verifyPopulated(std::string const& defaultDb) {
+    // it should not be possible to construct a TableRef with an empty table, but just to be sure:
+    if (_table.empty()) {
+        throw std::logic_error("No table in TableRef");
+    }
+    if (_db.empty()) {
+        if (defaultDb.empty()) {
+            throw std::logic_error("No db in TableRef");
+        } else {
+            _db = defaultDb;
+        }
+    }
+}
+
+
+bool TableRefBase::isSubsetOf(TableRefBase const& rhs) const {
+    // if the _table is empty, the _db must be empty
+    if (not hasTable() && hasDb()) {
+        return false;
+    }
+    if (not rhs.hasTable() && rhs.hasDb()) {
+        return false;
+    }
+
+    if (hasAlias() && getAlias() != rhs.getAlias()) {
+        return false;
+    }
+    if (hasDb() && getDb() != rhs.getDb()) {
+        return false;
+    }
+    if (hasTable() && getTable() != rhs.getTable()) {
+        return false;
+    }
+    return true;
+}
+
+
+bool TableRefBase::isAliasedBy(TableRefBase const& rhs) const {
+    if (hasTable() && not hasDb() && not hasAlias()) {
+        if (_table == rhs._alias)
+            return true;
+    }
+    return false;
+}
+
+
+std::ostream& TableRefBase::putStream(std::ostream& os) const {
+    os << "Table(" << _db << "." << _table << ")";
+    if (!_alias.empty()) { os << " AS " << _alias; }
+    return os;
+}
+
+
+std::string TableRefBase::sqlFragment() const {
+    QueryTemplate qt;
+    putTemplate(qt);
+    std::ostringstream os;
+    os << qt;
+    return os.str();
+}
+
+
+void TableRefBase::putTemplate(QueryTemplate& qt) const {
+    auto aliasMode = qt.getAliasMode();
+    if (QueryTemplate::USE == aliasMode) {
+        if (hasAlias()) {
+            qt.append(_alias);
+        } else {
+            if (!_db.empty()) {
+                qt.append(_db);
+                qt.append(".");
+            }
+            qt.append(_table);
+        }
+    } else { // DEFINE or DONT_USE
+        if (!_db.empty()) {
+            qt.append(_db);
+            qt.append(".");
+        }
+        qt.append(_table);
+    }
+    if (QueryTemplate::DEFINE == aliasMode) {
+        if (hasAlias()) {
+            qt.append("AS");
+            qt.append(_alias);
+        }
+    }
+}
+
+
+bool TableRefBase::operator==(TableRefBase const& rhs) const {
+    throw std::runtime_error("fixme?");
+    return std::tie(_db, _table, _alias) == std::tie(rhs._db, rhs._table, rhs._alias);
+}
+
+
+std::ostream& operator<<(std::ostream& os, TableRefBase const& ref) {
+    os << "TableRefBase(";
+    os << "\"" << ref._db << "\"";
+    os << ", \"" << ref._table << "\"";
+    os << ", \"" << ref._alias << "\"";
+    os << ")";
+    return os;
+}
+
+
+std::ostream& operator<<(std::ostream& os, TableRefBase const* ref) {
+    if (nullptr == ref) {
+        os << "nullptr";
+    } else {
+        os << *ref;
+    }
+    return os;
+}
+
+
+bool TableRefBase::operator<(const TableRefBase& rhs) const {
+    throw std::runtime_error("fixme?");
+    return std::tie(_db, _table, _alias) < std::tie(rhs._db, rhs._table, rhs._alias);
+}
+
+
+bool TableRefBase::lessThan(TableRefBase const& rhs, bool useAlias) const {
+    if (useAlias) {
+        return _alias < rhs._alias;
+    }
+    return std::tie(_db, _table) < std::tie(rhs._db, rhs._table);
+}
+
+
+bool TableRefBase::equal(TableRefBase const& rhs, bool useAlias) const {
+    if (useAlias) {
+        return _alias == rhs._alias;
+    }
+    return std::tie(_db, _table) == std::tie(rhs._db, rhs._table);
+}
+
+
+
+////////////////////////////////////////////////////////////////////////
 // TableRef
 ////////////////////////////////////////////////////////////////////////
+
+
 std::ostream& operator<<(std::ostream& os, TableRef const& ref) {
     os << "TableRef(";
     os << "\"" << ref._db << "\"";
@@ -88,28 +291,6 @@ std::ostream& operator<<(std::ostream& os, TableRef const* ref) {
     return os;
 }
 
-
-void TableRef::setAlias(std::string const& alias) {
-    LOGS(_log, LOG_LVL_TRACE, *this << "; set alias:" << alias);
-    _alias = alias;
-}
-
-
-void TableRef::setDb(std::string const& db) {
-    LOGS(_log, LOG_LVL_TRACE, *this << "; set db:" << db);
-    _db = db;
-}
-
-
-void TableRef::setTable(std::string const& table) {
-    LOGS(_log, LOG_LVL_TRACE, *this << "; set table:" << table);
-    if (table.empty()) {
-        throw std::logic_error("TableRef::setTable - table can not be empty");
-    }
-    _table = table;
-}
-
-
 void TableRef::render::applyToQT(TableRef const& ref) {
     if (_count++ > 0) _qt.append(",");
     ref.putTemplate(_qt);
@@ -128,16 +309,18 @@ std::ostream& TableRef::putStream(std::ostream& os) const {
 }
 
 
+std::string TableRef::sqlFragment() const {
+    QueryTemplate qt;
+    TableRef::render render(qt);
+    render.applyToQT(*this);
+    std::ostringstream os;
+    os << qt;
+    return os.str();
+}
+
+
 void TableRef::putTemplate(QueryTemplate& qt) const {
-    if (!_db.empty()) {
-        qt.append(_db); // Use TableEntry?
-        qt.append(".");
-    }
-    qt.append(_table);
-    if (!_alias.empty()) {
-        qt.append("AS");
-        qt.append(_alias);
-    }
+    TableRefBase::putTemplate(qt);
     typedef JoinRefPtrVector::const_iterator Iter;
     for(Iter i=_joinRefs.begin(), e=_joinRefs.end(); i != e; ++i) {
         JoinRef const& j = **i;
@@ -157,17 +340,7 @@ void TableRef::addJoins(const JoinRefPtrVector& r) {
 
 
 void TableRef::verifyPopulated(std::string const& defaultDb) {
-    // it should not be possible to construct a TableRef with an empty table, but just to be sure:
-    if (_table.empty()) {
-        throw std::logic_error("No table in TableRef");
-    }
-    if (_db.empty()) {
-        if (defaultDb.empty()) {
-            throw std::logic_error("No db in TableRef");
-        } else {
-            _db = defaultDb;
-        }
-    }
+    TableRefBase::verifyPopulated(defaultDb);
     for (auto&& joinRef : _joinRefs) {
         auto&& rightTableRef = joinRef->getRight();
         if (rightTableRef != nullptr)
@@ -204,11 +377,16 @@ TableRef::Ptr TableRef::clone() const {
 }
 
 
-bool TableRef::operator==(const TableRef& rhs) const {
-    return _alias == rhs._alias &&
-           _db == rhs._db &&
-           _table == rhs._table &&
-           util::vectorPtrCompare<JoinRef>(_joinRefs, rhs._joinRefs);
+bool TableRef::operator==(TableRef const& rhs) const {
+    return TableRefBase::operator==(rhs) && util::vectorPtrCompare<JoinRef>(_joinRefs, rhs._joinRefs);
+}
+
+
+void TableRef::getRelatedDbTableInfo(std::vector<DbTablePair>& dbTablePairs) const {
+    dbTablePairs.emplace_back(DbTablePair(_db, _table));
+    for (auto&& joinRef : _joinRefs) {
+        joinRef->getRight()->getRelatedDbTableInfo(dbTablePairs);
+    }
 }
 
 

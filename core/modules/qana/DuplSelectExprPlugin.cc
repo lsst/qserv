@@ -137,7 +137,7 @@ DuplSelectExprPlugin::getDuplicateSelectErrors(query::SelectStmt const& stmt) co
         } else if (ve.isColumnRef()) {
             name = ve.getColumnRef()->getColumn();
         } else {
-            name = ve.sqlFragment();
+            name = ve.sqlFragment(false);
         }
         boost::algorithm::to_lower(name);
         selectExprNormalizedNames.push_back(name);

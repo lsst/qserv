@@ -47,32 +47,33 @@
 #include "qproc/ChunkSpec.h"
 #include "query/Constraint.h"
 
-// Forward decl
+
+// Forward declarations
 namespace lsst {
 namespace qserv {
 namespace qdisp {
-class Executive;
-class MessageStore;
+    class Executive;
+    class MessageStore;
+    class QdispPool;
 }
 namespace qmeta {
-class QMeta;
+    class QMeta;
 }
 namespace qproc {
-class QuerySession;
-class SecondaryIndex;
+    class QuerySession;
+    class SecondaryIndex;
+}
+namespace query {
+    class ColumnRef;
 }
 namespace rproc {
-class InfileMerger;
-class InfileMergerConfig;
-}}}
+    class InfileMerger;
+    class InfileMergerConfig;
+}}} // End of forward declarations
+
 
 namespace lsst {
 namespace qserv {
-
-namespace qdisp {
-class QdispPool;
-}
-
 namespace ccontrol {
 
 /// UserQuerySelect : implementation of the UserQuery for regular SELECT statements.
@@ -133,6 +134,9 @@ public:
     /// @return ORDER BY part of SELECT statement to be executed by proxy
     std::string getProxyOrderBy() const override;
 
+    /// @return get the SELECT statement to be executed by proxy
+    std::string getResultQuery() const override;
+
     std::string getQueryIdString() const override;
 
     /// @return this query's QueryId.
@@ -147,6 +151,9 @@ public:
     /// @throw UserQueryError if the merge table can't be set up (maybe the user query is not valid?). The
     /// exception's what() message will be returned to the user.
     void setupMerger() override;
+
+    /// Save the result query in metadata, to give to the proxy when fetching results from an async query.
+    void saveResultQuery(std::string const& resultQuery) override;
 
 private:
     void _discardMerger();

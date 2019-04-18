@@ -83,6 +83,9 @@ public:
     /// Get a vector of the ValueExprs this contains.
     virtual void findValueExprs(std::vector<std::shared_ptr<ValueExpr>>& vector) const {}
 
+    /// Get a vector of pointers to the ValueExprs this contains.
+    virtual void findValueExprRefs(ValueExprPtrRefVector& list) {}
+
     /// Get a vector of the ColumnRefs this contains.
     virtual void findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& vector) const {}
 

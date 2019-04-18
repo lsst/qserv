@@ -101,15 +101,6 @@ public:
         virtual std::string getValue() const { return s; }
         std::string s;
     };
-    class TableEntry : public Entry {
-    public:
-        TableEntry(std::string const& db_, std::string const& table_)
-            : db(db_), table(table_) {}
-        virtual std::string getValue() const;
-        virtual bool isDynamic() const { return true; }
-        std::string db;
-        std::string table;
-    };
     /// An abstract mapping from entry to entry
     class EntryMapping {
     public:
@@ -142,6 +133,29 @@ public:
      */
     friend std::ostream& operator<<(std::ostream& os, QueryTemplate const& queryTemplate);
 
+    // DEFINE should print out the table or column name followed by AS and the alias name
+    // USE should only print out the alias
+    // DONT USE should only print out the table or column name.
+    enum AliasMode { DEFINE, USE, DONT_USE };
+
+    /**
+     * @brief Set a flag indicating if aliases should be defined or used.
+     *
+     * For example, should a ValueExpr be rendered as 'objectId as myObject' or as 'myObject'
+     *
+     * @param aliasMode
+     */
+    void setAliasMode(AliasMode aliasMode);
+
+    /**
+     * @brief Get the AliasMode
+     *
+     * See setAliasMode for details.
+     *
+     * @return AliasMode
+     */
+    AliasMode getAliasMode() const;
+
     std::string generate(EntryMapping const& em) const;
     void clear();
 
@@ -154,6 +168,7 @@ public:
 
 private:
     EntryPtrVector _entries;
+    AliasMode _aliasMode{DEFINE};
 };
 
 

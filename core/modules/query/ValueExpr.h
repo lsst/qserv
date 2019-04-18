@@ -49,6 +49,7 @@ namespace lsst {
 namespace qserv {
 namespace query {
     class QueryTemplate;
+    class TableRefBase;
     class ValueFactor;
 }}} // End of forward declarations
 
@@ -76,6 +77,7 @@ public:
         std::shared_ptr<ValueFactor> factor;
         Op op;
         bool operator==(const FactorOp& rhs) const;
+        bool isSubsetOf(FactorOp const& rhs) const;
     };
     typedef std::vector<FactorOp> FactorOpVector;
     friend std::ostream& operator<<(std::ostream& os, FactorOp const& fo);
@@ -89,6 +91,21 @@ public:
 
     std::string const& getAlias() const { return _alias; }
     void setAlias(std::string const& alias);
+    bool hasAlias() const { return not _alias.empty(); }
+
+    /**
+     * @brief Set a flag to indicate if the alias was defined by the user in the select statement.
+     *
+     * For example 'SELECT object AS o' as the user-defined alias 'o'. Otherwise internally Qserv may assign
+     * an alias for disambiguation, e.g. in the results table, but that alias should not be used in the
+     * select statement used to return results to the user.
+     *
+     * @param isUserDefined true if the alias was defined by the user.
+     */
+    void setAliasIsUserDefined(bool isUserDefined) { _aliasIsUserDefined = isUserDefined; }
+
+    // get if the alias is user defined
+    bool getAliasIsUserDefined() const { return _aliasIsUserDefined; }
 
     /// @return a list of ValueFactor-Op
     FactorOpVector& getFactorOps() { return _factorOps; }
@@ -101,6 +118,9 @@ public:
     std::shared_ptr<ColumnRef> copyAsColumnRef() const;
 
     std::string copyAsLiteral() const;
+
+    /// @return true if this contains exactly one FactorOp and its `isConstVal` returns true.
+    bool isConstVal() const;
 
     template<typename T>
     T copyAsType(T const& defaultValue) const;
@@ -116,19 +136,54 @@ public:
     bool hasAggregation() const;
 
     /**
-     * @return the ColumnRef in current object if there is one.
+     * @return The ColumnRef in current object if there is exactly one factor and it is a ColumnRef factor,
+     *         otherwise returns nullptr.
      */
     ColumnRef::Ptr getColumnRef() const;
+
+    /**
+     * @return the first value factor if there are any.
+     *
+     * @throws logic_error if there are no value factors.
+     */
     std::shared_ptr<ValueFactor const> getFactor() const;
+    std::shared_ptr<ValueFactor> getFactor();
 
+    /**
+     * @brief Check if this ValueExpr represents a star factor.
+     *
+     * @return true if there is exactly 1 factor, and it is a STAR factor.
+     */
     bool isStar() const;
-    bool isFactor() const;
 
-    // Convenience checkers
+    /**
+     * @brief Check if this ValueExpr represents a column ref factor.
+     *
+     * @return true if there is exactly 1 factor, and it is a COLUMNREF factor.
+     */
     bool isColumnRef() const;
+
+    /**
+     * @brief Check if this ValueExpr represents a function factor.
+     *
+     * @return true if there is exactly 1 factor, and it is a FUNCTION factor.
+     */
     bool isFunction() const;
 
-    std::string sqlFragment() const;
+    /**
+     * @brief Check if this ValueExpr represents a single factor.
+     *
+     * @return Returns true if there is exactly 1 factor.
+     */
+    bool isFactor() const;
+
+    /**
+     * @brief Get the sql string that this ValueExpr represents
+     *
+     * @param aliasOnly if this ValueExpr has an alias and this is true then only the alias
+     * @return std::string
+     */
+    std::string sqlFragment(bool preferAlias) const;
 
     ValueExprPtr clone() const;
     friend std::ostream& operator<<(std::ostream& os, ValueExpr const& ve);
@@ -141,9 +196,16 @@ public:
 
     bool operator==(const ValueExpr& rhs) const;
 
+    // compare with another ValueExpr but ignore the alias.
+    bool compareValue(const ValueExpr& rhs) const;
+
+    // determine if this object is the same as or a less complete description of the passed in object.
+    bool isSubsetOf(ValueExpr const& valueExpr) const;
+
 private:
     std::string _alias;
     FactorOpVector _factorOps;
+    bool _aliasIsUserDefined; /// true if the alias was defined by the user in the select statement.
 };
 
 

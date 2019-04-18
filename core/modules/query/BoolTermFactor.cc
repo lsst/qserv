@@ -78,6 +78,11 @@ void BoolTermFactor::findValueExprs(std::vector<std::shared_ptr<ValueExpr>>& vec
 }
 
 
+void BoolTermFactor::findValueExprRefs(ValueExprPtrRefVector& vector) {
+    if (_term) { _term->findValueExprRefs(vector); }
+}
+
+
 void BoolTermFactor::findColumnRefs(ColumnRef::Vector& vector) const {
     if (_term) { _term->findColumnRefs(vector); }
 }

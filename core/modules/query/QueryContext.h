@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2015 LSST Corporation.
+ * Copyright 2013-2019 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -44,6 +44,7 @@
 #include "query/DbTablePair.h"
 #include "query/FromList.h"
 #include "query/TableAlias.h"
+#include "query/ValueExpr.h"
 #include "global/stringTypes.h"
 
 
@@ -83,9 +84,6 @@ public:
     std::string dominantDb; ///< "dominant" database for this query
     std::string userName{"default"}; ///< unused, but reserved.
 
-    // contains the tables (db.table, where db may be an empty string) that are used in the FROM list.
-    std::vector<DbTablePair> resolverTables; ///< Implicit column resolution context.
-
     mysql::MySqlConfig const mysqlSchemaConfig; ///< Used to connect to a database with the schema.
     std::map<std::string, DbTableSet> columnToTablesMap;
 
@@ -93,8 +91,10 @@ public:
     proto::ScanInfo scanInfo; // Tables scanned (for shared scans)
 
     // Table aliasing
-    TableAlias tableAliases;
-    TableAliasReverse tableAliasReverses;
+    TableAliases tableAliases;
+
+    // Select List aliasing
+    SelectListAliases selectListAliases;
 
     // Owned QueryMapping and query restrictors
     std::shared_ptr<qana::QueryMapping> queryMapping;
@@ -118,7 +118,6 @@ public:
         return queryMapping.get() && queryMapping->hasChunks(); }
     bool hasSubChunks() const {
         return queryMapping.get() && queryMapping->hasSubChunks(); }
-    DbTableSet resolve(std::shared_ptr<ColumnRef> cr);
 };
 
 

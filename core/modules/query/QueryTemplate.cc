@@ -53,18 +53,17 @@ namespace query {
 ////////////////////////////////////////////////////////////////////////
 // QueryTemplate::Entry subclasses
 ////////////////////////////////////////////////////////////////////////
-std::string QueryTemplate::TableEntry::getValue() const {
-    std::stringstream ss;
-    if (!db.empty()) { ss << db << "."; }
-    ss << table;
-    return ss.str();
-}
-
 
 class ColumnEntry : public QueryTemplate::Entry {
 public:
-    ColumnEntry(ColumnRef const& cr)
-        : db(cr.getDb()), table(cr.getTable()), column(cr.getColumn()) {
+    ColumnEntry(ColumnRef const& cr, QueryTemplate::AliasMode aliasMode) {
+        if (QueryTemplate::AliasMode::DEFINE == aliasMode || not cr.getTableRef()->hasAlias()) {
+            db = cr.getDb();
+            table = cr.getTable();
+        } else {
+            table = cr.getTableRef()->getAlias();
+        }
+        column = cr.getColumn();
     }
     virtual std::string getValue() const {
         std::stringstream ss;
@@ -133,7 +132,7 @@ void QueryTemplate::append(std::string const& s) {
 
 
 void QueryTemplate::append(ColumnRef const& cr) {
-    std::shared_ptr<Entry> e = std::make_shared<ColumnEntry>(cr);
+    std::shared_ptr<Entry> e = std::make_shared<ColumnEntry>(cr, getAliasMode());
     _entries.push_back(e);
 }
 
@@ -156,6 +155,17 @@ void
 QueryTemplate::clear() {
     _entries.clear();
 }
+
+
+void QueryTemplate::setAliasMode(AliasMode aliasMode) {
+    _aliasMode = aliasMode;
+}
+
+
+QueryTemplate::AliasMode QueryTemplate::getAliasMode() const {
+    return _aliasMode;
+}
+
 
 
 }}} // namespace lsst::qserv::query

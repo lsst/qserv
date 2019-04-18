@@ -112,6 +112,9 @@ public:
     /// @return ORDER BY part of SELECT statement to be executed by proxy
     std::string getProxyOrderBy() const override;
 
+    /// Get the result query from metadata.
+    std::string getResultQuery() const override;
+
 protected:
 
 private:

@@ -183,6 +183,11 @@ void WhereClause::findValueExprs(ValueExprPtrVector& vector) const {
 }
 
 
+void WhereClause::findValueExprRefs(ValueExprPtrRefVector& list) {
+    if (_rootOrTerm) { _rootOrTerm->findValueExprRefs(list); }
+}
+
+
 std::string
 WhereClause::getGenerated() const {
     QueryTemplate qt;

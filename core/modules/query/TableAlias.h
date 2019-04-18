@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2014 LSST Corporation.
+ * Copyright 2013-2019 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,24 +20,29 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-/**
-  * @file
-  *
-  * @brief DbTablePair, TableAlias, and TableAliasReverse declarations.
-  *
-  * @author Daniel L. Wang, SLAC
-  */
 
 
 #ifndef LSST_QSERV_QUERY_TABLEALIAS_H
 #define LSST_QSERV_QUERY_TABLEALIAS_H
 
+
 // System headers
+#include <map>
+#include <vector>
 #include <sstream>
 #include <stdexcept>
 
+// Third-party headers
+#include <boost/multi_index_container.hpp>
+#include <boost/multi_index/ordered_index.hpp>
+#include <boost/multi_index/identity.hpp>
+#include <boost/multi_index/member.hpp>
+
 // Local headers
 #include "query/DbTablePair.h"
+#include "query/TableRef.h"
+#include "query/ValueExpr.h"
+#include "query/ValueFactor.h"
 
 
 namespace lsst {
@@ -45,76 +50,134 @@ namespace qserv {
 namespace query {
 
 
-/// TableAlias is a mapping from an alias to a (db, table)
-/// name. TableAlias is a forward mapping, and TableAliasReverse is a
-/// backwards mapping.
-class TableAlias {
+template <typename T>
+class Aliases {
 public:
+    Aliases() = default;
+    virtual ~Aliases() = default;
 
-    DbTablePair get(std::string const& alias) {
-        Map::const_iterator i = _map.find(alias);
-        if(i != _map.end()) { return i->second; }
-        return DbTablePair();
+    bool set(T const& object, std::string const& alias) {
+        for (auto&& aliasInfo : _aliasInfo) {
+            if (alias == aliasInfo.alias) {
+                return false;
+            }
+        }
+        _aliasInfo.emplace_back(object, alias);
+        return true;
     }
-    void set(std::string const& db, std::string const& table,
-             std::string const& alias) {
-        _map[alias] = DbTablePair(db, table);
+
+    // get an alias for a given object
+    std::string get(T const& object) const {
+        for (auto&& aliasInfo : _aliasInfo) {
+            if (object.compareValue(aliasInfo.object)) { // nptodo probably want a compare functor or something
+                return aliasInfo.alias;
+            }
+        }
+        return std::string();
     }
-private:
-    typedef std::map<std::string, DbTablePair> Map;
-    Map _map;
+
+    // get the first-registered object for a given alias
+    T& get(std::string const& alias) const {
+        for (auto&& aliasInfo : _aliasInfo) {
+            if (alias == aliasInfo.alias) {
+                return aliasInfo.object;
+            }
+        }
+        return T();
+    }
+
+protected:
+    struct AliasInfo {
+        T object;
+        std::string alias;
+        AliasInfo(T const& object_, std::string const& alias_) : object(object_), alias(alias_) {}
+    };
+    std::vector<AliasInfo> _aliasInfo;
 };
 
 
-/// Stores a reverse alias mapping:  (db,table) -> alias
-class TableAliasReverse {
+class SelectListAliases : public Aliases<std::shared_ptr<query::ValueExpr>> {
 public:
-    struct AmbiguousReference : public std::runtime_error {
-        AmbiguousReference(DbTablePair const& p)
-            : std::runtime_error("Ambiguous reference to " +
-                                 p.db + "." + p.table)
-            {}
-    };
+    SelectListAliases() = default;
 
-    std::string const& get(std::string db, std::string table) {
-        return get(DbTablePair(db, table));
-    }
-    inline std::string const& get(DbTablePair const& p) const {
-        static std::string const empty;
-        typedef Map::const_iterator Iter;
-        Iter found = _map.find(p);
-
-        // Try slow lookup for inexact search
-        bool exists = false;
-        if((found == _map.end()) && p.db.empty()) {
-            for(Iter i=_map.begin(), e=_map.end(); i != e; ++i) {
-                if((i->first.table == p.table) && (!i->second.empty())) {
-                    if(!exists) {
-                        exists = true;
-                        found = i;
-                        // Continue looking to find other candidates
-                    } else { // More than one candidate found, bail out.
-                        throw AmbiguousReference(p);
+    /**
+     * @brief Get the alias for a ColumnRef
+     *
+     * Looks first for an exact match (all fields must match). Then looks for the first "subset" match
+     * (for example "objectId" would match "Object.objectId").
+     *
+     * @param columnRef
+     * @return std::string
+     */
+    std::pair<std::string, std::shared_ptr<query::ValueExpr>>
+    getAliasFor(query::ColumnRef const& columnRef) const {
+        AliasInfo const* subsetMatch = nullptr;
+        for (auto&& aliasInfo : _aliasInfo) {
+            auto&& factorOps = aliasInfo.object->getFactorOps();
+            if (factorOps.size() == 1) {
+                auto&& aliasColumnRef = factorOps[0].factor->getColumnRef();
+                if (nullptr != aliasColumnRef) {
+                    if (columnRef == *aliasColumnRef) {
+                        return std::make_pair(aliasInfo.alias, aliasInfo.object);
+                    }
+                    if (nullptr == subsetMatch && columnRef.isSubsetOf(aliasColumnRef)) {
+                        subsetMatch = &aliasInfo;
                     }
                 }
             }
         }
-        if(found != _map.end()) {
-            return found->second;
-        } else {
-            return empty;
+        if (nullptr != subsetMatch) {
+            return std::make_pair(subsetMatch->alias, subsetMatch->object);
         }
+        return std::make_pair(std::string(), nullptr);
     }
-    void set(std::string const& db, std::string const& table,
-             std::string const& alias) {
-        if(alias.empty()) {
-            throw std::invalid_argument("Empty mapping");
-        }
-        _map[DbTablePair(db, table)] = alias;
-    }
-private:
-    typedef std::map<DbTablePair, std::string> Map;
-    Map _map;
+
+    /**
+     * @brief Get a ValueExpr from the list of ValueExprs used in the SELECT statement that matches a given
+     *        ValueExpr.
+     *
+     * @param valExpr the expr to match
+     * @return std::shared_ptr<query::ValueExpr> that matching expr from the SELECT list, or nullptr
+     */
+    std::shared_ptr<query::ValueExpr> getValueExprMatch(
+        std::shared_ptr<query::ValueExpr const> const& valExpr) const;
+
+};
+
+
+// nptodo this can probably get factored into Aliases. Maybe Aliases wants its own file?
+class TableAliases : public Aliases<std::shared_ptr<TableRefBase>> {
+public:
+    TableAliases() = default;
+
+    /**
+     * @brief Get the alias for a given db and table
+     *
+     * @param db Optional (may be an empty string). The database name to match. If empty, will return the
+     *           alias for the first matched table.
+     * @param table The table name to match.
+     * @return std::pair<std::string, std::shared_ptr<query::TableRefBase>>
+     *         the first element is the alias
+     *         the second element is the TableRefBase that is associated with the alias.
+     */
+    std::pair<std::string, std::shared_ptr<query::TableRefBase>>
+    getAliasFor(std::string const& db, std::string const& table) const;
+
+
+    /**
+     * @brief Get a table ref that is a superset of the passed in tableRef
+     *
+     * That is, the passed in tableRef->isSubset(<a table ref in the container>);
+     *
+     * @param tableRef
+     * @return std::shared_ptr<query::TableRefBase>
+     */
+    std::shared_ptr<query::TableRefBase> getTableRefMatch(std::shared_ptr<query::TableRefBase> const& tableRef);
+
+
+    // nptodo ? might need to add support for an "ambiguous" lookup (or set?), something to do with the
+    // db not being set, or the alias not being set? the impl in TableAliasReverse looks wrong or I don't
+    // understand it yet. TBD if we run into this as an issue maybe it was never actually used.
 };
 
 

@@ -103,24 +103,24 @@ PostPlugin::applyPhysical(QueryPlugin::Plan& plan,
         }
     }
 
-    // For query results to be ordered, the columns and/or aliases used by the ORDER BY statement must also
-    // be present in the SELECT statement. Only unqualified column names in the SELECT statement and that are
-    // *not* in a function or expression may be used by the ORDER BY statement. For example, things like
-    // ABS(col), t.col,  and col * 5 must be aliased if they will be used by the ORDER BY statement.
-    //
-    // This block creates a list of column names & aliases in the select list that may be used by the
-    // ORDER BY statement.
-    if (_orderBy) {
-        auto validSelectColumns = getValidOrderByColumns(plan.stmtOriginal);
-        auto orderByColumns = getUsedOrderByColumns(plan.stmtOriginal);
-        LOGS(_log, LOG_LVL_DEBUG, "selectColumns:" << util::printable(validSelectColumns) <<
-                ", orderByColumns:" << util::printable(orderByColumns));
-        query::ColumnRef::Vector missingColumns;
-        if (false == verifyColumnsForOrderBy(validSelectColumns, orderByColumns, missingColumns)) {
-            throw AnalysisError("ORDER BY No match for " + toString(util::printable(missingColumns)) +
-                    " in SELECT columns:" + toString(util::printable(validSelectColumns)));
-        }
-    }
+    // // For query results to be ordered, the columns and/or aliases used by the ORDER BY statement must also
+    // // be present in the SELECT statement. Only unqualified column names in the SELECT statement and that are
+    // // *not* in a function or expression may be used by the ORDER BY statement. For example, things like
+    // // ABS(col), t.col,  and col * 5 must be aliased if they will be used by the ORDER BY statement.
+    // //
+    // // This block creates a list of column names & aliases in the select list that may be used by the
+    // // ORDER BY statement.
+    // if (_orderBy) {
+    //     auto validSelectColumns = getValidOrderByColumns(plan.stmtOriginal);
+    //     auto orderByColumns = getUsedOrderByColumns(plan.stmtOriginal);
+    //     LOGS(_log, LOG_LVL_DEBUG, "selectColumns:" << util::printable(validSelectColumns) <<
+    //             ", orderByColumns:" << util::printable(orderByColumns));
+    //     query::ColumnRef::Vector missingColumns;
+    //     if (false == verifyColumnsForOrderBy(validSelectColumns, orderByColumns, missingColumns)) {
+    //         throw AnalysisError("ORDER BY No match for " + toString(util::printable(missingColumns)) +
+    //                 " in SELECT columns:" + toString(util::printable(validSelectColumns)));
+    //     }
+    // }
 
     if (context.needsMerge) {
         // Prepare merge statement.

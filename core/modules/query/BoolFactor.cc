@@ -173,6 +173,15 @@ void BoolFactor::findValueExprs(std::vector<std::shared_ptr<ValueExpr>>& vector)
 }
 
 
+void BoolFactor::findValueExprRefs(ValueExprPtrRefVector& vector) {
+    for (auto&& boolFactorTerm : _terms) {
+        if (boolFactorTerm) {
+            boolFactorTerm->findValueExprRefs(vector);
+        }
+    }
+}
+
+
 void BoolFactor::findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& vector) const {
     for (auto&& boolFactorTerm : _terms) {
         if (boolFactorTerm) {
