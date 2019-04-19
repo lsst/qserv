@@ -35,6 +35,9 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.QservRequest");
 
+// Set this parameter to some reasonable default
+int const bufInitialSize = 1024;
+
 }  // namespace
 
 namespace lsst {
@@ -42,11 +45,6 @@ namespace qserv {
 namespace wpublish {
 
 atomic<size_t> QservRequest::_numClassInstances(0);
-
-
-// Set this parameter to some reasonable default
-int const QservRequest::_bufIncrementSize = 1024;
-
 
 QservRequest::~QservRequest() {
 
@@ -58,9 +56,10 @@ QservRequest::~QservRequest() {
 
 
 QservRequest::QservRequest()
-    :    _bufSize(0),
-         _bufCapacity(_bufIncrementSize),
-         _buf(new char[_bufIncrementSize]) {
+    :   _bufIncrementSize(bufInitialSize),
+        _bufSize(0),
+        _bufCapacity(bufInitialSize),
+        _buf(new char[bufInitialSize]) {
 
     // This report is used solely for debugging purposes to allow tracking
     // potential memory leaks within applications.
@@ -94,10 +93,10 @@ bool QservRequest::ProcessResponse(const XrdSsiErrInfo& eInfo,
 
         LOGS(_log, LOG_LVL_ERROR, context << "** FAILED **, error: " << errorStr);
 
-        // Tell XrootD to realease all resources associated with this request
+        // Tell XrootD to release all resources associated with this request
         Finished();
 
-        // Notify a subclass on the ubnormal condition
+        // Notify a subclass on the abnormal condition
         // WARNING: This has to be the last call as the object may get deleted
         //          downstream.
         onError(errorStr);
@@ -124,13 +123,13 @@ bool QservRequest::ProcessResponse(const XrdSsiErrInfo& eInfo,
             // a chance to notify XRootD/SSI by calling Finished().
             string const responseType = to_string(rInfo.rType);
 
-            // Tell XrootD to realease all resources associated with this request
+            // Tell XrootD to release all resources associated with this request
             Finished();
 
-            // Notify a subclass on the ubnormal condition
+            // Notify a subclass on the abnormal condition
             // WARNING: This has to be the last call as the object may get deleted
             //          downstream.
-            onError("QservRequest::ProcessResponse  ** ERROR ** unexpeted response type: " + responseType);
+            onError("QservRequest::ProcessResponse  ** ERROR ** unexpected response type: " + responseType);
             return false;
     }
 }
@@ -173,7 +172,7 @@ XrdSsiRequest::PRD_Xeq QservRequest::ProcessResponseData(const XrdSsiErrInfo& eI
 
         if (last) {
 
-            // Tell XrootD to realease all resources associated with this request
+            // Tell XrootD to release all resources associated with this request
             Finished();
 
             // Ask a subclass to process the response
@@ -183,8 +182,9 @@ XrdSsiRequest::PRD_Xeq QservRequest::ProcessResponseData(const XrdSsiErrInfo& eI
             onResponse(view);
 
         } else {
-            // Extend the buffer and copy over its previous content into the new location
+            // Double the buffer's capacity and copy over its previous content into the new location
             int prevBufCapacity = _bufCapacity;
+            _bufIncrementSize = prevBufCapacity;
             _bufCapacity += _bufIncrementSize;
 
             char* prevBuf = _buf;

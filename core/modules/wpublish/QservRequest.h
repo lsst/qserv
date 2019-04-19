@@ -101,7 +101,9 @@ private:
     // Response buffer (gets updated when receiving a response stream of
     // data from a worker management service of Qserv)
 
-    static int const _bufIncrementSize; ///< for incrementing the capacity of the incoming buffer
+    /// The (very first and the) last increment of the capacity of the incoming
+    /// buffer is used to limit the amount of bytes to be received from a server.
+    int _bufIncrementSize;
 
     int _bufSize;       ///< actual (meaningful) number of bytes in the incoming buffer
     int _bufCapacity;   ///< total capacity of the incoming buffer
