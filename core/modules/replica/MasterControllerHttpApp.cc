@@ -203,6 +203,7 @@ int MasterControllerHttpApp::runImpl() {
         [self] (string const& worker2evict) {
             self->_evict(worker2evict);
         },
+        _workerResponseTimeoutSec,
         _healthMonitorTask,
         _replicationTask,
         _deleteWorkerTask

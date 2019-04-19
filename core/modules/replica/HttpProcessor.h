@@ -63,6 +63,7 @@ public:
 
     static Ptr create(Controller::Ptr const& controller,
                       HealthMonitorTask::WorkerEvictCallbackType const& onWorkerEvict,
+                      unsigned int workerResponseTimeoutSec,
                       HealthMonitorTask::Ptr const& healthMonitorTask,
                       ReplicationTask::Ptr const& replicationTask,
                       DeleteWorkerTask::Ptr const& deleteWorkerTask);
@@ -73,6 +74,7 @@ private:
 
     HttpProcessor(Controller::Ptr const& controller,
                   HealthMonitorTask::WorkerEvictCallbackType const& onWorkerEvict,
+                  unsigned int workerResponseTimeoutSec,
                   HealthMonitorTask::Ptr const& healthMonitorTask,
                   ReplicationTask::Ptr const& replicationTask,
                   DeleteWorkerTask::Ptr const& deleteWorkerTask);
@@ -248,6 +250,18 @@ private:
                                qhttp::Response::Ptr const& resp);
 
     /**
+     * Process a request for extracting a status on user queries launched to Qserv
+     */
+    void _getQservManyUserQuery(qhttp::Request::Ptr const& req,
+                                qhttp::Response::Ptr const& resp);
+
+    /**
+     * Process a request for extracting a status on a specific user query launched to Qserv
+     */
+    void _getQservUserQuery(qhttp::Request::Ptr const& req,
+                            qhttp::Response::Ptr const& resp);
+
+    /**
      * Pull the current Configuration and translate it into a JSON object
      */
     nlohmann::json _configToJson() const;
@@ -256,7 +270,9 @@ private:
 
     HealthMonitorTask::WorkerEvictCallbackType const _onWorkerEvict;
 
-    // References(!) to smart pointers to the tasks which can be managed
+    unsigned int const _workerResponseTimeoutSec;
+
+                      // References(!) to smart pointers to the tasks which can be managed
     // by this class. References to the pointers are used to avoid increasing
     // the reference counters to the pointed objects.
 

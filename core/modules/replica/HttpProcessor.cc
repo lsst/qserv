@@ -396,6 +396,7 @@ namespace replica {
 HttpProcessor::Ptr HttpProcessor::create(
                         Controller::Ptr const& controller,
                         HealthMonitorTask::WorkerEvictCallbackType const& onWorkerEvict,
+                        unsigned int workerResponseTimeoutSec,
                         HealthMonitorTask::Ptr const& healthMonitorTask,
                         ReplicationTask::Ptr const& replicationTask,
                         DeleteWorkerTask::Ptr const& deleteWorkerTask) {
@@ -403,6 +404,7 @@ HttpProcessor::Ptr HttpProcessor::create(
     auto ptr = Ptr(new HttpProcessor(
         controller,
         onWorkerEvict,
+        workerResponseTimeoutSec,
         healthMonitorTask,
         replicationTask,
         deleteWorkerTask
@@ -414,11 +416,13 @@ HttpProcessor::Ptr HttpProcessor::create(
 
 HttpProcessor::HttpProcessor(Controller::Ptr const& controller,
                              HealthMonitorTask::WorkerEvictCallbackType const& onWorkerEvict,
+                             unsigned int workerResponseTimeoutSec,
                              HealthMonitorTask::Ptr const& healthMonitorTask,
                              ReplicationTask::Ptr const& replicationTask,
                              DeleteWorkerTask::Ptr const& deleteWorkerTask)
     :   _controller(controller),
         _onWorkerEvict(onWorkerEvict),
+        _workerResponseTimeoutSec(workerResponseTimeoutSec),
         _healthMonitorTask(healthMonitorTask),
         _log(LOG_GET("lsst.qserv.replica.HttpProcessor")) {
 }
@@ -457,7 +461,9 @@ void HttpProcessor::_initialize() {
         {"POST",   "/replication/v1/config/table", bind(&HttpProcessor::_addTableConfig, self, _1, _2)},
         {"POST",   "/replication/v1/sql/query", bind(&HttpProcessor::_sqlQuery, self, _1, _2)},
         {"GET",    "/replication/v1/qserv/worker/status", bind(&HttpProcessor::_getQservManyWorkersStatus, self, _1, _2)},
-        {"GET",    "/replication/v1/qserv/worker/status/:name", bind(&HttpProcessor::_getQservWorkerStatus, self, _1, _2)}
+        {"GET",    "/replication/v1/qserv/worker/status/:name", bind(&HttpProcessor::_getQservWorkerStatus, self, _1, _2)},
+        {"GET",    "/replication/v1/qserv/master/query", bind(&HttpProcessor::_getQservManyUserQuery, self, _1, _2)},
+        {"GET",    "/replication/v1/qserv/master/query/:id", bind(&HttpProcessor::_getQservUserQuery, self, _1, _2)}
     });
     controller()->serviceProvider()->httpServer()->start();
 }
@@ -1348,9 +1354,8 @@ void HttpProcessor::_getQservManyWorkersStatus(qhttp::Request::Ptr const& req,
     _debug(__func__);
 
     try {
-        unsigned int const timeoutSec = 10;
         bool const allWorkers = true;
-        auto const job = QservStatusJob::create(timeoutSec, allWorkers, controller());
+        auto const job = QservStatusJob::create(_workerResponseTimeoutSec, allWorkers, controller());
         job->start();
         job->wait();
 
@@ -1389,14 +1394,13 @@ void HttpProcessor::_getQservWorkerStatus(qhttp::Request::Ptr const& req,
 
         string const noParentJobId;
         GetStatusQservMgtRequest::CallbackType const onFinish = nullptr;
-        unsigned int const requestExpirationIvalSec = 10;
 
         auto const request =
             controller()->serviceProvider()->qservMgtServices()->status(
                 worker,
                 noParentJobId,
                 onFinish,
-                requestExpirationIvalSec);
+                _workerResponseTimeoutSec);
         request->wait();
 
         json result;
@@ -1406,6 +1410,51 @@ void HttpProcessor::_getQservWorkerStatus(qhttp::Request::Ptr const& req,
         } else {
             result["status"][worker]["success"] = 0;
         }        
+        resp->send(result.dump(), "application/json");
+
+    } catch (invalid_argument const& ex) {
+        _error(string(__func__) + " invalid parameters of the request");
+        resp->sendStatus(400);
+    } catch (exception const& ex) {
+        _error(string(__func__) + " operation failed due to: " + string(ex.what()));
+        resp->sendStatus(500);
+    }
+}
+
+
+void HttpProcessor::_getQservManyUserQuery(qhttp::Request::Ptr const& req,
+                                           qhttp::Response::Ptr const& resp) {
+    _debug(__func__);
+
+    try {
+        json result;
+        result["status"]["success"] = 0;
+
+        resp->send(result.dump(), "application/json");
+
+    } catch (invalid_argument const& ex) {
+        _error(string(__func__) + " invalid parameters of the request");
+        resp->sendStatus(400);
+    } catch (exception const& ex) {
+        _error(string(__func__) + " operation failed due to: " + string(ex.what()));
+        resp->sendStatus(500);
+    }
+}
+
+
+void HttpProcessor::_getQservUserQuery(qhttp::Request::Ptr const& req,
+                                       qhttp::Response::Ptr const& resp) {
+    _debug(__func__);
+
+    try {
+
+        auto const id = stoull(req->params.at("id"));
+
+        _debug(string(__func__) + " id="   + to_string(id));
+
+        json result;
+        result["status"]["success"] = 0;
+
         resp->send(result.dump(), "application/json");
 
     } catch (invalid_argument const& ex) {
