@@ -80,7 +80,9 @@ int test() {
     }
     cout << "connected to service provider at: " << serviceProviderLocation << endl;
 
-    // Instantiate a request object
+
+    // Store request pointers here to prevent them deleted too early
+    vector<wpublish::TestEchoQservRequest::Ptr> requests;
 
     atomic<unsigned int> finished(0);
 
@@ -106,6 +108,7 @@ int test() {
                         }
                         finished--;
                     });
+                requests.push_back(request);
 
                 // Submit the request
                 finished++;
@@ -136,6 +139,7 @@ int test() {
                         }
                         finished--;
                     });
+                requests.push_back(request);
 
                 // Submit the request
                 finished++;
