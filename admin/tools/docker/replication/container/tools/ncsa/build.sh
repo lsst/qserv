@@ -20,6 +20,7 @@ docker run \
        -e "SOURCE=${PWD}" \
        -v /etc/passwd:/etc/passwd:ro \
        -v /etc/group:/etc/group:ro \
+       -v $HOME:$HOME \
        -v $PWD:$PWD \
        qserv/replica:dev \
        bash -c '$SOURCE/admin/tools/docker/replication/container/tools/ncsa/collect.sh $SOURCE'

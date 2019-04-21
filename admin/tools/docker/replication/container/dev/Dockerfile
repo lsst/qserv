@@ -1,18 +1,25 @@
-# Using the development toolchain
-FROM centos/devtoolset-6-toolchain-centos7
+FROM lsstsqre/centos:7-stackbase-devtoolset-6
 
 USER 0
 
-RUN curl -sO http://www.slac.stanford.edu/exp/lsst/qserv/2016_09/_downloads/qserv-install-deps-rhel7.sh
-RUN chmod +x qserv-install-deps-rhel7.sh
-RUN /bin/bash qserv-install-deps-rhel7.sh
+# Provide newer git for newinstall and eupspkg
+RUN yum install -y rh-git29 && yum clean all && \
+    echo ". /opt/rh/rh-git29/enable" > "/etc/profile.d/rh-git29.sh"
 
-RUN yum --assumeyes install libuuid-devel
+# Install Qserv prerequisites
+RUN yum install -y initscripts && yum clean all
 
-RUN curl -sO https://raw.githubusercontent.com/lsst/lsst/master/scripts/newinstall.sh
-RUN chmod +x newinstall.sh
+# Install LSST stack
+ENV EUPS_TAG qserv-dev
+ENV STACK_DIR /stack
+RUN bash -lc "mkdir $STACK_DIR && cd $STACK_DIR && \
+              curl -OL \
+              https://raw.githubusercontent.com/lsst/lsst/master/scripts/newinstall.sh && \
+              bash newinstall.sh -bt"
 
-RUN mkdir -p /stack
-RUN cd /stack && /bin/bash $HOME/newinstall.sh -b
+RUN bash -lc ". $STACK_DIR/loadLSST.bash && eups distrib install pytest -t '$EUPS_TAG'"
 
-RUN source /stack/loadLSST.bash && eups distrib install --tag qserv-dev qserv_distrib
+RUN bash -lc ". $STACK_DIR/loadLSST.bash && \
+              curl -sSL https://raw.githubusercontent.com/lsst/shebangtron/master/shebangtron | python"
+
+RUN bash -lc ". $STACK_DIR/loadLSST.bash && eups distrib install qserv_distrib -t '$EUPS_TAG'"
