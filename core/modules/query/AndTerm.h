@@ -77,7 +77,7 @@ public:
     /// Like `merge(BoolTerm)` but can be told what order this term and the other term.
     bool merge(BoolTerm const& other, MergeBehavior mergeBehavior);
 
-    bool operator==(BoolTerm const& rhs) const;
+    bool operator==(BoolTerm const& rhs) const override;
 
 protected:
     /// Serialize this instance to os for debug output.

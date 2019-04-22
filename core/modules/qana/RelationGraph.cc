@@ -555,7 +555,7 @@ size_t RelationGraph::_addSpEdges(BoolTerm::Ptr bt)
             }
             break;
         default:
-            throw QueryNotEvaluableError("Unhandled comparison operator:" + cp->op);
+            throw QueryNotEvaluableError("Unhandled comparison operator:" + std::to_string(cp->op));
     }
     if (!fe || boost::math::isnan(angSep)) {
         // The scisql_angSep() call and/or numeric constant is missing,
@@ -891,7 +891,6 @@ void resetVertices(std::list<Vertex>& vertices)
 /// is evaluable.
 bool RelationGraph::_validate()
 {
-    typedef std::list<Vertex>::iterator Iter;
     size_t numStarts = 0;
     for (Vertex& vtx: _vertices) {
         if (vtx.info->kind != TableInfo::MATCH) {

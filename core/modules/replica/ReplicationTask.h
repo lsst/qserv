@@ -105,10 +105,6 @@ private:
     /// on the Qserv synchronization requests.
     unsigned int _qservSyncTimeoutSec;
 
-    /// The number of seconds to wait in the end of each iteration loop before
-    /// to begin the new one.
-    unsigned int _replicationIntervalSec;
-
     /// The desired number of replicas
     unsigned int _numReplicas;
 

@@ -41,9 +41,7 @@
 
 namespace {
 
-// Current version of QMeta schema, to avoid conversion I define it as string,
-// change both when updating schema.
-int const VERSION = 1;
+// Current version of QMeta schema
 char const VERSION_STR[] = "1";
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qmeta.QMetaMysql");

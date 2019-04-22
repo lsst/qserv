@@ -61,7 +61,7 @@ namespace replica {
 template <class  T>
 struct RequestWrapperImpl : Controller::RequestWrapper {
 
-    virtual void notify() {
+    void notify() override {
 
         if (nullptr != _onFinish) {
 

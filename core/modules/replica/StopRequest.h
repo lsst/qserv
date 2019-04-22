@@ -59,7 +59,8 @@ namespace replica {
 //   Customizations for specific request types require dedicated policies
 // ========================================================================
 
-struct StopReplicationRequestPolicy {
+class StopReplicationRequestPolicy {
+public:
 
     using ResponseMessageType     = ProtocolResponseReplicate;
     using ResponseDataType        = ReplicaInfo;
@@ -84,7 +85,8 @@ struct StopReplicationRequestPolicy {
     }
 };
 
-struct StopDeleteRequestPolicy {
+class StopDeleteRequestPolicy {
+public:
 
     using ResponseMessageType     = ProtocolResponseDelete;
     using ResponseDataType        = ReplicaInfo;
@@ -109,7 +111,8 @@ struct StopDeleteRequestPolicy {
     }
 };
 
-struct StopFindRequestPolicy {
+class StopFindRequestPolicy {
+public:
 
     using ResponseMessageType     = ProtocolResponseFind;
     using ResponseDataType        = ReplicaInfo;
@@ -134,7 +137,8 @@ struct StopFindRequestPolicy {
     }
 };
 
-struct StopFindAllRequestPolicy {
+class StopFindAllRequestPolicy {
+public:
 
     using ResponseMessageType     = ProtocolResponseFindAll;
     using ResponseDataType        = ReplicaInfoCollection;
@@ -162,7 +166,8 @@ struct StopFindAllRequestPolicy {
     }
 };
 
-struct StopEchoRequestPolicy {
+class StopEchoRequestPolicy {
+public:
 
     using ResponseMessageType     = ProtocolResponseEcho;
     using ResponseDataType        = std::string;
@@ -186,7 +191,8 @@ struct StopEchoRequestPolicy {
     }
 };
 
-struct StopSqlRequestPolicy {
+class StopSqlRequestPolicy {
+public:
 
     using ResponseMessageType     = ProtocolResponseSql;
     using ResponseDataType        = SqlResultSet;

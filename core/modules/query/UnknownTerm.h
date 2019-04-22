@@ -42,13 +42,13 @@ public:
     typedef std::shared_ptr<UnknownTerm> Ptr;
 
     /// Write a human-readable version of this instance to the ostream for debug output.
-    virtual std::ostream& putStream(std::ostream& os) const;
+    std::ostream& putStream(std::ostream& os) const override;
 
     /// Serialze this instance as SQL to the QueryTemplate.
-    virtual void renderTo(QueryTemplate& qt) const;
+    void renderTo(QueryTemplate& qt) const override;
 
     /// Make a deep copy of this term.
-    virtual std::shared_ptr<BoolTerm> clone() const;
+    std::shared_ptr<BoolTerm> clone() const override;
 
     bool operator==(const BoolTerm& rhs) const override;
 

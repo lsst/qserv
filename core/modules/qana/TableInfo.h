@@ -187,28 +187,28 @@ struct DirTableInfo : TableInfo {
     DirTableInfo(std::string const& db, std::string const& t, double o) :
         TableInfo(db, t, DIRECTOR), partitioningId(0), overlap(o) {}
 
-    virtual std::vector<ColumnRefConstPtr> const makeColumnRefs(
-        std::string const& tableAlias) const;
+    std::vector<ColumnRefConstPtr> const makeColumnRefs(
+        std::string const& tableAlias) const override;
 
-    virtual bool isEqPredAdmissible(TableInfo const& t,
-                                    std::string const& a,
-                                    std::string const& b,
-                                    bool outer) const {
+    bool isEqPredAdmissible(TableInfo const& t,
+                            std::string const& a,
+                            std::string const& b,
+                            bool outer) const override {
         // double dispatch
         return t.isEqPredAdmissible(*this, b, a, outer);
     }
-    virtual bool isEqPredAdmissible(DirTableInfo const& t,
-                                    std::string const& a,
-                                    std::string const& b,
-                                    bool outer) const;
-    virtual bool isEqPredAdmissible(ChildTableInfo const& t,
-                                    std::string const& a,
-                                    std::string const& b,
-                                    bool outer) const;
-    virtual bool isEqPredAdmissible(MatchTableInfo const& t,
-                                    std::string const& a,
-                                    std::string const& b,
-                                    bool outer) const;
+    bool isEqPredAdmissible(DirTableInfo const& t,
+                            std::string const& a,
+                            std::string const& b,
+                            bool outer) const override;
+    bool isEqPredAdmissible(ChildTableInfo const& t,
+                            std::string const& a,
+                            std::string const& b,
+                            bool outer) const override;
+    bool isEqPredAdmissible(MatchTableInfo const& t,
+                            std::string const& a,
+                            std::string const& b,
+                            bool outer) const override;
     void dump(std::ostream& os) const override;
 };
 
@@ -224,31 +224,31 @@ struct ChildTableInfo : TableInfo {
     ChildTableInfo(std::string const& db, std::string const& t) :
         TableInfo(db, t, CHILD), director(0) {}
 
-    virtual std::vector<ColumnRefConstPtr> const makeColumnRefs(
-        std::string const& tableAlias) const;
+    std::vector<ColumnRefConstPtr> const makeColumnRefs(
+        std::string const& tableAlias) const override;
 
-    virtual bool isEqPredAdmissible(TableInfo const& t,
-                                    std::string const& a,
-                                    std::string const& b,
-                                    bool outer) const {
+    bool isEqPredAdmissible(TableInfo const& t,
+                            std::string const& a,
+                            std::string const& b,
+                            bool outer) const override {
         // double dispatch
         return t.isEqPredAdmissible(*this, b, a, outer);
     }
-    virtual bool isEqPredAdmissible(DirTableInfo const& t,
-                                    std::string const& a,
-                                    std::string const& b,
-                                    bool outer) const {
+    bool isEqPredAdmissible(DirTableInfo const& t,
+                            std::string const& a,
+                            std::string const& b,
+                            bool outer) const override {
         // take advantage of symmetry to avoid code stutter
         return t.isEqPredAdmissible(*this, b, a, outer);
     }
-    virtual bool isEqPredAdmissible(ChildTableInfo const& t,
-                                    std::string const& a,
-                                    std::string const& b,
-                                    bool outer) const;
-    virtual bool isEqPredAdmissible(MatchTableInfo const& t,
-                                    std::string const& a,
-                                    std::string const& b,
-                                    bool outer) const;
+    bool isEqPredAdmissible(ChildTableInfo const& t,
+                            std::string const& a,
+                            std::string const& b,
+                            bool outer) const override;
+    bool isEqPredAdmissible(MatchTableInfo const& t,
+                            std::string const& a,
+                            std::string const& b,
+                            bool outer) const override;
 
     void dump(std::ostream& os) const override;
 };
@@ -267,27 +267,27 @@ struct MatchTableInfo : TableInfo {
     MatchTableInfo(std::string const& db, std::string const& t, double sep) :
         TableInfo(db, t, MATCH), director(), angSep(sep) {}
 
-    virtual std::vector<ColumnRefConstPtr> const makeColumnRefs(
-        std::string const& tableAlias) const;
+    std::vector<ColumnRefConstPtr> const makeColumnRefs(
+        std::string const& tableAlias) const override;
 
-    virtual bool isEqPredAdmissible(TableInfo const& t,
-                                    std::string const& a,
-                                    std::string const& b,
-                                    bool outer) const {
+    bool isEqPredAdmissible(TableInfo const& t,
+                            std::string const& a,
+                            std::string const& b,
+                            bool outer) const override {
         // double dispatch
         return t.isEqPredAdmissible(*this, b, a, outer);
     }
-    virtual bool isEqPredAdmissible(DirTableInfo const& t,
-                                    std::string const& a,
-                                    std::string const& b,
-                                    bool outer) const {
+    bool isEqPredAdmissible(DirTableInfo const& t,
+                            std::string const& a,
+                            std::string const& b,
+                            bool outer) const override {
         // take advantage of symmetry to avoid code stutter
         return t.isEqPredAdmissible(*this, b, a, outer);
     }
-    virtual bool isEqPredAdmissible(ChildTableInfo const& t,
-                                    std::string const& a,
-                                    std::string const& b,
-                                    bool outer) const {
+    bool isEqPredAdmissible(ChildTableInfo const& t,
+                            std::string const& a,
+                            std::string const& b,
+                            bool outer) const override {
         // take advantage of symmetry to avoid code stutter
         return t.isEqPredAdmissible(*this, b, a, outer);
     }

@@ -76,7 +76,7 @@ public:
     /// Get a vector of the ColumnRefs this contains.
     void findColumnRefs(ColumnRef::Vector& vector) const override;
 
-    bool operator==(BoolFactorTerm const& rhs) const;
+    bool operator==(BoolFactorTerm const& rhs) const override;
 
     // FIXME this member should be private, or at least protected. Jira issue DM-17306
     std::shared_ptr<BoolTerm> _term;

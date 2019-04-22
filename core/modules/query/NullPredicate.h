@@ -60,13 +60,13 @@ public:
 
     ~NullPredicate() override = default;
 
-    char const* getName() const { return "NullPredicate"; }
-    void findValueExprs(std::vector<std::shared_ptr<ValueExpr>>& vector) const;
-    void findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& vector) const;
-    std::ostream& putStream(std::ostream& os) const;
-    void renderTo(QueryTemplate& qt) const;
-    BoolFactorTerm::Ptr clone() const;
-    BoolFactorTerm::Ptr copySyntax() const { return clone(); }
+    char const* getName() const override { return "NullPredicate"; }
+    void findValueExprs(std::vector<std::shared_ptr<ValueExpr>>& vector) const override;
+    void findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& vector) const override;
+    std::ostream& putStream(std::ostream& os) const override;
+    void renderTo(QueryTemplate& qt) const override;
+    BoolFactorTerm::Ptr clone() const override;
+    BoolFactorTerm::Ptr copySyntax() const override { return clone(); }
     bool operator==(BoolFactorTerm const& rhs) const override;
 
     static int reverseOp(int op); // Reverses operator token

@@ -60,7 +60,7 @@ public:
     wbase::Task::Ptr getTask(bool useFlexibleLock) override;
     bool empty() const override;
     bool ready(bool useFlexibleLock) override;
-    std::size_t getSize() const;
+    std::size_t getSize() const override;
     void taskComplete(wbase::Task::Ptr const& task) override {};
 
     bool setResourceStarved(bool starved) override;
