@@ -11,7 +11,6 @@
 #include "XrdSsi/XrdSsiService.hh"
 
 // Qserv headers
-#include "global/ResourceUnit.h"
 #include "proto/worker.pb.h"
 #include "util/BlockPost.h"
 #include "util/CmdLineParser.h"
@@ -30,30 +29,30 @@ namespace {
 
 // Command line parameters
 
-string workersFileName;
+string fileName;
 unsigned int numRequests;
 string value;
 string serviceProviderLocation;
-unsigned int numWorkers;
-bool workerFirst;
+unsigned int numResources;
+bool resourceFirst;
 unsigned int cancelAfterMs;
 
-vector<string> workers;
+vector<string> resources;
 
-bool readWorkersFile() {
-    ifstream file(workersFileName);
+bool readFile() {
+    ifstream file(fileName);
     if (not file.good()) {
-        cerr << "error: failed to open a file with worker identifiers: "
-             << workersFileName << endl;
+        cerr << "error: failed to open a file with resource paths: "
+             << fileName << endl;
         return false;
     }
-    string worker;
-    while (file >> worker)
-        workers.push_back(worker);
+    string resource;
+    while (file >> resource)
+        resources.push_back(resource);
 
-    if (not workers.size()) {
-        cerr << "error: no workers found in file with worker identifiers: "
-             << workersFileName << endl;
+    if (not resources.size()) {
+        cerr << "error: no resources found in file with resource paths: "
+             << fileName << endl;
         return false;
     }
     return true;
@@ -62,10 +61,10 @@ bool readWorkersFile() {
 
 int test() {
 
-    if (not readWorkersFile()) return 1;
-    if (not numWorkers or (workers.size() < numWorkers)) {
-        cerr << "error: specified number of workers not in the valid range: 1.."
-             << numWorkers << endl;
+    if (not readFile()) return 1;
+    if (not numResources or (resources.size() < numResources)) {
+        cerr << "error: specified number of resources not in the valid range: 1.."
+             << numResources << endl;
         return 1;
     }
 
@@ -87,9 +86,9 @@ int test() {
 
     atomic<unsigned int> finished(0);
 
-    if (workerFirst) {
-        for (unsigned int j = 0; j < numWorkers; ++j) {
-            string const& worker = workers[j];
+    if (resourceFirst) {
+        for (unsigned int j = 0; j < numResources; ++j) {
+            string const& resourcePath = resources[j];
 
             for (unsigned int i = 0; i < numRequests; ++i) {
 
@@ -113,7 +112,7 @@ int test() {
 
                 // Submit the request
                 finished++;
-                XrdSsiResource resource(global::ResourceUnit::makeWorkerPath(worker));
+                XrdSsiResource resource(resourcePath);
                 serviceProvider->ProcessRequest(*request, resource);
             }
         }
@@ -122,8 +121,8 @@ int test() {
 
         for (unsigned int i = 0; i < numRequests; ++i) {
 
-            for (unsigned int j = 0; j < numWorkers; ++j) {
-                string const& worker = workers[j];
+            for (unsigned int j = 0; j < numResources; ++j) {
+                string const& resourcePath = resources[j];
                 auto request = wpublish::TestEchoQservRequest::create(
                     value,
                     [&finished] (wpublish::TestEchoQservRequest::Status status,
@@ -144,7 +143,7 @@ int test() {
 
                 // Submit the request
                 finished++;
-                XrdSsiResource resource(global::ResourceUnit::makeWorkerPath(worker));
+                XrdSsiResource resource(resourcePath);
                 serviceProvider->ProcessRequest(*request, resource);
             }
         }
@@ -184,32 +183,32 @@ int main(int argc, const char* const argv[]) {
             argv,
             "\n"
             "Usage:\n"
-            "  <workers-file-name> <num-requests> <value>\n"
+            "  <resources-file-name> <num-requests> <value>\n"
             "  [--service=<provider>]\n"
-            "  [--num-workers=<value>]\n"
-            "  [--worker-first]\b"
+            "  [--num-resources=<value>]\n"
+            "  [--resources-first]\b"
             "  [--cancel-after=<milliseconds>]\n"
             "\n"
             "Flags an options:\n"
-            "  --service=<provider>  - location of a service provider (default: 'localhost:1094')\n"
-            "  --num-workers=<value> - the number of workers (default: 1, range: 1..10)\n"
-            "  --worker-first        - iterate over workers, then over requests\n"
+            "  --service=<provider>    - location of a service provider (default: 'localhost:1094')\n"
+            "  --num-resources=<value> - the number of resources (default: 1, range: 1..*)\n"
+            "  --resource-first        - iterate over resources, then over requests\n"
             "  --cancel-after=<milliseconds> \n"
-            "                        - the number of milliseconds to wait before cancelling\n"
-            "                          all requests (default 0 means no cancellation)\n"
+            "                          - the number of milliseconds to wait before cancelling\n"
+            "                            all requests (default 0 means no cancellation)\n"
             "\n"
             "Parameters:\n"
-            "  <workers-file-name>  - a file with worker identifiers (one worker per line)\n"
-            "  <num-requests>       - the number of requests per worker\n"
-            "  <value>              - arbitrary string\n");
+            "  <resources-file-name>  - a file with resource paths (one resource per line)\n"
+            "  <num-requests>         - number of requests per resource\n"
+            "  <value>                - arbitrary string\n");
 
-        ::workersFileName = parser.parameter<string>(1);
-        ::numRequests     = parser.parameter<unsigned int>(2);
-        ::value           = parser.parameter<string>(3);
+        ::fileName    = parser.parameter<string>(1);
+        ::numRequests = parser.parameter<unsigned int>(2);
+        ::value       = parser.parameter<string>(3);
 
         ::serviceProviderLocation = parser.option<string>("service", "localhost:1094");
-        ::numWorkers              = parser.option<unsigned int>("num-workers", 1);
-        ::workerFirst             = parser.flag("worker-first");
+        ::numResources            = parser.option<unsigned int>("num-resources", 1);
+        ::resourceFirst           = parser.flag("resource-first");
         ::cancelAfterMs           = parser.option<unsigned int>("cancel-after", 0);
 
     } catch (exception const& ex) {
