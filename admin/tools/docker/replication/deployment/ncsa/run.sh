@@ -44,7 +44,7 @@ if [ "lsst-qserv-${MASTER}" != "$(hostname -s)" ]; then
     >&2 echo "this tool must be run on the master: ${MASTER}"
     exit 1
 fi
-
+PID=$$
 docker run \
     --rm \
     -it \
@@ -58,6 +58,6 @@ docker run \
     -e "LSST_LOG_CONFIG=${LSST_LOG_CONFIG}" \
     -e "CONFIG=${CONFIG}" \
     -e "WORK_DIR=${WORK_DIR}" \
-    --name "${TOOL}" \
+    --name "${TOOL}-${PID}" \
     "${REPLICATION_IMAGE_TAG}" \
     /qserv/bin/${TOOL} "$@" --config=${CONFIG}
