@@ -19,3 +19,5 @@ export LSST_LOG_CONFIG=/qserv/dev/qserv/admin/templates/configuration/etc/log4cx
 
 child=$!
 wait "$child"
+
+sleep 10000
