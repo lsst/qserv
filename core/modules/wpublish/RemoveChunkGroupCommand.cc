@@ -160,6 +160,8 @@ void RemoveChunkGroupCommand::run() {
     _frameBuf.serialize(reply);
     string str(_frameBuf.data(), _frameBuf.size());
     _sendChannel->sendStream(xrdsvc::StreamBuffer::createWithMove(str), true);
+
+    LOGS(_log, LOG_LVL_DEBUG, context << "** SENT **");
 }
 
 }}} // namespace lsst::qserv::wpublish

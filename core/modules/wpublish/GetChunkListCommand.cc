@@ -77,6 +77,8 @@ void GetChunkListCommand::run() {
     _frameBuf.serialize(reply);
     string str(_frameBuf.data(), _frameBuf.size());
     _sendChannel->sendStream(xrdsvc::StreamBuffer::createWithMove(str), true);
+
+    LOGS(_log, LOG_LVL_DEBUG, "GetChunkListCommand::" << __func__ << "  ** SENT **");
 }
 
 }}} // namespace lsst::qserv::wpublish

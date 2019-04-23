@@ -149,6 +149,8 @@ void SsiRequest::execute(XrdSsiRequest& req) {
         }
         case ResourceUnit::WORKER: {
 
+            LOGS(_log, LOG_LVL_DEBUG, "Parsing WorkerCommand for resource=" << _resourceName);
+
             wbase::WorkerCommand::Ptr const command = parseWorkerCommand(reqData, reqSize);
             if (not command) return;
 
@@ -157,8 +159,7 @@ void SsiRequest::execute(XrdSsiRequest& req) {
             ReleaseRequestBuffer();
             _processor->processCommand(command);    // Queues the command to be run later.
 
-            LOGS(_log, LOG_LVL_DEBUG, "Enqueued WorkerCommand for " << ru <<
-                 " in " << t.getElapsed() << " seconds");
+            LOGS(_log, LOG_LVL_DEBUG, "Enqueued WorkerCommand for resource=" << _resourceName);
 
             break;
         }
@@ -190,7 +191,8 @@ wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(char const* reqData, in
         view.parse(header);
 
         LOGS(_log, LOG_LVL_INFO, "WorkerCommandH: command=" <<
-             proto::WorkerCommandH_Command_Name(header.command()));
+             proto::WorkerCommandH_Command_Name(header.command()) <<
+             " resource=" << _resourceName);
 
         switch (header.command()) {
             case proto::WorkerCommandH::TEST_ECHO: {
