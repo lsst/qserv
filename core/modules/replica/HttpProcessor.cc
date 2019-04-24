@@ -237,6 +237,14 @@ int getQueryParamInt(unordered_map<string,string> const& query,
     return stoi(itr->second);
 }
 
+unsigned int getQueryParamUInt(unordered_map<string,string> const& query,
+                               string const& param,
+                               unsigned int defaultValue=0) {
+    auto&& itr = query.find(param);
+    if (itr == query.end()) return defaultValue;
+    return stoul(itr->second);
+}
+
 
 /**
  * Safe version of the above defined method which requires that
@@ -1357,8 +1365,13 @@ void HttpProcessor::_getQservManyWorkersStatus(qhttp::Request::Ptr const& req,
     _debug(__func__);
 
     try {
+        unsigned int const timeoutSec =
+            getQueryParamUInt(req->query, "timeout_sec", _workerResponseTimeoutSec);
+
+        _debug(string(__func__) + " timeout_sec=" + to_string(timeoutSec));
+
         bool const allWorkers = true;
-        auto const job = QservStatusJob::create(_workerResponseTimeoutSec, allWorkers, controller());
+        auto const job = QservStatusJob::create(timeoutSec, allWorkers, controller());
         job->start();
         job->wait();
 
@@ -1393,9 +1406,13 @@ void HttpProcessor::_getQservWorkerStatus(qhttp::Request::Ptr const& req,
     _debug(__func__);
 
     try {
+        unsigned int const timeoutSec =
+            getQueryParamUInt(req->query, "timeout_sec", _workerResponseTimeoutSec);
+
         auto const worker = req->params.at("name");
 
-        _debug(string(__func__) + " worker="   + worker);
+        _debug(string(__func__) + " timeout_sec=" + to_string(timeoutSec));
+        _debug(string(__func__) + " worker=" + worker);
 
         string const noParentJobId;
         GetStatusQservMgtRequest::CallbackType const onFinish = nullptr;
@@ -1405,7 +1422,7 @@ void HttpProcessor::_getQservWorkerStatus(qhttp::Request::Ptr const& req,
                 worker,
                 noParentJobId,
                 onFinish,
-                _workerResponseTimeoutSec);
+                timeoutSec);
         request->wait();
 
         json result;
