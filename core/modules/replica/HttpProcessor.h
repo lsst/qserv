@@ -86,17 +86,17 @@ private:
     /**
      * Log a message into the Logger's LOG_LVL_INFO stream
      */
-    void _info(std::string const& msg);
+    void _info(std::string const& msg) const;
 
     /**
      * Log a message into the Logger's LOG_LVL_DEBUG stream
      */
-    void _debug(std::string const& msg);
+    void _debug(std::string const& msg) const;
 
     /**
      * Log a message into the Logger's LOG_LVL_ERROR stream
      */
-    void _error(std::string const& msg);
+    void _error(std::string const& msg) const;
 
     /**
      * Process a request which return status of one worker.
@@ -265,6 +265,14 @@ private:
      * Pull the current Configuration and translate it into a JSON object
      */
     nlohmann::json _configToJson() const;
+
+    /**
+     * Find descriptions of queries
+     *
+     * @param workerInfo  worker info object to be inspected to extract identifier)s of queries
+     * @return descriptions of the queries
+     */
+    nlohmann::json _getQueries(nlohmann::json& workerInfo) const;
 
     Controller::Ptr const _controller;
 

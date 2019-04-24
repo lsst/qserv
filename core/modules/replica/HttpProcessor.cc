@@ -27,6 +27,7 @@
 #include <iterator>
 #include <map>
 #include <iomanip>
+#include <set>
 #include <stdexcept>
 #include <sstream>
 
@@ -34,8 +35,10 @@
 #include <boost/lexical_cast.hpp>
 
 // Qserv headers
+#include "global/intTypes.h"
 #include "replica/ConfigurationTypes.h"
 #include "replica/Controller.h"
+#include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
 #include "replica/Performance.h"
 #include "replica/QservMgtServices.h"
@@ -474,17 +477,17 @@ string HttpProcessor::_context() const {
 }
 
 
-void HttpProcessor::_info(string const& msg) {
+void HttpProcessor::_info(string const& msg) const {
     LOGS(_log, LOG_LVL_INFO, _context() << msg);
 }
 
 
-void HttpProcessor::_debug(string const& msg) {
+void HttpProcessor::_debug(string const& msg) const {
     LOGS(_log, LOG_LVL_DEBUG, _context() << msg);
 }
 
 
-void HttpProcessor::_error(string const& msg) {
+void HttpProcessor::_error(string const& msg) const {
     LOGS(_log, LOG_LVL_ERROR, _context() << msg);
 }
 
@@ -1365,8 +1368,10 @@ void HttpProcessor::_getQservManyWorkersStatus(qhttp::Request::Ptr const& req,
             auto&& worker = entry.first;
             bool success = entry.second;
             if (success) {
+                auto info = status.info.at(worker);
                 result["status"][worker]["success"] = 1;
-                result["status"][worker]["info"] = status.info.at(worker);
+                result["status"][worker]["info"] = info;
+                result["status"][worker]["queries"] = _getQueries(info);
             } else {
                 result["status"][worker]["success"] = 0;
             }        
@@ -1405,8 +1410,10 @@ void HttpProcessor::_getQservWorkerStatus(qhttp::Request::Ptr const& req,
 
         json result;
         if (request->extendedState() == QservMgtRequest::ExtendedState::SUCCESS) {
+            auto info = request->info();
             result["status"][worker]["success"] = 1;
-            result["status"][worker]["info"] = request->info();
+            result["status"][worker]["info"] = info;
+            result["status"][worker]["queries"] = _getQueries(info);
         } else {
             result["status"][worker]["success"] = 0;
         }        
@@ -1505,6 +1512,70 @@ json HttpProcessor::_configToJson() const {
     resultJson["config"] = configJson;
 
     return resultJson;
+}
+
+
+json HttpProcessor::_getQueries(json& workerInfo) const {
+
+    json result;
+    try {
+
+        // Find identifiers of all queries in the wait queues of all schedulers
+        set<QueryId> qids;
+        for (auto&& scheduler: workerInfo.at("processor").at("queries").at("blend_scheduler").at("schedulers")) {
+            for (auto&& entry: scheduler.at("query_id_to_count")) {
+                qids.insert(entry[0].get<QueryId>());
+            }
+        }
+
+        // Connect to the database service of the Qserv Master
+        auto const config = controller()->serviceProvider()->config();
+        database::mysql::ConnectionParams const connectionParams(
+            config->qservMasterDatabaseHost(),
+            config->qservMasterDatabasePort(),
+            config->qservMasterDatabaseUser(),
+            config->qservMasterDatabasePassword(),
+            "qservMeta"
+        );
+        auto const conn = database::mysql::Connection::open(connectionParams);
+        
+        // Extract descriptions of those queries from qservMeta
+        if (not qids.empty()) {
+            conn->execute(
+                "SELECT * FROM " + conn->sqlId("QInfo") +
+                "  WHERE "       + conn->sqlIn("queryId", qids)
+            );
+            if (conn->hasResult()) {
+
+                database::mysql::Row row;
+                while (conn->next(row)) {
+
+                    QueryId queryId;
+                    if (not row.get("queryId", queryId)) continue;
+
+                    string query;
+                    string status;
+                    string submitted;
+                    string completed;
+
+                    row.get("query",     query);
+                    row.get("status",    status);
+                    row.get("submitted", submitted);
+                    row.get("completed", completed);
+
+                    string queryIdStr = to_string(queryId);
+                    result[queryIdStr]["query"]     = query;
+                    result[queryIdStr]["status"]    = status;
+                    result[queryIdStr]["submitted"] = submitted;
+                    result[queryIdStr]["completed"] = completed;
+                }
+            }
+        }
+
+    } catch (exception const& ex) {
+        _error(string(__func__) + " operation failed due to: " + string(ex.what()));
+    }
+    return result;
 }
 
 }}} // namespace lsst::qserv::replica
