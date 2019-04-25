@@ -308,14 +308,9 @@ void SsiRequest::Finished(XrdSsiRequest& req, XrdSsiRespInfo const& rinfo, bool 
     // This call is sync (blocking).
     // client finished retrieving response, or cancelled.
     // release response resources (e.g. buf)
-    // But first we must make sure that request setup (i.e execute() completed).
-    // We simply lock the serialization mutex and then immediately unlock it.
-    // If we got the mutex, execute() completed. This code should not be
-    // optimized out even though it looks like it does nothing (lock_gaurd?).
-    // We could potentially do this with _tasksMutex but that would require
-    // moving the lock into execute() and obtaining it unobviously early.
-    _finMutex.lock();
-    _finMutex.unlock();
+    // But first we must make sure that request setup (i.e execute() completed) by
+    // locking _finMutex.
+    std::lock_guard<std::mutex> lockg(_finMutex);
 
     // No buffers allocated, so don't need to free.
     // We can release/unlink the file now
@@ -333,6 +328,12 @@ void SsiRequest::Finished(XrdSsiRequest& req, XrdSsiRespInfo const& rinfo, bool 
     ResourceUnit ru(_resourceName);
     if (ru.unitType() == ResourceUnit::DBCHUNK) {
         _resourceMonitor->decrement(_resourceName);
+    }
+
+    // Make certain Recycle is called if there is a _streamBuffer,
+    // which may be needed during a query cancellation.
+    if (_streamBuffer != nullptr) {
+        _streamBuffer->Recycle();
     }
 
     // We can't do much other than close the file.
@@ -385,18 +386,21 @@ bool SsiRequest::replyFile(int fd, long long fSize) {
 bool SsiRequest::replyStream(StreamBuffer::Ptr const& sBuf, bool last) {
     // Create a streaming object if not already created.
     LOGS(_log, LOG_LVL_DEBUG, "replyStream, checking stream size=" << sBuf->getSize() << " last=" << last);
+    _streamBuffer = sBuf; // new buffers usually made before every call to replyStream
     if (!_stream) {
-       _stream = new ChannelStream();
-       if (SetResponse(_stream) != XrdSsiResponder::Status::wasPosted) {
-           LOGS(_log, LOG_LVL_WARN, "SetResponse stream failed, calling Recycle for sBuf");
-           // Normally, XrdSsi would call Recycle() when it is done with sBuf, but the
-           // return value from SetResponse indicates XrdSsi will never use sBuf nor call Recycle().
-           // Calling Recycle() here means we're done waiting for XrdSsi and sBuf can be freed when
-           // qserv is done with it.
-           sBuf->Recycle();
-           return false;
-       }
+        _stream = std::make_shared<ChannelStream>();
+        if (SetResponse(_stream.get()) != XrdSsiResponder::Status::wasPosted) {
+            LOGS(_log, LOG_LVL_WARN, "SetResponse stream failed, calling Recycle for sBuf");
+            // Normally, XrdSsi would call Recycle() when it is done with sBuf, but the
+            // return value from SetResponse indicates XrdSsi will never use sBuf nor call Recycle().
+            // Calling Recycle() here means we're done waiting for XrdSsi and sBuf can be freed when
+            // qserv is done with it.
+            sBuf->Recycle();
+            return false;
+        }
     } else if (_stream->closed()) {
+        // XrdSsi isn't going to call Recycle if we wind up here.
+        sBuf->Recycle();
         return false;
     }
     _stream->append(sBuf, last);

@@ -57,7 +57,8 @@ namespace lsst {
 namespace qserv {
 namespace xrdsvc {
 
-class ChannelStream; // Forward declaration
+class ChannelStream;
+class StreamBuffer;
 
 /// An implementation of XrdSsiResponder that is used by SsiService to provide
 /// qserv worker services. The SSI interface encourages such an approach, and
@@ -116,7 +117,6 @@ private:
             _validator(_chunkInventory->newValidator()),
             _processor(processor),
             _resourceName(rname),
-            _stream(0),
             _mySqlConfig(mySqlConfig) {
     }
     
@@ -146,7 +146,11 @@ private:
     std::mutex  _finMutex;      ///< Protects execute() from Finish()
     std::string _resourceName;
 
-    ChannelStream* _stream;
+    std::shared_ptr<ChannelStream> _stream;
+
+    /// _streamBuffer is needed so that Recycle() can be called if Finished() is
+    /// called out of normal order, such as query cancelled by czar.
+    std::shared_ptr<StreamBuffer> _streamBuffer;
 
     mysql::MySqlConfig const _mySqlConfig;
 };
