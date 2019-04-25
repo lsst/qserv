@@ -308,9 +308,16 @@ void SsiRequest::Finished(XrdSsiRequest& req, XrdSsiRespInfo const& rinfo, bool 
     // This call is sync (blocking).
     // client finished retrieving response, or cancelled.
     // release response resources (e.g. buf)
-    // But first we must make sure that request setup (i.e execute() completed) by
+    // But first we must make sure that request setup completed (i.e execute()) by
     // locking _finMutex.
-    std::lock_guard<std::mutex> lockg(_finMutex);
+    {
+        std::lock_guard<std::mutex> finLock(_finMutex);
+        _finished = true;
+        // Clean up _stream if it exists
+        if (_stream != nullptr) {
+            _stream->clearMsgs();
+        }
+    }
 
     // No buffers allocated, so don't need to free.
     // We can release/unlink the file now
@@ -328,12 +335,6 @@ void SsiRequest::Finished(XrdSsiRequest& req, XrdSsiRespInfo const& rinfo, bool 
     ResourceUnit ru(_resourceName);
     if (ru.unitType() == ResourceUnit::DBCHUNK) {
         _resourceMonitor->decrement(_resourceName);
-    }
-
-    // Make certain Recycle is called if there is a _streamBuffer,
-    // which may be needed during a query cancellation.
-    if (_streamBuffer != nullptr) {
-        _streamBuffer->Recycle();
     }
 
     // We can't do much other than close the file.
@@ -386,7 +387,12 @@ bool SsiRequest::replyFile(int fd, long long fSize) {
 bool SsiRequest::replyStream(StreamBuffer::Ptr const& sBuf, bool last) {
     // Create a streaming object if not already created.
     LOGS(_log, LOG_LVL_DEBUG, "replyStream, checking stream size=" << sBuf->getSize() << " last=" << last);
-    _streamBuffer = sBuf; // new buffers usually made before every call to replyStream
+    std::lock_guard<std::mutex> finLock(_finMutex);
+    if (_finished) {
+        // Finished() was called, give up.
+        sBuf->Recycle();
+        return false;
+    }
     if (!_stream) {
         _stream = std::make_shared<ChannelStream>();
         if (SetResponse(_stream.get()) != XrdSsiResponder::Status::wasPosted) {
@@ -406,5 +412,6 @@ bool SsiRequest::replyStream(StreamBuffer::Ptr const& sBuf, bool last) {
     _stream->append(sBuf, last);
     return true;
 }
+
 
 }}} // namespace

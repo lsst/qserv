@@ -143,14 +143,12 @@ private:
     ValidatorPtr                         _validator;    ///< validates request against what's available
     std::shared_ptr<wbase::MsgProcessor> _processor;    ///< actual msg processor
 
-    std::mutex  _finMutex;      ///< Protects execute() from Finish()
+    std::mutex  _finMutex;  ///< Protects execute() from Finish(), _finished, and _stream
+    bool _finished = false;  ///< set to true when Finished called
     std::string _resourceName;
 
     std::shared_ptr<ChannelStream> _stream;
 
-    /// _streamBuffer is needed so that Recycle() can be called if Finished() is
-    /// called out of normal order, such as query cancelled by czar.
-    std::shared_ptr<StreamBuffer> _streamBuffer;
 
     mysql::MySqlConfig const _mySqlConfig;
 };

@@ -57,6 +57,7 @@ ChannelStream::~ChannelStream() {
         LOGS(_log, LOG_LVL_DEBUG, "Stream (" << (void *) this << ") deleted");
     } catch (...) {} // Destructors have nowhere to throw exceptions
 #endif
+    clearMsgs();
 }
 
 
@@ -100,6 +101,15 @@ XrdSsiStream::Buffer* ChannelStream::GetBuff(XrdSsiErrInfo &eInfo, int &dlen, bo
     last = _closed && _msgs.empty();
     LOGS(_log, LOG_LVL_DEBUG, "returning buffer (" << dlen << ", " << (last ? "(last)" : "(more)") << ")");
     return sb.get();
+}
+
+
+void ChannelStream::clearMsgs() {
+    std::unique_lock<std::mutex> lock(_mutex);
+    while(!_msgs.empty()) {
+        _msgs.front()->Recycle();
+        _msgs.pop_front();
+    }
 }
 
 }}} // lsst::qserv::xrdsvc
