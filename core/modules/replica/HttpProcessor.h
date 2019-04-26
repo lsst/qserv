@@ -86,17 +86,21 @@ private:
     /**
      * Log a message into the Logger's LOG_LVL_INFO stream
      */
-    void _info(std::string const& msg) const;
+    void _info(std::string const& msg);
+    void _info(std::string const& context, std::string const& msg) { _info(context + "  " + msg); }
 
     /**
      * Log a message into the Logger's LOG_LVL_DEBUG stream
      */
-    void _debug(std::string const& msg) const;
+
+    void _debug(std::string const& msg);
+    void _debug(std::string const& context, std::string const& msg) { _debug(context + "  " + msg); }
 
     /**
      * Log a message into the Logger's LOG_LVL_ERROR stream
      */
-    void _error(std::string const& msg) const;
+    void _error(std::string const& msg);
+    void _error(std::string const& context, std::string const& msg) { _error(context + "  " + msg); }
 
     /**
      * Process a request which return status of one worker.
@@ -260,6 +264,30 @@ private:
      */
     void _getQservUserQuery(qhttp::Request::Ptr const& req,
                             qhttp::Response::Ptr const& resp);
+
+    /**
+     * Get info on super-transactions
+     */
+    void _getTransactions(qhttp::Request::Ptr const& req,
+                          qhttp::Response::Ptr const& resp);
+
+    /**
+     * Get info on the current/latest super-transaction
+     */
+    void _getTransaction(qhttp::Request::Ptr const& req,
+                         qhttp::Response::Ptr const& resp);
+
+    /**
+     * Crate and start a super-transaction
+     */
+    void _beginTransaction(qhttp::Request::Ptr const& req,
+                           qhttp::Response::Ptr const& resp);
+
+    /**
+     * Commit or rollback a super-transaction
+     */
+    void _endTransaction(qhttp::Request::Ptr const& req,
+                         qhttp::Response::Ptr const& resp);
 
     /**
      * Pull the current Configuration and translate it into a JSON object

@@ -318,6 +318,32 @@ list<JobInfo> DatabaseServicesPool::jobs(string const& controllerId,
 }
 
 
+TransactionInfo DatabaseServicesPool::transaction(uint32_t id) {
+    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
+    return service()->transaction(id);
+}
+
+
+std::vector<TransactionInfo> DatabaseServicesPool::transactions(string const& databaseName) {
+    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
+    return service()->transactions(databaseName);
+}
+
+
+TransactionInfo DatabaseServicesPool::beginTransaction(string const& databaseName) {
+    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
+    return service()->beginTransaction(databaseName);
+}
+
+
+TransactionInfo DatabaseServicesPool::endTransaction(uint32_t id,
+                                                     bool abort) {
+    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
+    return service()->endTransaction(id,
+                                     abort);
+}
+
+
 DatabaseServices::Ptr DatabaseServicesPool::_allocateService() {
 
     string const context = "DatabaseServicesPool::" + string(__func__) + "  ";

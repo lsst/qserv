@@ -173,7 +173,21 @@ public:
                             uint64_t toTimeStamp,
                             size_t maxEntries) final;
 
+
+    // Operations with super-transactions
+
+    TransactionInfo transaction(uint32_t id) final;
+
+    std::vector<TransactionInfo> transactions(std::string const& databaseName=std::string()) final;
+
+    TransactionInfo beginTransaction(std::string const& databaseName) final;
+
+    TransactionInfo endTransaction(uint32_t id,
+                                   bool abort=false) final;
+
 private:
+
+    std::string _context(std::string const& func=std::string()) const;
 
     /**
      * Thread unsafe implementation of the corresponding public method.
@@ -286,11 +300,7 @@ private:
                                std::map<uint64_t, ReplicaInfo> const& id2replica,
                                std::vector<ReplicaInfo>& replicas);
 
-    /**
-     * Implement the corresponding public method
-     *
-     * @see DatabaseServicesMySQL::logControllerEvent()
-     */
+    /// @see DatabaseServicesMySQL::logControllerEvent()
     void _logControllerEvent(util::Lock const& lock,
                              ControllerEvent const& event);
 
@@ -301,62 +311,45 @@ private:
                                                      uint64_t toTimeStamp,
                                                      size_t maxEntries);
 
-    /**
-     * Implement the corresponding public method
-     *
-     * @see DatabaseServicesMySQL::controller()
-     */
+    /// @see DatabaseServicesMySQL::controller()
     ControllerInfo _controller(util::Lock const& lock,
                                std::string const& id);
 
-    /**
-     * Implement the corresponding public method
-     *
-     * @see DatabaseServicesMySQL::controllers()
-     */
+    /// @see DatabaseServicesMySQL::controllers()
     std::list<ControllerInfo> _controllers(util::Lock const& lock,
                                            uint64_t fromTimeStamp,
                                            uint64_t toTimeStamp,
                                            size_t maxEntries);
 
-    /**
-     * Implement the corresponding public method
-     *
-     * @see DatabaseServicesMySQL::request()
-     */
+    /// @see DatabaseServicesMySQL::request()
     RequestInfo _request(util::Lock const& lock,
                          std::string const& id);
 
-    /**
-     * Implement the corresponding public method
-     *
-     * @see DatabaseServicesMySQL::requests()
-     */
+    /// @see DatabaseServicesMySQL::requests()
     std::list<RequestInfo> _requests(util::Lock const& lock,
                                      std::string const& jobId,
                                      uint64_t fromTimeStamp,
                                      uint64_t toTimeStamp,
                                      size_t maxEntries);
 
-    /**
-     * Implement the corresponding public method
-     *
-     * @see DatabaseServicesMySQL::job()
-     */
+    /// @see DatabaseServicesMySQL::job()
     JobInfo _job(util::Lock const& lock,
                  std::string const& id);
 
-    /**
-     * Implement the corresponding public method
-     *
-     * @see DatabaseServicesMySQL::jobs()
-     */
+    /// @see DatabaseServicesMySQL::jobs()
     std::list<JobInfo> _jobs(util::Lock const& lock,
                              std::string const& controllerId,
                              std::string const& parentJobId,
                              uint64_t fromTimeStamp,
                              uint64_t toTimeStamp,
                              size_t maxEntries);
+
+    /// @see DatabaseServicesMySQL::findTransaction()
+    TransactionInfo _findTransactionImpl(util::Lock const& lock,
+                                         std::string const& predicate);
+
+    std::vector<TransactionInfo> _findTransactionsImpl(util::Lock const& lock,
+                                                       std::string const& predicate);
 
     // Input parameters
 

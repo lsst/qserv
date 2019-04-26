@@ -474,7 +474,11 @@ void HttpProcessor::_initialize() {
         {"GET",    "/replication/v1/qserv/worker/status", bind(&HttpProcessor::_getQservManyWorkersStatus, self, _1, _2)},
         {"GET",    "/replication/v1/qserv/worker/status/:name", bind(&HttpProcessor::_getQservWorkerStatus, self, _1, _2)},
         {"GET",    "/replication/v1/qserv/master/query", bind(&HttpProcessor::_getQservManyUserQuery, self, _1, _2)},
-        {"GET",    "/replication/v1/qserv/master/query/:id", bind(&HttpProcessor::_getQservUserQuery, self, _1, _2)}
+        {"GET",    "/replication/v1/qserv/master/query/:id", bind(&HttpProcessor::_getQservUserQuery, self, _1, _2)},
+        {"GET",    "/replication/v1/trans", bind(&HttpProcessor::_getTransactions, self, _1, _2)},
+        {"GET",    "/replication/v1/trans/:id", bind(&HttpProcessor::_getTransaction, self, _1, _2)},
+        {"POST",   "/replication/v1/trans", bind(&HttpProcessor::_beginTransaction, self, _1, _2)},
+        {"PUT",    "/replication/v1/trans/:id", bind(&HttpProcessor::_endTransaction, self, _1, _2)}
     });
     controller()->serviceProvider()->httpServer()->start();
 }
@@ -1593,6 +1597,138 @@ json HttpProcessor::_getQueries(json& workerInfo) const {
         _error(string(__func__) + " operation failed due to: " + string(ex.what()));
     }
     return result;
+}
+
+
+void HttpProcessor::_getTransactions(qhttp::Request::Ptr const& req,
+                                     qhttp::Response::Ptr const& resp) {
+    _debug(__func__);
+
+    json result;
+    result["success"] = 0;
+    result["error"] = "";
+    result["transactions"] = json::array();
+
+    try {
+        auto const database = ::getQueryParamStr(req->query, "database");
+
+        _debug(string(__func__) + " database=" + database);
+
+        result["success"] = 1;
+        for (auto&& t: controller()->serviceProvider()->databaseServices()->transactions(database)) {
+            result["transactions"].push_back(t.toJson());
+        }
+
+    } catch (invalid_argument const& ex) {
+        auto error = "invalid parameters of the request, ex: " + string(ex.what());
+        _error(__func__, error);
+        result["error"] = error;
+    } catch (exception const& ex) {
+        auto error = "operation failed due to: " + string(ex.what());
+        _error(__func__, error);
+        result["error"] = error;
+    }
+    resp->send(result.dump(), "application/json");
+}
+
+
+void HttpProcessor::_getTransaction(qhttp::Request::Ptr const& req,
+                                    qhttp::Response::Ptr const& resp) {
+    _debug(__func__);
+
+    json result;
+    result["success"] = 0;
+    result["error"] = "";
+    result["transactions"] = json::array();
+
+    try {
+        auto const id = stoul(req->params.at("id"));
+
+        _debug(__func__, "id=" + to_string(id));
+
+        result["success"] = 1;
+        result["transactions"].push_back(
+            controller()->serviceProvider()->databaseServices()->transaction(id).toJson()
+        );
+
+    } catch (invalid_argument const& ex) {
+        auto error = "invalid parameters of the request, ex: " + string(ex.what());
+        _error(__func__, error);
+        result["error"] = error;
+    } catch (exception const& ex) {
+        auto error = "operation failed due to: " + string(ex.what());
+        _error(__func__, error);
+        result["error"] = error;
+    }
+    resp->send(result.dump(), "application/json");
+}
+
+
+void HttpProcessor::_beginTransaction(qhttp::Request::Ptr const& req,
+                                      qhttp::Response::Ptr const& resp) {
+    _debug(__func__);
+
+    json result;
+    result["success"] = 0;
+    result["error"] = "";
+    result["transactions"] = json::array();
+
+    try {
+        ::HttpRequestBody body(req);
+
+        auto const database = body.required("database");
+
+        _debug(__func__, "database=" + database);
+
+        result["success"] = 1;
+        result["transactions"].push_back(
+            controller()->serviceProvider()->databaseServices()->beginTransaction(database).toJson()
+        );
+
+    } catch (invalid_argument const& ex) {
+        auto error = "invalid parameters of the request, ex: " + string(ex.what());
+        _error(__func__, error);
+        result["error"] = error;
+    } catch (exception const& ex) {
+        auto error = "operation failed due to: " + string(ex.what());
+        _error(__func__, error);
+        result["error"] = error;
+    }
+    resp->send(result.dump(), "application/json");
+}
+
+
+void HttpProcessor::_endTransaction(qhttp::Request::Ptr const& req,
+                                    qhttp::Response::Ptr const& resp) {
+    _debug(__func__);
+
+    json result;
+    result["success"] = 0;
+    result["error"] = "";
+    result["transactions"] = json::array();
+
+    try {
+        auto const id    = stoul(req->params.at("id"));
+        auto const abort = ::getRequiredQueryParamBool(req->query, "abort");
+
+        _debug(__func__, "id="    + to_string(id));
+        _debug(__func__, "abort=" + to_string(abort ? 1 : 0));
+
+        result["success"] = 1;
+        result["transactions"].push_back(
+            controller()->serviceProvider()->databaseServices()->endTransaction(id, abort).toJson()
+        );
+
+    } catch (invalid_argument const& ex) {
+        auto error = "invalid parameters of the request, ex: " + string(ex.what());
+        _error(__func__, error);
+        result["error"] = error;
+    } catch (exception const& ex) {
+        auto error = "operation failed due to: " + string(ex.what());
+        _error(__func__, error);
+        result["error"] = error;
+    }
+    resp->send(result.dump(), "application/json");
 }
 
 }}} // namespace lsst::qserv::replica

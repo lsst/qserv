@@ -274,6 +274,23 @@ struct JobInfo {
 
 
 /**
+ * Class TransactionInfo encapsulates a persistent state of
+ * the "super-transaction" objects fetched from the database.
+ */
+class TransactionInfo {
+public:
+    uint32_t     id = 0;        /// Its unique identifier
+    std::string  database;      /// The name of a database
+    std::string  state;         /// Its state
+    uint64_t     beginTime = 0; /// The timestamp (milliseconds) when it started
+    uint64_t     endTime = 0;   /// The timestamp (milliseconds) when it was committed/aborted
+
+    /// @return JSON representation of the structure
+    nlohmann::json toJson() const;
+};
+
+
+/**
   * Class DatabaseServices is a high-level interface to the database services
   * for replication entities: Controller, Job and Request.
   *
@@ -772,6 +789,25 @@ public:
                                     uint64_t toTimeStamp=std::numeric_limits<uint64_t>::max(),
                                     size_t maxEntries=0) = 0;
 
+    /// @return a description of a super-transaction
+    /// @throws DatabaseServicesNotFound if no such transaction found
+    virtual TransactionInfo transaction(uint32_t id) = 0;
+
+    /// @return a collection of super-transactions (all of them or for the specified database only)
+    /// @throws std::invalid_argument if database name is not valid
+    virtual std::vector<TransactionInfo> transactions(std::string const& databaseName=std::string()) = 0;
+
+    /// @return a descriptor for the new super-transaction
+    /// @throws std::invalid_argument if database name is not valid
+    /// @throws std::logic_error if super-transactions are not allowed for the database
+    virtual TransactionInfo beginTransaction(std::string const& databaseName) = 0;
+
+    /// @return an updated descriptor of the (committed or aborted) super-transaction 
+    /// @throws DatabaseServicesNotFound if no such transaction found
+    /// @throws std::logic_error if the transaction has already ended
+    virtual TransactionInfo endTransaction(uint32_t id,
+                                           bool abort=false) = 0;
+    
 protected:
 
     DatabaseServices() = default;

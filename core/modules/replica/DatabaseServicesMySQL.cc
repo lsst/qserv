@@ -1760,6 +1760,198 @@ list<JobInfo> DatabaseServicesMySQL::_jobs(util::Lock const& lock,
 }
 
 
+TransactionInfo DatabaseServicesMySQL::transaction(uint32_t id) {
+
+    string const context = _context(__func__) + "id="  + to_string(id) + " ";
+
+    LOGS(_log, LOG_LVL_DEBUG, context);
+
+    util::Lock lock(_mtx, context);
+
+    TransactionInfo info;
+    try {
+        auto const predicate = _conn->sqlEqual("id", id);
+        _conn->execute(
+            [&](decltype(_conn) conn) {
+                conn->begin();
+                info = _findTransactionImpl(lock, predicate);
+                conn->commit();
+            }
+        );
+
+    } catch (exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
+        if (_conn->inTransaction()) _conn->rollback();
+        throw;
+    }
+    LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
+    return info;
+}
+
+
+vector<TransactionInfo> DatabaseServicesMySQL::transactions(string const& databaseName) {
+
+    string const context = _context(__func__) + "database="  + databaseName + " ";
+
+    LOGS(_log, LOG_LVL_DEBUG, context);
+
+    util::Lock lock(_mtx, context);
+
+    vector<TransactionInfo> collection;
+    try {
+        auto const predicate = databaseName.empty() ? "" : _conn->sqlEqual("database", databaseName);
+        _conn->execute(
+            [&](decltype(_conn) conn) {
+                conn->begin();
+                collection = _findTransactionsImpl(lock, predicate);
+                conn->commit();
+            }
+        );
+
+    } catch (exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
+        if (_conn->inTransaction()) _conn->rollback();
+        throw;
+    }
+    LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
+    return collection;
+}
+
+
+TransactionInfo DatabaseServicesMySQL::beginTransaction(string const& databaseName) {
+
+    string const context = _context(__func__) + "database="  + databaseName + " ";
+
+    LOGS(_log, LOG_LVL_DEBUG, context);
+
+    util::Lock lock(_mtx, context);
+    
+    uint64_t const beginTime = PerformanceUtils::now();
+    uint64_t const endTime   = 0;
+    string   const state     = "STARTED";
+
+    TransactionInfo info;
+    try {
+        auto const predicate = _conn->sqlEqual("id", database::mysql::Function::LAST_INSERT_ID);
+        _conn->execute(
+            [&](decltype(_conn) conn) {
+                conn->begin();
+                conn->executeInsertQuery(
+                    "transaction",
+                    database::mysql::Keyword::SQL_NULL,
+                    databaseName,
+                    state,
+                    beginTime,
+                    endTime
+                );
+                info = _findTransactionImpl(lock, predicate);
+                conn->commit();
+            }
+        );
+
+    } catch (exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
+        if (_conn->inTransaction()) _conn->rollback();
+        throw;
+    }
+    LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
+    return info;
+}
+
+
+TransactionInfo DatabaseServicesMySQL::endTransaction(uint32_t id, bool abort) {
+
+    string const context = _context(__func__) +
+            "id="  + to_string(id) + " abort=" + string(abort ? "true" : "false") + " ";
+
+    LOGS(_log, LOG_LVL_DEBUG, context);
+
+    util::Lock lock(_mtx, context);
+
+    uint64_t const endTime = PerformanceUtils::now();
+    string   const state   = abort ? "ABORTED" : "FINISHED";
+
+    TransactionInfo info;
+    try {
+        auto const predicate = _conn->sqlEqual("id", id);
+        _conn->execute(
+            [&](decltype(_conn) conn) {
+                conn->begin();
+                info = _findTransactionImpl(lock, predicate);
+                if (info.endTime != 0) {
+                    throw logic_error(context + "transaction " + to_string(id) + " is not active");
+                }
+                conn->executeSimpleUpdateQuery(
+                    "transaction",
+                    predicate,
+                    make_pair("state",    state),
+                    make_pair("end_time", endTime)
+                );
+                info.state   = state;
+                info.endTime = endTime;
+                conn->commit();
+            }
+        );
+
+    } catch (exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
+        if (_conn->inTransaction()) _conn->rollback();
+        throw;
+    }
+    LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
+    return info;
+}
+
+
+TransactionInfo DatabaseServicesMySQL::_findTransactionImpl(util::Lock const& lock,
+                                                            string const& predicate) {
+
+    string const context = _context(__func__) + "predicate=" + predicate + " ";
+    auto   const collection = _findTransactionsImpl(lock, predicate);
+    size_t const num = collection.size();
+
+    if (num == 1) return collection[0];
+    if (num == 0) throw DatabaseServicesNotFound(context + "no such transaction");
+    throw DatabaseServicesError(context + "two many transactions found: " + to_string(num));
+}
+
+
+vector<TransactionInfo> DatabaseServicesMySQL::_findTransactionsImpl(util::Lock const& lock,
+                                                                     string const& predicate) {
+
+    string const context = _context(__func__) + "predicate=" + predicate + " ";
+
+    LOGS(_log, LOG_LVL_DEBUG, context);
+
+    vector<TransactionInfo> collection;
+
+    string const query =
+            "SELECT * FROM " + _conn->sqlId("transaction") +
+            (predicate.empty() ? "" : " WHERE " + predicate) +
+            " ORDER BY begin_time DESC";
+
+    _conn->execute(query);
+
+    if (_conn->hasResult()) {
+
+        database::mysql::Row row;
+        while (_conn->next(row)) {
+
+            TransactionInfo info;
+
+            row.get("id",         info.id);
+            row.get("database",   info.database);
+            row.get("state",      info.state);
+            row.get("begin_time", info.beginTime);
+            row.get("end_time",   info.endTime);
+
+            collection.push_back(info);
+        }
+    }
+    return collection;
+}
+
+
 void DatabaseServicesMySQL::_findReplicasImpl(util::Lock const& lock,
                                               vector<ReplicaInfo>& replicas,
                                               string const& query) {
@@ -1785,8 +1977,8 @@ void DatabaseServicesMySQL::_findReplicasImpl(util::Lock const& lock,
             // Extract general attributes of the replica
 
             uint64_t     id;
-            string  worker;
-            string  database;
+            string       worker;
+            string       database;
             unsigned int chunk;
             uint64_t     verifyTime;
 
@@ -1956,6 +2148,11 @@ void DatabaseServicesMySQL::_findReplicaFilesImpl(util::Lock const& lock,
     if (replicas.size() != id2replica.size()) {
         throw runtime_error(context + "database content may be corrupt");
     }
+}
+
+
+string DatabaseServicesMySQL::_context(string const& func) const {
+    return "DatabaseServicesMySQL::" + func + " ";
 }
 
 }}} // namespace lsst::qserv::replica
