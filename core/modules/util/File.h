@@ -50,7 +50,8 @@ public:
      * Read the content of a file, line-by-line into a vector. Optionally test
      * of the result set is not empty.
      *
-     * @param fileName        the name of a file
+     * @param fileName   the name of a file. If '-' is passed as the file name then
+     *                   the Standard Input Stream will be assumed.
      * @param assertNotEmpty  (optional) flag which would trigger an exception if the file is empty
      *
      * @return a collection of lines read from the file

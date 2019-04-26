@@ -23,7 +23,6 @@
 #include "replica/AdminApp.h"
 
 // System headers
-#include <iomanip>
 #include <iostream>
 #include <stdexcept>
 #include <vector>
@@ -31,8 +30,7 @@
 // Qserv headers
 #include "replica/Controller.h"
 #include "replica/Performance.h"
-#include "replica/RequestTracker.h"
-#include "replica/ServiceManagementRequest.h"
+#include "replica/ServiceManagementJob.h"
 #include "util/TablePrinter.h"
 
 using namespace std;
@@ -40,7 +38,7 @@ using namespace std;
 namespace {
 
 string const description =
-    "This is a Controller application for launching worker management requests.";
+    "This is an application for launching worker management requests.";
 
 } /// namespace
 
@@ -68,9 +66,9 @@ AdminApp::AdminApp(int argc, char* argv[])
     // Configure the command line parser
 
     parser().commands(
-        "operation",
-        {"STATUS", "SUSPEND", "RESUME", "REQUESTS", "DRAIN"},
-        _operation);
+        "command",
+        {"STATUS", "SUSPEND", "RESUME", "REQUESTS", "DRAIN", "RECONFIG"},
+        _command);
 
     parser().command("STATUS").description(
         "Retrieve and display the status of each worker.");
@@ -95,25 +93,18 @@ AdminApp::AdminApp(int argc, char* argv[])
     parser().command("DRAIN").description(
         "Cancel the in-progress (if any) requests on all workers, then empty all queues.");
 
+    parser().command("RECONFIG").description(
+        "Reload Configuration. Requests known to workers won't be affected.");
+
     parser().option(
         "timeout",
-        "Maximum timeout (seconds) for the management request.s",
-        _requestExpirationIvalSec);
+        "Maximum timeout (seconds) for the management requests.",
+        _timeout);
 
     parser().flag(
         "all-workers",
         "The flag for selecting all workers regardless of their status (DISABLED or READ-ONLY).",
         _allWorkers);
-
-    parser().flag(
-        "progress-report",
-        "The flag triggering progress report when executing batches of requests.",
-        _progressReport);
-
-    parser().flag(
-        "error-report",
-        "The flag triggering detailed report on failed requests.",
-        _errorReport);
 
     parser().flag(
         "tables-vertical-separator",
@@ -124,69 +115,19 @@ AdminApp::AdminApp(int argc, char* argv[])
 
 int AdminApp::runImpl() {
 
-    auto controller = Controller::create(serviceProvider());
+    auto const controller = Controller::create(serviceProvider());
 
-    // Launch requests against a collection of workers
+    ServiceManagementBaseJob::Ptr job;
+    if      (_command == "STATUS")   job = ServiceStatusJob::create(  _allWorkers, _timeout, controller);
+    else if (_command == "REQUESTS") job = ServiceRequestsJob::create(_allWorkers, _timeout, controller);
+    else if (_command == "SUSPEND")  job = ServiceSuspendJob::create( _allWorkers, _timeout, controller);
+    else if (_command == "RESUME")   job = ServiceResumeJob::create(  _allWorkers, _timeout, controller);
+    else if (_command == "DRAIN")    job = ServiceDrainJob::create(   _allWorkers, _timeout, controller);
+    else if (_command == "RECONFIG") job = ServiceReconfigJob::create(_allWorkers, _timeout, controller);
+    else throw logic_error("AdminApp::" + string(__func__) + "  unsupported operation: " + _command);
 
-    CommonRequestTracker<ServiceManagementRequestBase> tracker(cout, _progressReport, _errorReport);
-
-    auto const workers = _allWorkers ?
-        serviceProvider()->config()->allWorkers() :
-        serviceProvider()->config()->workers();
-
-    string const emptyJobId;
-
-    for (auto&& worker: workers) {
-
-        if (_operation == "STATUS") {
-            tracker.add(
-                controller->statusOfWorkerService(
-                    worker,
-                    [&tracker] (ServiceStatusRequest::Ptr const& ptr) { tracker.onFinish(ptr); },
-                    emptyJobId,
-                    _requestExpirationIvalSec));
-
-        } else if (_operation == "SUSPEND") {
-            tracker.add(
-                controller->suspendWorkerService(
-                    worker,
-                    [&tracker] (ServiceSuspendRequest::Ptr const& ptr) { tracker.onFinish(ptr); },
-                    emptyJobId,
-                    _requestExpirationIvalSec));
-
-        } else if (_operation == "RESUME") {
-            tracker.add(
-                controller->resumeWorkerService(
-                    worker,
-                    [&tracker] (ServiceResumeRequest::Ptr const& ptr) { tracker.onFinish(ptr); },
-                    emptyJobId,
-                    _requestExpirationIvalSec));
-
-        } else if (_operation == "REQUESTS") {
-            tracker.add(
-                controller->requestsOfWorkerService(
-                    worker,
-                    [&tracker] (ServiceRequestsRequest::Ptr const& ptr) { tracker.onFinish(ptr); },
-                    emptyJobId,
-                    _requestExpirationIvalSec));
-
-        } else if (_operation == "DRAIN") {
-            tracker.add(
-                controller->drainWorkerService(
-                    worker,
-                    [&tracker] (ServiceDrainRequest::Ptr const& ptr) { tracker.onFinish(ptr); },
-                    emptyJobId,
-                    _requestExpirationIvalSec));
-
-        } else {
-            throw logic_error(
-                    "AdminApp::" + string(__func__) + "  unsupported operation: " + _operation);
-        }
-    }
-
-    // Wait before all request are finished
-
-    tracker.track();
+    job->start();
+    job->wait();
 
     // Analyze and display results
 
@@ -197,18 +138,20 @@ int AdminApp::runImpl() {
     vector<string> numInProgressRequests;
     vector<string> numFinishedRequests;
 
-    for (auto const& ptr: tracker.requests) {
+    auto&& result = job->getResultData();
+    for (auto&& itr: result.workers) {
+        auto&& worker = itr.first;
+        bool const success = itr.second;
 
-        workerName.push_back(ptr->worker());
+        workerName.push_back(worker);
 
-        if ((ptr->state()         == Request::State::FINISHED) &&
-            (ptr->extendedState() == Request::ExtendedState::SUCCESS)) {
-
-            startedSecondsAgo    .push_back(to_string((PerformanceUtils::now() - ptr->getServiceState().startTime) / 1000));
-            state                .push_back(                                     ptr->getServiceState().state2string());
-            numNewRequests       .push_back(to_string(                           ptr->getServiceState().numNewRequests));
-            numInProgressRequests.push_back(to_string(                           ptr->getServiceState().numInProgressRequests));
-            numFinishedRequests  .push_back(to_string(                           ptr->getServiceState().numFinishedRequests));
+        if (success) {
+            auto&& serviceState = result.serviceState.at(worker);
+            startedSecondsAgo    .push_back(to_string((PerformanceUtils::now() - serviceState.startTime) / 1000));
+            state                .push_back(                                     serviceState.state2string());
+            numNewRequests       .push_back(to_string(                           serviceState.numNewRequests));
+            numInProgressRequests.push_back(to_string(                           serviceState.numInProgressRequests));
+            numFinishedRequests  .push_back(to_string(                           serviceState.numFinishedRequests));
 
         } else {
             startedSecondsAgo    .push_back("*");
@@ -241,25 +184,25 @@ int AdminApp::runImpl() {
         auto analyzeRemoteRequestInfo = [&](string const& worker,
                                             string const& queueName,
                                             ProtocolServiceResponseInfo const& info) {
-            workerName      .push_back(worker);
-            requestId       .push_back(info.id());
-            requestType     .push_back(ProtocolQueuedRequestType_Name(info.queued_type()));
-            queue           .push_back(queueName);
-            priority        .push_back(info.priority());
+            workerName .push_back(worker);
+            requestId  .push_back(info.id());
+            requestType.push_back(ProtocolQueuedRequestType_Name(info.queued_type()));
+            queue      .push_back(queueName);
+            priority   .push_back(info.priority());
         };
-        for (auto const& ptr: tracker.requests) {
-
-            if ((ptr->state()         == Request::State::FINISHED) &&
-                (ptr->extendedState() == Request::ExtendedState::SUCCESS)) {
-
-                for (auto&& info: ptr->getServiceState().newRequests) {
-                    analyzeRemoteRequestInfo(ptr->worker(), "QUEUED", info);
+        for (auto&& itr: result.workers) {
+            auto&& worker = itr.first;
+            bool const success = itr.second;
+            if (success) {
+                auto&& serviceState = result.serviceState.at(worker);
+                for (auto&& info: serviceState.newRequests) {
+                    analyzeRemoteRequestInfo(worker, "QUEUED", info);
                 }
-                for (auto&& info: ptr->getServiceState().inProgressRequests) {
-                    analyzeRemoteRequestInfo(ptr->worker(), "IN-PROGRESS", info);
+                for (auto&& info: serviceState.inProgressRequests) {
+                    analyzeRemoteRequestInfo(worker, "IN-PROGRESS", info);
                 }
-                for (auto&& info: ptr->getServiceState().finishedRequests) {
-                    analyzeRemoteRequestInfo(ptr->worker(), "FINISHED", info);
+                for (auto&& info: serviceState.finishedRequests) {
+                    analyzeRemoteRequestInfo(worker, "FINISHED", info);
                 }
             }
         }

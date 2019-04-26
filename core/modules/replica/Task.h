@@ -29,8 +29,9 @@
 #include <vector>
 
 // Qserv headers
-#include "replica/Job.h"
 #include "replica/Controller.h"
+#include "replica/EventLogger.h"
+#include "replica/Job.h"
 #include "replica/ServiceProvider.h"
 #include "util/BlockPost.h"
 #include "util/Issue.h"
@@ -80,7 +81,8 @@ public:
  * the activities, notifying clients on abnormal termination of the activities,
  * as well as an infrastructure supporting an implementation of these activities.
  */
-class Task : public std::enable_shared_from_this<Task> {
+class Task: public EventLogger,
+            public std::enable_shared_from_this<Task> {
 
 public:
 
@@ -103,12 +105,6 @@ public:
 
     /// @return a reference to a provider of services
     ServiceProvider::Ptr const& serviceProvider() const { return _controller->serviceProvider(); }
-
-    /// @return a reference to the Controller
-    Controller::Ptr const& controller() const { return _controller; }
-
-    /// @return the name of the task
-    std::string name() const { return _name; }
 
     // @return 'true' if the task is running
     bool isRunning() const { return _isRunning.load(); }
@@ -295,7 +291,7 @@ protected:
             job->start();
             jobs.push_back(job);
 
-            _logJobStartedEvent(T::typeName(), job, job->databaseFamily());
+            logJobStartedEvent(T::typeName(), job, job->databaseFamily());
         }
 
         // Track the completion of all jobs
@@ -305,7 +301,7 @@ protected:
                  _numFinishedJobs);
         
         for (auto&& job: jobs) {
-            _logJobFinishedEvent(T::typeName(), job, job->databaseFamily());
+            logJobFinishedEvent(T::typeName(), job, job->databaseFamily());
         }
     }
 
@@ -364,14 +360,6 @@ protected:
         info(typeName + ": tracking finished");
     }
 
-    /**
-     * Log an event in the persistent log
-     *
-     * @param event
-     *   event to be recorded
-     */
-    void logEvent(ControllerEvent& event) const;
-
 private:
 
     /**
@@ -379,61 +367,7 @@ private:
      */
     void _startImpl();
 
-    /**
-     * Log the very first event to report the start of the task.
-     */
-    void _logOnStartEvent() const;
-
-    /**
-     * Log the very first event to report the end of the task.
-     */
-    void _logOnStopEvent() const;
-
-    /**
-     * Log the very first event to report the termination of the task.
-     * 
-     * @param msg
-     *   error message to be reported
-     */
-    void _logOnTerminatedEvent(std::string const& msg) const;
-
-    /**
-     * Reported the start of a job
-     *
-     * @param typeName
-     *   the type name of the job
-     * 
-     * @param job
-     *   pointer to the job
-     * 
-     * @param family
-     *   the name of a database family
-     */
-    void _logJobStartedEvent(std::string const& typeName,
-                             Job::Ptr const& job,
-                             std::string const& family) const;
-
-    /**
-     * Reported the finish of a job
-     *
-     * @param typeName
-     *   the type name of the job
-     * 
-     * @param job
-     *   pointer to the job
-     *
-     * @param family
-     *   the name of a database family
-     */
-    void _logJobFinishedEvent(std::string const& typeName,
-                              Job::Ptr const& job,
-                              std::string const& family) const;
-
-
     // Input parameters
-
-    Controller::Ptr const _controller;
-    std::string     const _name;
 
     /// The callback (if provided) to be called upon an abnormal termination
     /// of the user-supplied algorithm run in a context of the task.

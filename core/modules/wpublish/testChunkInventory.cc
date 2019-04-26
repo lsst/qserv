@@ -135,4 +135,50 @@ BOOST_AUTO_TEST_CASE(WorkerId) {
     BOOST_CHECK(ci.id() == "worker");
 }
 
+BOOST_AUTO_TEST_CASE(ChunkInvDiff) {
+
+    // This is a test for an implementation of operator:
+    //
+    //   ChunkInventory::ExistMap
+    //   ChunkInventory::operator-(ChunkInventory const& lhs,
+    //                             ChunkInventory const& rhs)
+    //
+    // The operator is expected to return a map of databases and chunks
+    // which are present in the 'lhs' inventory only.
+
+    ChunkInventory::ExistMap oneMap;
+    oneMap["db1"].insert(1);
+    oneMap["db1"].insert(2);
+    oneMap["db1"].insert(3);
+    oneMap["db2"].insert(3);
+    oneMap["db2"].insert(4);
+    oneMap["db2"].insert(5);                    // in this map only
+    oneMap["db3"] = ChunkInventory::ChunkMap();
+
+    ChunkInventory::ExistMap twoMap;
+    twoMap["db1"].insert(1);
+    twoMap["db1"].insert(2);
+    twoMap["db1"].insert(3);
+    twoMap["db2"].insert(3);
+    twoMap["db2"].insert(4);
+    twoMap["db3"].insert(6);                    // in this map only
+    twoMap["db4"] = ChunkInventory::ChunkMap(); // in this map only
+
+    ChunkInventory oneInv(oneMap, "name:one", "id:one");
+    ChunkInventory twoInv(twoMap, "name:two", "id:two");
+
+    ChunkInventory::ExistMap inOneOnly = oneInv - twoInv;
+    ChunkInventory::ExistMap inTwoOnly = twoInv - oneInv;
+ 
+    BOOST_CHECK(inOneOnly.size() == 1);
+    BOOST_CHECK(inOneOnly.count("db2") == 1);
+    BOOST_CHECK(inOneOnly["db2"].count(5) == 1);
+
+    BOOST_CHECK(inTwoOnly.size() == 2);
+    BOOST_CHECK(inTwoOnly.count("db3") == 1);
+    BOOST_CHECK(inTwoOnly["db3"].count(6) == 1);
+    BOOST_CHECK(inTwoOnly.count("db4") == 1);
+    BOOST_CHECK(inTwoOnly["db4"].size() == 0);
+}
+
 BOOST_AUTO_TEST_SUITE_END()

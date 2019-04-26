@@ -7,7 +7,7 @@ RUN yum install -y rh-git29 && yum clean all && \
     source scl_source enable rh-git29
 
 # Install Qserv prerequisites
-RUN yum install -y initscripts && yum clean all
+RUN yum install -y initscripts gdb && yum clean all
 
 # Install LSST stack
 ENV EUPS_TAG qserv-dev

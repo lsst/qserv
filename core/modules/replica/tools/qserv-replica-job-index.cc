@@ -20,7 +20,7 @@
  */
 
 /**
- * @see AdminApp
+ * @see IndexApp
  */
 
 // System headers
@@ -28,14 +28,14 @@
 #include <stdexcept>
 
 // Qserv headers
-#include "replica/AdminApp.h"
+#include "replica/IndexApp.h"
 
 using namespace std;
 using namespace lsst::qserv::replica;
 
 int main(int argc, char* argv[]) {
     try {
-        auto app = AdminApp::create(argc, argv);
+        auto const app = IndexApp::create(argc, argv);
         return app->run();
     } catch (exception const& ex) {
         cerr << "main()  the application failed, exception: " << ex.what() << endl;
