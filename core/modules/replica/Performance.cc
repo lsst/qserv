@@ -23,7 +23,9 @@
 #include "replica/Performance.h"
 
 // System headers
-#include <chrono>
+#include <ctime>
+#include <iomanip>
+#include <sstream>
 #include <stdexcept>
 
 // Qserv headers
@@ -44,9 +46,21 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-    uint64_t PerformanceUtils::now() {
+uint64_t PerformanceUtils::now() {
     return chrono::duration_cast<chrono::milliseconds>(
                 chrono::system_clock::now().time_since_epoch()).count();
+}
+
+string PerformanceUtils::toDateTimeString(chrono::milliseconds const& millisecondsSinceEpoch) {
+
+    chrono::time_point<chrono::system_clock> const point(millisecondsSinceEpoch);
+    auto const timer = chrono::system_clock::to_time_t(point);
+    auto broken_time = *localtime(&timer);
+
+    ostringstream ss;
+    ss << put_time(&broken_time, "%Y-%m-%d %H:%M:%S");
+    ss << '.' << setfill('0') << setw(3) << millisecondsSinceEpoch.count() % 1000;
+    return ss.str();
 }
 
 
