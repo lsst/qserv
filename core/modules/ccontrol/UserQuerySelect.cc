@@ -278,7 +278,6 @@ void UserQuerySelect::submit() {
         };
 
         auto cmd = std::make_shared<qdisp::PriorityCommand>(funcBuildJob);
-        // _executive->queueJobStart(cmd, _qSession->getScanInteractive()); &&&
         _executive->queueJobStart(cmd);
         ++sequence;
     }

@@ -192,7 +192,6 @@ bool QueryRunner::runQuery() {
 MYSQL_RES* QueryRunner::_primeResult(std::string const& query) {
         bool queryOk = _mysqlConn->queryUnbuffered(query);
         if (!queryOk) {
-            LOGS(_log, LOG_LVL_ERROR, "primeResult " << _mysqlConn->getError());
             util::Error error(_mysqlConn->getErrno(), _mysqlConn->getError());
             _multiError.push_back(error);
             return nullptr;
@@ -325,28 +324,20 @@ void QueryRunner::_transmit(bool last, uint rowCount, size_t tSize) {
 
 void QueryRunner::_sendBuf(xrdsvc::StreamBuffer::Ptr& streamBuf,
                            util::TimerHistogram& histo, std::string const& note) {
-    LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << "&&& _sendbuf begin");
     bool sent = _task->sendChannel->sendStream(streamBuf, false);
-    LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << "&&& _sendbuf sent");
     if (!sent) {
         LOGS(_log, LOG_LVL_ERROR, _task->getIdStr() << " Failed to transmit " << note << "!");
         _cancelled = true;
-        /* &&& calling Recycle moved to SsiRequest::replyStream for all cases of false;
-        // Normally, sendStream calls Recycle(), but if this path is taken, it may not have been called.
-        // Calling Recycle() twice should be harmless.
-        streamBuf->Recycle();
-        */
     } else {
         util::Timer t;
         t.start();
-        LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << "&&& _sendbuf wait start");
+        LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " _sendbuf wait start");
         streamBuf->waitForDoneWithThis(); // Block until this buffer has been sent.
-        LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << "&&& _sendbuf wait end");
+        LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " _sendbuf wait end");
         t.stop();
         auto logMsg = histo.addTime(t.getElapsed(), _task->getIdStr());
         LOGS(_log, LOG_LVL_DEBUG, logMsg);
     }
-    LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << "&&& _sendbuf done");
 }
 
 

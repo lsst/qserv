@@ -52,11 +52,6 @@ ChannelStream::ChannelStream()
 
 /// Destructor
 ChannelStream::~ChannelStream() {
-#if 0 // Enable to debug ChannelStream lifetime
-    try {
-        LOGS(_log, LOG_LVL_DEBUG, "Stream (" << (void *) this << ") deleted");
-    } catch (...) {} // Destructors have nowhere to throw exceptions
-#endif
     clearMsgs();
 }
 

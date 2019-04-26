@@ -312,8 +312,8 @@ void SsiRequest::Finished(XrdSsiRequest& req, XrdSsiRespInfo const& rinfo, bool 
     // locking _finMutex.
     {
         std::lock_guard<std::mutex> finLock(_finMutex);
+        // Clean up _stream if it exists and don't add anything new to it either.
         _finished = true;
-        // Clean up _stream if it exists
         if (_stream != nullptr) {
             _stream->clearMsgs();
         }
@@ -387,6 +387,10 @@ bool SsiRequest::replyFile(int fd, long long fSize) {
 bool SsiRequest::replyStream(StreamBuffer::Ptr const& sBuf, bool last) {
     // Create a streaming object if not already created.
     LOGS(_log, LOG_LVL_DEBUG, "replyStream, checking stream size=" << sBuf->getSize() << " last=" << last);
+
+    // Normally, XrdSsi would call Recycle() when it is done with sBuf, but if this function
+    // returns false, then it must call Recycle(). Otherwise, the scheduler will likely
+    // wedge waiting for the buffer to be released.
     std::lock_guard<std::mutex> finLock(_finMutex);
     if (_finished) {
         // Finished() was called, give up.
@@ -397,10 +401,7 @@ bool SsiRequest::replyStream(StreamBuffer::Ptr const& sBuf, bool last) {
         _stream = std::make_shared<ChannelStream>();
         if (SetResponse(_stream.get()) != XrdSsiResponder::Status::wasPosted) {
             LOGS(_log, LOG_LVL_WARN, "SetResponse stream failed, calling Recycle for sBuf");
-            // Normally, XrdSsi would call Recycle() when it is done with sBuf, but the
-            // return value from SetResponse indicates XrdSsi will never use sBuf nor call Recycle().
-            // Calling Recycle() here means we're done waiting for XrdSsi and sBuf can be freed when
-            // qserv is done with it.
+            // SetResponse return value indicates XrdSsi wont call Recycle().
             sBuf->Recycle();
             return false;
         }
@@ -409,6 +410,7 @@ bool SsiRequest::replyStream(StreamBuffer::Ptr const& sBuf, bool last) {
         sBuf->Recycle();
         return false;
     }
+    // XrdSsi or Finished() will call Recycle().
     _stream->append(sBuf, last);
     return true;
 }
