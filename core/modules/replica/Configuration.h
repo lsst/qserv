@@ -54,120 +54,74 @@ namespace qserv {
 namespace replica {
 
 /**
- * class WorkerInfo encapsulates various parameters describing a worker.
+ * Class WorkerInfo encapsulates various parameters describing a worker.
  */
 class WorkerInfo {
 public:
 
-    /// The logical name of a worker
-    std::string name;
+    std::string name;           /// The logical name of a worker
 
-    /// The worker is allowed to participate in the replication operations
-    bool isEnabled = true;
+    bool isEnabled  = true;     /// The worker is allowed to participate in the replication operations
+    bool isReadOnly = false;    /// The worker can only server as a source of replicas.
+                                /// New replicas can't be placed on it.
 
-    /// The worker can only server as a source of replicas. New replicas can't
-    /// be placed on it.
-    bool isReadOnly = false;
+    std::string svcHost;        /// The host name (or IP address) of the worker service
+    uint16_t    svcPort = 0;    /// The port number of the worker service
 
-    /// The host name (or IP address) of the worker service
-    std::string svcHost;
+    std::string fsHost;         /// The host name (or IP address) of the file service for the worker
+    uint16_t    fsPort = 0;     /// The port number for the file service for the worker
 
-    /// The port number of the worker service
-    uint16_t svcPort = 0;
+    std::string dataDir;        /// An absolute path to the data directory under which the MySQL
+                                /// database folders are residing.
 
-    /// The host name (or IP address) of the file service for the worker
-    std::string fsHost;
+    std::string dbHost;         /// The host name (or IP address) of the database service for the worker
+    uint16_t    dbPort = 0;     /// The port number of the worker database service
+    std::string dbUser;         /// The name of a user account for connecting to the database service
 
-    /// The port number for the file service for the worker
-    uint16_t fsPort = 0;
-
-    /// An absolute path to the data directory under which the MySQL database
-    /// folders are residing.
-    std::string dataDir;
-
-    /// The port number of the worker database service
-    uint16_t dbPort = 0;
-
-    /// The host name (or IP address) of the database service for the worker
-    std::string dbHost;
-
-    /// The name of a user account for connecting to the database service
-    std::string dbUser;
-
-    /**
-     * Translate the structure into JSON
-     *
-     * @return
-     *   JSON array
-     */
+    /// @return JSON representation of the object
     nlohmann::json toJson() const;
 };
 
-/// Overloaded operator for dumping objects of class WorkerInfo
 std::ostream& operator <<(std::ostream& os, WorkerInfo const& info);
 
 /**
- * class DatabaseInfo encapsulates various parameters describing databases.
+ * Class DatabaseInfo encapsulates various parameters describing databases.
  */
 class DatabaseInfo {
 public:
 
-    /// The name of a database
-    std::string name;
+    std::string name;    /// The name of a database
+    std::string family;  /// The name of the database family
 
-    /// The name of the database family
-    std::string family;
+    std::vector<std::string> partitionedTables; /// The names of the partitioned tables
+    std::vector<std::string> regularTables;     /// The list of fully replicated tables
 
-    /// The names of the partitioned tables
-    std::vector<std::string> partitionedTables;
-
-    /// The list of fully replicated tables
-    std::vector<std::string> regularTables;
-
-    /**
-     * Translate the structure into JSON
-     *
-     * @return
-     *   JSON array
-     */
+    /// @return JSON representation of the object
     nlohmann::json toJson() const;
 };
 
-/// Overloaded operator for dumping objects of class DatabaseInfo
 std::ostream& operator <<(std::ostream& os, DatabaseInfo const& info);
 
 /**
- * Structure DatabaseFamilyInfo encapsulates various parameters describing
+ * Class DatabaseFamilyInfo encapsulates various parameters describing
  * database families.
  */
-struct DatabaseFamilyInfo {
+class DatabaseFamilyInfo {
+public:
 
-    /// The name of a database family
-    std::string name;
+    std::string  name;                  /// The name of a database family
+    size_t       replicationLevel = 0;  /// The minimum replication level desired (1..N)
+    unsigned int numStripes = 0;        /// The number of stripes (from the CSS partitioning configuration)
+    unsigned int numSubStripes = 0;     /// The number of sub-stripes (from the CSS partitioning configuration)
 
-    /// The minimum replication level desired (1..N)
-    size_t replicationLevel = 0;
+    std::shared_ptr<ChunkNumberValidator> chunkNumberValidator;     /// A validator for chunk numbers
 
-    /// The number of stripes (from the CSS partitioning configuration)
-    unsigned int numStripes = 0;
-
-    /// The number of sub-stripes (from the CSS partitioning configuration)
-    unsigned int numSubStripes = 0;
-
-    /// A validator for chunk numbers
-    std::shared_ptr<ChunkNumberValidator> chunkNumberValidator;
-
-    /**
-     * Translate the structure into JSON
-     *
-     * @return
-     *   JSON array
-     */
+    /// @return JSON representation of the object
     nlohmann::json toJson() const;
 };
 
-/// Overloaded operator for dumping objects of class DatabaseFamilyInfo
 std::ostream& operator <<(std::ostream& os, DatabaseFamilyInfo const& info);
+
 
 /**
   * Class Configuration is a base class for a family of concrete classes
@@ -175,7 +129,6 @@ std::ostream& operator <<(std::ostream& os, DatabaseFamilyInfo const& info);
   * system.
   */
 class Configuration {
-
 public:
 
     /// The pointer type for instances of the class

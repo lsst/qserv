@@ -51,12 +51,13 @@ namespace qserv {
 namespace replica {
 
 /**
- * Structure ControllerIdentity encapsulates various attributes which identify
+ * Class ControllerIdentity encapsulates various attributes which identify
  * each instance of the Controller class. This information is meant to
  * be used in the multi-Controller setups to coordinate operations
  * between multiple instances and to avoid/resolve conflicts.
  */
-struct ControllerIdentity {
+class ControllerIdentity {
+public:
     std::string id;     // A unique identifier of the Controller
     std::string host;   // The name of a host where it runs
     pid_t pid;          // An identifier of a process

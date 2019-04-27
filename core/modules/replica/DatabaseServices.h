@@ -42,7 +42,7 @@ namespace lsst {
 namespace qserv {
 namespace replica {
     class Configuration;
-    struct ControllerIdentity;
+    class ControllerIdentity;
     class QservMgtRequest;
     class Performance;
     class Request;
@@ -78,197 +78,130 @@ public :
 
 
 /**
- * Data structure ControllerEvent encapsulating various info on events logged
+ * Class ControllerEvent encapsulating various info on events logged
  * by Controllers. These objects are retrieved from the persistent logs.
  * 
  * @see DatabaseServices::logControllerEvent
  * @see DatabaseServices::readControllerEvents
  */
-struct ControllerEvent {
+class ControllerEvent {
+public:
 
-    /// A unique identifier of the event in the persistent log. Note, that
-    /// a value of this field is retrieved from the database. 
-    uint32_t id = 0;
+    uint32_t id = 0;    /// A unique identifier of the event in the persistent log.
+                        /// Note, that a value of this field is retrieved from the database. 
 
-    /// Unique identifier of the Controller instance
-    std::string controllerId;
+    std::string controllerId;   /// Unique identifier of the Controller instance
+    uint64_t    timeStamp = 0;  /// 64-bit timestamp (ms) of the event
 
-    /// 64-bit timestamp (nanoseconds) of the event
-    uint64_t timeStamp = 0;
+    std::string task;       /// The name of a Controller task defining a scope of the operation
+    std::string operation;  /// The name of an operation (request, job, other action)
+    std::string status;     /// The optional status of the operation
+    std::string requestId;  /// The optional identifier of a request
+    std::string jobId;      /// The optional identifier of a job
 
-    /// The name of a Controller task defining a scope of the operation
-    std::string task;
+    std::list<std::pair<std::string, std::string>> kvInfo;  /// The optional collection (key-value pairs)
+                                                            /// of the event-specific data
 
-    /// The name of an operation (request, job, other action)
-    std::string operation;
-
-    /// The optional status of the operation
-    std::string status;
-
-    /// The optional identifier of a request
-    std::string requestId;
-
-    /// The optional identifier of a job
-    std::string jobId;
-
-    /// The optional collection (key-value pairs) of the event-specific data
-    std::list<std::pair<std::string, std::string>> kvInfo;
-
-    /**
-     * @return JSON representation of the event
-     */
+    /// @return JSON representation of the object
     nlohmann::json toJson() const;
 };
 
 
 /**
- * Data structure ControllerInfo encapsulates a persistent state of the Controller
+ * Class ControllerInfo encapsulates a persistent state of the Controller
  * object fetched from the database.
  */
-struct ControllerInfo {
+class ControllerInfo {
+public:
 
-    /// Unique identifier of the Controller instance
-    std::string id;
+    std::string id; /// Unique identifier of the Controller instance
 
-    /// 64-bit timestamp (nanoseconds) for its start time
-    uint64_t started = 0;
+    uint64_t started = 0;   /// 64-bit timestamp (ms) for its start time
 
-    /// The name of a host where the Controller was run
-    std::string hostname;
+    std::string hostname;   /// The name of a host where the Controller was run
 
-    /// the PID of the Controller's process
-    int pid = 0;
+    int pid = 0;    /// the PID of the Controller's process
 
     /**
-     * Translate the structure into a JSON object
+     * Translate an instance into a JSON object
      *
      * @param isCurrent
      *   (optional) flag which will set an extra property 'current' to the desired
      *    state (as defined by the value of the flag)
      *
      * @return
-     *   JSON representation of the structure
+     *   JSON representation of the object
      */
     nlohmann::json toJson(bool isCurrent=false) const;
 };
 
 
 /**
- * Data structure RequestInfo encapsulates a persistent state of the Request (its
+ * Class RequestInfo encapsulates a persistent state of the Request (its
  * subclasses) objects fetched from the database.
  */
-struct RequestInfo {
+class RequestInfo {
+public:
+    
+    std::string id;     /// Unique identifier of the Request instance
+    std::string jobId;  /// Unique identifier of the parent Job instance
+    std::string name;   /// The name (actually - its specific type) of the request
+    std::string worker; /// The name of a worker where the request was sent
 
-    /// Unique identifier of the Request instance
-    std::string id;
+    int priority = 0;   /// The priority level
 
-    /// Unique identifier of the parent Job instance
-    std::string jobId;
+    std::string state;          /// The primary state
+    std::string extendedState;  /// The secondary state
+    std::string serverStatus;   /// The optional status of the request obtained from the corresponding
+                                /// worker service after the request was (or was attempted to be) executed.
 
-    /// The name (actually - its specific type) of the request
-    std::string name;
+    // Timestamps recorded during the lifetime of the request
 
-    /// The name of a worker where the request was sent
-    std::string worker;
-
-    /// The priority level
-    int priority;
-
-    /// The primary state
-    std::string state;
-
-    /// The secondary state
-    std::string extendedState;
-
-    /// The optional status of the request obtained from the corresponding worker
-    /// service after the request was (or was attempted to be) executed.
-    std::string serverStatus;
-
-    /// The timestamp (nanoseconds) when the request was created by Controller
     uint64_t controllerCreateTime = 0;
-    
-    /// The timestamp (nanoseconds) when the request was started by Controller
     uint64_t controllerStartTime = 0;
-    
-    /// The timestamp (nanoseconds) when the request was declared as FINISHED by Controller
     uint64_t controllerFinishTime = 0;
-
-    /// The timestamp (nanoseconds) when the request was received by the corresponding worker
     uint64_t workerReceiveTime = 0;
-    
-    /// The timestamp (nanoseconds) when the request was started by the corresponding worker
     uint64_t workerStartTime = 0;
-    
-    /// The timestamp (nanoseconds) when the request was declared as FINISHED by
-    /// the corresponding worker
     uint64_t workerFinishTime = 0;
     
     /// The optional collection (key-value pairs) of extended attributes
     std::list<std::pair<std::string, std::string>> kvInfo;
 
-    /**
-     * Translate the structure into a JSON object
-     *
-     * @return
-     *   JSON representation of the structure
-     */
+    /// @return JSON representation of the object
     nlohmann::json toJson() const;
 };
 
 
 /**
- * Data structure JobInfo encapsulates a persistent state of the Job (its
+ * Class JobInfo encapsulates a persistent state of the Job (its
  * subclasses) objects fetched from the database.
  */
-struct JobInfo {
+class JobInfo {
+public:
 
-    /// Unique identifier of the Job instance
-    std::string id;
+    std::string id;             /// Unique identifier of the Job instance
+    std::string controllerId;   /// Unique identifier of the parent Controller instance)
+    std::string parentJobId;    /// Unique identifier of the parent Job instance
+    std::string type;           /// The type name of the job
+    std::string state;          /// The primary state
+    std::string extendedState;  /// The secondary state
 
-    /// Unique identifier of the parent Controller instance)
-    std::string controllerId;
+    uint64_t beginTime = 0;     /// The timestamp (ms) when the job started
+    uint64_t endTime = 0;       /// The timestamp (ms) when the job finished
+    uint64_t heartbeatTime = 0; /// The optional timestamp (ms) when the job refreshed its state as "still alive"
 
-    /// Unique identifier of the parent Job instance
-    std::string parentJobId;
+    int priority = 0;   /// The priority level
 
-    /// The type name of the job
-    std::string type;
+    bool exclusive = false; /// The scheduling parameter of the job allowing it to run w/o
+                            /// interfering with other jobs in relevant execution contexts
 
-    /// The primary state
-    std::string state;
+    bool preemptable = true;    /// The scheduling parameter allowing the job to be cancelled
+                                /// by job schedulers if needed
 
-    /// The secondary state
-    std::string extendedState;
+    std::list<std::pair<std::string, std::string>> kvInfo;  /// The optional collection (key-value pairs)
+                                                            /// of extended attributes
 
-    /// The timestamp (nanoseconds) when the job started
-    uint64_t beginTime = 0;
-    
-    /// The timestamp (nanoseconds) when the job finished
-    uint64_t endTime = 0;
-
-    /// The optional timestamp (nanoseconds) when the job refreshed its state as "still alive"
-    uint64_t heartbeatTime = 0;
-
-    /// The priority level
-    int priority = 0;
-
-    /// The scheduling parameter of the job allowing it to run w/o interfering
-    /// with other jobs in relevant execution contexts
-    bool exclusive = false;
-
-    /// The scheduling parameter allowing the job to be cancelled by job
-    /// schedulers if needed
-    bool preemptable = true;
-
-    /// The optional collection (key-value pairs) of extended attributes
-    std::list<std::pair<std::string, std::string>> kvInfo;
-
-    /**
-     * Translate the structure into a JSON object
-     *
-     * @return
-     *   JSON representation of the structure
-     */
+    /// @return JSON representation of the object
     nlohmann::json toJson() const;
 };
 
@@ -279,13 +212,16 @@ struct JobInfo {
  */
 class TransactionInfo {
 public:
-    uint32_t     id = 0;        /// Its unique identifier
-    std::string  database;      /// The name of a database
-    std::string  state;         /// Its state
-    uint64_t     beginTime = 0; /// The timestamp (milliseconds) when it started
-    uint64_t     endTime = 0;   /// The timestamp (milliseconds) when it was committed/aborted
 
-    /// @return JSON representation of the structure
+    uint32_t id = 0;    /// Its unique identifier
+
+    std::string database;   /// The name of a database
+    std::string state;      /// Its state
+
+    uint64_t beginTime = 0; /// The timestamp (milliseconds) when it started
+    uint64_t endTime = 0;   /// The timestamp (milliseconds) when it was committed/aborted
+
+    /// @return JSON representation of the object
     nlohmann::json toJson() const;
 };
 
@@ -302,7 +238,6 @@ public:
   * below.
   */
 class DatabaseServices : public std::enable_shared_from_this<DatabaseServices> {
-
 public:
 
     /// The pointer type for instances of the class
@@ -332,7 +267,7 @@ public:
      * just once for a particular instance of the Controller.
      *
      * @param identity
-     *   a data structure encapsulating a unique identity of
+     *   an object encapsulating a unique identity of
      *   the Controller instance.
      *
      * @param startTime
