@@ -89,7 +89,7 @@ ConfigApp::ConfigApp(int argc, char* argv[])
          "UPDATE_GENERAL",
          "UPDATE_WORKER", "ADD_WORKER", "DELETE_WORKER",
          "ADD_DATABASE_FAMILY", "DELETE_DATABASE_FAMILY",
-         "ADD_DATABASE", "DELETE_DATABASE",
+         "ADD_DATABASE", "PUBLISH_DATABASE", "DELETE_DATABASE",
          "ADD_TABLE", "DELETE_TABLE"
         },
         _command);
@@ -312,6 +312,16 @@ ConfigApp::ConfigApp(int argc, char* argv[])
         "The name of an existing family the new database will join.",
         _databaseInfo.family);
 
+    
+    // Command-specific parameters, options and flags
+
+    auto&& publishDatabaseCmd = parser().command("PUBLISH_DATABASE");
+
+    publishDatabaseCmd.required(
+        "name",
+        "The name of an existing database.",
+        _databaseInfo.name);
+
     // Command-specific parameters, options and flags
 
     parser().command("DELETE_DATABASE").required(
@@ -371,6 +381,7 @@ int ConfigApp::runImpl() {
     if (_command == "ADD_DATABASE_FAMILY")    return _addFamily();
     if (_command == "DELETE_DATABASE_FAMILY") return _deleteFamily();
     if (_command == "ADD_DATABASE")           return _addDatabase();
+    if (_command == "PUBLISH_DATABASE")       return _publishDatabase();
     if (_command == "DELETE_DATABASE")        return _deleteDatabase();
     if (_command == "ADD_TABLE")              return _addTable();
     if (_command == "DELETE_TABLE"   )        return _deleteTable();
@@ -630,6 +641,7 @@ void ConfigApp::_dumpDatabasesAsTable(string const& indent) const {
 
     vector<string> familyName;
     vector<string> databaseName;
+    vector<string> isPublished;
     vector<string> tableName;
     vector<string> isPartitioned;
 
@@ -638,18 +650,21 @@ void ConfigApp::_dumpDatabasesAsTable(string const& indent) const {
         for (auto& table: di.partitionedTables) {
             familyName    .push_back(di.family);
             databaseName .push_back(di.name);
+            isPublished  .push_back(di.isPublished ? "yes" : "no");
             tableName    .push_back(table);
             isPartitioned.push_back("yes");
         }
         for (auto& table: di.regularTables) {
             familyName   .push_back(di.family);
             databaseName .push_back(di.name);
+            isPublished  .push_back(di.isPublished ? "yes" : "no");
             tableName    .push_back(table);
             isPartitioned.push_back("no");
         }
         if (di.partitionedTables.empty() and di.regularTables.empty()) {
             familyName   .push_back(di.family);
             databaseName .push_back(di.name);
+            isPublished  .push_back(di.isPublished ? "yes" : "no");
             tableName    .push_back("<no tables>");
             isPartitioned.push_back("n/a");
         }
@@ -657,10 +672,11 @@ void ConfigApp::_dumpDatabasesAsTable(string const& indent) const {
 
     util::ColumnTablePrinter table("DATABASES & TABLES:", indent, _verticalSeparator);
 
-    table.addColumn("family",      familyName,   util::ColumnTablePrinter::Alignment::LEFT);
-    table.addColumn("database",    databaseName, util::ColumnTablePrinter::Alignment::LEFT);
-    table.addColumn("table",       tableName,    util::ColumnTablePrinter::Alignment::LEFT);
-    table.addColumn("partitioned", isPartitioned);
+    table.addColumn("family",       familyName,   util::ColumnTablePrinter::Alignment::LEFT);
+    table.addColumn("database",     databaseName, util::ColumnTablePrinter::Alignment::LEFT);
+    table.addColumn(":published",   isPublished);
+    table.addColumn("table",        tableName,    util::ColumnTablePrinter::Alignment::LEFT);
+    table.addColumn(":partitioned", isPartitioned);
 
     table.print(cout, false, false);
 }
@@ -896,6 +912,24 @@ int ConfigApp::_addDatabase() {
     }
     try {
         _config->addDatabase(_databaseInfo);
+    } catch (exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
+        return 1;
+    }
+    return 0;
+}
+
+
+int ConfigApp::_publishDatabase() {
+
+    string const context = "ConfigApp::" + string(__func__) + "  ";
+    
+    if (_databaseInfo.name.empty()) {
+        LOGS(_log, LOG_LVL_ERROR, context << "the database name can't be empty");
+        return 1;
+    }
+    try {
+        _config->publishDatabase(_databaseInfo.name);
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
         return 1;

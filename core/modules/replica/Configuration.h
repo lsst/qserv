@@ -93,6 +93,8 @@ public:
     std::string name;    /// The name of a database
     std::string family;  /// The name of the database family
 
+    bool isPublished = false;   /// The status of the database
+
     std::vector<std::string> partitionedTables; /// The names of the partitioned tables
     std::vector<std::string> regularTables;     /// The list of fully replicated tables
 
@@ -562,6 +564,23 @@ public:
      *   not valid, or if either of those parameters are the empty strings
      */
     virtual DatabaseInfo addDatabase(DatabaseInfo const& info) = 0;
+
+    /**
+     * Change database status into PUBLISHED
+     * 
+     * @param name
+     *   the name of a database
+     *
+     * @return
+     *   updated database descriptor
+     *
+     * @throw std::invalid_argument
+     *   if the specified database was not found in the configuration
+     *
+     * @throw std::logic_error
+     *   if the specified database is already PUBLISHED
+     */
+    virtual DatabaseInfo publishDatabase(std::string const& name) = 0;
 
     /**
      *  Delete an existing database
@@ -1043,7 +1062,7 @@ protected:
      *
      * @param context
      *   a context (usually - a class and a method) from which the operation was
-     *   requested. This is used for error reporting if o such worker was found.
+     *   requested. This is used for error reporting if no such worker was found.
      *
      * @return
      *   an iterator pointing to the worker's position within a collection of workers
@@ -1055,6 +1074,27 @@ protected:
                                                                std::string const& name,
                                                                std::string const& context);
 
+    /**
+     * 
+     * @param lock
+     *   the lock on Configuration::_mtx required for the thread safety
+     *
+     * @param name
+     *   the name of a database to find
+     *
+     * @param context
+     *   a context (usually - a class and a method) from which the operation was
+     *   requested. This is used for error reporting if no such database was found.
+     *
+     * @return
+     *   an iterator pointing to the database's position within a collection of databases
+     *
+     * @throw std::invalid_argument
+     *   if the specified database was not found in the configuration
+     */
+    std::map<std::string, DatabaseInfo>::iterator safeFindDatabase(util::Lock const& lock,
+                                                                   std::string const& name,
+                                                                   std::string const& context);
 
     /// To be used were thread safety is required
     mutable util::Mutex _mtx;

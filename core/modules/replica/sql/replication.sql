@@ -130,6 +130,8 @@ CREATE TABLE IF NOT EXISTS `config_database` (
   `database`     VARCHAR(255)  NOT NULL ,
   `family_name`  VARCHAR(255)  NOT NULL ,
 
+  `is_published` BOOLEAN DEFAUT TRUE ,
+
   -- Each database is allowed to belong to one family only
   --
   PRIMARY KEY (`database`) ,

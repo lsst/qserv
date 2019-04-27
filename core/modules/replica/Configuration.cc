@@ -556,4 +556,13 @@ map<string, WorkerInfo>::iterator Configuration::safeFindWorker(util::Lock const
     throw invalid_argument(context + "  no such worker: " + name);
 }
 
+
+map<string, DatabaseInfo>::iterator Configuration::safeFindDatabase(util::Lock const& lock,
+                                                                    string const& name,
+                                                                    string const& context) {
+    auto itr = _databaseInfo.find(name);
+    if (_databaseInfo.end() != itr) return itr;
+    throw invalid_argument(context + "  no such database: " + name);
+}
+
 }}} // namespace lsst::qserv::replica

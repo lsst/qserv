@@ -790,7 +790,8 @@ DatabaseInfo ConfigurationMySQL::addDatabase(DatabaseInfo const& info) {
                 conn->executeInsertQuery(
                     "config_database",
                     info.name,
-                    info.family
+                    info.family,
+                    info.isPublished ? 1 : 0
                 );
                 conn->commit();
             }
@@ -803,6 +804,7 @@ DatabaseInfo ConfigurationMySQL::addDatabase(DatabaseInfo const& info) {
         _databaseInfo[info.name] = DatabaseInfo{
             info.name,
             info.family,
+            info.isPublished,
             {},
             {}
         };
@@ -812,6 +814,53 @@ DatabaseInfo ConfigurationMySQL::addDatabase(DatabaseInfo const& info) {
         LOGS(_log, LOG_LVL_ERROR, context_ << "MySQL error: " << ex.what());
         throw;
     }
+}
+
+
+DatabaseInfo ConfigurationMySQL::publishDatabase(string const& name) {
+
+    string const context_ = context() + __func__;
+
+    LOGS(_log, LOG_LVL_DEBUG, context_ << "  name: " << name);
+
+    if (name.empty()) {
+        throw invalid_argument(context_ + "  the database name can't be empty");
+    }
+    if (not isKnownDatabase(name)) {
+        throw invalid_argument(context_ + "  unknown database: '" + name + "'");
+    }
+    if (databaseInfo(name).isPublished) {
+        throw logic_error(context_ + "  database is already published");
+    }
+
+    database::mysql::ConnectionHandler handler;
+    try {
+
+        // First update the database
+        handler.conn = database::mysql::Connection::open(_connectionParams);
+        handler.conn->execute(
+            [&name](decltype(handler.conn) conn) {
+                conn->begin();
+                conn->executeSimpleUpdateQuery(
+                    "config_database",
+                    conn->sqlEqual("name", name),
+                    make_pair("is_published", 1));
+                conn->commit();
+            }
+        );
+
+        // Then update the transient state 
+
+        util::Lock lock(_mtx, context_);
+
+        auto itr = safeFindDatabase(lock, name, context_);
+        itr->second.isPublished = true;
+
+    } catch (database::mysql::Error const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context_ << "MySQL error: " << ex.what());
+        throw;
+    }
+    return databaseInfo(name);
 }
 
 

@@ -291,6 +291,9 @@ public:
     /// @see Configuration::addDatabase()
     DatabaseInfo addDatabase(DatabaseInfo const& info) final;
 
+    /// @see Configuration::publishDatabase()
+    DatabaseInfo publishDatabase(std::string const& name) final;
+
     /// @see Configuration::deleteDatabase()
     void deleteDatabase(std::string const& name) final;
 

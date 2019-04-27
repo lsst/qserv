@@ -342,10 +342,34 @@ DatabaseInfo ConfigurationStore::addDatabase(DatabaseInfo const& info) {
     _databaseInfo[info.name] = DatabaseInfo{
         info.name,
         info.family,
+        info.isPublished,
         {},
         {}
     };
     return _databaseInfo[info.name];
+}
+
+
+DatabaseInfo ConfigurationStore::publishDatabase(string const& name) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name: " << name);
+
+    util::Lock lock(_mtx, context(__func__));
+    
+    if (name.empty()) {
+        throw invalid_argument(_classMethodContext(__func__) + "  the database name can't be empty");
+    }
+    auto itr = _databaseInfo.find(name);
+    if (itr == _databaseInfo.end()) {
+        throw invalid_argument(_classMethodContext(__func__) + "  database is unknown");
+    }
+    if (itr->second.isPublished) {
+        throw logic_error(_classMethodContext(__func__) + "  database is already published");
+    }
+    itr->second.isPublished = true;
+
+    return itr->second;
+
 }
 
 

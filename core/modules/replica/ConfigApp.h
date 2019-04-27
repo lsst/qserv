@@ -187,6 +187,14 @@ private:
     int _addDatabase();
 
     /**
+     * Publish an existing database
+     *
+     * @return
+     *   a status code to be returned to the shell
+     */
+    int _publishDatabase();
+
+    /**
      * Delete an existing database
      *
      * @return
