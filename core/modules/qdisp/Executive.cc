@@ -225,7 +225,7 @@ bool Executive::startQuery(std::shared_ptr<JobQuery> const& jobQuery) {
     // Construct a temporary resource object to pass to ProcessRequest().
     //   Interactive Queries should have an Affinity of XrdSsiResource::None or Weak while
     //   Scans should have an affinity of Strong
-    XrdSsiResource::Affinity affinity = (_scanInteractive) ? XrdSsiResource::Weak : XrdSsiResource::Strong;
+    XrdSsiResource::Affinity affinity = (_scanInteractive) ? XrdSsiResource::None : XrdSsiResource::Strong;
     XrdSsiResource jobResource(jobQuery->getDescription()->resource().path(), "", jobQuery->getIdStr(),
                                "", 0, affinity);
 

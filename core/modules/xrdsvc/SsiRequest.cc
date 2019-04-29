@@ -407,6 +407,7 @@ bool SsiRequest::replyStream(StreamBuffer::Ptr const& sBuf, bool last) {
         }
     } else if (_stream->closed()) {
         // XrdSsi isn't going to call Recycle if we wind up here.
+        LOGS(_log, LOG_LVL_ERROR, "Logic error SsiRequest::replyStream called with stream closed.");
         sBuf->Recycle();
         return false;
     }

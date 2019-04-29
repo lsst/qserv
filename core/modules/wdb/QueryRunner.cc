@@ -314,7 +314,7 @@ void QueryRunner::_transmit(bool last, uint rowCount, size_t tSize) {
     if (!_cancelled) {
         // StreamBuffer::create invalidates resultString by using std::move()
         xrdsvc::StreamBuffer::Ptr streamBuf(xrdsvc::StreamBuffer::createWithMove(resultString));
-        _sendBuf(streamBuf, transmitHisto, "body");
+        _sendBuf(streamBuf, last, transmitHisto, "body");
     } else {
         LOGS(_log, LOG_LVL_DEBUG, "_transmit cancelled");
     }
@@ -322,9 +322,9 @@ void QueryRunner::_transmit(bool last, uint rowCount, size_t tSize) {
 }
 
 
-void QueryRunner::_sendBuf(xrdsvc::StreamBuffer::Ptr& streamBuf,
+void QueryRunner::_sendBuf(xrdsvc::StreamBuffer::Ptr& streamBuf, bool last,
                            util::TimerHistogram& histo, std::string const& note) {
-    bool sent = _task->sendChannel->sendStream(streamBuf, false);
+    bool sent = _task->sendChannel->sendStream(streamBuf, last);
     if (!sent) {
         LOGS(_log, LOG_LVL_ERROR, _task->getIdStr() << " Failed to transmit " << note << "!");
         _cancelled = true;
@@ -362,7 +362,7 @@ void QueryRunner::_transmitHeader(std::string& msg) {
     if (!_cancelled) {
         auto msgBuf = proto::ProtoHeaderWrap::wrap(protoHeaderString);
         xrdsvc::StreamBuffer::Ptr streamBuf(xrdsvc::StreamBuffer::createWithMove(msgBuf)); // invalidates msgBuf
-        _sendBuf(streamBuf, transHeaderHisto, "header");
+        _sendBuf(streamBuf, false, transHeaderHisto, "header");
     } else {
         LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " _transmitHeader cancelled");
     }

@@ -98,7 +98,7 @@ private:
     void _initMsg();
 
     /// Send result 'streamBuf' to the czar. 'histo' and 'note' are for logging purposes only.
-    void _sendBuf(std::shared_ptr<xrdsvc::StreamBuffer>& streamBuf,
+    void _sendBuf(std::shared_ptr<xrdsvc::StreamBuffer>& streamBuf, bool last,
                   util::TimerHistogram& histo, std::string const& note);
     void _transmit(bool last, uint rowCount, size_t size);
     void _transmitHeader(std::string& msg);
