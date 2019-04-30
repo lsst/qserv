@@ -146,6 +146,7 @@ private:
     std::shared_ptr<GroupScheduler> _group;    ///< group scheduler
     std::shared_ptr<ScanScheduler> _scanSnail; ///< extremely slow scheduler.
     std::vector<SchedulerBase::Ptr> _schedulers; ///< list of all schedulers including _group and _scanSnail
+    mutable std::mutex _schedMtx; ///< Protects _schedulers. NEVER lock this before util::CommandQueue::mx.
 
     std::atomic<bool> _infoChanged{true}; //< Used to limit debug logging.
 

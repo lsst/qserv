@@ -64,9 +64,11 @@ public:
                   int minRating, int maxRating, double maxTimeMinutes);
     virtual ~ScanScheduler() {}
 
+    /* &&&
     void setBlendScheduler(BlendScheduler *blend) {
         _blendScheduler = blend;
     }
+    */
 
     // util::CommandQueue overrides
     void queCmd(util::Command::Ptr const& cmd) override;

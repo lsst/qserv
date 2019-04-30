@@ -88,7 +88,7 @@ BlendScheduler::BlendScheduler(std::string const& name,
     for (auto const& sched : scanSchedulers) {
         _schedulers.push_back(sched);
         sched->setDefaultPosition(position++);
-        sched->setBlendScheduler(this);
+        //sched->setBlendScheduler(this); &&&
     }
     _schedulers.push_back(_scanSnail);
     _scanSnail->setDefaultPosition(position++);
@@ -102,6 +102,7 @@ BlendScheduler::BlendScheduler(std::string const& name,
 
 BlendScheduler::~BlendScheduler() {
     /// Cleanup pointers.
+    /* &&&
     std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
     for (auto const& sched : _schedulers) {
         auto const& scanSched = std::dynamic_pointer_cast<ScanScheduler>(sched);
@@ -109,6 +110,7 @@ BlendScheduler::~BlendScheduler() {
             scanSched->setBlendScheduler(nullptr);
         }
     }
+    */
 }
 
 
@@ -134,11 +136,14 @@ void BlendScheduler::_sortScanSchedulers() {
         return (a->getDefaultPosition() < b->getDefaultPosition());
     };
 
-    std::sort(_schedulers.begin(), _schedulers.end(), lessThan);
-
     std::string str = "sort:";
-    for (auto& sched : _schedulers) {
-        str += sched->getName() + ", ";
+    {
+        std::lock_guard<std::mutex> lg(_schedMtx);
+        std::sort(_schedulers.begin(), _schedulers.end(), lessThan);
+
+        for (auto& sched : _schedulers) {
+            str += sched->getName() + ", ";
+        }
     }
     LOGS(_log, LOG_LVL_DEBUG, str);
 }
@@ -183,15 +188,19 @@ void BlendScheduler::queCmd(util::Command::Ptr const& cmd) {
             LOGS(_log, LOG_LVL_DEBUG, ss.str());
         }
 
-        for (auto const& sched : _schedulers) {
-            ScanScheduler::Ptr scan = std::dynamic_pointer_cast<ScanScheduler>(sched);
-            if (scan != nullptr) {
-                if (scan->isRatingInRange(scanPriority)) {
-                    s = scan;
-                    break;
+        {
+            std::lock_guard<std::mutex> lg(_schedMtx);
+            for (auto const& sched : _schedulers) {
+                ScanScheduler::Ptr scan = std::dynamic_pointer_cast<ScanScheduler>(sched);
+                if (scan != nullptr) {
+                    if (scan->isRatingInRange(scanPriority)) {
+                        s = scan;
+                        break;
+                    }
                 }
             }
         }
+
         // If the user query for this task has been booted, put this task on the snail scheduler.
         auto queryStats = _queries->getStats(task->getQueryId());
         if (queryStats && queryStats->getQueryBooted()) {
@@ -283,6 +292,7 @@ bool BlendScheduler::_ready() {
     bool changed = _infoChanged.exchange(false);
 
     if (!ready) {
+        std::lock_guard<std::mutex> lg(_schedMtx);
         for (auto&& sched : _schedulers) {
             availableThreads = sched->applyAvailableThreads(availableThreads);
             ready = sched->ready();
@@ -375,8 +385,11 @@ int BlendScheduler::_getAdjustedMaxThreads(int oldAdjMax, int inFlight) {
 /// @return the number of threads that are not reserved by any sub-scheduler.
 int BlendScheduler::calcAvailableTheads() {
     int reserve = 0;
-    for (auto sched : _schedulers) {
-        reserve += sched->desiredThreadReserve();
+    {
+        std::lock_guard<std::mutex> lg(_schedMtx);
+        for (auto sched : _schedulers) {
+            reserve += sched->desiredThreadReserve();
+        }
     }
     int available = _schedMaxThreads - reserve;
     if (available < 0) {
@@ -387,8 +400,9 @@ int BlendScheduler::calcAvailableTheads() {
 
 /// Returns the number of Tasks queued in all sub-schedulers.
 std::size_t BlendScheduler::getSize() const {
-    std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
+    std::lock_guard<std::mutex> lock(util::CommandQueue::_mx); // &&& is this needed now? I don't think so.
     std::size_t sz = 0;
+    std::lock_guard<std::mutex> lg(_schedMtx);
     for (auto sched : _schedulers) {
         sz += sched->getSize();
     }
@@ -397,8 +411,9 @@ std::size_t BlendScheduler::getSize() const {
 
 /// Returns the number of Tasks inFlight.
 int BlendScheduler::getInFlight() const {
-    std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
+    std::lock_guard<std::mutex> lock(util::CommandQueue::_mx); // &&& is this needed now? I don't think so.
     int inFlight = 0;
+    std::lock_guard<std::mutex> lg(_schedMtx);
     for (auto const& sched : _schedulers) {
         inFlight += sched->getInFlight();
     }
@@ -409,8 +424,11 @@ int BlendScheduler::getInFlight() const {
 void BlendScheduler::_logChunkStatus() {
     if (LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
         std::string str;
-        for (auto const& sched : _schedulers) {
-            if (sched != nullptr) str += sched->chunkStatusStr() + "\n";
+        {
+            std::lock_guard<std::mutex> lg(_schedMtx);
+            for (auto const& sched : _schedulers) {
+                if (sched != nullptr) str += sched->chunkStatusStr() + "\n";
+            }
         }
         LOGS(_log, LOG_LVL_DEBUG, str);
     }
