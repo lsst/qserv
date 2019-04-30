@@ -258,12 +258,6 @@ void PurgeJob::_onPrecursorJobFinish() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
-    // IMPORTANT: the final state is required to be tested twice. The first time
-    // it's done in order to avoid deadlock on the "in-flight" requests reporting
-    // their completion while the job termination is in a progress. And the second
-    // test is made after acquiring the lock to recheck the state in case if it
-    // has transitioned while acquiring the lock.
-
     if (state() == State::FINISHED) return;
 
     util::Lock lock(_mtx, context() + __func__);
@@ -484,12 +478,6 @@ void PurgeJob::_onDeleteJobFinish(DeleteReplicaJob::Ptr const& job) {
          << "  databaseFamily=" << job->databaseFamily()
          << "  worker="         << job->worker()
          << "  chunk="          << job->chunk());
-
-    // IMPORTANT: the final state is required to be tested twice. The first time
-    // it's done in order to avoid deadlock on the "in-flight" requests reporting
-    // their completion while the job termination is in a progress. And the second
-    // test is made after acquiring the lock to recheck the state in case if it
-    // has transitioned while acquiring the lock.
 
     if (state() == State::FINISHED) {
         _release(job->chunk());

@@ -44,7 +44,7 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.SetChunkListCommand");
 
-} // ann\onymous namespace
+} // anonymous namespace
 
 namespace lsst {
 namespace qserv {
