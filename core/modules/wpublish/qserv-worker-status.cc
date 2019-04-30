@@ -1,7 +1,6 @@
 // System header
 #include <iostream>
 #include <iomanip>
-#include <fstream>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -15,6 +14,7 @@
 #include "proto/worker.pb.h"
 #include "util/BlockPost.h"
 #include "util/CmdLineParser.h"
+#include "util/File.h"
 #include "wpublish/GetStatusQservRequest.h"
 
 /// This C++ symbol is provided by the SSI shared library
@@ -30,38 +30,16 @@ namespace {
 
 // Command line parameters
 
-string workersFileName;
+string fileName;
 unsigned int numRequests;
 string serviceProviderLocation;
 unsigned int numWorkers;
 bool workerFirst;
 unsigned int cancelAfterMs;
 
-vector<string> workers;
-
-bool readWorkersFile() {
-    ifstream file(workersFileName);
-    if (not file.good()) {
-        cerr << "error: failed to open a file with worker identifiers: "
-             << workersFileName << endl;
-        return false;
-    }
-    string worker;
-    while (file >> worker)
-        workers.push_back(worker);
-
-    if (not workers.size()) {
-        cerr << "error: no workers found in file with worker identifiers: "
-             << workersFileName << endl;
-        return false;
-    }
-    return true;
-}
-
-
 int test() {
 
-    if (not readWorkersFile()) return 1;
+    vector<string> const workers = util::File::getLines(fileName, true);
     if (not numWorkers or (workers.size() < numWorkers)) {
         cerr << "error: specified number of workers not in the valid range: 1.."
              << numWorkers << endl;
@@ -195,8 +173,8 @@ int main(int argc, const char* const argv[]) {
             "  <workers-file-name>  - a file with worker identifiers (one worker per line)\n"
             "  <num-requests>       - the number of requests per worker\n");
 
-        ::workersFileName = parser.parameter<string>(1);
-        ::numRequests     = parser.parameter<unsigned int>(2);
+        ::fileName    = parser.parameter<string>(1);
+        ::numRequests = parser.parameter<unsigned int>(2);
 
         ::serviceProviderLocation = parser.option<string>("service", "localhost:1094");
         ::numWorkers              = parser.option<unsigned int>("num-workers", 1);

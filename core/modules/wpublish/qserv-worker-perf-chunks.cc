@@ -1,7 +1,6 @@
 // System header
 #include <iostream>
 #include <iomanip>
-#include <fstream>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -14,6 +13,7 @@
 #include "proto/worker.pb.h"
 #include "util/BlockPost.h"
 #include "util/CmdLineParser.h"
+#include "util/File.h"
 #include "wpublish/TestEchoQservRequest.h"
 
 /// This C++ symbol is provided by the SSI shared library
@@ -37,31 +37,9 @@ unsigned int numResources;
 bool resourceFirst;
 unsigned int cancelAfterMs;
 
-vector<string> resources;
-
-bool readFile() {
-    ifstream file(fileName);
-    if (not file.good()) {
-        cerr << "error: failed to open a file with resource paths: "
-             << fileName << endl;
-        return false;
-    }
-    string resource;
-    while (file >> resource)
-        resources.push_back(resource);
-
-    if (not resources.size()) {
-        cerr << "error: no resources found in file with resource paths: "
-             << fileName << endl;
-        return false;
-    }
-    return true;
-}
-
-
 int test() {
 
-    if (not readFile()) return 1;
+    vector<string> const resources = util::File::getLines(fileName, true);
     if (not numResources or (resources.size() < numResources)) {
         cerr << "error: specified number of resources not in the valid range: 1.."
              << numResources << endl;
