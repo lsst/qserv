@@ -217,9 +217,7 @@ void QservMgtRequest::wait() {
     if (state() == State::FINISHED) return;
 
     unique_lock<mutex> onFinishLock(_onFinishMtx);
-    _onFinishCv.wait(onFinishLock, [this] {
-        return state() == State::FINISHED;
-    });
+    _onFinishCv.wait(onFinishLock, [&] { return _finished; });
 }
 
 
@@ -307,6 +305,7 @@ void QservMgtRequest::finish(util::Lock const& lock,
     // Unblock threads (if any) waiting on the synchronization call
     // to method QservMgtRequest::wait()
 
+    _finished = true;
     _onFinishCv.notify_all();
 }
 

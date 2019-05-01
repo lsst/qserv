@@ -201,6 +201,7 @@ void Job::start() {
         // Unblock threads (if any) waiting on the synchronization call
         // to method Job::wait()
 
+        _finished = true;
         _onFinishCv.notify_all();
         return;
     }
@@ -220,9 +221,7 @@ void Job::wait() {
     if (state() == State::FINISHED) return;
 
     unique_lock<mutex> onFinishLock(_onFinishMtx);
-    _onFinishCv.wait(onFinishLock, [this] {
-        return state() == State::FINISHED;
-    });
+    _onFinishCv.wait(onFinishLock, [&] { return _finished; });
 }
 
 
@@ -275,6 +274,7 @@ void Job::finish(util::Lock const& lock,
     // Unblock threads (if any) waiting on the synchronization call
     // to method Job::wait()
 
+    _finished = true;
     _onFinishCv.notify_all();
 }
 

@@ -214,12 +214,10 @@ void Request::wait() {
  
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
-    if (state() == State::FINISHED) return;
+    if (_finished) return;
 
     unique_lock<mutex> onFinishLock(_onFinishMtx);
-    _onFinishCv.wait(onFinishLock, [this] {
-        return state() == State::FINISHED;
-    });
+    _onFinishCv.wait(onFinishLock, [&] { return _finished; });
 }
 
 
@@ -300,6 +298,7 @@ void Request::finish(util::Lock const& lock,
     // Unblock threads (if any) waiting on the synchronization call
     // to method Request::wait()
 
+    _finished = true;
     _onFinishCv.notify_all();
 }
 
