@@ -89,10 +89,7 @@ FindAllJob::FindAllJob(string const& databaseFamily,
         _saveReplicaInfo(saveReplicaInfo),
         _allWorkers(allWorkers),
         _onFinish(onFinish),
-        _databases(controller->serviceProvider()->config()->databases(databaseFamily)),
-        _numLaunched(0),
-        _numFinished(0),
-        _numSuccess(0) {
+        _databases(controller->serviceProvider()->config()->databases(databaseFamily)) {
 }
 
 

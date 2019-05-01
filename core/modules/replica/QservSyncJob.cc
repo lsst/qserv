@@ -90,10 +90,7 @@ QservSyncJob::QservSyncJob(string const& databaseFamily,
         _databaseFamily(databaseFamily),
         _requestExpirationIvalSec(requestExpirationIvalSec),
         _force(force),
-        _onFinish(onFinish),
-        _numLaunched(0),
-        _numFinished(0),
-        _numSuccess(0) {
+        _onFinish(onFinish) {
 }
 
 

@@ -81,12 +81,7 @@ FixUpJob::FixUpJob(string const& databaseFamily,
             "FIXUP",
             options),
         _databaseFamily(databaseFamily),
-        _onFinish(onFinish),
-        _numIterations(0),
-        _numFailedLocks(0),
-        _numLaunched(0),
-        _numFinished(0),
-        _numSuccess(0) {
+        _onFinish(onFinish) {
 }
 
 

@@ -90,12 +90,7 @@ PurgeJob::PurgeJob(string const& databaseFamily,
         _numReplicas(numReplicas ?
                      numReplicas :
                      controller->serviceProvider()->config()->replicationLevel(databaseFamily)),
-        _onFinish(onFinish),
-        _numIterations(0),
-        _numFailedLocks(0),
-        _numLaunched(0),
-        _numFinished(0),
-        _numSuccess (0) {
+        _onFinish(onFinish) {
 
     if (not _numReplicas) {
         throw invalid_argument(

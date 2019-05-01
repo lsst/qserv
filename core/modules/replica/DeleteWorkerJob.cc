@@ -89,10 +89,7 @@ DeleteWorkerJob::DeleteWorkerJob(string const& worker,
             options),
         _worker(worker),
         _permanentDelete(permanentDelete),
-        _onFinish(onFinish),
-        _numLaunched(0),
-        _numFinished(0),
-        _numSuccess(0) {
+        _onFinish(onFinish) {
 }
 
 

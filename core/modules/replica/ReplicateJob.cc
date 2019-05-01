@@ -90,10 +90,7 @@ ReplicateJob::ReplicateJob(string const& databaseFamily,
         _numReplicas(numReplicas ?
                      numReplicas :
                      controller->serviceProvider()->config()->replicationLevel(databaseFamily)),
-        _onFinish(onFinish),
-        _numLaunched(0),
-        _numFinished(0),
-        _numSuccess(0) {
+        _onFinish(onFinish) {
 }
 
 

@@ -88,10 +88,7 @@ RebalanceJob::RebalanceJob(string const& databaseFamily,
             options),
         _databaseFamily(databaseFamily),
         _estimateOnly(estimateOnly),
-        _onFinish(onFinish),
-        _numLaunched(0),
-        _numFinished(0),
-        _numSuccess(0) {
+        _onFinish(onFinish) {
 }
 
 

@@ -91,10 +91,7 @@ QservGetReplicasJob::QservGetReplicasJob(
         _databaseFamily(databaseFamily),
         _inUseOnly(inUseOnly),
         _allWorkers(allWorkers),
-        _onFinish(onFinish),
-        _numLaunched(0),
-        _numFinished(0),
-        _numSuccess(0) {
+        _onFinish(onFinish) {
 }
 
 

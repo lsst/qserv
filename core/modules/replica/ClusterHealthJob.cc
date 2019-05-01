@@ -139,9 +139,7 @@ ClusterHealthJob::ClusterHealthJob(unsigned int timeoutSec,
         _onFinish(onFinish),
         _health(allWorkers
                 ? controller->serviceProvider()->config()->allWorkers()
-                : controller->serviceProvider()->config()->workers()),
-        _numStarted(0),
-        _numFinished(0) {
+                : controller->serviceProvider()->config()->workers()) {
 }
 
 

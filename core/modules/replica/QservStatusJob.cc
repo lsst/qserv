@@ -88,9 +88,7 @@ QservStatusJob::QservStatusJob(unsigned int timeoutSec,
                     ? controller->serviceProvider()->config()->controllerRequestTimeoutSec()
                     : timeoutSec),
         _allWorkers(allWorkers),
-        _onFinish(onFinish),
-        _numStarted(0),
-        _numFinished(0) {
+        _onFinish(onFinish) {
 }
 
 
