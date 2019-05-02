@@ -65,11 +65,14 @@ string ConfigurationFile::dump2init(Configuration::Ptr const& config) {
     }
     ostringstream str;
 
+    string const noSpecificFamily;
+    bool const allDatabases = true;
+
     str << "[common]\n"
         << "\n"
         << "workers                    = " << config->allWorkers() << "\n"
         << "database_families          = " << config->databaseFamilies() << "\n"
-        << "databases                  = " << config->databases() << "\n"
+        << "databases                  = " << config->databases(noSpecificFamily, allDatabases) << "\n"
         << "request_buf_size_bytes     = " << config->requestBufferSizeBytes() << "\n"
         << "request_retry_interval_sec = " << config->retryTimeoutSec() << "\n"
         << "\n";
@@ -144,11 +147,12 @@ string ConfigurationFile::dump2init(Configuration::Ptr const& config) {
             << "num_sub_stripes       = " << info.numSubStripes << "\n"
             << "\n";
     }
-    for (auto&& database: config->databases()) {
+    for (auto&& database: config->databases(noSpecificFamily, allDatabases)) {
         auto&& info = config->databaseInfo(database);
         str << "[database:" << info.name << "]\n"
             << "\n"
             << "family             = " << info.family << "\n"
+            << "is_published       = " << (info.isPublished ? "1" : "0") << "\n"
             << "partitioned_tables = " << info.partitionedTables << "\n"
             << "regular_tables     = " << info.regularTables << "\n"
             << "\n";

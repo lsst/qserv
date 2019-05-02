@@ -645,10 +645,12 @@ void ConfigApp::_dumpDatabasesAsTable(string const& indent) const {
     vector<string> tableName;
     vector<string> isPartitioned;
 
-    for (auto&& database: _config->databases()) {
+    string const noSpecificFamily;
+    bool const allDatabases = true;
+    for (auto&& database: _config->databases(noSpecificFamily, allDatabases)) {
         auto const di = _config->databaseInfo(database);
         for (auto& table: di.partitionedTables) {
-            familyName    .push_back(di.family);
+            familyName   .push_back(di.family);
             databaseName .push_back(di.name);
             isPublished  .push_back(di.isPublished ? "yes" : "no");
             tableName    .push_back(table);

@@ -519,14 +519,26 @@ public:
      * @param family
      *   the optional name of a database family
      *
+     * @param allDatabases
+     *   the optional flag which if set to 'true' will result in returning all
+     *   known database entries regardless of their PUBLISHED status. Otherwise
+     *   subset of databases as determined by the second flag 'isPublished'
+     *   will get returned.
+     * 
+     * @param isPublished
+     *   the optional flag which is used if flag 'all' is set to 'false'
+     *   to narrow a collection of databases returned by the method.
+     *
      * @return
      *   the names of known databases. A result of the method may be
      *   limited to a subset of databases belonging to the specified family.
-    *
+     *
      * @throw std::invalid_argument
      *   if the specified family was not found in the configuration.
-      */
-    std::vector<std::string> databases(std::string const& family=std::string()) const;
+     */
+    std::vector<std::string> databases(std::string const& family=std::string(),
+                                       bool allDatabases=false,
+                                       bool isPublished=true) const;
 
     /**
      * @param name

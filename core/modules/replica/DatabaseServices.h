@@ -386,6 +386,9 @@ public:
      *
      * @param infoCollection
      *   collection of replicas
+     *
+     * @throw std::invalid_argument
+     *   if the database is unknown or empty
      */
     virtual void saveReplicaInfoCollection(std::string const& worker,
                                            std::string const& database,
@@ -405,15 +408,27 @@ public:
      *   reference to an object to be initialized
      *
      * @param maxReplicas
-     *   maximum number of replicas to be returned
+     *   (optional) maximum number of replicas to be returned
      *
      * @param enabledWorkersOnly
      *   (optional) if set to 'true' then only consider known
      *   workers which are enabled in the Configuration
+     *
+     * @param allDatabases
+     *   (optional) flag which if set to 'true' will include into the search all
+     *   known database entries regardless of their PUBLISHED status. Otherwise
+     *   a subset of databases as determined by the second flag 'isPublished'
+     *   will get assumed.
+     * 
+     * @param isPublished
+     *   (optional) flag which is used if flag 'all' is set to 'false'
+     *   to narrow a collection of databases included into the search.
      */
     virtual void findOldestReplicas(std::vector<ReplicaInfo>& replicas,
                                     size_t maxReplicas=1,
-                                    bool enabledWorkersOnly=true) = 0;
+                                    bool enabledWorkersOnly=true,
+                                    bool allDatabases=false,
+                                    bool isPublished=true) = 0;
 
     /**
      * Find all replicas for the specified chunk and the database.
@@ -460,13 +475,26 @@ public:
      * @param database
      *   (optional) database name
      *
+     * @param allDatabases
+     *   (optional) flag which if set to 'true' will include into the search all
+     *   known database entries regardless of their PUBLISHED status. Otherwise
+     *   a subset of databases as determined by the second flag 'isPublished'
+     *   will get assumed. Note that this flag is used only if no specific database
+     *   name is provided as a value of the previous parameter 'database'.
+     * 
+     * @param isPublished
+     *   (optional) flag which is used if flag 'all' is set to 'false'
+     *   to narrow a collection of databases included into the search.
+     *
      * @throw std::invalid_argument
      *   if the worker is unknown or its name is empty, or if the database
      *   family is unknown (if provided)
      */
     virtual void findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
                                     std::string const& worker,
-                                    std::string const& database=std::string()) = 0;
+                                    std::string const& database=std::string(),
+                                    bool allDatabases=false,
+                                    bool isPublished=true) = 0;
 
     /**
      * Find the number of replicas for the specified worker and a database (or all
@@ -481,6 +509,17 @@ public:
      * @param database
      *   (optional) database name
      *
+     * @param allDatabases
+     *   (optional) flag which if set to 'true' will include into the search all
+     *   known database entries regardless of their PUBLISHED status. Otherwise
+     *   a subset of databases as determined by the second flag 'isPublished'
+     *   will get assumed. Note that this flag is used only if no specific database
+     *   name is provided as a value of the previous parameter 'database'.
+     * 
+     * @param isPublished
+     *   (optional) flag which is used if flag 'all' is set to 'false'
+     *   to narrow a collection of databases included into the search.
+     *
      * @return
      *   the number of replicas
      *
@@ -489,7 +528,9 @@ public:
      *   family is unknown (if provided)
      */
     virtual uint64_t numWorkerReplicas(std::string const& worker,
-                                       std::string const& database=std::string()) = 0;
+                                       std::string const& database=std::string(),
+                                       bool allDatabases=false,
+                                       bool isPublished=true) = 0;
 
     /**
      * Find all replicas for the specified chunk on a worker.
@@ -511,6 +552,16 @@ public:
      * @param databaseFamily
      *   (optional) database family name
      *
+     * @param allDatabases
+     *   (optional) flag which if set to 'true' will include into the search all
+     *   known database entries regardless of their PUBLISHED status. Otherwise
+     *   a subset of databases as determined by the second flag 'isPublished'
+     *   will get assumed.
+     * 
+     * @param isPublished
+     *   (optional) flag which is used if flag 'all' is set to 'false'
+     *   to narrow a collection of databases included into the search.
+     *
      * @throw std::invalid_argument
      *   if the worker is unknown or its name is empty,
      *   or if the database family is unknown (if provided)
@@ -518,7 +569,9 @@ public:
     virtual void findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
                                     unsigned int chunk,
                                     std::string const& worker,
-                                    std::string const& databaseFamily=std::string()) = 0;
+                                    std::string const& databaseFamily=std::string(),
+                                    bool allDatabases=false,
+                                    bool isPublished=true) = 0;
 
     /**
      * @return

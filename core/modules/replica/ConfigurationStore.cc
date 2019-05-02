@@ -631,6 +631,7 @@ void ConfigurationStore::_loadConfiguration(util::ConfigStore const& configStore
         }
         _databaseInfo[name].name = name;
         _databaseInfo[name].family = configStore.getRequired(section+".family");
+        ::parseKeyVal(configStore, section+".is_published", _databaseInfo[name].isPublished, false);
         if (not _databaseFamilyInfo.count(_databaseInfo[name].family)) {
             throw range_error(
                     _classMethodContext(__func__) + "  unknown database family: '" +

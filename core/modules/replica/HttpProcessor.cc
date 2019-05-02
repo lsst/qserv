@@ -1521,7 +1521,8 @@ json HttpProcessor::_configToJson() const {
     for (auto&& family: config->databaseFamilies()) {
         auto const fi = config->databaseFamilyInfo(family);
         json familyJson = fi.toJson();
-        for (auto&& database: config->databases(family)) {
+        bool const allDatabases = true;
+        for (auto&& database: config->databases(family, allDatabases)) {
             auto const di = config->databaseInfo(database);
             familyJson["databases"].push_back(di.toJson());
         }

@@ -513,7 +513,7 @@ void DatabaseServicesMySQL::saveReplicaInfoCollection(string const& worker,
             }
         );
 
-    } catch (database::mysql::Error const& ex) {
+    } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
         if (_conn->inTransaction()) _conn->rollback();
         throw;
@@ -535,7 +535,7 @@ void DatabaseServicesMySQL::_saveReplicaInfoImpl(util::Lock const& lock,
 
             _conn->executeInsertQuery(
                 "replica",
-                "NULL",                         /* the auto-incremented PK */
+                database::mysql::Keyword::SQL_NULL,             /* the auto-incremented PK */
                 info.worker(),
                 info.database(),
                 info.chunk(),
@@ -586,6 +586,13 @@ void DatabaseServicesMySQL::_saveReplicaInfoCollectionImpl(util::Lock const& loc
          << " database: " << database
          << " num.replicas: " << newReplicaInfoCollection.size());
 
+    if (worker.empty()) {
+        throw invalid_argument(worker + "worker name can't be empty");
+    }
+    if (database.empty()) {
+        throw invalid_argument(context + "database name can't be empty");
+    }
+
     // Group new replicas by contexts
 
     LOGS(_log, LOG_LVL_DEBUG, context << "new replicas group: 1");
@@ -634,7 +641,7 @@ void DatabaseServicesMySQL::_saveReplicaInfoCollectionImpl(util::Lock const& loc
          << " #new-only: " << SemanticMaps::count(inNewReplicasOnly)
          << " #old-only: " << SemanticMaps::count(inOldReplicasOnly));
 
-    // Eiminate outdated replicas
+    // Eliminate outdated replicas
     
     for (auto&& worker: inOldReplicasOnly.workerNames()) {
 
@@ -663,7 +670,7 @@ void DatabaseServicesMySQL::_saveReplicaInfoCollectionImpl(util::Lock const& loc
         }
     }
 
-    // Deep comparision of the replicas in the intersect area to see
+    // Deep comparison of the replicas in the intersect area to see
     // which of those need to be updated.
 
    for (auto&& worker: inBoth.workerNames()) {
@@ -709,34 +716,38 @@ void DatabaseServicesMySQL::_deleteReplicaInfoImpl(util::Lock const& lock,
 
 void DatabaseServicesMySQL::findOldestReplicas(vector<ReplicaInfo>& replicas,
                                                size_t maxReplicas,
-                                               bool enabledWorkersOnly) {
+                                               bool enabledWorkersOnly,
+                                               bool allDatabases,
+                                               bool isPublished) {
 
     string const context = "DatabaseServicesMySQL::" + string(__func__) + " ";
-
-    util::Lock lock(_mtx, context);
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
     if (not maxReplicas) {
         throw invalid_argument(context + "maxReplicas is not allowed to be 0");
     }
+
+    util::Lock lock(_mtx, context);
+
     try {
+        string const noSpecificFamily;
+        auto const databases = _configuration->databases(noSpecificFamily, allDatabases, isPublished);
+        string const query =
+            "SELECT * FROM " + _conn->sqlId("replica") +
+            " WHERE "        + _conn->sqlIn("database", databases) +
+            (enabledWorkersOnly ?
+            "   AND "        + _conn->sqlIn("worker", _configuration->workers(true)) : "") +
+            " ORDER BY "     + _conn->sqlId("verify_time") +
+            " ASC LIMIT "    + to_string(maxReplicas);
         _conn->execute(
             [&](decltype(_conn) conn) {
                 conn->begin();
-                _findReplicasImpl(
-                    lock,
-                    replicas,
-                    "SELECT * FROM " + conn->sqlId("replica") +
-                    (enabledWorkersOnly ?
-                    " WHERE "        + conn->sqlIn("worker", _configuration->workers(true)) : "") +
-                    " ORDER BY "     + conn->sqlId("verify_time") +
-                    " ASC LIMIT "    + to_string(maxReplicas)
-                );
+                _findReplicasImpl(lock, replicas, query);
                 conn->rollback();
             }
         );
-    } catch (database::mysql::Error const& ex) {
+    } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
         if (_conn->inTransaction()) _conn->rollback();
         throw;
@@ -756,23 +767,23 @@ void DatabaseServicesMySQL::findReplicas(vector<ReplicaInfo>& replicas,
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    util::Lock lock(_mtx, context);
-
     if (not _configuration->isKnownDatabase(database)) {
         throw invalid_argument(context + "unknown database");
     }
+
+    util::Lock lock(_mtx, context);
+
     try {
+        string const query =
+            "SELECT * FROM " +  _conn->sqlId("replica") +
+            "  WHERE "       +  _conn->sqlEqual("chunk",    chunk) +
+            "    AND "       +  _conn->sqlEqual("database", database) +
+            (enabledWorkersOnly ?
+             "   AND "       +  _conn->sqlIn("worker", _configuration->workers(true)) : "");
         _conn->execute(
             [&](decltype(_conn) conn) {
                 conn->begin();
-                _findReplicasImpl(
-                    lock,
-                    replicas,
-                    "SELECT * FROM " +  conn->sqlId("replica") +
-                    "  WHERE "       +  conn->sqlEqual("chunk",    chunk) +
-                    "    AND "       +  conn->sqlEqual("database", database) +
-                    (enabledWorkersOnly ?
-                     "   AND "       +  conn->sqlIn("worker", _configuration->workers(true)) :""));
+                _findReplicasImpl(lock, replicas, query);
                 conn->rollback();
             }
         );
@@ -787,7 +798,9 @@ void DatabaseServicesMySQL::findReplicas(vector<ReplicaInfo>& replicas,
 
 void DatabaseServicesMySQL::findWorkerReplicas(vector<ReplicaInfo>& replicas,
                                                string const& worker,
-                                               string const& database) {
+                                               string const& database,
+                                               bool allDatabases,
+                                               bool isPublished) {
 
     string const context = "DatabaseServicesMySQL::" + string(__func__) + " ";
 
@@ -801,11 +814,13 @@ void DatabaseServicesMySQL::findWorkerReplicas(vector<ReplicaInfo>& replicas,
                     lock,
                     replicas,
                     worker,
-                    database);
+                    database,
+                    allDatabases,
+                    isPublished);
                 conn->rollback();
             }
         );
-    } catch (database::mysql::Error const& ex) {
+    } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
         if (_conn->inTransaction()) _conn->rollback();
         throw;
@@ -815,7 +830,9 @@ void DatabaseServicesMySQL::findWorkerReplicas(vector<ReplicaInfo>& replicas,
 
 
 uint64_t DatabaseServicesMySQL::numWorkerReplicas(string const& worker,
-                                                  string const& database) {
+                                                  string const& database,
+                                                  bool allDatabases,
+                                                  bool isPublished) {
 
     string const context = "DatabaseServicesMySQL::" + string(__func__) + " ";
 
@@ -823,22 +840,30 @@ uint64_t DatabaseServicesMySQL::numWorkerReplicas(string const& worker,
 
     uint64_t num;
     try {
+        string query =
+            "SELECT COUNT(*) AS num FROM " + _conn->sqlId("replica") +
+            "  WHERE " + _conn->sqlEqual("worker", worker) +
+            "  AND ";
+        if (database.empty()) {
+            string const noSpecificFamily;
+            query += _conn->sqlIn("database",
+                                  _configuration->databases(noSpecificFamily,
+                                                            allDatabases,
+                                                            isPublished));
+        } else {
+            if (not _configuration->isKnownDatabase(database)) {
+                throw invalid_argument(context + "unknown database: '" + database + "'");
+            }
+            query += _conn->sqlEqual("database", database);
+        }
         _conn->execute(
             [&](decltype(_conn) conn) {
                 conn->begin();
-                conn->executeSingleValueSelect<uint64_t>(
-                    "SELECT COUNT(*) AS num FROM " + _conn->sqlId("replica") +
-                    "  WHERE "       + _conn->sqlEqual("worker", worker) +
-                    (database.empty() ? "" :
-                    "  AND "         + _conn->sqlEqual("database", database)),
-                    "num",
-                    num,
-                    false
-                );
+                conn->executeSingleValueSelect<uint64_t>(query, "num", num, false);
                 conn->rollback();
             }
         );
-    } catch (database::mysql::Error const& ex) {
+    } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
         if (_conn->inTransaction()) _conn->rollback();
         throw;
@@ -851,7 +876,9 @@ uint64_t DatabaseServicesMySQL::numWorkerReplicas(string const& worker,
 void DatabaseServicesMySQL::_findWorkerReplicasImpl(util::Lock const& lock,
                                                     vector<ReplicaInfo>& replicas,
                                                     string const& worker,
-                                                    string const& database) {
+                                                    string const& database,
+                                                    bool allDatabases,
+                                                    bool isPublished) {
     string const context =
          "DatabaseServicesMySQL::" + string(__func__) + " worker=" + worker +
          " database=" + database + " ";
@@ -861,18 +888,23 @@ void DatabaseServicesMySQL::_findWorkerReplicasImpl(util::Lock const& lock,
     if (not _configuration->isKnownWorker(worker)) {
         throw invalid_argument(context + "unknown worker");
     }
-    if (not database.empty()) {
-        if (not _configuration->isKnownDatabase(database)) {
-            throw invalid_argument(context + "unknown database");
-        }
-    }
-    _findReplicasImpl(
-        lock,
-        replicas,
+    string query =
         "SELECT * FROM " + _conn->sqlId("replica") +
         "  WHERE "       + _conn->sqlEqual("worker", worker) +
-        (database.empty() ? "" :
-        "  AND "         + _conn->sqlEqual( "database", database)));
+        "    AND ";
+    if (database.empty()) {
+        string const noSpecificFamily;
+        query += _conn->sqlIn("database",
+                              _configuration->databases(noSpecificFamily,
+                                                        allDatabases,
+                                                        isPublished));
+    } else {
+        if (not _configuration->isKnownDatabase(database)) {
+            throw invalid_argument(context + "unknown database: '" + database + "'");
+        }
+        query += _conn->sqlEqual("database", database);
+    }
+    _findReplicasImpl(lock, replicas, query);
 
     LOGS(_log, LOG_LVL_DEBUG, context << "** DONE ** replicas.size(): " << replicas.size());
 }
@@ -881,14 +913,14 @@ void DatabaseServicesMySQL::_findWorkerReplicasImpl(util::Lock const& lock,
 void DatabaseServicesMySQL::findWorkerReplicas(vector<ReplicaInfo>& replicas,
                                                unsigned int chunk,
                                                string const& worker,
-                                               string const& databaseFamily) {
+                                               string const& databaseFamily,
+                                               bool allDatabases,
+                                               bool isPublished) {
     string const context =
          "DatabaseServicesMySQL::" + string(__func__) + " worker=" + worker +
          " chunk=" + to_string(chunk) + " family=" + databaseFamily + " ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
-
-    util::Lock lock(_mtx, context);
 
     if (not _configuration->isKnownWorker(worker)) {
         throw invalid_argument(context + "unknown worker");
@@ -896,22 +928,26 @@ void DatabaseServicesMySQL::findWorkerReplicas(vector<ReplicaInfo>& replicas,
     if (not databaseFamily.empty() and not _configuration->isKnownDatabaseFamily(databaseFamily)) {
         throw invalid_argument(context + "unknown databaseFamily");
     }
+
+    util::Lock lock(_mtx, context);
+
     try {
+        string const query =
+            "SELECT * FROM " + _conn->sqlId("replica") +
+            "  WHERE "       + _conn->sqlEqual("worker", worker) +
+            "  AND "         + _conn->sqlEqual("chunk",  chunk) +
+            "  AND "         + _conn->sqlIn("database",
+                                            _configuration->databases(databaseFamily,
+                                                                      allDatabases,
+                                                                      isPublished));
         _conn->execute(
             [&](decltype(_conn) conn) {
                 conn->begin();
-                _findReplicasImpl(
-                    lock,
-                    replicas,
-                    "SELECT * FROM " + conn->sqlId("replica") +
-                    "  WHERE "       + conn->sqlEqual("worker", worker) +
-                    "  AND "         + conn->sqlEqual("chunk",  chunk) +
-                    (databaseFamily.empty() ? "" :
-                    "  AND "         + conn->sqlIn("database", _configuration->databases(databaseFamily))));
+                _findReplicasImpl(lock, replicas, query);
                 conn->rollback();
             }
         );
-    } catch (database::mysql::Error const& ex) {
+    } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
         if (_conn->inTransaction()) _conn->rollback();
         throw;
@@ -928,8 +964,9 @@ map<unsigned int, size_t> DatabaseServicesMySQL::actualReplicationLevel(
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    util::Lock lock(_mtx, context);
-
+    if (database.empty()) {
+        throw invalid_argument(context + "database name can't be empty");
+    }
     if (not _configuration->isKnownDatabase(database)) {
         throw invalid_argument(context + "unknown database");
     }
@@ -940,6 +977,9 @@ map<unsigned int, size_t> DatabaseServicesMySQL::actualReplicationLevel(
             }
         }
     }
+
+    util::Lock lock(_mtx, context);
+
     try {
         map<unsigned int, size_t> result;
 
@@ -999,7 +1039,9 @@ size_t DatabaseServicesMySQL::numOrphanChunks(string const& database,
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    util::Lock lock(_mtx, context);
+    if (database.empty()) {
+        throw invalid_argument(context + "database name can't be empty");
+    }
     if (not _configuration->isKnownDatabase(database)) {
         throw invalid_argument(context + "unknown database");
     }
@@ -1010,6 +1052,9 @@ size_t DatabaseServicesMySQL::numOrphanChunks(string const& database,
             }
         }
     }
+
+    util::Lock lock(_mtx, context);
+
     try {
         size_t result = 0;
 
@@ -1042,10 +1087,7 @@ size_t DatabaseServicesMySQL::numOrphanChunks(string const& database,
             _conn->execute(
                 [&](decltype(_conn) conn) {
                     conn->begin();
-                    conn->executeSingleValueSelect(
-                        query,
-                        "num_chunks",
-                        result);
+                    conn->executeSingleValueSelect(query, "num_chunks", result);
                     conn->rollback();
                 }
             );

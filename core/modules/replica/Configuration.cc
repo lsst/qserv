@@ -122,6 +122,7 @@ ostream& operator <<(ostream& os, DatabaseInfo const& info) {
     os  << "DatabaseInfo ("
         << "name:'" << info.name << "',"
         << "family:'" << info.family << "',"
+        << "isPublished:" << (int)info.isPublished << ","
         << "partitionedTables:" << util::printable(info.partitionedTables) << ","
         << "regularTables:" << util::printable(info.regularTables) << ")";
     return os;
@@ -359,7 +360,9 @@ DatabaseFamilyInfo Configuration::databaseFamilyInfo(string const& name) const {
 }
 
 
-vector<string> Configuration::databases(string const& family) const {
+vector<string> Configuration::databases(string const& family,
+                                        bool allDatabases,
+                                        bool isPublished) const {
 
     util::Lock lock(_mtx, context() + string(__func__) + "(family)");
 
@@ -372,6 +375,11 @@ vector<string> Configuration::databases(string const& family) const {
     for (auto&& entry: _databaseInfo) {
         if (not family.empty() and (family != entry.second.family)) {
             continue;
+        }
+        if (not allDatabases) {
+            // Logical XOR
+            if ((    isPublished and not entry.second.isPublished) or
+                (not isPublished and     entry.second.isPublished)) continue;
         }
         names.push_back(entry.first);
     }

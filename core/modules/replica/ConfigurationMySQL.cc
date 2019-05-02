@@ -155,11 +155,13 @@ string ConfigurationMySQL::dump2init(Configuration::Ptr const& config) {
             <<        familyInfo.numSubStripes
             << ");\n";
 
-        for (auto&& database: config->databases(familyInfo.name)) {
+        bool const allDatabases = true;
+        for (auto&& database: config->databases(familyInfo.name, allDatabases)) {
             auto&& databaseInfo = config->databaseInfo(database);
 
             str << "INSERT INTO `config_database` VALUES ("
-                << "'" << databaseInfo.name << "','" << databaseInfo.family << "');\n";
+                << "'" << databaseInfo.name << "','" << databaseInfo.family
+                << "'," << databaseInfo.isPublished << ");\n";
 
             for (auto&& table: databaseInfo.partitionedTables) {
                 str << "INSERT INTO `config_database_table` VALUES ("

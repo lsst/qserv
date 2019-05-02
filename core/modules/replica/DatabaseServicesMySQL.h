@@ -105,7 +105,9 @@ public:
     /// @see DatabaseServices::findOldestReplica()
     void findOldestReplicas(std::vector<ReplicaInfo>& replicas,
                             size_t maxReplicas,
-                            bool enabledWorkersOnly) final;
+                            bool enabledWorkersOnly,
+                            bool allDatabases,
+                            bool isPublished) final;
 
     /// @see DatabaseServices::findReplicas()
     void findReplicas(std::vector<ReplicaInfo>& replicas,
@@ -116,17 +118,23 @@ public:
     /// @see DatabaseServices::findWorkerReplicas()
     void findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
                             std::string const& worker,
-                            std::string const& database) final;
+                            std::string const& database,
+                            bool allDatabases,
+                            bool isPublished) final;
 
     /// @see DatabaseServices::numWorkerReplicas()
     uint64_t numWorkerReplicas(std::string const& worker,
-                               std::string const& database=std::string()) final;
+                               std::string const& database,
+                               bool allDatabases,
+                               bool isPublished) final;
 
     /// @see DatabaseServices::findWorkerReplicas()
     void findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
                             unsigned int chunk,
                             std::string const& worker,
-                            std::string const& databaseFamily) final;
+                            std::string const& databaseFamily,
+                            bool allDatabases,
+                            bool isPublished) final;
 
     /// @see DatabaseServices::actualReplicationLevel()
     std::map<unsigned int, size_t> actualReplicationLevel(
@@ -205,12 +213,25 @@ private:
      *   worker name (as per the request)
      *
      * @param database
-     *   database name (as per the request)
+     *   (optional) database name (as per the request)
+     *
+     * @param allDatabases
+     *   (optional) flag which if set to 'true' will include into the search all
+     *   known database entries regardless of their PUBLISHED status. Otherwise
+     *   a subset of databases as determined by the second flag 'isPublished'
+     *   will get assumed. Note, this flag is used only if a value of
+     *   parameter 'database' is empty.
+     * 
+     * @param isPublished
+     *   (optional) flag which is used if flag 'all' is set to 'false'
+     *   to narrow a collection of databases included into the search.
      */
     void _findWorkerReplicasImpl(util::Lock const& lock,
                                  std::vector<ReplicaInfo>& replicas,
                                  std::string const& worker,
-                                 std::string const& database);
+                                 std::string const& database=std::string(),
+                                 bool allDatabases=false,
+                                 bool isPublished=true);
 
     /**
      * Actual implementation of the replica update algorithm.

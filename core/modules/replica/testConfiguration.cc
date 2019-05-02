@@ -54,7 +54,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
     map<string, string> kvMap = {
         {"common.workers",                    "worker-A worker-B worker-C"},
         {"common.database_families",          "production test"},
-        {"common.databases",                  "db1 db2 db3 db4 db5"},
+        {"common.databases",                  "db1 db2 db3 db4 db5 db6"},
         {"common.request_buf_size_bytes",     "8192"},
         {"common.request_retry_interval_sec", "1"},
         {"controller.num_threads",            "2"},
@@ -128,22 +128,32 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         {"database:db1.family",             "production"},
         {"database:db1.partitioned_tables", "Table11"},
         {"database:db1.regular_tables",     "MetaTable11"},
+        {"database:db1.is_published",       "1"},
 
         {"database:db2.family",             "production"},
         {"database:db2.partitioned_tables", "Table21 Table22"},
         {"database:db2.regular_tables",     "MetaTable21 MetaTable22"},
+        {"database:db2.is_published",       "1"},
 
         {"database:db3.family",             "production"},
         {"database:db3.partitioned_tables", "Table31 Table32 Table33"},
         {"database:db3.regular_tables",     "MetaTable31 MetaTable32 MetaTable33"},
+        {"database:db3.is_published",       "1"},
 
         {"database:db4.family",             "test"},
         {"database:db4.partitioned_tables", "Table41 Table42"},
         {"database:db4.regular_tables",     ""},
+        {"database:db4.is_published",       "1"},
 
         {"database:db5.family",             "test"},
         {"database:db5.partitioned_tables", "Table51"},
-        {"database:db5.regular_tables",     ""}
+        {"database:db5.regular_tables",     ""},
+        {"database:db5.is_published",       "1"},
+
+        {"database:db6.family",             "test"},
+        {"database:db6.partitioned_tables", "Table61"},
+        {"database:db6.regular_tables",     "MetaTable61"},  
+        {"database:db6.is_published",       "0"}
     };
 
     Configuration::Ptr config;
@@ -153,6 +163,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         config = Configuration::load(kvMap);
         BOOST_CHECK(config != nullptr);
         BOOST_CHECK(config->configUrl() == "map:");
+
+        LOGS_INFO(config->asString());
 
        // ------------------------------------------------------------------------
        // -- Common configuration parameters of both the controller and workers --
@@ -293,7 +305,39 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         BOOST_CHECK(databases3.size() == 2);
         BOOST_CHECK(databases3 == vector<string>({"db4", "db5"}));
     
-        for (auto&& name: vector<string>({"db1", "db2", "db3", "db4", "db5"})) {
+
+        bool allDatabases = false;
+        bool isPublished = true;
+        vector<string> databases4 = config->databases("test", allDatabases, isPublished);
+        sort(databases4.begin(), databases4.end());
+        BOOST_CHECK(databases4.size() == 2);
+        BOOST_CHECK(databases4 == vector<string>({"db4", "db5"}));
+
+        isPublished = false;
+        vector<string> databases5 = config->databases("test", allDatabases, isPublished);
+        sort(databases5.begin(), databases5.end());
+        BOOST_CHECK(databases5.size() == 1);
+        BOOST_CHECK(databases5 == vector<string>({"db6"}));
+
+        allDatabases = true;
+        vector<string> databases6 = config->databases("test", allDatabases);
+        sort(databases6.begin(), databases6.end());
+        BOOST_CHECK(databases6.size() == 3);
+        BOOST_CHECK(databases6 == vector<string>({"db4", "db5", "db6"}));
+
+        isPublished = true;
+        vector<string> databases7 = config->databases("test", allDatabases, isPublished);
+        sort(databases7.begin(), databases7.end());
+        BOOST_CHECK(databases7.size() == 3);
+        BOOST_CHECK(databases7 == vector<string>({"db4", "db5", "db6"}));
+
+        isPublished = false;
+        vector<string> databases8 = config->databases("test", allDatabases, isPublished);
+        sort(databases8.begin(), databases8.end());
+        BOOST_CHECK(databases8.size() == 3);
+        BOOST_CHECK(databases8 == vector<string>({"db4", "db5", "db6"}));
+
+        for (auto&& name: vector<string>({"db1", "db2", "db3", "db4", "db5", "db6"})) {
             BOOST_CHECK(config->isKnownDatabase(name));  
         }
 
@@ -302,6 +346,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         DatabaseInfo const db1info = config->databaseInfo("db1");
         BOOST_CHECK(db1info.name   == "db1");
         BOOST_CHECK(db1info.family == "production");
+        BOOST_CHECK(db1info.isPublished == true);
 
         tables = db1info.partitionedTables;
         sort(tables.begin(), tables.end());
@@ -316,6 +361,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         DatabaseInfo const db2info = config->databaseInfo("db2");
         BOOST_CHECK(db2info.name   == "db2");
         BOOST_CHECK(db2info.family == "production");
+        BOOST_CHECK(db2info.isPublished == true);
 
         tables = db2info.partitionedTables;
         sort(tables.begin(), tables.end());
@@ -330,6 +376,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         DatabaseInfo const db3info = config->databaseInfo("db3");
         BOOST_CHECK(db3info.name   == "db3");
         BOOST_CHECK(db3info.family == "production");
+        BOOST_CHECK(db3info.isPublished == true);
 
         tables = db3info.partitionedTables;
         sort(tables.begin(), tables.end());
@@ -344,6 +391,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         DatabaseInfo const db4info = config->databaseInfo("db4");
         BOOST_CHECK(db4info.name   == "db4");
         BOOST_CHECK(db4info.family == "test");
+        BOOST_CHECK(db4info.isPublished == true);
 
         tables = db4info.partitionedTables;
         sort(tables.begin(), tables.end());
@@ -356,6 +404,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         DatabaseInfo const db5info = config->databaseInfo("db5");
         BOOST_CHECK(db5info.name   == "db5");
         BOOST_CHECK(db5info.family == "test");
+        BOOST_CHECK(db5info.isPublished == true);
 
         tables = db5info.partitionedTables;
         sort(tables.begin(), tables.end());
@@ -365,17 +414,40 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         tables = db5info.regularTables;
         BOOST_CHECK(tables.size() == 0);
 
+        DatabaseInfo const db6info = config->databaseInfo("db6");
+        BOOST_CHECK(db6info.name   == "db6");
+        BOOST_CHECK(db6info.family == "test");
+        BOOST_CHECK(db6info.isPublished == false);
+
+        tables = db6info.partitionedTables;
+        sort(tables.begin(), tables.end());
+        BOOST_CHECK(tables.size() == 1);
+        BOOST_CHECK(tables == vector<string>({"Table61"}));
+
+        tables = db6info.regularTables;
+        BOOST_CHECK(tables.size() == 1);
+        BOOST_CHECK(tables == vector<string>({"MetaTable61"}));
+
         DatabaseInfo newDatabase;
         newDatabase.name = "new";
         newDatabase.family = "test";
-        
+        newDatabase.isPublished = false;
+  
         DatabaseInfo const newDatabaseCreated = config->addDatabase(newDatabase);
         BOOST_CHECK(newDatabaseCreated.name   == "new");
         BOOST_CHECK(newDatabaseCreated.family == "test");
+        BOOST_CHECK(newDatabaseCreated.isPublished == false);
         BOOST_CHECK(newDatabaseCreated.partitionedTables.size() == 0);
         BOOST_CHECK(newDatabaseCreated.regularTables.size() == 0);
 
         BOOST_CHECK_THROW(config->addDatabase(newDatabase), invalid_argument);
+
+        DatabaseInfo newDatabaseUpdated = config->publishDatabase("new");
+        BOOST_CHECK(newDatabaseUpdated.name == "new");
+        BOOST_CHECK(newDatabaseUpdated.family == "test");
+        BOOST_CHECK(newDatabaseUpdated.isPublished == true);
+        BOOST_CHECK(newDatabaseUpdated.partitionedTables.size() == 0);
+        BOOST_CHECK(newDatabaseUpdated.regularTables.size() == 0);
 
         newDatabase.name = "";
         BOOST_CHECK_THROW(config->addDatabase(newDatabase), invalid_argument);
@@ -387,7 +459,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         newDatabase.family = "unknown";
         BOOST_CHECK_THROW(config->addDatabase(newDatabase), invalid_argument);
 
-        DatabaseInfo newDatabaseUpdated = config->addTable("new", "T1", true);
+        newDatabaseUpdated = config->addTable("new", "T1", true);
         BOOST_CHECK(newDatabaseUpdated.partitionedTables.size() == 1 and
                     newDatabaseUpdated.partitionedTables[0] == "T1");
         BOOST_CHECK_THROW(config->addTable("new", "T1", true), invalid_argument);

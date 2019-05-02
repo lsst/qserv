@@ -102,7 +102,9 @@ public:
 
     void findOldestReplicas(std::vector<ReplicaInfo>& replicas,
                             size_t maxReplicas,
-                            bool enabledWorkersOnly) final;
+                            bool enabledWorkersOnly,
+                            bool allDatabases,
+                            bool isPublished) final;
 
     void findReplicas(std::vector<ReplicaInfo>& replicas,
                       unsigned int chunk,
@@ -111,15 +113,21 @@ public:
 
     void findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
                             std::string const& worker,
-                            std::string const& database) final;
+                            std::string const& database,
+                            bool allDatabases,
+                            bool isPublished) final;
 
     uint64_t numWorkerReplicas(std::string const& worker,
-                               std::string const& database=std::string()) final;
+                               std::string const& database,
+                               bool allDatabases,
+                               bool isPublished) final;
 
     void findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
                             unsigned int chunk,
                             std::string const& worker,
-                            std::string const& databaseFamily) final;
+                            std::string const& databaseFamily,
+                            bool allDatabases,
+                            bool isPublished) final;
 
     std::map<unsigned int, size_t> actualReplicationLevel(
                                         std::string const& database,

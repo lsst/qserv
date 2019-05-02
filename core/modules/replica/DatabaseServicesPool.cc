@@ -170,12 +170,16 @@ void DatabaseServicesPool::saveReplicaInfoCollection(string const& worker,
 
 void DatabaseServicesPool::findOldestReplicas(vector<ReplicaInfo>& replicas,
                                               size_t maxReplicas,
-                                              bool enabledWorkersOnly) {
+                                              bool enabledWorkersOnly,
+                                              bool allDatabases,
+                                              bool isPublished) {
 
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
     service()->findOldestReplicas(replicas,
                                   maxReplicas,
-                                  enabledWorkersOnly);
+                                  enabledWorkersOnly,
+                                  allDatabases,
+                                  isPublished);
 }
 
 
@@ -194,33 +198,45 @@ void DatabaseServicesPool::findReplicas(vector<ReplicaInfo>& replicas,
 
 void DatabaseServicesPool::findWorkerReplicas(vector<ReplicaInfo>& replicas,
                                               string const& worker,
-                                              string const& database) {
+                                              string const& database,
+                                              bool allDatabases,
+                                              bool isPublished) {
 
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
     service()->findWorkerReplicas(replicas,
                                   worker,
-                                  database);
+                                  database,
+                                  allDatabases,
+                                  isPublished);
 }
 
 
 uint64_t DatabaseServicesPool::numWorkerReplicas(string const& worker,
-                                                 string const& database) {
+                                                 string const& database,
+                                              bool allDatabases,
+                                              bool isPublished) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
     return service()->numWorkerReplicas(worker,
-                                        database);
+                                        database,
+                                        allDatabases,
+                                        isPublished);
 }
 
 
 void DatabaseServicesPool::findWorkerReplicas(vector<ReplicaInfo>& replicas,
                                               unsigned int chunk,
                                               string const& worker,
-                                              string const& databaseFamily) {
+                                              string const& databaseFamily,
+                                              bool allDatabases,
+                                              bool isPublished) {
 
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
     service()->findWorkerReplicas(replicas,
                                   chunk,
                                   worker,
-                                  databaseFamily);
+                                  databaseFamily,
+                                  allDatabases,
+                                  isPublished);
 }
 
 
