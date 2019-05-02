@@ -225,9 +225,11 @@ bool Executive::startQuery(std::shared_ptr<JobQuery> const& jobQuery) {
     // Construct a temporary resource object to pass to ProcessRequest().
     //   Interactive Queries should have an Affinity of XrdSsiResource::None or Weak while
     //   Scans should have an affinity of Strong
-    XrdSsiResource::Affinity affinity = (_scanInteractive) ? XrdSsiResource::None : XrdSsiResource::Strong;
-    XrdSsiResource jobResource(jobQuery->getDescription()->resource().path(), "", jobQuery->getIdStr(),
-                               "", 0, affinity);
+    // TODO: DM-19609
+    //XrdSsiResource::Affinity affinity = (_scanInteractive) ? XrdSsiResource::Weak : XrdSsiResource::Strong;
+    //XrdSsiResource jobResource(jobQuery->getDescription()->resource().path(), "", jobQuery->getIdStr(),
+    //                           "", 0, affinity);
+    XrdSsiResource jobResource(jobQuery->getDescription()->resource().path(), "", jobQuery->getIdStr());
 
     // Now construct the actual query request and tie it to the jobQuery. The
     // shared pointer is used by QueryRequest to keep itself alive, sloppy design.

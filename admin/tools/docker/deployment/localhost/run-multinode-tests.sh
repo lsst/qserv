@@ -39,6 +39,9 @@ fi
 
 docker rm -f "$MASTER" || echo "No existing container for $MASTER"
 docker run --detach=true \
+    --privileged \
+    --cap-add sys_admin \
+    --cap-add sys_ptrace \
     -e "QSERV_MASTER=$MASTER" --name "$MASTER" -h "${MASTER}" "$MASTER_IMAGE"
 MASTER_IP=$(docker inspect -f '{{ .NetworkSettings.IPAddress }}' $MASTER)
 
@@ -46,6 +49,9 @@ for i in $WORKERS;
 do
     docker rm -f "$i" || echo "No existing container for $i"
     docker run --detach=true --add-host $MASTER:$MASTER_IP\
+       --privileged \
+       --cap-add sys_admin \
+       --cap-add sys_ptrace \
         -e "QSERV_MASTER=$MASTER" --name "$i" -h "${i}"  "$WORKER_IMAGE"
     WORKER_IP=$(docker inspect -f '{{ .NetworkSettings.IPAddress }}' $i)
     HOSTFILE="${HOSTFILE}$WORKER_IP    $i

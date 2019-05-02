@@ -319,6 +319,8 @@ void SsiRequest::Finished(XrdSsiRequest& req, XrdSsiRespInfo const& rinfo, bool 
         }
     }
 
+    auto keepAlive = freeSelfKeepAlive();
+
     // No buffers allocated, so don't need to free.
     // We can release/unlink the file now
     const char* type = "";
@@ -414,6 +416,12 @@ bool SsiRequest::replyStream(StreamBuffer::Ptr const& sBuf, bool last) {
     // XrdSsi or Finished() will call Recycle().
     _stream->append(sBuf, last);
     return true;
+}
+
+
+SsiRequest::Ptr SsiRequest::freeSelfKeepAlive() {
+    Ptr keepAlive = std::move(_selfKeepAlive);
+    return keepAlive;
 }
 
 
