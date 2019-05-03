@@ -96,7 +96,7 @@ BlendScheduler::BlendScheduler(string const& name,
     _scanSnail->setDefaultPosition(position++);
     assert(_schedulers.size() >= 2); // Must have at least _group and _scanSnail in the list.
     _sortScanSchedulers();
-    for (auto sched : _schedulers) {
+    for (auto const& sched : _schedulers) {
         LOGS(_log, LOG_LVL_DEBUG, "Scheduler " << _name << " found scheduler " << sched->getName());
     }
 }
@@ -143,7 +143,7 @@ void BlendScheduler::_sortScanSchedulers() {
         lock_guard<mutex> lg(_schedMtx);
         sort(_schedulers.begin(), _schedulers.end(), lessThan);
 
-        for (auto& sched : _schedulers) {
+        for (auto const& sched : _schedulers) {
             str += sched->getName() + ", ";
         }
     }
@@ -295,7 +295,7 @@ bool BlendScheduler::_ready() {
 
     if (!ready) {
         lock_guard<mutex> lg(_schedMtx);
-        for (auto&& sched : _schedulers) {
+        for (auto const& sched : _schedulers) {
             availableThreads = sched->applyAvailableThreads(availableThreads);
             ready = sched->ready();
             if (changed && LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
@@ -389,7 +389,7 @@ int BlendScheduler::calcAvailableTheads() {
     int reserve = 0;
     {
         lock_guard<mutex> lg(_schedMtx);
-        for (auto sched : _schedulers) {
+        for (auto const& sched : _schedulers) {
             reserve += sched->desiredThreadReserve();
         }
     }
@@ -405,7 +405,7 @@ size_t BlendScheduler::getSize() const {
     lock_guard<mutex> lock(util::CommandQueue::_mx); // &&& is this needed now? I don't think so.
     size_t sz = 0;
     lock_guard<mutex> lg(_schedMtx);
-    for (auto sched : _schedulers) {
+    for (auto const& sched : _schedulers) {
         sz += sched->getSize();
     }
     return sz;
