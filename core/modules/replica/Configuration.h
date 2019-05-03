@@ -136,6 +136,9 @@ public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<Configuration> Ptr;
 
+    /// @return JSON representation of the object
+    static nlohmann::json toJson(Configuration::Ptr const& config);
+
     /**
      * The static factory method will instantiate an instance of a subclass
      * corresponding to a prefix of the configuration URL. The following

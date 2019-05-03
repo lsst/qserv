@@ -32,6 +32,7 @@
 #include "replica/ConfigurationFile.h"
 #include "replica/ConfigurationMap.h"
 #include "replica/ConfigurationMySQL.h"
+#include "replica/ConfigurationTypes.h"
 #include "replica/FileUtils.h"
 #include "util/IterableFormatter.h"
 
@@ -73,6 +74,8 @@ json DatabaseInfo::toJson() const {
     json infoJson;
 
     infoJson["name"] = name;
+    infoJson["family"] = family;
+    infoJson["is_published"] = isPublished ? 1 : 0;
 
     for (auto&& name: partitionedTables) {
         infoJson["tables"].push_back({
@@ -136,6 +139,46 @@ ostream& operator <<(ostream& os, DatabaseFamilyInfo const& info) {
         << "numStripes:" << info.numStripes << ","
         << "numSubStripes:" << info.numSubStripes << ")";
     return os;
+}
+
+
+json Configuration::toJson(Configuration::Ptr const& config) {
+
+    json configJson;
+
+    // General parameters
+
+    ConfigurationGeneralParams general;
+    configJson["general"] = general.toJson(config);
+
+    // Workers
+
+    json workersJson;
+    for (auto&& worker: config->allWorkers()) {
+        auto const wi = config->workerInfo(worker);
+        workersJson.push_back(wi.toJson());
+    }
+    configJson["workers"] = workersJson;
+
+    // Database families, databases, and tables
+
+    json familiesJson;
+    for (auto&& family: config->databaseFamilies()) {
+        auto const fi = config->databaseFamilyInfo(family);
+        json familyJson = fi.toJson();
+        bool const allDatabases = true;
+        for (auto&& database: config->databases(family, allDatabases)) {
+            auto const di = config->databaseInfo(database);
+            familyJson["databases"].push_back(di.toJson());
+        }
+        familiesJson.push_back(familyJson);
+    }
+    configJson["families"] = familiesJson;
+
+    json resultJson;
+    resultJson["config"] = configJson;
+
+    return resultJson;
 }
 
 
