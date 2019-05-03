@@ -93,7 +93,7 @@ public:
     std::shared_ptr<JobQuery> add(JobDescription::Ptr const& s);
 
     /// Queue a job to be sent to a worker so it can be started.
-    void queueJobStart(PriorityCommand::Ptr const& cmd, bool scanInteractive);
+    void queueJobStart(PriorityCommand::Ptr const& cmd);
 
     /// Waits for all jobs on _jobStartCmdList to start. This should not be called
     /// before ALL jobs have been added to the pool.
@@ -115,6 +115,8 @@ public:
     void setQueryId(QueryId id);
     QueryId getId() const { return _id; }
     std::string const& getIdStr() const { return _idStr; }
+
+    void setScanInteractive(bool interactive) { _scanInteractive = interactive; }
 
     /// @return number of items in flight.
     int getNumInflight(); // non-const, requires a mutex.
@@ -194,6 +196,8 @@ private:
     /// Minimum number of seconds between QMeta chunk updates (set by config)
     std::chrono::seconds _secondsBetweenQMetaUpdates{60};
     std::mutex _lastQMetaMtx; ///< protects _lastQMetaUpdate.
+
+    bool _scanInteractive = false; ///< true for interactive scans.
 };
 
 class MarkCompleteFunc {

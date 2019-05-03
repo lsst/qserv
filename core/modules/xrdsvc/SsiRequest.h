@@ -57,7 +57,8 @@ namespace lsst {
 namespace qserv {
 namespace xrdsvc {
 
-class ChannelStream; // Forward declaration
+class ChannelStream;
+class StreamBuffer;
 
 /// An implementation of XrdSsiResponder that is used by SsiService to provide
 /// qserv worker services. The SSI interface encourages such an approach, and
@@ -80,11 +81,12 @@ public:
             std::shared_ptr<wpublish::ChunkInventory> const& chunkInventory,
             std::shared_ptr<wbase::MsgProcessor> const&      processor,
             mysql::MySqlConfig const&                        mySqlConfig) {
-
-        return SsiRequest::Ptr(new SsiRequest(rname,
-                                              chunkInventory,
-                                              processor,
-                                              mySqlConfig));
+        auto req = SsiRequest::Ptr(new SsiRequest(rname,
+                                                  chunkInventory,
+                                                  processor,
+                                                  mySqlConfig));
+        req->_selfKeepAlive = req;
+        return req;
     }
 
     virtual ~SsiRequest();
@@ -105,6 +107,14 @@ public:
     bool replyFile(int fd, long long fSize);
     bool replyStream(StreamBuffer::Ptr const& sbuf, bool last);
 
+    /// Call this to allow object to die after it truly is no longer needed.
+    /// i.e. It is know Finish() will not be called.
+    /// NOTE: It is important that any non-static SsiRequest member
+    /// function make a local copy of the returned pointer so that
+    /// SsiRequest is guaranteed to live to the end of
+    /// the function call.
+    Ptr freeSelfKeepAlive();
+
 private:
 
     /// Constructor (called by SsiService)
@@ -116,7 +126,6 @@ private:
             _validator(_chunkInventory->newValidator()),
             _processor(processor),
             _resourceName(rname),
-            _stream(0),
             _mySqlConfig(mySqlConfig) {
     }
     
@@ -143,12 +152,18 @@ private:
     ValidatorPtr                         _validator;    ///< validates request against what's available
     std::shared_ptr<wbase::MsgProcessor> _processor;    ///< actual msg processor
 
-    std::mutex  _finMutex;      ///< Protects execute() from Finish()
+    std::mutex  _finMutex;  ///< Protects execute() from Finish(), _finished, and _stream
+    bool _finished = false;  ///< set to true when Finished called
     std::string _resourceName;
 
-    ChannelStream* _stream;
+    std::shared_ptr<ChannelStream> _stream;
+
 
     mysql::MySqlConfig const _mySqlConfig;
+
+    /// Make sure this object exists until Finish() is called.
+    /// Make a local copy before calling reset() within and non-static member function.
+    Ptr _selfKeepAlive;
 };
 
 }}} // namespace

@@ -308,14 +308,18 @@ void SsiRequest::Finished(XrdSsiRequest& req, XrdSsiRespInfo const& rinfo, bool 
     // This call is sync (blocking).
     // client finished retrieving response, or cancelled.
     // release response resources (e.g. buf)
-    // But first we must make sure that request setup (i.e execute() completed).
-    // We simply lock the serialization mutex and then immediately unlock it.
-    // If we got the mutex, execute() completed. This code should not be
-    // optimized out even though it looks like it does nothing (lock_gaurd?).
-    // We could potentially do this with _tasksMutex but that would require
-    // moving the lock into execute() and obtaining it unobviously early.
-    _finMutex.lock();
-    _finMutex.unlock();
+    // But first we must make sure that request setup completed (i.e execute()) by
+    // locking _finMutex.
+    {
+        std::lock_guard<std::mutex> finLock(_finMutex);
+        // Clean up _stream if it exists and don't add anything new to it either.
+        _finished = true;
+        if (_stream != nullptr) {
+            _stream->clearMsgs();
+        }
+    }
+
+    auto keepAlive = freeSelfKeepAlive();
 
     // No buffers allocated, so don't need to free.
     // We can release/unlink the file now
@@ -385,22 +389,40 @@ bool SsiRequest::replyFile(int fd, long long fSize) {
 bool SsiRequest::replyStream(StreamBuffer::Ptr const& sBuf, bool last) {
     // Create a streaming object if not already created.
     LOGS(_log, LOG_LVL_DEBUG, "replyStream, checking stream size=" << sBuf->getSize() << " last=" << last);
-    if (!_stream) {
-       _stream = new ChannelStream();
-       if (SetResponse(_stream) != XrdSsiResponder::Status::wasPosted) {
-           LOGS(_log, LOG_LVL_WARN, "SetResponse stream failed, calling Recycle for sBuf");
-           // Normally, XrdSsi would call Recycle() when it is done with sBuf, but the
-           // return value from SetResponse indicates XrdSsi will never use sBuf nor call Recycle().
-           // Calling Recycle() here means we're done waiting for XrdSsi and sBuf can be freed when
-           // qserv is done with it.
-           sBuf->Recycle();
-           return false;
-       }
-    } else if (_stream->closed()) {
+
+    // Normally, XrdSsi would call Recycle() when it is done with sBuf, but if this function
+    // returns false, then it must call Recycle(). Otherwise, the scheduler will likely
+    // wedge waiting for the buffer to be released.
+    std::lock_guard<std::mutex> finLock(_finMutex);
+    if (_finished) {
+        // Finished() was called, give up.
+        sBuf->Recycle();
         return false;
     }
+    if (!_stream) {
+        _stream = std::make_shared<ChannelStream>();
+        if (SetResponse(_stream.get()) != XrdSsiResponder::Status::wasPosted) {
+            LOGS(_log, LOG_LVL_WARN, "SetResponse stream failed, calling Recycle for sBuf");
+            // SetResponse return value indicates XrdSsi wont call Recycle().
+            sBuf->Recycle();
+            return false;
+        }
+    } else if (_stream->closed()) {
+        // XrdSsi isn't going to call Recycle if we wind up here.
+        LOGS(_log, LOG_LVL_ERROR, "Logic error SsiRequest::replyStream called with stream closed.");
+        sBuf->Recycle();
+        return false;
+    }
+    // XrdSsi or Finished() will call Recycle().
     _stream->append(sBuf, last);
     return true;
 }
+
+
+SsiRequest::Ptr SsiRequest::freeSelfKeepAlive() {
+    Ptr keepAlive = std::move(_selfKeepAlive);
+    return keepAlive;
+}
+
 
 }}} // namespace

@@ -51,6 +51,9 @@ public:
     /// Push in a data packet
     void append(StreamBuffer::Ptr const& StreamBuffer, bool last);
 
+    /// Empty _msgs, calling StreamBuffer::Recycle() where needed.
+    void clearMsgs();
+
     /// Pull out a data packet as a Buffer object (called by XrdSsi code)
     virtual Buffer *GetBuff(XrdSsiErrInfo &eInfo, int &dlen, bool &last);
 

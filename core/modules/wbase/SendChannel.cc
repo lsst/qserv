@@ -53,26 +53,25 @@ class NopChannel : public SendChannel {
 public:
     NopChannel() {}
 
-    virtual bool send(char const* buf, int bufLen) {
+    bool send(char const* buf, int bufLen) override {
         std::cout << "NopChannel send(" << (void*) buf
                   << ", " << bufLen << ");\n";
         return true;
     }
 
-    virtual bool sendError(std::string const& msg, int code) {
+    bool sendError(std::string const& msg, int code) override {
         std::cout << "NopChannel sendError(\"" << msg
                   << "\", " << code << ");\n";
         return true;
     }
-    virtual bool sendFile(int fd, Size fSize) {
+    bool sendFile(int fd, Size fSize) override {
         std::cout << "NopChannel sendFile(" << fd
                   << ", " << fSize << ");\n";
         return true;
     }
-    virtual bool sendStream(char const* buf, int bufLen, bool last) {
-        std::cout << "NopChannel sendStream(" << (void*) buf
-                  << ", " << bufLen << ", "
-                  << (last ? "true" : "false") << ");\n";
+    bool sendStream(xrdsvc::StreamBuffer::Ptr const& sBuf, bool last) override {
+        std::cout << "NopChannel sendStream(" << (void*) sBuf.get()
+                  << ", " << (last ? "true" : "false") << ");\n";
         return true;
     }
 };
