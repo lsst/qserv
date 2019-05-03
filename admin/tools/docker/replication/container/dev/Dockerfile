@@ -4,7 +4,7 @@ USER 0
 
 # Provide newer git for newinstall and eupspkg
 RUN yum install -y rh-git29 && yum clean all && \
-    echo ". /opt/rh/rh-git29/enable" > "/etc/profile.d/rh-git29.sh"
+    source scl_source enable rh-git29
 
 # Install Qserv prerequisites
 RUN yum install -y initscripts && yum clean all

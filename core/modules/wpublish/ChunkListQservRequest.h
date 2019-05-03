@@ -36,9 +36,9 @@ namespace qserv {
 namespace wpublish {
 
 /**
-  * Class ChunkListQservRequest the base class for client-side requests
-  * the Qserv worker services affecting chunk lists.
-  */
+ * Class ChunkListQservRequest the base class for client-side requests
+ * the Qserv worker services affecting chunk lists.
+ */
 class ChunkListQservRequest : public QservRequest {
 
 public:
@@ -106,9 +106,9 @@ private:
 
 
 /**
-  * Class ReloadChunkListQservRequest implements a client-side request to
-  * the Qserv worker management services.
-  */
+ * Class ReloadChunkListQservRequest implements a client-side request to
+ * the Qserv worker management services.
+ */
 class ReloadChunkListQservRequest : public ChunkListQservRequest {
 
 public:
@@ -135,7 +135,7 @@ public:
 
 protected:
 
-    /**     *
+    /**
      * @param onFinish optional callback function to be called upon the completion
      *                 (successful or not) of the request.
      */
@@ -144,9 +144,9 @@ protected:
 
 
 /**
-  * Class RebuildChunkListQservRequest implements a client-side request to
-  * the Qserv worker management services.
-  */
+ * Class RebuildChunkListQservRequest implements a client-side request to
+ * the Qserv worker management services.
+ */
 class RebuildChunkListQservRequest : public ChunkListQservRequest {
 
 public:
@@ -154,7 +154,7 @@ public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<RebuildChunkListQservRequest> Ptr;
 
-    /*
+    /**
      * Static factory method is needed to prevent issues with the lifespan
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
