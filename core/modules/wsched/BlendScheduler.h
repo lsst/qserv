@@ -108,7 +108,11 @@ public:
                    std::shared_ptr<GroupScheduler> const& group,
                    std::shared_ptr<ScanScheduler> const& snailScheduler,
                    std::vector<std::shared_ptr<ScanScheduler>> const& scanSchedulers);
-    virtual ~BlendScheduler();
+
+    BlendScheduler() = delete;
+    BlendScheduler(BlendScheduler const&) = delete;
+    BlendScheduler& operator=(BlendScheduler const&) = delete;
+    virtual ~BlendScheduler() = default;
 
     void queCmd(util::Command::Ptr const& cmd) override;
     util::Command::Ptr getCmd(bool wait) override;

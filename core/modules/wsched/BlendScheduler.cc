@@ -90,7 +90,6 @@ BlendScheduler::BlendScheduler(string const& name,
     for (auto const& sched : scanSchedulers) {
         _schedulers.push_back(sched);
         sched->setDefaultPosition(position++);
-        //sched->setBlendScheduler(this); &&&
     }
     _schedulers.push_back(_scanSnail);
     _scanSnail->setDefaultPosition(position++);
@@ -99,20 +98,6 @@ BlendScheduler::BlendScheduler(string const& name,
     for (auto const& sched : _schedulers) {
         LOGS(_log, LOG_LVL_DEBUG, "Scheduler " << _name << " found scheduler " << sched->getName());
     }
-}
-
-
-BlendScheduler::~BlendScheduler() {
-    /// Cleanup pointers.
-    /* &&&
-    lock_guard<mutex> lock(util::CommandQueue::_mx);
-    for (auto const& sched : _schedulers) {
-        auto const& scanSched = dynamic_pointer_cast<ScanScheduler>(sched);
-        if (scanSched != nullptr) {
-            scanSched->setBlendScheduler(nullptr);
-        }
-    }
-    */
 }
 
 
@@ -402,7 +387,6 @@ int BlendScheduler::calcAvailableTheads() {
 
 /// Returns the number of Tasks queued in all sub-schedulers.
 size_t BlendScheduler::getSize() const {
-    lock_guard<mutex> lock(util::CommandQueue::_mx); // &&& is this needed now? I don't think so.
     size_t sz = 0;
     lock_guard<mutex> lg(_schedMtx);
     for (auto const& sched : _schedulers) {
@@ -413,7 +397,6 @@ size_t BlendScheduler::getSize() const {
 
 /// Returns the number of Tasks inFlight.
 int BlendScheduler::getInFlight() const {
-    lock_guard<mutex> lock(util::CommandQueue::_mx); // &&& is this needed now? I don't think so.
     int inFlight = 0;
     lock_guard<mutex> lg(_schedMtx);
     for (auto const& sched : _schedulers) {

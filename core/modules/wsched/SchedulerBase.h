@@ -134,7 +134,6 @@ protected:
     int _maxThreads{1};    //< Maximum number of threads for this scheduler to have inFlight.
     int _maxThreadsAdj{1}; //< Maximum number of threads to have inFlight adjusted for available pool.
 
-    // &&&BlendScheduler *_blendScheduler{nullptr};
     int _priority; ///< Current priority, higher value - higher priority
     int _priorityDefault;
 
