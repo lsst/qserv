@@ -65,7 +65,7 @@ if [ $# -ne 0 ] ; then
     exit 2
 fi
 
-DEPS_DIR=$(readlink -e "$DIR/../../bootstrap")
+DEPS_DIR=$(readlink -f "$DIR/../../bootstrap")
 
 if [ ! -d "$DEPS_DIR" ] ; then
 	printf "ERROR: incorrect dependencies directory (value: $DEPS_DIR)"
