@@ -32,9 +32,8 @@ set -e
 DIR=$(cd "$(dirname "$0")"; pwd -P)
 . "$DIR/conf.sh"
 
-EUPS_TAG='qserv_latest'
-TAG="$DOCKER_REPO:latest"
-VERSION=$(date --date='-1 month' +'%Y-%m')
+EUPS_TAG='qserv-dev'
+TAG="$DOCKER_REPO:dev"
 
 usage() {
   cat << EOD
@@ -43,10 +42,9 @@ usage() {
 
   Available options:
     -C          Rebuild the images from scratch
-    -D          Build using 'qserv-dev' eups tag instead of 'qserv_latest'
     -h          This message
 
-    Create Docker images from 'qserv_latest' (default) or 'qserv-dev' eups tags.
+    Create Docker image from 'qserv-dev' eups tag.
 
 EOD
 }
@@ -55,7 +53,7 @@ EOD
 while getopts CDh c ; do
     case $c in
             C) CACHE_OPT="--no-cache=true" ;;
-            D) EUPS_TAG="qserv-dev" ; TAG="$DOCKER_REPO:dev" ;;
+            D) ;; # legacy option; now default behavior
             h) usage ; exit 0 ;;
             \?) usage ; exit 2 ;;
     esac
@@ -97,15 +95,6 @@ ln -f "$TPL_DEPS_SCRIPT" "$SCRIPT_DIR/install-deps.sh"
 printf "Building image %s from %s, using eups tag %s\n" \
     "$TAG" "$DOCKERDIR" "$EUPS_TAG"
 docker build $CACHE_OPT --build-arg EUPS_TAG="$EUPS_TAG" --tag="$TAG" "$DOCKERDIR"
-
-# Additional tag for release image
-if [ "$EUPS_TAG" = 'qserv_latest' ]; then
-    VERSION_TAG="$DOCKER_REPO:$VERSION"
-
-    docker tag "$TAG" "$VERSION_TAG"
-    docker push "$VERSION_TAG"
-
-fi
 
 docker push "$TAG"
 

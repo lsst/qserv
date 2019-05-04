@@ -9,5 +9,5 @@ set -e
 DIR=$(cd "$(dirname "$0")"; pwd -P)
 
 # Build container iamge for Qserv development version
-"$DIR"/../1_build-image.sh -CD
+"$DIR"/../1_build-image.sh -C
 "$DIR"/../4_build-configured-images.sh
