@@ -83,21 +83,20 @@ private:
     /**
      * Log a message into the Logger's LOG_LVL_INFO stream
      */
-    void _info(std::string const& msg);
-    void _info(std::string const& context, std::string const& msg) { _info(context + "  " + msg); }
+    void _info(std::string const& msg) const;
+    void _info(std::string const& context, std::string const& msg) const { _info(context + "  " + msg); }
 
     /**
      * Log a message into the Logger's LOG_LVL_DEBUG stream
      */
-
-    void _debug(std::string const& msg);
-    void _debug(std::string const& context, std::string const& msg) { _debug(context + "  " + msg); }
+    void _debug(std::string const& msg) const;
+    void _debug(std::string const& context, std::string const& msg) const { _debug(context + "  " + msg); }
 
     /**
      * Log a message into the Logger's LOG_LVL_ERROR stream
      */
-    void _error(std::string const& msg);
-    void _error(std::string const& context, std::string const& msg) { _error(context + "  " + msg); }
+    void _error(std::string const& msg) const;
+    void _error(std::string const& context, std::string const& msg) const { _error(context + "  " + msg); }
 
     /**
      * Process a request which return status of one worker.
